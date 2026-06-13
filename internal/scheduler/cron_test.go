@@ -32,11 +32,11 @@ func TestParseCronAcceptsValidExpressions(t *testing.T) {
 
 func TestParseCronRejectsOutOfRangeValues(t *testing.T) {
 	cases := []string{
-		"60 * * * *",  // minute out of range
-		"* 24 * * *",  // hour out of range
-		"* * 32 * *",  // dom out of range
-		"* * * 13 *",  // month out of range
-		"* * * * 7",   // dow out of range (0-6 only)
+		"60 * * * *", // minute out of range
+		"* 24 * * *", // hour out of range
+		"* * 32 * *", // dom out of range
+		"* * * 13 *", // month out of range
+		"* * * * 7",  // dow out of range (0-6 only)
 	}
 	for _, expr := range cases {
 		if _, err := ParseCron(expr); err == nil {

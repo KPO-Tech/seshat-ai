@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
+	searchproviders "github.com/EngineerProjects/nexus-engine/pkg/web/search/providers"
 	backendauth "github.com/EngineerProjects/nexus-product/internal/auth"
 	"github.com/EngineerProjects/nexus-product/internal/bkerr"
-	backendsettings "github.com/EngineerProjects/nexus-product/internal/settings"
 	"github.com/EngineerProjects/nexus-product/internal/db"
-	searchproviders "github.com/EngineerProjects/nexus-engine/pkg/web/search/providers"
+	backendsettings "github.com/EngineerProjects/nexus-product/internal/settings"
 )
 
 type Service struct {

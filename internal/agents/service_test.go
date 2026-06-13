@@ -55,13 +55,13 @@ func TestIsValidSlug(t *testing.T) {
 
 	invalid := []string{
 		"",
-		"My-Agent",   // uppercase
-		"my agent",   // space
-		"my_agent",   // underscore
-		"my.agent",   // dot
-		"AGENT",      // all uppercase
-		"agent!",     // special char
-		"αgent",      // non-ASCII
+		"My-Agent", // uppercase
+		"my agent", // space
+		"my_agent", // underscore
+		"my.agent", // dot
+		"AGENT",    // all uppercase
+		"agent!",   // special char
+		"αgent",    // non-ASCII
 	}
 	for _, s := range invalid {
 		if isValidSlug(s) {
@@ -120,19 +120,19 @@ func TestGetDefinitionEmptySlugReturnsFalse(t *testing.T) {
 
 func TestToSDKDefinitionFieldMapping(t *testing.T) {
 	a := Agent{
-		Slug:           "my-reviewer",
-		WhenToUse:      "Use for code reviews",
-		SystemPrompt:   "You are a strict code reviewer.",
-		Model:          "claude-opus-4-8",
-		Tools:          []string{"read_file", "glob"},
+		Slug:            "my-reviewer",
+		WhenToUse:       "Use for code reviews",
+		SystemPrompt:    "You are a strict code reviewer.",
+		Model:           "claude-opus-4-8",
+		Tools:           []string{"read_file", "glob"},
 		DisallowedTools: []string{"bash"},
-		MaxTurns:       10,
-		PermissionMode: "never",
-		Isolation:      "worktree",
-		McpServers:     []string{"github"},
-		Source:         "user",
-		CreatedAt:      time.Now(),
-		UpdatedAt:      time.Now(),
+		MaxTurns:        10,
+		PermissionMode:  "never",
+		Isolation:       "worktree",
+		McpServers:      []string{"github"},
+		Source:          "user",
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
 	}
 
 	def := toSDKDefinition(a)

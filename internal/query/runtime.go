@@ -7,8 +7,8 @@ import (
 	"sync"
 
 	"github.com/EngineerProjects/nexus-engine/pkg/providers"
-	"github.com/EngineerProjects/nexus-engine/pkg/types"
 	"github.com/EngineerProjects/nexus-engine/pkg/sdk"
+	"github.com/EngineerProjects/nexus-engine/pkg/types"
 )
 
 type QueryRuntime interface {

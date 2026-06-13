@@ -19,11 +19,11 @@ import (
 //
 // Supported per-field syntax:
 //
-//	*      — any value
-//	*/n    — every n-th value
-//	v      — exact value
-//	v-w    — inclusive range
-//	a,b,c  — comma-separated list (items can be ranges: 1,3-5,7)
+//   - — any value
+//     */n    — every n-th value
+//     v      — exact value
+//     v-w    — inclusive range
+//     a,b,c  — comma-separated list (items can be ranges: 1,3-5,7)
 type Cron struct {
 	minute cronField
 	hour   cronField
