@@ -2,7 +2,7 @@
 
 ## Structure du workspace
 
-`nexus-product` consomme `nexus-engine` via un `go.work` commité à la racine :
+`nexus-ai` consomme `nexus-engine` via un `go.work` commité à la racine :
 
 ```
 nexus-ai/

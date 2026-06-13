@@ -1,12 +1,12 @@
-# Architecture — Nexus Product
+# Architecture — Nexus AI
 
-This document describes the package structure, layer responsibilities, and dependency rules for nexus-product.
+This document describes the package structure, layer responsibilities, and dependency rules for nexus-ai.
 
 ---
 
 ## Overview
 
-nexus-product is a **multi-layer Go application** built on top of the `nexus-engine` submodule. The layers are strictly ordered — each layer only imports downward.
+nexus-ai is a **multi-layer Go application** built on top of the `nexus-engine` submodule. The layers are strictly ordered — each layer only imports downward.
 
 ```
 ┌──────────────────────────────────────────────────┐
@@ -116,20 +116,24 @@ Current domains:
 
 | Package | Responsibility |
 |---|---|
+| `agents` | User-defined agent CRUD + SDK built-in registry bridge |
 | `audit` | Audit log entries — write and query |
 | `auth` | JWT, API keys, identity, roles, RBAC |
 | `bkerr` | Typed error kinds used across all services |
-| `files` | File upload/download, workspace scoping |
+| `files` | File upload/download, workspace scoping, Docling conversion |
 | `knowledge` | Corpora, ingestion jobs, RAG hybrid search |
-| `mcp` | MCP server configuration CRUD |
+| `mcp` | MCP server configuration CRUD + hot-reload |
 | `memories` | User memories + long-term entity extraction |
 | `metrics` | Prometheus snapshot, Snapshotter interface |
 | `plans` | Plan documents created by the agent's plan tool |
 | `preferences` | User preferences, permission mode resolution |
+| `prompt` | System prompt assembly layer (injected on every query) |
 | `query` | Query/streaming runtime adapter (wraps nexus-engine SDK), session management |
 | `quotas` | Per-user usage counters (queries, files, ingestions) |
 | `resources` | Organizations, workspaces, user CRUD (admin) |
+| `scheduler` | Cron-based background agent runs, job history |
 | `settings` | Provider settings, OAuth device-code flow |
+| `skills` | Skill registry, prompt resolution, user skill file I/O |
 | `websearch` | Web search settings, provider configs, search logs |
 
 ---

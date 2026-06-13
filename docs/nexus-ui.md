@@ -192,7 +192,7 @@ cd nexus-ui
 # Install dependencies
 npm install
 
-# Start dev mode (requires nexus-product running on :8090)
+# Start dev mode (requires nexus-ai running on :8090)
 npm run start
 
 # Type-check
@@ -212,14 +212,14 @@ Environment variables for dev:
 
 | Variable | Description | Default |
 |---|---|---|
-| `NEXUS_BACKEND_ORIGIN` | nexus-product base URL | `http://127.0.0.1:8090` |
+| `NEXUS_BACKEND_ORIGIN` | nexus-ai base URL | `http://127.0.0.1:8090` |
 | `NEXUS_RUNTIME_ROOT` | Data directory (must match backend) | `~/.config/nexus` |
 
 ---
 
-## API contract with nexus-product
+## API contract with nexus-ai
 
-All types consumed by the UI are defined in `src/renderer/api/types.ts`. When nexus-product adds or changes an API endpoint:
+All types consumed by the UI are defined in `src/renderer/api/types.ts`. When nexus-ai adds or changes an API endpoint:
 
 1. Update `src/renderer/api/types.ts` with the new response shape.
 2. Update or add the call in `src/renderer/api/client.ts`.
