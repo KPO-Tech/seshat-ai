@@ -17,7 +17,7 @@ UNAME := $(shell uname -s)
         dev stop \
         build run \
         test test-v test-race test-short \
-        vet lint tidy \
+        fmt vet lint tidy hooks \
         ui-install ui-build ui-dev \
         logs logs-last \
         clean clean-all
@@ -74,6 +74,9 @@ test-pkg: ## Run tests for a specific package  (PKG=./internal/scheduler/...)
 
 # ─── Code quality ─────────────────────────────────────────────────────────────
 
+fmt: ## Format all Go source files with gofmt
+	gofmt -w $(shell find . -name "*.go" -not -path "./nexus-engine/*" -not -path "./nexus-skills/*" -not -path "./vendor/*")
+
 vet: ## Run go vet across all packages
 	go vet ./...
 
@@ -85,6 +88,11 @@ lint: vet ## vet + staticcheck (install: go install honnef.co/go/tools/cmd/stati
 tidy: ## go mod tidy + verify
 	go mod tidy
 	go mod verify
+
+hooks: ## Install git hooks from .githooks/
+	git config core.hooksPath .githooks
+	chmod +x .githooks/pre-commit
+	@printf '\033[32m[hooks]\033[0m pre-commit hook installed.\n'
 
 # ─── UI ───────────────────────────────────────────────────────────────────────
 

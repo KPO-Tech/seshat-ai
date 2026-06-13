@@ -1,0 +1,13 @@
+# CODEOWNERS — Nexus AI
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for everything
+* @EngineerProjects
+
+# Security-sensitive paths — require explicit maintainer review
+internal/auth/                @EngineerProjects
+SECURITY.md                   @EngineerProjects
+
+# CI / release pipelines
+.github/workflows/            @EngineerProjects
+Makefile                      @EngineerProjects
