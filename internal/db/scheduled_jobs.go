@@ -17,12 +17,12 @@ type gScheduledJob struct {
 	SessionTitle string `gorm:"column:session_title;size:255;not null;default:''"`
 	Enabled      bool   `gorm:"column:enabled;not null;default:true;index:idx_jobs_enabled_next,priority:1"`
 	// last_run_at: 0 means never ran
-	LastRunAtUnix  int64  `gorm:"column:last_run_at_unix;not null;default:0"`
-	NextRunAtUnix  int64  `gorm:"column:next_run_at_unix;not null;index:idx_jobs_enabled_next,priority:2"`
-	LastStatus     string `gorm:"column:last_status;size:16;not null;default:''"`
-	LastError      string `gorm:"column:last_error;type:text;not null;default:''"`
-	CreatedAtUnix  int64  `gorm:"column:created_at_unix;not null"`
-	UpdatedAtUnix  int64  `gorm:"column:updated_at_unix;not null"`
+	LastRunAtUnix int64  `gorm:"column:last_run_at_unix;not null;default:0"`
+	NextRunAtUnix int64  `gorm:"column:next_run_at_unix;not null;index:idx_jobs_enabled_next,priority:2"`
+	LastStatus    string `gorm:"column:last_status;size:16;not null;default:''"`
+	LastError     string `gorm:"column:last_error;type:text;not null;default:''"`
+	CreatedAtUnix int64  `gorm:"column:created_at_unix;not null"`
+	UpdatedAtUnix int64  `gorm:"column:updated_at_unix;not null"`
 }
 
 func (gScheduledJob) TableName() string { return "scheduled_jobs" }
@@ -192,8 +192,8 @@ func (s *ScheduledJobStore) SetRunning(ctx context.Context, id string) error {
 	return s.db.gormDB.WithContext(ctx).Model(&gScheduledJob{}).
 		Where("id = ?", id).
 		Updates(map[string]any{
-			"last_status":    "running",
-			"last_error":     "",
+			"last_status":     "running",
+			"last_error":      "",
 			"updated_at_unix": time.Now().Unix(),
 		}).Error
 }
@@ -201,8 +201,8 @@ func (s *ScheduledJobStore) SetRunning(ctx context.Context, id string) error {
 // MarkCompleted records the result of a job run and advances the schedule.
 func (s *ScheduledJobStore) MarkCompleted(ctx context.Context, id string, ranAt time.Time, nextRunAt time.Time, status, errMsg string) error {
 	updates := map[string]any{
-		"last_status":     status,
-		"last_error":      errMsg,
+		"last_status":      status,
+		"last_error":       errMsg,
 		"last_run_at_unix": ranAt.Unix(),
 		"next_run_at_unix": nextRunAt.Unix(),
 		"updated_at_unix":  time.Now().Unix(),

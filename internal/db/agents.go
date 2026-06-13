@@ -11,60 +11,60 @@ import (
 )
 
 type gAgentDefinition struct {
-	ID              string `gorm:"primaryKey;size:64"`
-	Slug            string `gorm:"column:slug;size:128;not null;uniqueIndex"`
-	Name            string `gorm:"column:name;size:255;not null;default:''"`
-	WhenToUse       string `gorm:"column:when_to_use;type:text;not null;default:''"`
-	SystemPrompt    string `gorm:"column:system_prompt;type:text;not null;default:''"`
-	Model           string `gorm:"column:model;size:255;not null;default:''"`
-	ToolsJSON       string `gorm:"column:tools_json;type:text;not null;default:'[]'"`
-	DisallowedJSON  string `gorm:"column:disallowed_json;type:text;not null;default:'[]'"`
-	MaxTurns        int    `gorm:"column:max_turns;not null;default:50"`
-	PermissionMode  string `gorm:"column:permission_mode;size:32;not null;default:''"`
-	Isolation       string `gorm:"column:isolation;size:32;not null;default:''"`
-	McpServersJSON  string `gorm:"column:mcp_servers_json;type:text;not null;default:'[]'"`
-	Icon            string `gorm:"column:icon;size:64;not null;default:'🤖'"`
-	Enabled         bool   `gorm:"column:enabled;not null;default:true"`
-	CreatedAtUnix   int64  `gorm:"column:created_at_unix;autoCreateTime:unix"`
-	UpdatedAtUnix   int64  `gorm:"column:updated_at_unix;autoUpdateTime:unix"`
+	ID             string `gorm:"primaryKey;size:64"`
+	Slug           string `gorm:"column:slug;size:128;not null;uniqueIndex"`
+	Name           string `gorm:"column:name;size:255;not null;default:''"`
+	WhenToUse      string `gorm:"column:when_to_use;type:text;not null;default:''"`
+	SystemPrompt   string `gorm:"column:system_prompt;type:text;not null;default:''"`
+	Model          string `gorm:"column:model;size:255;not null;default:''"`
+	ToolsJSON      string `gorm:"column:tools_json;type:text;not null;default:'[]'"`
+	DisallowedJSON string `gorm:"column:disallowed_json;type:text;not null;default:'[]'"`
+	MaxTurns       int    `gorm:"column:max_turns;not null;default:50"`
+	PermissionMode string `gorm:"column:permission_mode;size:32;not null;default:''"`
+	Isolation      string `gorm:"column:isolation;size:32;not null;default:''"`
+	McpServersJSON string `gorm:"column:mcp_servers_json;type:text;not null;default:'[]'"`
+	Icon           string `gorm:"column:icon;size:64;not null;default:'🤖'"`
+	Enabled        bool   `gorm:"column:enabled;not null;default:true"`
+	CreatedAtUnix  int64  `gorm:"column:created_at_unix;autoCreateTime:unix"`
+	UpdatedAtUnix  int64  `gorm:"column:updated_at_unix;autoUpdateTime:unix"`
 }
 
 func (gAgentDefinition) TableName() string { return "agent_definitions" }
 
 // AgentDefinition is the database representation of a user-defined agent.
 type AgentDefinition struct {
-	ID             string
-	Slug           string
-	Name           string
-	WhenToUse      string
-	SystemPrompt   string
-	Model          string
-	Tools          []string
+	ID              string
+	Slug            string
+	Name            string
+	WhenToUse       string
+	SystemPrompt    string
+	Model           string
+	Tools           []string
 	DisallowedTools []string
-	MaxTurns       int
-	PermissionMode string
-	Isolation      string
-	McpServers     []string
-	Icon           string
-	Enabled        bool
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	MaxTurns        int
+	PermissionMode  string
+	Isolation       string
+	McpServers      []string
+	Icon            string
+	Enabled         bool
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 type CreateAgentDefinitionParams struct {
-	Slug           string
-	Name           string
-	WhenToUse      string
-	SystemPrompt   string
-	Model          string
-	Tools          []string
+	Slug            string
+	Name            string
+	WhenToUse       string
+	SystemPrompt    string
+	Model           string
+	Tools           []string
 	DisallowedTools []string
-	MaxTurns       int
-	PermissionMode string
-	Isolation      string
-	McpServers     []string
-	Icon           string
-	Enabled        bool
+	MaxTurns        int
+	PermissionMode  string
+	Isolation       string
+	McpServers      []string
+	Icon            string
+	Enabled         bool
 }
 
 type UpdateAgentDefinitionParams struct {
