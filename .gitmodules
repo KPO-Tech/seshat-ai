@@ -1,0 +1,6 @@
+[submodule "nexus-skills"]
+	path = nexus-skills
+	url = https://github.com/EngineerProjects/nexus-skills.git
+[submodule "nexus-engine"]
+	path = nexus-engine
+	url = https://github.com/EngineerProjects/nexus-engine.git

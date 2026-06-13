@@ -1,0 +1,83 @@
+import { safeStorage, app } from 'electron'
+import { readFile, writeFile, mkdir } from 'fs/promises'
+import { existsSync } from 'fs'
+import { join } from 'path'
+import type { IpcMain } from 'electron'
+
+const volatileStore = new Map<string, string>()
+
+function getStorePath(): string {
+  return join(app.getPath('userData'), 'secure-store.json')
+}
+
+function canPersistSecrets(): boolean {
+  if (!safeStorage.isEncryptionAvailable()) return false
+  return safeStorage.getSelectedStorageBackend?.() !== 'basic_text'
+}
+
+async function loadPersistentStore(): Promise<Record<string, string>> {
+  const path = getStorePath()
+  if (!existsSync(path)) return {}
+  try {
+    return JSON.parse(await readFile(path, 'utf-8'))
+  } catch {
+    return {}
+  }
+}
+
+async function savePersistentStore(data: Record<string, string>): Promise<void> {
+  await mkdir(join(app.getPath('userData')), { recursive: true, mode: 0o700 })
+  await writeFile(getStorePath(), JSON.stringify(data), { encoding: 'utf-8', mode: 0o600 })
+}
+
+export async function setSecret(key: string, value: string): Promise<void> {
+  if (!canPersistSecrets()) {
+    volatileStore.set(key, value)
+    return
+  }
+  const store = await loadPersistentStore()
+  store[key] = safeStorage.encryptString(value).toString('base64')
+  await savePersistentStore(store)
+}
+
+export async function getSecret(key: string): Promise<string | null> {
+  if (volatileStore.has(key)) {
+    return volatileStore.get(key) ?? null
+  }
+  if (!canPersistSecrets()) {
+    return null
+  }
+  const store = await loadPersistentStore()
+  const val = store[key]
+  if (val == null) return null
+  try {
+    return safeStorage.decryptString(Buffer.from(val, 'base64'))
+  } catch {
+    return null
+  }
+}
+
+export async function deleteSecret(key: string): Promise<void> {
+  volatileStore.delete(key)
+  if (!canPersistSecrets()) {
+    return
+  }
+  const store = await loadPersistentStore()
+  if (!(key in store)) return
+  delete store[key]
+  await savePersistentStore(store)
+}
+
+export function registerSecureStoreHandlers(ipcMain: IpcMain): void {
+  ipcMain.handle('secure-store:set', async (_event, key: string, value: string) => {
+    await setSecret(key, value)
+  })
+
+  ipcMain.handle('secure-store:get', async (_event, key: string): Promise<string | null> => {
+    return getSecret(key)
+  })
+
+  ipcMain.handle('secure-store:delete', async (_event, key: string) => {
+    await deleteSecret(key)
+  })
+}

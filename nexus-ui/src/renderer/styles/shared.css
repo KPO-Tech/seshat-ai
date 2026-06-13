@@ -1,0 +1,30 @@
+/* Shared utility classes available globally — no component ownership */
+
+/* Screen-reader only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Visually truncate long text */
+.truncate {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Interactive state shared pattern */
+.interactive {
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.interactive:hover {
+  background: var(--color-hover);
+}
