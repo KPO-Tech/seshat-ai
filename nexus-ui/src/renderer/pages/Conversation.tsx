@@ -109,6 +109,9 @@ export function Conversation() {
   const pendingPermission = agentState.pendingPermission
   const isPlanPending = pendingPermission?.toolName === 'exit_plan_mode'
   const pendingPlan = useSessionStore((s) => (id ? s.getPendingPlan(id) : undefined))
+  const pendingAskUser = streaming.find(
+    (b) => b.type === 'tool_use' && b.name === 'ask_user_question' && b._prompt
+  ) ?? null
   const [inputValue, setInputValue] = useState('')
   const [selectedCorpusId, setSelectedCorpusId] = useState<string | null>(null)
   const [attachments, setAttachments] = useState<ChatAttachment[]>([])
@@ -274,9 +277,21 @@ export function Conversation() {
     }
   }, [id])
 
-  const handlePlanProceed = useCallback(async (_planId: string) => {
-    if (!id || !pendingPermission || pendingPermission.toolName !== 'exit_plan_mode') return
-    await handlePermissionDecision(pendingPermission.toolUseId, true)
+  const handlePlanProceed = useCallback(async (planId: string) => {
+    if (!id) return
+    // Mark the plan as validated in the store and on the server
+    const store = useSessionStore.getState()
+    const plan = store.getPlan(id, planId)
+    if (plan && plan.status === 'pending') {
+      try {
+        const updated = await api.patch<import('@/api/types').PlanDocument>(`/plans/${planId}`, { status: 'validated' })
+        store.upsertPlan(id, updated)
+      } catch { /* silent — engine will still unblock via permission approval */ }
+    }
+    // Approve the exit_plan_mode permission gate if it's the pending one
+    if (pendingPermission?.toolName === 'exit_plan_mode') {
+      await handlePermissionDecision(pendingPermission.toolUseId, true)
+    }
   }, [id, pendingPermission, handlePermissionDecision])
 
   const handlePromptSubmission = useCallback(async (promptId: string, value: unknown) => {
@@ -410,6 +425,16 @@ export function Conversation() {
       {/* ── Plan modal fallback — for agents using exit_plan_mode without submit_plan ── */}
       {id && isPlanPending && !pendingPlan && <PlanModal sessionId={id} />}
 
+      {/* ── AskUser pending banner ── */}
+      {pendingAskUser && pendingAskUser.type === 'tool_use' && pendingAskUser._prompt && (
+        <div className="conv-ask-banner">
+          <span className="conv-ask-dot" />
+          <span className="conv-ask-text">
+            {pendingAskUser._prompt.message || 'The agent is waiting for your answer — scroll up to respond.'}
+          </span>
+        </div>
+      )}
+
       {/* ── Input ── */}
       <div className="conv-input-area">
         <div className="conv-input-inner">
@@ -487,6 +512,41 @@ ${MESSAGE_ITEM_CSS}
   margin: 0 auto;
   padding: 0 24px;
   box-sizing: border-box;
+}
+
+.conv-ask-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 24px 8px;
+  padding: 9px 14px;
+  border-radius: 10px;
+  background: rgba(239, 124, 47, 0.08);
+  border: 1px solid rgba(239, 124, 47, 0.22);
+  flex-shrink: 0;
+}
+
+.conv-ask-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  flex-shrink: 0;
+  animation: ask-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes ask-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.75); }
+}
+
+.conv-ask-text {
+  font-size: 13px;
+  color: var(--color-accent);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .conv-input-area {

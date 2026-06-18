@@ -24,7 +24,7 @@ export function Shell() {
   const handleInactivity = useCallback(() => storeLogout(), [storeLogout])
   useInactivityTimeout(handleInactivity)
   
-  const isSettings = pathname === '/settings' || pathname === '/user-settings' || pathname === '/skills-creator' || pathname === '/workspace' || pathname === '/teams'
+  const isConversation = pathname.startsWith('/conversation/')
 
   const handleMinimize = () => window.nexus.window.minimize()
   const handleMaximize = () => window.nexus.window.maximize()
@@ -73,9 +73,11 @@ export function Shell() {
       {/* ── Custom Title Bar ── */}
       <div className="shell-titlebar">
         <div className="titlebar-left">
-          <button className="tb-toggle-btn" onClick={toggleSidebar} title="Toggle Sidebar">
-            <InternalExpansion size={18} />
-          </button>
+          {isConversation && (
+            <button className="tb-toggle-btn" onClick={toggleSidebar} title="Toggle Sidebar">
+              <InternalExpansion size={18} />
+            </button>
+          )}
         </div>
         
         <div className="titlebar-center">Nexus</div>
@@ -94,14 +96,14 @@ export function Shell() {
       </div>
 
       <div className="shell-body">
-        {!isSettings && <Sidebar />}
-        <main className={`shell-main ${isSettings ? 'no-sidebar' : (collapsed ? 'collapsed' : '')}`}>
+        {isConversation && <Sidebar />}
+        <main className={`shell-main ${!isConversation ? 'no-sidebar' : (collapsed ? 'collapsed' : '')}`}>
           <div className="shell-main-content">
             <ErrorBoundary>
               <Outlet />
             </ErrorBoundary>
           </div>
-          {!isSettings && <RightPanelHost />}
+          {isConversation && <RightPanelHost />}
         </main>
       </div>
     </div>
