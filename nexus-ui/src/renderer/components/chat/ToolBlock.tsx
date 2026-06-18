@@ -4,14 +4,55 @@ import type { ToolStatus } from '@/api/types'
 import { useUIStore } from '@/stores/ui'
 import { ApprovalSection, StatusBadge } from './tool-block/common'
 import { headerSummary, toolIcon, toolLabel } from './tool-block/helpers'
-import { BashToolView } from './tool-block/renderers/BashToolView'
 import { AskUserToolView } from './tool-block/renderers/AskUserToolView'
+import { BashToolView } from './tool-block/renderers/BashToolView'
+import { EditToolView } from './tool-block/renderers/EditToolView'
 import { GenericToolView } from './tool-block/renderers/GenericToolView'
+import { GlobToolView } from './tool-block/renderers/GlobToolView'
+import { GrepToolView } from './tool-block/renderers/GrepToolView'
+import { ReadToolView } from './tool-block/renderers/ReadToolView'
 import { TaskToolView } from './tool-block/renderers/TaskToolView'
 import { TodoWriteToolView } from './tool-block/renderers/TodoWriteToolView'
+import { WebFetchToolView } from './tool-block/renderers/WebFetchToolView'
 import { WebSearchToolView } from './tool-block/renderers/WebSearchToolView'
+import { WriteToolView } from './tool-block/renderers/WriteToolView'
 import { TOOL_BLOCK_CSS } from './tool-block/styles'
-import type { ToolBlockProps } from './tool-block/types'
+import type { ToolBlockProps, ToolViewProps } from './tool-block/types'
+
+function renderBody(props: ToolViewProps, onSubmitPrompt?: ToolBlockProps['onSubmitPrompt']) {
+  const { tool } = props
+  switch (tool.name) {
+    case 'bash':
+      return <BashToolView {...props} />
+    case 'ask_user_question':
+      return <AskUserToolView {...props} onSubmitPrompt={onSubmitPrompt} />
+    case 'todo_write':
+      return <TodoWriteToolView {...props} />
+    case 'task_create':
+    case 'task_update':
+    case 'task_list':
+      return <TaskToolView {...props} />
+    case 'web_search':
+      return <WebSearchToolView {...props} />
+    case 'web_fetch':
+      return <WebFetchToolView {...props} />
+    case 'edit':
+    case 'file_edit':
+      return <EditToolView {...props} />
+    case 'write':
+    case 'file_write':
+      return <WriteToolView {...props} />
+    case 'read':
+    case 'file_read':
+      return <ReadToolView {...props} />
+    case 'glob':
+      return <GlobToolView {...props} />
+    case 'grep':
+      return <GrepToolView {...props} />
+    default:
+      return <GenericToolView {...props} />
+  }
+}
 
 export const ToolBlock = memo(function ToolBlock({ tool, onApprove, onDeny, onSubmitPrompt }: ToolBlockProps) {
   const expanded = useUIStore((s) => s.toolExpansion[tool.id] ?? false)
@@ -52,22 +93,7 @@ export const ToolBlock = memo(function ToolBlock({ tool, onApprove, onDeny, onSu
           {status === 'awaiting_approval' && (
             <ApprovalSection tool={tool} onApprove={onApprove} onDeny={onDeny} />
           )}
-          {tool.name === 'bash' && <BashToolView tool={tool} result={result} status={status} />}
-          {tool.name === 'ask_user_question' && (
-            <AskUserToolView tool={tool} result={result} status={status} onSubmitPrompt={onSubmitPrompt} />
-          )}
-          {tool.name === 'todo_write' && <TodoWriteToolView tool={tool} result={result} status={status} />}
-          {['task_create', 'task_update', 'task_list'].includes(tool.name) && (
-            <TaskToolView tool={tool} result={result} status={status} />
-          )}
-          {tool.name === 'web_search' && <WebSearchToolView tool={tool} result={result} status={status} />}
-          {tool.name !== 'bash'
-            && tool.name !== 'ask_user_question'
-            && tool.name !== 'web_search'
-            && tool.name !== 'todo_write'
-            && !['task_create', 'task_update', 'task_list'].includes(tool.name) && (
-            <GenericToolView tool={tool} result={result} status={status} />
-          )}
+          {renderBody({ tool, result, status }, onSubmitPrompt)}
         </div>
       )}
     </div>

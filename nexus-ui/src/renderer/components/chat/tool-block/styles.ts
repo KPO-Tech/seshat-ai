@@ -586,4 +586,175 @@ export const TOOL_BLOCK_CSS = `
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
+
+/* ── File tool shared path row ── */
+.tb-edit-path-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px 0;
+  flex-wrap: wrap;
+}
+
+.tb-filepath {
+  font-size: 12px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tb-filepath-full {
+  font-size: 11px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.tb-range-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-accent);
+  background: rgba(239, 124, 47, 0.1);
+  border: 1px solid rgba(239, 124, 47, 0.2);
+  border-radius: 5px;
+  padding: 1px 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.tb-grep-pattern {
+  font-size: 12px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+.tb-fetch-url {
+  font-size: 12px;
+  color: var(--color-accent);
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+/* ── Diff view ── */
+.tb-diff {
+  position: relative;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  border-radius: 8px;
+  overflow: hidden;
+  max-height: 360px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.tb-diff::-webkit-scrollbar { width: 4px; }
+.tb-diff::-webkit-scrollbar-thumb {
+  background: var(--color-border-subtle);
+  border-radius: 4px;
+}
+
+.tb-diff-copy {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 6px;
+  color: var(--color-text-muted);
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 2;
+}
+
+.tb-diff:hover .tb-diff-copy { opacity: 1; }
+.tb-diff-copy:hover { color: var(--color-text); }
+
+.tb-diff-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 1px 10px;
+}
+
+.tb-diff-line--del {
+  background: rgba(239, 68, 68, 0.10);
+}
+
+.tb-diff-line--add {
+  background: rgba(52, 211, 153, 0.08);
+}
+
+.tb-diff-sign {
+  flex-shrink: 0;
+  width: 14px;
+  font-weight: 700;
+  user-select: none;
+  text-align: center;
+}
+
+.tb-diff-line--del .tb-diff-sign { color: #fca5a5; }
+.tb-diff-line--add .tb-diff-sign { color: #6ee7b7; }
+
+.tb-diff-text {
+  white-space: pre;
+  word-break: break-all;
+  flex: 1;
+  min-width: 0;
+}
+
+.tb-diff-line--del .tb-diff-text { color: #fca5a5; }
+.tb-diff-line--add .tb-diff-text { color: #6ee7b7; }
+
+/* ── File list (glob) ── */
+.tb-file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-height: 240px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.tb-file-item {
+  font-size: 12px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  color: var(--color-text-secondary);
+  padding: 3px 8px;
+  border-radius: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 0.1s;
+}
+
+.tb-file-item:hover { background: rgba(255, 255, 255, 0.04); }
+
+/* ── pre error variant ── */
+.tb-pre--error {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.18);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+}
 `

@@ -230,6 +230,20 @@ function inputSnippet(tool: ToolUseBlock): string {
     const compact = query.replace(/\n/g, ' ').trim()
     return compact.length > 56 ? `${compact.slice(0, 56)}…` : compact
   }
+  if (['edit', 'file_edit', 'write', 'file_write', 'read', 'file_read'].includes(tool.name)) {
+    const fp = typeof tool.input.file_path === 'string' ? tool.input.file_path : ''
+    return fp ? (fp.split('/').filter(Boolean).pop() ?? fp) : ''
+  }
+  if (tool.name === 'glob') {
+    return typeof tool.input.pattern === 'string' ? compact(tool.input.pattern, 48) : ''
+  }
+  if (tool.name === 'grep') {
+    return typeof tool.input.pattern === 'string' ? compact(tool.input.pattern, 48) : ''
+  }
+  if (tool.name === 'web_fetch') {
+    const url = typeof tool.input.url === 'string' ? tool.input.url : ''
+    try { return new URL(url).hostname } catch { return compact(url, 48) }
+  }
   const first = Object.values(tool.input)[0]
   if (typeof first !== 'string') return ''
   return compact(first, 42)
