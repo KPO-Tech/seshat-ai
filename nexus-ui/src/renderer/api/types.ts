@@ -235,6 +235,7 @@ export type SearchProviderConfig = {
   enabled: boolean
   has_api_key: boolean
   base_url: string
+  auth_username?: string
   requires_api_key: boolean
   requires_base_url: boolean
   default_base_url: string

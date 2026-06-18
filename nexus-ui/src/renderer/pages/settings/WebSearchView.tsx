@@ -15,6 +15,9 @@ type ProviderEditState = {
   apiKey: string
   baseUrl: string
   apiKeyChanged: boolean
+  authUsername: string
+  authPassword: string
+  authChanged: boolean
 }
 
 type GlobalFormState = {
@@ -33,6 +36,9 @@ function ProviderCard({ provider, onSaved }: {
     apiKey: '',
     baseUrl: provider.base_url || provider.default_base_url || '',
     apiKeyChanged: false,
+    authUsername: provider.auth_username || '',
+    authPassword: '',
+    authChanged: false,
   })
   const [enabled, setEnabled] = useState(provider.enabled)
   const [saving, setSaving] = useState(false)
@@ -45,8 +51,9 @@ function ProviderCard({ provider, onSaved }: {
     setEdit((prev) => ({
       ...prev,
       baseUrl: provider.base_url || provider.default_base_url || '',
+      authUsername: provider.auth_username || '',
     }))
-  }, [provider.enabled, provider.base_url, provider.default_base_url])
+  }, [provider.enabled, provider.base_url, provider.default_base_url, provider.auth_username])
 
   function markDirty() {
     setDirty(true)
@@ -60,11 +67,15 @@ function ProviderCard({ provider, onSaved }: {
       const payload: Record<string, unknown> = { enabled }
       if (edit.apiKeyChanged) payload.api_key = edit.apiKey
       if (provider.requires_base_url || edit.baseUrl) payload.base_url = edit.baseUrl
+      if (edit.authChanged) {
+        payload.auth_username = edit.authUsername
+        payload.api_key = edit.authPassword
+      }
       const updated = await api.put<SearchProviderConfig>(
         `/web/search/providers/${provider.provider}`, payload,
       )
       setDirty(false)
-      setEdit((prev) => ({ ...prev, apiKey: '', apiKeyChanged: false }))
+      setEdit((prev) => ({ ...prev, apiKey: '', apiKeyChanged: false, authPassword: '', authChanged: false }))
       onSaved(updated)
     } catch { /* surfaced via test */ }
     finally { setSaving(false) }
@@ -142,6 +153,38 @@ function ProviderCard({ provider, onSaved }: {
               />
             </div>
           )}
+        </div>
+      )}
+
+      {provider.provider === 'searxng' && (
+        <div className="wsp-fields">
+          <div className="wsp-basic-auth-label">Basic Auth <span className="wsp-optional">(optional)</span></div>
+          <div className="wsp-field">
+            <label>Username</label>
+            <input
+              type="text"
+              placeholder={edit.authUsername || 'Leave empty if not required'}
+              value={edit.authUsername}
+              autoComplete="username"
+              onChange={(e) => {
+                setEdit((prev) => ({ ...prev, authUsername: e.target.value, authChanged: true }))
+                markDirty()
+              }}
+            />
+          </div>
+          <div className="wsp-field">
+            <label>Password</label>
+            <input
+              type="password"
+              placeholder={provider.has_api_key ? '••••••••  (saved)' : 'Leave empty if not required'}
+              value={edit.authPassword}
+              autoComplete="new-password"
+              onChange={(e) => {
+                setEdit((prev) => ({ ...prev, authPassword: e.target.value, authChanged: true }))
+                markDirty()
+              }}
+            />
+          </div>
         </div>
       )}
 
@@ -667,6 +710,14 @@ const WEB_SEARCH_CSS = `
   position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
   font-size: 11px; font-weight: 700; color: #f59e0b; pointer-events: none;
 }
+
+.wsp-basic-auth-label {
+  font-size: 11px; font-weight: 700; color: var(--color-text-muted);
+  text-transform: uppercase; letter-spacing: 0.04em;
+  padding-bottom: 2px; border-bottom: 1px solid var(--color-border-subtle);
+  margin-bottom: 2px;
+}
+.wsp-optional { font-weight: 400; text-transform: none; letter-spacing: 0; font-style: italic; }
 
 .wsp-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 

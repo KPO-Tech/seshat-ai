@@ -83,7 +83,7 @@ func providerFromRunConfig(cfg SearchRunProvider) (searchproviders.SearchProvide
 	case "langsearch":
 		return searchproviders.NewLangSearchProviderWithAPIKey(cfg.Secret), nil
 	case "searxng":
-		return searchproviders.NewSearXNGProviderWithBaseURL(cfg.BaseURL), nil
+		return searchproviders.NewSearXNGProviderWithConfig(cfg.BaseURL, cfg.AuthUsername, cfg.Secret), nil
 	default:
 		return nil, fmt.Errorf("unsupported web search provider %q", cfg.Provider)
 	}

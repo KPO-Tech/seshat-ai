@@ -184,6 +184,7 @@ type searchProviderResponse struct {
 	Enabled         bool   `json:"enabled"`
 	HasAPIKey       bool   `json:"has_api_key"`
 	BaseURL         string `json:"base_url,omitempty"`
+	AuthUsername    string `json:"auth_username,omitempty"`
 	RequiresAPIKey  bool   `json:"requires_api_key"`
 	RequiresBaseURL bool   `json:"requires_base_url"`
 	DefaultBaseURL  string `json:"default_base_url,omitempty"`
@@ -202,6 +203,7 @@ func providerStatusToResponse(p backendwebsearch.ProviderStatus) searchProviderR
 		Enabled:         p.Enabled,
 		HasAPIKey:       p.HasAPIKey,
 		BaseURL:         p.BaseURL,
+		AuthUsername:    p.AuthUsername,
 		RequiresAPIKey:  p.RequiresAPIKey,
 		RequiresBaseURL: p.RequiresBaseURL,
 		DefaultBaseURL:  p.DefaultBaseURL,
@@ -292,18 +294,20 @@ func (a *App) handleWebSearchProviderByName(w http.ResponseWriter, r *http.Reque
 	}
 
 	var body struct {
-		Enabled bool    `json:"enabled"`
-		APIKey  *string `json:"api_key"`
-		BaseURL string  `json:"base_url"`
+		Enabled      bool    `json:"enabled"`
+		APIKey       *string `json:"api_key"`
+		BaseURL      string  `json:"base_url"`
+		AuthUsername *string `json:"auth_username"`
 	}
 	if !decodeJSONBody(w, r, &body) {
 		return
 	}
 
 	status, err := a.backend.WebSearch.UpsertProvider(r.Context(), principal, providerName, backendwebsearch.UpsertProviderParams{
-		Enabled: body.Enabled,
-		APIKey:  body.APIKey,
-		BaseURL: body.BaseURL,
+		Enabled:      body.Enabled,
+		APIKey:       body.APIKey,
+		BaseURL:      body.BaseURL,
+		AuthUsername: body.AuthUsername,
 	})
 	if err != nil {
 		writeBackendError(w, err)

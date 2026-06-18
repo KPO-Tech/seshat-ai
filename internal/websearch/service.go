@@ -87,6 +87,7 @@ func (s *Service) ListProviders(ctx context.Context, principal *backendauth.Prin
 			status.Enabled = row.Enabled
 			status.HasAPIKey = row.HasAPIKey
 			status.BaseURL = row.BaseURL
+			status.AuthUsername = row.AuthUsername
 			status.UpdatedAt = row.UpdatedAt
 		} else {
 			// No config row yet: providers that need no credentials are enabled by default
@@ -114,11 +115,12 @@ func (s *Service) UpsertProvider(ctx context.Context, principal *backendauth.Pri
 	// Clearing an API key is allowed even when the provider requires one — just store empty.
 
 	row, err := s.providerConfigs.Upsert(ctx, db.UpsertSearchProviderConfigParams{
-		UserID:   principal.User.ID,
-		Provider: cat.Name,
-		Enabled:  params.Enabled,
-		APIKey:   params.APIKey,
-		BaseURL:  params.BaseURL,
+		UserID:       principal.User.ID,
+		Provider:     cat.Name,
+		Enabled:      params.Enabled,
+		APIKey:       params.APIKey,
+		BaseURL:      params.BaseURL,
+		AuthUsername: params.AuthUsername,
 	})
 	if err != nil {
 		return nil, bkerr.Internal("upsert search provider config: "+err.Error(), err)
@@ -130,6 +132,7 @@ func (s *Service) UpsertProvider(ctx context.Context, principal *backendauth.Pri
 		Enabled:         row.Enabled,
 		HasAPIKey:       row.HasAPIKey,
 		BaseURL:         row.BaseURL,
+		AuthUsername:    row.AuthUsername,
 		RequiresAPIKey:  cat.RequiresAPIKey,
 		RequiresBaseURL: cat.RequiresBaseURL,
 		DefaultBaseURL:  cat.DefaultBaseURL,
@@ -153,17 +156,20 @@ func (s *Service) TestProvider(ctx context.Context, principal *backendauth.Princ
 
 	apiKey := ""
 	baseURL := cat.DefaultBaseURL
+	authUsername := ""
 	if row, err := s.providerConfigs.GetByUserAndProvider(ctx, principal.User.ID, cat.Name); err == nil {
 		baseURL = row.BaseURL
+		authUsername = row.AuthUsername
 		if row.HasAPIKey {
 			apiKey, _ = s.providerConfigs.GetDecryptedAPIKey(ctx, principal.User.ID, cat.Name)
 		}
 	}
 
 	runCfg := SearchRunProvider{
-		Provider: cat.Name,
-		BaseURL:  baseURL,
-		Secret:   apiKey,
+		Provider:     cat.Name,
+		BaseURL:      baseURL,
+		Secret:       apiKey,
+		AuthUsername: authUsername,
 	}
 	provider, err := providerFromRunConfig(runCfg)
 	if err != nil {
@@ -342,9 +348,10 @@ func (s *Service) resolveProviders(ctx context.Context, principal *backendauth.P
 					apiKey, _ = s.providerConfigs.GetDecryptedAPIKey(ctx, principal.User.ID, row.Provider)
 				}
 				configs = append(configs, SearchRunProvider{
-					Provider: row.Provider,
-					BaseURL:  strings.TrimSpace(baseURL),
-					Secret:   strings.TrimSpace(apiKey),
+					Provider:     row.Provider,
+					BaseURL:      strings.TrimSpace(baseURL),
+					Secret:       strings.TrimSpace(apiKey),
+					AuthUsername: row.AuthUsername,
 				})
 			}
 			if len(configs) > 0 {

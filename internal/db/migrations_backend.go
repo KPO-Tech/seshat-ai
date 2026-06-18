@@ -193,6 +193,13 @@ func backendMigrations() []schemaMigration {
 			},
 		},
 		{
+			ID:    "20260618_028_searxng_auth_username",
+			Scope: migrationScopeBackend,
+			Run: func(ctx context.Context, db *DB) error {
+				return db.gormDB.WithContext(ctx).AutoMigrate(&gSearchProviderConfig{})
+			},
+		},
+		{
 			// Compound ownership indexes accelerate the two most common query patterns:
 			//   1. list sessions for a user ordered by last update   → (user_id, updated_at DESC)
 			//   2. title search within a user's sessions             → (user_id, title)
