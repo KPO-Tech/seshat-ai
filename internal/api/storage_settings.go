@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/EngineerProjects/nexus-engine/pkg/storage"
-	"github.com/EngineerProjects/nexus-product/internal/db"
+	"github.com/EngineerProjects/nexus_ai/internal/db"
 )
 
 type storageConfigResponse struct {

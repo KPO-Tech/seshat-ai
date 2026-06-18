@@ -31,10 +31,10 @@ import (
 
 	"github.com/EngineerProjects/nexus-engine/pkg/sdk"
 	"github.com/EngineerProjects/nexus-engine/pkg/types"
-	backendauth "github.com/EngineerProjects/nexus-product/internal/auth"
-	"github.com/EngineerProjects/nexus-product/internal/bkerr"
-	"github.com/EngineerProjects/nexus-product/internal/query"
-	backendquotas "github.com/EngineerProjects/nexus-product/internal/quotas"
+	backendauth "github.com/EngineerProjects/nexus_ai/internal/auth"
+	"github.com/EngineerProjects/nexus_ai/internal/bkerr"
+	"github.com/EngineerProjects/nexus_ai/internal/query"
+	backendquotas "github.com/EngineerProjects/nexus_ai/internal/quotas"
 )
 
 // ─── Request types ────────────────────────────────────────────────────────────

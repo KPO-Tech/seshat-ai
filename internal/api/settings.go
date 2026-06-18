@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/EngineerProjects/nexus-engine/pkg/providers"
-	backendaudit "github.com/EngineerProjects/nexus-product/internal/audit"
-	bksettings "github.com/EngineerProjects/nexus-product/internal/settings"
+	backendaudit "github.com/EngineerProjects/nexus_ai/internal/audit"
+	bksettings "github.com/EngineerProjects/nexus_ai/internal/settings"
 )
 
 type settingResponse struct {

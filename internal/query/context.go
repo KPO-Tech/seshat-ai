@@ -8,11 +8,11 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	backendauth "github.com/EngineerProjects/nexus-product/internal/auth"
-	"github.com/EngineerProjects/nexus-product/internal/db"
-	backendfiles "github.com/EngineerProjects/nexus-product/internal/files"
-	backendknowledge "github.com/EngineerProjects/nexus-product/internal/knowledge"
-	backendmemories "github.com/EngineerProjects/nexus-product/internal/memories"
+	backendauth "github.com/EngineerProjects/nexus_ai/internal/auth"
+	"github.com/EngineerProjects/nexus_ai/internal/db"
+	backendfiles "github.com/EngineerProjects/nexus_ai/internal/files"
+	backendknowledge "github.com/EngineerProjects/nexus_ai/internal/knowledge"
+	backendmemories "github.com/EngineerProjects/nexus_ai/internal/memories"
 )
 
 // buildRAGContext searches the given corpus for chunks relevant to the prompt

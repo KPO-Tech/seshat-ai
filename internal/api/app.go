@@ -4,10 +4,10 @@ import (
 	"net"
 
 	longterm "github.com/EngineerProjects/nexus-engine/pkg/memory/longterm"
-	nexus "github.com/EngineerProjects/nexus-product/internal"
-	"github.com/EngineerProjects/nexus-product/internal/db"
-	backendquery "github.com/EngineerProjects/nexus-product/internal/query"
-	"github.com/EngineerProjects/nexus-product/internal/scheduler"
+	nexus "github.com/EngineerProjects/nexus_ai/internal"
+	"github.com/EngineerProjects/nexus_ai/internal/db"
+	backendquery "github.com/EngineerProjects/nexus_ai/internal/query"
+	"github.com/EngineerProjects/nexus_ai/internal/scheduler"
 )
 
 // App is the HTTP transport layer. It holds only infrastructure state;

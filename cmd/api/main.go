@@ -6,12 +6,14 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	appconfig "github.com/EngineerProjects/nexus-engine/pkg/config"
-	"github.com/EngineerProjects/nexus-product/internal/api"
-	nexusconfig "github.com/EngineerProjects/nexus-product/internal/config"
+	"github.com/EngineerProjects/nexus-engine/pkg/python"
+	"github.com/EngineerProjects/nexus_ai/internal/api"
+	nexusconfig "github.com/EngineerProjects/nexus_ai/internal/config"
 )
 
 func main() {
@@ -30,6 +32,27 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[API] Avertissement config: %v\n", err)
 	}
+
+	// Auto-start docling-serve when no URL is configured and the managed venv
+	// has docling-serve installed. Non-blocking: tools fall back to "not configured"
+	// during the warm-up window (~5 s on first run after install).
+	var doclingMgr *python.DoclingManager
+	if strings.TrimSpace(config.DoclingURL) == "" || strings.EqualFold(strings.TrimSpace(config.DoclingURL), "auto") {
+		if mgr := python.DefaultDoclingManager(); mgr != nil {
+			if startErr := mgr.Start(ctx); startErr == nil {
+				doclingMgr = mgr
+				config.DoclingURL = mgr.BaseURL()
+				fmt.Printf("[API] docling-serve démarré sur %s\n", config.DoclingURL)
+			} else {
+				fmt.Fprintf(os.Stderr, "[API] Avertissement docling: %v\n", startErr)
+			}
+		}
+	}
+	defer func() {
+		if doclingMgr != nil {
+			doclingMgr.Stop()
+		}
+	}()
 
 	app, cleanup, err := nexusconfig.BuildApp(ctx, config)
 	if err != nil {

@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/EngineerProjects/nexus-product/internal/memories"
+	"github.com/EngineerProjects/nexus_ai/internal/memories"
 )
 
 type memoryResponse struct {

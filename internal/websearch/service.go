@@ -8,10 +8,10 @@ import (
 	"time"
 
 	searchproviders "github.com/EngineerProjects/nexus-engine/pkg/web/search/providers"
-	backendauth "github.com/EngineerProjects/nexus-product/internal/auth"
-	"github.com/EngineerProjects/nexus-product/internal/bkerr"
-	"github.com/EngineerProjects/nexus-product/internal/db"
-	backendsettings "github.com/EngineerProjects/nexus-product/internal/settings"
+	backendauth "github.com/EngineerProjects/nexus_ai/internal/auth"
+	"github.com/EngineerProjects/nexus_ai/internal/bkerr"
+	"github.com/EngineerProjects/nexus_ai/internal/db"
+	backendsettings "github.com/EngineerProjects/nexus_ai/internal/settings"
 )
 
 type Service struct {

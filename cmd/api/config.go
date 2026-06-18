@@ -4,7 +4,7 @@ import (
 	"time"
 
 	appconfig "github.com/EngineerProjects/nexus-engine/pkg/config"
-	"github.com/EngineerProjects/nexus-product/internal/api"
+	"github.com/EngineerProjects/nexus_ai/internal/api"
 )
 
 // defaultAPIConfig builds the HTTP server configuration from the app config.

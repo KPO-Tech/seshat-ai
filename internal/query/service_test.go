@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/EngineerProjects/nexus-engine/pkg/sdk"
-	"github.com/EngineerProjects/nexus-product/internal/bkerr"
+	"github.com/EngineerProjects/nexus_ai/internal/bkerr"
 )
 
 // ─── minimal runtime stubs ────────────────────────────────────────────────────

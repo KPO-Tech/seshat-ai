@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/EngineerProjects/nexus-engine/pkg/types"
-	backendquery "github.com/EngineerProjects/nexus-product/internal/query"
+	backendquery "github.com/EngineerProjects/nexus_ai/internal/query"
 )
 
 func (app *App) handlePermissionDecision(w http.ResponseWriter, r *http.Request) {

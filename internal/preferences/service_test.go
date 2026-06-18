@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/EngineerProjects/nexus-engine/pkg/types"
-	backendauth "github.com/EngineerProjects/nexus-product/internal/auth"
-	"github.com/EngineerProjects/nexus-product/internal/db"
+	backendauth "github.com/EngineerProjects/nexus_ai/internal/auth"
+	"github.com/EngineerProjects/nexus_ai/internal/db"
 )
 
 func openPreferencesService(t *testing.T) *Service {

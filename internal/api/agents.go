@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	pkgagent "github.com/EngineerProjects/nexus-engine/pkg/agent"
-	backendagents "github.com/EngineerProjects/nexus-product/internal/agents"
+	backendagents "github.com/EngineerProjects/nexus_ai/internal/agents"
 )
 
 // ─── Response DTOs ────────────────────────────────────────────────────────────

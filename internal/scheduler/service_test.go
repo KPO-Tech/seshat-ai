@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/EngineerProjects/nexus-product/internal/bkerr"
-	"github.com/EngineerProjects/nexus-product/internal/db"
+	"github.com/EngineerProjects/nexus_ai/internal/bkerr"
+	"github.com/EngineerProjects/nexus_ai/internal/db"
 )
 
 func openSchedulerService(t *testing.T) *Service {

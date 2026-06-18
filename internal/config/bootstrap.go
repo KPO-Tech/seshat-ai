@@ -30,13 +30,13 @@ import (
 	"github.com/EngineerProjects/nexus-engine/pkg/storage"
 	enginetypes "github.com/EngineerProjects/nexus-engine/pkg/types"
 	"github.com/EngineerProjects/nexus-engine/pkg/vector"
-	nexus "github.com/EngineerProjects/nexus-product/internal"
-	"github.com/EngineerProjects/nexus-product/internal/api"
-	backendauth "github.com/EngineerProjects/nexus-product/internal/auth"
-	"github.com/EngineerProjects/nexus-product/internal/db"
-	backendknowledge "github.com/EngineerProjects/nexus-product/internal/knowledge"
-	backendquery "github.com/EngineerProjects/nexus-product/internal/query"
-	"github.com/EngineerProjects/nexus-product/internal/scheduler"
+	nexus "github.com/EngineerProjects/nexus_ai/internal"
+	"github.com/EngineerProjects/nexus_ai/internal/api"
+	backendauth "github.com/EngineerProjects/nexus_ai/internal/auth"
+	"github.com/EngineerProjects/nexus_ai/internal/db"
+	backendknowledge "github.com/EngineerProjects/nexus_ai/internal/knowledge"
+	backendquery "github.com/EngineerProjects/nexus_ai/internal/query"
+	"github.com/EngineerProjects/nexus_ai/internal/scheduler"
 )
 
 // BuildApp wires all infrastructure (DB, stores, query runtime, RAG, MCP, skills)

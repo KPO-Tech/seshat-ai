@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	backendplans "github.com/EngineerProjects/nexus-product/internal/plans"
+	backendplans "github.com/EngineerProjects/nexus_ai/internal/plans"
 )
 
 // handlePlans handles GET /api/v1/plans?session_id=...

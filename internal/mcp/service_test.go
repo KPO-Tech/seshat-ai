@@ -8,7 +8,7 @@ import (
 
 	enginemcp "github.com/EngineerProjects/nexus-engine/pkg/mcp"
 	"github.com/EngineerProjects/nexus-engine/pkg/sdk"
-	"github.com/EngineerProjects/nexus-product/internal/bkerr"
+	"github.com/EngineerProjects/nexus_ai/internal/bkerr"
 )
 
 // mockRuntime satisfies RuntimeReloader without a real SDK client.

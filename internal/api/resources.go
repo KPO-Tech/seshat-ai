@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"strings"
 
-	backendauth "github.com/EngineerProjects/nexus-product/internal/auth"
-	"github.com/EngineerProjects/nexus-product/internal/resources"
+	backendauth "github.com/EngineerProjects/nexus_ai/internal/auth"
+	"github.com/EngineerProjects/nexus_ai/internal/resources"
 )
 
 type createUserRequest struct {

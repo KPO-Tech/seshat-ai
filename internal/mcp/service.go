@@ -6,8 +6,8 @@ import (
 
 	enginemcp "github.com/EngineerProjects/nexus-engine/pkg/mcp"
 	"github.com/EngineerProjects/nexus-engine/pkg/sdk"
-	"github.com/EngineerProjects/nexus-product/internal/bkerr"
-	"github.com/EngineerProjects/nexus-product/internal/db"
+	"github.com/EngineerProjects/nexus_ai/internal/bkerr"
+	"github.com/EngineerProjects/nexus_ai/internal/db"
 )
 
 // RuntimeReloader is the subset of the query runtime needed for MCP reload operations.

@@ -4,7 +4,7 @@ import (
 	"github.com/EngineerProjects/nexus-engine/pkg/contract"
 	"github.com/EngineerProjects/nexus-engine/pkg/sdk"
 	"github.com/EngineerProjects/nexus-engine/pkg/types"
-	backendauth "github.com/EngineerProjects/nexus-product/internal/auth"
+	backendauth "github.com/EngineerProjects/nexus_ai/internal/auth"
 )
 
 // ImageAttachment carries base64-encoded image data for a single turn.

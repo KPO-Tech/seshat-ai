@@ -8,7 +8,7 @@ import (
 
 	"github.com/EngineerProjects/nexus-engine/pkg/mcp"
 	"github.com/EngineerProjects/nexus-engine/pkg/runtimepath"
-	backendmcp "github.com/EngineerProjects/nexus-product/internal/mcp"
+	backendmcp "github.com/EngineerProjects/nexus_ai/internal/mcp"
 )
 
 // DefaultMCPJsonPath returns the canonical path for the local MCP JSON config.

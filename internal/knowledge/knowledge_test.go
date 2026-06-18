@@ -11,9 +11,9 @@ import (
 	"github.com/EngineerProjects/nexus-engine/pkg/rag"
 	"github.com/EngineerProjects/nexus-engine/pkg/storage"
 	"github.com/EngineerProjects/nexus-engine/pkg/vector"
-	backendauth "github.com/EngineerProjects/nexus-product/internal/auth"
-	"github.com/EngineerProjects/nexus-product/internal/db"
-	"github.com/EngineerProjects/nexus-product/internal/knowledge"
+	backendauth "github.com/EngineerProjects/nexus_ai/internal/auth"
+	"github.com/EngineerProjects/nexus_ai/internal/db"
+	"github.com/EngineerProjects/nexus_ai/internal/knowledge"
 )
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

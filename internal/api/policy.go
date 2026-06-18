@@ -3,7 +3,7 @@ package api
 import (
 	"context"
 
-	backendauth "github.com/EngineerProjects/nexus-product/internal/auth"
+	backendauth "github.com/EngineerProjects/nexus_ai/internal/auth"
 )
 
 func authPrincipalFromContext(ctx context.Context) (*backendauth.Principal, bool) {

@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	webpolicy "github.com/EngineerProjects/nexus-engine/pkg/web"
-	backendwebsearch "github.com/EngineerProjects/nexus-product/internal/websearch"
+	backendwebsearch "github.com/EngineerProjects/nexus_ai/internal/websearch"
 )
 
 type webSearchSettingsResponse struct {

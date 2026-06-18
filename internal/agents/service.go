@@ -6,8 +6,8 @@ import (
 
 	pkgagent "github.com/EngineerProjects/nexus-engine/pkg/agent"
 	"github.com/EngineerProjects/nexus-engine/pkg/types"
-	"github.com/EngineerProjects/nexus-product/internal/bkerr"
-	"github.com/EngineerProjects/nexus-product/internal/db"
+	"github.com/EngineerProjects/nexus_ai/internal/bkerr"
+	"github.com/EngineerProjects/nexus_ai/internal/db"
 )
 
 // Service manages user-defined agent definitions.

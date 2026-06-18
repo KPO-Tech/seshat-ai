@@ -12,14 +12,14 @@ import (
 	"github.com/EngineerProjects/nexus-engine/pkg/types"
 	webcore "github.com/EngineerProjects/nexus-engine/pkg/web"
 	"github.com/EngineerProjects/nexus-engine/pkg/workspace"
-	backendauth "github.com/EngineerProjects/nexus-product/internal/auth"
-	"github.com/EngineerProjects/nexus-product/internal/bkerr"
-	"github.com/EngineerProjects/nexus-product/internal/db"
-	backendfiles "github.com/EngineerProjects/nexus-product/internal/files"
-	backendknowledge "github.com/EngineerProjects/nexus-product/internal/knowledge"
-	backendmemories "github.com/EngineerProjects/nexus-product/internal/memories"
-	bksettings "github.com/EngineerProjects/nexus-product/internal/settings"
-	bkwebsearch "github.com/EngineerProjects/nexus-product/internal/websearch"
+	backendauth "github.com/EngineerProjects/nexus_ai/internal/auth"
+	"github.com/EngineerProjects/nexus_ai/internal/bkerr"
+	"github.com/EngineerProjects/nexus_ai/internal/db"
+	backendfiles "github.com/EngineerProjects/nexus_ai/internal/files"
+	backendknowledge "github.com/EngineerProjects/nexus_ai/internal/knowledge"
+	backendmemories "github.com/EngineerProjects/nexus_ai/internal/memories"
+	bksettings "github.com/EngineerProjects/nexus_ai/internal/settings"
+	bkwebsearch "github.com/EngineerProjects/nexus_ai/internal/websearch"
 )
 
 type Service struct {

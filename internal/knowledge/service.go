@@ -10,9 +10,9 @@ import (
 	"github.com/EngineerProjects/nexus-engine/pkg/docling"
 	"github.com/EngineerProjects/nexus-engine/pkg/rag"
 	"github.com/EngineerProjects/nexus-engine/pkg/storage"
-	backendauth "github.com/EngineerProjects/nexus-product/internal/auth"
-	"github.com/EngineerProjects/nexus-product/internal/bkerr"
-	"github.com/EngineerProjects/nexus-product/internal/db"
+	backendauth "github.com/EngineerProjects/nexus_ai/internal/auth"
+	"github.com/EngineerProjects/nexus_ai/internal/bkerr"
+	"github.com/EngineerProjects/nexus_ai/internal/db"
 )
 
 // doclingIngestExtensions lists file extensions whose binary content docling can

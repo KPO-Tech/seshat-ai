@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/EngineerProjects/nexus-product/internal/db"
+	"github.com/EngineerProjects/nexus_ai/internal/db"
 )
 
 const (

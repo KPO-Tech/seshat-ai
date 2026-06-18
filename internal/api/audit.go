@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
-	backendaudit "github.com/EngineerProjects/nexus-product/internal/audit"
+	backendaudit "github.com/EngineerProjects/nexus_ai/internal/audit"
 )
 
 func (a *App) handleAuditLogs(w http.ResponseWriter, r *http.Request) {

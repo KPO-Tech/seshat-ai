@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/EngineerProjects/nexus-engine/pkg/providers"
-	backendaudit "github.com/EngineerProjects/nexus-product/internal/audit"
-	"github.com/EngineerProjects/nexus-product/internal/db"
+	backendaudit "github.com/EngineerProjects/nexus_ai/internal/audit"
+	"github.com/EngineerProjects/nexus_ai/internal/db"
 )
 
 // ─── Response type ────────────────────────────────────────────────────────────
