@@ -674,12 +674,18 @@ function handleRuntimeEvent(
 
         // When the agent tool itself completes/fails, propagate status to sub-agent state.
         if (progress.tool_name === 'agent' && progress.tool_use_id) {
+          const agentResultText = progress.stage === 'completed'
+            ? (typeof progress.metadata?.content === 'string'
+                ? progress.metadata.content
+                : typeof progress.message === 'string' ? progress.message : undefined)
+            : undefined
           store.upsertSubagent(sessionId, progress.tool_use_id, {
             status: progress.stage === 'completed' ? 'completed' : 'failed',
             endedAt: now,
             isThinking: false,
             activeTool: null,
             error: progress.stage === 'failed' ? (progress.message ?? 'Agent failed') : undefined,
+            result: agentResultText,
           })
         }
       }

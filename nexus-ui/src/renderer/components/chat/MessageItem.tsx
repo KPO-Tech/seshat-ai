@@ -5,6 +5,7 @@ import { MarkdownView } from '@/components/MarkdownView'
 import { useUIStore } from '@/stores/ui'
 import { ToolBlock } from './ToolBlock'
 import { AgentCardsRow } from './AgentToolView'
+import { TaskListWidget } from './TaskListWidget'
 import type { Message, ToolUseBlock, ToolStatus } from '@/api/types'
 
 // Mode-switching system tools are handled silently by the Agent Monitor panel.
@@ -27,7 +28,11 @@ export function isRenderableMessage(message: Message): boolean {
   return message.content.some((block) => {
     if (block.type === 'text') return Boolean(block.text.trim())
     if (block.type === 'thinking') return Boolean(block.thinking.trim())
-    if (block.type === 'tool_use') return !MODE_SYSTEM_TOOLS.has(block.name)
+    if (block.type === 'tool_use') {
+      if (MODE_SYSTEM_TOOLS.has(block.name)) return false
+      if (block.name === 'task_list') return false
+      return true
+    }
     return false
   })
 }
@@ -38,17 +43,17 @@ function ThinkingBlock({ thinkingId, thinking }: { thinkingId: string; thinking:
   const expanded = useUIStore((s) => s.thinkingExpansion[thinkingId] ?? false)
   const setThinkingExpansion = useUIStore((s) => s.setThinkingExpansion)
   return (
-    <div className="msg-bubble msg-bubble--plain msg-thinking">
+    <div className="msg-thinking">
       <button
         className="msg-thinking-toggle"
         type="button"
         onClick={() => setThinkingExpansion(thinkingId, !expanded)}
         aria-expanded={expanded}
       >
-        <span className="msg-thinking-label">THINKING</span>
         <span className={`msg-thinking-chevron${expanded ? ' open' : ''}`}>
-          <Down size={12} />
+          <Down size={11} />
         </span>
+        <span className="msg-thinking-label">Thinking</span>
       </button>
       {expanded && (
         <div className="msg-thinking-body">
@@ -69,33 +74,58 @@ type Props = {
   onSubmitToolPrompt?: (promptId: string, value: unknown) => void
 }
 
-// Group consecutive agent tool_use blocks so they can be rendered in a flex row.
-// Returns an ordered list of render items: single blocks or agent-group arrays.
+const TASK_TOOLS = new Set(['task_create', 'task_update', 'task_list'])
+const AGENT_TOOLS = new Set(['agent', 'spawn_agent'])
+
 type RenderItem =
   | { kind: 'block'; block: Message['content'][number]; index: number }
   | { kind: 'agent-group'; tools: ToolUseBlock[] }
+  | { kind: 'task-group'; tools: ToolUseBlock[] }
 
 function groupBlocks(blocks: Message['content']): RenderItem[] {
+  // Collect all task tools from the message for the widget
+  const taskTools = blocks.filter(
+    (b): b is ToolUseBlock => b.type === 'tool_use' && TASK_TOOLS.has(b.name)
+  )
+  let taskWidgetPlaced = false
+
   const items: RenderItem[] = []
   let i = 0
   while (i < blocks.length) {
     const block = blocks[i]
-    if (block.type === 'tool_use' && block.name === 'agent') {
+
+    // Skip task tools — rendered collectively as task-group at first occurrence
+    if (block.type === 'tool_use' && TASK_TOOLS.has(block.name)) {
+      if (!taskWidgetPlaced && taskTools.length > 0) {
+        items.push({ kind: 'task-group', tools: taskTools })
+        taskWidgetPlaced = true
+      }
+      i++
+      continue
+    }
+
+    if (block.type === 'tool_use' && AGENT_TOOLS.has(block.name)) {
       const group: ToolUseBlock[] = [block]
       let j = i + 1
-      while (j < blocks.length && blocks[j].type === 'tool_use' && (blocks[j] as ToolUseBlock).name === 'agent') {
+      while (
+        j < blocks.length &&
+        blocks[j].type === 'tool_use' &&
+        AGENT_TOOLS.has((blocks[j] as ToolUseBlock).name)
+      ) {
         group.push(blocks[j] as ToolUseBlock)
         j++
       }
       items.push({ kind: 'agent-group', tools: group })
       i = j
-    } else {
-      items.push({ kind: 'block', block, index: i })
-      i++
+      continue
     }
+
+    items.push({ kind: 'block', block, index: i })
+    i++
   }
   return items
 }
+
 
 export const MessageItem = memo(function MessageItem({ message, sessionId, showAvatar = true, compact = false, onApproveTool, onDenyTool, onSubmitToolPrompt }: Props) {
   if (isToolResultOnly(message)) return null
@@ -141,6 +171,15 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, showA
                   const status = tool._status
                   return (status ?? (tool._result ? (tool._result.isError ? 'failed' : 'completed') : 'running')) as ToolStatus
                 }}
+              />
+            )
+          }
+
+          if (item.kind === 'task-group') {
+            return (
+              <TaskListWidget
+                key={`${message.id ?? 'msg'}-tasks-${i}`}
+                tools={item.tools}
               />
             )
           }
@@ -264,39 +303,40 @@ export const MESSAGE_ITEM_CSS = `
   border: 1px solid var(--color-border-subtle);
 }
 
-.msg-thinking,
 .msg-tool-result {
   color: var(--color-text-secondary);
 }
 
 .msg-thinking {
-  border-left: 2px solid rgba(239, 124, 47, 0.22);
-  padding-left: 14px;
   margin: 0 0 4px;
 }
 
 .msg-thinking-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
   background: transparent;
   border: none;
-  padding: 0;
+  padding: 2px 0;
   cursor: pointer;
+  color: var(--color-text-muted);
+}
+
+.msg-thinking-toggle:hover {
+  color: var(--color-text-secondary);
 }
 
 .msg-thinking-label {
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-  margin-bottom: 0;
+  font-size: 12px;
+  color: inherit;
+  font-style: italic;
 }
 
 .msg-thinking-chevron {
-  color: var(--color-text-muted);
   display: inline-flex;
-  transition: transform 0.18s ease;
+  color: inherit;
+  opacity: 0.7;
+  transition: transform 0.15s ease;
 }
 
 .msg-thinking-chevron.open {
@@ -304,9 +344,13 @@ export const MESSAGE_ITEM_CSS = `
 }
 
 .msg-thinking-body {
-  font-size: 14px;
-  opacity: 0.88;
   margin-top: 6px;
+  padding-left: 12px;
+  border-left: 2px solid rgba(239, 124, 47, 0.22);
+  font-size: 13px;
+  font-style: italic;
+  color: var(--color-text-muted);
+  line-height: 1.65;
 }
 
 .msg-footer {

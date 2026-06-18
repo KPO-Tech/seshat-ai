@@ -1,15 +1,13 @@
 import { Outlet, useLocation } from 'react-router-dom'
-import { useEffect, useCallback } from 'react'
+import { useEffect } from 'react'
 import { Sidebar } from './Sidebar'
 import { RightPanelHost } from './RightPanelHost'
 import { ErrorBoundary } from './ErrorBoundary'
 import { useUIStore } from '@/stores/ui'
 import { useSessionStore } from '@/stores/session'
-import { useAuthStore } from '@/stores/auth'
 import { api } from '@/api/client'
 import { UNTITLED_SESSION_TITLE } from '@/lib/sessionTitle'
-import { useInactivityTimeout } from '@/hooks/useInactivityTimeout'
-import { 
+import {
   InternalExpansion,
   Close,
   Minus,
@@ -20,11 +18,11 @@ export function Shell() {
   const collapsed = useUIStore((s) => s.sidebarCollapsed)
   const toggleSidebar = useUIStore((s) => s.toggleSidebar)
   const { pathname } = useLocation()
-  const storeLogout = useAuthStore((s) => s.logout)
-  const handleInactivity = useCallback(() => storeLogout(), [storeLogout])
-  useInactivityTimeout(handleInactivity)
   
   const isConversation = pathname.startsWith('/conversation/')
+  // Sidebar is visible on Home and all conversation pages, but not on
+  // full-screen pages like Settings, Login, Register, or workspace views.
+  const showSidebar = pathname === '/' || isConversation
 
   const handleMinimize = () => window.nexus.window.minimize()
   const handleMaximize = () => window.nexus.window.maximize()
@@ -73,7 +71,7 @@ export function Shell() {
       {/* ── Custom Title Bar ── */}
       <div className="shell-titlebar">
         <div className="titlebar-left">
-          {isConversation && (
+          {showSidebar && (
             <button className="tb-toggle-btn" onClick={toggleSidebar} title="Toggle Sidebar">
               <InternalExpansion size={18} />
             </button>
@@ -96,8 +94,8 @@ export function Shell() {
       </div>
 
       <div className="shell-body">
-        {isConversation && <Sidebar />}
-        <main className={`shell-main ${!isConversation ? 'no-sidebar' : (collapsed ? 'collapsed' : '')}`}>
+        {showSidebar && <Sidebar />}
+        <main className={`shell-main ${!showSidebar ? 'no-sidebar' : (collapsed ? 'collapsed' : '')}`}>
           <div className="shell-main-content">
             <ErrorBoundary>
               <Outlet />

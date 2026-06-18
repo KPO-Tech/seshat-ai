@@ -68,6 +68,7 @@ export type SubagentState = {
   startedAt: number
   endedAt?: number
   error?: string
+  result?: string
 }
 
 // Live observable state of the agent for a given session

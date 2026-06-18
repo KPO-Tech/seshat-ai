@@ -7,7 +7,7 @@
     "node": ">=22 <25"
   },
   "scripts": {
-    "start": "electron-vite dev",
+    "start": "electron-vite dev -- --no-sandbox",
     "build": "electron-vite build",
     "package": "npm run build && electron-builder",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json --noEmit",

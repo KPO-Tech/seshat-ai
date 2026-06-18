@@ -1,8 +1,31 @@
-import { memo, useCallback } from 'react'
+import { memo, useCallback, useEffect, useState } from 'react'
 import { Robot, CheckOne, CloseOne, LoadingOne } from '@icon-park/react'
 import { useSessionStore } from '@/stores/session'
 import { useUIStore } from '@/stores/ui'
 import type { ToolUseBlock, ToolStatus } from '@/api/types'
+
+function useElapsedMs(startedAt: number, active: boolean): number {
+  const [ms, setMs] = useState(() => Date.now() - startedAt)
+  useEffect(() => {
+    if (!active) { setMs(Date.now() - startedAt); return }
+    const id = setInterval(() => setMs(Date.now() - startedAt), 1000)
+    return () => clearInterval(id)
+  }, [startedAt, active])
+  return ms
+}
+
+function fmtElapsed(ms: number): string {
+  if (ms < 60_000) return `${Math.floor(ms / 1000)}s`
+  const m = Math.floor(ms / 60_000)
+  const s = Math.floor((ms % 60_000) / 1000)
+  return s > 0 ? `${m}m ${s}s` : `${m}m`
+}
+
+function fmtTokens(n: number): string {
+  if (n === 0) return ''
+  if (n < 1000) return `${n} tok`
+  return `${(n / 1000).toFixed(1)}k tok`
+}
 
 // CSS injected once at the component level
 const AGENT_CARDS_CSS = `
@@ -205,6 +228,9 @@ function AgentToolCard({ tool, sessionId, status }: AgentToolCardProps) {
 
   const activeTool = subagent?.activeTool
   const turnNumber = subagent?.turnNumber ?? 0
+  const tokens = (subagent?.inputTokens ?? 0) + (subagent?.outputTokens ?? 0)
+  const startedAt = subagent?.startedAt ?? Date.now()
+  const elapsedMs = useElapsedMs(startedAt, derivedStatus === 'running')
 
   const handleClick = useCallback(() => {
     openRightPanel({
@@ -265,9 +291,14 @@ function AgentToolCard({ tool, sessionId, status }: AgentToolCardProps) {
 
       <div className="agent-card-footer">
         <span className="agent-card-view-link">View activity →</span>
-        {turnNumber > 0 && (
-          <span className="agent-card-turn-badge">turn {turnNumber}</span>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {tokens > 0 && (
+            <span className="agent-card-turn-badge">{fmtTokens(tokens)}</span>
+          )}
+          {(turnNumber > 0 || derivedStatus === 'running') && (
+            <span className="agent-card-turn-badge">{fmtElapsed(elapsedMs)}</span>
+          )}
+        </div>
       </div>
     </div>
   )

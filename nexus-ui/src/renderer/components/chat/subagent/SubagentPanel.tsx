@@ -2,7 +2,7 @@ import { memo, useRef, useEffect, useState } from 'react'
 import { useSessionStore } from '@/stores/session'
 import { MarkdownView } from '@/components/MarkdownView'
 import { ToolBlock } from '../ToolBlock'
-import type { StreamingBlock, ToolActivity } from '@/stores/session'
+import type { StreamingBlock } from '@/stores/session'
 
 const SUBAGENT_PANEL_CSS = `
 .sap-root {
@@ -36,9 +36,14 @@ const SUBAGENT_PANEL_CSS = `
   flex-shrink: 0;
 }
 
-.sap-status--running .sap-status-dot { background: var(--color-accent); }
+.sap-status--running .sap-status-dot { background: var(--color-accent); animation: sap-pulse 1.4s ease-in-out infinite; }
 .sap-status--completed .sap-status-dot { background: #34d399; }
 .sap-status--failed .sap-status-dot { background: #f87171; }
+
+@keyframes sap-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
 
 .sap-type-badge {
   font-size: 11px;
@@ -91,6 +96,10 @@ const SUBAGENT_PANEL_CSS = `
   border-bottom: 2px solid transparent;
   cursor: pointer;
   transition: color 0.15s, border-color 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
 }
 
 .sap-tab--active {
@@ -98,8 +107,22 @@ const SUBAGENT_PANEL_CSS = `
   border-bottom-color: var(--color-accent);
 }
 
-.sap-tab:hover:not(.sap-tab--active) {
+.sap-tab:hover:not(.sap-tab--active):not(:disabled) {
   color: var(--color-text-secondary);
+}
+
+.sap-tab:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+
+.sap-tab-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #34d399;
+  animation: sap-pulse 1.2s ease-in-out infinite;
+  flex-shrink: 0;
 }
 
 /* ── Body ── */
@@ -117,8 +140,8 @@ const SUBAGENT_PANEL_CSS = `
   border-radius: 4px;
 }
 
-/* ── Chat tab ── */
-.sap-chat {
+/* ── Activity tab (full stream) ── */
+.sap-activity {
   padding: 14px;
   display: flex;
   flex-direction: column;
@@ -139,83 +162,6 @@ const SUBAGENT_PANEL_CSS = `
   line-height: 1.55;
   color: var(--color-text-muted);
   font-style: italic;
-}
-
-/* ── Progress tab ── */
-.sap-progress {
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  flex: 1;
-}
-
-.sap-progress-empty {
-  font-size: 13px;
-  color: var(--color-text-muted);
-  padding: 8px 0;
-}
-
-.sap-activity-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--color-border-subtle);
-}
-
-.sap-activity-item--running {
-  border-color: rgba(239, 124, 47, 0.25);
-  background: rgba(239, 124, 47, 0.04);
-}
-
-.sap-activity-item--completed {
-  opacity: 0.72;
-}
-
-.sap-activity-marker {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  margin-top: 4px;
-  flex-shrink: 0;
-}
-
-.sap-activity-item--pending .sap-activity-marker { background: var(--color-text-muted); }
-.sap-activity-item--running .sap-activity-marker { background: var(--color-accent); }
-.sap-activity-item--completed .sap-activity-marker { background: #34d399; }
-.sap-activity-item--failed .sap-activity-marker { background: #f87171; }
-
-.sap-activity-copy {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.sap-activity-name {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.sap-activity-msg {
-  font-size: 11px;
-  color: var(--color-text-muted);
-  line-height: 1.4;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.sap-activity-dur {
-  font-size: 11px;
-  color: var(--color-text-muted);
-  flex-shrink: 0;
-  font-family: monospace;
 }
 
 /* ── Active tool indicator ── */
@@ -245,6 +191,34 @@ const SUBAGENT_PANEL_CSS = `
   to { transform: rotate(360deg); }
 }
 
+/* ── Output tab ── */
+.sap-output {
+  padding: 14px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sap-output-content {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--color-text);
+}
+
+.sap-output-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 8px;
+  color: var(--color-text-muted);
+  padding: 32px;
+  text-align: center;
+  font-size: 13px;
+}
+
 /* ── Empty / loading ── */
 .sap-empty {
   display: flex;
@@ -269,7 +243,7 @@ const SUBAGENT_PANEL_CSS = `
 }
 `
 
-type Tab = 'activity' | 'chat'
+type Tab = 'activity' | 'output'
 
 type Props = {
   sessionId: string
@@ -280,13 +254,33 @@ export const SubagentPanel = memo(function SubagentPanel({ sessionId, toolUseId 
   const subagent = useSessionStore((s) => s.getSubagent(sessionId, toolUseId))
   const [tab, setTab] = useState<Tab>('activity')
   const bottomRef = useRef<HTMLDivElement>(null)
+  const prevResultRef = useRef<string | undefined>(undefined)
+  const [outputReady, setOutputReady] = useState(false)
 
   const streaming = subagent?.streaming ?? []
+  const result = subagent?.result
+
+  // Auto-scroll activity tab as new blocks arrive
   useEffect(() => {
-    if (tab === 'chat') {
+    if (tab === 'activity') {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
   }, [streaming.length, tab])
+
+  // When result first appears, light up the Output tab dot
+  useEffect(() => {
+    if (result && prevResultRef.current === undefined) {
+      setOutputReady(true)
+      const id = setTimeout(() => setOutputReady(false), 4000)
+      prevResultRef.current = result
+      return () => clearTimeout(id)
+    }
+  }, [result])
+
+  const handleTabClick = (t: Tab) => {
+    setTab(t)
+    if (t === 'output') setOutputReady(false)
+  }
 
   if (!subagent) {
     return (
@@ -319,7 +313,9 @@ export const SubagentPanel = memo(function SubagentPanel({ sessionId, toolUseId 
         {subagent.task && <div className="sap-task">{subagent.task}</div>}
 
         <div className="sap-stats">
-          <span>{subagent.status === 'running' ? `${formatMs(durationMs)} elapsed` : formatMs(durationMs)}</span>
+          <span>
+            {subagent.status === 'running' ? `${formatMs(durationMs)} elapsed` : formatMs(durationMs)}
+          </span>
           {subagent.turnNumber > 0 && (
             <>
               <span className="sap-stat-sep">·</span>
@@ -329,7 +325,9 @@ export const SubagentPanel = memo(function SubagentPanel({ sessionId, toolUseId 
           {subagent.inputTokens > 0 && (
             <>
               <span className="sap-stat-sep">·</span>
-              <span>{subagent.inputTokens.toLocaleString()} in / {subagent.outputTokens.toLocaleString()} out</span>
+              <span>
+                {subagent.inputTokens.toLocaleString()} in / {subagent.outputTokens.toLocaleString()} out
+              </span>
             </>
           )}
         </div>
@@ -338,15 +336,17 @@ export const SubagentPanel = memo(function SubagentPanel({ sessionId, toolUseId 
           <button
             className={`sap-tab${tab === 'activity' ? ' sap-tab--active' : ''}`}
             type="button"
-            onClick={() => setTab('activity')}
+            onClick={() => handleTabClick('activity')}
           >
             Activity
           </button>
           <button
-            className={`sap-tab${tab === 'chat' ? ' sap-tab--active' : ''}`}
+            className={`sap-tab${tab === 'output' ? ' sap-tab--active' : ''}`}
             type="button"
-            onClick={() => setTab('chat')}
+            disabled={!result}
+            onClick={() => result && handleTabClick('output')}
           >
+            {outputReady && tab !== 'output' && <span className="sap-tab-dot" />}
             Output
           </button>
         </div>
@@ -354,87 +354,49 @@ export const SubagentPanel = memo(function SubagentPanel({ sessionId, toolUseId 
 
       <div className="sap-body">
         {tab === 'activity' && (
-          <ActivityView
-            activityLog={subagent.activityLog}
-            activeTool={subagent.activeTool}
-            status={subagent.status}
-          />
-        )}
-        {tab === 'chat' && (
-          <div className="sap-chat">
+          <div className="sap-activity">
             {streaming.length === 0 && subagent.status === 'running' && (
               <div className="sap-empty">
                 <div className="sap-spinner" />
-                <span className="sap-empty-label">Agent is thinking…</span>
+                <span className="sap-empty-label">Agent is starting…</span>
               </div>
             )}
             {streaming.map((block, i) => (
               <StreamBlockView key={`${toolUseId}-block-${i}`} block={block} />
             ))}
+            {subagent.activeTool && (
+              <div className="sap-active-tool">
+                <div className="sap-active-spinner" />
+                <span>
+                  <strong>{subagent.activeTool.toolName}</strong>
+                  {subagent.activeTool.message ? ` — ${subagent.activeTool.message}` : ''}
+                </span>
+              </div>
+            )}
             <div ref={bottomRef} />
+          </div>
+        )}
+
+        {tab === 'output' && (
+          <div className="sap-output">
+            {result
+              ? (
+                <div className="sap-output-content">
+                  <MarkdownView>{result}</MarkdownView>
+                </div>
+              )
+              : (
+                <div className="sap-output-empty">
+                  Output will appear here once the agent finishes.
+                </div>
+              )
+            }
           </div>
         )}
       </div>
     </div>
   )
 })
-
-function ActivityView({
-  activityLog,
-  activeTool,
-  status,
-}: {
-  activityLog: ToolActivity[]
-  activeTool: ToolActivity | null
-  status: string
-}) {
-  const isEmpty = activityLog.length === 0 && !activeTool
-
-  return (
-    <div className="sap-progress">
-      {isEmpty && status === 'running' && (
-        <div className="sap-active-tool">
-          <div className="sap-active-spinner" />
-          <span>Starting…</span>
-        </div>
-      )}
-
-      {isEmpty && status !== 'running' && (
-        <p className="sap-progress-empty">No tool activity recorded.</p>
-      )}
-
-      {activityLog.map((entry, i) => (
-        <ActivityItem key={i} entry={entry} />
-      ))}
-
-      {activeTool && (
-        <div className="sap-active-tool">
-          <div className="sap-active-spinner" />
-          <span>
-            <strong>{toolLabel(activeTool.toolName)}</strong>
-            {activeTool.message ? ` — ${activeTool.message}` : ''}
-          </span>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function ActivityItem({ entry }: { entry: ToolActivity }) {
-  const dur = entry.endedAt ? entry.endedAt - entry.startedAt : null
-  return (
-    <div className={`sap-activity-item sap-activity-item--${entry.stage}`}>
-      <div className="sap-activity-marker" />
-      <div className="sap-activity-copy">
-        <span className="sap-activity-name">{toolLabel(entry.toolName)}</span>
-        {entry.message && <span className="sap-activity-msg">{entry.message}</span>}
-      </div>
-      {dur !== null && (
-        <span className="sap-activity-dur">{formatMs(dur)}</span>
-      )}
-    </div>
-  )
-}
 
 function StreamBlockView({ block }: { block: StreamingBlock }) {
   if (block.type === 'text') {
@@ -474,17 +436,6 @@ function StreamBlockView({ block }: { block: StreamingBlock }) {
   }
 
   return null
-}
-
-function toolLabel(name: string): string {
-  const labels: Record<string, string> = {
-    bash: 'Bash', read: 'Read', write: 'Write', edit: 'Edit',
-    glob: 'Glob', grep: 'Grep', web_search: 'Web Search', web_fetch: 'Web Fetch',
-    agent: 'Agent', todo_write: 'Todo Write',
-    task_create: 'Task Create', task_update: 'Task Update', task_list: 'Task List',
-    file_read: 'Read File', file_write: 'Write File', file_edit: 'Edit File',
-  }
-  return labels[name] ?? name.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 function formatMs(ms: number): string {

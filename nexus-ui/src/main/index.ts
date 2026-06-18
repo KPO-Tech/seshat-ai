@@ -17,9 +17,9 @@ function configureRuntimePaths() {
 function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
-    height: 800,
-    minWidth: 900,
-    minHeight: 660,
+    height: 820,
+    minWidth: 1100,
+    minHeight: 720,
     show: false,
     autoHideMenuBar: true,
     frame: false,

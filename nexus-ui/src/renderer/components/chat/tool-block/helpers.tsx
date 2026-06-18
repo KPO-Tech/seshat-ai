@@ -218,6 +218,56 @@ export function parseTodoItems(input: Record<string, unknown>): TodoItemView[] {
   })
 }
 
+export function inputSnippetForSilent(tool: ToolUseBlock): string {
+  const inp = tool.input
+  const str = (k: string) => (typeof inp[k] === 'string' ? (inp[k] as string) : '')
+  const basename = (fp: string) => fp ? (fp.split('/').filter(Boolean).pop() ?? fp) : ''
+
+  switch (tool.name) {
+    case 'read': case 'file_read': case 'read_file':
+      return basename(str('file_path'))
+    case 'glob': {
+      const pattern = str('pattern')
+      const path = basename(str('path'))
+      return [pattern, path].filter(Boolean).join(' in ') || ''
+    }
+    case 'task_get': case 'task_stop': case 'task_output':
+      return str('taskId') || str('task_id') || str('id')
+    case 'tool_search':
+      return compact(str('query'), 40)
+    case 'lsp':
+      return str('method')
+    case 'code_complete':
+      return basename(str('file_path'))
+    case 'rag_ingest':
+      return str('corpus_id')
+    case 'mcp_read_resource':
+      return compact(str('uri') || str('resource'), 40)
+    case 'skill':
+      return str('name') || str('skill_name')
+    case 'config':
+      return str('key')
+    case 'monitor':
+      return compact(str('command') || str('pid'), 40)
+    case 'wait_agent': case 'close_agent': case 'resume_agent': case 'send_agent_message':
+      return str('agent_id') || str('agentId')
+    case 'enter_worktree':
+      return str('directory') || str('branch')
+    case 'create_goal': case 'update_goal':
+      return compact(str('title'), 40)
+    case 'get_goal':
+      return str('goal_id')
+    case 'docx':
+      return basename(str('filename') || str('path'))
+    case 'mailbox_send':
+      return str('recipient') || str('to')
+    case 'mailbox_broadcast':
+      return str('topic')
+    default:
+      return ''
+  }
+}
+
 function inputSnippet(tool: ToolUseBlock): string {
   if (tool.name === 'ask_user_question') {
     const questions = parseAskUserQuestions(tool.input)
