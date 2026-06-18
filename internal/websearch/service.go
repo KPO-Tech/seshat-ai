@@ -43,7 +43,6 @@ var providerCatalog = []ProviderCatalogEntry{
 	{Name: "jina", Label: "Jina AI", Description: "AI-native search with reader API", RequiresAPIKey: true, Priority: 30},
 	{Name: "langsearch", Label: "LangSearch", Description: "Free API key, AI-optimised results", RequiresAPIKey: true, Priority: 35},
 	{Name: "searxng", Label: "SearXNG", Description: "Self-hosted privacy-focused meta-search", RequiresBaseURL: true, DefaultBaseURL: "http://localhost:8080", Priority: 40},
-	{Name: "ddg", Label: "DuckDuckGo", Description: "Always-available scraping fallback, no key needed", RequiresAPIKey: false, RequiresBaseURL: false, Priority: 50},
 }
 
 func catalogByName(name string) *ProviderCatalogEntry {

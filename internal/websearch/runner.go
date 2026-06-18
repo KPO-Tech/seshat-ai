@@ -84,18 +84,11 @@ func providerFromRunConfig(cfg SearchRunProvider) (searchproviders.SearchProvide
 		return searchproviders.NewLangSearchProviderWithAPIKey(cfg.Secret), nil
 	case "searxng":
 		return searchproviders.NewSearXNGProviderWithBaseURL(cfg.BaseURL), nil
-	case "ddg":
-		return searchproviders.NewDuckDuckGoProvider(), nil
 	default:
 		return nil, fmt.Errorf("unsupported web search provider %q", cfg.Provider)
 	}
 }
 
 func normalizeSearchProvider(provider string) string {
-	switch strings.TrimSpace(strings.ToLower(provider)) {
-	case "duckduckgo", "ddg":
-		return "ddg"
-	default:
-		return strings.TrimSpace(strings.ToLower(provider))
-	}
+	return strings.TrimSpace(strings.ToLower(provider))
 }
