@@ -46,7 +46,9 @@ dev: ui-install ## Start backend + Electron UI
 
 stop: ## Stop backend and UI processes
 	@pkill -f "go run.*cmd/api" 2>/dev/null || true
-	@pkill -f "electron" 2>/dev/null || true
+	@pkill -x api 2>/dev/null || true
+	@pkill -f "electron-vite" 2>/dev/null || true
+	@pkill -f "[e]lectron.*nexus" 2>/dev/null || true
 	@printf '\033[32m[nexus]\033[0m stopped.\n'
 
 # ─── Backend ──────────────────────────────────────────────────────────────────

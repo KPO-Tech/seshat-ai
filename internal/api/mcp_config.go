@@ -280,11 +280,17 @@ func (a *App) handleMCPImportJSON(w http.ResponseWriter, r *http.Request) {
 }
 
 // POST /api/v1/mcp/reload
-// Reloads all enabled MCP servers from DB into the running SDK runtime.
+// Re-imports mcp.json into DB (idempotent), then reloads all enabled servers into the SDK runtime.
 func (a *App) handleMCPReload(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
+	}
+	path := DefaultMCPJsonPath()
+	if _, err := os.Stat(path); err == nil {
+		if cfg, errs := mcp.ParseMcpConfigFromFile(path); len(errs) == 0 && len(cfg.MCPServers) > 0 {
+			_, _ = a.backend.MCP.ImportFromMcpJSON(r.Context(), cfg)
+		}
 	}
 	statuses, err := a.backend.MCP.Reload(r.Context())
 	if err != nil {
@@ -324,4 +330,27 @@ func toMCPStatusResponse(statuses []backendmcp.ServerStatus) []mcpStatusResponse
 		out = append(out, mcpStatusResponse{Name: s.Name, OK: s.OK, Error: s.Error, Tools: s.Tools})
 	}
 	return out
+}
+
+// GET /api/v1/mcp/tools
+// Returns connected tools grouped by server name, with name and description.
+func (a *App) handleMCPTools(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	byServer := a.backend.MCP.ToolsByServer()
+	type toolEntry struct {
+		Name        string `json:"name"`
+		Description string `json:"description,omitempty"`
+	}
+	out := make(map[string][]toolEntry, len(byServer))
+	for server, tools := range byServer {
+		entries := make([]toolEntry, 0, len(tools))
+		for _, t := range tools {
+			entries = append(entries, toolEntry{Name: t.Name, Description: t.Description})
+		}
+		out[server] = entries
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"tools": out})
 }

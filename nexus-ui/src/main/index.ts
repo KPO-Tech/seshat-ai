@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, shell, ipcMain } from 'electron'
+import { app, BrowserWindow, Menu, shell, ipcMain, globalShortcut } from 'electron'
 import { join } from 'path'
 import { registerSystemHandlers } from './ipc/system'
 import { registerSecureStoreHandlers } from './ipc/secure-store'
@@ -33,6 +33,10 @@ function createWindow() {
 
   win.removeMenu()
   win.on('ready-to-show', () => win.show())
+
+  globalShortcut.register('F12', () => {
+    win.webContents.toggleDevTools()
+  })
 
   win.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url)

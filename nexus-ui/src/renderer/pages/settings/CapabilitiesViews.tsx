@@ -59,6 +59,7 @@ type MCPServer = {
 }
 
 type ReloadStatus = { name: string; ok: boolean; tools: number; error?: string }
+type ToolEntry   = { name: string; description?: string }
 
 const EMPTY_SERVER: Omit<MCPServer, 'id' | 'source' | 'created_at' | 'updated_at'> = {
   name: '', display_name: '', server_type: 'stdio',
@@ -748,6 +749,7 @@ function McpPanel() {
   const [pendingReload, setPendingReload] = useState(false)
   const [reloading, setReloading] = useState(false)
   const [reloadStatuses, setReloadStatuses] = useState<ReloadStatus[] | null>(null)
+  const [toolsByServer, setToolsByServer] = useState<Record<string, ToolEntry[]>>({})
   const [modal, setModal] = useState<{ mode: 'add' | 'edit'; server?: MCPServer } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -764,7 +766,16 @@ function McpPanel() {
     }
   }, [])
 
-  useEffect(() => { load() }, [load])
+  const loadTools = useCallback(async () => {
+    try {
+      const data = await api.get<{ tools: Record<string, ToolEntry[]> }>('/mcp/tools')
+      setToolsByServer(data.tools ?? {})
+    } catch {
+      // non-critical — tools panel stays empty until next reload
+    }
+  }, [])
+
+  useEffect(() => { load(); loadTools() }, [load, loadTools])
 
   const handleToggle = async (id: string, enabled: boolean) => {
     await api.put(`/mcp/config/${id}`, { enabled })
@@ -816,6 +827,7 @@ function McpPanel() {
       const result = await api.post<{ reloaded: number; servers: ReloadStatus[] }>('/mcp/reload')
       setReloadStatuses(result.servers ?? [])
       setPendingReload(false)
+      await loadTools()
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Reload failed')
     } finally {
@@ -888,6 +900,7 @@ function McpPanel() {
                 <McpServerCard
                   key={srv.id}
                   server={srv}
+                  tools={toolsByServer[srv.name]}
                   onToggle={handleToggle}
                   onEdit={() => setModal({ mode: 'edit', server: srv })}
                   onDelete={() => handleDelete(srv.id)}
@@ -919,54 +932,84 @@ function McpPanel() {
 }
 
 function McpServerCard({
-  server, onToggle, onEdit, onDelete,
+  server, tools, onToggle, onEdit, onDelete,
 }: {
   server: MCPServer
+  tools?: ToolEntry[]
   onToggle: (id: string, enabled: boolean) => void
   onEdit: () => void
   onDelete: () => void
 }) {
   const isStdio = server.server_type === 'stdio'
+  const [expanded, setExpanded] = useState(false)
+  const hasTools = tools && tools.length > 0
 
   return (
-    <div className={`caps-mcp-card ${server.enabled ? '' : 'disabled'}`}>
-      <div className="caps-mcp-card-left">
-        <div className="caps-mcp-icon">{server.icon || '🔌'}</div>
-        <div className="caps-mcp-info">
-          <div className="caps-mcp-title">
-            <span className="caps-mcp-name">{server.display_name || server.name}</span>
-            <span className="caps-mcp-type-badge">
-              {isStdio ? <Terminal size={11} /> : <Globe size={11} />}
-              {server.server_type}
-            </span>
-            {server.source === 'file' && (
-              <span className="caps-mcp-source-badge">from file</span>
-            )}
-          </div>
-          <div className="caps-mcp-detail">
-            {isStdio
-              ? <code>{server.command}{server.args?.length ? ' ' + server.args.join(' ') : ''}</code>
-              : <code>{server.url}</code>
-            }
+    <div className={`caps-mcp-card ${server.enabled ? '' : 'disabled'} ${expanded ? 'expanded' : ''}`}>
+      <div className="caps-mcp-card-main">
+        <div className="caps-mcp-card-left">
+          <div className="caps-mcp-icon">{server.icon || '🔌'}</div>
+          <div className="caps-mcp-info">
+            <div className="caps-mcp-title">
+              <span className="caps-mcp-name">{server.display_name || server.name}</span>
+              <span className="caps-mcp-type-badge">
+                {isStdio ? <Terminal size={11} /> : <Globe size={11} />}
+                {server.server_type}
+              </span>
+              {server.source === 'file' && (
+                <span className="caps-mcp-source-badge">from file</span>
+              )}
+              {hasTools && (
+                <button
+                  className={`caps-tools-toggle ${expanded ? 'active' : ''}`}
+                  onClick={() => setExpanded(v => !v)}
+                  title={expanded ? 'Hide tools' : 'Show tools'}
+                >
+                  <Api size={11} />
+                  {tools.length} tool{tools.length !== 1 ? 's' : ''}
+                  <Down size={10} style={{ transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+                </button>
+              )}
+              {!hasTools && server.enabled && (
+                <span className="caps-no-tools-badge">no tools loaded</span>
+              )}
+            </div>
+            <div className="caps-mcp-detail">
+              {isStdio
+                ? <code>{server.command}{server.args?.length ? ' ' + server.args.join(' ') : ''}</code>
+                : <code>{server.url}</code>
+              }
+            </div>
           </div>
         </div>
+        <div className="caps-mcp-actions">
+          <label className="caps-mcp-toggle" title={server.enabled ? 'Disable' : 'Enable'}>
+            <input
+              type="checkbox"
+              checked={server.enabled}
+              onChange={e => onToggle(server.id, e.target.checked)}
+            />
+            <span className="caps-toggle-track" />
+          </label>
+          <button className="caps-mini-btn" title="Edit" onClick={onEdit}>
+            <Edit size={13} />
+          </button>
+          <button className="caps-mini-btn danger" title="Delete" onClick={onDelete}>
+            <Close size={13} />
+          </button>
+        </div>
       </div>
-      <div className="caps-mcp-actions">
-        <label className="caps-mcp-toggle" title={server.enabled ? 'Disable' : 'Enable'}>
-          <input
-            type="checkbox"
-            checked={server.enabled}
-            onChange={e => onToggle(server.id, e.target.checked)}
-          />
-          <span className="caps-toggle-track" />
-        </label>
-        <button className="caps-mini-btn" title="Edit" onClick={onEdit}>
-          <Edit size={13} />
-        </button>
-        <button className="caps-mini-btn danger" title="Delete" onClick={onDelete}>
-          <Close size={13} />
-        </button>
-      </div>
+
+      {expanded && hasTools && (
+        <div className="caps-tools-list">
+          {tools.map(t => (
+            <div key={t.name} className="caps-tool-row">
+              <code className="caps-tool-name">{t.name}</code>
+              {t.description && <span className="caps-tool-desc">{t.description}</span>}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -1578,14 +1621,58 @@ export const CAPABILITIES_CSS = `
 .caps-mcp-list { display: flex; flex-direction: column; gap: 8px; }
 
 .caps-mcp-card {
-  display: flex; align-items: center; justify-content: space-between;
   background: var(--color-surface); border: 1px solid var(--color-border);
-  border-radius: 12px; padding: 14px 18px;
+  border-radius: 12px; overflow: hidden;
   transition: opacity 0.15s;
 }
 .caps-mcp-card.disabled { opacity: 0.55; }
+.caps-mcp-card.expanded { border-color: var(--color-primary); }
+
+.caps-mcp-card-main {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px;
+}
 
 .caps-mcp-card-left { display: flex; align-items: center; gap: 14px; flex: 1; min-width: 0; }
+
+.caps-tools-toggle {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 600;
+  background: var(--color-hover); color: var(--color-text-secondary);
+  border: 1px solid var(--color-border); border-radius: 5px;
+  padding: 2px 7px; cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.caps-tools-toggle:hover,
+.caps-tools-toggle.active {
+  background: var(--color-primary-subtle); color: var(--color-cta);
+  border-color: var(--color-cta);
+}
+
+.caps-no-tools-badge {
+  font-size: 10px; color: var(--color-text-muted); opacity: 0.6;
+}
+
+.caps-tools-list {
+  border-top: 1px solid var(--color-border);
+  padding: 10px 18px 14px;
+  display: flex; flex-direction: column; gap: 6px;
+  background: var(--color-bg);
+}
+.caps-tool-row {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--color-border-subtle, rgba(255,255,255,0.05));
+}
+.caps-tool-row:last-child { border-bottom: none; }
+.caps-tool-name {
+  font-size: 12px; font-family: var(--font-mono, monospace);
+  color: var(--color-cta); white-space: nowrap; flex-shrink: 0;
+  background: var(--color-primary-subtle); padding: 1px 6px; border-radius: 4px;
+}
+.caps-tool-desc {
+  font-size: 12px; color: var(--color-text-muted);
+  line-height: 1.4; flex: 1; min-width: 0;
+}
 
 .caps-mcp-icon { font-size: 24px; line-height: 1; flex-shrink: 0; width: 36px; text-align: center; }
 

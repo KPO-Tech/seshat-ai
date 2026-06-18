@@ -72,6 +72,7 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	apiV1.Handle("/mcp/config", app.requireRole("admin", http.HandlerFunc(app.handleMCPConfig)))
 	apiV1.Handle("/mcp/config/", app.requireRole("admin", http.HandlerFunc(app.handleMCPConfigDispatch)))
 	apiV1.Handle("/mcp/reload", app.requireRole("admin", http.HandlerFunc(app.handleMCPReload)))
+	apiV1.Handle("/mcp/tools", app.requireRole("admin", http.HandlerFunc(app.handleMCPTools)))
 
 	apiV1.Handle("/query", app.authMiddleware(http.HandlerFunc(app.handleQuery)))
 	apiV1.Handle("/query/stream", app.authMiddleware(http.HandlerFunc(app.handleQueryStream)))

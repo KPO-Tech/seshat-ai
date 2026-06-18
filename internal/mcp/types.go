@@ -47,6 +47,12 @@ type ServerStatus struct {
 	Tools int
 }
 
+// ToolInfo holds the name and description of a single connected MCP tool.
+type ToolInfo struct {
+	Name        string
+	Description string
+}
+
 type CreateParams struct {
 	Name        string
 	DisplayName string

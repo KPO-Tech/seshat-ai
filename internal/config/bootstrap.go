@@ -354,23 +354,20 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		fmt.Fprintf(os.Stderr, "[API] Avertissement: embedder non configuré (RAG_EMBEDDING_URL + RAG_EMBEDDING_MODEL requis) — knowledge ingest/search désactivé\n")
 	}
 
+	// Auto-import mcp.json into DB so the UI and runtime share the same state.
+	// Idempotent: ON CONFLICT (name) DO UPDATE — user edits in the UI are preserved.
+	if localCfg, localErrs := mcpLoadLocalJSON(); len(localCfg.MCPServers) > 0 && len(localErrs) == 0 {
+		if n, importErr := mcpServerStore.ImportFromMcpJSON(ctx, localCfg); importErr != nil {
+			fmt.Fprintf(os.Stderr, "[API] Avertissement MCP: import mcp.json: %v\n", importErr)
+		} else if n > 0 {
+			fmt.Printf("[API] MCP: %d server(s) importés depuis mcp.json\n", n)
+		}
+	}
+
 	var startupMCPServers []sdk.MCPServerConfig
 	if dbServers, dbErr := mcpServerStore.ListEnabled(ctx); dbErr == nil && len(dbServers) > 0 {
 		startupMCPServers = append(startupMCPServers, dbMCPServersToSDKConfigs(dbServers)...)
 		fmt.Printf("[API] MCP: %d server(s) chargés depuis la DB\n", len(dbServers))
-	}
-	if localCfg, localErrs := mcpLoadLocalJSON(); len(localCfg.MCPServers) > 0 && len(localErrs) == 0 {
-		dbNames := make(map[string]bool, len(startupMCPServers))
-		for _, s := range startupMCPServers {
-			dbNames[s.Name] = true
-		}
-		for name, srv := range localCfg.MCPServers {
-			if dbNames[name] {
-				continue
-			}
-			startupMCPServers = append(startupMCPServers, mcpFileEntryToSDK(name, srv))
-		}
-		fmt.Printf("[API] MCP: serveurs additionnels depuis mcp.json\n")
 	}
 
 	queryClientConfig := &sdk.ClientConfig{
@@ -621,28 +618,6 @@ func mcpLoadLocalJSON() (mcp.McpJsonConfig, []mcp.ValidationError) {
 		return mcp.McpJsonConfig{}, nil
 	}
 	return mcp.ParseMcpConfigFromFile(path)
-}
-
-// mcpFileEntryToSDK converts a single McpServerConfig + name to sdk.MCPServerConfig.
-func mcpFileEntryToSDK(name string, s mcp.McpServerConfig) sdk.MCPServerConfig {
-	transport := mcp.TransportType(s.Type)
-	if transport == "" {
-		if s.Command != "" {
-			transport = "stdio"
-		} else {
-			transport = "http"
-		}
-	}
-	return sdk.MCPServerConfig{
-		Name:      name,
-		Command:   s.Command,
-		Args:      s.Args,
-		URL:       s.URL,
-		Transport: transport,
-		Env:       s.Env,
-		Headers:   s.Headers,
-		Timeout:   time.Duration(s.Timeout) * time.Second,
-	}
 }
 
 // ─── Plan store adapter ───────────────────────────────────────────────────────
