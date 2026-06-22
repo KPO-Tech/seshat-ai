@@ -3,8 +3,8 @@ package mcp
 import (
 	"time"
 
-	enginemcp "github.com/EngineerProjects/nexus-engine/pkg/mcp"
-	"github.com/EngineerProjects/nexus-engine/pkg/sdk"
+	enginemcp "github.com/EngineerProjects/seshat/pkg/mcp"
+	"github.com/EngineerProjects/seshat/pkg/sdk"
 )
 
 type Server struct {

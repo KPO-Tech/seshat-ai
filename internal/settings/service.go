@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	backendauth "github.com/EngineerProjects/nexus_ai/internal/auth"
-	"github.com/EngineerProjects/nexus_ai/internal/bkerr"
-	"github.com/EngineerProjects/nexus_ai/internal/db"
+	backendauth "github.com/EngineerProjects/seshat-ai/internal/auth"
+	"github.com/EngineerProjects/seshat-ai/internal/bkerr"
+	"github.com/EngineerProjects/seshat-ai/internal/db"
 )
 
 type OAuthClient interface {

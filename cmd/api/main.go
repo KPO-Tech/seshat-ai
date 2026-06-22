@@ -10,10 +10,10 @@ import (
 	"syscall"
 	"time"
 
-	appconfig "github.com/EngineerProjects/nexus-engine/pkg/config"
-	"github.com/EngineerProjects/nexus-engine/pkg/python"
-	"github.com/EngineerProjects/nexus_ai/internal/api"
-	nexusconfig "github.com/EngineerProjects/nexus_ai/internal/config"
+	"github.com/EngineerProjects/seshat-ai/internal/api"
+	seshatconfig "github.com/EngineerProjects/seshat-ai/internal/config"
+	appconfig "github.com/EngineerProjects/seshat/pkg/config"
+	"github.com/EngineerProjects/seshat/pkg/python"
 )
 
 func main() {
@@ -54,7 +54,7 @@ func main() {
 		}
 	}()
 
-	app, cleanup, err := nexusconfig.BuildApp(ctx, config)
+	app, cleanup, err := seshatconfig.BuildApp(ctx, config)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[API] Erreur initialisation: %v\n", err)
 		os.Exit(1)

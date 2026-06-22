@@ -23,7 +23,7 @@ labels: enhancement
 ## Scope
 
 <!-- Which part of the platform does this affect? -->
-<!-- (auth / sessions / RAG / skills / MCP / scheduler / UI / API / nexus-engine) -->
+<!-- (auth / sessions / RAG / skills / MCP / scheduler / UI / API / seshat) -->
 
 ## Additional context
 

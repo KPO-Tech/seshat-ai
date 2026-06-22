@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/EngineerProjects/nexus_ai/internal/db"
-	backendmemories "github.com/EngineerProjects/nexus_ai/internal/memories"
+	"github.com/EngineerProjects/seshat-ai/internal/db"
+	backendmemories "github.com/EngineerProjects/seshat-ai/internal/memories"
 )
 
 // ─── isPromptReadableAttachment ───────────────────────────────────────────────

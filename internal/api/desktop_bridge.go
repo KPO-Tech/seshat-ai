@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/EngineerProjects/nexus-engine/pkg/runtimepath"
+	"github.com/EngineerProjects/seshat/pkg/runtimepath"
 )
 
 const desktopBridgeSecretFile = "desktop-bridge-secret"

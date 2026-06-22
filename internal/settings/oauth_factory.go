@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/EngineerProjects/nexus-engine/pkg/auth/oauth"
+	"github.com/EngineerProjects/seshat/pkg/auth/oauth"
 )
 
 type defaultOAuthClientFactory struct{}

@@ -8,9 +8,9 @@
 #   make start-docling  → start docling-serve manually
 
 ROOT   := $(shell pwd)
-BIN    := nexus-engine
+BIN    := seshat
 CMD    := ./cmd/api
-UI_DIR := $(ROOT)/nexus-ui
+UI_DIR := $(ROOT)/seshat-ui
 
 # Detect OS for open/xdg-open
 UNAME := $(shell uname -s)
@@ -53,7 +53,7 @@ stop: ## Stop backend and UI processes
 
 # ─── Backend ──────────────────────────────────────────────────────────────────
 
-build: ## Compile the backend binary → ./nexus-engine
+build: ## Compile the backend binary → ./seshat
 	@printf '\033[32m[go]\033[0m building %s…\n' $(BIN)
 	@go build -o $(BIN) $(CMD)
 	@printf '\033[32m[go]\033[0m binary ready: %s/%s\n' $(ROOT) $(BIN)
@@ -81,7 +81,7 @@ test-pkg: ## Run tests for a specific package  (PKG=./internal/scheduler/...)
 # ─── Code quality ─────────────────────────────────────────────────────────────
 
 fmt: ## Format all Go source files with gofmt
-	gofmt -w $(shell find . -name "*.go" -not -path "./nexus-engine/*" -not -path "./nexus-skills/*" -not -path "./vendor/*")
+	gofmt -w $(shell find . -name "*.go" -not -path "./seshat/*" -not -path "./seshat-skills/*" -not -path "./vendor/*")
 
 vet: ## Run go vet across all packages
 	go vet ./...
@@ -142,7 +142,7 @@ start-docling: ## Start docling-serve manually (auto-started by the backend)
 # ─── Logs ─────────────────────────────────────────────────────────────────────
 
 logs: ## Tail the backend log in real time (Ctrl-C to exit)
-	@RUNTIME_ROOT=$${NEXUS_RUNTIME_ROOT:-$$HOME/.config/nexus}; \
+	@RUNTIME_ROOT=$${SESHAT_RUNTIME_ROOT:-$$HOME/.config/nexus}; \
 	 LOG="$$RUNTIME_ROOT/logs/engine.log"; \
 	 if [ -f "$$LOG" ]; then \
 	   printf '\033[32m[logs]\033[0m %s\n\n' "$$LOG"; \
@@ -152,7 +152,7 @@ logs: ## Tail the backend log in real time (Ctrl-C to exit)
 	 fi
 
 logs-last: ## Show the last 200 lines of the backend log
-	@RUNTIME_ROOT=$${NEXUS_RUNTIME_ROOT:-$$HOME/.config/nexus}; \
+	@RUNTIME_ROOT=$${SESHAT_RUNTIME_ROOT:-$$HOME/.config/nexus}; \
 	 LOG="$$RUNTIME_ROOT/logs/engine.log"; \
 	 if [ -f "$$LOG" ]; then \
 	   tail -200 "$$LOG"; \
@@ -161,7 +161,7 @@ logs-last: ## Show the last 200 lines of the backend log
 	 fi
 
 logs-docling: ## Tail the docling-serve log in real time (Ctrl-C to exit)
-	@RUNTIME_ROOT=$${NEXUS_RUNTIME_ROOT:-$$HOME/.config/nexus}; \
+	@RUNTIME_ROOT=$${SESHAT_RUNTIME_ROOT:-$$HOME/.config/nexus}; \
 	 LOG="$$RUNTIME_ROOT/logs/docling.log"; \
 	 if [ -f "$$LOG" ]; then \
 	   printf '\033[32m[logs]\033[0m %s\n\n' "$$LOG"; \

@@ -1,39 +1,39 @@
-# Agent Instructions — Nexus Product
+# Agent Instructions — SeshatOS
 
-This file provides guidance for AI agents (Nexus, Claude Code, Codex, or similar) working on this repository. Read it before making any changes.
+This file provides guidance for AI agents (SeshatOS, Claude Code, Codex, or similar) working on this repository. Read it before making any changes.
 
 ---
 
 ## Project overview
 
-nexus-product is the **private proprietary product layer** built on top of [nexus-engine](https://github.com/EngineerProjects/nexus-engine). It adds multi-user auth, organizations, workspaces, per-user provider credentials, knowledge/RAG, MCP management, audit, quotas, and a full REST+SSE HTTP API on top of the open-source runtime.
+seshat-ai is the **private proprietary product layer** built on top of [seshat](https://github.com/EngineerProjects/seshat). It adds multi-user auth, organizations, workspaces, per-user provider credentials, knowledge/RAG, MCP management, audit, quotas, and a full REST+SSE HTTP API on top of the open-source runtime.
 
 This repository contains two sub-projects:
 
 | Directory | Language | Role |
 |---|---|---|
-| `cmd/api/` + `internal/` | Go | nexus-product — HTTP API server |
-| `nexus-ui/` | TypeScript / Electron | Desktop client that consumes the API |
-| `nexus-engine/` | Go (submodule) | Open-source AI agent runtime — **never modify** |
+| `cmd/api/` + `internal/` | Go | seshat-ai — HTTP API server |
+| `seshat-ui/` | TypeScript / Electron | Desktop client that consumes the API |
+| `seshat/` | Go (submodule) | Open-source AI agent runtime — **never modify** |
 
 **Dependency direction is strictly one-way:**
 
 ```
-nexus-ui       → nexus-product API   (HTTP only, port 8090)
-nexus-product  → nexus-engine        (Go imports from pkg/ only)
-nexus-engine   → nexus-product       (never)
-nexus-engine   → nexus-ui            (never)
+seshat-ui       → seshat-ai API   (HTTP only, port 8090)
+seshat-ai  → seshat        (Go imports from pkg/ only)
+seshat   → seshat-ai       (never)
+seshat   → seshat-ui            (never)
 ```
 
-nexus-product may import `nexus-engine/pkg/*` freely. It must never import `nexus-engine/internal/*`. nexus-engine must never reference nexus-product.
+seshat-ai may import `seshat/pkg/*` freely. It must never import `seshat/internal/*`. seshat must never reference seshat-ai.
 
 ---
 
-## nexus-ui
+## seshat-ui
 
-`nexus-ui` is an Electron + React desktop application. It is a **pure UI consumer** of the nexus-product HTTP API — no AI logic, no database, no Go code.
+`seshat-ui` is an Electron + React desktop application. It is a **pure UI consumer** of the seshat-ai HTTP API — no AI logic, no database, no Go code.
 
-Before working on nexus-ui, read **[`nexus-ui/AGENTS.md`](./nexus-ui/AGENTS.md)** which covers:
+Before working on seshat-ui, read **[`seshat-ui/AGENTS.md`](./seshat-ui/AGENTS.md)** which covers:
 - Process architecture (main / preload / renderer)
 - Desktop bridge security (HMAC-SHA256 handshake)
 - Full design system and artistic direction (color palette, typography, motion, CSS patterns)
@@ -74,7 +74,7 @@ internal/
 │   ├── helpers.go     writeJSON, decodeJSONBody, writeBackendError
 │   └── *.go           one file per domain (auth.go, query.go, files.go, ...)
 │
-├── app.go        ← package nexus — App, Dependencies, NewApp (the DI container)
+├── app.go        ← package seshat — App, Dependencies, NewApp (the DI container)
 │
 ├── audit/        ← audit log service
 ├── auth/         ← JWT, API keys, principal, roles, identity
@@ -87,7 +87,7 @@ internal/
 ├── metrics/      ← Prometheus snapshot service
 ├── plans/        ← plan document CRUD
 ├── preferences/  ← user preferences, permission mode resolution
-├── query/        ← query/streaming runtime adapter (wraps nexus-engine SDK)
+├── query/        ← query/streaming runtime adapter (wraps seshat SDK)
 ├── quotas/       ← usage counters per metric
 ├── resources/    ← organizations, workspaces, user admin
 ├── settings/     ← provider settings, OAuth connections
@@ -105,13 +105,13 @@ cmd/api/
 - `internal/api/` is the **transport layer only** — it must not contain business logic. Handlers call backend services and map responses to HTTP.
 - Domain services (`internal/<domain>/`) are the **business logic layer** — they take `*auth.Principal` and domain params, return domain types and `bkerr` errors. They never import `internal/api/`.
 - `internal/db/` is the **data access layer** — raw store operations. Services wrap stores; handlers never access stores directly.
-- `internal/app.go` (`package nexus`) is the **DI container** — it wires all stores into services. No logic here.
+- `internal/app.go` (`package seshat`) is the **DI container** — it wires all stores into services. No logic here.
 - `internal/bkerr/` defines error kinds. All services use `bkerr.InvalidInput`, `bkerr.NotFound`, etc. Handlers map these to HTTP status codes via `writeBackendError`.
 
 **Import direction (strict):**
 ```
 internal/api → internal/<domain> → internal/db
-internal/api → internal/app.go (package nexus)
+internal/api → internal/app.go (package seshat)
 ```
 
 No cycles. Never import `internal/api/` from a domain service.
@@ -152,7 +152,7 @@ Things: <domain>.NewService(deps.ThingStore),
 
 **3. Bootstrap** — `internal/api/bootstrap.go`
 
-Add store initialization and pass it to `nexus.Dependencies`.
+Add store initialization and pass it to `seshat.Dependencies`.
 
 **4. HTTP handler** — `internal/api/<domain>.go`
 
@@ -175,12 +175,12 @@ apiV1.Handle("/things", app.authMiddleware(http.HandlerFunc(app.handleThings)))
 
 ---
 
-## Rules for nexus-engine
+## Rules for seshat
 
-- **Never modify files inside `nexus-engine/`**. It is an active open-source submodule with its own CI and contributors.
-- If nexus-product needs something that nexus-engine doesn't yet expose, open a PR on nexus-engine to add it to `pkg/` first, then consume it here.
-- Always verify that `pkg/` of nexus-engine exposes what you need before importing from it.
-- The `nexus-engine` submodule pointer in `go.mod` (`replace` directive) must never be changed without explicit instruction.
+- **Never modify files inside `seshat/`**. It is an active open-source submodule with its own CI and contributors.
+- If seshat-ai needs something that seshat doesn't yet expose, open a PR on seshat to add it to `pkg/` first, then consume it here.
+- Always verify that `pkg/` of seshat exposes what you need before importing from it.
+- The `seshat` submodule pointer in `go.mod` (`replace` directive) must never be changed without explicit instruction.
 
 ---
 
@@ -268,7 +268,7 @@ When you add or change behavior, also update:
 
 - Do not add business logic to `internal/api/` handlers — it belongs in services.
 - Do not access `internal/db/` stores directly from handlers — always go through a service.
-- Do not add `cmd/api`, user models, or auth to `nexus-engine`.
+- Do not add `cmd/api`, user models, or auth to `seshat`.
 - Do not add `replace` directives to `go.mod`.
 - Do not commit secrets, credentials, or large binaries.
 - Do not use `//nolint` without an explanation comment on the same line.
@@ -281,8 +281,8 @@ When you add or change behavior, also update:
 - Read `README.md` for the product overview and API surface.
 - Read `docs/README.md` for the full documentation index.
 - Read `docs/architecture.md` for the backend package map.
-- Read `docs/nexus-ui.md` for the desktop client architecture.
-- Read `docs/product/vision.md` for what Nexus is and is not.
+- Read `docs/seshat-ui.md` for the desktop client architecture.
+- Read `docs/product/vision.md` for what SeshatOS is and is not.
 - Read `docs/development.md` for local setup and env vars.
 - Read `internal/app.go` to understand the Go dependency graph.
-- Read `nexus-ui/AGENTS.md` for UI-specific rules and artistic direction.
+- Read `seshat-ui/AGENTS.md` for UI-specific rules and artistic direction.

@@ -40,7 +40,7 @@ Security issues we want to know about:
 Out of scope:
 
 - Vulnerabilities in the underlying LLM providers (report to Anthropic, OpenAI, etc.).
-- Issues in `nexus-engine` — report those in the [nexus-engine repository](https://github.com/EngineerProjects/nexus-engine/security/advisories).
+- Issues in `seshat` — report those in the [seshat repository](https://github.com/EngineerProjects/seshat/security/advisories).
 - Denial-of-service on single-user local deployments.
 - Social engineering or phishing.
 
@@ -48,14 +48,14 @@ Out of scope:
 
 ## Security model
 
-Nexus is a **multi-user web application**. The security controls in place:
+SeshatOS is a **multi-user web application**. The security controls in place:
 
 - **Authentication** — JWT tokens (short-lived) + API keys (prefixed `sk-`, bcrypt-hashed in the DB).
 - **Authorization** — role-based (`admin` / user) + group permissions (knowledge, file upload, web search, API keys).
 - **Session isolation** — sessions are owned by a user; cross-user access is rejected at the service layer.
 - **Encrypted credentials** — provider API keys are AES-encrypted at rest in the database.
-- **Password hashing** — bcrypt (cost 12 minimum) for all user passwords. `NEXUS_ADMIN_PASSWORD_HASH` is required in production (plaintext `NEXUS_ADMIN_PASSWORD` is blocked when `NEXUS_ENV=production`).
-- **Trusted proxies** — `X-Forwarded-For` is only honoured for IPs in the configured `NEXUS_TRUSTED_PROXIES` CIDR list, preventing IP spoofing.
+- **Password hashing** — bcrypt (cost 12 minimum) for all user passwords. `SESHAT_ADMIN_PASSWORD_HASH` is required in production (plaintext `SESHAT_ADMIN_PASSWORD` is blocked when `SESHAT_ENV=production`).
+- **Trusted proxies** — `X-Forwarded-For` is only honoured for IPs in the configured `SESHAT_TRUSTED_PROXIES` CIDR list, preventing IP spoofing.
 - **Body size limit** — request bodies are capped at 4 MB (excluding file uploads and SSE streams).
 - **Rate limiting** — per-user in-memory fixed-window rate limiter; tighter limit on login endpoints.
 - **Audit log** — all auth events, file operations, settings changes, and admin actions are logged.
@@ -64,15 +64,15 @@ Nexus is a **multi-user web application**. The security controls in place:
 
 ## Production checklist
 
-Before exposing Nexus to the internet:
+Before exposing SeshatOS to the internet:
 
-- [ ] Set `NEXUS_ADMIN_PASSWORD_HASH` (bcrypt) — never `NEXUS_ADMIN_PASSWORD` in production.
-- [ ] Set `NEXUS_ENV=production` to block plaintext admin passwords at startup.
-- [ ] Configure `NEXUS_TRUSTED_PROXIES` if behind a reverse proxy.
-- [ ] Set `NEXUS_ALLOWED_ORIGINS` to an explicit origin allowlist (never `*`).
+- [ ] Set `SESHAT_ADMIN_PASSWORD_HASH` (bcrypt) — never `SESHAT_ADMIN_PASSWORD` in production.
+- [ ] Set `SESHAT_ENV=production` to block plaintext admin passwords at startup.
+- [ ] Configure `SESHAT_TRUSTED_PROXIES` if behind a reverse proxy.
+- [ ] Set `SESHAT_ALLOWED_ORIGINS` to an explicit origin allowlist (never `*`).
 - [ ] Use PostgreSQL or MySQL with a dedicated user for the backend DB.
 - [ ] Enable TLS on the reverse proxy — never expose port 8090 directly.
-- [ ] Restrict `NEXUS_ENABLE_SIGNUP` to `false` unless open registration is intentional.
+- [ ] Restrict `SESHAT_ENABLE_SIGNUP` to `false` unless open registration is intentional.
 - [ ] Review MCP server configurations — only allow servers from trusted sources.
 
 ---

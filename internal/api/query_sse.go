@@ -35,7 +35,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/EngineerProjects/nexus-engine/pkg/types"
+	"github.com/EngineerProjects/seshat/pkg/types"
 )
 
 const sseProtocolVersion = "1"

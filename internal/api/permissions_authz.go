@@ -3,8 +3,8 @@ package api
 import (
 	"net/http"
 
-	backendauth "github.com/EngineerProjects/nexus_ai/internal/auth"
-	"github.com/EngineerProjects/nexus_ai/internal/db"
+	backendauth "github.com/EngineerProjects/seshat-ai/internal/auth"
+	"github.com/EngineerProjects/seshat-ai/internal/db"
 )
 
 type permissionCheck func(db.GroupPermissions) bool

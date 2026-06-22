@@ -1,21 +1,21 @@
-# Nexus UI — Architecture and Guide
+# SeshatOS UI — Architecture and Guide
 
-Documentation for `nexus-ui`, the Electron + React desktop application for Nexus.
+Documentation for `seshat-ui`, the Electron + React desktop application for SeshatOS.
 
-For AI agent working rules and artistic direction, see [`nexus-ui/AGENTS.md`](../nexus-ui/AGENTS.md).
+For AI agent working rules and artistic direction, see [`seshat-ui/AGENTS.md`](../seshat-ui/AGENTS.md).
 
 ---
 
 ## Overview
 
-`nexus-ui` is a **frameless Electron desktop app** that consumes the Nexus AI REST + SSE HTTP API. It has no backend logic — it is a pure UI layer.
+`seshat-ui` is a **frameless Electron desktop app** that consumes the SeshatOS REST + SSE HTTP API. It has no backend logic — it is a pure UI layer.
 
 ```
-nexus-ui (Electron + React)
+seshat-ui (Electron + React)
   ↓ HTTP / IPC bridge
-Nexus AI API (Go, port 8090)
+SeshatOS API (Go, port 8090)
   ↓
-nexus-engine (Go AI agent runtime)
+seshat (Go AI agent runtime)
 ```
 
 ---
@@ -29,18 +29,18 @@ Electron splits code across two isolated processes:
 Runs in Node.js. Owns:
 - Window creation (`index.ts`) — frameless, 1280×800, custom title bar
 - IPC handler registration — three modules:
-  - `ipc/backend.ts` — authenticates with the Nexus AI backend via HMAC-SHA256 bridge handshake, then proxies HTTP requests and SSE streams
+  - `ipc/backend.ts` — authenticates with the SeshatOS backend via HMAC-SHA256 bridge handshake, then proxies HTTP requests and SSE streams
   - `ipc/secure-store.ts` — OS keychain integration (`safeStorage`) for auth token persistence
   - `ipc/system.ts` — window controls (minimize / maximize / close)
-- Runtime path resolution (`runtime.ts`) — `NEXUS_RUNTIME_ROOT` → `~/.config/nexus`
+- Runtime path resolution (`runtime.ts`) — `SESHAT_RUNTIME_ROOT` → `~/.config/seshat`
 
 ### Preload (`src/preload/index.ts`)
 
-Bridges the two processes via `contextBridge`. Exposes `window.nexus` to the renderer — a typed API surface covering window controls, HTTP operations, streaming, auth, and secure storage.
+Bridges the two processes via `contextBridge`. Exposes `window.seshat` to the renderer — a typed API surface covering window controls, HTTP operations, streaming, auth, and secure storage.
 
 ### Renderer (`src/renderer/`)
 
-Sandboxed browser context. Full React application. Never has direct Node.js access — everything goes through `window.nexus`.
+Sandboxed browser context. Full React application. Never has direct Node.js access — everything goes through `window.seshat`.
 
 ---
 
@@ -107,7 +107,7 @@ src/renderer/
 
 ```
 /login           ← unauthenticated
-/register        ← unauthenticated (if NEXUS_ENABLE_SIGNUP=true)
+/register        ← unauthenticated (if SESHAT_ENABLE_SIGNUP=true)
 
 / (Shell)        ← requires auth (AuthGuard)
   /              ← Home: new chat
@@ -124,14 +124,14 @@ All routes use `createHashRouter` (required for Electron file:// loads — brows
 
 ## Desktop bridge security
 
-At startup the main process performs a **HMAC-SHA256 handshake** with the Nexus AI backend:
+At startup the main process performs a **HMAC-SHA256 handshake** with the SeshatOS backend:
 
 1. Generate a random 32-byte nonce.
 2. Call `GET /api/v1/desktop/handshake?nonce=<nonce>`.
-3. Read the per-install secret from `~/.config/nexus/data/desktop-bridge-secret` (created on first run, mode `0o600`).
+3. Read the per-install secret from `~/.config/seshat/data/desktop-bridge-secret` (created on first run, mode `0o600`).
 4. Verify `body.proof === HMAC-SHA256(secret, nonce)`.
 
-This ensures that `nexus-ui` only talks to a local backend that shares the same runtime root, preventing confused-deputy attacks where a malicious backend impersonates the trusted one.
+This ensures that `seshat-ui` only talks to a local backend that shares the same runtime root, preventing confused-deputy attacks where a malicious backend impersonates the trusted one.
 
 If the handshake fails, all API calls are blocked and the app shows an error.
 
@@ -143,7 +143,7 @@ If the handshake fails, all API calls are blocked and the app shows an error.
 User sends message
   → useChat.sendMessage()
       → adds user + placeholder assistant messages to session store
-      → calls window.nexus.http.startStream({ path: '/query/stream', body })
+      → calls window.seshat.http.startStream({ path: '/query/stream', body })
           → main process: POST /api/v1/query/stream (SSE)
               → streams back: text chunks, tool progress, permission requests, done
       → IPC channel: http:stream:event per SSE line
@@ -180,19 +180,19 @@ Typography: **Plus Jakarta Sans → Inter → system-ui**, 14px base.
 
 Spacing: border radius 6px → 8px → 10px → 12px → 20px (scale from chips to chat input).
 
-See [`nexus-ui/AGENTS.md`](../nexus-ui/AGENTS.md) for the full artistic direction guide including motion, scrollbar behavior, CSS patterns, and what not to do.
+See [`seshat-ui/AGENTS.md`](../seshat-ui/AGENTS.md) for the full artistic direction guide including motion, scrollbar behavior, CSS patterns, and what not to do.
 
 ---
 
 ## Running locally
 
 ```bash
-cd nexus-ui
+cd seshat-ui
 
 # Install dependencies
 npm install
 
-# Start dev mode (requires nexus-ai running on :8090)
+# Start dev mode (requires seshat-ai running on :8090)
 npm run start
 
 # Type-check
@@ -212,14 +212,14 @@ Environment variables for dev:
 
 | Variable | Description | Default |
 |---|---|---|
-| `NEXUS_BACKEND_ORIGIN` | nexus-ai base URL | `http://127.0.0.1:8090` |
-| `NEXUS_RUNTIME_ROOT` | Data directory (must match backend) | `~/.config/nexus` |
+| `SESHAT_BACKEND_ORIGIN` | seshat-ai base URL | `http://127.0.0.1:8090` |
+| `SESHAT_RUNTIME_ROOT` | Data directory (must match backend) | `~/.config/seshat` |
 
 ---
 
-## API contract with nexus-ai
+## API contract with seshat-ai
 
-All types consumed by the UI are defined in `src/renderer/api/types.ts`. When nexus-ai adds or changes an API endpoint:
+All types consumed by the UI are defined in `src/renderer/api/types.ts`. When seshat-ai adds or changes an API endpoint:
 
 1. Update `src/renderer/api/types.ts` with the new response shape.
 2. Update or add the call in `src/renderer/api/client.ts`.
@@ -231,7 +231,7 @@ The UI must never depend on undocumented response fields. If a field is not in `
 
 ## Key design decisions
 
-**Frameless window** — The native OS title bar is replaced by a custom 42px title bar with Nexus branding in the center and window controls on the right. This gives a consistent look across platforms and allows the sidebar toggle button to sit in the title bar.
+**Frameless window** — The native OS title bar is replaced by a custom 42px title bar with SeshatOS branding in the center and window controls on the right. This gives a consistent look across platforms and allows the sidebar toggle button to sit in the title bar.
 
 **Hash router** — `createHashRouter` is mandatory for Electron's `file://` protocol. Do not switch to a browser-history router.
 

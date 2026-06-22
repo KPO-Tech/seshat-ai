@@ -1,6 +1,6 @@
-# Nexus Runtime Directory Layout
+# SeshatOS Runtime Directory Layout
 
-**Default root:** `~/.config/nexus` (override via `NEXUS_RUNTIME_ROOT` env var)
+**Default root:** `~/.config/seshat` (override via `SESHAT_RUNTIME_ROOT` env var)
 
 All persistent state — database, sessions, artifacts, skills, plans, logs — lives
 under a single directory called the *runtime root*. Deleting or relocating the root
@@ -11,9 +11,9 @@ moves everything at once.
 ## Top-level structure
 
 ```
-~/.config/nexus/                   ← runtime root (NEXUS_RUNTIME_ROOT)
+~/.config/seshat/                   ← runtime root (SESHAT_RUNTIME_ROOT)
 │
-├── nexus.db                       ← main SQLite database (users, providers,
+├── seshat.db                       ← main SQLite database (users, providers,
 │                                    sessions metadata, knowledge, plans, …)
 │
 ├── secret.key                     ← server encryption key (auto-generated, keep private)
@@ -55,7 +55,7 @@ moves everything at once.
 │
 ├── storage/                       ← S3-compatible object storage (optional)
 │
-├── .venv/                         ← Nexus-managed Python venv (docling-serve)
+├── .venv/                         ← SeshatOS-managed Python venv (docling-serve)
 │   └── bin/docling-serve          ← document conversion server binary
 │
 └── electron/                      ← Electron app OS paths (desktop only)
@@ -73,8 +73,8 @@ All canonical paths are resolved through `pkg/runtimepath`:
 
 | Function | Path |
 |---|---|
-| `ResolveRoot(explicit)` | explicit → `NEXUS_RUNTIME_ROOT` → `~/.config/nexus` |
-| `BackendDBPath(root)` | `{root}/nexus.db` |
+| `ResolveRoot(explicit)` | explicit → `SESHAT_RUNTIME_ROOT` → `~/.config/seshat` |
+| `BackendDBPath(root)` | `{root}/seshat.db` |
 | `SessionsDir(root)` | `{root}/sessions/` |
 | `SessionDir(root, id)` | `{root}/sessions/{id}/` |
 | `SessionArtifactsDir(root, id)` | `{root}/sessions/{id}/artifacts/` |
@@ -110,7 +110,7 @@ A session has two representations that must be removed together:
 
 | Layer | Location | How to delete |
 |---|---|---|
-| **Database** | `nexus.db` — `sessions` table + related rows (messages, files, …) | `store.DeleteSession(ctx, id)` |
+| **Database** | `seshat.db` — `sessions` table + related rows (messages, files, …) | `store.DeleteSession(ctx, id)` |
 | **Filesystem** | `sessions/{id}/` and all subdirectories | `os.RemoveAll(SessionDir(root, id))` |
 | **Object storage** | S3 prefix `sessions/{id}/` (when configured) | Provider-specific delete |
 
@@ -129,21 +129,21 @@ Recommended pattern:
 
 ## Docling (document conversion)
 
-Nexus integrates [docling-serve](https://github.com/DS4SD/docling-serve) for
+SeshatOS integrates [docling-serve](https://github.com/DS4SD/docling-serve) for
 converting DOCX, PPTX, XLSX, PDF, and audio files to text/markdown. It runs as an
 optional sidecar HTTP process on `127.0.0.1:5001`.
 
 ### Install
 
 ```bash
-# From nexus-ui/ or nexus-engine/
+# From seshat-ui/ or seshat/
 make install-python
 
 # Or directly:
 ./scripts/install-python-env.sh
 ```
 
-This creates `~/.config/nexus/.venv/` and installs `docling-serve` into it using
+This creates `~/.config/seshat/.venv/` and installs `docling-serve` into it using
 `uv` (no system Python required).
 
 GPU acceleration:
@@ -155,15 +155,15 @@ DOCLING_EXTRAS=gpu ./scripts/install-python-env.sh
 ### Auto-start
 
 **Backend (HTTP API server / desktop app):** The backend binary (`cmd/api`) checks at
-startup whether `~/.config/nexus/.venv/bin/docling-serve` exists. If it does and
-`NEXUS_DOCLING_URL` / `docling_url` config is not set, it starts docling-serve
+startup whether `~/.config/seshat/.venv/bin/docling-serve` exists. If it does and
+`SESHAT_DOCLING_URL` / `docling_url` config is not set, it starts docling-serve
 automatically in the background and routes document-conversion requests to it.
 
 Startup is non-blocking — the server becomes ready while docling warms up (~5 s on a
 cold start). Tools that need docling (`read`, `read_document_url`) fall back to
 plain-text extraction until it responds.
 
-Logs go to `~/.config/nexus/logs/docling.log`. Set `NEXUS_DOCLING_VERBOSE=1` to
+Logs go to `~/.config/seshat/logs/docling.log`. Set `SESHAT_DOCLING_VERBOSE=1` to
 print them to stderr instead.
 
 **Manual start:**
@@ -178,9 +178,9 @@ DOCLING_PORT=5002 ./scripts/start-docling.sh
 
 | Variable | Default | Description |
 |---|---|---|
-| `NEXUS_RUNTIME_ROOT` | `~/.config/nexus` | Runtime root (shared by all components) |
-| `NEXUS_DOCLING_URL` | *(auto)* | Override docling-serve URL; set to skip auto-start |
-| `NEXUS_DOCLING_VERBOSE` | — | If set, print docling logs to stderr |
+| `SESHAT_RUNTIME_ROOT` | `~/.config/seshat` | Runtime root (shared by all components) |
+| `SESHAT_DOCLING_URL` | *(auto)* | Override docling-serve URL; set to skip auto-start |
+| `SESHAT_DOCLING_VERBOSE` | — | If set, print docling logs to stderr |
 | `DOCLING_PORT` | `5001` | Port for manual `start-docling.sh` invocation |
 | `DOCLING_HOST` | `127.0.0.1` | Bind address for manual invocation |
 | `DOCLING_WORKERS` | `1` | Parallel conversion workers |

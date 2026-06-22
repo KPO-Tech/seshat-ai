@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	backendskills "github.com/EngineerProjects/nexus_ai/internal/skills"
+	backendskills "github.com/EngineerProjects/seshat-ai/internal/skills"
 )
 
 // skillDTO is the serializable view of a skill — excludes function fields.

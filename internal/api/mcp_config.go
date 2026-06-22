@@ -6,9 +6,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/EngineerProjects/nexus-engine/pkg/mcp"
-	"github.com/EngineerProjects/nexus-engine/pkg/runtimepath"
-	backendmcp "github.com/EngineerProjects/nexus_ai/internal/mcp"
+	backendmcp "github.com/EngineerProjects/seshat-ai/internal/mcp"
+	"github.com/EngineerProjects/seshat/pkg/mcp"
+	"github.com/EngineerProjects/seshat/pkg/runtimepath"
 )
 
 // DefaultMCPJsonPath returns the canonical path for the local MCP JSON config.
@@ -239,7 +239,7 @@ func (a *App) handleMCPConfigByID(w http.ResponseWriter, r *http.Request) {
 
 // POST /api/v1/mcp/config/import-json
 // Body: { "servers": { "name": { "type": "...", "command": "..." } } }
-// OR empty body → loads from ~/.config/nexus/mcp.json
+// OR empty body → loads from ~/.config/seshat/mcp.json
 func (a *App) handleMCPImportJSON(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)

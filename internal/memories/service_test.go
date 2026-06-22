@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	backendauth "github.com/EngineerProjects/nexus_ai/internal/auth"
-	"github.com/EngineerProjects/nexus_ai/internal/db"
+	backendauth "github.com/EngineerProjects/seshat-ai/internal/auth"
+	"github.com/EngineerProjects/seshat-ai/internal/db"
 )
 
 // openMemoriesService opens a real SQLite test DB and returns a ready Service

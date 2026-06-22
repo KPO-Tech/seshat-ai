@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	longterm "github.com/EngineerProjects/nexus-engine/pkg/memory/longterm"
+	longterm "github.com/EngineerProjects/seshat/pkg/memory/longterm"
 )
 
 func TestAPIKeyStore_CreateAndResolve(t *testing.T) {
@@ -520,7 +520,7 @@ func TestCredentials_DeleteNonExistent(t *testing.T) {
 }
 
 func TestOpenSQLiteAutoMigratesSharedSchema(t *testing.T) {
-	database, err := Open(context.Background(), DefaultSQLiteConfig(filepath.Join(t.TempDir(), "nexus.db")))
+	database, err := Open(context.Background(), DefaultSQLiteConfig(filepath.Join(t.TempDir(), "seshat.db")))
 	if err != nil {
 		t.Fatalf("Open failed: %v", err)
 	}
@@ -749,7 +749,7 @@ func TestStorageConfigStore_UpsertLocal(t *testing.T) {
 
 	cfg, err := store.Upsert(ctx, UpsertStorageConfigParams{
 		Provider:  "local",
-		LocalPath: "/data/nexus/uploads",
+		LocalPath: "/data/seshat/uploads",
 	})
 	if err != nil {
 		t.Fatalf("Upsert local: %v", err)
@@ -757,8 +757,8 @@ func TestStorageConfigStore_UpsertLocal(t *testing.T) {
 	if cfg.Provider != "local" {
 		t.Fatalf("expected provider %q, got %q", "local", cfg.Provider)
 	}
-	if cfg.LocalPath != "/data/nexus/uploads" {
-		t.Fatalf("expected local path %q, got %q", "/data/nexus/uploads", cfg.LocalPath)
+	if cfg.LocalPath != "/data/seshat/uploads" {
+		t.Fatalf("expected local path %q, got %q", "/data/seshat/uploads", cfg.LocalPath)
 	}
 	if !cfg.IsConfigured {
 		t.Fatal("expected IsConfigured to be true for local provider")
@@ -787,7 +787,7 @@ func TestStorageConfigStore_UpsertS3(t *testing.T) {
 	cfg, err := store.Upsert(ctx, UpsertStorageConfigParams{
 		Provider:    "s3",
 		S3Endpoint:  "https://s3.amazonaws.com",
-		S3Bucket:    "my-nexus-bucket",
+		S3Bucket:    "my-seshat-bucket",
 		S3AccessKey: &accessKey,
 		S3SecretKey: &secretKey,
 		S3Region:    "eu-west-1",
@@ -1756,9 +1756,9 @@ func openSQLiteTestDB(t *testing.T) *DB {
 
 func openPostgresTestDB(t *testing.T) *DB {
 	t.Helper()
-	dsn := os.Getenv("NEXUS_TEST_POSTGRES_DSN")
+	dsn := os.Getenv("SESHAT_TEST_POSTGRES_DSN")
 	if dsn == "" {
-		t.Skip("NEXUS_TEST_POSTGRES_DSN not set")
+		t.Skip("SESHAT_TEST_POSTGRES_DSN not set")
 	}
 	db, err := Open(context.Background(), DefaultPostgresConfig(dsn))
 	if err != nil {
@@ -1770,9 +1770,9 @@ func openPostgresTestDB(t *testing.T) *DB {
 
 func openMySQLTestDB(t *testing.T) *DB {
 	t.Helper()
-	dsn := os.Getenv("NEXUS_TEST_MYSQL_DSN")
+	dsn := os.Getenv("SESHAT_TEST_MYSQL_DSN")
 	if dsn == "" {
-		t.Skip("NEXUS_TEST_MYSQL_DSN not set")
+		t.Skip("SESHAT_TEST_MYSQL_DSN not set")
 	}
 	db, err := Open(context.Background(), DefaultMySQLConfig(dsn))
 	if err != nil {
@@ -3901,7 +3901,7 @@ func TestLongTermMemoryStore_UpsertAndSearch(t *testing.T) {
 	userID := "ltm-user-1"
 
 	created, err := store.UpsertEntities(ctx, userID, []longterm.EntityInput{
-		{Name: "nexus-engine", EntityType: "project", Observations: []string{"backend in Go"}},
+		{Name: "seshat", EntityType: "project", Observations: []string{"backend in Go"}},
 		{Name: "claude", EntityType: "ai-model", Observations: []string{"made by Anthropic"}},
 	})
 	if err != nil {
@@ -3912,7 +3912,7 @@ func TestLongTermMemoryStore_UpsertAndSearch(t *testing.T) {
 	}
 
 	// Re-upsert same entity — must be no-op.
-	dup, err := store.UpsertEntities(ctx, userID, []longterm.EntityInput{{Name: "nexus-engine", EntityType: "project"}})
+	dup, err := store.UpsertEntities(ctx, userID, []longterm.EntityInput{{Name: "seshat", EntityType: "project"}})
 	if err != nil {
 		t.Fatalf("UpsertEntities (dup): %v", err)
 	}
@@ -3921,12 +3921,12 @@ func TestLongTermMemoryStore_UpsertAndSearch(t *testing.T) {
 	}
 
 	// Search by name.
-	graph, err := store.SearchNodes(ctx, userID, "nexus")
+	graph, err := store.SearchNodes(ctx, userID, "seshat")
 	if err != nil {
 		t.Fatalf("SearchNodes: %v", err)
 	}
-	if len(graph.Entities) != 1 || graph.Entities[0].Name != "nexus-engine" {
-		t.Fatalf("SearchNodes: expected nexus-engine, got %v", graph.Entities)
+	if len(graph.Entities) != 1 || graph.Entities[0].Name != "seshat" {
+		t.Fatalf("SearchNodes: expected seshat, got %v", graph.Entities)
 	}
 	if len(graph.Entities[0].Observations) == 0 || graph.Entities[0].Observations[0] != "backend in Go" {
 		t.Fatalf("SearchNodes: observations missing or wrong: %v", graph.Entities[0].Observations)

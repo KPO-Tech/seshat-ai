@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/EngineerProjects/nexus-engine/pkg/types"
+	"github.com/EngineerProjects/seshat/pkg/types"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -24,7 +24,7 @@ type SessionOwnership struct {
 	Title             string
 	PermissionMode    string
 	ExecutionOrigin   string
-	WorkspacePath     string // session sandbox: ~/.config/nexus/workspaces/<session-id>/
+	WorkspacePath     string // session sandbox: ~/.config/seshat/workspaces/<session-id>/
 	ProjectPath       string // user-chosen project directory (optional)
 	CreatedAt         time.Time
 	UpdatedAt         time.Time

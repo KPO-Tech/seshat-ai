@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
-# nexus-ui/scripts/install-python-env.sh
-# Bootstrap the Nexus Python environment (docling-serve) for the desktop app.
+# seshat-ui/scripts/install-python-env.sh
+# Bootstrap the SeshatOS Python environment (docling-serve) for the desktop app.
 #
-# This is identical in behaviour to nexus-engine/scripts/install-python-env.sh
-# but uses the correct runtime root (~/.config/nexus, not the legacy nexus-cli path).
+# This is identical in behaviour to seshat/scripts/install-python-env.sh
+# but uses the correct runtime root (~/.config/seshat, not the legacy seshat-cli path).
 #
 # What it does:
 #   1. Install uv (Rust-based Python manager) if not already on PATH.
-#   2. Create a venv at $NEXUS_RUNTIME_ROOT/.venv using Python 3.11+.
+#   2. Create a venv at $SESHAT_RUNTIME_ROOT/.venv using Python 3.11+.
 #   3. Install docling-serve into that venv for document conversion.
 #
 # Environment variables (all optional):
-#   NEXUS_RUNTIME_ROOT   Config/data root (default: ~/.config/nexus)
+#   SESHAT_RUNTIME_ROOT   Config/data root (default: ~/.config/seshat)
 #   DOCLING_EXTRAS       pip extras, e.g. "gpu" → installs docling-serve[gpu]
 #   PYTHON_VERSION       Python version for the venv (default: 3.11)
 #
 # After running:
 #   ./scripts/start-docling.sh        — start manually
-#   make dev (from nexus-ui/)         — backend auto-starts docling on launch
+#   make dev (from seshat-ui/)         — backend auto-starts docling on launch
 
 set -euo pipefail
 
@@ -26,26 +26,26 @@ _default_runtime_root() {
     local os
     os="$(uname -s 2>/dev/null || echo Linux)"
     if [ -n "${XDG_CONFIG_HOME:-}" ]; then
-        echo "$XDG_CONFIG_HOME/nexus"
+        echo "$XDG_CONFIG_HOME/seshat"
     elif [ "$os" = "Darwin" ] || [ "$os" = "Linux" ]; then
-        echo "$HOME/.config/nexus"
+        echo "$HOME/.config/seshat"
     else
-        echo "$HOME/.config/nexus"
+        echo "$HOME/.config/seshat"
     fi
 }
 
-NEXUS_RUNTIME_ROOT="${NEXUS_RUNTIME_ROOT:-$(_default_runtime_root)}"
-VENV_DIR="$NEXUS_RUNTIME_ROOT/.venv"
+SESHAT_RUNTIME_ROOT="${SESHAT_RUNTIME_ROOT:-$(_default_runtime_root)}"
+VENV_DIR="$SESHAT_RUNTIME_ROOT/.venv"
 PYTHON_VERSION="${PYTHON_VERSION:-3.11}"
 DOCLING_EXTRAS="${DOCLING_EXTRAS:-}"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 BLUE='\033[0;34m'; NC='\033[0m'
 
-info()    { echo -e "${BLUE}[nexus-ui]${NC} $*"; }
-success() { echo -e "${GREEN}[nexus-ui]${NC} $*"; }
-warn()    { echo -e "${YELLOW}[nexus-ui]${NC} $*"; }
-error()   { echo -e "${RED}[nexus-ui]${NC} $*" >&2; }
+info()    { echo -e "${BLUE}[seshat-ui]${NC} $*"; }
+success() { echo -e "${GREEN}[seshat-ui]${NC} $*"; }
+warn()    { echo -e "${YELLOW}[seshat-ui]${NC} $*"; }
+error()   { echo -e "${RED}[seshat-ui]${NC} $*" >&2; }
 
 # ── 1. Install uv if missing ───────────────────────────────────────────────────
 if command -v uv &>/dev/null; then
@@ -73,8 +73,8 @@ else
 fi
 
 # ── 2. Create runtime root ────────────────────────────────────────────────────
-mkdir -p "$NEXUS_RUNTIME_ROOT"
-info "Runtime root: $NEXUS_RUNTIME_ROOT"
+mkdir -p "$SESHAT_RUNTIME_ROOT"
+info "Runtime root: $SESHAT_RUNTIME_ROOT"
 
 # ── 3. Create the venv ────────────────────────────────────────────────────────
 if [ -d "$VENV_DIR" ]; then
@@ -104,7 +104,7 @@ fi
 
 success "Installation complete."
 echo ""
-echo "  Runtime root: $NEXUS_RUNTIME_ROOT"
+echo "  Runtime root: $SESHAT_RUNTIME_ROOT"
 echo "  Venv:         $VENV_DIR"
 echo "  Binary:       $DOCLING_BIN"
 echo ""

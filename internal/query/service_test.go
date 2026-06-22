@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/EngineerProjects/nexus-engine/pkg/sdk"
-	"github.com/EngineerProjects/nexus_ai/internal/bkerr"
+	"github.com/EngineerProjects/seshat-ai/internal/bkerr"
+	"github.com/EngineerProjects/seshat/pkg/sdk"
 )
 
 // ─── minimal runtime stubs ────────────────────────────────────────────────────

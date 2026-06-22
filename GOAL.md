@@ -1,19 +1,19 @@
-# Nexus AI — Project Goals
+# SeshatOS — Project Goals
 
-This document describes what Nexus AI is building, where the project is going, and how contributions fit into the roadmap. It is the reference for anyone who wants to understand the direction of the project or get involved.
+This document describes what SeshatOS is building, where the project is going, and how contributions fit into the roadmap. It is the reference for anyone who wants to understand the direction of the project or get involved.
 
 ---
 
 ## 🧭 What We Are Building
 
-**Nexus AI is an Agentic Workspace** — a self-hosted, open platform where humans and AI agents work together to build, research, automate, and create.
+**SeshatOS is an Agentic Workspace** — a self-hosted, open platform where humans and AI agents work together to build, research, automate, and create.
 
 It is built on two open-source repositories:
 
-- 🔧 **[nexus-engine](https://github.com/EngineerProjects/nexus-engine)** (Apache 2.0) — the Go agent runtime: multi-turn execution, tools, permissions, providers, MCP, RAG, skills, sub-agents, streaming. Ships a CLI tool developers can use directly.
-- 🏗️ **[nexus-ai](https://github.com/EngineerProjects/nexus-ai)** (AGPL-3.0) — the production platform on top: multi-user auth, organizations, workspaces, REST API, sessions, memory, plans, skills, scheduler, knowledge base, audit — and the desktop application.
+- 🔧 **[seshat](https://github.com/EngineerProjects/seshat)** (Apache 2.0) — the Go agent runtime: multi-turn execution, tools, permissions, providers, MCP, RAG, skills, sub-agents, streaming. Ships a CLI tool developers can use directly.
+- 🏗️ **[seshat-ai](https://github.com/EngineerProjects/seshat-ai)** (AGPL-3.0) — the production platform on top: multi-user auth, organizations, workspaces, REST API, sessions, memory, plans, skills, scheduler, knowledge base, audit — and the desktop application.
 
-The dependency is strictly one-way: nexus-ai builds on nexus-engine. nexus-engine has no knowledge of nexus-ai.
+The dependency is strictly one-way: seshat-ai builds on seshat. seshat has no knowledge of seshat-ai.
 
 ---
 
@@ -40,7 +40,7 @@ A capable, safe, production-grade agent platform that any developer or team can 
 - 🔌 MCP spec conformance (November 2025: async tasks, elicitation)
 - 📦 Go SDK: stable contract, versioned SSE events, documented with examples
 - 🔒 Security hardening: sandbox read isolation, CORS hardening, session expiry
-- ✨ nexus-ui stabilized on all essential user paths
+- ✨ seshat-ui stabilized on all essential user paths
 
 **Gate to Level 3:** Level 2 is stable with real users. No open critical issues.
 
@@ -48,7 +48,7 @@ A capable, safe, production-grade agent platform that any developer or team can 
 
 ### 🔵 Level 3 — Agent Team Runtime (NEXT)
 
-Multiple full Nexus agents collaborating on a shared mission. Not a pipeline — a real team where each agent has a role, a private memory, and shared tools to coordinate.
+Multiple full SeshatOS agents collaborating on a shared mission. Not a pipeline — a real team where each agent has a role, a private memory, and shared tools to coordinate.
 
 ```
 Mission: "Build and ship the authentication feature"
@@ -74,38 +74,38 @@ Early experimentation and RFCs on Level 3 are welcome from the community. The co
 
 ### 🟣 Level 4 — Multimodal & Extended Workspaces (FUTURE)
 
-Nexus AI expands beyond text and code into all modalities and domains of work.
+SeshatOS expands beyond text and code into all modalities and domains of work.
 
 - 🎨 **Image generation** — agents that generate, edit, and compose images inline. Pluggable backends (Stable Diffusion, FLUX, cloud APIs).
 - 🎙️ **Audio** — text-to-speech, speech-to-text, transcription, voice narration. Agents that can listen and speak.
 - 🧊 **3D generation** — asset generation from text or image prompts for design, prototyping, and creative work.
 - 💡 **Brainstorming & prototyping** — a dedicated workspace mode for structuring ideas, building concept maps, and iterating on designs before committing to implementation.
-- 🎓 **Learning environment** — an AI-native space for education: agents that teach, quiz, adapt to the learner's pace, and generate exercises. This will be developed as a separate open-source project (`nexus-learn`) with its own community, then integrated into the platform.
-- 🌐 **The multi-workspace desktop** — at full maturity, the Nexus AI Desktop is not a single application. It is an environment containing multiple specialized workspaces (code, research, creation, learning, team missions), each powered by agents, all sharing the same runtime, auth, and data layer.
+- 🎓 **Learning environment** — an AI-native space for education: agents that teach, quiz, adapt to the learner's pace, and generate exercises. This will be developed as a separate open-source project (`seshat-learn`) with its own community, then integrated into the platform.
+- 🌐 **The multi-workspace desktop** — at full maturity, the SeshatOS Desktop is not a single application. It is an environment containing multiple specialized workspaces (code, research, creation, learning, team missions), each powered by agents, all sharing the same runtime, auth, and data layer.
 
 ---
 
 ## 🌍 Community & Extensibility
 
-Nexus AI cannot build everything. The platform is designed so the community can.
+SeshatOS cannot build everything. The platform is designed so the community can.
 
-- ⚡ **Skills** are the primary extension mechanism — a Markdown file that teaches the agent how to work in a specific context. Anyone can write and publish skills. The official collection is [nexus-skills](https://github.com/EngineerProjects/nexus-skills); community repos are installable from any URL.
-- 🔌 **MCP servers** extend what agents can do. The MCP ecosystem has 10,000+ servers (GitHub, Postgres, Slack, Docker, Notion, and more). Nexus AI is a first-class MCP client — any MCP server works immediately.
+- ⚡ **Skills** are the primary extension mechanism — a Markdown file that teaches the agent how to work in a specific context. Anyone can write and publish skills. The official collection is [seshat-skills](https://github.com/EngineerProjects/seshat-skills); community repos are installable from any URL.
+- 🔌 **MCP servers** extend what agents can do. The MCP ecosystem has 10,000+ servers (GitHub, Postgres, Slack, Docker, Notion, and more). SeshatOS is a first-class MCP client — any MCP server works immediately.
 - 🤖 **Custom agents** — users define specialized agents with their own system prompts, tools, permission modes, and models.
-- 📦 **The SDK** — [nexus-engine](https://github.com/EngineerProjects/nexus-engine) ships a Go SDK and a stable HTTP + SSE API. nexus-ai is itself a consumer of that SDK. Developers can build their own products on top.
+- 📦 **The SDK** — [seshat](https://github.com/EngineerProjects/seshat) ships a Go SDK and a stable HTTP + SSE API. seshat-ai is itself a consumer of that SDK. Developers can build their own products on top.
 
-We actively want the community to push Nexus into directions we have not imagined. The architecture (skills, MCP, pluggable providers, SDK) is designed to accommodate this.
+We actively want the community to push SeshatOS into directions we have not imagined. The architecture (skills, MCP, pluggable providers, SDK) is designed to accommodate this.
 
 ---
 
-## 🚫 What Nexus AI Is Not
+## 🚫 What SeshatOS Is Not
 
 These are deliberate scope boundaries, not limitations:
 
-- **Not a no-code workflow builder.** Nexus agents reason; they don't follow fixed rules.
+- **Not a no-code workflow builder.** SeshatOS agents reason; they don't follow fixed rules.
 - **Not a single-provider tool.** Multi-provider with no lock-in is a core architectural commitment.
-- **Not a Python/TypeScript framework.** nexus-engine is a Go runtime consumed via API or SDK.
-- **Not a fully-managed cloud SaaS.** Nexus AI is self-hosted first.
+- **Not a Python/TypeScript framework.** seshat is a Go runtime consumed via API or SDK.
+- **Not a fully-managed cloud SaaS.** SeshatOS is self-hosted first.
 - **Not a chatbot.** The agent executes things: reads files, writes code, runs commands, searches the web.
 
 ---
@@ -115,7 +115,7 @@ These are deliberate scope boundaries, not limitations:
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the contribution workflow.
 
 The most valuable contributions right now:
-- 📝 Skills for nexus-skills (any domain, any framework, any workflow)
+- 📝 Skills for seshat-skills (any domain, any framework, any workflow)
 - 🔌 MCP server integrations and documentation
 - 🐛 Bug reports and fixes on the Level 2 platform
 - 🧪 RFCs and early experiments on Level 3 (team runtime)

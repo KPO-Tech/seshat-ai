@@ -14,29 +14,29 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	appconfig "github.com/EngineerProjects/nexus-engine/pkg/config"
-	"github.com/EngineerProjects/nexus-engine/pkg/docling"
-	"github.com/EngineerProjects/nexus-engine/pkg/mcp"
-	longterm "github.com/EngineerProjects/nexus-engine/pkg/memory/longterm"
-	"github.com/EngineerProjects/nexus-engine/pkg/monitoring"
-	"github.com/EngineerProjects/nexus-engine/pkg/providers"
-	"github.com/EngineerProjects/nexus-engine/pkg/rag"
-	ragembedder "github.com/EngineerProjects/nexus-engine/pkg/rag/embedder"
-	"github.com/EngineerProjects/nexus-engine/pkg/rag/reranker"
-	"github.com/EngineerProjects/nexus-engine/pkg/sdk"
-	skillsloader "github.com/EngineerProjects/nexus-engine/pkg/skills"
-	managedskills "github.com/EngineerProjects/nexus-engine/pkg/skills/managed"
-	"github.com/EngineerProjects/nexus-engine/pkg/skills/skillrepos"
-	"github.com/EngineerProjects/nexus-engine/pkg/storage"
-	enginetypes "github.com/EngineerProjects/nexus-engine/pkg/types"
-	"github.com/EngineerProjects/nexus-engine/pkg/vector"
-	nexus "github.com/EngineerProjects/nexus_ai/internal"
-	"github.com/EngineerProjects/nexus_ai/internal/api"
-	backendauth "github.com/EngineerProjects/nexus_ai/internal/auth"
-	"github.com/EngineerProjects/nexus_ai/internal/db"
-	backendknowledge "github.com/EngineerProjects/nexus_ai/internal/knowledge"
-	backendquery "github.com/EngineerProjects/nexus_ai/internal/query"
-	"github.com/EngineerProjects/nexus_ai/internal/scheduler"
+	seshat "github.com/EngineerProjects/seshat-ai/internal"
+	"github.com/EngineerProjects/seshat-ai/internal/api"
+	backendauth "github.com/EngineerProjects/seshat-ai/internal/auth"
+	"github.com/EngineerProjects/seshat-ai/internal/db"
+	backendknowledge "github.com/EngineerProjects/seshat-ai/internal/knowledge"
+	backendquery "github.com/EngineerProjects/seshat-ai/internal/query"
+	"github.com/EngineerProjects/seshat-ai/internal/scheduler"
+	appconfig "github.com/EngineerProjects/seshat/pkg/config"
+	"github.com/EngineerProjects/seshat/pkg/docling"
+	"github.com/EngineerProjects/seshat/pkg/mcp"
+	longterm "github.com/EngineerProjects/seshat/pkg/memory/longterm"
+	"github.com/EngineerProjects/seshat/pkg/monitoring"
+	"github.com/EngineerProjects/seshat/pkg/providers"
+	"github.com/EngineerProjects/seshat/pkg/rag"
+	ragembedder "github.com/EngineerProjects/seshat/pkg/rag/embedder"
+	"github.com/EngineerProjects/seshat/pkg/rag/reranker"
+	"github.com/EngineerProjects/seshat/pkg/sdk"
+	skillsloader "github.com/EngineerProjects/seshat/pkg/skills"
+	managedskills "github.com/EngineerProjects/seshat/pkg/skills/managed"
+	"github.com/EngineerProjects/seshat/pkg/skills/skillrepos"
+	"github.com/EngineerProjects/seshat/pkg/storage"
+	enginetypes "github.com/EngineerProjects/seshat/pkg/types"
+	"github.com/EngineerProjects/seshat/pkg/vector"
 )
 
 // BuildApp wires all infrastructure (DB, stores, query runtime, RAG, MCP, skills)
@@ -53,7 +53,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		return nil
 	}
 
-	otelShutdown, err := monitoring.InitTracer(ctx, "nexus-engine")
+	otelShutdown, err := monitoring.InitTracer(ctx, "seshat")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[API] Avertissement OTel: %v\n", err)
 	}
@@ -308,12 +308,12 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		embedder := ragembedder.New(embedderCfg)
 		pgvectorCreateExtension := config.PgVectorCreateExtension
 		vectorDim := 1536
-		if raw := strings.TrimSpace(os.Getenv("NEXUS_VECTOR_DIM")); raw != "" {
+		if raw := strings.TrimSpace(os.Getenv("SESHAT_VECTOR_DIM")); raw != "" {
 			if n, err := fmt.Sscanf(raw, "%d", &vectorDim); n != 1 || err != nil {
-				fmt.Fprintf(os.Stderr, "[API] Avertissement: NEXUS_VECTOR_DIM invalide (%q), utilise 1536\n", raw)
+				fmt.Fprintf(os.Stderr, "[API] Avertissement: SESHAT_VECTOR_DIM invalide (%q), utilise 1536\n", raw)
 				vectorDim = 1536
 			} else if vectorDim < 64 || vectorDim > 4096 {
-				fmt.Fprintf(os.Stderr, "[API] Avertissement: NEXUS_VECTOR_DIM hors limites (%d, accepté: 64-4096), utilise 1536\n", vectorDim)
+				fmt.Fprintf(os.Stderr, "[API] Avertissement: SESHAT_VECTOR_DIM hors limites (%d, accepté: 64-4096), utilise 1536\n", vectorDim)
 				vectorDim = 1536
 			}
 		}
@@ -403,17 +403,17 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		fmt.Printf("[API] Builtin skills extraits vers: %s\n", skillsloader.GetBuiltinSkillsPath())
 	}
 
-	// Clone the official Nexus skills collection in the background so startup is
+	// Clone the official Seshat skills collection in the background so startup is
 	// never blocked.
 	go func() {
-		defaultRepoURL := api.DefaultNexusSkillsRepo
+		defaultRepoURL := api.DefaultSeshatSkillsRepo
 		if config.DefaultSkillRepo != "" {
 			defaultRepoURL = strings.TrimSpace(config.DefaultSkillRepo)
 		}
 		if defaultRepoURL != "" && strings.ToLower(defaultRepoURL) != "none" {
 			repo := skillrepos.RepoFromURL(defaultRepoURL)
 			skillrepos.EnsureCloned(ctx, skillsloader.GetSkillReposPath(), []skillrepos.Repo{repo})
-			fmt.Printf("[API] Nexus skills: %s disponible\n", repo.Name)
+			fmt.Printf("[API] Seshat skills: %s disponible\n", repo.Name)
 		}
 	}()
 
@@ -469,21 +469,21 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 
 	if config.AdminEmail != "" {
 		if strings.TrimSpace(config.AdminPassword) != "" && strings.TrimSpace(config.AdminPasswordHash) == "" {
-			fmt.Fprintf(os.Stderr, "[API] AVERTISSEMENT SÉCURITÉ: NEXUS_ADMIN_PASSWORD est défini en clair dans l'environnement.\n")
-			fmt.Fprintf(os.Stderr, "[API]   Préférez NEXUS_ADMIN_PASSWORD_HASH (bcrypt) pour la production.\n")
+			fmt.Fprintf(os.Stderr, "[API] AVERTISSEMENT SÉCURITÉ: SESHAT_ADMIN_PASSWORD est défini en clair dans l'environnement.\n")
+			fmt.Fprintf(os.Stderr, "[API]   Préférez SESHAT_ADMIN_PASSWORD_HASH (bcrypt) pour la production.\n")
 			fmt.Fprintf(os.Stderr, "[API]   Générez-le avec: htpasswd -bnBC 12 '' <mot_de_passe> | tr -d ':\\n' | sed 's/$2y/$2a/'\n")
-			if strings.EqualFold(strings.TrimSpace(os.Getenv("NEXUS_ENV")), "production") {
+			if strings.EqualFold(strings.TrimSpace(os.Getenv("SESHAT_ENV")), "production") {
 				_ = cleanup()
-				return nil, nil, fmt.Errorf("NEXUS_ENV=production interdit NEXUS_ADMIN_PASSWORD en clair")
+				return nil, nil, fmt.Errorf("SESHAT_ENV=production interdit SESHAT_ADMIN_PASSWORD en clair")
 			}
 		}
 		if h := strings.TrimSpace(config.AdminPasswordHash); h != "" {
 			if _, err := bcrypt.Cost([]byte(h)); err != nil {
 				_ = cleanup()
-				return nil, nil, fmt.Errorf("NEXUS_ADMIN_PASSWORD_HASH n'est pas un hash bcrypt valide: %w", err)
+				return nil, nil, fmt.Errorf("SESHAT_ADMIN_PASSWORD_HASH n'est pas un hash bcrypt valide: %w", err)
 			}
 			if strings.TrimSpace(config.AdminPassword) != "" {
-				fmt.Fprintf(os.Stderr, "[API] AVERTISSEMENT: NEXUS_ADMIN_PASSWORD et NEXUS_ADMIN_PASSWORD_HASH sont tous les deux définis. NEXUS_ADMIN_PASSWORD_HASH sera utilisé.\n")
+				fmt.Fprintf(os.Stderr, "[API] AVERTISSEMENT: SESHAT_ADMIN_PASSWORD et SESHAT_ADMIN_PASSWORD_HASH sont tous les deux définis. SESHAT_ADMIN_PASSWORD_HASH sera utilisé.\n")
 			}
 		}
 		if _, err := identityStore.EnsureBootstrap(ctx, db.BootstrapOptions{
@@ -503,7 +503,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 
 	runtime := backendquery.NewSDKRuntime(queryClient, queryClientConfig)
 
-	backendApp := nexus.NewApp(nexus.Dependencies{
+	backendApp := seshat.NewApp(seshat.Dependencies{
 		Identity:    identityStore,
 		APIKeyStore: apiKeyStore,
 		GroupStore:  groupStore,

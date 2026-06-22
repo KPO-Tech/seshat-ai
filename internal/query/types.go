@@ -1,10 +1,10 @@
 package query
 
 import (
-	"github.com/EngineerProjects/nexus-engine/pkg/contract"
-	"github.com/EngineerProjects/nexus-engine/pkg/sdk"
-	"github.com/EngineerProjects/nexus-engine/pkg/types"
-	backendauth "github.com/EngineerProjects/nexus_ai/internal/auth"
+	backendauth "github.com/EngineerProjects/seshat-ai/internal/auth"
+	"github.com/EngineerProjects/seshat/pkg/contract"
+	"github.com/EngineerProjects/seshat/pkg/sdk"
+	"github.com/EngineerProjects/seshat/pkg/types"
 )
 
 // ImageAttachment carries base64-encoded image data for a single turn.
@@ -29,11 +29,11 @@ type QueryInput struct {
 	// permission mode override the defaults unless already explicitly provided.
 	AgentSlug string
 	// SystemPromptOverride fully replaces the engine's default system prompt
-	// (Nexus Core identity + rules + workflow). Used when an agent needs its
-	// own identity rather than layering on top of Nexus Core via AppendSystemPrompt.
+	// (Seshat Core identity + rules + workflow). Used when an agent needs its
+	// own identity rather than layering on top of Seshat Core via AppendSystemPrompt.
 	SystemPromptOverride *string
 	// WorkspacePath is the session sandbox the agent may read/write freely.
-	// Populated from the session's ownership record; auto-created under ~/.config/nexus/workspaces/.
+	// Populated from the session's ownership record; auto-created under ~/.config/seshat/workspaces/.
 	WorkspacePath string
 	// ProjectPath is the user-chosen project directory (optional).
 	// When set, used as the agent's CWD; the workspace sandbox is still available for uploads/plans.

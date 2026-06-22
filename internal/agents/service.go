@@ -4,10 +4,10 @@ import (
 	"context"
 	"strings"
 
-	pkgagent "github.com/EngineerProjects/nexus-engine/pkg/agent"
-	"github.com/EngineerProjects/nexus-engine/pkg/types"
-	"github.com/EngineerProjects/nexus_ai/internal/bkerr"
-	"github.com/EngineerProjects/nexus_ai/internal/db"
+	"github.com/EngineerProjects/seshat-ai/internal/bkerr"
+	"github.com/EngineerProjects/seshat-ai/internal/db"
+	pkgagent "github.com/EngineerProjects/seshat/pkg/agent"
+	"github.com/EngineerProjects/seshat/pkg/types"
 )
 
 // Service manages user-defined agent definitions.

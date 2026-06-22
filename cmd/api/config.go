@@ -3,8 +3,8 @@ package main
 import (
 	"time"
 
-	appconfig "github.com/EngineerProjects/nexus-engine/pkg/config"
-	"github.com/EngineerProjects/nexus_ai/internal/api"
+	"github.com/EngineerProjects/seshat-ai/internal/api"
+	appconfig "github.com/EngineerProjects/seshat/pkg/config"
 )
 
 // defaultAPIConfig builds the HTTP server configuration from the app config.

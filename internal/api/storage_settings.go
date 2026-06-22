@@ -3,8 +3,8 @@ package api
 import (
 	"net/http"
 
-	"github.com/EngineerProjects/nexus-engine/pkg/storage"
-	"github.com/EngineerProjects/nexus_ai/internal/db"
+	"github.com/EngineerProjects/seshat-ai/internal/db"
+	"github.com/EngineerProjects/seshat/pkg/storage"
 )
 
 type storageConfigResponse struct {

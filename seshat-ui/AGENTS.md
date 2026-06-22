@@ -1,22 +1,22 @@
 # Agent Instructions — Nexus UI
 
-This file provides guidance for AI agents working on `nexus-ui`, the Electron + React desktop client for Nexus. Read it before making any changes.
+This file provides guidance for AI agents working on `seshat-ui`, the Electron + React desktop client for Nexus. Read it before making any changes.
 
 ---
 
 ## Project overview
 
-`nexus-ui` is a **frameless Electron desktop application** that wraps the Nexus AI HTTP API. It is a pure frontend — no AI logic, no database, no backend code. Its only job is to present a fast, polished interface on top of the REST + SSE API.
+`seshat-ui` is a **frameless Electron desktop application** that wraps the SeshatOS HTTP API. It is a pure frontend — no AI logic, no database, no backend code. Its only job is to present a fast, polished interface on top of the REST + SSE API.
 
 **Dependency direction:**
 
 ```
-nexus-ui → nexus-product HTTP API   (always, via IPC bridge or fetch)
-nexus-ui → nexus-engine             (never — engine is Go, UI is TypeScript)
-nexus-product → nexus-ui            (never)
+seshat-ui → nexus-product HTTP API   (always, via IPC bridge or fetch)
+seshat-ui → nexus-engine             (never — engine is Go, UI is TypeScript)
+nexus-product → seshat-ui            (never)
 ```
 
-nexus-ui communicates with nexus-product **exclusively** through the HTTP API at `http://127.0.0.1:8090/api/v1`. It never imports Go code, never reads the DB, never calls nexus-engine directly.
+seshat-ui communicates with nexus-product **exclusively** through the HTTP API at `http://127.0.0.1:8090/api/v1`. It never imports Go code, never reads the DB, never calls nexus-engine directly.
 
 ---
 
@@ -45,7 +45,7 @@ nexus-ui communicates with nexus-product **exclusively** through the HTTP API at
 ## Project structure
 
 ```
-nexus-ui/
+seshat-ui/
 ├── src/
 │   ├── main/                  ← Electron main process (Node.js context)
 │   │   ├── index.ts           ← app bootstrap, window creation
@@ -382,7 +382,7 @@ Requires the nexus-product backend to be running on port 8090. Set `NEXUS_RUNTIM
 
 ## Rules for nexus-product backend
 
-nexus-ui is a **consumer** of the nexus-product API. It must not:
+seshat-ui is a **consumer** of the nexus-product API. It must not:
 
 - Attempt to call undocumented or non-existent API endpoints.
 - Depend on implementation details of the backend (DB schema, internal types).

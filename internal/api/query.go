@@ -9,13 +9,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/EngineerProjects/nexus-engine/pkg/contract"
-	"github.com/EngineerProjects/nexus-engine/pkg/sdk"
-	"github.com/EngineerProjects/nexus-engine/pkg/types"
-	backendauth "github.com/EngineerProjects/nexus_ai/internal/auth"
-	"github.com/EngineerProjects/nexus_ai/internal/bkerr"
-	"github.com/EngineerProjects/nexus_ai/internal/query"
-	backendquotas "github.com/EngineerProjects/nexus_ai/internal/quotas"
+	backendauth "github.com/EngineerProjects/seshat-ai/internal/auth"
+	"github.com/EngineerProjects/seshat-ai/internal/bkerr"
+	"github.com/EngineerProjects/seshat-ai/internal/query"
+	backendquotas "github.com/EngineerProjects/seshat-ai/internal/quotas"
+	"github.com/EngineerProjects/seshat/pkg/contract"
+	"github.com/EngineerProjects/seshat/pkg/sdk"
+	"github.com/EngineerProjects/seshat/pkg/types"
 )
 
 // Type aliases kept for readability in handler signatures.

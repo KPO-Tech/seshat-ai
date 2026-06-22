@@ -4,10 +4,10 @@ import (
 	"context"
 	"strings"
 
-	enginemcp "github.com/EngineerProjects/nexus-engine/pkg/mcp"
-	"github.com/EngineerProjects/nexus-engine/pkg/sdk"
-	"github.com/EngineerProjects/nexus_ai/internal/bkerr"
-	"github.com/EngineerProjects/nexus_ai/internal/db"
+	"github.com/EngineerProjects/seshat-ai/internal/bkerr"
+	"github.com/EngineerProjects/seshat-ai/internal/db"
+	enginemcp "github.com/EngineerProjects/seshat/pkg/mcp"
+	"github.com/EngineerProjects/seshat/pkg/sdk"
 )
 
 // RuntimeReloader is the subset of the query runtime needed for MCP reload operations.

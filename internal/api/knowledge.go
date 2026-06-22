@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"strings"
 
-	backendaudit "github.com/EngineerProjects/nexus_ai/internal/audit"
-	backendauth "github.com/EngineerProjects/nexus_ai/internal/auth"
-	"github.com/EngineerProjects/nexus_ai/internal/knowledge"
-	backendquotas "github.com/EngineerProjects/nexus_ai/internal/quotas"
+	backendaudit "github.com/EngineerProjects/seshat-ai/internal/audit"
+	backendauth "github.com/EngineerProjects/seshat-ai/internal/auth"
+	"github.com/EngineerProjects/seshat-ai/internal/knowledge"
+	backendquotas "github.com/EngineerProjects/seshat-ai/internal/quotas"
 )
 
 // corpusResponse is the JSON shape returned to clients.

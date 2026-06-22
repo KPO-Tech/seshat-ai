@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/EngineerProjects/nexus-engine/pkg/types"
+	"github.com/EngineerProjects/seshat/pkg/types"
 )
 
 // ─── PermissionBroker ─────────────────────────────────────────────────────────

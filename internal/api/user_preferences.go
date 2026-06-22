@@ -4,9 +4,9 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/EngineerProjects/nexus-engine/pkg/types"
-	backendauth "github.com/EngineerProjects/nexus_ai/internal/auth"
-	"github.com/EngineerProjects/nexus_ai/internal/preferences"
+	backendauth "github.com/EngineerProjects/seshat-ai/internal/auth"
+	"github.com/EngineerProjects/seshat-ai/internal/preferences"
+	"github.com/EngineerProjects/seshat/pkg/types"
 )
 
 type userPreferencesResponse struct {

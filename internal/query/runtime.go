@@ -6,9 +6,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/EngineerProjects/nexus-engine/pkg/providers"
-	"github.com/EngineerProjects/nexus-engine/pkg/sdk"
-	"github.com/EngineerProjects/nexus-engine/pkg/types"
+	"github.com/EngineerProjects/seshat/pkg/providers"
+	"github.com/EngineerProjects/seshat/pkg/sdk"
+	"github.com/EngineerProjects/seshat/pkg/types"
 )
 
 type QueryRuntime interface {

@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
-	longterm "github.com/EngineerProjects/nexus-engine/pkg/memory/longterm"
+	longterm "github.com/EngineerProjects/seshat/pkg/memory/longterm"
 )
 
 // ─── GORM models ──────────────────────────────────────────────────────────────

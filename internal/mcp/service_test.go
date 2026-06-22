@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	enginemcp "github.com/EngineerProjects/nexus-engine/pkg/mcp"
-	"github.com/EngineerProjects/nexus-engine/pkg/sdk"
-	"github.com/EngineerProjects/nexus_ai/internal/bkerr"
+	"github.com/EngineerProjects/seshat-ai/internal/bkerr"
+	enginemcp "github.com/EngineerProjects/seshat/pkg/mcp"
+	"github.com/EngineerProjects/seshat/pkg/sdk"
 )
 
 // mockRuntime satisfies RuntimeReloader without a real SDK client.

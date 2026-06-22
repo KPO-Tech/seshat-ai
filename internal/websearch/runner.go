@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	searchcore "github.com/EngineerProjects/nexus-engine/pkg/web/search"
-	searchproviders "github.com/EngineerProjects/nexus-engine/pkg/web/search/providers"
+	searchcore "github.com/EngineerProjects/seshat/pkg/web/search"
+	searchproviders "github.com/EngineerProjects/seshat/pkg/web/search/providers"
 )
 
 type DefaultRunner struct {

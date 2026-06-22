@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # scripts/setup.sh
-# One-command setup for the Nexus desktop app on Linux and macOS.
+# One-command setup for SeshatOS app on Linux and macOS.
 #
 # What it does:
 #   1. Verifies Node.js 20+ and bun (or npm)
@@ -14,7 +14,7 @@
 #   DOCLING_EXTRAS=gpu ./scripts/setup.sh
 #
 # Environment variables:
-#   NEXUS_RUNTIME_ROOT   Override data dir (default: ~/.config/nexus)
+#   SESHAT_RUNTIME_ROOT   Override data dir (default: ~/.config/seshat)
 #   DOCLING_EXTRAS       pip extras for docling-serve (e.g. "gpu")
 #   PYTHON_VERSION       Python version for the venv (default: 3.11)
 #   SKIP_PYTHON          Set to 1 to skip the Python/docling setup step
@@ -23,16 +23,16 @@ set -euo pipefail
 
 OS="$(uname -s)"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-UI_DIR="$REPO_ROOT/nexus-ui"
+UI_DIR="$REPO_ROOT/seshat-ui"
 
-if [ -z "${NEXUS_RUNTIME_ROOT:-}" ]; then
+if [ -z "${SESHAT_RUNTIME_ROOT:-}" ]; then
     if [ -n "${XDG_CONFIG_HOME:-}" ]; then
-        NEXUS_RUNTIME_ROOT="$XDG_CONFIG_HOME/nexus"
+        SESHAT_RUNTIME_ROOT="$XDG_CONFIG_HOME/seshat"
     else
-        NEXUS_RUNTIME_ROOT="$HOME/.config/nexus"
+        SESHAT_RUNTIME_ROOT="$HOME/.config/seshat"
     fi
 fi
-export NEXUS_RUNTIME_ROOT
+export SESHAT_RUNTIME_ROOT
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 BLUE='\033[0;34m'; BOLD='\033[1m'; NC='\033[0m'
@@ -86,7 +86,7 @@ else
 fi
 
 # ── 5. Build ──────────────────────────────────────────────────────────────────
-step "Building Nexus UI..."
+step "Building SeshatOS UI..."
 
 cd "$UI_DIR"
 if command -v bun &>/dev/null; then
@@ -94,13 +94,13 @@ if command -v bun &>/dev/null; then
 else
     npm run build --legacy-peer-deps
 fi
-ok "Build complete → nexus-ui/out/"
+ok "Build complete → seshat-ui/out/"
 
 # ── Done ─────────────────────────────────────────────────────────────────────
 echo ""
 echo -e "${BOLD}${GREEN}  Setup complete!${NC}"
 echo ""
-echo "  Runtime data: $NEXUS_RUNTIME_ROOT"
+echo "  Runtime data: $SESHAT_RUNTIME_ROOT"
 echo ""
 echo "  Start in dev mode (from repo root):"
 echo "    make dev"

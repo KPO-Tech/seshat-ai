@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	webcore "github.com/EngineerProjects/nexus-engine/pkg/web"
+	webcore "github.com/EngineerProjects/seshat/pkg/web"
 )
 
 // ProviderCatalogEntry describes a search provider type and its requirements.

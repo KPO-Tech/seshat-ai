@@ -5,8 +5,8 @@ import (
 	"path"
 	"strings"
 
-	"github.com/EngineerProjects/nexus_ai/internal/bkerr"
-	"github.com/EngineerProjects/nexus_ai/internal/scheduler"
+	"github.com/EngineerProjects/seshat-ai/internal/bkerr"
+	"github.com/EngineerProjects/seshat-ai/internal/scheduler"
 )
 
 // ─── DTOs ─────────────────────────────────────────────────────────────────────

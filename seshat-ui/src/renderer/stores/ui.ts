@@ -123,7 +123,7 @@ export const useUIStore = create<UIState>()(
       },
     }),
     {
-      name: 'nexus-ui-prefs',
+      name: 'seshat-ui-prefs',
       partialize: (s) => ({
         theme: s.theme,
         sidebarCollapsed: s.sidebarCollapsed,

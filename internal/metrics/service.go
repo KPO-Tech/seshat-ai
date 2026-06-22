@@ -4,7 +4,7 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/EngineerProjects/nexus_ai/internal/bkerr"
+	"github.com/EngineerProjects/seshat-ai/internal/bkerr"
 )
 
 type Snapshotter interface {

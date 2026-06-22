@@ -9,24 +9,24 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/EngineerProjects/nexus-engine/pkg/monitoring"
-	"github.com/EngineerProjects/nexus-engine/pkg/providers"
-	"github.com/EngineerProjects/nexus-engine/pkg/rag"
-	"github.com/EngineerProjects/nexus-engine/pkg/runtimepath"
-	"github.com/EngineerProjects/nexus-engine/pkg/sdk"
-	publicskills "github.com/EngineerProjects/nexus-engine/pkg/skills"
-	skillsloader "github.com/EngineerProjects/nexus-engine/pkg/skills"
-	"github.com/EngineerProjects/nexus-engine/pkg/storage"
-	"github.com/EngineerProjects/nexus-engine/pkg/types"
-	"github.com/EngineerProjects/nexus-engine/pkg/vector"
-	webcore "github.com/EngineerProjects/nexus-engine/pkg/web"
-	nexus "github.com/EngineerProjects/nexus_ai/internal"
-	"github.com/EngineerProjects/nexus_ai/internal/db"
-	backendknowledge "github.com/EngineerProjects/nexus_ai/internal/knowledge"
-	backendquery "github.com/EngineerProjects/nexus_ai/internal/query"
-	bksettings "github.com/EngineerProjects/nexus_ai/internal/settings"
-	backendskills "github.com/EngineerProjects/nexus_ai/internal/skills"
-	backendwebsearch "github.com/EngineerProjects/nexus_ai/internal/websearch"
+	seshat "github.com/EngineerProjects/seshat-ai/internal"
+	"github.com/EngineerProjects/seshat-ai/internal/db"
+	backendknowledge "github.com/EngineerProjects/seshat-ai/internal/knowledge"
+	backendquery "github.com/EngineerProjects/seshat-ai/internal/query"
+	bksettings "github.com/EngineerProjects/seshat-ai/internal/settings"
+	backendskills "github.com/EngineerProjects/seshat-ai/internal/skills"
+	backendwebsearch "github.com/EngineerProjects/seshat-ai/internal/websearch"
+	"github.com/EngineerProjects/seshat/pkg/monitoring"
+	"github.com/EngineerProjects/seshat/pkg/providers"
+	"github.com/EngineerProjects/seshat/pkg/rag"
+	"github.com/EngineerProjects/seshat/pkg/runtimepath"
+	"github.com/EngineerProjects/seshat/pkg/sdk"
+	publicskills "github.com/EngineerProjects/seshat/pkg/skills"
+	skillsloader "github.com/EngineerProjects/seshat/pkg/skills"
+	"github.com/EngineerProjects/seshat/pkg/storage"
+	"github.com/EngineerProjects/seshat/pkg/types"
+	"github.com/EngineerProjects/seshat/pkg/vector"
+	webcore "github.com/EngineerProjects/seshat/pkg/web"
 	"io"
 	"mime/multipart"
 	"net"
@@ -75,7 +75,7 @@ func newAuditTestApp(t *testing.T) (*App, *db.IdentityStore) {
 	}
 
 	app := &App{
-		backend: nexus.NewApp(nexus.Dependencies{
+		backend: seshat.NewApp(seshat.Dependencies{
 			Identity:          identity,
 			AuditLogStore:     auditLogStore,
 			UsageCounterStore: usageCounterStore,
@@ -275,7 +275,7 @@ func (stubQueryRunner) RunPrompt(ctx context.Context, input backendquery.QueryIn
 
 func newTestAPIApp(identity *db.IdentityStore, runner queryRunner) *App {
 	return &App{
-		backend: nexus.NewApp(nexus.Dependencies{
+		backend: seshat.NewApp(seshat.Dependencies{
 			Identity:     identity,
 			QueryRuntime: runner,
 			Monitoring:   monitoring.NewSystem(nil),
@@ -285,7 +285,7 @@ func newTestAPIApp(identity *db.IdentityStore, runner queryRunner) *App {
 
 func newMetricsTestAPIApp(mon *monitoring.System) *App {
 	return &App{
-		backend: nexus.NewApp(nexus.Dependencies{
+		backend: seshat.NewApp(seshat.Dependencies{
 			Monitoring: mon,
 		}),
 	}
@@ -766,7 +766,7 @@ func newPermissionedTestApp(t *testing.T) (*App, *db.IdentityStore, *db.GroupSto
 	}
 
 	app := &App{
-		backend: nexus.NewApp(nexus.Dependencies{
+		backend: seshat.NewApp(seshat.Dependencies{
 			Identity:          identity,
 			GroupStore:        groupStore,
 			APIKeyStore:       apiKeyStore,
@@ -1186,7 +1186,7 @@ func newFileTestApp(t *testing.T) (*App, *db.IdentityStore, *db.FileStore) {
 
 	blobStore := newStubArtifactStore()
 	app := &App{
-		backend: nexus.NewApp(nexus.Dependencies{
+		backend: seshat.NewApp(seshat.Dependencies{
 			Identity:      identity,
 			FileStore:     fileStore,
 			ArtifactStore: blobStore,
@@ -1639,7 +1639,7 @@ func newKnowledgeTestAppWithEmbedderAndVector(t *testing.T, embedder *stubEmbedd
 	ragSvc := rag.NewService(blobStore, vectorStore, embedder, nil)
 
 	app := &App{
-		backend: nexus.NewApp(nexus.Dependencies{
+		backend: seshat.NewApp(seshat.Dependencies{
 			Identity:          identity,
 			FileStore:         fileStore,
 			CorpusStore:       corpusStore,
@@ -1700,7 +1700,7 @@ func newKnowledgeTestAppWithoutRunner(t *testing.T, embedder *stubEmbedder) (*Ap
 	ragSvc := rag.NewService(blobStore, vectorStore, embedder, nil)
 
 	app := &App{
-		backend: nexus.NewApp(nexus.Dependencies{
+		backend: seshat.NewApp(seshat.Dependencies{
 			Identity:          identity,
 			FileStore:         fileStore,
 			CorpusStore:       corpusStore,
@@ -1908,9 +1908,9 @@ func TestCorpusIngestAndSearch(t *testing.T) {
 	corpusID := corpus["id"].(string)
 
 	// Upload a text file.
-	content := "The Nexus engine is a powerful multi-agent AI framework that supports RAG retrieval.\n" +
+	content := "The Seshat engine is a powerful multi-agent AI framework that supports RAG retrieval.\n" +
 		"It uses vector search to find relevant documents.\n"
-	fileID := uploadTestFile(t, router, token, content, "nexus.txt")
+	fileID := uploadTestFile(t, router, token, content, "seshat.txt")
 
 	// Ingest the file.
 	ingestBody, _ := json.Marshal(map[string]string{"file_id": fileID})
@@ -2315,7 +2315,7 @@ func TestBuildRAGContextUsesAuthenticatedPrincipal(t *testing.T) {
 	json.NewDecoder(rec.Body).Decode(&corpus)
 	corpusID := corpus["id"].(string)
 
-	fileID := uploadTestFile(t, router, token, "Nexus knowledge is available during chat retrieval.", "rag.txt")
+	fileID := uploadTestFile(t, router, token, "Seshat knowledge is available during chat retrieval.", "rag.txt")
 	ingestBody, _ := json.Marshal(map[string]string{"file_id": fileID})
 	req = httptest.NewRequest(http.MethodPost, "/api/v1/corpora/"+corpusID+"/ingest", bytes.NewReader(ingestBody))
 	req.Header.Set("Content-Type", "application/json")
@@ -2401,7 +2401,7 @@ func newPlansTestApp(t *testing.T) (*App, *db.IdentityStore, *db.PlanDocumentSto
 	}
 
 	app := &App{
-		backend: nexus.NewApp(nexus.Dependencies{
+		backend: seshat.NewApp(seshat.Dependencies{
 			Identity:          identity,
 			GroupStore:        groupStore,
 			APIKeyStore:       apiKeyStore,
@@ -2684,7 +2684,7 @@ func TestPlans_MissingSessionID(t *testing.T) {
 	}
 }
 
-// TestPlans_RouteCompatibility verifies that all routes used by nexus-ui are still registered.
+// TestPlans_RouteCompatibility verifies that all routes used by seshat-ui are still registered.
 func TestPlans_RouteCompatibility(t *testing.T) {
 	app, identity, store := newPlansTestApp(t)
 	router := CreateRouter(defaultAPIConfig, app)
@@ -3043,7 +3043,7 @@ func newQueryProviderTestApp(t *testing.T, runtime *capturingQueryRuntime, oauth
 	}
 
 	return &App{
-		backend: nexus.NewApp(nexus.Dependencies{
+		backend: seshat.NewApp(seshat.Dependencies{
 			Identity:         identity,
 			QueryRuntime:     runtime,
 			SessionManager:   runtime,
@@ -3385,7 +3385,7 @@ func parseSSELines(body string) []sseLine {
 
 func newStreamApp(runner queryRunner) *App {
 	return &App{
-		backend: nexus.NewApp(nexus.Dependencies{
+		backend: seshat.NewApp(seshat.Dependencies{
 			QueryRuntime: runner,
 		}),
 	}
@@ -3797,7 +3797,7 @@ func newSecurityTestFixture(t *testing.T) *securityTestFixture {
 	app := newTestAPIApp(identity, stubQueryRunner{})
 	app.permBroker = backendquery.NewPermissionBroker()
 	app.promptBroker = backendquery.NewPromptBroker()
-	app.backend = nexus.NewApp(nexus.Dependencies{
+	app.backend = seshat.NewApp(seshat.Dependencies{
 		Identity:       identity,
 		QueryRuntime:   stubQueryRunner{},
 		Monitoring:     monitoring.NewSystem(nil),
@@ -4065,7 +4065,7 @@ func newSessionTestApp(t *testing.T, database *db.DB, ownershipStore *db.Session
 	}
 	mgr := newStubSessionManager()
 	app := &App{
-		backend: nexus.NewApp(nexus.Dependencies{
+		backend: seshat.NewApp(seshat.Dependencies{
 			Identity:         store,
 			QueryRuntime:     stubQueryRunner{},
 			SessionManager:   mgr,
@@ -4393,7 +4393,7 @@ func TestSessionOwnership_UpdateTitle(t *testing.T) {
 		t.Fatalf("expected session_id in response, got %s", createResp.Body.String())
 	}
 
-	body, _ := json.Marshal(map[string]string{"title": "Audit Nexus Engine"})
+	body, _ := json.Marshal(map[string]string{"title": "Audit Seshat"})
 	updateResp := doRequest(t, router, http.MethodPatch, "/api/v1/sessions/"+sessionID, body, adminToken)
 	if updateResp.Code != http.StatusNoContent {
 		t.Fatalf("update title: expected 204, got %d: %s", updateResp.Code, updateResp.Body.String())
@@ -4410,7 +4410,7 @@ func TestSessionOwnership_UpdateTitle(t *testing.T) {
 		t.Fatalf("expected one session, got %d", len(sessions))
 	}
 	session := sessions[0].(map[string]any)
-	if got := session["title"]; got != "Audit Nexus Engine" {
+	if got := session["title"]; got != "Audit Seshat" {
 		t.Fatalf("expected updated title, got %#v", got)
 	}
 }
@@ -4513,7 +4513,7 @@ func newSettingsTestApp(t *testing.T, oauthFactory bksettings.OAuthClientFactory
 	}
 
 	app := &App{
-		backend: nexus.NewApp(nexus.Dependencies{
+		backend: seshat.NewApp(seshat.Dependencies{
 			Identity:     identity,
 			SettingStore: settingStore,
 			OAuthStore:   oauthStore,
@@ -4934,7 +4934,7 @@ func newSkillsTestApp(t *testing.T) (*App, *db.IdentityStore) {
 	}
 
 	app := &App{
-		backend: nexus.NewApp(nexus.Dependencies{
+		backend: seshat.NewApp(seshat.Dependencies{
 			Identity: identity,
 		}),
 	}
@@ -5000,7 +5000,7 @@ func readSkillFile(t *testing.T, principalUserID, name string) string {
 }
 
 func TestSkillEnableDisable(t *testing.T) {
-	t.Setenv("NEXUS_RUNTIME_ROOT", t.TempDir())
+	t.Setenv("SESHAT_RUNTIME_ROOT", t.TempDir())
 
 	app, _ := newSkillsTestApp(t)
 	router := CreateRouter(defaultAPIConfig, app)
@@ -5085,7 +5085,7 @@ func TestSkillEnableDisable(t *testing.T) {
 }
 
 func TestSkillsAreScopedPerUser(t *testing.T) {
-	t.Setenv("NEXUS_RUNTIME_ROOT", t.TempDir())
+	t.Setenv("SESHAT_RUNTIME_ROOT", t.TempDir())
 
 	app, identity := newSkillsTestApp(t)
 	router := CreateRouter(defaultAPIConfig, app)
@@ -5137,7 +5137,7 @@ func TestSkillsAreScopedPerUser(t *testing.T) {
 }
 
 func TestSkillReposRequireAdmin(t *testing.T) {
-	t.Setenv("NEXUS_RUNTIME_ROOT", t.TempDir())
+	t.Setenv("SESHAT_RUNTIME_ROOT", t.TempDir())
 
 	app, identity := newSkillsTestApp(t)
 	router := CreateRouter(defaultAPIConfig, app)
@@ -5177,7 +5177,7 @@ func TestSkillReposRequireAdmin(t *testing.T) {
 func TestIsRestrictedSkillSource(t *testing.T) {
 	// Use a temp dir as the runtime root so paths are deterministic.
 	base := t.TempDir()
-	t.Setenv("NEXUS_RUNTIME_ROOT", base)
+	t.Setenv("SESHAT_RUNTIME_ROOT", base)
 
 	managed := skillsloader.GetManagedSkillsPath()
 	builtin := skillsloader.GetBuiltinSkillsPath()
@@ -5214,7 +5214,7 @@ func TestIsRestrictedSkillSource(t *testing.T) {
 // string prefix of the managed path but not an actual subdirectory is rejected.
 func TestIsRestrictedSkillSource_NoPrefixConfusion(t *testing.T) {
 	base := t.TempDir()
-	t.Setenv("NEXUS_RUNTIME_ROOT", base)
+	t.Setenv("SESHAT_RUNTIME_ROOT", base)
 
 	managed := skillsloader.GetManagedSkillsPath()
 	// e.g. managed = /tmp/xyz/skills/managed
@@ -5398,7 +5398,7 @@ func newWebSearchTestApp(t *testing.T, runner *fakeWebSearchRunner) (*App, *db.I
 	}
 
 	app := &App{
-		backend: nexus.NewApp(nexus.Dependencies{
+		backend: seshat.NewApp(seshat.Dependencies{
 			Identity:          identity,
 			SettingStore:      settingStore,
 			WebSearchSettings: webSearchSettingStore,

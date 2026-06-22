@@ -8,11 +8,11 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	backendauth "github.com/EngineerProjects/nexus_ai/internal/auth"
-	"github.com/EngineerProjects/nexus_ai/internal/db"
-	backendfiles "github.com/EngineerProjects/nexus_ai/internal/files"
-	backendknowledge "github.com/EngineerProjects/nexus_ai/internal/knowledge"
-	backendmemories "github.com/EngineerProjects/nexus_ai/internal/memories"
+	backendauth "github.com/EngineerProjects/seshat-ai/internal/auth"
+	"github.com/EngineerProjects/seshat-ai/internal/db"
+	backendfiles "github.com/EngineerProjects/seshat-ai/internal/files"
+	backendknowledge "github.com/EngineerProjects/seshat-ai/internal/knowledge"
+	backendmemories "github.com/EngineerProjects/seshat-ai/internal/memories"
 )
 
 // buildRAGContext searches the given corpus for chunks relevant to the prompt

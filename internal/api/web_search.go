@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"strconv"
 
-	webpolicy "github.com/EngineerProjects/nexus-engine/pkg/web"
-	backendwebsearch "github.com/EngineerProjects/nexus_ai/internal/websearch"
+	backendwebsearch "github.com/EngineerProjects/seshat-ai/internal/websearch"
+	webpolicy "github.com/EngineerProjects/seshat/pkg/web"
 )
 
 type webSearchSettingsResponse struct {

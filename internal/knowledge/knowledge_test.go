@@ -8,12 +8,12 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/EngineerProjects/nexus-engine/pkg/rag"
-	"github.com/EngineerProjects/nexus-engine/pkg/storage"
-	"github.com/EngineerProjects/nexus-engine/pkg/vector"
-	backendauth "github.com/EngineerProjects/nexus_ai/internal/auth"
-	"github.com/EngineerProjects/nexus_ai/internal/db"
-	"github.com/EngineerProjects/nexus_ai/internal/knowledge"
+	backendauth "github.com/EngineerProjects/seshat-ai/internal/auth"
+	"github.com/EngineerProjects/seshat-ai/internal/db"
+	"github.com/EngineerProjects/seshat-ai/internal/knowledge"
+	"github.com/EngineerProjects/seshat/pkg/rag"
+	"github.com/EngineerProjects/seshat/pkg/storage"
+	"github.com/EngineerProjects/seshat/pkg/vector"
 )
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

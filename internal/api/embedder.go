@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	ragembedder "github.com/EngineerProjects/nexus-engine/pkg/rag/embedder"
-	"github.com/EngineerProjects/nexus_ai/internal/db"
+	"github.com/EngineerProjects/seshat-ai/internal/db"
+	ragembedder "github.com/EngineerProjects/seshat/pkg/rag/embedder"
 )
 
 type embedderConfigResponse struct {

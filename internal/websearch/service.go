@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	searchproviders "github.com/EngineerProjects/nexus-engine/pkg/web/search/providers"
-	backendauth "github.com/EngineerProjects/nexus_ai/internal/auth"
-	"github.com/EngineerProjects/nexus_ai/internal/bkerr"
-	"github.com/EngineerProjects/nexus_ai/internal/db"
-	backendsettings "github.com/EngineerProjects/nexus_ai/internal/settings"
+	backendauth "github.com/EngineerProjects/seshat-ai/internal/auth"
+	"github.com/EngineerProjects/seshat-ai/internal/bkerr"
+	"github.com/EngineerProjects/seshat-ai/internal/db"
+	backendsettings "github.com/EngineerProjects/seshat-ai/internal/settings"
+	searchproviders "github.com/EngineerProjects/seshat/pkg/web/search/providers"
 )
 
 type Service struct {

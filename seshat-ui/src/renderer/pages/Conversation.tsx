@@ -450,7 +450,7 @@ export function Conversation() {
               void sendMessage(prompt, { corpusId: selectedCorpusId, fileIds })
             }}
             onStop={() => { void stopMessage() }}
-            placeholder="Message Nexus Engine..."
+            placeholder="Message Seshat..."
             showAutoButton
             isStreaming={isStreaming}
             statusText={agentState.activeTool?.message || (isStreaming ? 'Nexus is running…' : undefined)}

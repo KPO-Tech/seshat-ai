@@ -5,11 +5,11 @@ import (
 	"strings"
 	"time"
 
-	longterm "github.com/EngineerProjects/nexus-engine/pkg/memory/longterm"
-	"github.com/EngineerProjects/nexus-engine/pkg/types"
-	backendauth "github.com/EngineerProjects/nexus_ai/internal/auth"
-	"github.com/EngineerProjects/nexus_ai/internal/bkerr"
-	"github.com/EngineerProjects/nexus_ai/internal/db"
+	backendauth "github.com/EngineerProjects/seshat-ai/internal/auth"
+	"github.com/EngineerProjects/seshat-ai/internal/bkerr"
+	"github.com/EngineerProjects/seshat-ai/internal/db"
+	longterm "github.com/EngineerProjects/seshat/pkg/memory/longterm"
+	"github.com/EngineerProjects/seshat/pkg/types"
 )
 
 type Service struct {

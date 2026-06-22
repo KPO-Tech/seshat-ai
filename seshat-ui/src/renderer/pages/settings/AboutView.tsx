@@ -10,7 +10,7 @@ export function AboutView() {
       </header>
       <div className="sv-about-hero">
         <NexusLogo size={100} />
-        <h2>Nexus AI OS</h2>
+        <h2>SeshatOS OS</h2>
         <p>Version 0.1.0-alpha • Desktop Orchestration Runtime</p>
       </div>
     </div>

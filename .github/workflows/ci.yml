@@ -50,9 +50,9 @@ jobs:
           node-version: '22'
 
       - name: Install dependencies
-        working-directory: nexus-ui
+        working-directory: seshat-ui
         run: npm ci
 
       - name: Typecheck
-        working-directory: nexus-ui
+        working-directory: seshat-ui
         run: npm run typecheck

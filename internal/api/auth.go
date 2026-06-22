@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	backendaudit "github.com/EngineerProjects/nexus_ai/internal/audit"
-	backendauth "github.com/EngineerProjects/nexus_ai/internal/auth"
-	"github.com/EngineerProjects/nexus_ai/internal/bkerr"
+	backendaudit "github.com/EngineerProjects/seshat-ai/internal/audit"
+	backendauth "github.com/EngineerProjects/seshat-ai/internal/auth"
+	"github.com/EngineerProjects/seshat-ai/internal/bkerr"
 )
 
 type contextKey string
