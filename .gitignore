@@ -22,6 +22,7 @@ Thumbs.db
 .claude/
 .gemini/
 private/
+helps/
 
 # Generic local artifacts
 *.log
