@@ -1,0 +1,117 @@
+.title {
+  font-size: clamp(2rem, 3.5vw, 2.5rem);
+  font-weight: 850;
+  letter-spacing: -0.03em;
+  margin-bottom: 0.75rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: var(--text);
+}
+
+.sub {
+  color: var(--text-secondary);
+  max-width: 100%;
+  margin-bottom: 4.5rem;
+  font-size: 1.05rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.card {
+  background: var(--bg-card);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 2.25rem 2rem;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.card:hover {
+  border-color: var(--border-indigo);
+  background: var(--bg-panel);
+  transform: translateY(-4px);
+  box-shadow: 0 16px 36px -12px rgba(124, 58, 237, 0.15);
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  background: rgba(124, 58, 237, 0.04);
+  border: 1px solid var(--border-indigo);
+  color: var(--purple);
+  margin-bottom: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.iconSvg {
+  width: 22px;
+  height: 22px;
+}
+
+.card:hover .icon {
+  background: rgba(124, 58, 237, 0.1);
+  transform: scale(1.05);
+}
+
+.cardTitle {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  color: var(--text);
+}
+
+.cardBody {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.whoWrap {
+  margin-top: 3.5rem;
+}
+
+.whoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.25rem;
+  margin-top: 2rem;
+}
+
+.whoCard {
+  background: rgba(42, 39, 36, 0.015);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.whoCard:hover {
+  border-color: var(--text-subtle);
+  background: rgba(42, 39, 36, 0.03);
+}
+
+.whoCard strong {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.whoCard span {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
