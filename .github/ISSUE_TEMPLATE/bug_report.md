@@ -10,7 +10,7 @@ labels: bug
 
 ## Environment
 
-- nexus-ai version / commit:
+- seshat-ai version / commit:
 - Go version:
 - Node version (if UI-related):
 - OS:

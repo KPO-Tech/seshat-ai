@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="docs/images/nexus.png" alt="Nexus AI" width="120">
+  <img src="docs/images/seshat.png" alt="SeshatOS" width="120">
 </p>
 
-<h1 align="center">Nexus AI</h1>
+<h1 align="center">SeshatOS</h1>
 
 <p align="center">
   <b>Self-hosted AI platform for teams — desktop app, REST API, multi-user auth, and full agent governance.</b><br>
-  <i>Built on nexus-engine &nbsp;·&nbsp; SQLite or PostgreSQL &nbsp;·&nbsp; 7 providers &nbsp;·&nbsp; AGPL-3.0</i>
+  <i>Built on seshat &nbsp;·&nbsp; SQLite or PostgreSQL &nbsp;·&nbsp; 7 providers &nbsp;·&nbsp; AGPL-3.0</i>
 </p>
 
 <p align="center">
@@ -19,13 +19,13 @@
 
 ---
 
-## 🤔 What is Nexus AI?
+## 🤔 What is SeshatOS?
 
-**[nexus-engine](https://github.com/EngineerProjects/nexus-engine)** is the open-source Go runtime for multi-turn AI agents (tools, permissions, sessions, RAG, MCP). **Nexus AI** is the production layer on top: a multi-user backend with a full REST API and a desktop application.
+**[seshat](https://github.com/EngineerProjects/seshat)** is the open-source Go runtime for multi-turn AI agents (tools, permissions, sessions, RAG, MCP). **SeshatOS** is the production layer on top: a multi-user backend with a full REST API and a desktop application.
 
 ```
 ┌─────────────────────────────────┐
-│  nexus-ui  (Electron + React)   │  Desktop app
+│  seshat-ui  (Electron + React)   │  Desktop app
 └────────────┬────────────────────┘
              │ HTTP + SSE
 ┌────────────▼────────────────────┐
@@ -35,17 +35,17 @@
 └────────────┬────────────────────┘
              │ Go SDK (pkg/sdk)
 ┌────────────▼────────────────────┐
-│  nexus-engine  (submodule)      │  Agent runtime, tools, providers, MCP
+│  seshat  (submodule)      │  Agent runtime, tools, providers, MCP
 └─────────────────────────────────┘
 ```
 
-Dependency direction is strictly one-way: `nexus-ai` imports `nexus-engine/pkg/*` only, never the reverse.
+Dependency direction is strictly one-way: `seshat-ai` imports `seshat/pkg/*` only, never the reverse.
 
 ---
 
 ## 🖥️ Desktop UI
 
-Nexus AI ships with `nexus-ui`, an Electron + React desktop application that wraps the full HTTP API.
+SeshatOS ships with `seshat-ui`, an Electron + React desktop application that wraps the full HTTP API.
 
 <table>
   <tr>
@@ -93,9 +93,9 @@ Nexus AI ships with `nexus-ui`, an Electron + React desktop application that wra
 
 ---
 
-## 📊 How Nexus AI Compares
+## 📊 How SeshatOS Compares
 
-| Feature | **Nexus AI** | Claude Code | Open WebUI | LibreChat | AnythingLLM |
+| Feature | **SeshatOS** | Claude Code | Open WebUI | LibreChat | AnythingLLM |
 |---|:---:|:---:|:---:|:---:|:---:|
 | Multi-user + RBAC | ✅ | ❌ | ✅ | ✅ | ✅ |
 | Self-hosted | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -118,7 +118,7 @@ Nexus AI ships with `nexus-ui`, an Electron + React desktop application that wra
 ## 🗂️ Repository Structure
 
 ```
-nexus-ai/
+seshat-ai/
 ├── cmd/api/              ← thin entrypoint (main.go + config.go)
 ├── internal/
 │   ├── api/              ← HTTP handlers, SSE, routes
@@ -143,9 +143,9 @@ nexus-ai/
 │   ├── settings/         ← provider credentials + OAuth
 │   ├── skills/           ← skill registry + prompt resolution
 │   └── websearch/        ← web search abstraction
-├── nexus-engine/         ← submodule: github.com/EngineerProjects/nexus-engine
-├── nexus-skills/         ← submodule: github.com/EngineerProjects/nexus-skills
-├── nexus-ui/             ← Electron desktop app (React + TypeScript)
+├── seshat/         ← submodule: github.com/EngineerProjects/seshat
+├── seshat-skills/         ← submodule: github.com/EngineerProjects/seshat-skills
+├── seshat-ui/             ← Electron desktop app (React + TypeScript)
 └── docs/                 ← Architecture, development guide, UI docs
 ```
 
@@ -162,15 +162,15 @@ nexus-ai/
 ### Clone
 
 ```bash
-git clone --recurse-submodules https://github.com/EngineerProjects/nexus-ai.git
-cd nexus-ai
+git clone --recurse-submodules https://github.com/EngineerProjects/seshat-ai.git
+cd seshat-ai
 ```
 
 ### Configure
 
 ```bash
 cp .env.example .env
-# Edit .env: set NEXUS_ADMIN_EMAIL, NEXUS_ADMIN_PASSWORD,
+# Edit .env: set SESHAT_ADMIN_EMAIL, SESHAT_ADMIN_PASSWORD,
 # and at least one provider key (ANTHROPIC_API_KEY, OPENAI_API_KEY, etc.)
 ```
 
@@ -210,11 +210,11 @@ All config is via environment variables. See [`.env.example`](.env.example) for 
 |---|---|---|
 | `PORT` | `8090` | HTTP listen port |
 | `LOG_LEVEL` | `INFO` | `DEBUG` · `INFO` · `WARN` · `ERROR` |
-| `NEXUS_DB_DRIVER` | `sqlite` | `sqlite` or `postgres` |
-| `NEXUS_DB_DSN` | `nexus.db` | Database connection string |
-| `NEXUS_ADMIN_EMAIL` | - | Bootstrap admin email (first run) |
-| `NEXUS_ADMIN_PASSWORD` | - | Bootstrap admin password (first run) |
-| `NEXUS_ENABLE_SIGNUP` | `true` | Allow user self-registration |
+| `SESHAT_DB_DRIVER` | `sqlite` | `sqlite` or `postgres` |
+| `SESHAT_DB_DSN` | `seshat.db` | Database connection string |
+| `SESHAT_ADMIN_EMAIL` | - | Bootstrap admin email (first run) |
+| `SESHAT_ADMIN_PASSWORD` | - | Bootstrap admin password (first run) |
+| `SESHAT_ENABLE_SIGNUP` | `true` | Allow user self-registration |
 | `ANTHROPIC_API_KEY` | - | Anthropic provider |
 | `OPENAI_API_KEY` | - | OpenAI provider |
 | `MISTRAL_API_KEY` | - | Mistral provider |
@@ -421,8 +421,8 @@ GET    /metrics                      Prometheus scrape endpoint
 POST   /v1/messages
 ```
 
-Set `ANTHROPIC_BASE_URL=http://<host>/v1` in any Anthropic SDK client to route through Nexus.
-Auth: `x-api-key: <nexus-api-key>` or `Authorization: Bearer <nexus-jwt>`.
+Set `ANTHROPIC_BASE_URL=http://<host>/v1` in any Anthropic SDK client to route through SeshatOS.
+Auth: `x-api-key: <seshat-api-key>` or `Authorization: Bearer <seshat-jwt>`.
 
 ---
 
@@ -494,8 +494,8 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md). PRs target `dev`, never directly `main
 
 ## 📄 License
 
-Nexus AI is licensed under the **GNU Affero General Public License v3.0** (AGPL-3.0).
+SeshatOS is licensed under the **GNU Affero General Public License v3.0** (AGPL-3.0).
 
-The underlying runtime, [nexus-engine](https://github.com/EngineerProjects/nexus-engine), is Apache 2.0.
+The underlying runtime, [seshat](https://github.com/EngineerProjects/seshat), is Apache 2.0.
 
 See [`LICENSE`](LICENSE) for the full text.

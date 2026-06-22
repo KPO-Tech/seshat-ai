@@ -18,9 +18,11 @@ Thumbs.db
 # Local tool state
 .cache/
 .nexus/
+.seshat/
 .claude/
 .gemini/
 private/
+helps/
 
 # Generic local artifacts
 *.log
@@ -32,9 +34,14 @@ bin/
 dist/
 out/
 nexus-ui/out/
+seshat-ui/out/
+/api
 
 # Data
 data/
 *.db
 *.db-shm
 *.db-wal
+
+website/dist/
+website/node_modules/

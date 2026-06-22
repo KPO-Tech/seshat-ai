@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	searchproviders "github.com/EngineerProjects/nexus-engine/pkg/web/search/providers"
-	backendauth "github.com/EngineerProjects/nexus-product/internal/auth"
-	"github.com/EngineerProjects/nexus-product/internal/bkerr"
-	"github.com/EngineerProjects/nexus-product/internal/db"
-	backendsettings "github.com/EngineerProjects/nexus-product/internal/settings"
+	backendauth "github.com/EngineerProjects/seshat-ai/internal/auth"
+	"github.com/EngineerProjects/seshat-ai/internal/bkerr"
+	"github.com/EngineerProjects/seshat-ai/internal/db"
+	backendsettings "github.com/EngineerProjects/seshat-ai/internal/settings"
+	searchproviders "github.com/EngineerProjects/seshat/pkg/web/search/providers"
 )
 
 type Service struct {
@@ -43,7 +43,6 @@ var providerCatalog = []ProviderCatalogEntry{
 	{Name: "jina", Label: "Jina AI", Description: "AI-native search with reader API", RequiresAPIKey: true, Priority: 30},
 	{Name: "langsearch", Label: "LangSearch", Description: "Free API key, AI-optimised results", RequiresAPIKey: true, Priority: 35},
 	{Name: "searxng", Label: "SearXNG", Description: "Self-hosted privacy-focused meta-search", RequiresBaseURL: true, DefaultBaseURL: "http://localhost:8080", Priority: 40},
-	{Name: "ddg", Label: "DuckDuckGo", Description: "Always-available scraping fallback, no key needed", RequiresAPIKey: false, RequiresBaseURL: false, Priority: 50},
 }
 
 func catalogByName(name string) *ProviderCatalogEntry {
@@ -88,6 +87,7 @@ func (s *Service) ListProviders(ctx context.Context, principal *backendauth.Prin
 			status.Enabled = row.Enabled
 			status.HasAPIKey = row.HasAPIKey
 			status.BaseURL = row.BaseURL
+			status.AuthUsername = row.AuthUsername
 			status.UpdatedAt = row.UpdatedAt
 		} else {
 			// No config row yet: providers that need no credentials are enabled by default
@@ -115,11 +115,12 @@ func (s *Service) UpsertProvider(ctx context.Context, principal *backendauth.Pri
 	// Clearing an API key is allowed even when the provider requires one — just store empty.
 
 	row, err := s.providerConfigs.Upsert(ctx, db.UpsertSearchProviderConfigParams{
-		UserID:   principal.User.ID,
-		Provider: cat.Name,
-		Enabled:  params.Enabled,
-		APIKey:   params.APIKey,
-		BaseURL:  params.BaseURL,
+		UserID:       principal.User.ID,
+		Provider:     cat.Name,
+		Enabled:      params.Enabled,
+		APIKey:       params.APIKey,
+		BaseURL:      params.BaseURL,
+		AuthUsername: params.AuthUsername,
 	})
 	if err != nil {
 		return nil, bkerr.Internal("upsert search provider config: "+err.Error(), err)
@@ -131,6 +132,7 @@ func (s *Service) UpsertProvider(ctx context.Context, principal *backendauth.Pri
 		Enabled:         row.Enabled,
 		HasAPIKey:       row.HasAPIKey,
 		BaseURL:         row.BaseURL,
+		AuthUsername:    row.AuthUsername,
 		RequiresAPIKey:  cat.RequiresAPIKey,
 		RequiresBaseURL: cat.RequiresBaseURL,
 		DefaultBaseURL:  cat.DefaultBaseURL,
@@ -154,17 +156,20 @@ func (s *Service) TestProvider(ctx context.Context, principal *backendauth.Princ
 
 	apiKey := ""
 	baseURL := cat.DefaultBaseURL
+	authUsername := ""
 	if row, err := s.providerConfigs.GetByUserAndProvider(ctx, principal.User.ID, cat.Name); err == nil {
 		baseURL = row.BaseURL
+		authUsername = row.AuthUsername
 		if row.HasAPIKey {
 			apiKey, _ = s.providerConfigs.GetDecryptedAPIKey(ctx, principal.User.ID, cat.Name)
 		}
 	}
 
 	runCfg := SearchRunProvider{
-		Provider: cat.Name,
-		BaseURL:  baseURL,
-		Secret:   apiKey,
+		Provider:     cat.Name,
+		BaseURL:      baseURL,
+		Secret:       apiKey,
+		AuthUsername: authUsername,
 	}
 	provider, err := providerFromRunConfig(runCfg)
 	if err != nil {
@@ -343,9 +348,10 @@ func (s *Service) resolveProviders(ctx context.Context, principal *backendauth.P
 					apiKey, _ = s.providerConfigs.GetDecryptedAPIKey(ctx, principal.User.ID, row.Provider)
 				}
 				configs = append(configs, SearchRunProvider{
-					Provider: row.Provider,
-					BaseURL:  strings.TrimSpace(baseURL),
-					Secret:   strings.TrimSpace(apiKey),
+					Provider:     row.Provider,
+					BaseURL:      strings.TrimSpace(baseURL),
+					Secret:       strings.TrimSpace(apiKey),
+					AuthUsername: row.AuthUsername,
 				})
 			}
 			if len(configs) > 0 {

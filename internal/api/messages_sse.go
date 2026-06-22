@@ -2,7 +2,7 @@ package api
 
 // Anthropic Messages API SSE event format.
 //
-// Streaming protocol (subset used by Nexus — text-only, server-side tool execution):
+// Streaming protocol (subset used by Seshat — text-only, server-side tool execution):
 //
 //	event: message_start
 //	data: {"type":"message_start","message":{...}}

@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"strings"
 
-	pkgagent "github.com/EngineerProjects/nexus-engine/pkg/agent"
-	backendagents "github.com/EngineerProjects/nexus-product/internal/agents"
+	backendagents "github.com/EngineerProjects/seshat-ai/internal/agents"
+	pkgagent "github.com/EngineerProjects/seshat/pkg/agent"
 )
 
 // ─── Response DTOs ────────────────────────────────────────────────────────────

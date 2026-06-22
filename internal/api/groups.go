@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	backendauth "github.com/EngineerProjects/nexus-product/internal/auth"
-	"github.com/EngineerProjects/nexus-product/internal/db"
+	backendauth "github.com/EngineerProjects/seshat-ai/internal/auth"
+	"github.com/EngineerProjects/seshat-ai/internal/db"
 )
 
 // ─── Request / Response types ──────────────────────────────────────────────────

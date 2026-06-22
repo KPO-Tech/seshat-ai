@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/EngineerProjects/nexus-engine/pkg/providers"
-	backendaudit "github.com/EngineerProjects/nexus-product/internal/audit"
-	bksettings "github.com/EngineerProjects/nexus-product/internal/settings"
+	backendaudit "github.com/EngineerProjects/seshat-ai/internal/audit"
+	bksettings "github.com/EngineerProjects/seshat-ai/internal/settings"
+	"github.com/EngineerProjects/seshat/pkg/providers"
 )
 
 type settingResponse struct {

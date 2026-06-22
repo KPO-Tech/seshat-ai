@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/EngineerProjects/nexus-engine/pkg/types"
+	"github.com/EngineerProjects/seshat/pkg/types"
 )
 
 // handleSessions handles GET /api/v1/sessions (list) and POST /api/v1/sessions (create).

@@ -4,10 +4,10 @@ import (
 	"context"
 	"strings"
 
-	enginemcp "github.com/EngineerProjects/nexus-engine/pkg/mcp"
-	"github.com/EngineerProjects/nexus-engine/pkg/sdk"
-	"github.com/EngineerProjects/nexus-product/internal/bkerr"
-	"github.com/EngineerProjects/nexus-product/internal/db"
+	"github.com/EngineerProjects/seshat-ai/internal/bkerr"
+	"github.com/EngineerProjects/seshat-ai/internal/db"
+	enginemcp "github.com/EngineerProjects/seshat/pkg/mcp"
+	"github.com/EngineerProjects/seshat/pkg/sdk"
 )
 
 // RuntimeReloader is the subset of the query runtime needed for MCP reload operations.
@@ -198,6 +198,36 @@ func (s *Service) Status() []ServerStatus {
 		out = append(out, st)
 	}
 	return out
+}
+
+// ToolsByServer returns the connected tools grouped by server name.
+// Tool names follow the pattern mcp__<server>__<tool>; unprefixed tools are
+// filed under the server that registered them via the ServerResults index.
+func (s *Service) ToolsByServer() map[string][]ToolInfo {
+	if s == nil || s.runtime == nil {
+		return nil
+	}
+	result := s.runtime.MCPResult()
+	if result == nil {
+		return nil
+	}
+	out := make(map[string][]ToolInfo)
+	for _, t := range result.MCPTools {
+		def := t.Definition()
+		server, tool := parseMCPToolName(def.Name)
+		out[server] = append(out[server], ToolInfo{Name: tool, Description: def.Description})
+	}
+	return out
+}
+
+// parseMCPToolName splits "mcp__server__tool" → ("server", "tool").
+// Falls back to ("", fullName) for non-prefixed names.
+func parseMCPToolName(name string) (server, tool string) {
+	parts := strings.SplitN(name, "__", 3)
+	if len(parts) == 3 && parts[0] == "mcp" {
+		return parts[1], parts[2]
+	}
+	return "", name
 }
 
 func fromDB(s db.MCPServer) Server {

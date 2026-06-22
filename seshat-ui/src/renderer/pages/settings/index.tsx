@@ -1,0 +1,197 @@
+import { useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import {
+  Browser, Book, Brain, Flashlamp, Earth, Computer, Info,
+  Left, SunOne, Moon, Setting, User, Peoples, BuildingTwo, Workbench,
+} from '@icon-park/react'
+import { useUIStore } from '@/stores/ui'
+import { useAuthStore } from '@/stores/auth'
+import { SettingsSidebar, SETTINGS_NAV_CSS, SETTINGS_SHARED_CSS } from './SettingsNav'
+import { ProvidersView, PROVIDERS_CSS } from './ProvidersView'
+import { KnowledgeView } from './KnowledgeView'
+import { MemoriesView } from './MemoriesView'
+import { AboutView } from './AboutView'
+import { CapabilitiesView, CAPABILITIES_CSS } from './CapabilitiesViews'
+import { WebSearchView } from './WebSearchView'
+import { GeneralView } from './GeneralView'
+import {
+  AdminUsersView,
+  AdminGroupsView,
+  AdminOrganizationsView,
+  AdminWorkspacesView,
+  AdminAuditView,
+  AdminQuotasView,
+  ADMIN_CSS,
+} from './AdminViews'
+import type { TabId } from './SettingsNav'
+
+export function Settings() {
+  const location = useLocation()
+  const initialTab = (() => {
+    const requested = new URLSearchParams(location.search).get('tab')
+    if (requested === 'general' || requested === 'memories' || requested === 'providers' || requested === 'knowledge' || requested === 'capabilities' || requested === 'remote' || requested === 'system' || requested === 'about' || requested === 'admin-users' || requested === 'admin-groups' || requested === 'admin-organizations' || requested === 'admin-workspaces' || requested === 'admin-audit' || requested === 'admin-quotas') {
+      return requested as TabId
+    }
+    return 'general' as TabId
+  })()
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab)
+  const navigate = useNavigate()
+  const { theme, setTheme, sidebarCollapsed } = useUIStore()
+  const roles = useAuthStore((s) => s.roles)
+
+  const isAdmin = roles.includes('admin')
+
+  const navGroups = [
+    {
+      title: 'PERSONAL',
+      items: [
+        { id: 'general' as TabId, label: 'General', icon: <Setting size={20} /> },
+        { id: 'memories' as TabId, label: 'Memories', icon: <Brain size={20} /> },
+      ],
+    },
+    {
+      title: 'AI CORE',
+      items: [
+        { id: 'providers' as TabId, label: 'Providers', icon: <Browser size={20} /> },
+        { id: 'knowledge' as TabId, label: 'Knowledge', icon: <Book size={20} /> },
+        { id: 'capabilities' as TabId, label: 'Capabilities', icon: <Flashlamp size={20} /> },
+      ],
+    },
+    {
+      title: 'APPLICATION',
+      items: [
+        { id: 'remote' as TabId, label: 'Web Search', icon: <Earth size={20} /> },
+        { id: 'system' as TabId, label: 'System', icon: <Computer size={20} /> },
+      ],
+    },
+    ...(isAdmin ? [{
+      title: 'ADMIN',
+      items: [
+        { id: 'admin-users' as TabId, label: 'Users', icon: <User size={20} /> },
+        { id: 'admin-groups' as TabId, label: 'Groups', icon: <Peoples size={20} /> },
+        { id: 'admin-organizations' as TabId, label: 'Organizations', icon: <BuildingTwo size={20} /> },
+        { id: 'admin-workspaces' as TabId, label: 'Workspaces', icon: <Workbench size={20} /> },
+        { id: 'admin-audit' as TabId, label: 'Audit Logs', icon: <Info size={20} /> },
+        { id: 'admin-quotas' as TabId, label: 'Quotas', icon: <Flashlamp size={20} /> },
+      ],
+    }] : []),
+    {
+      title: 'OTHER',
+      items: [
+        { id: 'about' as TabId, label: 'About', icon: <Info size={20} /> },
+      ],
+    },
+  ]
+
+  const footer = (
+    <div className={`snav-footer-items ${sidebarCollapsed ? 'collapsed' : ''}`}>
+      <button
+        className="snav-footer-btn"
+        onClick={() => navigate(-1)}
+        title={sidebarCollapsed ? 'Back to Chat' : undefined}
+      >
+        <Left size={16} />
+        {!sidebarCollapsed && <span>Back to Chat</span>}
+      </button>
+      <button
+        className="snav-theme-toggle"
+        onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+      >
+        {theme === 'dark' ? <SunOne size={18} /> : <Moon size={18} />}
+      </button>
+    </div>
+  )
+
+  return (
+    <div className="settings-root">
+      <style>{SETTINGS_CSS}</style>
+
+      <SettingsSidebar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        collapsed={sidebarCollapsed}
+        footer={footer}
+        navGroups={navGroups}
+      />
+
+      <main className={`settings-content ${sidebarCollapsed ? 'collapsed' : ''}`}>
+        <div className="settings-content-inner">
+          {activeTab === 'general' && <GeneralView />}
+          {activeTab === 'providers' && <ProvidersView />}
+          {activeTab === 'knowledge' && <KnowledgeView />}
+          {activeTab === 'memories' && <MemoriesView />}
+          {activeTab === 'capabilities' && <CapabilitiesView />}
+          {activeTab === 'remote' && <WebSearchView />}
+          {activeTab === 'system' && <SystemView />}
+          {activeTab === 'about' && <AboutView />}
+          {activeTab === 'admin-users' && <AdminUsersView />}
+          {activeTab === 'admin-groups' && <AdminGroupsView />}
+          {activeTab === 'admin-organizations' && <AdminOrganizationsView />}
+          {activeTab === 'admin-workspaces' && <AdminWorkspacesView />}
+          {activeTab === 'admin-audit' && <AdminAuditView />}
+          {activeTab === 'admin-quotas' && <AdminQuotasView />}
+        </div>
+      </main>
+    </div>
+  )
+}
+
+function SystemView() {
+  return (
+    <div className="sv-view">
+      <header className="sv-view-header">
+        <div className="sv-header-info">
+          <h1>System</h1>
+          <p>Runtime and infrastructure settings.</p>
+        </div>
+      </header>
+      <div className="sv-grid">
+        <div className="sv-card">
+          <div className="sv-card-head">
+            <div className="sv-card-brand">
+              <div className="sv-brand-icon"><Computer size={20} /></div>
+              <div>
+                <div className="sv-brand-name">Backend</div>
+                <div className="sv-brand-sub">Seshat API</div>
+              </div>
+            </div>
+          </div>
+          <div className="sv-card-body">
+            <div className="sv-toggle-row">
+              <div className="sv-toggle-info">
+                <div>
+                  <div className="sv-setting-label">API Endpoint</div>
+                  <div className="sv-setting-desc">http://localhost:8090</div>
+                </div>
+              </div>
+            </div>
+            <div className="sv-toggle-row">
+              <div className="sv-toggle-info">
+                <div>
+                  <div className="sv-setting-label">Database</div>
+                  <div className="sv-setting-desc">Configure via NEXUS_DB_DRIVER + NEXUS_DB_DSN in .env</div>
+                </div>
+              </div>
+            </div>
+            <div className="sv-toggle-row">
+              <div className="sv-toggle-info">
+                <div>
+                  <div className="sv-setting-label">Storage</div>
+                  <div className="sv-setting-desc">Configure via NEXUS_STORAGE_PROVIDER in .env</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const SETTINGS_CSS = `
+${SETTINGS_NAV_CSS}
+${PROVIDERS_CSS}
+${CAPABILITIES_CSS}
+${ADMIN_CSS}
+${SETTINGS_SHARED_CSS}
+`

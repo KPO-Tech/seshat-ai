@@ -17,6 +17,7 @@ type gSearchProviderConfig struct {
 	Enabled         bool   `gorm:"column:enabled;not null;default:false"`
 	APIKeyEncrypted string `gorm:"column:api_key_encrypted;not null;default:''"`
 	BaseURL         string `gorm:"column:base_url;type:text;not null;default:''"`
+	AuthUsername    string `gorm:"column:auth_username;type:text;not null;default:''"`
 	UpdatedAtUnix   int64  `gorm:"column:updated_at_unix;autoUpdateTime:unix"`
 	CreatedAtUnix   int64  `gorm:"column:created_at_unix;autoCreateTime:unix"`
 }
@@ -24,22 +25,24 @@ type gSearchProviderConfig struct {
 func (gSearchProviderConfig) TableName() string { return "search_provider_configs" }
 
 type SearchProviderConfig struct {
-	ID        string
-	UserID    string
-	Provider  string
-	Enabled   bool
-	HasAPIKey bool
-	BaseURL   string
-	UpdatedAt time.Time
-	CreatedAt time.Time
+	ID           string
+	UserID       string
+	Provider     string
+	Enabled      bool
+	HasAPIKey    bool
+	BaseURL      string
+	AuthUsername string
+	UpdatedAt    time.Time
+	CreatedAt    time.Time
 }
 
 type UpsertSearchProviderConfigParams struct {
-	UserID   string
-	Provider string
-	Enabled  bool
-	APIKey   *string // nil = keep existing; ptr-to-"" = clear
-	BaseURL  string
+	UserID       string
+	Provider     string
+	Enabled      bool
+	APIKey       *string // nil = keep existing; ptr-to-"" = clear (used as Basic Auth password for SearXNG)
+	BaseURL      string
+	AuthUsername *string // nil = keep existing; ptr-to-"" = clear
 }
 
 type SearchProviderConfigStore struct {
@@ -113,6 +116,10 @@ func (s *SearchProviderConfigStore) Upsert(ctx context.Context, p UpsertSearchPr
 		First(&row).Error
 
 	if errors.Is(err, gorm.ErrRecordNotFound) {
+		authUsername := ""
+		if p.AuthUsername != nil {
+			authUsername = strings.TrimSpace(*p.AuthUsername)
+		}
 		row = gSearchProviderConfig{
 			ID:              newIdentityID("spc"),
 			UserID:          p.UserID,
@@ -120,6 +127,7 @@ func (s *SearchProviderConfigStore) Upsert(ctx context.Context, p UpsertSearchPr
 			Enabled:         p.Enabled,
 			APIKeyEncrypted: encrypted,
 			BaseURL:         strings.TrimSpace(p.BaseURL),
+			AuthUsername:    authUsername,
 		}
 		if p.APIKey == nil {
 			row.APIKeyEncrypted = ""
@@ -140,6 +148,9 @@ func (s *SearchProviderConfigStore) Upsert(ctx context.Context, p UpsertSearchPr
 	}
 	if p.APIKey != nil {
 		updates["api_key_encrypted"] = encrypted
+	}
+	if p.AuthUsername != nil {
+		updates["auth_username"] = strings.TrimSpace(*p.AuthUsername)
 	}
 	if err := s.db.gormDB.WithContext(ctx).
 		Model(&gSearchProviderConfig{}).
@@ -188,13 +199,14 @@ func (s *SearchProviderConfigStore) GetDecryptedAPIKey(ctx context.Context, user
 
 func searchProviderConfigFromModel(row gSearchProviderConfig) SearchProviderConfig {
 	return SearchProviderConfig{
-		ID:        row.ID,
-		UserID:    row.UserID,
-		Provider:  row.Provider,
-		Enabled:   row.Enabled,
-		HasAPIKey: row.APIKeyEncrypted != "",
-		BaseURL:   row.BaseURL,
-		UpdatedAt: time.Unix(row.UpdatedAtUnix, 0).UTC(),
-		CreatedAt: time.Unix(row.CreatedAtUnix, 0).UTC(),
+		ID:           row.ID,
+		UserID:       row.UserID,
+		Provider:     row.Provider,
+		Enabled:      row.Enabled,
+		HasAPIKey:    row.APIKeyEncrypted != "",
+		BaseURL:      row.BaseURL,
+		AuthUsername: row.AuthUsername,
+		UpdatedAt:    time.Unix(row.UpdatedAtUnix, 0).UTC(),
+		CreatedAt:    time.Unix(row.CreatedAtUnix, 0).UTC(),
 	}
 }

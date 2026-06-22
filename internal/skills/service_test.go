@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	publicskills "github.com/EngineerProjects/nexus-engine/pkg/skills"
+	publicskills "github.com/EngineerProjects/seshat/pkg/skills"
 )
 
 // ─── ValidateName ─────────────────────────────────────────────────────────────

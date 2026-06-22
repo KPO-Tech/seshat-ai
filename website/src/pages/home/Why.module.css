@@ -1,0 +1,92 @@
+.section {
+  padding: 6.5rem 0;
+  position: relative;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border-glass);
+}
+
+.title {
+  font-size: clamp(2rem, 3.5vw, 2.5rem);
+  font-weight: 850;
+  letter-spacing: -0.03em;
+  margin-bottom: 0.75rem;
+}
+
+.sub {
+  color: var(--text-secondary);
+  max-width: 100%;
+  margin-bottom: 4.5rem;
+  font-size: 1.05rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.5rem;
+}
+
+.card {
+  background: var(--bg-card);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 2.5rem 2rem;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.card:hover {
+  border-color: var(--border-orange);
+  background: var(--bg-panel);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px -10px rgba(232, 64, 30, 0.08);
+}
+
+.icon {
+  margin-bottom: 1.5rem;
+  display: block;
+  width: 42px;
+  height: 42px;
+  color: var(--brand-engine-start);
+  transition: transform 0.3s ease, filter 0.3s ease;
+}
+
+.card:hover .icon {
+  transform: scale(1.05);
+  filter: drop-shadow(0 0 6px var(--brand-engine-glow));
+}
+
+.cardTitle {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  color: var(--text);
+}
+
+.cardBody {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* Custom SVG icons inside Why card paths */
+.gopherPath {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pulsePath {
+  stroke-dasharray: 4 4;
+  animation: dash 3s linear infinite;
+}
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: -20;
+  }
+}

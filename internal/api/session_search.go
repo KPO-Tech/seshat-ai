@@ -3,7 +3,7 @@ package api
 import (
 	"strings"
 
-	"github.com/EngineerProjects/nexus-engine/pkg/types"
+	"github.com/EngineerProjects/seshat/pkg/types"
 )
 
 func extractSessionSearchContent(messages []types.Message) string {

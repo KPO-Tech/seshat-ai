@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/EngineerProjects/nexus-engine/pkg/types"
-	backendauth "github.com/EngineerProjects/nexus-product/internal/auth"
-	"github.com/EngineerProjects/nexus-product/internal/db"
+	backendauth "github.com/EngineerProjects/seshat-ai/internal/auth"
+	"github.com/EngineerProjects/seshat-ai/internal/db"
+	"github.com/EngineerProjects/seshat/pkg/types"
 )
 
 func openPreferencesService(t *testing.T) *Service {

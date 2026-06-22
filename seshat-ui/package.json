@@ -1,0 +1,66 @@
+{
+  "name": "seshat-ui",
+  "version": "0.1.0",
+  "description": "SeshatOS Desktop",
+  "main": "out/main/index.js",
+  "engines": {
+    "node": ">=22 <25"
+  },
+  "scripts": {
+    "start": "electron-vite dev -- --no-sandbox",
+    "build": "electron-vite build",
+    "package": "npm run build && electron-builder",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json --noEmit",
+    "lint": "oxlint src"
+  },
+  "dependencies": {
+    "@arco-design/web-react": "^2.66.1",
+    "@emoji-mart/data": "^1.2.1",
+    "@emoji-mart/react": "^1.1.1",
+    "@icon-park/react": "^1.4.2",
+    "@tanstack/react-virtual": "^3.13.25",
+    "electron-updater": "^6.6.2",
+    "katex": "^0.16.22",
+    "mermaid": "^11.13.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-markdown": "^10.1.0",
+    "react-router-dom": "^7.8.0",
+    "react-syntax-highlighter": "^15.6.1",
+    "rehype-katex": "^7.0.1",
+    "rehype-raw": "^7.0.0",
+    "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
+    "swr": "^2.3.6",
+    "zod": "^3.25.76",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@types/react-syntax-highlighter": "^15.5.13",
+    "@unocss/reset": "^66.3.3",
+    "@vitejs/plugin-react": "^4.5.0",
+    "electron": "^37.10.3",
+    "electron-builder": "^26.6.0",
+    "electron-vite": "^5.0.0",
+    "oxlint": "^1.56.0",
+    "typescript": "^5.8.3",
+    "unocss": "^66.3.3",
+    "unocss-preset-extra": "^1.0.0",
+    "vite": "^6.4.1"
+  },
+  "build": {
+    "appId": "com.nexus.ai",
+    "productName": "Nexus AI",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**/*",
+      "!out/**/*.map"
+    ]
+  },
+  "productName": "SeshatOS"
+}

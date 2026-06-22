@@ -72,6 +72,7 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	apiV1.Handle("/mcp/config", app.requireRole("admin", http.HandlerFunc(app.handleMCPConfig)))
 	apiV1.Handle("/mcp/config/", app.requireRole("admin", http.HandlerFunc(app.handleMCPConfigDispatch)))
 	apiV1.Handle("/mcp/reload", app.requireRole("admin", http.HandlerFunc(app.handleMCPReload)))
+	apiV1.Handle("/mcp/tools", app.requireRole("admin", http.HandlerFunc(app.handleMCPTools)))
 
 	apiV1.Handle("/query", app.authMiddleware(http.HandlerFunc(app.handleQuery)))
 	apiV1.Handle("/query/stream", app.authMiddleware(http.HandlerFunc(app.handleQueryStream)))
@@ -153,8 +154,8 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	mux.Handle("/api/v1/", http.StripPrefix("/api/v1", handler))
 
 	// Anthropic Messages API compatible prefix.
-	// Clients set ANTHROPIC_BASE_URL=http://<host>/v1 to route through Nexus.
-	// Auth: x-api-key: <nexus-key>  or  Authorization: Bearer <nexus-jwt>
+	// Clients set ANTHROPIC_BASE_URL=http://<host>/v1 to route through Seshat.
+	// Auth: x-api-key: <seshat-key>  or  Authorization: Bearer <seshat-jwt>
 	v1compat := http.NewServeMux()
 	v1compat.Handle("/messages", app.anthropicAuthMiddleware(http.HandlerFunc(app.handleMessages)))
 

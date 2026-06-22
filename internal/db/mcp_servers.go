@@ -11,7 +11,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
-	"github.com/EngineerProjects/nexus-engine/pkg/mcp"
+	"github.com/EngineerProjects/seshat/pkg/mcp"
 )
 
 type gMCPServer struct {
@@ -261,7 +261,7 @@ func (s *MCPServerStore) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-// ImportFromMcpJSON upserts servers from a parsed nexus_mcp.json / mcp.json config.
+// ImportFromMcpJSON upserts servers from a parsed seshat_mcp.json / mcp.json config.
 // Returns number of servers imported.
 func (s *MCPServerStore) ImportFromMcpJSON(ctx context.Context, cfg mcp.McpJsonConfig) (int, error) {
 	count := 0

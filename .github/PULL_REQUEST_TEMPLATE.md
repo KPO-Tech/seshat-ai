@@ -23,7 +23,7 @@ Fixes #
 
 ## Frontend checklist (skip if no UI changes)
 
-- [ ] `npm ci` passes in `nexus-ui/`
+- [ ] `npm ci` passes in `seshat-ui/`
 - [ ] `npm run typecheck` passes
 - [ ] Tested in Electron dev mode (`make ui-dev`)
 

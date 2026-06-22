@@ -3,7 +3,7 @@ package query
 import (
 	"sync"
 
-	"github.com/EngineerProjects/nexus-engine/pkg/types"
+	"github.com/EngineerProjects/seshat/pkg/types"
 )
 
 // BrokerResolveResult is the outcome of a broker resolve call.

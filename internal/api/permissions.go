@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/EngineerProjects/nexus-engine/pkg/types"
-	backendquery "github.com/EngineerProjects/nexus-product/internal/query"
+	backendquery "github.com/EngineerProjects/seshat-ai/internal/query"
+	"github.com/EngineerProjects/seshat/pkg/types"
 )
 
 func (app *App) handlePermissionDecision(w http.ResponseWriter, r *http.Request) {

@@ -12,12 +12,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/EngineerProjects/nexus-engine/pkg/docling"
-	"github.com/EngineerProjects/nexus-engine/pkg/storage"
-	"github.com/EngineerProjects/nexus-engine/pkg/workspace"
-	backendauth "github.com/EngineerProjects/nexus-product/internal/auth"
-	"github.com/EngineerProjects/nexus-product/internal/bkerr"
-	"github.com/EngineerProjects/nexus-product/internal/db"
+	backendauth "github.com/EngineerProjects/seshat-ai/internal/auth"
+	"github.com/EngineerProjects/seshat-ai/internal/bkerr"
+	"github.com/EngineerProjects/seshat-ai/internal/db"
+	"github.com/EngineerProjects/seshat/pkg/docling"
+	"github.com/EngineerProjects/seshat/pkg/storage"
+	"github.com/EngineerProjects/seshat/pkg/workspace"
 )
 
 type Service struct {

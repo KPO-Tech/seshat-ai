@@ -89,9 +89,9 @@ func (db *DB) ListCredentialKeys(ctx context.Context) ([]string, error) {
 
 // ─── Encryption helpers ────────────────────────────────────────────────────────
 
-const keyFile = ".nexus_secret"
+const keyFile = ".seshat_secret"
 
-// loadOrCreateEncryptionKey returns the 32-byte AES key from ~/.nexus_secret,
+// loadOrCreateEncryptionKey returns the 32-byte AES key from ~/.seshat_secret,
 // creating and writing it with mode 0600 on first use.
 func loadOrCreateEncryptionKey() ([]byte, error) {
 	path, err := encryptionKeyPath()

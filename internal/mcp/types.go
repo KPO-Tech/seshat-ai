@@ -3,8 +3,8 @@ package mcp
 import (
 	"time"
 
-	enginemcp "github.com/EngineerProjects/nexus-engine/pkg/mcp"
-	"github.com/EngineerProjects/nexus-engine/pkg/sdk"
+	enginemcp "github.com/EngineerProjects/seshat/pkg/mcp"
+	"github.com/EngineerProjects/seshat/pkg/sdk"
 )
 
 type Server struct {
@@ -45,6 +45,12 @@ type ServerStatus struct {
 	OK    bool
 	Error string // empty when OK
 	Tools int
+}
+
+// ToolInfo holds the name and description of a single connected MCP tool.
+type ToolInfo struct {
+	Name        string
+	Description string
 }
 
 type CreateParams struct {

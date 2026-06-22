@@ -8,14 +8,14 @@ package api
 //
 //	ANTHROPIC_BASE_URL=http://localhost:8080/v1      (Claude Code, Python/TS SDK)
 //
-// Auth: x-api-key: <nexus-api-key>  OR  Authorization: Bearer <nexus-jwt>
+// Auth: x-api-key: <seshat-api-key>  OR  Authorization: Bearer <seshat-jwt>
 //
-// Nexus extension headers (all optional):
+// Seshat extension headers (all optional):
 //
-//	x-nexus-session-id           bind to an existing session for multi-turn continuity
-//	x-nexus-provider-setting-id  override the provider/model config to use
+//	x-seshat-session-id           bind to an existing session for multi-turn continuity
+//	x-seshat-provider-setting-id  override the provider/model config to use
 //
-// The full Nexus agent loop executes server-side (tools, permissions, memory).
+// The full Seshat agent loop executes server-side (tools, permissions, memory).
 // The client receives the final assistant message in Anthropic format.
 // No client-side tool execution is expected.
 
@@ -29,12 +29,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/EngineerProjects/nexus-engine/pkg/sdk"
-	"github.com/EngineerProjects/nexus-engine/pkg/types"
-	backendauth "github.com/EngineerProjects/nexus-product/internal/auth"
-	"github.com/EngineerProjects/nexus-product/internal/bkerr"
-	"github.com/EngineerProjects/nexus-product/internal/query"
-	backendquotas "github.com/EngineerProjects/nexus-product/internal/quotas"
+	backendauth "github.com/EngineerProjects/seshat-ai/internal/auth"
+	"github.com/EngineerProjects/seshat-ai/internal/bkerr"
+	"github.com/EngineerProjects/seshat-ai/internal/query"
+	backendquotas "github.com/EngineerProjects/seshat-ai/internal/quotas"
+	"github.com/EngineerProjects/seshat/pkg/sdk"
+	"github.com/EngineerProjects/seshat/pkg/types"
 )
 
 // ─── Request types ────────────────────────────────────────────────────────────
@@ -79,7 +79,7 @@ type anthropicOutMessage struct {
 
 // extractAnthropicInputs returns (lastUserPrompt, systemAppend) from the request.
 // lastUserPrompt is the text of the final "user" message.
-// systemAppend merges the Anthropic "system" field into a nexus append block.
+// systemAppend merges the Anthropic "system" field into a seshat append block.
 func extractAnthropicInputs(req anthropicMessagesRequest) (prompt, systemAppend string) {
 	// Walk messages in reverse to find the last user message.
 	for i := len(req.Messages) - 1; i >= 0; i-- {
@@ -142,7 +142,7 @@ func (app *App) anthropicAuthMiddleware(next http.Handler) http.Handler {
 			token = k
 		}
 
-		// 2. Authorization: Bearer fallback (nexus-ui, curl, etc.)
+		// 2. Authorization: Bearer fallback (seshat-ui, curl, etc.)
 		if token == "" {
 			hdr := strings.TrimSpace(r.Header.Get("Authorization"))
 			if strings.HasPrefix(hdr, "Bearer ") {
@@ -205,9 +205,9 @@ func (app *App) handleMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Nexus extension headers.
-	sessionID := strings.TrimSpace(r.Header.Get("x-nexus-session-id"))
-	providerSettingID := strings.TrimSpace(r.Header.Get("x-nexus-provider-setting-id"))
+	// Seshat extension headers.
+	sessionID := strings.TrimSpace(r.Header.Get("x-seshat-session-id"))
+	providerSettingID := strings.TrimSpace(r.Header.Get("x-seshat-provider-setting-id"))
 
 	principal, _ := authPrincipalFromContext(r.Context())
 	permMode, execOrigin, err := app.backend.Query.ResolvePolicyFromRequest(r.Context(), principal, sessionID, "", "")
@@ -273,7 +273,7 @@ func (app *App) handleMessagesSync(
 
 	model := strings.TrimSpace(req.Model)
 	if model == "" {
-		model = "nexus"
+		model = "seshat"
 	}
 
 	writeJSON(w, http.StatusOK, anthropicOutMessage{
@@ -309,7 +309,7 @@ func (app *App) handleMessagesStream(
 
 	model := strings.TrimSpace(req.Model)
 	if model == "" {
-		model = "nexus"
+		model = "seshat"
 	}
 
 	w.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
@@ -370,7 +370,7 @@ func (app *App) handleMessagesStream(
 		}
 	}()
 
-	// Stream text deltas from the Nexus engine.
+	// Stream text deltas from the Seshat engine.
 	onChunk := func(chunk sdk.ResponseChunk) {
 		if chunk.Delta == "" {
 			return
@@ -475,7 +475,7 @@ func writeAnthropicError(w http.ResponseWriter, status int, errType, message str
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-// normalizeStopReason maps Nexus stop reasons to Anthropic stop_reason values.
+// normalizeStopReason maps Seshat stop reasons to Anthropic stop_reason values.
 func normalizeStopReason(reason string) string {
 	switch reason {
 	case "end_turn", "stop_sequence", "max_tokens", "tool_use":

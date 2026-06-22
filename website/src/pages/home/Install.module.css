@@ -1,0 +1,233 @@
+.install {
+  background: var(--bg-surface);
+  padding: 6.5rem 0;
+  border-top: 1px solid var(--border-glass);
+  border-bottom: 1px solid var(--border-glass);
+}
+
+.inner {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  text-align: center;
+}
+
+.title {
+  font-size: clamp(2rem, 3.5vw, 2.5rem);
+  font-weight: 850;
+  letter-spacing: -0.03em;
+  margin-bottom: 0.75rem;
+  color: var(--text);
+}
+
+.sub {
+  color: var(--text-secondary);
+  font-size: 1.05rem;
+  margin-bottom: 2.5rem;
+  line-height: 1.6;
+}
+
+/* Tabbed Terminal Style */
+.terminalContainer {
+  background: #12100e;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 15px 40px rgba(42, 39, 36, 0.05);
+  text-align: left;
+  margin-bottom: 2.5rem;
+  overflow: hidden;
+}
+
+.terminalHeader {
+  background: rgba(42, 39, 36, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 0.6rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dots {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.dotRed { background: #ef4444; }
+.dotYellow { background: #f59e0b; }
+.dotGreen { background: #10b981; }
+
+.terminalTitle {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  color: #706b64;
+}
+
+.terminalBody {
+  padding: 1.5rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  line-height: 1.7;
+}
+
+.codeLine {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.codeLineContent {
+  flex-grow: 1;
+}
+
+.codeText {
+  color: #22c55e;
+  white-space: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  display: block;
+}
+
+.codeText::-webkit-scrollbar {
+  display: none;
+}
+
+.comment {
+  color: #706b64;
+  font-style: italic;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.copyBtn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #a39e95;
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  margin-top: 0.8rem;
+}
+
+.copyBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.copyBtnActive {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.8rem 1.6rem;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--text);
+  border: 1px solid var(--border);
+  text-decoration: none;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(5px);
+}
+
+.btn:hover {
+  border-color: var(--text-secondary);
+  background: var(--bg-panel);
+  text-decoration: none;
+}
+
+/* CTA band */
+.ctaBand {
+  text-align: center;
+  padding: 7rem 2rem;
+  background: radial-gradient(ellipse at 50% 100%, var(--brand-glow) 0%, transparent 60%);
+  border-bottom: 1px solid var(--border-glass);
+}
+
+.ctaTitle {
+  font-size: clamp(2rem, 3.5vw, 2.5rem);
+  font-weight: 850;
+  letter-spacing: -0.03em;
+  margin-bottom: 0.75rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: var(--text);
+}
+
+.ctaSub {
+  color: var(--text-secondary);
+  margin-bottom: 2.5rem;
+  font-size: 1.05rem;
+}
+
+.ctaBtns {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btnPrimary {
+  display: inline-flex;
+  padding: 0.8rem 1.6rem;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  background: var(--brand-engine-gradient);
+  color: #fff;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 15px var(--brand-engine-glow);
+  border: 1px solid rgba(232, 64, 30, 0.1);
+}
+
+.btnPrimary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(232, 64, 30, 0.25);
+  text-decoration: none;
+}
+
+.btnSecondary {
+  display: inline-flex;
+  padding: 0.8rem 1.6rem;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.btnSecondary:hover {
+  border-color: var(--text-secondary);
+  background: var(--bg-surface);
+  text-decoration: none;
+}
+
+@media (max-width: 640px) {
+  .inner {
+    padding: 0 1.25rem;
+  }
+  .codeText {
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+}

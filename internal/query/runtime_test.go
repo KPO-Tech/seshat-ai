@@ -3,7 +3,7 @@ package query
 import (
 	"testing"
 
-	"github.com/EngineerProjects/nexus-engine/pkg/sdk"
+	"github.com/EngineerProjects/seshat/pkg/sdk"
 )
 
 func newTestSDKRuntime(t *testing.T) *SDKRuntime {

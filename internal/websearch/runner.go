@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	searchcore "github.com/EngineerProjects/nexus-engine/pkg/web/search"
-	searchproviders "github.com/EngineerProjects/nexus-engine/pkg/web/search/providers"
+	searchcore "github.com/EngineerProjects/seshat/pkg/web/search"
+	searchproviders "github.com/EngineerProjects/seshat/pkg/web/search/providers"
 )
 
 type DefaultRunner struct {
@@ -83,19 +83,12 @@ func providerFromRunConfig(cfg SearchRunProvider) (searchproviders.SearchProvide
 	case "langsearch":
 		return searchproviders.NewLangSearchProviderWithAPIKey(cfg.Secret), nil
 	case "searxng":
-		return searchproviders.NewSearXNGProviderWithBaseURL(cfg.BaseURL), nil
-	case "ddg":
-		return searchproviders.NewDuckDuckGoProvider(), nil
+		return searchproviders.NewSearXNGProviderWithConfig(cfg.BaseURL, cfg.AuthUsername, cfg.Secret), nil
 	default:
 		return nil, fmt.Errorf("unsupported web search provider %q", cfg.Provider)
 	}
 }
 
 func normalizeSearchProvider(provider string) string {
-	switch strings.TrimSpace(strings.ToLower(provider)) {
-	case "duckduckgo", "ddg":
-		return "ddg"
-	default:
-		return strings.TrimSpace(strings.ToLower(provider))
-	}
+	return strings.TrimSpace(strings.ToLower(provider))
 }

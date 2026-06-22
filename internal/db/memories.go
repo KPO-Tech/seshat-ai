@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
-	longterm "github.com/EngineerProjects/nexus-engine/pkg/memory/longterm"
+	longterm "github.com/EngineerProjects/seshat/pkg/memory/longterm"
 )
 
 // ─── GORM models ──────────────────────────────────────────────────────────────
@@ -39,8 +39,8 @@ func (gMemoryObservation) TableName() string { return "memory_observations" }
 type gMemoryRelation struct {
 	ID            string `gorm:"primaryKey;size:64"`
 	UserID        string `gorm:"column:user_id;size:64;not null;index"`
-	FromEntityID  string `gorm:"column:from_entity_id;size:64;not null"`
-	ToEntityID    string `gorm:"column:to_entity_id;size:64;not null"`
+	FromName      string `gorm:"column:from_name;size:256;not null"`
+	ToName        string `gorm:"column:to_name;size:256;not null"`
 	RelationType  string `gorm:"column:relation_type;size:128;not null"`
 	CreatedAtUnix int64  `gorm:"column:created_at_unix;autoCreateTime:unix"`
 }
@@ -371,7 +371,7 @@ func (s *LongTermMemoryStore) loadRelationsForEntities(ctx context.Context, user
 
 	var rows []gMemoryRelation
 	if err := s.db.gormDB.WithContext(ctx).
-		Where("user_id = ? AND (from_entity_id IN ? OR to_entity_id IN ?)", userID, ids, ids).
+		Where("user_id = ? AND (from_name IN ? OR to_name IN ?)", userID, ids, ids).
 		Order("created_at_unix ASC").
 		Find(&rows).Error; err != nil {
 		return nil, fmt.Errorf("load relations: %w", err)
@@ -380,8 +380,8 @@ func (s *LongTermMemoryStore) loadRelationsForEntities(ctx context.Context, user
 	// Resolve entity IDs to names.
 	allIDs := make(map[string]bool)
 	for _, r := range rows {
-		allIDs[r.FromEntityID] = true
-		allIDs[r.ToEntityID] = true
+		allIDs[r.FromName] = true
+		allIDs[r.ToName] = true
 	}
 	nameByID, err := s.resolveEntityNames(ctx, allIDs)
 	if err != nil {
@@ -393,8 +393,8 @@ func (s *LongTermMemoryStore) loadRelationsForEntities(ctx context.Context, user
 		out = append(out, longterm.Relation{
 			ID:           r.ID,
 			UserID:       r.UserID,
-			From:         nameByID[r.FromEntityID],
-			To:           nameByID[r.ToEntityID],
+			From:         nameByID[r.FromName],
+			To:           nameByID[r.ToName],
 			RelationType: r.RelationType,
 			CreatedAt:    time.Unix(r.CreatedAtUnix, 0).UTC(),
 		})

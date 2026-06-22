@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	webcore "github.com/EngineerProjects/nexus-engine/pkg/web"
+	webcore "github.com/EngineerProjects/seshat/pkg/web"
 )
 
 // ProviderCatalogEntry describes a search provider type and its requirements.
@@ -25,6 +25,7 @@ type ProviderStatus struct {
 	Enabled         bool
 	HasAPIKey       bool
 	BaseURL         string
+	AuthUsername    string
 	RequiresAPIKey  bool
 	RequiresBaseURL bool
 	DefaultBaseURL  string
@@ -34,9 +35,10 @@ type ProviderStatus struct {
 
 // UpsertProviderParams is the input for creating/updating a provider config.
 type UpsertProviderParams struct {
-	Enabled bool
-	APIKey  *string // nil = keep existing
-	BaseURL string
+	Enabled      bool
+	APIKey       *string // nil = keep existing (used as Basic Auth password for SearXNG)
+	BaseURL      string
+	AuthUsername *string // nil = keep existing; ptr-to-"" = clear
 }
 
 // ProviderTestResult is returned by the test endpoint.
@@ -111,10 +113,11 @@ type SearchLog struct {
 }
 
 type SearchRunProvider struct {
-	SettingID string
-	Provider  string
-	BaseURL   string
-	Secret    string
+	SettingID    string
+	Provider     string
+	BaseURL      string
+	Secret       string
+	AuthUsername string
 }
 
 type SearchRunRequest struct {

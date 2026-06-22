@@ -1,25 +1,29 @@
 # Nexus — Development Makefile
 #
-#   make          → show this help
-#   make dev      → start backend + Electron UI
-#   make test     → run all Go tests
-#   make build    → compile the backend binary
+#   make setup          → first-time setup (Node deps + docling + build)
+#   make dev            → start backend + Electron UI
+#   make build          → compile the backend binary
+#   make test           → run all Go tests
+#   make install-python → install / update docling-serve
+#   make start-docling  → start docling-serve manually
 
 ROOT   := $(shell pwd)
-BIN    := nexus-engine
+BIN    := seshat
 CMD    := ./cmd/api
-UI_DIR := $(ROOT)/nexus-ui
+UI_DIR := $(ROOT)/seshat-ui
 
 # Detect OS for open/xdg-open
 UNAME := $(shell uname -s)
 
 .PHONY: help \
+        setup \
         dev stop \
         build run \
-        test test-v test-race test-short \
+        test test-v test-race test-short test-pkg \
         fmt vet lint tidy hooks \
         ui-install ui-build ui-dev \
-        logs logs-last \
+        install-python start-docling \
+        logs logs-last logs-docling \
         clean clean-all
 
 .DEFAULT_GOAL := help
@@ -42,12 +46,14 @@ dev: ui-install ## Start backend + Electron UI
 
 stop: ## Stop backend and UI processes
 	@pkill -f "go run.*cmd/api" 2>/dev/null || true
-	@pkill -f "electron" 2>/dev/null || true
+	@pkill -x api 2>/dev/null || true
+	@pkill -f "electron-vite" 2>/dev/null || true
+	@pkill -f "[e]lectron.*nexus" 2>/dev/null || true
 	@printf '\033[32m[nexus]\033[0m stopped.\n'
 
 # ─── Backend ──────────────────────────────────────────────────────────────────
 
-build: ## Compile the backend binary → ./nexus-engine
+build: ## Compile the backend binary → ./seshat
 	@printf '\033[32m[go]\033[0m building %s…\n' $(BIN)
 	@go build -o $(BIN) $(CMD)
 	@printf '\033[32m[go]\033[0m binary ready: %s/%s\n' $(ROOT) $(BIN)
@@ -75,7 +81,7 @@ test-pkg: ## Run tests for a specific package  (PKG=./internal/scheduler/...)
 # ─── Code quality ─────────────────────────────────────────────────────────────
 
 fmt: ## Format all Go source files with gofmt
-	gofmt -w $(shell find . -name "*.go" -not -path "./nexus-engine/*" -not -path "./nexus-skills/*" -not -path "./vendor/*")
+	gofmt -w $(shell find . -name "*.go" -not -path "./seshat/*" -not -path "./seshat-skills/*" -not -path "./vendor/*")
 
 vet: ## Run go vet across all packages
 	go vet ./...
@@ -110,10 +116,33 @@ ui-build: ui-install ## Build UI for production (Electron package)
 ui-dev: ui-install ## Start Vite dev server only (web preview, no Electron)
 	cd $(UI_DIR) && bun run dev
 
+# ─── Setup ────────────────────────────────────────────────────────────────────
+
+setup: ## First-time setup: Node deps + docling-serve + backend build
+	@bash scripts/setup.sh
+
+# ─── Python / docling (optional feature) ─────────────────────────────────────
+# install-python creates the managed venv and installs docling-serve.
+# Called automatically by `make setup`. Use to install or update docling.
+#
+# Options (env vars):
+#   DOCLING_EXTRAS=gpu      → GPU-accelerated conversion
+#   PYTHON_VERSION=3.12     → specific Python version
+
+install-python: ## Install / update docling-serve in the managed venv
+	@bash scripts/install-python-env.sh
+
+# Start docling-serve manually.
+# The backend auto-starts it at launch when the venv is installed.
+# Use this only to run it as a standalone process.
+
+start-docling: ## Start docling-serve manually (auto-started by the backend)
+	@bash scripts/start-docling.sh
+
 # ─── Logs ─────────────────────────────────────────────────────────────────────
 
 logs: ## Tail the backend log in real time (Ctrl-C to exit)
-	@RUNTIME_ROOT=$${NEXUS_RUNTIME_ROOT:-$$HOME/.config/nexus}; \
+	@RUNTIME_ROOT=$${SESHAT_RUNTIME_ROOT:-$$HOME/.config/nexus}; \
 	 LOG="$$RUNTIME_ROOT/logs/engine.log"; \
 	 if [ -f "$$LOG" ]; then \
 	   printf '\033[32m[logs]\033[0m %s\n\n' "$$LOG"; \
@@ -123,12 +152,22 @@ logs: ## Tail the backend log in real time (Ctrl-C to exit)
 	 fi
 
 logs-last: ## Show the last 200 lines of the backend log
-	@RUNTIME_ROOT=$${NEXUS_RUNTIME_ROOT:-$$HOME/.config/nexus}; \
+	@RUNTIME_ROOT=$${SESHAT_RUNTIME_ROOT:-$$HOME/.config/nexus}; \
 	 LOG="$$RUNTIME_ROOT/logs/engine.log"; \
 	 if [ -f "$$LOG" ]; then \
 	   tail -200 "$$LOG"; \
 	 else \
 	   printf '\033[33m[logs]\033[0m no log file at %s.\n' "$$LOG"; \
+	 fi
+
+logs-docling: ## Tail the docling-serve log in real time (Ctrl-C to exit)
+	@RUNTIME_ROOT=$${SESHAT_RUNTIME_ROOT:-$$HOME/.config/nexus}; \
+	 LOG="$$RUNTIME_ROOT/logs/docling.log"; \
+	 if [ -f "$$LOG" ]; then \
+	   printf '\033[32m[logs]\033[0m %s\n\n' "$$LOG"; \
+	   tail -f "$$LOG"; \
+	 else \
+	   printf '\033[33m[logs]\033[0m no docling log at %s — start the backend first.\n' "$$LOG"; \
 	 fi
 
 # ─── Cleanup ──────────────────────────────────────────────────────────────────

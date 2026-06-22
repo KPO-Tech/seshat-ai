@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	skillsloader "github.com/EngineerProjects/nexus-engine/pkg/skills"
-	"github.com/EngineerProjects/nexus-engine/pkg/skills/skillrepos"
+	skillsloader "github.com/EngineerProjects/seshat/pkg/skills"
+	"github.com/EngineerProjects/seshat/pkg/skills/skillrepos"
 )
 
 // FeaturedSkillRepo describes a curated skill repository shown in the install catalog.
@@ -20,13 +20,13 @@ type FeaturedSkillRepo struct {
 	Description string `json:"description"`
 }
 
-// DefaultNexusSkillsRepo is the official Nexus skills collection. It is cloned
+// DefaultSeshatSkillsRepo is the official Seshat skills collection. It is cloned
 // in the background at first boot so skills are available without user action.
-// Operators can override with NEXUS_DEFAULT_SKILL_REPO or disable with "none".
-const DefaultNexusSkillsRepo = "https://github.com/EngineerProjects/nexus-skills"
+// Operators can override with SESHAT_DEFAULT_SKILL_REPO or disable with "none".
+const DefaultSeshatSkillsRepo = "https://github.com/EngineerProjects/seshat-skills"
 
 // defaultAllowedSkillRepoHosts is the curated allowlist of git hosting services accepted
-// when installing a skill repo via the HTTP API. Operators may override with NEXUS_SKILL_REPO_HOSTS.
+// when installing a skill repo via the HTTP API. Operators may override with SESHAT_SKILL_REPO_HOSTS.
 var defaultAllowedSkillRepoHosts = []string{
 	"github.com",
 	"gitlab.com",
@@ -55,7 +55,7 @@ func validateSkillRepoURL(raw string, allowedHosts []string) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("host %q is not in the allowed skill repo hosts list (allowed: %s) — set NEXUS_SKILL_REPO_HOSTS to add it",
+	return fmt.Errorf("host %q is not in the allowed skill repo hosts list (allowed: %s) — set SESHAT_SKILL_REPO_HOSTS to add it",
 		u.Host, strings.Join(hosts, ", "))
 }
 
@@ -72,12 +72,12 @@ func ParseSkillRepoHosts(raw string) []string {
 }
 
 // DefaultFeaturedRepos are always included in the catalog unless the operator
-// sets NEXUS_FEATURED_SKILL_REPOS to override them entirely.
+// sets SESHAT_FEATURED_SKILL_REPOS to override them entirely.
 var DefaultFeaturedRepos = []FeaturedSkillRepo{
 	{
-		Name:        "nexus-skills",
-		URL:         DefaultNexusSkillsRepo,
-		Description: "Official Nexus skills collection: brainstorming, writing-plans, subagent-driven-development, systematic-debugging, TDD, code-review, requesting-code-review, verification-before-completion, skill-creator.",
+		Name:        "seshat-skills",
+		URL:         DefaultSeshatSkillsRepo,
+		Description: "Official Seshat skills collection: brainstorming, writing-plans, subagent-driven-development, systematic-debugging, TDD, code-review, requesting-code-review, verification-before-completion, skill-creator.",
 	},
 	{
 		Name:        "gstack",

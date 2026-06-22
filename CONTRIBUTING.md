@@ -1,4 +1,4 @@
-# Contributing to Nexus Product
+# Contributing to SeshatOS
 
 This is a private repository. Contributions are by invitation only.
 
@@ -44,10 +44,10 @@ main          production-ready, tagged releases only
 
 ```bash
 git clone --recurse-submodules <this-repo>
-cd nexus-product
+cd seshat-ai
 
 # Build the API server
-go build -o bin/nexus-api ./cmd/api
+go build -o bin/seshat-api ./cmd/api
 
 # Run tests
 go test ./...
@@ -57,15 +57,15 @@ go test -race ./...
 ### Environment
 
 ```bash
-export NEXUS_ADMIN_EMAIL=admin@example.com
-export NEXUS_ADMIN_PASSWORD=changeme
+export SESHAT_ADMIN_EMAIL=admin@example.com
+export SESHAT_ADMIN_PASSWORD=changeme
 export ANTHROPIC_API_KEY=sk-ant-...   # or any supported provider key
 ```
 
 Then run:
 
 ```bash
-./bin/nexus-api
+./bin/seshat-api
 # Server on http://localhost:8090
 ```
 
@@ -109,9 +109,9 @@ if err != nil { writeBackendError(w, err); return }
 - `context.Context` as first parameter on any function that may do I/O.
 - Pointer receivers on types that contain `sync.Mutex`.
 
-### nexus-engine submodule
+### seshat submodule
 
-Never modify files inside `nexus-engine/`. It is an independent open-source repository. If you need something from the engine that isn't yet in `pkg/`, open a PR on nexus-engine first.
+Never modify files inside `seshat/`. It is an independent open-source repository. If you need something from the engine that isn't yet in `pkg/`, open a PR on seshat first.
 
 ---
 
@@ -159,7 +159,7 @@ PR checklist:
 - [ ] Public API changes are reflected in `README.md` or `docs/`
 - [ ] Commit messages follow Conventional Commits
 - [ ] PR targets `dev`, not `main`
-- [ ] nexus-engine was not modified
+- [ ] seshat was not modified
 
 ---
 
@@ -167,7 +167,7 @@ PR checklist:
 
 - Features that push business logic into `internal/api/` handlers.
 - Direct store access from handlers (always use a service).
-- Any modification to `nexus-engine/`.
+- Any modification to `seshat/`.
 - Changes that remove or weaken authentication/authorization checks.
 - Code that uses `//nolint` without an explanation comment.
 - New global mutable state.

@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"strings"
 
-	backendaudit "github.com/EngineerProjects/nexus-product/internal/audit"
-	backendfiles "github.com/EngineerProjects/nexus-product/internal/files"
-	backendquotas "github.com/EngineerProjects/nexus-product/internal/quotas"
+	backendaudit "github.com/EngineerProjects/seshat-ai/internal/audit"
+	backendfiles "github.com/EngineerProjects/seshat-ai/internal/files"
+	backendquotas "github.com/EngineerProjects/seshat-ai/internal/quotas"
 )
 
 const maxUploadSize = 100 << 20 // 100 MB

@@ -155,6 +155,30 @@ func backendMigrations() []schemaMigration {
 			},
 		},
 		{
+			// Rename from_entity_id → from_name and to_entity_id → to_name to align
+			// memory_relations with the CoreSQLite DDL used by the SDK session store.
+			// SQLite 3.25+ supports ALTER TABLE RENAME COLUMN; errors are ignored so
+			// this is idempotent on DBs that already have the correct column names.
+			ID:    "20260618_027_memory_relations_rename_columns",
+			Scope: migrationScopeBackend,
+			Run: func(ctx context.Context, db *DB) error {
+				for _, stmt := range []string{
+					`ALTER TABLE memory_relations RENAME COLUMN from_entity_id TO from_name`,
+					`ALTER TABLE memory_relations RENAME COLUMN to_entity_id TO to_name`,
+				} {
+					if err := db.gormDB.WithContext(ctx).Exec(stmt).Error; err != nil {
+						// Column already renamed or never existed with the old name — skip.
+						if !strings.Contains(err.Error(), "no such column") &&
+							!strings.Contains(err.Error(), "no column named") &&
+							!strings.Contains(err.Error(), "does not exist") {
+							return fmt.Errorf("rename memory_relations column: %w", err)
+						}
+					}
+				}
+				return nil
+			},
+		},
+		{
 			ID:    "20260605_025_agent_definitions",
 			Scope: migrationScopeBackend,
 			Run: func(ctx context.Context, db *DB) error {
@@ -166,6 +190,13 @@ func backendMigrations() []schemaMigration {
 			Scope: migrationScopeBackend,
 			Run: func(ctx context.Context, db *DB) error {
 				return db.gormDB.WithContext(ctx).AutoMigrate(&gScheduledJob{})
+			},
+		},
+		{
+			ID:    "20260618_028_searxng_auth_username",
+			Scope: migrationScopeBackend,
+			Run: func(ctx context.Context, db *DB) error {
+				return db.gormDB.WithContext(ctx).AutoMigrate(&gSearchProviderConfig{})
 			},
 		},
 		{

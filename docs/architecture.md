@@ -1,12 +1,12 @@
-# Architecture — Nexus AI
+# Architecture — SeshatOS
 
-This document describes the package structure, layer responsibilities, and dependency rules for nexus-ai.
+This document describes the package structure, layer responsibilities, and dependency rules for seshat-ai.
 
 ---
 
 ## Overview
 
-nexus-ai is a **multi-layer Go application** built on top of the `nexus-engine` submodule. The layers are strictly ordered — each layer only imports downward.
+seshat-ai is a **multi-layer Go application** built on top of the `seshat` submodule. The layers are strictly ordered — each layer only imports downward.
 
 ```
 ┌──────────────────────────────────────────────────┐
@@ -21,7 +21,7 @@ nexus-ai is a **multi-layer Go application** built on top of the `nexus-engine` 
 └──────────────────┬───────────────────────────────┘
                    │ imports
 ┌──────────────────▼───────────────────────────────┐
-│  internal/app.go         package nexus            │
+│  internal/app.go         package seshat            │
 │  DI container: App, Dependencies, NewApp          │
 └──────────────────┬───────────────────────────────┘
                    │ imports
@@ -38,7 +38,7 @@ nexus-ai is a **multi-layer Go application** built on top of the `nexus-engine` 
 └──────────────────┬───────────────────────────────┘
                    │ imports
 ┌──────────────────▼───────────────────────────────┐
-│  nexus-engine/pkg/*      open-source runtime      │
+│  seshat/pkg/*      open-source runtime      │
 │  sdk  providers  types  rag  storage  mcp  ...    │
 └──────────────────────────────────────────────────┘
 ```
@@ -79,7 +79,7 @@ Key files:
 
 ---
 
-### `internal/app.go` — DI container (`package nexus`)
+### `internal/app.go` — DI container (`package seshat`)
 
 Single file. Defines:
 - `Dependencies` — all raw stores and external clients
@@ -90,7 +90,7 @@ This is the composition root. It has no logic — only wiring.
 
 ```go
 // Usage pattern
-app := nexus.NewApp(nexus.Dependencies{
+app := seshat.NewApp(seshat.Dependencies{
     Identity:   identityStore,
     FileStore:  fileStore,
     // ...
@@ -128,7 +128,7 @@ Current domains:
 | `plans` | Plan documents created by the agent's plan tool |
 | `preferences` | User preferences, permission mode resolution |
 | `prompt` | System prompt assembly layer (injected on every query) |
-| `query` | Query/streaming runtime adapter (wraps nexus-engine SDK), session management |
+| `query` | Query/streaming runtime adapter (wraps seshat SDK), session management |
 | `quotas` | Per-user usage counters (queries, files, ingestions) |
 | `resources` | Organizations, workspaces, user CRUD (admin) |
 | `scheduler` | Cron-based background agent runs, job history |
@@ -183,7 +183,7 @@ POST /api/v1/query/stream
   → handleQueryStream
       → buildQueryInput (assemble context: preferences + memories + RAG + attachments)
       → backend.Query.StreamPrompt
-          → nexus-engine SDK session.SubmitMessage
+          → seshat SDK session.SubmitMessage
           → onChunk callback → writeSSE (text chunks)
           → onRuntimeEvent callback → writeSSE (tool calls, permissions)
       → writeSSE("done", finalResult)
@@ -191,16 +191,16 @@ POST /api/v1/query/stream
 
 ---
 
-## nexus-engine integration
+## seshat integration
 
-nexus-product consumes nexus-engine **exclusively through `pkg/`**:
+seshat-ai consumes seshat **exclusively through `pkg/`**:
 
 ```go
 import (
-    "github.com/EngineerProjects/nexus-engine/pkg/sdk"
-    "github.com/EngineerProjects/nexus-engine/pkg/types"
-    "github.com/EngineerProjects/nexus-engine/pkg/rag"
-    "github.com/EngineerProjects/nexus-engine/pkg/storage"
+    "github.com/EngineerProjects/seshat/pkg/sdk"
+    "github.com/EngineerProjects/seshat/pkg/types"
+    "github.com/EngineerProjects/seshat/pkg/rag"
+    "github.com/EngineerProjects/seshat/pkg/storage"
     // ...
 )
 ```

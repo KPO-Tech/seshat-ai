@@ -6,9 +6,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/EngineerProjects/nexus-engine/pkg/mcp"
-	"github.com/EngineerProjects/nexus-engine/pkg/runtimepath"
-	backendmcp "github.com/EngineerProjects/nexus-product/internal/mcp"
+	backendmcp "github.com/EngineerProjects/seshat-ai/internal/mcp"
+	"github.com/EngineerProjects/seshat/pkg/mcp"
+	"github.com/EngineerProjects/seshat/pkg/runtimepath"
 )
 
 // DefaultMCPJsonPath returns the canonical path for the local MCP JSON config.
@@ -239,7 +239,7 @@ func (a *App) handleMCPConfigByID(w http.ResponseWriter, r *http.Request) {
 
 // POST /api/v1/mcp/config/import-json
 // Body: { "servers": { "name": { "type": "...", "command": "..." } } }
-// OR empty body → loads from ~/.config/nexus/mcp.json
+// OR empty body → loads from ~/.config/seshat/mcp.json
 func (a *App) handleMCPImportJSON(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -280,11 +280,17 @@ func (a *App) handleMCPImportJSON(w http.ResponseWriter, r *http.Request) {
 }
 
 // POST /api/v1/mcp/reload
-// Reloads all enabled MCP servers from DB into the running SDK runtime.
+// Re-imports mcp.json into DB (idempotent), then reloads all enabled servers into the SDK runtime.
 func (a *App) handleMCPReload(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
+	}
+	path := DefaultMCPJsonPath()
+	if _, err := os.Stat(path); err == nil {
+		if cfg, errs := mcp.ParseMcpConfigFromFile(path); len(errs) == 0 && len(cfg.MCPServers) > 0 {
+			_, _ = a.backend.MCP.ImportFromMcpJSON(r.Context(), cfg)
+		}
 	}
 	statuses, err := a.backend.MCP.Reload(r.Context())
 	if err != nil {
@@ -324,4 +330,27 @@ func toMCPStatusResponse(statuses []backendmcp.ServerStatus) []mcpStatusResponse
 		out = append(out, mcpStatusResponse{Name: s.Name, OK: s.OK, Error: s.Error, Tools: s.Tools})
 	}
 	return out
+}
+
+// GET /api/v1/mcp/tools
+// Returns connected tools grouped by server name, with name and description.
+func (a *App) handleMCPTools(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	byServer := a.backend.MCP.ToolsByServer()
+	type toolEntry struct {
+		Name        string `json:"name"`
+		Description string `json:"description,omitempty"`
+	}
+	out := make(map[string][]toolEntry, len(byServer))
+	for server, tools := range byServer {
+		entries := make([]toolEntry, 0, len(tools))
+		for _, t := range tools {
+			entries = append(entries, toolEntry{Name: t.Name, Description: t.Description})
+		}
+		out[server] = entries
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"tools": out})
 }

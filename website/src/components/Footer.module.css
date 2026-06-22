@@ -1,0 +1,46 @@
+.footer {
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border);
+  padding: 3.5rem 2rem 2.5rem;
+  text-align: center;
+  position: relative;
+  z-index: 10;
+}
+
+.links {
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.links a {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.links a:hover {
+  color: var(--brand-engine-start);
+  text-decoration: none;
+}
+
+.copy {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin-top: 1rem;
+}
+
+.copy a {
+  color: var(--text-secondary);
+  transition: color 0.2s ease;
+  text-decoration: none;
+}
+
+.copy a:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
