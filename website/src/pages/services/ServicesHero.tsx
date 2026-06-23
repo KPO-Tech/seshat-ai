@@ -19,7 +19,7 @@ export default function ServicesHero() {
           </h1>
           <p className={styles.sub}>{t.servicesHero.sub}</p>
           <div className={styles.ctas}>
-            <a className={styles.btnPrimary} href="mailto:projectsengineer6@gmail.com">
+            <a className={styles.btnPrimary} href="mailto:oastephaneamiche@gmail.com">
               {t.servicesHero.getInTouch}
             </a>
             <Link className={styles.btnSecondary} to={linkTo('/')}>

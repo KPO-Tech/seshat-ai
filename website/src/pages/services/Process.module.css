@@ -98,3 +98,9 @@
   line-height: 1.6;
   max-width: 600px;
 }
+
+@media (max-width: 640px) {
+  .step { gap: 1.25rem; }
+  .stepBody { max-width: 100%; }
+  .steps::before { left: 18px; }
+}

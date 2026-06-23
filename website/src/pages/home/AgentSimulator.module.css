@@ -4,6 +4,12 @@
   border-bottom: 1px solid var(--border-glass);
 }
 
+.container {
+  max-width: var(--container-width);
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
 .titleArea {
   text-align: center;
   margin-bottom: 3.5rem;
@@ -623,6 +629,16 @@
 
 @keyframes blink {
   50% { opacity: 0; }
+}
+
+@media (max-width: 640px) {
+  .container { padding: 0 1rem; }
+  .titleArea { margin-bottom: 2rem; }
+  .missionTabs { gap: 0.5rem; }
+  .missionTab { padding: 0.5rem 0.9rem; font-size: 0.82rem; }
+  .addressBar { display: none; }
+  .windowBar { justify-content: space-between; }
+  .chatMessages { max-height: 260px; }
 }
 
 @keyframes fadeIn {
