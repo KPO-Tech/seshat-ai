@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from '../../hooks/useTranslation'
 import styles from './Hero.module.css'
 
 export default function Hero() {
   const [copied, setCopied] = useState(false)
+  const { t, linkTo } = useTranslation()
   const installCmd = 'curl -fsSL https://raw.githubusercontent.com/EngineerProjects/seshat/main/scripts/install.sh | bash'
 
   const handleCopy = async () => {
@@ -20,17 +22,14 @@ export default function Hero() {
     <section className={styles.hero}>
       <div className={styles.grid}>
         <div className={styles.content}>
-          <span className={styles.badge}>Open Source · Apache 2.0 · Written in Go</span>
+          <span className={styles.badge}>{t.hero.badge}</span>
 
           <h1 className={styles.title}>
-            The runtime for<br />
-            <span className="gradient-text">AI agent teams</span>
+            {t.hero.title1}<br />
+            <span className="gradient-text">{t.hero.title2}</span>
           </h1>
 
-          <p className={styles.sub}>
-            Most frameworks handle single agents well. Seshat is built for what comes next:
-            agents that work together, coordinate responsibilities, and share a mission. Like a real team.
-          </p>
+          <p className={styles.sub}>{t.hero.sub}</p>
 
           <div className={styles.ctas}>
             <a
@@ -39,7 +38,7 @@ export default function Hero() {
               target="_blank"
               rel="noreferrer"
             >
-              ↓ Get Started
+              {t.hero.getStarted}
             </a>
             <a
               className={styles.btnSecondary}
@@ -47,10 +46,10 @@ export default function Hero() {
               target="_blank"
               rel="noreferrer"
             >
-              View on GitHub
+              {t.hero.viewGithub}
             </a>
-            <Link className={styles.btnSecondary} to="/services">
-              Work with us →
+            <Link className={styles.btnSecondary} to={linkTo('/services')}>
+              {t.hero.workWithUs}
             </Link>
           </div>
 
@@ -91,55 +90,38 @@ export default function Hero() {
                 <stop offset="100%" stopColor="var(--brand-platform-start)" stopOpacity="0" />
               </radialGradient>
             </defs>
-
-            {/* Glowing Backdrops */}
             <circle cx="200" cy="70" r="40" fill="url(#orangeGlow)" />
             <circle cx="320" cy="200" r="40" fill="url(#indigoGlow)" />
             <circle cx="200" cy="330" r="40" fill="url(#orangeGlow)" />
             <circle cx="80" cy="200" r="40" fill="url(#indigoGlow)" />
-
-            {/* Connecting lines */}
             <line x1="200" y1="70" x2="320" y2="200" className={styles.activeLine} />
             <line x1="320" y1="200" x2="200" y2="330" className={styles.linkLine} />
             <line x1="200" y1="330" x2="80" y2="200" className={styles.activeLineIndigo} />
             <line x1="80" y1="200" x2="200" y2="70" className={styles.linkLine} />
-
             <line x1="200" y1="70" x2="200" y2="330" className={styles.linkLine} />
             <line x1="80" y1="200" x2="320" y2="200" className={styles.linkLine} strokeDasharray="3 3" />
-
-            {/* Glowing active packet travels */}
             <circle cx="200" cy="200" r="100" fill="none" stroke="var(--border-glass)" strokeWidth="0.5" />
-
-            {/* Node 1: Lead Architect */}
             <g transform="translate(200, 70)">
               <circle cx="0" cy="0" r="30" className={`${styles.nodeCircle} ${styles.nodeGlow}`} style={{ '--glow-color': 'var(--brand-engine-start)' } as React.CSSProperties} />
               <text x="0" y="-5" className={styles.nodeText} textAnchor="middle">Lead</text>
               <text x="0" y="8" className={styles.nodeRole} textAnchor="middle">Architect</text>
               <circle cx="0" cy="0" r="30" className={styles.pulseCircle} stroke="var(--brand-engine-start)" style={{ animation: 'pulse 3s infinite ease-out' }} />
             </g>
-
-            {/* Node 2: Developer */}
             <g transform="translate(320, 200)">
               <circle cx="0" cy="0" r="30" className={`${styles.nodeCircle} ${styles.nodeGlow}`} style={{ '--glow-color': 'var(--brand-platform-start)' } as React.CSSProperties} />
               <text x="0" y="-5" className={styles.nodeText} textAnchor="middle">Go Dev</text>
               <text x="0" y="8" className={styles.nodeRole} textAnchor="middle">Builder</text>
             </g>
-
-            {/* Node 3: QA Inspector */}
             <g transform="translate(200, 330)">
               <circle cx="0" cy="0" r="30" className={`${styles.nodeCircle} ${styles.nodeGlow}`} style={{ '--glow-color': 'var(--green)' } as React.CSSProperties} />
               <text x="0" y="-5" className={styles.nodeText} textAnchor="middle">Tester</text>
               <text x="0" y="8" className={styles.nodeRole} textAnchor="middle">QA Audit</text>
             </g>
-
-            {/* Node 4: RAG Builder */}
             <g transform="translate(80, 200)">
               <circle cx="0" cy="0" r="30" className={`${styles.nodeCircle} ${styles.nodeGlow}`} style={{ '--glow-color': 'var(--purple)' } as React.CSSProperties} />
               <text x="0" y="-5" className={styles.nodeText} textAnchor="middle">RAG Ops</text>
               <text x="0" y="8" className={styles.nodeRole} textAnchor="middle">Knowledge</text>
             </g>
-
-            {/* Central Coordinator Hub */}
             <g transform="translate(200, 200)">
               <circle cx="0" cy="0" r="16" fill="var(--bg-surface)" stroke="var(--border-glass-hover)" strokeWidth="1.5" />
               <circle cx="0" cy="0" r="6" fill="var(--brand-engine-start)" style={{ animation: 'pulse-glow 2s infinite ease-in-out' }} />

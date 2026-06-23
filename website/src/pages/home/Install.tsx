@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from '../../hooks/useTranslation'
 import styles from './Install.module.css'
 
 export default function Install() {
   const [copiedShell, setCopiedShell] = useState(false)
   const [copiedGo, setCopiedGo] = useState(false)
+  const { t, linkTo } = useTranslation()
 
   const shellCmd = 'curl -fsSL https://raw.githubusercontent.com/EngineerProjects/seshat/main/scripts/install.sh | bash'
   const goCmd = 'go install github.com/EngineerProjects/seshat/cmd/cli@latest'
@@ -29,16 +31,26 @@ export default function Install() {
     }
   }
 
+  const CopyIcon = () => (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  )
+
+  const CheckIcon = () => (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  )
+
   return (
     <>
       <section className={styles.install}>
         <div className={styles.inner}>
-          <p className="section-label">Quick Start</p>
-          <h2 className={styles.title}>One command to start</h2>
-          <p className={styles.sub}>
-            Downloads the binary for your platform, sets up the Python environment
-            for document processing, and adds Seshat to your PATH.
-          </p>
+          <p className="section-label">{t.install.label}</p>
+          <h2 className={styles.title}>{t.install.title}</h2>
+          <p className={styles.sub}>{t.install.sub}</p>
 
           <div className={styles.terminalContainer}>
             <div className={styles.terminalHeader}>
@@ -48,13 +60,13 @@ export default function Install() {
                 <div className={`${styles.dot} ${styles.dotGreen}`} />
               </div>
               <span className={styles.terminalTitle}>bash / zsh</span>
-              <div style={{ width: '40px' }} /> {/* Spacing */}
+              <div style={{ width: '40px' }} />
             </div>
 
             <div className={styles.terminalBody}>
               <div className={styles.codeLine}>
                 <div className={styles.codeLineContent}>
-                  <span className={styles.comment}># Linux / macOS (batteries included)</span>
+                  <span className={styles.comment}>{t.install.linuxComment}</span>
                   <span className={styles.codeText}>
                     <span style={{ color: 'var(--brand-engine-start)', marginRight: '0.5rem', userSelect: 'none' }}>$</span>
                     {shellCmd}
@@ -66,16 +78,7 @@ export default function Install() {
                   title="Copy command"
                   aria-label="Copy shell installation command"
                 >
-                  {copiedShell ? (
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  ) : (
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                    </svg>
-                  )}
+                  {copiedShell ? <CheckIcon /> : <CopyIcon />}
                 </button>
               </div>
 
@@ -83,7 +86,7 @@ export default function Install() {
 
               <div className={styles.codeLine}>
                 <div className={styles.codeLineContent}>
-                  <span className={styles.comment}># Go developers</span>
+                  <span className={styles.comment}>{t.install.goComment}</span>
                   <span className={styles.codeText}>
                     <span style={{ color: 'var(--brand-engine-start)', marginRight: '0.5rem', userSelect: 'none' }}>$</span>
                     {goCmd}
@@ -95,16 +98,7 @@ export default function Install() {
                   title="Copy command"
                   aria-label="Copy Go build command"
                 >
-                  {copiedGo ? (
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  ) : (
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                    </svg>
-                  )}
+                  {copiedGo ? <CheckIcon /> : <CopyIcon />}
                 </button>
               </div>
             </div>
@@ -116,16 +110,14 @@ export default function Install() {
             target="_blank"
             rel="noreferrer"
           >
-            Full installation guide →
+            {t.install.guide}
           </a>
         </div>
       </section>
 
       <div className={styles.ctaBand}>
-        <h2 className={styles.ctaTitle}>Build the future of agent teams</h2>
-        <p className={styles.ctaSub}>
-          An open research and engineering project. Every idea, issue, and PR is read and valued.
-        </p>
+        <h2 className={styles.ctaTitle}>{t.install.ctaTitle}</h2>
+        <p className={styles.ctaSub}>{t.install.ctaSub}</p>
         <div className={styles.ctaBtns}>
           <a
             className={styles.btnPrimary}
@@ -133,10 +125,10 @@ export default function Install() {
             target="_blank"
             rel="noreferrer"
           >
-            Join the discussion
+            {t.install.joinDiscussion}
           </a>
-          <Link className={styles.btnSecondary} to="/services">
-            Work with us →
+          <Link className={styles.btnSecondary} to={linkTo('/services')}>
+            {t.install.workWithUs}
           </Link>
         </div>
       </div>
