@@ -13,12 +13,13 @@ export default function ServicesHero() {
         <div className={`${styles.content} reveal ${visible ? 'visible' : ''}`}>
           <span className={styles.badge}>Available for collaborations</span>
           <h1 className={styles.title}>
-            Deploy <span className="gradient-text-indigo">AI agent workflows</span><br />
+            Deploy <span className="gradient-text-indigo">enterprise AI</span><br />
             for your organization
           </h1>
           <p className={styles.sub}>
-            I build custom multi-agent systems and automation workflows using Seshat,
-            the open-source runtime I created. From architecture to production deployment.
+            I design and deploy custom enterprise AI solutions using Seshat, the open-source
+            runtime I created. Multi-agent workflows, data pipelines and automation systems,
+            from architecture to production.
           </p>
           <div className={styles.ctas}>
             <a className={styles.btnPrimary} href="mailto:projectsengineer6@gmail.com">

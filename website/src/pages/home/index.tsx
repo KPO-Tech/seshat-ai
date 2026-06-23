@@ -1,18 +1,27 @@
 import Hero from './Hero'
 import Why from './Why'
+import About from './About'
 import AgentSimulator from './AgentSimulator'
 import Screenshots from './Screenshots'
 import Ecosystem from './Ecosystem'
 import Install from './Install'
 import { useInView } from '../../hooks/useInView'
 import { useCountUp } from '../../hooks/useCountUp'
+import { useMeta } from '../../hooks/useMeta'
 
 export default function Home() {
+  useMeta(
+    'Seshat — Unified AI Agent Runtime for Teams',
+    'Seshat is an open-source Go runtime that unifies agentic execution, memory, multi-agent coordination and 60+ tools into one environment. The infrastructure layer for organized AI work.',
+    'https://seshat-ai.com'
+  )
+
   return (
     <>
       <Hero />
       <Stats />
       <Why />
+      <About />
       <Ecosystem />
       <Screenshots />
       <AgentSimulator />
