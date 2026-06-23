@@ -86,10 +86,10 @@ const SERVICES = [
 ]
 
 const WHO_FOR = [
+  { label: 'Enterprises', desc: 'Deploying enterprise AI at scale with governed, auditable multi-agent systems integrated into existing infrastructure.' },
   { label: 'Startups', desc: 'Moving fast and wanting to automate repetitive work without hiring a full AI team.' },
   { label: 'Scale-ups', desc: 'Integrating agents into an existing Go or multi-language backend at production scale.' },
   { label: 'Agencies', desc: 'Adding AI automation as a service to their clients with a maintainable open-source stack.' },
-  { label: 'Research teams', desc: 'Experimenting with multi-agent coordination and needing a reliable, introspectable runtime.' },
 ]
 
 export default function ServicesGrid() {
