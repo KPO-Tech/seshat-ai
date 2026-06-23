@@ -91,6 +91,10 @@
   }
 }
 
+@media (max-width: 768px) {
+  .section { padding: 4.5rem 0; }
+}
+
 @media (max-width: 640px) {
   .card { padding: 1.75rem 1.5rem; }
   .grid { grid-template-columns: 1fr; }

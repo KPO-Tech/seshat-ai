@@ -284,18 +284,41 @@
     max-width: 400px;
     margin: 0 auto;
     width: 100%;
+    overflow: hidden;
+  }
+}
+
+@media (max-width: 768px) {
+  .hero {
+    padding: 6rem 1.5rem 4rem;
+  }
+  .title {
+    font-size: clamp(2.2rem, 6vw, 3rem);
+  }
+  .sub {
+    font-size: 1.05rem;
+    max-width: 100%;
+  }
+  .installer {
+    font-size: 0.8rem;
+  }
+  .visual {
+    max-width: 320px;
   }
 }
 
 @media (max-width: 640px) {
   .hero {
-    padding: 6.5rem 1.25rem 4rem;
+    padding: 5.5rem 1.25rem 3.5rem;
   }
   .title {
-    font-size: 2.4rem;
+    font-size: 2.2rem;
   }
   .sub {
     font-size: 1rem;
+  }
+  .visual {
+    display: none;
   }
   .cmdLine {
     white-space: pre-wrap;
