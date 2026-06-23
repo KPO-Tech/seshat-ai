@@ -1,20 +1,23 @@
 import { Link } from 'react-router-dom'
+import { useTranslation } from '../hooks/useTranslation'
 import styles from './Footer.module.css'
 
 export default function Footer() {
+  const { t, linkTo } = useTranslation()
+
   return (
     <footer className={styles.footer}>
       <div className={styles.links}>
-        <a href="https://github.com/EngineerProjects/seshat" target="_blank" rel="noreferrer">seshat (engine)</a>
-        <a href="https://github.com/EngineerProjects/seshat-ai" target="_blank" rel="noreferrer">seshat-ai (platform)</a>
-        <a href="https://github.com/EngineerProjects/seshat/discussions" target="_blank" rel="noreferrer">Discussions</a>
-        <a href="https://github.com/EngineerProjects/seshat/issues" target="_blank" rel="noreferrer">Issues</a>
-        <Link to="/services">Services</Link>
+        <a href="https://github.com/EngineerProjects/seshat" target="_blank" rel="noreferrer">{t.footer.engine}</a>
+        <a href="https://github.com/EngineerProjects/seshat-ai" target="_blank" rel="noreferrer">{t.footer.platform}</a>
+        <a href="https://github.com/EngineerProjects/seshat/discussions" target="_blank" rel="noreferrer">{t.footer.discussions}</a>
+        <a href="https://github.com/EngineerProjects/seshat/issues" target="_blank" rel="noreferrer">{t.footer.issues}</a>
+        <Link to={linkTo('/services')}>{t.footer.services}</Link>
       </div>
       <p className={styles.copy}>
-        © 2026 Seshat ·{' '}
+        {t.footer.copy.split(' · ')[0]} ·{' '}
         <a href="https://github.com/EngineerProjects/seshat" target="_blank" rel="noreferrer">
-          Open Source · Apache 2.0
+          {t.footer.copy.split(' · ').slice(1).join(' · ')}
         </a>
       </p>
     </footer>

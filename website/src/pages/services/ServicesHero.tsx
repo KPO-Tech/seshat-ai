@@ -1,32 +1,29 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from '../../hooks/useTranslation'
 import styles from './ServicesHero.module.css'
 
 export default function ServicesHero() {
   const [visible, setVisible] = useState(false)
+  const { t, linkTo } = useTranslation()
   useEffect(() => { const t = setTimeout(() => setVisible(true), 80); return () => clearTimeout(t) }, [])
 
   return (
     <section className={styles.hero}>
       <div className={styles.grid}>
-
         <div className={`${styles.content} reveal ${visible ? 'visible' : ''}`}>
-          <span className={styles.badge}>Available for collaborations</span>
+          <span className={styles.badge}>{t.servicesHero.badge}</span>
           <h1 className={styles.title}>
-            Deploy <span className="gradient-text-indigo">enterprise AI</span><br />
-            for your organization
+            {t.servicesHero.title1} <span className="gradient-text-indigo">{t.servicesHero.titleHighlight}</span><br />
+            {t.servicesHero.title2}
           </h1>
-          <p className={styles.sub}>
-            I design and deploy custom enterprise AI solutions using Seshat, the open-source
-            runtime I created. Multi-agent workflows, data pipelines and automation systems,
-            from architecture to production.
-          </p>
+          <p className={styles.sub}>{t.servicesHero.sub}</p>
           <div className={styles.ctas}>
             <a className={styles.btnPrimary} href="mailto:projectsengineer6@gmail.com">
-              Get in touch
+              {t.servicesHero.getInTouch}
             </a>
-            <Link className={styles.btnSecondary} to="/">
-              About the project
+            <Link className={styles.btnSecondary} to={linkTo('/')}>
+              {t.servicesHero.aboutProject}
             </Link>
           </div>
         </div>
@@ -38,7 +35,6 @@ export default function ServicesHero() {
             className={styles.illustrationImg}
           />
         </div>
-
       </div>
     </section>
   )

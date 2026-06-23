@@ -3,13 +3,11 @@ import ServicesGrid from './ServicesGrid'
 import Process from './Process'
 import Contact from './Contact'
 import { useMeta } from '../../hooks/useMeta'
+import { useTranslation } from '../../hooks/useTranslation'
 
 export default function Services() {
-  useMeta(
-    'Services & Enterprise — Seshat AI',
-    'Professional integration, custom agent deployment and enterprise support for Seshat. Build a real AI workforce with expert guidance from the team behind the runtime.',
-    'https://seshat-ai.com/services'
-  )
+  const { t } = useTranslation()
+  useMeta(t.meta.services.title, t.meta.services.description, t.meta.services.canonical)
 
   return (
     <>

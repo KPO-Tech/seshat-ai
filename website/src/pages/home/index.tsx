@@ -8,13 +8,11 @@ import Install from './Install'
 import { useInView } from '../../hooks/useInView'
 import { useCountUp } from '../../hooks/useCountUp'
 import { useMeta } from '../../hooks/useMeta'
+import { useTranslation } from '../../hooks/useTranslation'
 
 export default function Home() {
-  useMeta(
-    'Seshat — Unified AI Agent Runtime for Teams',
-    'Seshat is an open-source Go runtime that unifies agentic execution, memory, multi-agent coordination and 60+ tools into one environment. The infrastructure layer for organized AI work.',
-    'https://seshat-ai.com'
-  )
+  const { t } = useTranslation()
+  useMeta(t.meta.home.title, t.meta.home.description, t.meta.home.canonical)
 
   return (
     <>
@@ -31,14 +29,15 @@ export default function Home() {
 }
 
 const STAT_ITEMS = [
-  { num: 15, suffix: '+', label: 'LLM Providers' },
-  { num: 60, suffix: '+', label: 'Built-in Tools' },
-  { num: null, text: 'Go',   label: 'Single Binary' },
-  { num: null, text: 'MCP',  label: 'Protocol' },
-  { num: null, text: 'gRPC', label: 'API Layer' },
+  { num: 15, suffix: '+', key: 'providers' as const },
+  { num: 60, suffix: '+', key: 'tools' as const },
+  { num: null, text: 'Go',   key: 'binary' as const },
+  { num: null, text: 'MCP',  key: 'protocol' as const },
+  { num: null, text: 'gRPC', key: 'api' as const },
 ]
 
 function StatItem({ item, active, idx }: { item: typeof STAT_ITEMS[0]; active: boolean; idx: number }) {
+  const { t } = useTranslation()
   const count = useCountUp(item.num ?? 0, 1200, active && item.num !== null)
   const display = item.num !== null ? `${count}${item.suffix}` : item.text!
 
@@ -66,7 +65,7 @@ function StatItem({ item, active, idx }: { item: typeof STAT_ITEMS[0]; active: b
         textTransform: 'uppercase', letterSpacing: '0.1em',
         marginTop: '0.4rem', fontWeight: 700,
       }}>
-        {item.label}
+        {t.stats[item.key]}
       </div>
     </div>
   )
@@ -87,12 +86,7 @@ function Stats() {
       }}
     >
       {STAT_ITEMS.map((item, idx) => (
-        <StatItem
-          key={item.label}
-          item={item}
-          active={inView}
-          idx={idx}
-        />
+        <StatItem key={item.key} item={item} active={inView} idx={idx} />
       ))}
     </div>
   )
