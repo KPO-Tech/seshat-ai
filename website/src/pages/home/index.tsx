@@ -43,7 +43,7 @@ function StatItem({ item, active, idx }: { item: typeof STAT_ITEMS[0]; active: b
 
   return (
     <div
-      className={`reveal stagger-${idx + 1}`}
+      className={`reveal stagger-${idx + 1} ${active ? 'visible' : ''}`}
       style={{
         padding: '2rem 3rem',
         textAlign: 'center',

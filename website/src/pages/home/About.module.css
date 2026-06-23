@@ -110,7 +110,7 @@
 }
 
 .bodyOpen {
-  max-height: 600px;
+  max-height: 1200px;
 }
 
 .bodyInner {
@@ -127,6 +127,10 @@
   font-size: 0.925rem;
   color: var(--text-secondary);
   line-height: 1.75;
+}
+
+@media (max-width: 768px) {
+  .section { padding: 4.5rem 0; }
 }
 
 @media (max-width: 640px) {
