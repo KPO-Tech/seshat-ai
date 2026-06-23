@@ -17,6 +17,12 @@
   <img src="https://img.shields.io/badge/License-AGPL--3.0-blue?style=for-the-badge">
 </p>
 
+<p align="center">
+  <a href="https://seshat-ai.com"><b>🌐 seshat-ai.com</b></a> ·
+  <a href="https://github.com/EngineerProjects/seshat"><b>⚙️ seshat (engine)</b></a> ·
+  <a href="https://github.com/EngineerProjects/seshat/discussions"><b>💬 Discussions</b></a>
+</p>
+
 ---
 
 ## 🤔 What is SeshatOS?
