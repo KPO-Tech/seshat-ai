@@ -1,12 +1,12 @@
 export const en = {
   meta: {
     home: {
-      title: 'Seshat — Unified AI Agent Runtime for Teams',
+      title: 'Seshat |Unified AI Agent Runtime for Teams',
       description: 'Seshat is an open-source Go runtime that unifies agentic execution, memory, multi-agent coordination and 60+ tools into one environment. The infrastructure layer for organized AI work.',
       canonical: 'https://seshat-ai.com',
     },
     services: {
-      title: 'Services & Enterprise — Seshat AI',
+      title: 'Services & Enterprise |Seshat AI',
       description: 'Professional integration, custom agent deployment and enterprise support for Seshat. Build a real AI workforce with expert guidance from the team behind the runtime.',
       canonical: 'https://seshat-ai.com/services',
     },

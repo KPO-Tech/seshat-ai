@@ -3,12 +3,12 @@ import type { Translations } from './en'
 export const fr: Translations = {
   meta: {
     home: {
-      title: 'Seshat — Runtime unifié pour équipes d\'agents IA',
+      title: 'Seshat |Runtime unifié pour équipes d\'agents IA',
       description: 'Seshat est un runtime Go open source qui unifie l\'exécution agentique, la mémoire, la coordination multi-agents et 60+ outils dans un seul environnement. L\'infrastructure pour le travail IA organisé.',
       canonical: 'https://seshat-ai.com/fr',
     },
     services: {
-      title: 'Services & Entreprise — Seshat AI',
+      title: 'Services & Entreprise |Seshat AI',
       description: 'Intégration professionnelle, déploiement d\'agents sur mesure et support entreprise pour Seshat. Construisez une vraie main-d\'œuvre IA avec l\'expertise de l\'équipe derrière le runtime.',
       canonical: 'https://seshat-ai.com/fr/services',
     },
@@ -85,7 +85,7 @@ export const fr: Translations = {
         number: '04',
         tag: 'La Vision',
         title: 'Où nous allons',
-        body: `La vision à long terme de Seshat est de devenir la couche d'infrastructure pour le travail intellectuel et opérationnel. Pas un meilleur assistant. Pas un autre framework. L'endroit où plusieurs équipes d'agents IA poursuivent des missions ensemble, où le travail est observable, gouvernable et économiquement utile pour de vraies organisations.\n\nCela signifie unifier progressivement dans un seul environnement ce qui est aujourd'hui dispersé : travail agentique individuel, coordination d'équipes multi-agents, automatisation, recherche, gestion de la connaissance, production média, interaction vocale en temps réel et communication sur des canaux externes. Chacun de ces domaines peut devenir une surface spécialisée au sein du même cœur.\n\nPour les entreprises, cela se traduit par une plateforme gouvernée avec audit, rôles, quotas, SLA et intégration profonde dans les workflows existants. Pour les développeurs, c'est un runtime Go propre et intégrable. Pour la communauté open source, c'est une fondation partagée pour construire la prochaine génération de systèmes agentiques.\n\nAu-delà de ces directions, la forme de la plateforme sera définie autant par la communauté que par une feuille de route centrale. Des experts de domaine — en santé, éducation, droit, finance, logistique ou tout autre secteur professionnel — proposeront et contribueront des intégrations spécialisées adaptées aux réalités de leur métier. Seshat n'est pas un produit à périmètre fixe. C'est un OS pour les services agentiques : une fondation ouverte sur laquelle toute application peut être construite pour n'importe quel usage, par les personnes qui comprennent ce cas d'usage assez bien pour le construire correctement.`,
+        body: `La vision à long terme de Seshat est de devenir la couche d'infrastructure pour le travail intellectuel et opérationnel. Pas un meilleur assistant. Pas un autre framework. L'endroit où plusieurs équipes d'agents IA poursuivent des missions ensemble, où le travail est observable, gouvernable et économiquement utile pour de vraies organisations.\n\nCela signifie unifier progressivement dans un seul environnement ce qui est aujourd'hui dispersé : travail agentique individuel, coordination d'équipes multi-agents, automatisation, recherche, gestion de la connaissance, production média, interaction vocale en temps réel et communication sur des canaux externes. Chacun de ces domaines peut devenir une surface spécialisée au sein du même cœur.\n\nPour les entreprises, cela se traduit par une plateforme gouvernée avec audit, rôles, quotas, SLA et intégration profonde dans les workflows existants. Pour les développeurs, c'est un runtime Go propre et intégrable. Pour la communauté open source, c'est une fondation partagée pour construire la prochaine génération de systèmes agentiques.\n\nAu-delà de ces directions, la forme de la plateforme sera définie autant par la communauté que par une feuille de route centrale. Des experts de chaque secteur, que ce soit la santé, l'éducation, le droit, la finance, la logistique ou tout autre domaine professionnel, proposeront et contribueront des intégrations spécialisées adaptées aux réalités de leur métier. Seshat n'est pas un produit à périmètre fixe. C'est un OS pour les services agentiques : une fondation ouverte sur laquelle toute application peut être construite pour n'importe quel usage, par les personnes qui comprennent ce cas d'usage assez bien pour le construire correctement.`,
       },
     ],
   },
