@@ -212,7 +212,7 @@ export const en = {
     sent: 'Message sent!',
     error: 'Failed, try again',
     successNote: 'I will get back to you within 48 hours.',
-    errorNote: 'Something went wrong. Email me directly at projectsengineer6@gmail.com',
+    errorNote: 'Something went wrong. Email me directly at oastephaneamiche@gmail.com',
   },
   footer: {
     engine: 'seshat (engine)',

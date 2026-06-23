@@ -115,3 +115,9 @@
   color: var(--text-secondary);
   line-height: 1.5;
 }
+
+@media (max-width: 640px) {
+  .grid { grid-template-columns: 1fr; }
+  .whoGrid { grid-template-columns: 1fr; }
+  .card { padding: 1.75rem 1.5rem; }
+}

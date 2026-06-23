@@ -28,7 +28,7 @@ export default function Contact() {
       _captcha: 'false',
     }
     try {
-      const res = await fetch('https://formsubmit.co/ajax/projectsengineer6@gmail.com', {
+      const res = await fetch('https://formsubmit.co/ajax/oastephaneamiche@gmail.com', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify(payload),
@@ -55,7 +55,7 @@ export default function Contact() {
           <p className={styles.sub}>{c.sub}</p>
 
           <div className={styles.directLinks}>
-            <a href="mailto:projectsengineer6@gmail.com" className={styles.directLink}>
+            <a href="mailto:oastephaneamiche@gmail.com" className={styles.directLink}>
               <div className={styles.linkIcon}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
@@ -64,7 +64,7 @@ export default function Contact() {
               </div>
               <div>
                 <span className={styles.linkLabel}>Email</span>
-                <span className={styles.linkValue}>projectsengineer6@gmail.com</span>
+                <span className={styles.linkValue}>oastephaneamiche@gmail.com</span>
               </div>
             </a>
             <a href="https://github.com/EngineerProjects/seshat/discussions" className={styles.directLink} target="_blank" rel="noreferrer">

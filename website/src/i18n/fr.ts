@@ -214,7 +214,7 @@ export const fr: Translations = {
     sent: 'Message envoyé !',
     error: 'Échec, réessayer',
     successNote: 'Je vous répondrai dans les 48 heures.',
-    errorNote: 'Une erreur s\'est produite. Contactez-moi directement à projectsengineer6@gmail.com',
+    errorNote: 'Une erreur s\'est produite. Contactez-moi directement à oastephaneamiche@gmail.com',
   },
   footer: {
     engine: 'seshat (moteur)',

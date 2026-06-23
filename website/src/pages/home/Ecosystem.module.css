@@ -131,3 +131,8 @@
   color: #1d4ed8;
   gap: 0.4rem;
 }
+
+@media (max-width: 640px) {
+  .grid { grid-template-columns: 1fr; }
+  .card { padding: 1.75rem; }
+}
