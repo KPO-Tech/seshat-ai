@@ -180,10 +180,10 @@
 
 @media (max-width: 640px) {
   .hero {
-    padding: 6rem 1.25rem 4rem;
+    padding: 5.5rem 1.25rem 3.5rem;
   }
   .title {
-    font-size: 2.4rem;
+    font-size: 2.2rem;
   }
   .ctas {
     flex-direction: column;
