@@ -337,6 +337,10 @@ export const en = {
     discussionLabel: 'GitHub Discussions',
     discussionValue: 'Public conversation welcome',
     directEmailLabel: 'Prefer email?',
+    portfolioLabel: 'Portfolio',
+    portfolioValue: 'kpoviessi-stephane.vercel.app',
+    phoneLabel: 'Phone / WhatsApp',
+    phoneValue: '+33 7 48 59 47 13',
     fields: {
       name: 'Name *',
       namePlaceholder: 'Your name',
