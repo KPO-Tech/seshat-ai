@@ -11,7 +11,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 5rem;
-  align-items: flex-start;
+  align-items: center;
 }
 
 /* Left */
@@ -109,10 +109,7 @@
 }
 
 /* Right - Form */
-.right {
-  position: sticky;
-  top: 5rem;
-}
+.right {}
 
 .form {
   background: var(--bg-card);
