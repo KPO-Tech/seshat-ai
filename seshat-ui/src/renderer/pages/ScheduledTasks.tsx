@@ -108,7 +108,7 @@ const TASK_AGENT_ACTIONS = [
   { icon: '◎', label: 'Explain cron',   desc: 'Explain cron expressions with examples.',     prompt: 'Explain cron expressions with practical examples. Show me the most common patterns.' },
   { icon: '✎', label: 'Daily report',   desc: 'Set up a daily automated report.',            prompt: 'Help me set up a daily automated report task. What prompt should I write?' },
   { icon: '⬡', label: 'Debug a task',   desc: "Why isn't my task running as expected?",     prompt: "Help me debug a scheduled task that isn't running correctly. What should I check?" },
-  { icon: '◈', label: 'Task examples',  desc: 'Browse common scheduled task patterns.',      prompt: 'Show me examples of useful scheduled tasks I could set up with Nexus.' },
+  { icon: '◈', label: 'Task examples',  desc: 'Browse common scheduled task patterns.',      prompt: 'Show me examples of useful scheduled tasks I could set up with SeshatOS.' },
 ]
 
 // ─── Main page ────────────────────────────────────────────────────────────────

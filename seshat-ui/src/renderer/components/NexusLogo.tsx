@@ -6,12 +6,12 @@ type Props = {
 
 export function NexusLogo({ size = 80, className, style }: Props) {
   // Use only the orange logo for both themes
-  const src = '/nexus.svg'
+  const src = '/seshat.svg'
 
   return (
     <img
       src={src}
-      alt="Nexus"
+      alt="Seshat"
       width={size}
       height={size}
       className={className}

@@ -280,7 +280,7 @@ function DomainCatalog({
           <div className="dc-header-icon"><Earth size={20} /></div>
           <div>
             <div className="dc-header-title">Domain Catalog</div>
-            <div className="dc-header-sub">Choose which domains Nexus can use when searching the web.</div>
+            <div className="dc-header-sub">Choose which domains SeshatOS can use when searching the web.</div>
           </div>
         </div>
         <button

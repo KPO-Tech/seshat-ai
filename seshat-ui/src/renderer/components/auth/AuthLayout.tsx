@@ -46,7 +46,7 @@ export function AuthLayout({ children, title, subtitle }: Props) {
         .auth-brand-name {
           font-size: 22px;
           font-weight: 700;
-          letter-spacing: 0.18em;
+          letter-spacing: -0.01em;
           color: var(--color-text);
           margin-bottom: 10px;
         }
@@ -167,8 +167,8 @@ export function AuthLayout({ children, title, subtitle }: Props) {
             <NexusLogo size={80} />
 
             <div>
-              <div className="auth-brand-name">NEXUS</div>
-              <div className="auth-brand-sub">AI Operating System</div>
+              <div className="auth-brand-name">SeshatOS</div>
+              <div className="auth-brand-sub">AI Agent Runtime</div>
             </div>
 
             <div className="auth-divider" />

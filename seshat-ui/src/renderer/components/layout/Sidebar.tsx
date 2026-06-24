@@ -132,7 +132,7 @@ export function Sidebar() {
         <div className="sb-header">
           <div className="sb-logo-wrap">
             <NexusLogo size={collapsed ? 32 : 28} />
-            {!collapsed && <span className="sb-brand">Nexus</span>}
+            {!collapsed && <span className="sb-brand">SeshatOS</span>}
           </div>
         </div>
 

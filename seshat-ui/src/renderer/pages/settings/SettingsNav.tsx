@@ -46,7 +46,7 @@ export function SettingsSidebar<T extends string>({ activeTab, onTabChange, coll
       <div className="snav-header">
         <div className="snav-brand">
           <NexusLogo size={collapsed ? 32 : 28} />
-          {!collapsed && <span>Nexus</span>}
+          {!collapsed && <span>SeshatOS</span>}
         </div>
       </div>
 

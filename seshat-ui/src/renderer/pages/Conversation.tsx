@@ -450,10 +450,10 @@ export function Conversation() {
               void sendMessage(prompt, { corpusId: selectedCorpusId, fileIds })
             }}
             onStop={() => { void stopMessage() }}
-            placeholder="Message Seshat..."
+            placeholder="Message SeshatOS..."
             showAutoButton
             isStreaming={isStreaming}
-            statusText={agentState.activeTool?.message || (isStreaming ? 'Nexus is running…' : undefined)}
+            statusText={agentState.activeTool?.message || (isStreaming ? 'SeshatOS is running…' : undefined)}
             selectedCorpusId={selectedCorpusId}
             onCorpusChange={setSelectedCorpusId}
             permissionMode={permissionMode}

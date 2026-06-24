@@ -257,7 +257,7 @@ function ProfileView() {
       <header className="sv-view-header">
         <div className="sv-header-info">
           <h1>Profile</h1>
-          <p>Your identity and preferences on Nexus</p>
+          <p>Your identity and preferences on SeshatOS</p>
         </div>
       </header>
 
@@ -318,7 +318,7 @@ function ProfileView() {
             <div className="sv-brand-icon"><Robot size={18} /></div>
             <div>
               <div className="sv-brand-name">Agent Preferences</div>
-              <div className="sv-brand-sub">How Nexus agents interact with you</div>
+              <div className="sv-brand-sub">How SeshatOS agents interact with you</div>
             </div>
           </div>
         </div>
@@ -394,7 +394,7 @@ function ProfileView() {
               )}
             </div>
             <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
-              Nexus will keep these in mind across all chats.
+              SeshatOS will keep these in mind across all chats.
             </p>
             {editInstructions ? (
               <>
@@ -555,7 +555,7 @@ function AccountView() {
             </div>
             <div className="modal-content">
               <p className="up-delete-copy">
-                This closes your Nexus account immediately. To confirm, type <strong>{user.email}</strong> below.
+                This closes your SeshatOS account immediately. To confirm, type <strong>{user.email}</strong> below.
               </p>
               <div className="modal-field">
                 <label>Confirm your email</label>
@@ -593,7 +593,7 @@ function ConnectionsView() {
       <header className="sv-view-header">
         <div className="sv-header-info">
           <h1>Connections</h1>
-          <p>Linked accounts will live here once Nexus exposes dedicated identity integrations.</p>
+          <p>Linked accounts will live here once SeshatOS exposes dedicated identity integrations.</p>
         </div>
       </header>
 
@@ -609,7 +609,7 @@ function ConnectionsView() {
         </div>
         <div className="sv-card-body up-connection-stack">
           <div className="up-support-note">
-            OpenAI OAuth is now configured from the provider settings screen so it stays separate from Nexus account login and register flows.
+            OpenAI OAuth is now configured from the provider settings screen so it stays separate from SeshatOS account login and register flows.
           </div>
           <div className="up-connection-actions">
             <button className="up-primary-btn" onClick={() => navigate('/settings?tab=providers')}>

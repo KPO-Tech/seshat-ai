@@ -100,7 +100,7 @@ async function ensureBackendTrusted() {
     const body = await res.json() as { algorithm?: string; proof?: string }
     const expected = desktopBridgeProof(secret, nonce)
     if (body.algorithm !== 'hmac-sha256' || body.proof !== expected) {
-      throw new Error('Backend trust handshake failed. Check that nexus-engine uses the same NEXUS_RUNTIME_ROOT as Nexus UI.')
+      throw new Error('Backend trust handshake failed. Check that seshat-ai backend uses the same SESHAT_RUNTIME_ROOT as the desktop app.')
     }
   })()
 

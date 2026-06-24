@@ -7,13 +7,13 @@ const DEFAULT_BACKEND_ORIGIN = 'http://127.0.0.1:8090'
 const DESKTOP_SECRET_FILE = 'desktop-bridge-secret'
 
 export function resolveRuntimeRoot() {
-  const explicit = process.env.NEXUS_RUNTIME_ROOT?.trim()
+  const explicit = (process.env.SESHAT_RUNTIME_ROOT ?? process.env.NEXUS_RUNTIME_ROOT)?.trim()
   if (explicit) return explicit
-  return join(app.getPath('home'), '.config', 'nexus')
+  return join(app.getPath('home'), '.config', 'seshat')
 }
 
 export function resolveBackendOrigin() {
-  return (process.env.NEXUS_BACKEND_ORIGIN?.trim() || DEFAULT_BACKEND_ORIGIN).replace(/\/$/, '')
+  return ((process.env.SESHAT_BACKEND_ORIGIN ?? process.env.NEXUS_BACKEND_ORIGIN)?.trim() || DEFAULT_BACKEND_ORIGIN).replace(/\/$/, '')
 }
 
 export function getDesktopBridgeSecretPath() {

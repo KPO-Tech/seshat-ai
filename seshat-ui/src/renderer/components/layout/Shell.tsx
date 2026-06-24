@@ -78,7 +78,7 @@ export function Shell() {
           )}
         </div>
         
-        <div className="titlebar-center">Nexus</div>
+        <div className="titlebar-center">SeshatOS</div>
 
         <div className="titlebar-right">
           <button className="tb-sys-btn" onClick={handleMinimize} title="Minimize">
