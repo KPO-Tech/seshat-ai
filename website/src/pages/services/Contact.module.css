@@ -11,7 +11,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 5rem;
-  align-items: center;
+  align-items: flex-start;
 }
 
 /* Left */
@@ -110,7 +110,7 @@
 
 /* Right - Form */
 .right {
-  padding-top: 3rem;
+  padding-top: 10rem;
 }
 
 .form {
@@ -284,6 +284,7 @@
 
   .right {
     position: static;
+    padding-top: 0;
   }
 }
 
