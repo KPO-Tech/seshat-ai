@@ -14,7 +14,8 @@ const CLI_SHOTS = [
 const DESKTOP_SHOTS = [
   { src: '/desktop/home.png',            caption: 'Home',            detail: 'New chat, quick actions, provider and model selector', alt: 'Seshat desktop home,new chat interface with sidebar and quick actions' },
   { src: '/desktop/skills.png',          caption: 'Skills Creator',  detail: 'Author reusable agent skills with live test chat', alt: 'Seshat skills creator,building reusable AI agent behaviors visually' },
-  { src: '/desktop/scheduled-tasks.png', caption: 'Scheduled Tasks', detail: 'Recurring agent jobs on cron, with built-in TaskAgent', alt: 'Seshat scheduled tasks,cron-based recurring AI agent jobs with TaskAgent' },
+  { src: '/desktop/scheduled-tasks.png',      caption: 'Scheduled Tasks', detail: 'Recurring agent jobs on cron, with built-in TaskAgent', alt: 'Seshat scheduled tasks,cron-based recurring AI agent jobs with TaskAgent' },
+  { src: '/desktop/scheduled-tasks-form.png', caption: 'Task Builder',     detail: 'Configure agent, schedule, and mission in one form', alt: 'Seshat task builder,scheduled task creation form with cron and agent config' },
   { src: '/desktop/workspace.png',       caption: 'Workspace',       detail: 'Agents, knowledge bases and document collections', alt: 'Seshat workspace,AI agents and knowledge base document collections' },
   { src: '/desktop/web-search.png',      caption: 'Web Search',      detail: 'Domain catalog and web search provider configuration', alt: 'Seshat web search settings,domain catalog and search provider configuration' },
 ]
