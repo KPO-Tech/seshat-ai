@@ -73,7 +73,7 @@ export function Register() {
   }
 
   return (
-    <AuthLayout title="Create your account" subtitle="Start building with Nexus today">
+    <AuthLayout title="Create your account" subtitle="Start building with SeshatOS today">
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
         {/* Full name */}

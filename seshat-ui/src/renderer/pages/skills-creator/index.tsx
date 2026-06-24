@@ -1019,11 +1019,11 @@ function CreateSkillPanel({
 // ─── SkillAgent panel ────────────────────────────────────────────────────────
 
 const AGENT_ACTIONS = [
-  { icon: '✦', label: 'Create a new skill',  desc: "I'll help you scaffold a new skill from scratch.", prompt: 'Help me create a new Nexus skill from scratch.' },
-  { icon: '◎', label: 'Explain a skill',     desc: "I'll explain how a skill works.",                 prompt: 'Explain how Nexus skills work and what skill.md should contain.' },
+  { icon: '✦', label: 'Create a new skill',  desc: "I'll help you scaffold a new skill from scratch.", prompt: 'Help me create a new SeshatOS skill from scratch.' },
+  { icon: '◎', label: 'Explain a skill',     desc: "I'll explain how a skill works.",                 prompt: 'Explain how SeshatOS skills work and what skill.md should contain.' },
   { icon: '✎', label: 'Improve a skill',     desc: "I'll help you optimize or refactor your skill.",  prompt: 'Help me improve and optimize my current skill.' },
-  { icon: '⬡', label: 'Test a skill',        desc: "I'll help you test and debug your skill.",        prompt: 'How can I test and debug my Nexus skill effectively?' },
-  { icon: '◈', label: 'Browse skills',       desc: 'See examples of existing skills.',                prompt: 'Show me examples of well-written Nexus skills.' },
+  { icon: '⬡', label: 'Test a skill',        desc: "I'll help you test and debug your skill.",        prompt: 'How can I test and debug my SeshatOS skill effectively?' },
+  { icon: '◈', label: 'Browse skills',       desc: 'See examples of existing skills.',                prompt: 'Show me examples of well-written SeshatOS skills.' },
 ]
 
 function SkillAgentPanel({

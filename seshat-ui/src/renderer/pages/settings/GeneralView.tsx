@@ -93,7 +93,7 @@ export function GeneralView() {
       <header className="sv-view-header">
         <div className="sv-header-info">
           <h1>General</h1>
-          <p>Personalise how Nexus understands you and how it responds.</p>
+          <p>Personalise how SeshatOS understands you and how it responds.</p>
         </div>
         {dirty && (
           <button className="gv-save-btn" onClick={save} disabled={saving}>
@@ -114,7 +114,7 @@ export function GeneralView() {
             <div className="sv-brand-icon"><User size={20} /></div>
             <div>
               <div className="sv-brand-name">Identity</div>
-              <div className="sv-brand-sub">How Nexus refers to and understands you</div>
+              <div className="sv-brand-sub">How SeshatOS refers to and understands you</div>
             </div>
           </div>
         </div>
@@ -147,7 +147,7 @@ export function GeneralView() {
             <label>About you</label>
             <textarea
               className="gv-textarea"
-              placeholder="Describe yourself, your projects, your expertise… Nexus will use this to give you more relevant answers."
+              placeholder="Describe yourself, your projects, your expertise… SeshatOS will use this to give you more relevant answers."
               rows={4}
               value={form.about}
               onChange={(e) => set('about', e.target.value)}
@@ -192,7 +192,7 @@ export function GeneralView() {
             <label>Additional context</label>
             <textarea
               className="gv-textarea"
-              placeholder="Anything else you want Nexus to always keep in mind."
+              placeholder="Anything else you want SeshatOS to always keep in mind."
               rows={3}
               value={form.extra_context}
               onChange={(e) => set('extra_context', e.target.value)}

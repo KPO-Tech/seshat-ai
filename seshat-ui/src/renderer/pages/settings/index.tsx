@@ -152,7 +152,7 @@ function SystemView() {
               <div className="sv-brand-icon"><Computer size={20} /></div>
               <div>
                 <div className="sv-brand-name">Backend</div>
-                <div className="sv-brand-sub">Seshat API</div>
+                <div className="sv-brand-sub">SeshatOS API</div>
               </div>
             </div>
           </div>

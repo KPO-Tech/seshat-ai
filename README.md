@@ -60,18 +60,18 @@ SeshatOS ships with `seshat-ui`, an Electron + React desktop application that wr
       <br><sub><b>Home</b> — new chat, quick actions, provider &amp; model selector</sub>
     </td>
     <td align="center" width="50%">
-      <img src="docs/captures/Agent.png" alt="Workspace — Agents" width="100%">
-      <br><sub><b>Workspace · Agents</b> — create custom agents with emoji icon, system prompt, and capabilities</sub>
+      <img src="docs/captures/skills.png" alt="Skills Creator" width="100%">
+      <br><sub><b>Skills Creator</b> — author reusable agent skills with live preview and test chat</sub>
     </td>
   </tr>
   <tr>
     <td align="center" width="50%">
-      <img src="docs/captures/settings.png" alt="Settings" width="100%">
-      <br><sub><b>Settings</b> — personal preferences, providers, knowledge, admin panel</sub>
+      <img src="docs/captures/scheduled-tasks.png" alt="Scheduled Tasks" width="100%">
+      <br><sub><b>Scheduled Tasks</b> — recurring agent jobs on a cron schedule, with built-in TaskAgent</sub>
     </td>
     <td align="center" width="50%">
-      <img src="docs/captures/skills.png" alt="Skills Creator" width="100%">
-      <br><sub><b>Skills Creator</b> — author reusable agent skills with live preview and test chat</sub>
+      <img src="docs/captures/workspace.png" alt="Workspace" width="100%">
+      <br><sub><b>Workspace</b> — agents, knowledge bases and document collections</sub>
     </td>
   </tr>
 </table>
