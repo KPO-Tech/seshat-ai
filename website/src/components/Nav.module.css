@@ -7,7 +7,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(26, 25, 30, 0.85);
+  background: var(--nav-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border-glass);
@@ -163,6 +163,27 @@
   text-decoration: none;
 }
 
+.themeBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.themeBtn:hover {
+  color: var(--text);
+  border-color: var(--border2);
+  background: var(--bg-surface);
+}
+
 .langSwitch {
   color: var(--text-muted);
   font-size: 0.8rem;
@@ -221,7 +242,7 @@
     top: 60px;
     left: 0;
     right: 0;
-    background: rgba(20, 19, 24, 0.97);
+    background: var(--nav-mobile-bg);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border-bottom: 1px solid var(--border-glass);
@@ -238,7 +259,7 @@
     font-weight: 600;
     text-decoration: none;
     padding: 1rem 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid var(--border-glass);
     display: block;
     transition: color 0.2s ease;
   }
@@ -272,6 +293,34 @@
     color: var(--text);
     border-color: var(--brand-engine-start);
     text-decoration: none;
+  }
+
+  .mobileBottom {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+    flex-wrap: wrap;
+  }
+
+  .mobileThemeBtn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.65rem 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s ease;
+  }
+
+  .mobileThemeBtn:hover {
+    color: var(--text);
+    border-color: var(--border2);
   }
 
   @keyframes slideDown {
