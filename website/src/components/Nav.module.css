@@ -230,8 +230,8 @@
   display: none;
 }
 
-@media (max-width: 640px) {
-  .nav { padding: 0 1.25rem; height: 60px; }
+@media (max-width: 768px) {
+  .nav { padding: 0 1.5rem; height: 60px; }
   .links { display: none; }
   .burger { display: flex; }
 
