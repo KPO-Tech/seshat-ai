@@ -1,0 +1,224 @@
+.section {
+  padding: 5rem 0;
+  border-top: 1px solid var(--border-glass);
+}
+
+.title {
+  font-size: clamp(1.8rem, 3vw, 2.4rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin-bottom: 0.6rem;
+}
+
+.sub {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  max-width: 52ch;
+  margin-bottom: 2.5rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 48px -12px rgba(0, 0, 0, 0.3);
+}
+
+.cardEngine {
+  border-color: rgba(232, 64, 30, 0.15);
+}
+
+.cardEngine:hover {
+  border-color: rgba(232, 64, 30, 0.3);
+}
+
+.cardPlatform {
+  border-color: rgba(99, 102, 241, 0.15);
+}
+
+.cardPlatform:hover {
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.repoIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(232, 64, 30, 0.1);
+  border: 1px solid rgba(232, 64, 30, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--brand-engine-start);
+  flex-shrink: 0;
+}
+
+.repoIcon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.repoIconPlatform {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.2);
+  color: var(--brand-platform-start);
+}
+
+.repoName {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 0.25rem;
+}
+
+.licenseBadge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 100px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.licenseApache {
+  background: rgba(232, 64, 30, 0.08);
+  border: 1px solid rgba(232, 64, 30, 0.2);
+  color: var(--brand-engine-end);
+}
+
+.licenseAgpl {
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  color: #a78bfa;
+}
+
+.repoDesc {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.65;
+}
+
+.repoStats {
+  display: flex;
+  gap: 1.5rem;
+  padding: 1rem 0;
+  border-top: 1px solid var(--border-glass);
+  border-bottom: 1px solid var(--border-glass);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.statVal {
+  font-size: 1rem;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--brand-engine-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.statValPlatform {
+  background: var(--brand-platform-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.statLabel {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 500;
+}
+
+.repoLinks {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.repoLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-decoration: none;
+  padding: 0.42rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  transition: all 0.2s ease;
+}
+
+.repoLink:hover {
+  color: var(--text);
+  border-color: var(--border2);
+  background: rgba(255, 255, 255, 0.04);
+  text-decoration: none;
+}
+
+.repoLinkPrimary {
+  background: var(--brand-engine-gradient);
+  border-color: transparent;
+  color: #fff;
+  font-weight: 600;
+}
+
+.repoLinkPrimary:hover {
+  opacity: 0.88;
+  color: #fff;
+  border-color: transparent;
+  background: var(--brand-engine-gradient);
+  transform: none;
+}
+
+.repoLinkPrimaryPlatform {
+  background: var(--brand-platform-gradient);
+}
+
+.repoLinkPrimaryPlatform:hover {
+  background: var(--brand-platform-gradient);
+}
+
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .repoStats {
+    gap: 1rem;
+  }
+}

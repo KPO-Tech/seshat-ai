@@ -1,12 +1,14 @@
 import Hero from './Hero'
-import Why from './Why'
+import TeamSession from './TeamSession'
 import About from './About'
-import AgentSimulator from './AgentSimulator'
-import Screenshots from './Screenshots'
+import GitHubRepos from './GitHubRepos'
+import Why from './Why'
+import Domains from './Domains'
+import Portals from './Portals'
 import Ecosystem from './Ecosystem'
+import Screenshots from './Screenshots'
+import AgentSimulator from './AgentSimulator'
 import Install from './Install'
-import { useInView } from '../../hooks/useInView'
-import { useCountUp } from '../../hooks/useCountUp'
 import { useMeta } from '../../hooks/useMeta'
 import { useTranslation } from '../../hooks/useTranslation'
 
@@ -17,77 +19,16 @@ export default function Home() {
   return (
     <>
       <Hero />
-      <Stats />
-      <Why />
+      <TeamSession />
       <About />
+      <GitHubRepos />
+      <Why />
+      <Domains />
+      <Portals />
       <Ecosystem />
       <Screenshots />
       <AgentSimulator />
       <Install />
     </>
-  )
-}
-
-const STAT_ITEMS = [
-  { num: 15, suffix: '+', key: 'providers' as const },
-  { num: 60, suffix: '+', key: 'tools' as const },
-  { num: null, text: 'Go',   key: 'binary' as const },
-  { num: null, text: 'MCP',  key: 'protocol' as const },
-  { num: null, text: 'gRPC', key: 'api' as const },
-]
-
-function StatItem({ item, active, idx }: { item: typeof STAT_ITEMS[0]; active: boolean; idx: number }) {
-  const { t } = useTranslation()
-  const count = useCountUp(item.num ?? 0, 1200, active && item.num !== null)
-  const display = item.num !== null ? `${count}${item.suffix}` : item.text!
-
-  return (
-    <div
-      className={`reveal stagger-${idx + 1} ${active ? 'visible' : ''}`}
-      style={{
-        padding: '2rem 3rem',
-        textAlign: 'center',
-        borderRight: idx !== STAT_ITEMS.length - 1 ? '1px solid var(--border-glass)' : 'none',
-        flexGrow: 1,
-        flexBasis: '160px',
-      }}
-    >
-      <div style={{
-        fontSize: '2rem', fontWeight: 900, letterSpacing: '-0.03em',
-        background: 'var(--brand-engine-gradient)',
-        WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-        backgroundClip: 'text', fontFamily: 'Plus Jakarta Sans, sans-serif',
-      }}>
-        {display}
-      </div>
-      <div style={{
-        fontSize: '0.72rem', color: 'var(--text-secondary)',
-        textTransform: 'uppercase', letterSpacing: '0.1em',
-        marginTop: '0.4rem', fontWeight: 700,
-      }}>
-        {t.stats[item.key]}
-      </div>
-    </div>
-  )
-}
-
-function Stats() {
-  const { ref, inView } = useInView(0.3)
-
-  return (
-    <div
-      ref={ref as React.RefObject<HTMLDivElement>}
-      style={{
-        display: 'flex', justifyContent: 'center', flexWrap: 'wrap',
-        background: 'var(--bg-surface)',
-        borderTop: '1px solid var(--border-glass)',
-        borderBottom: '1px solid var(--border-glass)',
-        backdropFilter: 'blur(8px)', position: 'relative', zIndex: 5,
-      }}
-    >
-      {STAT_ITEMS.map((item, idx) => (
-        <StatItem key={item.key} item={item} active={inView} idx={idx} />
-      ))}
-    </div>
   )
 }
