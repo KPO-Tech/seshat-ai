@@ -157,11 +157,13 @@ export const fr: Translations = {
       desc: 'La plateforme complète. App desktop, backend multi-utilisateur, base de connaissances. Construite sur le moteur.',
       links: { issues: 'Issues ouvertes', discussions: 'Discussions' },
     },
+    builtTitle: 'Tout ce qui est déjà dedans.',
+    builtSub: 'Pas de framework d\'orchestration externe. Pas de dépendances cachées. Voici ce que Seshat embarque aujourd\'hui.',
   },
   portals: {
-    label: 'Toute stack, tout niveau',
-    title: 'Pas que pour les développeurs Go.',
-    sub: 'Un seul runtime, quatre façons d\'y accéder. Utilisez l\'interface qui correspond à votre workflow et à votre équipe.',
+    label: 'Ouvert à chaque builder',
+    title: 'Conçu pour tous ceux qui construisent.',
+    sub: 'Que vous shipiez du Go, du Python ou du React, que vous soyez un développeur solo qui explore les agents, un passionné d\'IA qui contribue à l\'open source, ou une équipe intégrant un nouveau runtime dans une infrastructure existante : Seshat a une entrée pour vous.',
     items: [
       { tag: 'CLI / TUI', title: 'Ligne de commande', body: 'Installez le binaire, lancez votre première équipe d\'agents en quelques minutes. Aucune dépendance, aucune complexité de configuration. Un binaire statique Go qui tourne partout.' },
       { tag: 'REST API', title: 'N\'importe quel langage', body: 'Utilisez Seshat depuis Python, Node, Ruby ou n\'importe quoi. L\'API REST + SSE est compatible Anthropic: le code client existant s\'intègre souvent sans modification.' },
@@ -172,14 +174,14 @@ export const fr: Translations = {
   domains: {
     label: 'La vision',
     title: 'Un runtime, tous les domaines.',
-    sub: 'Le travail IA n\'est pas une seule chose. Seshat grandit vers un environnement unifié pour tout travail intellectuel et opérationnel.',
+    sub: 'Ce que Seshat peut orchestrer aujourd\'hui est déjà large. Là où il se dirige est plus large encore.',
     items: [
-      { tag: 'Aujourd\'hui', title: 'Code et ingénierie', body: 'Équipes de développement multi-agents. Génération de code, tests, réparation CI, revue d\'architecture et analyse complète de codebase.' },
-      { tag: 'Aujourd\'hui', title: 'Données et analytique', body: 'Pipelines agentiques: ETL, notebooks Python, tableaux BI, monitoring KPI, détection d\'anomalies et rapports exécutifs.' },
-      { tag: 'En cours', title: 'Recherche et rédaction', body: 'Équipes d\'agents qui cherchent, synthétisent et écrivent. De la veille concurrentielle à la documentation technique et l\'analyse approfondie.' },
-      { tag: 'Roadmap', title: 'Marketing et visuel', body: 'Agents de génération d\'images, planification réseaux sociaux, création d\'assets de marque, conception d\'affiches et campagnes à l\'échelle.' },
-      { tag: 'Roadmap', title: 'Voix et communication', body: 'Interaction vocale, agents de support client, messagerie multicanale: email, Slack, SMS et WhatsApp dans un seul système.' },
-      { tag: 'Roadmap', title: '3D et prototypage', body: 'Modélisation 3D agentique pour le prototypage rapide. D\'un brief textuel à un modèle imprimable, avec des cycles d\'itération automatisés.' },
+      { tag: 'Aujourd\'hui', title: 'Code & ingénierie', body: 'Équipes de développement multi-agents qui écrivent, testent, réparent des pipelines CI, passent en revue l\'architecture et analysent des codebases entiers. D\'un simple prompt à une pull request complète.' },
+      { tag: 'Aujourd\'hui', title: 'Data, BI & analytique', body: 'Pipelines agentiques pour l\'ETL, les notebooks Python, les tableaux de bord KPI et la détection d\'anomalies. Des agents qui traitent les chiffres, génèrent les graphiques et envoient le rapport exécutif sans qu\'un humain touche une seule feuille de calcul.' },
+      { tag: 'En cours', title: 'Business & juridique', body: 'Agents experts en comptabilité, conformité fiscale, revue de contrats et tri de CV. Connectés à de vraies sources de données : banques, ERP et bases documentaires. Les décisions accélérées, pas remplacées.' },
+      { tag: 'En cours', title: 'Recherche & rédaction', body: 'Équipes d\'agents qui cherchent, synthétisent et produisent. Veille concurrentielle, documentation technique, études de marché et analyses approfondies en une fraction du temps habituel.' },
+      { tag: 'Roadmap', title: 'Éducation & apprentissage', body: 'Tuteurs IA personnalisés, génération de cours adaptatifs, préparation aux examens et assistance aux devoirs. Capables de s\'adapter à n\'importe quel niveau, n\'importe quelle langue et n\'importe quel programme.' },
+      { tag: 'Roadmap', title: 'Voix & communication', body: 'Interaction vocale, support client autonome et messagerie unifiée sur email, Slack, SMS et WhatsApp, le tout coordonné par une seule couche agentique.' },
     ],
   },
   servicesHero: {

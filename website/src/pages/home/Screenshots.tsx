@@ -21,7 +21,7 @@ const DESKTOP_SHOTS = [
 type Tab = 'cli' | 'desktop'
 
 export default function Screenshots() {
-  const [tab, setTab] = useState<Tab>('cli')
+  const [tab, setTab] = useState<Tab>('desktop')
   const { t } = useTranslation()
   const shots = tab === 'cli' ? CLI_SHOTS : DESKTOP_SHOTS
 
@@ -34,16 +34,16 @@ export default function Screenshots() {
 
         <div className={styles.tabs}>
           <button
-            className={tab === 'cli' ? `${styles.tab} ${styles.tabActive}` : styles.tab}
-            onClick={() => setTab('cli')}
-          >
-            {t.screenshots.tabs.cli}
-          </button>
-          <button
             className={tab === 'desktop' ? `${styles.tab} ${styles.tabActive}` : styles.tab}
             onClick={() => setTab('desktop')}
           >
             {t.screenshots.tabs.desktop}
+          </button>
+          <button
+            className={tab === 'cli' ? `${styles.tab} ${styles.tabActive}` : styles.tab}
+            onClick={() => setTab('cli')}
+          >
+            {t.screenshots.tabs.cli}
           </button>
         </div>
 

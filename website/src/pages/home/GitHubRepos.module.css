@@ -14,7 +14,6 @@
   font-size: 1rem;
   color: var(--text-secondary);
   line-height: 1.7;
-  max-width: 52ch;
   margin-bottom: 2.5rem;
 }
 
@@ -211,14 +210,94 @@
   background: var(--brand-platform-gradient);
 }
 
+.builtWrap {
+  margin-top: 3.5rem;
+  padding-top: 3rem;
+  border-top: 1px solid var(--border-glass);
+}
+
+.builtTitle {
+  font-size: clamp(1.3rem, 2.5vw, 1.7rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+}
+
+.builtSub {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  line-height: 1.65;
+  margin-bottom: 2rem;
+}
+
+.builtGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.builtCard {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.25rem 1.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.builtCat {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  background: var(--brand-engine-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.builtList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.builtItem {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.builtDot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--brand-engine-start);
+  flex-shrink: 0;
+  opacity: 0.6;
+  margin-top: 0.45em;
+}
+
 @media (max-width: 768px) {
   .grid {
     grid-template-columns: 1fr;
+  }
+  .builtGrid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @media (max-width: 640px) {
   .repoStats {
     gap: 1rem;
+  }
+  .builtGrid {
+    grid-template-columns: 1fr;
   }
 }

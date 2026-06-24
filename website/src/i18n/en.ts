@@ -155,11 +155,13 @@ export const en = {
       desc: 'The full production platform. Desktop app, multi-user backend, knowledge base. Built on the engine.',
       links: { issues: 'Open Issues', discussions: 'Discussions' },
     },
+    builtTitle: 'Everything already inside.',
+    builtSub: 'No external orchestration framework. No hidden dependencies. This is what Seshat ships with today.',
   },
   portals: {
-    label: 'Any stack, any skill level',
-    title: 'Not just for Go developers.',
-    sub: 'One runtime, four ways in. Use the interface that fits your workflow and your team.',
+    label: 'Open to every builder',
+    title: 'Built for everyone who builds.',
+    sub: 'Whether you ship Go, Python, or React, whether you are a solo developer experimenting with agents, an AI enthusiast contributing to open source, or a team integrating a new runtime into existing infrastructure: Seshat has an entry point for you.',
     items: [
       { tag: 'CLI / TUI', title: 'Command line first', body: 'Install the binary, run your first agent team in minutes. No dependencies, no setup complexity. Ships as a single static Go binary that runs anywhere.' },
       { tag: 'REST API', title: 'Any language', body: 'Use Seshat from Python, Node, Ruby, or anything. The REST + SSE API is Anthropic-compatible: existing client code often drops in without changes.' },
@@ -170,14 +172,14 @@ export const en = {
   domains: {
     label: 'The vision',
     title: 'One runtime, every domain.',
-    sub: 'AI work is not one thing. Seshat is growing into a unified environment for every kind of intellectual and operational work.',
+    sub: 'What Seshat can orchestrate today is already broad. Where it is heading is wider still.',
     items: [
-      { tag: 'Today', title: 'Code and Engineering', body: 'Multi-agent development teams. Code generation, testing, CI repair, architecture review, and full codebase analysis.' },
-      { tag: 'Today', title: 'Data and Analytics', body: 'Agentic pipelines: ETL, Python notebooks, BI dashboards, KPI monitoring, anomaly detection, and executive reports.' },
-      { tag: 'In progress', title: 'Research and Writing', body: 'Agent crews that search, synthesize, and write. From competitive intelligence to technical documentation and long-form analysis.' },
-      { tag: 'Roadmap', title: 'Marketing and Visual', body: 'Image generation agents, social media scheduling, brand asset creation, poster and campaign design at production scale.' },
-      { tag: 'Roadmap', title: 'Voice and Communication', body: 'Voice interaction, customer support agents, multi-channel messaging across email, Slack, SMS, and WhatsApp in one system.' },
-      { tag: 'Roadmap', title: '3D and Prototyping', body: 'Agentic 3D modeling for rapid product prototyping. From a text brief to a printable model, with automated iteration cycles.' },
+      { tag: 'Today', title: 'Code & Engineering', body: 'Multi-agent development teams that write, test, repair CI pipelines, review architecture, and analyze entire codebases. From a single prompt to a full pull request.' },
+      { tag: 'Today', title: 'Data, BI & Analytics', body: 'Agentic pipelines for ETL, Python notebooks, KPI dashboards, and anomaly detection. Agents that process the numbers, generate the charts, and send the executive report without a human touching a spreadsheet.' },
+      { tag: 'In progress', title: 'Business & Legal', body: 'Expert agents for accounting, tax compliance, contract review, and HR screening. Connected to real data sources: banks, ERPs, and document repositories. Decisions accelerated, not replaced.' },
+      { tag: 'In progress', title: 'Research & Writing', body: 'Agent crews that search, synthesize, and produce. Competitive intelligence, technical documentation, market research, and long-form analysis in a fraction of the time.' },
+      { tag: 'Roadmap', title: 'Education & Learning', body: 'Personalized AI tutors, adaptive course generation, exam preparation, and homework assistance. Capable of adapting to any level, any language, and any curriculum.' },
+      { tag: 'Roadmap', title: 'Voice & Communication', body: 'Voice interaction, autonomous customer support, and unified messaging across email, Slack, SMS, and WhatsApp, all coordinated by a single agentic layer.' },
     ],
   },
   servicesHero: {
