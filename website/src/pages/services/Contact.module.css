@@ -109,7 +109,9 @@
 }
 
 /* Right - Form */
-.right {}
+.right {
+  padding-top: 3rem;
+}
 
 .form {
   background: var(--bg-card);
