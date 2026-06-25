@@ -29,7 +29,7 @@ export const DOC_SECTIONS: Section[] = [
     slug: 'concepts',
     desc: 'Understand the architecture and core ideas that make Seshat different.',
     articles: [
-      { title: 'What is Seshat?', slug: 'what-is-seshat', available: false, desc: 'Overview of the runtime and its two layers.' },
+      { title: 'What is Seshat?', slug: 'what-is-seshat', available: true, desc: 'The runtime, the platform layer, and the thesis behind organized agentic work.' },
       { title: 'Mono-Run Architecture', slug: 'mono-run', available: false, desc: 'How the single binary orchestrates every subsystem.' },
       { title: 'Runtime Modes', slug: 'runtime-modes', available: false, desc: 'CLI, API, desktop, daemon and embedded modes explained.' },
       { title: 'Agent Teams and Mailboxes', slug: 'agent-teams', available: false, desc: 'How agents communicate and delegate to each other.' },
