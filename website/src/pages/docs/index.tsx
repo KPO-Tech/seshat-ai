@@ -1,3 +1,4 @@
+import { Link, useLocation } from 'react-router-dom'
 import { useInView } from '../../hooks/useInView'
 import styles from './Docs.module.css'
 
@@ -23,7 +24,6 @@ const sections: Section[] = [
     desc: 'Install Seshat and run your first autonomous agent in minutes.',
     items: ['Installation', 'Quick Start', 'Configuration', 'First Agent'],
     available: true,
-    href: 'https://github.com/EngineerProjects/seshat#installation',
   },
   {
     slug: 'concepts',
@@ -112,7 +112,7 @@ export default function Docs() {
             <span className="gradient-text">Seshat.</span>
           </h1>
           <p className={styles.heroSub}>
-            Everything you need to understand, integrate and extend the Go agent runtime — from first install to production multi-agent architecture.
+            Everything you need to understand, integrate and extend the Go agent runtime. From first install to production multi-agent architecture.
           </p>
 
           <div className={styles.searchWrap}>
@@ -200,6 +200,8 @@ export default function Docs() {
 
 function SectionCard({ section, delay }: { section: Section; delay: number }) {
   const { ref, inView } = useInView(0.1)
+  const { pathname } = useLocation()
+  const base = pathname.startsWith('/fr') ? '/fr/docs' : '/docs'
 
   const inner = (
     <div
@@ -234,11 +236,11 @@ function SectionCard({ section, delay }: { section: Section; delay: number }) {
     </div>
   )
 
-  if (section.available && section.href) {
+  if (section.available) {
     return (
-      <a href={section.href} target="_blank" rel="noreferrer" className={styles.cardLink}>
+      <Link to={`${base}/${section.slug}`} className={styles.cardLink}>
         {inner}
-      </a>
+      </Link>
     )
   }
 
