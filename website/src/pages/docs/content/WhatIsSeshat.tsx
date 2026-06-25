@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import styles from './DocArticle.module.css'
+import RuntimeProgressionDiagram from './RuntimeProgressionDiagram'
 
 export default function WhatIsSeshat() {
   const { pathname } = useLocation()
@@ -208,12 +209,8 @@ export default function WhatIsSeshat() {
           <li><span className={styles.inlineCode}>Level 2</span>: stronger sub-agent orchestration and parallel delegation.</li>
           <li><span className={styles.inlineCode}>Level 3</span>: persistent agent teams coordinating around missions, mailboxes, and shared task structures.</li>
         </ol>
-        <p className={styles.p}>
-          The long-term ambition is larger than a coding assistant. The desktop and platform layer aim to become a broad
-          entry point into agentic work across software, research, automation, education, design, media, data work,
-          communication, and domain-specific operations. That is why the project is often described as an eventual OS for
-          agentic services rather than a single-purpose app.
-        </p>
+        
+        <RuntimeProgressionDiagram />
       </section>
 
       <section className={styles.section}>
