@@ -6,14 +6,15 @@
 .container {
   max-width: var(--container-width);
   margin: 0 auto;
-  padding: 0 2.5rem;
+  padding-inline: var(--container-pad);
 }
 
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1rem;
+  width: min(100%, 860px);
+  margin: 0 auto 1rem;
   flex-wrap: wrap;
   gap: 1rem;
 }
@@ -81,6 +82,8 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
   overflow: hidden;
+  width: min(100%, 860px);
+  margin-inline: auto;
   box-shadow:
     0 28px 64px -16px rgba(0, 0, 0, 0.5),
     0 0 0 1px rgba(232, 64, 30, 0.05),
@@ -116,11 +119,11 @@
 }
 
 .termBody {
-  padding: 1.5rem 2rem 2rem;
+  padding: 0.95rem 1.25rem 1.05rem;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.82rem;
-  line-height: 1.95;
-  min-height: 220px;
+  font-size: 0.79rem;
+  line-height: 1.72;
+  min-height: 120px;
   display: flex;
   flex-direction: column;
 }
@@ -192,6 +195,6 @@
   }
   .termBody {
     font-size: 0.7rem;
-    line-height: 1.8;
+    line-height: 1.72;
   }
 }

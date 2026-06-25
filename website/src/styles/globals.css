@@ -57,7 +57,11 @@
     --nav-mobile-bg: rgba(20, 19, 24, 0.98);
 
     /* Spacing */
-    --container-width: 1200px;
+    --container-width: 1440px;
+    --container-pad: clamp(1.25rem, 2vw, 2.5rem);
+    --container-narrow-width: 1100px;
+    --hero-content-width: 1040px;
+    --hero-terminal-width: 920px;
   }
 
   /* ── Light Mode ─────────────────────────────────────────── */
@@ -153,7 +157,7 @@
     left: 50%;
     transform: translateX(-50%);
     width: 100%;
-    max-width: 1200px;
+    max-width: var(--container-width);
     height: 600px;
     background: radial-gradient(circle at 20% 30%, var(--brand-engine-glow) 0%, transparent 60%),
                 radial-gradient(circle at 80% 70%, var(--brand-platform-glow) 0%, transparent 60%);
@@ -225,8 +229,9 @@
   /* Container layout */
   .container {
     max-width: var(--container-width);
+    width: 100%;
     margin: 0 auto;
-    padding: 0 2rem;
+    padding-inline: var(--container-pad);
   }
 
   .section {

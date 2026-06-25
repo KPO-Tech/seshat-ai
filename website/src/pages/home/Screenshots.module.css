@@ -8,7 +8,7 @@
 .inner {
   max-width: var(--container-width);
   margin: 0 auto;
-  padding: 0 2rem;
+  padding-inline: var(--container-pad);
 }
 
 .title {

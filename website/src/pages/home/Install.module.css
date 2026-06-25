@@ -6,9 +6,9 @@
 }
 
 .inner {
-  max-width: 860px;
+  max-width: var(--container-narrow-width);
   margin: 0 auto;
-  padding: 0 2rem;
+  padding-inline: var(--container-pad);
   text-align: center;
 }
 
