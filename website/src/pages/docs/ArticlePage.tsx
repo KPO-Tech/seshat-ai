@@ -4,6 +4,8 @@ import QuickStart from './content/QuickStart'
 import Configuration from './content/Configuration'
 import FirstAgent from './content/FirstAgent'
 import CLIUsage from './content/CLIUsage'
+import WhatIsSeshat from './content/WhatIsSeshat'
+import MonoRunArchitecture from './content/MonoRunArchitecture'
 import ComingSoon from './ComingSoon'
 
 const CONTENT: Record<string, Record<string, React.ReactNode>> = {
@@ -12,6 +14,10 @@ const CONTENT: Record<string, Record<string, React.ReactNode>> = {
     'quick-start': <QuickStart />,
     'configuration': <Configuration />,
     'first-agent': <FirstAgent />,
+  },
+  'concepts': {
+    'what-is-seshat': <WhatIsSeshat />,
+    'mono-run': <MonoRunArchitecture />,
   },
   'guides': {
     'cli': <CLIUsage />,
