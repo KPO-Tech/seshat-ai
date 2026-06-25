@@ -4,11 +4,11 @@ import styles from './Screenshots.module.css'
 
 const CLI_SHOTS = [
   { src: '/cli/home.png',            caption: 'Welcome',        detail: 'Up and running in 10 seconds', alt: 'Seshat CLI TUI welcome screen,agentic terminal interface' },
-  { src: '/cli/commands_pannel.png', caption: 'Settings panel', detail: 'Every shortcut, one keystroke away (ctrl+p)', alt: 'Seshat CLI command panel,keyboard shortcuts and settings' },
+  { src: '/cli/settings_overview.png', caption: 'Settings panel', detail: 'Every shortcut, one keystroke away (ctrl+p)', alt: 'Seshat CLI command panel,keyboard shortcuts and settings' },
   { src: '/cli/working1.png',        caption: 'Agent at work',  detail: 'Full reasoning trace, thinking blocks and tool calls', alt: 'Seshat AI agent working,reasoning trace and tool calls in terminal' },
   { src: '/cli/working2.png',        caption: 'Streaming',      detail: 'Markdown rendering and tool timings in real time', alt: 'Seshat CLI streaming output,real-time markdown and tool timings' },
-  { src: '/cli/model_selction.png',  caption: 'Model picker',   detail: 'Switch across 20+ models in 2 keystrokes', alt: 'Seshat model picker,switching between LLM providers and models' },
-  { src: '/cli/provider_config.png', caption: 'Provider config', detail: 'API keys encrypted, scoped per provider', alt: 'Seshat provider configuration,encrypted API keys per LLM provider' },
+  { src: '/cli/model_selection.png', caption: 'Model picker',   detail: 'Switch across 20+ models in 2 keystrokes', alt: 'Seshat model picker,switching between LLM providers and models' },
+  { src: '/cli/provider_llm_zai_config.png', caption: 'Provider config', detail: 'API keys encrypted, scoped per provider', alt: 'Seshat provider configuration,encrypted API keys per LLM provider' },
 ]
 
 const DESKTOP_SHOTS = [

@@ -31,7 +31,7 @@
   font-size: 1.05rem;
   color: var(--text-secondary);
   line-height: 1.7;
-  max-width: 56ch;
+  max-width: var(--docs-copy-max-width);
   margin-top: 0.25rem;
 }
 
@@ -127,6 +127,10 @@
   scrollbar-width: none;
   white-space: nowrap;
   min-width: 0;
+}
+
+.quickCommand {
+  width: 100%;
 }
 
 .quickCode::-webkit-scrollbar { display: none; }
@@ -346,7 +350,7 @@
   font-size: 0.95rem;
   color: var(--text-secondary);
   line-height: 1.7;
-  max-width: 42ch;
+  max-width: var(--docs-copy-max-width);
 }
 
 .comingSoonPill {

@@ -42,7 +42,7 @@
   font-size: 1rem;
   color: var(--text-secondary);
   line-height: 1.7;
-  max-width: 60ch;
+  max-width: var(--docs-copy-max-width);
   margin: 0;
 }
 

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from '../../hooks/useTranslation'
+import BashLine from '../../components/code/BashLine'
 import styles from './Hero.module.css'
 
 export default function Hero() {
@@ -53,10 +54,7 @@ export default function Hero() {
         </div>
 
         <div className={styles.installer}>
-          <div className={styles.cmdLine}>
-            <span className={styles.prompt}>$</span>
-            <span>{installCmd}</span>
-          </div>
+          <BashLine code={installCmd} className={styles.cmdLine} />
           <button
             onClick={handleCopy}
             className={`${styles.copyBtn} ${copied ? styles.copyBtnActive : ''}`}

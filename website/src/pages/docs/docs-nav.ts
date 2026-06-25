@@ -19,9 +19,9 @@ export const DOC_SECTIONS: Section[] = [
     desc: 'Install Seshat and run your first autonomous agent in minutes.',
     articles: [
       { title: 'Installation', slug: 'installation', available: true, desc: 'Install the Seshat binary on Linux, macOS or Windows.' },
-      { title: 'Quick Start', slug: 'quick-start', available: false, desc: 'Your first agent in under 5 minutes.' },
-      { title: 'Configuration', slug: 'configuration', available: false, desc: 'Providers, API keys and runtime options.' },
-      { title: 'First Agent', slug: 'first-agent', available: false, desc: 'Build and run a simple autonomous agent from scratch.' },
+      { title: 'Quick Start', slug: 'quick-start', available: true, desc: 'Your first agent in under 5 minutes.' },
+      { title: 'Configuration', slug: 'configuration', available: true, desc: 'Providers, API keys and runtime options.' },
+      { title: 'First Agent', slug: 'first-agent', available: true, desc: 'Build and run a simple autonomous agent from scratch.' },
     ],
   },
   {
@@ -43,7 +43,7 @@ export const DOC_SECTIONS: Section[] = [
     slug: 'guides',
     desc: 'Step-by-step guides for real-world usage and concrete scenarios.',
     articles: [
-      { title: 'CLI Usage', slug: 'cli', available: false, desc: 'Full reference for the seshat command-line interface.' },
+      { title: 'CLI Usage', slug: 'cli', available: true, desc: 'How to use the Seshat CLI, TUI, sessions, and runtime configuration.' },
       { title: 'Desktop App', slug: 'desktop', available: false, desc: 'Using the SeshatOS desktop application for teams.' },
       { title: 'Building Workflows', slug: 'workflows', available: false, desc: 'Design multi-step agentic workflows that actually run.' },
       { title: 'Multi-Agent Scenarios', slug: 'multi-agent', available: false, desc: 'Coordinating specialized agent teams on shared missions.' },

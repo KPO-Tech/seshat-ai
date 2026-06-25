@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
+import BashLine from '../../components/code/BashLine'
 import { useInView } from '../../hooks/useInView'
 import styles from './Docs.module.css'
 
@@ -139,8 +140,10 @@ export default function Docs() {
             <p className={styles.quickSub}>Install the binary, point to your LLM provider and run your first agent.</p>
           </div>
           <div className={styles.quickCode}>
-            <span className={styles.prompt}>$</span>
-            <span>curl -fsSL https://raw.githubusercontent.com/EngineerProjects/seshat/main/scripts/install.sh | bash</span>
+            <BashLine
+              code="curl -fsSL https://raw.githubusercontent.com/EngineerProjects/seshat/main/scripts/install.sh | bash"
+              className={styles.quickCommand}
+            />
           </div>
           <a
             href="https://github.com/EngineerProjects/seshat#installation"

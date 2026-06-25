@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from '../../hooks/useTranslation'
+import BashLine from '../../components/code/BashLine'
 import styles from './Install.module.css'
 
 export default function Install() {
@@ -67,10 +68,7 @@ export default function Install() {
               <div className={styles.codeLine}>
                 <div className={styles.codeLineContent}>
                   <span className={styles.comment}>{t.install.linuxComment}</span>
-                  <span className={styles.codeText}>
-                    <span style={{ color: 'var(--brand-engine-start)', marginRight: '0.5rem', userSelect: 'none' }}>$</span>
-                    {shellCmd}
-                  </span>
+                  <BashLine code={shellCmd} className={styles.codeText} />
                 </div>
                 <button
                   onClick={handleCopyShell}
@@ -87,10 +85,7 @@ export default function Install() {
               <div className={styles.codeLine}>
                 <div className={styles.codeLineContent}>
                   <span className={styles.comment}>{t.install.goComment}</span>
-                  <span className={styles.codeText}>
-                    <span style={{ color: 'var(--brand-engine-start)', marginRight: '0.5rem', userSelect: 'none' }}>$</span>
-                    {goCmd}
-                  </span>
+                  <BashLine code={goCmd} className={styles.codeText} />
                 </div>
                 <button
                   onClick={handleCopyGo}

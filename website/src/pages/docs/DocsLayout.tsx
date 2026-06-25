@@ -13,6 +13,7 @@ export default function DocsLayout() {
   const parts = pathname.replace('/fr', '').split('/').filter(Boolean)
   const currentSection = parts[1] ?? ''
   const currentArticle = parts[2] ?? ''
+  const isContribution = currentSection === 'contribution'
 
   return (
     <div className={styles.layout}>
@@ -45,7 +46,14 @@ export default function DocsLayout() {
               className={({ isActive }) => `${styles.welcomeLink} ${isActive ? styles.welcomeLinkActive : ''}`}
               onClick={() => setOpen(false)}
             >
-              Welcome
+              Start Here
+            </NavLink>
+            <NavLink
+              to={`${base}/contribution`}
+              className={`${styles.welcomeLink} ${isContribution ? styles.welcomeLinkActive : ''}`}
+              onClick={() => setOpen(false)}
+            >
+              Contribution
             </NavLink>
           </div>
 

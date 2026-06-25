@@ -8,6 +8,7 @@ import DocsLayout from './pages/docs/DocsLayout'
 import SectionPage from './pages/docs/SectionPage'
 import ArticlePage from './pages/docs/ArticlePage'
 import Welcome from './pages/docs/Welcome'
+import Contribution from './pages/docs/Contribution'
 
 function LanguageInit() {
   const navigate = useNavigate()
@@ -37,6 +38,7 @@ function AppShell() {
         <Route path="/services" element={<Services />} />
         <Route path="/docs" element={<DocsLayout />}>
           <Route index element={<Welcome />} />
+          <Route path="contribution" element={<Contribution />} />
           <Route path=":section" element={<SectionPage />} />
           <Route path=":section/:article" element={<ArticlePage />} />
         </Route>
@@ -44,6 +46,7 @@ function AppShell() {
         <Route path="/fr/services" element={<Services />} />
         <Route path="/fr/docs" element={<DocsLayout />}>
           <Route index element={<Welcome />} />
+          <Route path="contribution" element={<Contribution />} />
           <Route path=":section" element={<SectionPage />} />
           <Route path=":section/:article" element={<ArticlePage />} />
         </Route>

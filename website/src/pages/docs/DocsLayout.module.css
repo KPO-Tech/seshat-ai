@@ -163,6 +163,7 @@
 /* Inner content with breathing room on sides */
 .contentInner {
   padding: 3.5rem 5rem 6rem;
+  --docs-copy-max-width: 100%;
 }
 
 /* ── Mobile toggle ── */
