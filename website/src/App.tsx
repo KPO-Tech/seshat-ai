@@ -5,6 +5,9 @@ import Footer from './components/Footer'
 import Home from './pages/home'
 import Services from './pages/services'
 import Docs from './pages/docs'
+import DocsLayout from './pages/docs/DocsLayout'
+import SectionPage from './pages/docs/SectionPage'
+import ArticlePage from './pages/docs/ArticlePage'
 
 function LanguageInit() {
   const navigate = useNavigate()
@@ -30,11 +33,23 @@ export default function App() {
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/docs" element={<Docs />} />
           <Route path="/services" element={<Services />} />
+          <Route path="/docs">
+            <Route index element={<Docs />} />
+            <Route element={<DocsLayout />}>
+              <Route path=":section" element={<SectionPage />} />
+              <Route path=":section/:article" element={<ArticlePage />} />
+            </Route>
+          </Route>
           <Route path="/fr" element={<Home />} />
-          <Route path="/fr/docs" element={<Docs />} />
           <Route path="/fr/services" element={<Services />} />
+          <Route path="/fr/docs">
+            <Route index element={<Docs />} />
+            <Route element={<DocsLayout />}>
+              <Route path=":section" element={<SectionPage />} />
+              <Route path=":section/:article" element={<ArticlePage />} />
+            </Route>
+          </Route>
         </Routes>
       </main>
       <Footer />
