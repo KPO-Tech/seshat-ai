@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import { DOC_SECTIONS } from './docs-nav'
-import Footer from '../../components/Footer'
 import styles from './DocsLayout.module.css'
 
 export default function DocsLayout() {
@@ -16,7 +15,6 @@ export default function DocsLayout() {
   const currentArticle = parts[2] ?? ''
 
   return (
-    <>
     <div className={styles.layout}>
       <button
         className={styles.mobileToggle}
@@ -97,7 +95,5 @@ export default function DocsLayout() {
         </div>
       </div>
     </div>
-    <Footer />
-    </>
   )
 }

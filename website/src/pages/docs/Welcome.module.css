@@ -1,6 +1,4 @@
-.page {
-  width: 100%;
-}
+.page {}
 
 .eyebrow {
   font-size: 0.72rem;
@@ -24,7 +22,6 @@
   font-size: 1rem;
   color: var(--text-secondary);
   line-height: 1.7;
-  max-width: 56ch;
   margin-bottom: 2rem;
 }
 
