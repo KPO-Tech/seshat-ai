@@ -4,10 +4,10 @@ import Nav from './components/Nav'
 import Footer from './components/Footer'
 import Home from './pages/home'
 import Services from './pages/services'
-import Docs from './pages/docs'
 import DocsLayout from './pages/docs/DocsLayout'
 import SectionPage from './pages/docs/SectionPage'
 import ArticlePage from './pages/docs/ArticlePage'
+import Welcome from './pages/docs/Welcome'
 
 function LanguageInit() {
   const navigate = useNavigate()
@@ -25,34 +25,39 @@ function LanguageInit() {
   return null
 }
 
+function AppShell() {
+  const { pathname } = useLocation()
+  const isDocs = pathname.startsWith('/docs') || pathname.startsWith('/fr/docs')
+
+  return (
+    <>
+      <Nav />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/services" element={<Services />} />
+        <Route path="/docs" element={<DocsLayout />}>
+          <Route index element={<Welcome />} />
+          <Route path=":section" element={<SectionPage />} />
+          <Route path=":section/:article" element={<ArticlePage />} />
+        </Route>
+        <Route path="/fr" element={<Home />} />
+        <Route path="/fr/services" element={<Services />} />
+        <Route path="/fr/docs" element={<DocsLayout />}>
+          <Route index element={<Welcome />} />
+          <Route path=":section" element={<SectionPage />} />
+          <Route path=":section/:article" element={<ArticlePage />} />
+        </Route>
+      </Routes>
+      {!isDocs && <Footer />}
+    </>
+  )
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <LanguageInit />
-      <Nav />
-      <main>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/services" element={<Services />} />
-          <Route path="/docs">
-            <Route index element={<Docs />} />
-            <Route element={<DocsLayout />}>
-              <Route path=":section" element={<SectionPage />} />
-              <Route path=":section/:article" element={<ArticlePage />} />
-            </Route>
-          </Route>
-          <Route path="/fr" element={<Home />} />
-          <Route path="/fr/services" element={<Services />} />
-          <Route path="/fr/docs">
-            <Route index element={<Docs />} />
-            <Route element={<DocsLayout />}>
-              <Route path=":section" element={<SectionPage />} />
-              <Route path=":section/:article" element={<ArticlePage />} />
-            </Route>
-          </Route>
-        </Routes>
-      </main>
-      <Footer />
+      <AppShell />
     </BrowserRouter>
   )
 }

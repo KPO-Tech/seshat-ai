@@ -10,7 +10,7 @@
   flex-shrink: 0;
   background: var(--bg-surface);
   border-right: 1px solid var(--border-glass);
-  padding: 2rem 0 4rem;
+  padding: 1.5rem 0 4rem;
   position: sticky;
   top: 70px;
   height: calc(100vh - 70px);
@@ -27,33 +27,37 @@
   border-radius: 2px;
 }
 
-.sidebarTop {
-  padding: 0 1.25rem 1.5rem;
-  border-bottom: 1px solid var(--border-glass);
-  margin-bottom: 1.25rem;
-}
-
-.backLink {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-decoration: none;
-  transition: color 0.2s ease;
-}
-
-.backLink:hover {
-  color: var(--text);
-  text-decoration: none;
-}
-
 .nav {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
   padding: 0 0.75rem;
+}
+
+/* Welcome top link */
+.welcomeLink {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-decoration: none;
+  padding: 0.45rem 0.5rem;
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+  border-left: 2px solid transparent;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.welcomeLink:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+  text-decoration: none;
+}
+
+.welcomeLinkActive {
+  color: var(--text) !important;
+  background: rgba(232, 64, 30, 0.07) !important;
+  border-left-color: var(--brand-engine-start) !important;
 }
 
 .navSection {

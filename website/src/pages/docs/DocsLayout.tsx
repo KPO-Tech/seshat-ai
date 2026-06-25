@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Outlet, NavLink, Link, useLocation } from 'react-router-dom'
+import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import { DOC_SECTIONS } from './docs-nav'
 import styles from './DocsLayout.module.css'
 
@@ -37,16 +37,18 @@ export default function DocsLayout() {
       {open && <div className={styles.overlay} onClick={() => setOpen(false)} />}
 
       <aside className={`${styles.sidebar} ${open ? styles.sidebarOpen : ''}`}>
-        <div className={styles.sidebarTop}>
-          <Link to={base} className={styles.backLink} onClick={() => setOpen(false)}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-            Docs Home
-          </Link>
-        </div>
-
         <nav className={styles.nav}>
+          <div className={styles.navSection}>
+            <NavLink
+              to={base}
+              end
+              className={({ isActive }) => `${styles.welcomeLink} ${isActive ? styles.welcomeLinkActive : ''}`}
+              onClick={() => setOpen(false)}
+            >
+              Welcome
+            </NavLink>
+          </div>
+
           {DOC_SECTIONS.map(section => {
             const isActiveSection = currentSection === section.slug
             return (
@@ -87,9 +89,9 @@ export default function DocsLayout() {
         </nav>
       </aside>
 
-      <main className={styles.content}>
+      <div className={styles.content}>
         <Outlet />
-      </main>
+      </div>
     </div>
   )
 }
