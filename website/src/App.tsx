@@ -4,6 +4,7 @@ import Nav from './components/Nav'
 import Footer from './components/Footer'
 import Home from './pages/home'
 import Services from './pages/services'
+import Docs from './pages/docs'
 
 function LanguageInit() {
   const navigate = useNavigate()
@@ -29,8 +30,10 @@ export default function App() {
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/docs" element={<Docs />} />
           <Route path="/services" element={<Services />} />
           <Route path="/fr" element={<Home />} />
+          <Route path="/fr/docs" element={<Docs />} />
           <Route path="/fr/services" element={<Services />} />
         </Routes>
       </main>

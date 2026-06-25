@@ -40,6 +40,12 @@ export default function Nav() {
             {t.nav.home}
           </NavLink>
           <NavLink
+            to={linkTo('/docs')}
+            className={({ isActive }) => isActive ? `${styles.link} ${styles.active}` : styles.link}
+          >
+            {t.nav.docs}
+          </NavLink>
+          <NavLink
             to={linkTo('/services')}
             className={({ isActive }) => isActive ? `${styles.link} ${styles.active}` : styles.link}
           >
@@ -109,6 +115,9 @@ export default function Nav() {
         <div className={styles.mobileMenu}>
           <NavLink to={linkTo('/')} className={styles.mobileLink} end onClick={closeMenu}>
             {t.nav.home}
+          </NavLink>
+          <NavLink to={linkTo('/docs')} className={styles.mobileLink} onClick={closeMenu}>
+            {t.nav.docs}
           </NavLink>
           <NavLink to={linkTo('/services')} className={styles.mobileLink} onClick={closeMenu}>
             {t.nav.services}
