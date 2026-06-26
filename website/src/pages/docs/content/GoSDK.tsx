@@ -162,21 +162,21 @@ export default function GoSDK() {
             <div className={articleStyles.cardTitle}>Building Workflows</div>
             <p className={articleStyles.cardBody}>Compose sessions, prompt stages, tool policies, retries, and memory boundaries into workflow shapes that still respect the runtime instead of bypassing it.</p>
             <Link className={articleStyles.link} to="/docs/sdk/workflows" state={{ from: location.pathname }}>
-              View roadmap
+              Open Building Workflows
             </Link>
           </div>
           <div className={articleStyles.card}>
             <div className={articleStyles.cardTitle}>Multi-Agent Scenarios</div>
             <p className={articleStyles.cardBody}>Document mailbox patterns, agent delegation, role separation, and the practical path from one agent loop to team-like runtime behavior in host applications.</p>
             <Link className={articleStyles.link} to="/docs/sdk/multi-agent" state={{ from: location.pathname }}>
-              View roadmap
+              Open Multi-Agent Scenarios
             </Link>
           </div>
           <div className={articleStyles.card}>
             <div className={articleStyles.cardTitle}>Developer Integration</div>
             <p className={articleStyles.cardBody}>Cover backend embedding, desktop embedding, auth bridging, event streaming, observability hooks, and the product integration patterns teams actually need.</p>
             <Link className={articleStyles.link} to="/docs/sdk/dev-integration" state={{ from: location.pathname }}>
-              View roadmap
+              Open Developer Integration
             </Link>
           </div>
         </div>

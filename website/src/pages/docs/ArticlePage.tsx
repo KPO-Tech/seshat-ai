@@ -16,36 +16,54 @@ import GoSDK from './content/GoSDK'
 import GoSDKProviders from './content/GoSDKProviders'
 import GoSDKAgent from './content/GoSDKAgent'
 import GoSDKPrompt from './content/GoSDKPrompt'
+import BuildingWorkflows from './content/BuildingWorkflows'
+import MultiAgentScenarios from './content/MultiAgentScenarios'
+import DeveloperIntegration from './content/DeveloperIntegration'
 import GrpcAPI from './content/GrpcAPI'
+import RestAPI from './content/RestAPI'
+import LearnAgentRuntime from './content/LearnAgentRuntime'
+import LearnWhyGo from './content/LearnWhyGo'
+import LearnMonoRunExplained from './content/LearnMonoRunExplained'
+import LearnTechnicalHypotheses from './content/LearnTechnicalHypotheses'
 import ComingSoon from './ComingSoon'
 
 const CONTENT: Record<string, Record<string, React.ReactNode>> = {
   'getting-started': {
-    'installation': <Installation />,
+    installation: <Installation />,
     'quick-start': <QuickStart />,
-    'configuration': <Configuration />,
+    configuration: <Configuration />,
     'first-agent': <FirstAgent />,
   },
-  'concepts': {
+  concepts: {
     'what-is-seshat': <WhatIsSeshat />,
     'mono-run': <MonoRunArchitecture />,
     'runtime-modes': <RuntimeModes />,
     'agent-teams': <AgentTeamsMailboxes />,
     'memory-rag': <MemoryRAG />,
     'skills-mcp': <SkillsMCP />,
-    'tools': <ToolsProvidersConcept />,
+    tools: <ToolsProvidersConcept />,
   },
-  'guides': {
-    'cli': <CLIUsage />,
+  guides: {
+    cli: <CLIUsage />,
   },
-  'sdk': {
-    'go': <GoSDK />,
-    'providers': <GoSDKProviders />,
-    'agent': <GoSDKAgent />,
-    'prompt': <GoSDKPrompt />,
+  sdk: {
+    go: <GoSDK />,
+    providers: <GoSDKProviders />,
+    agent: <GoSDKAgent />,
+    prompt: <GoSDKPrompt />,
     'prompt-agent': <GoSDKAgent />,
     'go-tools': <ToolsProviders />,
+    workflows: <BuildingWorkflows />,
+    'multi-agent': <MultiAgentScenarios />,
+    'dev-integration': <DeveloperIntegration />,
     'grpc-api': <GrpcAPI />,
+    'rest-api': <RestAPI />,
+  },
+  learn: {
+    'agent-runtime': <LearnAgentRuntime />,
+    'why-go': <LearnWhyGo />,
+    'mono-run-explained': <LearnMonoRunExplained />,
+    'technical-hypotheses': <LearnTechnicalHypotheses />,
   },
 }
 

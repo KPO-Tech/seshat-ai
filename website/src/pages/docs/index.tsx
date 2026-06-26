@@ -37,7 +37,7 @@ const sections: Section[] = [
     title: 'Concepts',
     desc: 'Understand the ideas that make Seshat different from a framework.',
     items: ['Agent Runtime vs Framework', 'Agent Teams & Mailboxes', 'Memory & RAG', 'Skills & MCP'],
-    available: false,
+    available: true,
   },
   {
     slug: 'learn',
@@ -49,8 +49,8 @@ const sections: Section[] = [
     ),
     title: 'Learn',
     desc: 'Deep-dives into agentic AI concepts, patterns and architecture.',
-    items: ['What is an Agent Runtime?', 'Why Go for AI Agents?', 'Building AI Teams', 'Planning vs ReAct'],
-    available: false,
+    items: ['What is an Agent Runtime?', 'Why Go for AI Agents?', 'Mono-Run Explained', 'Technical Hypotheses'],
+    available: true,
   },
   {
     slug: 'comparisons',

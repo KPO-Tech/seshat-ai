@@ -1,0 +1,250 @@
+.shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 16rem;
+  gap: 1.35rem;
+  align-items: start;
+}
+
+.main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+
+.aside {
+  position: sticky;
+  top: 5.75rem;
+}
+
+.anchorSection {
+  scroll-margin-top: 6.5rem;
+}
+
+.sectionLead {
+  color: var(--text-secondary);
+  line-height: 1.75;
+  margin: 0;
+}
+
+.codeCell {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82rem;
+  color: var(--text);
+}
+
+.noteCell {
+  line-height: 1.7;
+}
+
+.board {
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px;
+  border: 1px solid var(--border-glass-hover);
+  background:
+    radial-gradient(circle at top left, rgba(232, 64, 30, 0.11), transparent 24%),
+    radial-gradient(circle at bottom right, rgba(124, 58, 237, 0.11), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01)),
+    rgba(16, 16, 20, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 18px 60px rgba(0, 0, 0, 0.22);
+  padding: 1.15rem;
+}
+
+.board::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size: 38px 38px;
+  mask-image: linear-gradient(180deg, rgba(0,0,0,0.74), transparent 96%);
+  pointer-events: none;
+}
+
+.boardGlow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255, 153, 82, 0.15), transparent 16%),
+    radial-gradient(circle at 50% 76%, rgba(124, 58, 237, 0.12), transparent 22%);
+  pointer-events: none;
+}
+
+.topGrid,
+.branchGrid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.topGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.branchGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.topCard,
+.hubCard,
+.branchCard {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.62rem;
+  padding: 1rem;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(31, 31, 37, 0.94), rgba(20, 20, 25, 0.94));
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
+}
+
+.topCardHost,
+.branchCardHost {
+  border-color: rgba(125, 211, 252, 0.2);
+  background: linear-gradient(180deg, rgba(28, 34, 44, 0.94), rgba(18, 22, 30, 0.94));
+}
+
+.topCardRuntime,
+.hubCard,
+.branchCardRuntime {
+  border-color: rgba(232, 64, 30, 0.22);
+  background: linear-gradient(180deg, rgba(48, 27, 22, 0.95), rgba(26, 18, 16, 0.95));
+}
+
+.branchCardInternal {
+  border-color: rgba(124, 58, 237, 0.22);
+  background: linear-gradient(180deg, rgba(36, 24, 50, 0.95), rgba(20, 17, 32, 0.95));
+}
+
+.hubCard {
+  max-width: 840px;
+  margin: 0 auto;
+}
+
+.centerLine {
+  position: relative;
+  z-index: 1;
+  width: 2px;
+  height: 42px;
+  margin: 0.6rem auto;
+  background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,0.22), rgba(255,255,255,0));
+}
+
+.centerLine span {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--brand-engine-start), var(--brand-platform-start));
+  box-shadow: 0 0 16px rgba(232, 64, 30, 0.28);
+  animation: multi-agent-pulse-y 2.4s ease-in-out infinite;
+}
+
+.cardTop {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.iconBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  flex-shrink: 0;
+}
+
+.iconBadge svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.toneHost {
+  color: #7dd3fc;
+  background: rgba(125, 211, 252, 0.08);
+  border-color: rgba(125, 211, 252, 0.2);
+}
+
+.toneRuntime {
+  color: #f8b87c;
+  background: rgba(232, 64, 30, 0.08);
+  border-color: rgba(232, 64, 30, 0.2);
+}
+
+.toneInternal {
+  color: #c4b5fd;
+  background: rgba(124, 58, 237, 0.09);
+  border-color: rgba(124, 58, 237, 0.22);
+}
+
+.eyebrow {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+
+.cardTitle {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.98rem;
+  line-height: 1.2;
+  color: var(--text);
+}
+
+.cardBody {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.65;
+  color: var(--text-secondary);
+}
+
+@keyframes multi-agent-pulse-y {
+  0% {
+    top: 0%;
+    opacity: 0.2;
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    top: calc(100% - 10px);
+    opacity: 0.16;
+  }
+}
+
+@media (max-width: 1180px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .aside {
+    position: static;
+    order: -1;
+  }
+}
+
+@media (max-width: 920px) {
+  .topGrid,
+  .branchGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .centerLine {
+    display: none;
+  }
+}
