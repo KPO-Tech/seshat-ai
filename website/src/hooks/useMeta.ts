@@ -1,6 +1,38 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
+import type { AlternateLink, StructuredDataNode } from '../seo/routeMeta'
 
-export function useMeta(title: string, description: string, canonical?: string) {
+type MetaOptions = {
+  alternates?: AlternateLink[]
+  structuredData?: StructuredDataNode[]
+  lang?: string
+}
+
+function syncAlternates(alternates: AlternateLink[]) {
+  document.head.querySelectorAll('link[rel="alternate"][hreflang]').forEach(node => node.remove())
+  alternates.forEach(alternate => {
+    const link = document.createElement('link')
+    link.setAttribute('rel', 'alternate')
+    link.setAttribute('hreflang', alternate.hreflang)
+    link.setAttribute('href', alternate.href)
+    document.head.appendChild(link)
+  })
+}
+
+function syncStructuredData(structuredData: StructuredDataNode[]) {
+  document.head.querySelectorAll('script[data-route-structured="true"]').forEach(node => node.remove())
+  structuredData.forEach(node => {
+    const script = document.createElement('script')
+    script.type = 'application/ld+json'
+    script.dataset.routeStructured = 'true'
+    script.textContent = JSON.stringify(node)
+    document.head.appendChild(script)
+  })
+}
+
+export function useMeta(title: string, description: string, canonical?: string, options?: MetaOptions) {
+  const alternatesKey = useMemo(() => JSON.stringify(options?.alternates ?? []), [options?.alternates])
+  const structuredDataKey = useMemo(() => JSON.stringify(options?.structuredData ?? []), [options?.structuredData])
+
   useEffect(() => {
     document.title = title
 
@@ -18,6 +50,11 @@ export function useMeta(title: string, description: string, canonical?: string) 
     if (canonical) {
       const link = document.querySelector('link[rel="canonical"]')
       if (link) link.setAttribute('href', canonical)
+      setMeta('meta[property="og:url"]', canonical)
     }
-  }, [title, description, canonical])
+
+    if (options?.lang) document.documentElement.lang = options.lang
+    if (options?.alternates) syncAlternates(options.alternates)
+    if (options?.structuredData) syncStructuredData(options.structuredData)
+  }, [title, description, canonical, options?.lang, alternatesKey, structuredDataKey])
 }

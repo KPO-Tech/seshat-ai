@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
+import { useDocsMeta } from './useDocsMeta'
 import styles from './Contribution.module.css'
 
 type ContributionTrack = {
@@ -125,6 +126,10 @@ const STEPS = [
 export default function Contribution() {
   const { pathname } = useLocation()
   const base = pathname.startsWith('/fr') ? '/fr/docs' : '/docs'
+  useDocsMeta(
+    'Contribute to Seshat | Seshat Docs',
+    'How to contribute to Seshat across the Go runtime, CLI app, seshat-ai platform, future SDKs, documentation, and domain-specific agent workflows.',
+  )
 
   return (
     <div className={styles.page}>

@@ -1,14 +1,16 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
+import RouteLoader from './components/RouteLoader'
 import Nav from './components/Nav'
 import Footer from './components/Footer'
-import Home from './pages/home'
-import Services from './pages/services'
-import DocsLayout from './pages/docs/DocsLayout'
-import SectionPage from './pages/docs/SectionPage'
-import ArticlePage from './pages/docs/ArticlePage'
-import Welcome from './pages/docs/Welcome'
-import Contribution from './pages/docs/Contribution'
+
+const Home = lazy(() => import('./pages/home'))
+const Services = lazy(() => import('./pages/services'))
+const DocsLayout = lazy(() => import('./pages/docs/DocsLayout'))
+const SectionPage = lazy(() => import('./pages/docs/SectionPage'))
+const ArticlePage = lazy(() => import('./pages/docs/ArticlePage'))
+const Welcome = lazy(() => import('./pages/docs/Welcome'))
+const Contribution = lazy(() => import('./pages/docs/Contribution'))
 
 function LanguageInit() {
   const navigate = useNavigate()
@@ -26,31 +28,33 @@ function LanguageInit() {
   return null
 }
 
-function AppShell() {
+export function AppShell() {
   const { pathname } = useLocation()
   const isDocs = pathname.startsWith('/docs') || pathname.startsWith('/fr/docs')
 
   return (
     <>
       <Nav />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/services" element={<Services />} />
-        <Route path="/docs" element={<DocsLayout />}>
-          <Route index element={<Welcome />} />
-          <Route path="contribution" element={<Contribution />} />
-          <Route path=":section" element={<SectionPage />} />
-          <Route path=":section/:article" element={<ArticlePage />} />
-        </Route>
-        <Route path="/fr" element={<Home />} />
-        <Route path="/fr/services" element={<Services />} />
-        <Route path="/fr/docs" element={<DocsLayout />}>
-          <Route index element={<Welcome />} />
-          <Route path="contribution" element={<Contribution />} />
-          <Route path=":section" element={<SectionPage />} />
-          <Route path=":section/:article" element={<ArticlePage />} />
-        </Route>
-      </Routes>
+      <Suspense fallback={<RouteLoader />}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/services" element={<Services />} />
+          <Route path="/docs" element={<DocsLayout />}>
+            <Route index element={<Welcome />} />
+            <Route path="contribution" element={<Contribution />} />
+            <Route path=":section" element={<SectionPage />} />
+            <Route path=":section/:article" element={<ArticlePage />} />
+          </Route>
+          <Route path="/fr" element={<Home />} />
+          <Route path="/fr/services" element={<Services />} />
+          <Route path="/fr/docs" element={<DocsLayout />}>
+            <Route index element={<Welcome />} />
+            <Route path="contribution" element={<Contribution />} />
+            <Route path=":section" element={<SectionPage />} />
+            <Route path=":section/:article" element={<ArticlePage />} />
+          </Route>
+        </Routes>
+      </Suspense>
       {!isDocs && <Footer />}
     </>
   )

@@ -45,3 +45,5 @@ data/
 
 website/dist/
 website/node_modules/
+
+website/dist-server/

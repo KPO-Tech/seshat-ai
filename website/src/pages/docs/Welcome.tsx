@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import BashLine from '../../components/code/BashLine'
 import { DOC_SECTIONS } from './docs-nav'
+import { useDocsMeta } from './useDocsMeta'
 import styles from './Welcome.module.css'
 
 type QuickPath = {
@@ -50,6 +51,10 @@ const START_HERE: string[] = [
 export default function Welcome() {
   const { pathname } = useLocation()
   const base = pathname.startsWith('/fr') ? '/fr/docs' : '/docs'
+  useDocsMeta(
+    'Seshat Docs | Start Here',
+    'Start here for the Seshat documentation: CLI setup, architecture concepts, Go SDK, APIs, and contribution paths for the open-source agent runtime.',
+  )
   const sections = DOC_SECTIONS.map(section => ({
     ...section,
     availableCount: section.articles.filter(article => article.available).length,

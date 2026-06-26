@@ -1,5 +1,6 @@
 import { Link, useParams, useLocation } from 'react-router-dom'
 import { findSection } from './docs-nav'
+import { useDocsMeta } from './useDocsMeta'
 import styles from './SectionPage.module.css'
 
 export default function SectionPage() {
@@ -10,6 +11,11 @@ export default function SectionPage() {
 
   const section = findSection(sectionSlug)
   if (!section) return null
+
+  useDocsMeta(
+    `${section.title} | Seshat Docs`,
+    section.desc,
+  )
 
   const topLevelArticles = section.articles.filter(article => !article.parentSlug)
   const getChildren = (parentSlug: string) => section.articles.filter(article => article.parentSlug === parentSlug)
