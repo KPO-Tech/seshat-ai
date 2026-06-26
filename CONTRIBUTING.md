@@ -2,6 +2,18 @@
 
 This is a private repository. Contributions are by invitation only.
 
+SeshatOS (`seshat-ai`) is the product layer built on the Seshat Go runtime: a self-hosted AI platform and desktop app for teams with a REST API, multi-user auth, knowledge bases, scheduled automation, agent workspaces, and operational governance. This repository is where invited contributors work on the application backend, desktop experience, team workflows, and production surfaces around the runtime.
+
+---
+
+## Contribution areas
+
+- **Backend API** — REST endpoints, SSE streaming, app wiring, service boundaries, and API contracts for clients and SDKs.
+- **Desktop app** — Electron, React UI flows, workspace ergonomics, settings, operator tooling, and team productivity surfaces.
+- **Knowledge and automation** — RAG pipelines, document ingestion, scheduled tasks, workflow automation, and app-level memory features.
+- **Auth and governance** — sessions, roles, permissions, organizations, admin controls, and enterprise-readiness concerns.
+- **Docs and onboarding** — product docs, developer docs, deployment guides, API usage examples, and contribution clarity.
+
 ---
 
 ## Branching strategy
