@@ -1,0 +1,86 @@
+.shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 16rem;
+  gap: 1.35rem;
+  align-items: start;
+}
+
+.main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+
+.aside {
+  position: sticky;
+  top: 5.75rem;
+}
+
+.anchorSection {
+  scroll-margin-top: 6.5rem;
+}
+
+.codeCell {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82rem;
+  color: var(--text);
+}
+
+.noteCell {
+  line-height: 1.7;
+}
+
+.sectionLead {
+  color: var(--text-secondary);
+  line-height: 1.75;
+  margin: 0;
+}
+
+.dualGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.statusLive,
+.statusGap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.24rem 0.52rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.statusLive {
+  color: #f7c19f;
+  background: rgba(232, 111, 45, 0.14);
+  border: 1px solid rgba(232, 111, 45, 0.25);
+}
+
+.statusGap {
+  color: #c6cfdd;
+  background: rgba(180, 189, 204, 0.08);
+  border: 1px solid rgba(180, 189, 204, 0.16);
+}
+
+@media (max-width: 1180px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .aside {
+    position: static;
+    order: -1;
+  }
+}
+
+@media (max-width: 720px) {
+  .dualGrid {
+    grid-template-columns: 1fr;
+  }
+}

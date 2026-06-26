@@ -59,6 +59,9 @@ export default function DocsLayout() {
 
           {DOC_SECTIONS.map(section => {
             const isActiveSection = currentSection === section.slug
+            const topLevelArticles = section.articles.filter(article => !article.parentSlug)
+            const getChildren = (parentSlug: string) => section.articles.filter(article => article.parentSlug === parentSlug)
+
             return (
               <div key={section.slug} className={styles.navSection}>
                 <NavLink
@@ -69,24 +72,53 @@ export default function DocsLayout() {
                   {section.title}
                 </NavLink>
                 <ul className={styles.articleList}>
-                  {section.articles.map(article => {
+                  {topLevelArticles.map(article => {
                     const isActive = isActiveSection && currentArticle === article.slug
+                    const children = getChildren(article.slug)
+                    const hasActiveChild = isActiveSection && children.some(child => child.slug === currentArticle)
+
                     return (
                       <li key={article.slug}>
                         {article.available ? (
                           <NavLink
                             to={`${base}/${section.slug}/${article.slug}`}
-                            className={`${styles.articleLink} ${isActive ? styles.articleLinkActive : ''}`}
+                            className={`${styles.articleLink} ${isActive ? styles.articleLinkActive : ''} ${hasActiveChild ? styles.articleLinkParentActive : ''}`}
                             onClick={() => setOpen(false)}
                           >
-                            {article.title}
+                            {article.navTitle ?? article.title}
                           </NavLink>
                         ) : (
                           <span className={styles.articleSoon}>
-                            {article.title}
+                            {article.navTitle ?? article.title}
                             <span className={styles.soonTag}>soon</span>
                           </span>
                         )}
+
+                        {children.length > 0 ? (
+                          <ul className={styles.nestedArticleList}>
+                            {children.map(child => {
+                              const isChildActive = isActiveSection && currentArticle === child.slug
+                              return (
+                                <li key={child.slug}>
+                                  {child.available ? (
+                                    <NavLink
+                                      to={`${base}/${section.slug}/${child.slug}`}
+                                      className={`${styles.nestedArticleLink} ${isChildActive ? styles.nestedArticleLinkActive : ''}`}
+                                      onClick={() => setOpen(false)}
+                                    >
+                                      {child.navTitle ?? child.title}
+                                    </NavLink>
+                                  ) : (
+                                    <span className={styles.nestedArticleSoon}>
+                                      {child.navTitle ?? child.title}
+                                      <span className={styles.soonTag}>soon</span>
+                                    </span>
+                                  )}
+                                </li>
+                              )
+                            })}
+                          </ul>
+                        ) : null}
                       </li>
                     )
                   })}

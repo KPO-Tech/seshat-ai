@@ -1,0 +1,1065 @@
+.diagramBoard,
+.promptBoard,
+.pipelineBoard,
+.permissionBoard,
+.providerBoard,
+.storageBoard {
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px;
+  border: 1px solid var(--border-glass-hover);
+  background:
+    radial-gradient(circle at top left, rgba(232, 64, 30, 0.12), transparent 26%),
+    radial-gradient(circle at bottom right, rgba(124, 58, 237, 0.1), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01)),
+    rgba(16, 16, 20, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 18px 60px rgba(0, 0, 0, 0.24);
+}
+
+.diagramBoard::before,
+.promptBoard::before,
+.pipelineBoard::before,
+.permissionBoard::before,
+.providerBoard::before,
+.storageBoard::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size: 38px 38px;
+  mask-image: linear-gradient(180deg, rgba(0,0,0,0.68), transparent 96%);
+  pointer-events: none;
+}
+
+.diagramGlow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255, 153, 82, 0.18), transparent 18%),
+    radial-gradient(circle at 48% 62%, rgba(123, 88, 255, 0.14), transparent 22%);
+  pointer-events: none;
+}
+
+.iconBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  flex-shrink: 0;
+}
+
+.iconBadge svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.iconToneEntry {
+  color: #7dd3fc;
+  background: rgba(125, 211, 252, 0.08);
+  border-color: rgba(125, 211, 252, 0.2);
+}
+
+.iconToneEngine {
+  color: #ff8a5b;
+  background: rgba(232, 64, 30, 0.08);
+  border-color: rgba(232, 64, 30, 0.2);
+}
+
+.iconToneRuntime {
+  color: #c4b5fd;
+  background: rgba(124, 58, 237, 0.09);
+  border-color: rgba(124, 58, 237, 0.22);
+}
+
+.iconToneSystem {
+  color: var(--text);
+}
+
+.nodeCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem 1rem 1.05rem;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(33, 33, 40, 0.92), rgba(21, 21, 28, 0.94));
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  min-height: 132px;
+}
+
+.nodeCard::after {
+  content: '';
+  position: absolute;
+  inset: auto 14px 0 14px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+}
+
+.nodeTop {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.toneEntry {
+  border-color: rgba(125, 211, 252, 0.18);
+  background: linear-gradient(180deg, rgba(28, 34, 44, 0.94), rgba(18, 22, 30, 0.94));
+}
+
+.toneEngine {
+  border-color: rgba(232, 64, 30, 0.24);
+  background: linear-gradient(180deg, rgba(49, 26, 21, 0.95), rgba(25, 18, 16, 0.95));
+}
+
+.toneRuntime {
+  border-color: rgba(167, 139, 250, 0.24);
+  background: linear-gradient(180deg, rgba(35, 24, 50, 0.95), rgba(19, 17, 32, 0.95));
+}
+
+.toneSystem {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.nodeEyebrow,
+.diagramBadge,
+.promptColumnEyebrow,
+.toolSummaryEyebrow,
+.storageBadge,
+.referencePackage,
+.runtimeRootBadge,
+.loopLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.nodeEyebrow {
+  color: var(--text-muted);
+}
+
+.nodeTitle,
+.diagramTitle,
+.promptColumnTitle,
+.pipelineTitle,
+.permissionStepTitle,
+.providerCardTitle,
+.storageTitle,
+.storageGroupTitle,
+.referenceTitle,
+.runtimeRootTitle,
+.loopTitle {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: var(--text);
+}
+
+.nodeTitle,
+.pipelineTitle,
+.permissionStepTitle,
+.providerCardTitle,
+.storageGroupTitle,
+.referenceTitle {
+  font-size: 0.96rem;
+  line-height: 1.2;
+}
+
+.nodeBody,
+.diagramText,
+.pipelineBody,
+.permissionStepBody,
+.providerCardBody,
+.referenceBody,
+.runtimeRootText,
+.loopBody {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.65;
+  color: var(--text-secondary);
+}
+
+.entryRail {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.9rem;
+  padding: 1.2rem 1.2rem 0;
+}
+
+.centerLine,
+.centerLineTall {
+  position: relative;
+  width: 2px;
+  margin: 0 auto;
+  background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,0.22), rgba(255,255,255,0));
+}
+
+.centerLine {
+  height: 40px;
+}
+
+.centerLineTall {
+  height: 52px;
+}
+
+.centerLine::after,
+.centerLineTall::after,
+.horizontalConnector span,
+.pipelineConnector span,
+.permissionArrow span,
+.providerArrowRow span {
+  content: '';
+  position: absolute;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--brand-engine-start), var(--brand-platform-start));
+  box-shadow: 0 0 16px rgba(232, 64, 30, 0.28);
+}
+
+.centerLine::after,
+.centerLineTall::after {
+  width: 10px;
+  height: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  animation: mono-run-pulse-y 2.4s ease-in-out infinite;
+}
+
+.sdkHubWrap {
+  position: relative;
+  z-index: 1;
+  max-width: 620px;
+  margin: 0 auto;
+  padding-inline: 1.2rem;
+}
+
+.flowPulse {
+  position: absolute;
+  inset: -12px;
+  border-radius: 28px;
+  background: radial-gradient(circle, rgba(232,64,30,0.14), transparent 66%);
+  filter: blur(16px);
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+.coreRail {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px minmax(0, 1fr) 72px minmax(0, 1fr);
+  gap: 0.7rem;
+  align-items: center;
+  padding: 0 1.2rem;
+}
+
+.horizontalConnector {
+  position: relative;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.08), rgba(255,255,255,0.18), rgba(255,255,255,0.08));
+}
+
+.horizontalConnector span {
+  width: 16px;
+  height: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  animation: mono-run-pulse-x 2.2s ease-in-out infinite;
+}
+
+.subsystemShell {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px minmax(0, 1fr);
+  gap: 1rem;
+  align-items: center;
+  padding: 1.25rem 1.2rem 0;
+}
+
+.subsystemColumn {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.loopHub {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loopRing {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  max-width: 280px;
+  border-radius: 999px;
+  padding: 16px;
+  background:
+    conic-gradient(from 180deg, rgba(232,64,30,0.58), rgba(247,147,26,0.3), rgba(124,58,237,0.5), rgba(232,64,30,0.58));
+  animation: mono-run-spin 18s linear infinite;
+}
+
+.loopRing::before {
+  content: '';
+  position: absolute;
+  inset: 10px;
+  border-radius: 999px;
+  background: rgba(19, 18, 24, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.loopCenter {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.7rem;
+  padding: 1.2rem;
+}
+
+.loopLabel,
+.runtimeRootBadge,
+.diagramBadge,
+.storageBadge,
+.referencePackage,
+.toolSummaryEyebrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  padding: 0.34rem 0.7rem;
+  border-radius: 999px;
+}
+
+.diagramBadge,
+.storageBadge,
+.referencePackage,
+.runtimeRootBadge {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+.loopLabel {
+  color: var(--text-muted);
+}
+
+.loopTitle {
+  font-size: 1.02rem;
+}
+
+.runtimeRootCard,
+.promptFooter,
+.providerDecision,
+.providerCard,
+.providerBranchCard,
+.permissionStep,
+.promptColumn,
+.storageGroup,
+.referenceCard {
+  position: relative;
+  z-index: 1;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(31, 31, 37, 0.94), rgba(20, 20, 25, 0.94));
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
+}
+
+.runtimeRootCard {
+  margin: 0 1.2rem 1.2rem;
+  padding: 1rem 1.1rem;
+}
+
+.runtimeRootHeader,
+.diagramIntro,
+.promptColumnHeader,
+.promptFooterHeader,
+.storageGroupHead,
+.pipelineCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.runtimeRootHeader {
+  margin-bottom: 0.65rem;
+}
+
+.promptBoard,
+.permissionBoard,
+.providerBoard,
+.pipelineBoard,
+.storageBoard {
+  padding: 1.25rem;
+}
+
+.diagramIntro {
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.diagramTitle,
+.storageTitle {
+  display: block;
+  margin-top: 0.7rem;
+  font-size: 1.04rem;
+}
+
+.diagramText {
+  max-width: 340px;
+}
+
+.promptColumns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.promptColumn,
+.promptFooter {
+  padding: 1rem;
+}
+
+.promptList {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.promptListItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem;
+}
+
+.promptListItem small {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.promptDivider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  min-width: 86px;
+}
+
+.promptDividerLine {
+  width: 2px;
+  height: 72px;
+  background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,138,91,0.85), rgba(255,255,255,0));
+}
+
+.promptDividerLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brand-engine-start);
+}
+
+.promptFooter {
+  margin-top: 1rem;
+}
+
+.variableGrid,
+.modeGrid,
+.toolSummaryTags,
+.storageItems {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.variableGrid,
+.modeGrid {
+  margin-top: 1rem;
+}
+
+.variableChip,
+.modeCard span,
+.toolSummaryTags span,
+.storageItems span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.38rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.76rem;
+}
+
+.pipelineRail,
+.permissionTrack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.pipelineItem {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.pipelineStep {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 0.3rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--brand-engine-start);
+}
+
+.pipelineCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 1rem 1rem 1.05rem;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(31, 31, 37, 0.95), rgba(20, 20, 25, 0.95));
+}
+
+.pipelineConnector {
+  grid-column: 2;
+  position: relative;
+  width: 2px;
+  height: 22px;
+  margin: 0.15rem 0 0.15rem 1rem;
+  background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,0.18), rgba(255,255,255,0));
+}
+
+.pipelineConnector span,
+.permissionArrow span,
+.providerArrowRow span {
+  width: 10px;
+  height: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.toolSummary {
+  margin-top: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 1rem;
+}
+
+.toolSummaryEyebrow {
+  background: rgba(232, 64, 30, 0.08);
+  border: 1px solid rgba(232, 64, 30, 0.18);
+  color: var(--text);
+}
+
+.toolSummaryText,
+.referenceBody {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.68;
+  color: var(--text-secondary);
+}
+
+.permissionStepWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.permissionStep {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  padding: 1rem;
+}
+
+.permissionArrow,
+.providerArrowRow {
+  position: relative;
+  width: 2px;
+  height: 26px;
+  margin-left: 1.1rem;
+  background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,0.16), rgba(255,255,255,0));
+}
+
+.permissionStepCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.providerGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.providerCard,
+.providerDecision,
+.providerBranchCard {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.providerArrowRow {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.providerDecision {
+  max-width: 420px;
+  align-self: center;
+  text-align: center;
+}
+
+.providerBranchRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.storageBoard {
+  padding: 1.25rem;
+}
+
+.storageHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.storageGrid,
+.referenceGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+  margin-top: 1rem;
+}
+
+.storageGroup,
+.referenceCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.storageGroupHead {
+  align-items: center;
+}
+
+.referenceGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.referenceCard {
+  gap: 0.5rem;
+}
+
+.referenceFiles {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+@keyframes mono-run-pulse-x {
+  0%,
+  100% {
+    left: 0;
+    opacity: 0.4;
+  }
+  50% {
+    left: calc(100% - 16px);
+    opacity: 1;
+  }
+}
+
+@keyframes mono-run-pulse-y {
+  0%,
+  100% {
+    top: 0;
+    opacity: 0.35;
+  }
+  50% {
+    top: calc(100% - 10px);
+    opacity: 1;
+  }
+}
+
+@keyframes mono-run-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 1100px) {
+  .entryRail,
+  .providerBranchRow,
+  .storageGrid,
+  .referenceGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .coreRail,
+  .subsystemShell,
+  .promptColumns,
+  .diagramIntro {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .diagramText {
+    max-width: none;
+  }
+
+  .promptDivider {
+    flex-direction: row;
+    min-width: 0;
+  }
+
+  .promptDividerLine {
+    width: 72px;
+    height: 2px;
+  }
+}
+
+@media (max-width: 900px) {
+  .entryRail,
+  .providerBranchRow,
+  .storageGrid,
+  .referenceGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .coreRail {
+    grid-template-columns: 1fr;
+  }
+
+  .horizontalConnector {
+    width: 2px;
+    height: 24px;
+    margin: 0 auto;
+  }
+
+  .horizontalConnector span {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    animation: mono-run-pulse-y 2.2s ease-in-out infinite;
+  }
+
+  .subsystemShell {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .pipelineItem {
+    grid-template-columns: 1fr;
+  }
+
+  .pipelineStep {
+    justify-content: flex-start;
+    padding-top: 0;
+  }
+
+  .pipelineConnector {
+    grid-column: 1;
+    margin-left: 0.4rem;
+  }
+
+  .loopRing {
+    max-width: 240px;
+  }
+
+  .diagramBoard,
+  .promptBoard,
+  .pipelineBoard,
+  .permissionBoard,
+  .providerBoard,
+  .storageBoard {
+    border-radius: 20px;
+  }
+}
+
+.queryBoard,
+.progressionBoard {
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px;
+  border: 1px solid var(--border-glass-hover);
+  background:
+    radial-gradient(circle at top left, rgba(232, 64, 30, 0.12), transparent 26%),
+    radial-gradient(circle at bottom right, rgba(124, 58, 237, 0.1), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01)),
+    rgba(16, 16, 20, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 18px 60px rgba(0, 0, 0, 0.24);
+  padding: 1.25rem;
+}
+
+.queryBoard::before,
+.progressionBoard::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size: 38px 38px;
+  mask-image: linear-gradient(180deg, rgba(0,0,0,0.68), transparent 96%);
+  pointer-events: none;
+}
+
+.queryCanvas {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.queryMainRail {
+  max-width: 620px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.7rem;
+}
+
+.queryCard,
+.queryDecisionCard,
+.queryMiniCard,
+.progressionCard {
+  position: relative;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(31, 31, 37, 0.94), rgba(20, 20, 25, 0.94));
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
+}
+
+.queryCard,
+.queryDecisionCard,
+.queryMiniCard {
+  padding: 1rem;
+}
+
+.queryCardHeader,
+.progressionHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 0.7rem;
+}
+
+.queryCardTitle,
+.queryDecisionTitle,
+.queryMiniTitle,
+.progressionTitle {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.96rem;
+  line-height: 1.2;
+  color: var(--text);
+}
+
+.queryCardBody,
+.queryDecisionBody,
+.queryMiniBody,
+.progressionBody {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.65;
+  color: var(--text-secondary);
+}
+
+.queryConnector,
+.queryArrowColumn {
+  position: relative;
+  width: 2px;
+  height: 24px;
+  margin: 0 auto;
+  background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,0.18), rgba(255,255,255,0));
+}
+
+.queryConnector span,
+.queryArrowColumn span,
+.progressionArrow span {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--brand-engine-start), var(--brand-platform-start));
+  box-shadow: 0 0 16px rgba(232, 64, 30, 0.28);
+  animation: mono-run-pulse-y 2.4s ease-in-out infinite;
+}
+
+.queryBranchGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.queryBranchColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.queryDecisionCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  align-items: flex-start;
+}
+
+.querySplitRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.queryMiniCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.queryLoopBack {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  padding: 0.42rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(232, 64, 30, 0.08);
+  border: 1px solid rgba(232, 64, 30, 0.16);
+  color: var(--text);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.progressionTrack {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px minmax(0, 1fr) 72px minmax(0, 1fr);
+  gap: 0.9rem;
+  align-items: center;
+}
+
+.progressionItem {
+  display: contents;
+}
+
+.progressionCard {
+  padding: 1rem;
+}
+
+.progressionChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.progressionChips span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.38rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.76rem;
+}
+
+.progressionArrow {
+  position: relative;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.08), rgba(255,255,255,0.18), rgba(255,255,255,0.08));
+}
+
+.progressionArrow span {
+  width: 16px;
+  height: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  animation: mono-run-pulse-x 2.2s ease-in-out infinite;
+}
+
+@media (max-width: 1100px) {
+  .queryBranchGrid,
+  .querySplitRow,
+  .progressionTrack {
+    grid-template-columns: 1fr;
+  }
+
+  .progressionArrow {
+    width: 2px;
+    height: 24px;
+    margin: 0 auto;
+  }
+
+  .progressionArrow span {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    animation: mono-run-pulse-y 2.2s ease-in-out infinite;
+  }
+}
+
+@media (max-width: 720px) {
+  .queryBoard,
+  .progressionBoard {
+    border-radius: 20px;
+  }
+}

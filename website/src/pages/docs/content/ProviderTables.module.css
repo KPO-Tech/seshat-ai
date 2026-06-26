@@ -1,0 +1,78 @@
+.codeCell {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.79rem;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.wrapCodeCell {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.79rem;
+  color: var(--text);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.noteCell {
+  line-height: 1.68;
+}
+
+.setupTable {
+  table-layout: fixed;
+}
+
+.providerRefColProvider {
+  width: 11%;
+}
+
+.providerRefColAuth {
+  width: 13%;
+}
+
+.providerRefColTransport {
+  width: 22%;
+}
+
+.providerRefColBase {
+  width: 21%;
+}
+
+.providerRefColNotes {
+  width: 33%;
+}
+
+.setupColProvider {
+  width: 11%;
+}
+
+.setupColAuth {
+  width: 15%;
+}
+
+.setupColEnv {
+  width: 24%;
+}
+
+.setupColConfig {
+  width: 20%;
+}
+
+.setupColNotes {
+  width: 30%;
+}
+
+.capabilityColName {
+  width: 16%;
+}
+
+.capabilityColProviders {
+  width: 24%;
+}
+
+.capabilityColConfig {
+  width: 23%;
+}
+
+.capabilityColNotes {
+  width: 37%;
+}

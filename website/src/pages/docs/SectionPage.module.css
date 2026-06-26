@@ -93,28 +93,26 @@
   background-clip: text;
 }
 
-.availBadge {
-  font-size: 0.65rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  background: rgba(16, 185, 129, 0.1);
-  border: 1px solid rgba(16, 185, 129, 0.25);
-  color: var(--green);
-  padding: 0.18rem 0.55rem;
-  border-radius: 5px;
-}
-
+.availBadge,
 .soonBadge {
   font-size: 0.65rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+  padding: 0.18rem 0.55rem;
+  border-radius: 5px;
+}
+
+.availBadge {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  color: var(--green);
+}
+
+.soonBadge {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border-glass);
   color: var(--text-subtle);
-  padding: 0.18rem 0.55rem;
-  border-radius: 5px;
 }
 
 .cardTitle {
@@ -130,7 +128,6 @@
   color: var(--text-secondary);
   line-height: 1.6;
   margin: 0;
-  flex: 1;
 }
 
 .cardLink {
@@ -141,13 +138,65 @@
   font-weight: 600;
   color: var(--brand-engine-start);
   text-decoration: none;
-  margin-top: 0.5rem;
+  margin-top: 0.45rem;
   transition: gap 0.2s ease;
 }
 
 .cardLink:hover {
   gap: 0.5rem;
   text-decoration: none;
+}
+
+.childGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-top: 0.7rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.childLabel {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.childList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-left: 0.25rem;
+}
+
+.childLink,
+.childSoon {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.22rem 0 0.22rem 0.7rem;
+}
+
+.childLink {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.childLink:hover {
+  color: var(--text);
+  text-decoration: none;
+  border-left-color: rgba(232, 64, 30, 0.28);
+}
+
+.childSoon {
+  color: var(--text-subtle);
 }
 
 @media (max-width: 640px) {

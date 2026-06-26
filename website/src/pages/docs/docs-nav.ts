@@ -3,6 +3,8 @@ export type Article = {
   slug: string
   available: boolean
   desc?: string
+  parentSlug?: string
+  navTitle?: string
 }
 
 export type Section = {
@@ -29,25 +31,13 @@ export const DOC_SECTIONS: Section[] = [
     slug: 'concepts',
     desc: 'Understand the architecture and core ideas that make Seshat different.',
     articles: [
-      { title: 'What is Seshat?', slug: 'what-is-seshat', available: false, desc: 'Overview of the runtime and its two layers.' },
-      { title: 'Mono-Run Architecture', slug: 'mono-run', available: false, desc: 'How the single binary orchestrates every subsystem.' },
-      { title: 'Runtime Modes', slug: 'runtime-modes', available: false, desc: 'CLI, API, desktop, daemon and embedded modes explained.' },
-      { title: 'Agent Teams and Mailboxes', slug: 'agent-teams', available: false, desc: 'How agents communicate and delegate to each other.' },
-      { title: 'Memory and RAG', slug: 'memory-rag', available: false, desc: 'Short-term, long-term memory and retrieval-augmented generation.' },
-      { title: 'Skills and MCP', slug: 'skills-mcp', available: false, desc: 'Reusable agent capabilities and the Model Context Protocol.' },
-      { title: 'Built-in Tools', slug: 'tools', available: false, desc: 'Complete inventory of the 60+ built-in tools and their purpose.' },
-    ],
-  },
-  {
-    title: 'Guides',
-    slug: 'guides',
-    desc: 'Step-by-step guides for real-world usage and concrete scenarios.',
-    articles: [
-      { title: 'CLI Usage', slug: 'cli', available: true, desc: 'How to use the Seshat CLI, TUI, sessions, and runtime configuration.' },
-      { title: 'Desktop App', slug: 'desktop', available: false, desc: 'Using the SeshatOS desktop application for teams.' },
-      { title: 'Building Workflows', slug: 'workflows', available: false, desc: 'Design multi-step agentic workflows that actually run.' },
-      { title: 'Multi-Agent Scenarios', slug: 'multi-agent', available: false, desc: 'Coordinating specialized agent teams on shared missions.' },
-      { title: 'Developer Integration', slug: 'dev-integration', available: false, desc: 'Embed Seshat into your existing stack or product.' },
+      { title: 'What is Seshat?', slug: 'what-is-seshat', available: true, desc: 'The runtime, the platform layer, and the thesis behind organized agentic work.' },
+      { title: 'Mono-Run Architecture', slug: 'mono-run', available: true, desc: 'How one runtime owns sessions, prompts, tools, permissions, and persistence.' },
+      { title: 'Runtime Modes', slug: 'runtime-modes', available: true, desc: 'Entry surfaces like CLI, gRPC, HTTP, and SDK versus execution modes like execute, plan, and pair_programming.' },
+      { title: 'Agent Teams and Mailboxes', slug: 'agent-teams', available: true, desc: 'Persistent agent identities, mailbox transport, dispatcher routing, and the beginning of a real team runtime.' },
+      { title: 'Memory and RAG', slug: 'memory-rag', available: true, desc: 'Session persistence, compaction, durable memory, knowledge-graph memory tools, and retrieval-augmented generation.' },
+      { title: 'Skills and MCP', slug: 'skills-mcp', available: true, desc: 'How reusable skills shape behavior and how MCP servers extend the runtime with external tools, resources, and prompts.' },
+      { title: 'Tools & Providers', slug: 'tools', available: true, desc: 'How the tool surface and provider layer fit together across built-ins, external capabilities, and model providers.' },
     ],
   },
   {
@@ -55,11 +45,27 @@ export const DOC_SECTIONS: Section[] = [
     slug: 'sdk',
     desc: 'Programmatic access to Seshat from any language or platform.',
     articles: [
-      { title: 'Go SDK', slug: 'go', available: false, desc: 'Native Go client library and embedding guide.' },
+      { title: 'Go SDK', slug: 'go', available: true, desc: 'Embedding Seshat in Go applications, services, automation workers, and products.' },
+      { title: 'Providers & Auth', slug: 'providers', available: true, parentSlug: 'go', navTitle: 'Providers & Auth', desc: 'Provider configuration, authentication flows, Codex integration patterns, and capability-provider wiring for Go developers.' },
+      { title: 'Agent', slug: 'agent', available: true, parentSlug: 'go', navTitle: 'Agent', desc: 'Agent persona design, role presets, client-versus-session boundaries, and the practical embedding model for Go applications.' },
+      { title: 'Prompt', slug: 'prompt', available: true, parentSlug: 'go', navTitle: 'Prompt', desc: 'Prompt architecture, shipped prompt layers, stages, overrides, tool hints, and the full prompt-shaping surface in the Go SDK.' },
+      { title: 'Tools & Surface', slug: 'go-tools', available: true, parentSlug: 'go', navTitle: 'Tools & Surface', desc: 'Builtin tools, surface shaping, permissions, deferred tools, and the runtime-owned action layer for Go integrations.' },
+      { title: 'Building Workflows', slug: 'workflows', available: false, parentSlug: 'go', navTitle: 'Building Workflows', desc: 'Design runtime-native workflows with sessions, tools, memory, and controlled execution loops.' },
+      { title: 'Multi-Agent Scenarios', slug: 'multi-agent', available: false, parentSlug: 'go', navTitle: 'Multi-Agent Scenarios', desc: 'Coordinate specialized agents, mailbox-style delegation, and runtime teams from your Go host app.' },
+      { title: 'Developer Integration', slug: 'dev-integration', available: false, parentSlug: 'go', navTitle: 'Developer Integration', desc: 'Embed Seshat cleanly into your own backend, desktop app, internal platform, or product surface.' },
+      { title: 'gRPC API', slug: 'grpc-api', available: true, desc: 'Full gRPC contract, streaming semantics, proto regeneration, and polyglot client guidance.' },
       { title: 'Python SDK', slug: 'python', available: false, desc: 'Python bindings (roadmap).' },
       { title: 'JS / TS SDK', slug: 'js', available: false, desc: 'JavaScript and TypeScript bindings (roadmap).' },
       { title: 'REST API', slug: 'rest-api', available: false, desc: 'Full HTTP API reference with examples.' },
-      { title: 'gRPC API', slug: 'grpc-api', available: false, desc: 'gRPC API reference and proto definitions.' },
+    ],
+  },
+  {
+    title: 'Guides',
+    slug: 'guides',
+    desc: 'Step-by-step guides for end users and product surfaces.',
+    articles: [
+      { title: 'CLI Usage', slug: 'cli', available: true, desc: 'How to use the Seshat CLI, TUI, sessions, and runtime configuration.' },
+      { title: 'Desktop App', slug: 'desktop', available: false, desc: 'Using the SeshatOS desktop application for teams.' },
     ],
   },
   {
