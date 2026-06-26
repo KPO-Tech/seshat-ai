@@ -927,13 +927,12 @@ export default function MonoRunArchitecture() {
       <section className={articleStyles.section}>
         <h2 className={articleStyles.h2}>Next concept</h2>
         <p className={articleStyles.p}>
-          Once mono-run is clear, the next important layer is understanding how memory, retrieval, and compaction preserve
-          long-running work without letting the transcript collapse under its own weight.
+          Once mono-run is clear, the next useful layer is understanding how the same runtime can expose several host surfaces while also switching session behavior between execute, plan, and pair-programming styles.
         </p>
         <div className={articleStyles.actionRow}>
           <Link to={`${base}/concepts/what-is-seshat`} className={articleStyles.secondaryLink}>What is Seshat?</Link>
           <Link to={`${base}/guides/cli`} className={articleStyles.secondaryLink}>CLI guide</Link>
-          <Link to={`${base}/concepts/memory-rag`} className={articleStyles.primaryLink}>Memory and RAG</Link>
+          <Link to={`${base}/concepts/runtime-modes`} className={articleStyles.primaryLink}>Runtime Modes</Link>
         </div>
       </section>
     </div>

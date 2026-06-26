@@ -1,0 +1,380 @@
+.board {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+  padding: 1.35rem;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    radial-gradient(circle at top left, rgba(232, 108, 30, 0.14), transparent 34%),
+    radial-gradient(circle at top right, rgba(71, 114, 255, 0.14), transparent 32%),
+    linear-gradient(180deg, rgba(15, 17, 24, 0.96), rgba(11, 13, 18, 0.98));
+  overflow: hidden;
+}
+
+.boardGlow {
+  position: absolute;
+  inset: auto auto 12% 14%;
+  width: 22rem;
+  height: 22rem;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(232, 108, 30, 0.12), transparent 72%);
+  filter: blur(30px);
+  pointer-events: none;
+}
+
+.layerGrid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  z-index: 1;
+}
+
+.layerCard,
+.hubCard,
+.branchCard,
+.flowCard,
+.capabilityCard,
+.summaryCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 1.05rem;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(13, 15, 21, 0.82);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.layerTop,
+.familyHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.iconBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.iconBadge svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.toneTool {
+  color: #ff8a3d;
+  background: rgba(255, 138, 61, 0.12);
+}
+
+.toneProvider {
+  color: #7fa3ff;
+  background: rgba(127, 163, 255, 0.12);
+}
+
+.toneRuntime {
+  color: #efe7d7;
+  background: rgba(239, 231, 215, 0.1);
+}
+
+.toneCapability {
+  color: #59d6b4;
+  background: rgba(89, 214, 180, 0.12);
+}
+
+.eyebrow {
+  font-size: 0.72rem;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(215, 221, 232, 0.72);
+}
+
+.cardTitle {
+  font-size: 0.98rem;
+  font-weight: 760;
+  color: var(--text);
+}
+
+.cardBody,
+.summaryText {
+  font-size: 0.88rem;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.metaChip {
+  width: fit-content;
+  padding: 0.34rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 0.72rem;
+  color: rgba(222, 228, 237, 0.82);
+}
+
+.centerLine {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  z-index: 1;
+}
+
+.centerLine span {
+  width: min(100%, 16rem);
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.18), transparent);
+}
+
+.hubCard {
+  z-index: 1;
+}
+
+.branchRow {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  z-index: 1;
+}
+
+.flowBoard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+}
+
+.flowRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 2.75rem minmax(0, 1fr) 2.75rem minmax(0, 1fr);
+  gap: 0.7rem;
+  align-items: stretch;
+}
+
+.flowConnector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flowConnector span {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255, 138, 61, 0.18), rgba(127, 163, 255, 0.36), rgba(89, 214, 180, 0.18));
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.summaryValue {
+  font-size: 1.7rem;
+  font-weight: 820;
+  color: var(--text);
+  letter-spacing: -0.04em;
+}
+
+.summaryLabel {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  color: rgba(223, 228, 237, 0.74);
+}
+
+.tableWrap {
+  overflow-x: auto;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(12, 14, 20, 0.72);
+}
+
+.inventoryTable {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+}
+
+.inventoryTable th,
+.inventoryTable td {
+  padding: 0.82rem 0.9rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.inventoryTable th {
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(223, 228, 237, 0.7);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.inventoryTable td {
+  font-size: 0.86rem;
+  color: var(--text-secondary);
+}
+
+.inventoryTable tr:last-child td {
+  border-bottom: none;
+}
+
+.codeCell {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.79rem;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.noteCell {
+  line-height: 1.68;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.28rem 0.52rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.72rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.pillEnabled {
+  color: #7fe6bd;
+  background: rgba(127, 230, 189, 0.11);
+}
+
+.pillDisabled {
+  color: #f4c58d;
+  background: rgba(244, 197, 141, 0.1);
+}
+
+.pillReadOnly {
+  color: #89c4ff;
+  background: rgba(137, 196, 255, 0.11);
+}
+
+.pillMutable {
+  color: #ff9a7a;
+  background: rgba(255, 154, 122, 0.11);
+}
+
+.pillPermission {
+  color: #ffd27d;
+  background: rgba(255, 210, 125, 0.12);
+}
+
+.pillFree {
+  color: #c8d2df;
+  background: rgba(200, 210, 223, 0.08);
+}
+
+.pillPartial {
+  color: #d7b2ff;
+  background: rgba(215, 178, 255, 0.1);
+}
+
+.familySection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+@media (max-width: 1180px) {
+  .summaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 980px) {
+  .layerGrid,
+  .branchRow,
+  .summaryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .flowRow {
+    grid-template-columns: 1fr;
+  }
+
+  .flowConnector {
+    min-height: 1.2rem;
+  }
+
+  .flowConnector span {
+    width: 1px;
+    height: 100%;
+  }
+
+  .inventoryTable {
+    min-width: 760px;
+  }
+}
+
+@media (max-width: 720px) {
+  .board {
+    padding: 1rem;
+    border-radius: 20px;
+  }
+
+  .layerCard,
+  .hubCard,
+  .branchCard,
+  .flowCard,
+  .capabilityCard,
+  .summaryCard {
+    padding: 0.9rem;
+    border-radius: 16px;
+  }
+
+  .inventoryTable {
+    min-width: 680px;
+  }
+}
+
+
+.setupTable {
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.setupTable .codeCell {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.setupColProvider {
+  width: 12%;
+}
+
+.setupColAuth {
+  width: 14%;
+}
+
+.setupColEnv {
+  width: 24%;
+}
+
+.setupColConfig {
+  width: 22%;
+}
+
+.setupColNotes {
+  width: 28%;
+}
