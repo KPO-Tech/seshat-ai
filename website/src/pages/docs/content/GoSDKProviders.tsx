@@ -241,104 +241,114 @@ export default function GoSDKProviders() {
       <header className={articleStyles.header}>
         <h1 className={articleStyles.title}>Providers &amp; Auth</h1>
         <p className={articleStyles.sub}>
-          This subpage is the developer integration reference for provider wiring in the public Go SDK. It covers provider ids, auth flows, environment variables, capability-provider slots, explicit config overrides, per-user credential resolution, public OAuth helpers, Codex integration, and gRPC credential handoff.
+          This page is the practical provider tutorial for Go developers embedding Seshat. Instead of listing knobs first, it starts from the real integration scenarios: local operator apps, multi-user backends, mixed provider stacks, and Codex-specific auth flows.
         </p>
       </header>
 
       <section className={articleStyles.section}>
-        <h2 className={articleStyles.h2}>Public SDK Integration Contract</h2>
+        <h2 className={articleStyles.h2}>Public SDK Auth Contract</h2>
         <p className={articleStyles.p}>
-          For the exported Go SDK, the reliable contract is explicit credential injection. In practice that means one of three paths: set <span className={articleStyles.inlineCode}>ClientConfig.APIKey</span>, set provider-specific values on <span className={articleStyles.inlineCode}>ProviderConfig</span>, or implement <span className={articleStyles.inlineCode}>CredentialResolver</span> for per-user or per-request resolution.
+          The exported Go SDK keeps the auth boundary intentionally simple. Your host app can pass credentials directly through <span className={articleStyles.inlineCode}>ClientConfig.APIKey</span>, use provider-specific values in <span className={articleStyles.inlineCode}>ProviderConfig</span>, or resolve credentials dynamically with <span className={articleStyles.inlineCode}>CredentialResolver</span>.
         </p>
         <div className={articleStyles.callout}>
-          <div className={articleStyles.calloutTitle}>Public SDK Surface</div>
+          <div className={articleStyles.calloutTitle}>What changed recently</div>
           <p className={articleStyles.calloutText}>
-            OAuth login is now exposed directly for Go hosts through <span className={articleStyles.inlineCode}>sdk.NewOAuthDeviceFlow</span> and stored-token reuse through <span className={articleStyles.inlineCode}>sdk.NewStoredCredentialResolver</span>. The lower-level integration contract stays the same: the runtime consumes an access token or API key, no matter whether your app got it from OAuth, env vars, vaults, or user settings.
+            OAuth login is now exposed for Go hosts through <span className={articleStyles.inlineCode}>sdk.NewOAuthDeviceFlow</span>. That means a desktop app, CLI app, or internal operator tool can initiate login itself and then feed the resulting resolver back into the same runtime without inventing a separate auth bridge.
           </p>
         </div>
       </section>
 
       <section className={articleStyles.section}>
-        <h2 className={articleStyles.h2}>Public OAuth Device Flow</h2>
-        <p className={articleStyles.p}>
-          For OpenAI and Codex-backed flows, the Go SDK now exposes a public device-code login helper. This is the right path when you want your own app to trigger ChatGPT authentication, persist the token into the Seshat auth store, and then reuse it through the standard credential resolver interface.
-        </p>
-        <DocCodeBlock code={OAUTH_DEVICE_FLOW} label="OAuth device flow" language="go" />
+        <h2 className={articleStyles.h2}>Choose The Right Scenario First</h2>
+        <div className={articleStyles.grid}>
+          <div className={articleStyles.card}>
+            <div className={articleStyles.cardTitle}>Single-user app</div>
+            <p className={articleStyles.cardBody}>Best for a CLI app, a local desktop utility, or an internal operator tool where one human controls one runtime and simple env-var auth is acceptable.</p>
+          </div>
+          <div className={articleStyles.card}>
+            <div className={articleStyles.cardTitle}>Multi-user backend</div>
+            <p className={articleStyles.cardBody}>Best for SaaS or internal platforms where credentials belong to each tenant or user and must be resolved dynamically per request.</p>
+          </div>
+          <div className={articleStyles.card}>
+            <div className={articleStyles.cardTitle}>Mixed capability stack</div>
+            <p className={articleStyles.cardBody}>Best when reasoning, image generation, speech, and transcription should not all come from the same provider.</p>
+          </div>
+          <div className={articleStyles.card}>
+            <div className={articleStyles.cardTitle}>Codex-specific flow</div>
+            <p className={articleStyles.cardBody}>Best when you want ChatGPT-backed Codex access inside your own app, including device flow login and downstream gRPC handoff.</p>
+          </div>
+        </div>
       </section>
 
       <section className={articleStyles.section}>
-        <h2 className={articleStyles.h2}>Supported Providers</h2>
+        <h2 className={articleStyles.h2}>Scenario 1: Single-User CLI App, Desktop Utility, Or Operator Tool</h2>
         <p className={articleStyles.p}>
-          These are the provider ids currently understood by the runtime. This is the right reference when you need to know which provider string or <span className={articleStyles.inlineCode}>sdk.APIProvider*</span> constant your integration should actually use.
+          This is the simplest embedding path. Pick a model, inject one API key, and optionally override transport details through <span className={articleStyles.inlineCode}>ProviderConfig</span>. If your host product also uses the Seshat auth store, you can bootstrap login with the CLI and then let the runtime reuse the stored credentials.
         </p>
-        <ProviderInventoryTable />
+        <DocCodeBlock code={EXPLICIT_PROVIDER_CONFIG} label="Explicit provider config" language="go" />
+        <DocCodeBlock code={CLI_LOGIN} label="Optional shared auth-store bootstrap" language="bash" />
       </section>
 
       <section className={articleStyles.section}>
-        <h2 className={articleStyles.h2}>Explicit Provider Wiring</h2>
+        <h2 className={articleStyles.h2}>Scenario 2: Multi-User Backend Or SaaS Integration</h2>
         <p className={articleStyles.p}>
-          The simplest path is to choose the model in <span className={articleStyles.inlineCode}>ClientConfig.Model</span>, set the main API key, and optionally attach a provider-specific config block when you need a base URL override, routing rules, or alias behavior from <span className={articleStyles.inlineCode}>providers.Config</span>.
-        </p>
-        <DocCodeBlock code={EXPLICIT_PROVIDER_CONFIG} label="Go SDK" language="go" />
-      </section>
-
-      <section className={articleStyles.section}>
-        <h2 className={articleStyles.h2}>Auth Resolution Patterns</h2>
-        <p className={articleStyles.p}>
-          Use a resolver when your app owns user credentials, a vault, a secrets manager, or a token exchange layer. In the current public SDK, <span className={articleStyles.inlineCode}>CredentialResolver</span> is the clean server-mode boundary and is the right place to inject per-user provider access without mutating global process state.
+          In a backend, process-wide environment variables are usually the wrong boundary. The cleaner pattern is to let your app own secret storage, token exchange, or tenant settings, then resolve the provider credential at runtime through <span className={articleStyles.inlineCode}>CredentialResolver</span>.
         </p>
         <ProviderSetupTable />
-        <DocCodeBlock code={CREDENTIAL_RESOLVER} label="CredentialResolver" language="go" />
+        <DocCodeBlock code={CREDENTIAL_RESOLVER} label="Per-user credential injection" language="go" />
         <div className={articleStyles.callout}>
-          <div className={articleStyles.calloutTitle}>Gemini Naming Gap</div>
+          <div className={articleStyles.calloutTitle}>Gemini naming gap</div>
           <p className={articleStyles.calloutText}>
-            The current code still has a naming mismatch around Gemini: auth resolution uses <span className={articleStyles.inlineCode}>GOOGLE_API_KEY</span>, while some validation messaging still mentions <span className={articleStyles.inlineCode}>GOOGLE_GEMINI_API_KEY</span>.
+            The current code still has a naming mismatch around Gemini: auth resolution uses <span className={articleStyles.inlineCode}>GOOGLE_API_KEY</span>, while some validation messaging still mentions <span className={articleStyles.inlineCode}>GOOGLE_GEMINI_API_KEY</span>. The runtime works, but the naming should be normalized later.
           </p>
         </div>
       </section>
 
       <section className={articleStyles.section}>
-        <h2 className={articleStyles.h2}>Capability Providers</h2>
+        <h2 className={articleStyles.h2}>Scenario 3: One Reasoning Model, Different Capability Providers</h2>
         <p className={articleStyles.p}>
-          The main reasoning provider is only one part of the integration. Seshat also supports separate provider slots for multimodal built-in tools like image generation, speech-to-text, and text-to-speech.
+          Seshat does not require one provider to own everything. The main reasoning model can come from one vendor while image generation, speech-to-text, and text-to-speech use completely different providers. This is the right shape when you want better cost control, better local quality on one modality, or a more sovereign deployment mix.
         </p>
         <CapabilityTable />
         <DocCodeBlock code={CAPABILITY_WIRING} label="Capability-specific providers" language="go" />
       </section>
 
       <section className={articleStyles.section}>
-        <h2 className={articleStyles.h2}>Codex Integration Patterns</h2>
+        <h2 className={articleStyles.h2}>Scenario 4: Codex Inside Your App Or Through gRPC</h2>
         <p className={articleStyles.p}>
-          Codex is the special case. The runtime uses a ChatGPT-backed Codex transport with a dedicated base URL, forced streaming behavior, and token handling that does not look like the normal OpenAI chat-completions path.
+          Codex is the one provider that needs extra explanation. It uses a ChatGPT-backed transport, a dedicated base URL, and an auth story that is different from the standard API-key-only path. For local products, the most ergonomic path is to launch the device flow directly from the SDK and then reuse the returned resolver.
         </p>
-        <ul className={articleStyles.list}>
-          <li>For local or embedded products, start a ChatGPT login directly from the SDK with <span className={articleStyles.inlineCode}>sdk.NewOAuthDeviceFlow</span> and then hand the resulting resolver to <span className={articleStyles.inlineCode}>sdk.NewClient</span>.</li>
-          <li>For backend or multi-user products, keep the OAuth or token exchange in your own app boundary and inject the live token with <span className={articleStyles.inlineCode}>CredentialResolver</span>.</li>
-          <li>For locked-down deployments, you can bypass the interactive flow and inject <span className={articleStyles.inlineCode}>CODEX_API_KEY</span> or <span className={articleStyles.inlineCode}>CODEX_ACCESS_TOKEN</span> directly.</li>
-        </ul>
-        <DocCodeBlock code={CLI_LOGIN} label="CLI bootstrap" language="bash" />
-        <DocCodeBlock code={CODEX_RESOLVER} label="Codex via resolver" language="go" />
+        <DocCodeBlock code={OAUTH_DEVICE_FLOW} label="OAuth device flow" language="go" />
+        <DocCodeBlock code={CODEX_RESOLVER} label="Codex resolver wiring" language="go" />
         <div className={articleStyles.callout}>
-          <div className={articleStyles.calloutTitle}>gRPC Handoff</div>
+          <div className={articleStyles.calloutTitle}>gRPC handoff</div>
           <p className={articleStyles.calloutText}>
-            The gRPC server does not run an interactive OAuth handshake itself, but it now accepts an explicit bearer token or API key per <span className={articleStyles.inlineCode}>QueryRequest</span>. That makes Codex usable over gRPC once your client app has already performed the OAuth login.
+            The gRPC server does not perform an interactive OAuth handshake itself. The intended pattern is: do the login in your client app, obtain a live bearer token, then pass that token explicitly in the request that targets the Codex model.
           </p>
         </div>
         <DocCodeBlock code={GRPC_CODEX_REQUEST} label="gRPC explicit token" language="go" />
       </section>
 
       <section className={articleStyles.section}>
+        <h2 className={articleStyles.h2}>Supported Provider Inventory</h2>
+        <p className={articleStyles.p}>
+          Once the scenario is clear, this table is the runtime-level source of truth for the provider ids, transports, endpoints, and auth modes currently understood by Seshat.
+        </p>
+        <ProviderInventoryTable />
+      </section>
+
+      <section className={articleStyles.section}>
         <h2 className={articleStyles.h2}>Related Pages</h2>
         <p className={articleStyles.p}>
-          Start with{' '}
-          <Link className={articleStyles.link} to="/docs/sdk/go" state={{ from: location.pathname }}>
-            Go SDK
+          Continue with{' '}
+          <Link className={articleStyles.link} to="/docs/sdk/go-tools" state={{ from: location.pathname }}>
+            Tools &amp; Surface
           </Link>
-          {' '}for the embedding model, then continue with{' '}
+          {' '}to shape what the authenticated runtime can actually do, or go back to{' '}
           <Link className={articleStyles.link} to="/docs/concepts/tools" state={{ from: location.pathname }}>
             Tools &amp; Providers
           </Link>
-          {' '}if you want the architectural separation behind these integration choices.
+          {' '}for the conceptual architecture behind the integration boundary.
         </p>
       </section>
     </article>

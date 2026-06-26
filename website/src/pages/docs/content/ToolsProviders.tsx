@@ -50,19 +50,26 @@ for _, tool := range surface.Tools {
     fmt.Println(tool.Name)
 }`
 
-const SESSION_SURFACE = `session, err := client.CreateSession(ctx)
+const TASK_SPECIFIC_SESSION = `session, err := client.CreateSession(ctx)
 if err != nil {
     log.Fatal(err)
 }
 defer session.Close()
 
-fmt.Println(session.GetToolNames())
+session.SetPermissionMode(sdk.PermissionModeOnRequest)
 
 for _, blocked := range []string{"bash", "write_file", "edit_file", "apply_patch"} {
     _ = session.UnregisterTool(blocked)
 }
 
-fmt.Println(session.GetToolNames())`
+fmt.Println(session.GetToolNames())
+
+resp, err := session.SubmitMessage(ctx, "Audit the repository and report findings only.")
+if err != nil {
+    log.Fatal(err)
+}
+
+fmt.Println(resp.StopReason)`
 
 const PRE_TOOL_HOOKS = `client, err := sdk.NewClient(&sdk.ClientConfig{
     Model: sdk.ModelIdentifier{
@@ -80,30 +87,71 @@ const PRE_TOOL_HOOKS = `client, err := sdk.NewClient(&sdk.ClientConfig{
     },
 })`
 
-const MCP_WIRING = `client, err := sdk.NewClient(&sdk.ClientConfig{
+const MCP_WIRING = `servers := []sdk.MCPServerConfig{
+    {
+        Name:      "github",
+        Transport: sdk.MCPTransportStdio,
+        Command:   "npx",
+        Args:      []string{"-y", "@modelcontextprotocol/server-github"},
+    },
+}
+
+client, err := sdk.NewClient(&sdk.ClientConfig{
     Model: sdk.ModelIdentifier{
         Provider: sdk.APIProviderAnthropic,
         Model:    "claude-sonnet-4-20250514",
     },
-    APIKey: os.Getenv("ANTHROPIC_API_KEY"),
-    MCPServers: []sdk.MCPServerConfig{
-        {
-            Name:      "github",
-            Transport: sdk.MCPTransportStdio,
-            Command:   "npx",
-            Args:      []string{"-y", "@modelcontextprotocol/server-github"},
-        },
-    },
+    APIKey:     os.Getenv("ANTHROPIC_API_KEY"),
+    MCPServers: servers,
 })
 if err != nil {
     log.Fatal(err)
 }
-
 defer client.Close()
 
-if err := client.ReloadMCPServers(ctx, clientConfig.MCPServers); err != nil {
+if err := client.ReloadMCPServers(ctx, servers); err != nil {
     log.Fatal(err)
 }`
+
+const HOST_PATTERN = `type WorkerProfile struct {
+    Name           string
+    PermissionMode sdk.PermissionMode
+    RemoveTools    []string
+}
+
+func NewWorkerSession(ctx context.Context, client *sdk.Client, profile WorkerProfile) (*sdk.Session, error) {
+    session, err := client.CreateSession(ctx)
+    if err != nil {
+        return nil, err
+    }
+
+    session.SetPermissionMode(profile.PermissionMode)
+    for _, toolName := range profile.RemoveTools {
+        _ = session.UnregisterTool(toolName)
+    }
+
+    return session, nil
+}
+
+reviewSession, err := NewWorkerSession(ctx, client, WorkerProfile{
+    Name:           "review",
+    PermissionMode: sdk.PermissionModeOnRequest,
+    RemoveTools:    []string{"bash", "write_file", "edit_file", "apply_patch"},
+})`
+
+const TOOL_BOUNDARY = `// Public SDK surface today:
+// - client.ToolNames()
+// - client.BuildToolSurface(ctx)
+// - client.RegisterTool(...)
+// - session.RegisterTool(...)
+// - session.UnregisterTool(...)
+// - client.ReloadMCPServers(...)
+// - ClientConfig.PreToolHooks
+//
+// Practical guidance:
+// Start with built-in tools + MCP + session shaping first.
+// Custom tools are possible, but their implementation still follows the
+// underlying runtime tool contract rather than a simplified SDK-only builder.`
 
 const BUILTIN_TOOLS_TSV = `apply_patch	filesystem	true	false	true
 ask_user_question	interaction	true	true	false
@@ -547,7 +595,7 @@ function ToolsSurfaceDiagram() {
           icon="flow"
           eyebrow="Session API"
           title="Visible Tool Surface"
-          body="The host can inspect the surface, unregister tools for one session, stream runtime events, and let the model work only with the final filtered set."
+          body="The host can inspect the surface, unregister tools for one session, and let the model work only with the final filtered set."
           meta="Per-session shaping"
         />
       </div>
@@ -559,9 +607,9 @@ function ToolsSurfaceDiagram() {
           <IconBadge icon="stack" tone="runtime" />
           <span className={styles.eyebrow}>Go Host Contract</span>
         </div>
-        <strong className={styles.cardTitle}>sdk.NewClient + sdk.Session own the action loop</strong>
+        <strong className={styles.cardTitle}>Create once, inspect once, shape per session</strong>
         <p className={styles.cardBody}>
-          For Go developers, the important boundary is simple: configure the client, inspect or trim the tool surface, attach hooks or MCP servers, then submit turns through a session that stays under one runtime owner.
+          The clean host pattern is straightforward: create the client, inspect the inventory, define workflow-specific session policies, attach governance, and then let the runtime execute one governed loop.
         </p>
       </div>
 
@@ -571,7 +619,7 @@ function ToolsSurfaceDiagram() {
             <IconBadge icon="search" tone="tool" />
             <span className={styles.eyebrow}>Discovery Path</span>
           </div>
-          <strong className={styles.cardTitle}>tool_search keeps prompts smaller</strong>
+          <strong className={styles.cardTitle}>Deferred tools keep prompts smaller</strong>
           <p className={styles.cardBody}>Deferred tools stay out of the initial surface and are discovered only when the runtime needs them.</p>
         </div>
         <div className={styles.branchCard}>
@@ -594,7 +642,7 @@ function HostFlowDiagram() {
         <div className={styles.flowCard}>
           <IconBadge icon="stack" tone="runtime" />
           <strong className={styles.cardTitle}>1. Create the client</strong>
-          <p className={styles.cardBody}>Pick a model, set permission mode, attach hooks, and register MCP servers if needed.</p>
+          <p className={styles.cardBody}>Pick the model, permission mode, and optional MCP servers for the host app.</p>
         </div>
         <div className={styles.flowConnector}><span /></div>
         <div className={styles.flowCard}>
@@ -606,27 +654,27 @@ function HostFlowDiagram() {
         <div className={styles.flowCard}>
           <IconBadge icon="shield" tone="runtime" />
           <strong className={styles.cardTitle}>3. Trim the session</strong>
-          <p className={styles.cardBody}>Per session, remove risky tools or change permission mode before sending any turn.</p>
+          <p className={styles.cardBody}>Remove risky tools or change permission mode for one workflow before sending the turn.</p>
         </div>
       </div>
 
       <div className={styles.flowRow}>
         <div className={styles.flowCard}>
           <IconBadge icon="flow" tone="runtime" />
-          <strong className={styles.cardTitle}>4. Stream runtime events</strong>
-          <p className={styles.cardBody}>Response chunks, structured runtime events, and tool progress keep your host UI or service observable.</p>
+          <strong className={styles.cardTitle}>4. Stream and observe</strong>
+          <p className={styles.cardBody}>Use runtime events and chunk callbacks to keep your UI or backend worker observable.</p>
         </div>
         <div className={styles.flowConnector}><span /></div>
         <div className={styles.flowCard}>
           <IconBadge icon="plug" tone="capability" />
-          <strong className={styles.cardTitle}>5. Reload extensions</strong>
-          <p className={styles.cardBody}>Bring in new MCP servers or refresh the external tool surface without restarting the process.</p>
+          <strong className={styles.cardTitle}>5. Extend with MCP</strong>
+          <p className={styles.cardBody}>Bring in external tools and refresh them later without tearing down the whole process.</p>
         </div>
         <div className={styles.flowConnector}><span /></div>
         <div className={styles.flowCard}>
           <IconBadge icon="wrench" tone="tool" />
           <strong className={styles.cardTitle}>6. Execute one governed loop</strong>
-          <p className={styles.cardBody}>The runtime routes model turns, tool calls, and persistence through one session contract.</p>
+          <p className={styles.cardBody}>The runtime still owns prompt, tool calls, permissions, memory, and session persistence coherently.</p>
         </div>
       </div>
     </div>
@@ -743,16 +791,16 @@ export default function ToolsProviders() {
       <header className={articleStyles.header}>
         <h1 className={articleStyles.title}>Tools &amp; Surface</h1>
         <p className={articleStyles.sub}>
-          This subpage is the Go SDK reference for the runtime-owned action layer: built-in tools, per-session surface shaping, permission semantics, deferred discovery, MCP extensions, and the concrete APIs a host app uses to inspect or trim what the model can execute.
+          This page is the practical Go SDK tutorial for the runtime-owned action layer. It shows how to inspect the built-in tool inventory, shape a workflow-specific session surface, attach governance, add MCP tools, and understand what is and is not a clean public customization path today.
         </p>
       </header>
 
       <section className={articleStyles.section}>
-        <h2 className={articleStyles.h2}>Scope Of This Page</h2>
+        <h2 className={articleStyles.h2}>What This Page Covers</h2>
         <div className={articleStyles.callout}>
           <div className={articleStyles.calloutTitle}>Boundary</div>
           <p className={articleStyles.calloutText}>
-            This page is only about tools and the model-visible surface. Provider ids, auth flows, capability-provider wiring, OAuth, and Codex login patterns belong in Providers &amp; Auth.
+            This page is about the action layer: built-in tools, session shaping, permission-sensitive execution, and MCP extensions. Provider setup, OAuth, capability-provider auth, and Codex login flows belong in Providers &amp; Auth.
           </p>
         </div>
         <p className={articleStyles.p}>
@@ -766,6 +814,89 @@ export default function ToolsProviders() {
           </Link>
           .
         </p>
+      </section>
+
+      <section className={articleStyles.section}>
+        <h2 className={articleStyles.h2}>Integration Patterns</h2>
+        <div className={articleStyles.grid}>
+          <div className={articleStyles.card}>
+            <div className={articleStyles.cardTitle}>Read-only analysis worker</div>
+            <p className={articleStyles.cardBody}>Keep the built-in inventory, then remove file mutation and shell tools for audit, review, or architecture analysis workflows.</p>
+          </div>
+          <div className={articleStyles.card}>
+            <div className={articleStyles.cardTitle}>Coding worker</div>
+            <p className={articleStyles.cardBody}>Keep edit and shell tools enabled, but add permission mode and pre-tool governance so mutating actions still flow through host policy.</p>
+          </div>
+          <div className={articleStyles.card}>
+            <div className={articleStyles.cardTitle}>External-tool worker</div>
+            <p className={articleStyles.cardBody}>Attach MCP servers to pull GitHub, issue tracker, CRM, or domain-specific tools into the same runtime loop.</p>
+          </div>
+          <div className={articleStyles.card}>
+            <div className={articleStyles.cardTitle}>Task-shaped session</div>
+            <p className={articleStyles.cardBody}>Use one shared client and create multiple session profiles by changing permission mode and unregistering tools per workflow.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className={articleStyles.section}>
+        <h2 className={articleStyles.h2}>The Host Workflow</h2>
+        <p className={articleStyles.p}>
+          For Go hosts, the clean path is simple: create one client, inspect what exists, apply workflow-specific trimming per session, then extend or govern the surface where needed. You do not need to fight the runtime to keep the host in control.
+        </p>
+        <ToolsSurfaceDiagram />
+        <HostFlowDiagram />
+      </section>
+
+      <section className={articleStyles.section}>
+        <h2 className={articleStyles.h2}>Step 1: Inspect The Inventory</h2>
+        <p className={articleStyles.p}>
+          Start by checking what the runtime already exposes. <span className={articleStyles.inlineCode}>client.ToolNames()</span> returns the registered primary names. <span className={articleStyles.inlineCode}>client.BuildToolSurface(ctx)</span> shows the filtered external surface the runtime would expose after registry-level rules are applied.
+        </p>
+        <DocCodeBlock code={TOOL_INVENTORY} label="Inspecting tools" language="go" />
+      </section>
+
+      <section className={articleStyles.section}>
+        <h2 className={articleStyles.h2}>Step 2: Create A Workflow-Specific Session</h2>
+        <p className={articleStyles.p}>
+          Do not destroy the shared client inventory just because one workflow is stricter than another. The practical pattern is to create the session, set the right permission mode, unregister the tools that do not belong in that workflow, and only then submit the task.
+        </p>
+        <DocCodeBlock code={TASK_SPECIFIC_SESSION} label="Read-only review session" language="go" />
+        <DocCodeBlock code={HOST_PATTERN} label="Reusable host-side session profile" language="go" />
+      </section>
+
+      <section className={articleStyles.section}>
+        <h2 className={articleStyles.h2}>Step 3: Add Governance For Mutating Tools</h2>
+        <p className={articleStyles.p}>
+          Shaping the visible surface is only one half of host control. Execution still goes through permission mode and optional pre-tool hooks. That is the clean SDK-level place to block, rewrite, or strictly review high-risk calls like shell execution and file mutation.
+        </p>
+        <DocCodeBlock code={PRE_TOOL_HOOKS} label="Pre-tool governance" language="go" />
+        <ul className={articleStyles.list}>
+          <li><span className={articleStyles.inlineCode}>PermissionMode</span> decides the runtime approval posture for the session.</li>
+          <li><span className={articleStyles.inlineCode}>PreToolHooks</span> let the host allow, deny, halt, or rewrite tool calls before they execute.</li>
+          <li><span className={articleStyles.inlineCode}>session.SetPermissionMode(...)</span> lets one session become stricter or looser than the client default.</li>
+        </ul>
+      </section>
+
+      <section className={articleStyles.section}>
+        <h2 className={articleStyles.h2}>Step 4: Extend The Surface With MCP</h2>
+        <p className={articleStyles.p}>
+          When built-ins are not enough, MCP is the clean extension path. You can register servers when the client starts, and later refresh them with <span className={articleStyles.inlineCode}>client.ReloadMCPServers(ctx, ...)</span> if the external tool surface changes.
+        </p>
+        <DocCodeBlock code={MCP_WIRING} label="MCP integration" language="go" />
+      </section>
+
+      <section className={articleStyles.section}>
+        <h2 className={articleStyles.h2}>Custom Tool Boundary Today</h2>
+        <p className={articleStyles.p}>
+          The public SDK already exposes <span className={articleStyles.inlineCode}>client.RegisterTool(...)</span>, <span className={articleStyles.inlineCode}>client.RegisterTools(...)</span>, and <span className={articleStyles.inlineCode}>session.RegisterTool(...)</span>. But there is an important boundary to understand before you build on that.
+        </p>
+        <DocCodeBlock code={TOOL_BOUNDARY} label="Current public boundary" language="go" />
+        <div className={articleStyles.callout}>
+          <div className={articleStyles.calloutTitle}>Pragmatic Guidance</div>
+          <p className={articleStyles.calloutText}>
+            If you are integrating Seshat into a product today, start with built-in tools, session shaping, permission governance, and MCP. Custom tools are possible, but the implementation contract still mirrors the runtime tool interface more closely than a dedicated SDK-first builder API.
+          </p>
+        </div>
       </section>
 
       <section className={articleStyles.section}>
@@ -798,44 +929,6 @@ export default function ToolsProviders() {
       </section>
 
       <section className={articleStyles.section}>
-        <h2 className={articleStyles.h2}>How Go Hosts Work With The Tool Layer</h2>
-        <p className={articleStyles.p}>
-          For developers embedding Seshat, the practical surface is straightforward: create the client, inspect the tool inventory, trim a session if needed, attach permission hooks or MCP servers, then stream events while the runtime executes one governed loop.
-        </p>
-        <ToolsSurfaceDiagram />
-      </section>
-
-      <section className={articleStyles.section}>
-        <h2 className={articleStyles.h2}>Inspect The Runtime Inventory</h2>
-        <p className={articleStyles.p}>
-          The public SDK already exposes inspection methods. <span className={articleStyles.inlineCode}>client.ToolNames()</span> gives the registered primary names, and <span className={articleStyles.inlineCode}>client.BuildToolSurface(ctx)</span> shows the current external surface that would be exposed after registry-level filtering.
-        </p>
-        <DocCodeBlock code={TOOL_INVENTORY} label="Inspecting tools" language="go" />
-      </section>
-
-      <section className={articleStyles.section}>
-        <h2 className={articleStyles.h2}>Shape The Surface Per Session</h2>
-        <p className={articleStyles.p}>
-          A host app can keep the shared runtime inventory intact while still tightening one session. The most direct pattern is to create the session, inspect <span className={articleStyles.inlineCode}>session.GetToolNames()</span>, and unregister the tools that should not be exposed for that specific workflow.
-        </p>
-        <DocCodeBlock code={SESSION_SURFACE} label="Per-session trimming" language="go" />
-        <HostFlowDiagram />
-      </section>
-
-      <section className={articleStyles.section}>
-        <h2 className={articleStyles.h2}>Permission And Host Governance</h2>
-        <p className={articleStyles.p}>
-          The tool surface is not only about visibility. Execution still passes through permission mode and optional shell hooks. That is the clean Go SDK boundary when you want to review or block sensitive tool calls before they run.
-        </p>
-        <DocCodeBlock code={PRE_TOOL_HOOKS} label="Permission hooks" language="go" />
-        <ul className={articleStyles.list}>
-          <li><span className={articleStyles.inlineCode}>PermissionMode</span> decides how approvals work at runtime.</li>
-          <li><span className={articleStyles.inlineCode}>PreToolHooks</span> let the host allow, deny, or rewrite tool calls before execution.</li>
-          <li><span className={articleStyles.inlineCode}>session.SetPermissionMode(...)</span> can tighten or relax one session without rebuilding the whole client.</li>
-        </ul>
-      </section>
-
-      <section className={articleStyles.section}>
         <h2 className={articleStyles.h2}>Tool State Semantics</h2>
         <p className={articleStyles.p}>
           The raw inventory only becomes useful once you understand how the runtime filters it. SurfaceBuilder asks the registry for a candidate surface, then applies permission checks, category filters, read-only or destructive filters, deferred-loading rules, and surface-profile visibility.
@@ -854,14 +947,6 @@ export default function ToolsProviders() {
         {TOOL_FAMILIES.map(family => (
           <ToolFamilyTable key={family.title} family={family} />
         ))}
-      </section>
-
-      <section className={articleStyles.section}>
-        <h2 className={articleStyles.h2}>MCP Extensions And Reloading</h2>
-        <p className={articleStyles.p}>
-          MCP is part of the same action layer. You can configure servers at client creation and refresh them later with <span className={articleStyles.inlineCode}>client.ReloadMCPServers(ctx, ...)</span> when the external tool surface changes.
-        </p>
-        <DocCodeBlock code={MCP_WIRING} label="MCP integration" language="go" />
       </section>
 
       <section className={articleStyles.section}>

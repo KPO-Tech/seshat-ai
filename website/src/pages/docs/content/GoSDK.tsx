@@ -30,9 +30,9 @@ const SESSION_AND_EVENTS = `client, err := sdk.NewClient(&sdk.ClientConfig{
     RuntimeEventFn: func(event sdk.RuntimeEvent) {
         switch event.Type {
         case sdk.RuntimeEventTypeToolProgress:
-            fmt.Printf("tool %s: %s\\n", event.ToolProgress.ToolName, event.ToolProgress.Message)
+            fmt.Printf("tool %s: %s\n", event.ToolProgress.ToolName, event.ToolProgress.Message)
         case sdk.RuntimeEventTypeTurnCompleted:
-            fmt.Printf("turn complete: %s\\n", event.StopReason)
+            fmt.Printf("turn complete: %s\n", event.StopReason)
         }
     },
 })
@@ -116,9 +116,9 @@ export default function GoSDK() {
       </section>
 
       <section className={articleStyles.section}>
-        <h2 className={articleStyles.h2}>Go SDK Subpages</h2>
+        <h2 className={articleStyles.h2}>Core Go SDK Subpages</h2>
         <p className={articleStyles.p}>
-          The integration-heavy material sits under this page as nested references, so the docs tree stays readable while the Go developer path keeps the full level of detail.
+          The first layer under Go SDK explains the primitives you actually wire first: providers, auth, agent shape, prompt architecture, and tool surface control.
         </p>
         <div className={articleStyles.grid}>
           <div className={articleStyles.card}>
@@ -129,10 +129,54 @@ export default function GoSDK() {
             </Link>
           </div>
           <div className={articleStyles.card}>
+            <div className={articleStyles.cardTitle}>Agent</div>
+            <p className={articleStyles.cardBody}>How to define embedded agent roles, choose the right client-versus-session boundary, and model personas cleanly in your own Go application.</p>
+            <Link className={articleStyles.link} to="/docs/sdk/agent" state={{ from: location.pathname }}>
+              Open Agent
+            </Link>
+          </div>
+          <div className={articleStyles.card}>
+            <div className={articleStyles.cardTitle}>Prompt</div>
+            <p className={articleStyles.cardBody}>The shipped prompt architecture, stable and dynamic layers, stage overlays, project instructions, tool hints, and every prompt-shaping parameter exposed by the SDK.</p>
+            <Link className={articleStyles.link} to="/docs/sdk/prompt" state={{ from: location.pathname }}>
+              Open Prompt
+            </Link>
+          </div>
+          <div className={articleStyles.card}>
             <div className={articleStyles.cardTitle}>Tools &amp; Surface</div>
             <p className={articleStyles.cardBody}>Builtin tool inventory, permission-sensitive tools, deferred tools, MCP surface shaping, and runtime-owned execution boundaries for host apps.</p>
             <Link className={articleStyles.link} to="/docs/sdk/go-tools" state={{ from: location.pathname }}>
               Open Tools &amp; Surface
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <section className={articleStyles.section}>
+        <h2 className={articleStyles.h2}>Applied Go SDK Tracks</h2>
+        <p className={articleStyles.p}>
+          `SDK and API` should come right after Concepts because this is where implementation starts. The next three pages stay under Go SDK on purpose: they are not generic user guides, they are developer-facing runtime composition guides.
+        </p>
+        <div className={articleStyles.grid}>
+          <div className={articleStyles.card}>
+            <div className={articleStyles.cardTitle}>Building Workflows</div>
+            <p className={articleStyles.cardBody}>Compose sessions, prompt stages, tool policies, retries, and memory boundaries into workflow shapes that still respect the runtime instead of bypassing it.</p>
+            <Link className={articleStyles.link} to="/docs/sdk/workflows" state={{ from: location.pathname }}>
+              View roadmap
+            </Link>
+          </div>
+          <div className={articleStyles.card}>
+            <div className={articleStyles.cardTitle}>Multi-Agent Scenarios</div>
+            <p className={articleStyles.cardBody}>Document mailbox patterns, agent delegation, role separation, and the practical path from one agent loop to team-like runtime behavior in host applications.</p>
+            <Link className={articleStyles.link} to="/docs/sdk/multi-agent" state={{ from: location.pathname }}>
+              View roadmap
+            </Link>
+          </div>
+          <div className={articleStyles.card}>
+            <div className={articleStyles.cardTitle}>Developer Integration</div>
+            <p className={articleStyles.cardBody}>Cover backend embedding, desktop embedding, auth bridging, event streaming, observability hooks, and the product integration patterns teams actually need.</p>
+            <Link className={articleStyles.link} to="/docs/sdk/dev-integration" state={{ from: location.pathname }}>
+              View roadmap
             </Link>
           </div>
         </div>
