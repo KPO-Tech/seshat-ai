@@ -5,7 +5,7 @@
 <h1 align="center">SeshatOS</h1>
 
 <p align="center">
-  <b>Self-hosted AI platform for teams — desktop app, REST API, multi-user auth, and full agent governance.</b><br>
+  <b>SeshatOS (seshat-ai) is a self-hosted AI platform and desktop app for teams — REST API, multi-user auth, knowledge bases, scheduled automation, and full agent governance.</b><br>
   <i>Built on seshat &nbsp;·&nbsp; SQLite or PostgreSQL &nbsp;·&nbsp; 7 providers &nbsp;·&nbsp; AGPL-3.0</i>
 </p>
 
@@ -27,7 +27,7 @@
 
 ## 🤔 What is SeshatOS?
 
-**[seshat](https://github.com/EngineerProjects/seshat)** is the open-source Go runtime for multi-turn AI agents (tools, permissions, sessions, RAG, MCP). **SeshatOS** is the production layer on top: a multi-user backend with a full REST API and a desktop application.
+The **`seshat-ai`** repository contains **SeshatOS**, a self-hosted AI workspace for teams built as a desktop app plus a full REST API. It sits on top of **[seshat](https://github.com/EngineerProjects/seshat)**, the open-source Go runtime for multi-turn AI agents with tools, permissions, sessions, RAG, and MCP.
 
 ```
 ┌─────────────────────────────────┐
