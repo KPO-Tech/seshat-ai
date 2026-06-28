@@ -49,7 +49,7 @@ const sections: Section[] = [
     ),
     title: 'Learn',
     desc: 'Deep-dives into agentic AI concepts, patterns and architecture.',
-    items: ['What is an Agent Runtime?', 'Why Go for AI Agents?', 'Mono-Run Explained', 'Technical Hypotheses'],
+    items: ['Vision & Direction', 'What is an Agent Runtime?', 'Why Go for AI Agents?', 'Technical Hypotheses'],
     available: true,
   },
   {

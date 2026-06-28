@@ -1,13 +1,8 @@
 import Hero from './Hero'
-import TeamSession from './TeamSession'
-import About from './About'
 import GitHubRepos from './GitHubRepos'
 import Why from './Why'
-import Domains from './Domains'
-import Portals from './Portals'
 import Ecosystem from './Ecosystem'
 import Screenshots from './Screenshots'
-import AgentSimulator from './AgentSimulator'
 import Install from './Install'
 import { usePageMeta } from '../../hooks/usePageMeta'
 import { useTranslation } from '../../hooks/useTranslation'
@@ -19,15 +14,10 @@ export default function Home() {
   return (
     <>
       <Hero />
-      <TeamSession />
-      <About />
-      <GitHubRepos />
       <Why />
-      <Domains />
-      <Portals />
       <Ecosystem />
+      <GitHubRepos />
       <Screenshots />
-      <AgentSimulator />
       <Install />
     </>
   )
