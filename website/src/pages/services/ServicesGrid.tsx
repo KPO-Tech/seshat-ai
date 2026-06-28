@@ -192,6 +192,29 @@ export default function ServicesGrid() {
           </svg>
           {sg.pricingNote}
         </div>
+<div className={`${styles.customCard} reveal stagger-1 ${gridVisible ? 'visible' : ''}`}>
+  <div className={styles.customCardTop}>
+    <span className={styles.customPill}>{sg.customCard.label}</span>
+    <a href="mailto:oastephaneamiche@gmail.com" className={styles.customCta}>
+      {sg.customCard.cta}
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+        <line x1="7" y1="17" x2="17" y2="7" />
+        <polyline points="7 7 17 7 17 17" />
+      </svg>
+    </a>
+  </div>
+  <h3 className={styles.customTitle}>{sg.customCard.title}</h3>
+  <p className={styles.customBody}>{sg.customCard.body}</p>
+  <ul className={styles.customBullets}>
+    {sg.customCard.bullets.map(b => (
+      <li key={b} className={styles.customBullet}>
+        <span className={styles.customBulletDot} />
+        {b}
+      </li>
+    ))}
+  </ul>
+</div>
+
 
         <div ref={whoRef as React.RefObject<HTMLDivElement>} className={styles.whoWrap}>
           <p className="section-label" style={{ marginTop: '5rem' }}>{sg.whoLabel}</p>

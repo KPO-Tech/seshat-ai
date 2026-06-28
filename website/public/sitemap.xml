@@ -6,7 +6,16 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/" />
-    <lastmod>2026-06-26</lastmod>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/fr</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/" />
+    <lastmod>2026-06-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
@@ -15,7 +24,16 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/services" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/services" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/services" />
-    <lastmod>2026-06-26</lastmod>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/fr/services</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/services" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/services" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/services" />
+    <lastmod>2026-06-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -24,7 +42,16 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs" />
-    <lastmod>2026-06-26</lastmod>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/fr/docs</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs" />
+    <lastmod>2026-06-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
@@ -33,16 +60,34 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/contribution" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/contribution" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/contribution" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/fr/docs/contribution</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/contribution" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/contribution" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/contribution" />
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://seshat-ai.com/docs/getting-started</loc>
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/getting-started" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/getting-started" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/getting-started" />
-    <lastmod>2026-06-26</lastmod>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/fr/docs/getting-started</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/getting-started" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/getting-started" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/getting-started" />
+    <lastmod>2026-06-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -51,7 +96,16 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/concepts" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/concepts" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/concepts" />
-    <lastmod>2026-06-26</lastmod>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/fr/docs/concepts</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/concepts" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/concepts" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/concepts" />
+    <lastmod>2026-06-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -60,7 +114,16 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/sdk" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/sdk" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/sdk" />
-    <lastmod>2026-06-26</lastmod>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/fr/docs/sdk</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/sdk" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/sdk" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/sdk" />
+    <lastmod>2026-06-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -69,7 +132,16 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/guides" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/guides" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/guides" />
-    <lastmod>2026-06-26</lastmod>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/fr/docs/guides</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/guides" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/guides" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/guides" />
+    <lastmod>2026-06-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -78,16 +150,16 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/learn" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/learn" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/learn" />
-    <lastmod>2026-06-26</lastmod>
+    <lastmod>2026-06-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://seshat-ai.com/docs/comparisons</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/comparisons" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/comparisons" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/comparisons" />
-    <lastmod>2026-06-26</lastmod>
+    <loc>https://seshat-ai.com/fr/docs/learn</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/learn" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/learn" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/learn" />
+    <lastmod>2026-06-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -96,8 +168,17 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/getting-started/installation" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/getting-started/installation" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/getting-started/installation" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/fr/docs/getting-started/installation</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/getting-started/installation" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/getting-started/installation" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/getting-started/installation" />
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
@@ -105,8 +186,17 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/getting-started/quick-start" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/getting-started/quick-start" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/getting-started/quick-start" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/fr/docs/getting-started/quick-start</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/getting-started/quick-start" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/getting-started/quick-start" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/getting-started/quick-start" />
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
@@ -114,8 +204,17 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/getting-started/configuration" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/getting-started/configuration" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/getting-started/configuration" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/fr/docs/getting-started/configuration</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/getting-started/configuration" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/getting-started/configuration" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/getting-started/configuration" />
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
@@ -123,8 +222,17 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/getting-started/first-agent" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/getting-started/first-agent" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/getting-started/first-agent" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/fr/docs/getting-started/first-agent</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/getting-started/first-agent" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/getting-started/first-agent" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/getting-started/first-agent" />
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
@@ -132,8 +240,17 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/concepts/what-is-seshat" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/concepts/what-is-seshat" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/concepts/what-is-seshat" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/fr/docs/concepts/what-is-seshat</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/concepts/what-is-seshat" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/concepts/what-is-seshat" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/concepts/what-is-seshat" />
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
@@ -141,8 +258,17 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/concepts/mono-run" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/concepts/mono-run" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/concepts/mono-run" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/fr/docs/concepts/mono-run</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/concepts/mono-run" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/concepts/mono-run" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/concepts/mono-run" />
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
@@ -150,8 +276,17 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/concepts/runtime-modes" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/concepts/runtime-modes" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/concepts/runtime-modes" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/fr/docs/concepts/runtime-modes</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/concepts/runtime-modes" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/concepts/runtime-modes" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/concepts/runtime-modes" />
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
@@ -159,8 +294,17 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/concepts/agent-teams" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/concepts/agent-teams" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/concepts/agent-teams" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/fr/docs/concepts/agent-teams</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/concepts/agent-teams" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/concepts/agent-teams" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/concepts/agent-teams" />
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
@@ -168,8 +312,17 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/concepts/memory-rag" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/concepts/memory-rag" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/concepts/memory-rag" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/fr/docs/concepts/memory-rag</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/concepts/memory-rag" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/concepts/memory-rag" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/concepts/memory-rag" />
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
@@ -177,8 +330,17 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/concepts/skills-mcp" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/concepts/skills-mcp" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/concepts/skills-mcp" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/fr/docs/concepts/skills-mcp</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/concepts/skills-mcp" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/concepts/skills-mcp" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/concepts/skills-mcp" />
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
@@ -186,8 +348,17 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/concepts/tools" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/concepts/tools" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/concepts/tools" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/fr/docs/concepts/tools</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/concepts/tools" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/concepts/tools" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/concepts/tools" />
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
@@ -195,8 +366,17 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/sdk/go" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/sdk/go" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/sdk/go" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/fr/docs/sdk/go</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/sdk/go" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/sdk/go" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/sdk/go" />
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
@@ -204,8 +384,17 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/sdk/providers" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/sdk/providers" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/sdk/providers" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/fr/docs/sdk/providers</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/sdk/providers" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/sdk/providers" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/sdk/providers" />
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
@@ -213,8 +402,17 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/sdk/agent" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/sdk/agent" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/sdk/agent" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/fr/docs/sdk/agent</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/sdk/agent" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/sdk/agent" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/sdk/agent" />
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
@@ -222,8 +420,17 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/sdk/prompt" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/sdk/prompt" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/sdk/prompt" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/fr/docs/sdk/prompt</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/sdk/prompt" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/sdk/prompt" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/sdk/prompt" />
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
@@ -231,8 +438,17 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/sdk/go-tools" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/sdk/go-tools" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/sdk/go-tools" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/fr/docs/sdk/go-tools</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/sdk/go-tools" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/sdk/go-tools" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/sdk/go-tools" />
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
@@ -240,8 +456,17 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/sdk/workflows" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/sdk/workflows" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/sdk/workflows" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/fr/docs/sdk/workflows</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/sdk/workflows" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/sdk/workflows" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/sdk/workflows" />
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
@@ -249,8 +474,17 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/sdk/multi-agent" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/sdk/multi-agent" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/sdk/multi-agent" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/fr/docs/sdk/multi-agent</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/sdk/multi-agent" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/sdk/multi-agent" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/sdk/multi-agent" />
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
@@ -258,8 +492,17 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/sdk/dev-integration" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/sdk/dev-integration" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/sdk/dev-integration" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/fr/docs/sdk/dev-integration</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/sdk/dev-integration" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/sdk/dev-integration" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/sdk/dev-integration" />
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
@@ -267,7 +510,16 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/sdk/grpc-api" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/sdk/grpc-api" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/sdk/grpc-api" />
-    <lastmod>2026-06-26</lastmod>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/fr/docs/sdk/grpc-api</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/sdk/grpc-api" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/sdk/grpc-api" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/sdk/grpc-api" />
+    <lastmod>2026-06-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -276,322 +528,7 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/sdk/rest-api" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/sdk/rest-api" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/sdk/rest-api" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/docs/guides/cli</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/guides/cli" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/guides/cli" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/guides/cli" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/docs/learn/agent-runtime</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/learn/agent-runtime" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/learn/agent-runtime" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/learn/agent-runtime" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/docs/learn/why-go</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/learn/why-go" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/learn/why-go" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/learn/why-go" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/docs/learn/mono-run-explained</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/learn/mono-run-explained" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/learn/mono-run-explained" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/learn/mono-run-explained" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/docs/learn/technical-hypotheses</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/learn/technical-hypotheses" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/learn/technical-hypotheses" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/learn/technical-hypotheses" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/fr</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/fr/services</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/services" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/services" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/services" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/fr/docs</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/fr/docs/contribution</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/contribution" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/contribution" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/contribution" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/fr/docs/getting-started</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/getting-started" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/getting-started" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/getting-started" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/fr/docs/concepts</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/concepts" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/concepts" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/concepts" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/fr/docs/sdk</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/sdk" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/sdk" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/sdk" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/fr/docs/guides</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/guides" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/guides" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/guides" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/fr/docs/learn</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/learn" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/learn" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/learn" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/fr/docs/comparisons</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/comparisons" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/comparisons" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/comparisons" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/fr/docs/getting-started/installation</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/getting-started/installation" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/getting-started/installation" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/getting-started/installation" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/fr/docs/getting-started/quick-start</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/getting-started/quick-start" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/getting-started/quick-start" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/getting-started/quick-start" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/fr/docs/getting-started/configuration</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/getting-started/configuration" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/getting-started/configuration" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/getting-started/configuration" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/fr/docs/getting-started/first-agent</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/getting-started/first-agent" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/getting-started/first-agent" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/getting-started/first-agent" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/fr/docs/concepts/what-is-seshat</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/concepts/what-is-seshat" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/concepts/what-is-seshat" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/concepts/what-is-seshat" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/fr/docs/concepts/mono-run</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/concepts/mono-run" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/concepts/mono-run" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/concepts/mono-run" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/fr/docs/concepts/runtime-modes</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/concepts/runtime-modes" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/concepts/runtime-modes" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/concepts/runtime-modes" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/fr/docs/concepts/agent-teams</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/concepts/agent-teams" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/concepts/agent-teams" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/concepts/agent-teams" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/fr/docs/concepts/memory-rag</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/concepts/memory-rag" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/concepts/memory-rag" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/concepts/memory-rag" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/fr/docs/concepts/skills-mcp</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/concepts/skills-mcp" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/concepts/skills-mcp" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/concepts/skills-mcp" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/fr/docs/concepts/tools</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/concepts/tools" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/concepts/tools" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/concepts/tools" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/fr/docs/sdk/go</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/sdk/go" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/sdk/go" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/sdk/go" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/fr/docs/sdk/providers</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/sdk/providers" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/sdk/providers" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/sdk/providers" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/fr/docs/sdk/agent</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/sdk/agent" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/sdk/agent" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/sdk/agent" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/fr/docs/sdk/prompt</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/sdk/prompt" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/sdk/prompt" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/sdk/prompt" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/fr/docs/sdk/go-tools</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/sdk/go-tools" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/sdk/go-tools" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/sdk/go-tools" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/fr/docs/sdk/workflows</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/sdk/workflows" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/sdk/workflows" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/sdk/workflows" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/fr/docs/sdk/multi-agent</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/sdk/multi-agent" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/sdk/multi-agent" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/sdk/multi-agent" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/fr/docs/sdk/dev-integration</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/sdk/dev-integration" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/sdk/dev-integration" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/sdk/dev-integration" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://seshat-ai.com/fr/docs/sdk/grpc-api</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/sdk/grpc-api" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/sdk/grpc-api" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/sdk/grpc-api" />
-    <lastmod>2026-06-26</lastmod>
+    <lastmod>2026-06-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -600,7 +537,16 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/sdk/rest-api" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/sdk/rest-api" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/sdk/rest-api" />
-    <lastmod>2026-06-26</lastmod>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/docs/guides/cli</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/guides/cli" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/guides/cli" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/guides/cli" />
+    <lastmod>2026-06-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -609,8 +555,17 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/guides/cli" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/guides/cli" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/guides/cli" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/docs/learn/agent-runtime</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/learn/agent-runtime" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/learn/agent-runtime" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/learn/agent-runtime" />
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
@@ -618,8 +573,17 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/learn/agent-runtime" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/learn/agent-runtime" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/learn/agent-runtime" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/docs/learn/why-go</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/learn/why-go" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/learn/why-go" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/learn/why-go" />
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
@@ -627,8 +591,17 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/learn/why-go" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/learn/why-go" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/learn/why-go" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/docs/learn/mono-run-explained</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/learn/mono-run-explained" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/learn/mono-run-explained" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/learn/mono-run-explained" />
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
@@ -636,8 +609,17 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/learn/mono-run-explained" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/learn/mono-run-explained" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/learn/mono-run-explained" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://seshat-ai.com/docs/learn/technical-hypotheses</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/learn/technical-hypotheses" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/learn/technical-hypotheses" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/learn/technical-hypotheses" />
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
@@ -645,8 +627,8 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://seshat-ai.com/docs/learn/technical-hypotheses" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://seshat-ai.com/fr/docs/learn/technical-hypotheses" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://seshat-ai.com/docs/learn/technical-hypotheses" />
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
 </urlset>

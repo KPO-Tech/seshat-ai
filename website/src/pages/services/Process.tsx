@@ -8,7 +8,7 @@ export default function Process() {
   const { process: proc } = t
 
   return (
-    <section className={styles.section}>
+    <section className={styles.section} id="process-section">
       <div className="container">
         <p className="section-label">{proc.label}</p>
         <h2 className={`${styles.title} reveal ${inView ? 'visible' : ''}`}>{proc.title}</h2>

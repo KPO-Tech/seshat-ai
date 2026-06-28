@@ -73,6 +73,7 @@ export const DOC_SECTIONS: Section[] = [
     slug: 'learn',
     desc: 'Deep dives into agentic AI concepts, patterns and architecture decisions.',
     articles: [
+      { title: 'Vision & Direction', slug: 'vision', available: true, desc: 'Why Seshat keeps a broad open-source vision while staying narrow and credible in its current product wedge.' },
       { title: 'What is an Agent Runtime?', slug: 'agent-runtime', available: true, desc: 'Runtime versus framework versus platform, and why the boundary matters.' },
       { title: 'Why Go for AI Agents?', slug: 'why-go', available: true, desc: 'Why a Go runtime fits deployable agent systems better than a framework-only approach.' },
       { title: 'Mono-Run Explained', slug: 'mono-run-explained', available: true, desc: 'A deeper explanation of why one runtime should own the full execution lifecycle.' },

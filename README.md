@@ -5,8 +5,8 @@
 <h1 align="center">SeshatOS</h1>
 
 <p align="center">
-  <b>SeshatOS (seshat-ai) is a self-hosted AI platform and desktop app for teams — REST API, multi-user auth, knowledge bases, scheduled automation, and full agent governance.</b><br>
-  <i>Built on seshat &nbsp;·&nbsp; SQLite or PostgreSQL &nbsp;·&nbsp; 7 providers &nbsp;·&nbsp; AGPL-3.0</i>
+  <b>SeshatOS (seshat-ai) is a self-hosted, multi-user agent platform for real organizations.</b><br>
+  <i>Built on seshat &nbsp;·&nbsp; REST API + desktop app &nbsp;·&nbsp; governance, workspaces, knowledge, scheduling &nbsp;·&nbsp; AGPL-3.0</i>
 </p>
 
 <p align="center">
@@ -25,7 +25,43 @@
 
 ---
 
-## 🤔 What is SeshatOS?
+## What SeshatOS Is Today
+
+SeshatOS is the platform layer built on top of [seshat](https://github.com/EngineerProjects/seshat), the open-source Go runtime.
+
+Its current wedge is not "AI for everything." It is much narrower and more useful:
+
+- self-hosted, multi-user agent infrastructure
+- users, organizations, workspaces, API keys, quotas, and auditability
+- REST + SSE access to the runtime for products, internal tools, and operators
+- governed execution with permissions, knowledge, memories, skills, and MCP management
+- scheduled tasks and deployment-friendly control around a real runtime core
+
+In other words: SeshatOS is for teams that want agent capability inside a real environment, under clear operational boundaries.
+
+## Why This Exists
+
+Most AI products are still optimized for individual assistance. Organizations usually need something else:
+
+- deployment inside their own environment
+- provider portability instead of one-vendor dependence
+- workspace and user boundaries
+- auditable behavior around tool execution
+- knowledge and workflow layers around the runtime
+
+SeshatOS exists to provide that platform layer without hiding the engine underneath.
+
+## Broad Vision, Narrow Product Wedge
+
+The project still keeps a larger open-source direction: organized agent teams, richer workflow coordination, deeper automation, and more specialized surfaces over time.
+
+But the current product message should stay disciplined. Today, the strongest claim is that SeshatOS is a governed, self-hosted agent platform for real organizations. The larger vision matters for contributors and long-term partners; the narrower wedge is what makes the platform credible now.
+
+- Engine repository: https://github.com/EngineerProjects/seshat
+- Public docs: https://seshat-ai.com/docs
+- Vision and direction: https://seshat-ai.com/docs/learn/vision
+
+## Architecture At A Glance
 
 The **`seshat-ai`** repository contains **SeshatOS**, a self-hosted AI workspace for teams built as a desktop app plus a full REST API. It sits on top of **[seshat](https://github.com/EngineerProjects/seshat)**, the open-source Go runtime for multi-turn AI agents with tools, permissions, sessions, RAG, and MCP.
 
@@ -50,6 +86,7 @@ Dependency direction is strictly one-way: `seshat-ai` imports `seshat/pkg/*` onl
 ---
 
 ## 🖥️ Desktop UI
+
 
 SeshatOS ships with `seshat-ui`, an Electron + React desktop application that wraps the full HTTP API.
 
