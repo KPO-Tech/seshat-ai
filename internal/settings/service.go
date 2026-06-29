@@ -535,6 +535,42 @@ func (s *Service) ResolveDefaultForUser(ctx context.Context, principal *backenda
 	return s.ResolveRuntimeConfig(ctx, principal, rec.ID)
 }
 
+// ResolveDefaultForUserID resolves credentials for a user's default provider by
+// user ID alone. Intended for internal daemon callbacks — bypasses principal checks.
+func (s *Service) ResolveDefaultForUserID(ctx context.Context, userID string) (*ResolvedProviderConfig, error) {
+	if s == nil || s.store == nil || userID == "" {
+		return nil, nil
+	}
+	rec, err := s.store.GetDefaultByUserID(ctx, userID)
+	if err != nil {
+		return nil, bkerr.Internal("get default provider: "+err.Error(), err)
+	}
+	if rec == nil {
+		return nil, nil
+	}
+	config := &ResolvedProviderConfig{
+		SettingID: rec.ID,
+		Provider:  rec.Provider,
+		AuthKind:  normalizeAuthKind(rec.Provider, rec.AuthKind),
+		BaseURL:   rec.BaseURL,
+		ModelID:   rec.ModelID,
+	}
+	switch config.AuthKind {
+	case AuthKindAPIKey:
+		key, err := s.store.GetDecryptedAPIKey(ctx, rec.ID)
+		if err != nil {
+			return nil, bkerr.Internal("decrypt api key: "+err.Error(), err)
+		}
+		config.Secret = key
+	case AuthKindOAuth:
+		// OAuth access tokens require a live HTTP round-trip. Not available for
+		// daemon use — callers should fall back to env-based config.
+		token, _ := s.resolveOAuthAccessToken(ctx, rec)
+		config.Secret = token
+	}
+	return config, nil
+}
+
 func (s *Service) checkAccess(principal *backendauth.Principal, rec *db.ProviderSetting) error {
 	if principal == nil {
 		return bkerr.Unauthorized("authentication required", nil)

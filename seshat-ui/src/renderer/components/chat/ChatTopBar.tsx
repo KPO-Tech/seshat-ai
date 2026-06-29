@@ -3,6 +3,7 @@ import { Browser, CheckCorrect, Shield, More, Robot } from '@icon-park/react'
 import { SelectorPill, SELECTOR_PILL_CSS } from '@/components/ui/SelectorPill'
 import { IconButton, ICON_BUTTON_CSS } from '@/components/ui/IconButton'
 import type { UIPermissionMode } from '@/stores/ui'
+import type { AgentState } from '@/stores/session'
 
 export type ChatTopBarOption = {
   id: string
@@ -28,6 +29,7 @@ type Props = {
   permissionMode?: UIPermissionMode
   onTogglePermission?: () => void
   onPermissionModeSelect?: (mode: UIPermissionMode) => void
+  executionMode?: AgentState['executionMode']
 }
 
 export function ChatTopBar({
@@ -48,6 +50,7 @@ export function ChatTopBar({
   permissionMode = 'onRequest',
   onTogglePermission,
   onPermissionModeSelect,
+  executionMode = 'execute',
 }: Props) {
   const [openMenu, setOpenMenu] = useState<'provider' | 'model' | 'permission' | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -100,43 +103,50 @@ export function ChatTopBar({
 
   return (
     <div className="chat-top-bar" ref={rootRef}>
-      <div className="chat-top-selectors">
-        <div className="chat-top-selector">
-          <SelectorPill
-            label={providerLabel}
-            icon={<Browser size={14} />}
-            onClick={handleProviderTrigger}
-            disabled={providerDisabled}
-          />
-          {openMenu === 'provider' && providerOptions && onProviderSelect && (
-            <SelectorMenu
-              options={providerOptions}
-              selectedId={selectedProviderId}
-              onSelect={(id) => {
-                setOpenMenu(null)
-                onProviderSelect(id)
-              }}
+      <div className="chat-top-left">
+        <div className="chat-top-selectors">
+          <div className="chat-top-selector">
+            <SelectorPill
+              label={providerLabel}
+              icon={<Browser size={14} />}
+              onClick={handleProviderTrigger}
+              disabled={providerDisabled}
             />
-          )}
-        </div>
-        <div className="chat-top-selector">
-          <SelectorPill
-            label={modelLabel}
-            icon={<CheckCorrect size={14} />}
-            onClick={handleModelTrigger}
-            disabled={modelDisabled}
-          />
-          {openMenu === 'model' && modelOptions && onModelSelect && (
-            <SelectorMenu
-              options={modelOptions}
-              selectedId={selectedModelId}
-              onSelect={(id) => {
-                setOpenMenu(null)
-                onModelSelect(id)
-              }}
+            {openMenu === 'provider' && providerOptions && onProviderSelect && (
+              <SelectorMenu
+                options={providerOptions}
+                selectedId={selectedProviderId}
+                onSelect={(id) => {
+                  setOpenMenu(null)
+                  onProviderSelect(id)
+                }}
+              />
+            )}
+          </div>
+          <div className="chat-top-selector">
+            <SelectorPill
+              label={modelLabel}
+              icon={<CheckCorrect size={14} />}
+              onClick={handleModelTrigger}
+              disabled={modelDisabled}
             />
-          )}
+            {openMenu === 'model' && modelOptions && onModelSelect && (
+              <SelectorMenu
+                options={modelOptions}
+                selectedId={selectedModelId}
+                onSelect={(id) => {
+                  setOpenMenu(null)
+                  onModelSelect(id)
+                }}
+              />
+            )}
+          </div>
         </div>
+        {executionMode !== 'execute' && (
+          <div className={`chat-mode-badge chat-mode-badge--${executionMode}`}>
+            {executionMode === 'plan' ? 'Plan Mode' : 'Pair Programming'}
+          </div>
+        )}
       </div>
       <div className="chat-top-actions">
         <IconButton
@@ -234,6 +244,12 @@ ${ICON_BUTTON_CSS}
   justify-content: space-between;
 }
 
+.chat-top-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .chat-top-selectors {
   display: flex;
   gap: 8px;
@@ -241,6 +257,59 @@ ${ICON_BUTTON_CSS}
 
 .chat-top-selector {
   position: relative;
+}
+
+.chat-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 999px;
+  animation: mode-badge-in 0.2s ease;
+}
+
+@keyframes mode-badge-in {
+  from { opacity: 0; transform: scale(0.88); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.chat-mode-badge--plan {
+  background: rgba(239, 124, 47, 0.13);
+  border: 1px solid rgba(239, 124, 47, 0.35);
+  color: var(--color-accent);
+}
+
+.chat-mode-badge--plan::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  animation: mode-dot-pulse 1.8s ease-in-out infinite;
+}
+
+.chat-mode-badge--pair_programming {
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  color: #a78bfa;
+}
+
+.chat-mode-badge--pair_programming::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #a78bfa;
+  animation: mode-dot-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes mode-dot-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
 }
 
 .chat-top-menu {

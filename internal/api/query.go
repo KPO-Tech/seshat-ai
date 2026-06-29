@@ -16,6 +16,10 @@ import (
 	"github.com/EngineerProjects/seshat/pkg/contract"
 	"github.com/EngineerProjects/seshat/pkg/sdk"
 	"github.com/EngineerProjects/seshat/pkg/types"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Type aliases kept for readability in handler signatures.
@@ -125,11 +129,32 @@ func (app *App) handleQuery(w http.ResponseWriter, r *http.Request) {
 		Principal:          principal,
 	})
 	queryCtx := app.enrichContextWithAgentPrefs(r.Context(), principal)
+	queryCtx, span := otel.Tracer("seshat").Start(queryCtx, "query.run",
+		trace.WithSpanKind(trace.SpanKindServer),
+		trace.WithAttributes(
+			attribute.String("session.id", queryInput.SessionID),
+			attribute.String("user.id", func() string {
+				if principal != nil {
+					return principal.User.ID
+				}
+				return ""
+			}()),
+		),
+	)
+	defer span.End()
+
 	result, err := app.backend.Query.RunPrompt(queryCtx, principal, queryInput)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		writeBackendError(w, err)
 		return
 	}
+	span.SetStatus(codes.Ok, "")
+	span.SetAttributes(
+		attribute.String("stop_reason", result.StopReason),
+		attribute.Int("turn_number", result.TurnNumber),
+	)
 
 	// Async long-term memory extraction — best-effort, never blocks the response.
 	app.triggerMemoryExtraction(principal, result)
@@ -343,8 +368,18 @@ func (app *App) handleQueryStream(w http.ResponseWriter, r *http.Request) {
 		Principal:          principal,
 	})
 	// Inject the event emitter and the user's sub-agent depth preference.
+	baseCtx := app.enrichContextWithAgentPrefs(r.Context(), principal)
+	streamCtx, streamSpan := otel.Tracer("seshat").Start(baseCtx, "query.stream",
+		trace.WithSpanKind(trace.SpanKindServer),
+		trace.WithAttributes(
+			attribute.String("session.id", streamInput.SessionID),
+			attribute.String("user.id", principalUserID),
+		),
+	)
+	defer streamSpan.End()
+
 	enrichedCtx := context.WithValue(
-		app.enrichContextWithAgentPrefs(r.Context(), principal),
+		streamCtx,
 		types.RuntimeEventEmitterKey, func(event types.RuntimeEvent) { onRuntimeEvent(event) },
 	)
 	result, err := app.backend.Query.StreamPrompt(enrichedCtx, principal, streamInput, onChunk, onRuntimeEvent)
@@ -355,11 +390,19 @@ func (app *App) handleQueryStream(w http.ResponseWriter, r *http.Request) {
 		}
 		// If the request context was cancelled (browser closed/navigated), no point sending an error event.
 		if r.Context().Err() != nil {
+			streamSpan.SetStatus(codes.Ok, "cancelled")
 			return
 		}
+		streamSpan.RecordError(err)
+		streamSpan.SetStatus(codes.Error, bkerr.Message(err))
 		writeSSEError(w, flusher, &writeMu, bkerr.Message(err))
 		return
 	}
+	streamSpan.SetStatus(codes.Ok, "")
+	streamSpan.SetAttributes(
+		attribute.String("stop_reason", result.StopReason),
+		attribute.Int("turn_number", result.TurnNumber),
+	)
 
 	// Async long-term memory extraction — best-effort, never blocks the response.
 	app.triggerMemoryExtraction(principal, result)

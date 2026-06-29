@@ -171,10 +171,12 @@ export const PlanArtifactCard = memo(function PlanArtifactCard({ plan, sessionId
         </div>
         <div className="pac-body">
           <div className="pac-header">
-            <span className="pac-title">{plan.filename}</span>
+            <span className="pac-title">
+              {plan.slug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+            </span>
             <span className={badgeClass}>{plan.status}</span>
           </div>
-          <div className="pac-meta">v{plan.version} · Click to review</div>
+          <div className="pac-meta">{plan.filename} · v{plan.version} · Click to review</div>
         </div>
       </div>
       {plan.status === 'pending' && (

@@ -7,18 +7,22 @@
 #   make install-python → install / update docling-serve
 #   make start-docling  → start docling-serve manually
 
-ROOT   := $(shell pwd)
-BIN    := seshat
-CMD    := ./cmd/api
-UI_DIR := $(ROOT)/seshat-ui
+ROOT        := $(shell pwd)
+BIN         := seshat
+CMD         := ./cmd/api
+UI_DIR      := $(ROOT)/seshat-ui
+DAEMON_DIR  := $(ROOT)/seshat
+DAEMON_BIN  := seshat-automation
+DAEMON_CMD  := ./cmd/automation-server
 
 # Detect OS for open/xdg-open
 UNAME := $(shell uname -s)
 
 .PHONY: help \
         setup \
-        dev stop \
+        dev stop dev-full \
         build run \
+        build-automation run-automation \
         test test-v test-race test-short test-pkg \
         fmt vet lint tidy hooks \
         ui-install ui-build ui-dev \
@@ -49,7 +53,16 @@ stop: ## Stop backend and UI processes
 	@pkill -x api 2>/dev/null || true
 	@pkill -f "electron-vite" 2>/dev/null || true
 	@pkill -f "[e]lectron.*nexus" 2>/dev/null || true
+	@pkill -x seshat-automation 2>/dev/null || true
 	@printf '\033[32m[nexus]\033[0m stopped.\n'
+
+dev-full: ui-install ## Start backend + automation daemon + Electron UI
+	@printf '\033[32m[nexus]\033[0m starting backend…\n'
+	@go run $(CMD) &
+	@printf '\033[32m[nexus]\033[0m starting automation daemon…\n'
+	@cd $(DAEMON_DIR) && go run $(DAEMON_CMD) &
+	@printf '\033[32m[nexus]\033[0m starting Electron UI…\n'
+	@cd $(UI_DIR) && bun run start
 
 # ─── Backend ──────────────────────────────────────────────────────────────────
 
@@ -60,6 +73,14 @@ build: ## Compile the backend binary → ./seshat
 
 run: ## Run the backend only (no UI), reads .env.dev / .env
 	go run $(CMD)
+
+build-automation: ## Compile the automation daemon binary → seshat/seshat-automation
+	@printf '\033[32m[go]\033[0m building %s…\n' $(DAEMON_BIN)
+	@cd $(DAEMON_DIR) && go build -o $(DAEMON_BIN) $(DAEMON_CMD)
+	@printf '\033[32m[go]\033[0m binary ready: %s/%s\n' $(DAEMON_DIR) $(DAEMON_BIN)
+
+run-automation: ## Run the automation daemon only (reads env / .env)
+	@cd $(DAEMON_DIR) && go run $(DAEMON_CMD)
 
 # ─── Tests ────────────────────────────────────────────────────────────────────
 

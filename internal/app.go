@@ -52,37 +52,39 @@ type Dependencies struct {
 	Monitoring               metrics.Snapshotter
 	DoclingClient            *docling.Client // nil = no auto-conversion
 	// New services
-	UserMemoryStore      *db.UserMemoryStore
-	LongTermMemoryStore  *db.LongTermMemoryStore
-	LongTermExtractor    *longterm.Extractor
-	PlanDocumentStore    *db.PlanDocumentStore
-	MCPServerStore       *db.MCPServerStore
-	MCPRuntime           mcp.RuntimeReloader // nil = reload/status not available
-	UserPreferencesStore *db.UserPreferencesStore
-	AgentDefinitionStore *db.AgentDefinitionStore
-	ScheduledJobStore    *db.ScheduledJobStore // nil = scheduler disabled
+	UserMemoryStore           *db.UserMemoryStore
+	LongTermMemoryStore       *db.LongTermMemoryStore
+	LongTermExtractor         *longterm.Extractor
+	PlanDocumentStore         *db.PlanDocumentStore
+	MCPServerStore            *db.MCPServerStore
+	MCPRuntime                mcp.RuntimeReloader // nil = reload/status not available
+	UserPreferencesStore      *db.UserPreferencesStore
+	AgentDefinitionStore      *db.AgentDefinitionStore
+	ScheduledJobStore         *db.ScheduledJobStore // nil = scheduler disabled
+	AutomationActivationStore *db.AutomationActivationStore
 }
 
 // App is the root backend service container.
 // Each field is a domain service; add new domains here as the product grows.
 type App struct {
-	Auth        *auth.Service
-	Query       *query.Service
-	Resources   *resources.Service
-	Files       *files.Service
-	Knowledge   *knowledge.Service
-	Settings    *settings.Service
-	WebSearch   *websearch.Service
-	Audit       *audit.Service
-	Quota       *quotas.Service
-	Metrics     *metrics.Service
-	Memories    *memories.Service
-	Plans       *plans.Service
-	MCP         *mcp.Service
-	Preferences *preferences.Service
-	Skills      *skills.Service
-	Agents      *agents.Service
-	Scheduler   *scheduler.Service
+	Auth                      *auth.Service
+	Query                     *query.Service
+	Resources                 *resources.Service
+	Files                     *files.Service
+	Knowledge                 *knowledge.Service
+	Settings                  *settings.Service
+	WebSearch                 *websearch.Service
+	Audit                     *audit.Service
+	Quota                     *quotas.Service
+	Metrics                   *metrics.Service
+	Memories                  *memories.Service
+	Plans                     *plans.Service
+	MCP                       *mcp.Service
+	Preferences               *preferences.Service
+	Skills                    *skills.Service
+	Agents                    *agents.Service
+	Scheduler                 *scheduler.Service
+	AutomationActivationStore *db.AutomationActivationStore
 }
 
 func NewApp(deps Dependencies) *App {
@@ -124,9 +126,10 @@ func NewApp(deps Dependencies) *App {
 			Store:   deps.MCPServerStore,
 			Runtime: deps.MCPRuntime,
 		}),
-		Preferences: preferencesService,
-		Skills:      skillsService,
-		Agents:      agentsService,
-		Scheduler:   schedulerService,
+		Preferences:               preferencesService,
+		Skills:                    skillsService,
+		Agents:                    agentsService,
+		Scheduler:                 schedulerService,
+		AutomationActivationStore: deps.AutomationActivationStore,
 	}
 }

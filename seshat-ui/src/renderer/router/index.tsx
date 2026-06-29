@@ -11,6 +11,7 @@ import { Register } from '@/pages/Register'
 import { ScheduledTasksPage } from '@/pages/ScheduledTasks'
 import { WorkspacePage } from '@/pages/workspace'
 import { TeamPage } from '@/pages/team'
+import { AutomationPage } from '@/pages/automation'
 
 export const router = createHashRouter([
   {
@@ -38,6 +39,7 @@ export const router = createHashRouter([
       { path: 'skills-creator', element: <SkillsCreatorPage /> },
       { path: 'scheduled-tasks', element: <ScheduledTasksPage /> },
       { path: 'workspace', element: <WorkspacePage /> },
+      { path: 'automation', element: <AutomationPage /> },
       { path: 'knowledge', element: <Navigate to="/" replace /> },
       { path: 'memories', element: <Navigate to="/" replace /> },
     ],

@@ -606,3 +606,33 @@ func isSupportedSearchProvider(provider string) bool {
 		return false
 	}
 }
+
+// ResolveKeysForUserID returns whether web search is enabled for the user and
+// the decrypted API keys for all configured search providers.
+// Intended for internal daemon callbacks — bypasses principal checks.
+func (s *Service) ResolveKeysForUserID(ctx context.Context, userID string) (enabled bool, keys map[string]string, err error) {
+	if s == nil || s.settings == nil || userID == "" {
+		return false, nil, nil
+	}
+	row, err := s.settings.GetByUserID(ctx, userID)
+	if err != nil || row == nil {
+		return false, nil, err
+	}
+	enabled = row.Enabled
+
+	configs, err := s.providerConfigs.ListByUserID(ctx, userID)
+	if err != nil {
+		return enabled, nil, err
+	}
+	keys = make(map[string]string)
+	for _, cfg := range configs {
+		if !cfg.Enabled {
+			continue
+		}
+		apiKey, _ := s.providerConfigs.GetDecryptedAPIKey(ctx, userID, cfg.Provider)
+		if apiKey != "" {
+			keys[cfg.Provider] = apiKey
+		}
+	}
+	return enabled, keys, nil
+}

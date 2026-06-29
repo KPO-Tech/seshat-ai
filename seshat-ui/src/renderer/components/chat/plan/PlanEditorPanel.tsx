@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { CheckOne, CloseOne, Send, Edit, DocDetail } from '@icon-park/react'
 import { MarkdownView } from '@/components/MarkdownView'
 import { api } from '@/api/client'
@@ -123,6 +123,8 @@ const CSS = `
 .pep-markdown {
   padding: 16px 18px;
   flex: 1;
+  position: relative;
+  user-select: text;
 }
 
 .pep-editor {
@@ -139,6 +141,205 @@ const CSS = `
   line-height: 1.6;
   resize: none;
   box-sizing: border-box;
+}
+
+/* ── Inline annotation float ── */
+.pep-float {
+  position: fixed;
+  z-index: 200;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  filter: drop-shadow(0 4px 16px rgba(0,0,0,0.35));
+}
+
+.pep-float-btn {
+  padding: 5px 12px;
+  border-radius: 8px;
+  background: var(--color-accent);
+  border: none;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s;
+}
+
+.pep-float-btn:hover {
+  background: rgba(239, 124, 47, 0.9);
+}
+
+.pep-float-form {
+  background: rgba(38, 36, 44, 0.98);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 10px;
+  padding: 10px;
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pep-float-quote {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  border-left: 2px solid var(--color-accent);
+  padding-left: 8px;
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pep-float-textarea {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 6px;
+  color: var(--color-text);
+  font-size: 12px;
+  font-family: inherit;
+  padding: 7px 9px;
+  resize: none;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+
+.pep-float-textarea:focus {
+  border-color: rgba(239, 124, 47, 0.4);
+}
+
+.pep-float-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.pep-float-cancel {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border-subtle);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.pep-float-cancel:hover {
+  background: var(--color-hover);
+  color: var(--color-text);
+}
+
+.pep-float-add {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: none;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.12s;
+}
+
+.pep-float-add:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Annotation list ── */
+.pep-annotations {
+  padding: 0 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.pep-annotations-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pep-annotations-clear {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-transform: lowercase;
+  letter-spacing: 0;
+  transition: color 0.12s;
+}
+
+.pep-annotations-clear:hover {
+  color: #f87171;
+}
+
+.pep-annotation-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: rgba(239, 124, 47, 0.05);
+  border: 1px solid rgba(239, 124, 47, 0.15);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.pep-annotation-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pep-annotation-quote {
+  font-size: 11px;
+  font-style: italic;
+  color: var(--color-text-muted);
+  border-left: 2px solid var(--color-accent);
+  padding-left: 7px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pep-annotation-comment {
+  font-size: 12px;
+  color: var(--color-text);
+  line-height: 1.45;
+}
+
+.pep-annotation-remove {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  opacity: 0.5;
+  transition: opacity 0.12s;
+}
+
+.pep-annotation-remove:hover {
+  opacity: 1;
+  color: #f87171;
 }
 
 /* ── Comments ── */
@@ -262,6 +463,12 @@ const CSS = `
 }
 `
 
+type Annotation = {
+  id: string
+  quote: string
+  comment: string
+}
+
 type Props = {
   planId: string
   sessionId: string
@@ -278,6 +485,13 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission }: Props)
   const [comment, setComment] = useState('')
   const [sending, setSending] = useState(false)
 
+  const [annotations, setAnnotations] = useState<Annotation[]>([])
+  const [pendingQuote, setPendingQuote] = useState<string | null>(null)
+  const [annotationInput, setAnnotationInput] = useState('')
+  const [floatStyle, setFloatStyle] = useState<{ top: number; left: number } | null>(null)
+  const [showAnnotationForm, setShowAnnotationForm] = useState(false)
+  const floatRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     if (plan?.content) setEditedContent(plan.content)
   }, [plan?.id, plan?.content])
@@ -293,6 +507,67 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission }: Props)
 
   useEffect(() => { void loadFull() }, [loadFull])
 
+  useEffect(() => {
+    if (!floatStyle) return
+    function handleMouseDown(e: MouseEvent) {
+      if (floatRef.current && !floatRef.current.contains(e.target as Node)) {
+        closeFloat()
+      }
+    }
+    document.addEventListener('mousedown', handleMouseDown)
+    return () => document.removeEventListener('mousedown', handleMouseDown)
+  }, [floatStyle])
+
+  function handleMarkdownMouseUp() {
+    if (editMode || plan?.status !== 'pending') return
+    const sel = window.getSelection()
+    const text = sel?.toString().trim()
+    if (!text || text.length < 3 || !sel || sel.rangeCount === 0) return
+    const range = sel.getRangeAt(0)
+    const rect = range.getBoundingClientRect()
+    setPendingQuote(text)
+    setAnnotationInput('')
+    setShowAnnotationForm(false)
+    setFloatStyle({ top: rect.bottom + 8, left: rect.left + rect.width / 2 })
+  }
+
+  function closeFloat() {
+    setFloatStyle(null)
+    setPendingQuote(null)
+    setAnnotationInput('')
+    setShowAnnotationForm(false)
+    window.getSelection()?.removeAllRanges()
+  }
+
+  function addAnnotation() {
+    if (!pendingQuote || !annotationInput.trim()) return
+    setAnnotations((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), quote: pendingQuote, comment: annotationInput.trim() },
+    ])
+    closeFloat()
+  }
+
+  function removeAnnotation(id: string) {
+    setAnnotations((prev) => prev.filter((a) => a.id !== id))
+  }
+
+  function buildFeedback(): string {
+    const parts: string[] = []
+    if (annotations.length > 0) {
+      parts.push(
+        '**Plan annotations:**\n\n' +
+        annotations.map((a) => `> "${a.quote}"\n${a.comment}`).join('\n\n')
+      )
+    }
+    if (comment.trim()) parts.push(comment.trim())
+    if (editMode && editedContent !== plan?.content) {
+      parts.push("I've also updated the plan content directly.")
+    }
+    if (parts.length === 0) parts.push('Please review the updated plan.')
+    return parts.join('\n\n')
+  }
+
   if (!plan) {
     return (
       <div className="pep-root">
@@ -304,6 +579,7 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission }: Props)
 
   const isReadonly = plan.status !== 'pending'
   const contentToShow = editMode ? editedContent : (plan.content || editedContent)
+  const humanSlug = plan.slug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 
   const badgeClass = plan.status === 'validated'
     ? 'pep-badge pep-badge--validated'
@@ -311,25 +587,19 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission }: Props)
       ? 'pep-badge pep-badge--rejected'
       : 'pep-badge pep-badge--pending'
 
+  const hasFeedback = annotations.length > 0 || !!comment.trim() || (editMode && editedContent !== plan.content)
+
   async function handleSend() {
     if (sending) return
     setSending(true)
     try {
-      // If content was edited, persist it first
       if (editMode && editedContent !== plan!.content) {
         const updated = await api.patch<PlanDocument>(`/plans/${planId}`, { content: editedContent })
         upsertPlan(sessionId, updated)
       }
-      // Build feedback message and queue it as a draft prompt for Conversation.tsx to send
-      const parts: string[] = []
-      if (comment.trim()) parts.push(comment.trim())
-      if (editMode && editedContent !== plan!.content) {
-        parts.push(`I've also updated the plan content directly.`)
-      }
-      if (parts.length === 0) parts.push('Please review the updated plan.')
-
-      useSessionStore.getState().updateSession(sessionId, { draftPrompt: parts.join('\n\n') })
+      useSessionStore.getState().updateSession(sessionId, { draftPrompt: buildFeedback() })
       setComment('')
+      setAnnotations([])
       setEditMode(false)
     } finally {
       setSending(false)
@@ -340,36 +610,25 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission }: Props)
     if (sending || !pendingPermission) return
     setSending(true)
     try {
-      // Persist edits if any
       if (editMode && editedContent !== plan!.content) {
         const updated = await api.patch<PlanDocument>(`/plans/${planId}`, { content: editedContent })
         upsertPlan(sessionId, updated)
       }
 
-      // Mark plan as validated
       await api.patch<PlanDocument>(`/plans/${planId}`, { status: 'validated' })
       upsertPlan(sessionId, { ...plan!, status: 'validated' })
 
-      // Approve the exit_plan_mode permission
       await api.post(`/permissions/${pendingPermission.toolUseId}`, {
         approved: true,
         session_id: sessionId,
       })
 
-      // Clear pending permission from agent state
       useSessionStore.getState().updateAgentState(sessionId, { pendingPermission: null })
 
-      // If there were notes, queue them as a draft after proceeding
-      const notes: string[] = []
-      if (comment.trim()) notes.push(comment.trim())
-      if (editMode && editedContent !== plan!.content) {
-        notes.push('I made some edits to the plan. Please take them into account during execution.')
-      }
-      if (notes.length > 0) {
-        useSessionStore.getState().updateSession(sessionId, { draftPrompt: notes.join('\n\n') })
+      if (hasFeedback) {
+        useSessionStore.getState().updateSession(sessionId, { draftPrompt: buildFeedback() })
       }
 
-      // Switch right panel back to agent monitor
       openRightPanel({ kind: 'agent', title: 'Agent Monitor', sessionId, width: 380 })
     } catch { /* silent */ } finally {
       setSending(false)
@@ -400,10 +659,10 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission }: Props)
       <div className="pep-header">
         <div className="pep-header-top">
           <DocDetail size={16} className="pep-icon" />
-          <span className="pep-name">{plan.filename}</span>
+          <span className="pep-name">{humanSlug}</span>
           <span className={badgeClass}>{plan.status}</span>
         </div>
-        <div className="pep-meta">v{plan.version} · {plan.slug}</div>
+        <div className="pep-meta">{plan.filename} · v{plan.version}</div>
         {!isReadonly && (
           <div className="pep-toolbar">
             <button
@@ -428,7 +687,7 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission }: Props)
             autoFocus
           />
         ) : (
-          <div className="pep-markdown">
+          <div className="pep-markdown" onMouseUp={handleMarkdownMouseUp}>
             {contentToShow
               ? <MarkdownView>{contentToShow}</MarkdownView>
               : <span style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Loading content…</span>
@@ -437,12 +696,49 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission }: Props)
         )}
       </div>
 
+      {!isReadonly && annotations.length > 0 && (
+        <div className="pep-annotations">
+          <div className="pep-annotations-label">
+            Annotations ({annotations.length})
+            <button
+              type="button"
+              className="pep-annotations-clear"
+              onClick={() => setAnnotations([])}
+            >
+              clear all
+            </button>
+          </div>
+          {annotations.map((a) => (
+            <div key={a.id} className="pep-annotation-row">
+              <div className="pep-annotation-body">
+                <div className="pep-annotation-quote">"{a.quote}"</div>
+                <div className="pep-annotation-comment">{a.comment}</div>
+              </div>
+              <button
+                type="button"
+                className="pep-annotation-remove"
+                onClick={() => removeAnnotation(a.id)}
+                title="Remove"
+              >
+                <CloseOne size={12} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {!isReadonly && (
         <div className="pep-comments">
-          <div className="pep-comments-label">Comments</div>
+          <div className="pep-comments-label">
+            {annotations.length > 0 ? 'General comment' : 'Comments'}
+          </div>
           <textarea
             className="pep-comment-input"
-            placeholder="Add feedback or requests for the agent (optional)…"
+            placeholder={
+              annotations.length > 0
+                ? 'Add an overall comment (optional)…'
+                : 'Select text to annotate a section, or type a general comment…'
+            }
             value={comment}
             onChange={(e) => setComment(e.target.value)}
           />
@@ -452,16 +748,16 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission }: Props)
       {!isReadonly && pendingPermission && (
         <div className="pep-footer">
           <span className="pep-hint">
-            {comment || (editMode && editedContent !== plan.content)
+            {hasFeedback
               ? 'Send feedback or proceed directly'
-              : 'Approve this plan to start execution'}
+              : 'Select text to annotate · approve to execute'}
           </span>
           <div className="pep-actions">
             <button
               className="pep-btn pep-btn--send"
               type="button"
               onClick={() => void handleSend()}
-              disabled={sending || (!comment.trim() && !(editMode && editedContent !== plan.content))}
+              disabled={sending || !hasFeedback}
             >
               <Send size={12} />
               Send
@@ -485,6 +781,52 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission }: Props)
               <CloseOne size={12} />
             </button>
           </div>
+        </div>
+      )}
+
+      {floatStyle && pendingQuote && (
+        <div
+          ref={floatRef}
+          className="pep-float"
+          style={{ top: floatStyle.top, left: floatStyle.left }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          {showAnnotationForm ? (
+            <div className="pep-float-form">
+              <div className="pep-float-quote">"{pendingQuote}"</div>
+              <textarea
+                className="pep-float-textarea"
+                autoFocus
+                rows={3}
+                placeholder="Your comment on this selection…"
+                value={annotationInput}
+                onChange={(e) => setAnnotationInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addAnnotation() }
+                  if (e.key === 'Escape') closeFloat()
+                }}
+              />
+              <div className="pep-float-actions">
+                <button type="button" className="pep-float-cancel" onClick={closeFloat}>Cancel</button>
+                <button
+                  type="button"
+                  className="pep-float-add"
+                  onClick={addAnnotation}
+                  disabled={!annotationInput.trim()}
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="pep-float-btn"
+              onClick={() => setShowAnnotationForm(true)}
+            >
+              ✎ Comment
+            </button>
+          )}
         </div>
       )}
     </div>

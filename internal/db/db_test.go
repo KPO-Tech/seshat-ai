@@ -1714,7 +1714,7 @@ func TestIdentityStoreBootstrapTenancyAndAuthFoundation(t *testing.T) {
 		t.Fatalf("expected loaded auth session %q, got %q", authSession.ID, loadedSession.ID)
 	}
 
-	if err := store.TouchAuthSession(context.Background(), authSession.ID); err != nil {
+	if err := store.TouchAuthSession(context.Background(), authSession.ID, 30*24*time.Hour); err != nil {
 		t.Fatalf("TouchAuthSession failed: %v", err)
 	}
 	touchedSession, err := store.GetAuthSessionByToken(context.Background(), "plain-token")
@@ -1723,6 +1723,9 @@ func TestIdentityStoreBootstrapTenancyAndAuthFoundation(t *testing.T) {
 	}
 	if touchedSession.LastUsedAt == nil {
 		t.Fatal("expected last used timestamp to be set after touch")
+	}
+	if !touchedSession.ExpiresAt.After(authSession.ExpiresAt) {
+		t.Fatal("expected expiry to be extended after touch with non-zero extendBy")
 	}
 
 	if err := store.RevokeAuthSession(context.Background(), authSession.ID); err != nil {

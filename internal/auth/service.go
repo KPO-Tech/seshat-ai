@@ -57,7 +57,7 @@ func (s *Service) Login(ctx context.Context, email string, password string) (*Lo
 		return nil, bkerr.Unauthorized("invalid credentials", err)
 	}
 
-	authSession, token, err := s.identity.CreateLoginSession(ctx, user.ID, 24*time.Hour, map[string]any{
+	authSession, token, err := s.identity.CreateLoginSession(ctx, user.ID, 30*24*time.Hour, map[string]any{
 		"source": "api_login",
 	})
 	if err != nil {
@@ -98,7 +98,7 @@ func (s *Service) ResolvePrincipal(ctx context.Context, token string) (*Principa
 	if err != nil {
 		return nil, bkerr.Unauthorized("invalid auth token", err)
 	}
-	if err := s.identity.TouchAuthSession(ctx, principal.AuthSession.ID); err != nil {
+	if err := s.identity.TouchAuthSession(ctx, principal.AuthSession.ID, 30*24*time.Hour); err != nil {
 		return nil, bkerr.Internal("failed to update auth session", err)
 	}
 
