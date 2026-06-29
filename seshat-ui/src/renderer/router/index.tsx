@@ -12,6 +12,7 @@ import { ScheduledTasksPage } from '@/pages/ScheduledTasks'
 import { WorkspacePage } from '@/pages/workspace'
 import { TeamPage } from '@/pages/team'
 import { AutomationPage } from '@/pages/automation'
+import { AgentsPage } from '@/pages/agents'
 
 export const router = createHashRouter([
   {
@@ -40,6 +41,7 @@ export const router = createHashRouter([
       { path: 'scheduled-tasks', element: <ScheduledTasksPage /> },
       { path: 'workspace', element: <WorkspacePage /> },
       { path: 'automation', element: <AutomationPage /> },
+      { path: 'agents', element: <AgentsPage /> },
       { path: 'knowledge', element: <Navigate to="/" replace /> },
       { path: 'memories', element: <Navigate to="/" replace /> },
     ],
