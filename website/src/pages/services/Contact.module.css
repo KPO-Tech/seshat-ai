@@ -14,7 +14,7 @@
   align-items: flex-start;
 }
 
-/* Left */
+/* ─── Left ───────────────────────────────────────────── */
 .left {
   display: flex;
   flex-direction: column;
@@ -22,36 +22,16 @@
 }
 
 .title {
-  font-size: clamp(2rem, 3.5vw, 2.8rem);
+  font-size: clamp(1.9rem, 3.2vw, 2.8rem);
   font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
 }
 
 .sub {
-  font-size: 1rem;
+  font-size: 0.98rem;
   color: var(--text-secondary);
-  line-height: 1.7;
-  max-width: 44ch;
-}
-
-.pricingPill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  background: rgba(99, 102, 241, 0.06);
-  border: 1px solid rgba(99, 102, 241, 0.15);
-  border-radius: 10px;
-  padding: 0.6rem 1rem;
-  width: fit-content;
-  line-height: 1.4;
-}
-
-.pricingPill svg {
-  color: #a78bfa;
-  flex-shrink: 0;
+  line-height: 1.72;
 }
 
 .directLinks {
@@ -65,7 +45,7 @@
   align-items: center;
   gap: 0.85rem;
   padding: 0.9rem 1.1rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-glass);
   border-radius: 12px;
   text-decoration: none;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
@@ -73,8 +53,8 @@
 }
 
 .directLink:hover {
-  border-color: var(--border-indigo);
-  background: rgba(99, 102, 241, 0.05);
+  border-color: var(--border-orange);
+  background: rgba(232, 64, 30, 0.04);
   transform: translateX(4px);
 }
 
@@ -82,7 +62,7 @@
   width: 34px;
   height: 34px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border-glass);
   display: flex;
   align-items: center;
@@ -91,11 +71,17 @@
   flex-shrink: 0;
 }
 
+.directLink:hover .linkIcon {
+  border-color: var(--border-orange);
+  color: var(--brand-engine-end);
+  background: rgba(232, 64, 30, 0.06);
+}
+
 .linkLabel {
   display: block;
-  font-size: 0.72rem;
+  font-size: 0.71rem;
   color: var(--text-muted);
-  font-weight: 500;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -108,14 +94,14 @@
   margin-top: 0.1rem;
 }
 
-/* Right - Form */
+/* ─── Right / Form ───────────────────────────────────── */
 .right {
-  padding-top: 10rem;
+  /* no top offset — form aligns naturally with the left column */
 }
 
 .form {
   background: var(--bg-card);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-glass);
   border-radius: 18px;
   padding: 2rem;
   display: flex;
@@ -144,7 +130,7 @@
 
 .input {
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-glass);
   border-radius: 10px;
   padding: 0.7rem 0.9rem;
   font-size: 0.88rem;
@@ -160,8 +146,8 @@
 }
 
 .input:focus {
-  border-color: var(--border-indigo);
-  background: rgba(99, 102, 241, 0.04);
+  border-color: var(--border-orange);
+  background: rgba(232, 64, 30, 0.03);
 }
 
 .input:disabled {
@@ -190,10 +176,10 @@
   justify-content: center;
   gap: 0.5rem;
   padding: 0.85rem 1.5rem;
-  background: var(--brand-platform-gradient);
+  background: var(--brand-engine-gradient);
   color: #fff;
   font-size: 0.9rem;
-  font-weight: 600;
+  font-weight: 700;
   border: none;
   border-radius: 10px;
   cursor: pointer;
@@ -238,10 +224,10 @@
   to { transform: rotate(360deg); }
 }
 
-/* Success card */
+/* ─── Success card ───────────────────────────────────── */
 .successCard {
   background: var(--bg-card);
-  border: 1px solid rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(51, 209, 122, 0.2);
   border-radius: 18px;
   padding: 3rem 2rem;
   display: flex;
@@ -255,12 +241,12 @@
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: rgba(16, 185, 129, 0.12);
-  border: 1px solid rgba(16, 185, 129, 0.25);
+  background: rgba(51, 209, 122, 0.1);
+  border: 1px solid rgba(51, 209, 122, 0.25);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--green);
+  color: #33d17a;
 }
 
 .successTitle {
@@ -276,15 +262,11 @@
   line-height: 1.6;
 }
 
+/* ─── Responsive ─────────────────────────────────────── */
 @media (max-width: 900px) {
   .inner {
     grid-template-columns: 1fr;
     gap: 3rem;
-  }
-
-  .right {
-    position: static;
-    padding-top: 0;
   }
 }
 

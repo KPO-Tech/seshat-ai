@@ -7,45 +7,47 @@ import styles from './Welcome.module.css'
 type QuickPath = {
   title: string
   desc: string
-  href?: string
-  soon?: boolean
+  href: string
 }
 
 const QUICK_PATHS: QuickPath[] = [
   {
-    title: 'Try the CLI',
-    desc: 'Install the binary, configure a provider, and run your first autonomous agent locally.',
+    title: 'Install the CLI',
+    desc: 'Install the runtime locally, configure a provider, and run your first session.',
     href: '/getting-started/installation',
   },
   {
-    title: 'Embed the SDK',
-    desc: 'Use the Go runtime inside your own application once the SDK reference lands.',
-    soon: true,
+    title: 'Run your first agent',
+    desc: 'Start with the quick start and first-agent flow before exploring deeper architecture.',
+    href: '/getting-started/quick-start',
   },
   {
-    title: 'Understand the Architecture',
-    desc: 'Learn how the runtime, tools, MCP, memory, and platform layers fit together.',
-    href: '/concepts',
-    soon: true,
+    title: 'Understand the architecture',
+    desc: 'Learn how sessions, tools, permissions, memory, MCP, and execution fit together.',
+    href: '/concepts/what-is-seshat',
   },
   {
-    title: 'Self-Host the Platform',
-    desc: 'Navigate from the runtime docs toward SeshatOS, the multi-user API and desktop layer built on top.',
-    href: '/guides/desktop',
-    soon: true,
+    title: 'Build workflows in Go',
+    desc: 'Use the Go SDK to compose workflows, agent teams, and controlled runtime loops.',
+    href: '/sdk/go',
   },
   {
-    title: 'Join the Community',
-    desc: 'Understand the project vision, the two repositories, and where to contribute across the runtime, CLI app, desktop app, and future SDKs.',
+    title: 'Read the project direction',
+    desc: 'See the broad open-source thesis, the wedge, and where the public runtime is going.',
+    href: '/learn/vision',
+  },
+  {
+    title: 'Join the community',
+    desc: 'Contribute to the runtime, documentation, skills, examples, and future SDK layers.',
     href: '/contribution',
   },
 ]
 
 const START_HERE: string[] = [
   'Install the `seshat` binary',
-  'Configure at least one provider',
-  'Run your first CLI session',
-  'Move into concepts, guides, or SDK integration',
+  'Configure one provider and run the quick start',
+  'Understand the runtime model before building larger workflows',
+  'Move into the Go SDK, concepts, or contribution paths',
 ] as const
 
 export default function Welcome() {
@@ -53,8 +55,9 @@ export default function Welcome() {
   const base = pathname.startsWith('/fr') ? '/fr/docs' : '/docs'
   useDocsMeta(
     'Seshat Docs | Start Here',
-    'Start here for the Seshat documentation: CLI setup, architecture concepts, Go SDK, APIs, and contribution paths for the open-source agent runtime.',
+    'Start here for the Seshat documentation: CLI setup, architecture concepts, Go SDK, APIs, workflows, and contribution paths for the open-source agent runtime.',
   )
+
   const sections = DOC_SECTIONS.map(section => ({
     ...section,
     availableCount: section.articles.filter(article => article.available).length,
@@ -69,9 +72,8 @@ export default function Welcome() {
         Start here for <span className="gradient-text">Seshat.</span>
       </h1>
       <p className={styles.sub}>
-        This documentation is the entry point for the open-source `seshat` runtime:
-        CLI, Go SDK, core concepts, and the platform layers built on top of it.
-        Use this page to choose the right path before diving into articles.
+        This page now carries the broader runtime and product story. The homepage is focused on the business wedge.
+        The docs are where the open-source runtime, architecture, workflow model, and long-term direction should live.
       </p>
 
       <div className={styles.heroCard}>
@@ -79,17 +81,17 @@ export default function Welcome() {
           <span className={styles.heroLabel}>What these docs cover</span>
           <div className={styles.heroGrid}>
             <div className={styles.heroPanel}>
-              <h2 className={styles.heroPanelTitle}>seshat</h2>
+              <h2 className={styles.heroPanelTitle}>Open runtime</h2>
               <p className={styles.heroPanelDesc}>
-                The open-source Go runtime: agent loop, tools, permissions, MCP, RAG,
-                sessions, CLI, gRPC, and SDK.
+                `seshat` is the public Go runtime: sessions, tools, permissions, MCP, memory, RAG, providers,
+                CLI, gRPC, and SDK surfaces.
               </p>
             </div>
             <div className={styles.heroPanel}>
-              <h2 className={styles.heroPanelTitle}>SeshatOS / seshat-ai</h2>
+              <h2 className={styles.heroPanelTitle}>Workflow architecture</h2>
               <p className={styles.heroPanelDesc}>
-                The product platform built on top: multi-user API, organizations,
-                workspaces, audit, scheduler, desktop application, and governance.
+                These docs also explain the broader thesis: organized agentic work, multi-agent teams,
+                workflow composition, and the layers that can be built above the runtime.
               </p>
             </div>
           </div>
@@ -97,7 +99,7 @@ export default function Welcome() {
 
         <div className={styles.installBlock}>
           <BashLine
-            code="curl -fsSL https://raw.githubusercontent.com/EngineerProjects/seshat/main/scripts/install.sh | bash"
+            code="curl -fsSL https://raw.githubusercontent.com/KPO-Tech/seshat/main/scripts/install.sh | bash"
             className={styles.installCommand}
           />
         </div>
@@ -110,11 +112,11 @@ export default function Welcome() {
               <polyline points="12 5 19 12 12 19" />
             </svg>
           </Link>
-          <Link to={`${base}/contribution`} className={styles.secondaryLink}>
-            Contribution guide
+          <Link to={`${base}/learn/vision`} className={styles.secondaryLink}>
+            Vision and direction
           </Link>
           <a
-            href="https://github.com/EngineerProjects/seshat"
+            href="https://github.com/KPO-Tech/seshat"
             className={styles.secondaryLink}
             target="_blank"
             rel="noreferrer"
@@ -129,34 +131,20 @@ export default function Welcome() {
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>Choose your path</h2>
         <p className={styles.sectionIntro}>
-          Pick the entry point that matches what you are trying to do. This page is meant to orient, not to act like a landing page.
+          Pick the path that matches what you need right now: install, understand the runtime, build workflows,
+          or contribute to the open-source layer.
         </p>
         <div className={styles.grid}>
-          {QUICK_PATHS.map(path => {
-            const content = (
-              <div className={`${styles.card} ${path.soon ? '' : styles.cardActive}`}>
+          {QUICK_PATHS.map(path => (
+            <Link key={path.title} to={`${base}${path.href}`} className={styles.cardLink}>
+              <div className={`${styles.card} ${styles.cardActive}`}>
                 <div className={styles.cardHeader}>
                   <span className={styles.cardTitle}>{path.title}</span>
-                  {path.soon && <span className={styles.soon}>soon</span>}
                 </div>
                 <p className={styles.cardDesc}>{path.desc}</p>
               </div>
-            )
-
-            if (path.href && !path.soon) {
-              return (
-                <Link key={path.title} to={`${base}${path.href}`} className={styles.cardLink}>
-                  {content}
-                </Link>
-              )
-            }
-
-            return (
-              <div key={path.title} className={styles.cardLink}>
-                {content}
-              </div>
-            )
-          })}
+            </Link>
+          ))}
         </div>
       </section>
 
@@ -165,17 +153,17 @@ export default function Welcome() {
         <div className={styles.stack}>
           <div className={styles.stackItem}>
             <span className={styles.stackLabel}>Interfaces</span>
-            <p className={styles.stackText}>CLI, Go SDK, gRPC clients, and later platform UIs consume the same runtime foundation.</p>
+            <p className={styles.stackText}>CLI, Go SDK, gRPC clients, and future SDKs consume the same runtime foundation.</p>
           </div>
           <div className={styles.stackArrow}>↓</div>
           <div className={styles.stackItem}>
-            <span className={styles.stackLabel}>Runtime Core</span>
-            <p className={styles.stackText}>`seshat` provides tools, permissions, memory, MCP, RAG, sessions, execution, and agent primitives.</p>
+            <span className={styles.stackLabel}>Runtime core</span>
+            <p className={styles.stackText}>`seshat` owns sessions, tools, permissions, memory, MCP, RAG, execution, and agent primitives.</p>
           </div>
           <div className={styles.stackArrow}>↓</div>
           <div className={styles.stackItem}>
-            <span className={styles.stackLabel}>Platform Layer</span>
-            <p className={styles.stackText}>`seshat-ai` / SeshatOS adds multi-user APIs, workspaces, quotas, audit, scheduled jobs, and desktop UX.</p>
+            <span className={styles.stackLabel}>Workflow systems above it</span>
+            <p className={styles.stackText}>Enterprise workflow products, private delivery layers, and higher-level team systems can sit above the runtime, but these docs stay focused on the public foundation.</p>
           </div>
         </div>
       </section>
@@ -191,8 +179,8 @@ export default function Welcome() {
 
           <div className={styles.quickLinks}>
             <Link to={`${base}/getting-started/installation`} className={styles.quickLink}>Installation</Link>
-            <Link to={`${base}/getting-started`} className={styles.quickLink}>Getting Started</Link>
-            <Link to={`${base}/concepts`} className={styles.quickLink}>Concepts</Link>
+            <Link to={`${base}/getting-started/quick-start`} className={styles.quickLink}>Quick Start</Link>
+            <Link to={`${base}/concepts/what-is-seshat`} className={styles.quickLink}>Concepts</Link>
           </div>
         </div>
       </section>
@@ -200,7 +188,8 @@ export default function Welcome() {
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>Documentation status</h2>
         <p className={styles.sectionIntro}>
-          The structure is broader than the currently published content. This page reflects the real state instead of pretending every section is already complete.
+          The structure is broader than the currently published content. This page reflects the actual state
+          instead of pretending every layer is already complete.
         </p>
 
         <div className={styles.statusGrid}>
@@ -277,7 +266,7 @@ export default function Welcome() {
         <h2 className={styles.sectionTitle}>Reference repositories</h2>
         <div className={styles.repoGrid}>
           <a
-            href="https://github.com/EngineerProjects/seshat"
+            href="https://github.com/KPO-Tech/seshat"
             className={styles.repoCard}
             target="_blank"
             rel="noreferrer"
@@ -286,13 +275,13 @@ export default function Welcome() {
             <p className={styles.repoDesc}>Open-source runtime, CLI, SDK, providers, tools, MCP, RAG, and execution engine.</p>
           </a>
           <a
-            href="https://github.com/EngineerProjects/seshat-ai"
+            href="https://github.com/KPO-Tech/seshat-skills"
             className={styles.repoCard}
             target="_blank"
             rel="noreferrer"
           >
-            <span className={styles.repoName}>seshat-ai</span>
-            <p className={styles.repoDesc}>Platform layer with multi-user API, workspaces, scheduler, governance, and desktop application.</p>
+            <span className={styles.repoName}>seshat-skills</span>
+            <p className={styles.repoDesc}>Reusable skills, examples, and higher-level building blocks for practical workflow systems.</p>
           </a>
         </div>
       </section>

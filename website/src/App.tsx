@@ -6,6 +6,7 @@ import Footer from './components/Footer'
 
 const Home = lazy(() => import('./pages/home'))
 const Services = lazy(() => import('./pages/services'))
+const OpenSource = lazy(() => import('./pages/open-source'))
 const DocsLayout = lazy(() => import('./pages/docs/DocsLayout'))
 const SectionPage = lazy(() => import('./pages/docs/SectionPage'))
 const ArticlePage = lazy(() => import('./pages/docs/ArticlePage'))
@@ -39,6 +40,7 @@ export function AppShell() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/services" element={<Services />} />
+          <Route path="/open-source" element={<OpenSource />} />
           <Route path="/docs" element={<DocsLayout />}>
             <Route index element={<Welcome />} />
             <Route path="contribution" element={<Contribution />} />
@@ -47,6 +49,7 @@ export function AppShell() {
           </Route>
           <Route path="/fr" element={<Home />} />
           <Route path="/fr/services" element={<Services />} />
+          <Route path="/fr/open-source" element={<OpenSource />} />
           <Route path="/fr/docs" element={<DocsLayout />}>
             <Route index element={<Welcome />} />
             <Route path="contribution" element={<Contribution />} />

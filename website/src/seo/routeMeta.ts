@@ -192,6 +192,16 @@ export function getRouteMeta(pathname: string): RouteMeta {
     }
   }
 
+  if (withoutLocale === '/open-source') {
+    return {
+      title: translations.meta.openSource.title,
+      description: translations.meta.openSource.description,
+      canonical: getCanonicalUrl(normalized),
+      alternates: getAlternateLinksForPath(normalized),
+      structuredData: [],
+    }
+  }
+
   return {
     title: translations.meta.home.title,
     description: translations.meta.home.description,
@@ -209,6 +219,7 @@ const docArticleRoutes = DOC_SECTIONS.flatMap(section =>
 const englishRoutes = [
   '/',
   '/services',
+  '/open-source',
   '/docs',
   '/docs/contribution',
   ...docSectionRoutes,
