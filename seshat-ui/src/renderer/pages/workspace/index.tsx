@@ -11,7 +11,7 @@ import { useUIStore } from '@/stores/ui'
 import { useSessionStore, streamingToContentBlocks } from '@/stores/session'
 import { useChat } from '@/hooks/useChat'
 import { NexusLogo } from '@/components/NexusLogo'
-import type { Agent, Session } from '@/api/types'
+import type { Agent, Session, Corpus, CorpusFile, IngestionJob } from '@/api/types'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -755,30 +755,296 @@ function TestChatInner({ sessionId, agent, messagesRef, input, setInput }: {
 // ─── Knowledge tab ────────────────────────────────────────────────────────────
 
 function KnowledgeTab() {
+  const [corpora, setCorpora] = useState<Corpus[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selected, setSelected] = useState<Corpus | null>(null)
+  const [corpusFiles, setCorpusFiles] = useState<CorpusFile[]>([])
+  const [jobs, setJobs] = useState<IngestionJob[]>([])
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [showCreate, setShowCreate] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [newDesc, setNewDesc] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  function showToast(kind: 'ok' | 'err', msg: string) {
+    setToast({ kind, msg })
+    setTimeout(() => setToast(null), 3000)
+  }
+
+  useEffect(() => {
+    setLoading(true)
+    api.get<{ corpora: Corpus[] }>('/corpora')
+      .then(r => setCorpora(r.corpora ?? []))
+      .catch(() => showToast('err', 'Failed to load knowledge bases'))
+      .finally(() => setLoading(false))
+  }, [])
+
+  function loadDetail(corpus: Corpus) {
+    setSelected(corpus)
+    setDetailLoading(true)
+    Promise.all([
+      api.get<{ files: CorpusFile[] }>(`/corpora/${corpus.id}/files`),
+      api.get<{ jobs: IngestionJob[] }>(`/corpora/${corpus.id}/ingest/jobs`),
+    ])
+      .then(([fr, jr]) => { setCorpusFiles(fr.files ?? []); setJobs(jr.jobs ?? []) })
+      .catch(() => showToast('err', 'Failed to load corpus details'))
+      .finally(() => setDetailLoading(false))
+  }
+
+  async function createCorpus() {
+    if (!newName.trim()) return
+    setSaving(true)
+    try {
+      const corpus = await api.post<Corpus>('/corpora', { name: newName.trim(), description: newDesc.trim() || undefined })
+      setCorpora(c => [corpus, ...c])
+      setShowCreate(false); setNewName(''); setNewDesc('')
+      showToast('ok', 'Knowledge base created')
+    } catch { showToast('err', 'Failed to create knowledge base') }
+    finally { setSaving(false) }
+  }
+
+  async function deleteCorpus(id: string, e: React.MouseEvent) {
+    e.stopPropagation()
+    if (!window.confirm('Delete this knowledge base and all its indexed data?')) return
+    try {
+      await api.delete(`/corpora/${id}`)
+      setCorpora(c => c.filter(item => item.id !== id))
+      if (selected?.id === id) setSelected(null)
+      showToast('ok', 'Deleted')
+    } catch { showToast('err', 'Failed to delete') }
+  }
+
+  async function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
+    if (!selected || !e.target.files?.length) return
+    const file = e.target.files[0]
+    e.target.value = ''
+    setActionLoading('upload')
+    try {
+      // 1. Upload to global files store
+      const form = new FormData()
+      form.append('file', file)
+      const uploaded = await api.upload<{ id: string; filename: string }>('/files', form)
+      // 2. Attach to corpus
+      await api.post(`/corpora/${selected.id}/files`, { file_id: uploaded.id })
+      // 3. Queue ingest
+      await api.post(`/corpora/${selected.id}/ingest`, { file_id: uploaded.id })
+      // 4. Reload detail
+      loadDetail(selected)
+      showToast('ok', `${uploaded.filename} queued for ingestion`)
+    } catch { showToast('err', 'Failed to upload file') }
+    finally { setActionLoading(null) }
+  }
+
+  async function retryJob(jobId: string) {
+    if (!selected) return
+    setActionLoading(jobId)
+    try {
+      await api.post(`/corpora/${selected.id}/ingest/jobs/${jobId}/retry`, {})
+      loadDetail(selected)
+      showToast('ok', 'Job retried')
+    } catch { showToast('err', 'Failed to retry') }
+    finally { setActionLoading(null) }
+  }
+
+  function statusColor(status: string) {
+    if (status === 'completed' || status === 'ingested') return '#6faf7b'
+    if (status === 'failed') return 'var(--color-error)'
+    if (status === 'running') return '#7d9ccf'
+    return 'var(--color-accent)'
+  }
+
+  // ── Detail view ──────────────────────────────────────────────────────────────
+  if (selected) {
+    return (
+      <div className="wk-knowledge">
+        <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={handleFileInput} />
+        <div className="wk-grid-bar">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button className="wk-icon-btn" onClick={() => setSelected(null)} title="Back">
+              <Left size={16} />
+            </button>
+            <span className="wk-grid-bar-title">{selected.name}</span>
+            {selected.description && (
+              <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>— {selected.description}</span>
+            )}
+          </div>
+          <div className="wk-grid-bar-actions">
+            <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+              {selected.chunk_count} chunks
+            </span>
+            <button
+              className="wk-new-btn"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={actionLoading === 'upload'}
+            >
+              {actionLoading === 'upload'
+                ? <><LoadingOne size={14} className="spin" /> Uploading…</>
+                : <><Plus size={14} /> Add file</>}
+            </button>
+          </div>
+        </div>
+
+        <div className="wk-kn-detail-body">
+          {detailLoading ? (
+            <div className="wk-center">
+              <LoadingOne size={28} className="spin" />
+            </div>
+          ) : corpusFiles.length === 0 ? (
+            <div className="wk-center">
+              <Brain size={36} style={{ opacity: 0.3 }} />
+              <h2>No files yet</h2>
+              <p>Upload documents to build this knowledge base. PDFs, Markdown, and text files are supported.</p>
+              <button className="wk-new-btn lg" onClick={() => fileInputRef.current?.click()}>
+                <Plus size={15} /> Add your first file
+              </button>
+            </div>
+          ) : (
+            <div className="wk-kn-file-list">
+              {corpusFiles.map(f => {
+                const latestJob = jobs.filter(j => j.file_id === f.file_id).sort((a, b) => b.created_at - a.created_at)[0]
+                const isRunning = latestJob?.status === 'running' || latestJob?.status === 'pending'
+                return (
+                  <div key={f.file_id} className="wk-kn-file-row">
+                    <div className="wk-kn-file-info">
+                      <span className="wk-kn-file-name">{f.filename}</span>
+                      <span className="wk-kn-file-meta">
+                        {f.chunk_count > 0 && `${f.chunk_count} chunks · `}
+                        {f.ingested_at
+                          ? `Ingested ${new Date(f.ingested_at * 1000).toLocaleDateString()}`
+                          : 'Not yet ingested'}
+                      </span>
+                    </div>
+                    <div className="wk-kn-file-actions">
+                      <span className="wk-kn-status" style={{ color: statusColor(latestJob?.status ?? f.status) }}>
+                        {isRunning && <LoadingOne size={12} className="spin" />}
+                        {latestJob?.status ?? f.status}
+                      </span>
+                      {latestJob?.status === 'failed' && (
+                        <button
+                          className="wk-icon-btn"
+                          title="Retry"
+                          disabled={actionLoading === latestJob.id}
+                          onClick={() => retryJob(latestJob.id)}
+                        >
+                          {actionLoading === latestJob.id ? <LoadingOne size={14} className="spin" /> : <Sync size={14} />}
+                        </button>
+                      )}
+                      {latestJob?.last_error && (
+                        <span className="wk-kn-error" title={latestJob.last_error}>
+                          <Caution size={13} />
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+        {toast && <div className={`wk-toast ${toast.kind}`}>{toast.msg}</div>}
+      </div>
+    )
+  }
+
+  // ── List view ────────────────────────────────────────────────────────────────
   return (
     <div className="wk-knowledge">
-      {/* Action bar */}
+      <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={handleFileInput} />
+
       <div className="wk-grid-bar">
         <div className="wk-grid-bar-title">Knowledge bases</div>
         <div className="wk-grid-bar-actions">
-          <button className="wk-new-btn" disabled title="Coming soon">
+          <button className="wk-new-btn" onClick={() => setShowCreate(true)}>
             <Plus size={14} /> New Knowledge Base
           </button>
         </div>
       </div>
 
-      <div className="wk-knowledge-body">
-        <div className="wk-knowledge-hero">
-          <div className="wk-knowledge-icon"><Brain size={30} /></div>
-          <div>
-            <h1>Knowledge Bases</h1>
-            <p>Create document collections your agents can search and reason over. Each knowledge base is indexed and available as a RAG source.</p>
+      <div className="wk-grid-scroll">
+        {loading ? (
+          <div className="wk-center">
+            <LoadingOne size={28} className="spin" />
+          </div>
+        ) : corpora.length === 0 ? (
+          <div className="wk-center">
+            <Brain size={36} style={{ opacity: 0.3 }} />
+            <h2>No knowledge bases yet</h2>
+            <p>Create a knowledge base and upload documents. Your agents can search and reason over indexed content using RAG.</p>
+            <button className="wk-new-btn lg" onClick={() => setShowCreate(true)}>
+              <Plus size={15} /> Create your first knowledge base
+            </button>
+          </div>
+        ) : (
+          <div className="wk-card-grid">
+            {corpora.map(corpus => (
+              <button key={corpus.id} className="wk-card" onClick={() => loadDetail(corpus)}>
+                <div className="wk-card-top">
+                  <div className="wk-kn-corpus-icon">
+                    <Brain size={18} />
+                  </div>
+                  <button className="wk-icon-btn danger" onClick={(e) => deleteCorpus(corpus.id, e)} title="Delete">
+                    <Delete size={14} />
+                  </button>
+                </div>
+                <div className="wk-card-name">{corpus.name}</div>
+                {corpus.description && <div className="wk-card-desc">{corpus.description}</div>}
+                <div className="wk-card-meta">
+                  {corpus.chunk_count} chunks · {new Date(corpus.created_at * 1000).toLocaleDateString()}
+                </div>
+              </button>
+            ))}
+            <button className="wk-card-new" onClick={() => setShowCreate(true)}>
+              <Plus size={20} />
+              New knowledge base
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Create modal */}
+      {showCreate && (
+        <div className="wk-modal-overlay" onClick={() => setShowCreate(false)}>
+          <div className="wk-modal" onClick={e => e.stopPropagation()}>
+            <div className="wk-modal-header">
+              <span className="wk-modal-title">New Knowledge Base</span>
+              <button className="wk-icon-btn" onClick={() => setShowCreate(false)}><Close size={16} /></button>
+            </div>
+            <div className="wk-modal-body">
+              <label className="wk-field">
+                <span className="wk-field-label">Name <span style={{ color: 'var(--color-error)' }}>*</span></span>
+                <input
+                  className="wk-input"
+                  placeholder="e.g. Product Documentation"
+                  value={newName}
+                  onChange={e => setNewName(e.target.value)}
+                  autoFocus
+                  onKeyDown={e => { if (e.key === 'Enter') void createCorpus() }}
+                />
+              </label>
+              <label className="wk-field">
+                <span className="wk-field-label">Description</span>
+                <input
+                  className="wk-input"
+                  placeholder="What documents will be stored here?"
+                  value={newDesc}
+                  onChange={e => setNewDesc(e.target.value)}
+                />
+              </label>
+            </div>
+            <div className="wk-modal-footer">
+              <button className="wk-btn ghost" onClick={() => setShowCreate(false)}>Cancel</button>
+              <button className="wk-btn primary" onClick={createCorpus} disabled={!newName.trim() || saving}>
+                {saving ? <><LoadingOne size={13} className="spin" /> Creating…</> : 'Create'}
+              </button>
+            </div>
           </div>
         </div>
-        <div className="wk-coming-soon">
-          <Lightning size={13} /> Coming in the next update — RAG infrastructure already wired.
-        </div>
-      </div>
+      )}
+
+      {toast && <div className={`wk-toast ${toast.kind}`}>{toast.msg}</div>}
     </div>
   )
 }
@@ -1188,24 +1454,59 @@ em-emoji-picker { --border-radius: 14px; }
 
 /* Knowledge */
 .wk-knowledge { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-.wk-knowledge-body { flex: 1; overflow-y: auto; padding: 48px; display: flex; flex-direction: column; gap: 32px; }
-.wk-knowledge-hero { display: flex; align-items: center; gap: 20px; }
-.wk-knowledge-icon {
-  width: 58px; height: 58px; border-radius: 18px; flex-shrink: 0;
+.wk-kn-detail-body { flex: 1; overflow-y: auto; padding: 32px 40px; display: flex; flex-direction: column; gap: 12px; }
+
+.wk-kn-corpus-icon {
+  width: 38px; height: 38px; border-radius: 12px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   background: color-mix(in srgb, var(--color-primary) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-primary) 22%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
   color: var(--color-primary);
 }
-.wk-knowledge-hero h1 { margin: 0 0 6px; font-size: 26px; font-weight: 700; }
-.wk-knowledge-hero p  { margin: 0; font-size: 14px; color: var(--color-text-muted); max-width: 560px; line-height: 1.6; }
-.wk-coming-soon {
-  display: inline-flex; align-items: center; gap: 7px;
-  padding: 9px 16px; border-radius: 9px; align-self: flex-start;
-  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
-  color: var(--color-primary); font-size: 12px; font-weight: 600;
+
+.wk-kn-file-list { display: flex; flex-direction: column; gap: 4px; }
+.wk-kn-file-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 10px 14px; border-radius: 10px;
+  background: var(--color-bg); border: 1px solid var(--color-border-subtle);
+  transition: border-color 0.12s;
 }
+.wk-kn-file-row:hover { border-color: var(--color-border); }
+.wk-kn-file-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.wk-kn-file-name { font-size: 13px; font-weight: 600; color: var(--color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wk-kn-file-meta { font-size: 11px; color: var(--color-text-muted); }
+.wk-kn-file-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.wk-kn-status { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.wk-kn-error { color: var(--color-error); display: flex; cursor: help; }
+
+/* Modal */
+.wk-modal-overlay {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(0,0,0,0.45);
+  display: flex; align-items: center; justify-content: center;
+  animation: wk-fade 0.15s ease;
+}
+@keyframes wk-fade { from { opacity: 0; } to { opacity: 1; } }
+.wk-modal {
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: 16px; width: 420px; max-width: calc(100vw - 48px);
+  box-shadow: 0 24px 64px rgba(0,0,0,0.35);
+  animation: wk-modal-in 0.18s ease;
+}
+@keyframes wk-modal-in { from { opacity: 0; transform: scale(0.95) translateY(8px); } to { opacity: 1; transform: none; } }
+.wk-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 0; }
+.wk-modal-title { font-size: 15px; font-weight: 700; }
+.wk-modal-body { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.wk-modal-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 0 20px 18px; }
+.wk-field { display: flex; flex-direction: column; gap: 6px; }
+.wk-field-label { font-size: 12px; font-weight: 600; color: var(--color-text-muted); }
+.wk-input {
+  padding: 9px 12px; border-radius: 9px; font-size: 13px;
+  background: var(--color-bg); border: 1px solid var(--color-border);
+  color: var(--color-text); outline: none; transition: border-color 0.12s;
+}
+.wk-input:focus { border-color: var(--color-primary); }
+.wk-input::placeholder { color: var(--color-text-muted); }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 .spin { animation: spin 0.8s linear infinite; display: inline-block; }
