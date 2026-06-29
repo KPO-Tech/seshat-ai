@@ -222,6 +222,13 @@ func backendMigrations() []schemaMigration {
 				return nil
 			},
 		},
+		{
+			ID:    "20260629_029_automation_activations",
+			Scope: migrationScopeBackend,
+			Run: func(ctx context.Context, db *DB) error {
+				return db.gormDB.WithContext(ctx).AutoMigrate(&gAutomationActivation{})
+			},
+		},
 	}
 }
 

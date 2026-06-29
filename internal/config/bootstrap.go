@@ -240,6 +240,12 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		return nil, nil, fmt.Errorf("init scheduled job store: %w", err)
 	}
 
+	automationActivationStore, err := db.NewAutomationActivationStore(database)
+	if err != nil {
+		_ = cleanup()
+		return nil, nil, fmt.Errorf("init automation activation store: %w", err)
+	}
+
 	auditLogStore, err := db.NewAuditLogStore(database)
 	if err != nil {
 		_ = cleanup()
@@ -389,6 +395,8 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		PlanStore:               &dbPlanStoreAdapter{store: planDocumentStore},
 		LongTermMemory:          longTermMemStore,
 		DoclingURL:              strings.TrimSpace(config.DoclingURL),
+		AutomationServiceURL:    strings.TrimSpace(config.AutomationServiceURL),
+		AutomationAPIKey:        strings.TrimSpace(os.Getenv("AUTOMATION_API_KEY")),
 	}
 	queryClient, err := sdk.NewClient(queryClientConfig)
 	if err != nil {
@@ -512,32 +520,33 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 			DefaultUserRole: config.DefaultUserRole,
 			EnableAPIKeys:   config.EnableAPIKeys,
 		},
-		QueryRuntime:             runtime,
-		SessionManager:           runtime,
-		SessionOwnership:         sessionOwnershipStore,
-		FileStore:                fileStore,
-		CorpusStore:              corpusStore,
-		IngestionJobStore:        ingestionJobStore,
-		SettingStore:             settingStore,
-		OAuthStore:               oauthStore,
-		WebSearchSettings:        webSearchSettingStore,
-		WebSearchLogs:            webSearchLogStore,
-		WebSearchProviderConfigs: searchProviderConfigStore,
-		AuditLogStore:            auditLogStore,
-		UsageCounterStore:        usageCounterStore,
-		ArtifactStore:            artifactStore,
-		RAGService:               ragService,
-		Monitoring:               queryClient.GetMonitoring(),
-		DoclingClient:            buildDoclingClient(config.DoclingURL),
-		UserMemoryStore:          userMemoryStore,
-		LongTermMemoryStore:      longTermMemStore,
-		LongTermExtractor:        longTermExtractor,
-		PlanDocumentStore:        planDocumentStore,
-		MCPServerStore:           mcpServerStore,
-		MCPRuntime:               runtime,
-		UserPreferencesStore:     userPreferencesStore,
-		AgentDefinitionStore:     agentDefinitionStore,
-		ScheduledJobStore:        scheduledJobStore,
+		QueryRuntime:              runtime,
+		SessionManager:            runtime,
+		SessionOwnership:          sessionOwnershipStore,
+		FileStore:                 fileStore,
+		CorpusStore:               corpusStore,
+		IngestionJobStore:         ingestionJobStore,
+		SettingStore:              settingStore,
+		OAuthStore:                oauthStore,
+		WebSearchSettings:         webSearchSettingStore,
+		WebSearchLogs:             webSearchLogStore,
+		WebSearchProviderConfigs:  searchProviderConfigStore,
+		AuditLogStore:             auditLogStore,
+		UsageCounterStore:         usageCounterStore,
+		ArtifactStore:             artifactStore,
+		RAGService:                ragService,
+		Monitoring:                queryClient.GetMonitoring(),
+		DoclingClient:             buildDoclingClient(config.DoclingURL),
+		UserMemoryStore:           userMemoryStore,
+		LongTermMemoryStore:       longTermMemStore,
+		LongTermExtractor:         longTermExtractor,
+		PlanDocumentStore:         planDocumentStore,
+		MCPServerStore:            mcpServerStore,
+		MCPRuntime:                runtime,
+		UserPreferencesStore:      userPreferencesStore,
+		AgentDefinitionStore:      agentDefinitionStore,
+		ScheduledJobStore:         scheduledJobStore,
+		AutomationActivationStore: automationActivationStore,
 	})
 
 	// Build the scheduler worker with an executor closure that calls the query
@@ -570,6 +579,8 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		StorageConfigStore:    storageConfigStore,
 		LongTermExtractor:     longTermExtractor,
 		SchedulerWorker:       schedulerWorker,
+		AutomationServiceURL:  os.Getenv("AUTOMATION_SERVICE_URL"),
+		AutomationAPIKey:      os.Getenv("AUTOMATION_API_KEY"),
 		RateLimiter:           api.NewRateLimiter(config.RateLimitPerMinute, time.Minute),
 		LoginRateLimiter:      api.NewRateLimiter(10, 15*time.Minute),
 		EnableSignup:          config.EnableSignup,

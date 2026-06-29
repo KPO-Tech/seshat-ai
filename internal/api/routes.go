@@ -9,6 +9,8 @@ import (
 	"os"
 	"runtime/debug"
 	"strings"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 type requestIDKeyType struct{}
@@ -114,6 +116,18 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	apiV1.Handle("/scheduler/jobs", app.authMiddleware(http.HandlerFunc(app.handleSchedulerJobs)))
 	apiV1.Handle("/scheduler/jobs/", app.authMiddleware(http.HandlerFunc(app.handleSchedulerJobByID)))
 
+	apiV1.Handle("/automation/jobs", app.authMiddleware(http.HandlerFunc(app.handleAutomationJobs)))
+	apiV1.Handle("/automation/jobs/", app.authMiddleware(http.HandlerFunc(app.handleAutomationJobByID)))
+	apiV1.Handle("/automation/runs/", app.authMiddleware(http.HandlerFunc(app.handleAutomationRun)))
+	// Internal daemon endpoint — authenticated by AUTOMATION_API_KEY, not user JWT.
+	apiV1.Handle("/automation/runtime-config", app.automationAPIKeyMiddleware(http.HandlerFunc(app.handleAutomationRuntimeConfig)))
+
+	// Admin: automation activation management (admin role required)
+	apiV1.Handle("/admin/automation/activations",
+		app.requireRole("admin", http.HandlerFunc(app.handleAdminAutomationActivations)))
+	apiV1.Handle("/admin/automation/users/",
+		app.requireRole("admin", http.HandlerFunc(app.handleAdminAutomationDispatch)))
+
 	apiV1.HandleFunc("/models", handleModelsList)
 	apiV1.HandleFunc("/metrics", app.handleMetricsJSON)
 	apiV1.HandleFunc("/desktop/handshake", app.handleDesktopHandshake)
@@ -150,6 +164,11 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	}
 	handler = recoverMiddleware(handler)
 	handler = requestIDMiddleware(handler)
+	handler = otelhttp.NewHandler(handler, "seshat-api",
+		otelhttp.WithSpanNameFormatter(func(_ string, r *http.Request) string {
+			return r.Method + " " + r.URL.Path
+		}),
+	)
 
 	mux.Handle("/api/v1/", http.StripPrefix("/api/v1", handler))
 

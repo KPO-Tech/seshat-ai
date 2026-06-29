@@ -12,6 +12,7 @@ import {
   Edit,
   EditTwo,
   Layers,
+  Cycle,
 } from '@icon-park/react'
 import { useUIStore } from '@/stores/ui'
 import { useAuthStore } from '@/stores/auth'
@@ -174,6 +175,13 @@ export function Sidebar() {
             collapsed={collapsed}
             active={pathname === '/scheduled-tasks'}
             onClick={() => navigate('/scheduled-tasks')}
+          />
+          <SidebarItem
+            icon={<Cycle theme="outline" size={20} />}
+            label="Automations"
+            collapsed={collapsed}
+            active={pathname === '/automation'}
+            onClick={() => navigate('/automation')}
           />
           <SidebarItem
             icon={<Layers theme="outline" size={20} />}

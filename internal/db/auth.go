@@ -197,14 +197,18 @@ func (s *IdentityStore) ResolvePrincipalFromToken(ctx context.Context, plaintext
 	}, nil
 }
 
-func (s *IdentityStore) TouchAuthSession(ctx context.Context, sessionID string) error {
-	now := time.Now().UTC().Unix()
+func (s *IdentityStore) TouchAuthSession(ctx context.Context, sessionID string, extendBy time.Duration) error {
+	now := time.Now().UTC()
+	updates := map[string]any{
+		"last_used_at_unix": now.Unix(),
+		"updated_at_unix":   now.Unix(),
+	}
+	if extendBy > 0 {
+		updates["expires_at_unix"] = now.Add(extendBy).Unix()
+	}
 	if err := s.db.GormDB().WithContext(ctx).
 		Model(&gAuthSession{}).Where("id = ?", sessionID).
-		Updates(map[string]any{
-			"last_used_at_unix": now,
-			"updated_at_unix":   now,
-		}).Error; err != nil {
+		Updates(updates).Error; err != nil {
 		return fmt.Errorf("touch auth session: %w", err)
 	}
 	return nil

@@ -469,6 +469,64 @@ export type CreateJobBody = {
 
 export type UpdateJobBody = Partial<CreateJobBody>
 
+// ─── Automation jobs (seshat-automation daemon) ───────────────────────────────
+
+export type AutomationTriggerType = 'cron' | 'interval' | 'once'
+
+export type AutomationTrigger = {
+  type: AutomationTriggerType
+  cron?: string
+  interval?: string   // Go duration string, e.g. "24h"
+  run_at?: string     // RFC3339
+}
+
+export type AutomationAgentConfig = {
+  slug?: string
+  base_type?: string
+  tools?: string[]
+  skills?: string[]
+  model?: string
+  max_turns?: number
+  system_prompt?: string
+}
+
+export type AutomationJobStatus = 'active' | 'paused' | 'inactive'
+export type AutomationRunStatus = 'running' | 'success' | 'error'
+
+export type AutomationJob = {
+  id: string
+  owner_id: string
+  name: string
+  description: string
+  trigger: AutomationTrigger
+  agent: AutomationAgentConfig
+  task: string
+  status: AutomationJobStatus
+  last_run_at?: string   // RFC3339
+  next_run_at?: string   // RFC3339
+  last_run_status: string
+  created_at: string
+  updated_at: string
+}
+
+export type AutomationRun = {
+  id: string
+  job_id: string
+  started_at: string
+  ended_at?: string
+  status: AutomationRunStatus
+  output: string
+  error: string
+}
+
+export type CreateAutomationJobBody = {
+  name: string
+  description?: string
+  trigger: AutomationTrigger
+  agent: AutomationAgentConfig
+  task: string
+}
+
 // ─── Plan runtime event ───────────────────────────────────────────────────────
 
 export type PlanRuntimeEvent = {

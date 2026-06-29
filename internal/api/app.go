@@ -28,6 +28,7 @@ type App struct {
 	permBroker            *backendquery.PermissionBroker
 	promptBroker          *backendquery.PromptBroker
 	schedulerWorker       *scheduler.Worker
+	automationClient      *AutomationClient
 	enableSignup          bool
 	enableAPIKeys         bool
 	featuredRepos         []FeaturedSkillRepo
@@ -47,6 +48,8 @@ type AppConfig struct {
 	RateLimiter           *RateLimiter
 	LoginRateLimiter      *RateLimiter
 	SchedulerWorker       *scheduler.Worker
+	AutomationServiceURL  string // AUTOMATION_SERVICE_URL env var; empty = disabled
+	AutomationAPIKey      string // AUTOMATION_API_KEY env var; empty = no auth
 	EnableSignup          bool
 	EnableAPIKeys         bool
 	FeaturedRepos         []FeaturedSkillRepo
@@ -66,6 +69,7 @@ func NewApp(cfg AppConfig) *App {
 		rateLimiter:           cfg.RateLimiter,
 		loginRateLimiter:      cfg.LoginRateLimiter,
 		schedulerWorker:       cfg.SchedulerWorker,
+		automationClient:      NewAutomationClient(cfg.AutomationServiceURL, cfg.AutomationAPIKey),
 		permBroker:            backendquery.NewPermissionBroker(),
 		promptBroker:          backendquery.NewPromptBroker(),
 		enableSignup:          cfg.EnableSignup,
