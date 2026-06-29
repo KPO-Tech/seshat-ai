@@ -23,6 +23,7 @@ import MultiAgentScenarios from './content/MultiAgentScenarios'
 import DeveloperIntegration from './content/DeveloperIntegration'
 import GrpcAPI from './content/GrpcAPI'
 import RestAPI from './content/RestAPI'
+import VisionDirection from './content/VisionDirection'
 import LearnAgentRuntime from './content/LearnAgentRuntime'
 import LearnWhyGo from './content/LearnWhyGo'
 import LearnMonoRunExplained from './content/LearnMonoRunExplained'
@@ -61,6 +62,7 @@ const CONTENT: Record<string, Record<string, React.ReactNode>> = {
     'rest-api': <RestAPI />,
   },
   learn: {
+    vision: <VisionDirection />,
     'agent-runtime': <LearnAgentRuntime />,
     'why-go': <LearnWhyGo />,
     'mono-run-explained': <LearnMonoRunExplained />,

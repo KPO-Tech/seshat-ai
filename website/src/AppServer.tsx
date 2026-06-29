@@ -3,6 +3,7 @@ import Nav from './components/Nav'
 import Footer from './components/Footer'
 import Home from './pages/home'
 import Services from './pages/services'
+import OpenSource from './pages/open-source'
 import DocsLayout from './pages/docs/DocsLayout'
 import SectionPage from './pages/docs/SectionPage'
 import ArticlePageServer from './pages/docs/ArticlePageServer'
@@ -19,6 +20,7 @@ export default function AppServer() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/services" element={<Services />} />
+        <Route path="/open-source" element={<OpenSource />} />
         <Route path="/docs" element={<DocsLayout />}>
           <Route index element={<Welcome />} />
           <Route path="contribution" element={<Contribution />} />
@@ -27,6 +29,7 @@ export default function AppServer() {
         </Route>
         <Route path="/fr" element={<Home />} />
         <Route path="/fr/services" element={<Services />} />
+        <Route path="/fr/open-source" element={<OpenSource />} />
         <Route path="/fr/docs" element={<DocsLayout />}>
           <Route index element={<Welcome />} />
           <Route path="contribution" element={<Contribution />} />

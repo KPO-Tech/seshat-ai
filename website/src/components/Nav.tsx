@@ -15,6 +15,8 @@ export default function Nav() {
     ? pathname.replace(/^\/fr/, '') || '/'
     : '/fr' + (pathname === '/' ? '' : pathname)
 
+  const servicesLabel = lang === 'fr' ? 'Services' : 'Services'
+
   useEffect(() => setMenuOpen(false), [pathname])
 
   const handleLangSwitch = () => {
@@ -32,34 +34,22 @@ export default function Nav() {
         </NavLink>
 
         <div className={styles.links}>
-          <NavLink
-            to={linkTo('/')}
-            className={({ isActive }) => isActive ? `${styles.link} ${styles.active}` : styles.link}
-            end
-          >
+          <NavLink to={linkTo('/')} className={({ isActive }) => isActive ? `${styles.link} ${styles.active}` : styles.link} end>
             {t.nav.home}
           </NavLink>
-          <NavLink
-            to={linkTo('/services')}
-            className={({ isActive }) => isActive ? `${styles.link} ${styles.active}` : styles.link}
-          >
-            {t.nav.services}
+          <NavLink to={linkTo('/services')} className={({ isActive }) => isActive ? `${styles.link} ${styles.active}` : styles.link}>
+            {servicesLabel}
           </NavLink>
-          <NavLink
-            to={linkTo('/docs')}
-            className={({ isActive }) => isActive ? `${styles.link} ${styles.active}` : styles.link}
-          >
+          <NavLink to={linkTo('/docs')} className={({ isActive }) => isActive ? `${styles.link} ${styles.active}` : styles.link}>
             {t.nav.docs}
           </NavLink>
-          <a href="https://github.com/EngineerProjects/seshat" className={styles.link} target="_blank" rel="noreferrer">
+          <NavLink to={linkTo('/open-source')} className={({ isActive }) => isActive ? `${styles.link} ${styles.active}` : styles.link}>
+            {lang === 'fr' ? 'Open Source' : 'Open Source'}
+          </NavLink>
+          <a href="https://github.com/KPO-Tech/seshat" className={styles.link} target="_blank" rel="noreferrer">
             {t.nav.github}
           </a>
-          <a
-            href="https://github.com/EngineerProjects/seshat/discussions"
-            className={styles.cta}
-            target="_blank"
-            rel="noreferrer"
-          >
+          <a href="https://github.com/KPO-Tech/seshat/discussions" className={styles.cta} target="_blank" rel="noreferrer">
             {t.nav.discussions}
           </a>
           <button
@@ -91,12 +81,7 @@ export default function Nav() {
           </NavLink>
         </div>
 
-        <button
-          className={styles.burger}
-          onClick={() => setMenuOpen((o) => !o)}
-          aria-label="Toggle navigation menu"
-          aria-expanded={menuOpen}
-        >
+        <button className={styles.burger} onClick={() => setMenuOpen((open) => !open)} aria-label="Toggle navigation menu" aria-expanded={menuOpen}>
           {menuOpen ? (
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <line x1="18" y1="6" x2="6" y2="18" />
@@ -117,42 +102,25 @@ export default function Nav() {
             {t.nav.home}
           </NavLink>
           <NavLink to={linkTo('/services')} className={styles.mobileLink} onClick={closeMenu}>
-            {t.nav.services}
+            {servicesLabel}
           </NavLink>
           <NavLink to={linkTo('/docs')} className={styles.mobileLink} onClick={closeMenu}>
             {t.nav.docs}
           </NavLink>
-          <a
-            href="https://github.com/EngineerProjects/seshat"
-            className={styles.mobileLink}
-            target="_blank"
-            rel="noreferrer"
-            onClick={closeMenu}
-          >
+          <NavLink to={linkTo('/open-source')} className={styles.mobileLink} onClick={closeMenu}>
+            Open Source
+          </NavLink>
+          <a href="https://github.com/KPO-Tech/seshat" className={styles.mobileLink} target="_blank" rel="noreferrer" onClick={closeMenu}>
             {t.nav.github}
           </a>
-          <a
-            href="https://github.com/EngineerProjects/seshat/discussions"
-            className={`${styles.mobileLink} ${styles.mobileCta}`}
-            target="_blank"
-            rel="noreferrer"
-            onClick={closeMenu}
-          >
+          <a href="https://github.com/KPO-Tech/seshat/discussions" className={`${styles.mobileLink} ${styles.mobileCta}`} target="_blank" rel="noreferrer" onClick={closeMenu}>
             {t.nav.discussions}
           </a>
           <div className={styles.mobileBottom}>
-            <NavLink
-              to={altPath}
-              className={styles.mobileLang}
-              onClick={() => { handleLangSwitch(); closeMenu() }}
-            >
+            <NavLink to={altPath} className={styles.mobileLang} onClick={() => { handleLangSwitch(); closeMenu() }}>
               {altLang === 'fr' ? 'Passer en Français' : 'Switch to English'}
             </NavLink>
-            <button
-              onClick={() => { toggleTheme(); closeMenu() }}
-              className={styles.mobileThemeBtn}
-              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
+            <button onClick={() => { toggleTheme(); closeMenu() }} className={styles.mobileThemeBtn} aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
               {theme === 'dark' ? 'Light mode' : 'Dark mode'}
             </button>
           </div>

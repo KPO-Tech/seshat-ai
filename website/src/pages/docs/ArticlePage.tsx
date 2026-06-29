@@ -40,6 +40,7 @@ const CONTENT: Record<string, Record<string, LazyDocPage>> = {
     'rest-api': lazy(() => import('./content/RestAPI')),
   },
   learn: {
+    vision: lazy(() => import('./content/VisionDirection')),
     'agent-runtime': lazy(() => import('./content/LearnAgentRuntime')),
     'why-go': lazy(() => import('./content/LearnWhyGo')),
     'mono-run-explained': lazy(() => import('./content/LearnMonoRunExplained')),

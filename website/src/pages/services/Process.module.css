@@ -5,6 +5,43 @@
   border-bottom: 1px solid var(--border-glass);
 }
 
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  grid-template-rows: auto auto;
+  column-gap: 4rem;
+  row-gap: 0;
+}
+
+.header {
+  grid-column: 1 / -1;
+  padding-bottom: 0.25rem;
+}
+
+.left {
+  min-width: 0;
+}
+
+.right {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 2rem;
+}
+
+.illustration {
+  width: 100%;
+  height: auto;
+  display: block;
+  mix-blend-mode: luminosity;
+  opacity: 0.78;
+  transition: opacity 0.35s ease;
+}
+
+.illustration:hover {
+  opacity: 0.95;
+}
+
 .title {
   font-size: clamp(2rem, 3.5vw, 2.5rem);
   font-weight: 855;
@@ -17,7 +54,7 @@
 .sub {
   color: var(--text-secondary);
   max-width: 100%;
-  margin-bottom: 4.5rem;
+  margin-bottom: 0.75rem;
   font-size: 1.05rem;
 }
 
@@ -36,8 +73,8 @@
   top: 10px;
   bottom: 10px;
   width: 2px;
-  background: linear-gradient(to bottom, var(--brand-platform-start), var(--brand-platform-end));
-  opacity: 0.15;
+  background: linear-gradient(to bottom, var(--brand-engine-start), var(--brand-engine-end));
+  opacity: 0.2;
   transform-origin: top;
   transform: scaleY(0);
   transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.2s;
@@ -63,20 +100,20 @@
   justify-content: center;
   border-radius: 50%;
   background: var(--bg);
-  border: 1px solid var(--border-indigo);
+  border: 1px solid var(--border-orange);
   font-weight: 800;
   font-size: 0.95rem;
-  color: var(--purple);
-  box-shadow: 0 4px 15px rgba(124, 58, 237, 0.05);
+  color: var(--brand-engine-end);
+  box-shadow: 0 4px 15px rgba(232, 64, 30, 0.06);
   z-index: 2;
   transition: all 0.3s ease;
 }
 
 .step:hover .num {
-  border-color: var(--brand-platform-end);
+  border-color: var(--brand-engine-start);
   color: #ffffff;
-  background: var(--brand-platform-gradient);
-  box-shadow: 0 0 20px rgba(124, 58, 237, 0.3);
+  background: var(--brand-engine-gradient);
+  box-shadow: 0 0 20px rgba(232, 64, 30, 0.25);
   transform: scale(1.05);
 }
 
@@ -99,8 +136,27 @@
   max-width: 600px;
 }
 
+@media (max-width: 960px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .header {
+    grid-column: 1;
+    padding-bottom: 0;
+  }
+
+  .right {
+    max-width: 360px;
+    margin: 0 auto;
+    padding-top: 2rem;
+  }
+}
+
 @media (max-width: 640px) {
   .step { gap: 1.25rem; }
   .stepBody { max-width: 100%; }
   .steps::before { left: 18px; }
+
+  .right { max-width: 280px; }
 }

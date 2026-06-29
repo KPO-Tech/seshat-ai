@@ -6,8 +6,15 @@ import { usePageMeta } from '../../hooks/usePageMeta'
 import { useTranslation } from '../../hooks/useTranslation'
 
 export default function Services() {
-  const { t } = useTranslation()
-  usePageMeta(t.meta.services.title, t.meta.services.description)
+  const { lang } = useTranslation()
+  usePageMeta(
+    lang === 'fr'
+      ? 'Services & Equipes IA | Seshat'
+      : 'Services & AI Teams | Seshat',
+    lang === 'fr'
+      ? 'Services Seshat pour workflows documentaires, connaissance interne, finance et operations back-office avec gouvernance, deploiement serieux et pilotage par cas d usage.'
+      : 'Seshat services for document workflows, internal knowledge, finance, and back-office operations with governed execution and pilot-first delivery.',
+  )
 
   return (
     <>
