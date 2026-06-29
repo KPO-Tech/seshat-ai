@@ -1,11 +1,13 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Left, Plus, Sync, Delete, Edit, CheckOne, Caution, Pause, Play,
-  LoadingOne, Close, Flashlamp, Time, Robot, Timer,
+  LoadingOne, Close, Flashlamp, Time, Robot, Timer, Send,
 } from '@icon-park/react'
 import { api } from '@/api/client'
 import { useUIStore } from '@/stores/ui'
+import { useSessionStore, streamingToContentBlocks } from '@/stores/session'
+import { useChat } from '@/hooks/useChat'
 import type {
   AutomationJob,
   AutomationRun,
@@ -13,6 +15,7 @@ import type {
   AutomationTrigger,
   AutomationAgentConfig,
   Agent,
+  Session,
 } from '@/api/types'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -138,8 +141,51 @@ export function AutomationPage() {
   const [form,        setForm]        = useState<JobForm>(EMPTY_FORM)
   const [saving,      setSaving]      = useState(false)
   const [saveError,   setSaveError]   = useState<string | null>(null)
+  const [chatOpen,    setChatOpen]    = useState(false)
+  const [amSessionId, setAmSessionId] = useState<string | null>(null)
 
   useEffect(() => { closeRightPanel() }, [closeRightPanel])
+
+  // Init or restore the persistent Automation Manager chat session
+  useEffect(() => {
+    const STORAGE_KEY = 'seshat:automation-manager-session'
+
+    function createSession() {
+      api.post<Session>('/sessions', {
+        title: 'Automation Manager',
+        agent_slug: 'automation-manager',
+      }).then(s => {
+        localStorage.setItem(STORAGE_KEY, s.session_id)
+        useSessionStore.getState().upsertSession({
+          id: s.session_id,
+          title: s.title ?? 'Automation Manager',
+          messages: s.messages ?? [],
+          createdAt: new Date((s.created_at ?? 0) * 1000).toISOString(),
+          updatedAt: new Date((s.updated_at ?? s.created_at ?? 0) * 1000).toISOString(),
+        })
+        setAmSessionId(s.session_id)
+      }).catch(() => {})
+    }
+
+    const savedId = localStorage.getItem(STORAGE_KEY)
+    if (savedId) {
+      api.get<Session>(`/sessions/${savedId}`).then(s => {
+        useSessionStore.getState().upsertSession({
+          id: s.session_id,
+          title: s.title ?? 'Automation Manager',
+          messages: s.messages ?? [],
+          createdAt: new Date((s.created_at ?? 0) * 1000).toISOString(),
+          updatedAt: new Date((s.updated_at ?? s.created_at ?? 0) * 1000).toISOString(),
+        })
+        setAmSessionId(s.session_id)
+      }).catch(() => {
+        localStorage.removeItem(STORAGE_KEY)
+        createSession()
+      })
+    } else {
+      createSession()
+    }
+  }, [])
 
   useEffect(() => {
     api.get<Agent[]>('/agents').then(data => setAgents(data ?? [])).catch(() => {})
@@ -293,6 +339,13 @@ export function AutomationPage() {
           <button className="at-icon-btn" onClick={loadJobs} title="Refresh">
             <Sync size={16} />
           </button>
+          <button
+            className={`at-icon-btn${chatOpen ? ' active' : ''}`}
+            onClick={() => setChatOpen(v => !v)}
+            title="Automation Manager"
+          >
+            <Robot size={16} theme={chatOpen ? 'filled' : 'outline'} />
+          </button>
           <button className="at-new-btn" onClick={openCreate}>
             <Plus size={14} /> New Automation
           </button>
@@ -444,6 +497,11 @@ export function AutomationPage() {
               ))}
             </div>
           </div>
+        )}
+
+        {/* ── Automation Manager chat panel ── */}
+        {chatOpen && amSessionId && (
+          <AutomationChatPanel sessionId={amSessionId} />
         )}
       </div>
 
@@ -704,6 +762,104 @@ export function AutomationPage() {
   )
 }
 
+// ─── Automation Manager chat panel ───────────────────────────────────────────
+
+function AutomationChatPanel({ sessionId }: { sessionId: string }) {
+  const [input, setInput]   = useState('')
+  const messagesRef          = useRef<HTMLDivElement>(null)
+
+  const { sendMessage, isStreaming, stopMessage } = useChat(sessionId)
+  const session     = useSessionStore(s => s.sessions.find(x => x.id === sessionId))
+  const rawStreaming = useSessionStore(s => s.streamingBySession[sessionId] ?? [])
+  const streaming   = streamingToContentBlocks(rawStreaming)
+
+  useEffect(() => {
+    if (messagesRef.current) {
+      messagesRef.current.scrollTop = messagesRef.current.scrollHeight
+    }
+  }, [session?.messages, rawStreaming])
+
+  async function handleSend() {
+    const text = input.trim()
+    if (!text || isStreaming) return
+    setInput('')
+    await sendMessage(text)
+  }
+
+  function handleKey(e: React.KeyboardEvent) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSend() }
+  }
+
+  const messages = session?.messages ?? []
+
+  return (
+    <div className="at-chat-col">
+      <div className="at-chat-header">
+        <Robot size={15} theme="outline" />
+        <span className="at-chat-title">Automation Manager</span>
+      </div>
+
+      <div className="at-chat-messages" ref={messagesRef}>
+        {messages.length === 0 && !isStreaming && (
+          <div className="at-chat-empty">
+            <Robot size={30} theme="outline" />
+            <p>Ask me to create, edit, or manage your automations.</p>
+          </div>
+        )}
+
+        {messages.map((msg, i) => (
+          <div key={i} className={`at-chat-msg ${msg.role}`}>
+            <div className="at-chat-msg-role">
+              {msg.role === 'assistant' ? 'Manager' : 'You'}
+            </div>
+            <div className="at-chat-msg-body">
+              {msg.content.map((block, bi) => {
+                if (block.type === 'text') return <span key={bi}>{block.text}</span>
+                if (block.type === 'tool_use') return (
+                  <span key={bi} className="at-chat-tool">⚙ {block.name}</span>
+                )
+                return null
+              })}
+            </div>
+          </div>
+        ))}
+
+        {isStreaming && (
+          <div className="at-chat-msg assistant streaming">
+            <div className="at-chat-msg-role">Manager</div>
+            <div className="at-chat-msg-body">
+              {streaming.map((block, i) => {
+                if (block.type === 'text') return <span key={i}>{block.text}</span>
+                if (block.type === 'tool_use') return (
+                  <span key={i} className="at-chat-tool">⚙ {block.name}…</span>
+                )
+                return null
+              })}
+              <span className="at-chat-cursor" />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="at-chat-input-bar">
+        <textarea
+          className="at-chat-input"
+          placeholder="Ask the automation manager…"
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={handleKey}
+          rows={1}
+          disabled={isStreaming}
+        />
+        {isStreaming
+          ? <button className="at-icon-btn" onClick={() => void stopMessage()}><Close size={14} /></button>
+          : <button className="at-chat-send" onClick={() => void handleSend()} disabled={!input.trim()}><Send size={14} /></button>
+        }
+      </div>
+    </div>
+  )
+}
+
 // ─── CSS ──────────────────────────────────────────────────────────────────────
 
 const CSS = `
@@ -858,6 +1014,7 @@ const CSS = `
   background: none; color: var(--color-text-muted);
 }
 .at-icon-btn:hover { background: var(--color-hover); color: var(--color-text); }
+.at-icon-btn.active { background: color-mix(in srgb, var(--color-primary) 15%, transparent); color: var(--color-primary); }
 .at-icon-btn.danger:hover { background: color-mix(in srgb, var(--color-error) 15%, transparent); color: var(--color-error); }
 .at-spin { animation: at-spin 1s linear infinite; }
 @keyframes at-spin { to { transform: rotate(360deg); } }
@@ -991,4 +1148,74 @@ const CSS = `
   color: var(--color-text-secondary);
 }
 .at-btn.ghost:hover { background: var(--color-hover); }
+
+/* ── Automation Manager chat panel ── */
+.at-chat-col {
+  width: 340px; flex-shrink: 0;
+  border-left: 1px solid var(--color-border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.at-chat-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 16px; flex-shrink: 0;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+}
+.at-chat-title {
+  font-size: 13px; font-weight: 600; color: var(--color-text);
+}
+.at-chat-messages {
+  flex: 1; overflow-y: auto;
+  padding: 14px; display: flex; flex-direction: column; gap: 14px;
+}
+.at-chat-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; padding: 40px 16px; color: var(--color-text-muted);
+  font-size: 13px; text-align: center; flex: 1;
+}
+.at-chat-empty p { margin: 0; line-height: 1.5; }
+.at-chat-msg { display: flex; flex-direction: column; gap: 3px; }
+.at-chat-msg-role {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--color-text-muted);
+}
+.at-chat-msg.user .at-chat-msg-role { color: var(--color-primary); }
+.at-chat-msg-body {
+  font-size: 13px; line-height: 1.55; color: var(--color-text-secondary);
+  white-space: pre-wrap; word-break: break-word;
+}
+.at-chat-msg.user .at-chat-msg-body { color: var(--color-text); }
+.at-chat-tool {
+  display: inline-block; margin: 2px 0;
+  padding: 2px 8px; border-radius: 4px;
+  background: var(--color-hover); color: var(--color-text-muted);
+  font-size: 11px; font-family: var(--font-mono);
+}
+.at-chat-cursor {
+  display: inline-block; width: 7px; height: 13px;
+  background: var(--color-primary); opacity: 0.7;
+  vertical-align: text-bottom; margin-left: 2px;
+  animation: at-chat-blink 0.8s step-end infinite;
+}
+@keyframes at-chat-blink { 0%, 100% { opacity: 0.7; } 50% { opacity: 0; } }
+.at-chat-input-bar {
+  display: flex; align-items: flex-end; gap: 6px;
+  padding: 10px 12px; flex-shrink: 0;
+  border-top: 1px solid var(--color-border);
+}
+.at-chat-input {
+  flex: 1; resize: none; padding: 8px 10px; border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-hover); color: var(--color-text);
+  font-size: 13px; font-family: var(--font-sans);
+  line-height: 1.4; outline: none; max-height: 120px; overflow-y: auto;
+}
+.at-chat-input:focus { border-color: var(--color-primary); }
+.at-chat-send {
+  display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 8px; border: none; cursor: pointer;
+  background: var(--color-primary); color: #fff; flex-shrink: 0;
+}
+.at-chat-send:hover { opacity: 0.88; }
+.at-chat-send:disabled { opacity: 0.4; cursor: default; }
 `
