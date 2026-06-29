@@ -1,146 +1,97 @@
+/* ─── Section header ─────────────────────────────────── */
+.head {
+  display: grid;
+  gap: 0.9rem;
+}
+
 .title {
-  font-size: clamp(2rem, 3.5vw, 2.6rem);
+  font-size: clamp(2rem, 3.8vw, 3rem);
   font-weight: 800;
-  letter-spacing: -0.03em;
-  margin-bottom: 0.75rem;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
 }
 
 .sub {
-  font-size: 1rem;
-  color: var(--text-secondary);
-  line-height: 1.7;
-  max-width: 58ch;
-  margin-bottom: 0;
+  font-size: 1.05rem;
+  color: #C0BFC9;
+  line-height: 1.72;
 }
 
-/* Filter bar */
-.filterBar {
-  display: flex;
-  gap: 0.5rem;
-  margin: 2rem 0 2.5rem;
-  flex-wrap: wrap;
-}
-
-.filterBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.45rem 0.9rem;
-  border-radius: 100px;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: 0.82rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  font-family: inherit;
-}
-
-.filterBtn:hover {
-  border-color: var(--border2);
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.filterBtnActive {
-  background: rgba(255, 255, 255, 0.06) !important;
-  border-color: var(--border2) !important;
-  color: var(--text) !important;
-}
-
-/* Category-colored active states */
-.filterBtnActive.catOrange {
-  border-color: var(--border-orange) !important;
-  background: rgba(232, 64, 30, 0.06) !important;
-  color: var(--brand-engine-end) !important;
-}
-
-.filterBtnActive.catPurple {
-  border-color: var(--border-indigo) !important;
-  background: rgba(99, 102, 241, 0.06) !important;
-  color: #a78bfa !important;
-}
-
-.filterBtnActive.catGreen {
-  border-color: rgba(16, 185, 129, 0.3) !important;
-  background: rgba(16, 185, 129, 0.06) !important;
-  color: var(--green) !important;
-}
-
-.filterBtnActive.catBlue {
-  border-color: rgba(59, 130, 246, 0.3) !important;
-  background: rgba(59, 130, 246, 0.06) !important;
-  color: var(--blue) !important;
-}
-
-.filterCount {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 4px;
-  border-radius: 100px;
-  background: rgba(255, 255, 255, 0.07);
-  font-size: 0.68rem;
-  font-weight: 700;
-  line-height: 1;
-}
-
-/* Grid */
-.grid {
+/* ─── Flip card grid ──────────────────────────────────── */
+.cardGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1.25rem;
+  gap: 1.5rem;
+  margin-top: 2.5rem;
 }
 
-/* Card */
+/* ─── Card wrapper + 3D perspective ──────────────────── */
+.cardWrapper {
+  perspective: 1200px;
+  height: 430px;
+  cursor: pointer;
+}
+
 .card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
-  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.65s cubic-bezier(0.4, 0.2, 0.2, 1);
+  will-change: transform;
 }
 
-.card::before {
+@media (hover: hover) {
+  .cardWrapper:hover .card {
+    transform: rotateY(180deg);
+  }
+}
+
+.cardFlipped {
+  transform: rotateY(180deg) !important;
+}
+
+/* ─── Shared face styles ──────────────────────────────── */
+.cardFront,
+.cardBack {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 1.5rem;
+  border: 1px solid var(--border-glass);
+  padding: 1.75rem;
+  /* NO overflow: hidden — it breaks backface-visibility in WebKit/Blink */
+}
+
+/* Top accent line — clips itself via border-radius so no overflow needed */
+.cardFront::before,
+.cardBack::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--cat-dot, rgba(255,255,255,0.1)), transparent);
-  opacity: 0;
-  transition: opacity 0.3s ease;
+  height: 3px;
+  background: linear-gradient(90deg, var(--card-accent, rgba(232,64,30,0.35)), transparent 65%);
+  border-radius: 1.5rem 1.5rem 0 0;
 }
 
-.card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.3);
-  background: var(--bg-panel);
+/* ─── Front face ──────────────────────────────────────── */
+.cardFront {
+  background: var(--bg-card, #24222C);
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
 }
 
-.card:hover::before {
-  opacity: 1;
-}
-
-.cardTop {
+.faceTop {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
 }
 
-/* Icon */
-.iconWrap {
+.catIcon {
   width: 38px;
   height: 38px;
   border-radius: 10px;
@@ -150,250 +101,349 @@
   flex-shrink: 0;
 }
 
-.iconWrap svg {
-  width: 18px;
-  height: 18px;
-}
+.catIcon svg { width: 17px; height: 17px; }
 
-.catOrange .iconWrap,
-.iconWrap.catOrange {
-  background: rgba(232, 64, 30, 0.12);
-  color: var(--brand-engine-end);
-  border: 1px solid rgba(232, 64, 30, 0.15);
-}
+.catOrange.catIcon { background: rgba(232,64,30,0.1);  color: var(--brand-engine-end); border: 1px solid rgba(232,64,30,0.18);  }
+.catPurple.catIcon { background: rgba(99,102,241,0.1); color: #a78bfa;                 border: 1px solid rgba(99,102,241,0.18); }
+.catGreen.catIcon  { background: rgba(16,185,129,0.1); color: var(--green);            border: 1px solid rgba(16,185,129,0.18); }
 
-.catPurple .iconWrap,
-.iconWrap.catPurple {
-  background: rgba(99, 102, 241, 0.12);
-  color: #a78bfa;
-  border: 1px solid rgba(99, 102, 241, 0.15);
-}
-
-.catGreen .iconWrap,
-.iconWrap.catGreen {
-  background: rgba(16, 185, 129, 0.1);
-  color: var(--green);
-  border: 1px solid rgba(16, 185, 129, 0.15);
-}
-
-.catBlue .iconWrap,
-.iconWrap.catBlue {
-  background: rgba(59, 130, 246, 0.1);
-  color: var(--blue);
-  border: 1px solid rgba(59, 130, 246, 0.15);
-}
-
-/* Category badge */
 .catBadge {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  font-size: 0.67rem;
-  font-weight: 600;
+  font-size: 0.65rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.08em;
   padding: 0.2rem 0.55rem;
-  border-radius: 100px;
+  border-radius: 999px;
 }
 
-.catBadge.catOrange {
-  background: rgba(232, 64, 30, 0.08);
-  color: var(--brand-engine-end);
-  border: 1px solid rgba(232, 64, 30, 0.12);
-}
+.catOrange.catBadge { background: rgba(232,64,30,0.08);  color: var(--brand-engine-end); border: 1px solid rgba(232,64,30,0.14);  }
+.catPurple.catBadge { background: rgba(99,102,241,0.08); color: #a78bfa;                 border: 1px solid rgba(99,102,241,0.14); }
+.catGreen.catBadge  { background: rgba(16,185,129,0.08); color: var(--green);            border: 1px solid rgba(16,185,129,0.14); }
 
-.catBadge.catPurple {
-  background: rgba(99, 102, 241, 0.08);
-  color: #a78bfa;
-  border: 1px solid rgba(99, 102, 241, 0.12);
-}
-
-.catBadge.catGreen {
-  background: rgba(16, 185, 129, 0.08);
-  color: var(--green);
-  border: 1px solid rgba(16, 185, 129, 0.12);
-}
-
-.catBadge.catBlue {
-  background: rgba(59, 130, 246, 0.08);
-  color: var(--blue);
-  border: 1px solid rgba(59, 130, 246, 0.12);
-}
-
-.catDot {
-  width: 5px;
-  height: 5px;
+.badgeDot {
+  width: 4px;
+  height: 4px;
   border-radius: 50%;
   background: currentColor;
   flex-shrink: 0;
 }
 
+.cardNum {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--text-subtle);
+  letter-spacing: 0.06em;
+}
+
 .cardTitle {
-  font-size: 1rem;
+  font-size: 1.1rem;
   font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.28;
   color: var(--text);
-  line-height: 1.3;
   margin: 0;
 }
 
-.tagline {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  font-style: italic;
-  margin: -0.25rem 0 0;
-}
-
 .cardBody {
-  font-size: 0.86rem;
-  color: var(--text-secondary);
+  font-size: 0.875rem;
+  color: #C0BFC9;
   line-height: 1.65;
-  flex: 1;
+  margin: 0;
 }
 
-.bullets {
+/* ─── Keyword tags ────────────────────────────────────── */
+.cardTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.1rem;
+}
+
+.cardTag {
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-subtle);
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(255,255,255,0.03);
+  white-space: nowrap;
+}
+
+/* ─── Mini flow pipeline ──────────────────────────────── */
+.cardFlowWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: auto; /* pushes pipeline + hint to bottom */
+}
+
+.cardFlowLabel {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-subtle);
+  margin: 0;
+}
+
+.cardFlow {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.cfNode {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.42rem 0.32rem;
+  min-width: 46px;
+  flex: 1;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.025);
+}
+
+.cfCheck {
+  border-color: rgba(232, 64, 30, 0.3) !important;
+  background: rgba(232, 64, 30, 0.06) !important;
+}
+
+.cfIcon {
+  width: 11px;
+  height: 11px;
+  color: var(--text-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.cfIcon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.cfCheck .cfIcon {
+  color: var(--brand-engine-start);
+}
+
+.cfLabel {
+  font-size: 0.5rem;
+  font-weight: 600;
+  color: var(--text-subtle);
+  text-align: center;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+.cfCheck .cfLabel {
+  color: var(--brand-engine-end);
+}
+
+.cfArr {
+  color: var(--text-subtle);
+  font-size: 0.9rem;
+  opacity: 0.3;
+  flex-shrink: 0;
+  line-height: 1;
+  user-select: none;
+}
+
+/* ─── Flip hint ───────────────────────────────────────── */
+.flipHint {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-subtle);
+  transition: color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.cardWrapper:hover .flipHint {
+  color: var(--text-muted);
+}
+
+/* ─── Back face ───────────────────────────────────────── */
+.cardBack {
+  transform: rotateY(180deg);
+  /* Solid opaque background — color-mix() creates rendering artifacts */
+  background: #1e1c26;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+/* Mini card identity shown on back face */
+.backHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.catIconSm {
+  width: 30px !important;
+  height: 30px !important;
+  flex-shrink: 0;
+}
+
+.backNum {
+  display: block;
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: var(--text-subtle);
+  letter-spacing: 0.06em;
+  margin-bottom: 0.15rem;
+}
+
+.backTitle {
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  color: var(--text);
+  margin: 0;
+}
+
+.backDivider {
+  height: 1px;
+  background: rgba(255,255,255,0.06);
+  flex-shrink: 0;
+}
+
+.backInner {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.includedLabel {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-subtle);
+  margin: 0 0 0.9rem;
+}
+
+.backBullets {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.8rem;
   margin: 0;
   padding: 0;
 }
 
-.bullet {
+.backBullet {
   display: flex;
   align-items: flex-start;
-  gap: 0.5rem;
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  line-height: 1.5;
+  gap: 0.6rem;
+  font-size: 0.88rem;
+  color: #C0BFC9;
+  line-height: 1.55;
 }
 
-.bulletDot {
+.backDot {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: var(--cat-dot, var(--text-muted));
   flex-shrink: 0;
-  margin-top: 0.45em;
+  margin-top: 0.5em;
+  background: var(--card-dot, var(--brand-engine-start));
+  opacity: 0.85;
 }
 
-.cardFooter {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--border-glass);
-  margin-top: auto;
-}
-
-.pricingBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.72rem;
-  color: var(--text-muted);
-  font-style: italic;
-}
-
-.pricingBadge svg {
-  opacity: 0.5;
-}
-
-.cardCta {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-decoration: none;
-  transition: color 0.2s ease;
-}
-
-.cardCta:hover {
-  color: var(--text);
-}
-
-/* Pricing note */
-.pricingNote {
+.backCta {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  margin-top: 2rem;
-  font-size: 0.82rem;
-  color: var(--text-muted);
-  text-align: center;
-}
-
-.pricingNote svg {
+  gap: 0.45rem;
+  padding: 0.75rem 1rem;
+  background: var(--brand-engine-gradient);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+  border-radius: 10px;
   flex-shrink: 0;
-  opacity: 0.5;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
+.backCta:hover {
+  opacity: 0.88;
+  transform: translateY(-1px);
+}
 
-.customCard {
-  margin-top: 1.5rem;
-  padding: 1.4rem;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+/* ─── Custom card ─────────────────────────────────────── */
+.custom {
+  margin-top: 2rem;
+  padding: 1.75rem 2rem;
+  border-radius: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   background:
-    radial-gradient(circle at top right, rgba(59, 130, 246, 0.10), transparent 26%),
-    radial-gradient(circle at bottom left, rgba(232, 64, 30, 0.08), transparent 24%),
+    radial-gradient(circle at top right, rgba(247, 147, 26, 0.07), transparent 40%),
+    radial-gradient(circle at bottom left, rgba(232, 64, 30, 0.05), transparent 35%),
     var(--bg-card);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2rem;
+  align-items: center;
+  overflow: hidden;
 }
 
-.customCardTop {
+.customLeft {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 0.9rem;
+  flex-direction: column;
+  gap: 0.85rem;
 }
 
 .customPill {
   display: inline-flex;
+  align-self: flex-start;
   align-items: center;
-  padding: 0.32rem 0.65rem;
+  padding: 0.3rem 0.65rem;
   border-radius: 999px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-glass-hover);
   color: var(--text-muted);
-  font-size: 0.72rem;
+  font-size: 0.71rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 
-.customCta {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  color: var(--text);
-  text-decoration: none;
-  font-size: 0.82rem;
-  font-weight: 700;
-}
-
 .customTitle {
-  margin: 0 0 0.55rem;
+  margin: 0;
   font-size: 1.15rem;
-  line-height: 1.3;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.35;
+  color: var(--text);
+  max-width: 44ch;
 }
 
 .customBody {
   margin: 0;
-  max-width: 72ch;
-  color: var(--text-secondary);
-  line-height: 1.7;
+  color: #C0BFC9;
+  font-size: 0.9rem;
+  line-height: 1.65;
 }
 
 .customBullets {
   list-style: none;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.8rem;
-  margin: 1rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin: 0;
   padding: 0;
 }
 
@@ -401,97 +451,143 @@
   display: flex;
   align-items: flex-start;
   gap: 0.5rem;
-  color: var(--text-secondary);
-  font-size: 0.82rem;
+  font-size: 0.87rem;
+  color: #B5B4BF;
   line-height: 1.55;
 }
 
-.customBulletDot {
-  width: 6px;
-  height: 6px;
+.customDot {
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
-  background: linear-gradient(90deg, var(--brand-engine-start), var(--brand-platform-start));
+  background: var(--brand-engine-start);
   flex-shrink: 0;
-  margin-top: 0.45em;
+  margin-top: 0.48em;
+  opacity: 0.7;
 }
 
-/* Who section */
-.whoWrap {
-  padding-bottom: 1rem;
+.customCta {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.2rem;
+  background: var(--brand-engine-gradient);
+  color: #fff;
+  font-size: 0.83rem;
+  font-weight: 700;
+  text-decoration: none;
+  border-radius: 10px;
+  margin-top: 0.25rem;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.customCta:hover {
+  opacity: 0.88;
+  transform: translateY(-1px);
+}
+
+.customRight {
+  flex-shrink: 0;
+  width: 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.customImg {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 12px;
+  mix-blend-mode: luminosity;
+  opacity: 0.82;
+  transition: opacity 0.3s ease;
+}
+
+.custom:hover .customImg {
+  opacity: 0.95;
+}
+
+/* ─── Who section ─────────────────────────────────────── */
+.who { padding-bottom: 1rem; }
+
+.whoTitle {
+  font-size: clamp(1.75rem, 3vw, 2.4rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  margin-top: 1rem;
+  margin-bottom: 0;
 }
 
 .whoGrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 1rem;
-  margin-top: 1.5rem;
+  gap: 1.5rem;
+  margin-top: 2rem;
 }
 
-.whoCard {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 1.25rem;
+.whoItem {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  gap: 0.45rem;
+  padding: 1.2rem;
+  border-radius: 1.2rem;
+  border: 1px solid var(--border-glass);
+  background: rgba(255, 255, 255, 0.015);
 }
 
-.whoCard:hover {
-  border-color: var(--border2);
-  background: var(--bg-panel);
-  transform: translateY(-3px);
-}
-
-.whoLabel {
-  font-size: 0.9rem;
+.whoItemLabel {
+  font-size: 0.92rem;
   font-weight: 700;
   color: var(--text);
   display: block;
 }
 
-.whoDesc {
-  font-size: 0.82rem;
-  color: var(--text-secondary);
-  line-height: 1.55;
+.whoItemDesc {
+  font-size: 0.84rem;
+  color: #B5B4BF;
+  line-height: 1.6;
 }
 
-@media (max-width: 1024px) {
-  .grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+/* ─── Light mode ──────────────────────────────────────── */
+[data-theme="light"] .sub        { color: #4a4540; }
+[data-theme="light"] .cardBody   { color: #4a4540; }
+[data-theme="light"] .backBullet { color: #4a4540; }
+[data-theme="light"] .customBody { color: #4a4540; }
+[data-theme="light"] .customBullet { color: #524D49; }
+[data-theme="light"] .whoItemDesc  { color: #524D49; }
 
-  .whoGrid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .customBullets {
-    grid-template-columns: 1fr;
-  }
+[data-theme="light"] .cardFront {
+  background: rgba(255, 255, 255, 0.9);
 }
 
+[data-theme="light"] .cardBack {
+  background: #f4f2f8;
+}
+
+[data-theme="light"] .cfNode {
+  border-color: rgba(0,0,0,0.08);
+  background: rgba(0,0,0,0.03);
+}
+
+[data-theme="light"] .cfLabel,
+[data-theme="light"] .cfArr { color: #888; }
+
+/* ─── Responsive ──────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .whoGrid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 900px) {
+  .cardGrid { grid-template-columns: repeat(2, 1fr); }
+
+  .custom { grid-template-columns: 1fr; }
+  .customRight { display: none; }
+}
 
 @media (max-width: 640px) {
-  .grid {
-    grid-template-columns: 1fr;
-  }
-
-  .whoGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .filterBar {
-    gap: 0.4rem;
-  }
-
-  .customCardTop {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .filterBtn {
-    font-size: 0.78rem;
-    padding: 0.4rem 0.75rem;
-  }
+  .cardGrid { grid-template-columns: 1fr; }
+  .cardWrapper { height: auto; min-height: 400px; }
+  .whoGrid { grid-template-columns: 1fr; }
 }

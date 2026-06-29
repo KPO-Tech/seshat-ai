@@ -1,0 +1,42 @@
+.wrapper {
+  width: 100%;
+
+  --d-doc-fill: rgba(36, 35, 42, 0.9);
+  --d-doc-stroke: rgba(236, 241, 240, 0.08);
+  --d-doc-accent: rgba(247, 147, 26, 0.13);
+  --d-doc-text: rgba(236, 241, 240, 0.55);
+  --d-arrow: rgba(247, 147, 26, 0.38);
+  --d-bn-glow: rgba(232, 64, 30, 0.06);
+  --d-bn-stroke: rgba(232, 64, 30, 0.28);
+  --d-bn-title: rgba(236, 241, 240, 0.55);
+  --d-bn-sub: rgba(236, 241, 240, 0.35);
+  --d-warn-bg: rgba(232, 64, 30, 0.12);
+  --d-warn: rgba(232, 64, 30, 0.85);
+  --d-out-stroke: rgba(236, 241, 240, 0.18);
+  --d-out-fill: rgba(36, 35, 42, 0.6);
+  --d-out-text: rgba(236, 241, 240, 0.32);
+}
+
+.svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+:global([data-theme="light"]) .wrapper {
+  --d-doc-fill: rgba(255, 255, 255, 0.97);
+  --d-doc-stroke: rgba(44, 39, 36, 0.12);
+  --d-doc-accent: rgba(232, 64, 30, 0.08);
+  --d-doc-text: rgba(44, 39, 36, 0.55);
+  --d-arrow: rgba(200, 55, 15, 0.38);
+  --d-bn-glow: rgba(232, 64, 30, 0.04);
+  --d-bn-stroke: rgba(200, 55, 15, 0.3);
+  --d-bn-title: rgba(44, 39, 36, 0.6);
+  --d-bn-sub: rgba(44, 39, 36, 0.45);
+  --d-warn-bg: rgba(232, 64, 30, 0.1);
+  --d-warn: rgba(200, 55, 15, 0.9);
+  --d-out-stroke: rgba(44, 39, 36, 0.14);
+  --d-out-fill: rgba(255, 255, 255, 0.88);
+  --d-out-text: rgba(44, 39, 36, 0.38);
+}
