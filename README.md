@@ -67,17 +67,20 @@ The **`seshat-ai`** repository contains **SeshatOS**, a self-hosted AI workspace
 
 ```
 ┌─────────────────────────────────┐
-│  seshat-ui  (Electron + React)   │  Desktop app
+│  seshat-ui  (Electron + React)  │  Desktop app
 └────────────┬────────────────────┘
              │ HTTP + SSE
 ┌────────────▼────────────────────┐
-│  cmd/api  →  internal/api       │  REST API (auth, sessions, SSE streaming)
-│  internal/<domain>/             │  Auth · Memory · Plans · Skills · RAG
-│  internal/db/                   │  SQLite / PostgreSQL via GORM
+│  seshat-backend/cmd/api         │  Local REST API for the desktop app
+│  seshat-backend/internal/*      │  Auth · Memory · Plans · Skills · RAG
+└────────────┬────────────────────┘
+             │ shared Go services
+┌────────────▼────────────────────┐
+│  seshat-server/cmd/server       │  Cloud auth/org/jobs/sync bootstrap
 └────────────┬────────────────────┘
              │ Go SDK (pkg/sdk)
 ┌────────────▼────────────────────┐
-│  seshat  (submodule)      │  Agent runtime, tools, providers, MCP
+│  seshat  (submodule)            │  Agent runtime, tools, providers, MCP
 └─────────────────────────────────┘
 ```
 
@@ -162,34 +165,15 @@ SeshatOS ships with `seshat-ui`, an Electron + React desktop application that wr
 
 ```
 seshat-ai/
-├── cmd/api/              ← thin entrypoint (main.go + config.go)
-├── internal/
-│   ├── api/              ← HTTP handlers, SSE, routes
-│   ├── app.go            ← App container, Dependencies, NewApp
-│   ├── agents/           ← DB-stored agent definitions
-│   ├── audit/            ← audit log service
-│   ├── auth/             ← Identity, sessions, API keys, RBAC
-│   ├── bkerr/            ← typed error kinds (not-found, forbidden, etc.)
-│   ├── db/               ← GORM stores, migrations (SQLite + PostgreSQL)
-│   ├── files/            ← file upload/download, workspace management
-│   ├── knowledge/        ← RAG ingestion and search
-│   ├── mcp/              ← MCP server config store
-│   ├── memories/         ← user memory CRUD + context injection
-│   ├── metrics/          ← Prometheus snapshot service
-│   ├── plans/            ← plan management
-│   ├── preferences/      ← per-user preferences and permission modes
-│   ├── prompt/           ← system prompt assembly layer
-│   ├── query/            ← query orchestration (provider, memory, RAG, skills)
-│   ├── quotas/           ← usage counters (daily/monthly)
-│   ├── resources/        ← organizations, workspaces, user admin
-│   ├── scheduler/        ← cron job engine
-│   ├── settings/         ← provider credentials + OAuth
-│   ├── skills/           ← skill registry + prompt resolution
-│   └── websearch/        ← web search abstraction
-├── seshat/         ← submodule: github.com/EngineerProjects/seshat
-├── seshat-skills/         ← submodule: github.com/EngineerProjects/seshat-skills
-├── seshat-ui/             ← Electron desktop app (React + TypeScript)
-└── docs/                 ← Architecture, development guide, UI docs
+├── seshat-backend/
+│   ├── cmd/api/              ← thin local-backend entrypoint (main.go + config.go)
+│   └── internal/             ← backend packages: api, db, auth, query, scheduler, ...
+├── seshat-server/
+│   ├── cmd/server/           ← cloud-server entrypoint
+│   └── internal/server/      ← cloud HTTP bootstrap
+├── seshat/                   ← submodule: github.com/EngineerProjects/seshat
+├── seshat-ui/                ← Electron desktop app (React + TypeScript)
+└── docs/                     ← Architecture, development guide, UI docs
 ```
 
 ---
@@ -220,6 +204,7 @@ cp .env.example .env
 ### Run the backend
 
 ```bash
+cd seshat-backend
 go run ./cmd/api
 # API available at http://localhost:8090
 ```

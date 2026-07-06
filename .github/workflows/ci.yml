@@ -21,10 +21,14 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.work
-          cache-dependency-path: go.work.sum
+          cache-dependency-path: |
+            go.work.sum
+            seshat-backend/go.sum
+            seshat-server/go.sum
+            seshat/go.sum
 
       - name: Build
-        run: go build ./...
+        run: go build ./seshat-backend/... ./seshat-server/... ./seshat/...
 
   test:
     name: Test
@@ -37,10 +41,14 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.work
-          cache-dependency-path: go.work.sum
+          cache-dependency-path: |
+            go.work.sum
+            seshat-backend/go.sum
+            seshat-server/go.sum
+            seshat/go.sum
 
       - name: Tests
-        run: go test -race ./... -timeout 300s
+        run: go test -race ./seshat-backend/... ./seshat-server/... ./seshat/... -timeout 300s
 
   lint:
     name: Lint
@@ -53,11 +61,15 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.work
-          cache-dependency-path: go.work.sum
+          cache-dependency-path: |
+            go.work.sum
+            seshat-backend/go.sum
+            seshat-server/go.sum
+            seshat/go.sum
 
       - name: Check formatting
         run: |
-          UNFORMATTED=$(gofmt -l .)
+          UNFORMATTED=$(find . -name "*.go" -not -path "./seshat/*" | xargs gofmt -l)
           if [ -n "$UNFORMATTED" ]; then
             echo "Unformatted files:"
             echo "$UNFORMATTED"
@@ -65,14 +77,14 @@ jobs:
           fi
 
       - name: go vet
-        run: go vet ./...
+        run: go vet ./seshat-backend/... ./seshat-server/... ./seshat/...
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
           version: v1.64.8
           install-mode: goinstall
-          args: --timeout=5m
+          args: --timeout=5m ./seshat-backend/... ./seshat-server/...
 
   desktop:
     name: Desktop
@@ -148,9 +160,6 @@ jobs:
 
           echo "Branch policy check passed."
 
-  # gate is the single required status check for branch protection.
-  # Adding new jobs above automatically blocks the merge without
-  # touching the branch protection rules again.
   gate:
     name: Gate
     runs-on: ubuntu-latest
