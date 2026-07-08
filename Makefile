@@ -6,6 +6,8 @@
 #   make test           → run all Go tests in the workspace
 #   make install-python → install / update docling-serve
 #   make start-docling  → start docling-serve manually
+#   make deploy-up       → build + start seshat-server/seshat-console/Postgres
+#   make deploy-down     → stop that stack
 
 ROOT              := $(shell pwd)
 GO_PACKAGES       := ./seshat-backend/... ./seshat-server/... ./seshat/...
@@ -24,6 +26,7 @@ UI_DIR            := $(ROOT)/seshat-ui
 DAEMON_DIR        := $(ROOT)/seshat
 DAEMON_BIN        := seshat-automation
 DAEMON_CMD        := ./cmd/automation-server
+DEPLOY_DIR        := $(ROOT)/deploy
 
 # Detect OS for open/xdg-open
 UNAME := $(shell uname -s)
@@ -38,6 +41,7 @@ UNAME := $(shell uname -s)
         ui-install ui-build ui-dev \
         install-python start-docling \
         logs logs-last logs-docling \
+        deploy-up deploy-down deploy-logs deploy-ps \
         clean clean-all
 
 .DEFAULT_GOAL := help
@@ -103,6 +107,28 @@ build-automation: ## Compile the automation daemon binary → seshat/seshat-auto
 
 run-automation: ## Run the automation daemon only (reads env / .env)
 	@cd $(DAEMON_DIR) && go run $(DAEMON_CMD)
+
+# ─── Deploy stack (seshat-server + seshat-console + Postgres) ─────────────────
+# See deploy/README.md. First run: cp deploy/.env.example deploy/.env and
+# fill in POSTGRES_PASSWORD + SESHAT_SERVER_ENCRYPTION_KEY.
+
+deploy-up: ## Build and start the deploy stack (Postgres + seshat-server + seshat-console)
+	@if [ ! -f $(DEPLOY_DIR)/.env ]; then \
+	  printf '\033[33m[deploy]\033[0m no deploy/.env — copying deploy/.env.example, edit it then re-run.\n'; \
+	  cp $(DEPLOY_DIR)/.env.example $(DEPLOY_DIR)/.env; \
+	  exit 1; \
+	fi
+	@cd $(DEPLOY_DIR) && docker compose up --build -d
+	@printf '\033[32m[deploy]\033[0m console: http://localhost:3000  api: http://localhost:8081\n'
+
+deploy-down: ## Stop the deploy stack (add ARGS=-v to also wipe the Postgres volume)
+	@cd $(DEPLOY_DIR) && docker compose down $(ARGS)
+
+deploy-logs: ## Tail logs from every deploy stack container
+	@cd $(DEPLOY_DIR) && docker compose logs -f
+
+deploy-ps: ## Show deploy stack container status
+	@cd $(DEPLOY_DIR) && docker compose ps
 
 # ─── Tests ────────────────────────────────────────────────────────────────────
 
