@@ -10,30 +10,41 @@ import (
 	"time"
 
 	serverapi "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/api"
-	appconfig "github.com/EngineerProjects/seshat/pkg/config"
+	serverapp "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/app"
 )
 
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	if _, err := appconfig.Load(); err != nil {
-		fmt.Fprintf(os.Stderr, "[SERVER] Avertissement config: %v\n", err)
+	cfg := defaultServerConfig()
+	app, err := serverapp.New(cfg)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[SERVER] Erreur initialisation: %v\n", err)
+		os.Exit(1)
 	}
 
-	httpCfg := defaultServerConfig()
-	router := serverapi.CreateRouter(httpCfg)
+	app.Scheduler.Start()
+	defer app.Scheduler.Stop()
+
+	router := serverapi.CreateRouter(serverapi.Config{
+		Port:               cfg.Port,
+		ReadTimeout:        cfg.ReadTimeout,
+		WriteTimeout:       cfg.WriteTimeout,
+		IdleTimeout:        cfg.IdleTimeout,
+		CORSAllowedOrigins: cfg.CORSAllowedOrigins,
+	}, app)
 
 	srv := &http.Server{
-		Addr:         fmt.Sprintf(":%d", httpCfg.Port),
+		Addr:         fmt.Sprintf(":%d", cfg.Port),
 		Handler:      router,
-		ReadTimeout:  httpCfg.ReadTimeout,
-		WriteTimeout: httpCfg.WriteTimeout,
-		IdleTimeout:  httpCfg.IdleTimeout,
+		ReadTimeout:  cfg.ReadTimeout,
+		WriteTimeout: cfg.WriteTimeout,
+		IdleTimeout:  cfg.IdleTimeout,
 	}
 
 	go func() {
-		fmt.Printf("[SERVER] Seshat server bootstrap demarre sur http://localhost:%d\n", httpCfg.Port)
+		fmt.Printf("[SERVER] Seshat server demarre sur http://localhost:%d\n", cfg.Port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			fmt.Fprintf(os.Stderr, "[SERVER] Erreur serveur: %v\n", err)
 			cancel()
