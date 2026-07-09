@@ -1392,18 +1392,24 @@ paths:
         list, not a 403.
       parameters:
         - $ref: "#/components/parameters/organizationIDQuery"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+        - $ref: "#/components/parameters/sort"
+        - $ref: "#/components/parameters/order"
+        - $ref: "#/components/parameters/q"
       responses:
         "200":
           description: Corpus list
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  corpora:
-                    type: array
-                    items: { $ref: "#/components/schemas/Corpus" }
-                  count: { type: integer }
+                allOf:
+                  - $ref: "#/components/schemas/ListMeta"
+                  - type: object
+                    properties:
+                      corpora:
+                        type: array
+                        items: { $ref: "#/components/schemas/Corpus" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "400": { $ref: "#/components/responses/BadRequest" }
     post:

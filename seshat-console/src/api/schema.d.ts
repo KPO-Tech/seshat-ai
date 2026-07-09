@@ -754,6 +754,239 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/knowledge/corpora": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List an organization's knowledge-base corpora
+         * @description Scoped visibility like every other list endpoint: a caller lacking knowledge.read/knowledge.manage/organization.manage gets an empty list, not a 403.
+         */
+        get: operations["listCorpora"];
+        put?: never;
+        /**
+         * Create a corpus
+         * @description Requires knowledge.manage or organization.manage.
+         */
+        post: operations["createCorpus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge/corpora/{corpusID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                corpusID: string;
+            };
+            cookie?: never;
+        };
+        /** Get a corpus */
+        get: operations["getCorpus"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete a corpus
+         * @description Requires knowledge.manage or organization.manage. Removes the corpus's files, ingestion jobs, and its entire vector namespace.
+         */
+        delete: operations["deleteCorpus"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge/corpora/{corpusID}/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                corpusID: string;
+            };
+            cookie?: never;
+        };
+        /** List the files attached to a corpus */
+        get: operations["listCorpusFiles"];
+        put?: never;
+        /**
+         * Upload a file into a corpus
+         * @description Requires knowledge.manage or organization.manage. Multipart form upload with a single "file" field, capped at 25 MiB. When the server's RAG service is configured, ingestion is auto-enqueued; otherwise the file is stored and attached as pending, and POST .../ingestion-jobs can be used once an embedder is set up (see the platform-provider-settings-shaped follow-up in ROADMAP.md).
+         */
+        post: operations["uploadCorpusFile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge/corpora/{corpusID}/files/{fileID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                corpusID: string;
+                fileID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Detach a file from its corpus
+         * @description Requires knowledge.manage or organization.manage. Removes the file's ingested vector chunks (if any) and adjusts the corpus's chunk total.
+         */
+        delete: operations["detachCorpusFile"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge/corpora/{corpusID}/ingestion-jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                corpusID: string;
+            };
+            cookie?: never;
+        };
+        /** List ingestion jobs for a corpus */
+        get: operations["listIngestionJobs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge/corpora/{corpusID}/ingestion-jobs/{jobID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                corpusID: string;
+                jobID: string;
+            };
+            cookie?: never;
+        };
+        /** Get an ingestion job */
+        get: operations["getIngestionJob"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge/corpora/{corpusID}/ingestion-jobs/{jobID}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                corpusID: string;
+                jobID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retry a failed ingestion job
+         * @description Requires knowledge.manage or organization.manage. Only jobs in the "failed" state can be retried.
+         */
+        post: operations["retryIngestionJob"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge/corpora/{corpusID}/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                corpusID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Search a corpus
+         * @description Requires knowledge.read/knowledge.manage or organization.manage. Returns a 400 if the server's RAG service isn't configured yet (no embedder set up — see ROADMAP.md).
+         */
+        post: operations["searchCorpus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/embedder-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get an organization's embedder configuration
+         * @description A singleton per organization — at most one embedder is active for a given org at a time, since a corpus's vectors are all produced by whichever embedder was active at ingest time. 404 if none is configured (the organization then falls back to the platform default, if any, at ingest/search time).
+         */
+        get: operations["getEmbedderSetting"];
+        /**
+         * Create or update an organization's embedder configuration
+         * @description Requires knowledge.manage or organization.manage. Upsert — creates the organization's embedder setting if none exists yet, otherwise updates it in place. api_key empty means "no key" on first create (valid for an unauthenticated local Ollama) and "keep the existing key unchanged" when a setting already exists.
+         */
+        put: operations["setEmbedderSetting"];
+        post?: never;
+        /**
+         * Delete an organization's embedder configuration
+         * @description Requires knowledge.manage or organization.manage. The organization falls back to the platform default (if any) for subsequent ingest/search calls; existing corpora are not re-embedded.
+         */
+        delete: operations["deleteEmbedderSetting"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/embedder-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the platform-wide default embedder configuration
+         * @description Superadmin-only. A singleton — at most one platform default embedder exists. 404 if none is configured.
+         */
+        get: operations["getPlatformEmbedderSetting"];
+        /**
+         * Create or update the platform-wide default embedder configuration
+         * @description Superadmin-only. Upsert, same semantics as the organization-scoped embedder setting.
+         */
+        put: operations["setPlatformEmbedderSetting"];
+        post?: never;
+        /**
+         * Delete the platform-wide default embedder configuration
+         * @description Superadmin-only. Any organization relying on this as its fallback (no embedder of its own) starts failing ingest/search calls with a clear reason.
+         */
+        delete: operations["deletePlatformEmbedderSetting"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/devices": {
         parameters: {
             query?: never;
@@ -1458,6 +1691,100 @@ export interface components {
             base_url?: string;
             /** @description Required on create. On update, omit/empty to keep the existing stored key unchanged. */
             api_key?: string;
+        };
+        Corpus: {
+            id?: string;
+            organization_id?: string;
+            created_by_user_id?: string;
+            name?: string;
+            description?: string;
+            chunk_count?: number;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        CorpusInput: {
+            organization_id: string;
+            name: string;
+            description?: string;
+        };
+        CorpusFile: {
+            id?: string;
+            corpus_id?: string;
+            filename?: string;
+            content_type?: string;
+            /** Format: int64 */
+            size?: number;
+            /** @enum {string} */
+            status?: "pending" | "ingested" | "failed";
+            chunk_count?: number;
+            /** Format: date-time */
+            ingested_at?: string;
+            /** Format: date-time */
+            created_at?: string;
+        };
+        IngestionJob: {
+            id?: string;
+            corpus_id?: string;
+            corpus_file_id?: string;
+            filename?: string;
+            /** @enum {string} */
+            status?: "queued" | "running" | "completed" | "failed";
+            attempt_count?: number;
+            max_attempts?: number;
+            chunk_count?: number;
+            last_error?: string;
+            /** Format: date-time */
+            started_at?: string;
+            /** Format: date-time */
+            completed_at?: string;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        SearchResponse: {
+            corpus_id?: string;
+            results?: {
+                key?: string;
+                text?: string;
+                /** Format: float */
+                score?: number;
+                metadata?: {
+                    [key: string]: string;
+                };
+            }[];
+        };
+        /** @description Never includes the API key — same redaction stance as ProviderSetting. */
+        EmbedderSetting: {
+            id?: string;
+            organization_id?: string;
+            /** @enum {string} */
+            provider?: "openai" | "ollama";
+            /** @example text-embedding-3-small */
+            model?: string;
+            base_url?: string;
+        };
+        EmbedderSettingInput: {
+            /** @description Required for the organization-scoped endpoint; ignored for the platform one. */
+            organization_id?: string;
+            /** @enum {string} */
+            provider: "openai" | "ollama";
+            /** @example text-embedding-3-small */
+            model: string;
+            base_url: string;
+            /** @description Optional (e.g. a local Ollama needs none). Empty on update keeps the existing key unchanged. */
+            api_key?: string;
+        };
+        /** @description The platform-wide default embedder — not scoped to any organization. Never includes the API key. */
+        PlatformEmbedderSetting: {
+            id?: string;
+            /** @enum {string} */
+            provider?: "openai" | "ollama";
+            /** @example text-embedding-3-small */
+            model?: string;
+            base_url?: string;
         };
         /** @description The device's bearer token is never part of this view — see RegisterDeviceResult for the one-time reveal. */
         Device: {
@@ -3338,6 +3665,447 @@ export interface operations {
             path: {
                 platformProviderSettingID: string;
             };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listCorpora: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+                /** @description Max items per page (default 50, capped at 200). */
+                limit?: components["parameters"]["limit"];
+                offset?: components["parameters"]["offset"];
+                /** @description Field to sort by; valid values are endpoint-specific (see each list's `sort` in the response). */
+                sort?: components["parameters"]["sort"];
+                order?: components["parameters"]["order"];
+                /** @description Free-text search, fields vary per resource. */
+                q?: components["parameters"]["q"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Corpus list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListMeta"] & {
+                        corpora?: components["schemas"]["Corpus"][];
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    createCorpus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorpusInput"];
+            };
+        };
+        responses: {
+            /** @description Corpus created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Corpus"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getCorpus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                corpusID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Corpus */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Corpus"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteCorpus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                corpusID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listCorpusFiles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                corpusID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Corpus file list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        files?: components["schemas"]["CorpusFile"][];
+                        count?: number;
+                    };
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    uploadCorpusFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                corpusID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description File uploaded and attached */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorpusFile"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    detachCorpusFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                corpusID: string;
+                fileID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Detached */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listIngestionJobs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                corpusID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ingestion job list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        ingestion_jobs?: components["schemas"]["IngestionJob"][];
+                        count?: number;
+                    };
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getIngestionJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                corpusID: string;
+                jobID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ingestion job */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngestionJob"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    retryIngestionJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                corpusID: string;
+                jobID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ingestion job requeued */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngestionJob"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    searchCorpus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                corpusID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    query: string;
+                    /** @description Defaults to 5. */
+                    top_k?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Search results */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getEmbedderSetting: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Embedder setting */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmbedderSetting"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    setEmbedderSetting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmbedderSettingInput"];
+            };
+        };
+        responses: {
+            /** @description Embedder setting created or updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmbedderSetting"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    deleteEmbedderSetting: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getPlatformEmbedderSetting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Platform embedder setting */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformEmbedderSetting"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    setPlatformEmbedderSetting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmbedderSettingInput"];
+            };
+        };
+        responses: {
+            /** @description Platform embedder setting created or updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformEmbedderSetting"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    deletePlatformEmbedderSetting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;

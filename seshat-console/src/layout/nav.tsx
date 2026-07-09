@@ -6,7 +6,9 @@ import {
   ClusterOutlined,
   CloudServerOutlined,
   DashboardOutlined,
+  DatabaseOutlined,
   DesktopOutlined,
+  ExperimentOutlined,
   FileSearchOutlined,
   GlobalOutlined,
   KeyOutlined,
@@ -67,6 +69,8 @@ export const navGroups: NavGroup[] = [
       { key: 'jobs', path: '/jobs', label: 'Jobs', icon: <ScheduleOutlined /> },
       { key: 'runs', path: '/runs', label: 'Runs', icon: <PlayCircleOutlined /> },
       { key: 'provider-settings', path: '/provider-settings', label: 'Provider Settings', icon: <SettingOutlined /> },
+      { key: 'corpora', path: '/corpora', label: 'Corpora', icon: <DatabaseOutlined /> },
+      { key: 'embedder-settings', path: '/embedder-settings', label: 'Embedder Settings', icon: <ExperimentOutlined /> },
     ],
   },
   {
@@ -93,6 +97,7 @@ export const platformNavGroup: NavGroup = {
   label: 'Platform',
   items: [
     { key: 'platform-provider-settings', path: '/platform/provider-settings', label: 'Default Providers', icon: <ApiOutlined /> },
+    { key: 'platform-embedder-settings', path: '/platform/embedder-settings', label: 'Default Embedder', icon: <ExperimentOutlined /> },
     { key: 'platform-image-generation', path: '/platform/image-generation', label: 'Image Generation', icon: <PictureOutlined /> },
     { key: 'platform-web-search', path: '/platform/web-search', label: 'Web Search', icon: <GlobalOutlined /> },
   ],
