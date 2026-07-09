@@ -8,6 +8,7 @@ import (
 	"time"
 
 	sdkstorage "github.com/EngineerProjects/seshat/pkg/storage"
+	sdkvector "github.com/EngineerProjects/seshat/pkg/vector"
 
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 )
@@ -25,6 +26,7 @@ type Config struct {
 	Storage                  sdkstorage.Config
 	IngestionPollInterval    time.Duration
 	IngestionMaxPollInterval time.Duration
+	Vector                   sdkvector.Config
 }
 
 func LoadFromEnv() Config {
@@ -41,6 +43,7 @@ func LoadFromEnv() Config {
 		Storage:                  storageConfigFromEnv(),
 		IngestionPollInterval:    envDuration("SESHAT_SERVER_INGESTION_POLL_INTERVAL", 500*time.Millisecond),
 		IngestionMaxPollInterval: envDuration("SESHAT_SERVER_INGESTION_MAX_POLL_INTERVAL", 5*time.Second),
+		Vector:                   vectorConfigFromEnv(),
 	}
 }
 
@@ -92,6 +95,30 @@ func storageConfigFromEnv() sdkstorage.Config {
 		S3Region:          os.Getenv("SESHAT_SERVER_S3_REGION"),
 		S3KeyPrefix:       os.Getenv("SESHAT_SERVER_S3_KEY_PREFIX"),
 	}
+}
+
+// vectorConfigFromEnv reads the RAG vector store backend, defaulting to
+// the embedded HNSW backend (no CGO, no external service, no separate DB
+// connection to bridge in) — the simplest thing that works for a
+// single-instance self-hosted deployment. pgvector (sharing this server's
+// own Postgres) is supported by the runtime and is the natural upgrade
+// path for a real multi-instance deployment, but wiring seshat-server's
+// GORM connection into the runtime's own low-level DB handle is follow-up
+// work, not done here.
+func vectorConfigFromEnv() sdkvector.Config {
+	backend := sdkvector.Backend(strings.ToLower(strings.TrimSpace(os.Getenv("SESHAT_SERVER_VECTOR_BACKEND"))))
+	if backend == "" {
+		backend = sdkvector.BackendHNSW
+	}
+	hnswDir := os.Getenv("SESHAT_SERVER_VECTOR_HNSW_DIR")
+	if hnswDir == "" {
+		runtimeRoot := os.Getenv("SESHAT_RUNTIME_ROOT")
+		if runtimeRoot == "" {
+			runtimeRoot = ".seshat"
+		}
+		hnswDir = filepath.Join(runtimeRoot, "server", "vectors")
+	}
+	return sdkvector.Config{Backend: backend, HNSWDir: hnswDir}
 }
 
 func dbConfigFromEnv() sdb.Config {

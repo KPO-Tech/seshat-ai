@@ -19,7 +19,9 @@ import (
 	"gorm.io/gorm"
 
 	sdkrag "github.com/EngineerProjects/seshat/pkg/rag"
+	sdkembedder "github.com/EngineerProjects/seshat/pkg/rag/embedder"
 	sdkstorage "github.com/EngineerProjects/seshat/pkg/storage"
+	sdkvector "github.com/EngineerProjects/seshat/pkg/vector"
 
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/apperr"
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
@@ -51,20 +53,27 @@ const (
 	defaultStaleJobTimeout      = 10 * time.Minute
 )
 
-// Service owns corpora, corpus files and their ingestion jobs. rag is nil
-// until a platform or organization embedder is configured (a follow-up
-// step — see ROADMAP.md); corpus/file management works either way, but
-// Ingest/Search degrade gracefully with a clear "not configured" error
-// until then, same as seshat-backend's knowledge service does.
+// Service owns corpora, corpus files, their ingestion jobs, and embedder
+// configuration. There is deliberately no single fixed *rag.Service field:
+// the hybrid BYOK/platform-default embedder model means the embedder used
+// for a given call depends on which organization it's for, so a
+// rag.Service is built ad hoc per call (see ragServiceFor) from the shared
+// vector store plus whichever embedder resolveEmbedder finds for that
+// organization — rag.NewService is a cheap struct literal, not an
+// expensive connection, so building it per call costs nothing real.
+// Ingest/Search degrade gracefully with a clear "not configured" error when
+// neither the organization nor the platform has an embedder configured
+// yet, same as seshat-backend's knowledge service does when no embedder is
+// set at all.
 type Service struct {
 	db        *sdb.DB
 	iam       *iam.Service
 	artifacts sdkstorage.ArtifactStore
-	rag       *sdkrag.Service
+	vectors   sdkvector.Store
 }
 
-func New(database *sdb.DB, iamService *iam.Service, artifacts sdkstorage.ArtifactStore, ragService *sdkrag.Service) *Service {
-	return &Service{db: database, iam: iamService, artifacts: artifacts, rag: ragService}
+func New(database *sdb.DB, iamService *iam.Service, artifacts sdkstorage.ArtifactStore, vectors sdkvector.Store) *Service {
+	return &Service{db: database, iam: iamService, artifacts: artifacts, vectors: vectors}
 }
 
 // Corpus is the caller-facing view of a document collection.
@@ -227,8 +236,10 @@ func (s *Service) DeleteCorpus(ctx context.Context, principal *iam.Principal, co
 		return err
 	}
 
-	if s.rag != nil {
-		if err := s.rag.DeleteNamespace(ctx, record.ID); err != nil {
+	if ragService, ok, err := s.ragServiceFor(ctx, record.OrganizationID); err != nil {
+		return err
+	} else if ok {
+		if err := ragService.DeleteNamespace(ctx, record.ID); err != nil {
 			return ErrInvalidInput("delete vector namespace: " + err.Error())
 		}
 	}
@@ -246,6 +257,22 @@ func (s *Service) DeleteCorpus(ctx context.Context, principal *iam.Principal, co
 		}
 		return s.iam.AppendAuditEvent(tx, principal, record.OrganizationID, "corpus.deleted", "corpus", record.ID, map[string]string{"name": record.Name})
 	})
+}
+
+// ragServiceFor builds a rag.Service for organizationID using the shared
+// vector store plus whichever embedder resolveEmbedderConfig finds (the
+// organization's own, else the platform default). ok=false means neither
+// is configured — callers should surface a clear "not configured" error
+// rather than silently no-op.
+func (s *Service) ragServiceFor(ctx context.Context, organizationID string) (*sdkrag.Service, bool, error) {
+	embedderCfg, ok, err := s.resolveEmbedderConfig(ctx, organizationID)
+	if err != nil {
+		return nil, false, err
+	}
+	if !ok {
+		return nil, false, nil
+	}
+	return sdkrag.NewService(s.artifacts, s.vectors, sdkembedder.New(&embedderCfg), nil), true, nil
 }
 
 func (s *Service) mustLoadCorpus(ctx context.Context, principal *iam.Principal, corpusID string, permissionCodes ...string) (*sdb.Corpus, error) {

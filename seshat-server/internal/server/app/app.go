@@ -1,9 +1,11 @@
 package app
 
 import (
+	"context"
 	"fmt"
 
 	sdkstorage "github.com/EngineerProjects/seshat/pkg/storage"
+	sdkvector "github.com/EngineerProjects/seshat/pkg/vector"
 
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/automation"
 	serverconfig "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/config"
@@ -37,11 +39,16 @@ func New(cfg serverconfig.Config) (*App, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open artifact storage: %w", err)
 	}
-	// RAG service is nil until an embedder is configured (platform-wide
-	// default + org override — see ROADMAP.md's "Knowledge base / RAG
-	// domain" step 2). Corpus/file management works either way; ingestion
-	// and search return a clear "not configured" error until then.
-	knowledgeService := knowledge.New(database, iamService, artifactStore, nil)
+	vectorStore, err := sdkvector.NewStore(context.Background(), cfg.Vector)
+	if err != nil {
+		return nil, fmt.Errorf("open vector store: %w", err)
+	}
+	// The embedder itself is resolved dynamically per organization at
+	// ingest/search time (org override, else the platform default — see
+	// knowledge.Service.resolveEmbedderConfig), not configured here. Until
+	// an embedder is set up for a given organization, Ingest/Search return
+	// a clear "not configured" error; corpus/file management works either way.
+	knowledgeService := knowledge.New(database, iamService, artifactStore, vectorStore)
 
 	return &App{
 		DB:              database,

@@ -2,10 +2,12 @@ package knowledge
 
 import (
 	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
-	sdkrag "github.com/EngineerProjects/seshat/pkg/rag"
 	sdkstorage "github.com/EngineerProjects/seshat/pkg/storage"
 	sdkvector "github.com/EngineerProjects/seshat/pkg/vector"
 
@@ -21,26 +23,11 @@ type testEnv struct {
 	orgID          string
 }
 
-// fakeEmbedder returns a fixed-length deterministic vector per text so RAG
-// ingest/search work end-to-end in tests without a real embedding API.
-type fakeEmbedder struct{}
-
-func (fakeEmbedder) EmbedTexts(_ context.Context, texts []string) ([][]float32, error) {
-	out := make([][]float32, len(texts))
-	for i, text := range texts {
-		vec := make([]float32, 8)
-		for j, r := range text {
-			vec[j%len(vec)] += float32(r % 97)
-		}
-		out[i] = vec
-	}
-	return out, nil
-}
-
 // newTestEnv bootstraps a fresh in-memory database, an iam.Service and a
 // knowledge.Service backed by a local-disk artifact store (a temp dir) and
-// an in-memory vector store + fake embedder — a fully working RAG pipeline
-// with no network calls, mirroring automation's own newTestEnv shape.
+// an in-memory vector store — mirroring automation's own newTestEnv shape.
+// No embedder is configured by default; use configurePlatformEmbedder for
+// tests that need the full ingest/search pipeline working.
 func newTestEnv(t *testing.T) testEnv {
 	t.Helper()
 	database, err := sdb.Open(sdb.Config{Driver: sdb.DriverSQLite, DSN: ":memory:"})
@@ -61,8 +48,7 @@ func newTestEnv(t *testing.T) testEnv {
 	if err != nil {
 		t.Fatalf("open artifact store: %v", err)
 	}
-	ragService := sdkrag.NewService(artifacts, sdkvector.NewMemoryStore(), fakeEmbedder{}, nil)
-	knowledgeService := New(database, iamService, artifacts, ragService)
+	knowledgeService := New(database, iamService, artifacts, sdkvector.NewMemoryStore())
 
 	boot, err := iamService.Bootstrap(context.Background(), iam.BootstrapParams{
 		Email:            "admin@example.com",
@@ -112,4 +98,51 @@ func (env testEnv) addMember(t *testing.T, role string) *iam.Principal {
 		t.Fatalf("resolve %s principal: %v", role, err)
 	}
 	return principal
+}
+
+// startFakeEmbeddingServer serves an OpenAI-compatible POST /embeddings
+// endpoint, returning a small deterministic vector per input text derived
+// from a byte sum — real HTTP round-trip, no external network. Registered
+// as t.Cleanup so it's torn down automatically.
+func startFakeEmbeddingServer(t *testing.T) *httptest.Server {
+	t.Helper()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Input []string `json:"input"`
+			Model string   `json:"model"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		type embeddingItem struct {
+			Embedding []float32 `json:"embedding"`
+		}
+		data := make([]embeddingItem, 0, len(req.Input))
+		for _, text := range req.Input {
+			vec := make([]float32, 8)
+			for i, r := range text {
+				vec[i%len(vec)] += float32(r % 97)
+			}
+			data = append(data, embeddingItem{Embedding: vec})
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"data": data})
+	}))
+	t.Cleanup(server.Close)
+	return server
+}
+
+// configurePlatformEmbedder sets the platform-wide default embedder to
+// point at a fresh fake embedding server, so Ingest/Search/ProcessNextIngestionJob
+// work end-to-end without any real embedding API.
+func (env testEnv) configurePlatformEmbedder(t *testing.T) {
+	t.Helper()
+	server := startFakeEmbeddingServer(t)
+	if _, err := env.knowledge.SetPlatformEmbedderSetting(context.Background(), env.adminPrincipal, SetEmbedderSettingParams{
+		Provider: "openai",
+		Model:    "fake-embed",
+		BaseURL:  server.URL,
+	}); err != nil {
+		t.Fatalf("configure platform embedder: %v", err)
+	}
 }

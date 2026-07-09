@@ -347,3 +347,37 @@ type KnowledgeIngestionJob struct {
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }
+
+// EmbedderSetting is an organization's embedder configuration for RAG
+// ingestion/search. A singleton per organization (uniqueIndex on
+// OrganizationID alone) — unlike ProviderSetting, which allows several LLM
+// providers per org, a corpus's vectors are all produced by whichever
+// embedder was active at ingest time, so allowing more than one active
+// embedder per org would risk silently mixing incompatible vector
+// dimensions in the same namespace.
+type EmbedderSetting struct {
+	ID              string `gorm:"primaryKey;size:32"`
+	OrganizationID  string `gorm:"size:32;not null;uniqueIndex"`
+	CreatedByUserID string `gorm:"size:32;not null"`
+	Provider        string `gorm:"size:32;not null"` // openai | ollama
+	Model           string `gorm:"size:128;not null"`
+	BaseURL         string `gorm:"size:500;not null"`
+	EncryptedAPIKey string `gorm:"type:text"` // optional — e.g. a local Ollama needs none
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
+// PlatformEmbedderSetting is the platform-wide default embedder, used by
+// any organization that hasn't configured its own — the same hybrid
+// BYOK/managed model as PlatformProviderSetting. Also a singleton, enforced
+// in code (there is no organization column to key a unique index on).
+type PlatformEmbedderSetting struct {
+	ID              string `gorm:"primaryKey;size:32"`
+	CreatedByUserID string `gorm:"size:32;not null"`
+	Provider        string `gorm:"size:32;not null"`
+	Model           string `gorm:"size:128;not null"`
+	BaseURL         string `gorm:"size:500;not null"`
+	EncryptedAPIKey string `gorm:"type:text"`
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}

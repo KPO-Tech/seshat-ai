@@ -20,12 +20,14 @@ import (
 // happen (RAG wasn't configured yet at upload time) or a caller wants to
 // force a fresh pass. Requires knowledge.manage or organization.manage.
 func (s *Service) EnqueueIngest(ctx context.Context, principal *iam.Principal, corpusID, fileID string) (*IngestionJob, error) {
-	if s.rag == nil {
-		return nil, ErrInvalidInput("RAG service is not configured on this server (embedder required)")
-	}
 	corpus, err := s.mustLoadCorpus(ctx, principal, corpusID, "knowledge.manage", "organization.manage")
 	if err != nil {
 		return nil, err
+	}
+	if _, ok, err := s.resolveEmbedderConfig(ctx, corpus.OrganizationID); err != nil {
+		return nil, err
+	} else if !ok {
+		return nil, ErrInvalidInput("no embedder configured (neither this organization nor the platform default — see the embedder-settings endpoints)")
 	}
 	var file sdb.CorpusFile
 	if err := s.db.Gorm().WithContext(ctx).First(&file, "id = ? AND corpus_id = ?", strings.TrimSpace(fileID), corpus.ID).Error; err != nil {
@@ -140,12 +142,16 @@ func (s *Service) RetryIngestionJob(ctx context.Context, principal *iam.Principa
 // Search embeds the query and returns the top-K matching chunks from the
 // corpus. Requires knowledge.read/knowledge.manage or organization.manage.
 func (s *Service) Search(ctx context.Context, principal *iam.Principal, params SearchParams) (*sdkrag.SearchResponse, error) {
-	if s.rag == nil {
-		return nil, ErrInvalidInput("RAG service is not configured on this server (embedder required)")
-	}
 	corpus, err := s.mustLoadCorpus(ctx, principal, params.CorpusID, "knowledge.read", "knowledge.manage", "organization.manage")
 	if err != nil {
 		return nil, err
+	}
+	ragService, ok, err := s.ragServiceFor(ctx, corpus.OrganizationID)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, ErrInvalidInput("no embedder configured (neither this organization nor the platform default — see the embedder-settings endpoints)")
 	}
 	query := strings.TrimSpace(params.Query)
 	if query == "" {
@@ -155,7 +161,7 @@ func (s *Service) Search(ctx context.Context, principal *iam.Principal, params S
 	if topK <= 0 {
 		topK = 5
 	}
-	resp, err := s.rag.Search(ctx, sdkrag.SearchRequest{CorpusID: corpus.ID, Query: query, TopK: topK})
+	resp, err := ragService.Search(ctx, sdkrag.SearchRequest{CorpusID: corpus.ID, Query: query, TopK: topK})
 	if err != nil {
 		return nil, ErrInvalidInput("search corpus: " + err.Error())
 	}
@@ -170,7 +176,7 @@ func (s *Service) Search(ctx context.Context, principal *iam.Principal, params S
 // than one seshat-server process with the knowledge runner enabled could
 // double-claim work.
 func (s *Service) ProcessNextIngestionJob(ctx context.Context) (bool, error) {
-	if s.rag == nil || s.artifacts == nil {
+	if s.artifacts == nil {
 		return false, nil
 	}
 	job, ok, err := s.claimNextIngestionJob(ctx)
@@ -216,6 +222,16 @@ func (s *Service) claimNextIngestionJob(ctx context.Context) (sdb.KnowledgeInges
 }
 
 func (s *Service) processIngestionJob(ctx context.Context, job sdb.KnowledgeIngestionJob) {
+	ragService, ok, err := s.ragServiceFor(ctx, job.OrganizationID)
+	if err != nil {
+		s.markIngestionJobFailed(ctx, job, "resolve embedder: "+err.Error())
+		return
+	}
+	if !ok {
+		s.markIngestionJobFailed(ctx, job, "no embedder configured (neither this organization nor the platform default)")
+		return
+	}
+
 	var file sdb.CorpusFile
 	if err := s.db.Gorm().WithContext(ctx).First(&file, "id = ?", job.CorpusFileID).Error; err != nil {
 		s.markIngestionJobFailed(ctx, job, "corpus file no longer exists")
@@ -239,7 +255,7 @@ func (s *Service) processIngestionJob(ctx context.Context, job sdb.KnowledgeInge
 	// Deterministic per-file key (not the storage key) so chunk keys stay
 	// stable across corpora even if a future feature reuses blobs.
 	ragFileKey := fmt.Sprintf("file-%s", file.ID)
-	result, err := s.rag.Ingest(ctx, sdkrag.IngestRequest{
+	result, err := ragService.Ingest(ctx, sdkrag.IngestRequest{
 		CorpusID: job.CorpusID,
 		FileID:   ragFileKey,
 		Filename: file.Filename,

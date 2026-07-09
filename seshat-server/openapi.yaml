@@ -1639,6 +1639,112 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/embedder-settings:
+    get:
+      operationId: getEmbedderSetting
+      tags: [knowledge]
+      summary: Get an organization's embedder configuration
+      description: >-
+        A singleton per organization — at most one embedder is active for
+        a given org at a time, since a corpus's vectors are all produced
+        by whichever embedder was active at ingest time. 404 if none is
+        configured (the organization then falls back to the platform
+        default, if any, at ingest/search time).
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: Embedder setting
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmbedderSetting" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      operationId: setEmbedderSetting
+      tags: [knowledge]
+      summary: Create or update an organization's embedder configuration
+      description: >-
+        Requires knowledge.manage or organization.manage. Upsert — creates
+        the organization's embedder setting if none exists yet, otherwise
+        updates it in place. api_key empty means "no key" on first create
+        (valid for an unauthenticated local Ollama) and "keep the existing
+        key unchanged" when a setting already exists.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmbedderSettingInput" }
+      responses:
+        "200":
+          description: Embedder setting created or updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmbedderSetting" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    delete:
+      operationId: deleteEmbedderSetting
+      tags: [knowledge]
+      summary: Delete an organization's embedder configuration
+      description: >-
+        Requires knowledge.manage or organization.manage. The organization
+        falls back to the platform default (if any) for subsequent
+        ingest/search calls; existing corpora are not re-embedded.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "204": { description: Deleted }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/platform/embedder-settings:
+    get:
+      operationId: getPlatformEmbedderSetting
+      tags: [knowledge]
+      summary: Get the platform-wide default embedder configuration
+      description: Superadmin-only. A singleton — at most one platform default embedder exists. 404 if none is configured.
+      responses:
+        "200":
+          description: Platform embedder setting
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformEmbedderSetting" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      operationId: setPlatformEmbedderSetting
+      tags: [knowledge]
+      summary: Create or update the platform-wide default embedder configuration
+      description: Superadmin-only. Upsert, same semantics as the organization-scoped embedder setting.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmbedderSettingInput" }
+      responses:
+        "200":
+          description: Platform embedder setting created or updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformEmbedderSetting" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    delete:
+      operationId: deletePlatformEmbedderSetting
+      tags: [knowledge]
+      summary: Delete the platform-wide default embedder configuration
+      description: >-
+        Superadmin-only. Any organization relying on this as its fallback
+        (no embedder of its own) starts failing ingest/search calls with a
+        clear reason.
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/devices:
     get:
       operationId: listDevices
@@ -2711,6 +2817,37 @@ components:
               text: { type: string }
               score: { type: number, format: float }
               metadata: { type: object, additionalProperties: { type: string } }
+
+    EmbedderSetting:
+      type: object
+      description: Never includes the API key — same redaction stance as ProviderSetting.
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        provider: { type: string, enum: [openai, ollama] }
+        model: { type: string, example: text-embedding-3-small }
+        base_url: { type: string }
+
+    EmbedderSettingInput:
+      type: object
+      properties:
+        organization_id: { type: string, description: "Required for the organization-scoped endpoint; ignored for the platform one." }
+        provider: { type: string, enum: [openai, ollama] }
+        model: { type: string, example: text-embedding-3-small }
+        base_url: { type: string }
+        api_key:
+          type: string
+          description: Optional (e.g. a local Ollama needs none). Empty on update keeps the existing key unchanged.
+      required: [provider, model, base_url]
+
+    PlatformEmbedderSetting:
+      type: object
+      description: The platform-wide default embedder — not scoped to any organization. Never includes the API key.
+      properties:
+        id: { type: string }
+        provider: { type: string, enum: [openai, ollama] }
+        model: { type: string, example: text-embedding-3-small }
+        base_url: { type: string }
 
     Device:
       type: object

@@ -7,6 +7,7 @@ import (
 
 func TestUploadFileAutoEnqueuesAndProcessesIngestion(t *testing.T) {
 	env := newTestEnv(t)
+	env.configurePlatformEmbedder(t)
 
 	corpus, err := env.knowledge.CreateCorpus(context.Background(), env.adminPrincipal, CreateCorpusParams{
 		OrganizationID: env.orgID, Name: "Supplier Policies",
@@ -77,9 +78,8 @@ func TestUploadFileAutoEnqueuesAndProcessesIngestion(t *testing.T) {
 	}
 }
 
-func TestUploadFileWithoutRAGConfiguredSkipsAutoEnqueue(t *testing.T) {
-	env := newTestEnv(t)
-	env.knowledge.rag = nil // simulate no embedder configured yet (step 2, not done)
+func TestUploadFileWithoutEmbedderConfiguredSkipsAutoEnqueue(t *testing.T) {
+	env := newTestEnv(t) // no embedder configured — this is the default state
 
 	corpus, err := env.knowledge.CreateCorpus(context.Background(), env.adminPrincipal, CreateCorpusParams{
 		OrganizationID: env.orgID, Name: "No Embedder Yet",
@@ -96,16 +96,17 @@ func TestUploadFileWithoutRAGConfiguredSkipsAutoEnqueue(t *testing.T) {
 		t.Fatalf("list ingestion jobs: %v", err)
 	}
 	if len(jobs) != 0 {
-		t.Fatalf("expected no auto-enqueued job without a configured RAG service, got %d", len(jobs))
+		t.Fatalf("expected no auto-enqueued job without a configured embedder, got %d", len(jobs))
 	}
 
 	if _, err := env.knowledge.Search(context.Background(), env.adminPrincipal, SearchParams{CorpusID: corpus.ID, Query: "anything"}); err == nil {
-		t.Fatal("expected search to fail clearly when the RAG service is not configured")
+		t.Fatal("expected search to fail clearly when no embedder is configured")
 	}
 }
 
 func TestRetryIngestionJobOnlyAllowsFailedJobs(t *testing.T) {
 	env := newTestEnv(t)
+	env.configurePlatformEmbedder(t)
 	corpus, err := env.knowledge.CreateCorpus(context.Background(), env.adminPrincipal, CreateCorpusParams{
 		OrganizationID: env.orgID, Name: "Retry Test",
 	})
@@ -143,6 +144,7 @@ func TestRetryIngestionJobOnlyAllowsFailedJobs(t *testing.T) {
 
 func TestDetachFileRemovesChunksAndAdjustsCorpusCount(t *testing.T) {
 	env := newTestEnv(t)
+	env.configurePlatformEmbedder(t)
 	corpus, err := env.knowledge.CreateCorpus(context.Background(), env.adminPrincipal, CreateCorpusParams{
 		OrganizationID: env.orgID, Name: "Detach Test",
 	})

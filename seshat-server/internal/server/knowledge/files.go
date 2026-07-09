@@ -67,7 +67,7 @@ func (s *Service) UploadFile(ctx context.Context, principal *iam.Principal, corp
 		return nil, err
 	}
 
-	if s.rag != nil {
+	if _, ok, embedderErr := s.resolveEmbedderConfig(ctx, corpus.OrganizationID); embedderErr == nil && ok {
 		if _, jobErr := s.enqueueIngestionJob(ctx, corpus.OrganizationID, corpus.ID, record.ID, filename); jobErr != nil {
 			// Best-effort: the file is uploaded either way; the caller can
 			// retry ingestion explicitly via EnqueueIngest.
@@ -114,10 +114,14 @@ func (s *Service) DetachFile(ctx context.Context, principal *iam.Principal, corp
 		return err
 	}
 
-	if file.ChunkCount > 0 && s.rag != nil {
-		artifactKey := fmt.Sprintf("%s#file-%s", corpus.ID, file.ID)
-		if err := s.rag.DeleteFileChunks(ctx, corpus.ID, artifactKey, 0, file.ChunkCount); err != nil {
-			return ErrInvalidInput("delete file vectors: " + err.Error())
+	if file.ChunkCount > 0 {
+		if ragService, ok, err := s.ragServiceFor(ctx, corpus.OrganizationID); err != nil {
+			return err
+		} else if ok {
+			artifactKey := fmt.Sprintf("%s#file-%s", corpus.ID, file.ID)
+			if err := ragService.DeleteFileChunks(ctx, corpus.ID, artifactKey, 0, file.ChunkCount); err != nil {
+				return ErrInvalidInput("delete file vectors: " + err.Error())
+			}
 		}
 	}
 

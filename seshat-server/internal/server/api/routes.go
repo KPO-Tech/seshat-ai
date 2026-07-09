@@ -94,6 +94,17 @@ func (app *App) routes() http.Handler {
 	mux.Handle("POST /api/v1/knowledge/corpora/{corpusID}/ingestion-jobs/{jobID}/retry", app.authMiddleware(http.HandlerFunc(app.handleCorpusIngestionJobRetry)))
 	mux.Handle("POST /api/v1/knowledge/corpora/{corpusID}/search", app.authMiddleware(http.HandlerFunc(app.handleCorpusSearch)))
 
+	// Embedder settings — hybrid org/platform-default embedder used for RAG
+	// ingestion/search (same shape as provider-settings for LLMs, but a
+	// singleton per organization — see knowledge.EmbedderSetting's doc
+	// comment for why more than one active embedder per org isn't allowed).
+	mux.Handle("GET /api/v1/embedder-settings", app.authMiddleware(http.HandlerFunc(app.handleEmbedderSettings)))
+	mux.Handle("PUT /api/v1/embedder-settings", app.authMiddleware(http.HandlerFunc(app.handleEmbedderSettings)))
+	mux.Handle("DELETE /api/v1/embedder-settings", app.authMiddleware(http.HandlerFunc(app.handleEmbedderSettings)))
+	mux.Handle("GET /api/v1/platform/embedder-settings", app.authMiddleware(http.HandlerFunc(app.handlePlatformEmbedderSettings)))
+	mux.Handle("PUT /api/v1/platform/embedder-settings", app.authMiddleware(http.HandlerFunc(app.handlePlatformEmbedderSettings)))
+	mux.Handle("DELETE /api/v1/platform/embedder-settings", app.authMiddleware(http.HandlerFunc(app.handlePlatformEmbedderSettings)))
+
 	// Devices — admin surface is user-authenticated (register/list/revoke);
 	// the /device/* protocol below is device-token-authenticated instead.
 	mux.Handle("GET /api/v1/devices", app.authMiddleware(http.HandlerFunc(app.handleDevices)))

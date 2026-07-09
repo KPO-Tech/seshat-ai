@@ -122,6 +122,8 @@ func (d *DB) Migrate() error {
 		&Corpus{},
 		&CorpusFile{},
 		&KnowledgeIngestionJob{},
+		&EmbedderSetting{},
+		&PlatformEmbedderSetting{},
 	)
 }
 
