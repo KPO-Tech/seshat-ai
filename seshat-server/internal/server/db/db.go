@@ -118,6 +118,7 @@ func (d *DB) Migrate() error {
 		&ScheduledJob{},
 		&JobRun{},
 		&ProviderSetting{},
+		&PlatformProviderSetting{},
 	)
 }
 

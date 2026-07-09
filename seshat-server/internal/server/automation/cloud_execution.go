@@ -80,21 +80,21 @@ func (s *Service) executeCloudRun(ctx context.Context, runID string) error {
 		return s.markCloudRunFailed(ctx, run.ID, err.Error())
 	}
 
-	setting, ok, err := s.findProviderSetting(ctx, job.OrganizationID, provider)
+	encryptedAPIKey, baseURL, ok, err := s.resolveProviderCredentials(ctx, job.OrganizationID, provider)
 	if err != nil {
 		return err
 	}
 	if !ok {
-		return s.markCloudRunFailed(ctx, run.ID, fmt.Sprintf("no provider_settings configured for %q in this organization", provider))
+		return s.markCloudRunFailed(ctx, run.ID, fmt.Sprintf("no provider credentials configured for %q (checked this organization's provider_settings and the platform default)", provider))
 	}
-	apiKey, err := decryptSecret(setting.EncryptedAPIKey)
+	apiKey, err := decryptSecret(encryptedAPIKey)
 	if err != nil {
 		return s.markCloudRunFailed(ctx, run.ID, "failed to decrypt provider credentials: "+err.Error())
 	}
 
 	providerConfig := &sdkproviders.Config{Provider: sdktypes.APIProvider(provider), APIKey: apiKey}
-	if setting.BaseURL != "" {
-		providerConfig.BaseURL = setting.BaseURL
+	if baseURL != "" {
+		providerConfig.BaseURL = baseURL
 	}
 
 	executor, err := sdkautomation.NewExecutor(sdkautomation.ExecutorConfig{
@@ -155,6 +155,29 @@ func (s *Service) finishCloudRun(ctx context.Context, runID, status, outputText,
 
 func (s *Service) markCloudRunFailed(ctx context.Context, runID, reason string) error {
 	return s.finishCloudRun(ctx, runID, RunStatusFailed, "", reason)
+}
+
+// resolveProviderCredentials implements the hybrid BYOK/managed model: an
+// organization's own ProviderSetting always wins when it has one; otherwise
+// this falls back to the platform-wide PlatformProviderSetting default (the
+// credentials a paying-subscription org would run on without ever
+// configuring its own key). Returns ok=false if neither exists.
+func (s *Service) resolveProviderCredentials(ctx context.Context, organizationID, provider string) (encryptedAPIKey, baseURL string, ok bool, err error) {
+	orgSetting, found, err := s.findProviderSetting(ctx, organizationID, provider)
+	if err != nil {
+		return "", "", false, err
+	}
+	if found {
+		return orgSetting.EncryptedAPIKey, orgSetting.BaseURL, true, nil
+	}
+	platformSetting, found, err := s.findPlatformProviderSetting(ctx, provider)
+	if err != nil {
+		return "", "", false, err
+	}
+	if found {
+		return platformSetting.EncryptedAPIKey, platformSetting.BaseURL, true, nil
+	}
+	return "", "", false, nil
 }
 
 // parseModelOverride splits a job's model_override ("provider:model") into

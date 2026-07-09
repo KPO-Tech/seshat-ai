@@ -1277,6 +1277,110 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/platform/provider-settings:
+    get:
+      operationId: listPlatformProviderSettings
+      tags: [platform-provider-settings]
+      summary: List the platform-wide default LLM credentials
+      description: >-
+        Superadmin-only (platform admin, User.is_admin). Unlike every
+        org-scoped list endpoint, a non-admin caller gets 403, not an empty
+        list — there is no organization to scope visibility to. The API key
+        is never included, in this or any other response.
+      responses:
+        "200":
+          description: Platform provider setting list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  platform_provider_settings:
+                    type: array
+                    items: { $ref: "#/components/schemas/PlatformProviderSetting" }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      operationId: createPlatformProviderSetting
+      tags: [platform-provider-settings]
+      summary: Store the platform-wide default credentials for one LLM provider
+      description: >-
+        Superadmin-only. One row per provider, globally (not scoped to any
+        organization) — creating a second setting for the same provider is
+        rejected; use update instead. A cloud-targeted job falls back to
+        this when its own organization has no provider-settings configured
+        for the requested provider (the hybrid BYOK/managed model — an org
+        can bring its own key, or use Seshat's default without configuring
+        anything). The api_key is AES-256-GCM encrypted at rest and never
+        echoed back, not even in this response.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlatformProviderSettingInput" }
+      responses:
+        "201":
+          description: Platform provider setting created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformProviderSetting" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/platform/provider-settings/{platformProviderSettingID}:
+    parameters:
+      - name: platformProviderSettingID
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      operationId: getPlatformProviderSetting
+      tags: [platform-provider-settings]
+      summary: Get a platform provider setting
+      description: Superadmin-only.
+      responses:
+        "200":
+          description: Platform provider setting
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformProviderSetting" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      operationId: updatePlatformProviderSetting
+      tags: [platform-provider-settings]
+      summary: Update a platform provider setting
+      description: Superadmin-only. An empty/omitted api_key leaves the stored credential unchanged.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlatformProviderSettingInput" }
+      responses:
+        "200":
+          description: Updated platform provider setting
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformProviderSetting" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      operationId: deletePlatformProviderSetting
+      tags: [platform-provider-settings]
+      summary: Delete a platform provider setting
+      description: >-
+        Superadmin-only. Any cloud job that was relying on this as its
+        fallback (no org-level provider-settings of its own) starts failing
+        at execution time with a clear reason; existing jobs are not
+        touched or deleted.
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/devices:
     get:
       operationId: listDevices
@@ -2257,6 +2361,28 @@ components:
       type: object
       properties:
         organization_id: { type: string, description: "Required on create, ignored on update." }
+        provider: { type: string, example: anthropic, description: "Required on create, ignored on update." }
+        default_model: { type: string, example: claude-sonnet-5 }
+        base_url: { type: string }
+        api_key:
+          type: string
+          description: Required on create. On update, omit/empty to keep the existing stored key unchanged.
+
+    PlatformProviderSetting:
+      type: object
+      description: >-
+        The platform-wide default credential for one LLM provider — not
+        scoped to any organization. Never includes the API key.
+      properties:
+        id: { type: string }
+        created_by_user_id: { type: string }
+        provider: { type: string, example: anthropic }
+        default_model: { type: string, example: claude-sonnet-5 }
+        base_url: { type: string }
+
+    PlatformProviderSettingInput:
+      type: object
+      properties:
         provider: { type: string, example: anthropic, description: "Required on create, ignored on update." }
         default_model: { type: string, example: claude-sonnet-5 }
         base_url: { type: string }

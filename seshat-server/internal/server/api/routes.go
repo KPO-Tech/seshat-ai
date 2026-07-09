@@ -68,6 +68,16 @@ func (app *App) routes() http.Handler {
 	mux.Handle("PUT /api/v1/provider-settings/{providerSettingID}", app.authMiddleware(http.HandlerFunc(app.handleProviderSettingByID)))
 	mux.Handle("DELETE /api/v1/provider-settings/{providerSettingID}", app.authMiddleware(http.HandlerFunc(app.handleProviderSettingByID)))
 
+	// Platform provider settings — the platform-wide default LLM credential
+	// per provider, superadmin-only. A cloud-targeted job falls back to
+	// these when its own organization has no provider-settings configured
+	// (see automation.Service.resolveProviderCredentials).
+	mux.Handle("GET /api/v1/platform/provider-settings", app.authMiddleware(http.HandlerFunc(app.handlePlatformProviderSettings)))
+	mux.Handle("POST /api/v1/platform/provider-settings", app.authMiddleware(http.HandlerFunc(app.handlePlatformProviderSettings)))
+	mux.Handle("GET /api/v1/platform/provider-settings/{platformProviderSettingID}", app.authMiddleware(http.HandlerFunc(app.handlePlatformProviderSettingByID)))
+	mux.Handle("PUT /api/v1/platform/provider-settings/{platformProviderSettingID}", app.authMiddleware(http.HandlerFunc(app.handlePlatformProviderSettingByID)))
+	mux.Handle("DELETE /api/v1/platform/provider-settings/{platformProviderSettingID}", app.authMiddleware(http.HandlerFunc(app.handlePlatformProviderSettingByID)))
+
 	// Devices — admin surface is user-authenticated (register/list/revoke);
 	// the /device/* protocol below is device-token-authenticated instead.
 	mux.Handle("GET /api/v1/devices", app.authMiddleware(http.HandlerFunc(app.handleDevices)))

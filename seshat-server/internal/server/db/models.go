@@ -272,3 +272,23 @@ type ProviderSetting struct {
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 }
+
+// PlatformProviderSetting is the platform-wide default credential set for
+// one LLM provider — not scoped to any organization. Cloud-targeted runs use
+// it when the run's own organization has no ProviderSetting configured for
+// the requested provider (see automation.Service.resolveProviderCredentials):
+// an org can bring its own key (ProviderSetting), or fall back to Seshat's
+// own default, the same shape a paid-subscription org would use without
+// ever configuring its own credentials. Superadmin-only (User.IsAdmin), not
+// gated by any organization permission — there is no organization to check
+// one against.
+type PlatformProviderSetting struct {
+	ID              string `gorm:"primaryKey;size:32"`
+	CreatedByUserID string `gorm:"size:32;not null"`
+	Provider        string `gorm:"size:32;not null;uniqueIndex"`
+	DefaultModel    string `gorm:"size:128;not null"`
+	BaseURL         string `gorm:"size:500"`
+	EncryptedAPIKey string `gorm:"type:text;not null"`
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
