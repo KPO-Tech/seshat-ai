@@ -1,7 +1,7 @@
-import { useState } from 'react'
-import { Button, Drawer, Form, Input, message, Popconfirm, Space, Table, Typography } from 'antd'
+import { useEffect, useState } from 'react'
+import { Avatar, Button, Drawer, Empty, Form, Input, message, Popconfirm, Space, Table, Typography } from 'antd'
 import type { TableProps } from 'antd'
-import { PlusOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons'
+import { PlusOutlined, DeleteOutlined, EditOutlined, ApartmentOutlined } from '@ant-design/icons'
 import {
   useOrganizationsList,
   useCreateOrganization,
@@ -11,6 +11,8 @@ import {
   type OrganizationInput,
 } from '@/api/organizations'
 import { getErrorMessage } from '@/api/errors'
+import { PageHeader } from '@/components/PageHeader'
+import { palette } from '@/theme/tokens'
 
 const PAGE_SIZE = 20
 
@@ -42,10 +44,28 @@ export function OrganizationsPage() {
   }
 
   const columns: TableProps<Organization>['columns'] = [
-    { title: 'Name', dataIndex: 'name', key: 'name', sorter: true },
-    { title: 'Slug', dataIndex: 'slug', key: 'slug', sorter: true },
-    { title: 'Website', dataIndex: 'website_url', key: 'website_url' },
-    { title: 'Support email', dataIndex: 'support_email', key: 'support_email' },
+    {
+      title: 'Name',
+      dataIndex: 'name',
+      key: 'name',
+      sorter: true,
+      render: (name: string, record) => (
+        <Space>
+          <Avatar
+            size={28}
+            style={{ background: palette.accentSoft, color: palette.accent, fontWeight: 600, fontSize: 12 }}
+          >
+            {name?.slice(0, 2).toUpperCase()}
+          </Avatar>
+          <div>
+            <div style={{ fontWeight: 500 }}>{name}</div>
+            <Typography.Text style={{ fontSize: 12, color: palette.inkTertiary }}>{record.slug}</Typography.Text>
+          </div>
+        </Space>
+      ),
+    },
+    { title: 'Website', dataIndex: 'website_url', key: 'website_url', render: (v) => v || '—' },
+    { title: 'Support email', dataIndex: 'support_email', key: 'support_email', render: (v) => v || '—' },
     {
       title: '',
       key: 'actions',
@@ -76,25 +96,26 @@ export function OrganizationsPage() {
 
   return (
     <div>
-      <Space style={{ marginBottom: 16, width: '100%', justifyContent: 'space-between' }}>
-        <Typography.Title level={4} style={{ margin: 0 }}>
-          Organizations
-        </Typography.Title>
-        <Space>
-          <Input.Search
-            placeholder="Search organizations"
-            allowClear
-            onSearch={(value) => {
-              setPage(1)
-              setSearch(value)
-            }}
-            style={{ width: 260 }}
-          />
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing('new')}>
-            New organization
-          </Button>
-        </Space>
-      </Space>
+      <PageHeader
+        title="Organizations"
+        description="Tenants using this Seshat control plane."
+        actions={
+          <Space>
+            <Input.Search
+              placeholder="Search organizations"
+              allowClear
+              onSearch={(value) => {
+                setPage(1)
+                setSearch(value)
+              }}
+              style={{ width: 260 }}
+            />
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing('new')}>
+              New organization
+            </Button>
+          </Space>
+        }
+      />
 
       <Table<Organization>
         rowKey="id"
@@ -102,6 +123,15 @@ export function OrganizationsPage() {
         dataSource={data?.organizations ?? []}
         loading={isLoading || isFetching}
         onChange={handleTableChange}
+        locale={{
+          emptyText: (
+            <Empty
+              image={<ApartmentOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}
+              description={search ? 'No organizations match your search' : 'No organizations yet'}
+              style={{ padding: '32px 0' }}
+            />
+          ),
+        }}
         pagination={{
           current: page,
           pageSize: PAGE_SIZE,
@@ -152,15 +182,20 @@ function OrganizationFormDrawer({
 }) {
   const [form] = Form.useForm<OrganizationInput>()
 
+  // Reset as soon as the drawer is asked to open, not after its CSS
+  // transition finishes (Drawer's afterOpenChange) — that gap is a real
+  // race: on a slower render, a user could start typing before the
+  // transition-end fires and have setFieldsValue silently wipe it back out.
+  useEffect(() => {
+    if (open) form.setFieldsValue(organization ?? { name: '', slug: '' })
+  }, [open, organization, form])
+
   return (
     <Drawer
       title={organization ? `Edit ${organization.name}` : 'New organization'}
       open={open}
       onClose={onClose}
       destroyOnHidden
-      afterOpenChange={(isOpen) => {
-        if (isOpen) form.setFieldsValue(organization ?? { name: '', slug: '' })
-      }}
       extra={
         <Button type="primary" loading={submitting} onClick={() => form.submit()}>
           Save

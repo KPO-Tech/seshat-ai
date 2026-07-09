@@ -700,6 +700,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/provider-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the platform-wide default LLM credentials
+         * @description Superadmin-only (platform admin, User.is_admin). Unlike every org-scoped list endpoint, a non-admin caller gets 403, not an empty list — there is no organization to scope visibility to. The API key is never included, in this or any other response.
+         */
+        get: operations["listPlatformProviderSettings"];
+        put?: never;
+        /**
+         * Store the platform-wide default credentials for one LLM provider
+         * @description Superadmin-only. One row per provider, globally (not scoped to any organization) — creating a second setting for the same provider is rejected; use update instead. A cloud-targeted job falls back to this when its own organization has no provider-settings configured for the requested provider (the hybrid BYOK/managed model — an org can bring its own key, or use Seshat's default without configuring anything). The api_key is AES-256-GCM encrypted at rest and never echoed back, not even in this response.
+         */
+        post: operations["createPlatformProviderSetting"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/provider-settings/{platformProviderSettingID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                platformProviderSettingID: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Get a platform provider setting
+         * @description Superadmin-only.
+         */
+        get: operations["getPlatformProviderSetting"];
+        /**
+         * Update a platform provider setting
+         * @description Superadmin-only. An empty/omitted api_key leaves the stored credential unchanged.
+         */
+        put: operations["updatePlatformProviderSetting"];
+        post?: never;
+        /**
+         * Delete a platform provider setting
+         * @description Superadmin-only. Any cloud job that was relying on this as its fallback (no org-level provider-settings of its own) starts failing at execution time with a clear reason; existing jobs are not touched or deleted.
+         */
+        delete: operations["deletePlatformProviderSetting"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/devices": {
         parameters: {
             query?: never;
@@ -1372,6 +1426,28 @@ export interface components {
         ProviderSettingInput: {
             /** @description Required on create, ignored on update. */
             organization_id?: string;
+            /**
+             * @description Required on create, ignored on update.
+             * @example anthropic
+             */
+            provider?: string;
+            /** @example claude-sonnet-5 */
+            default_model?: string;
+            base_url?: string;
+            /** @description Required on create. On update, omit/empty to keep the existing stored key unchanged. */
+            api_key?: string;
+        };
+        /** @description The platform-wide default credential for one LLM provider — not scoped to any organization. Never includes the API key. */
+        PlatformProviderSetting: {
+            id?: string;
+            created_by_user_id?: string;
+            /** @example anthropic */
+            provider?: string;
+            /** @example claude-sonnet-5 */
+            default_model?: string;
+            base_url?: string;
+        };
+        PlatformProviderSettingInput: {
             /**
              * @description Required on create, ignored on update.
              * @example anthropic
@@ -3134,6 +3210,133 @@ export interface operations {
             header?: never;
             path: {
                 providerSettingID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listPlatformProviderSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Platform provider setting list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        platform_provider_settings?: components["schemas"]["PlatformProviderSetting"][];
+                        count?: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createPlatformProviderSetting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlatformProviderSettingInput"];
+            };
+        };
+        responses: {
+            /** @description Platform provider setting created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformProviderSetting"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getPlatformProviderSetting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                platformProviderSettingID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Platform provider setting */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformProviderSetting"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updatePlatformProviderSetting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                platformProviderSettingID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlatformProviderSettingInput"];
+            };
+        };
+        responses: {
+            /** @description Updated platform provider setting */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformProviderSetting"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deletePlatformProviderSetting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                platformProviderSettingID: string;
             };
             cookie?: never;
         };
