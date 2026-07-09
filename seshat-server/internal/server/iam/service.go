@@ -511,6 +511,18 @@ func (s *Service) ListOrganizations(ctx context.Context, principal *Principal, p
 
 // CreateOrganization is self-serve: any authenticated user may create an
 // organization and becomes its owner.
+// CreateOrganization is self-serve: any authenticated non-admin user
+// becomes the owner of the organization they create, so they can actually
+// manage what they just made. A platform admin (superadmin) creating an
+// organization is a different action — provisioning one on behalf of a
+// customer, not founding their own — so no owner membership is attached for
+// them: IsAdmin already grants full access to every organization regardless
+// of membership (see hasOrganizationPermission), and forcing membership
+// here would make every org a platform admin ever creates show up as
+// something they "belong to", which is exactly what the superadmin model
+// is meant to avoid. An admin who does want to join a specific org they
+// created can do so afterward via CreateMembership, same as adding anyone
+// else.
 func (s *Service) CreateOrganization(ctx context.Context, principal *Principal, params CreateOrganizationParams) (*Organization, error) {
 	if principal == nil {
 		return nil, ErrUnauthorized("authentication required")
@@ -551,16 +563,18 @@ func (s *Service) CreateOrganization(ctx context.Context, principal *Principal, 
 			return err
 		}
 
-		membershipID, err := newID("mem")
-		if err != nil {
-			return err
-		}
-		membership := sdb.Membership{ID: membershipID, UserID: principal.User.ID, OrganizationID: record.ID, Role: "owner", CreatedAt: now}
-		if err := tx.Create(&membership).Error; err != nil {
-			return err
-		}
-		if err := appendAuditEvent(tx, principal, record.ID, "membership.created", "membership", membership.ID, map[string]string{"role": membership.Role, "user_id": membership.UserID}); err != nil {
-			return err
+		if !principal.User.IsAdmin {
+			membershipID, err := newID("mem")
+			if err != nil {
+				return err
+			}
+			membership := sdb.Membership{ID: membershipID, UserID: principal.User.ID, OrganizationID: record.ID, Role: "owner", CreatedAt: now}
+			if err := tx.Create(&membership).Error; err != nil {
+				return err
+			}
+			if err := appendAuditEvent(tx, principal, record.ID, "membership.created", "membership", membership.ID, map[string]string{"role": membership.Role, "user_id": membership.UserID}); err != nil {
+				return err
+			}
 		}
 
 		org := toOrganization(record)

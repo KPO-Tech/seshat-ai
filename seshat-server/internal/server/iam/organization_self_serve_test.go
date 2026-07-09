@@ -98,3 +98,79 @@ func TestNonAdminUserCanCreateOrganizationAndBecomesOwner(t *testing.T) {
 		t.Fatalf("expected one membership.created audit event for the new organization, got %d", len(events))
 	}
 }
+
+// TestPlatformAdminCreatingOrganizationDoesNotBecomeAMember locks in the
+// superadmin model: a platform admin provisioning an organization (e.g. for
+// a customer) is not the same action as a founder self-serving their own —
+// the admin should not end up "belonging to" every org they ever create.
+// IsAdmin already grants full access regardless of membership, so nothing
+// is lost; see the reasoning on CreateOrganization itself.
+func TestPlatformAdminCreatingOrganizationDoesNotBecomeAMember(t *testing.T) {
+	service := newTestService(t)
+
+	boot, err := service.Bootstrap(context.Background(), BootstrapParams{
+		Email:            "admin@example.com",
+		Password:         "password123",
+		DisplayName:      "Admin",
+		OrganizationName: "Seshat",
+		OrganizationSlug: "seshat",
+	})
+	if err != nil {
+		t.Fatalf("bootstrap: %v", err)
+	}
+	adminPrincipal, err := service.ResolvePrincipal(context.Background(), boot.Token)
+	if err != nil {
+		t.Fatalf("resolve admin principal: %v", err)
+	}
+
+	org, err := service.CreateOrganization(context.Background(), adminPrincipal, CreateOrganizationParams{
+		Name: "Customer Co",
+		Slug: "customer-co",
+	})
+	if err != nil {
+		t.Fatalf("create organization as platform admin: %v", err)
+	}
+
+	memberships, _, err := service.ListMemberships(context.Background(), adminPrincipal, org.ID, "", sdb.ListParams{Sort: "created_at", Order: "asc", Limit: 50})
+	if err != nil {
+		t.Fatalf("list memberships: %v", err)
+	}
+	if len(memberships) != 0 {
+		t.Fatalf("expected the platform admin to hold no membership in an organization they provisioned, got %+v", memberships)
+	}
+
+	// IsAdmin still grants full access despite holding no membership at all.
+	loaded, err := service.GetOrganization(context.Background(), adminPrincipal, org.ID)
+	if err != nil {
+		t.Fatalf("expected the platform admin to access the organization without being a member: %v", err)
+	}
+	if loaded.ID != org.ID {
+		t.Fatalf("unexpected organization loaded: %s", loaded.ID)
+	}
+
+	// The admin can still explicitly add someone (including themselves) as
+	// owner afterward — provisioning, then handing over, in two steps.
+	customerUser, err := service.CreateUser(context.Background(), adminPrincipal, CreateUserParams{
+		Email:       "customer-owner@example.com",
+		Password:    "password123",
+		DisplayName: "Customer Owner",
+	})
+	if err != nil {
+		t.Fatalf("create customer user: %v", err)
+	}
+	if _, err := service.CreateMembership(context.Background(), adminPrincipal, CreateMembershipParams{
+		OrganizationID: org.ID,
+		UserID:         customerUser.ID,
+		Role:           "owner",
+	}); err != nil {
+		t.Fatalf("attach customer as owner: %v", err)
+	}
+
+	memberships, _, err = service.ListMemberships(context.Background(), adminPrincipal, org.ID, "", sdb.ListParams{Sort: "created_at", Order: "asc", Limit: 50})
+	if err != nil {
+		t.Fatalf("list memberships after attaching customer: %v", err)
+	}
+	if len(memberships) != 1 || memberships[0].UserID != customerUser.ID || memberships[0].Role != "owner" {
+		t.Fatalf("expected only the customer to hold a membership, got %+v", memberships)
+	}
+}

@@ -108,6 +108,16 @@ func TestUnscopedTenantListsAreScopedToAuthorizedOrganizations(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create group A: %v", err)
 	}
+	// A platform admin creating an organization no longer auto-joins it (see
+	// CreateOrganization) — join explicitly to be a valid group member here,
+	// same as any other user would.
+	if _, err := service.CreateMembership(context.Background(), adminPrincipal, CreateMembershipParams{
+		OrganizationID: orgB.ID,
+		UserID:         adminPrincipal.User.ID,
+		Role:           "owner",
+	}); err != nil {
+		t.Fatalf("join org B as admin: %v", err)
+	}
 	groupB, err := service.CreateGroup(context.Background(), adminPrincipal, CreateGroupParams{
 		OrganizationID: orgB.ID,
 		Name:           "Group B",
