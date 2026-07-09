@@ -49,6 +49,9 @@ func New(cfg serverconfig.Config) (*App, error) {
 	// an embedder is set up for a given organization, Ingest/Search return
 	// a clear "not configured" error; corpus/file management works either way.
 	knowledgeService := knowledge.New(database, iamService, artifactStore, vectorStore)
+	// Lets cloud-targeted job execution enable rag_search/rag_ingest,
+	// scoped per organization — see automation.Service.RAGResolver.
+	automationService.SetRAGResolver(knowledgeService)
 
 	return &App{
 		DB:              database,

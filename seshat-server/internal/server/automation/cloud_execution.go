@@ -12,6 +12,7 @@ import (
 	sdkautomation "github.com/EngineerProjects/seshat/pkg/automation"
 	sdkconfig "github.com/EngineerProjects/seshat/pkg/config"
 	sdkproviders "github.com/EngineerProjects/seshat/pkg/providers"
+	sdkrag "github.com/EngineerProjects/seshat/pkg/rag"
 	"github.com/EngineerProjects/seshat/pkg/sdk"
 	sdktypes "github.com/EngineerProjects/seshat/pkg/types"
 
@@ -25,11 +26,13 @@ const cloudMaxTokens = 4096
 
 // jobWorkflow adapts a queued cloud run to the automation.Workflow interface
 // the absorbed Runner/Executor expects. It only ever calls SubmitMessage —
-// no tools are registered anywhere in this path, so a cloud job can
-// generate text and nothing else: no bash, no filesystem, no local-machine
-// access. That's not a restriction bolted on here; it falls straight out of
-// automation.Runner.Execute never registering any tools on the client it
-// builds (verified against seshat/internal/automation/runner.go).
+// the model itself decides whether to call a tool during that turn. Cloud
+// jobs still cannot touch bash, the filesystem, or anything local-machine
+// (automation.Runner.Execute never registers those), but rag_search/
+// rag_ingest are available whenever a RAGService is resolved for the job's
+// organization (see executeCloudRun) — the "cloud jobs are text-only"
+// boundary from earlier in this project's life is now specifically "no
+// local-machine access", not "no tools at all".
 type jobWorkflow struct {
 	id          string
 	description string
@@ -97,11 +100,22 @@ func (s *Service) executeCloudRun(ctx context.Context, runID string) error {
 		providerConfig.BaseURL = baseURL
 	}
 
+	// Best-effort: a job with no embedder configured (org or platform) just
+	// runs without rag_search/rag_ingest available, same as a job never
+	// referencing them today — not a reason to fail the run outright.
+	var ragService *sdkrag.Service
+	if s.rag != nil {
+		if resolved, ok, ragErr := s.rag.RAGServiceForOrganization(ctx, job.OrganizationID); ragErr == nil && ok {
+			ragService = resolved
+		}
+	}
+
 	executor, err := sdkautomation.NewExecutor(sdkautomation.ExecutorConfig{
 		RunnerConfig: sdkautomation.RunnerConfig{
 			Model:          sdkautomation.ModelIdentifier{Provider: sdktypes.APIProvider(provider), Model: model},
 			ProviderConfig: providerConfig,
 			MaxTokens:      cloudMaxTokens,
+			RAGService:     ragService,
 		},
 	})
 	if err != nil {

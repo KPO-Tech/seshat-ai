@@ -275,6 +275,16 @@ func (s *Service) ragServiceFor(ctx context.Context, organizationID string) (*sd
 	return sdkrag.NewService(s.artifacts, s.vectors, sdkembedder.New(&embedderCfg), nil), true, nil
 }
 
+// RAGServiceForOrganization is the exported form of ragServiceFor, used by
+// automation.Service (via the RAGResolver interface) to enable
+// rag_search/rag_ingest for cloud-targeted job execution. Kept as a thin
+// public wrapper rather than exporting ragServiceFor itself so the
+// internal name stays free to evolve independently of this cross-package
+// contract.
+func (s *Service) RAGServiceForOrganization(ctx context.Context, organizationID string) (*sdkrag.Service, bool, error) {
+	return s.ragServiceFor(ctx, organizationID)
+}
+
 func (s *Service) mustLoadCorpus(ctx context.Context, principal *iam.Principal, corpusID string, permissionCodes ...string) (*sdb.Corpus, error) {
 	if principal == nil {
 		return nil, ErrUnauthorized("authentication required")

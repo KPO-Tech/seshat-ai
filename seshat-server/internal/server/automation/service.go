@@ -7,19 +7,42 @@
 package automation
 
 import (
+	"context"
+
+	sdkrag "github.com/EngineerProjects/seshat/pkg/rag"
+
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/apperr"
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
 )
 
+// RAGResolver resolves the rag.Service to use for one organization's
+// cloud-targeted job execution (its own embedder, else the platform
+// default — ok=false means neither is configured). Satisfied by
+// *knowledge.Service, injected via SetRAGResolver rather than imported
+// directly so this package doesn't depend on knowledge — same reasoning as
+// reusing iam's permission checks through its exported methods instead of
+// a tighter coupling.
+type RAGResolver interface {
+	RAGServiceForOrganization(ctx context.Context, organizationID string) (*sdkrag.Service, bool, error)
+}
+
 // Service owns devices, scheduled jobs and job runs.
 type Service struct {
 	db  *sdb.DB
 	iam *iam.Service
+	rag RAGResolver // nil until SetRAGResolver is called
 }
 
 func New(database *sdb.DB, iamService *iam.Service) *Service {
 	return &Service{db: database, iam: iamService}
+}
+
+// SetRAGResolver wires in the knowledge domain's embedder resolution so
+// cloud-targeted job execution can enable rag_search/rag_ingest. Called
+// once at app startup, after both services exist — see app.New.
+func (s *Service) SetRAGResolver(r RAGResolver) {
+	s.rag = r
 }
 
 func newID(prefix string) (string, error) { return sdb.NewID(prefix) }
