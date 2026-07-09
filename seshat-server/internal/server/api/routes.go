@@ -78,6 +78,22 @@ func (app *App) routes() http.Handler {
 	mux.Handle("PUT /api/v1/platform/provider-settings/{platformProviderSettingID}", app.authMiddleware(http.HandlerFunc(app.handlePlatformProviderSettingByID)))
 	mux.Handle("DELETE /api/v1/platform/provider-settings/{platformProviderSettingID}", app.authMiddleware(http.HandlerFunc(app.handlePlatformProviderSettingByID)))
 
+	// Knowledge base — organization-scoped RAG corpora, file upload and
+	// ingestion. Search/ingestion return a clear "not configured" error
+	// until an embedder is wired in (see ROADMAP.md); corpus/file
+	// management works regardless.
+	mux.Handle("GET /api/v1/knowledge/corpora", app.authMiddleware(http.HandlerFunc(app.handleCorpora)))
+	mux.Handle("POST /api/v1/knowledge/corpora", app.authMiddleware(http.HandlerFunc(app.handleCorpora)))
+	mux.Handle("GET /api/v1/knowledge/corpora/{corpusID}", app.authMiddleware(http.HandlerFunc(app.handleCorpusByID)))
+	mux.Handle("DELETE /api/v1/knowledge/corpora/{corpusID}", app.authMiddleware(http.HandlerFunc(app.handleCorpusByID)))
+	mux.Handle("GET /api/v1/knowledge/corpora/{corpusID}/files", app.authMiddleware(http.HandlerFunc(app.handleCorpusFiles)))
+	mux.Handle("POST /api/v1/knowledge/corpora/{corpusID}/files", app.authMiddleware(http.HandlerFunc(app.handleCorpusFiles)))
+	mux.Handle("DELETE /api/v1/knowledge/corpora/{corpusID}/files/{fileID}", app.authMiddleware(http.HandlerFunc(app.handleCorpusFileByID)))
+	mux.Handle("GET /api/v1/knowledge/corpora/{corpusID}/ingestion-jobs", app.authMiddleware(http.HandlerFunc(app.handleCorpusIngestionJobs)))
+	mux.Handle("GET /api/v1/knowledge/corpora/{corpusID}/ingestion-jobs/{jobID}", app.authMiddleware(http.HandlerFunc(app.handleCorpusIngestionJobByID)))
+	mux.Handle("POST /api/v1/knowledge/corpora/{corpusID}/ingestion-jobs/{jobID}/retry", app.authMiddleware(http.HandlerFunc(app.handleCorpusIngestionJobRetry)))
+	mux.Handle("POST /api/v1/knowledge/corpora/{corpusID}/search", app.authMiddleware(http.HandlerFunc(app.handleCorpusSearch)))
+
 	// Devices — admin surface is user-authenticated (register/list/revoke);
 	// the /device/* protocol below is device-token-authenticated instead.
 	mux.Handle("GET /api/v1/devices", app.authMiddleware(http.HandlerFunc(app.handleDevices)))

@@ -86,6 +86,8 @@ func permissionCatalog() []Permission {
 		{Code: "jobs.manage", Name: "Manage Jobs", Description: "Create, update, delete, pause, resume and trigger jobs; cancel runs.", Category: "jobs"},
 		{Code: "provider_settings.read", Name: "Read Provider Settings", Description: "See which LLM providers are configured (never the API key itself).", Category: "provider_settings"},
 		{Code: "provider_settings.manage", Name: "Manage Provider Settings", Description: "Create, update and delete LLM provider credentials.", Category: "provider_settings"},
+		{Code: "knowledge.read", Name: "Read Knowledge Base", Description: "Inspect corpora, uploaded files and ingestion status.", Category: "knowledge"},
+		{Code: "knowledge.manage", Name: "Manage Knowledge Base", Description: "Create/delete corpora, upload and remove files, retry ingestion.", Category: "knowledge"},
 	}
 	sort.Slice(permissions, func(i, j int) bool { return permissions[i].Code < permissions[j].Code })
 	return permissions

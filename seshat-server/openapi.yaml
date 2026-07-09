@@ -1381,6 +1381,264 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/knowledge/corpora:
+    get:
+      operationId: listCorpora
+      tags: [knowledge]
+      summary: List an organization's knowledge-base corpora
+      description: >-
+        Scoped visibility like every other list endpoint: a caller lacking
+        knowledge.read/knowledge.manage/organization.manage gets an empty
+        list, not a 403.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: Corpus list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  corpora:
+                    type: array
+                    items: { $ref: "#/components/schemas/Corpus" }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+    post:
+      operationId: createCorpus
+      tags: [knowledge]
+      summary: Create a corpus
+      description: Requires knowledge.manage or organization.manage.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CorpusInput" }
+      responses:
+        "201":
+          description: Corpus created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Corpus" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/knowledge/corpora/{corpusID}:
+    parameters:
+      - name: corpusID
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      operationId: getCorpus
+      tags: [knowledge]
+      summary: Get a corpus
+      responses:
+        "200":
+          description: Corpus
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Corpus" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      operationId: deleteCorpus
+      tags: [knowledge]
+      summary: Delete a corpus
+      description: >-
+        Requires knowledge.manage or organization.manage. Removes the
+        corpus's files, ingestion jobs, and its entire vector namespace.
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/knowledge/corpora/{corpusID}/files:
+    parameters:
+      - name: corpusID
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      operationId: listCorpusFiles
+      tags: [knowledge]
+      summary: List the files attached to a corpus
+      responses:
+        "200":
+          description: Corpus file list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  files:
+                    type: array
+                    items: { $ref: "#/components/schemas/CorpusFile" }
+                  count: { type: integer }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      operationId: uploadCorpusFile
+      tags: [knowledge]
+      summary: Upload a file into a corpus
+      description: >-
+        Requires knowledge.manage or organization.manage. Multipart form
+        upload with a single "file" field, capped at 25 MiB. When the
+        server's RAG service is configured, ingestion is auto-enqueued;
+        otherwise the file is stored and attached as pending, and
+        POST .../ingestion-jobs can be used once an embedder is set up (see
+        the platform-provider-settings-shaped follow-up in ROADMAP.md).
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file: { type: string, format: binary }
+              required: [file]
+      responses:
+        "201":
+          description: File uploaded and attached
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CorpusFile" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/knowledge/corpora/{corpusID}/files/{fileID}:
+    parameters:
+      - name: corpusID
+        in: path
+        required: true
+        schema: { type: string }
+      - name: fileID
+        in: path
+        required: true
+        schema: { type: string }
+    delete:
+      operationId: detachCorpusFile
+      tags: [knowledge]
+      summary: Detach a file from its corpus
+      description: >-
+        Requires knowledge.manage or organization.manage. Removes the
+        file's ingested vector chunks (if any) and adjusts the corpus's
+        chunk total.
+      responses:
+        "204": { description: Detached }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/knowledge/corpora/{corpusID}/ingestion-jobs:
+    parameters:
+      - name: corpusID
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      operationId: listIngestionJobs
+      tags: [knowledge]
+      summary: List ingestion jobs for a corpus
+      responses:
+        "200":
+          description: Ingestion job list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ingestion_jobs:
+                    type: array
+                    items: { $ref: "#/components/schemas/IngestionJob" }
+                  count: { type: integer }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/knowledge/corpora/{corpusID}/ingestion-jobs/{jobID}:
+    parameters:
+      - name: corpusID
+        in: path
+        required: true
+        schema: { type: string }
+      - name: jobID
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      operationId: getIngestionJob
+      tags: [knowledge]
+      summary: Get an ingestion job
+      responses:
+        "200":
+          description: Ingestion job
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IngestionJob" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/knowledge/corpora/{corpusID}/ingestion-jobs/{jobID}/retry:
+    parameters:
+      - name: corpusID
+        in: path
+        required: true
+        schema: { type: string }
+      - name: jobID
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      operationId: retryIngestionJob
+      tags: [knowledge]
+      summary: Retry a failed ingestion job
+      description: Requires knowledge.manage or organization.manage. Only jobs in the "failed" state can be retried.
+      responses:
+        "200":
+          description: Ingestion job requeued
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IngestionJob" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/knowledge/corpora/{corpusID}/search:
+    parameters:
+      - name: corpusID
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      operationId: searchCorpus
+      tags: [knowledge]
+      summary: Search a corpus
+      description: >-
+        Requires knowledge.read/knowledge.manage or organization.manage.
+        Returns a 400 if the server's RAG service isn't configured yet (no
+        embedder set up — see ROADMAP.md).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                query: { type: string }
+                top_k: { type: integer, minimum: 1, maximum: 20, description: "Defaults to 5." }
+              required: [query]
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SearchResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/devices:
     get:
       operationId: listDevices
@@ -2389,6 +2647,70 @@ components:
         api_key:
           type: string
           description: Required on create. On update, omit/empty to keep the existing stored key unchanged.
+
+    Corpus:
+      type: object
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        created_by_user_id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        chunk_count: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    CorpusInput:
+      type: object
+      properties:
+        organization_id: { type: string }
+        name: { type: string }
+        description: { type: string }
+      required: [organization_id, name]
+
+    CorpusFile:
+      type: object
+      properties:
+        id: { type: string }
+        corpus_id: { type: string }
+        filename: { type: string }
+        content_type: { type: string }
+        size: { type: integer, format: int64 }
+        status: { type: string, enum: [pending, ingested, failed] }
+        chunk_count: { type: integer }
+        ingested_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+
+    IngestionJob:
+      type: object
+      properties:
+        id: { type: string }
+        corpus_id: { type: string }
+        corpus_file_id: { type: string }
+        filename: { type: string }
+        status: { type: string, enum: [queued, running, completed, failed] }
+        attempt_count: { type: integer }
+        max_attempts: { type: integer }
+        chunk_count: { type: integer }
+        last_error: { type: string }
+        started_at: { type: string, format: date-time }
+        completed_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    SearchResponse:
+      type: object
+      properties:
+        corpus_id: { type: string }
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              key: { type: string }
+              text: { type: string }
+              score: { type: number, format: float }
+              metadata: { type: object, additionalProperties: { type: string } }
 
     Device:
       type: object

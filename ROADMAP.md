@@ -41,6 +41,26 @@ No backend work needed for any of these — the API already fully supports all o
 
 ---
 
+## Direction: seshat-server becomes the multi-tenant backbone
+
+Decided 2026-07-09: the platform is moving toward `seshat-server` as the multi-tenant cloud backend for everything, including file upload and knowledge/RAG — not just IAM and scheduled automation as today. `seshat-backend` (the existing local backend behind the desktop app) keeps working exactly as-is for the **local, single-user** case inside the desktop app; it is not being torn out. Once the multi-tenant surface (this knowledge/RAG work, and whatever follows it) is solid, the next phase is connecting `seshat-backend`/`seshat-ui` to `seshat-server` and replacing whichever local pieces make sense to replace with the cloud equivalent — not scoped in detail yet, revisit once the knowledge domain below is done.
+
+## Knowledge base / RAG domain — first pre-built workflow (in progress, started 2026-07-09)
+
+Picked as the first concrete pre-built workflow (see "Pre-built agentic workflows" below — this is workflow #2, the AI knowledge team / internal Q&A demo) precisely because the hard part already exists in the runtime, not because it's the easiest wedge on paper:
+
+- `seshat/internal/rag` already has a complete `rag.Service` (`Ingest` + hybrid vector/BM25/reranker `Search`, namespaced by `corpus_id`), and the `rag_search`/`rag_ingest` tools are **already registered in every SDK client's tool registry** (`internal/tools/builtin/builtin.go`), gated by `IsEnabled() = RAGService != nil`. Nothing to build in the runtime itself.
+- `automation.RunnerConfig` already has a proven precedent for wiring a tenant-scoped tool into cloud job execution: `WebSearchKeys map[string]string`, plumbed straight through to `sdk.ClientConfig` — adding an equivalent `RAGService` field is mechanical, not a new design.
+- The embedder supports a plain OpenAI-compatible HTTP API (not just local Ollama) and the vector store has a `pgvector` backend — both fit directly into infrastructure `seshat-server` already runs (its own Postgres), no new infra component required.
+- The real, only substantial piece of work is a **Corpus/knowledge domain in `seshat-server` itself**, which doesn't exist there at all today. `seshat-backend/internal/knowledge` (`Corpus`, `CorpusFile`, `KnowledgeIngestionJob`, single-instance polling ingestion worker, docling for PDF/DOCX/etc., search) is the direct blueprint — being adapted here as an **organization-scoped** equivalent (seshat-backend's version is per-user, single-tenant) rather than designed from scratch.
+
+Build order:
+1. **Done (2026-07-09).** Org-scoped `Corpus`/`CorpusFile`/`KnowledgeIngestionJob` domain in `seshat-server` (new `internal/server/knowledge` package): CRUD, multipart file upload via the runtime's `storage.ArtifactStore` (local disk or S3, config-driven — `SESHAT_SERVER_STORAGE_*`/`SESHAT_SERVER_S3_*` env vars, own namespace so it doesn't collide with a co-located seshat-backend/seshat-ui's storage config), async ingestion worker mirroring `automation.Scheduler`'s single-instance polling pattern (with idle backoff, closer to `seshat-backend`'s own knowledge runner). Two new permissions (`knowledge.read`/`knowledge.manage`) added to the catalog and to the owner/admin default roles — and, spotted while touching that list, `provider_settings.read`/`.manage` were missing from owner/admin too (a pre-existing gap from the earlier session), fixed in the same pass. `Ingest`/`Search` degrade gracefully with a clear "not configured" error until step 2 lands — verified end-to-end in tests using an in-memory vector store + a deterministic fake embedder (upload → auto-enqueue → process → ingested with chunks → search finds it). Routes under `/api/v1/knowledge/corpora/...`, documented in `openapi.yaml`. Binary-format ingestion (PDF/DOCX/audio via docling, which `seshat-backend` already wires up) is **not** ported yet — only plain-text/markdown/JSON/mostly-printable content extracts today; add docling once the demo needs it.
+2. Platform-wide (+ org override) embedder configuration — same hybrid BYOK/platform-default shape as `PlatformProviderSetting`, since `Ingest`/`Search` require an embedder to do anything. **Next up.**
+3. Wire `RAGService` through `automation.RunnerConfig` → `cloud_execution.go`, scoped per organization by corpus namespace.
+4. Console: a Knowledge/corpora page (create corpus, upload files, watch ingestion status), and a corpus picker on job creation.
+5. The actual demo: a `ScheduledJob` whose prompt instructs the model to use `rag_search` against a specific corpus and cite sources — the "AI knowledge team" flagship workflow, end to end.
+
 ## Multi-modal provider config (image, audio, web search)
 
 Today only LLM has a config domain (`ProviderSetting` per org + `PlatformProviderSetting` platform-wide fallback), matching `GOAL.md`'s Level 4 ambition (image generation, audio, eventually 3D). Extending the same hybrid model to the other modalities means, per modality:

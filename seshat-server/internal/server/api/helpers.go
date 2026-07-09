@@ -41,6 +41,8 @@ func writeIAMError(w http.ResponseWriter, err error) { writeControlPlaneError(w,
 
 func writeAutomationError(w http.ResponseWriter, err error) { writeControlPlaneError(w, err) }
 
+func writeKnowledgeError(w http.ResponseWriter, err error) { writeControlPlaneError(w, err) }
+
 func writeControlPlaneError(w http.ResponseWriter, err error) {
 	var typed *apperr.Error
 	if !errors.As(err, &typed) {

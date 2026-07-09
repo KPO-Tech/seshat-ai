@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	sdkstorage "github.com/EngineerProjects/seshat/pkg/storage"
+
 	serverapp "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/app"
 	serverconfig "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/config"
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
@@ -221,6 +223,7 @@ func newTestBackend(t *testing.T) (*serverapp.App, *iam.AuthResult, *iam.Princip
 	cfg := serverconfig.Config{
 		DB:         sdb.Config{Driver: sdb.DriverSQLite, DSN: ":memory:"},
 		SessionTTL: time.Hour,
+		Storage:    sdkstorage.Config{Provider: sdkstorage.ProviderLocal, LocalPath: t.TempDir()},
 	}
 	backend, err := serverapp.New(cfg)
 	if err != nil {

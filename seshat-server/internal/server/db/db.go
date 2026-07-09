@@ -119,6 +119,9 @@ func (d *DB) Migrate() error {
 		&JobRun{},
 		&ProviderSetting{},
 		&PlatformProviderSetting{},
+		&Corpus{},
+		&CorpusFile{},
+		&KnowledgeIngestionJob{},
 	)
 }
 

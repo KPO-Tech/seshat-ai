@@ -7,32 +7,40 @@ import (
 	"strings"
 	"time"
 
+	sdkstorage "github.com/EngineerProjects/seshat/pkg/storage"
+
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 )
 
 type Config struct {
-	Port               int
-	ReadTimeout        time.Duration
-	WriteTimeout       time.Duration
-	IdleTimeout        time.Duration
-	DB                 sdb.Config
-	SessionTTL         time.Duration
-	CORSAllowedOrigins []string
-	SchedulerInterval  time.Duration
-	StaleRunTimeout    time.Duration
+	Port                     int
+	ReadTimeout              time.Duration
+	WriteTimeout             time.Duration
+	IdleTimeout              time.Duration
+	DB                       sdb.Config
+	SessionTTL               time.Duration
+	CORSAllowedOrigins       []string
+	SchedulerInterval        time.Duration
+	StaleRunTimeout          time.Duration
+	Storage                  sdkstorage.Config
+	IngestionPollInterval    time.Duration
+	IngestionMaxPollInterval time.Duration
 }
 
 func LoadFromEnv() Config {
 	return Config{
-		Port:               envInt("SESHAT_SERVER_PORT", 8081),
-		ReadTimeout:        15 * time.Second,
-		WriteTimeout:       15 * time.Second,
-		IdleTimeout:        60 * time.Second,
-		DB:                 dbConfigFromEnv(),
-		SessionTTL:         envDuration("SESHAT_SERVER_SESSION_TTL", 24*time.Hour),
-		CORSAllowedOrigins: corsAllowedOriginsFromEnv(),
-		SchedulerInterval:  envDuration("SESHAT_SERVER_SCHEDULER_INTERVAL", 30*time.Second),
-		StaleRunTimeout:    envDuration("SESHAT_SERVER_STALE_RUN_TIMEOUT", 10*time.Minute),
+		Port:                     envInt("SESHAT_SERVER_PORT", 8081),
+		ReadTimeout:              15 * time.Second,
+		WriteTimeout:             15 * time.Second,
+		IdleTimeout:              60 * time.Second,
+		DB:                       dbConfigFromEnv(),
+		SessionTTL:               envDuration("SESHAT_SERVER_SESSION_TTL", 24*time.Hour),
+		CORSAllowedOrigins:       corsAllowedOriginsFromEnv(),
+		SchedulerInterval:        envDuration("SESHAT_SERVER_SCHEDULER_INTERVAL", 30*time.Second),
+		StaleRunTimeout:          envDuration("SESHAT_SERVER_STALE_RUN_TIMEOUT", 10*time.Minute),
+		Storage:                  storageConfigFromEnv(),
+		IngestionPollInterval:    envDuration("SESHAT_SERVER_INGESTION_POLL_INTERVAL", 500*time.Millisecond),
+		IngestionMaxPollInterval: envDuration("SESHAT_SERVER_INGESTION_MAX_POLL_INTERVAL", 5*time.Second),
 	}
 }
 
@@ -53,6 +61,37 @@ func corsAllowedOriginsFromEnv() []string {
 		}
 	}
 	return origins
+}
+
+// storageConfigFromEnv reads knowledge-base file storage config from
+// SESHAT_SERVER_-prefixed vars, deliberately separate from the runtime's
+// own SESHAT_S3_*/SESHAT_STORAGE_LOCAL_PATH globals (pkg/storage.GetConfigFromEnv)
+// so this control plane's storage location doesn't collide with whatever a
+// co-located seshat-backend/seshat-ui process has configured for itself.
+// Defaults to local disk under the same runtime root as the SQLite default.
+func storageConfigFromEnv() sdkstorage.Config {
+	provider := sdkstorage.ProviderType(strings.ToLower(strings.TrimSpace(os.Getenv("SESHAT_SERVER_STORAGE_PROVIDER"))))
+	if provider == "" {
+		provider = sdkstorage.ProviderLocal
+	}
+	localPath := os.Getenv("SESHAT_SERVER_STORAGE_LOCAL_PATH")
+	if localPath == "" {
+		runtimeRoot := os.Getenv("SESHAT_RUNTIME_ROOT")
+		if runtimeRoot == "" {
+			runtimeRoot = ".seshat"
+		}
+		localPath = filepath.Join(runtimeRoot, "server", "artifacts")
+	}
+	return sdkstorage.Config{
+		Provider:          provider,
+		LocalPath:         localPath,
+		S3Endpoint:        os.Getenv("SESHAT_SERVER_S3_ENDPOINT"),
+		S3Bucket:          os.Getenv("SESHAT_SERVER_S3_BUCKET"),
+		S3AccessKeyID:     os.Getenv("SESHAT_SERVER_S3_ACCESS_KEY_ID"),
+		S3SecretAccessKey: os.Getenv("SESHAT_SERVER_S3_SECRET_ACCESS_KEY"),
+		S3Region:          os.Getenv("SESHAT_SERVER_S3_REGION"),
+		S3KeyPrefix:       os.Getenv("SESHAT_SERVER_S3_KEY_PREFIX"),
+	}
 }
 
 func dbConfigFromEnv() sdb.Config {

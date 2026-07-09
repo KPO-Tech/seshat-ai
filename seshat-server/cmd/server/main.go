@@ -27,6 +27,9 @@ func main() {
 	app.Scheduler.Start()
 	defer app.Scheduler.Stop()
 
+	app.IngestionRunner.Start()
+	defer app.IngestionRunner.Stop()
+
 	router := serverapi.CreateRouter(serverapi.Config{
 		Port:               cfg.Port,
 		ReadTimeout:        cfg.ReadTimeout,

@@ -292,3 +292,58 @@ type PlatformProviderSetting struct {
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 }
+
+// Corpus is an organization-scoped RAG document collection. Its ID doubles
+// as the vector-store namespace (seshat/pkg/rag.SearchRequest.CorpusID), so
+// no separate namespace field is needed.
+type Corpus struct {
+	ID              string `gorm:"primaryKey;size:32"`
+	OrganizationID  string `gorm:"size:32;not null;index"`
+	CreatedByUserID string `gorm:"size:32;not null"`
+	Name            string `gorm:"size:255;not null"`
+	Description     string `gorm:"size:1000"`
+	ChunkCount      int    `gorm:"not null;default:0"`
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
+// CorpusFile is one uploaded document attached to a Corpus, tracked through
+// its ingestion lifecycle. OrganizationID is denormalized from the parent
+// Corpus so listing/authorization doesn't require a join.
+type CorpusFile struct {
+	ID              string `gorm:"primaryKey;size:32"`
+	CorpusID        string `gorm:"size:32;not null;index"`
+	OrganizationID  string `gorm:"size:32;not null;index"`
+	CreatedByUserID string `gorm:"size:32;not null"`
+	Filename        string `gorm:"size:500;not null"`
+	ContentType     string `gorm:"size:255"`
+	StorageKey      string `gorm:"size:500;not null"` // seshat/pkg/storage.ArtifactStore key
+	Size            int64  `gorm:"not null"`
+	Status          string `gorm:"size:32;not null;index"` // pending | ingested | failed
+	ChunkCount      int    `gorm:"not null;default:0"`
+	IngestedAt      *time.Time
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
+// KnowledgeIngestionJob queues one CorpusFile for chunk+embed+vector-upsert
+// processing. Polled by a single-instance worker, same pattern as
+// automation.Scheduler's run-queuing (see its doc comment on the
+// multi-instance limitation — the same caveat applies here).
+type KnowledgeIngestionJob struct {
+	ID             string `gorm:"primaryKey;size:32"`
+	CorpusID       string `gorm:"size:32;not null;index"`
+	CorpusFileID   string `gorm:"size:32;not null;index"`
+	OrganizationID string `gorm:"size:32;not null;index"`
+	Filename       string `gorm:"size:500;not null"`
+	Status         string `gorm:"size:32;not null;index"` // queued | running | completed | failed
+	AttemptCount   int    `gorm:"not null;default:0"`
+	MaxAttempts    int    `gorm:"not null;default:3"`
+	ChunkCount     int    `gorm:"not null;default:0"`
+	LastError      string `gorm:"type:text"`
+	NextRunAt      *time.Time
+	StartedAt      *time.Time
+	CompletedAt    *time.Time
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
