@@ -30,9 +30,10 @@ const cloudMaxTokens = 4096
 // jobs still cannot touch bash, the filesystem, or anything local-machine
 // (automation.Runner.Execute never registers those), but rag_search/
 // rag_ingest are available whenever a RAGService is resolved for the job's
-// organization (see executeCloudRun) — the "cloud jobs are text-only"
-// boundary from earlier in this project's life is now specifically "no
-// local-machine access", not "no tools at all".
+// organization, and read_document_url is available whenever docling is
+// configured server-wide (see executeCloudRun) — the "cloud jobs are
+// text-only" boundary from earlier in this project's life is now
+// specifically "no local-machine access", not "no tools at all".
 type jobWorkflow struct {
 	id          string
 	description string
@@ -116,6 +117,7 @@ func (s *Service) executeCloudRun(ctx context.Context, runID string) error {
 			ProviderConfig: providerConfig,
 			MaxTokens:      cloudMaxTokens,
 			RAGService:     ragService,
+			DoclingURL:     s.doclingURL,
 		},
 	})
 	if err != nil {

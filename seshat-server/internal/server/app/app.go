@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	sdkdocling "github.com/EngineerProjects/seshat/pkg/docling"
 	sdkstorage "github.com/EngineerProjects/seshat/pkg/storage"
 	sdkvector "github.com/EngineerProjects/seshat/pkg/vector"
 
@@ -49,9 +50,18 @@ func New(cfg serverconfig.Config) (*App, error) {
 	// an embedder is set up for a given organization, Ingest/Search return
 	// a clear "not configured" error; corpus/file management works either way.
 	knowledgeService := knowledge.New(database, iamService, artifactStore, vectorStore)
+	if cfg.DoclingURL != "" {
+		// Converts PDF/DOCX/PPTX/XLSX/audio/images to markdown before
+		// chunking. Optional — plain-text/markdown/JSON ingest fine without it.
+		knowledgeService = knowledgeService.WithDocling(sdkdocling.NewClient(cfg.DoclingURL))
+	}
 	// Lets cloud-targeted job execution enable rag_search/rag_ingest,
 	// scoped per organization — see automation.Service.RAGResolver.
 	automationService.SetRAGResolver(knowledgeService)
+	// Lets cloud-targeted job execution enable read_document_url (fetch +
+	// convert an arbitrary URL via docling) — a plain server-wide setting,
+	// not per-tenant, since docling-serve isn't a secret or credential.
+	automationService.SetDoclingURL(cfg.DoclingURL)
 
 	return &App{
 		DB:              database,

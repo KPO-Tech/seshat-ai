@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	sdkdocling "github.com/EngineerProjects/seshat/pkg/docling"
 	sdkstorage "github.com/EngineerProjects/seshat/pkg/storage"
 	sdkvector "github.com/EngineerProjects/seshat/pkg/vector"
 
@@ -145,4 +146,38 @@ func (env testEnv) configurePlatformEmbedder(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("configure platform embedder: %v", err)
 	}
+}
+
+// startFakeDoclingServer serves the two docling-serve endpoints this
+// package's client actually calls: GET /health (availability check) and
+// POST /v1/convert/file (returns markdownContent verbatim, regardless of
+// what was uploaded — good enough to prove the wiring picks docling's
+// output over raw-byte extraction, without needing the real Python service).
+func startFakeDoclingServer(t *testing.T, markdownContent string) *httptest.Server {
+	t.Helper()
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	mux.HandleFunc("POST /v1/convert/file", func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"status": "success",
+			"document": map[string]any{
+				"md_content": markdownContent,
+				"pages":      []any{},
+				"pictures":   []any{},
+			},
+		})
+	})
+	server := httptest.NewServer(mux)
+	t.Cleanup(server.Close)
+	return server
+}
+
+// configureDocling attaches a fake docling-serve client that always
+// returns markdownContent for any binary-format file.
+func (env testEnv) configureDocling(t *testing.T, markdownContent string) {
+	t.Helper()
+	server := startFakeDoclingServer(t, markdownContent)
+	env.knowledge.WithDocling(sdkdocling.NewClient(server.URL))
 }

@@ -27,6 +27,11 @@ type Config struct {
 	IngestionPollInterval    time.Duration
 	IngestionMaxPollInterval time.Duration
 	Vector                   sdkvector.Config
+	// DoclingURL points at a running docling-serve instance for converting
+	// binary documents (PDF, DOCX, PPTX, XLSX, audio, images) to markdown
+	// before chunking. Empty disables it — plain-text/markdown/JSON files
+	// still ingest fine either way.
+	DoclingURL string
 }
 
 func LoadFromEnv() Config {
@@ -44,6 +49,7 @@ func LoadFromEnv() Config {
 		IngestionPollInterval:    envDuration("SESHAT_SERVER_INGESTION_POLL_INTERVAL", 500*time.Millisecond),
 		IngestionMaxPollInterval: envDuration("SESHAT_SERVER_INGESTION_MAX_POLL_INTERVAL", 5*time.Second),
 		Vector:                   vectorConfigFromEnv(),
+		DoclingURL:               strings.TrimSpace(os.Getenv("SESHAT_SERVER_DOCLING_URL")),
 	}
 }
 

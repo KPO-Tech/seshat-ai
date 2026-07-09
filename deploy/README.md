@@ -19,6 +19,7 @@ docker compose up --build
 
 - `seshat-server/Dockerfile` — multi-stage Go build. Build context is the **repo root**, not `seshat-server/`, because `seshat-server/go.mod` has `replace github.com/EngineerProjects/seshat => ../seshat` — the image needs `seshat/` alongside it. `GOWORK=off` keeps the build scoped to exactly `seshat/` + `seshat-server/`, never `seshat-backend/`.
 - `seshat-console/Dockerfile` — Node build stage (`npm ci && npm run build`), then the static `dist/` served by `nginx:1.27-alpine`. Self-contained build context (just `seshat-console/`).
+- `docling` — the official `quay.io/docling-project/docling-serve-cpu` image. Converts PDF/DOCX/PPTX/XLSX/audio/images to markdown before a knowledge-base corpus file is chunked+embedded. Optional: `seshat-server` degrades gracefully without it (plain-text/markdown/JSON files still ingest fine; binary formats just get rejected as having no extractable text). It's a heavy image — several GB, bundles PyTorch and layout/OCR models — comment the service and `SESHAT_SERVER_DOCLING_URL` out in `.env` if you want a lighter/faster stack and don't need binary-document ingestion.
 
 ## Database
 

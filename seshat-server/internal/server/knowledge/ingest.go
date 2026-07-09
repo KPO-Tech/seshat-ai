@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -245,7 +246,7 @@ func (s *Service) processIngestionJob(ctx context.Context, job sdb.KnowledgeInge
 		return
 	}
 
-	text := extractText(data, file.ContentType)
+	text := s.extractTextWithDocling(ctx, data, file.ContentType, file.Filename)
 	if strings.TrimSpace(text) == "" {
 		s.failCorpusFile(ctx, file)
 		s.markIngestionJobFailed(ctx, job, "file has no extractable text content")
@@ -307,11 +308,25 @@ func (s *Service) markIngestionJobFailed(ctx context.Context, job sdb.KnowledgeI
 		Updates(map[string]any{"status": status, "attempt_count": attempts, "last_error": reason, "next_run_at": nextRunAt}).Error
 }
 
+// extractTextWithDocling tries docling first for binary formats (PDF,
+// DOCX, PPTX, XLSX, audio, images), then falls back to plain-text
+// extraction — identical logic to seshat-backend's knowledge service.
+func (s *Service) extractTextWithDocling(ctx context.Context, data []byte, contentType, filename string) string {
+	ext := strings.ToLower(filepath.Ext(filename))
+	if s.doclingClient != nil && doclingIngestExtensions[ext] && s.doclingClient.IsAvailable(ctx) {
+		result, err := s.doclingClient.ConvertBytes(ctx, data, filename)
+		if err == nil && strings.TrimSpace(result.Markdown) != "" {
+			return result.Markdown
+		}
+		// Docling failed or returned empty — fall through to plain-text extraction.
+	}
+	return extractText(data, contentType)
+}
+
 // extractText attempts to extract UTF-8 text from the blob. Plain-text,
 // JSON, XML and YAML content types are returned as-is; anything else is
 // accepted only if it looks like mostly-printable text (Markdown, code,
-// CSV, etc). Binary-format conversion (PDF, DOCX, audio via docling) is not
-// wired up yet — see ROADMAP.md.
+// CSV, etc).
 func extractText(data []byte, contentType string) string {
 	ct := strings.ToLower(strings.TrimSpace(contentType))
 	if strings.HasPrefix(ct, "text/") || ct == "application/json" || ct == "application/xml" || ct == "application/x-yaml" {

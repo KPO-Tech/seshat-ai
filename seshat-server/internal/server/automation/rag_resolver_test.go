@@ -79,3 +79,15 @@ func TestExecuteCloudRunFailsBeforeConsultingRAGResolverWithoutProviderSettings(
 		t.Fatalf("expected the RAG resolver not to be consulted before provider credentials are resolved, got %d calls", fake.callCount)
 	}
 }
+
+func TestSetDoclingURLWiresTheURLIn(t *testing.T) {
+	env := newTestEnv(t)
+	if env.automation.doclingURL != "" {
+		t.Fatalf("expected a fresh Service to have no docling URL, got %q", env.automation.doclingURL)
+	}
+
+	env.automation.SetDoclingURL("http://docling:5001")
+	if env.automation.doclingURL != "http://docling:5001" {
+		t.Fatalf("expected SetDoclingURL to set the URL, got %q", env.automation.doclingURL)
+	}
+}

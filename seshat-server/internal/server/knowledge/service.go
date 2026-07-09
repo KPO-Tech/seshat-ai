@@ -18,6 +18,7 @@ import (
 
 	"gorm.io/gorm"
 
+	sdkdocling "github.com/EngineerProjects/seshat/pkg/docling"
 	sdkrag "github.com/EngineerProjects/seshat/pkg/rag"
 	sdkembedder "github.com/EngineerProjects/seshat/pkg/rag/embedder"
 	sdkstorage "github.com/EngineerProjects/seshat/pkg/storage"
@@ -66,14 +67,45 @@ const (
 // yet, same as seshat-backend's knowledge service does when no embedder is
 // set at all.
 type Service struct {
-	db        *sdb.DB
-	iam       *iam.Service
-	artifacts sdkstorage.ArtifactStore
-	vectors   sdkvector.Store
+	db            *sdb.DB
+	iam           *iam.Service
+	artifacts     sdkstorage.ArtifactStore
+	vectors       sdkvector.Store
+	doclingClient *sdkdocling.Client // nil = no binary-format conversion
 }
 
 func New(database *sdb.DB, iamService *iam.Service, artifacts sdkstorage.ArtifactStore, vectors sdkvector.Store) *Service {
 	return &Service{db: database, iam: iamService, artifacts: artifacts, vectors: vectors}
+}
+
+// WithDocling attaches a docling-serve client so binary files (PDF, DOCX,
+// PPTX, XLSX, audio, images) are converted to markdown before chunking and
+// embedding, the same as seshat-backend's knowledge service. Returns s for
+// chaining. Passing nil leaves docling disabled (the default) — plain-text/
+// markdown/JSON files still ingest fine either way.
+func (s *Service) WithDocling(client *sdkdocling.Client) *Service {
+	s.doclingClient = client
+	return s
+}
+
+// doclingIngestExtensions lists file extensions whose binary content
+// docling can convert to plain-text markdown for RAG chunking — the exact
+// same list seshat-backend's knowledge service uses.
+var doclingIngestExtensions = map[string]bool{
+	".pdf":  true,
+	".docx": true,
+	".pptx": true,
+	".xlsx": true,
+	".wav":  true,
+	".mp3":  true,
+	".html": true,
+	".htm":  true,
+	".tex":  true,
+	".png":  true,
+	".tiff": true,
+	".tif":  true,
+	".jpeg": true,
+	".jpg":  true,
 }
 
 // Corpus is the caller-facing view of a document collection.

@@ -29,9 +29,10 @@ type RAGResolver interface {
 
 // Service owns devices, scheduled jobs and job runs.
 type Service struct {
-	db  *sdb.DB
-	iam *iam.Service
-	rag RAGResolver // nil until SetRAGResolver is called
+	db         *sdb.DB
+	iam        *iam.Service
+	rag        RAGResolver // nil until SetRAGResolver is called
+	doclingURL string      // empty until SetDoclingURL is called
 }
 
 func New(database *sdb.DB, iamService *iam.Service) *Service {
@@ -43,6 +44,16 @@ func New(database *sdb.DB, iamService *iam.Service) *Service {
 // once at app startup, after both services exist — see app.New.
 func (s *Service) SetRAGResolver(r RAGResolver) {
 	s.rag = r
+}
+
+// SetDoclingURL enables the read_document_url tool for cloud-targeted job
+// execution — fetches and converts a remote document (PDF, webpage, ...)
+// to markdown via a running docling-serve instance. Unlike the RAG
+// resolver this isn't a secret or per-tenant value, just a shared
+// infrastructure endpoint, so it's a plain setter rather than an
+// interface. Empty disables the tool, same as leaving it unset.
+func (s *Service) SetDoclingURL(url string) {
+	s.doclingURL = url
 }
 
 func newID(prefix string) (string, error) { return sdb.NewID(prefix) }
