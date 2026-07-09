@@ -1,0 +1,99 @@
+package api
+
+import (
+	"net/http"
+
+	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
+)
+
+type bootstrapRequest struct {
+	Email            string `json:"email"`
+	Password         string `json:"password"`
+	DisplayName      string `json:"display_name"`
+	OrganizationName string `json:"organization_name"`
+	OrganizationSlug string `json:"organization_slug"`
+}
+
+type loginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+func (app *App) handleBootstrapStatus(w http.ResponseWriter, r *http.Request) {
+	initialized, err := app.backend.IAM.BootstrapStatus(r.Context())
+	if err != nil {
+		writeIAMError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"initialized": initialized})
+}
+
+func (app *App) handleBootstrap(w http.ResponseWriter, r *http.Request) {
+	var req bootstrapRequest
+	if !decodeJSONBody(w, r, &req) {
+		return
+	}
+	result, err := app.backend.IAM.Bootstrap(r.Context(), iam.BootstrapParams{
+		Email:            req.Email,
+		Password:         req.Password,
+		DisplayName:      req.DisplayName,
+		OrganizationName: req.OrganizationName,
+		OrganizationSlug: req.OrganizationSlug,
+	})
+	if err != nil {
+		writeIAMError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, result)
+}
+
+func (app *App) handleLogin(w http.ResponseWriter, r *http.Request) {
+	var req loginRequest
+	if !decodeJSONBody(w, r, &req) {
+		return
+	}
+	result, err := app.backend.IAM.Login(r.Context(), req.Email, req.Password)
+	if err != nil {
+		writeIAMError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (app *App) handleLogout(w http.ResponseWriter, r *http.Request) {
+	principal, ok := authPrincipalFromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "missing principal")
+		return
+	}
+	if err := app.backend.IAM.Logout(r.Context(), principal); err != nil {
+		writeIAMError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (app *App) handleMe(w http.ResponseWriter, r *http.Request) {
+	principal, ok := authPrincipalFromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "missing principal")
+		return
+	}
+	// /auth/me returns the caller's full account context, not a paginated
+	// view — a generous limit stands in for "everything", since one user's
+	// own organization count is never large enough to need real paging.
+	organizations, _, err := app.backend.IAM.ListOrganizations(r.Context(), principal, sdb.ListParams{Sort: "name", Order: "asc", Limit: 1000})
+	if err != nil {
+		writeIAMError(w, err)
+		return
+	}
+	session := principal.Session
+	session.Token = ""
+	writeJSON(w, http.StatusOK, map[string]any{
+		"user":          principal.User,
+		"memberships":   principal.Memberships,
+		"organizations": organizations,
+		"session":       session,
+	})
+}

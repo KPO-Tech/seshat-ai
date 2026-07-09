@@ -398,7 +398,7 @@ export type PlanDocument = {
 
 // ─── Agents ───────────────────────────────────────────────────────────────────
 
-export type AgentSource = 'user' | 'builtin'
+export type AgentSource = 'user' | 'built-in' | 'builtin'
 
 export type Agent = {
   id?: string

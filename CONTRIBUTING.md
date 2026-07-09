@@ -58,12 +58,13 @@ main          production-ready, tagged releases only
 git clone --recurse-submodules <this-repo>
 cd seshat-ai
 
-# Build the API server
-go build -o bin/seshat-api ./cmd/api
+# Build the local backend API server
+cd seshat-backend && go build -o bin/seshat-api ./cmd/api
+cd ..
 
 # Run tests
-go test ./...
-go test -race ./...
+go test ./seshat-backend/... ./seshat-server/... ./seshat/...
+go test -race ./seshat-backend/... ./seshat-server/... ./seshat/...
 ```
 
 ### Environment
@@ -77,7 +78,7 @@ export ANTHROPIC_API_KEY=sk-ant-...   # or any supported provider key
 Then run:
 
 ```bash
-./bin/seshat-api
+./seshat-backend/bin/seshat-api
 # Server on http://localhost:8090
 ```
 
@@ -92,12 +93,12 @@ See [`docs/development.md`](./docs/development.md) for the full variable referen
 Every feature domain follows the same three-layer pattern:
 
 ```
-internal/<domain>/          ← business logic (no HTTP, no DB layer)
-internal/api/<domain>.go    ← HTTP handlers (thin, delegates to service)
-internal/db/<domain>.go     ← data access (store + models)
+seshat-backend/internal/<domain>/          ← business logic (no HTTP, no DB layer)
+seshat-backend/internal/api/<domain>.go    ← HTTP handlers (thin, delegates to service)
+seshat-backend/internal/db/<domain>.go     ← data access (store + models)
 ```
 
-Wire the new service in `internal/app.go` (`Dependencies` + `App` + `NewApp`), add the store initialization in `internal/api/bootstrap.go`, and register routes in `internal/api/routes.go`.
+Wire the new service in `seshat-backend/internal/app.go` (`Dependencies` + `App` + `NewApp`), add the store initialization in `seshat-backend/internal/api/bootstrap.go`, and register routes in `seshat-backend/internal/api/routes.go`.
 
 Full walkthrough in [AGENTS.md](./AGENTS.md#adding-a-new-feature-domain).
 
@@ -146,7 +147,7 @@ docs(api): document SSE framing contract in query_sse.go
 
 ## Testing
 
-- Run `go test -race ./...` before submitting.
+- Run `go test -race ./seshat-backend/... ./seshat-server/... ./seshat/...` before submitting.
 - Tests must not make real API calls to external providers.
 - New services should have at least one test.
 - Table-driven tests preferred for cases with multiple inputs.
@@ -158,15 +159,15 @@ docs(api): document SSE framing contract in query_sse.go
 Before pushing, run locally:
 
 ```bash
-go build ./...
-go test -race ./...
+go build ./seshat-backend/... ./seshat-server/... ./seshat/...
+go test -race ./seshat-backend/... ./seshat-server/... ./seshat/...
 gofmt -w .
-go vet ./...
+go vet ./seshat-backend/... ./seshat-server/... ./seshat/...
 ```
 
 PR checklist:
 
-- [ ] Tests pass (`go test -race ./...`)
+- [ ] Tests pass (`go test -race ./seshat-backend/... ./seshat-server/... ./seshat/...`)
 - [ ] New behavior is covered by at least one test
 - [ ] Public API changes are reflected in `README.md` or `docs/`
 - [ ] Commit messages follow Conventional Commits

@@ -1,221 +1,212 @@
 # Architecture — SeshatOS
 
-This document describes the package structure, layer responsibilities, and dependency rules for seshat-ai.
+This document describes the current repository layout and the package boundaries between the local product backend, the cloud server bootstrap, and the open-source runtime.
 
 ---
 
-## Overview
-
-seshat-ai is a **multi-layer Go application** built on top of the `seshat` submodule. The layers are strictly ordered — each layer only imports downward.
+## Repository shape
 
 ```
-┌──────────────────────────────────────────────────┐
-│  cmd/api/                                        │
-│  main.go + config.go  (thin entrypoint, ~80 lines)│
-└──────────────────┬───────────────────────────────┘
-                   │ imports
-┌──────────────────▼───────────────────────────────┐
-│  internal/api/           package api              │
-│  HTTP transport layer                             │
-│  App, BuildApp, CreateRouter, handlers, SSE       │
-└──────────────────┬───────────────────────────────┘
-                   │ imports
-┌──────────────────▼───────────────────────────────┐
-│  internal/app.go         package seshat            │
-│  DI container: App, Dependencies, NewApp          │
-└──────────────────┬───────────────────────────────┘
-                   │ imports
-┌──────────────────▼───────────────────────────────┐
-│  internal/<domain>/      one package per domain   │
-│  audit  auth  bkerr  files  knowledge  mcp        │
-│  memories  metrics  plans  preferences  query     │
-│  quotas  resources  settings  websearch           │
-└──────────────────┬───────────────────────────────┘
-                   │ imports
-┌──────────────────▼───────────────────────────────┐
-│  internal/db/            data access layer        │
-│  Stores, migrations, schema, SQLite/PG/MySQL      │
-└──────────────────┬───────────────────────────────┘
-                   │ imports
-┌──────────────────▼───────────────────────────────┐
-│  seshat/pkg/*      open-source runtime      │
-│  sdk  providers  types  rag  storage  mcp  ...    │
-└──────────────────────────────────────────────────┘
+seshat-ai/
+├── seshat-backend/   ← local backend / desktop HTTP API
+├── seshat-server/    ← cloud server bootstrap (auth, orgs, jobs, sync)
+├── seshat-ui/        ← Electron desktop client
+└── seshat/           ← open-source Go runtime submodule
 ```
 
----
+The dependency direction is intentionally one-way:
 
-## Layer responsibilities
+```text
+seshat-ui        → seshat-backend   (HTTP only)
+seshat-server    → seshat-backend   (temporary shared Go packages)
+seshat-backend   → seshat           (pkg/* only)
+seshat           → seshat-backend   (never)
+seshat           → seshat-server    (never)
+```
 
-### `cmd/api/` — entrypoint
-
-Two files only:
-
-- `main.go` — signal handling, call `api.BuildApp`, call `api.CreateRouter`, start HTTP server, graceful shutdown.
-- `config.go` — `APIConfig` struct and `defaultAPIConfig(cfg)`.
-
-No business logic. No imports of `internal/db/` or domain services.
-
----
-
-### `internal/api/` — HTTP transport (`package api`)
-
-Responsible for:
-- Parsing HTTP requests (JSON bodies, query params, path segments)
-- Calling backend services
-- Mapping `bkerr` errors to HTTP status codes via `writeBackendError`
-- Writing JSON responses
-- SSE streaming (query stream, permission events, prompt events)
-- Middleware: auth, CORS, rate limit, recover, requestID, maxBody
-
-Key files:
-- `app.go` — `App` struct, `AppConfig`, `NewApp`
-- `bootstrap.go` — `BuildApp(ctx, config)` — initializes all stores, services, SDK client
-- `routes.go` — `CreateRouter(cfg, app)` — registers all routes
-- `middleware.go` — auth middleware, CORS, recover, etc.
-- `helpers.go` — `writeJSON`, `decodeJSONBody`, `writeBackendError`, `newRequestID`
-
-**What does not belong here:** Business logic, database access, error type definitions.
-
----
-
-### `internal/app.go` — DI container (`package seshat`)
-
-Single file. Defines:
-- `Dependencies` — all raw stores and external clients
-- `App` — all domain services
-- `NewApp(deps) *App` — wires stores into services
-
-This is the composition root. It has no logic — only wiring.
+`go.work` at the repository root ties the three Go modules together during local development:
 
 ```go
-// Usage pattern
-app := seshat.NewApp(seshat.Dependencies{
-    Identity:   identityStore,
-    FileStore:  fileStore,
-    // ...
-})
-// then: app.Auth.Login(...), app.Query.RunPrompt(...)
-```
-
----
-
-### `internal/<domain>/` — domain services
-
-One package per business domain. Each package has:
-- `types.go` — domain types (no `db.*` types exported)
-- `service.go` — business logic methods
-
-Rules:
-- Accept `*auth.Principal` and domain params.
-- Return domain types and `bkerr` errors.
-- Never import `internal/api/`.
-- Never return raw DB errors — always wrap with `bkerr.*`.
-
-Current domains:
-
-| Package | Responsibility |
-|---|---|
-| `agents` | User-defined agent CRUD + SDK built-in registry bridge |
-| `audit` | Audit log entries — write and query |
-| `auth` | JWT, API keys, identity, roles, RBAC |
-| `bkerr` | Typed error kinds used across all services |
-| `files` | File upload/download, workspace scoping, Docling conversion |
-| `knowledge` | Corpora, ingestion jobs, RAG hybrid search |
-| `mcp` | MCP server configuration CRUD + hot-reload |
-| `memories` | User memories + long-term entity extraction |
-| `metrics` | Prometheus snapshot, Snapshotter interface |
-| `plans` | Plan documents created by the agent's plan tool |
-| `preferences` | User preferences, permission mode resolution |
-| `prompt` | System prompt assembly layer (injected on every query) |
-| `query` | Query/streaming runtime adapter (wraps seshat SDK), session management |
-| `quotas` | Per-user usage counters (queries, files, ingestions) |
-| `resources` | Organizations, workspaces, user CRUD (admin) |
-| `scheduler` | Cron-based background agent runs, job history |
-| `settings` | Provider settings, OAuth device-code flow |
-| `skills` | Skill registry, prompt resolution, user skill file I/O |
-| `websearch` | Web search settings, provider configs, search logs |
-
----
-
-### `internal/db/` — data access layer
-
-SQLite / PostgreSQL / MySQL via GORM. One file per entity:
-
-```
-api_keys.go    audit.go      auth.go       bootstrap.go
-config.go      credentials.go  db.go       embedder_config.go
-files.go       groups.go     identity.go   ingestion_jobs.go
-knowledge.go   mcp_servers.go  memories.go  migrations*.go
-plans.go       provider_models.go  provider_oauth_connections.go
-provider_settings.go  quotas.go  schema.go  search_provider_configs.go
-security.go    sessions.go   storage_config.go  tenancy.go
-user_memories.go  user_preferences.go  web_search.go
-```
-
-Rules:
-- Stores operate on `db.*` model types (never domain types).
-- Migrations are versioned and run automatically when `DB_AUTO_MIGRATE=true`.
-- No business logic — pure CRUD, queries, and pagination.
-
----
-
-## Request lifecycle
-
-```
-HTTP request
-  → requestIDMiddleware          (inject request ID)
-  → recoverMiddleware            (catch panics)
-  → corsMiddleware               (if enabled)
-  → maxBodyMiddleware            (4 MB limit)
-  → authMiddleware               (validate JWT or API key → Principal)
-  → handler (internal/api/*.go)
-      → call service (internal/<domain>/service.go)
-          → call store (internal/db/*.go)
-          → return domain type + bkerr error
-      → writeJSON / writeBackendError
-```
-
-For streaming queries:
-```
-POST /api/v1/query/stream
-  → authMiddleware
-  → handleQueryStream
-      → buildQueryInput (assemble context: preferences + memories + RAG + attachments)
-      → backend.Query.StreamPrompt
-          → seshat SDK session.SubmitMessage
-          → onChunk callback → writeSSE (text chunks)
-          → onRuntimeEvent callback → writeSSE (tool calls, permissions)
-      → writeSSE("done", finalResult)
-```
-
----
-
-## seshat integration
-
-seshat-ai consumes seshat **exclusively through `pkg/`**:
-
-```go
-import (
-    "github.com/EngineerProjects/seshat/pkg/sdk"
-    "github.com/EngineerProjects/seshat/pkg/types"
-    "github.com/EngineerProjects/seshat/pkg/rag"
-    "github.com/EngineerProjects/seshat/pkg/storage"
-    // ...
+use (
+    ./seshat
+    ./seshat-backend
+    ./seshat-server
 )
 ```
 
-The `internal/query/runtime.go` file (`SDKRuntime`) is the main adapter. It wraps `sdk.Client` to implement `QueryRuntime`, `StreamingQueryRuntime`, `SessionManager`, and related interfaces.
+---
+
+## Local backend
+
+The main product backend now lives in `seshat-backend/`.
+
+```
+seshat-backend/
+├── cmd/api/                     ← thin HTTP entrypoint
+└── internal/
+    ├── api/                     ← transport layer, SSE, middleware, route wiring
+    ├── app.go                   ← DI container
+    ├── agents/                  ← agent definitions
+    ├── audit/                   ← audit log service
+    ├── auth/                    ← auth, sessions, API keys, RBAC
+    ├── bkerr/                   ← typed backend errors
+    ├── db/                      ← stores, schema, migrations
+    ├── files/                   ← file management
+    ├── knowledge/               ← RAG ingestion and retrieval
+    ├── mcp/                     ← MCP configuration
+    ├── memories/                ← user memory services
+    ├── metrics/                 ← observability snapshot service
+    ├── plans/                   ← plans attached to sessions
+    ├── preferences/             ← permission mode and user prefs
+    ├── query/                   ← runtime adapter over seshat SDK
+    ├── quotas/                  ← usage counters
+    ├── resources/               ← users, orgs, workspaces
+    ├── scheduler/               ← local scheduled runs
+    ├── settings/                ← providers, OAuth, storage config
+    ├── skills/                  ← skill registry and resolution
+    └── websearch/               ← web search providers and logs
+```
+
+### Layer order
+
+```text
+cmd/api
+  → internal/api
+  → internal/app.go
+  → internal/<domain>
+  → internal/db
+  → seshat/pkg/*
+```
+
+### Responsibilities
+
+`cmd/api/`
+- Process startup and shutdown
+- Config loading
+- HTTP server boot
+- Docling auto-start for local desktop usage
+
+`internal/api/`
+- Parse requests and validate inputs
+- Resolve auth principals
+- Call domain services
+- Map `bkerr` to HTTP responses
+- Stream SSE responses for agent runs
+
+`internal/app.go`
+- Compose stores, services, and runtime dependencies
+- No business logic
+
+`internal/<domain>/`
+- Own business rules
+- Accept principals and typed params
+- Return domain types and `bkerr` errors
+- Never import `internal/api/`
+
+`internal/db/`
+- Own persistence concerns only
+- CRUD, queries, pagination, migrations
+- No transport logic
+- No high-level business policy
 
 ---
 
-## Adding a new domain
+## Cloud server bootstrap
 
-See [AGENTS.md](../AGENTS.md#adding-a-new-feature-domain) for the step-by-step guide.
+The cloud-side server now lives in `seshat-server/`.
 
-Pattern summary:
-1. `internal/<domain>/types.go` + `service.go` — business logic
-2. `internal/app.go` — wire `Dependencies` + `App` + `NewApp`
-3. `internal/api/bootstrap.go` — store initialization
-4. `internal/api/<domain>.go` — HTTP handlers
-5. `internal/api/routes.go` — route registration
+```
+seshat-server/
+├── cmd/server/                  ← server entrypoint
+└── internal/server/
+    ├── api/                     ← HTTP handlers for server bootstrap
+    ├── app/                     ← minimal server dependency container
+    └── config/                  ← bootstrap and wiring
+```
+
+Current role:
+- Separate cloud-oriented entrypoint from the local desktop backend
+- Bootstrap auth, users, organizations, audit, and future job/sync domains
+- Reuse some backend packages temporarily while the split is still in progress
+
+Target role:
+- Cloud auth and IAM surfaces
+- Organizations and tenancy
+- Devices and trust relationships
+- Jobs, runs, automation orchestration
+- Sync and audit surfaces
+
+The important rule is architectural, not just physical: `seshat-server` must not become a second copy of the local runtime backend. It should own cloud coordination concerns.
+
+---
+
+## Runtime boundary
+
+Both product backends depend on the public `seshat/pkg/*` surface only.
+
+Allowed examples:
+
+```go
+import (
+    "github.com/EngineerProjects/seshat/pkg/config"
+    "github.com/EngineerProjects/seshat/pkg/rag"
+    "github.com/EngineerProjects/seshat/pkg/sdk"
+    "github.com/EngineerProjects/seshat/pkg/storage"
+    "github.com/EngineerProjects/seshat/pkg/types"
+)
+```
+
+Forbidden:
+- importing `seshat/internal/*`
+- pushing product auth or org logic into `seshat`
+- coupling the UI directly to Go packages or DB internals
+
+---
+
+## Request lifecycle in the local backend
+
+```text
+HTTP request
+  → middleware
+  → handler in internal/api
+  → service in internal/<domain>
+  → store in internal/db
+  → response mapping / SSE stream
+```
+
+For query streaming:
+
+```text
+POST /api/v1/query/stream
+  → auth middleware
+  → query handler
+  → query service
+  → seshat SDK runtime
+  → SSE chunks + runtime events
+  → final response
+```
+
+---
+
+## Development commands
+
+From the repository root:
+
+```bash
+go build ./seshat-backend/... ./seshat-server/... ./seshat/...
+go test ./seshat-backend/... ./seshat-server/... ./seshat/...
+```
+
+Run the local backend:
+
+```bash
+cd seshat-backend
+go run ./cmd/api
+```
+
+Run the cloud server bootstrap:
+
+```bash
+cd ../seshat-server
+go run ./cmd/server
+```

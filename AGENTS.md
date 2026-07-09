@@ -1,288 +1,175 @@
 # Agent Instructions — SeshatOS
 
-This file provides guidance for AI agents (SeshatOS, Claude Code, Codex, or similar) working on this repository. Read it before making any changes.
+Read this file before changing code in this repository.
 
 ---
 
 ## Project overview
 
-seshat-ai is the **private proprietary product layer** built on top of [seshat](https://github.com/EngineerProjects/seshat). It adds multi-user auth, organizations, workspaces, per-user provider credentials, knowledge/RAG, MCP management, audit, quotas, and a full REST+SSE HTTP API on top of the open-source runtime.
+`seshat-ai` is the private product layer built on top of [seshat](https://github.com/EngineerProjects/seshat), the open-source Go runtime.
 
-This repository contains two sub-projects:
+The repository now contains four main sub-projects:
 
 | Directory | Language | Role |
 |---|---|---|
-| `cmd/api/` + `internal/` | Go | seshat-ai — HTTP API server |
-| `seshat-ui/` | TypeScript / Electron | Desktop client that consumes the API |
-| `seshat/` | Go (submodule) | Open-source AI agent runtime — **never modify** |
+| `seshat-backend/` | Go | local backend / desktop HTTP API |
+| `seshat-server/` | Go | cloud server for auth, orgs, jobs, sync |
+| `seshat-ui/` | TypeScript / Electron | desktop client that consumes the local API |
+| `seshat/` | Go (submodule) | open-source runtime — never modify casually |
 
-**Dependency direction is strictly one-way:**
+Dependency direction is one-way:
 
+```text
+seshat-ui       → seshat-backend   (HTTP only)
+seshat-server   → seshat-backend   (temporary shared Go packages)
+seshat-backend  → seshat           (pkg/* only)
+seshat          → seshat-backend   (never)
+seshat          → seshat-server    (never)
 ```
-seshat-ui       → seshat-ai API   (HTTP only, port 8090)
-seshat-ai  → seshat        (Go imports from pkg/ only)
-seshat   → seshat-ai       (never)
-seshat   → seshat-ui            (never)
-```
 
-seshat-ai may import `seshat/pkg/*` freely. It must never import `seshat/internal/*`. seshat must never reference seshat-ai.
-
----
-
-## seshat-ui
-
-`seshat-ui` is an Electron + React desktop application. It is a **pure UI consumer** of the seshat-ai HTTP API — no AI logic, no database, no Go code.
-
-Before working on seshat-ui, read **[`seshat-ui/AGENTS.md`](./seshat-ui/AGENTS.md)** which covers:
-- Process architecture (main / preload / renderer)
-- Desktop bridge security (HMAC-SHA256 handshake)
-- Full design system and artistic direction (color palette, typography, motion, CSS patterns)
-- SSE streaming pipeline
-- State management (Zustand stores)
-- How to add a new page, tool renderer, or settings section
-- Build / lint / typecheck commands
-- What not to do
-
-The TypeScript stack uses **React 19**, **UnoCSS**, **Arco Design**, **Zustand 5**, **SWR**, and **electron-vite**.
+`seshat-backend` may import `seshat/pkg/*` freely. It must never import `seshat/internal/*`.
 
 ---
 
 ## Build and test
 
-Always run these before finishing:
+Always run these before finishing Go work:
 
 ```bash
-go build ./...          # must pass — no exceptions
-go vet ./...            # must pass — no exceptions
-go test -race ./...     # must pass — fix failures, do not skip
-gofmt -w .              # always run after editing Go files
+go build ./seshat-backend/... ./seshat-server/... ./seshat/...
+go vet ./seshat-backend/... ./seshat-server/... ./seshat/...
+go test -race ./seshat-backend/... ./seshat-server/... ./seshat/...
+gofmt -w .
 ```
 
-If `go test` fails, investigate and fix the root cause. Do not disable tests or add `t.Skip()` to work around failures.
+If a Go test fails, fix the root cause. Do not paper over failures with skips.
 
 ---
 
-## Package structure
+## Backend layout
 
+The product backend lives under `seshat-backend/`:
+
+```text
+seshat-backend/
+  cmd/api/                 thin local-backend entrypoint
+  internal/api/            HTTP transport, SSE, middleware, route wiring
+  internal/app.go          DI container
+  internal/<domain>/       business logic
+  internal/db/             persistence and migrations
 ```
-internal/
-├── api/          ← HTTP transport (package api)
-│   ├── app.go         App struct + AppConfig + NewApp
-│   ├── bootstrap.go   BuildApp() — full dependency wiring
-│   ├── routes.go      CreateRouter() — HTTP mux
-│   ├── middleware.go  CORS, auth, recover, requestID, ratelimit
-│   ├── helpers.go     writeJSON, decodeJSONBody, writeBackendError
-│   └── *.go           one file per domain (auth.go, query.go, files.go, ...)
-│
-├── app.go        ← package seshat — App, Dependencies, NewApp (the DI container)
-│
-├── audit/        ← audit log service
-├── auth/         ← JWT, API keys, principal, roles, identity
-├── bkerr/        ← typed error kinds (InvalidInput, NotFound, Forbidden, ...)
-├── db/           ← data access layer (stores, migrations, SQLite/PG/MySQL)
-├── files/        ← file upload/download, workspace management
-├── knowledge/    ← corpora, ingestion jobs, RAG search
-├── mcp/          ← MCP server configuration management
-├── memories/     ← user memories + long-term extraction
-├── metrics/      ← Prometheus snapshot service
-├── plans/        ← plan document CRUD
-├── preferences/  ← user preferences, permission mode resolution
-├── query/        ← query/streaming runtime adapter (wraps seshat SDK)
-├── quotas/       ← usage counters per metric
-├── resources/    ← organizations, workspaces, user admin
-├── settings/     ← provider settings, OAuth connections
-└── websearch/    ← web search settings, provider configs, search logs
 
-cmd/api/
-├── main.go       ← thin entrypoint (~50 lines)
-└── config.go     ← APIConfig + defaultAPIConfig
+The cloud bootstrap lives under `seshat-server/`:
+
+```text
+seshat-server/
+  cmd/server/              cloud entrypoint
+  internal/server/api/     server HTTP handlers
+  internal/server/app/     minimal server container
+  internal/server/config/  server bootstrap wiring
 ```
 
 ---
 
 ## Package boundary rules
 
-- `internal/api/` is the **transport layer only** — it must not contain business logic. Handlers call backend services and map responses to HTTP.
-- Domain services (`internal/<domain>/`) are the **business logic layer** — they take `*auth.Principal` and domain params, return domain types and `bkerr` errors. They never import `internal/api/`.
-- `internal/db/` is the **data access layer** — raw store operations. Services wrap stores; handlers never access stores directly.
-- `internal/app.go` (`package seshat`) is the **DI container** — it wires all stores into services. No logic here.
-- `internal/bkerr/` defines error kinds. All services use `bkerr.InvalidInput`, `bkerr.NotFound`, etc. Handlers map these to HTTP status codes via `writeBackendError`.
+Inside `seshat-backend`:
 
-**Import direction (strict):**
-```
+- `internal/api/` is transport only. No business logic there.
+- `internal/<domain>/` owns business rules.
+- `internal/db/` owns CRUD, queries, migrations, and persistence details.
+- `internal/app.go` wires dependencies only.
+- Services return domain types and `bkerr` errors.
+- Handlers map those errors with `writeBackendError`.
+
+Import direction is strict:
+
+```text
 internal/api → internal/<domain> → internal/db
-internal/api → internal/app.go (package seshat)
+internal/api → internal/app.go
 ```
 
-No cycles. Never import `internal/api/` from a domain service.
+Never import `internal/api/` from a service.
 
 ---
 
-## Adding a new feature domain
+## Adding a new backend domain
 
-Follow this pattern exactly:
+Follow this pattern:
 
-**1. Backend service** — `internal/<domain>/types.go` + `internal/<domain>/service.go`
+1. Add `seshat-backend/internal/<domain>/types.go` and `service.go`.
+2. Wire the store and service in `seshat-backend/internal/app.go`.
+3. Initialize persistence in `seshat-backend/internal/api/bootstrap.go`.
+4. Add handlers in `seshat-backend/internal/api/<domain>.go`.
+5. Register routes in `seshat-backend/internal/api/routes.go`.
 
-```go
-package <domain>
+Handlers stay thin. Stores are never called directly from handlers.
 
-// types.go — domain types, no db types exported
-type Thing struct { ID, Name string; CreatedAt time.Time }
-type CreateParams struct { Name string }
+---
 
-// service.go — business logic
-type Service struct{ store *db.ThingStore }
-func NewService(store *db.ThingStore) *Service { return &Service{store: store} }
-func (s *Service) List(ctx context.Context, principal *auth.Principal) ([]Thing, error) { ... }
-```
+## Rules for seshat-ui
 
-**2. Wire it** — `internal/app.go`
+`seshat-ui` is a pure UI consumer of the local backend HTTP API.
 
-```go
-// Dependencies field:
-ThingStore *db.ThingStore
+Before changing UI code, read [`seshat-ui/AGENTS.md`](./seshat-ui/AGENTS.md).
 
-// App field:
-Things *<domain>.Service
-
-// NewApp:
-Things: <domain>.NewService(deps.ThingStore),
-```
-
-**3. Bootstrap** — `internal/api/bootstrap.go`
-
-Add store initialization and pass it to `seshat.Dependencies`.
-
-**4. HTTP handler** — `internal/api/<domain>.go`
-
-```go
-package api
-
-func (app *App) handleThings(w http.ResponseWriter, r *http.Request) {
-    principal, _ := authPrincipalFromContext(r.Context())
-    list, err := app.backend.Things.List(r.Context(), principal)
-    if err != nil { writeBackendError(w, err); return }
-    writeJSON(w, http.StatusOK, map[string]any{"things": list})
-}
-```
-
-**5. Route** — `internal/api/routes.go`
-
-```go
-apiV1.Handle("/things", app.authMiddleware(http.HandlerFunc(app.handleThings)))
-```
+Do not:
+- move backend logic into Electron or React
+- read backend internals directly from the UI
+- hard-code policy that belongs in the backend
 
 ---
 
 ## Rules for seshat
 
-- **Never modify files inside `seshat/`**. It is an active open-source submodule with its own CI and contributors.
-- If seshat-ai needs something that seshat doesn't yet expose, open a PR on seshat to add it to `pkg/` first, then consume it here.
-- Always verify that `pkg/` of seshat exposes what you need before importing from it.
-- The `seshat` submodule pointer in `go.mod` (`replace` directive) must never be changed without explicit instruction.
+- Never modify files inside `seshat/` unless the task explicitly requires runtime changes.
+- If the backend/server needs something missing from `seshat/pkg/*`, add it in `seshat` first, then consume it here.
+- The local backend module path lives in `seshat-backend/go.mod` and intentionally keeps `module github.com/EngineerProjects/seshat-ai/seshat-backend`.
+- The `replace` wiring between `seshat-backend`, `seshat-server`, and `seshat` is intentional. Do not change it casually.
 
 ---
 
-## Error handling
+## Development commands
 
-Always use `bkerr` in services:
-
-```go
-return nil, bkerr.NotFound("thing not found", err)
-return nil, bkerr.InvalidInput("name is required", nil)
-return nil, bkerr.Forbidden("access denied", nil)
-return nil, bkerr.Internal("db error: "+err.Error(), err)
-```
-
-Handlers call `writeBackendError(w, err)` which maps error kinds to HTTP status codes automatically.
-
-Never return raw `err.Error()` strings from services — they may leak internals.
-
----
-
-## Go conventions
-
-- Always pass `context.Context` as the first parameter for any function that may do I/O.
-- Use `errors.Is` / `errors.As` for error comparisons — never string-match on `err.Error()`.
-- No `interface{}` — use `any`.
-- Value receivers on types containing `sync.Mutex` are forbidden — use pointer receivers.
-- Do not add `fmt.Printf` for logging in production paths — use structured stderr writes.
-- Prefer table-driven tests (`[]struct{ name, input, want }`).
-
----
-
-## Branching strategy
-
-```
-main  → production, protected, PR required, Gate CI required
-dev   → stable integration, protected, PR required, Gate CI required
-feat/<slug> → working branches
-```
-
-- Always branch from `dev`.
-- Never commit directly to `main` or `dev`.
-- PRs target `dev`. Only `dev` → `main` for releases.
-
-Before each commit:
+Run the local backend:
 
 ```bash
-go build ./... && go vet ./... && gofmt -l . && go test -race ./...
+cd seshat-backend
+go run ./cmd/api
+```
+
+Run the cloud server bootstrap:
+
+```bash
+cd ../seshat-server
+go run ./cmd/server
+```
+
+Run the desktop app from the repository root:
+
+```bash
+make dev
 ```
 
 ---
 
-## Commit message format
+## Documentation to update
 
-```
-<type>(<scope>): <short description>
-```
+When behavior changes, update the relevant docs:
 
-Types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `perf`, `ci`.
-
-Examples:
-```
-feat(billing): add per-workspace usage cap enforcement
-fix(auth): prevent token reuse after explicit logout
-docs(api): document /v1/messages Anthropic compatibility headers
-refactor(query): move buildContextInput to internal/query package
-```
-
----
-
-## Documentation updates
-
-When you add or change behavior, also update:
-
-| Change | Update |
-|---|---|
-| New API endpoint | `README.md` API table + `docs/architecture.md` |
-| New domain service | `docs/architecture.md` package map |
-| New env var | `docs/development.md` env var table |
-| Breaking change | Note in PR description |
-| New public SDK method | `docs/architecture.md` |
-
----
-
-## What not to do
-
-- Do not add business logic to `internal/api/` handlers — it belongs in services.
-- Do not access `internal/db/` stores directly from handlers — always go through a service.
-- Do not add `cmd/api`, user models, or auth to `seshat`.
-- Do not add `replace` directives to `go.mod`.
-- Do not commit secrets, credentials, or large binaries.
-- Do not use `//nolint` without an explanation comment on the same line.
-- Do not make speculative changes. Only change what is needed to accomplish the stated task.
+- `README.md` for repo layout and quick-start changes
+- `docs/architecture.md` for package or boundary changes
+- `docs/development.md` for workspace and command changes
+- `docs/RUNTIME.md` for runtime/docling behavior
 
 ---
 
 ## When in doubt
 
-- Read `README.md` for the product overview and API surface.
-- Read `docs/README.md` for the full documentation index.
-- Read `docs/architecture.md` for the backend package map.
-- Read `docs/seshat-ui.md` for the desktop client architecture.
-- Read `docs/product/vision.md` for what SeshatOS is and is not.
-- Read `docs/development.md` for local setup and env vars.
-- Read `internal/app.go` to understand the Go dependency graph.
-- Read `seshat-ui/AGENTS.md` for UI-specific rules and artistic direction.
+Read these first:
+
+- `README.md`
+- `docs/architecture.md`
+- `docs/development.md`
+- `seshat-backend/internal/app.go`
+- `seshat-ui/AGENTS.md`

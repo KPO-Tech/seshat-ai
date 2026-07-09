@@ -154,7 +154,7 @@ DOCLING_EXTRAS=gpu ./scripts/install-python-env.sh
 
 ### Auto-start
 
-**Backend (HTTP API server / desktop app):** The backend binary (`cmd/api`) checks at
+**Backend (HTTP API server / desktop app):** The local backend binary (`seshat-backend/cmd/api`) checks at
 startup whether `~/.config/seshat/.venv/bin/docling-serve` exists. If it does and
 `SESHAT_DOCLING_URL` / `docling_url` config is not set, it starts docling-serve
 automatically in the background and routes document-conversion requests to it.

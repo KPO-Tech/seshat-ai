@@ -1,0 +1,2958 @@
+openapi: 3.0.3
+info:
+  title: Seshat Server API
+  description: >
+    Cloud control plane for Seshat: auth, organizations, memberships, roles,
+    permissions, groups, policy bindings, invitations, sessions, applications,
+    providers and audit trail. Devices, scheduled jobs and runs are planned
+    but not implemented yet.
+  version: "1.0.0"
+servers:
+  - url: http://localhost:8081
+    description: Local development
+security:
+  - bearerAuth: []
+tags:
+  - name: system
+    description: Health and bootstrap-status checks, no authentication required.
+  - name: auth
+    description: Bootstrap, login, logout and session-principal resolution.
+  - name: organizations
+    description: Tenant boundary that every other domain is scoped to.
+  - name: users
+    description: Platform-level user accounts (distinct from per-org memberships).
+  - name: roles-and-permissions
+    description: Static role and permission catalogs.
+  - name: memberships
+    description: Binds a user to an organization under a role.
+  - name: invitations
+    description: Pending or resolved organization access invites.
+  - name: groups
+    description: Organization-local user collections used as policy-binding subjects.
+  - name: policy-bindings
+    description: Grants a set of permissions to a user, group or role.
+  - name: sessions
+    description: Active bearer-token logins.
+  - name: audit
+    description: Read-only audit trail of control-plane mutations.
+  - name: applications
+    description: OAuth/OIDC client applications registered with the control plane.
+  - name: providers
+    description: Upstream identity providers (OIDC/OAuth2/SAML).
+  - name: provider-settings
+    description: >-
+      Per-organization LLM provider credentials (Anthropic, OpenAI, ...) —
+      distinct from providers (OAuth/OIDC identity), these are what unblocks
+      execution_target=cloud jobs.
+  - name: devices
+    description: Registered seshat-backend (local desktop) instances that the cloud can target.
+  - name: jobs
+    description: Scheduled automation definitions (cron/interval/once, cloud- or device-targeted).
+  - name: runs
+    description: Individual executions of a job.
+  - name: device-protocol
+    description: >-
+      Device-bearer-token-authenticated endpoints (a registered device's own
+      token, not a user session) used by seshat-backend to claim and report
+      on its assigned runs.
+
+paths:
+  /health:
+    get:
+      operationId: healthCheck
+      tags: [system]
+      summary: Liveness check
+      security: []
+      responses:
+        "200":
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  service: { type: string, example: seshat-server }
+                  mode: { type: string, example: iam-core }
+
+  /api/v1/bootstrap/status:
+    get:
+      operationId: getBootstrapStatus
+      tags: [system]
+      summary: Check whether the platform has been bootstrapped
+      security: []
+      responses:
+        "200":
+          description: Bootstrap status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  initialized: { type: boolean }
+
+  /api/v1/auth/bootstrap:
+    post:
+      operationId: bootstrapPlatform
+      tags: [auth]
+      summary: Create the first platform admin, organization and session
+      description: >
+        One-time only: fails with 409 once any user already exists. Not
+        rate-limited (repeated calls after init just fail a cheap existence
+        check).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, display_name, organization_name, organization_slug]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+                display_name: { type: string }
+                organization_name: { type: string }
+                organization_slug: { type: string }
+      responses:
+        "201":
+          description: Platform bootstrapped
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthResult" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /api/v1/auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Exchange email/password for a bearer session token
+      description: >
+        Rate limited to 5 attempts/minute per client IP (burst 5); beyond
+        that, returns 429 before even checking credentials. Every attempt
+        (success or failure) is written to the audit trail.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+      responses:
+        "200":
+          description: Authenticated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthResult" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/auth/me:
+    get:
+      operationId: getCurrentPrincipal
+      tags: [auth]
+      summary: Resolve the current session's principal
+      responses:
+        "200":
+          description: Current user, memberships, visible organizations and session
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: "#/components/schemas/User" }
+                  memberships:
+                    type: array
+                    items: { $ref: "#/components/schemas/Membership" }
+                  organizations:
+                    type: array
+                    items: { $ref: "#/components/schemas/Organization" }
+                  session: { $ref: "#/components/schemas/Session" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Revoke the session that authenticated this request
+      responses:
+        "204": { description: Logged out }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations:
+    get:
+      operationId: listOrganizations
+      tags: [organizations]
+      summary: List organizations visible to the caller
+      parameters:
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+        - $ref: "#/components/parameters/sort"
+        - $ref: "#/components/parameters/order"
+        - $ref: "#/components/parameters/q"
+      responses:
+        "200":
+          description: Organization list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ListMeta"
+                  - type: object
+                    properties:
+                      organizations:
+                        type: array
+                        items: { $ref: "#/components/schemas/Organization" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      operationId: createOrganization
+      tags: [organizations]
+      summary: Create an organization (self-serve)
+      description: >
+        Any authenticated user may create an organization; the caller is
+        attached as its owner automatically.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OrganizationInput" }
+      responses:
+        "201":
+          description: Organization created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Organization" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/organizations/{organizationID}:
+    parameters:
+      - $ref: "#/components/parameters/organizationIDPath"
+    get:
+      operationId: getOrganization
+      tags: [organizations]
+      summary: Get one organization
+      responses:
+        "200":
+          description: Organization
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Organization" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      operationId: updateOrganization
+      tags: [organizations]
+      summary: Update organization settings
+      description: Requires `organization.manage` (owner or admin role).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OrganizationInput" }
+      responses:
+        "200":
+          description: Updated organization
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Organization" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+    delete:
+      operationId: deleteOrganization
+      tags: [organizations]
+      summary: Delete an organization
+      description: >
+        Requires `organization.delete` — owner only, not admin. Cascades
+        memberships, applications, providers, invitations, groups and policy
+        bindings scoped to the organization. Audit history is kept.
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List users (platform admin only)
+      parameters:
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+        - $ref: "#/components/parameters/sort"
+        - $ref: "#/components/parameters/order"
+        - $ref: "#/components/parameters/q"
+      responses:
+        "200":
+          description: User list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ListMeta"
+                  - type: object
+                    properties:
+                      users:
+                        type: array
+                        items: { $ref: "#/components/schemas/User" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create a user (platform admin only)
+      description: >
+        If `organization_id` is set, also creates a membership with `role`
+        (default `member`) in the same call.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, display_name]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+                display_name: { type: string }
+                organization_id: { type: string }
+                role: { type: string, enum: [owner, admin, member, viewer] }
+                is_admin:
+                  type: boolean
+                  description: Grants platform-wide admin privileges.
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/users/{userID}:
+    parameters:
+      - $ref: "#/components/parameters/userIDPath"
+    get:
+      operationId: getUser
+      tags: [users]
+      summary: Get a user
+      description: Platform admin, or the user viewing themself.
+      responses:
+        "200":
+          description: User
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      operationId: updateUser
+      tags: [users]
+      summary: Update a user (platform admin only)
+      description: Cannot demote the last platform admin.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, display_name]
+              properties:
+                email: { type: string, format: email }
+                display_name: { type: string }
+                is_admin: { type: boolean }
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+    delete:
+      operationId: deleteUser
+      tags: [users]
+      summary: Delete a user (platform admin only)
+      description: >
+        Cascades memberships and sessions. Cannot delete the last admin or
+        the currently authenticated admin.
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/users/{userID}/sessions:
+    delete:
+      operationId: revokeUserSessions
+      tags: [users, sessions]
+      summary: Revoke all sessions for one user
+      description: Platform admin for any user, or a user targeting themself.
+      parameters:
+        - $ref: "#/components/parameters/userIDPath"
+      responses:
+        "200":
+          description: Revocation count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  revoked_count: { type: integer }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/roles:
+    get:
+      operationId: listRoles
+      tags: [roles-and-permissions]
+      summary: List the role catalog
+      description: >
+        Static catalog (owner, admin, member, viewer) — not stored/editable
+        per organization yet. Pass `organization_id` to also verify the
+        caller can access that org.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: Roles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  roles:
+                    type: array
+                    items: { $ref: "#/components/schemas/Role" }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/permissions:
+    get:
+      operationId: listPermissions
+      tags: [roles-and-permissions]
+      summary: List the permission catalog
+      responses:
+        "200":
+          description: Permissions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  permissions:
+                    type: array
+                    items: { $ref: "#/components/schemas/Permission" }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/memberships:
+    get:
+      operationId: listMemberships
+      tags: [memberships]
+      summary: List memberships
+      description: >
+        Platform admin sees everyone's; an org manager sees their org's
+        memberships; a regular user sees only their own.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+        - name: user_id
+          in: query
+          schema: { type: string }
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+        - $ref: "#/components/parameters/sort"
+        - $ref: "#/components/parameters/order"
+        - $ref: "#/components/parameters/q"
+      responses:
+        "200":
+          description: Membership list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ListMeta"
+                  - type: object
+                    properties:
+                      memberships:
+                        type: array
+                        items: { $ref: "#/components/schemas/Membership" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      operationId: createMembership
+      tags: [memberships]
+      summary: Add an existing user to an organization
+      description: Requires `members.manage` or `organization.manage`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [organization_id, user_id, role]
+              properties:
+                organization_id: { type: string }
+                user_id: { type: string }
+                role: { type: string, enum: [owner, admin, member, viewer] }
+      responses:
+        "201":
+          description: Membership created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Membership" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/memberships/{membershipID}:
+    parameters:
+      - name: membershipID
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      operationId: getMembership
+      tags: [memberships]
+      summary: Get a membership
+      description: Org manager, platform admin, or the member themself.
+      responses:
+        "200":
+          description: Membership
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Membership" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      operationId: updateMembership
+      tags: [memberships]
+      summary: Change a membership's role
+      description: >
+        Requires `members.manage` or `organization.manage`. Cannot demote the
+        last owner of an organization.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role: { type: string, enum: [owner, admin, member, viewer] }
+      responses:
+        "200":
+          description: Updated membership
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Membership" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+    delete:
+      operationId: deleteMembership
+      tags: [memberships]
+      summary: Remove a membership
+      description: >
+        An org manager may remove any member; any user may remove their own
+        membership to leave the organization. Cannot remove the last owner.
+      responses:
+        "204": { description: Removed }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/invitations:
+    get:
+      operationId: listInvitations
+      tags: [invitations]
+      summary: List invitations
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+        - name: status
+          in: query
+          schema: { type: string, enum: [pending, accepted, revoked, expired] }
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+        - $ref: "#/components/parameters/sort"
+        - $ref: "#/components/parameters/order"
+        - $ref: "#/components/parameters/q"
+      responses:
+        "200":
+          description: Invitation list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ListMeta"
+                  - type: object
+                    properties:
+                      invitations:
+                        type: array
+                        items: { $ref: "#/components/schemas/Invitation" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      operationId: createInvitation
+      tags: [invitations]
+      summary: Invite an email to join an organization
+      description: >
+        Requires `invitations.manage`, `members.manage` or
+        `organization.manage`. Rejects a duplicate pending invite or an email
+        already belonging to a member.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [organization_id, email, role]
+              properties:
+                organization_id: { type: string }
+                email: { type: string, format: email }
+                role: { type: string, enum: [owner, admin, member, viewer] }
+                expires_in_days: { type: integer, default: 7 }
+      responses:
+        "201":
+          description: Invitation created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Invitation" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/invitations/{invitationID}:
+    get:
+      operationId: getInvitation
+      tags: [invitations]
+      summary: Get an invitation
+      description: Org manager, platform admin, or the invited email's owner.
+      parameters:
+        - name: invitationID
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Invitation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Invitation" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/invitations/{invitationID}/revoke:
+    post:
+      operationId: revokeInvitation
+      tags: [invitations]
+      summary: Revoke a pending invitation
+      parameters:
+        - name: invitationID
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Revoked invitation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Invitation" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/invitations/accept:
+    post:
+      operationId: acceptInvitation
+      tags: [invitations]
+      summary: Redeem a pending invitation for the authenticated user
+      description: >
+        The invitation's email must match the authenticated user's email.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string }
+      responses:
+        "200":
+          description: New membership
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Membership" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/groups:
+    get:
+      operationId: listGroups
+      tags: [groups]
+      summary: List groups
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+        - $ref: "#/components/parameters/sort"
+        - $ref: "#/components/parameters/order"
+        - $ref: "#/components/parameters/q"
+      responses:
+        "200":
+          description: Group list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ListMeta"
+                  - type: object
+                    properties:
+                      groups:
+                        type: array
+                        items: { $ref: "#/components/schemas/Group" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      operationId: createGroup
+      tags: [groups]
+      summary: Create a group
+      description: Requires `groups.manage`, `members.manage` or `organization.manage`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GroupInput" }
+      responses:
+        "201":
+          description: Group created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Group" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/groups/{groupID}:
+    parameters:
+      - name: groupID
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      operationId: getGroup
+      tags: [groups]
+      summary: Get a group
+      description: Requires `groups.read`, `groups.manage`, `members.manage` or `organization.manage`.
+      responses:
+        "200":
+          description: Group
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Group" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      operationId: updateGroup
+      tags: [groups]
+      summary: Update a group
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GroupInput" }
+      responses:
+        "200":
+          description: Updated group
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Group" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+    delete:
+      operationId: deleteGroup
+      tags: [groups]
+      summary: Delete a group
+      description: Also removes any policy bindings that target this group.
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/policy-bindings:
+    get:
+      operationId: listPolicyBindings
+      tags: [policy-bindings]
+      summary: List policy bindings
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+        - $ref: "#/components/parameters/sort"
+        - $ref: "#/components/parameters/order"
+        - $ref: "#/components/parameters/q"
+      responses:
+        "200":
+          description: Policy binding list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ListMeta"
+                  - type: object
+                    properties:
+                      policy_bindings:
+                        type: array
+                        items: { $ref: "#/components/schemas/PolicyBinding" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      operationId: createPolicyBinding
+      tags: [policy-bindings]
+      summary: Grant permissions to a user, group or role
+      description: Requires `policies.manage` or `organization.manage`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PolicyBindingInput" }
+      responses:
+        "201":
+          description: Policy binding created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PolicyBinding" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/policy-bindings/{bindingID}:
+    parameters:
+      - name: bindingID
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      operationId: getPolicyBinding
+      tags: [policy-bindings]
+      summary: Get a policy binding
+      description: Requires `policies.read`, `policies.manage` or `organization.manage`.
+      responses:
+        "200":
+          description: Policy binding
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PolicyBinding" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      operationId: updatePolicyBinding
+      tags: [policy-bindings]
+      summary: Update a policy binding
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PolicyBindingInput" }
+      responses:
+        "200":
+          description: Updated policy binding
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PolicyBinding" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      operationId: deletePolicyBinding
+      tags: [policy-bindings]
+      summary: Delete a policy binding
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/sessions:
+    get:
+      operationId: listSessions
+      tags: [sessions]
+      summary: List sessions
+      description: >
+        Platform admin sees everyone's sessions; a regular user always sees
+        only their own, regardless of the `user_id` filter passed.
+      parameters:
+        - name: user_id
+          in: query
+          schema: { type: string }
+        - $ref: "#/components/parameters/organizationIDQuery"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+        - $ref: "#/components/parameters/sort"
+        - $ref: "#/components/parameters/order"
+        - $ref: "#/components/parameters/q"
+      responses:
+        "200":
+          description: Session list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ListMeta"
+                  - type: object
+                    properties:
+                      sessions:
+                        type: array
+                        items: { $ref: "#/components/schemas/SessionInfo" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/sessions/{sessionID}:
+    delete:
+      operationId: revokeSession
+      tags: [sessions]
+      summary: Revoke one session
+      description: >
+        Platform admin may revoke any session; a regular user may only
+        revoke one of their own.
+      parameters:
+        - name: sessionID
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204": { description: Revoked }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/audit-events:
+    get:
+      operationId: listAuditEvents
+      tags: [audit]
+      summary: List audit events
+      description: Requires `audit.read`, `organization.manage` or `members.manage` for the relevant organization.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+        - name: actor_user_id
+          in: query
+          schema: { type: string }
+        - name: action
+          in: query
+          schema: { type: string }
+        - name: resource_type
+          in: query
+          schema: { type: string }
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+        - $ref: "#/components/parameters/sort"
+        - $ref: "#/components/parameters/order"
+        - $ref: "#/components/parameters/q"
+      responses:
+        "200":
+          description: Audit event list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ListMeta"
+                  - type: object
+                    properties:
+                      audit_events:
+                        type: array
+                        items: { $ref: "#/components/schemas/AuditEvent" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/applications:
+    get:
+      operationId: listApplications
+      tags: [applications]
+      summary: List applications
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+        - $ref: "#/components/parameters/sort"
+        - $ref: "#/components/parameters/order"
+        - $ref: "#/components/parameters/q"
+      responses:
+        "200":
+          description: >
+            Application list. `client_secret` is redacted on every entry
+            except the one returned by the create call below.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ListMeta"
+                  - type: object
+                    properties:
+                      applications:
+                        type: array
+                        items: { $ref: "#/components/schemas/Application" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      operationId: createApplication
+      tags: [applications]
+      summary: Register a client application
+      description: >
+        Requires `applications.manage` or `organization.manage`. The server
+        generates `client_id`/`client_secret`; this response is the only
+        place the real `client_secret` is ever returned in full.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ApplicationInput" }
+      responses:
+        "201":
+          description: Application created (client_secret shown in full once)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Application" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/applications/{applicationID}:
+    parameters:
+      - name: applicationID
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      operationId: getApplication
+      tags: [applications]
+      summary: Get an application
+      description: Requires `applications.read`, `applications.manage` or `organization.manage`. `client_secret` is redacted.
+      responses:
+        "200":
+          description: Application
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Application" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      operationId: updateApplication
+      tags: [applications]
+      summary: Update an application
+      description: >
+        `client_secret` is immutable via this endpoint (not part of the
+        request body) and redacted in the response.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ApplicationInput" }
+      responses:
+        "200":
+          description: Updated application
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Application" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+    delete:
+      operationId: deleteApplication
+      tags: [applications]
+      summary: Delete an application
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/providers:
+    get:
+      operationId: listProviders
+      tags: [providers]
+      summary: List upstream identity providers
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+        - $ref: "#/components/parameters/sort"
+        - $ref: "#/components/parameters/order"
+        - $ref: "#/components/parameters/q"
+      responses:
+        "200":
+          description: >
+            Provider list. `client_secret` is always redacted — the value is
+            caller-supplied, so it is never echoed back in full, even at
+            creation.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ListMeta"
+                  - type: object
+                    properties:
+                      providers:
+                        type: array
+                        items: { $ref: "#/components/schemas/Provider" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      operationId: createProvider
+      tags: [providers]
+      summary: Register an upstream identity provider
+      description: Requires `providers.manage` or `organization.manage`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProviderInput" }
+      responses:
+        "201":
+          description: Provider created (client_secret redacted)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Provider" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/providers/{providerID}:
+    parameters:
+      - name: providerID
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      operationId: getProvider
+      tags: [providers]
+      summary: Get a provider
+      description: Requires `providers.read`, `providers.manage` or `organization.manage`. `client_secret` is redacted.
+      responses:
+        "200":
+          description: Provider
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Provider" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      operationId: updateProvider
+      tags: [providers]
+      summary: Update a provider
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProviderInput" }
+      responses:
+        "200":
+          description: Updated provider (client_secret redacted)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Provider" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+    delete:
+      operationId: deleteProvider
+      tags: [providers]
+      summary: Delete a provider
+      description: Fails while any application still references this provider.
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/provider-settings:
+    get:
+      operationId: listProviderSettings
+      tags: [provider-settings]
+      summary: List LLM providers configured for an organization
+      description: >-
+        Scoped visibility like every other list endpoint: a caller lacking
+        provider_settings.read/manage/organization.manage gets an empty
+        list, not a 403. The API key is never included, in this or any
+        other response.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: Provider setting list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  provider_settings:
+                    type: array
+                    items: { $ref: "#/components/schemas/ProviderSetting" }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+    post:
+      operationId: createProviderSetting
+      tags: [provider-settings]
+      summary: Store credentials for one LLM provider
+      description: >-
+        Requires provider_settings.manage or organization.manage. One
+        provider per organization — creating a second setting for the same
+        (organization, provider) pair is rejected; use update instead. The
+        api_key is AES-256-GCM encrypted at rest and never echoed back, not
+        even in this response — it's a caller-supplied secret, the same
+        redaction rule already applied to Provider.client_secret.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProviderSettingInput" }
+      responses:
+        "201":
+          description: Provider setting created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProviderSetting" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/provider-settings/{providerSettingID}:
+    parameters:
+      - name: providerSettingID
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      operationId: getProviderSetting
+      tags: [provider-settings]
+      summary: Get a provider setting
+      responses:
+        "200":
+          description: Provider setting
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProviderSetting" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      operationId: updateProviderSetting
+      tags: [provider-settings]
+      summary: Update a provider setting
+      description: An empty/omitted api_key leaves the stored credential unchanged.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProviderSettingInput" }
+      responses:
+        "200":
+          description: Updated provider setting
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProviderSetting" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      operationId: deleteProviderSetting
+      tags: [provider-settings]
+      summary: Delete a provider setting
+      description: Cloud jobs depending on this provider will start failing at execution time with a clear reason; existing jobs are not touched or deleted.
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/platform/provider-settings:
+    get:
+      operationId: listPlatformProviderSettings
+      tags: [platform-provider-settings]
+      summary: List the platform-wide default LLM credentials
+      description: >-
+        Superadmin-only (platform admin, User.is_admin). Unlike every
+        org-scoped list endpoint, a non-admin caller gets 403, not an empty
+        list — there is no organization to scope visibility to. The API key
+        is never included, in this or any other response.
+      responses:
+        "200":
+          description: Platform provider setting list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  platform_provider_settings:
+                    type: array
+                    items: { $ref: "#/components/schemas/PlatformProviderSetting" }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      operationId: createPlatformProviderSetting
+      tags: [platform-provider-settings]
+      summary: Store the platform-wide default credentials for one LLM provider
+      description: >-
+        Superadmin-only. One row per provider, globally (not scoped to any
+        organization) — creating a second setting for the same provider is
+        rejected; use update instead. A cloud-targeted job falls back to
+        this when its own organization has no provider-settings configured
+        for the requested provider (the hybrid BYOK/managed model — an org
+        can bring its own key, or use Seshat's default without configuring
+        anything). The api_key is AES-256-GCM encrypted at rest and never
+        echoed back, not even in this response.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlatformProviderSettingInput" }
+      responses:
+        "201":
+          description: Platform provider setting created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformProviderSetting" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/platform/provider-settings/{platformProviderSettingID}:
+    parameters:
+      - name: platformProviderSettingID
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      operationId: getPlatformProviderSetting
+      tags: [platform-provider-settings]
+      summary: Get a platform provider setting
+      description: Superadmin-only.
+      responses:
+        "200":
+          description: Platform provider setting
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformProviderSetting" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      operationId: updatePlatformProviderSetting
+      tags: [platform-provider-settings]
+      summary: Update a platform provider setting
+      description: Superadmin-only. An empty/omitted api_key leaves the stored credential unchanged.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlatformProviderSettingInput" }
+      responses:
+        "200":
+          description: Updated platform provider setting
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformProviderSetting" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      operationId: deletePlatformProviderSetting
+      tags: [platform-provider-settings]
+      summary: Delete a platform provider setting
+      description: >-
+        Superadmin-only. Any cloud job that was relying on this as its
+        fallback (no org-level provider-settings of its own) starts failing
+        at execution time with a clear reason; existing jobs are not
+        touched or deleted.
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/knowledge/corpora:
+    get:
+      operationId: listCorpora
+      tags: [knowledge]
+      summary: List an organization's knowledge-base corpora
+      description: >-
+        Scoped visibility like every other list endpoint: a caller lacking
+        knowledge.read/knowledge.manage/organization.manage gets an empty
+        list, not a 403.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+        - $ref: "#/components/parameters/sort"
+        - $ref: "#/components/parameters/order"
+        - $ref: "#/components/parameters/q"
+      responses:
+        "200":
+          description: Corpus list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ListMeta"
+                  - type: object
+                    properties:
+                      corpora:
+                        type: array
+                        items: { $ref: "#/components/schemas/Corpus" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+    post:
+      operationId: createCorpus
+      tags: [knowledge]
+      summary: Create a corpus
+      description: Requires knowledge.manage or organization.manage.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CorpusInput" }
+      responses:
+        "201":
+          description: Corpus created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Corpus" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/knowledge/corpora/{corpusID}:
+    parameters:
+      - name: corpusID
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      operationId: getCorpus
+      tags: [knowledge]
+      summary: Get a corpus
+      responses:
+        "200":
+          description: Corpus
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Corpus" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      operationId: deleteCorpus
+      tags: [knowledge]
+      summary: Delete a corpus
+      description: >-
+        Requires knowledge.manage or organization.manage. Removes the
+        corpus's files, ingestion jobs, and its entire vector namespace.
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/knowledge/corpora/{corpusID}/files:
+    parameters:
+      - name: corpusID
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      operationId: listCorpusFiles
+      tags: [knowledge]
+      summary: List the files attached to a corpus
+      responses:
+        "200":
+          description: Corpus file list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  files:
+                    type: array
+                    items: { $ref: "#/components/schemas/CorpusFile" }
+                  count: { type: integer }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      operationId: uploadCorpusFile
+      tags: [knowledge]
+      summary: Upload a file into a corpus
+      description: >-
+        Requires knowledge.manage or organization.manage. Multipart form
+        upload with a single "file" field, capped at 25 MiB. When the
+        server's RAG service is configured, ingestion is auto-enqueued;
+        otherwise the file is stored and attached as pending, and
+        POST .../ingestion-jobs can be used once an embedder is set up (see
+        the platform-provider-settings-shaped follow-up in ROADMAP.md).
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file: { type: string, format: binary }
+              required: [file]
+      responses:
+        "201":
+          description: File uploaded and attached
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CorpusFile" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/knowledge/corpora/{corpusID}/files/{fileID}:
+    parameters:
+      - name: corpusID
+        in: path
+        required: true
+        schema: { type: string }
+      - name: fileID
+        in: path
+        required: true
+        schema: { type: string }
+    delete:
+      operationId: detachCorpusFile
+      tags: [knowledge]
+      summary: Detach a file from its corpus
+      description: >-
+        Requires knowledge.manage or organization.manage. Removes the
+        file's ingested vector chunks (if any) and adjusts the corpus's
+        chunk total.
+      responses:
+        "204": { description: Detached }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/knowledge/corpora/{corpusID}/ingestion-jobs:
+    parameters:
+      - name: corpusID
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      operationId: listIngestionJobs
+      tags: [knowledge]
+      summary: List ingestion jobs for a corpus
+      responses:
+        "200":
+          description: Ingestion job list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ingestion_jobs:
+                    type: array
+                    items: { $ref: "#/components/schemas/IngestionJob" }
+                  count: { type: integer }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/knowledge/corpora/{corpusID}/ingestion-jobs/{jobID}:
+    parameters:
+      - name: corpusID
+        in: path
+        required: true
+        schema: { type: string }
+      - name: jobID
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      operationId: getIngestionJob
+      tags: [knowledge]
+      summary: Get an ingestion job
+      responses:
+        "200":
+          description: Ingestion job
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IngestionJob" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/knowledge/corpora/{corpusID}/ingestion-jobs/{jobID}/retry:
+    parameters:
+      - name: corpusID
+        in: path
+        required: true
+        schema: { type: string }
+      - name: jobID
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      operationId: retryIngestionJob
+      tags: [knowledge]
+      summary: Retry a failed ingestion job
+      description: Requires knowledge.manage or organization.manage. Only jobs in the "failed" state can be retried.
+      responses:
+        "200":
+          description: Ingestion job requeued
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IngestionJob" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/knowledge/corpora/{corpusID}/search:
+    parameters:
+      - name: corpusID
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      operationId: searchCorpus
+      tags: [knowledge]
+      summary: Search a corpus
+      description: >-
+        Requires knowledge.read/knowledge.manage or organization.manage.
+        Returns a 400 if the server's RAG service isn't configured yet (no
+        embedder set up — see ROADMAP.md).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                query: { type: string }
+                top_k: { type: integer, minimum: 1, maximum: 20, description: "Defaults to 5." }
+              required: [query]
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SearchResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/embedder-settings:
+    get:
+      operationId: getEmbedderSetting
+      tags: [knowledge]
+      summary: Get an organization's embedder configuration
+      description: >-
+        A singleton per organization — at most one embedder is active for
+        a given org at a time, since a corpus's vectors are all produced
+        by whichever embedder was active at ingest time. 404 if none is
+        configured (the organization then falls back to the platform
+        default, if any, at ingest/search time).
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: Embedder setting
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmbedderSetting" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      operationId: setEmbedderSetting
+      tags: [knowledge]
+      summary: Create or update an organization's embedder configuration
+      description: >-
+        Requires knowledge.manage or organization.manage. Upsert — creates
+        the organization's embedder setting if none exists yet, otherwise
+        updates it in place. api_key empty means "no key" on first create
+        (valid for an unauthenticated local Ollama) and "keep the existing
+        key unchanged" when a setting already exists.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmbedderSettingInput" }
+      responses:
+        "200":
+          description: Embedder setting created or updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmbedderSetting" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    delete:
+      operationId: deleteEmbedderSetting
+      tags: [knowledge]
+      summary: Delete an organization's embedder configuration
+      description: >-
+        Requires knowledge.manage or organization.manage. The organization
+        falls back to the platform default (if any) for subsequent
+        ingest/search calls; existing corpora are not re-embedded.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "204": { description: Deleted }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/platform/embedder-settings:
+    get:
+      operationId: getPlatformEmbedderSetting
+      tags: [knowledge]
+      summary: Get the platform-wide default embedder configuration
+      description: Superadmin-only. A singleton — at most one platform default embedder exists. 404 if none is configured.
+      responses:
+        "200":
+          description: Platform embedder setting
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformEmbedderSetting" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      operationId: setPlatformEmbedderSetting
+      tags: [knowledge]
+      summary: Create or update the platform-wide default embedder configuration
+      description: Superadmin-only. Upsert, same semantics as the organization-scoped embedder setting.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmbedderSettingInput" }
+      responses:
+        "200":
+          description: Platform embedder setting created or updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformEmbedderSetting" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    delete:
+      operationId: deletePlatformEmbedderSetting
+      tags: [knowledge]
+      summary: Delete the platform-wide default embedder configuration
+      description: >-
+        Superadmin-only. Any organization relying on this as its fallback
+        (no embedder of its own) starts failing ingest/search calls with a
+        clear reason.
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/devices:
+    get:
+      operationId: listDevices
+      tags: [devices]
+      summary: List devices in an organization
+      description: >-
+        Scoped visibility like every other list endpoint: a caller lacking
+        devices.read/devices.manage/organization.manage gets an empty list,
+        not a 403.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: Device list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  devices:
+                    type: array
+                    items: { $ref: "#/components/schemas/Device" }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+    post:
+      operationId: registerDevice
+      tags: [devices]
+      summary: Register the caller's own machine as a device
+      description: >-
+        Self-service: any org member may register a device for themselves.
+        The bearer token is shown in full only in this response.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [organization_id, name]
+              properties:
+                organization_id: { type: string }
+                name: { type: string }
+                platform: { type: string, example: darwin }
+                app_version: { type: string, example: "1.4.0" }
+      responses:
+        "201":
+          description: Device registered
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RegisterDeviceResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/devices/{deviceID}:
+    delete:
+      operationId: revokeDevice
+      tags: [devices]
+      summary: Revoke a device
+      description: Requires devices.manage/organization.manage, or being the user who registered the device.
+      parameters:
+        - name: deviceID
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204": { description: Revoked }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/device/heartbeat:
+    post:
+      operationId: deviceHeartbeat
+      tags: [device-protocol]
+      summary: Report device liveness
+      security:
+        - deviceBearerAuth: []
+      responses:
+        "200":
+          description: Updated device
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Device" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/jobs:
+    get:
+      operationId: listJobs
+      tags: [jobs]
+      summary: List jobs in an organization
+      description: Scoped visibility — a caller lacking jobs.read/jobs.manage/organization.manage gets an empty list, not a 403.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: Job list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobs:
+                    type: array
+                    items: { $ref: "#/components/schemas/Job" }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+    post:
+      operationId: createJob
+      tags: [jobs]
+      summary: Define a new scheduled automation
+      description: Requires jobs.manage or organization.manage.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/JobInput" }
+      responses:
+        "201":
+          description: Job created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/jobs/{jobID}:
+    parameters:
+      - name: jobID
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      operationId: getJob
+      tags: [jobs]
+      summary: Get a job
+      responses:
+        "200":
+          description: Job
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      operationId: updateJob
+      tags: [jobs]
+      summary: Update a job's trigger and payload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/JobInput" }
+      responses:
+        "200":
+          description: Updated job
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      operationId: deleteJob
+      tags: [jobs]
+      summary: Delete a job
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/jobs/{jobID}/pause:
+    post:
+      operationId: pauseJob
+      tags: [jobs]
+      summary: Pause a job
+      description: A paused job is skipped by the scheduler even past its next_run_at.
+      parameters:
+        - name: jobID
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Updated job
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/jobs/{jobID}/resume:
+    post:
+      operationId: resumeJob
+      tags: [jobs]
+      summary: Resume a paused job
+      parameters:
+        - name: jobID
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Updated job
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Job" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/jobs/{jobID}/run:
+    post:
+      operationId: triggerJobNow
+      tags: [jobs]
+      summary: Queue an immediate run outside the job's normal schedule
+      parameters:
+        - name: jobID
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "201":
+          description: >-
+            Queued run. For execution_target=cloud this comes back already
+            failed — seshat-server has no LLM provider credential
+            infrastructure yet, so the absorbed Runner has nothing to
+            execute with (see Run.exit_reason).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Run" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/jobs/{jobID}/runs:
+    get:
+      operationId: listJobRuns
+      tags: [jobs, runs]
+      summary: List runs for one job
+      description: >
+        Sortable fields: `queued_at`, `status`, `execution_target`. `q`
+        searches id, job_id, organization_id, execution_target,
+        assigned_device_id, status, exit_reason, output_text, error_text and
+        metadata.
+      parameters:
+        - name: jobID
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+        - $ref: "#/components/parameters/sort"
+        - $ref: "#/components/parameters/order"
+        - $ref: "#/components/parameters/q"
+      responses:
+        "200":
+          description: Run list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ListMeta"
+                  - type: object
+                    properties:
+                      runs:
+                        type: array
+                        items: { $ref: "#/components/schemas/Run" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/runs:
+    get:
+      operationId: listRuns
+      tags: [runs]
+      summary: List runs in an organization
+      description: >
+        Scoped visibility — a caller lacking
+        jobs.read/jobs.manage/organization.manage gets an empty list, not a
+        403. Sortable fields: `queued_at`, `status`, `execution_target`. `q`
+        searches id, job_id, organization_id, execution_target,
+        assigned_device_id, status, exit_reason, output_text, error_text and
+        metadata.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+        - name: job_id
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { type: string, enum: [queued, claimed, running, completed, failed, cancelled] }
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+        - $ref: "#/components/parameters/sort"
+        - $ref: "#/components/parameters/order"
+        - $ref: "#/components/parameters/q"
+      responses:
+        "200":
+          description: Run list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ListMeta"
+                  - type: object
+                    properties:
+                      runs:
+                        type: array
+                        items: { $ref: "#/components/schemas/Run" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /api/v1/runs/{runID}:
+    get:
+      operationId: getRun
+      tags: [runs]
+      summary: Get a run
+      parameters:
+        - name: runID
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Run
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Run" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/runs/{runID}/cancel:
+    post:
+      operationId: cancelRun
+      tags: [runs]
+      summary: Cancel a run that hasn't finished yet
+      parameters:
+        - name: runID
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Cancelled run
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Run" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/device/runs:
+    get:
+      operationId: myRuns
+      tags: [device-protocol]
+      summary: List every non-terminal run currently assigned to this device
+      description: >-
+        State-reconciliation call for the local backend on startup/reconnect:
+        returns queued, claimed and running runs owned by the calling
+        device, including ones claimed before a crash that were never
+        reported back. A claimed/running run left silent for too long
+        (default 10 minutes, SESHAT_SERVER_STALE_RUN_TIMEOUT) is
+        automatically failed by the scheduler with exit_reason "device went
+        silent..." — this endpoint lets the device notice and react before
+        that timeout fires.
+      security:
+        - deviceBearerAuth: []
+      responses:
+        "200":
+          description: Non-terminal runs assigned to this device
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  runs:
+                    type: array
+                    items: { $ref: "#/components/schemas/Run" }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/device/runs/claim:
+    post:
+      operationId: claimRun
+      tags: [device-protocol]
+      summary: Claim the oldest queued run assigned to this device
+      security:
+        - deviceBearerAuth: []
+      responses:
+        "200":
+          description: Claimed run
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Run" }
+        "204": { description: "Nothing currently queued for this device — normal during polling, not an error." }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/device/runs/{runID}/start:
+    post:
+      operationId: startRun
+      tags: [device-protocol]
+      summary: Confirm the device has begun executing a claimed run
+      security:
+        - deviceBearerAuth: []
+      parameters:
+        - name: runID
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Updated run
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Run" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/device/runs/{runID}/heartbeat:
+    post:
+      operationId: heartbeatRun
+      tags: [device-protocol]
+      summary: Record that a running run is still alive
+      security:
+        - deviceBearerAuth: []
+      parameters:
+        - name: runID
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Updated run
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Run" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/device/runs/{runID}/complete:
+    post:
+      operationId: completeRun
+      tags: [device-protocol]
+      summary: Record a successful run outcome
+      security:
+        - deviceBearerAuth: []
+      parameters:
+        - name: runID
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                output_text: { type: string }
+      responses:
+        "200":
+          description: Completed run
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Run" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/device/runs/{runID}/fail:
+    post:
+      operationId: failRun
+      tags: [device-protocol]
+      summary: Record a failed run outcome
+      security:
+        - deviceBearerAuth: []
+      parameters:
+        - name: runID
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                error_text: { type: string }
+      responses:
+        "200":
+          description: Failed run
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Run" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: "Opaque session token returned by bootstrap/login, sent as `Authorization: Bearer <token>`."
+    deviceBearerAuth:
+      type: http
+      scheme: bearer
+      description: >-
+        Device token returned once by POST /devices at registration time —
+        distinct from a user session token. Resolves to a Device, not a
+        Principal; never accepted on user-authenticated endpoints and vice
+        versa.
+
+  parameters:
+    organizationIDPath:
+      name: organizationID
+      in: path
+      required: true
+      schema: { type: string }
+    userIDPath:
+      name: userID
+      in: path
+      required: true
+      schema: { type: string }
+    organizationIDQuery:
+      name: organization_id
+      in: query
+      schema: { type: string }
+    limit:
+      name: limit
+      in: query
+      description: Max items per page (default 50, capped at 200).
+      schema: { type: integer, minimum: 0, maximum: 200, default: 50 }
+    offset:
+      name: offset
+      in: query
+      schema: { type: integer, minimum: 0, default: 0 }
+    sort:
+      name: sort
+      in: query
+      description: Field to sort by; valid values are endpoint-specific (see each list's `sort` in the response).
+      schema: { type: string }
+    order:
+      name: order
+      in: query
+      schema: { type: string, enum: [asc, desc] }
+    q:
+      name: q
+      in: query
+      description: Free-text search, fields vary per resource.
+      schema: { type: string }
+
+  responses:
+    BadRequest:
+      description: Invalid input
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unauthorized:
+      description: Missing or invalid bearer token
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: Authenticated but not permitted
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: Resource does not exist (or is hidden from this caller)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Conflict:
+      description: Uniqueness or state conflict
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    TooManyRequests:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            message: { type: string }
+
+    ListMeta:
+      type: object
+      properties:
+        count: { type: integer }
+        total: { type: integer }
+        limit: { type: integer }
+        offset: { type: integer }
+        has_more: { type: boolean }
+        sort: { type: string }
+        order: { type: string }
+        query: { type: string }
+
+    User:
+      type: object
+      properties:
+        id: { type: string }
+        email: { type: string, format: email }
+        display_name: { type: string }
+        is_admin: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    Organization:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        description: { type: string }
+        website_url: { type: string }
+        support_email: { type: string, format: email }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    OrganizationInput:
+      type: object
+      required: [name, slug]
+      properties:
+        name: { type: string }
+        slug: { type: string }
+        description: { type: string }
+        website_url: { type: string }
+        support_email: { type: string, format: email }
+
+    Membership:
+      type: object
+      properties:
+        id: { type: string }
+        user_id: { type: string }
+        organization_id: { type: string }
+        role: { type: string, enum: [owner, admin, member, viewer] }
+        created_at: { type: string, format: date-time }
+
+    Session:
+      type: object
+      properties:
+        id: { type: string }
+        token: { type: string }
+        user_id: { type: string }
+        created_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+
+    SessionInfo:
+      type: object
+      description: Admin-facing session view; exposes a stable id instead of the raw token.
+      properties:
+        id: { type: string }
+        user_id: { type: string }
+        user_email: { type: string, format: email }
+        user_display_name: { type: string }
+        organization_ids:
+          type: array
+          items: { type: string }
+        created_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+
+    Role:
+      type: object
+      properties:
+        code: { type: string, enum: [owner, admin, member, viewer] }
+        name: { type: string }
+        description: { type: string }
+        permissions:
+          type: array
+          items: { type: string }
+
+    Permission:
+      type: object
+      properties:
+        code: { type: string }
+        name: { type: string }
+        description: { type: string }
+        category: { type: string }
+
+    Invitation:
+      type: object
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        email: { type: string, format: email }
+        role: { type: string, enum: [owner, admin, member, viewer] }
+        status: { type: string, enum: [pending, accepted, revoked, expired] }
+        token: { type: string }
+        invited_by_user_id: { type: string }
+        accepted_by_user_id: { type: string }
+        created_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+        accepted_at: { type: string, format: date-time, nullable: true }
+        revoked_at: { type: string, format: date-time, nullable: true }
+
+    Group:
+      type: object
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        description: { type: string }
+        member_user_ids:
+          type: array
+          items: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    GroupInput:
+      type: object
+      required: [organization_id, name, slug]
+      properties:
+        organization_id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        description: { type: string }
+        member_user_ids:
+          type: array
+          items: { type: string }
+
+    PolicyBinding:
+      type: object
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        subject_type: { type: string, enum: [user, group, role] }
+        subject_id: { type: string }
+        permission_codes:
+          type: array
+          items: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    PolicyBindingInput:
+      type: object
+      required: [organization_id, name, subject_type, subject_id, permission_codes]
+      properties:
+        organization_id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        subject_type: { type: string, enum: [user, group, role] }
+        subject_id: { type: string }
+        permission_codes:
+          type: array
+          items: { type: string }
+
+    AuditEvent:
+      type: object
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        actor_user_id: { type: string }
+        action: { type: string }
+        resource_type: { type: string }
+        resource_id: { type: string }
+        metadata:
+          type: object
+          additionalProperties: { type: string }
+        created_at: { type: string, format: date-time }
+
+    Application:
+      type: object
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        display_name: { type: string }
+        description: { type: string }
+        protocol: { type: string, enum: [oidc, oauth2] }
+        enabled: { type: boolean }
+        homepage_url: { type: string }
+        callback_url: { type: string }
+        redirect_urls:
+          type: array
+          items: { type: string }
+        post_logout_redirect_urls:
+          type: array
+          items: { type: string }
+        allowed_origins:
+          type: array
+          items: { type: string }
+        grant_types:
+          type: array
+          items: { type: string }
+        response_types:
+          type: array
+          items: { type: string }
+        scopes:
+          type: array
+          items: { type: string }
+        client_id: { type: string }
+        client_secret:
+          type: string
+          description: Full value only in the create response; redacted (e.g. `secret_ab********`) everywhere else.
+        provider_ids:
+          type: array
+          items: { type: string }
+        signin_url: { type: string }
+        signup_url: { type: string }
+        allow_signup: { type: boolean }
+        allow_password_login: { type: boolean }
+        pkce_required: { type: boolean }
+        skip_consent: { type: boolean }
+        issue_refresh_token: { type: boolean }
+        configuration:
+          type: object
+          additionalProperties: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    ApplicationInput:
+      type: object
+      required: [organization_id, name, slug, display_name]
+      properties:
+        organization_id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        display_name: { type: string }
+        description: { type: string }
+        protocol: { type: string, enum: [oidc, oauth2], default: oidc }
+        enabled: { type: boolean, default: true }
+        homepage_url: { type: string }
+        callback_url: { type: string }
+        redirect_urls:
+          type: array
+          items: { type: string }
+        post_logout_redirect_urls:
+          type: array
+          items: { type: string }
+        allowed_origins:
+          type: array
+          items: { type: string }
+        grant_types:
+          type: array
+          items: { type: string }
+        response_types:
+          type: array
+          items: { type: string }
+        scopes:
+          type: array
+          items: { type: string }
+        provider_ids:
+          type: array
+          items: { type: string }
+        signin_url: { type: string }
+        signup_url: { type: string }
+        allow_signup: { type: boolean }
+        allow_password_login: { type: boolean }
+        pkce_required: { type: boolean }
+        skip_consent: { type: boolean }
+        issue_refresh_token: { type: boolean }
+        configuration:
+          type: object
+          additionalProperties: { type: string }
+
+    Provider:
+      type: object
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        kind: { type: string, enum: [oidc, oauth2, saml] }
+        enabled: { type: boolean }
+        client_id: { type: string }
+        client_secret:
+          type: string
+          description: Always redacted in API responses — caller-supplied, never echoed back in full.
+        issuer_url: { type: string }
+        discovery_url: { type: string }
+        authorization_url: { type: string }
+        token_url: { type: string }
+        userinfo_url: { type: string }
+        jwks_url: { type: string }
+        logout_url: { type: string }
+        metadata_url: { type: string }
+        entity_id: { type: string }
+        sso_url: { type: string }
+        x509_certificate:
+          type: string
+          description: Public verification certificate (not a secret).
+        scopes:
+          type: array
+          items: { type: string }
+        allowed_domains:
+          type: array
+          items: { type: string }
+        claim_mappings:
+          type: object
+          additionalProperties: { type: string }
+        allow_auto_link: { type: boolean }
+        allow_signup: { type: boolean }
+        pkce_required: { type: boolean }
+        configuration:
+          type: object
+          additionalProperties: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    ProviderInput:
+      type: object
+      required: [organization_id, name, slug, kind]
+      properties:
+        organization_id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        kind: { type: string, enum: [oidc, oauth2, saml] }
+        enabled: { type: boolean, default: true }
+        client_id: { type: string }
+        client_secret: { type: string }
+        issuer_url: { type: string }
+        discovery_url: { type: string }
+        authorization_url: { type: string }
+        token_url: { type: string }
+        userinfo_url: { type: string }
+        jwks_url: { type: string }
+        logout_url: { type: string }
+        metadata_url: { type: string }
+        entity_id: { type: string }
+        sso_url: { type: string }
+        x509_certificate: { type: string }
+        scopes:
+          type: array
+          items: { type: string }
+        allowed_domains:
+          type: array
+          items: { type: string }
+        claim_mappings:
+          type: object
+          additionalProperties: { type: string }
+        allow_auto_link: { type: boolean }
+        allow_signup: { type: boolean }
+        pkce_required: { type: boolean }
+        configuration:
+          type: object
+          additionalProperties: { type: string }
+
+    AuthResult:
+      type: object
+      properties:
+        token: { type: string }
+        user: { $ref: "#/components/schemas/User" }
+        organizations:
+          type: array
+          items: { $ref: "#/components/schemas/Organization" }
+        memberships:
+          type: array
+          items: { $ref: "#/components/schemas/Membership" }
+
+    ProviderSetting:
+      type: object
+      description: Never includes the API key — it's a caller-supplied secret, redacted in every response including create.
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        created_by_user_id: { type: string }
+        provider: { type: string, example: anthropic }
+        default_model: { type: string, example: claude-sonnet-5 }
+        base_url: { type: string }
+
+    ProviderSettingInput:
+      type: object
+      properties:
+        organization_id: { type: string, description: "Required on create, ignored on update." }
+        provider: { type: string, example: anthropic, description: "Required on create, ignored on update." }
+        default_model: { type: string, example: claude-sonnet-5 }
+        base_url: { type: string }
+        api_key:
+          type: string
+          description: Required on create. On update, omit/empty to keep the existing stored key unchanged.
+
+    PlatformProviderSetting:
+      type: object
+      description: >-
+        The platform-wide default credential for one LLM provider — not
+        scoped to any organization. Never includes the API key.
+      properties:
+        id: { type: string }
+        created_by_user_id: { type: string }
+        provider: { type: string, example: anthropic }
+        default_model: { type: string, example: claude-sonnet-5 }
+        base_url: { type: string }
+
+    PlatformProviderSettingInput:
+      type: object
+      properties:
+        provider: { type: string, example: anthropic, description: "Required on create, ignored on update." }
+        default_model: { type: string, example: claude-sonnet-5 }
+        base_url: { type: string }
+        api_key:
+          type: string
+          description: Required on create. On update, omit/empty to keep the existing stored key unchanged.
+
+    Corpus:
+      type: object
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        created_by_user_id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        chunk_count: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    CorpusInput:
+      type: object
+      properties:
+        organization_id: { type: string }
+        name: { type: string }
+        description: { type: string }
+      required: [organization_id, name]
+
+    CorpusFile:
+      type: object
+      properties:
+        id: { type: string }
+        corpus_id: { type: string }
+        filename: { type: string }
+        content_type: { type: string }
+        size: { type: integer, format: int64 }
+        status: { type: string, enum: [pending, ingested, failed] }
+        chunk_count: { type: integer }
+        ingested_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+
+    IngestionJob:
+      type: object
+      properties:
+        id: { type: string }
+        corpus_id: { type: string }
+        corpus_file_id: { type: string }
+        filename: { type: string }
+        status: { type: string, enum: [queued, running, completed, failed] }
+        attempt_count: { type: integer }
+        max_attempts: { type: integer }
+        chunk_count: { type: integer }
+        last_error: { type: string }
+        started_at: { type: string, format: date-time }
+        completed_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    SearchResponse:
+      type: object
+      properties:
+        corpus_id: { type: string }
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              key: { type: string }
+              text: { type: string }
+              score: { type: number, format: float }
+              metadata: { type: object, additionalProperties: { type: string } }
+
+    EmbedderSetting:
+      type: object
+      description: Never includes the API key — same redaction stance as ProviderSetting.
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        provider: { type: string, enum: [openai, ollama] }
+        model: { type: string, example: text-embedding-3-small }
+        base_url: { type: string }
+
+    EmbedderSettingInput:
+      type: object
+      properties:
+        organization_id: { type: string, description: "Required for the organization-scoped endpoint; ignored for the platform one." }
+        provider: { type: string, enum: [openai, ollama] }
+        model: { type: string, example: text-embedding-3-small }
+        base_url: { type: string }
+        api_key:
+          type: string
+          description: Optional (e.g. a local Ollama needs none). Empty on update keeps the existing key unchanged.
+      required: [provider, model, base_url]
+
+    PlatformEmbedderSetting:
+      type: object
+      description: The platform-wide default embedder — not scoped to any organization. Never includes the API key.
+      properties:
+        id: { type: string }
+        provider: { type: string, enum: [openai, ollama] }
+        model: { type: string, example: text-embedding-3-small }
+        base_url: { type: string }
+
+    Device:
+      type: object
+      description: The device's bearer token is never part of this view — see RegisterDeviceResult for the one-time reveal.
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        registered_by_user_id: { type: string }
+        name: { type: string }
+        platform: { type: string }
+        app_version: { type: string }
+        status: { type: string, enum: [active, revoked] }
+        last_seen_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    RegisterDeviceResult:
+      type: object
+      properties:
+        device: { $ref: "#/components/schemas/Device" }
+        token:
+          type: string
+          description: Full device bearer token, shown in full only in this response.
+
+    Job:
+      type: object
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        created_by_user_id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        status: { type: string, enum: [active, paused] }
+        trigger_type: { type: string, enum: [cron, interval, once] }
+        cron_expr: { type: string }
+        interval_seconds: { type: integer }
+        run_at: { type: string, format: date-time, nullable: true }
+        next_run_at: { type: string, format: date-time, nullable: true }
+        last_run_at: { type: string, format: date-time, nullable: true }
+        last_run_status:
+          type: string
+          enum: [queued, claimed, running, completed, failed, cancelled]
+        execution_target: { type: string, enum: [cloud, device] }
+        target_device_id: { type: string }
+        prompt: { type: string }
+        model_override: { type: string }
+        configuration:
+          type: object
+          additionalProperties: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    JobInput:
+      type: object
+      required: [organization_id, name, trigger_type, execution_target, prompt]
+      description: >-
+        cron_expr is required when trigger_type=cron; interval_seconds when
+        trigger_type=interval; run_at when trigger_type=once.
+        target_device_id is required when execution_target=device.
+        model_override is required when execution_target=cloud, format
+        "provider:model" (e.g. "anthropic:claude-sonnet-5") — the provider
+        prefix picks which of the organization's provider-settings to run
+        against; there must be one configured (POST /provider-settings) or
+        the run fails with a clear reason.
+      properties:
+        organization_id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        trigger_type: { type: string, enum: [cron, interval, once] }
+        cron_expr: { type: string, example: "0 0 * * *" }
+        interval_seconds: { type: integer }
+        run_at: { type: string, format: date-time }
+        execution_target: { type: string, enum: [cloud, device] }
+        target_device_id: { type: string }
+        prompt: { type: string }
+        model_override: { type: string, example: "anthropic:claude-sonnet-5" }
+        configuration:
+          type: object
+          additionalProperties: { type: string }
+
+    Run:
+      type: object
+      properties:
+        id: { type: string }
+        job_id: { type: string }
+        organization_id: { type: string }
+        execution_target: { type: string, enum: [cloud, device] }
+        assigned_device_id: { type: string }
+        status:
+          type: string
+          enum: [queued, claimed, running, completed, failed, cancelled]
+        queued_at: { type: string, format: date-time }
+        claimed_at: { type: string, format: date-time, nullable: true }
+        started_at: { type: string, format: date-time, nullable: true }
+        last_heartbeat_at: { type: string, format: date-time, nullable: true }
+        finished_at: { type: string, format: date-time, nullable: true }
+        exit_reason: { type: string }
+        output_text: { type: string }
+        error_text: { type: string }
+        metadata:
+          type: object
+          additionalProperties: { type: string }
