@@ -39,6 +39,20 @@ tags:
     description: >-
       A user's own personal settings — no organization, no hierarchy, self-service
       only (same trust level as GET/PUT /auth/me).
+  - name: memories
+    description: >-
+      A user's own flat personal memory list (facts, preferences, instructions
+      noted for later) — no organization, self-service only, same trust level
+      as preferences. Distinct from the long-term memory graph (see the
+      memory-graph tag) — this is a simple key/value-ish list, not entities/
+      relations.
+  - name: memory-graph
+    description: >-
+      A user's own long-term memory knowledge graph (entities/observations/
+      relations) — self-service only, no organization. Search is a
+      case-insensitive substring match over everything the user has, the
+      same algorithm as seshat-backend's local implementation — this is
+      deliberately not a vector/embedding relevance system.
   - name: skill-repos
     description: >-
       An organization's curated list of recommended skill repo URLs. Authorship
@@ -1137,6 +1151,224 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/UserPreferences" }
         "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/users/me/memories:
+    get:
+      operationId: listMyMemories
+      tags: [memories]
+      summary: List my own memories
+      description: Self-service only. Ordered by importance then recency, most important/most recent first.
+      responses:
+        "200":
+          description: My memories
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  memories:
+                    type: array
+                    items: { $ref: "#/components/schemas/UserMemory" }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      operationId: createMyMemory
+      tags: [memories]
+      summary: Create a new memory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UserMemoryInput" }
+      responses:
+        "201":
+          description: Memory created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserMemory" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      operationId: deleteAllMyMemories
+      tags: [memories]
+      summary: Delete every one of my own memories
+      responses:
+        "200":
+          description: Number deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/users/me/memories/{memoryID}:
+    parameters:
+      - name: memoryID
+        in: path
+        required: true
+        schema: { type: string }
+    put:
+      operationId: updateMyMemory
+      tags: [memories]
+      summary: Update one of my own memories
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UserMemoryUpdateInput" }
+      responses:
+        "200":
+          description: Updated memory
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserMemory" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      operationId: deleteMyMemory
+      tags: [memories]
+      summary: Delete one of my own memories
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/users/me/memory-graph/entities:
+    post:
+      operationId: upsertMyMemoryEntities
+      tags: [memory-graph]
+      summary: Create entities that don't exist yet (deduplicated by name)
+      description: >-
+        An entity whose name already exists is left untouched (skipped, not
+        updated) — matches the underlying reference implementation. Returns
+        only the entities that were actually inserted.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                entities:
+                  type: array
+                  items: { $ref: "#/components/schemas/MemoryEntityInput" }
+      responses:
+        "200":
+          description: Entities actually created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entities:
+                    type: array
+                    items: { $ref: "#/components/schemas/MemoryEntity" }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/users/me/memory-graph/observations:
+    post:
+      operationId: addMyMemoryObservations
+      tags: [memory-graph]
+      summary: Append observations to existing entities
+      description: Duplicate observation strings (already present on that entity) are silently skipped.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                observations:
+                  type: array
+                  items: { $ref: "#/components/schemas/MemoryObservationInput" }
+      responses:
+        "200":
+          description: What was actually added, per entity
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items: { $ref: "#/components/schemas/MemoryObservationResult" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/users/me/memory-graph/search:
+    get:
+      operationId: searchMyMemoryNodes
+      tags: [memory-graph]
+      summary: Search my own memory graph
+      description: >-
+        Case-insensitive substring match across entity names, entity types,
+        and observation content — not a vector/relevance search. An empty
+        query returns everything.
+      parameters:
+        - name: query
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Matching entities plus relations touching them
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MemoryGraph" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/users/me/memory-graph/open:
+    post:
+      operationId: openMyMemoryNodes
+      tags: [memory-graph]
+      summary: Get specific entities by exact name
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                names:
+                  type: array
+                  items: { type: string }
+      responses:
+        "200":
+          description: Matching entities plus relations touching them
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MemoryGraph" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/users/me/memory-graph/context:
+    get:
+      operationId: getMyMemoryContext
+      tags: [memory-graph]
+      summary: Retrieve memory relevant to a query, formatted for prompt injection
+      description: >-
+        Searches nodes matching query and formats the result as a Markdown
+        block capped to approximately max_tokens (rough estimate, 4 chars ≈
+        1 token). Returns an empty string when there is nothing relevant.
+      parameters:
+        - name: query
+          in: query
+          schema: { type: string }
+        - name: max_tokens
+          in: query
+          schema: { type: integer, default: 500 }
+      responses:
+        "200":
+          description: Formatted context block
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  context: { type: string }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   /api/v1/skill-repos:
@@ -3315,6 +3547,92 @@ components:
         interactive_permission_mode: { type: string }
         automation_permission_mode: { type: string }
         max_sub_agent_depth: { type: integer, minimum: 0, maximum: 5 }
+
+    UserMemory:
+      type: object
+      properties:
+        id: { type: string }
+        user_id: { type: string }
+        type: { type: string, enum: [preference, instruction, pattern, fact, context], example: fact }
+        key: { type: string }
+        value: { type: string }
+        importance: { type: number, minimum: 0, maximum: 1 }
+        source: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    UserMemoryInput:
+      type: object
+      required: [key]
+      properties:
+        type: { type: string, enum: [preference, instruction, pattern, fact, context], default: fact }
+        key: { type: string }
+        value: { type: string }
+        importance: { type: number, minimum: 0, maximum: 1, default: 0.5 }
+        source: { type: string }
+
+    # Distinct from UserMemoryInput: every field is optional (partial update) —
+    # same reasoning as every other *UpdateInput in this spec.
+    UserMemoryUpdateInput:
+      type: object
+      properties:
+        type: { type: string, enum: [preference, instruction, pattern, fact, context] }
+        key: { type: string }
+        value: { type: string }
+        importance: { type: number, minimum: 0, maximum: 1 }
+        source: { type: string }
+
+    MemoryEntity:
+      type: object
+      properties:
+        id: { type: string }
+        user_id: { type: string }
+        name: { type: string }
+        entity_type: { type: string }
+        observations: { type: array, items: { type: string } }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    MemoryEntityInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        entity_type: { type: string, default: entity }
+        observations: { type: array, items: { type: string } }
+
+    MemoryRelation:
+      type: object
+      properties:
+        id: { type: string }
+        user_id: { type: string }
+        from: { type: string, description: Entity name }
+        to: { type: string, description: Entity name }
+        relation_type: { type: string }
+        created_at: { type: string, format: date-time }
+
+    MemoryObservationInput:
+      type: object
+      required: [entity_name]
+      properties:
+        entity_name: { type: string }
+        contents: { type: array, items: { type: string } }
+
+    MemoryObservationResult:
+      type: object
+      properties:
+        entity_name: { type: string }
+        added_observations: { type: array, items: { type: string } }
+
+    MemoryGraph:
+      type: object
+      properties:
+        entities:
+          type: array
+          items: { $ref: "#/components/schemas/MemoryEntity" }
+        relations:
+          type: array
+          items: { $ref: "#/components/schemas/MemoryRelation" }
 
     SkillRepo:
       type: object

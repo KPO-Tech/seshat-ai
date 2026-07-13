@@ -2,112 +2,63 @@ package memories
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudlongterm"
 	longterm "github.com/EngineerProjects/seshat/pkg/memory/longterm"
 	"github.com/EngineerProjects/seshat/pkg/types"
 )
 
 type Service struct {
-	userStore     *db.UserMemoryStore
-	longTermStore *db.LongTermMemoryStore
+	provider Provider
+	// longTermStore is longterm.Store (an SDK interface), not a concrete
+	// store type — *db.LongTermMemoryStore (standalone) and
+	// cloudlongterm.RemoteStore (connected) both satisfy it, so this is a
+	// swap exactly like Provider above, just at the SDK's own interface
+	// boundary instead of a new one of our own.
+	longTermStore longterm.Store
 	extractor     *longterm.Extractor
 }
 
-func NewService(userStore *db.UserMemoryStore, longTermStore *db.LongTermMemoryStore, extractor *longterm.Extractor) *Service {
-	return &Service{userStore: userStore, longTermStore: longTermStore, extractor: extractor}
+func NewService(provider Provider, longTermStore longterm.Store, extractor *longterm.Extractor) *Service {
+	return &Service{provider: provider, longTermStore: longTermStore, extractor: extractor}
 }
 
 func (s *Service) List(ctx context.Context, principal *backendauth.Principal) ([]UserMemory, error) {
-	if s == nil || s.userStore == nil {
+	if s == nil || s.provider == nil {
 		return nil, bkerr.Unavailable("memory store not available", nil)
 	}
-	rows, err := s.userStore.List(ctx, principal.User.ID)
-	if err != nil {
-		return nil, bkerr.Internal(err.Error(), err)
-	}
-	out := make([]UserMemory, 0, len(rows))
-	for _, m := range rows {
-		out = append(out, fromDB(m))
-	}
-	return out, nil
+	return s.provider.List(ctx, principal)
 }
 
 func (s *Service) Create(ctx context.Context, principal *backendauth.Principal, p CreateParams) (*UserMemory, error) {
-	if s == nil || s.userStore == nil {
+	if s == nil || s.provider == nil {
 		return nil, bkerr.Unavailable("memory store not available", nil)
 	}
-	if strings.TrimSpace(p.Key) == "" {
-		return nil, bkerr.InvalidInput("key is required", nil)
-	}
-	if len(p.Key) > 255 {
-		return nil, bkerr.InvalidInput("key exceeds maximum length (255 chars)", nil)
-	}
-	if len(p.Value) > 4096 {
-		return nil, bkerr.InvalidInput("value exceeds maximum length (4096 chars)", nil)
-	}
-	m, err := s.userStore.Create(ctx, db.CreateUserMemoryParams{
-		UserID:     principal.User.ID,
-		Type:       p.Type,
-		Key:        p.Key,
-		Value:      p.Value,
-		Importance: p.Importance,
-		Source:     p.Source,
-	})
-	if err != nil {
-		return nil, bkerr.Internal(err.Error(), err)
-	}
-	result := fromDB(*m)
-	return &result, nil
+	return s.provider.Create(ctx, principal, p)
 }
 
 func (s *Service) Update(ctx context.Context, principal *backendauth.Principal, id string, p UpdateParams) (*UserMemory, error) {
-	if s == nil || s.userStore == nil {
+	if s == nil || s.provider == nil {
 		return nil, bkerr.Unavailable("memory store not available", nil)
 	}
-	m, err := s.userStore.Update(ctx, principal.User.ID, id, db.UpdateUserMemoryParams{
-		Type:       p.Type,
-		Key:        p.Key,
-		Value:      p.Value,
-		Importance: p.Importance,
-		Source:     p.Source,
-	})
-	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
-			return nil, bkerr.NotFound("memory not found", err)
-		}
-		return nil, bkerr.Internal(err.Error(), err)
-	}
-	result := fromDB(*m)
-	return &result, nil
+	return s.provider.Update(ctx, principal, id, p)
 }
 
 func (s *Service) Delete(ctx context.Context, principal *backendauth.Principal, id string) error {
-	if s == nil || s.userStore == nil {
+	if s == nil || s.provider == nil {
 		return bkerr.Unavailable("memory store not available", nil)
 	}
-	if err := s.userStore.Delete(ctx, principal.User.ID, id); err != nil {
-		if strings.Contains(err.Error(), "not found") {
-			return bkerr.NotFound("memory not found", err)
-		}
-		return bkerr.Internal(err.Error(), err)
-	}
-	return nil
+	return s.provider.Delete(ctx, principal, id)
 }
 
 func (s *Service) DeleteAll(ctx context.Context, principal *backendauth.Principal) (int64, error) {
-	if s == nil || s.userStore == nil {
+	if s == nil || s.provider == nil {
 		return 0, bkerr.Unavailable("memory store not available", nil)
 	}
-	n, err := s.userStore.DeleteAll(ctx, principal.User.ID)
-	if err != nil {
-		return 0, bkerr.Internal(err.Error(), err)
-	}
-	return n, nil
+	return s.provider.DeleteAll(ctx, principal)
 }
 
 func (s *Service) BuildContextBlock(ctx context.Context, principal *backendauth.Principal, prompt string) (string, error) {
@@ -115,6 +66,10 @@ func (s *Service) BuildContextBlock(ctx context.Context, principal *backendauth.
 		return "", nil
 	}
 	const maxTokens = 500
+	// The token is a no-op for the standalone LocalStore and only consumed
+	// by cloudlongterm.RemoteStore when connected — see ContextWithToken's
+	// doc comment for why this can't just be a parameter on Store itself.
+	ctx = cloudlongterm.ContextWithToken(ctx, principal.AuthSession.ID)
 	block, err := s.longTermStore.RetrieveForContext(ctx, principal.User.ID, prompt, maxTokens)
 	if err != nil {
 		return "", nil
@@ -127,24 +82,16 @@ func (s *Service) TriggerExtraction(principal *backendauth.Principal, messages [
 		return
 	}
 	userID := principal.User.ID
+	token := principal.AuthSession.ID
 	msgs := messages
 	go func() {
+		// A fresh background context, not derived from the request's own
+		// (which will already be cancelled by the time this async
+		// extraction runs) — the token still needs to be attached here
+		// too, since it doesn't travel with context.Background().
 		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
+		ctx = cloudlongterm.ContextWithToken(ctx, token)
 		_ = s.extractor.Extract(ctx, userID, msgs)
 	}()
-}
-
-func fromDB(m db.UserMemory) UserMemory {
-	return UserMemory{
-		ID:         m.ID,
-		UserID:     m.UserID,
-		Type:       m.Type,
-		Key:        m.Key,
-		Value:      m.Value,
-		Importance: m.Importance,
-		Source:     m.Source,
-		CreatedAt:  m.CreatedAt,
-		UpdatedAt:  m.UpdatedAt,
-	}
 }

@@ -485,3 +485,49 @@ type MCPServerConfig struct {
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
 }
+
+// UserMemory mirrors seshat-backend's own gUserMemory (internal/db/user_memories.go)
+// — a flat, personal, multi-row-per-user memory list, no organization
+// concept, same trust level as UserPreference.
+type UserMemory struct {
+	ID         string  `gorm:"primaryKey;size:32"`
+	UserID     string  `gorm:"size:32;not null;index"`
+	Type       string  `gorm:"size:64;not null;default:'fact'"`
+	Key        string  `gorm:"type:text;not null;default:''"`
+	Value      string  `gorm:"type:text;not null;default:''"`
+	Importance float64 `gorm:"not null;default:0.5"`
+	Source     string  `gorm:"size:255;not null;default:''"`
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
+// MemoryEntity/MemoryObservation/MemoryRelation mirror seshat-backend's own
+// gMemoryEntity/gMemoryObservation/gMemoryRelation (internal/db/memories.go)
+// field-for-field — the long-term memory knowledge graph behind the SDK's
+// longterm.Store interface. Personal, no organization concept, same as
+// UserMemory/UserPreference.
+type MemoryEntity struct {
+	ID         string `gorm:"primaryKey;size:32"`
+	UserID     string `gorm:"size:32;not null;index"`
+	Name       string `gorm:"type:text;not null"`
+	EntityType string `gorm:"size:128;not null;default:'entity'"`
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
+type MemoryObservation struct {
+	ID              string `gorm:"primaryKey;size:32"`
+	EntityID        string `gorm:"size:32;not null;index"`
+	Content         string `gorm:"type:text;not null"`
+	SourceSessionID string `gorm:"size:32"`
+	CreatedAt       time.Time
+}
+
+type MemoryRelation struct {
+	ID           string `gorm:"primaryKey;size:32"`
+	UserID       string `gorm:"size:32;not null;index"`
+	FromName     string `gorm:"size:256;not null"`
+	ToName       string `gorm:"size:256;not null"`
+	RelationType string `gorm:"size:128;not null"`
+	CreatedAt    time.Time
+}

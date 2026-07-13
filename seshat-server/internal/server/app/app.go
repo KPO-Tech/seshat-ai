@@ -13,7 +13,9 @@ import (
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/knowledge"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/longtermmemory"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/mcpregistry"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/memories"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/preferences"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/skillregistry"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/websearchsettings"
@@ -30,6 +32,8 @@ type App struct {
 	SkillRegistry     *skillregistry.Service
 	WebSearchSettings *websearchsettings.Service
 	MCPRegistry       *mcpregistry.Service
+	Memories          *memories.Service
+	LongTermMemory    *longtermmemory.Service
 }
 
 func New(cfg serverconfig.Config) (*App, error) {
@@ -82,5 +86,7 @@ func New(cfg serverconfig.Config) (*App, error) {
 		SkillRegistry:     skillregistry.New(database, iamService),
 		WebSearchSettings: websearchsettings.New(database, iamService),
 		MCPRegistry:       mcpregistry.New(database, iamService),
+		Memories:          memories.New(database),
+		LongTermMemory:    longtermmemory.New(database),
 	}, nil
 }

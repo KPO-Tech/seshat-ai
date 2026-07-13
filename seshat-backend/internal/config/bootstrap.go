@@ -19,12 +19,15 @@ import (
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudautomation"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudidentity"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudlongterm"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudmcp"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudmemories"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudpreferences"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudsettings"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudwebsearch"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	backendknowledge "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge"
+	backendmemories "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/memories"
 	backendpreferences "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/preferences"
 	backendquery "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/query"
 	backendsettings "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/settings"
@@ -151,10 +154,64 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		return nil, nil, fmt.Errorf("init ingestion job store: %w", err)
 	}
 
-	longTermMemStore, err := db.NewLongTermMemoryStore(database)
+	settingStore, err := db.NewProviderSettingStore(database)
 	if err != nil {
 		_ = cleanup()
-		return nil, nil, fmt.Errorf("init long-term memory store: %w", err)
+		return nil, nil, fmt.Errorf("init setting store: %w", err)
+	}
+
+	oauthStore, err := db.NewProviderOAuthConnectionStore(database)
+	if err != nil {
+		_ = cleanup()
+		return nil, nil, fmt.Errorf("init provider oauth store: %w", err)
+	}
+
+	// Identity mode: standalone (default) vs connected to a seshat-server.
+	// This is a boot-time deployment decision, not a live toggle — see
+	// helps/seshat-architecture-target.md §1: swapping the identity source of
+	// truth while local sessions are active risks leaving the system in a
+	// half-migrated state, unlike the automation domain's runtime pairing.
+	// Resolved here (rather than closer to where NewApp is called) because
+	// the long-term memory store below also needs to know serverURL to pick
+	// its own local-vs-remote implementation.
+	var authProvider backendauth.Provider
+	var settingsProvider backendsettings.Provider
+	var preferencesProvider backendpreferences.Provider
+	var webSearchCloudClient *cloudwebsearch.Client
+	var webSearchOrganizationID string
+	var mcpCloudClient *cloudmcp.Client
+	var mcpOrganizationID string
+	var memoriesProvider backendmemories.Provider
+	serverURL := strings.TrimSpace(os.Getenv("SESHAT_SERVER_URL"))
+	if serverURL != "" {
+		organizationID := strings.TrimSpace(os.Getenv("SESHAT_SERVER_ORGANIZATION_ID"))
+		authProvider = cloudidentity.NewProvider(serverURL, organizationID, cloudidentity.NewCache(database), identityStore)
+		localSettingsProvider := backendsettings.NewLocalProvider(settingStore, oauthStore, nil)
+		settingsProvider = cloudsettings.NewProvider(serverURL, organizationID, localSettingsProvider)
+		preferencesProvider = cloudpreferences.NewProvider(serverURL)
+		webSearchCloudClient = cloudwebsearch.NewClient(serverURL)
+		webSearchOrganizationID = organizationID
+		mcpCloudClient = cloudmcp.NewClient(serverURL)
+		mcpOrganizationID = organizationID
+		memoriesProvider = cloudmemories.NewProvider(serverURL)
+		fmt.Printf("[API] Identité en mode connected (seshat-server: %s)\n", serverURL)
+	}
+
+	// Long-term memory store: db.LongTermMemoryStore (standalone) or
+	// cloudlongterm.RemoteStore (connected) — both implement the SDK's
+	// longterm.Store interface, so everything downstream (the query
+	// runtime's session context and internal/memories.Service) is agnostic
+	// to which one it got.
+	var longTermMemStore longterm.Store
+	if serverURL != "" {
+		longTermMemStore = cloudlongterm.NewRemoteStore(serverURL)
+	} else {
+		localLongTermMemStore, err := db.NewLongTermMemoryStore(database)
+		if err != nil {
+			_ = cleanup()
+			return nil, nil, fmt.Errorf("init long-term memory store: %w", err)
+		}
+		longTermMemStore = localLongTermMemStore
 	}
 
 	// Long-term memory extractor: creates a lightweight provider client dedicated to
@@ -167,18 +224,6 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		extractorCfg.Model = parsedModel
 		longTermExtractor = longterm.NewExtractor(longTermMemStore, extractionClient, extractorCfg)
 		fmt.Printf("[API] Long-term memory extractor initialisé (provider=%s)\n", parsedModel.Provider)
-	}
-
-	settingStore, err := db.NewProviderSettingStore(database)
-	if err != nil {
-		_ = cleanup()
-		return nil, nil, fmt.Errorf("init setting store: %w", err)
-	}
-
-	oauthStore, err := db.NewProviderOAuthConnectionStore(database)
-	if err != nil {
-		_ = cleanup()
-		return nil, nil, fmt.Errorf("init provider oauth store: %w", err)
 	}
 
 	modelStore, err := db.NewProviderModelStore(database)
@@ -512,31 +557,6 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 
 	runtime := backendquery.NewSDKRuntime(queryClient, queryClientConfig)
 
-	// Identity mode: standalone (default) vs connected to a seshat-server.
-	// This is a boot-time deployment decision, not a live toggle — see
-	// helps/seshat-architecture-target.md §1: swapping the identity source of
-	// truth while local sessions are active risks leaving the system in a
-	// half-migrated state, unlike the automation domain's runtime pairing.
-	var authProvider backendauth.Provider
-	var settingsProvider backendsettings.Provider
-	var preferencesProvider backendpreferences.Provider
-	var webSearchCloudClient *cloudwebsearch.Client
-	var webSearchOrganizationID string
-	var mcpCloudClient *cloudmcp.Client
-	var mcpOrganizationID string
-	if serverURL := strings.TrimSpace(os.Getenv("SESHAT_SERVER_URL")); serverURL != "" {
-		organizationID := strings.TrimSpace(os.Getenv("SESHAT_SERVER_ORGANIZATION_ID"))
-		authProvider = cloudidentity.NewProvider(serverURL, organizationID, cloudidentity.NewCache(database), identityStore)
-		localSettingsProvider := backendsettings.NewLocalProvider(settingStore, oauthStore, nil)
-		settingsProvider = cloudsettings.NewProvider(serverURL, organizationID, localSettingsProvider)
-		preferencesProvider = cloudpreferences.NewProvider(serverURL)
-		webSearchCloudClient = cloudwebsearch.NewClient(serverURL)
-		webSearchOrganizationID = organizationID
-		mcpCloudClient = cloudmcp.NewClient(serverURL)
-		mcpOrganizationID = organizationID
-		fmt.Printf("[API] Identité en mode connected (seshat-server: %s)\n", serverURL)
-	}
-
 	backendApp := seshat.NewApp(seshat.Dependencies{
 		Identity:            identityStore,
 		APIKeyStore:         apiKeyStore,
@@ -544,6 +564,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		AuthProvider:        authProvider,
 		SettingsProvider:    settingsProvider,
 		PreferencesProvider: preferencesProvider,
+		MemoriesProvider:    memoriesProvider,
 		AuthConfig: backendauth.ServiceConfig{
 			EnableSignup:    config.EnableSignup,
 			DefaultUserRole: config.DefaultUserRole,
@@ -628,7 +649,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		FeaturedRepos:           featuredRepos,
 		TrustedProxyCIDRs:       api.ParseTrustedProxies(config.TrustedProxies),
 		AllowedSkillRepoHosts:   api.ParseSkillRepoHosts(config.SkillRepoHosts),
-		ConnectedServerURL:      strings.TrimSpace(os.Getenv("SESHAT_SERVER_URL")),
+		ConnectedServerURL:      serverURL,
 		ConnectedOrganizationID: strings.TrimSpace(os.Getenv("SESHAT_SERVER_ORGANIZATION_ID")),
 	})
 

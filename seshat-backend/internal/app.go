@@ -69,8 +69,13 @@ type Dependencies struct {
 	Monitoring              metrics.Snapshotter
 	DoclingClient           *docling.Client // nil = no auto-conversion
 	// New services
-	UserMemoryStore     *db.UserMemoryStore
-	LongTermMemoryStore *db.LongTermMemoryStore
+	UserMemoryStore *db.UserMemoryStore
+	// LongTermMemoryStore is longterm.Store (an SDK interface), not a
+	// concrete store type — bootstrap.go picks *db.LongTermMemoryStore
+	// (standalone) or *cloudlongterm.RemoteStore (connected) before
+	// constructing Dependencies. See internal/memories.Service's own
+	// longTermStore field for why this is an interface.
+	LongTermMemoryStore longterm.Store
 	LongTermExtractor   *longterm.Extractor
 	PlanDocumentStore   *db.PlanDocumentStore
 	MCPServerStore      *db.MCPServerStore
@@ -90,6 +95,11 @@ type Dependencies struct {
 	// local-only behavior — set only by bootstrap.go when SESHAT_SERVER_URL
 	// is configured.
 	PreferencesProvider preferences.Provider
+	// MemoriesProvider selects standalone vs connected flat-memory-list
+	// storage. nil = memories.NewLocalProvider(UserMemoryStore), i.e.
+	// today's local-only behavior — set only by bootstrap.go when
+	// SESHAT_SERVER_URL is configured.
+	MemoriesProvider memories.Provider
 }
 
 // App is the root backend service container.
@@ -124,7 +134,11 @@ func NewApp(deps Dependencies) *App {
 	}
 	settingsService := settings.NewService(settingsProvider, localSettingsProvider)
 	webSearchService := websearch.NewService(deps.WebSearchSettings, deps.WebSearchLogs, deps.WebSearchProviderConfigs, settingsService, deps.WebSearchRunner, deps.WebSearchCloudClient, deps.WebSearchOrganizationID)
-	memoriesService := memories.NewService(deps.UserMemoryStore, deps.LongTermMemoryStore, deps.LongTermExtractor)
+	memoriesProvider := deps.MemoriesProvider
+	if memoriesProvider == nil {
+		memoriesProvider = memories.NewLocalProvider(deps.UserMemoryStore)
+	}
+	memoriesService := memories.NewService(memoriesProvider, deps.LongTermMemoryStore, deps.LongTermExtractor)
 	preferencesProvider := deps.PreferencesProvider
 	if preferencesProvider == nil {
 		preferencesProvider = preferences.NewLocalProvider(deps.UserPreferencesStore)

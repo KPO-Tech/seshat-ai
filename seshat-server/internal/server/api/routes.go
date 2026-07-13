@@ -53,6 +53,16 @@ func (app *App) routes() http.Handler {
 
 	mux.Handle("GET /api/v1/users/me/preferences", app.authMiddleware(http.HandlerFunc(app.handleUserPreferences)))
 	mux.Handle("PUT /api/v1/users/me/preferences", app.authMiddleware(http.HandlerFunc(app.handleUserPreferences)))
+	mux.Handle("GET /api/v1/users/me/memories", app.authMiddleware(http.HandlerFunc(app.handleUserMemories)))
+	mux.Handle("POST /api/v1/users/me/memories", app.authMiddleware(http.HandlerFunc(app.handleUserMemories)))
+	mux.Handle("DELETE /api/v1/users/me/memories", app.authMiddleware(http.HandlerFunc(app.handleUserMemories)))
+	mux.Handle("PUT /api/v1/users/me/memories/{memoryID}", app.authMiddleware(http.HandlerFunc(app.handleUserMemoryByID)))
+	mux.Handle("DELETE /api/v1/users/me/memories/{memoryID}", app.authMiddleware(http.HandlerFunc(app.handleUserMemoryByID)))
+	mux.Handle("POST /api/v1/users/me/memory-graph/entities", app.authMiddleware(http.HandlerFunc(app.handleMemoryGraphEntities)))
+	mux.Handle("POST /api/v1/users/me/memory-graph/observations", app.authMiddleware(http.HandlerFunc(app.handleMemoryGraphObservations)))
+	mux.Handle("GET /api/v1/users/me/memory-graph/search", app.authMiddleware(http.HandlerFunc(app.handleMemoryGraphSearch)))
+	mux.Handle("POST /api/v1/users/me/memory-graph/open", app.authMiddleware(http.HandlerFunc(app.handleMemoryGraphOpen)))
+	mux.Handle("GET /api/v1/users/me/memory-graph/context", app.authMiddleware(http.HandlerFunc(app.handleMemoryGraphContext)))
 
 	mux.Handle("GET /api/v1/skill-repos", app.authMiddleware(http.HandlerFunc(app.handleSkillRepos)))
 	mux.Handle("POST /api/v1/skill-repos", app.authMiddleware(http.HandlerFunc(app.handleSkillRepos)))
