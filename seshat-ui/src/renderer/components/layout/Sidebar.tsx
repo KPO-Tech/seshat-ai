@@ -2,7 +2,6 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import {
   Plus,
   Search,
-  Time,
   Peoples,
   SettingTwo,
   User,
@@ -12,7 +11,6 @@ import {
   Edit,
   EditTwo,
   Layers,
-  Cycle,
   Robot,
 } from '@icon-park/react'
 import { useUIStore } from '@/stores/ui'
@@ -169,20 +167,6 @@ export function Sidebar() {
             active={pathname === '/skills-creator'}
             onClick={() => navigate('/skills-creator')}
             accent
-          />
-          <SidebarItem
-            icon={<Time theme="outline" size={20} />}
-            label="Scheduled Tasks"
-            collapsed={collapsed}
-            active={pathname === '/scheduled-tasks'}
-            onClick={() => navigate('/scheduled-tasks')}
-          />
-          <SidebarItem
-            icon={<Cycle theme="outline" size={20} />}
-            label="Automations"
-            collapsed={collapsed}
-            active={pathname === '/automation'}
-            onClick={() => navigate('/automation')}
           />
           <SidebarItem
             icon={<Robot theme="outline" size={20} />}

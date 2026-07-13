@@ -55,7 +55,7 @@ type memoriesProvider interface {
 }
 
 type preferencesProvider interface {
-	BuildSystemPromptBlock(ctx context.Context, userID string) (string, error)
+	BuildSystemPromptBlock(ctx context.Context, principal *backendauth.Principal) (string, error)
 	ResolvePermissionModes(ctx context.Context, principal *backendauth.Principal, origin types.ExecutionOrigin) (types.PermissionMode, error)
 }
 
@@ -1088,7 +1088,7 @@ func (s *Service) BuildContextInput(ctx context.Context, p ContextBuildParams) (
 
 	// Layer user preference block on top (appended, never overwritten).
 	if p.Principal != nil && s.preferences != nil {
-		if block, _ := s.preferences.BuildSystemPromptBlock(ctx, userID); block != "" {
+		if block, _ := s.preferences.BuildSystemPromptBlock(ctx, p.Principal); block != "" {
 			input.AppendSystemPrompt = appendBlock(input.AppendSystemPrompt, block)
 		}
 	}

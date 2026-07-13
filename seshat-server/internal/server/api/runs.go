@@ -122,6 +122,24 @@ func (app *App) handleDeviceRunsClaim(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, run)
 }
 
+// handleDeviceRunJob returns the execution payload (prompt/model/config) for
+// a run the calling device currently holds — see Service.GetRunJob for the
+// exact scoping rule.
+func (app *App) handleDeviceRunJob(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerTokenFromRequest(r)
+	if err != nil {
+		writeJSONError(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+	runID := strings.TrimSpace(r.PathValue("runID"))
+	job, err := app.backend.Automation.GetRunJob(r.Context(), token, runID)
+	if err != nil {
+		writeAutomationError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, job)
+}
+
 func (app *App) handleDeviceRunStart(w http.ResponseWriter, r *http.Request) {
 	token, err := bearerTokenFromRequest(r)
 	if err != nil {

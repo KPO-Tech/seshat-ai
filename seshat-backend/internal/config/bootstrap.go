@@ -17,10 +17,17 @@ import (
 	seshat "github.com/EngineerProjects/seshat-ai/seshat-backend/internal"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/api"
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudautomation"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudidentity"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudmcp"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudpreferences"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudsettings"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudwebsearch"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	backendknowledge "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge"
+	backendpreferences "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/preferences"
 	backendquery "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/query"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/scheduler"
+	backendsettings "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/settings"
 	appconfig "github.com/EngineerProjects/seshat/pkg/config"
 	"github.com/EngineerProjects/seshat/pkg/docling"
 	"github.com/EngineerProjects/seshat/pkg/mcp"
@@ -228,22 +235,16 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		return nil, nil, fmt.Errorf("init mcp server store: %w", err)
 	}
 
+	mcpOrgServerApprovalStore, err := db.NewMCPOrgServerApprovalStore(database)
+	if err != nil {
+		_ = cleanup()
+		return nil, nil, fmt.Errorf("init mcp org server approval store: %w", err)
+	}
+
 	agentDefinitionStore, err := db.NewAgentDefinitionStore(database)
 	if err != nil {
 		_ = cleanup()
 		return nil, nil, fmt.Errorf("init agent definition store: %w", err)
-	}
-
-	scheduledJobStore, err := db.NewScheduledJobStore(database)
-	if err != nil {
-		_ = cleanup()
-		return nil, nil, fmt.Errorf("init scheduled job store: %w", err)
-	}
-
-	automationActivationStore, err := db.NewAutomationActivationStore(database)
-	if err != nil {
-		_ = cleanup()
-		return nil, nil, fmt.Errorf("init automation activation store: %w", err)
 	}
 
 	auditLogStore, err := db.NewAuditLogStore(database)
@@ -511,83 +512,124 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 
 	runtime := backendquery.NewSDKRuntime(queryClient, queryClientConfig)
 
+	// Identity mode: standalone (default) vs connected to a seshat-server.
+	// This is a boot-time deployment decision, not a live toggle — see
+	// helps/seshat-architecture-target.md §1: swapping the identity source of
+	// truth while local sessions are active risks leaving the system in a
+	// half-migrated state, unlike the automation domain's runtime pairing.
+	var authProvider backendauth.Provider
+	var settingsProvider backendsettings.Provider
+	var preferencesProvider backendpreferences.Provider
+	var webSearchCloudClient *cloudwebsearch.Client
+	var webSearchOrganizationID string
+	var mcpCloudClient *cloudmcp.Client
+	var mcpOrganizationID string
+	if serverURL := strings.TrimSpace(os.Getenv("SESHAT_SERVER_URL")); serverURL != "" {
+		organizationID := strings.TrimSpace(os.Getenv("SESHAT_SERVER_ORGANIZATION_ID"))
+		authProvider = cloudidentity.NewProvider(serverURL, organizationID, cloudidentity.NewCache(database), identityStore)
+		localSettingsProvider := backendsettings.NewLocalProvider(settingStore, oauthStore, nil)
+		settingsProvider = cloudsettings.NewProvider(serverURL, organizationID, localSettingsProvider)
+		preferencesProvider = cloudpreferences.NewProvider(serverURL)
+		webSearchCloudClient = cloudwebsearch.NewClient(serverURL)
+		webSearchOrganizationID = organizationID
+		mcpCloudClient = cloudmcp.NewClient(serverURL)
+		mcpOrganizationID = organizationID
+		fmt.Printf("[API] Identité en mode connected (seshat-server: %s)\n", serverURL)
+	}
+
 	backendApp := seshat.NewApp(seshat.Dependencies{
-		Identity:    identityStore,
-		APIKeyStore: apiKeyStore,
-		GroupStore:  groupStore,
+		Identity:            identityStore,
+		APIKeyStore:         apiKeyStore,
+		GroupStore:          groupStore,
+		AuthProvider:        authProvider,
+		SettingsProvider:    settingsProvider,
+		PreferencesProvider: preferencesProvider,
 		AuthConfig: backendauth.ServiceConfig{
 			EnableSignup:    config.EnableSignup,
 			DefaultUserRole: config.DefaultUserRole,
 			EnableAPIKeys:   config.EnableAPIKeys,
 		},
-		QueryRuntime:              runtime,
-		SessionManager:            runtime,
-		SessionOwnership:          sessionOwnershipStore,
-		FileStore:                 fileStore,
-		CorpusStore:               corpusStore,
-		IngestionJobStore:         ingestionJobStore,
-		SettingStore:              settingStore,
-		OAuthStore:                oauthStore,
-		WebSearchSettings:         webSearchSettingStore,
-		WebSearchLogs:             webSearchLogStore,
-		WebSearchProviderConfigs:  searchProviderConfigStore,
-		AuditLogStore:             auditLogStore,
-		UsageCounterStore:         usageCounterStore,
-		ArtifactStore:             artifactStore,
-		RAGService:                ragService,
-		Monitoring:                queryClient.GetMonitoring(),
-		DoclingClient:             buildDoclingClient(config.DoclingURL),
-		UserMemoryStore:           userMemoryStore,
-		LongTermMemoryStore:       longTermMemStore,
-		LongTermExtractor:         longTermExtractor,
-		PlanDocumentStore:         planDocumentStore,
-		MCPServerStore:            mcpServerStore,
-		MCPRuntime:                runtime,
-		UserPreferencesStore:      userPreferencesStore,
-		AgentDefinitionStore:      agentDefinitionStore,
-		ScheduledJobStore:         scheduledJobStore,
-		AutomationActivationStore: automationActivationStore,
+		QueryRuntime:             runtime,
+		SessionManager:           runtime,
+		SessionOwnership:         sessionOwnershipStore,
+		FileStore:                fileStore,
+		CorpusStore:              corpusStore,
+		IngestionJobStore:        ingestionJobStore,
+		SettingStore:             settingStore,
+		OAuthStore:               oauthStore,
+		WebSearchSettings:        webSearchSettingStore,
+		WebSearchLogs:            webSearchLogStore,
+		WebSearchProviderConfigs: searchProviderConfigStore,
+		WebSearchCloudClient:     webSearchCloudClient,
+		WebSearchOrganizationID:  webSearchOrganizationID,
+		AuditLogStore:            auditLogStore,
+		UsageCounterStore:        usageCounterStore,
+		ArtifactStore:            artifactStore,
+		RAGService:               ragService,
+		Monitoring:               queryClient.GetMonitoring(),
+		DoclingClient:            buildDoclingClient(config.DoclingURL),
+		UserMemoryStore:          userMemoryStore,
+		LongTermMemoryStore:      longTermMemStore,
+		LongTermExtractor:        longTermExtractor,
+		PlanDocumentStore:        planDocumentStore,
+		MCPServerStore:           mcpServerStore,
+		MCPRuntime:               runtime,
+		MCPCloudClient:           mcpCloudClient,
+		MCPOrganizationID:        mcpOrganizationID,
+		MCPOrgServerApprovals:    mcpOrgServerApprovalStore,
+		UserPreferencesStore:     userPreferencesStore,
+		AgentDefinitionStore:     agentDefinitionStore,
 	})
 
-	// Build the scheduler worker with an executor closure that calls the query
-	// service. The closure captures backendApp so the scheduler package never
-	// needs to import query directly.
-	schedulerExecutor := scheduler.JobExecutor(func(ctx context.Context, p scheduler.ExecParams) error {
+	// Cloud automation: this machine executes execution_target=device jobs
+	// claimed from a connected seshat-server, using its own locally
+	// configured LLM credentials — see helps/seshat-architecture-target.md
+	// and internal/cloudautomation's package doc. The executor closure
+	// captures backendApp so the cloudautomation package never needs to
+	// import query/settings directly, mirroring the old scheduler's pattern.
+	cloudAutomationStore := cloudautomation.NewStore(database)
+	cloudAutomationExecutor := cloudautomation.JobExecutor(func(ctx context.Context, p cloudautomation.ExecParams) (string, error) {
 		principal := &backendauth.Principal{
 			User: backendauth.User{ID: p.UserID},
 		}
+		providerSettingID, modelID := resolveCloudJobModel(ctx, backendApp.Settings, principal, p.ModelOverride)
 		input, _ := backendApp.Query.BuildContextInput(ctx, backendquery.ContextBuildParams{
-			Principal:       principal,
-			Prompt:          p.Prompt,
-			AgentSlug:       p.AgentSlug,
-			ExecutionOrigin: enginetypes.ExecutionOriginAutomation,
+			Principal:         principal,
+			Prompt:            p.Prompt,
+			ProviderSettingID: providerSettingID,
+			ModelID:           modelID,
+			ExecutionOrigin:   enginetypes.ExecutionOriginAutomation,
 		})
-		_, err := backendApp.Query.RunPrompt(ctx, principal, input)
-		return err
+		result, err := backendApp.Query.RunPrompt(ctx, principal, input)
+		if err != nil {
+			return "", err
+		}
+		return result.Content, nil
 	})
-	schedulerWorker := scheduler.NewWorker(scheduledJobStore, schedulerExecutor)
-	schedulerWorker.Start()
-	cleanups = append(cleanups, func() error { schedulerWorker.Stop(); return nil })
-	fmt.Printf("[API] Scheduler worker démarré\n")
+	cloudAutomationWorker := cloudautomation.NewWorker(cloudAutomationStore, cloudAutomationExecutor)
+	cloudAutomationWorker.Start()
+	cleanups = append(cleanups, func() error { cloudAutomationWorker.Stop(); return nil })
+	cloudAutomationService := cloudautomation.NewService(cloudAutomationStore)
+	fmt.Printf("[API] Cloud automation worker démarré\n")
 
 	app := api.NewApp(api.AppConfig{
-		Backend:               backendApp,
-		DB:                    database,
-		ModelStore:            modelStore,
-		GroupStore:            groupStore,
-		EmbedderStore:         embedderConfigStore,
-		StorageConfigStore:    storageConfigStore,
-		LongTermExtractor:     longTermExtractor,
-		SchedulerWorker:       schedulerWorker,
-		AutomationServiceURL:  os.Getenv("AUTOMATION_SERVICE_URL"),
-		AutomationAPIKey:      os.Getenv("AUTOMATION_API_KEY"),
-		RateLimiter:           api.NewRateLimiter(config.RateLimitPerMinute, time.Minute),
-		LoginRateLimiter:      api.NewRateLimiter(10, 15*time.Minute),
-		EnableSignup:          config.EnableSignup,
-		EnableAPIKeys:         config.EnableAPIKeys,
-		FeaturedRepos:         featuredRepos,
-		TrustedProxyCIDRs:     api.ParseTrustedProxies(config.TrustedProxies),
-		AllowedSkillRepoHosts: api.ParseSkillRepoHosts(config.SkillRepoHosts),
+		Backend:                 backendApp,
+		DB:                      database,
+		ModelStore:              modelStore,
+		GroupStore:              groupStore,
+		EmbedderStore:           embedderConfigStore,
+		StorageConfigStore:      storageConfigStore,
+		LongTermExtractor:       longTermExtractor,
+		CloudAutomation:         cloudAutomationService,
+		RateLimiter:             api.NewRateLimiter(config.RateLimitPerMinute, time.Minute),
+		LoginRateLimiter:        api.NewRateLimiter(10, 15*time.Minute),
+		EnableSignup:            config.EnableSignup,
+		EnableAPIKeys:           config.EnableAPIKeys,
+		FeaturedRepos:           featuredRepos,
+		TrustedProxyCIDRs:       api.ParseTrustedProxies(config.TrustedProxies),
+		AllowedSkillRepoHosts:   api.ParseSkillRepoHosts(config.SkillRepoHosts),
+		ConnectedServerURL:      strings.TrimSpace(os.Getenv("SESHAT_SERVER_URL")),
+		ConnectedOrganizationID: strings.TrimSpace(os.Getenv("SESHAT_SERVER_ORGANIZATION_ID")),
 	})
 
 	knowledgeRunner := backendknowledge.NewRunner(backendApp.Knowledge, backendknowledge.RunnerConfig{
@@ -730,4 +772,27 @@ func splitCommaList(raw string) []string {
 		}
 	}
 	return result
+}
+
+// resolveCloudJobModel maps a cloud job's model_override ("provider:model",
+// optional) onto this machine's own locally configured provider settings —
+// a device-targeted job runs with whoever connected this machine's own LLM
+// credentials, never credentials fetched from seshat-server. An empty
+// override, or no matching local provider, falls back to the default
+// provider/model the same as an ordinary chat turn would.
+func resolveCloudJobModel(ctx context.Context, settingsService *backendsettings.Service, principal *backendauth.Principal, modelOverride string) (providerSettingID, modelID string) {
+	provider, model, ok := strings.Cut(strings.TrimSpace(modelOverride), ":")
+	if !ok || provider == "" {
+		return "", ""
+	}
+	settingsList, err := settingsService.List(ctx, principal)
+	if err != nil {
+		return "", ""
+	}
+	for _, setting := range settingsList {
+		if strings.EqualFold(setting.Provider, provider) {
+			return setting.ID, model
+		}
+	}
+	return "", ""
 }

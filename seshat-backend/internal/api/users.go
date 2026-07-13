@@ -114,7 +114,7 @@ func (app *App) handleListOrCreateUsers(w http.ResponseWriter, r *http.Request) 
 			perPage = 30
 		}
 
-		users, total, err := app.backend.Auth.ListUsersPaginated(r.Context(), db.ListUsersParams{
+		users, total, err := app.backend.Auth.ListUsersPaginated(r.Context(), principal, db.ListUsersParams{
 			Search:     search,
 			RoleFilter: roleFilter,
 			Page:       page,
@@ -155,7 +155,7 @@ func (app *App) handleUserMe(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodGet:
-		user, err := app.backend.Auth.GetUserByID(r.Context(), principal.User.ID)
+		user, err := app.backend.Auth.GetUserByID(r.Context(), principal, principal.User.ID)
 		if err != nil {
 			writeBackendError(w, err)
 			return
@@ -215,7 +215,7 @@ func (app *App) handleUserMeSettings(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodGet:
-		user, err := app.backend.Auth.GetUserByID(r.Context(), principal.User.ID)
+		user, err := app.backend.Auth.GetUserByID(r.Context(), principal, principal.User.ID)
 		if err != nil {
 			writeBackendError(w, err)
 			return
@@ -382,7 +382,7 @@ func (app *App) handleUserByID(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodGet:
-		user, err := app.backend.Auth.GetUserByID(r.Context(), userID)
+		user, err := app.backend.Auth.GetUserByID(r.Context(), principal, userID)
 		if err != nil {
 			writeBackendError(w, err)
 			return

@@ -46,6 +46,17 @@ type ListRunsParams struct {
 	Status         string
 }
 
+// RunJob is the minimal execution payload a device needs to actually run a
+// job it has claimed — deliberately not the full Job (no organization_id,
+// created_by_user_id, etc. — least exposure, and the device already knows
+// which org/run this is from the claim response).
+type RunJob struct {
+	Name          string            `json:"name"`
+	Prompt        string            `json:"prompt"`
+	ModelOverride string            `json:"model_override,omitempty"`
+	Configuration map[string]string `json:"configuration,omitempty"`
+}
+
 var runSortFields = map[string]sdb.SortField{
 	"queued_at":        {Column: "queued_at"},
 	"status":           {Column: "status"},
@@ -253,6 +264,58 @@ func (s *Service) ClaimRun(ctx context.Context, deviceToken string) (*Run, error
 		}
 	})
 	return run, err
+}
+
+// GetRunJob returns the execution payload (prompt/model/configuration) for a
+// run the calling device currently holds. Deliberately scoped by run, not by
+// a bare job id: the device must already have claimed this specific run
+// (status claimed/running, assigned to it) before it can read what to
+// execute — the same "this device currently owns this run" check every
+// other device/run endpoint already applies, just for a read instead of a
+// state transition. There is no broader device-accessible job-read route;
+// this is intentional (least exposure — a device sees only jobs it's
+// actively executing, never the org's full job list).
+func (s *Service) GetRunJob(ctx context.Context, deviceToken, runID string) (*RunJob, error) {
+	device, err := s.resolveDeviceByToken(ctx, deviceToken)
+	if err != nil {
+		return nil, err
+	}
+	runID = strings.TrimSpace(runID)
+	if runID == "" {
+		return nil, ErrInvalidInput("run_id is required")
+	}
+
+	tx := s.db.Gorm().WithContext(ctx)
+	var run sdb.JobRun
+	if err := tx.First(&run, "id = ?", runID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound("run not found")
+		}
+		return nil, err
+	}
+	if run.AssignedDeviceID != device.ID {
+		return nil, ErrForbidden("run is not assigned to this device")
+	}
+	switch run.Status {
+	case RunStatusClaimed, RunStatusRunning:
+		// only these two states mean the device is actively meant to execute it
+	default:
+		return nil, ErrConflict("run must be claimed or running to read its job")
+	}
+
+	var job sdb.ScheduledJob
+	if err := tx.First(&job, "id = ?", run.JobID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound("job not found")
+		}
+		return nil, err
+	}
+	return &RunJob{
+		Name:          job.Name,
+		Prompt:        job.Prompt,
+		ModelOverride: job.ModelOverride,
+		Configuration: job.Configuration,
+	}, nil
 }
 
 // StartRun confirms the device has begun executing a claimed run.

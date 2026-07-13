@@ -381,3 +381,107 @@ type PlatformEmbedderSetting struct {
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 }
+
+// UserPreference is a strictly personal, one-row-per-user settings singleton
+// — unlike ProviderSetting/EmbedderSetting, there is no organization column
+// and no org/platform hierarchy: a preference only ever means one thing,
+// "this user's own preference," so self-service (principal.User.ID implicit)
+// is the only access path, see preferences.Service.
+type UserPreference struct {
+	UserID                    string `gorm:"primaryKey;size:32"`
+	PreferredName             string `gorm:"size:200"`
+	Profession                string `gorm:"size:200"`
+	About                     string `gorm:"type:text"`
+	WorkingStyle              string `gorm:"type:text"`
+	ResponseStyle             string `gorm:"type:text"`
+	ExtraContext              string `gorm:"type:text"`
+	InteractivePermissionMode string `gorm:"size:32"`
+	AutomationPermissionMode  string `gorm:"size:32"`
+	MaxSubAgentDepth          int
+	UpdatedAt                 time.Time
+}
+
+// SkillRepo is one entry in an organization's curated skills registry — just
+// a bookmarked git repo URL, nothing secret, so unlike ProviderSetting there
+// is no encryption and no org/platform tiering: reading the list only
+// requires org membership (see skillregistry.Service), only mutating it is
+// permission-gated. seshat-backend fetches these to enrich its own local
+// skill-repo catalog; installing (git clone) always happens locally.
+type SkillRepo struct {
+	ID              string `gorm:"primaryKey;size:32"`
+	OrganizationID  string `gorm:"size:32;not null;uniqueIndex:idx_skill_repo_org_name;index"`
+	CreatedByUserID string `gorm:"size:32;not null"`
+	Name            string `gorm:"size:128;not null;uniqueIndex:idx_skill_repo_org_name"`
+	URL             string `gorm:"size:500;not null"`
+	Description     string `gorm:"size:500"`
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
+// WebSearchProviderSetting mirrors ProviderSetting's org→platform shape but
+// for web-search providers (Tavily/Exa/Jina/LangSearch/SearXNG) — deliberately
+// NOT a reuse of ProviderSetting: DefaultModel has no meaning for a search
+// API, and SearXNG needs a second credential field (AuthUsername, basic auth)
+// no LLM provider has. See websearchsettings.Service.
+type WebSearchProviderSetting struct {
+	ID              string `gorm:"primaryKey;size:32"`
+	OrganizationID  string `gorm:"size:32;not null;uniqueIndex:idx_ws_provider_setting_org_provider;index"`
+	CreatedByUserID string `gorm:"size:32;not null"`
+	Provider        string `gorm:"size:32;not null;uniqueIndex:idx_ws_provider_setting_org_provider"`
+	BaseURL         string `gorm:"size:500"`
+	AuthUsername    string `gorm:"size:200"`
+	EncryptedAPIKey string `gorm:"type:text;not null"`
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
+// PlatformWebSearchProviderSetting is the platform-wide default, same
+// fallback role as PlatformProviderSetting.
+type PlatformWebSearchProviderSetting struct {
+	ID              string `gorm:"primaryKey;size:32"`
+	CreatedByUserID string `gorm:"size:32;not null"`
+	Provider        string `gorm:"size:32;not null;uniqueIndex"`
+	BaseURL         string `gorm:"size:500"`
+	AuthUsername    string `gorm:"size:200"`
+	EncryptedAPIKey string `gorm:"type:text;not null"`
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
+// WebSearchOrgPolicy is a strictly org-wide singleton (one row per org, no
+// per-user variant server-side) — the domain allow/block list an org wants
+// enforced for every member, merged into each user's own local policy in
+// seshat-backend (blocked domains always apply, allowed domains are additive).
+type WebSearchOrgPolicy struct {
+	OrganizationID     string `gorm:"primaryKey;size:32"`
+	CreatedByUserID    string `gorm:"size:32;not null"`
+	AllowedDomainsJSON string `gorm:"column:allowed_domains_json;type:text;not null;default:'[]'"`
+	BlockedDomainsJSON string `gorm:"column:blocked_domains_json;type:text;not null;default:'[]'"`
+	UpdatedAt          time.Time
+}
+
+// MCPServerConfig is an organization's shared MCP server definition — a
+// catalog entry that a connected seshat-backend can fetch and, once a user
+// explicitly approves it locally, load into its own local MCP runtime.
+// Execution never happens here: this table only stores/serves config, the
+// same "config centralisée, exécution locale" split already used for
+// provider settings and web search. No platform tier — an MCP tool shared
+// across the entire platform (not just one org) doesn't have a clear use
+// case today, unlike LLM/web-search provider defaults.
+type MCPServerConfig struct {
+	ID                   string `gorm:"primaryKey;size:32"`
+	OrganizationID       string `gorm:"size:32;not null;uniqueIndex:idx_mcp_server_config_org_name;index"`
+	CreatedByUserID      string `gorm:"size:32;not null"`
+	Name                 string `gorm:"size:255;not null;uniqueIndex:idx_mcp_server_config_org_name"`
+	DisplayName          string `gorm:"size:255;not null;default:''"`
+	ServerType           string `gorm:"size:32;not null;default:'stdio'"`
+	Command              string `gorm:"type:text;not null;default:''"`
+	ArgsJSON             string `gorm:"column:args_json;type:text;not null;default:'[]'"`
+	EncryptedEnvJSON     string `gorm:"column:encrypted_env_json;type:text;not null;default:''"`
+	URL                  string `gorm:"type:text;not null;default:''"`
+	EncryptedHeadersJSON string `gorm:"column:encrypted_headers_json;type:text;not null;default:''"`
+	TimeoutSecs          int    `gorm:"not null;default:30"`
+	Icon                 string `gorm:"size:64;not null;default:'🔌'"`
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
+}

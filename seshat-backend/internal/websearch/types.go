@@ -31,6 +31,11 @@ type ProviderStatus struct {
 	DefaultBaseURL  string
 	Priority        int
 	UpdatedAt       time.Time
+	// Source is "organization"/"platform" when this provider isn't
+	// personally configured but was resolved from a connected seshat-server
+	// (see cloudwebsearch); empty for personally configured/unconfigured
+	// entries.
+	Source string
 }
 
 // UpsertProviderParams is the input for creating/updating a provider config.
@@ -66,6 +71,13 @@ type Settings struct {
 	MaxQueriesPerDay   int
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
+	// OrgAllowedDomains/OrgBlockedDomains are the subset of
+	// AllowedDomains/BlockedDomains contributed by the connected
+	// seshat-server's org policy (already merged into the two fields
+	// above) — exposed separately only so the UI can show a "your
+	// organization blocks N domains" note; empty in standalone mode.
+	OrgAllowedDomains []string
+	OrgBlockedDomains []string
 }
 
 type UpdateSettingsParams struct {

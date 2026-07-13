@@ -7,103 +7,76 @@ import (
 
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	"github.com/EngineerProjects/seshat/pkg/types"
 )
 
+// Service is a thin orchestrator over an injected Provider (local or remote
+// depending on mode). BuildSystemPromptBlock/ResolvePermissionModes/
+// GetMaxSubAgentDepth are derived views computed from Provider.Get's result,
+// not separate storage calls — this is what makes them work identically
+// regardless of which Provider is wired in.
 type Service struct {
-	store *db.UserPreferencesStore
+	provider Provider
 }
 
-func NewService(store *db.UserPreferencesStore) *Service {
-	return &Service{store: store}
+func NewService(provider Provider) *Service {
+	return &Service{provider: provider}
 }
 
-func (s *Service) Get(ctx context.Context, userID string) (*UserPreferences, error) {
-	if s == nil || s.store == nil {
-		return nil, bkerr.Unavailable("user preferences store not available", nil)
+func (s *Service) Get(ctx context.Context, principal *backendauth.Principal) (*UserPreferences, error) {
+	if s == nil || s.provider == nil {
+		return nil, bkerr.Unavailable("preferences not configured", nil)
 	}
-	row, err := s.store.Get(ctx, userID)
-	if err != nil {
-		return nil, bkerr.Internal(err.Error(), err)
-	}
-	if row == nil {
-		return &UserPreferences{UserID: userID}, nil
-	}
-	result := fromDB(row)
-	return &result, nil
+	return s.provider.Get(ctx, principal)
 }
 
-func (s *Service) Upsert(ctx context.Context, p UpsertParams) (*UserPreferences, error) {
-	if s == nil || s.store == nil {
-		return nil, bkerr.Unavailable("user preferences store not available", nil)
+func (s *Service) Upsert(ctx context.Context, principal *backendauth.Principal, p UpsertParams) (*UserPreferences, error) {
+	if s == nil || s.provider == nil {
+		return nil, bkerr.Unavailable("preferences not configured", nil)
 	}
-	maxDepth := p.MaxSubAgentDepth
-	if maxDepth < 0 {
-		maxDepth = 0
-	}
-	if maxDepth > 5 {
-		maxDepth = 5
-	}
-	saved, err := s.store.Upsert(ctx, db.UpsertUserPreferencesParams{
-		UserID:                    p.UserID,
-		PreferredName:             p.PreferredName,
-		Profession:                p.Profession,
-		About:                     p.About,
-		WorkingStyle:              p.WorkingStyle,
-		ResponseStyle:             p.ResponseStyle,
-		ExtraContext:              p.ExtraContext,
-		InteractivePermissionMode: p.InteractivePermissionMode,
-		AutomationPermissionMode:  p.AutomationPermissionMode,
-		MaxSubAgentDepth:          maxDepth,
-	})
-	if err != nil {
-		return nil, bkerr.Internal(err.Error(), err)
-	}
-	result := fromDB(saved)
-	return &result, nil
+	return s.provider.Upsert(ctx, principal, p)
 }
 
-func (s *Service) BuildSystemPromptBlock(ctx context.Context, userID string) (string, error) {
-	if s == nil || s.store == nil {
+func (s *Service) BuildSystemPromptBlock(ctx context.Context, principal *backendauth.Principal) (string, error) {
+	if s == nil || s.provider == nil || principal == nil {
 		return "", nil
 	}
-	row, err := s.store.Get(ctx, userID)
-	if err != nil || row == nil {
+	prefs, err := s.provider.Get(ctx, principal)
+	if err != nil || prefs == nil {
 		return "", nil
 	}
-	return row.BuildSystemPromptBlock(), nil
+	return prefs.BuildSystemPromptBlock(), nil
 }
 
 func (s *Service) ResolvePermissionModes(ctx context.Context, principal *backendauth.Principal, origin types.ExecutionOrigin) (types.PermissionMode, error) {
-	if s == nil || s.store == nil || principal == nil {
+	fallback := func() types.PermissionMode {
 		if origin == types.ExecutionOriginAutomation {
-			return types.PermissionModeNever, nil
+			return types.PermissionModeNever
 		}
-		return types.PermissionModeOnRequest, nil
+		return types.PermissionModeOnRequest
 	}
-	row, err := s.store.Get(ctx, principal.User.ID)
-	if err != nil || row == nil {
-		if origin == types.ExecutionOriginAutomation {
-			return types.PermissionModeNever, nil
-		}
-		return types.PermissionModeOnRequest, nil
+	if s == nil || s.provider == nil || principal == nil {
+		return fallback(), nil
+	}
+	prefs, err := s.provider.Get(ctx, principal)
+	if err != nil || prefs == nil {
+		return fallback(), nil
 	}
 	if origin == types.ExecutionOriginAutomation {
-		return row.PreferredAutomationPermissionMode(), nil
+		return prefs.PreferredAutomationPermissionMode(), nil
 	}
-	return row.PreferredInteractivePermissionMode(), nil
+	return prefs.PreferredInteractivePermissionMode(), nil
 }
 
-func (s *Service) GetMaxSubAgentDepth(ctx context.Context, userID string) (int, error) {
-	if s == nil || s.store == nil {
+func (s *Service) GetMaxSubAgentDepth(ctx context.Context, principal *backendauth.Principal) (int, error) {
+	if s == nil || s.provider == nil || principal == nil {
 		return 0, nil
 	}
-	row, err := s.store.Get(ctx, userID)
-	if err != nil || row == nil || row.MaxSubAgentDepth <= 0 {
+	prefs, err := s.provider.Get(ctx, principal)
+	if err != nil || prefs == nil || prefs.MaxSubAgentDepth <= 0 {
 		return 0, nil
 	}
-	return row.MaxSubAgentDepth, nil
+	return prefs.MaxSubAgentDepth, nil
 }
 
 func (s *Service) ValidatePermissionMode(raw string) bool {
@@ -112,25 +85,6 @@ func (s *Service) ValidatePermissionMode(raw string) bool {
 	}
 	_, ok := types.NormalizePermissionMode(raw)
 	return ok
-}
-
-func fromDB(p *db.UserPreferences) UserPreferences {
-	if p == nil {
-		return UserPreferences{}
-	}
-	return UserPreferences{
-		UserID:                    p.UserID,
-		PreferredName:             p.PreferredName,
-		Profession:                p.Profession,
-		About:                     p.About,
-		WorkingStyle:              p.WorkingStyle,
-		ResponseStyle:             p.ResponseStyle,
-		ExtraContext:              p.ExtraContext,
-		InteractivePermissionMode: p.InteractivePermissionMode,
-		AutomationPermissionMode:  p.AutomationPermissionMode,
-		MaxSubAgentDepth:          p.MaxSubAgentDepth,
-		UpdatedAt:                 p.UpdatedAt,
-	}
 }
 
 // ParsePermissionMode is a helper used by HTTP handlers.

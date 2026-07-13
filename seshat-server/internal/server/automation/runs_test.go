@@ -137,6 +137,14 @@ func TestDeviceClaimStartHeartbeatCompleteFlow(t *testing.T) {
 		t.Fatalf("unexpected status after claim: %s", claimed.Status)
 	}
 
+	runJob, err := env.automation.GetRunJob(context.Background(), deviceResult.Token, claimed.ID)
+	if err != nil {
+		t.Fatalf("get run job: %v", err)
+	}
+	if runJob.Prompt != "Do local work." {
+		t.Fatalf("expected the claimed run's job prompt, got %q", runJob.Prompt)
+	}
+
 	// Nothing left to claim right now.
 	nothing, err := env.automation.ClaimRun(context.Background(), deviceResult.Token)
 	if err != nil {
@@ -232,6 +240,40 @@ func TestDeviceCannotActOnAnotherDevicesRun(t *testing.T) {
 	// Device B still cannot start a run explicitly assigned to device A.
 	if _, err := env.automation.StartRun(context.Background(), deviceB.Token, run.ID); err == nil {
 		t.Fatal("expected device B to be denied starting device A's run")
+	}
+
+	// Nor can device B read the job payload for a run assigned to device A.
+	if _, err := env.automation.GetRunJob(context.Background(), deviceB.Token, run.ID); err == nil {
+		t.Fatal("expected device B to be denied reading device A's run job")
+	}
+}
+
+func TestDeviceCannotReadRunJobBeforeClaim(t *testing.T) {
+	env := newTestEnv(t)
+	deviceResult, err := env.automation.RegisterDevice(context.Background(), env.adminPrincipal, RegisterDeviceParams{OrganizationID: env.orgID, Name: "Worker"})
+	if err != nil {
+		t.Fatalf("register device: %v", err)
+	}
+	job, err := env.automation.CreateJob(context.Background(), env.adminPrincipal, CreateJobParams{
+		OrganizationID:  env.orgID,
+		Name:            "Device job",
+		TriggerType:     TriggerTypeInterval,
+		IntervalSeconds: 3600,
+		ExecutionTarget: ExecutionTargetDevice,
+		TargetDeviceID:  deviceResult.Device.ID,
+		Prompt:          "Do local work.",
+	})
+	if err != nil {
+		t.Fatalf("create job: %v", err)
+	}
+	run, err := env.automation.TriggerJobNow(context.Background(), env.adminPrincipal, job.ID)
+	if err != nil {
+		t.Fatalf("trigger job now: %v", err)
+	}
+
+	// The run is queued, not yet claimed — reading its job payload is refused.
+	if _, err := env.automation.GetRunJob(context.Background(), deviceResult.Token, run.ID); err == nil {
+		t.Fatal("expected reading a queued (unclaimed) run's job to be rejected")
 	}
 }
 

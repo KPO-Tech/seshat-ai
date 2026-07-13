@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AuthLayout } from '@/components/auth/AuthLayout'
 import {
@@ -9,6 +9,8 @@ import {
 import { api } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import type { LoginResponse } from '@/api/types'
+
+type SystemStatus = { mode: 'standalone' | 'connected'; server_url?: string }
 
 type Requirement = { label: string; met: boolean }
 
@@ -37,7 +39,14 @@ export function Register() {
   const [agreed, setAgreed] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [registrationDisabled, setRegistrationDisabled] = useState(false)
   const navigate = useNavigate()
+
+  useEffect(() => {
+    api.get<SystemStatus>('/system/status')
+      .then((status) => setRegistrationDisabled(status.mode === 'connected'))
+      .catch(() => setRegistrationDisabled(false))
+  }, [])
 
   const requirements = getRequirements(password)
   const allMet = requirements.every((r) => r.met)
@@ -70,6 +79,31 @@ export function Register() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (registrationDisabled) {
+    return (
+      <AuthLayout title="Account creation is managed by your organization" subtitle="This workspace is connected to a Seshat Server">
+        <div style={{
+          padding: '14px 16px',
+          borderRadius: 8,
+          backgroundColor: 'rgba(255,255,255,0.04)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          color: 'var(--text-secondary)',
+          fontSize: 13.5,
+          lineHeight: 1.6,
+        }}>
+          Self-registration is disabled here. Ask your organization administrator to create an account for you,
+          then sign in below.
+        </div>
+        <p style={{ margin: '16px 0 0', textAlign: 'center', fontSize: 13, color: 'var(--text-secondary)' }}>
+          Already have an account?{' '}
+          <Link to="/login" style={{ color: 'var(--brand)', textDecoration: 'none', fontWeight: 500 }}>
+            Sign in
+          </Link>
+        </p>
+      </AuthLayout>
+    )
   }
 
   return (

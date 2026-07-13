@@ -52,7 +52,7 @@ func TestNilStoreReturnsUnavailable(t *testing.T) {
 	_, err = svc.Create(ctx, CreateParams{Name: "x"})
 	check("Create", err)
 
-	_, err = svc.Update(ctx, "x", Server{}, UpdateParams{})
+	_, err = svc.Update(ctx, "x", UpdateParams{})
 	check("Update", err)
 
 	check("Delete", svc.Delete(ctx, "x"))
@@ -65,7 +65,7 @@ func TestNilStoreReturnsUnavailable(t *testing.T) {
 
 func TestReloadNilRuntimeReturnsUnavailable(t *testing.T) {
 	svc := NewService(ServiceConfig{})
-	_, err := svc.Reload(context.Background())
+	_, err := svc.Reload(context.Background(), "")
 	if bkerr.KindOf(err) != bkerr.ErrorKindUnavailable {
 		t.Fatalf("expected unavailable, got %v", err)
 	}

@@ -35,6 +35,15 @@ tags:
     description: Active bearer-token logins.
   - name: audit
     description: Read-only audit trail of control-plane mutations.
+  - name: preferences
+    description: >-
+      A user's own personal settings — no organization, no hierarchy, self-service
+      only (same trust level as GET/PUT /auth/me).
+  - name: skill-repos
+    description: >-
+      An organization's curated list of recommended skill repo URLs. Authorship
+      and execution of skills stay local to seshat-backend — this is purely a
+      bookmarked-URL catalog it fetches to enrich its own local skill-repo list.
   - name: applications
     description: OAuth/OIDC client applications registered with the control plane.
   - name: providers
@@ -44,6 +53,28 @@ tags:
       Per-organization LLM provider credentials (Anthropic, OpenAI, ...) —
       distinct from providers (OAuth/OIDC identity), these are what unblocks
       execution_target=cloud jobs.
+  - name: web-search-provider-settings
+    description: >-
+      Per-organization web-search provider credentials (Tavily, Exa, Jina,
+      LangSearch, SearXNG) — a separate domain from provider-settings (LLM
+      credentials): no default_model concept applies here, and SearXNG needs
+      a second credential field (auth_username) no LLM provider has. Read
+      (list/resolve) is open to any org member; write requires
+      web_search_settings.manage.
+  - name: web-search-org-policy
+    description: >-
+      An organization's allowed/blocked domain policy for web search,
+      merged into every connected member's local search settings — blocked
+      domains are always applied, allowed domains are additive.
+  - name: mcp-server-configs
+    description: >-
+      An organization's shared MCP server definitions (stdio/http/sse) —
+      config only, execution always happens locally on the connected
+      member's own machine, never here. Read/resolve is open to any org
+      member; write requires mcp_registry.manage. A connected
+      seshat-backend requires the user to explicitly approve each server
+      before loading it locally (stdio servers spawn an arbitrary command
+      on the user's machine).
   - name: devices
     description: Registered seshat-backend (local desktop) instances that the cloud can target.
   - name: jobs
@@ -419,9 +450,11 @@ paths:
       tags: [roles-and-permissions]
       summary: List the role catalog
       description: >
-        Static catalog (owner, admin, member, viewer) — not stored/editable
-        per organization yet. Pass `organization_id` to also verify the
-        caller can access that org.
+        Without `organization_id`, only the 4 built-in system roles (owner,
+        admin, member, viewer — `system: true`, not editable/deletable) are
+        returned. With `organization_id`, the organization's custom roles
+        (`system: false`) are appended. Not paginated — bounded by how many
+        roles one organization defines, not event volume.
       parameters:
         - $ref: "#/components/parameters/organizationIDQuery"
       responses:
@@ -438,6 +471,88 @@ paths:
                   count: { type: integer }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      operationId: createRole
+      tags: [roles-and-permissions]
+      summary: Create a custom role for an organization
+      description: >
+        Requires `roles.manage` or `organization.manage`. `code` must be
+        lowercase letters/digits/hyphen/underscore and cannot reuse a
+        reserved system role code (owner/admin/member/viewer).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RoleInput" }
+      responses:
+        "201":
+          description: Role created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Role" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/roles/{roleCode}:
+    parameters:
+      - name: roleCode
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      operationId: getRole
+      tags: [roles-and-permissions]
+      summary: Get a role
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: Role
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Role" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      operationId: updateRole
+      tags: [roles-and-permissions]
+      summary: Update a custom role
+      description: >
+        Requires `roles.manage` or `organization.manage`. System roles
+        return 409. Renaming `code` cascades to every membership,
+        invitation and policy binding referencing the old code, in one
+        transaction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RoleInput" }
+      responses:
+        "200":
+          description: Updated role
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Role" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+    delete:
+      operationId: deleteRole
+      tags: [roles-and-permissions]
+      summary: Delete a custom role
+      description: >
+        Requires `roles.manage` or `organization.manage`. System roles,
+        roles still assigned to a membership, and roles with active
+        invitations all return 409.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
 
   /api/v1/permissions:
     get:
@@ -506,7 +621,9 @@ paths:
               properties:
                 organization_id: { type: string }
                 user_id: { type: string }
-                role: { type: string, enum: [owner, admin, member, viewer] }
+                role:
+                  type: string
+                  description: A system role code (owner/admin/member/viewer) or a custom role code defined for this organization.
       responses:
         "201":
           description: Membership created
@@ -552,7 +669,9 @@ paths:
               type: object
               required: [role]
               properties:
-                role: { type: string, enum: [owner, admin, member, viewer] }
+                role:
+                  type: string
+                  description: A system role code (owner/admin/member/viewer) or a custom role code defined for this organization.
       responses:
         "200":
           description: Updated membership
@@ -622,7 +741,9 @@ paths:
               properties:
                 organization_id: { type: string }
                 email: { type: string, format: email }
-                role: { type: string, enum: [owner, admin, member, viewer] }
+                role:
+                  type: string
+                  description: A system role code (owner/admin/member/viewer) or a custom role code defined for this organization.
                 expires_in_days: { type: integer, default: 7 }
       responses:
         "201":
@@ -772,11 +893,14 @@ paths:
       operationId: updateGroup
       tags: [groups]
       summary: Update a group
+      description: >
+        Unlike creation, `organization_id` is not part of this body — a
+        group cannot be moved between organizations via update.
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/GroupInput" }
+            schema: { $ref: "#/components/schemas/GroupUpdateInput" }
       responses:
         "200":
           description: Updated group
@@ -866,11 +990,14 @@ paths:
       operationId: updatePolicyBinding
       tags: [policy-bindings]
       summary: Update a policy binding
+      description: >
+        Unlike creation, `organization_id` is not part of this body — a
+        policy binding cannot be moved between organizations via update.
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/PolicyBindingInput" }
+            schema: { $ref: "#/components/schemas/PolicyBindingUpdateInput" }
       responses:
         "200":
           description: Updated policy binding
@@ -978,6 +1105,120 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
+  /api/v1/users/me/preferences:
+    get:
+      operationId: getMyPreferences
+      tags: [preferences]
+      summary: Get my own preferences
+      description: >-
+        Self-service only — there is no {userID} variant, a preference only
+        ever means "mine." Returns a zero-value record (not 404) if none has
+        been saved yet.
+      responses:
+        "200":
+          description: My preferences
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserPreferences" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    put:
+      operationId: updateMyPreferences
+      tags: [preferences]
+      summary: Create or replace my own preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UserPreferencesInput" }
+      responses:
+        "200":
+          description: Updated preferences
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserPreferences" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/skill-repos:
+    get:
+      operationId: listSkillRepos
+      tags: [skill-repos]
+      summary: List an organization's curated skill repos
+      description: >-
+        Open to any member of the organization, not gated behind a specific
+        permission — these are public repo URLs, nothing secret to protect.
+        A caller who isn't a member of the organization at all is rejected.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: Skill repo list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  skill_repos:
+                    type: array
+                    items: { $ref: "#/components/schemas/SkillRepo" }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      operationId: createSkillRepo
+      tags: [skill-repos]
+      summary: Add a skill repo to the organization's registry
+      description: Requires skills_registry.manage or organization.manage. One entry per (organization, name).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SkillRepoInput" }
+      responses:
+        "201":
+          description: Skill repo created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SkillRepo" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/skill-repos/{skillRepoID}:
+    parameters:
+      - name: skillRepoID
+        in: path
+        required: true
+        schema: { type: string }
+    put:
+      operationId: updateSkillRepo
+      tags: [skill-repos]
+      summary: Update a skill repo
+      description: Requires skills_registry.manage or organization.manage.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SkillRepoUpdateInput" }
+      responses:
+        "200":
+          description: Updated skill repo
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SkillRepo" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      operationId: deleteSkillRepo
+      tags: [skill-repos]
+      summary: Remove a skill repo from the organization's registry
+      description: Requires skills_registry.manage or organization.manage.
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/applications:
     get:
       operationId: listApplications
@@ -1055,12 +1296,14 @@ paths:
       summary: Update an application
       description: >
         `client_secret` is immutable via this endpoint (not part of the
-        request body) and redacted in the response.
+        request body) and redacted in the response. Unlike creation,
+        `organization_id` is not part of this body — an application cannot be
+        moved between organizations via update.
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/ApplicationInput" }
+            schema: { $ref: "#/components/schemas/ApplicationUpdateInput" }
       responses:
         "200":
           description: Updated application
@@ -1152,11 +1395,14 @@ paths:
       operationId: updateProvider
       tags: [providers]
       summary: Update a provider
+      description: >
+        Unlike creation, `organization_id` is not part of this body — a
+        provider cannot be moved between organizations via update.
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/ProviderInput" }
+            schema: { $ref: "#/components/schemas/ProviderUpdateInput" }
       responses:
         "200":
           description: Updated provider (client_secret redacted)
@@ -1230,6 +1476,37 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "409": { $ref: "#/components/responses/Conflict" }
 
+  /api/v1/provider-settings/resolve:
+    get:
+      operationId: resolveProviderSetting
+      tags: [provider-settings]
+      summary: Resolve the effective, usable provider config for an organization
+      description: >-
+        Unlike every other provider-settings endpoint, this INCLUDES the
+        decrypted api_key — the point is for a connected seshat-backend to
+        actually make the LLM call with it, not to administer the setting.
+        Authorization is deliberately looser than provider_settings.read/
+        manage: any member of the organization (or a platform admin) can
+        resolve "what should I use", the same trust level as using their own
+        session. Falls back to the platform default when the organization has
+        no setting of its own for this provider; 404 if neither exists.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+        - name: provider
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Resolved provider config
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ResolvedProviderSetting" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/provider-settings/{providerSettingID}:
     parameters:
       - name: providerSettingID
@@ -1252,12 +1529,15 @@ paths:
       operationId: updateProviderSetting
       tags: [provider-settings]
       summary: Update a provider setting
-      description: An empty/omitted api_key leaves the stored credential unchanged.
+      description: >
+        An empty/omitted api_key leaves the stored credential unchanged.
+        Unlike creation, `organization_id`/`provider` are not part of this
+        body — an existing setting's organization and provider are fixed.
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/ProviderSettingInput" }
+            schema: { $ref: "#/components/schemas/ProviderSettingUpdateInput" }
       responses:
         "200":
           description: Updated provider setting
@@ -1352,12 +1632,15 @@ paths:
       operationId: updatePlatformProviderSetting
       tags: [platform-provider-settings]
       summary: Update a platform provider setting
-      description: Superadmin-only. An empty/omitted api_key leaves the stored credential unchanged.
+      description: >
+        Superadmin-only. An empty/omitted api_key leaves the stored
+        credential unchanged. Unlike creation, `provider` is not part of
+        this body — an existing setting's provider is fixed.
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/PlatformProviderSettingInput" }
+            schema: { $ref: "#/components/schemas/PlatformProviderSettingUpdateInput" }
       responses:
         "200":
           description: Updated platform provider setting
@@ -1376,6 +1659,384 @@ paths:
         fallback (no org-level provider-settings of its own) starts failing
         at execution time with a clear reason; existing jobs are not
         touched or deleted.
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/web-search-provider-settings:
+    get:
+      operationId: listWebSearchProviderSettings
+      tags: [web-search-provider-settings]
+      summary: List web-search providers configured for an organization
+      description: >-
+        Scoped visibility like listProviderSettings: a caller lacking
+        web_search_settings.manage/organization.manage gets an empty list,
+        not a 403. The API key is never included, in this or any other
+        response.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: Web-search provider setting list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  web_search_provider_settings:
+                    type: array
+                    items: { $ref: "#/components/schemas/WebSearchProviderSetting" }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+    post:
+      operationId: createWebSearchProviderSetting
+      tags: [web-search-provider-settings]
+      summary: Store credentials for one web-search provider
+      description: >-
+        Requires web_search_settings.manage or organization.manage. One
+        provider per organization — creating a second setting for the same
+        (organization, provider) pair is rejected; use update instead.
+        auth_username is only meaningful for searxng (HTTP basic auth); the
+        api_key is AES-256-GCM encrypted at rest and never echoed back, not
+        even in this response.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WebSearchProviderSettingInput" }
+      responses:
+        "201":
+          description: Web-search provider setting created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WebSearchProviderSetting" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/web-search-provider-settings/resolve:
+    get:
+      operationId: resolveWebSearchProviderSetting
+      tags: [web-search-provider-settings]
+      summary: Resolve the effective, usable web-search provider config for an organization
+      description: >-
+        Unlike every other web-search-provider-settings endpoint, this
+        INCLUDES the decrypted api_key (and auth_username, for searxng) —
+        the point is for a connected seshat-backend to actually call the
+        provider with it, not to administer the setting. Authorization is
+        deliberately looser than web_search_settings.manage: any member of
+        the organization can resolve "what should I use". Falls back to the
+        platform default when the organization has no setting of its own
+        for this provider; 404 if neither exists.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+        - name: provider
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Resolved web-search provider config
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ResolvedWebSearchProviderSetting" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/web-search-provider-settings/{webSearchProviderSettingID}:
+    parameters:
+      - name: webSearchProviderSettingID
+        in: path
+        required: true
+        schema: { type: string }
+    put:
+      operationId: updateWebSearchProviderSetting
+      tags: [web-search-provider-settings]
+      summary: Update a web-search provider setting
+      description: >-
+        An empty/omitted api_key leaves the stored credential unchanged.
+        Unlike creation, organization_id/provider are not part of this body
+        — an existing setting's organization and provider are fixed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WebSearchProviderSettingUpdateInput" }
+      responses:
+        "200":
+          description: Updated web-search provider setting
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WebSearchProviderSetting" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      operationId: deleteWebSearchProviderSetting
+      tags: [web-search-provider-settings]
+      summary: Delete a web-search provider setting
+      description: Local resolution falls back to the platform default (or fails) at next use; nothing else is touched.
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/platform/web-search-provider-settings:
+    get:
+      operationId: listPlatformWebSearchProviderSettings
+      tags: [web-search-provider-settings]
+      summary: List the platform-wide default web-search credentials
+      description: >-
+        Superadmin-only (platform admin, User.is_admin). A non-admin caller
+        gets 403, not an empty list. The API key is never included, in this
+        or any other response.
+      responses:
+        "200":
+          description: Platform web-search provider setting list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  platform_web_search_provider_settings:
+                    type: array
+                    items: { $ref: "#/components/schemas/PlatformWebSearchProviderSetting" }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      operationId: createPlatformWebSearchProviderSetting
+      tags: [web-search-provider-settings]
+      summary: Store the platform-wide default credentials for one web-search provider
+      description: >-
+        Superadmin-only. One row per provider, globally — creating a
+        second setting for the same provider is rejected; use update
+        instead. The api_key is AES-256-GCM encrypted at rest and never
+        echoed back, not even in this response.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlatformWebSearchProviderSettingInput" }
+      responses:
+        "201":
+          description: Platform web-search provider setting created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformWebSearchProviderSetting" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/platform/web-search-provider-settings/{platformWebSearchProviderSettingID}:
+    parameters:
+      - name: platformWebSearchProviderSettingID
+        in: path
+        required: true
+        schema: { type: string }
+    put:
+      operationId: updatePlatformWebSearchProviderSetting
+      tags: [web-search-provider-settings]
+      summary: Update a platform web-search provider setting
+      description: >
+        Superadmin-only. An empty/omitted api_key leaves the stored
+        credential unchanged. Unlike creation, provider is not part of this
+        body — an existing setting's provider is fixed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlatformWebSearchProviderSettingUpdateInput" }
+      responses:
+        "200":
+          description: Updated platform web-search provider setting
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformWebSearchProviderSetting" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      operationId: deletePlatformWebSearchProviderSetting
+      tags: [web-search-provider-settings]
+      summary: Delete a platform web-search provider setting
+      description: >-
+        Superadmin-only. Any organization relying on this as its fallback
+        (no org-level web-search-provider-settings of its own) starts
+        failing at next resolution with a clear reason.
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/web-search-org-policy:
+    get:
+      operationId: getWebSearchOrgPolicy
+      tags: [web-search-org-policy]
+      summary: Get an organization's web-search domain policy
+      description: >-
+        Open to any org member (a domain policy isn't secret, and every
+        member needs to read it to have it applied locally). Returns an
+        empty policy (both lists empty), not 404, when the organization has
+        never set one.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: Web-search domain policy
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WebSearchOrgPolicy" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    put:
+      operationId: upsertWebSearchOrgPolicy
+      tags: [web-search-org-policy]
+      summary: Replace an organization's web-search domain policy
+      description: >-
+        Requires web_search_settings.manage or organization.manage. Full
+        replace, not a merge — send the complete allowed/blocked lists each
+        time.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WebSearchOrgPolicyInput" }
+      responses:
+        "200":
+          description: Updated web-search domain policy
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WebSearchOrgPolicy" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/mcp-server-configs:
+    get:
+      operationId: listMCPServerConfigs
+      tags: [mcp-server-configs]
+      summary: List an organization's shared MCP server configs
+      description: >-
+        Scoped visibility like every other list endpoint: a caller lacking
+        mcp_registry.manage/organization.manage gets an empty list, not a
+        403. env/headers values are never included, in this or any other
+        response except resolve.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: MCP server config list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mcp_server_configs:
+                    type: array
+                    items: { $ref: "#/components/schemas/MCPServerConfig" }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+    post:
+      operationId: createMCPServerConfig
+      tags: [mcp-server-configs]
+      summary: Define a new shared MCP server for an organization
+      description: >-
+        Requires mcp_registry.manage or organization.manage. One config per
+        (organization, name) pair — creating a second config with the same
+        name is rejected; use update instead. env/headers values are
+        AES-256-GCM encrypted at rest and never echoed back, not even in
+        this response.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MCPServerConfigInput" }
+      responses:
+        "201":
+          description: MCP server config created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MCPServerConfig" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/mcp-server-configs/resolve:
+    get:
+      operationId: resolveMCPServerConfigs
+      tags: [mcp-server-configs]
+      summary: Resolve every MCP server config an organization has shared
+      description: >-
+        Unlike the list endpoint, this INCLUDES decrypted env/headers
+        values — the point is for a connected seshat-backend to actually
+        load these servers into its local MCP runtime, once the user has
+        explicitly approved each one (stdio servers spawn an arbitrary
+        command locally). Authorization is deliberately looser than
+        mcp_registry.manage: any member of the organization can resolve
+        "what has my org shared". Unlike web search's provider-by-provider
+        resolve, there's no org→platform fallback here — just every server
+        the organization has defined.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: Resolved MCP server configs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mcp_server_configs:
+                    type: array
+                    items: { $ref: "#/components/schemas/ResolvedMCPServerConfig" }
+                  count: { type: integer }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/mcp-server-configs/{mcpServerConfigID}:
+    parameters:
+      - name: mcpServerConfigID
+        in: path
+        required: true
+        schema: { type: string }
+    put:
+      operationId: updateMCPServerConfig
+      tags: [mcp-server-configs]
+      summary: Update a shared MCP server config
+      description: >-
+        An empty/omitted env/headers value leaves the stored secret
+        unchanged for that field. Unlike creation, organization_id/name are
+        not part of this body — an existing config's organization and name
+        are fixed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MCPServerConfigUpdateInput" }
+      responses:
+        "200":
+          description: Updated MCP server config
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MCPServerConfig" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      operationId: deleteMCPServerConfig
+      tags: [mcp-server-configs]
+      summary: Delete a shared MCP server config
+      description: >-
+        Any member who had already approved this server locally keeps
+        running it until their next reload — deleting here only stops it
+        from being resolved/loaded going forward.
       responses:
         "204": { description: Deleted }
         "403": { $ref: "#/components/responses/Forbidden" }
@@ -1899,11 +2560,14 @@ paths:
       operationId: updateJob
       tags: [jobs]
       summary: Update a job's trigger and payload
+      description: >
+        Unlike creation, `organization_id` is not part of this body — a job
+        cannot be moved between organizations via update.
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/JobInput" }
+            schema: { $ref: "#/components/schemas/JobUpdateInput" }
       responses:
         "200":
           description: Updated job
@@ -2146,6 +2810,37 @@ paths:
               schema: { $ref: "#/components/schemas/Run" }
         "204": { description: "Nothing currently queued for this device — normal during polling, not an error." }
         "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/device/runs/{runID}/job:
+    get:
+      operationId: getDeviceRunJob
+      tags: [device-protocol]
+      summary: Read the execution payload for a run this device currently holds
+      description: >
+        Returns the job's `prompt`/`model_override`/`configuration` — the
+        job/run claim response itself (`Run`) carries only tracking fields,
+        never the payload, so a device needs this call after claiming to
+        know what to actually execute. Scoped by run, not by a bare job id:
+        requires the calling device to be `assigned_device_id` on a run in
+        `claimed` or `running` state for that job. There is no broader
+        device-accessible route to read arbitrary jobs.
+      security:
+        - deviceBearerAuth: []
+      parameters:
+        - name: runID
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Job execution payload
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RunJob" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
 
   /api/v1/device/runs/{runID}/start:
     post:
@@ -2398,7 +3093,9 @@ components:
         id: { type: string }
         user_id: { type: string }
         organization_id: { type: string }
-        role: { type: string, enum: [owner, admin, member, viewer] }
+        role:
+          type: string
+          description: A system role code (owner/admin/member/viewer) or a custom role code defined for this organization.
         created_at: { type: string, format: date-time }
 
     Session:
@@ -2427,7 +3124,41 @@ components:
     Role:
       type: object
       properties:
-        code: { type: string, enum: [owner, admin, member, viewer] }
+        id:
+          type: string
+          description: Empty for the 4 built-in system roles, set for custom roles.
+        organization_id:
+          type: string
+          description: Empty for the 4 built-in system roles, which are global.
+        code:
+          type: string
+          description: >
+            "owner"/"admin"/"member"/"viewer" for system roles; lowercase
+            letters/digits/hyphen/underscore for custom roles. Not an enum —
+            organizations can define arbitrary custom role codes.
+        name: { type: string }
+        description: { type: string }
+        permissions:
+          type: array
+          items: { type: string }
+        system:
+          type: boolean
+          description: True for the 4 built-in roles, which cannot be updated or deleted.
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    RoleInput:
+      type: object
+      required: [organization_id, name]
+      properties:
+        organization_id: { type: string }
+        code:
+          type: string
+          description: >
+            Lowercase letters/digits/hyphen/underscore, cannot reuse a
+            reserved system role code. On update, omitting this keeps the
+            role's current code; setting it renames the role (cascades to
+            memberships/invitations/policy-bindings referencing the old code).
         name: { type: string }
         description: { type: string }
         permissions:
@@ -2448,7 +3179,9 @@ components:
         id: { type: string }
         organization_id: { type: string }
         email: { type: string, format: email }
-        role: { type: string, enum: [owner, admin, member, viewer] }
+        role:
+          type: string
+          description: A system role code (owner/admin/member/viewer) or a custom role code defined for this organization.
         status: { type: string, enum: [pending, accepted, revoked, expired] }
         token: { type: string }
         invited_by_user_id: { type: string }
@@ -2484,6 +3217,20 @@ components:
           type: array
           items: { type: string }
 
+    # Distinct from GroupInput: a group can't be moved between organizations
+    # via update, and the handler rejects unknown fields (organization_id
+    # included), same reasoning as ApplicationUpdateInput.
+    GroupUpdateInput:
+      type: object
+      required: [name, slug]
+      properties:
+        name: { type: string }
+        slug: { type: string }
+        description: { type: string }
+        member_user_ids:
+          type: array
+          items: { type: string }
+
     PolicyBinding:
       type: object
       properties:
@@ -2512,6 +3259,20 @@ components:
           type: array
           items: { type: string }
 
+    # Distinct from PolicyBindingInput: same organization_id/unknown-fields
+    # reasoning as GroupUpdateInput above.
+    PolicyBindingUpdateInput:
+      type: object
+      required: [name, subject_type, subject_id, permission_codes]
+      properties:
+        name: { type: string }
+        description: { type: string }
+        subject_type: { type: string, enum: [user, group, role] }
+        subject_id: { type: string }
+        permission_codes:
+          type: array
+          items: { type: string }
+
     AuditEvent:
       type: object
       properties:
@@ -2525,6 +3286,64 @@ components:
           type: object
           additionalProperties: { type: string }
         created_at: { type: string, format: date-time }
+
+    UserPreferences:
+      type: object
+      description: A strictly personal, one-row-per-user record — no organization_id.
+      properties:
+        user_id: { type: string }
+        preferred_name: { type: string }
+        profession: { type: string }
+        about: { type: string }
+        working_style: { type: string }
+        response_style: { type: string }
+        extra_context: { type: string }
+        interactive_permission_mode: { type: string }
+        automation_permission_mode: { type: string }
+        max_sub_agent_depth: { type: integer, minimum: 0, maximum: 5 }
+        updated_at: { type: string, format: date-time }
+
+    UserPreferencesInput:
+      type: object
+      properties:
+        preferred_name: { type: string }
+        profession: { type: string }
+        about: { type: string }
+        working_style: { type: string }
+        response_style: { type: string }
+        extra_context: { type: string }
+        interactive_permission_mode: { type: string }
+        automation_permission_mode: { type: string }
+        max_sub_agent_depth: { type: integer, minimum: 0, maximum: 5 }
+
+    SkillRepo:
+      type: object
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        created_by_user_id: { type: string }
+        name: { type: string, example: seshat-skills }
+        url: { type: string, example: "https://github.com/EngineerProjects/seshat-skills" }
+        description: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    SkillRepoInput:
+      type: object
+      required: [organization_id, name, url]
+      properties:
+        organization_id: { type: string }
+        name: { type: string, example: seshat-skills }
+        url: { type: string, example: "https://github.com/EngineerProjects/seshat-skills" }
+        description: { type: string }
+
+    # Distinct from SkillRepoInput: organization_id is immutable after creation.
+    SkillRepoUpdateInput:
+      type: object
+      properties:
+        name: { type: string }
+        url: { type: string }
+        description: { type: string }
 
     Application:
       type: object
@@ -2582,6 +3401,53 @@ components:
       required: [organization_id, name, slug, display_name]
       properties:
         organization_id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        display_name: { type: string }
+        description: { type: string }
+        protocol: { type: string, enum: [oidc, oauth2], default: oidc }
+        enabled: { type: boolean, default: true }
+        homepage_url: { type: string }
+        callback_url: { type: string }
+        redirect_urls:
+          type: array
+          items: { type: string }
+        post_logout_redirect_urls:
+          type: array
+          items: { type: string }
+        allowed_origins:
+          type: array
+          items: { type: string }
+        grant_types:
+          type: array
+          items: { type: string }
+        response_types:
+          type: array
+          items: { type: string }
+        scopes:
+          type: array
+          items: { type: string }
+        provider_ids:
+          type: array
+          items: { type: string }
+        signin_url: { type: string }
+        signup_url: { type: string }
+        allow_signup: { type: boolean }
+        allow_password_login: { type: boolean }
+        pkce_required: { type: boolean }
+        skip_consent: { type: boolean }
+        issue_refresh_token: { type: boolean }
+        configuration:
+          type: object
+          additionalProperties: { type: string }
+
+    # Distinct from ApplicationInput: an application can't be moved between
+    # organizations via update, and the handler rejects unknown fields, so
+    # organization_id must not be part of this schema (unlike the create body).
+    ApplicationUpdateInput:
+      type: object
+      required: [name, slug, display_name]
+      properties:
         name: { type: string }
         slug: { type: string }
         display_name: { type: string }
@@ -2704,6 +3570,45 @@ components:
           type: object
           additionalProperties: { type: string }
 
+    # Distinct from ProviderInput: same organization_id/unknown-fields
+    # reasoning as ApplicationUpdateInput above.
+    ProviderUpdateInput:
+      type: object
+      required: [name, slug, kind]
+      properties:
+        name: { type: string }
+        slug: { type: string }
+        kind: { type: string, enum: [oidc, oauth2, saml] }
+        enabled: { type: boolean, default: true }
+        client_id: { type: string }
+        client_secret: { type: string }
+        issuer_url: { type: string }
+        discovery_url: { type: string }
+        authorization_url: { type: string }
+        token_url: { type: string }
+        userinfo_url: { type: string }
+        jwks_url: { type: string }
+        logout_url: { type: string }
+        metadata_url: { type: string }
+        entity_id: { type: string }
+        sso_url: { type: string }
+        x509_certificate: { type: string }
+        scopes:
+          type: array
+          items: { type: string }
+        allowed_domains:
+          type: array
+          items: { type: string }
+        claim_mappings:
+          type: object
+          additionalProperties: { type: string }
+        allow_auto_link: { type: boolean }
+        allow_signup: { type: boolean }
+        pkce_required: { type: boolean }
+        configuration:
+          type: object
+          additionalProperties: { type: string }
+
     AuthResult:
       type: object
       properties:
@@ -2727,16 +3632,42 @@ components:
         default_model: { type: string, example: claude-sonnet-5 }
         base_url: { type: string }
 
+    ResolvedProviderSetting:
+      type: object
+      description: >-
+        Unlike ProviderSetting/PlatformProviderSetting, this includes the
+        decrypted api_key — see the resolveProviderSetting operation.
+      properties:
+        provider: { type: string, example: mistral }
+        default_model: { type: string, example: mistral-small-latest }
+        base_url: { type: string }
+        api_key: { type: string }
+        source: { type: string, enum: [organization, platform] }
+
     ProviderSettingInput:
       type: object
+      required: [organization_id, provider]
       properties:
-        organization_id: { type: string, description: "Required on create, ignored on update." }
-        provider: { type: string, example: anthropic, description: "Required on create, ignored on update." }
+        organization_id: { type: string }
+        provider: { type: string, example: anthropic }
         default_model: { type: string, example: claude-sonnet-5 }
         base_url: { type: string }
         api_key:
           type: string
-          description: Required on create. On update, omit/empty to keep the existing stored key unchanged.
+          description: Required on create.
+
+    # Distinct from ProviderSettingInput: the update handler's request struct
+    # has neither organization_id nor provider (an existing setting's org and
+    # provider are fixed; DisallowUnknownFields rejects them if sent), same
+    # reasoning as every other *UpdateInput in this spec.
+    ProviderSettingUpdateInput:
+      type: object
+      properties:
+        default_model: { type: string, example: claude-sonnet-5 }
+        base_url: { type: string }
+        api_key:
+          type: string
+          description: Omit/empty to keep the existing stored key unchanged.
 
     PlatformProviderSetting:
       type: object
@@ -2752,13 +3683,208 @@ components:
 
     PlatformProviderSettingInput:
       type: object
+      required: [provider]
       properties:
-        provider: { type: string, example: anthropic, description: "Required on create, ignored on update." }
+        provider: { type: string, example: anthropic }
         default_model: { type: string, example: claude-sonnet-5 }
         base_url: { type: string }
         api_key:
           type: string
-          description: Required on create. On update, omit/empty to keep the existing stored key unchanged.
+          description: Required on create.
+
+    # Distinct from PlatformProviderSettingInput: the update handler's
+    # request struct has no provider field (a setting's provider is fixed
+    # once created), same reasoning as ProviderSettingUpdateInput above.
+    PlatformProviderSettingUpdateInput:
+      type: object
+      properties:
+        default_model: { type: string, example: claude-sonnet-5 }
+        base_url: { type: string }
+        api_key:
+          type: string
+          description: Omit/empty to keep the existing stored key unchanged.
+
+    WebSearchProviderSetting:
+      type: object
+      description: >-
+        Never includes the API key — it's a caller-supplied secret, redacted
+        in every response including create. No default_model field, unlike
+        ProviderSetting — a web-search provider has no such concept.
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        created_by_user_id: { type: string }
+        provider: { type: string, example: tavily }
+        base_url: { type: string }
+        auth_username:
+          type: string
+          description: Only meaningful for searxng (HTTP basic auth username).
+
+    ResolvedWebSearchProviderSetting:
+      type: object
+      description: >-
+        Unlike WebSearchProviderSetting/PlatformWebSearchProviderSetting,
+        this includes the decrypted api_key — see the
+        resolveWebSearchProviderSetting operation.
+      properties:
+        provider: { type: string, example: tavily }
+        base_url: { type: string }
+        auth_username: { type: string }
+        api_key: { type: string }
+        source: { type: string, enum: [organization, platform] }
+
+    WebSearchProviderSettingInput:
+      type: object
+      required: [organization_id, provider]
+      properties:
+        organization_id: { type: string }
+        provider: { type: string, example: tavily }
+        base_url: { type: string }
+        auth_username: { type: string }
+        api_key:
+          type: string
+          description: Required on create.
+
+    # Distinct from WebSearchProviderSettingInput: the update handler's
+    # request struct has neither organization_id nor provider (an existing
+    # setting's org and provider are fixed), same reasoning as every other
+    # *UpdateInput in this spec.
+    WebSearchProviderSettingUpdateInput:
+      type: object
+      properties:
+        base_url: { type: string }
+        auth_username: { type: string }
+        api_key:
+          type: string
+          description: Omit/empty to keep the existing stored key unchanged.
+
+    PlatformWebSearchProviderSetting:
+      type: object
+      description: >-
+        The platform-wide default credential for one web-search provider —
+        not scoped to any organization. Never includes the API key.
+      properties:
+        id: { type: string }
+        created_by_user_id: { type: string }
+        provider: { type: string, example: tavily }
+        base_url: { type: string }
+        auth_username: { type: string }
+
+    PlatformWebSearchProviderSettingInput:
+      type: object
+      required: [provider]
+      properties:
+        provider: { type: string, example: tavily }
+        base_url: { type: string }
+        auth_username: { type: string }
+        api_key:
+          type: string
+          description: Required on create.
+
+    PlatformWebSearchProviderSettingUpdateInput:
+      type: object
+      properties:
+        base_url: { type: string }
+        auth_username: { type: string }
+        api_key:
+          type: string
+          description: Omit/empty to keep the existing stored key unchanged.
+
+    WebSearchOrgPolicy:
+      type: object
+      properties:
+        organization_id: { type: string }
+        created_by_user_id: { type: string }
+        allowed_domains: { type: array, items: { type: string } }
+        blocked_domains: { type: array, items: { type: string } }
+        updated_at: { type: string, format: date-time }
+
+    WebSearchOrgPolicyInput:
+      type: object
+      required: [organization_id]
+      properties:
+        organization_id: { type: string }
+        allowed_domains: { type: array, items: { type: string } }
+        blocked_domains: { type: array, items: { type: string } }
+
+    MCPServerConfig:
+      type: object
+      description: Never includes env/headers values — they're a caller-supplied secret, redacted in every response including create.
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        created_by_user_id: { type: string }
+        name: { type: string, example: internal-jira }
+        display_name: { type: string }
+        server_type: { type: string, enum: [stdio, http, sse, websocket, sdk], example: stdio }
+        command: { type: string, description: Only meaningful for server_type=stdio. }
+        args: { type: array, items: { type: string } }
+        url: { type: string, description: Only meaningful for server_type=http/sse/websocket. }
+        timeout_secs: { type: integer }
+        icon: { type: string }
+
+    ResolvedMCPServerConfig:
+      type: object
+      description: >-
+        Unlike MCPServerConfig, this includes the decrypted env/headers
+        maps — see the resolveMCPServerConfigs operation.
+      properties:
+        id: { type: string }
+        name: { type: string }
+        display_name: { type: string }
+        server_type: { type: string, enum: [stdio, http, sse, websocket, sdk] }
+        command: { type: string }
+        args: { type: array, items: { type: string } }
+        env: { type: object, additionalProperties: { type: string } }
+        url: { type: string }
+        headers: { type: object, additionalProperties: { type: string } }
+        timeout_secs: { type: integer }
+        icon: { type: string }
+
+    MCPServerConfigInput:
+      type: object
+      required: [organization_id, name]
+      properties:
+        organization_id: { type: string }
+        name: { type: string, example: internal-jira }
+        display_name: { type: string }
+        server_type: { type: string, enum: [stdio, http, sse, websocket, sdk], default: stdio }
+        command: { type: string }
+        args: { type: array, items: { type: string } }
+        env:
+          type: object
+          additionalProperties: { type: string }
+          description: Encrypted at rest. Optional on create.
+        url: { type: string }
+        headers:
+          type: object
+          additionalProperties: { type: string }
+          description: Encrypted at rest. Optional on create.
+        timeout_secs: { type: integer, default: 30 }
+        icon: { type: string }
+
+    # Distinct from MCPServerConfigInput: the update handler's request
+    # struct has neither organization_id nor name (an existing config's
+    # organization and name are fixed), same reasoning as every other
+    # *UpdateInput in this spec.
+    MCPServerConfigUpdateInput:
+      type: object
+      properties:
+        display_name: { type: string }
+        server_type: { type: string, enum: [stdio, http, sse, websocket, sdk] }
+        command: { type: string }
+        args: { type: array, items: { type: string } }
+        env:
+          type: object
+          additionalProperties: { type: string }
+          description: Omit to keep the existing stored env unchanged.
+        url: { type: string }
+        headers:
+          type: object
+          additionalProperties: { type: string }
+          description: Omit to keep the existing stored headers unchanged.
+        timeout_secs: { type: integer }
+        icon: { type: string }
 
     Corpus:
       type: object
@@ -2934,6 +4060,27 @@ components:
           type: object
           additionalProperties: { type: string }
 
+    # Distinct from JobInput: the update handler's request struct has no
+    # organization_id (a job can't be moved between organizations via
+    # update), same reasoning as every other *UpdateInput in this spec.
+    JobUpdateInput:
+      type: object
+      required: [name, trigger_type, execution_target, prompt]
+      properties:
+        name: { type: string }
+        description: { type: string }
+        trigger_type: { type: string, enum: [cron, interval, once] }
+        cron_expr: { type: string, example: "0 0 * * *" }
+        interval_seconds: { type: integer }
+        run_at: { type: string, format: date-time }
+        execution_target: { type: string, enum: [cloud, device] }
+        target_device_id: { type: string }
+        prompt: { type: string }
+        model_override: { type: string, example: "anthropic:claude-sonnet-5" }
+        configuration:
+          type: object
+          additionalProperties: { type: string }
+
     Run:
       type: object
       properties:
@@ -2954,5 +4101,19 @@ components:
         output_text: { type: string }
         error_text: { type: string }
         metadata:
+          type: object
+          additionalProperties: { type: string }
+
+    RunJob:
+      type: object
+      description: >-
+        Minimal execution payload for a run a device currently holds —
+        deliberately not the full Job (no organization_id,
+        created_by_user_id, etc.).
+      properties:
+        name: { type: string }
+        prompt: { type: string }
+        model_override: { type: string }
+        configuration:
           type: object
           additionalProperties: { type: string }

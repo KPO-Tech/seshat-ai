@@ -19,6 +19,11 @@ type webSearchSettingsResponse struct {
 	MaxQueriesPerDay   int      `json:"max_queries_per_day"`
 	CreatedAt          int64    `json:"created_at,omitempty"`
 	UpdatedAt          int64    `json:"updated_at,omitempty"`
+	// OrgAllowedDomains/OrgBlockedDomains are the subset of the two fields
+	// above contributed by a connected seshat-server's org policy — omitted
+	// in standalone mode or when the org has no policy set.
+	OrgAllowedDomains []string `json:"org_allowed_domains,omitempty"`
+	OrgBlockedDomains []string `json:"org_blocked_domains,omitempty"`
 }
 
 type webSearchLogResponse struct {
@@ -61,6 +66,8 @@ func webSearchSettingsToResponse(settings backendwebsearch.Settings) webSearchSe
 		MaxQueriesPerDay:   settings.MaxQueriesPerDay,
 		CreatedAt:          settings.CreatedAt.Unix(),
 		UpdatedAt:          settings.UpdatedAt.Unix(),
+		OrgAllowedDomains:  settings.OrgAllowedDomains,
+		OrgBlockedDomains:  settings.OrgBlockedDomains,
 	}
 }
 
@@ -190,6 +197,10 @@ type searchProviderResponse struct {
 	DefaultBaseURL  string `json:"default_base_url,omitempty"`
 	Priority        int    `json:"priority"`
 	UpdatedAt       int64  `json:"updated_at,omitempty"`
+	// Source is "organization"/"platform" for providers resolved from a
+	// connected seshat-server rather than personally configured — see
+	// internal/cloudwebsearch.
+	Source string `json:"source,omitempty"`
 }
 
 func providerStatusToResponse(p backendwebsearch.ProviderStatus) searchProviderResponse {
@@ -208,6 +219,7 @@ func providerStatusToResponse(p backendwebsearch.ProviderStatus) searchProviderR
 		RequiresBaseURL: p.RequiresBaseURL,
 		DefaultBaseURL:  p.DefaultBaseURL,
 		Priority:        p.Priority,
+		Source:          p.Source,
 		UpdatedAt:       updatedAt,
 	}
 }

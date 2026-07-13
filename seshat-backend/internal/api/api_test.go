@@ -415,6 +415,62 @@ func TestAdminEndpointRejectsNonAdminUser(t *testing.T) {
 	}
 }
 
+// TestDeleteOwnAccountAsNonAdminMember guards against a regression where
+// self-service account deletion was routed through the admin-only
+// Provider.UpdateUser path and became unusable for any non-admin user.
+func TestDeleteOwnAccountAsNonAdminMember(t *testing.T) {
+	database, err := db.Open(context.Background(), db.DefaultSQLiteConfig(filepath.Join(t.TempDir(), "api-delete-own-account.db")))
+	if err != nil {
+		t.Fatalf("db.Open failed: %v", err)
+	}
+	defer database.Close()
+
+	store, err := db.NewIdentityStore(database)
+	if err != nil {
+		t.Fatalf("NewIdentityStore failed: %v", err)
+	}
+
+	passwordHash, err := db.HashPassword("member-password")
+	if err != nil {
+		t.Fatalf("HashPassword failed: %v", err)
+	}
+	user, err := store.CreateUser(context.Background(), db.CreateUserParams{
+		Email:        "member-self-delete@example.com",
+		DisplayName:  "Member",
+		PasswordHash: passwordHash,
+	})
+	if err != nil {
+		t.Fatalf("CreateUser failed: %v", err)
+	}
+	if err := store.AssignRoleToUser(context.Background(), user.ID, "member"); err != nil {
+		t.Fatalf("AssignRoleToUser failed: %v", err)
+	}
+	_, token, err := store.CreateLoginSession(context.Background(), user.ID, 24*time.Hour, nil)
+	if err != nil {
+		t.Fatalf("CreateLoginSession failed: %v", err)
+	}
+
+	router := CreateRouter(APIConfig{}, newTestAPIApp(store, stubQueryRunner{}))
+
+	body, _ := json.Marshal(map[string]any{"confirm_email": "member-self-delete@example.com"})
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/users/me", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+	if resp.Code != http.StatusNoContent && resp.Code != http.StatusOK {
+		t.Fatalf("expected self-delete to succeed for a non-admin member, got %d: %s", resp.Code, resp.Body.String())
+	}
+
+	meReq := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
+	meReq.Header.Set("Authorization", "Bearer "+token)
+	meResp := httptest.NewRecorder()
+	router.ServeHTTP(meResp, meReq)
+	if meResp.Code != http.StatusUnauthorized {
+		t.Fatalf("expected disabled account's session to be rejected, got %d: %s", meResp.Code, meResp.Body.String())
+	}
+}
+
 func TestQueryRequiresAuthentication(t *testing.T) {
 	database, err := db.Open(context.Background(), db.DefaultSQLiteConfig(filepath.Join(t.TempDir(), "api-query.db")))
 	if err != nil {

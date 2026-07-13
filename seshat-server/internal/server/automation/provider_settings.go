@@ -218,6 +218,75 @@ func (s *Service) DeleteProviderSetting(ctx context.Context, principal *iam.Prin
 	})
 }
 
+// ResolvedProviderSetting is the effective, USABLE provider config for a
+// caller — unlike ProviderSetting/PlatformProviderSetting, it includes the
+// decrypted API key, since the whole point is for a connected seshat-backend
+// to actually make the LLM call with it.
+type ResolvedProviderSetting struct {
+	Provider     string `json:"provider"`
+	DefaultModel string `json:"default_model"`
+	BaseURL      string `json:"base_url,omitempty"`
+	APIKey       string `json:"api_key"`
+	// Source is "organization" or "platform" — which tier the config came from.
+	Source string `json:"source"`
+}
+
+// ResolveProviderSetting returns the effective config (org setting if
+// present, else the platform default) for organizationID+provider.
+// Authorization is deliberately looser than provider_settings.read/.manage:
+// any member of the organization (or a platform admin) can resolve "what
+// should I use" — this is read access to what's already been configured for
+// them, the same trust level as using their own session, not admin
+// configuration of the setting itself.
+func (s *Service) ResolveProviderSetting(ctx context.Context, principal *iam.Principal, organizationID, provider string) (*ResolvedProviderSetting, error) {
+	if principal == nil {
+		return nil, ErrUnauthorized("authentication required")
+	}
+	organizationID = strings.TrimSpace(organizationID)
+	provider = strings.ToLower(strings.TrimSpace(provider))
+	if organizationID == "" || provider == "" {
+		return nil, ErrInvalidInput("organization_id and provider are required")
+	}
+
+	tx := s.db.Gorm().WithContext(ctx)
+	allowed, err := s.iam.CanAccessOrganization(tx, principal, organizationID)
+	if err != nil {
+		return nil, err
+	}
+	if !allowed {
+		return nil, ErrForbidden("not a member of this organization")
+	}
+
+	if orgSetting, found, err := s.findProviderSetting(ctx, organizationID, provider); err != nil {
+		return nil, err
+	} else if found {
+		apiKey, err := decryptSecret(orgSetting.EncryptedAPIKey)
+		if err != nil {
+			return nil, err
+		}
+		return &ResolvedProviderSetting{
+			Provider: orgSetting.Provider, DefaultModel: orgSetting.DefaultModel,
+			BaseURL: orgSetting.BaseURL, APIKey: apiKey, Source: "organization",
+		}, nil
+	}
+
+	platformSetting, found, err := s.findPlatformProviderSetting(ctx, provider)
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		return nil, ErrNotFound("no provider setting configured for " + provider + " (checked this organization and the platform default)")
+	}
+	apiKey, err := decryptSecret(platformSetting.EncryptedAPIKey)
+	if err != nil {
+		return nil, err
+	}
+	return &ResolvedProviderSetting{
+		Provider: platformSetting.Provider, DefaultModel: platformSetting.DefaultModel,
+		BaseURL: platformSetting.BaseURL, APIKey: apiKey, Source: "platform",
+	}, nil
+}
+
 // findProviderSetting looks up the credentials for one (organization,
 // provider) pair — used internally at cloud-execution time, not
 // permission-gated (the caller is the scheduler acting on the job's own

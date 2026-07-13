@@ -59,6 +59,27 @@ func (app *App) handleProviderSettings(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleProviderSettingResolve — GET /api/v1/provider-settings/resolve.
+// Unlike the CRUD handlers above, this returns a USABLE config (decrypted API
+// key included) for any member of the organization, not just
+// provider_settings.read/.manage holders — see ResolveProviderSetting's doc
+// comment for why that's the correct trust boundary here.
+func (app *App) handleProviderSettingResolve(w http.ResponseWriter, r *http.Request) {
+	principal, ok := authPrincipalFromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "missing principal")
+		return
+	}
+	organizationID := strings.TrimSpace(r.URL.Query().Get("organization_id"))
+	provider := strings.TrimSpace(r.URL.Query().Get("provider"))
+	resolved, err := app.backend.Automation.ResolveProviderSetting(r.Context(), principal, organizationID, provider)
+	if err != nil {
+		writeAutomationError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, resolved)
+}
+
 func (app *App) handleProviderSettingByID(w http.ResponseWriter, r *http.Request) {
 	principal, ok := authPrincipalFromContext(r.Context())
 	if !ok {

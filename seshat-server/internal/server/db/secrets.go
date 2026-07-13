@@ -84,6 +84,16 @@ func NewID(prefix string) (string, error) {
 	return prefix + "_" + token[:12], nil
 }
 
+// NonNilStrings returns values unchanged, except a nil slice becomes an
+// empty one — so a JSON column storing a string array always ends up as
+// "[]" rather than "null" for a caller who passed nothing.
+func NonNilStrings(values []string) []string {
+	if values == nil {
+		return []string{}
+	}
+	return values
+}
+
 func newGCM() (cipher.AEAD, error) {
 	key, err := encryptionKey()
 	if err != nil {

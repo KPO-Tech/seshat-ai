@@ -207,7 +207,7 @@ func (a *App) handleMCPConfigByID(w http.ResponseWriter, r *http.Request) {
 			writeBackendError(w, err)
 			return
 		}
-		updated, err := a.backend.MCP.Update(r.Context(), id, *existing, backendmcp.UpdateParams{
+		updated, err := a.backend.MCP.Update(r.Context(), id, backendmcp.UpdateParams{
 			DisplayName: body.DisplayName,
 			ServerType:  body.ServerType,
 			Command:     body.Command,
@@ -292,7 +292,7 @@ func (a *App) handleMCPReload(w http.ResponseWriter, r *http.Request) {
 			_, _ = a.backend.MCP.ImportFromMcpJSON(r.Context(), cfg)
 		}
 	}
-	statuses, err := a.backend.MCP.Reload(r.Context())
+	statuses, err := a.backend.MCP.Reload(r.Context(), requestToken(r))
 	if err != nil {
 		writeBackendError(w, err)
 		return
@@ -318,18 +318,122 @@ func (a *App) handleMCPList(w http.ResponseWriter, r *http.Request) {
 }
 
 type mcpStatusResponse struct {
-	Name  string `json:"name"`
-	OK    bool   `json:"ok"`
-	Error string `json:"error,omitempty"`
-	Tools int    `json:"tools"`
+	Name   string `json:"name"`
+	OK     bool   `json:"ok"`
+	Error  string `json:"error,omitempty"`
+	Tools  int    `json:"tools"`
+	Source string `json:"source,omitempty"`
 }
 
 func toMCPStatusResponse(statuses []backendmcp.ServerStatus) []mcpStatusResponse {
 	out := make([]mcpStatusResponse, 0, len(statuses))
 	for _, s := range statuses {
-		out = append(out, mcpStatusResponse{Name: s.Name, OK: s.OK, Error: s.Error, Tools: s.Tools})
+		out = append(out, mcpStatusResponse{Name: s.Name, OK: s.OK, Error: s.Error, Tools: s.Tools, Source: s.Source})
 	}
 	return out
+}
+
+// requestToken returns the calling principal's session token, or "" if
+// there is none (standalone mode or a missing principal) — used to resolve
+// a connected org's MCP catalog on behalf of the request.
+func requestToken(r *http.Request) string {
+	if principal, ok := authPrincipalFromContext(r.Context()); ok {
+		return principal.AuthSession.ID
+	}
+	return ""
+}
+
+// mcpRoute wraps an admin-gated MCP handler and, for handlers that don't
+// already reload the runtime themselves, calls MCP.NoteRequestToken so the
+// first authenticated MCP request after a restart resumes any approved org
+// servers automatically. reloadsItself must be true for handlers that call
+// Reload/ApproveOrgServer/RevokeOrgServerApproval directly (handleMCPReload,
+// handleMCPOrgCatalogApprove) — calling NoteRequestToken for those too would
+// trigger a redundant second reload. Centralizing this check here, at the
+// single place every MCP route is registered (see routes.go), replaces a
+// per-handler call that was easy to forget — and had in fact been forgotten
+// for handleMCPTools.
+func (a *App) mcpRoute(handler http.HandlerFunc, reloadsItself bool) http.Handler {
+	return a.requireRole("admin", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !reloadsItself {
+			a.backend.MCP.NoteRequestToken(r.Context(), requestToken(r))
+		}
+		handler(w, r)
+	}))
+}
+
+type mcpOrgCatalogEntryResponse struct {
+	ID          string   `json:"id"`
+	Name        string   `json:"name"`
+	DisplayName string   `json:"display_name,omitempty"`
+	ServerType  string   `json:"server_type"`
+	Command     string   `json:"command,omitempty"`
+	Args        []string `json:"args,omitempty"`
+	URL         string   `json:"url,omitempty"`
+	Icon        string   `json:"icon,omitempty"`
+	Approved    bool     `json:"approved"`
+}
+
+func toMCPOrgCatalogResponse(entries []backendmcp.OrgServerStatus) []mcpOrgCatalogEntryResponse {
+	out := make([]mcpOrgCatalogEntryResponse, 0, len(entries))
+	for _, e := range entries {
+		out = append(out, mcpOrgCatalogEntryResponse{
+			ID: e.ID, Name: e.Name, DisplayName: e.DisplayName, ServerType: e.ServerType,
+			Command: e.Command, Args: e.Args, URL: e.URL, Icon: e.Icon, Approved: e.Approved,
+		})
+	}
+	return out
+}
+
+// GET /api/v1/mcp/org-catalog
+// Returns the connected org's shared MCP server catalog, cross-referenced
+// with this installation's local approval state. Empty list in standalone
+// mode or on any network failure — this is enrichment, not a hard
+// dependency (see backendmcp.Service.ListOrgCatalog).
+func (a *App) handleMCPOrgCatalog(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	entries, err := a.backend.MCP.ListOrgCatalog(r.Context(), requestToken(r))
+	if err != nil {
+		writeBackendError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"mcp_org_catalog": toMCPOrgCatalogResponse(entries),
+		"count":           len(entries),
+	})
+}
+
+// POST   /api/v1/mcp/org-catalog/{orgServerID}/approve — approve and reload
+// DELETE /api/v1/mcp/org-catalog/{orgServerID}/approve — revoke and reload
+func (a *App) handleMCPOrgCatalogApprove(w http.ResponseWriter, r *http.Request) {
+	trimmed := strings.TrimPrefix(r.URL.Path, "/mcp/org-catalog/")
+	trimmed = strings.TrimSuffix(strings.Trim(trimmed, "/"), "/approve")
+	orgServerID := strings.Trim(trimmed, "/")
+	if orgServerID == "" {
+		writeJSONError(w, http.StatusBadRequest, "missing org server id")
+		return
+	}
+	switch r.Method {
+	case http.MethodPost:
+		statuses, err := a.backend.MCP.ApproveOrgServer(r.Context(), orgServerID, requestToken(r))
+		if err != nil {
+			writeBackendError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"servers": toMCPStatusResponse(statuses)})
+	case http.MethodDelete:
+		statuses, err := a.backend.MCP.RevokeOrgServerApproval(r.Context(), orgServerID, requestToken(r))
+		if err != nil {
+			writeBackendError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"servers": toMCPStatusResponse(statuses)})
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
 }
 
 // GET /api/v1/mcp/tools

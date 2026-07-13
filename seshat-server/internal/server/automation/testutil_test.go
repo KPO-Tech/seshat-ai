@@ -84,3 +84,33 @@ func (env testEnv) addMember(t *testing.T, role string) *iam.Principal {
 	}
 	return principal
 }
+
+// addOutsider creates a second organization and a member inside it, with no
+// membership at all in env.orgID — for tests asserting that a genuine
+// non-member gets rejected, as opposed to a member merely lacking a
+// permission (see addMember).
+func (env testEnv) addOutsider(t *testing.T) *iam.Principal {
+	t.Helper()
+	otherOrg, err := env.iam.CreateOrganization(context.Background(), env.adminPrincipal, iam.CreateOrganizationParams{
+		Name: "Other Org", Slug: "other-org",
+	})
+	if err != nil {
+		t.Fatalf("create other org: %v", err)
+	}
+	user, err := env.iam.CreateUser(context.Background(), env.adminPrincipal, iam.CreateUserParams{
+		Email: "outsider@example.com", Password: "password123", DisplayName: "Outsider",
+		OrganizationID: otherOrg.ID, Role: "member",
+	})
+	if err != nil {
+		t.Fatalf("create outsider user: %v", err)
+	}
+	login, err := env.iam.Login(context.Background(), user.Email, "password123")
+	if err != nil {
+		t.Fatalf("login outsider: %v", err)
+	}
+	principal, err := env.iam.ResolvePrincipal(context.Background(), login.Token)
+	if err != nil {
+		t.Fatalf("resolve outsider principal: %v", err)
+	}
+	return principal
+}

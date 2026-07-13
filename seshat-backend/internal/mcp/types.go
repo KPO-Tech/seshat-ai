@@ -45,6 +45,24 @@ type ServerStatus struct {
 	OK    bool
 	Error string // empty when OK
 	Tools int
+	// Source is "organization" when this server was loaded from a
+	// connected seshat-server's shared catalog (once approved locally)
+	// rather than the local mcp_servers table; empty otherwise.
+	Source string
+}
+
+// OrgServerStatus is one entry from the connected org's MCP catalog, cross
+// referenced with this installation's local approval state.
+type OrgServerStatus struct {
+	ID          string
+	Name        string
+	DisplayName string
+	ServerType  string
+	Command     string
+	Args        []string
+	URL         string
+	Icon        string
+	Approved    bool
 }
 
 // ToolInfo holds the name and description of a single connected MCP tool.
