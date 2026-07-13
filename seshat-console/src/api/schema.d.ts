@@ -240,12 +240,43 @@ export interface paths {
         };
         /**
          * List the role catalog
-         * @description Static catalog (owner, admin, member, viewer) — not stored/editable per organization yet. Pass `organization_id` to also verify the caller can access that org.
+         * @description Without `organization_id`, only the 4 built-in system roles (owner, admin, member, viewer — `system: true`, not editable/deletable) are returned. With `organization_id`, the organization's custom roles (`system: false`) are appended. Not paginated — bounded by how many roles one organization defines, not event volume.
          */
         get: operations["listRoles"];
         put?: never;
-        post?: never;
+        /**
+         * Create a custom role for an organization
+         * @description Requires `roles.manage` or `organization.manage`. `code` must be lowercase letters/digits/hyphen/underscore and cannot reuse a reserved system role code (owner/admin/member/viewer).
+         */
+        post: operations["createRole"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/roles/{roleCode}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                roleCode: string;
+            };
+            cookie?: never;
+        };
+        /** Get a role */
+        get: operations["getRole"];
+        /**
+         * Update a custom role
+         * @description Requires `roles.manage` or `organization.manage`. System roles return 409. Renaming `code` cascades to every membership, invitation and policy binding referencing the old code, in one transaction.
+         */
+        put: operations["updateRole"];
+        post?: never;
+        /**
+         * Delete a custom role
+         * @description Requires `roles.manage` or `organization.manage`. System roles, roles still assigned to a membership, and roles with active invitations all return 409.
+         */
+        delete: operations["deleteRole"];
         options?: never;
         head?: never;
         patch?: never;
@@ -435,7 +466,10 @@ export interface paths {
          * @description Requires `groups.read`, `groups.manage`, `members.manage` or `organization.manage`.
          */
         get: operations["getGroup"];
-        /** Update a group */
+        /**
+         * Update a group
+         * @description Unlike creation, `organization_id` is not part of this body — a group cannot be moved between organizations via update.
+         */
         put: operations["updateGroup"];
         post?: never;
         /**
@@ -483,7 +517,10 @@ export interface paths {
          * @description Requires `policies.read`, `policies.manage` or `organization.manage`.
          */
         get: operations["getPolicyBinding"];
-        /** Update a policy binding */
+        /**
+         * Update a policy binding
+         * @description Unlike creation, `organization_id` is not part of this body — a policy binding cannot be moved between organizations via update.
+         */
         put: operations["updatePolicyBinding"];
         post?: never;
         /** Delete a policy binding */
@@ -590,7 +627,7 @@ export interface paths {
         get: operations["getApplication"];
         /**
          * Update an application
-         * @description `client_secret` is immutable via this endpoint (not part of the request body) and redacted in the response.
+         * @description `client_secret` is immutable via this endpoint (not part of the request body) and redacted in the response. Unlike creation, `organization_id` is not part of this body — an application cannot be moved between organizations via update.
          */
         put: operations["updateApplication"];
         post?: never;
@@ -636,7 +673,10 @@ export interface paths {
          * @description Requires `providers.read`, `providers.manage` or `organization.manage`. `client_secret` is redacted.
          */
         get: operations["getProvider"];
-        /** Update a provider */
+        /**
+         * Update a provider
+         * @description Unlike creation, `organization_id` is not part of this body — a provider cannot be moved between organizations via update.
+         */
         put: operations["updateProvider"];
         post?: never;
         /**
@@ -686,7 +726,7 @@ export interface paths {
         get: operations["getProviderSetting"];
         /**
          * Update a provider setting
-         * @description An empty/omitted api_key leaves the stored credential unchanged.
+         * @description An empty/omitted api_key leaves the stored credential unchanged. Unlike creation, `organization_id`/`provider` are not part of this body — an existing setting's organization and provider are fixed.
          */
         put: operations["updateProviderSetting"];
         post?: never;
@@ -740,7 +780,7 @@ export interface paths {
         get: operations["getPlatformProviderSetting"];
         /**
          * Update a platform provider setting
-         * @description Superadmin-only. An empty/omitted api_key leaves the stored credential unchanged.
+         * @description Superadmin-only. An empty/omitted api_key leaves the stored credential unchanged. Unlike creation, `provider` is not part of this body — an existing setting's provider is fixed.
          */
         put: operations["updatePlatformProviderSetting"];
         post?: never;
@@ -1083,7 +1123,10 @@ export interface paths {
         };
         /** Get a job */
         get: operations["getJob"];
-        /** Update a job's trigger and payload */
+        /**
+         * Update a job's trigger and payload
+         * @description Unlike creation, `organization_id` is not part of this body — a job cannot be moved between organizations via update.
+         */
         put: operations["updateJob"];
         post?: never;
         /** Delete a job */
@@ -1381,8 +1424,8 @@ export interface components {
             id?: string;
             user_id?: string;
             organization_id?: string;
-            /** @enum {string} */
-            role?: "owner" | "admin" | "member" | "viewer";
+            /** @description A system role code (owner/admin/member/viewer) or a custom role code defined for this organization. */
+            role?: string;
             /** Format: date-time */
             created_at?: string;
         };
@@ -1409,9 +1452,27 @@ export interface components {
             expires_at?: string;
         };
         Role: {
-            /** @enum {string} */
-            code?: "owner" | "admin" | "member" | "viewer";
+            /** @description Empty for the 4 built-in system roles, set for custom roles. */
+            id?: string;
+            /** @description Empty for the 4 built-in system roles, which are global. */
+            organization_id?: string;
+            /** @description "owner"/"admin"/"member"/"viewer" for system roles; lowercase letters/digits/hyphen/underscore for custom roles. Not an enum — organizations can define arbitrary custom role codes. */
+            code?: string;
             name?: string;
+            description?: string;
+            permissions?: string[];
+            /** @description True for the 4 built-in roles, which cannot be updated or deleted. */
+            system?: boolean;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        RoleInput: {
+            organization_id: string;
+            /** @description Lowercase letters/digits/hyphen/underscore, cannot reuse a reserved system role code. On update, omitting this keeps the role's current code; setting it renames the role (cascades to memberships/invitations/policy-bindings referencing the old code). */
+            code?: string;
+            name: string;
             description?: string;
             permissions?: string[];
         };
@@ -1426,8 +1487,8 @@ export interface components {
             organization_id?: string;
             /** Format: email */
             email?: string;
-            /** @enum {string} */
-            role?: "owner" | "admin" | "member" | "viewer";
+            /** @description A system role code (owner/admin/member/viewer) or a custom role code defined for this organization. */
+            role?: string;
             /** @enum {string} */
             status?: "pending" | "accepted" | "revoked" | "expired";
             token?: string;
@@ -1461,6 +1522,12 @@ export interface components {
             description?: string;
             member_user_ids?: string[];
         };
+        GroupUpdateInput: {
+            name: string;
+            slug: string;
+            description?: string;
+            member_user_ids?: string[];
+        };
         PolicyBinding: {
             id?: string;
             organization_id?: string;
@@ -1477,6 +1544,14 @@ export interface components {
         };
         PolicyBindingInput: {
             organization_id: string;
+            name: string;
+            description?: string;
+            /** @enum {string} */
+            subject_type: "user" | "group" | "role";
+            subject_id: string;
+            permission_codes: string[];
+        };
+        PolicyBindingUpdateInput: {
             name: string;
             description?: string;
             /** @enum {string} */
@@ -1536,6 +1611,38 @@ export interface components {
         };
         ApplicationInput: {
             organization_id: string;
+            name: string;
+            slug: string;
+            display_name: string;
+            description?: string;
+            /**
+             * @default oidc
+             * @enum {string}
+             */
+            protocol: "oidc" | "oauth2";
+            /** @default true */
+            enabled: boolean;
+            homepage_url?: string;
+            callback_url?: string;
+            redirect_urls?: string[];
+            post_logout_redirect_urls?: string[];
+            allowed_origins?: string[];
+            grant_types?: string[];
+            response_types?: string[];
+            scopes?: string[];
+            provider_ids?: string[];
+            signin_url?: string;
+            signup_url?: string;
+            allow_signup?: boolean;
+            allow_password_login?: boolean;
+            pkce_required?: boolean;
+            skip_consent?: boolean;
+            issue_refresh_token?: boolean;
+            configuration?: {
+                [key: string]: string;
+            };
+        };
+        ApplicationUpdateInput: {
             name: string;
             slug: string;
             display_name: string;
@@ -1639,6 +1746,38 @@ export interface components {
                 [key: string]: string;
             };
         };
+        ProviderUpdateInput: {
+            name: string;
+            slug: string;
+            /** @enum {string} */
+            kind: "oidc" | "oauth2" | "saml";
+            /** @default true */
+            enabled: boolean;
+            client_id?: string;
+            client_secret?: string;
+            issuer_url?: string;
+            discovery_url?: string;
+            authorization_url?: string;
+            token_url?: string;
+            userinfo_url?: string;
+            jwks_url?: string;
+            logout_url?: string;
+            metadata_url?: string;
+            entity_id?: string;
+            sso_url?: string;
+            x509_certificate?: string;
+            scopes?: string[];
+            allowed_domains?: string[];
+            claim_mappings?: {
+                [key: string]: string;
+            };
+            allow_auto_link?: boolean;
+            allow_signup?: boolean;
+            pkce_required?: boolean;
+            configuration?: {
+                [key: string]: string;
+            };
+        };
         AuthResult: {
             token?: string;
             user?: components["schemas"]["User"];
@@ -1657,17 +1796,20 @@ export interface components {
             base_url?: string;
         };
         ProviderSettingInput: {
-            /** @description Required on create, ignored on update. */
-            organization_id?: string;
-            /**
-             * @description Required on create, ignored on update.
-             * @example anthropic
-             */
-            provider?: string;
+            organization_id: string;
+            /** @example anthropic */
+            provider: string;
             /** @example claude-sonnet-5 */
             default_model?: string;
             base_url?: string;
-            /** @description Required on create. On update, omit/empty to keep the existing stored key unchanged. */
+            /** @description Required on create. */
+            api_key?: string;
+        };
+        ProviderSettingUpdateInput: {
+            /** @example claude-sonnet-5 */
+            default_model?: string;
+            base_url?: string;
+            /** @description Omit/empty to keep the existing stored key unchanged. */
             api_key?: string;
         };
         /** @description The platform-wide default credential for one LLM provider — not scoped to any organization. Never includes the API key. */
@@ -1681,15 +1823,19 @@ export interface components {
             base_url?: string;
         };
         PlatformProviderSettingInput: {
-            /**
-             * @description Required on create, ignored on update.
-             * @example anthropic
-             */
-            provider?: string;
+            /** @example anthropic */
+            provider: string;
             /** @example claude-sonnet-5 */
             default_model?: string;
             base_url?: string;
-            /** @description Required on create. On update, omit/empty to keep the existing stored key unchanged. */
+            /** @description Required on create. */
+            api_key?: string;
+        };
+        PlatformProviderSettingUpdateInput: {
+            /** @example claude-sonnet-5 */
+            default_model?: string;
+            base_url?: string;
+            /** @description Omit/empty to keep the existing stored key unchanged. */
             api_key?: string;
         };
         Corpus: {
@@ -1844,6 +1990,26 @@ export interface components {
         /** @description cron_expr is required when trigger_type=cron; interval_seconds when trigger_type=interval; run_at when trigger_type=once. target_device_id is required when execution_target=device. model_override is required when execution_target=cloud, format "provider:model" (e.g. "anthropic:claude-sonnet-5") — the provider prefix picks which of the organization's provider-settings to run against; there must be one configured (POST /provider-settings) or the run fails with a clear reason. */
         JobInput: {
             organization_id: string;
+            name: string;
+            description?: string;
+            /** @enum {string} */
+            trigger_type: "cron" | "interval" | "once";
+            /** @example 0 0 * * * */
+            cron_expr?: string;
+            interval_seconds?: number;
+            /** Format: date-time */
+            run_at?: string;
+            /** @enum {string} */
+            execution_target: "cloud" | "device";
+            target_device_id?: string;
+            prompt: string;
+            /** @example anthropic:claude-sonnet-5 */
+            model_override?: string;
+            configuration?: {
+                [key: string]: string;
+            };
+        };
+        JobUpdateInput: {
             name: string;
             description?: string;
             /** @enum {string} */
@@ -2465,6 +2631,114 @@ export interface operations {
             403: components["responses"]["Forbidden"];
         };
     };
+    createRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoleInput"];
+            };
+        };
+        responses: {
+            /** @description Role created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Role"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getRole: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path: {
+                roleCode: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Role */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Role"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                roleCode: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoleInput"];
+            };
+        };
+        responses: {
+            /** @description Updated role */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Role"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    deleteRole: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path: {
+                roleCode: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
     listPermissions: {
         parameters: {
             query?: never;
@@ -2536,8 +2810,8 @@ export interface operations {
                 "application/json": {
                     organization_id: string;
                     user_id: string;
-                    /** @enum {string} */
-                    role: "owner" | "admin" | "member" | "viewer";
+                    /** @description A system role code (owner/admin/member/viewer) or a custom role code defined for this organization. */
+                    role: string;
                 };
             };
         };
@@ -2593,8 +2867,8 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    /** @enum {string} */
-                    role: "owner" | "admin" | "member" | "viewer";
+                    /** @description A system role code (owner/admin/member/viewer) or a custom role code defined for this organization. */
+                    role: string;
                 };
             };
         };
@@ -2683,8 +2957,8 @@ export interface operations {
                     organization_id: string;
                     /** Format: email */
                     email: string;
-                    /** @enum {string} */
-                    role: "owner" | "admin" | "member" | "viewer";
+                    /** @description A system role code (owner/admin/member/viewer) or a custom role code defined for this organization. */
+                    role: string;
                     /** @default 7 */
                     expires_in_days?: number;
                 };
@@ -2881,7 +3155,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["GroupInput"];
+                "application/json": components["schemas"]["GroupUpdateInput"];
             };
         };
         responses: {
@@ -3017,7 +3291,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PolicyBindingInput"];
+                "application/json": components["schemas"]["PolicyBindingUpdateInput"];
             };
         };
         responses: {
@@ -3246,7 +3520,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ApplicationInput"];
+                "application/json": components["schemas"]["ApplicationUpdateInput"];
             };
         };
         responses: {
@@ -3382,7 +3656,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ProviderInput"];
+                "application/json": components["schemas"]["ProviderUpdateInput"];
             };
         };
         responses: {
@@ -3513,7 +3787,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ProviderSettingInput"];
+                "application/json": components["schemas"]["ProviderSettingUpdateInput"];
             };
         };
         responses: {
@@ -3640,7 +3914,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PlatformProviderSettingInput"];
+                "application/json": components["schemas"]["PlatformProviderSettingUpdateInput"];
             };
         };
         responses: {
@@ -4313,7 +4587,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["JobInput"];
+                "application/json": components["schemas"]["JobUpdateInput"];
             };
         };
         responses: {

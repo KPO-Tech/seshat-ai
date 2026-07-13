@@ -24,7 +24,11 @@ export function AppLayout() {
       key: group.key,
       label: group.label,
       type: 'group' as const,
-      children: group.items.map((item) => ({ key: item.key, label: item.label, icon: item.icon })),
+      // "Users" is platform-admin only server-side (requireAdmin) — hidden
+      // here rather than left as a nav link that always 403s for everyone else.
+      children: group.items
+        .filter((item) => item.key !== 'users' || isAdmin)
+        .map((item) => ({ key: item.key, label: item.label, icon: item.icon })),
     })),
     ...(isAdmin
       ? [
@@ -101,6 +105,7 @@ export function AppLayout() {
           }}
         >
           <Dropdown
+            trigger={['click']}
             menu={{
               items: [
                 {

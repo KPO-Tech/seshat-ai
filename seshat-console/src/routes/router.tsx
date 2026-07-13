@@ -7,6 +7,20 @@ import { BootstrapPage } from '@/pages/auth/BootstrapPage'
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { DashboardPage } from '@/pages/dashboard/DashboardPage'
 import { OrganizationsPage } from '@/pages/organizations/OrganizationsPage'
+import { UsersPage } from '@/pages/users/UsersPage'
+import { MembershipsPage } from '@/pages/memberships/MembershipsPage'
+import { InvitationsPage } from '@/pages/invitations/InvitationsPage'
+import { GroupsPage } from '@/pages/groups/GroupsPage'
+import { RolesPage } from '@/pages/roles/RolesPage'
+import { PolicyBindingsPage } from '@/pages/policyBindings/PolicyBindingsPage'
+import { ApplicationsPage } from '@/pages/applications/ApplicationsPage'
+import { ProvidersPage } from '@/pages/providers/ProvidersPage'
+import { SessionsPage } from '@/pages/sessions/SessionsPage'
+import { DevicesPage } from '@/pages/devices/DevicesPage'
+import { JobsPage } from '@/pages/jobs/JobsPage'
+import { RunsPage } from '@/pages/runs/RunsPage'
+import { ProviderSettingsPage } from '@/pages/providerSettings/ProviderSettingsPage'
+import { AuditEventsPage } from '@/pages/auditEvents/AuditEventsPage'
 import { CorporaPage } from '@/pages/knowledge/CorporaPage'
 import { CorpusDetailPage } from '@/pages/knowledge/CorpusDetailPage'
 import { EmbedderSettingsPage } from '@/pages/knowledge/EmbedderSettingsPage'
@@ -19,8 +33,21 @@ import { allNavItems, allPlatformNavItems, dashboardNavItem } from '@/layout/nav
 // see docs/casdoor-frontend-mapping.md for the intended build order.
 const builtPages: Record<string, React.ReactNode> = {
   organizations: <OrganizationsPage />,
+  memberships: <MembershipsPage />,
+  invitations: <InvitationsPage />,
+  groups: <GroupsPage />,
+  roles: <RolesPage />,
+  'policy-bindings': <PolicyBindingsPage />,
+  applications: <ApplicationsPage />,
+  providers: <ProvidersPage />,
+  sessions: <SessionsPage />,
+  devices: <DevicesPage />,
+  jobs: <JobsPage />,
+  runs: <RunsPage />,
+  'provider-settings': <ProviderSettingsPage />,
   corpora: <CorporaPage />,
   'embedder-settings': <EmbedderSettingsPage />,
+  'audit-events': <AuditEventsPage />,
 }
 
 const builtPlatformPages: Record<string, React.ReactNode> = {
@@ -45,10 +72,19 @@ export const router = createBrowserRouter([
               // Corpus detail isn't a nav item (reached by clicking a row in
               // Corpora) — declared explicitly rather than via allNavItems.
               { path: '/corpora/:corpusId', element: <CorpusDetailPage /> },
-              ...allNavItems.map((item) => ({
-                path: item.path,
-                element: builtPages[item.key] ?? <PlaceholderPage title={item.label} />,
-              })),
+              ...allNavItems
+                .filter((item) => item.key !== 'users')
+                .map((item) => ({
+                  path: item.path,
+                  element: builtPages[item.key] ?? <PlaceholderPage title={item.label} />,
+                })),
+              {
+                // GET/POST/PUT/DELETE /users are platform-admin only
+                // server-side (requireAdmin) — guarded here too, not just
+                // hidden from the nav, in case of a direct URL visit.
+                element: <RequireSuperAdmin />,
+                children: [{ path: '/users', element: <UsersPage /> }],
+              },
               {
                 element: <RequireSuperAdmin />,
                 children: allPlatformNavItems.map((item) => ({

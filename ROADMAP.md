@@ -4,7 +4,7 @@ Scope: `seshat-server` (the cloud control plane API) and `seshat-console` (its d
 
 Related docs: `docs/casdoor-frontend-mapping.md` (frontend screen-by-screen build order), `deploy/README.md` (how to run the stack), `seshat-console/README.md`.
 
-Last updated: 2026-07-09.
+Last updated: 2026-07-12.
 
 ---
 
@@ -16,28 +16,21 @@ Last updated: 2026-07-09.
 - LLM provider credentials, hybrid model: an organization can bring its own key (`ProviderSetting`), or fall back to a platform-wide default (`PlatformProviderSetting`) — the shape a paying-subscription org runs on without configuring anything itself.
 - Superadmin model: `User.IsAdmin` grants full access to every organization with no membership required (verified — even permissions no org role has, like `organization.delete`). `CreateOrganization` no longer auto-attaches a platform admin as a member of what they provision (fixed 2026-07-09) — provisioning an org for a customer and founding your own are now correctly different actions.
 - Full 2026-07-07/08/09 security + code-quality audit closed: no known open findings (see memory / PR #34 for detail — token-hash bypass, secret-prefix leak, duplication, in-memory pagination, group data model all fixed).
-- `openapi.yaml`: every route documented, 0 structural lint errors.
+- `openapi.yaml`: every route documented, 0 structural lint errors. **Fixed 2026-07-12**: `updateApplication`/`updateProvider`/`updateGroup`/`updatePolicyBinding`/`updateJob`/`updateProviderSetting`/`updatePlatformProviderSetting` were all documented as accepting the full create-shape input (including `organization_id` and/or an immutable field like `provider`), but the real handlers reject unknown fields and don't have those fields in their update request structs. Added `*UpdateInput` schemas (same shape minus the create-only fields) for all seven and pointed their PUT operations at them. One of these (`PlatformProviderSettingInput` reused for update) was a **pre-existing bug in already-shipped code**, not something introduced this session — `PlatformProviderSettingsPage.tsx`'s edit form submitted `provider` (a disabled-but-still-registered field) on every update, which the backend would reject; fixed alongside the others. Also fixed: the Roles CRUD (create/update/delete custom roles) was entirely undocumented — spec only described the old static-catalog GET; added the missing `POST /roles`, `GET/PUT/DELETE /roles/{roleCode}` operations, a proper `Role`/`RoleInput` schema (dropped a stale `enum: [owner,admin,member,viewer]` on `code`, since custom role codes are arbitrary), and loosened the same stale enum on `Membership.role`/`Invitation.role` (memberships/invitations accept custom org role codes too, not just the 4 system ones — confirmed against `validateRoleCodeForOrganization` in the Go code).
 - Deployment: `deploy/docker-compose.yml` (Postgres + seshat-server + seshat-console), `Dockerfile`s for both, `make deploy-up`/`deploy-down`/`deploy-logs`/`deploy-ps`.
 
 **`seshat-console` — admin frontend**
 - Stack: Vite + React + TypeScript + antd, API client fully generated from `openapi.yaml`, TanStack Query, zustand.
-- Design system: deliberate palette (jade accent, dark sidebar as identity), real Dashboard/overview page, reusable `PageHeader`/`StatTile` components.
-- Fully built: **Organizations** (list/search/sort/pagination + CRUD), **Platform → Default Providers** (LLM only).
-- Scaffolded but placeholder: Users, Memberships, Invitations, Groups, Roles, Policy Bindings, Applications, Providers, Sessions, Devices, Jobs, Runs, Provider Settings (org-level), Audit Events, Platform → Image Generation, Platform → Web Search.
+- Design system: rebuilt 2026-07-12 to match `seshat-ui`'s actual product palette (warm anthracite `#2F2E34` canvas, orange `#EF7C2F` accent, antd dark algorithm) — the console previously used an unrelated jade/sage palette invented for it alone. Real Dashboard/overview page, reusable `PageHeader`/`StatTile` components.
+- **All 21 nav items are now real pages** except the two deliberately-deferred v2 placeholders (Platform → Image Generation, Web Search — blocked on the multi-modal design decision in "Multi-modal provider config" below, not a build gap). Every domain: Organizations, Applications, Providers, Users, Memberships, Invitations, Groups, Roles, Policy Bindings, Sessions, Devices, Jobs, Runs, Provider Settings (org), Corpora, Embedder Settings, Audit Events, Platform → Default Providers/Embedder.
 
 ---
 
-## Next — remaining console screens
+## Next
 
-Build order and Casdoor-reuse assessment per domain already worked out in `docs/casdoor-frontend-mapping.md`. Mechanical repetition of the pattern established by `organizations.ts` + `OrganizationsPage.tsx`:
+The console's screen backlog from `docs/casdoor-frontend-mapping.md` is now fully cleared — all Tier A/B/C domains plus the fully-native automation domains (Devices/Jobs/Runs/Provider Settings) are built and verified live. See "Smaller known follow-ups" and the sections below for what's left; nothing there is a missing screen anymore.
 
-1. Applications, Providers (Tier A — closest structural fit)
-2. Users, Memberships, Invitations, Groups (Tier B)
-3. Roles, Policy Bindings (Tier C — native, no Casdoor template)
-4. Sessions, Audit Events
-5. Devices, Jobs, Runs, Provider Settings (org-level) — fully native, no Casdoor equivalent
-
-No backend work needed for any of these — the API already fully supports all of them.
+**2026-07-12 build note (Devices/Jobs/Runs/Provider Settings + Sessions/Audit Events):** Jobs' form is conditional on `trigger_type` (cron_expr/interval_seconds/run_at date-picker) and `execution_target` (target_device_id select from the org's devices / model_override text input) — `configuration` (an arbitrary key-value map) is deliberately not exposed in the UI yet, matching Applications/Providers' same omission. Jobs page links to a job-scoped Runs view via `/runs?job_id=...` (read by `RunsPage` by via `useSearchParams`, with a "Clear job filter" affordance) rather than a separate nested route. Devices' registration flow shows the one-time bearer token in a "shown only once" drawer, same pattern as Applications' client secret. Runs page has a detail drawer (click a row) showing `output_text`/`error_text`/`exit_reason`, and a cancel action for `queued`/`claimed`/`running` rows. Sessions and Audit Events are both read-only-plus-filters (Sessions: revoke only; Audit Events: no mutations at all) — visibility is permission-scoped server-side (platform admin sees everything, a regular user only their own), not organization-required like the other domains, so their `OrganizationPicker` is an optional narrowing filter. Verified live end-to-end (register a device, create+trigger a job, confirm the run appears filtered, cancel/view details, browse audit events) against a real running server via a real browser, zero HTTP errors.
 
 ---
 
@@ -146,7 +139,8 @@ Raised as a want (`create organizations/members... and pre-created agentic workf
 
 ## Smaller known follow-ups
 
-- `seshat-console`'s production bundle is ~1.2MB (mostly antd) — fine today at 2 built pages, worth revisiting with route-based code-splitting once most of the 16 domains are real pages.
+- `seshat-console`'s production bundle is ~1.5MB (mostly antd) — now that all domains are real pages (not 2), this is the point route-based code-splitting stops being premature. Worth doing next, purely a build-config change, no screen work.
+- Also from this pass: Applications/Providers/Corpora don't expose interactive column sorting (`sorter: true` + `onChange`) the way Organizations does — the backend supports it, the UI just hardcodes `sort=name&order=asc`. Minor, same-file follow-up whenever those pages are next touched.
 - `deploy/docker-compose.yml` has no TLS termination — fine for local testing, needs a real reverse proxy in front for anything else.
 - `seshat-server`'s scheduler is single-instance only by design (no row-locking across replicas yet) — revisit if/when the control plane needs to scale past one process.
 - GitHub branch protection on `main` is blocked by the repo's current plan (org-owned private repo needs GitHub Team or the repo made public) — needs an explicit decision, not a technical fix.

@@ -11,6 +11,9 @@ body,
 }
 
 body {
+  /* Matches palette.canvas (src/theme/tokens.ts) — avoids a white flash
+     before the antd ConfigProvider mounts and paints the real background. */
+  background-color: #2F2E34;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
