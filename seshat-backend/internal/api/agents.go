@@ -52,6 +52,30 @@ func agentToResponse(a backendagents.Agent) agentResponse {
 	}
 }
 
+// organizationPresetToResponse mirrors builtInToResponse: an organization
+// preset (like a built-in) has no per-user CreatedAt/UpdatedAt worth
+// showing, so it uses its own converter rather than agentToResponse's
+// unconditional a.CreatedAt.Unix() (which would render as a large negative
+// number for a zero-value time.Time).
+func organizationPresetToResponse(a backendagents.Agent) agentResponse {
+	return agentResponse{
+		Slug:            a.Slug,
+		Name:            a.Name,
+		WhenToUse:       a.WhenToUse,
+		SystemPrompt:    a.SystemPrompt,
+		Model:           a.Model,
+		Tools:           a.Tools,
+		DisallowedTools: a.DisallowedTools,
+		MaxTurns:        a.MaxTurns,
+		PermissionMode:  a.PermissionMode,
+		Isolation:       a.Isolation,
+		McpServers:      a.McpServers,
+		Icon:            a.Icon,
+		Enabled:         a.Enabled,
+		Source:          a.Source,
+	}
+}
+
 func builtInToResponse(def *pkgagent.AgentDefinition) agentResponse {
 	prompt := ""
 	if def.GetSystemPrompt != nil {
@@ -106,6 +130,21 @@ func (a *App) handleAgentsList(w http.ResponseWriter, r *http.Request) {
 		}
 		for _, ag := range custom {
 			resp = append(resp, agentToResponse(ag))
+		}
+	}
+
+	// Additive enrichment: the connected organization's shared preset
+	// catalog, if any — see internal/agents.Service.ListOrganizationPresets.
+	// Never a hard dependency: any failure (including standalone mode,
+	// where this is simply a no-op) just means "nothing to add."
+	if a.backend.Agents != nil {
+		if principal, ok := authPrincipalFromContext(r.Context()); ok {
+			orgPresets, err := a.backend.Agents.ListOrganizationPresets(r.Context(), principal)
+			if err == nil {
+				for _, ag := range orgPresets {
+					resp = append(resp, organizationPresetToResponse(ag))
+				}
+			}
 		}
 	}
 

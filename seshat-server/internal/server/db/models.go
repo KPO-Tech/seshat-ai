@@ -418,6 +418,36 @@ type SkillRepo struct {
 	UpdatedAt       time.Time
 }
 
+// AgentPreset is one entry in an organization's shared agent-preset catalog
+// — mirrors seshat-backend's own gAgentDefinition (internal/db/agents.go)
+// field for field, with OrganizationID/CreatedByUserID added (same shape as
+// SkillRepo). Nothing here is secret (a system prompt, not a credential), so
+// like SkillRepo there is no encryption and reading only requires org
+// membership — only mutating is permission-gated (agents_registry.manage).
+// This is purely additive on the seshat-backend side: it never replaces the
+// existing 100%-local, unscoped agent_definitions table, only adds one more
+// source resolved at query time (see helps/seshat-architecture-target.md §7).
+type AgentPreset struct {
+	ID                  string `gorm:"primaryKey;size:32"`
+	OrganizationID      string `gorm:"size:32;not null;uniqueIndex:idx_agent_preset_org_slug;index"`
+	CreatedByUserID     string `gorm:"size:32;not null"`
+	Slug                string `gorm:"size:128;not null;uniqueIndex:idx_agent_preset_org_slug"`
+	Name                string `gorm:"size:255;not null;default:''"`
+	WhenToUse           string `gorm:"type:text;not null;default:''"`
+	SystemPrompt        string `gorm:"type:text;not null;default:''"`
+	Model               string `gorm:"size:255;not null;default:''"`
+	ToolsJSON           string `gorm:"column:tools_json;type:text;not null;default:'[]'"`
+	DisallowedToolsJSON string `gorm:"column:disallowed_tools_json;type:text;not null;default:'[]'"`
+	MaxTurns            int    `gorm:"not null;default:50"`
+	PermissionMode      string `gorm:"size:32;not null;default:''"`
+	Isolation           string `gorm:"size:32;not null;default:''"`
+	McpServersJSON      string `gorm:"column:mcp_servers_json;type:text;not null;default:'[]'"`
+	Icon                string `gorm:"size:64;not null;default:'🤖'"`
+	Enabled             bool   `gorm:"not null;default:true"`
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
+}
+
 // WebSearchProviderSetting mirrors ProviderSetting's org→platform shape but
 // for web-search providers (Tavily/Exa/Jina/LangSearch/SearXNG) — deliberately
 // NOT a reuse of ProviderSetting: DefaultModel has no meaning for a search

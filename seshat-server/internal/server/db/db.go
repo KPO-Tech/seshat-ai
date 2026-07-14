@@ -134,6 +134,7 @@ func (d *DB) Migrate() error {
 		&MemoryEntity{},
 		&MemoryObservation{},
 		&MemoryRelation{},
+		&AgentPreset{},
 	)
 }
 

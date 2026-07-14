@@ -69,6 +69,11 @@ func (app *App) routes() http.Handler {
 	mux.Handle("PUT /api/v1/skill-repos/{skillRepoID}", app.authMiddleware(http.HandlerFunc(app.handleSkillRepoByID)))
 	mux.Handle("DELETE /api/v1/skill-repos/{skillRepoID}", app.authMiddleware(http.HandlerFunc(app.handleSkillRepoByID)))
 
+	mux.Handle("GET /api/v1/agent-presets", app.authMiddleware(http.HandlerFunc(app.handleAgentPresets)))
+	mux.Handle("POST /api/v1/agent-presets", app.authMiddleware(http.HandlerFunc(app.handleAgentPresets)))
+	mux.Handle("PUT /api/v1/agent-presets/{agentPresetID}", app.authMiddleware(http.HandlerFunc(app.handleAgentPresetByID)))
+	mux.Handle("DELETE /api/v1/agent-presets/{agentPresetID}", app.authMiddleware(http.HandlerFunc(app.handleAgentPresetByID)))
+
 	mux.Handle("GET /api/v1/web-search-provider-settings/resolve", app.authMiddleware(http.HandlerFunc(app.handleWebSearchProviderSettingResolve)))
 	mux.Handle("GET /api/v1/web-search-provider-settings", app.authMiddleware(http.HandlerFunc(app.handleWebSearchProviderSettings)))
 	mux.Handle("POST /api/v1/web-search-provider-settings", app.authMiddleware(http.HandlerFunc(app.handleWebSearchProviderSettings)))

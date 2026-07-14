@@ -4,6 +4,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/agents"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/audit"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudagents"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudmcp"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudwebsearch"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
@@ -90,6 +91,13 @@ type Dependencies struct {
 	MCPOrgServerApprovals *db.MCPOrgServerApprovalStore
 	UserPreferencesStore  *db.UserPreferencesStore
 	AgentDefinitionStore  *db.AgentDefinitionStore
+	// AgentsCloudClient/AgentsOrganizationID enrich local agent resolution
+	// with a connected seshat-server's shared preset catalog, once a caller
+	// has an authenticated principal — nil/empty in standalone mode, set
+	// only by bootstrap.go when SESHAT_SERVER_URL is configured. Purely
+	// additive, see internal/agents.Service's own doc comment.
+	AgentsCloudClient    *cloudagents.Client
+	AgentsOrganizationID string
 	// PreferencesProvider selects standalone vs connected preferences storage.
 	// nil = preferences.NewLocalProvider(UserPreferencesStore), i.e. today's
 	// local-only behavior — set only by bootstrap.go when SESHAT_SERVER_URL
@@ -147,7 +155,7 @@ func NewApp(deps Dependencies) *App {
 	filesService := files.NewService(deps.FileStore, deps.ArtifactStore).WithDocling(deps.DoclingClient)
 	knowledgeService := knowledge.NewService(deps.CorpusStore, deps.FileStore, deps.IngestionJobStore, deps.ArtifactStore, deps.RAGService).WithDocling(deps.DoclingClient)
 	skillsService := skills.NewService()
-	agentsService := agents.NewService(deps.AgentDefinitionStore)
+	agentsService := agents.NewService(deps.AgentDefinitionStore, deps.AgentsCloudClient, deps.AgentsOrganizationID)
 	return &App{
 		Auth: auth.NewService(authProvider, deps.Identity, deps.APIKeyStore, deps.GroupStore, deps.AuthConfig),
 		Query: query.NewService(query.ServiceConfig{

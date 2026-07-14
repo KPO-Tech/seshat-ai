@@ -311,14 +311,14 @@ func roleCatalog() []Role {
 			Code:        "owner",
 			Name:        "Owner",
 			Description: "Full organization control including destructive administration.",
-			Permissions: []string{"organization.manage", "organization.delete", "members.read", "members.manage", "roles.read", "roles.manage", "applications.read", "applications.manage", "providers.read", "providers.manage", "invitations.read", "invitations.manage", "groups.read", "groups.manage", "policies.read", "policies.manage", "audit.read", "devices.read", "devices.manage", "jobs.read", "jobs.manage", "provider_settings.read", "provider_settings.manage", "knowledge.read", "knowledge.manage", "skills_registry.manage", "web_search_settings.manage", "mcp_registry.manage"},
+			Permissions: []string{"organization.manage", "organization.delete", "members.read", "members.manage", "roles.read", "roles.manage", "applications.read", "applications.manage", "providers.read", "providers.manage", "invitations.read", "invitations.manage", "groups.read", "groups.manage", "policies.read", "policies.manage", "audit.read", "devices.read", "devices.manage", "jobs.read", "jobs.manage", "provider_settings.read", "provider_settings.manage", "knowledge.read", "knowledge.manage", "skills_registry.manage", "web_search_settings.manage", "mcp_registry.manage", "agents_registry.manage"},
 			System:      true,
 		},
 		{
 			Code:        "admin",
 			Name:        "Admin",
 			Description: "Administrative access for users, applications, providers, invitations and roles.",
-			Permissions: []string{"organization.manage", "members.read", "members.manage", "roles.read", "roles.manage", "applications.read", "applications.manage", "providers.read", "providers.manage", "invitations.read", "invitations.manage", "groups.read", "groups.manage", "policies.read", "policies.manage", "audit.read", "devices.read", "devices.manage", "jobs.read", "jobs.manage", "provider_settings.read", "provider_settings.manage", "knowledge.read", "knowledge.manage", "skills_registry.manage", "web_search_settings.manage", "mcp_registry.manage"},
+			Permissions: []string{"organization.manage", "members.read", "members.manage", "roles.read", "roles.manage", "applications.read", "applications.manage", "providers.read", "providers.manage", "invitations.read", "invitations.manage", "groups.read", "groups.manage", "policies.read", "policies.manage", "audit.read", "devices.read", "devices.manage", "jobs.read", "jobs.manage", "provider_settings.read", "provider_settings.manage", "knowledge.read", "knowledge.manage", "skills_registry.manage", "web_search_settings.manage", "mcp_registry.manage", "agents_registry.manage"},
 			System:      true,
 		},
 		{

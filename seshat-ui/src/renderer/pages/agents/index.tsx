@@ -128,7 +128,9 @@ function PlatformCard({ agent, onChat }: { agent: Agent; onChat: (a: Agent) => v
         <AgentAvatar agent={agent} size={42} />
         <div className="agt-card-meta">
           <span className="agt-card-name">{agent.name || agent.slug}</span>
-          <span className="agt-badge agt-badge--platform">Platform</span>
+          <span className="agt-badge agt-badge--platform">
+            {agent.source === 'organization' ? 'Organization' : 'Platform'}
+          </span>
         </div>
       </div>
 

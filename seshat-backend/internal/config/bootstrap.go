@@ -17,6 +17,7 @@ import (
 	seshat "github.com/EngineerProjects/seshat-ai/seshat-backend/internal"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/api"
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudagents"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudautomation"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudidentity"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudlongterm"
@@ -182,6 +183,8 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	var mcpCloudClient *cloudmcp.Client
 	var mcpOrganizationID string
 	var memoriesProvider backendmemories.Provider
+	var agentsCloudClient *cloudagents.Client
+	var agentsOrganizationID string
 	serverURL := strings.TrimSpace(os.Getenv("SESHAT_SERVER_URL"))
 	if serverURL != "" {
 		organizationID := strings.TrimSpace(os.Getenv("SESHAT_SERVER_ORGANIZATION_ID"))
@@ -194,6 +197,8 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		mcpCloudClient = cloudmcp.NewClient(serverURL)
 		mcpOrganizationID = organizationID
 		memoriesProvider = cloudmemories.NewProvider(serverURL)
+		agentsCloudClient = cloudagents.NewClient(serverURL)
+		agentsOrganizationID = organizationID
 		fmt.Printf("[API] Identité en mode connected (seshat-server: %s)\n", serverURL)
 	}
 
@@ -558,13 +563,15 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	runtime := backendquery.NewSDKRuntime(queryClient, queryClientConfig)
 
 	backendApp := seshat.NewApp(seshat.Dependencies{
-		Identity:            identityStore,
-		APIKeyStore:         apiKeyStore,
-		GroupStore:          groupStore,
-		AuthProvider:        authProvider,
-		SettingsProvider:    settingsProvider,
-		PreferencesProvider: preferencesProvider,
-		MemoriesProvider:    memoriesProvider,
+		Identity:             identityStore,
+		APIKeyStore:          apiKeyStore,
+		GroupStore:           groupStore,
+		AuthProvider:         authProvider,
+		SettingsProvider:     settingsProvider,
+		PreferencesProvider:  preferencesProvider,
+		MemoriesProvider:     memoriesProvider,
+		AgentsCloudClient:    agentsCloudClient,
+		AgentsOrganizationID: agentsOrganizationID,
 		AuthConfig: backendauth.ServiceConfig{
 			EnableSignup:    config.EnableSignup,
 			DefaultUserRole: config.DefaultUserRole,

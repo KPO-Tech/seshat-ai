@@ -8,6 +8,7 @@ import (
 	sdkstorage "github.com/EngineerProjects/seshat/pkg/storage"
 	sdkvector "github.com/EngineerProjects/seshat/pkg/vector"
 
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/agentregistry"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/automation"
 	serverconfig "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/config"
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
@@ -34,6 +35,7 @@ type App struct {
 	MCPRegistry       *mcpregistry.Service
 	Memories          *memories.Service
 	LongTermMemory    *longtermmemory.Service
+	AgentRegistry     *agentregistry.Service
 }
 
 func New(cfg serverconfig.Config) (*App, error) {
@@ -88,5 +90,6 @@ func New(cfg serverconfig.Config) (*App, error) {
 		MCPRegistry:       mcpregistry.New(database, iamService),
 		Memories:          memories.New(database),
 		LongTermMemory:    longtermmemory.New(database),
+		AgentRegistry:     agentregistry.New(database, iamService),
 	}, nil
 }

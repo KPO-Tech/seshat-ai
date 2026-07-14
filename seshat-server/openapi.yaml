@@ -58,6 +58,13 @@ tags:
       An organization's curated list of recommended skill repo URLs. Authorship
       and execution of skills stay local to seshat-backend — this is purely a
       bookmarked-URL catalog it fetches to enrich its own local skill-repo list.
+  - name: agent-presets
+    description: >-
+      An organization's shared catalog of agent presets (system prompt, model,
+      permission mode, tools). Purely additive: seshat-backend's own local,
+      unscoped agent_definitions table is untouched — this is one more source
+      resolved at query time alongside it and the SDK's built-in registry,
+      never a replacement.
   - name: applications
     description: OAuth/OIDC client applications registered with the control plane.
   - name: providers
@@ -1446,6 +1453,86 @@ paths:
       tags: [skill-repos]
       summary: Remove a skill repo from the organization's registry
       description: Requires skills_registry.manage or organization.manage.
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/agent-presets:
+    get:
+      operationId: listAgentPresets
+      tags: [agent-presets]
+      summary: List an organization's shared agent presets
+      description: >-
+        Open to any member of the organization, not gated behind a specific
+        permission — a preset's system prompt is not a secret. A caller who
+        isn't a member of the organization at all is rejected.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: Agent preset list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  agent_presets:
+                    type: array
+                    items: { $ref: "#/components/schemas/AgentPreset" }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      operationId: createAgentPreset
+      tags: [agent-presets]
+      summary: Add an agent preset to the organization's registry
+      description: Requires agents_registry.manage or organization.manage. One entry per (organization, slug).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AgentPresetInput" }
+      responses:
+        "201":
+          description: Agent preset created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AgentPreset" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/agent-presets/{agentPresetID}:
+    parameters:
+      - name: agentPresetID
+        in: path
+        required: true
+        schema: { type: string }
+    put:
+      operationId: updateAgentPreset
+      tags: [agent-presets]
+      summary: Update an agent preset
+      description: Requires agents_registry.manage or organization.manage.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AgentPresetUpdateInput" }
+      responses:
+        "200":
+          description: Updated agent preset
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AgentPreset" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      operationId: deleteAgentPreset
+      tags: [agent-presets]
+      summary: Remove an agent preset from the organization's registry
+      description: Requires agents_registry.manage or organization.manage.
       responses:
         "204": { description: Deleted }
         "403": { $ref: "#/components/responses/Forbidden" }
@@ -3662,6 +3749,64 @@ components:
         name: { type: string }
         url: { type: string }
         description: { type: string }
+
+    AgentPreset:
+      type: object
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        created_by_user_id: { type: string }
+        slug: { type: string, example: researcher }
+        name: { type: string, example: Researcher }
+        when_to_use: { type: string }
+        system_prompt: { type: string }
+        model: { type: string }
+        tools: { type: array, items: { type: string } }
+        disallowed_tools: { type: array, items: { type: string } }
+        max_turns: { type: integer }
+        permission_mode: { type: string }
+        isolation: { type: string }
+        mcp_servers: { type: array, items: { type: string } }
+        icon: { type: string }
+        enabled: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    AgentPresetInput:
+      type: object
+      required: [organization_id, slug]
+      properties:
+        organization_id: { type: string }
+        slug: { type: string, example: researcher }
+        name: { type: string, example: Researcher }
+        when_to_use: { type: string }
+        system_prompt: { type: string }
+        model: { type: string }
+        tools: { type: array, items: { type: string } }
+        disallowed_tools: { type: array, items: { type: string } }
+        max_turns: { type: integer }
+        permission_mode: { type: string }
+        isolation: { type: string }
+        mcp_servers: { type: array, items: { type: string } }
+        icon: { type: string }
+        enabled: { type: boolean }
+
+    # Distinct from AgentPresetInput: organization_id and slug are immutable after creation.
+    AgentPresetUpdateInput:
+      type: object
+      properties:
+        name: { type: string }
+        when_to_use: { type: string }
+        system_prompt: { type: string }
+        model: { type: string }
+        tools: { type: array, items: { type: string } }
+        disallowed_tools: { type: array, items: { type: string } }
+        max_turns: { type: integer }
+        permission_mode: { type: string }
+        isolation: { type: string }
+        mcp_servers: { type: array, items: { type: string } }
+        icon: { type: string }
+        enabled: { type: boolean }
 
     Application:
       type: object

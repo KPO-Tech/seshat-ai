@@ -9,7 +9,7 @@ import (
 // ─── nil store guards ─────────────────────────────────────────────────────────
 
 func TestNilStoreReturnsUnavailable(t *testing.T) {
-	svc := NewService(nil)
+	svc := NewService(nil, nil, "")
 	ctx := context.Background()
 
 	check := func(name string, err error) {
@@ -87,8 +87,8 @@ func TestIsValidSlugMaxLength(t *testing.T) {
 // ─── GetDefinition fallback ───────────────────────────────────────────────────
 
 func TestGetDefinitionFallsBackToBuiltIn(t *testing.T) {
-	svc := NewService(nil) // nil store → DB lookup skipped
-	def, ok := svc.GetDefinition(context.Background(), "general-purpose")
+	svc := NewService(nil, nil, "") // nil store → DB lookup skipped
+	def, ok := svc.GetDefinition(context.Background(), nil, "general-purpose")
 	if !ok {
 		t.Fatal("expected built-in 'general-purpose' to be found")
 	}
@@ -101,16 +101,16 @@ func TestGetDefinitionFallsBackToBuiltIn(t *testing.T) {
 }
 
 func TestGetDefinitionUnknownSlugReturnsFalse(t *testing.T) {
-	svc := NewService(nil)
-	def, ok := svc.GetDefinition(context.Background(), "completely-unknown-agent-xyz")
+	svc := NewService(nil, nil, "")
+	def, ok := svc.GetDefinition(context.Background(), nil, "completely-unknown-agent-xyz")
 	if ok || def != nil {
 		t.Error("expected (nil, false) for unknown slug")
 	}
 }
 
 func TestGetDefinitionEmptySlugReturnsFalse(t *testing.T) {
-	svc := NewService(nil)
-	def, ok := svc.GetDefinition(context.Background(), "")
+	svc := NewService(nil, nil, "")
+	def, ok := svc.GetDefinition(context.Background(), nil, "")
 	if ok || def != nil {
 		t.Error("expected (nil, false) for empty slug")
 	}
