@@ -14,7 +14,7 @@ export interface ListParams {
 
 const LIST_KEY = 'sessions'
 
-// Not org-scoped in the traditional sense — visibility is permission-based
+// Not org-scoped in the traditional sense - visibility is permission-based
 // (platform admin sees everyone's, a regular user only ever sees their own
 // regardless of filters passed), so organization_id here is an optional
 // narrowing filter, not a required scope like Applications/Devices/etc.

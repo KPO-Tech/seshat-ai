@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/api/client'
 
-// Counts only need ListMeta.total, so limit=1 keeps these cheap — the
+// Counts only need ListMeta.total, so limit=1 keeps these cheap - the
 // server still computes a real COUNT(*) regardless of page size.
 export function useOrganizationsCount() {
   return useQuery({

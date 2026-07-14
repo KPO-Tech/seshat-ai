@@ -38,7 +38,7 @@ export function useBootstrapPlatform() {
         })
       }
       // BootstrapGate reads this query to decide whether to redirect to
-      // /bootstrap — without updating it here, a successful bootstrap still
+      // /bootstrap - without updating it here, a successful bootstrap still
       // looks like "not initialized" until something else refetches it, and
       // the very next navigation gets bounced straight back to /bootstrap.
       queryClient.setQueryData(['bootstrap-status'], { initialized: true })

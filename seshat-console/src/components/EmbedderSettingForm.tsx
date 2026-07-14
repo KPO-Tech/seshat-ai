@@ -7,7 +7,7 @@ import { monoStack } from '@/theme/tokens'
 type Setting = EmbedderSetting | PlatformEmbedderSetting | null | undefined
 
 // Shared form for the org-scoped and platform-wide embedder settings pages
-// — both are singleton config slots (GET/PUT-upsert/DELETE), same fields,
+// - both are singleton config slots (GET/PUT-upsert/DELETE), same fields,
 // same "not configured yet" empty state, so one component covers both
 // rather than duplicating the form.
 export function EmbedderSettingForm({
@@ -31,7 +31,7 @@ export function EmbedderSettingForm({
   const isConfigured = Boolean(setting)
 
   useEffect(() => {
-    // Guarded on !loading — while loading this component renders nothing
+    // Guarded on !loading - while loading this component renders nothing
     // (see below), so calling setFieldsValue before the Form has mounted
     // would fire antd's "instance not connected to any Form element" warning.
     if (!loading) form.setFieldsValue(setting ?? { provider: undefined, model: '', base_url: '' })
@@ -98,7 +98,7 @@ export function EmbedderSettingForm({
           extra={
             isConfigured
               ? 'Leave empty to keep the current key unchanged.'
-              : 'Optional — a local Ollama instance typically needs none.'
+              : 'Optional. A local Ollama instance typically needs none.'
           }
         >
           <Input.Password autoComplete="off" placeholder={isConfigured ? '••••••••' : undefined} />

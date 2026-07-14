@@ -1,47 +1,41 @@
 import { useEffect, useState } from 'react'
-import { Alert, Button, Drawer, Empty, Form, Input, message, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd'
+import { Button, Drawer, Empty, Form, Input, message, Popconfirm, Select, Space, Tag, Typography } from 'antd'
 import type { TableProps } from 'antd'
 import { PlusOutlined, DeleteOutlined, EditOutlined, LockOutlined } from '@ant-design/icons'
-import {
-  usePolicyBindingsList,
+import { usePolicyBindingsList,
   useCreatePolicyBinding,
   useUpdatePolicyBinding,
   useDeletePolicyBinding,
   type PolicyBinding,
-  type PolicyBindingInput,
-} from '@/api/policyBindings'
+  type PolicyBindingInput, } from '@/api/policyBindings'
 import { useGroupsList } from '@/api/groups'
 import { useRolesList } from '@/api/roles'
 import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
-import { OrganizationPicker } from '@/components/OrganizationPicker'
+import { ConsoleTable } from '@/components/ConsoleTable'
+import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
 import { PermissionChecklist } from '@/components/PermissionChecklist'
 import { UserSelect } from '@/components/UserSelect'
-import { useConsoleOrgStore } from '@/store/consoleOrg'
 import { palette } from '@/theme/tokens'
 
 const PAGE_SIZE = 20
 
-export function PolicyBindingsPage() {
-  const organizationId = useConsoleOrgStore((s) => s.organizationId)
+export function PolicyBindingsPage() { const organizationId = useScopedOrganizationId()
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<PolicyBinding | 'new' | null>(null)
 
-  const { data, isLoading, isFetching } = usePolicyBindingsList(organizationId ?? undefined, {
-    q: search || undefined,
+  const { data, isLoading, isFetching } = usePolicyBindingsList(organizationId ?? undefined, { q: search || undefined,
     sort: 'name',
     order: 'asc',
     limit: PAGE_SIZE,
-    offset: (page - 1) * PAGE_SIZE,
-  })
+    offset: (page - 1) * PAGE_SIZE, })
   const createBinding = useCreatePolicyBinding()
   const updateBinding = useUpdatePolicyBinding()
   const deleteBinding = useDeletePolicyBinding()
 
   const columns: TableProps<PolicyBinding>['columns'] = [
-    {
-      title: 'Name',
+    { title: 'Name',
       dataIndex: 'name',
       key: 'name',
       render: (name: string, record) => (
@@ -51,27 +45,21 @@ export function PolicyBindingsPage() {
             <Typography.Text style={{ fontSize: 12, color: palette.inkTertiary }}>{record.description}</Typography.Text>
           )}
         </div>
-      ),
-    },
-    {
-      title: 'Subject',
+      ), },
+    { title: 'Subject',
       key: 'subject',
       render: (_, record) => (
         <Space>
           <Tag>{record.subject_type}</Tag>
           <Typography.Text code>{record.subject_id}</Typography.Text>
         </Space>
-      ),
-    },
-    {
-      title: 'Permissions',
+      ), },
+    { title: 'Permissions',
       dataIndex: 'permission_codes',
       key: 'permission_codes',
       width: 110,
-      render: (codes: string[]) => codes?.length ?? 0,
-    },
-    {
-      title: '',
+      render: (codes: string[]) => codes?.length ?? 0, },
+    { title: '',
       key: 'actions',
       width: 96,
       render: (_, record) => (
@@ -85,14 +73,12 @@ export function PolicyBindingsPage() {
           <Popconfirm
             title={`Delete ${record.name}?`}
             onConfirm={() =>
-              deleteBinding.mutate(record.id!, { onError: (error) => message.error(getErrorMessage(error)) })
-            }
+              deleteBinding.mutate(record.id!, { onError: (error) => message.error(getErrorMessage(error)) }) }
           >
             <Button size="small" danger icon={<DeleteOutlined />} aria-label={`Delete ${record.name}`} />
           </Popconfirm>
         </Space>
-      ),
-    },
+      ), },
   ]
 
   return (
@@ -100,16 +86,12 @@ export function PolicyBindingsPage() {
       <PageHeader
         title="Policy Bindings"
         description="Grants a set of permissions to a user, group or role."
-        actions={
-          <Space>
-            <OrganizationPicker />
+        actions={ <Space>
             <Input.Search
               placeholder="Search bindings"
               allowClear
-              onSearch={(value) => {
-                setPage(1)
-                setSearch(value)
-              }}
+              onSearch={(value) => { setPage(1)
+                setSearch(value) }}
               style={{ width: 220 }}
               disabled={!organizationId}
             />
@@ -121,95 +103,66 @@ export function PolicyBindingsPage() {
             >
               New binding
             </Button>
-          </Space>
-        }
+          </Space> }
       />
 
-      {!organizationId ? (
-        <Alert type="info" showIcon title="Pick an organization above to see its policy bindings." />
-      ) : (
-        <Table<PolicyBinding>
+      <ConsoleTable<PolicyBinding>
           rowKey="id"
           columns={columns}
           dataSource={data?.policy_bindings ?? []}
           loading={isLoading || isFetching}
-          locale={{
-            emptyText: (
+          locale={{ emptyText: (
               <Empty
                 image={<LockOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}
                 description={search ? 'No bindings match your search' : 'No policy bindings yet'}
                 style={{ padding: '32px 0' }}
               />
-            ),
-          }}
-          pagination={{
-            current: page,
+            ), }}
+          pagination={{ current: page,
             pageSize: PAGE_SIZE,
             total: data?.total ?? 0,
             onChange: setPage,
-            showTotal: (total) => `${total} policy bindings`,
-          }}
+            showTotal: (total) => `${total} policy bindings`, }}
         />
-      )}
 
       <PolicyBindingFormDrawer
         binding={editing === 'new' ? null : editing}
         organizationId={organizationId}
         open={editing !== null}
         onClose={() => setEditing(null)}
-        onSubmit={(values) => {
-          if (!organizationId) return
-          if (editing === 'new') {
-            createBinding.mutate(
+        onSubmit={(values) => { if (!organizationId) return
+          if (editing === 'new') { createBinding.mutate(
               { ...values, organization_id: organizationId } as PolicyBindingInput,
-              {
-                onSuccess: () => setEditing(null),
-                onError: (error) => message.error(getErrorMessage(error)),
-              },
-            )
-          } else if (editing) {
-            updateBinding.mutate(
+              { onSuccess: () => setEditing(null),
+                onError: (error) => message.error(getErrorMessage(error)), },
+            ) } else if (editing) { updateBinding.mutate(
               { id: editing.id!, body: values },
-              {
-                onSuccess: () => setEditing(null),
-                onError: (error) => message.error(getErrorMessage(error)),
-              },
-            )
-          }
-        }}
+              { onSuccess: () => setEditing(null),
+                onError: (error) => message.error(getErrorMessage(error)), },
+            ) } }}
         submitting={createBinding.isPending || updateBinding.isPending}
       />
     </div>
-  )
-}
+  ) }
 
-function PolicyBindingFormDrawer({
-  binding,
+function PolicyBindingFormDrawer({ binding,
   organizationId,
   open,
   onClose,
   onSubmit,
-  submitting,
-}: {
-  binding: PolicyBinding | null
+  submitting, }: { binding: PolicyBinding | null
   organizationId: string | null
   open: boolean
   onClose: () => void
   onSubmit: (values: Omit<PolicyBindingInput, 'organization_id'>) => void
-  submitting: boolean
-}) {
-  const [form] = Form.useForm<Omit<PolicyBindingInput, 'organization_id'>>()
+  submitting: boolean }) { const [form] = Form.useForm<Omit<PolicyBindingInput, 'organization_id'>>()
   const subjectType = Form.useWatch('subject_type', form)
   const { data: groupsData } = useGroupsList(organizationId ?? undefined, { limit: 200 })
   const { data: rolesData } = useRolesList(organizationId ?? undefined)
 
-  useEffect(() => {
-    if (open) {
-      form.setFieldsValue(
+  useEffect(() => { if (open) { form.setFieldsValue(
         binding ?? { name: '', description: '', subject_type: 'user', subject_id: '', permission_codes: [] },
-      )
-    }
-  }, [open, binding, form])
+      ) } }, [open, binding, form])
 
   return (
     <Drawer
@@ -218,11 +171,9 @@ function PolicyBindingFormDrawer({
       onClose={onClose}
       destroyOnHidden
       size={480}
-      extra={
-        <Button type="primary" loading={submitting} onClick={() => form.submit()}>
+      extra={ <Button type="primary" loading={submitting} onClick={() => form.submit()}>
           Save
-        </Button>
-      }
+        </Button> }
     >
       <Form form={form} layout="vertical" onFinish={onSubmit}>
         <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Required' }]}>
@@ -252,10 +203,8 @@ function PolicyBindingFormDrawer({
             <Select
               showSearch
               optionFilterProp="label"
-              options={(rolesData?.roles ?? []).map((r) => ({
-                value: r.code,
-                label: r.system ? `${r.name} (system)` : r.name,
-              }))}
+              options={(rolesData?.roles ?? []).map((r) => ({ value: r.code,
+                label: r.system ? `${r.name} (system)` : r.name, }))}
             />
           ) : (
             <UserSelect />
@@ -266,5 +215,4 @@ function PolicyBindingFormDrawer({
         </Form.Item>
       </Form>
     </Drawer>
-  )
-}
+  ) }

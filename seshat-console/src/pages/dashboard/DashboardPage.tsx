@@ -13,7 +13,6 @@ import {
   useSessionsCount,
   useRecentAuditEvents,
 } from '@/api/dashboard'
-import { useAuthStore } from '@/store/auth'
 import { palette, monoStack } from '@/theme/tokens'
 
 function timeAgo(iso?: string): string {
@@ -28,7 +27,6 @@ function timeAgo(iso?: string): string {
 }
 
 export function DashboardPage() {
-  const user = useAuthStore((s) => s.user)
   const orgs = useOrganizationsCount()
   const users = useUsersCount()
   const sessions = useSessionsCount()
@@ -36,10 +34,7 @@ export function DashboardPage() {
 
   return (
     <div>
-      <PageHeader
-        title={`Welcome back${user?.display_name ? `, ${user.display_name.split(' ')[0]}` : ''}`}
-        description="An overview of your Seshat control plane."
-      />
+      <PageHeader title="Platform overview" description="Platform summary." />
 
       <div
         style={{
@@ -63,7 +58,7 @@ export function DashboardPage() {
         title={
           <span style={{ fontSize: 14, fontWeight: 600 }}>
             <ClockCircleOutlined style={{ marginRight: 8, color: palette.inkTertiary }} />
-            Recent activity
+            Recent platform activity
           </span>
         }
         styles={{ body: { padding: 0 } }}

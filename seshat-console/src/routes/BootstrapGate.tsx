@@ -4,7 +4,7 @@ import { useBootstrapStatus } from '@/api/auth'
 
 /**
  * Wraps the whole app: if the platform has never been bootstrapped, every
- * route redirects to /bootstrap. Once it has, /bootstrap redirects away —
+ * route redirects to /bootstrap. Once it has, /bootstrap redirects away -
  * bootstrapping is a one-time action (the server itself rejects a second
  * call with 409, this just avoids showing the form for no reason).
  */

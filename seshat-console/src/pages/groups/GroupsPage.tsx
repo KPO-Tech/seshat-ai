@@ -1,45 +1,39 @@
 import { useEffect, useState } from 'react'
-import { Alert, Button, Drawer, Empty, Form, Input, message, Popconfirm, Space, Table, Typography } from 'antd'
+import { Button, Drawer, Empty, Form, Input, message, Popconfirm, Space, Typography } from 'antd'
 import type { TableProps } from 'antd'
 import { PlusOutlined, DeleteOutlined, EditOutlined, ClusterOutlined } from '@ant-design/icons'
-import {
-  useGroupsList,
+import { useGroupsList,
   useCreateGroup,
   useUpdateGroup,
   useDeleteGroup,
   type Group,
   type GroupInput,
-  type GroupUpdateInput,
-} from '@/api/groups'
+  type GroupUpdateInput, } from '@/api/groups'
 import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
-import { OrganizationPicker } from '@/components/OrganizationPicker'
+import { ConsoleTable } from '@/components/ConsoleTable'
+import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
 import { UserMultiSelect } from '@/components/UserSelect'
-import { useConsoleOrgStore } from '@/store/consoleOrg'
 import { palette } from '@/theme/tokens'
 
 const PAGE_SIZE = 20
 
-export function GroupsPage() {
-  const organizationId = useConsoleOrgStore((s) => s.organizationId)
+export function GroupsPage() { const organizationId = useScopedOrganizationId()
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<Group | 'new' | null>(null)
 
-  const { data, isLoading, isFetching } = useGroupsList(organizationId ?? undefined, {
-    q: search || undefined,
+  const { data, isLoading, isFetching } = useGroupsList(organizationId ?? undefined, { q: search || undefined,
     sort: 'name',
     order: 'asc',
     limit: PAGE_SIZE,
-    offset: (page - 1) * PAGE_SIZE,
-  })
+    offset: (page - 1) * PAGE_SIZE, })
   const createGroup = useCreateGroup()
   const updateGroup = useUpdateGroup()
   const deleteGroup = useDeleteGroup()
 
   const columns: TableProps<Group>['columns'] = [
-    {
-      title: 'Name',
+    { title: 'Name',
       dataIndex: 'name',
       key: 'name',
       render: (name: string, record) => (
@@ -47,17 +41,13 @@ export function GroupsPage() {
           <div style={{ fontWeight: 500 }}>{name}</div>
           <Typography.Text style={{ fontSize: 12, color: palette.inkTertiary }}>{record.slug}</Typography.Text>
         </div>
-      ),
-    },
-    {
-      title: 'Members',
+      ), },
+    { title: 'Members',
       dataIndex: 'member_user_ids',
       key: 'member_user_ids',
       width: 100,
-      render: (ids: string[]) => ids?.length ?? 0,
-    },
-    {
-      title: '',
+      render: (ids: string[]) => ids?.length ?? 0, },
+    { title: '',
       key: 'actions',
       width: 96,
       render: (_, record) => (
@@ -72,14 +62,12 @@ export function GroupsPage() {
             title={`Delete ${record.name}?`}
             description="Also removes any policy bindings that target this group."
             onConfirm={() =>
-              deleteGroup.mutate(record.id!, { onError: (error) => message.error(getErrorMessage(error)) })
-            }
+              deleteGroup.mutate(record.id!, { onError: (error) => message.error(getErrorMessage(error)) }) }
           >
             <Button size="small" danger icon={<DeleteOutlined />} aria-label={`Delete ${record.name}`} />
           </Popconfirm>
         </Space>
-      ),
-    },
+      ), },
   ]
 
   return (
@@ -87,16 +75,12 @@ export function GroupsPage() {
       <PageHeader
         title="Groups"
         description="Named sets of members, used as a policy-binding subject."
-        actions={
-          <Space>
-            <OrganizationPicker />
+        actions={ <Space>
             <Input.Search
               placeholder="Search groups"
               allowClear
-              onSearch={(value) => {
-                setPage(1)
-                setSearch(value)
-              }}
+              onSearch={(value) => { setPage(1)
+                setSearch(value) }}
               style={{ width: 220 }}
               disabled={!organizationId}
             />
@@ -108,89 +92,60 @@ export function GroupsPage() {
             >
               New group
             </Button>
-          </Space>
-        }
+          </Space> }
       />
 
-      {!organizationId ? (
-        <Alert type="info" showIcon title="Pick an organization above to see its groups." />
-      ) : (
-        <Table<Group>
+      <ConsoleTable<Group>
           rowKey="id"
           columns={columns}
           dataSource={data?.groups ?? []}
           loading={isLoading || isFetching}
-          locale={{
-            emptyText: (
+          locale={{ emptyText: (
               <Empty
                 image={<ClusterOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}
                 description={search ? 'No groups match your search' : 'No groups yet'}
                 style={{ padding: '32px 0' }}
               />
-            ),
-          }}
-          pagination={{
-            current: page,
+            ), }}
+          pagination={{ current: page,
             pageSize: PAGE_SIZE,
             total: data?.total ?? 0,
             onChange: setPage,
-            showTotal: (total) => `${total} groups`,
-          }}
+            showTotal: (total) => `${total} groups`, }}
         />
-      )}
 
       <GroupFormDrawer
         group={editing === 'new' ? null : editing}
         open={editing !== null}
         onClose={() => setEditing(null)}
-        onSubmit={(values) => {
-          if (!organizationId) return
-          if (editing === 'new') {
-            createGroup.mutate(
+        onSubmit={(values) => { if (!organizationId) return
+          if (editing === 'new') { createGroup.mutate(
               { ...values, organization_id: organizationId } as GroupInput,
-              {
-                onSuccess: () => setEditing(null),
-                onError: (error) => message.error(getErrorMessage(error)),
-              },
-            )
-          } else if (editing) {
-            updateGroup.mutate(
+              { onSuccess: () => setEditing(null),
+                onError: (error) => message.error(getErrorMessage(error)), },
+            ) } else if (editing) { updateGroup.mutate(
               { id: editing.id!, body: values as GroupUpdateInput },
-              {
-                onSuccess: () => setEditing(null),
-                onError: (error) => message.error(getErrorMessage(error)),
-              },
-            )
-          }
-        }}
+              { onSuccess: () => setEditing(null),
+                onError: (error) => message.error(getErrorMessage(error)), },
+            ) } }}
         submitting={createGroup.isPending || updateGroup.isPending}
       />
     </div>
-  )
-}
+  ) }
 
-function GroupFormDrawer({
-  group,
+function GroupFormDrawer({ group,
   open,
   onClose,
   onSubmit,
-  submitting,
-}: {
-  group: Group | null
+  submitting, }: { group: Group | null
   open: boolean
   onClose: () => void
   onSubmit: (values: Omit<GroupInput, 'organization_id'>) => void
-  submitting: boolean
-}) {
-  const [form] = Form.useForm<Omit<GroupInput, 'organization_id'>>()
+  submitting: boolean }) { const [form] = Form.useForm<Omit<GroupInput, 'organization_id'>>()
 
-  useEffect(() => {
-    if (open) {
-      form.setFieldsValue(
+  useEffect(() => { if (open) { form.setFieldsValue(
         group ?? { name: '', slug: '', description: '', member_user_ids: [] },
-      )
-    }
-  }, [open, group, form])
+      ) } }, [open, group, form])
 
   return (
     <Drawer
@@ -198,11 +153,9 @@ function GroupFormDrawer({
       open={open}
       onClose={onClose}
       destroyOnHidden
-      extra={
-        <Button type="primary" loading={submitting} onClick={() => form.submit()}>
+      extra={ <Button type="primary" loading={submitting} onClick={() => form.submit()}>
           Save
-        </Button>
-      }
+        </Button> }
     >
       <Form form={form} layout="vertical" onFinish={onSubmit}>
         <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Required' }]}>
@@ -223,5 +176,4 @@ function GroupFormDrawer({
         </Form.Item>
       </Form>
     </Drawer>
-  )
-}
+  ) }

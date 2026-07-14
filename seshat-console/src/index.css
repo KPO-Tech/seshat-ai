@@ -11,9 +11,95 @@ body,
 }
 
 body {
-  /* Matches palette.canvas (src/theme/tokens.ts) — avoids a white flash
-     before the antd ConfigProvider mounts and paints the real background. */
-  background-color: #2F2E34;
+  background-color: #2f2e34;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.console-shell {
+  min-width: 0;
+}
+
+.console-content {
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.console-subnav {
+  overflow-x: auto;
+}
+
+.console-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.console-page-header__meta {
+  min-width: 0;
+  flex: 1 1 320px;
+}
+
+.console-page-header__description {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.6;
+  max-width: 72ch;
+}
+
+.console-page-header__actions {
+  min-width: 0;
+  flex: 1 1 280px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.console-page-header__actions .ant-space {
+  width: 100%;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.console-page-header__actions .ant-space-item {
+  max-width: 100%;
+}
+
+.console-page-header__actions .ant-input-search,
+.console-page-header__actions .ant-select,
+.console-page-header__actions .ant-picker {
+  max-width: 100%;
+}
+
+.console-table {
+  min-width: 0;
+}
+
+.console-table .ant-table-wrapper {
+  max-width: 100%;
+}
+
+.console-table .ant-table-cell {
+  vertical-align: top;
+}
+
+.console-user-label {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 960px) {
+  .console-page-header__actions {
+    flex-basis: 100%;
+    justify-content: stretch;
+  }
+
+  .console-page-header__actions .ant-space {
+    justify-content: stretch;
+  }
 }

@@ -1,21 +1,11 @@
 import type { ReactNode } from 'react'
 import {
-  ApartmentOutlined,
   ApiOutlined,
+  ApartmentOutlined,
   AppstoreOutlined,
-  ClusterOutlined,
-  CloudServerOutlined,
   DashboardOutlined,
   DatabaseOutlined,
-  DesktopOutlined,
-  ExperimentOutlined,
   FileSearchOutlined,
-  GlobalOutlined,
-  KeyOutlined,
-  LockOutlined,
-  MailOutlined,
-  PictureOutlined,
-  PlayCircleOutlined,
   SafetyOutlined,
   ScheduleOutlined,
   SettingOutlined,
@@ -25,83 +15,261 @@ import {
 
 export interface NavItem {
   key: string
-  path: string
   label: string
+  path: string
+  matchPrefix: string
   icon: ReactNode
 }
 
-export interface NavGroup {
+export interface SecondaryNavItem {
   key: string
   label: string
-  items: NavItem[]
+  path: string
+  matchPrefix: string
 }
 
-// Grouping and order mirror docs/casdoor-frontend-mapping.md's suggested
-// build order — IAM core, access/auth surface, automation, audit.
-export const navGroups: NavGroup[] = [
+function matchesPath(pathname: string, item: { path: string; matchPrefix: string }) {
+  return pathname === item.path || pathname.startsWith(item.matchPrefix)
+}
+
+export const platformNavItems: NavItem[] = [
   {
-    key: 'iam',
-    label: 'Identity',
-    items: [
-      { key: 'organizations', path: '/organizations', label: 'Organizations', icon: <ApartmentOutlined /> },
-      { key: 'users', path: '/users', label: 'Users', icon: <UserOutlined /> },
-      { key: 'memberships', path: '/memberships', label: 'Memberships', icon: <TeamOutlined /> },
-      { key: 'invitations', path: '/invitations', label: 'Invitations', icon: <MailOutlined /> },
-      { key: 'groups', path: '/groups', label: 'Groups', icon: <ClusterOutlined /> },
-      { key: 'roles', path: '/roles', label: 'Roles', icon: <SafetyOutlined /> },
-      { key: 'policy-bindings', path: '/policy-bindings', label: 'Policy Bindings', icon: <LockOutlined /> },
-    ],
+    key: 'platform-overview',
+    label: 'Overview',
+    path: '/platform/overview',
+    matchPrefix: '/platform/overview',
+    icon: <DashboardOutlined />,
   },
   {
-    key: 'access',
-    label: 'Access',
-    items: [
-      { key: 'applications', path: '/applications', label: 'Applications', icon: <AppstoreOutlined /> },
-      { key: 'providers', path: '/providers', label: 'Providers', icon: <CloudServerOutlined /> },
-      { key: 'sessions', path: '/sessions', label: 'Sessions', icon: <KeyOutlined /> },
-    ],
+    key: 'platform-organizations',
+    label: 'Organizations',
+    path: '/platform/organizations',
+    matchPrefix: '/platform/organizations',
+    icon: <ApartmentOutlined />,
   },
   {
-    key: 'automation',
-    label: 'Automation',
-    items: [
-      { key: 'devices', path: '/devices', label: 'Devices', icon: <DesktopOutlined /> },
-      { key: 'jobs', path: '/jobs', label: 'Jobs', icon: <ScheduleOutlined /> },
-      { key: 'runs', path: '/runs', label: 'Runs', icon: <PlayCircleOutlined /> },
-      { key: 'provider-settings', path: '/provider-settings', label: 'Provider Settings', icon: <SettingOutlined /> },
-      { key: 'corpora', path: '/corpora', label: 'Corpora', icon: <DatabaseOutlined /> },
-      { key: 'embedder-settings', path: '/embedder-settings', label: 'Embedder Settings', icon: <ExperimentOutlined /> },
-    ],
+    key: 'platform-users',
+    label: 'Users',
+    path: '/platform/users',
+    matchPrefix: '/platform/users',
+    icon: <UserOutlined />,
   },
   {
-    key: 'audit',
-    label: 'Audit',
-    items: [{ key: 'audit-events', path: '/audit-events', label: 'Audit Events', icon: <FileSearchOutlined /> }],
+    key: 'platform-ai-defaults',
+    label: 'AI Defaults',
+    path: '/platform/ai-defaults/providers',
+    matchPrefix: '/platform/ai-defaults/',
+    icon: <ApiOutlined />,
+  },
+  {
+    key: 'platform-security',
+    label: 'Security',
+    path: '/platform/security/sessions',
+    matchPrefix: '/platform/security/',
+    icon: <SafetyOutlined />,
   },
 ]
 
-export const dashboardNavItem: NavItem = {
-  key: 'dashboard',
-  path: '/dashboard',
-  label: 'Dashboard',
-  icon: <DashboardOutlined />,
+export function getOrganizationNavItems(organizationId: string): NavItem[] {
+  return [
+    {
+      key: 'org-overview',
+      label: 'Overview',
+      path: `/orgs/${organizationId}/overview`,
+      matchPrefix: `/orgs/${organizationId}/overview`,
+      icon: <DashboardOutlined />,
+    },
+    {
+      key: 'org-team',
+      label: 'Team & Access',
+      path: `/orgs/${organizationId}/team/memberships`,
+      matchPrefix: `/orgs/${organizationId}/team/`,
+      icon: <TeamOutlined />,
+    },
+    {
+      key: 'org-ai',
+      label: 'AI Config',
+      path: `/orgs/${organizationId}/ai/provider-settings`,
+      matchPrefix: `/orgs/${organizationId}/ai/`,
+      icon: <SettingOutlined />,
+    },
+    {
+      key: 'org-automation',
+      label: 'Automation',
+      path: `/orgs/${organizationId}/automation/jobs`,
+      matchPrefix: `/orgs/${organizationId}/automation/`,
+      icon: <ScheduleOutlined />,
+    },
+    {
+      key: 'org-knowledge',
+      label: 'Knowledge',
+      path: `/orgs/${organizationId}/knowledge/corpora`,
+      matchPrefix: `/orgs/${organizationId}/knowledge/`,
+      icon: <DatabaseOutlined />,
+    },
+    {
+      key: 'org-integrations',
+      label: 'Integrations',
+      path: `/orgs/${organizationId}/integrations/applications`,
+      matchPrefix: `/orgs/${organizationId}/integrations/`,
+      icon: <AppstoreOutlined />,
+    },
+    {
+      key: 'org-activity',
+      label: 'Activity',
+      path: `/orgs/${organizationId}/activity/audit`,
+      matchPrefix: `/orgs/${organizationId}/activity/`,
+      icon: <FileSearchOutlined />,
+    },
+  ]
 }
 
-// Superadmin-only (User.is_admin) — the platform-wide defaults every
-// organization can fall back to instead of bringing its own AI provider
-// credentials. Hidden from the sidebar entirely for non-admins (see
-// AppLayout), and guarded again at the route level (RequireSuperAdmin) for
-// anyone who navigates to the URL directly.
-export const platformNavGroup: NavGroup = {
-  key: 'platform',
-  label: 'Platform',
-  items: [
-    { key: 'platform-provider-settings', path: '/platform/provider-settings', label: 'Default Providers', icon: <ApiOutlined /> },
-    { key: 'platform-embedder-settings', path: '/platform/embedder-settings', label: 'Default Embedder', icon: <ExperimentOutlined /> },
-    { key: 'platform-image-generation', path: '/platform/image-generation', label: 'Image Generation', icon: <PictureOutlined /> },
-    { key: 'platform-web-search', path: '/platform/web-search', label: 'Web Search', icon: <GlobalOutlined /> },
-  ],
+export function getSecondaryNavItems(pathname: string, organizationId: string | null): SecondaryNavItem[] {
+  if (pathname.startsWith('/platform/ai-defaults/')) {
+    return [
+      {
+        key: 'platform-ai-defaults-providers',
+        label: 'Providers',
+        path: '/platform/ai-defaults/providers',
+        matchPrefix: '/platform/ai-defaults/providers',
+      },
+      {
+        key: 'platform-ai-defaults-embedder',
+        label: 'Embedder',
+        path: '/platform/ai-defaults/embedder',
+        matchPrefix: '/platform/ai-defaults/embedder',
+      },
+    ]
+  }
+
+  if (pathname.startsWith('/platform/security/')) {
+    return [
+      {
+        key: 'platform-security-sessions',
+        label: 'Sessions',
+        path: '/platform/security/sessions',
+        matchPrefix: '/platform/security/sessions',
+      },
+      {
+        key: 'platform-security-audit',
+        label: 'Audit',
+        path: '/platform/security/audit',
+        matchPrefix: '/platform/security/audit',
+      },
+    ]
+  }
+
+  if (!organizationId) return []
+
+  if (pathname.startsWith(`/orgs/${organizationId}/team/`)) {
+    return [
+      {
+        key: 'org-team-memberships',
+        label: 'Memberships',
+        path: `/orgs/${organizationId}/team/memberships`,
+        matchPrefix: `/orgs/${organizationId}/team/memberships`,
+      },
+      {
+        key: 'org-team-invitations',
+        label: 'Invitations',
+        path: `/orgs/${organizationId}/team/invitations`,
+        matchPrefix: `/orgs/${organizationId}/team/invitations`,
+      },
+      {
+        key: 'org-team-groups',
+        label: 'Groups',
+        path: `/orgs/${organizationId}/team/groups`,
+        matchPrefix: `/orgs/${organizationId}/team/groups`,
+      },
+      {
+        key: 'org-team-roles',
+        label: 'Roles',
+        path: `/orgs/${organizationId}/team/roles`,
+        matchPrefix: `/orgs/${organizationId}/team/roles`,
+      },
+      {
+        key: 'org-team-policies',
+        label: 'Policies',
+        path: `/orgs/${organizationId}/team/policies`,
+        matchPrefix: `/orgs/${organizationId}/team/policies`,
+      },
+    ]
+  }
+
+  if (pathname.startsWith(`/orgs/${organizationId}/ai/`)) {
+    return [
+      {
+        key: 'org-ai-providers',
+        label: 'Provider Settings',
+        path: `/orgs/${organizationId}/ai/provider-settings`,
+        matchPrefix: `/orgs/${organizationId}/ai/provider-settings`,
+      },
+      {
+        key: 'org-ai-embedder',
+        label: 'Embedder',
+        path: `/orgs/${organizationId}/ai/embedder`,
+        matchPrefix: `/orgs/${organizationId}/ai/embedder`,
+      },
+    ]
+  }
+
+  if (pathname.startsWith(`/orgs/${organizationId}/automation/`)) {
+    return [
+      {
+        key: 'org-automation-devices',
+        label: 'Devices',
+        path: `/orgs/${organizationId}/automation/devices`,
+        matchPrefix: `/orgs/${organizationId}/automation/devices`,
+      },
+      {
+        key: 'org-automation-jobs',
+        label: 'Jobs',
+        path: `/orgs/${organizationId}/automation/jobs`,
+        matchPrefix: `/orgs/${organizationId}/automation/jobs`,
+      },
+      {
+        key: 'org-automation-runs',
+        label: 'Runs',
+        path: `/orgs/${organizationId}/automation/runs`,
+        matchPrefix: `/orgs/${organizationId}/automation/runs`,
+      },
+    ]
+  }
+
+  if (pathname.startsWith(`/orgs/${organizationId}/integrations/`)) {
+    return [
+      {
+        key: 'org-integrations-applications',
+        label: 'Applications',
+        path: `/orgs/${organizationId}/integrations/applications`,
+        matchPrefix: `/orgs/${organizationId}/integrations/applications`,
+      },
+      {
+        key: 'org-integrations-providers',
+        label: 'Providers',
+        path: `/orgs/${organizationId}/integrations/providers`,
+        matchPrefix: `/orgs/${organizationId}/integrations/providers`,
+      },
+    ]
+  }
+
+  return []
 }
 
-export const allNavItems: NavItem[] = navGroups.flatMap((g) => g.items)
-export const allPlatformNavItems: NavItem[] = platformNavGroup.items
+export function getActivePrimaryNavItem(pathname: string, organizationId: string | null) {
+  const orgItems = organizationId ? getOrganizationNavItems(organizationId) : []
+  return [...platformNavItems, ...orgItems].find((item) => matchesPath(pathname, item))
+}
+
+export function getActiveSecondaryNavItem(pathname: string, items: SecondaryNavItem[]) {
+  return items.find((item) => matchesPath(pathname, item))
+}
+
+export function getScopeLabel(pathname: string, organizationName: string | null) {
+  if (pathname.startsWith('/orgs/')) return organizationName ?? 'Organization'
+  return 'Platform'
+}
+
+export function getScopeTagLabel(pathname: string) {
+  return pathname.startsWith('/orgs/') ? 'Organization' : 'Platform'
+}

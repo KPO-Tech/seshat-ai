@@ -1,41 +1,37 @@
 import { useEffect, useState } from 'react'
-import { Alert, Button, Drawer, Empty, Form, Input, message, Popconfirm, Space, Table, Tag, Typography } from 'antd'
+import { Alert, Button, Drawer, Empty, Form, Input, message, Popconfirm, Space, Tag, Typography } from 'antd'
 import type { TableProps } from 'antd'
 import { PlusOutlined, DeleteOutlined, EditOutlined, CloudServerOutlined } from '@ant-design/icons'
-import {
-  usePlatformProviderSettingsList,
+import { usePlatformProviderSettingsList,
   useCreatePlatformProviderSetting,
   useUpdatePlatformProviderSetting,
   useDeletePlatformProviderSetting,
   type PlatformProviderSetting,
-  type PlatformProviderSettingInput,
-} from '@/api/platformProviderSettings'
+  type PlatformProviderSettingInput, } from '@/api/platformProviderSettings'
 import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
+import { ConsoleTable } from '@/components/ConsoleTable'
 import { palette, monoStack } from '@/theme/tokens'
+import { presentText } from '@/lib/present'
 
-export function PlatformProviderSettingsPage() {
-  const [editing, setEditing] = useState<PlatformProviderSetting | 'new' | null>(null)
+export function PlatformProviderSettingsPage() { const [editing, setEditing] = useState<PlatformProviderSetting | 'new' | null>(null)
   const { data, isLoading } = usePlatformProviderSettingsList()
   const createSetting = useCreatePlatformProviderSetting()
   const updateSetting = useUpdatePlatformProviderSetting()
   const deleteSetting = useDeletePlatformProviderSetting()
 
   const columns: TableProps<PlatformProviderSetting>['columns'] = [
-    {
-      title: 'Provider',
+    { title: 'Provider',
       dataIndex: 'provider',
       key: 'provider',
       render: (provider: string) => (
         <Tag color="default" style={{ fontFamily: monoStack, margin: 0 }}>
           {provider}
         </Tag>
-      ),
-    },
+      ), },
     { title: 'Default model', dataIndex: 'default_model', key: 'default_model' },
-    { title: 'Base URL', dataIndex: 'base_url', key: 'base_url', render: (v) => v || '—' },
-    {
-      title: '',
+    { title: 'Base URL', dataIndex: 'base_url', key: 'base_url', render: (v) => presentText(v, 'Provider default') },
+    { title: '',
       key: 'actions',
       width: 96,
       render: (_, record) => (
@@ -45,26 +41,22 @@ export function PlatformProviderSettingsPage() {
             title={`Remove the platform default for ${record.provider}?`}
             description="Organizations relying on this fallback will start failing cloud runs for this provider until they configure their own key."
             onConfirm={() =>
-              deleteSetting.mutate(record.id!, { onError: (error) => message.error(getErrorMessage(error)) })
-            }
+              deleteSetting.mutate(record.id!, { onError: (error) => message.error(getErrorMessage(error)) }) }
           >
             <Button size="small" danger icon={<DeleteOutlined />} aria-label={`Delete ${record.provider}`} />
           </Popconfirm>
         </Space>
-      ),
-    },
+      ), },
   ]
 
   return (
     <div>
       <PageHeader
         title="Default Providers"
-        description="Platform-wide fallback LLM credentials — used by any organization that hasn't configured its own."
-        actions={
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing('new')}>
+        description="Shared LLM credentials used when an organization has not configured its own provider yet."
+        actions={ <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing('new')}>
             New default provider
-          </Button>
-        }
+          </Button> }
       />
 
       <Alert
@@ -72,76 +64,58 @@ export function PlatformProviderSettingsPage() {
         showIcon
         style={{ marginBottom: 16 }}
         title="How this fits together"
-        description="An organization's own provider setting always wins when it has one. When it doesn't, cloud-targeted jobs fall back to whatever is configured here — this is what a paying subscription organization runs on without ever bringing its own API key."
+        description="An organization's own provider setting always wins. If it has none, cloud jobs fall back to the default configured here."
       />
 
-      <Table<PlatformProviderSetting>
+      <ConsoleTable<PlatformProviderSetting>
         rowKey="id"
         columns={columns}
         dataSource={data ?? []}
         loading={isLoading}
         pagination={false}
-        locale={{
-          emptyText: (
+        locale={{ emptyText: (
             <Empty
               image={<CloudServerOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}
               description="No platform default providers configured yet"
               style={{ padding: '32px 0' }}
             />
-          ),
-        }}
+          ), }}
       />
 
       <PlatformProviderSettingFormDrawer
         setting={editing === 'new' ? null : editing}
         open={editing !== null}
         onClose={() => setEditing(null)}
-        onSubmit={(values) => {
-          if (editing === 'new') {
-            createSetting.mutate(values, {
-              onSuccess: () => setEditing(null),
-              onError: (error) => message.error(getErrorMessage(error)),
-            })
-          } else if (editing) {
-            // provider is immutable — the update handler rejects it as an
+        onSubmit={(values) => { if (editing === 'new') { createSetting.mutate(values, { onSuccess: () => setEditing(null),
+              onError: (error) => message.error(getErrorMessage(error)), }) } else if (editing) { // provider is immutable - the update handler rejects it as an
             // unknown field, so it must not be forwarded even though the
             // (disabled) form field still carries its original value.
             const { provider: _provider, ...updateBody } = values
             updateSetting.mutate(
               { id: editing.id!, body: updateBody },
               { onSuccess: () => setEditing(null), onError: (error) => message.error(getErrorMessage(error)) },
-            )
-          }
-        }}
+            ) } }}
         submitting={createSetting.isPending || updateSetting.isPending}
       />
     </div>
-  )
-}
+  ) }
 
-function PlatformProviderSettingFormDrawer({
-  setting,
+function PlatformProviderSettingFormDrawer({ setting,
   open,
   onClose,
   onSubmit,
-  submitting,
-}: {
-  setting: PlatformProviderSetting | null
+  submitting, }: { setting: PlatformProviderSetting | null
   open: boolean
   onClose: () => void
   onSubmit: (values: PlatformProviderSettingInput) => void
-  submitting: boolean
-}) {
-  const [form] = Form.useForm<PlatformProviderSettingInput>()
+  submitting: boolean }) { const [form] = Form.useForm<PlatformProviderSettingInput>()
   const isEdit = setting !== null
 
   // Reset as soon as the drawer is asked to open, not after its CSS
-  // transition finishes (Drawer's afterOpenChange) — that gap is a real
+  // transition finishes (Drawer's afterOpenChange) - that gap is a real
   // race: on a slower render, a user could start typing before the
   // transition-end fires and have setFieldsValue silently wipe it back out.
-  useEffect(() => {
-    if (open) form.setFieldsValue(setting ?? { provider: '', default_model: '' })
-  }, [open, setting, form])
+  useEffect(() => { if (open) form.setFieldsValue(setting ?? { provider: '', default_model: '' }) }, [open, setting, form])
 
   return (
     <Drawer
@@ -149,11 +123,9 @@ function PlatformProviderSettingFormDrawer({
       open={open}
       onClose={onClose}
       destroyOnHidden
-      extra={
-        <Button type="primary" loading={submitting} onClick={() => form.submit()}>
+      extra={ <Button type="primary" loading={submitting} onClick={() => form.submit()}>
           Save
-        </Button>
-      }
+        </Button> }
     >
       <Form<PlatformProviderSettingInput> form={form} layout="vertical" onFinish={onSubmit}>
         <Form.Item
@@ -168,7 +140,7 @@ function PlatformProviderSettingFormDrawer({
           <Input placeholder="claude-sonnet-5" />
         </Form.Item>
         <Form.Item name="base_url" label="Base URL">
-          <Input placeholder="Optional — leave empty to use the provider's default" />
+          <Input placeholder="Optional. Leave empty to use the provider's default" />
         </Form.Item>
         <Form.Item
           name="api_key"
@@ -185,5 +157,4 @@ function PlatformProviderSettingFormDrawer({
         )}
       </Form>
     </Drawer>
-  )
-}
+  ) }

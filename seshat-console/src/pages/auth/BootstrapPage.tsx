@@ -18,7 +18,7 @@ export function BootstrapPage() {
 
   const onFinish = (values: BootstrapFormValues) => {
     bootstrap.mutate(values, {
-      onSuccess: () => navigate('/dashboard', { replace: true }),
+      onSuccess: () => navigate('/platform/overview', { replace: true }),
       onError: (error) => message.error(getErrorMessage(error)),
     })
   }
@@ -26,7 +26,7 @@ export function BootstrapPage() {
   return (
     <AuthLayout
       title="Set up your Seshat control plane"
-      subtitle="This creates the first platform admin and organization — a one-time step, the server refuses to run it twice."
+      subtitle="This creates the first platform admin and organization. It is a one-time step and the server refuses to run it twice."
     >
       <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 24 }}>
         Create platform admin

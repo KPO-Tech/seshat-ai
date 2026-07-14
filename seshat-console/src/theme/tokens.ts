@@ -1,11 +1,11 @@
 import { theme, type ThemeConfig } from 'antd'
 
 // ─── Palette ────────────────────────────────────────────────────────────────
-// Matches the product's real design system, not a console-only invention —
+// Matches the product's real design system, not a console-only invention -
 // values are ported directly from seshat-ui's dark theme
 // (seshat-ui/src/renderer/styles/tokens.css: `:root, [data-theme='dark']`,
 // the app's default/root look, not the light variant). Warm neutrals, a
-// single orange brand accent, warm off-white text — same identity as the
+// single orange brand accent, warm off-white text - same identity as the
 // desktop app, not stock Ant Design blue on a white canvas.
 export const palette = {
   ink: '#E7E2DA',
@@ -28,7 +28,7 @@ export const palette = {
   hover: 'rgba(231, 226, 218, 0.06)',
   active: 'rgba(231, 226, 218, 0.1)',
   // The sidebar blends with the canvas (same background, separated only by
-  // a border) rather than being a distinctly-colored block — this is how
+  // a border) rather than being a distinctly-colored block - this is how
   // seshat-ui's own Sidebar.tsx works (`background: var(--color-bg)`), not a
   // dashboard-style dark-sider-on-light-canvas split.
   sidebarBg: '#2F2E34',

@@ -18,14 +18,14 @@ export function PlatformEmbedderSettingsPage() {
     <div>
       <PageHeader
         title="Default Embedder"
-        description="The platform-wide fallback embedder used for RAG ingestion and search — used by any organization that hasn't configured its own."
+        description="The platform-wide fallback embedder used for RAG ingestion and search. It is used by any organization that has not configured its own."
       />
       <Alert
         type="info"
         showIcon
         style={{ marginBottom: 16 }}
         title="How this fits together"
-        description="Same hybrid model as the LLM default providers: an organization's own embedder always wins when configured, else cloud-targeted ingestion and search fall back to whatever is set here."
+        description="Same hybrid model as the LLM default providers: an organization's own embedder always wins when configured. Otherwise, cloud-targeted ingestion and search fall back to what is set here."
       />
       <EmbedderSettingForm
         setting={setting}

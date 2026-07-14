@@ -6,7 +6,7 @@ import { useCurrentPrincipal } from '@/api/auth'
 
 /**
  * Guards the authenticated part of the app. The auth store only persists the
- * bearer token (localStorage) — user/org/membership data is refetched via
+ * bearer token (localStorage) - user/org/membership data is refetched via
  * /auth/me on every fresh page load, since that's the one call that always
  * reflects the server's current view of the session.
  */
@@ -18,7 +18,7 @@ export function ProtectedRoute() {
 
   useEffect(() => {
     if (data?.user && data.session?.token === undefined) {
-      // /auth/me never echoes the raw token — keep the one already in the
+      // /auth/me never echoes the raw token - keep the one already in the
       // store, just refresh the profile/org data around it.
       setSession({
         token: useAuthStore.getState().token!,
