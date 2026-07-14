@@ -3,6 +3,8 @@ package automation
 import (
 	"context"
 	"testing"
+
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
 )
 
 const (
@@ -156,15 +158,24 @@ func TestResolveProviderSettingFallsBackToPlatformDefault(t *testing.T) {
 	env := newTestEnv(t)
 	memberPrincipal := env.addMember(t, "member")
 
-	if _, err := env.automation.CreatePlatformProviderSetting(context.Background(), env.adminPrincipal, CreatePlatformProviderSettingParams{
-		Provider: "mistral", DefaultModel: "mistral-small-latest", APIKey: "sk-mistral-platform",
+	defaultOrg, err := env.iam.CreateOrganization(context.Background(), env.adminPrincipal, iam.CreateOrganizationParams{
+		Name: "Default Org", Slug: "default-org",
+	})
+	if err != nil {
+		t.Fatalf("create default org: %v", err)
+	}
+	if _, err := env.iam.SetOrganizationDefault(context.Background(), env.adminPrincipal, defaultOrg.ID, true); err != nil {
+		t.Fatalf("set organization default: %v", err)
+	}
+	if _, err := env.automation.CreateProviderSetting(context.Background(), env.adminPrincipal, CreateProviderSettingParams{
+		OrganizationID: defaultOrg.ID, Provider: "mistral", DefaultModel: "mistral-small-latest", APIKey: "sk-mistral-platform",
 	}); err != nil {
-		t.Fatalf("create platform provider setting: %v", err)
+		t.Fatalf("create provider setting on the default org: %v", err)
 	}
 
 	resolved, err := env.automation.ResolveProviderSetting(context.Background(), memberPrincipal, env.orgID, "mistral")
 	if err != nil {
-		t.Fatalf("expected fallback to the platform default to succeed, got: %v", err)
+		t.Fatalf("expected fallback to the default organization to succeed, got: %v", err)
 	}
 	if resolved.APIKey != "sk-mistral-platform" || resolved.Source != "platform" {
 		t.Fatalf("unexpected resolved setting: %+v", resolved)

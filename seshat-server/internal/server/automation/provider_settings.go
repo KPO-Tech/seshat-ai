@@ -219,15 +219,20 @@ func (s *Service) DeleteProviderSetting(ctx context.Context, principal *iam.Prin
 }
 
 // ResolvedProviderSetting is the effective, USABLE provider config for a
-// caller — unlike ProviderSetting/PlatformProviderSetting, it includes the
-// decrypted API key, since the whole point is for a connected seshat-backend
-// to actually make the LLM call with it.
+// caller — unlike ProviderSetting, it includes the decrypted API key, since
+// the whole point is for a connected seshat-backend to actually make the
+// LLM call with it.
 type ResolvedProviderSetting struct {
 	Provider     string `json:"provider"`
 	DefaultModel string `json:"default_model"`
 	BaseURL      string `json:"base_url,omitempty"`
 	APIKey       string `json:"api_key"`
-	// Source is "organization" or "platform" — which tier the config came from.
+	// Source is "organization" or "platform" — which tier the config came
+	// from. "platform" means the requesting organization had none of its
+	// own and this was resolved from the organization currently flagged
+	// IsDefault (see iam.Service.DefaultOrganizationID) — kept as the
+	// string "platform" for API compatibility even though there's no
+	// separate platform-level settings table anymore.
 	Source string `json:"source"`
 }
 
@@ -270,21 +275,25 @@ func (s *Service) ResolveProviderSetting(ctx context.Context, principal *iam.Pri
 		}, nil
 	}
 
-	platformSetting, found, err := s.findPlatformProviderSetting(ctx, provider)
+	defaultOrgID, found, err := s.iam.DefaultOrganizationID(tx)
 	if err != nil {
 		return nil, err
 	}
-	if !found {
-		return nil, ErrNotFound("no provider setting configured for " + provider + " (checked this organization and the platform default)")
+	if found && defaultOrgID != organizationID {
+		if defaultSetting, found, err := s.findProviderSetting(ctx, defaultOrgID, provider); err != nil {
+			return nil, err
+		} else if found {
+			apiKey, err := decryptSecret(defaultSetting.EncryptedAPIKey)
+			if err != nil {
+				return nil, err
+			}
+			return &ResolvedProviderSetting{
+				Provider: defaultSetting.Provider, DefaultModel: defaultSetting.DefaultModel,
+				BaseURL: defaultSetting.BaseURL, APIKey: apiKey, Source: "platform",
+			}, nil
+		}
 	}
-	apiKey, err := decryptSecret(platformSetting.EncryptedAPIKey)
-	if err != nil {
-		return nil, err
-	}
-	return &ResolvedProviderSetting{
-		Provider: platformSetting.Provider, DefaultModel: platformSetting.DefaultModel,
-		BaseURL: platformSetting.BaseURL, APIKey: apiKey, Source: "platform",
-	}, nil
+	return nil, ErrNotFound("no provider setting configured for " + provider + " (checked this organization and the platform default)")
 }
 
 // findProviderSetting looks up the credentials for one (organization,

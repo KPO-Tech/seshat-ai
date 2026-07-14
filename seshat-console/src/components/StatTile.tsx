@@ -9,7 +9,7 @@ export function StatTile({
   loading,
 }: {
   label: string
-  value: number | undefined
+  value: number | string | undefined
   icon: ReactNode
   loading?: boolean
 }) {

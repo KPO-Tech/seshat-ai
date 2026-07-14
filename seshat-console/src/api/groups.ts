@@ -70,3 +70,8 @@ export function useDeleteGroup() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [LIST_KEY] }),
   })
 }
+
+// "Teams" is the console's user-facing name for this same backend concept
+// (Group/GroupMember) - kept as an alias rather than renaming the
+// underlying hook/type names, which mirror the real backend identifiers.
+export const useTeamsList = useGroupsList

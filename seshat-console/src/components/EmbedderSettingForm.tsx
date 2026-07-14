@@ -1,15 +1,10 @@
 import { useEffect } from 'react'
 import { Button, Card, Empty, Form, Input, Popconfirm, Space, Tag, Typography } from 'antd'
 import { DeleteOutlined, SaveOutlined } from '@ant-design/icons'
-import type { EmbedderSetting, EmbedderSettingInput, PlatformEmbedderSetting } from '@/api/embedderSettings'
+import type { EmbedderSetting, EmbedderSettingInput } from '@/api/embedderSettings'
 import { monoStack } from '@/theme/tokens'
 
-type Setting = EmbedderSetting | PlatformEmbedderSetting | null | undefined
-
-// Shared form for the org-scoped and platform-wide embedder settings pages
-// - both are singleton config slots (GET/PUT-upsert/DELETE), same fields,
-// same "not configured yet" empty state, so one component covers both
-// rather than duplicating the form.
+type Setting = EmbedderSetting | null | undefined
 export function EmbedderSettingForm({
   setting,
   loading,
@@ -55,7 +50,7 @@ export function EmbedderSettingForm({
         isConfigured && (
           <Popconfirm
             title="Remove this embedder configuration?"
-            description="Ingestion and search will stop working here until a new embedder is configured (or the platform default takes over, if this was an organization-level setting)."
+            description="Ingestion and search will fall back to this platform's default organization's embedder (if one is configured) until a new one is set here."
             onConfirm={onDelete}
           >
             <Button danger icon={<DeleteOutlined />} loading={deleting}>

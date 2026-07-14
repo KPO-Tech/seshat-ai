@@ -80,6 +80,7 @@ func enrichMembershipsWithUsers(tx *gorm.DB, memberships []Membership) {
 		if u, ok := byID[memberships[i].UserID]; ok {
 			memberships[i].UserEmail = u.Email
 			memberships[i].UserDisplayName = u.DisplayName
+			memberships[i].UserIsAdmin = u.IsAdmin
 		}
 	}
 }

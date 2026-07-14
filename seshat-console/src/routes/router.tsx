@@ -12,10 +12,10 @@ const PlatformOverviewPage = lazyPage(() => import('@/pages/dashboard/DashboardP
 const OrganizationOverviewPage = lazyPage(() => import('@/pages/organization/OrganizationOverviewPage').then((module) => ({ default: module.OrganizationOverviewPage })))
 const OrganizationsPage = lazyPage(() => import('@/pages/organizations/OrganizationsPage').then((module) => ({ default: module.OrganizationsPage })))
 const MyOrganizationsPage = lazyPage(() => import('@/pages/myOrganizations/MyOrganizationsPage').then((module) => ({ default: module.MyOrganizationsPage })))
-const UsersPage = lazyPage(() => import('@/pages/users/UsersPage').then((module) => ({ default: module.UsersPage })))
+const MyProfilePage = lazyPage(() => import('@/pages/profile/MyProfilePage').then((module) => ({ default: module.MyProfilePage })))
 const MembershipsPage = lazyPage(() => import('@/pages/memberships/MembershipsPage').then((module) => ({ default: module.MembershipsPage })))
 const InvitationsPage = lazyPage(() => import('@/pages/invitations/InvitationsPage').then((module) => ({ default: module.InvitationsPage })))
-const GroupsPage = lazyPage(() => import('@/pages/groups/GroupsPage').then((module) => ({ default: module.GroupsPage })))
+const TeamsPage = lazyPage(() => import('@/pages/teams/TeamsPage').then((module) => ({ default: module.TeamsPage })))
 const RolesPage = lazyPage(() => import('@/pages/roles/RolesPage').then((module) => ({ default: module.RolesPage })))
 const PolicyBindingsPage = lazyPage(() => import('@/pages/policyBindings/PolicyBindingsPage').then((module) => ({ default: module.PolicyBindingsPage })))
 const ApplicationsPage = lazyPage(() => import('@/pages/applications/ApplicationsPage').then((module) => ({ default: module.ApplicationsPage })))
@@ -29,8 +29,6 @@ const AuditEventsPage = lazyPage(() => import('@/pages/auditEvents/AuditEventsPa
 const CorporaPage = lazyPage(() => import('@/pages/knowledge/CorporaPage').then((module) => ({ default: module.CorporaPage })))
 const CorpusDetailPage = lazyPage(() => import('@/pages/knowledge/CorpusDetailPage').then((module) => ({ default: module.CorpusDetailPage })))
 const EmbedderSettingsPage = lazyPage(() => import('@/pages/knowledge/EmbedderSettingsPage').then((module) => ({ default: module.EmbedderSettingsPage })))
-const PlatformProviderSettingsPage = lazyPage(() => import('@/pages/platform/PlatformProviderSettingsPage').then((module) => ({ default: module.PlatformProviderSettingsPage })))
-const PlatformEmbedderSettingsPage = lazyPage(() => import('@/pages/platform/PlatformEmbedderSettingsPage').then((module) => ({ default: module.PlatformEmbedderSettingsPage })))
 const NotFoundPage = lazyPage(() => import('@/pages/errors/NotFoundPage').then((module) => ({ default: module.NotFoundPage })))
 const NoAccessPage = lazyPage(() => import('@/pages/errors/NoAccessPage').then((module) => ({ default: module.NoAccessPage })))
 
@@ -48,6 +46,7 @@ export const router = createBrowserRouter([
             children: [
               { index: true, element: <LandingRedirect /> },
               { path: '/my-organizations', element: renderLazyPage(MyOrganizationsPage) },
+              { path: '/profile', element: renderLazyPage(MyProfilePage) },
               { path: '/no-access', element: renderLazyPage(NoAccessPage) },
               {
                 element: <RequireSuperAdmin />,
@@ -55,9 +54,6 @@ export const router = createBrowserRouter([
                   { path: '/platform', element: <Navigate to="/platform/overview" replace /> },
                   { path: '/platform/overview', element: renderLazyPage(PlatformOverviewPage) },
                   { path: '/platform/organizations', element: renderLazyPage(OrganizationsPage) },
-                  { path: '/platform/users', element: renderLazyPage(UsersPage) },
-                  { path: '/platform/ai-defaults/providers', element: renderLazyPage(PlatformProviderSettingsPage) },
-                  { path: '/platform/ai-defaults/embedder', element: renderLazyPage(PlatformEmbedderSettingsPage) },
                   { path: '/platform/security/sessions', element: renderLazyPage(SessionsPage) },
                   { path: '/platform/security/audit', element: renderLazyPage(AuditEventsPage) },
                 ],
@@ -69,7 +65,7 @@ export const router = createBrowserRouter([
                   { path: 'overview', element: renderLazyPage(OrganizationOverviewPage) },
                   { path: 'team/memberships', element: renderLazyPage(MembershipsPage) },
                   { path: 'team/invitations', element: renderLazyPage(InvitationsPage) },
-                  { path: 'team/groups', element: renderLazyPage(GroupsPage) },
+                  { path: 'team/teams', element: renderLazyPage(TeamsPage) },
                   { path: 'team/roles', element: renderLazyPage(RolesPage) },
                   { path: 'team/policies', element: renderLazyPage(PolicyBindingsPage) },
                   { path: 'ai/provider-settings', element: renderLazyPage(ProviderSettingsPage) },

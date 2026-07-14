@@ -42,7 +42,7 @@ export function ProviderSettingsPage() { const organizationId = useScopedOrganiz
           <Button size="small" icon={<EditOutlined />} onClick={() => setEditing(record)} aria-label={`Edit ${record.provider}`} />
           <Popconfirm
             title={`Remove the ${record.provider} credential?`}
-            description="Cloud jobs configured for this provider will fall back to the platform default (if any) or start failing at execution time."
+            description="Cloud jobs configured for this provider will fall back to this platform's default organization's credentials (if any) or start failing at execution time."
             onConfirm={() =>
               deleteSetting.mutate(record.id!, { onError: (error) => message.error(getErrorMessage(error)) }) }
           >
@@ -56,7 +56,7 @@ export function ProviderSettingsPage() { const organizationId = useScopedOrganiz
     <div>
       <PageHeader
         title="Provider Settings"
-        description="This organization's own LLM credentials. They override the platform default when present."
+        description="This organization's own LLM credentials. They override this platform's default organization's credentials when present."
         actions={ <Space>
             <Button
               type="primary"
@@ -78,7 +78,7 @@ export function ProviderSettingsPage() { const organizationId = useScopedOrganiz
           locale={{ emptyText: (
               <Empty
                 image={<SettingOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}
-                description="No provider credentials configured. Cloud jobs fall back to the platform default."
+                description="No provider credentials configured. Cloud jobs fall back to this platform's default organization's credentials."
                 style={{ padding: '32px 0' }}
               />
             ), }}

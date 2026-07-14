@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
-import { Avatar, Dropdown, Layout, Menu, Space, Tag, Typography } from 'antd'
-import { LogoutOutlined, UserOutlined } from '@ant-design/icons'
+import { Avatar, Button, Dropdown, Layout, Menu, Space, Tag, Typography } from 'antd'
+import { ArrowLeftOutlined, LogoutOutlined, UserOutlined } from '@ant-design/icons'
 import { Outlet, matchPath, useLocation, useNavigate } from 'react-router-dom'
 import { useOrganizationsList } from '@/api/organizations'
 import { useLogout } from '@/api/auth'
@@ -200,6 +200,16 @@ export function AppLayout() {
         >
           <div style={{ minWidth: 0, flex: '1 1 320px' }}>
             <Space size={10} align="center" wrap>
+              {isAdmin && routeOrganizationId && (
+                <Button
+                  size="small"
+                  type="text"
+                  icon={<ArrowLeftOutlined />}
+                  onClick={() => navigate('/platform/overview')}
+                >
+                  Back to platform
+                </Button>
+              )}
               <Tag color="orange" style={{ margin: 0 }}>
                 {getScopeTagLabel(location.pathname)}
               </Tag>
@@ -213,6 +223,12 @@ export function AppLayout() {
             trigger={['click']}
             menu={{
               items: [
+                {
+                  key: 'profile',
+                  icon: <UserOutlined />,
+                  label: 'My Profile',
+                  onClick: () => navigate('/profile'),
+                },
                 {
                   key: 'logout',
                   icon: <LogoutOutlined />,

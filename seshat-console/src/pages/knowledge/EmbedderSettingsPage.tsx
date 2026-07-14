@@ -22,7 +22,7 @@ export function EmbedderSettingsPage() {
     <div>
       <PageHeader
         title="Embedder Settings"
-        description="The embedder this organization uses for RAG ingestion and search. It falls back to the platform default when not set."
+        description="The embedder this organization uses for RAG ingestion and search. Falls back to this platform's default organization's embedder when not set."
         actions={undefined}
       />
 
@@ -38,7 +38,7 @@ export function EmbedderSettingsPage() {
             loading={isLoading}
             saving={setSetting.isPending}
             deleting={deleteSetting.isPending}
-            emptyDescription="No embedder configured for this organization yet. It will fall back to the platform default, if one exists."
+            emptyDescription="No embedder configured for this organization yet. It will fall back to this platform's default organization's embedder, if one is configured."
             onSave={(values: EmbedderSettingInput) => {
               setSetting.mutate(
                 { organizationId, body: values },

@@ -18,7 +18,7 @@ import { palette } from '@/theme/tokens'
 
 const PAGE_SIZE = 20
 
-export function GroupsPage() { const organizationId = useScopedOrganizationId()
+export function TeamsPage() { const organizationId = useScopedOrganizationId()
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<Group | 'new' | null>(null)
@@ -28,9 +28,9 @@ export function GroupsPage() { const organizationId = useScopedOrganizationId()
     order: 'asc',
     limit: PAGE_SIZE,
     offset: (page - 1) * PAGE_SIZE, })
-  const createGroup = useCreateGroup()
-  const updateGroup = useUpdateGroup()
-  const deleteGroup = useDeleteGroup()
+  const createTeam = useCreateGroup()
+  const updateTeam = useUpdateGroup()
+  const deleteTeam = useDeleteGroup()
 
   const columns: TableProps<Group>['columns'] = [
     { title: 'Name',
@@ -60,9 +60,9 @@ export function GroupsPage() { const organizationId = useScopedOrganizationId()
           />
           <Popconfirm
             title={`Delete ${record.name}?`}
-            description="Also removes any policy bindings that target this group."
+            description="Also removes any policy bindings that target this team."
             onConfirm={() =>
-              deleteGroup.mutate(record.id!, { onError: (error) => message.error(getErrorMessage(error)) }) }
+              deleteTeam.mutate(record.id!, { onError: (error) => message.error(getErrorMessage(error)) }) }
           >
             <Button size="small" danger icon={<DeleteOutlined />} aria-label={`Delete ${record.name}`} />
           </Popconfirm>
@@ -73,11 +73,11 @@ export function GroupsPage() { const organizationId = useScopedOrganizationId()
   return (
     <div>
       <PageHeader
-        title="Groups"
-        description="Named sets of members, used as a policy-binding subject."
+        title="Teams"
+        description="Organize members into teams for policy assignment and day-to-day structure. A member can be on any number of teams, or none."
         actions={ <Space>
             <Input.Search
-              placeholder="Search groups"
+              placeholder="Search teams"
               allowClear
               onSearch={(value) => { setPage(1)
                 setSearch(value) }}
@@ -90,7 +90,7 @@ export function GroupsPage() { const organizationId = useScopedOrganizationId()
               onClick={() => setEditing('new')}
               disabled={!organizationId}
             >
-              New group
+              New team
             </Button>
           </Space> }
       />
@@ -103,7 +103,7 @@ export function GroupsPage() { const organizationId = useScopedOrganizationId()
           locale={{ emptyText: (
               <Empty
                 image={<ClusterOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}
-                description={search ? 'No groups match your search' : 'No groups yet'}
+                description={search ? 'No teams match your search' : 'No teams yet'}
                 style={{ padding: '32px 0' }}
               />
             ), }}
@@ -111,45 +111,45 @@ export function GroupsPage() { const organizationId = useScopedOrganizationId()
             pageSize: PAGE_SIZE,
             total: data?.total ?? 0,
             onChange: setPage,
-            showTotal: (total) => `${total} groups`, }}
+            showTotal: (total) => `${total} teams`, }}
         />
 
-      <GroupFormDrawer
-        group={editing === 'new' ? null : editing}
+      <TeamFormDrawer
+        team={editing === 'new' ? null : editing}
         open={editing !== null}
         onClose={() => setEditing(null)}
         onSubmit={(values) => { if (!organizationId) return
-          if (editing === 'new') { createGroup.mutate(
+          if (editing === 'new') { createTeam.mutate(
               { ...values, organization_id: organizationId } as GroupInput,
               { onSuccess: () => setEditing(null),
                 onError: (error) => message.error(getErrorMessage(error)), },
-            ) } else if (editing) { updateGroup.mutate(
+            ) } else if (editing) { updateTeam.mutate(
               { id: editing.id!, body: values as GroupUpdateInput },
               { onSuccess: () => setEditing(null),
                 onError: (error) => message.error(getErrorMessage(error)), },
             ) } }}
-        submitting={createGroup.isPending || updateGroup.isPending}
+        submitting={createTeam.isPending || updateTeam.isPending}
       />
     </div>
   ) }
 
-function GroupFormDrawer({ group,
+function TeamFormDrawer({ team,
   open,
   onClose,
   onSubmit,
-  submitting, }: { group: Group | null
+  submitting, }: { team: Group | null
   open: boolean
   onClose: () => void
   onSubmit: (values: Omit<GroupInput, 'organization_id'>) => void
   submitting: boolean }) { const [form] = Form.useForm<Omit<GroupInput, 'organization_id'>>()
 
   useEffect(() => { if (open) { form.setFieldsValue(
-        group ?? { name: '', slug: '', description: '', member_user_ids: [] },
-      ) } }, [open, group, form])
+        team ?? { name: '', slug: '', description: '', member_user_ids: [] },
+      ) } }, [open, team, form])
 
   return (
     <Drawer
-      title={group ? `Edit ${group.name}` : 'New group'}
+      title={team ? `Edit ${team.name}` : 'New team'}
       open={open}
       onClose={onClose}
       destroyOnHidden

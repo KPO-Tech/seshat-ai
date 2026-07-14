@@ -112,7 +112,8 @@ export function OrganizationOverviewPage() {
   if ((providerSettings.data?.length ?? 0) === 0) {
     alerts.push({
       title: 'No provider credentials configured',
-      description: 'Cloud jobs will rely on platform defaults until this organization has its own provider settings.',
+      description:
+        "Cloud jobs will rely on this platform's default organization's credentials until this organization has its own provider settings.",
       actionLabel: 'Open AI config',
       action: () => navigate(`/orgs/${organizationId}/ai/provider-settings`),
       type: 'warning',
@@ -122,7 +123,7 @@ export function OrganizationOverviewPage() {
   if (!embedder.data) {
     alerts.push({
       title: 'No embedder configured',
-      description: 'Knowledge ingestion and search will fall back to the platform default if one exists.',
+      description: "Knowledge ingestion and search will fall back to this platform's default organization's embedder, if one exists.",
       actionLabel: 'Open embedder',
       action: () => navigate(`/orgs/${organizationId}/ai/embedder`),
       type: 'info',

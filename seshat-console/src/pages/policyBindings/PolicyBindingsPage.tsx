@@ -20,6 +20,14 @@ import { palette } from '@/theme/tokens'
 
 const PAGE_SIZE = 20
 
+// "group" is the wire value (matches the backend's SubjectType enum) - the
+// console calls this concept "Team", see docs/seshat-console-target-ia.md.
+const SUBJECT_TYPE_LABELS: Record<string, string> = {
+  user: 'User',
+  group: 'Team',
+  role: 'Role',
+}
+
 export function PolicyBindingsPage() { const organizationId = useScopedOrganizationId()
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
@@ -50,7 +58,7 @@ export function PolicyBindingsPage() { const organizationId = useScopedOrganizat
       key: 'subject',
       render: (_, record) => (
         <Space>
-          <Tag>{record.subject_type}</Tag>
+          <Tag>{SUBJECT_TYPE_LABELS[record.subject_type ?? ''] ?? record.subject_type}</Tag>
           <Typography.Text code>{record.subject_id}</Typography.Text>
         </Space>
       ), },
@@ -85,7 +93,7 @@ export function PolicyBindingsPage() { const organizationId = useScopedOrganizat
     <div>
       <PageHeader
         title="Policy Bindings"
-        description="Grants a set of permissions to a user, group or role."
+        description="Grants a set of permissions to a user, team or role."
         actions={ <Space>
             <Input.Search
               placeholder="Search bindings"
@@ -186,7 +194,7 @@ function PolicyBindingFormDrawer({ binding,
           <Select
             options={[
               { value: 'user', label: 'User' },
-              { value: 'group', label: 'Group' },
+              { value: 'group', label: 'Team' },
               { value: 'role', label: 'Role' },
             ]}
             onChange={() => form.setFieldValue('subject_id', '')}

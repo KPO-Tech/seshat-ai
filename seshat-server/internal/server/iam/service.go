@@ -37,6 +37,8 @@ type Organization struct {
 	Description  string    `json:"description"`
 	WebsiteURL   string    `json:"website_url"`
 	SupportEmail string    `json:"support_email"`
+	IsDefault    bool      `json:"is_default"`
+	IsActive     bool      `json:"is_active"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }
@@ -49,6 +51,7 @@ type Membership struct {
 	CreatedAt       time.Time `json:"created_at"`
 	UserEmail       string    `json:"user_email,omitempty"`
 	UserDisplayName string    `json:"user_display_name,omitempty"`
+	UserIsAdmin     bool      `json:"user_is_admin,omitempty"`
 }
 
 type Session struct {
@@ -840,6 +843,8 @@ func toOrganization(record sdb.Organization) Organization {
 		Description:  record.Description,
 		WebsiteURL:   record.WebsiteURL,
 		SupportEmail: record.SupportEmail,
+		IsDefault:    record.IsDefault,
+		IsActive:     record.IsActive,
 		CreatedAt:    record.CreatedAt,
 		UpdatedAt:    record.UpdatedAt,
 	}

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Button, Card, Drawer, Empty, Form, Popconfirm, Space, Tag, Typography, message } from 'antd'
+import { Button, Card, Drawer, Empty, Form, Input, Popconfirm, Segmented, Space, Tag, Typography, message } from 'antd'
 import type { TableProps } from 'antd'
-import { DeleteOutlined, EditOutlined, MailOutlined, PlusOutlined, SafetyOutlined, TeamOutlined } from '@ant-design/icons'
+import { ClusterOutlined, CrownOutlined, DeleteOutlined, EditOutlined, MailOutlined, PlusOutlined, SafetyOutlined, TeamOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import {
   useMembershipsList,
@@ -12,11 +12,14 @@ import {
 } from '@/api/memberships'
 import { useInvitationsList } from '@/api/invitations'
 import { useRolesList } from '@/api/roles'
+import { useCreateUser, useUpdateUser } from '@/api/users'
 import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
 import { ConsoleTable } from '@/components/ConsoleTable'
 import { StatTile } from '@/components/StatTile'
+import { useTeamsList } from '@/api/groups'
 import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
+import { useAuthStore } from '@/store/auth'
 import { UserSelect } from '@/components/UserSelect'
 import { RoleSelect } from '@/components/RoleSelect'
 import { presentDateTime, presentText } from '@/lib/present'
@@ -28,6 +31,7 @@ const PAGE_SIZE = 20
 export function MembershipsPage() {
   const navigate = useNavigate()
   const organizationId = useScopedOrganizationId()
+  const isPlatformAdmin = useAuthStore((s) => s.user?.is_admin)
   const [page, setPage] = useState(1)
   const [editing, setEditing] = useState<Membership | 'new' | null>(null)
 
@@ -44,10 +48,13 @@ export function MembershipsPage() {
     offset: 0,
   })
   const roles = useRolesList(organizationId ?? undefined)
+  const teams = useTeamsList(organizationId ?? undefined, { sort: 'name', order: 'asc', limit: 1, offset: 0 })
 
   const createMembership = useCreateMembership()
   const updateMembership = useUpdateMembership()
   const deleteMembership = useDeleteMembership()
+  const createUser = useCreateUser()
+  const updateUser = useUpdateUser()
 
   const roleByCode = useMemo(
     () => new Map((roles.data?.roles ?? []).map((role) => [role.code ?? '', role])),
@@ -55,8 +62,22 @@ export function MembershipsPage() {
   )
 
   const totalRoles = roles.data?.roles?.length ?? 0
-  const customRoles = (roles.data?.roles ?? []).filter((role) => !role.system)
   const pendingInvitations = invitations.data?.total ?? 0
+
+  function togglePlatformAdmin(record: Membership) {
+    if (!record.user_id || !record.user_email || !record.user_display_name) return
+    updateUser.mutate(
+      {
+        id: record.user_id,
+        body: {
+          email: record.user_email,
+          display_name: record.user_display_name,
+          is_admin: !record.user_is_admin,
+        },
+      },
+      { onError: (error) => message.error(getErrorMessage(error)) },
+    )
+  }
 
   const columns: TableProps<Membership>['columns'] = [
     {
@@ -68,7 +89,14 @@ export function MembershipsPage() {
 
         return (
           <Space direction="vertical" size={2}>
-            <Typography.Text strong>{primary}</Typography.Text>
+            <Space size={6}>
+              <Typography.Text strong>{primary}</Typography.Text>
+              {record.user_is_admin && (
+                <Tag color="gold" icon={<CrownOutlined />} style={{ margin: 0 }}>
+                  Platform Admin
+                </Tag>
+              )}
+            </Space>
             {showEmail ? (
               <Typography.Text style={{ fontSize: 12, color: palette.inkSecondary }}>
                 {record.user_email}
@@ -116,9 +144,26 @@ export function MembershipsPage() {
     {
       title: '',
       key: 'actions',
-      width: 96,
+      width: 140,
       render: (_, record) => (
         <Space>
+          {isPlatformAdmin && (
+            <Popconfirm
+              title={record.user_is_admin ? 'Revoke platform admin?' : 'Grant platform admin?'}
+              description={
+                record.user_is_admin
+                  ? 'This user loses full access to every organization on the platform.'
+                  : 'This user gains full access to every organization on the platform, not just this one.'
+              }
+              onConfirm={() => togglePlatformAdmin(record)}
+            >
+              <Button
+                size="small"
+                icon={<CrownOutlined />}
+                aria-label={record.user_is_admin ? 'Revoke platform admin' : 'Grant platform admin'}
+              />
+            </Popconfirm>
+          )}
           <Button size="small" icon={<EditOutlined />} onClick={() => setEditing(record)} aria-label="Edit member role" />
           <Popconfirm
             title="Remove this membership?"
@@ -142,8 +187,8 @@ export function MembershipsPage() {
         description="Direct access to this organization, with each member's effective role."
         actions={
           <Space>
+            <Button onClick={() => navigate(`/orgs/${organizationId}/team/teams`)}>Teams</Button>
             <Button onClick={() => navigate(`/orgs/${organizationId}/team/invitations`)}>Invitations</Button>
-            <Button onClick={() => navigate(`/orgs/${organizationId}/team/roles`)}>Roles</Button>
             <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing('new')} disabled={!organizationId}>
               Add member
             </Button>
@@ -166,22 +211,22 @@ export function MembershipsPage() {
           icon={<TeamOutlined />}
         />
         <StatTile
+          label="Teams"
+          value={teams.data?.total}
+          loading={teams.isLoading}
+          icon={<ClusterOutlined />}
+        />
+        <StatTile
           label="Pending invites"
           value={pendingInvitations}
           loading={invitations.isLoading}
           icon={<MailOutlined />}
         />
         <StatTile
-          label="Role templates"
+          label="Roles"
           value={totalRoles}
           loading={roles.isLoading}
           icon={<SafetyOutlined />}
-        />
-        <StatTile
-          label="Custom roles"
-          value={customRoles.length}
-          loading={roles.isLoading}
-          icon={<EditOutlined />}
         />
       </div>
 
@@ -215,7 +260,7 @@ export function MembershipsPage() {
         organizationId={organizationId}
         open={editing !== null}
         onClose={() => setEditing(null)}
-        onSubmit={(values) => {
+        onSubmitExisting={(values) => {
           if (!organizationId) return
 
           if (editing === 'new') {
@@ -240,7 +285,30 @@ export function MembershipsPage() {
             )
           }
         }}
-        submitting={createMembership.isPending || updateMembership.isPending}
+        onSubmitNewUser={(values) => {
+          if (!organizationId) return
+          // Created without organization_id/role attached in the same call
+          // (that path only supports system roles server-side) - attach as
+          // a separate membership straight after so any custom role, same
+          // as the "existing user" flow, works here too.
+          createUser.mutate(
+            { email: values.email, password: values.password, display_name: values.display_name },
+            {
+              onSuccess: (user) => {
+                if (!user?.id) return
+                createMembership.mutate(
+                  { organization_id: organizationId, user_id: user.id, role: values.role },
+                  {
+                    onSuccess: () => setEditing(null),
+                    onError: (error) => message.error(getErrorMessage(error)),
+                  },
+                )
+              },
+              onError: (error) => message.error(getErrorMessage(error)),
+            },
+          )
+        }}
+        submitting={createMembership.isPending || updateMembership.isPending || createUser.isPending}
       />
     </div>
   )
@@ -251,25 +319,30 @@ function MembershipFormDrawer({
   organizationId,
   open,
   onClose,
-  onSubmit,
+  onSubmitExisting,
+  onSubmitNewUser,
   submitting,
 }: {
   membership: Membership | null
   organizationId: string | null
   open: boolean
   onClose: () => void
-  onSubmit: (values: { user_id?: string; role?: string }) => void
+  onSubmitExisting: (values: { user_id?: string; role?: string }) => void
+  onSubmitNewUser: (values: { email: string; password: string; display_name: string; role: string }) => void
   submitting: boolean
 }) {
-  const [form] = Form.useForm<{ user_id: string; role: string }>()
+  const [mode, setMode] = useState<'existing' | 'new'>('existing')
+  const [existingForm] = Form.useForm<{ user_id: string; role: string }>()
+  const [newUserForm] = Form.useForm<{ email: string; password: string; display_name: string; role: string }>()
 
   useEffect(() => {
     if (!open) return
-    form.setFieldsValue({
+    setMode('existing')
+    existingForm.setFieldsValue({
       user_id: membership?.user_id ?? '',
       role: membership?.role ?? 'member',
     })
-  }, [open, membership, form])
+  }, [open, membership, existingForm])
 
   return (
     <Drawer
@@ -279,34 +352,87 @@ function MembershipFormDrawer({
       destroyOnHidden
       size={640}
       extra={
-        <Button type="primary" loading={submitting} onClick={() => form.submit()}>
+        <Button
+          type="primary"
+          loading={submitting}
+          onClick={() => (mode === 'existing' ? existingForm.submit() : newUserForm.submit())}
+        >
           Save
         </Button>
       }
     >
       <Space direction="vertical" size={18} style={{ width: '100%' }}>
-        <Typography.Text style={{ color: palette.inkSecondary }}>
-          {membership
-            ? 'Change the assigned role for this existing member.'
-            : 'Choose an existing platform user and assign the role they should have in this organization.'}
-        </Typography.Text>
+        {!membership && (
+          <Segmented
+            value={mode}
+            onChange={(value) => setMode(value as 'existing' | 'new')}
+            options={[
+              { label: 'Existing user', value: 'existing' },
+              { label: 'New user', value: 'new' },
+            ]}
+          />
+        )}
 
-        <Form form={form} layout="vertical" onFinish={onSubmit}>
-          <Form.Item name="user_id" label="User" rules={[{ required: true, message: 'Required' }]}>
-            <UserSelect
-              disabled={Boolean(membership)}
-              placeholder={membership ? undefined : 'Search by email or paste a user ID'}
-            />
-          </Form.Item>
-          <Form.Item
-            name="role"
-            label="Role"
-            extra="Use built-in roles for broad access and custom roles when a team needs narrower permissions."
-            rules={[{ required: true, message: 'Required' }]}
-          >
-            <RoleSelect organizationId={organizationId ?? undefined} />
-          </Form.Item>
-        </Form>
+        {mode === 'existing' || membership ? (
+          <>
+            <Typography.Text style={{ color: palette.inkSecondary }}>
+              {membership
+                ? 'Change the assigned role for this existing member.'
+                : 'Choose an existing platform user and assign the role they should have in this organization.'}
+            </Typography.Text>
+
+            <Form key="existing" form={existingForm} layout="vertical" onFinish={onSubmitExisting}>
+              <Form.Item name="user_id" label="User" rules={[{ required: true, message: 'Required' }]}>
+                <UserSelect
+                  disabled={Boolean(membership)}
+                  placeholder={membership ? undefined : 'Search by email or paste a user ID'}
+                />
+              </Form.Item>
+              <Form.Item
+                name="role"
+                label="Role"
+                extra="Use built-in roles for broad access and custom roles when a team needs narrower permissions."
+                rules={[{ required: true, message: 'Required' }]}
+              >
+                <RoleSelect organizationId={organizationId ?? undefined} />
+              </Form.Item>
+            </Form>
+          </>
+        ) : (
+          <>
+            <Typography.Text style={{ color: palette.inkSecondary }}>
+              Creates a brand-new platform account and adds it to this organization in one step.
+            </Typography.Text>
+
+            <Form key="new-user" form={newUserForm} layout="vertical" onFinish={onSubmitNewUser} initialValues={{ role: 'member' }}>
+              <Form.Item name="display_name" label="Name" rules={[{ required: true, message: 'Required' }]}>
+                <Input />
+              </Form.Item>
+              <Form.Item
+                name="email"
+                label="Email"
+                rules={[{ required: true, type: 'email', message: 'Enter a valid email' }]}
+              >
+                <Input />
+              </Form.Item>
+              <Form.Item
+                name="password"
+                label="Password"
+                rules={[{ required: true, min: 8, message: 'At least 8 characters' }]}
+              >
+                <Input.Password />
+              </Form.Item>
+              <Form.Item
+                name="role"
+                label="Role"
+                extra="Use built-in roles for broad access and custom roles when a team needs narrower permissions."
+                rules={[{ required: true, message: 'Required' }]}
+              >
+                <RoleSelect organizationId={organizationId ?? undefined} />
+              </Form.Item>
+            </Form>
+          </>
+        )}
       </Space>
     </Drawer>
   )
