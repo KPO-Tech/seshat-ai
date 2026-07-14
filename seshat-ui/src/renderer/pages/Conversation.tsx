@@ -380,6 +380,7 @@ export function Conversation() {
           permissionMode={permissionMode}
           onTogglePermission={togglePermissionMode}
           onPermissionModeSelect={handlePermissionModeSelect}
+          executionMode={agentState.executionMode}
         />
       </div>
 

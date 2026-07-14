@@ -106,7 +106,14 @@ function ProviderCard({ provider, onSaved }: {
         <div className="wsp-provider-info">
           <div className="wsp-provider-avatar">{provider.label[0]}</div>
           <div>
-            <div className="wsp-provider-name">{provider.label}</div>
+            <div className="wsp-provider-name">
+              {provider.label}
+              {provider.source && (
+                <span className="pv-origin-badge">
+                  {provider.source === 'organization' ? 'from your organization' : 'platform default'}
+                </span>
+              )}
+            </div>
             <div className="wsp-provider-desc">{providerDescription(provider.provider)}</div>
           </div>
         </div>
@@ -254,6 +261,7 @@ function DomainCatalog({
   onSave,
   saving,
   saved,
+  orgBlockedCount,
 }: {
   categories: DomainCategory[]
   activeSet: Set<string>
@@ -261,6 +269,7 @@ function DomainCatalog({
   onSave: () => void
   saving: boolean
   saved: boolean
+  orgBlockedCount: number
 }) {
   const [openIds, setOpenIds] = useState<Set<string>>(new Set([categories[0]?.id].filter(Boolean)))
 
@@ -281,6 +290,11 @@ function DomainCatalog({
           <div>
             <div className="dc-header-title">Domain Catalog</div>
             <div className="dc-header-sub">Choose which domains SeshatOS can use when searching the web.</div>
+            {orgBlockedCount > 0 && (
+              <div className="dc-org-policy-note">
+                Your organization blocks {orgBlockedCount} domain{orgBlockedCount === 1 ? '' : 's'} — these can't be re-enabled here.
+              </div>
+            )}
           </div>
         </div>
         <button
@@ -614,6 +628,7 @@ export function WebSearchView() {
                 onSave={handleDomainSave}
                 saving={domainSaving}
                 saved={domainSaved}
+                orgBlockedCount={settings?.org_blocked_domains?.length ?? 0}
               />
             </div>
           )}
@@ -674,6 +689,7 @@ const WEB_SEARCH_CSS = `
   flex-shrink: 0; text-transform: uppercase;
 }
 .wsp-provider-name { font-size: 14px; font-weight: 700; color: var(--color-text); }
+.wsp-provider-name .pv-origin-badge { display: inline-flex; align-items: center; font-size: 10px; color: var(--color-text-muted); background: var(--color-surface); border: 1px solid var(--color-border); padding: 1px 7px; border-radius: 5px; font-weight: 600; margin-left: 8px; vertical-align: middle; }
 .wsp-provider-desc {
   font-size: 12px; color: var(--color-text-muted);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -834,6 +850,10 @@ const WEB_SEARCH_CSS = `
 }
 .dc-header-sub {
   font-size: 13px; color: var(--color-text-muted); margin-top: 2px;
+}
+.dc-org-policy-note {
+  font-size: 12px; color: var(--color-text-muted); margin-top: 6px;
+  display: flex; align-items: center; gap: 5px;
 }
 
 .dc-save-btn {

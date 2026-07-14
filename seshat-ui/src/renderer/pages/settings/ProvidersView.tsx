@@ -72,6 +72,16 @@ function formatTokens(n: number): string {
   return `${n} tokens`
 }
 
+// In connected mode, org/platform-sourced entries carry a synthetic id
+// ("org:<provider>" / "platform:<provider>") from internal/cloudsettings —
+// derived here rather than added as a response field, since the prefix
+// already fully determines it.
+function getProviderOrigin(id: string): 'organization' | 'platform' | 'personal' {
+  if (id.startsWith('org:')) return 'organization'
+  if (id.startsWith('platform:')) return 'platform'
+  return 'personal'
+}
+
 function getProviderConnectionState(setting: ProviderSetting): ProviderConnectionState {
   if (setting.provider === 'ollama') {
     return { connected: true, label: 'Connected', tone: 'connected' }
@@ -203,6 +213,8 @@ export function ProvidersView() {
           const isLoading = loadingModels[setting.id]
           const isSyncing = syncingModels[setting.id]
           const connectionState = getProviderConnectionState(setting)
+          const origin = getProviderOrigin(setting.id)
+          const isReadOnly = origin !== 'personal'
 
           return (
             <div key={setting.id} className={`pv-card ${isExpanded ? 'expanded' : ''} ${setting.is_default ? 'is-default' : ''}`}>
@@ -217,6 +229,11 @@ export function ProvidersView() {
                           <Crown size={10} /> default
                         </span>
                       )}
+                      {isReadOnly && (
+                        <span className="pv-origin-badge">
+                          {origin === 'organization' ? 'from your organization' : 'platform default'}
+                        </span>
+                      )}
                     </div>
                     <div className="pv-id">
                       {setting.provider}
@@ -228,7 +245,7 @@ export function ProvidersView() {
                   <span className={`pv-status-pill ${connectionState.tone}`}>
                     {connectionState.label}
                   </span>
-                  {!setting.is_default && (
+                  {!isReadOnly && !setting.is_default && (
                     <button
                       className="pv-icon-btn pv-default-btn"
                       title="Set as default provider"
@@ -238,13 +255,15 @@ export function ProvidersView() {
                       <Crown size={16} />
                     </button>
                   )}
-                  <button
-                    className="pv-icon-btn"
-                    onClick={(e) => { e.stopPropagation(); handleDelete(setting.id) }}
-                    disabled={deletingId === setting.id}
-                  >
-                    <Delete size={16} />
-                  </button>
+                  {!isReadOnly && (
+                    <button
+                      className="pv-icon-btn"
+                      onClick={(e) => { e.stopPropagation(); handleDelete(setting.id) }}
+                      disabled={deletingId === setting.id}
+                    >
+                      <Delete size={16} />
+                    </button>
+                  )}
                   <button className="pv-icon-btn">
                     {isExpanded ? <Down size={16} /> : <Right size={16} />}
                   </button>
@@ -828,6 +847,7 @@ export const PROVIDERS_CSS = `
 .pv-card.expanded { border-color: var(--color-primary); box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
 .pv-card.is-default { border-color: rgba(239,124,47,0.35); }
 .pv-default-provider-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: var(--color-primary); background: var(--color-primary-subtle); padding: 1px 7px; border-radius: 5px; font-weight: 700; margin-left: 8px; vertical-align: middle; }
+.pv-origin-badge { display: inline-flex; align-items: center; font-size: 10px; color: var(--color-text-muted); background: var(--color-surface); border: 1px solid var(--color-border); padding: 1px 7px; border-radius: 5px; font-weight: 600; margin-left: 8px; vertical-align: middle; }
 .pv-default-btn { color: var(--color-text-muted); }
 .pv-default-btn:hover { color: var(--color-primary) !important; }
 .pv-card-header { padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; border-radius: 14px; }

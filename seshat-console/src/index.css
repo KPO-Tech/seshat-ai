@@ -1,0 +1,19 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  /* Matches palette.canvas (src/theme/tokens.ts) — avoids a white flash
+     before the antd ConfigProvider mounts and paints the real background. */
+  background-color: #2F2E34;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

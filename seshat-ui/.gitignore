@@ -20,3 +20,8 @@ pnpm-debug.log*
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Backend sidecar binary — a per-target build artifact, not source. See
+# resources/backend/README.md.
+resources/backend/seshat-backend
+resources/backend/seshat-backend.exe

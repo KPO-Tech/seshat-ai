@@ -38,6 +38,9 @@ type CatalogEntry = {
   url: string
   description: string
   installed: boolean
+  // Present only for entries pulled from a connected seshat-server's org
+  // registry — see internal/cloudskillregistry on the backend.
+  source?: 'organization'
 }
 
 type MCPServer = {
@@ -60,6 +63,21 @@ type MCPServer = {
 
 type ReloadStatus = { name: string; ok: boolean; tools: number; error?: string }
 type ToolEntry   = { name: string; description?: string }
+
+// One MCP server shared by the connected organization — not a local
+// mcp_servers row (see internal/cloudmcp): stays inactive until explicitly
+// approved, since a stdio server spawns an arbitrary command locally.
+type MCPOrgCatalogEntry = {
+  id: string
+  name: string
+  display_name?: string
+  server_type: string
+  command?: string
+  args?: string[]
+  url?: string
+  icon?: string
+  approved: boolean
+}
 
 const EMPTY_SERVER: Omit<MCPServer, 'id' | 'source' | 'created_at' | 'updated_at'> = {
   name: '', display_name: '', server_type: 'stdio',
@@ -679,7 +697,12 @@ function RepoManagerModal({ catalog, installed, onClose, onChanged }: {
                   return (
                     <div key={entry.name} className="repo-catalog-entry">
                       <div className="repo-entry-info">
-                        <div className="repo-entry-name">{entry.name}</div>
+                        <div className="repo-entry-name">
+                          {entry.name}
+                          {entry.source === 'organization' && (
+                            <span className="repo-origin-badge">from your organization</span>
+                          )}
+                        </div>
                         {entry.description && <div className="repo-entry-desc">{entry.description}</div>}
                       </div>
                       {isInstalled ? (
@@ -911,6 +934,8 @@ function McpPanel() {
         </div>
       </div>
 
+      <McpOrgCatalogSection onApprovalChanged={() => { setPendingReload(false); void load() }} />
+
       <input
         ref={fileInputRef}
         type="file"
@@ -928,6 +953,127 @@ function McpPanel() {
         />
       )}
     </>
+  )
+}
+
+// ─── MCP organization catalog ─────────────────────────────────────────────────
+// Servers shared by a connected org — config only, never auto-loaded. Empty
+// list in standalone mode (the fetch itself degrades silently server-side).
+
+function McpOrgCatalogSection({ onApprovalChanged }: { onApprovalChanged: () => void }) {
+  const [entries, setEntries] = useState<MCPOrgCatalogEntry[]>([])
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    try {
+      const data = await api.get<{ mcp_org_catalog: MCPOrgCatalogEntry[]; count: number }>('/mcp/org-catalog')
+      setEntries(data.mcp_org_catalog ?? [])
+    } catch {
+      // standalone mode or connectivity issue — just show nothing
+      setEntries([])
+    }
+  }, [])
+
+  useEffect(() => { void load() }, [load])
+
+  if (entries.length === 0) return null
+
+  const handleApprove = async (entry: MCPOrgCatalogEntry) => {
+    setBusyId(entry.id)
+    setError(null)
+    try {
+      await api.post(`/mcp/org-catalog/${entry.id}/approve`, {})
+      setEntries(prev => prev.map(e => e.id === entry.id ? { ...e, approved: true } : e))
+      onApprovalChanged()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to approve server')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const handleRevoke = async (entry: MCPOrgCatalogEntry) => {
+    setBusyId(entry.id)
+    setError(null)
+    try {
+      await api.delete(`/mcp/org-catalog/${entry.id}/approve`)
+      setEntries(prev => prev.map(e => e.id === entry.id ? { ...e, approved: false } : e))
+      onApprovalChanged()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to revoke server')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  return (
+    <div className="sv-card">
+      <div className="sv-card-head">
+        <div className="caps-mcp-header">
+          <div className="sv-card-brand">
+            <div>
+              <div className="sv-brand-name">Organization catalog</div>
+              <div className="sv-brand-sub">Servers shared by your organization — approve one to run it here</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="sv-card-body">
+        {error && <div className="caps-error">{error}</div>}
+        <div className="caps-mcp-list">
+          {entries.map(entry => {
+            const isStdio = entry.server_type === 'stdio'
+            return (
+              <div key={entry.id} className={`caps-mcp-card ${entry.approved ? '' : 'disabled'}`}>
+                <div className="caps-mcp-card-main">
+                  <div className="caps-mcp-card-left">
+                    <div className="caps-mcp-icon">{entry.icon || '🔌'}</div>
+                    <div className="caps-mcp-info">
+                      <div className="caps-mcp-title">
+                        <span className="caps-mcp-name">{entry.display_name || entry.name}</span>
+                        <span className="caps-mcp-type-badge">
+                          {isStdio ? <Terminal size={11} /> : <Globe size={11} />}
+                          {entry.server_type}
+                        </span>
+                        <span className="caps-mcp-source-badge">from organization</span>
+                      </div>
+                      <div className="caps-mcp-detail">
+                        {isStdio
+                          ? <code>{entry.command}{entry.args?.length ? ' ' + entry.args.join(' ') : ''}</code>
+                          : <code>{entry.url}</code>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                  <div className="caps-mcp-actions">
+                    {entry.approved ? (
+                      <button
+                        className="caps-org-mcp-revoke-btn"
+                        onClick={() => handleRevoke(entry)}
+                        disabled={busyId === entry.id}
+                        title="Stop running this server locally"
+                      >
+                        <CheckOne size={13} /> {busyId === entry.id ? 'Working…' : 'Active'}
+                      </button>
+                    ) : (
+                      <button
+                        className="caps-org-mcp-approve-btn"
+                        onClick={() => handleApprove(entry)}
+                        disabled={busyId === entry.id}
+                        title={isStdio ? 'This will run a command on your machine' : 'Enable this server locally'}
+                      >
+                        <Lock size={13} /> {busyId === entry.id ? 'Working…' : 'Activer'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -1689,6 +1835,28 @@ export const CAPABILITIES_CSS = `
 .caps-mcp-source-badge {
   font-size: 10px; font-weight: 600; color: var(--color-text-muted);
   background: var(--color-hover); padding: 2px 6px; border-radius: 4px;
+}
+
+.caps-org-mcp-approve-btn {
+  background: var(--color-cta); color: white;
+  border: none; padding: 6px 14px; border-radius: 8px;
+  font-size: 12px; font-weight: 700;
+  display: flex; align-items: center; gap: 6px; cursor: pointer;
+}
+.caps-org-mcp-approve-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.caps-org-mcp-revoke-btn {
+  background: var(--color-surface); border: 1px solid var(--color-success, #22c55e);
+  color: var(--color-success, #22c55e); padding: 6px 14px; border-radius: 8px;
+  font-size: 12px; font-weight: 600;
+  display: flex; align-items: center; gap: 6px; cursor: pointer;
+}
+.caps-org-mcp-revoke-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.repo-origin-badge {
+  font-size: 10px; font-weight: 600; color: var(--color-text-muted);
+  background: var(--color-hover); padding: 2px 6px; border-radius: 4px;
+  margin-left: 8px; vertical-align: middle;
 }
 
 .caps-mcp-detail code {

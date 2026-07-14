@@ -44,13 +44,23 @@ export function AskUserToolView({ tool, result, status, onSubmitPrompt }: Props)
     setCustomAnswer('')
   }, [prompt?.promptId])
 
+  // Prompt types that need a dedicated render even without a parsed question list
+  const isTextPrompt = prompt?.type === 'text' && questions.length === 0
+  const isConfirmPrompt = prompt?.type === 'confirm' && questions.length === 0
+
   if (questions.length === 0 && !prompt) {
     return <GenericToolView tool={tool} result={result} status={status} />
   }
 
   function submitPrompt() {
-    if (!prompt?.promptId || !onSubmitPrompt || !activeQuestion) return
+    if (!prompt?.promptId || !onSubmitPrompt) return
     const trimmedCustom = customAnswer.trim()
+    if (isTextPrompt) {
+      if (!trimmedCustom) return
+      onSubmitPrompt(prompt.promptId, trimmedCustom)
+      return
+    }
+    if (!activeQuestion) return
     if (trimmedCustom) {
       onSubmitPrompt(prompt.promptId, trimmedCustom)
       return
@@ -74,6 +84,86 @@ export function AskUserToolView({ tool, result, status, onSubmitPrompt }: Props)
       current.includes(value)
         ? current.filter((item) => item !== value)
         : [...current, value],
+    )
+  }
+
+  // ── Text prompt (free-form input, no options) ──────────────────────────
+  if (isTextPrompt) {
+    return (
+      <div className="tb-ask-card">
+        {prompt.message && <div className="tb-ask-question">{prompt.message}</div>}
+        {status === 'running' ? (
+          <div className="tb-ask-form">
+            <label className="tb-ask-custom">
+              <textarea
+                className="tb-ask-textarea"
+                rows={3}
+                value={customAnswer}
+                onChange={(event) => setCustomAnswer(event.target.value)}
+                placeholder="Type your answer…"
+                autoFocus
+              />
+            </label>
+            <div className="tb-ask-actions">
+              <button
+                type="button"
+                className="tb-ask-submit"
+                onClick={submitPrompt}
+                disabled={!customAnswer.trim()}
+              >
+                Send
+              </button>
+            </div>
+          </div>
+        ) : (
+          result?.content && (
+            <div className="tb-ask-answer">
+              <span className="tb-ask-answer-label">Answer</span>
+              <span className="tb-ask-answer-value">{result.content}</span>
+            </div>
+          )
+        )}
+      </div>
+    )
+  }
+
+  // ── Confirm prompt (yes / no) ──────────────────────────────────────────
+  if (isConfirmPrompt) {
+    return (
+      <div className="tb-ask-card">
+        {prompt.message && <div className="tb-ask-question">{prompt.message}</div>}
+        {status === 'running' ? (
+          <div className="tb-ask-options">
+            <button
+              type="button"
+              className={`tb-ask-option${selectedValues[0] === 'true' ? ' tb-ask-option--selected' : ''}`}
+              onClick={() => { setSelectedValues(['true']); onSubmitPrompt?.(prompt.promptId, true) }}
+            >
+              <div className="tb-ask-option-copy">
+                <span className="tb-ask-option-label">Yes</span>
+              </div>
+            </button>
+            <button
+              type="button"
+              className={`tb-ask-option${selectedValues[0] === 'false' ? ' tb-ask-option--selected' : ''}`}
+              onClick={() => { setSelectedValues(['false']); onSubmitPrompt?.(prompt.promptId, false) }}
+            >
+              <div className="tb-ask-option-copy">
+                <span className="tb-ask-option-label">No</span>
+              </div>
+            </button>
+          </div>
+        ) : (
+          result?.content && (
+            <div className="tb-ask-answer">
+              <span className="tb-ask-answer-label">Answer</span>
+              <span className="tb-ask-answer-value">
+                {result.content === 'true' ? 'Yes' : result.content === 'false' ? 'No' : result.content}
+              </span>
+            </div>
+          )
+        )}
+      </div>
     )
   }
 

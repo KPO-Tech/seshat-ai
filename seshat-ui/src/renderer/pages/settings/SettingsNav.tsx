@@ -1,7 +1,7 @@
 import { NexusLogo } from '@/components/NexusLogo'
 
 // Concrete TabId for the Settings page — exported for use in settings/index.tsx
-export type TabId = 'general' | 'providers' | 'knowledge' | 'memories' | 'capabilities' | 'remote' | 'system' | 'about' | 'admin-users' | 'admin-groups' | 'admin-organizations' | 'admin-workspaces' | 'admin-audit' | 'admin-quotas'
+export type TabId = 'general' | 'providers' | 'knowledge' | 'memories' | 'capabilities' | 'remote' | 'cloud-automation' | 'system' | 'about' | 'admin-users' | 'admin-groups' | 'admin-organizations' | 'admin-workspaces' | 'admin-audit' | 'admin-quotas'
 
 // ─── Generic nav item ─────────────────────────────────────────────────────────
 
