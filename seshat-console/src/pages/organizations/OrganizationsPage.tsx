@@ -1,18 +1,5 @@
-import { useEffect, useState } from 'react'
-import {
-  Avatar,
-  Button,
-  Card,
-  Drawer,
-  Empty,
-  Form,
-  Input,
-  message,
-  Popconfirm,
-  Space,
-  Tag,
-  Typography,
-} from 'antd'
+import { useState } from 'react'
+import { Avatar, Button, Card, Empty, Input, message, Popconfirm, Space, Tag, Typography } from 'antd'
 import type { TableProps } from 'antd'
 import {
   ApartmentOutlined,
@@ -31,41 +18,17 @@ import {
   useUpdateOrganization,
   useDeleteOrganization,
   type Organization,
-  type OrganizationInput,
 } from '@/api/organizations'
 import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
 import { ConsoleTable } from '@/components/ConsoleTable'
 import { StatTile } from '@/components/StatTile'
+import { OrganizationFormDrawer } from '@/components/OrganizationFormDrawer'
 import { presentDateTime, presentText } from '@/lib/present'
+import { hasValue, getOrganizationChecklist } from '@/lib/organizationProfile'
 import { palette } from '@/theme/tokens'
 
 const PAGE_SIZE = 20
-
-function hasValue(value: string | null | undefined) {
-  return Boolean(value && value.trim().length > 0)
-}
-
-function slugify(value: string) {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-}
-
-function getOrganizationProfile(org: Organization) {
-  const missing: string[] = []
-  if (!hasValue(org.description)) missing.push('Description')
-  if (!hasValue(org.website_url)) missing.push('Website')
-  if (!hasValue(org.support_email)) missing.push('Support')
-
-  return {
-    missing,
-    isReady: missing.length === 0,
-    completionCount: 3 - missing.length,
-  }
-}
 
 export function OrganizationsPage() {
   const navigate = useNavigate()
@@ -91,7 +54,7 @@ export function OrganizationsPage() {
   const organizations = data?.organizations ?? []
   const organizationsWithWebsite = organizations.filter((org) => hasValue(org.website_url)).length
   const organizationsWithSupport = organizations.filter((org) => hasValue(org.support_email)).length
-  const organizationsNeedingAttention = organizations.filter((org) => !getOrganizationProfile(org).isReady).length
+  const organizationsNeedingAttention = organizations.filter((org) => !getOrganizationChecklist(org).isReady).length
 
   const handleTableChange: TableProps<Organization>['onChange'] = (_pagination, _filters, sorter) => {
     const single = Array.isArray(sorter) ? sorter[0] : sorter
@@ -110,7 +73,7 @@ export function OrganizationsPage() {
       key: 'name',
       sorter: true,
       render: (name: string, record) => {
-        const profile = getOrganizationProfile(record)
+        const profile = getOrganizationChecklist(record)
         return (
           <Space align="start" size={12}>
             <Avatar
@@ -300,77 +263,5 @@ export function OrganizationsPage() {
         submitting={createOrg.isPending || updateOrg.isPending}
       />
     </div>
-  )
-}
-
-function OrganizationFormDrawer({
-  organization,
-  open,
-  onClose,
-  onSubmit,
-  submitting,
-}: {
-  organization: Organization | null
-  open: boolean
-  onClose: () => void
-  onSubmit: (values: OrganizationInput) => void
-  submitting: boolean
-}) {
-  const [form] = Form.useForm<OrganizationInput>()
-  const [slugTouched, setSlugTouched] = useState(false)
-
-  useEffect(() => {
-    if (open) {
-      form.setFieldsValue(organization ?? { name: '', slug: '' })
-      setSlugTouched(Boolean(organization?.slug))
-    }
-  }, [open, organization, form])
-
-  return (
-    <Drawer
-      title={organization ? `Edit ${organization.name}` : 'New organization'}
-      open={open}
-      onClose={onClose}
-      destroyOnHidden
-      size={720}
-      extra={
-        <Button type="primary" loading={submitting} onClick={() => form.submit()}>
-          Save
-        </Button>
-      }
-    >
-      <Form<OrganizationInput>
-        form={form}
-        layout="vertical"
-        onValuesChange={(changedValues) => {
-          if (organization || slugTouched) return
-          if (typeof changedValues.name === 'string') {
-            form.setFieldValue('slug', slugify(changedValues.name))
-          }
-        }}
-        onFinish={onSubmit}
-      >
-        <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Required' }]}>
-          <Input placeholder="Acme" />
-        </Form.Item>
-        <Form.Item
-          name="slug"
-          label="Slug"
-          rules={[{ required: true, pattern: /^[a-z0-9-]+$/, message: 'Lowercase letters, digits, hyphens' }]}
-          extra="Used in URLs and internal routing."
-        >
-          <Input placeholder="acme" onChange={() => setSlugTouched(true)} />
-        </Form.Item>
-        <Form.Item name="description" label="Description">
-          <Input.TextArea rows={3} placeholder="What this organization is for." />
-        </Form.Item>
-        <Form.Item name="website_url" label="Website">
-          <Input placeholder="https://example.com" />
-        </Form.Item>
-        <Form.Item name="support_email" label="Support email" rules={[{ type: 'email' }]}>
-          <Input placeholder="support@example.com" />
-        </Form.Item>
-      </Form>
-    </Drawer>
   )
 }

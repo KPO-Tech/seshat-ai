@@ -63,13 +63,19 @@ export function AppLayout() {
   const secondaryNavItems = getSecondaryNavItems(location.pathname, workspaceOrganizationId)
   const activeSecondary = getActiveSecondaryNavItem(location.pathname, secondaryNavItems)
 
+  const isAdmin = Boolean(user?.is_admin)
+
   const menuItems = [
-    {
-      key: 'platform-group',
-      type: 'group' as const,
-      label: 'Platform',
-      children: platformNavItems.map((item) => ({ key: item.key, label: item.label, icon: item.icon })),
-    },
+    ...(isAdmin
+      ? [
+          {
+            key: 'platform-group',
+            type: 'group' as const,
+            label: 'Platform',
+            children: platformNavItems.map((item) => ({ key: item.key, label: item.label, icon: item.icon })),
+          },
+        ]
+      : []),
     ...(organizationNavItems.length > 0
       ? [
           {
@@ -82,7 +88,7 @@ export function AppLayout() {
       : []),
   ]
 
-  const primaryItems = [...platformNavItems, ...organizationNavItems]
+  const primaryItems = [...(isAdmin ? platformNavItems : []), ...organizationNavItems]
 
   const navigateToOrganization = (nextOrganizationId: string | undefined) => {
     if (!nextOrganizationId) return
