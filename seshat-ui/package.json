@@ -3,6 +3,11 @@
   "version": "0.1.0",
   "description": "SeshatOS Desktop",
   "main": "out/main/index.js",
+  "author": {
+    "name": "KPO-Tech",
+    "email": "projectsengineer6@gmail.com"
+  },
+  "homepage": "https://github.com/KPO-Tech/seshat-ai",
   "engines": {
     "node": ">=22 <25"
   },
@@ -53,8 +58,8 @@
     "vite": "^6.4.1"
   },
   "build": {
-    "appId": "com.nexus.ai",
-    "productName": "Nexus AI",
+    "appId": "com.seshat.os",
+    "productName": "SeshatOS",
     "directories": {
       "output": "dist"
     },
@@ -67,7 +72,13 @@
         "from": "resources/backend",
         "to": "backend"
       }
-    ]
+    ],
+    "linux": {
+      "target": ["AppImage", "deb"]
+    },
+    "win": {
+      "target": ["nsis"]
+    }
   },
   "productName": "SeshatOS"
 }

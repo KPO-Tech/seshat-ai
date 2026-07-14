@@ -17,7 +17,16 @@ import (
 	"github.com/EngineerProjects/seshat/pkg/python"
 )
 
+// version is stamped at build time via -ldflags "-X main.version=vX.Y.Z"
+// (see .github/workflows/release-desktop.yml); "dev" for local builds.
+var version = "dev"
+
 func main() {
+	if len(os.Args) > 1 && (os.Args[1] == "--version" || os.Args[1] == "-v") {
+		fmt.Println(version)
+		return
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -28,6 +37,8 @@ func main() {
 		fmt.Println("\n[API] Arrêt du serveur en cours...")
 		cancel()
 	}()
+
+	fmt.Printf("[API] seshat-backend %s\n", version)
 
 	config, err := appconfig.Load()
 	if err != nil {
