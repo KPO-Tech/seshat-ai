@@ -5,6 +5,7 @@ import { registerSecureStoreHandlers } from './ipc/secure-store'
 import { registerBackendHandlers } from './ipc/backend'
 import { resolveRuntimeRoot } from './runtime'
 import { startBackendSidecar, stopBackendSidecar } from './backend-process'
+import { setupAutoUpdater } from './auto-update'
 
 function configureRuntimePaths() {
   const runtimeRoot = resolveRuntimeRoot()
@@ -74,6 +75,7 @@ app.whenReady().then(async () => {
   }
 
   createWindow()
+  setupAutoUpdater()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })

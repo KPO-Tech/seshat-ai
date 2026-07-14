@@ -78,7 +78,14 @@
     },
     "win": {
       "target": ["nsis"]
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "KPO-Tech",
+        "repo": "seshat-releases"
+      }
+    ]
   },
   "productName": "SeshatOS"
 }

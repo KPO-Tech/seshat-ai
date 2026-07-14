@@ -38,5 +38,13 @@ interface Window {
       cancelStream: (streamId: string) => Promise<void>
       onStreamEvent: (streamId: string, listener: (event: { name: string; data: Record<string, unknown> }) => void) => () => void
     }
+    updates?: {
+      checkNow: () => Promise<{ ok: boolean; error?: string }>
+      quitAndInstall: () => Promise<void>
+      onAvailable: (listener: (payload: { version: string }) => void) => () => void
+      onNotAvailable: (listener: () => void) => () => void
+      onDownloaded: (listener: (payload: { version: string }) => void) => () => void
+      onError: (listener: (payload: { message: string }) => void) => () => void
+    }
   }
 }
