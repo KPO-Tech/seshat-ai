@@ -12,8 +12,21 @@ export function resolveRuntimeRoot() {
   return join(app.getPath('home'), '.config', 'seshat')
 }
 
+// Set once by backend-process.ts after spawning the bundled sidecar and
+// discovering which port it actually bound to (the preferred one may have
+// been taken, see SESHAT_BACKEND_READY in cmd/api/main.go). Only relevant
+// in a packaged app — dev mode never spawns a sidecar, so this stays null
+// and resolveBackendOrigin() falls through to the env var / default below.
+let dynamicBackendOrigin: string | null = null
+
+export function setDynamicBackendOrigin(origin: string) {
+  dynamicBackendOrigin = origin.replace(/\/$/, '')
+}
+
 export function resolveBackendOrigin() {
-  return ((process.env.SESHAT_BACKEND_ORIGIN ?? process.env.NEXUS_BACKEND_ORIGIN)?.trim() || DEFAULT_BACKEND_ORIGIN).replace(/\/$/, '')
+  const explicit = (process.env.SESHAT_BACKEND_ORIGIN ?? process.env.NEXUS_BACKEND_ORIGIN)?.trim()
+  if (explicit) return explicit.replace(/\/$/, '')
+  return dynamicBackendOrigin || DEFAULT_BACKEND_ORIGIN
 }
 
 export function getDesktopBridgeSecretPath() {

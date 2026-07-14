@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -64,8 +65,13 @@ func main() {
 	apiCfg := defaultAPIConfig(config)
 	router := api.CreateRouter(apiCfg, app)
 
+	ln, actualPort, err := listen(apiCfg.Port)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[API] Impossible d'ouvrir un port d'écoute: %v\n", err)
+		os.Exit(1)
+	}
+
 	srv := &http.Server{
-		Addr:         fmt.Sprintf(":%d", apiCfg.Port),
 		Handler:      router,
 		ReadTimeout:  apiCfg.ReadTimeout,
 		WriteTimeout: apiCfg.WriteTimeout,
@@ -73,8 +79,12 @@ func main() {
 	}
 
 	go func() {
-		fmt.Printf("[API] Serveur démarré sur http://localhost:%d\n", apiCfg.Port)
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		fmt.Printf("[API] Serveur démarré sur http://localhost:%d\n", actualPort)
+		// Machine-readable line for a parent process (e.g. Electron's sidecar
+		// spawner) that needs to discover the real port when the preferred
+		// one was already taken — see listen()'s fallback below.
+		fmt.Printf("SESHAT_BACKEND_READY port=%d\n", actualPort)
+		if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
 			fmt.Fprintf(os.Stderr, "[API] Erreur serveur: %v\n", err)
 			cancel()
 		}
@@ -89,4 +99,20 @@ func main() {
 		fmt.Fprintf(os.Stderr, "[API] Erreur lors de l'arrêt: %v\n", err)
 	}
 	fmt.Println("[API] Serveur arrêté")
+}
+
+// listen opens a TCP listener on preferredPort. If that port is already in
+// use, it falls back to an OS-assigned free port (":0") instead of failing
+// outright — a packaged desktop app can't assume its preferred port is free
+// on every user's machine. Returns the listener and the port actually bound.
+func listen(preferredPort int) (net.Listener, int, error) {
+	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", preferredPort))
+	if err != nil {
+		fmt.Printf("[API] Port %d indisponible (%v), sélection d'un port libre...\n", preferredPort, err)
+		ln, err = net.Listen("tcp", ":0")
+		if err != nil {
+			return nil, 0, err
+		}
+	}
+	return ln, ln.Addr().(*net.TCPAddr).Port, nil
 }

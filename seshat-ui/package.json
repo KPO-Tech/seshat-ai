@@ -61,6 +61,12 @@
     "files": [
       "out/**/*",
       "!out/**/*.map"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/backend",
+        "to": "backend"
+      }
     ]
   },
   "productName": "SeshatOS"

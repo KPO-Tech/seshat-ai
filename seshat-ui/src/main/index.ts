@@ -1,9 +1,10 @@
-import { app, BrowserWindow, Menu, shell, ipcMain, globalShortcut } from 'electron'
+import { app, BrowserWindow, Menu, shell, ipcMain, globalShortcut, dialog } from 'electron'
 import { join } from 'path'
 import { registerSystemHandlers } from './ipc/system'
 import { registerSecureStoreHandlers } from './ipc/secure-store'
 import { registerBackendHandlers } from './ipc/backend'
 import { resolveRuntimeRoot } from './runtime'
+import { startBackendSidecar, stopBackendSidecar } from './backend-process'
 
 function configureRuntimePaths() {
   const runtimeRoot = resolveRuntimeRoot()
@@ -55,11 +56,23 @@ configureRuntimePaths()
 app.commandLine.appendSwitch('disable-gpu-vsync')
 app.commandLine.appendSwitch('use-angle', 'gl')
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   Menu.setApplicationMenu(null)
   registerSystemHandlers(ipcMain)
   registerSecureStoreHandlers(ipcMain)
   registerBackendHandlers(ipcMain)
+
+  try {
+    await startBackendSidecar()
+  } catch (error) {
+    dialog.showErrorBox(
+      'SeshatOS backend failed to start',
+      error instanceof Error ? error.message : String(error)
+    )
+    app.quit()
+    return
+  }
+
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -68,4 +81,8 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
+})
+
+app.on('will-quit', () => {
+  stopBackendSidecar()
 })
