@@ -409,6 +409,29 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/platform/docling-status:
+    get:
+      operationId: getDoclingStatus
+      tags: [platform]
+      summary: Whether this server has a docling-serve instance configured (platform admin only)
+      description: >-
+        docling-serve is a shared, server-wide setting (SESHAT_SERVER_DOCLING_URL),
+        not something any organization configures for itself - there's no
+        per-organization equivalent. The URL isn't a secret (shared
+        infrastructure, not a credential).
+      responses:
+        "200":
+          description: Docling status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  configured: { type: boolean }
+                  url: { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
   /api/v1/users:
     get:
       operationId: listUsers

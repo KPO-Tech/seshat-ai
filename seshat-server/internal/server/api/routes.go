@@ -19,6 +19,7 @@ func (app *App) routes() http.Handler {
 	mux.Handle("POST /api/v1/organizations/{organizationID}/unset-default", app.authMiddleware(http.HandlerFunc(app.handleOrganizationUnsetDefault)))
 	mux.Handle("POST /api/v1/organizations/{organizationID}/activate", app.authMiddleware(http.HandlerFunc(app.handleOrganizationActivate)))
 	mux.Handle("POST /api/v1/organizations/{organizationID}/deactivate", app.authMiddleware(http.HandlerFunc(app.handleOrganizationDeactivate)))
+	mux.Handle("GET /api/v1/platform/docling-status", app.authMiddleware(http.HandlerFunc(app.handleDoclingStatus)))
 	mux.Handle("GET /api/v1/users", app.authMiddleware(http.HandlerFunc(app.handleUsers)))
 	mux.Handle("POST /api/v1/users", app.authMiddleware(http.HandlerFunc(app.handleUsers)))
 	mux.Handle("GET /api/v1/users/{userID}", app.authMiddleware(http.HandlerFunc(app.handleUserByID)))

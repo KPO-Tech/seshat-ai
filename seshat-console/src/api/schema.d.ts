@@ -237,6 +237,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/docling-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Whether this server has a docling-serve instance configured (platform admin only)
+         * @description docling-serve is a shared, server-wide setting (SESHAT_SERVER_DOCLING_URL), not something any organization configures for itself - there's no per-organization equivalent. The URL isn't a secret (shared infrastructure, not a credential).
+         */
+        get: operations["getDoclingStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users": {
         parameters: {
             query?: never;
@@ -3471,6 +3491,31 @@ export interface operations {
             };
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    getDoclingStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Docling status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        configured?: boolean;
+                        url?: string;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
     listUsers: {
