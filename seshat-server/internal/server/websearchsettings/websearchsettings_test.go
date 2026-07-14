@@ -169,10 +169,19 @@ func TestResolveProviderSettingFallsBackToPlatformDefault(t *testing.T) {
 	env := newTestEnv(t)
 	member := env.addMember(t, "member")
 
-	if _, err := env.svc.CreatePlatformProviderSetting(context.Background(), env.adminPrincipal, CreatePlatformProviderSettingParams{
-		Provider: "tavily", APIKey: "sk-tavily-platform",
+	defaultOrg, err := env.iam.CreateOrganization(context.Background(), env.adminPrincipal, iam.CreateOrganizationParams{
+		Name: "Default Org", Slug: "default-org",
+	})
+	if err != nil {
+		t.Fatalf("create default org: %v", err)
+	}
+	if _, err := env.iam.SetOrganizationDefault(context.Background(), env.adminPrincipal, defaultOrg.ID, true); err != nil {
+		t.Fatalf("flag default org: %v", err)
+	}
+	if _, err := env.svc.CreateProviderSetting(context.Background(), env.adminPrincipal, CreateProviderSettingParams{
+		OrganizationID: defaultOrg.ID, Provider: "tavily", APIKey: "sk-tavily-platform",
 	}); err != nil {
-		t.Fatalf("create platform setting: %v", err)
+		t.Fatalf("create default org's setting: %v", err)
 	}
 
 	resolved, err := env.svc.ResolveProviderSetting(context.Background(), member, env.orgID, "tavily")

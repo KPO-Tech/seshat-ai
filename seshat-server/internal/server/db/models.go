@@ -463,21 +463,6 @@ type WebSearchProviderSetting struct {
 	UpdatedAt       time.Time
 }
 
-// PlatformWebSearchProviderSetting is the platform-wide default web-search
-// provider setting. Unlike ProviderSetting/EmbedderSetting, this domain has
-// not been migrated to the "flagged default organization" fallback model
-// yet - it remains its own global singleton table.
-type PlatformWebSearchProviderSetting struct {
-	ID              string `gorm:"primaryKey;size:32"`
-	CreatedByUserID string `gorm:"size:32;not null"`
-	Provider        string `gorm:"size:32;not null;uniqueIndex"`
-	BaseURL         string `gorm:"size:500"`
-	AuthUsername    string `gorm:"size:200"`
-	EncryptedAPIKey string `gorm:"type:text;not null"`
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
-}
-
 // WebSearchOrgPolicy is a strictly org-wide singleton (one row per org, no
 // per-user variant server-side) — the domain allow/block list an org wants
 // enforced for every member, merged into each user's own local policy in

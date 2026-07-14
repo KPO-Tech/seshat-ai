@@ -32,14 +32,6 @@ type WebSearchProviderSetting struct {
 	AuthUsername    string `json:"auth_username,omitempty"`
 }
 
-type PlatformWebSearchProviderSetting struct {
-	ID              string `json:"id"`
-	CreatedByUserID string `json:"created_by_user_id"`
-	Provider        string `json:"provider"`
-	BaseURL         string `json:"base_url,omitempty"`
-	AuthUsername    string `json:"auth_username,omitempty"`
-}
-
 // ResolvedWebSearchProviderSetting includes the decrypted API key — same
 // redaction stance as automation.ResolvedProviderSetting: this is the one
 // response in this domain meant to actually be used, not just displayed.
@@ -48,7 +40,13 @@ type ResolvedWebSearchProviderSetting struct {
 	BaseURL      string `json:"base_url,omitempty"`
 	AuthUsername string `json:"auth_username,omitempty"`
 	APIKey       string `json:"api_key"`
-	Source       string `json:"source"` // "organization" | "platform"
+	// Source is "organization" or "platform" - "platform" means the
+	// requesting organization had none of its own and this was resolved
+	// from the organization currently flagged IsDefault (see
+	// iam.Service.DefaultOrganizationID) - kept as the string "platform"
+	// for API compatibility even though there's no separate platform-level
+	// settings table anymore.
+	Source string `json:"source"`
 }
 
 type CreateProviderSettingParams struct {
@@ -56,14 +54,6 @@ type CreateProviderSettingParams struct {
 }
 
 type UpdateProviderSettingParams struct {
-	BaseURL, AuthUsername, APIKey string
-}
-
-type CreatePlatformProviderSettingParams struct {
-	Provider, BaseURL, AuthUsername, APIKey string
-}
-
-type UpdatePlatformProviderSettingParams struct {
 	BaseURL, AuthUsername, APIKey string
 }
 
@@ -227,134 +217,6 @@ func (s *Service) DeleteProviderSetting(ctx context.Context, principal *iam.Prin
 	})
 }
 
-// ─── Platform-wide provider settings (superadmin only) ─────────────────────────
-
-func (s *Service) ListPlatformProviderSettings(ctx context.Context, principal *iam.Principal) ([]PlatformWebSearchProviderSetting, error) {
-	if principal == nil {
-		return nil, iam.ErrUnauthorized("authentication required")
-	}
-	if !principal.User.IsAdmin {
-		return nil, iam.ErrForbidden("platform admin privileges required")
-	}
-	var records []sdb.PlatformWebSearchProviderSetting
-	if err := s.db.Gorm().WithContext(ctx).Order("provider asc").Find(&records).Error; err != nil {
-		return nil, err
-	}
-	out := make([]PlatformWebSearchProviderSetting, 0, len(records))
-	for _, r := range records {
-		out = append(out, toPlatformProviderSetting(r))
-	}
-	return out, nil
-}
-
-func (s *Service) CreatePlatformProviderSetting(ctx context.Context, principal *iam.Principal, params CreatePlatformProviderSettingParams) (*PlatformWebSearchProviderSetting, error) {
-	if principal == nil {
-		return nil, iam.ErrUnauthorized("authentication required")
-	}
-	if !principal.User.IsAdmin {
-		return nil, iam.ErrForbidden("platform admin privileges required")
-	}
-	provider := strings.ToLower(strings.TrimSpace(params.Provider))
-	apiKey := strings.TrimSpace(params.APIKey)
-	if provider == "" || apiKey == "" {
-		return nil, iam.ErrInvalidInput("provider and api_key are required")
-	}
-	var record sdb.PlatformWebSearchProviderSetting
-	err := s.db.Transaction(func(tx *gorm.DB) error {
-		tx = tx.WithContext(ctx)
-		var existing sdb.PlatformWebSearchProviderSetting
-		err := tx.Where("provider = ?", provider).First(&existing).Error
-		if err == nil {
-			return iam.ErrConflict("a platform web search provider setting for " + provider + " already exists; use update instead")
-		}
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return err
-		}
-		encrypted, err := sdb.EncryptSecret(apiKey)
-		if err != nil {
-			return err
-		}
-		id, err := sdb.NewID("platwsprovset")
-		if err != nil {
-			return err
-		}
-		record = sdb.PlatformWebSearchProviderSetting{
-			ID: id, CreatedByUserID: principal.User.ID, Provider: provider,
-			BaseURL: strings.TrimSpace(params.BaseURL), AuthUsername: strings.TrimSpace(params.AuthUsername),
-			EncryptedAPIKey: encrypted,
-		}
-		if err := tx.Create(&record).Error; err != nil {
-			return err
-		}
-		return s.iam.AppendAuditEvent(tx, principal, "", "platform_web_search_provider_setting.created", "platform_web_search_provider_setting", record.ID, map[string]string{"provider": provider})
-	})
-	if err != nil {
-		return nil, err
-	}
-	result := toPlatformProviderSetting(record)
-	return &result, nil
-}
-
-func (s *Service) UpdatePlatformProviderSetting(ctx context.Context, principal *iam.Principal, id string, params UpdatePlatformProviderSettingParams) (*PlatformWebSearchProviderSetting, error) {
-	if principal == nil {
-		return nil, iam.ErrUnauthorized("authentication required")
-	}
-	if !principal.User.IsAdmin {
-		return nil, iam.ErrForbidden("platform admin privileges required")
-	}
-	var record sdb.PlatformWebSearchProviderSetting
-	err := s.db.Transaction(func(tx *gorm.DB) error {
-		tx = tx.WithContext(ctx)
-		if err := tx.First(&record, "id = ?", id).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return iam.ErrNotFound("platform web search provider setting not found")
-			}
-			return err
-		}
-		record.BaseURL = strings.TrimSpace(params.BaseURL)
-		record.AuthUsername = strings.TrimSpace(params.AuthUsername)
-		if apiKey := strings.TrimSpace(params.APIKey); apiKey != "" {
-			encrypted, err := sdb.EncryptSecret(apiKey)
-			if err != nil {
-				return err
-			}
-			record.EncryptedAPIKey = encrypted
-		}
-		if err := tx.Save(&record).Error; err != nil {
-			return err
-		}
-		return s.iam.AppendAuditEvent(tx, principal, "", "platform_web_search_provider_setting.updated", "platform_web_search_provider_setting", record.ID, map[string]string{"provider": record.Provider})
-	})
-	if err != nil {
-		return nil, err
-	}
-	result := toPlatformProviderSetting(record)
-	return &result, nil
-}
-
-func (s *Service) DeletePlatformProviderSetting(ctx context.Context, principal *iam.Principal, id string) error {
-	if principal == nil {
-		return iam.ErrUnauthorized("authentication required")
-	}
-	if !principal.User.IsAdmin {
-		return iam.ErrForbidden("platform admin privileges required")
-	}
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		tx = tx.WithContext(ctx)
-		var record sdb.PlatformWebSearchProviderSetting
-		if err := tx.First(&record, "id = ?", id).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return iam.ErrNotFound("platform web search provider setting not found")
-			}
-			return err
-		}
-		if err := tx.Delete(&sdb.PlatformWebSearchProviderSetting{}, "id = ?", id).Error; err != nil {
-			return err
-		}
-		return s.iam.AppendAuditEvent(tx, principal, "", "platform_web_search_provider_setting.deleted", "platform_web_search_provider_setting", record.ID, map[string]string{"provider": record.Provider})
-	})
-}
-
 // ─── Resolve (member-permitted, includes the decrypted key) ───────────────────
 
 func (s *Service) ResolveProviderSetting(ctx context.Context, principal *iam.Principal, organizationID, provider string) (*ResolvedWebSearchProviderSetting, error) {
@@ -391,22 +253,28 @@ func (s *Service) ResolveProviderSetting(ctx context.Context, principal *iam.Pri
 		return nil, err
 	}
 
-	var platformSetting sdb.PlatformWebSearchProviderSetting
-	err = tx.Where("provider = ?", provider).First(&platformSetting).Error
+	defaultOrgID, found, err := s.iam.DefaultOrganizationID(tx)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, iam.ErrNotFound("no web search provider setting configured for " + provider + " (checked this organization and the platform default)")
+		return nil, err
+	}
+	if found && defaultOrgID != organizationID {
+		var defaultSetting sdb.WebSearchProviderSetting
+		err = tx.Where("organization_id = ? AND provider = ?", defaultOrgID, provider).First(&defaultSetting).Error
+		if err == nil {
+			apiKey, decErr := sdb.DecryptSecret(defaultSetting.EncryptedAPIKey)
+			if decErr != nil {
+				return nil, decErr
+			}
+			return &ResolvedWebSearchProviderSetting{
+				Provider: defaultSetting.Provider, BaseURL: defaultSetting.BaseURL, AuthUsername: defaultSetting.AuthUsername,
+				APIKey: apiKey, Source: "platform",
+			}, nil
 		}
-		return nil, err
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, err
+		}
 	}
-	apiKey, err := sdb.DecryptSecret(platformSetting.EncryptedAPIKey)
-	if err != nil {
-		return nil, err
-	}
-	return &ResolvedWebSearchProviderSetting{
-		Provider: platformSetting.Provider, BaseURL: platformSetting.BaseURL, AuthUsername: platformSetting.AuthUsername,
-		APIKey: apiKey, Source: "platform",
-	}, nil
+	return nil, iam.ErrNotFound("no web search provider setting configured for " + provider + " (checked this organization and the platform default)")
 }
 
 // ─── Org domain policy ──────────────────────────────────────────────────────────
@@ -487,13 +355,6 @@ func toProviderSetting(r sdb.WebSearchProviderSetting) WebSearchProviderSetting 
 	return WebSearchProviderSetting{
 		ID: r.ID, OrganizationID: r.OrganizationID, CreatedByUserID: r.CreatedByUserID,
 		Provider: r.Provider, BaseURL: r.BaseURL, AuthUsername: r.AuthUsername,
-	}
-}
-
-func toPlatformProviderSetting(r sdb.PlatformWebSearchProviderSetting) PlatformWebSearchProviderSetting {
-	return PlatformWebSearchProviderSetting{
-		ID: r.ID, CreatedByUserID: r.CreatedByUserID, Provider: r.Provider,
-		BaseURL: r.BaseURL, AuthUsername: r.AuthUsername,
 	}
 }
 
