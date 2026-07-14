@@ -3,6 +3,7 @@ import { AppLayout } from '@/layout/AppLayout'
 import { BootstrapGate } from '@/routes/BootstrapGate'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
 import { RequireSuperAdmin } from '@/routes/RequireSuperAdmin'
+import { LandingRedirect } from '@/routes/LandingRedirect'
 import { lazyPage, renderLazyPage } from '@/routes/lazyPage'
 
 const BootstrapPage = lazyPage(() => import('@/pages/auth/BootstrapPage').then((module) => ({ default: module.BootstrapPage })))
@@ -10,6 +11,7 @@ const LoginPage = lazyPage(() => import('@/pages/auth/LoginPage').then((module) 
 const PlatformOverviewPage = lazyPage(() => import('@/pages/dashboard/DashboardPage').then((module) => ({ default: module.DashboardPage })))
 const OrganizationOverviewPage = lazyPage(() => import('@/pages/organization/OrganizationOverviewPage').then((module) => ({ default: module.OrganizationOverviewPage })))
 const OrganizationsPage = lazyPage(() => import('@/pages/organizations/OrganizationsPage').then((module) => ({ default: module.OrganizationsPage })))
+const MyOrganizationsPage = lazyPage(() => import('@/pages/myOrganizations/MyOrganizationsPage').then((module) => ({ default: module.MyOrganizationsPage })))
 const UsersPage = lazyPage(() => import('@/pages/users/UsersPage').then((module) => ({ default: module.UsersPage })))
 const MembershipsPage = lazyPage(() => import('@/pages/memberships/MembershipsPage').then((module) => ({ default: module.MembershipsPage })))
 const InvitationsPage = lazyPage(() => import('@/pages/invitations/InvitationsPage').then((module) => ({ default: module.InvitationsPage })))
@@ -30,6 +32,7 @@ const EmbedderSettingsPage = lazyPage(() => import('@/pages/knowledge/EmbedderSe
 const PlatformProviderSettingsPage = lazyPage(() => import('@/pages/platform/PlatformProviderSettingsPage').then((module) => ({ default: module.PlatformProviderSettingsPage })))
 const PlatformEmbedderSettingsPage = lazyPage(() => import('@/pages/platform/PlatformEmbedderSettingsPage').then((module) => ({ default: module.PlatformEmbedderSettingsPage })))
 const NotFoundPage = lazyPage(() => import('@/pages/errors/NotFoundPage').then((module) => ({ default: module.NotFoundPage })))
+const NoAccessPage = lazyPage(() => import('@/pages/errors/NoAccessPage').then((module) => ({ default: module.NoAccessPage })))
 
 export const router = createBrowserRouter([
   {
@@ -43,13 +46,15 @@ export const router = createBrowserRouter([
           {
             element: <AppLayout />,
             children: [
-              { index: true, element: <Navigate to="/platform/overview" replace /> },
-              { path: '/platform', element: <Navigate to="/platform/overview" replace /> },
-              { path: '/platform/overview', element: renderLazyPage(PlatformOverviewPage) },
-              { path: '/platform/organizations', element: renderLazyPage(OrganizationsPage) },
+              { index: true, element: <LandingRedirect /> },
+              { path: '/my-organizations', element: renderLazyPage(MyOrganizationsPage) },
+              { path: '/no-access', element: renderLazyPage(NoAccessPage) },
               {
                 element: <RequireSuperAdmin />,
                 children: [
+                  { path: '/platform', element: <Navigate to="/platform/overview" replace /> },
+                  { path: '/platform/overview', element: renderLazyPage(PlatformOverviewPage) },
+                  { path: '/platform/organizations', element: renderLazyPage(OrganizationsPage) },
                   { path: '/platform/users', element: renderLazyPage(UsersPage) },
                   { path: '/platform/ai-defaults/providers', element: renderLazyPage(PlatformProviderSettingsPage) },
                   { path: '/platform/ai-defaults/embedder', element: renderLazyPage(PlatformEmbedderSettingsPage) },

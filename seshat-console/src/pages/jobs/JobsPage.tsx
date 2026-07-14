@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button,
   DatePicker,
   Drawer,
@@ -42,9 +42,12 @@ const STATUS_COLORS: Record<string, string> = { queued: 'default',
 
 export function JobsPage() { const organizationId = useScopedOrganizationId()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const deviceIdFilter = searchParams.get('device_id') ?? undefined
   const [editing, setEditing] = useState<Job | 'new' | null>(null)
 
   const { data, isLoading } = useJobsList(organizationId ?? undefined)
+  const filteredData = deviceIdFilter ? (data ?? []).filter((job) => job.target_device_id === deviceIdFilter) : data
   const createJob = useCreateJob()
   const updateJob = useUpdateJob()
   const deleteJob = useDeleteJob()
@@ -120,8 +123,9 @@ export function JobsPage() { const organizationId = useScopedOrganizationId()
     <div>
       <PageHeader
         title="Jobs"
-        description="Scheduled and on-demand automations."
+        description={deviceIdFilter ? 'Jobs targeting this device.' : 'Scheduled and on-demand automations.'}
         actions={ <Space>
+            {deviceIdFilter && <Button onClick={() => setSearchParams({})}>Clear device filter</Button>}
             <Button
               type="primary"
               icon={<PlusOutlined />}
@@ -136,7 +140,7 @@ export function JobsPage() { const organizationId = useScopedOrganizationId()
       <ConsoleTable<Job>
           rowKey="id"
           columns={columns}
-          dataSource={data ?? []}
+          dataSource={filteredData ?? []}
           loading={isLoading}
           pagination={false}
           locale={{ emptyText: (

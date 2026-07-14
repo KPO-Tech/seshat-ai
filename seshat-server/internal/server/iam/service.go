@@ -42,11 +42,13 @@ type Organization struct {
 }
 
 type Membership struct {
-	ID             string    `json:"id"`
-	UserID         string    `json:"user_id"`
-	OrganizationID string    `json:"organization_id"`
-	Role           string    `json:"role"`
-	CreatedAt      time.Time `json:"created_at"`
+	ID              string    `json:"id"`
+	UserID          string    `json:"user_id"`
+	OrganizationID  string    `json:"organization_id"`
+	Role            string    `json:"role"`
+	CreatedAt       time.Time `json:"created_at"`
+	UserEmail       string    `json:"user_email,omitempty"`
+	UserDisplayName string    `json:"user_display_name,omitempty"`
 }
 
 type Session struct {

@@ -246,7 +246,7 @@ export function getSecondaryNavItems(pathname: string, organizationId: string | 
       },
       {
         key: 'org-integrations-providers',
-        label: 'Providers',
+        label: 'Identity Providers',
         path: `/orgs/${organizationId}/integrations/providers`,
         matchPrefix: `/orgs/${organizationId}/integrations/providers`,
       },

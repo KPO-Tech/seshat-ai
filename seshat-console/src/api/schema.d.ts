@@ -590,6 +590,306 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/users/me/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get my own preferences
+         * @description Self-service only — there is no {userID} variant, a preference only ever means "mine." Returns a zero-value record (not 404) if none has been saved yet.
+         */
+        get: operations["getMyPreferences"];
+        /** Create or replace my own preferences */
+        put: operations["updateMyPreferences"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/me/memories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List my own memories
+         * @description Self-service only. Ordered by importance then recency, most important/most recent first.
+         */
+        get: operations["listMyMemories"];
+        put?: never;
+        /** Create a new memory */
+        post: operations["createMyMemory"];
+        /** Delete every one of my own memories */
+        delete: operations["deleteAllMyMemories"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/me/memories/{memoryID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                memoryID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Update one of my own memories */
+        put: operations["updateMyMemory"];
+        post?: never;
+        /** Delete one of my own memories */
+        delete: operations["deleteMyMemory"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/me/memory-graph/entities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create entities that don't exist yet (deduplicated by name)
+         * @description An entity whose name already exists is left untouched (skipped, not updated) — matches the underlying reference implementation. Returns only the entities that were actually inserted.
+         */
+        post: operations["upsertMyMemoryEntities"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/me/memory-graph/observations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Append observations to existing entities
+         * @description Duplicate observation strings (already present on that entity) are silently skipped.
+         */
+        post: operations["addMyMemoryObservations"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/me/memory-graph/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search my own memory graph
+         * @description Case-insensitive substring match across entity names, entity types, and observation content — not a vector/relevance search. An empty query returns everything.
+         */
+        get: operations["searchMyMemoryNodes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/me/memory-graph/open": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Get specific entities by exact name */
+        post: operations["openMyMemoryNodes"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/me/memory-graph/context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve memory relevant to a query, formatted for prompt injection
+         * @description Searches nodes matching query and formats the result as a Markdown block capped to approximately max_tokens (rough estimate, 4 chars ≈ 1 token). Returns an empty string when there is nothing relevant.
+         */
+        get: operations["getMyMemoryContext"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skill-repos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List an organization's curated skill repos
+         * @description Open to any member of the organization, not gated behind a specific permission — these are public repo URLs, nothing secret to protect. A caller who isn't a member of the organization at all is rejected.
+         */
+        get: operations["listSkillRepos"];
+        put?: never;
+        /**
+         * Add a skill repo to the organization's registry
+         * @description Requires skills_registry.manage or organization.manage. One entry per (organization, name).
+         */
+        post: operations["createSkillRepo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skill-repos/{skillRepoID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                skillRepoID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update a skill repo
+         * @description Requires skills_registry.manage or organization.manage.
+         */
+        put: operations["updateSkillRepo"];
+        post?: never;
+        /**
+         * Remove a skill repo from the organization's registry
+         * @description Requires skills_registry.manage or organization.manage.
+         */
+        delete: operations["deleteSkillRepo"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agent-presets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List an organization's shared agent presets
+         * @description Open to any member of the organization, not gated behind a specific permission — a preset's system prompt is not a secret. A caller who isn't a member of the organization at all is rejected.
+         */
+        get: operations["listAgentPresets"];
+        put?: never;
+        /**
+         * Add an agent preset to the organization's registry
+         * @description Requires agents_registry.manage or organization.manage. One entry per (organization, slug).
+         */
+        post: operations["createAgentPreset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agent-presets/{agentPresetID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentPresetID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update an agent preset
+         * @description Requires agents_registry.manage or organization.manage.
+         */
+        put: operations["updateAgentPreset"];
+        post?: never;
+        /**
+         * Remove an agent preset from the organization's registry
+         * @description Requires agents_registry.manage or organization.manage.
+         */
+        delete: operations["deleteAgentPreset"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/me/quota-usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get my own usage counters
+         * @description Self-service only — there is no {userID} variant. Pure counting, no enforced limit: this just lists the counters back.
+         */
+        get: operations["getMyQuotaUsage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/me/quota-usage/increment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Increment one of my own usage counters
+         * @description Bumps both the daily and monthly bucket for (me, metric) by delta (minimum 1). Called by a connected seshat-backend after a real action (chat query, file upload, ingestion) — never by end-user UI directly.
+         */
+        post: operations["incrementMyQuotaUsage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/applications": {
         parameters: {
             query?: never;
@@ -713,6 +1013,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/provider-settings/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Resolve the effective, usable provider config for an organization
+         * @description Unlike every other provider-settings endpoint, this INCLUDES the decrypted api_key — the point is for a connected seshat-backend to actually make the LLM call with it, not to administer the setting. Authorization is deliberately looser than provider_settings.read/ manage: any member of the organization (or a platform admin) can resolve "what should I use", the same trust level as using their own session. Falls back to the platform default when the organization has no setting of its own for this provider; 404 if neither exists.
+         */
+        get: operations["resolveProviderSetting"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/provider-settings/{providerSettingID}": {
         parameters: {
             query?: never;
@@ -789,6 +1109,220 @@ export interface paths {
          * @description Superadmin-only. Any cloud job that was relying on this as its fallback (no org-level provider-settings of its own) starts failing at execution time with a clear reason; existing jobs are not touched or deleted.
          */
         delete: operations["deletePlatformProviderSetting"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/web-search-provider-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List web-search providers configured for an organization
+         * @description Scoped visibility like listProviderSettings: a caller lacking web_search_settings.manage/organization.manage gets an empty list, not a 403. The API key is never included, in this or any other response.
+         */
+        get: operations["listWebSearchProviderSettings"];
+        put?: never;
+        /**
+         * Store credentials for one web-search provider
+         * @description Requires web_search_settings.manage or organization.manage. One provider per organization — creating a second setting for the same (organization, provider) pair is rejected; use update instead. auth_username is only meaningful for searxng (HTTP basic auth); the api_key is AES-256-GCM encrypted at rest and never echoed back, not even in this response.
+         */
+        post: operations["createWebSearchProviderSetting"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/web-search-provider-settings/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Resolve the effective, usable web-search provider config for an organization
+         * @description Unlike every other web-search-provider-settings endpoint, this INCLUDES the decrypted api_key (and auth_username, for searxng) — the point is for a connected seshat-backend to actually call the provider with it, not to administer the setting. Authorization is deliberately looser than web_search_settings.manage: any member of the organization can resolve "what should I use". Falls back to the platform default when the organization has no setting of its own for this provider; 404 if neither exists.
+         */
+        get: operations["resolveWebSearchProviderSetting"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/web-search-provider-settings/{webSearchProviderSettingID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                webSearchProviderSettingID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update a web-search provider setting
+         * @description An empty/omitted api_key leaves the stored credential unchanged. Unlike creation, organization_id/provider are not part of this body — an existing setting's organization and provider are fixed.
+         */
+        put: operations["updateWebSearchProviderSetting"];
+        post?: never;
+        /**
+         * Delete a web-search provider setting
+         * @description Local resolution falls back to the platform default (or fails) at next use; nothing else is touched.
+         */
+        delete: operations["deleteWebSearchProviderSetting"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/web-search-provider-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the platform-wide default web-search credentials
+         * @description Superadmin-only (platform admin, User.is_admin). A non-admin caller gets 403, not an empty list. The API key is never included, in this or any other response.
+         */
+        get: operations["listPlatformWebSearchProviderSettings"];
+        put?: never;
+        /**
+         * Store the platform-wide default credentials for one web-search provider
+         * @description Superadmin-only. One row per provider, globally — creating a second setting for the same provider is rejected; use update instead. The api_key is AES-256-GCM encrypted at rest and never echoed back, not even in this response.
+         */
+        post: operations["createPlatformWebSearchProviderSetting"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/web-search-provider-settings/{platformWebSearchProviderSettingID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                platformWebSearchProviderSettingID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update a platform web-search provider setting
+         * @description Superadmin-only. An empty/omitted api_key leaves the stored credential unchanged. Unlike creation, provider is not part of this body — an existing setting's provider is fixed.
+         */
+        put: operations["updatePlatformWebSearchProviderSetting"];
+        post?: never;
+        /**
+         * Delete a platform web-search provider setting
+         * @description Superadmin-only. Any organization relying on this as its fallback (no org-level web-search-provider-settings of its own) starts failing at next resolution with a clear reason.
+         */
+        delete: operations["deletePlatformWebSearchProviderSetting"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/web-search-org-policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get an organization's web-search domain policy
+         * @description Open to any org member (a domain policy isn't secret, and every member needs to read it to have it applied locally). Returns an empty policy (both lists empty), not 404, when the organization has never set one.
+         */
+        get: operations["getWebSearchOrgPolicy"];
+        /**
+         * Replace an organization's web-search domain policy
+         * @description Requires web_search_settings.manage or organization.manage. Full replace, not a merge — send the complete allowed/blocked lists each time.
+         */
+        put: operations["upsertWebSearchOrgPolicy"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mcp-server-configs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List an organization's shared MCP server configs
+         * @description Scoped visibility like every other list endpoint: a caller lacking mcp_registry.manage/organization.manage gets an empty list, not a 403. env/headers values are never included, in this or any other response except resolve.
+         */
+        get: operations["listMCPServerConfigs"];
+        put?: never;
+        /**
+         * Define a new shared MCP server for an organization
+         * @description Requires mcp_registry.manage or organization.manage. One config per (organization, name) pair — creating a second config with the same name is rejected; use update instead. env/headers values are AES-256-GCM encrypted at rest and never echoed back, not even in this response.
+         */
+        post: operations["createMCPServerConfig"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mcp-server-configs/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Resolve every MCP server config an organization has shared
+         * @description Unlike the list endpoint, this INCLUDES decrypted env/headers values — the point is for a connected seshat-backend to actually load these servers into its local MCP runtime, once the user has explicitly approved each one (stdio servers spawn an arbitrary command locally). Authorization is deliberately looser than mcp_registry.manage: any member of the organization can resolve "what has my org shared". Unlike web search's provider-by-provider resolve, there's no org→platform fallback here — just every server the organization has defined.
+         */
+        get: operations["resolveMCPServerConfigs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mcp-server-configs/{mcpServerConfigID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mcpServerConfigID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update a shared MCP server config
+         * @description An empty/omitted env/headers value leaves the stored secret unchanged for that field. Unlike creation, organization_id/name are not part of this body — an existing config's organization and name are fixed.
+         */
+        put: operations["updateMCPServerConfig"];
+        post?: never;
+        /**
+         * Delete a shared MCP server config
+         * @description Any member who had already approved this server locally keeps running it until their next reload — deleting here only stops it from being resolved/loaded going forward.
+         */
+        delete: operations["deleteMCPServerConfig"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1301,6 +1835,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/device/runs/{runID}/job": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the execution payload for a run this device currently holds
+         * @description Returns the job's `prompt`/`model_override`/`configuration` — the job/run claim response itself (`Run`) carries only tracking fields, never the payload, so a device needs this call after claiming to know what to actually execute. Scoped by run, not by a bare job id: requires the calling device to be `assigned_device_id` on a run in `claimed` or `running` state for that job. There is no broader device-accessible route to read arbitrary jobs.
+         */
+        get: operations["getDeviceRunJob"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/device/runs/{runID}/start": {
         parameters: {
             query?: never;
@@ -1428,6 +1982,9 @@ export interface components {
             role?: string;
             /** Format: date-time */
             created_at?: string;
+            /** @description Denormalized for display - resolving a teammate's identity from a membership shouldn't require a separate admin-only user lookup. */
+            user_email?: string;
+            user_display_name?: string;
         };
         Session: {
             id?: string;
@@ -1571,6 +2128,217 @@ export interface components {
             };
             /** Format: date-time */
             created_at?: string;
+        };
+        /** @description A strictly personal, one-row-per-user record — no organization_id. */
+        UserPreferences: {
+            user_id?: string;
+            preferred_name?: string;
+            profession?: string;
+            about?: string;
+            working_style?: string;
+            response_style?: string;
+            extra_context?: string;
+            interactive_permission_mode?: string;
+            automation_permission_mode?: string;
+            max_sub_agent_depth?: number;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        UserPreferencesInput: {
+            preferred_name?: string;
+            profession?: string;
+            about?: string;
+            working_style?: string;
+            response_style?: string;
+            extra_context?: string;
+            interactive_permission_mode?: string;
+            automation_permission_mode?: string;
+            max_sub_agent_depth?: number;
+        };
+        UserMemory: {
+            id?: string;
+            user_id?: string;
+            /**
+             * @example fact
+             * @enum {string}
+             */
+            type?: "preference" | "instruction" | "pattern" | "fact" | "context";
+            key?: string;
+            value?: string;
+            importance?: number;
+            source?: string;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        UserMemoryInput: {
+            /**
+             * @default fact
+             * @enum {string}
+             */
+            type: "preference" | "instruction" | "pattern" | "fact" | "context";
+            key: string;
+            value?: string;
+            /** @default 0.5 */
+            importance: number;
+            source?: string;
+        };
+        UserMemoryUpdateInput: {
+            /** @enum {string} */
+            type?: "preference" | "instruction" | "pattern" | "fact" | "context";
+            key?: string;
+            value?: string;
+            importance?: number;
+            source?: string;
+        };
+        MemoryEntity: {
+            id?: string;
+            user_id?: string;
+            name?: string;
+            entity_type?: string;
+            observations?: string[];
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        MemoryEntityInput: {
+            name: string;
+            /** @default entity */
+            entity_type: string;
+            observations?: string[];
+        };
+        MemoryRelation: {
+            id?: string;
+            user_id?: string;
+            /** @description Entity name */
+            from?: string;
+            /** @description Entity name */
+            to?: string;
+            relation_type?: string;
+            /** Format: date-time */
+            created_at?: string;
+        };
+        MemoryObservationInput: {
+            entity_name: string;
+            contents?: string[];
+        };
+        MemoryObservationResult: {
+            entity_name?: string;
+            added_observations?: string[];
+        };
+        MemoryGraph: {
+            entities?: components["schemas"]["MemoryEntity"][];
+            relations?: components["schemas"]["MemoryRelation"][];
+        };
+        SkillRepo: {
+            id?: string;
+            organization_id?: string;
+            created_by_user_id?: string;
+            /** @example seshat-skills */
+            name?: string;
+            /** @example https://github.com/EngineerProjects/seshat-skills */
+            url?: string;
+            description?: string;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        SkillRepoInput: {
+            organization_id: string;
+            /** @example seshat-skills */
+            name: string;
+            /** @example https://github.com/EngineerProjects/seshat-skills */
+            url: string;
+            description?: string;
+        };
+        SkillRepoUpdateInput: {
+            name?: string;
+            url?: string;
+            description?: string;
+        };
+        AgentPreset: {
+            id?: string;
+            organization_id?: string;
+            created_by_user_id?: string;
+            /** @example researcher */
+            slug?: string;
+            /** @example Researcher */
+            name?: string;
+            when_to_use?: string;
+            system_prompt?: string;
+            model?: string;
+            tools?: string[];
+            disallowed_tools?: string[];
+            max_turns?: number;
+            permission_mode?: string;
+            isolation?: string;
+            mcp_servers?: string[];
+            icon?: string;
+            enabled?: boolean;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        AgentPresetInput: {
+            organization_id: string;
+            /** @example researcher */
+            slug: string;
+            /** @example Researcher */
+            name?: string;
+            when_to_use?: string;
+            system_prompt?: string;
+            model?: string;
+            tools?: string[];
+            disallowed_tools?: string[];
+            max_turns?: number;
+            permission_mode?: string;
+            isolation?: string;
+            mcp_servers?: string[];
+            icon?: string;
+            enabled?: boolean;
+        };
+        AgentPresetUpdateInput: {
+            name?: string;
+            when_to_use?: string;
+            system_prompt?: string;
+            model?: string;
+            tools?: string[];
+            disallowed_tools?: string[];
+            max_turns?: number;
+            permission_mode?: string;
+            isolation?: string;
+            mcp_servers?: string[];
+            icon?: string;
+            enabled?: boolean;
+        };
+        UsageEntry: {
+            /** @example queries */
+            metric?: string;
+            /** @enum {string} */
+            period?: "day" | "month";
+            /** @example 2026-07-14 */
+            period_key?: string;
+            /** Format: int64 */
+            count?: number;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        UsageSummary: {
+            user_id?: string;
+            entries?: components["schemas"]["UsageEntry"][];
+        };
+        IncrementUsageInput: {
+            /** @example queries */
+            metric: string;
+            /**
+             * Format: int64
+             * @default 1
+             */
+            delta: number;
         };
         Application: {
             id?: string;
@@ -1795,6 +2563,17 @@ export interface components {
             default_model?: string;
             base_url?: string;
         };
+        /** @description Unlike ProviderSetting/PlatformProviderSetting, this includes the decrypted api_key — see the resolveProviderSetting operation. */
+        ResolvedProviderSetting: {
+            /** @example mistral */
+            provider?: string;
+            /** @example mistral-small-latest */
+            default_model?: string;
+            base_url?: string;
+            api_key?: string;
+            /** @enum {string} */
+            source?: "organization" | "platform";
+        };
         ProviderSettingInput: {
             organization_id: string;
             /** @example anthropic */
@@ -1837,6 +2616,161 @@ export interface components {
             base_url?: string;
             /** @description Omit/empty to keep the existing stored key unchanged. */
             api_key?: string;
+        };
+        /** @description Never includes the API key — it's a caller-supplied secret, redacted in every response including create. No default_model field, unlike ProviderSetting — a web-search provider has no such concept. */
+        WebSearchProviderSetting: {
+            id?: string;
+            organization_id?: string;
+            created_by_user_id?: string;
+            /** @example tavily */
+            provider?: string;
+            base_url?: string;
+            /** @description Only meaningful for searxng (HTTP basic auth username). */
+            auth_username?: string;
+        };
+        /** @description Unlike WebSearchProviderSetting/PlatformWebSearchProviderSetting, this includes the decrypted api_key — see the resolveWebSearchProviderSetting operation. */
+        ResolvedWebSearchProviderSetting: {
+            /** @example tavily */
+            provider?: string;
+            base_url?: string;
+            auth_username?: string;
+            api_key?: string;
+            /** @enum {string} */
+            source?: "organization" | "platform";
+        };
+        WebSearchProviderSettingInput: {
+            organization_id: string;
+            /** @example tavily */
+            provider: string;
+            base_url?: string;
+            auth_username?: string;
+            /** @description Required on create. */
+            api_key?: string;
+        };
+        WebSearchProviderSettingUpdateInput: {
+            base_url?: string;
+            auth_username?: string;
+            /** @description Omit/empty to keep the existing stored key unchanged. */
+            api_key?: string;
+        };
+        /** @description The platform-wide default credential for one web-search provider — not scoped to any organization. Never includes the API key. */
+        PlatformWebSearchProviderSetting: {
+            id?: string;
+            created_by_user_id?: string;
+            /** @example tavily */
+            provider?: string;
+            base_url?: string;
+            auth_username?: string;
+        };
+        PlatformWebSearchProviderSettingInput: {
+            /** @example tavily */
+            provider: string;
+            base_url?: string;
+            auth_username?: string;
+            /** @description Required on create. */
+            api_key?: string;
+        };
+        PlatformWebSearchProviderSettingUpdateInput: {
+            base_url?: string;
+            auth_username?: string;
+            /** @description Omit/empty to keep the existing stored key unchanged. */
+            api_key?: string;
+        };
+        WebSearchOrgPolicy: {
+            organization_id?: string;
+            created_by_user_id?: string;
+            allowed_domains?: string[];
+            blocked_domains?: string[];
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        WebSearchOrgPolicyInput: {
+            organization_id: string;
+            allowed_domains?: string[];
+            blocked_domains?: string[];
+        };
+        /** @description Never includes env/headers values — they're a caller-supplied secret, redacted in every response including create. */
+        MCPServerConfig: {
+            id?: string;
+            organization_id?: string;
+            created_by_user_id?: string;
+            /** @example internal-jira */
+            name?: string;
+            display_name?: string;
+            /**
+             * @example stdio
+             * @enum {string}
+             */
+            server_type?: "stdio" | "http" | "sse" | "websocket" | "sdk";
+            /** @description Only meaningful for server_type=stdio. */
+            command?: string;
+            args?: string[];
+            /** @description Only meaningful for server_type=http/sse/websocket. */
+            url?: string;
+            timeout_secs?: number;
+            icon?: string;
+        };
+        /** @description Unlike MCPServerConfig, this includes the decrypted env/headers maps — see the resolveMCPServerConfigs operation. */
+        ResolvedMCPServerConfig: {
+            id?: string;
+            name?: string;
+            display_name?: string;
+            /** @enum {string} */
+            server_type?: "stdio" | "http" | "sse" | "websocket" | "sdk";
+            command?: string;
+            args?: string[];
+            env?: {
+                [key: string]: string;
+            };
+            url?: string;
+            headers?: {
+                [key: string]: string;
+            };
+            timeout_secs?: number;
+            icon?: string;
+        };
+        MCPServerConfigInput: {
+            organization_id: string;
+            /** @example internal-jira */
+            name: string;
+            display_name?: string;
+            /**
+             * @default stdio
+             * @enum {string}
+             */
+            server_type: "stdio" | "http" | "sse" | "websocket" | "sdk";
+            command?: string;
+            args?: string[];
+            /** @description Encrypted at rest. Optional on create. */
+            env?: {
+                [key: string]: string;
+            };
+            url?: string;
+            /** @description Encrypted at rest. Optional on create. */
+            headers?: {
+                [key: string]: string;
+            };
+            /** @default 30 */
+            timeout_secs: number;
+            icon?: string;
+        };
+        MCPServerConfigUpdateInput: {
+            display_name?: string;
+            /** @enum {string} */
+            server_type?: "stdio" | "http" | "sse" | "websocket" | "sdk";
+            command?: string;
+            args?: string[];
+            /** @description Omit to keep the existing stored env unchanged. */
+            env?: {
+                [key: string]: string;
+            };
+            url?: string;
+            /** @description Omit to keep the existing stored headers unchanged. */
+            headers?: {
+                [key: string]: string;
+            };
+            timeout_secs?: number;
+            icon?: string;
         };
         Corpus: {
             id?: string;
@@ -2052,6 +2986,15 @@ export interface components {
             output_text?: string;
             error_text?: string;
             metadata?: {
+                [key: string]: string;
+            };
+        };
+        /** @description Minimal execution payload for a run a device currently holds — deliberately not the full Job (no organization_id, created_by_user_id, etc.). */
+        RunJob: {
+            name?: string;
+            prompt?: string;
+            model_override?: string;
+            configuration?: {
                 [key: string]: string;
             };
         };
@@ -3424,6 +4367,568 @@ export interface operations {
             403: components["responses"]["Forbidden"];
         };
     };
+    getMyPreferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description My preferences */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserPreferences"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    updateMyPreferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserPreferencesInput"];
+            };
+        };
+        responses: {
+            /** @description Updated preferences */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserPreferences"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    listMyMemories: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description My memories */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        memories?: components["schemas"]["UserMemory"][];
+                        count?: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    createMyMemory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserMemoryInput"];
+            };
+        };
+        responses: {
+            /** @description Memory created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserMemory"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    deleteAllMyMemories: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Number deleted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        deleted?: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    updateMyMemory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                memoryID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserMemoryUpdateInput"];
+            };
+        };
+        responses: {
+            /** @description Updated memory */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserMemory"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteMyMemory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                memoryID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    upsertMyMemoryEntities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    entities?: components["schemas"]["MemoryEntityInput"][];
+                };
+            };
+        };
+        responses: {
+            /** @description Entities actually created */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        entities?: components["schemas"]["MemoryEntity"][];
+                        count?: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    addMyMemoryObservations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    observations?: components["schemas"]["MemoryObservationInput"][];
+                };
+            };
+        };
+        responses: {
+            /** @description What was actually added, per entity */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        results?: components["schemas"]["MemoryObservationResult"][];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    searchMyMemoryNodes: {
+        parameters: {
+            query?: {
+                query?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Matching entities plus relations touching them */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemoryGraph"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    openMyMemoryNodes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    names?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Matching entities plus relations touching them */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemoryGraph"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    getMyMemoryContext: {
+        parameters: {
+            query?: {
+                query?: string;
+                max_tokens?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Formatted context block */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        context?: string;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    listSkillRepos: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Skill repo list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        skill_repos?: components["schemas"]["SkillRepo"][];
+                        count?: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createSkillRepo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SkillRepoInput"];
+            };
+        };
+        responses: {
+            /** @description Skill repo created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillRepo"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    updateSkillRepo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                skillRepoID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SkillRepoUpdateInput"];
+            };
+        };
+        responses: {
+            /** @description Updated skill repo */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillRepo"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteSkillRepo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                skillRepoID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listAgentPresets: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Agent preset list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        agent_presets?: components["schemas"]["AgentPreset"][];
+                        count?: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createAgentPreset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentPresetInput"];
+            };
+        };
+        responses: {
+            /** @description Agent preset created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentPreset"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    updateAgentPreset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentPresetID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentPresetUpdateInput"];
+            };
+        };
+        responses: {
+            /** @description Updated agent preset */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentPreset"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteAgentPreset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentPresetID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getMyQuotaUsage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description My usage counters */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageSummary"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    incrementMyQuotaUsage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IncrementUsageInput"];
+            };
+        };
+        responses: {
+            /** @description Incremented */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
     listApplications: {
         parameters: {
             query?: {
@@ -3752,6 +5257,33 @@ export interface operations {
             409: components["responses"]["Conflict"];
         };
     };
+    resolveProviderSetting: {
+        parameters: {
+            query: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+                provider: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Resolved provider config */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResolvedProviderSetting"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
     getProviderSetting: {
         parameters: {
             query?: never;
@@ -3938,6 +5470,425 @@ export interface operations {
             header?: never;
             path: {
                 platformProviderSettingID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listWebSearchProviderSettings: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Web-search provider setting list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        web_search_provider_settings?: components["schemas"]["WebSearchProviderSetting"][];
+                        count?: number;
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    createWebSearchProviderSetting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebSearchProviderSettingInput"];
+            };
+        };
+        responses: {
+            /** @description Web-search provider setting created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebSearchProviderSetting"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    resolveWebSearchProviderSetting: {
+        parameters: {
+            query: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+                provider: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Resolved web-search provider config */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResolvedWebSearchProviderSetting"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateWebSearchProviderSetting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                webSearchProviderSettingID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebSearchProviderSettingUpdateInput"];
+            };
+        };
+        responses: {
+            /** @description Updated web-search provider setting */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebSearchProviderSetting"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteWebSearchProviderSetting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                webSearchProviderSettingID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listPlatformWebSearchProviderSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Platform web-search provider setting list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        platform_web_search_provider_settings?: components["schemas"]["PlatformWebSearchProviderSetting"][];
+                        count?: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createPlatformWebSearchProviderSetting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlatformWebSearchProviderSettingInput"];
+            };
+        };
+        responses: {
+            /** @description Platform web-search provider setting created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformWebSearchProviderSetting"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    updatePlatformWebSearchProviderSetting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                platformWebSearchProviderSettingID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlatformWebSearchProviderSettingUpdateInput"];
+            };
+        };
+        responses: {
+            /** @description Updated platform web-search provider setting */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformWebSearchProviderSetting"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deletePlatformWebSearchProviderSetting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                platformWebSearchProviderSettingID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getWebSearchOrgPolicy: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Web-search domain policy */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebSearchOrgPolicy"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    upsertWebSearchOrgPolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebSearchOrgPolicyInput"];
+            };
+        };
+        responses: {
+            /** @description Updated web-search domain policy */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebSearchOrgPolicy"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    listMCPServerConfigs: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description MCP server config list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        mcp_server_configs?: components["schemas"]["MCPServerConfig"][];
+                        count?: number;
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    createMCPServerConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MCPServerConfigInput"];
+            };
+        };
+        responses: {
+            /** @description MCP server config created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MCPServerConfig"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    resolveMCPServerConfigs: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Resolved MCP server configs */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        mcp_server_configs?: components["schemas"]["ResolvedMCPServerConfig"][];
+                        count?: number;
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    updateMCPServerConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mcpServerConfigID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MCPServerConfigUpdateInput"];
+            };
+        };
+        responses: {
+            /** @description Updated MCP server config */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MCPServerConfig"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteMCPServerConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mcpServerConfigID: string;
             };
             cookie?: never;
         };
@@ -4870,6 +6821,32 @@ export interface operations {
                 content?: never;
             };
             401: components["responses"]["Unauthorized"];
+        };
+    };
+    getDeviceRunJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Job execution payload */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunJob"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     startRun: {

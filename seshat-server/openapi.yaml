@@ -3458,6 +3458,10 @@ components:
           type: string
           description: A system role code (owner/admin/member/viewer) or a custom role code defined for this organization.
         created_at: { type: string, format: date-time }
+        user_email:
+          type: string
+          description: Denormalized for display - resolving a teammate's identity from a membership shouldn't require a separate admin-only user lookup.
+        user_display_name: { type: string }
 
     Session:
       type: object
