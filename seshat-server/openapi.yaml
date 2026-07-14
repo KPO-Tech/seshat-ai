@@ -1988,6 +1988,45 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/provider-settings/{providerSettingID}/set-default:
+    post:
+      operationId: setProviderSettingDefault
+      tags: [provider-settings]
+      summary: Flag this provider setting as its organization's "main" one
+      description: Administrative/UI only - not consumed by job execution (jobs always name their provider explicitly). Clears the flag from whichever other provider setting in the same organization currently holds it.
+      parameters:
+        - name: providerSettingID
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Updated provider setting
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProviderSetting" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/provider-settings/{providerSettingID}/unset-default:
+    post:
+      operationId: unsetProviderSettingDefault
+      tags: [provider-settings]
+      summary: Clear the "main" flag from this provider setting
+      parameters:
+        - name: providerSettingID
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Updated provider setting
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProviderSetting" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/web-search-provider-settings:
     get:
       operationId: listWebSearchProviderSettings
@@ -4091,6 +4130,9 @@ components:
         provider: { type: string, example: anthropic }
         default_model: { type: string, example: claude-sonnet-5 }
         base_url: { type: string }
+        is_default:
+          type: boolean
+          description: Administrative/UI marker for this organization's "main" provider setting - not consumed by job execution.
 
     ResolvedProviderSetting:
       type: object

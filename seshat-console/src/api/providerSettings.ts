@@ -61,3 +61,18 @@ export function useDeleteProviderSetting() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [LIST_KEY] }),
   })
 }
+
+export function useSetProviderSettingDefault() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, isDefault }: { id: string; isDefault: boolean }) => {
+      const path = isDefault
+        ? '/api/v1/provider-settings/{providerSettingID}/set-default'
+        : '/api/v1/provider-settings/{providerSettingID}/unset-default'
+      const { data, error } = await api.POST(path, { params: { path: { providerSettingID: id } } })
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [LIST_KEY] }),
+  })
+}

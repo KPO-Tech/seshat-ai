@@ -115,6 +115,8 @@ func (app *App) routes() http.Handler {
 	mux.Handle("GET /api/v1/provider-settings/{providerSettingID}", app.authMiddleware(http.HandlerFunc(app.handleProviderSettingByID)))
 	mux.Handle("PUT /api/v1/provider-settings/{providerSettingID}", app.authMiddleware(http.HandlerFunc(app.handleProviderSettingByID)))
 	mux.Handle("DELETE /api/v1/provider-settings/{providerSettingID}", app.authMiddleware(http.HandlerFunc(app.handleProviderSettingByID)))
+	mux.Handle("POST /api/v1/provider-settings/{providerSettingID}/set-default", app.authMiddleware(http.HandlerFunc(app.handleProviderSettingSetDefault)))
+	mux.Handle("POST /api/v1/provider-settings/{providerSettingID}/unset-default", app.authMiddleware(http.HandlerFunc(app.handleProviderSettingUnsetDefault)))
 
 	// Knowledge base — organization-scoped RAG corpora, file upload and
 	// ingestion. Search/ingestion return a clear "not configured" error
