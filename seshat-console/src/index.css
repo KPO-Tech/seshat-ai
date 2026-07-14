@@ -398,7 +398,7 @@ body {
   border: 0;
   background: transparent;
   color: #f2ece6;
-  font-size: 22px;
+  font-size: 15px;
   font-weight: 600;
   letter-spacing: -0.02em;
   cursor: default;
@@ -466,8 +466,8 @@ body {
 
 .workspace-thread-message--user .workspace-thread-message__surface {
   width: min(78%, 620px);
-  background: #171719;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: #4a4852;
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 18px;
   padding: 14px 18px;
 }
@@ -640,10 +640,6 @@ body {
   .workspace-chat-topbar {
     align-items: flex-start;
     flex-direction: column;
-  }
-
-  .workspace-chat-title {
-    font-size: 20px;
   }
 
   .workspace-chat-stage,

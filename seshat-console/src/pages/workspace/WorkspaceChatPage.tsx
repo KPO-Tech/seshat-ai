@@ -112,12 +112,60 @@ export function WorkspaceChatPage() {
   const abortControllerRef = useRef<AbortController | null>(null)
   const activeThinkingIdRef = useRef<string | null>(null)
   const bottomSentinelRef = useRef<HTMLDivElement | null>(null)
+  const pendingEventsRef = useRef<WorkspaceChatEvent[]>([])
+  const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const providerSettings = useProviderSettingsList(activeOrganizationId)
   const agentPresets = useAgentPresetsList(activeOrganizationId)
 
-  useEffect(() => {
+  function stopStreaming() {
     abortControllerRef.current?.abort()
+    abortControllerRef.current = null
+    if (flushTimerRef.current) {
+      clearTimeout(flushTimerRef.current)
+      flushTimerRef.current = null
+    }
+    pendingEventsRef.current = []
+    activeThinkingIdRef.current = null
+  }
+
+  // Streamed text/thinking deltas can arrive many times a second. Applying
+  // each one as its own setState (re-rendering, and re-parsing the whole
+  // accumulated markdown answer via ReactMarkdown) every single time was
+  // saturating the main thread during longer generations - it looked like
+  // the page had frozen, including scroll input getting stuck for whole
+  // seconds. Buffering events and flushing them as one state update every
+  // FLUSH_INTERVAL_MS keeps the same per-event ordering/semantics while
+  // capping how often that expensive work happens.
+  const FLUSH_INTERVAL_MS = 80
+
+  function flushPendingEvents() {
+    if (flushTimerRef.current) {
+      clearTimeout(flushTimerRef.current)
+      flushTimerRef.current = null
+    }
+    const events = pendingEventsRef.current
+    if (events.length === 0) return
+    pendingEventsRef.current = []
+    setChatSession((current) => {
+      if (!current) return current
+      let next = current
+      for (const event of events) {
+        next = applyEventToSession(next, event, activeThinkingIdRef)
+      }
+      return next
+    })
+  }
+
+  function enqueueEvent(event: WorkspaceChatEvent) {
+    pendingEventsRef.current.push(event)
+    if (!flushTimerRef.current) {
+      flushTimerRef.current = setTimeout(flushPendingEvents, FLUSH_INTERVAL_MS)
+    }
+  }
+
+  useEffect(() => {
+    stopStreaming()
     const next = createWorkspaceChatSession({ organizationId: activeOrganizationId ?? null })
     setChatSession(next)
     setDraftPrompt('')
@@ -177,7 +225,7 @@ export function WorkspaceChatPage() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  useEffect(() => () => abortControllerRef.current?.abort(), [])
+  useEffect(() => () => stopStreaming(), [])
 
   const providerOptions = (providerSettings.data ?? []).map((setting) => ({
     label: (
@@ -198,7 +246,7 @@ export function WorkspaceChatPage() {
   const hasMessages = Boolean(chatSession && chatSession.messages.length > 0)
 
   const handleReset = () => {
-    abortControllerRef.current?.abort()
+    stopStreaming()
     setIsGenerating(false)
     const next = createWorkspaceChatSession({
       organizationId: activeOrganizationId ?? null,
@@ -270,17 +318,16 @@ export function WorkspaceChatPage() {
         model: selectedModelId,
         message: content,
       },
-      (event) => {
-        setChatSession((current) => (current ? applyEventToSession(current, event, activeThinkingIdRef) : current))
-      },
+      (event) => enqueueEvent(event),
       controller.signal,
     )
       .catch((error: unknown) => {
         if (controller.signal.aborted) return
         const message = error instanceof Error ? error.message : 'Failed to reach the server.'
-        setChatSession((current) => (current ? applyEventToSession(current, { type: 'error', message }, activeThinkingIdRef) : current))
+        enqueueEvent({ type: 'error', message })
       })
       .finally(() => {
+        flushPendingEvents()
         if (abortControllerRef.current === controller) {
           setIsGenerating(false)
           abortControllerRef.current = null
