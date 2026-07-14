@@ -67,24 +67,28 @@ The **`seshat-ai`** repository contains **SeshatOS**, a self-hosted AI workspace
 
 ```
 ┌─────────────────────────────────┐
-│  seshat-ui  (Electron + React)  │  Desktop app
+│  seshat-ui  (Electron + React)  │  Desktop app — always talks to seshat-backend only
 └────────────┬────────────────────┘
-             │ HTTP + SSE
+             │ HTTP + SSE (127.0.0.1)
 ┌────────────▼────────────────────┐
-│  seshat-backend/cmd/api         │  Local REST API for the desktop app
-│  seshat-backend/internal/*      │  Auth · Memory · Plans · Skills · RAG
+│  seshat-backend/cmd/api         │  Local REST API — auth, memory, plans, skills, RAG
+│  seshat-backend/internal/*      │  standalone (default) or connected (optional, below)
 └────────────┬────────────────────┘
-             │ shared Go services
-┌────────────▼────────────────────┐
-│  seshat-server/cmd/server       │  Cloud auth/org/jobs/sync bootstrap
-└────────────┬────────────────────┘
-             │ Go SDK (pkg/sdk)
+             │ Go SDK (pkg/sdk), used directly in both modes
 ┌────────────▼────────────────────┐
 │  seshat  (submodule)            │  Agent runtime, tools, providers, MCP
 └─────────────────────────────────┘
+
+  ── optional "connected" mode (SESHAT_SERVER_URL) ──
+
+┌─────────────────────────────────┐      ┌──────────────────────────────┐
+│  seshat-server/cmd/server       │◄─────┤  seshat-console (React)      │
+│  Cloud identity/org/automation/ │ HTTP │  Web control plane — platform│
+│  knowledge/quotas control plane │      │  & organization admins       │
+└─────────────────────────────────┘      └──────────────────────────────┘
 ```
 
-Dependency direction is strictly one-way: `seshat-ai` imports `seshat/pkg/*` only, never the reverse.
+Dependency direction is strictly one-way: `seshat-ai` imports `seshat/pkg/*` only, never the reverse. `seshat-ui` never talks to `seshat-server` directly — only through `seshat-backend` as the single gateway. In **standalone mode** (the default), `seshat-backend` runs fully offline with its own local auth/org/RBAC; in **connected mode**, identity, provider settings, preferences, skills/web-search/MCP registries, memories, agent presets, and usage counters are instead resolved from `seshat-server`, per-domain, config-driven — see [`ROADMAP.md`](ROADMAP.md) for the current migration status.
 
 ---
 
@@ -127,6 +131,7 @@ SeshatOS ships with `seshat-ui`, an Electron + React desktop application that wr
 - 📋 **Plans** - structured multi-step plans attached to sessions with status lifecycle
 - ⚡ **Skills** - slash-command shortcuts that resolve to prompt expansions, skill repository browser
 - 📚 **Knowledge / RAG** - hybrid BM25 + vector search over document corpora, multi-backend
+- 📄 **Document conversion** - optional Docling integration (PDF/DOCX/PPTX/XLSX/audio/images → markdown before ingestion), auto-managed locally or self-hosted
 - 🔌 **MCP servers** - per-user MCP server config stored in DB, resolved at runtime, hot-reload
 - ⏰ **Scheduled tasks** - cron-based background agent runs with job history
 - 🌐 **Web search** - pluggable backends (Tavily, Exa, Jina, SearXNG, auto-select)
@@ -136,6 +141,8 @@ SeshatOS ships with `seshat-ui`, an Electron + React desktop application that wr
 - 🤖 **Anthropic compat** - drop-in `/v1/messages` endpoint for any Anthropic SDK client
 - 📉 **Observability** - Prometheus `/metrics`, structured log output
 - 🌍 **Multi-provider** - Anthropic, OpenAI, Mistral, Google, xAI, OpenRouter, Ollama
+- 🔄 **Auto-update** - the desktop app checks, downloads, and installs updates in the background (never mid-session, always user-confirmed)
+- ☁️ **Optional cloud mode** - connect to a `seshat-server` deployment for centrally-managed identity, provider settings, and org policy, administered via `seshat-console`
 
 ---
 
@@ -170,9 +177,11 @@ seshat-ai/
 │   └── internal/             ← backend packages: api, db, auth, query, scheduler, ...
 ├── seshat-server/
 │   ├── cmd/server/           ← cloud-server entrypoint
-│   └── internal/server/      ← cloud HTTP bootstrap
+│   └── internal/server/      ← cloud domains: iam, automation, knowledge, memories, ...
+├── seshat-console/           ← web admin frontend for seshat-server (React + TypeScript)
 ├── seshat/                   ← submodule: github.com/EngineerProjects/seshat
 ├── seshat-ui/                ← Electron desktop app (React + TypeScript)
+├── deploy/                   ← docker-compose stack: postgres + seshat-server + seshat-console
 └── docs/                     ← Architecture, development guide, UI docs
 ```
 
@@ -228,6 +237,18 @@ make dev
 make hooks
 ```
 
+### Optional: cloud control plane (`seshat-server` + `seshat-console`)
+
+For centrally-managed identity, provider settings, and org policy across multiple `seshat-backend` instances:
+
+```bash
+cd deploy
+cp .env.example .env   # set POSTGRES_PASSWORD and SESHAT_SERVER_ENCRYPTION_KEY
+docker compose up --build
+```
+
+See [`deploy/README.md`](deploy/README.md). Point a `seshat-backend` instance at it with `SESHAT_SERVER_URL`/`SESHAT_SERVER_ORGANIZATION_ID` (see Configuration below) to switch it into connected mode.
+
 ---
 
 ## ⚙️ Configuration
@@ -249,6 +270,9 @@ All config is via environment variables. See [`.env.example`](.env.example) for 
 | `WEB_SEARCH_PROVIDER` | `auto` | `tavily` · `exa` · `jina` · `searxng` · `auto` |
 | `RAG_EMBEDDING_PROVIDER` | `ollama` | `ollama` or `openai` |
 | `RAG_EMBEDDING_MODEL` | `nomic-embed-text` | Embedding model name |
+| `SESHAT_DOCLING_URL` | *(auto)* | Docling-serve URL for binary-document conversion; empty/`auto` auto-manages a local instance, or point at a self-hosted one |
+| `SESHAT_SERVER_URL` | - | Set to switch this backend into **connected mode** against a `seshat-server` deployment (see architecture diagram above) |
+| `SESHAT_SERVER_ORGANIZATION_ID` | - | Organization ID on `seshat-server` this backend belongs to (connected mode only) |
 
 ---
 

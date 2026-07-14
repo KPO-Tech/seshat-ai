@@ -4,7 +4,7 @@ Scope: `seshat-server` (the cloud control plane API) and `seshat-console` (its d
 
 Related docs: `docs/casdoor-frontend-mapping.md` (frontend screen-by-screen build order), `deploy/README.md` (how to run the stack), `seshat-console/README.md`.
 
-Last updated: 2026-07-12.
+Last updated: 2026-07-14.
 
 ---
 
@@ -23,6 +23,7 @@ Last updated: 2026-07-12.
 - Stack: Vite + React + TypeScript + antd, API client fully generated from `openapi.yaml`, TanStack Query, zustand.
 - Design system: rebuilt 2026-07-12 to match `seshat-ui`'s actual product palette (warm anthracite `#2F2E34` canvas, orange `#EF7C2F` accent, antd dark algorithm) — the console previously used an unrelated jade/sage palette invented for it alone. Real Dashboard/overview page, reusable `PageHeader`/`StatTile` components.
 - **All 21 nav items are now real pages** except the two deliberately-deferred v2 placeholders (Platform → Image Generation, Web Search — blocked on the multi-modal design decision in "Multi-modal provider config" below, not a build gap). Every domain: Organizations, Applications, Providers, Users, Memberships, Invitations, Groups, Roles, Policy Bindings, Sessions, Devices, Jobs, Runs, Provider Settings (org), Corpora, Embedder Settings, Audit Events, Platform → Default Providers/Embedder.
+- **Scoped information architecture (2026-07-14, PR #38):** regrouped the (correct but flat) 17-screen list into explicit `Platform` (`/platform/*`) and `Organization` (`/orgs/:organizationId/*`) scopes per `docs/seshat-console-target-ia.md` — organization context now lives in the URL/shell (context-aware sidebar, secondary nav strip, org selector synced to the route) instead of a per-page `OrganizationPicker`. Existing screens kept, not rewritten; verified live end-to-end against a real bootstrapped server.
 
 ---
 
@@ -36,7 +37,9 @@ The console's screen backlog from `docs/casdoor-frontend-mapping.md` is now full
 
 ## Direction: seshat-server becomes the multi-tenant backbone
 
-Decided 2026-07-09: the platform is moving toward `seshat-server` as the multi-tenant cloud backend for everything, including file upload and knowledge/RAG — not just IAM and scheduled automation as today. `seshat-backend` (the existing local backend behind the desktop app) keeps working exactly as-is for the **local, single-user** case inside the desktop app; it is not being torn out. Once the multi-tenant surface (this knowledge/RAG work, and whatever follows it) is solid, the next phase is connecting `seshat-backend`/`seshat-ui` to `seshat-server` and replacing whichever local pieces make sense to replace with the cloud equivalent — not scoped in detail yet, revisit once the knowledge domain below is done.
+Decided 2026-07-09: the platform is moving toward `seshat-server` as the multi-tenant cloud backend for everything, including file upload and knowledge/RAG — not just IAM and scheduled automation as today. `seshat-backend` (the existing local backend behind the desktop app) keeps working exactly as-is for the **local, single-user** case inside the desktop app; it is not being torn out — it gained a second, optional **connected mode** instead (config-driven via `SESHAT_SERVER_URL`, see the root `README.md`'s architecture diagram).
+
+**Status as of 2026-07-14: 10 of 11 planned domains migrated and verified live** — Automation, Identity, Provider Settings, User Preferences, Skills registry, Web search config, MCP config, Memories (flat + long-term graph), Agents registry, Quotas (counters only). Each domain's exact scope, design forks, and end-to-end verification are tracked in detail in `helps/seshat-architecture-target.md` (§7, the canonical source — don't re-derive from this file). Only **Interactive sessions cloud** remains explicitly deferred: audited but found to need its own dedicated scoping pass (tenant model missing from `SessionStore`, billing/metering model undecided, session file-sandbox storage undecided) before implementation — not scheduled, no plan written yet.
 
 ## Knowledge base / RAG domain — first pre-built workflow (in progress, started 2026-07-09)
 
