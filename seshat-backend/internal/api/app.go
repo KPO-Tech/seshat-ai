@@ -19,6 +19,7 @@ type App struct {
 	modelStore         *db.ProviderModelStore
 	groupStore         *db.GroupStore
 	embedderStore      *db.EmbedderConfigStore
+	doclingStore       *db.DoclingConfigStore
 	storageConfigStore *db.StorageConfigStore
 	// Long-term memory — kept here because extraction is fire-and-forget
 	// and depends on the extractor which lives outside seshat.App lifecycle
@@ -46,6 +47,7 @@ type AppConfig struct {
 	ModelStore              *db.ProviderModelStore
 	GroupStore              *db.GroupStore
 	EmbedderStore           *db.EmbedderConfigStore
+	DoclingStore            *db.DoclingConfigStore
 	StorageConfigStore      *db.StorageConfigStore
 	LongTermExtractor       *longterm.Extractor
 	RateLimiter             *RateLimiter
@@ -67,6 +69,7 @@ func NewApp(cfg AppConfig) *App {
 		modelStore:              cfg.ModelStore,
 		groupStore:              cfg.GroupStore,
 		embedderStore:           cfg.EmbedderStore,
+		doclingStore:            cfg.DoclingStore,
 		storageConfigStore:      cfg.StorageConfigStore,
 		longTermExtractor:       cfg.LongTermExtractor,
 		rateLimiter:             cfg.RateLimiter,

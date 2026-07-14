@@ -243,6 +243,13 @@ func backendMigrations() []schemaMigration {
 				return db.gormDB.WithContext(ctx).AutoMigrate(&gMCPOrgServerApproval{})
 			},
 		},
+		{
+			ID:    "20260714_032_docling_config",
+			Scope: migrationScopeBackend,
+			Run: func(ctx context.Context, db *DB) error {
+				return db.gormDB.WithContext(ctx).AutoMigrate(&gDoclingConfig{})
+			},
+		},
 	}
 }
 

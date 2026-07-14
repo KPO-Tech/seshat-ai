@@ -4,7 +4,7 @@ import {
   Setting, PreviewOpen, PreviewClose, LinkCloud,
 } from '@icon-park/react'
 import { api } from '@/api/client'
-import type { Corpus, CorpusFile, IngestionJob, FileItem, EmbedderConfig } from '@/api/types'
+import type { Corpus, CorpusFile, IngestionJob, FileItem, EmbedderConfig, DoclingConfig } from '@/api/types'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -33,17 +33,20 @@ export function KnowledgeView() {
   const [showNewCorpus, setShowNewCorpus] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [embedderConfig, setEmbedderConfig] = useState<EmbedderConfig | null>(null)
+  const [doclingConfig, setDoclingConfig] = useState<DoclingConfig | null>(null)
 
   const loadCorpora = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const [corporaData, embData] = await Promise.all([
+      const [corporaData, embData, doclingData] = await Promise.all([
         api.get<{ corpora: Corpus[]; count: number }>('/corpora'),
         api.get<EmbedderConfig>('/settings/embedder').catch(() => null),
+        api.get<DoclingConfig>('/settings/docling').catch(() => null),
       ])
       setCorpora(corporaData?.corpora ?? [])
       if (embData) setEmbedderConfig(embData)
+      if (doclingData) setDoclingConfig(doclingData)
     } catch (e: unknown) {
       const err = e as { message?: string }
       setError(err?.message ?? 'Failed to load corpora')
@@ -83,6 +86,11 @@ export function KnowledgeView() {
       <EmbedderConfigCard
         config={embedderConfig}
         onSaved={setEmbedderConfig}
+      />
+
+      <DoclingConfigCard
+        config={doclingConfig}
+        onSaved={setDoclingConfig}
       />
 
       {error && (
@@ -425,6 +433,156 @@ function EmbedderConfigCard({
           className={`kv-emb-test-btn ${testState === 'running' ? 'kv-emb-btn-loading' : testState === 'ok' ? 'kv-emb-btn-ok' : testState === 'error' ? 'kv-emb-btn-error' : ''}`}
           onClick={handleTest}
           disabled={testState === 'running' || !form.base_url || !form.model}
+          type="button"
+        >
+          {testState === 'running' ? (
+            <><Sync size={14} className="kv-spin" /> Testing…</>
+          ) : testState === 'ok' ? (
+            <><CheckOne size={14} /> OK</>
+          ) : testState === 'error' ? (
+            <><CloseOne size={14} /> Failed</>
+          ) : (
+            <><Setting size={14} /> Test Connection</>
+          )}
+        </button>
+        {dirty && (
+          <button
+            className="kv-emb-save-btn"
+            onClick={handleSave}
+            disabled={saving}
+            type="button"
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Docling config card ───────────────────────────────────────────────────────
+
+function DoclingConfigCard({
+  config,
+  onSaved,
+}: {
+  config: DoclingConfig | null
+  onSaved: (cfg: DoclingConfig) => void
+}) {
+  const [form, setForm] = useState({
+    base_url: config?.base_url ?? '',
+    enabled: config?.enabled ?? true,
+  })
+  const [dirty, setDirty] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [testState, setTestState] = useState<'idle' | 'running' | 'ok' | 'error'>('idle')
+  const [testError, setTestError] = useState<string | null>(null)
+  const [testLatency, setTestLatency] = useState<number | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
+
+  // Sync when config loads
+  useEffect(() => {
+    if (config) {
+      setForm({ base_url: config.base_url || '', enabled: config.enabled })
+    }
+  }, [config])
+
+  function update<K extends keyof typeof form>(key: K, value: typeof form[K]) {
+    setForm(f => ({ ...f, [key]: value }))
+    setDirty(true)
+  }
+
+  async function handleSave() {
+    setSaving(true)
+    setSaveError(null)
+    try {
+      const saved = await api.put<DoclingConfig>('/settings/docling', form)
+      onSaved(saved)
+      setDirty(false)
+    } catch (e: unknown) {
+      const err = e as { message?: string }
+      setSaveError(err?.message ?? 'Failed to save')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleTest() {
+    setTestState('running')
+    setTestError(null)
+    setTestLatency(null)
+    try {
+      const result = await api.post<{ ok: boolean; latency_ms: number; error: string | null }>(
+        '/settings/docling/test',
+        { base_url: form.base_url }
+      )
+      if (result.ok) {
+        setTestState('ok')
+        setTestLatency(result.latency_ms)
+      } else {
+        setTestState('error')
+        setTestError(result.error ?? 'Test failed')
+      }
+    } catch (e: unknown) {
+      const err = e as { message?: string }
+      setTestState('error')
+      setTestError(err?.message ?? 'Request failed')
+    }
+  }
+
+  return (
+    <div className="kv-emb-card">
+      <div className="kv-emb-header">
+        <div className="kv-emb-title-row">
+          <div className="kv-emb-icon">
+            <LinkCloud size={18} />
+          </div>
+          <div>
+            <div className="kv-emb-title">Document Conversion (Docling)</div>
+            <div className="kv-emb-subtitle">Converts PDF/DOCX/PPTX/XLSX/audio/images to markdown during upload and ingestion — self-hosted, on your network, or your organization's own</div>
+          </div>
+        </div>
+        <div className="kv-emb-status-row">
+          <label className="kv-emb-toggle">
+            <input
+              type="checkbox"
+              checked={form.enabled}
+              onChange={e => update('enabled', e.target.checked)}
+            />
+            <span className="kv-emb-toggle-label">Enabled</span>
+          </label>
+        </div>
+      </div>
+
+      <div className="kv-emb-body">
+        <div className="kv-emb-row">
+          <div className="kv-emb-field kv-emb-field-lg">
+            <label>Server URL</label>
+            <input
+              type="text"
+              value={form.base_url}
+              onChange={e => update('base_url', e.target.value)}
+              placeholder="http://localhost:5001 (leave blank to use the auto-detected local instance)"
+            />
+          </div>
+        </div>
+
+        {(saveError || testError) && (
+          <div className="kv-emb-error">{saveError ?? testError}</div>
+        )}
+
+        {testState === 'ok' && testLatency !== null && (
+          <div className="kv-emb-ok">
+            <CheckOne size={14} /> Reachable — {testLatency}ms
+          </div>
+        )}
+      </div>
+
+      <div className="kv-emb-footer">
+        <button
+          className={`kv-emb-test-btn ${testState === 'running' ? 'kv-emb-btn-loading' : testState === 'ok' ? 'kv-emb-btn-ok' : testState === 'error' ? 'kv-emb-btn-error' : ''}`}
+          onClick={handleTest}
+          disabled={testState === 'running' || !form.base_url}
           type="button"
         >
           {testState === 'running' ? (

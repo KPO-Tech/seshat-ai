@@ -112,6 +112,8 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	apiV1.Handle("/settings/providers/", app.authMiddleware(http.HandlerFunc(app.handleProviderSettingByID)))
 	apiV1.Handle("/settings/embedder", app.authMiddleware(http.HandlerFunc(app.handleEmbedderConfig)))
 	apiV1.Handle("/settings/embedder/", app.authMiddleware(http.HandlerFunc(app.handleEmbedderConfig)))
+	apiV1.Handle("/settings/docling", app.authMiddleware(http.HandlerFunc(app.handleDoclingConfig)))
+	apiV1.Handle("/settings/docling/", app.authMiddleware(http.HandlerFunc(app.handleDoclingConfig)))
 	apiV1.Handle("/settings/storage", app.authMiddleware(http.HandlerFunc(app.handleStorageConfig)))
 	apiV1.Handle("/memories", app.authMiddleware(http.HandlerFunc(app.handleMemories)))
 	apiV1.Handle("/memories/", app.authMiddleware(http.HandlerFunc(app.handleMemoryByID)))

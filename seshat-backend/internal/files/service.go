@@ -21,18 +21,21 @@ import (
 )
 
 type Service struct {
-	files         *db.FileStore
-	store         storage.ArtifactStore
-	doclingClient *docling.Client
+	files                *db.FileStore
+	store                storage.ArtifactStore
+	resolveDoclingClient func(ctx context.Context) *docling.Client
 }
 
 func NewService(files *db.FileStore, store storage.ArtifactStore) *Service {
 	return &Service{files: files, store: store}
 }
 
-// WithDocling attaches a docling client so uploaded documents are auto-converted to markdown.
-func (s *Service) WithDocling(client *docling.Client) *Service {
-	s.doclingClient = client
+// WithDocling attaches a resolver that returns the docling client to use for
+// a given call, re-evaluated every time rather than cached — the user can
+// change which docling-serve instance to use at runtime (Settings >
+// Knowledge), see internal/config/bootstrap.go's resolveDocling closure.
+func (s *Service) WithDocling(resolve func(ctx context.Context) *docling.Client) *Service {
+	s.resolveDoclingClient = resolve
 	return s
 }
 
@@ -315,10 +318,14 @@ func (s *Service) UploadSessionFile(ctx context.Context, principal *backendauth.
 	}
 
 	// Docling auto-conversion: convert to markdown if format is supported.
-	if destPath != "" && s.doclingClient != nil {
+	var doclingClient *docling.Client
+	if destPath != "" && s.resolveDoclingClient != nil {
+		doclingClient = s.resolveDoclingClient(ctx)
+	}
+	if destPath != "" && doclingClient != nil {
 		ext := strings.ToLower(filepath.Ext(params.Filename))
-		if doclingExtensions[ext] && s.doclingClient.IsAvailable(ctx) {
-			if result, convErr := s.doclingClient.ConvertFile(ctx, destPath); convErr == nil && result.Markdown != "" {
+		if doclingExtensions[ext] && doclingClient.IsAvailable(ctx) {
+			if result, convErr := doclingClient.ConvertFile(ctx, destPath); convErr == nil && result.Markdown != "" {
 				mdPath := strings.TrimSuffix(destPath, filepath.Ext(destPath)) + ".md"
 				if writeErr := os.WriteFile(mdPath, []byte(result.Markdown), 0o600); writeErr == nil {
 					if rel, relErr := filepath.Rel(workspacePath, mdPath); relErr == nil {

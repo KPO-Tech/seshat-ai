@@ -305,6 +305,16 @@ export type EmbedderConfig = {
   updated_at?: number
 }
 
+// DoclingConfig points at a docling-serve instance (self-hosted, on the
+// local network, or an organization's own) for document conversion during
+// upload/ingestion. Empty base_url means "use whatever was auto-detected at
+// startup" (e.g. a locally managed docling-serve venv, if installed).
+export type DoclingConfig = {
+  base_url: string
+  enabled: boolean
+  updated_at?: number
+}
+
 export type UserMemory = {
   id: string
   type: string
