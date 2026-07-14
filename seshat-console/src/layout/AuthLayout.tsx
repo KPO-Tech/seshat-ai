@@ -1,20 +1,24 @@
 import type { ReactNode } from 'react'
+import { SafetyCertificateOutlined, ClusterOutlined, FileSearchOutlined } from '@ant-design/icons'
 import { palette } from '@/theme/tokens'
 
-const FEATURES = ['Centralized identity & access', 'Cross-organization automation', 'Full audit trail']
+const FEATURES = [
+  { icon: <SafetyCertificateOutlined />, label: 'Centralized identity & access' },
+  { icon: <ClusterOutlined />, label: 'Cross-organization automation' },
+  { icon: <FileSearchOutlined />, label: 'Full audit trail' },
+]
 
 /** Shared split layout for the login and bootstrap pages: a branded panel
- * beside the form, rather than a bare card floating on an empty background.
- * Both columns are vertically centered so neither reads as top-heavy next
- * to the other. */
+ * beside a bordered form card. Both columns are vertically centered and the
+ * whole layout is width-capped so it doesn't stretch into a mostly-empty
+ * strip on very wide screens. */
 export function AuthLayout({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
   return (
-    <div style={{ minHeight: '100vh', display: 'flex' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', maxWidth: 1560, margin: '0 auto' }}>
       <div
         style={{
-          flex: '0 0 44%',
-          minWidth: 360,
-          maxWidth: 560,
+          flex: '0 0 47%',
+          minWidth: 420,
           position: 'relative',
           overflow: 'hidden',
           background: palette.sidebarBg,
@@ -22,7 +26,7 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'center',
-          padding: '56px 64px',
+          padding: '56px 72px',
         }}
       >
         <div
@@ -42,17 +46,17 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
           aria-hidden
           style={{
             position: 'absolute',
-            top: '-15%',
-            left: '-15%',
-            width: 560,
-            height: 560,
+            top: '-18%',
+            left: '-12%',
+            width: 620,
+            height: 620,
             borderRadius: '50%',
             background: `radial-gradient(circle, ${palette.accentSoft} 0%, transparent 70%)`,
             pointerEvents: 'none',
           }}
         />
 
-        <div style={{ position: 'relative', maxWidth: 420 }}>
+        <div style={{ position: 'relative' }}>
           <span
             style={{
               display: 'inline-flex',
@@ -60,35 +64,50 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
               borderRadius: 999,
               background: palette.accentSoft,
               color: palette.accent,
-              padding: '5px 12px',
-              fontSize: 11,
+              padding: '6px 14px',
+              fontSize: 12,
               fontWeight: 700,
               letterSpacing: '0.08em',
               textTransform: 'uppercase',
-              marginBottom: 24,
+              marginBottom: 28,
             }}
           >
             Admin Control Plane
           </span>
 
-          <img src="/seshat.png" alt="Seshat" width={88} height={88} style={{ objectFit: 'contain', marginBottom: 28 }} />
+          <img src="/seshat.png" alt="Seshat" width={120} height={120} style={{ objectFit: 'contain', marginBottom: 32 }} />
 
-          <div style={{ color: '#fff', fontSize: 30, fontWeight: 700, lineHeight: 1.25, letterSpacing: '-0.01em' }}>
+          <div style={{ color: '#fff', fontSize: 36, fontWeight: 700, lineHeight: 1.2, letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>
             {title}
           </div>
-          <div style={{ marginTop: 12, fontSize: 14.5, lineHeight: 1.6 }}>{subtitle}</div>
+          <div style={{ marginTop: 14, fontSize: 16, lineHeight: 1.65, maxWidth: 400 }}>{subtitle}</div>
 
-          <div style={{ marginTop: 32, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ marginTop: 36, display: 'flex', flexDirection: 'column', gap: 16 }}>
             {FEATURES.map((feature) => (
-              <div key={feature} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ width: 5, height: 5, borderRadius: '50%', background: palette.accent, flexShrink: 0 }} />
-                <span style={{ fontSize: 13, color: palette.sidebarText }}>{feature}</span>
+              <div key={feature.label} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <span
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 9,
+                    background: palette.accentSoft,
+                    color: palette.accent,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 15,
+                    flexShrink: 0,
+                  }}
+                >
+                  {feature.icon}
+                </span>
+                <span style={{ fontSize: 14.5, color: palette.sidebarText }}>{feature.label}</span>
               </div>
             ))}
           </div>
         </div>
 
-        <div style={{ position: 'absolute', left: 64, bottom: 32, fontSize: 12, color: palette.sidebarTextMuted }}>
+        <div style={{ position: 'absolute', left: 72, bottom: 32, fontSize: 12, color: palette.sidebarTextMuted }}>
           Seshat admin console
         </div>
       </div>
@@ -102,7 +121,18 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
           padding: 24,
         }}
       >
-        <div style={{ width: 400 }}>{children}</div>
+        <div
+          style={{
+            width: 440,
+            background: palette.surface,
+            border: `1px solid ${palette.border}`,
+            borderRadius: 16,
+            padding: '40px 40px 36px',
+            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.16), 0 8px 24px -8px rgba(0, 0, 0, 0.3)',
+          }}
+        >
+          {children}
+        </div>
       </div>
     </div>
   )
