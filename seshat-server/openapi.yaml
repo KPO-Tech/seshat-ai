@@ -1477,6 +1477,37 @@ paths:
                   context: { type: string }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
+  /api/v1/users/me/workspace/chat/stream:
+    post:
+      operationId: streamWorkspaceChat
+      tags: [workspace-chat]
+      summary: Send a message to a personal Workspace Chat session and stream back the reply
+      description: >-
+        A personal, user-scoped playground for trying providers/models/tools
+        live against a real LLM (web_search, rag_search, read_document_url),
+        distinct from the async cloud job scheduler. The response body is
+        newline-delimited JSON (one WorkspaceChatEvent object per line), not
+        a JSON document — read it as a stream, not with a single JSON parse.
+        session_id is client-generated and identifies one conversation;
+        reusing it across calls continues the same in-memory SDK session
+        (recent history remembered) until it's evicted after 2 hours of
+        inactivity. Sessions are not persisted to the database - this is a
+        transient test surface, not a durable chat history.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkspaceChatStreamInput" }
+      responses:
+        "200":
+          description: Newline-delimited stream of WorkspaceChatEvent objects
+          content:
+            application/x-ndjson:
+              schema: { $ref: "#/components/schemas/WorkspaceChatEvent" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
   /api/v1/skill-repos:
     get:
       operationId: listSkillRepos
@@ -4187,6 +4218,71 @@ components:
         organization_id: { type: string }
         allowed_domains: { type: array, items: { type: string } }
         blocked_domains: { type: array, items: { type: string } }
+
+    WorkspaceChatStreamInput:
+      type: object
+      required: [session_id, organization_id, provider, model, message]
+      properties:
+        session_id:
+          type: string
+          description: Client-generated - identifies one conversation across calls.
+        organization_id: { type: string }
+        provider: { type: string, example: anthropic }
+        model: { type: string, example: claude-sonnet-5 }
+        corpus_id:
+          type: string
+          description: Optional - enables rag_search/rag_ingest scoped to this organization's embedder when set.
+        message:
+          type: string
+          description: The user's new message. Prior turns are remembered server-side via session_id, not resent here.
+
+    WorkspaceChatEvent:
+      type: object
+      description: One line of the newline-delimited response stream.
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [text_delta, thinking_delta, tool_progress, done, error]
+        delta:
+          type: string
+          description: Present for text_delta/thinking_delta - an incremental text fragment to append.
+        tool:
+          $ref: "#/components/schemas/WorkspaceChatToolProgress"
+        message:
+          type: string
+          description: Present for the error event.
+
+    WorkspaceChatToolProgress:
+      type: object
+      description: Present on tool_progress events. Emitted once per stage as the tool call happens (pending/running/completed/failed); web_search calls get a second "completed" event once the turn finishes, with the fully structured web_search field replacing the plain-text summary.
+      properties:
+        name: { type: string, example: web_search }
+        tool_use_id: { type: string }
+        stage: { type: string, enum: [pending, running, completed, failed] }
+        summary:
+          type: string
+          description: Human-readable progress text (or a truncated result summary on completion).
+        query:
+          type: string
+          description: The tool's input query, when it has one (e.g. web_search).
+        web_search:
+          $ref: "#/components/schemas/WorkspaceChatWebSearchTrace"
+
+    WorkspaceChatWebSearchTrace:
+      type: object
+      properties:
+        query: { type: string }
+        count: { type: integer }
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              title: { type: string }
+              url: { type: string }
+              description: { type: string }
+              source: { type: string }
 
     MCPServerConfig:
       type: object

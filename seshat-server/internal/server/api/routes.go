@@ -69,6 +69,8 @@ func (app *App) routes() http.Handler {
 	mux.Handle("POST /api/v1/users/me/memory-graph/open", app.authMiddleware(http.HandlerFunc(app.handleMemoryGraphOpen)))
 	mux.Handle("GET /api/v1/users/me/memory-graph/context", app.authMiddleware(http.HandlerFunc(app.handleMemoryGraphContext)))
 
+	mux.Handle("POST /api/v1/users/me/workspace/chat/stream", app.authMiddleware(http.HandlerFunc(app.handleWorkspaceChatStream)))
+
 	mux.Handle("GET /api/v1/skill-repos", app.authMiddleware(http.HandlerFunc(app.handleSkillRepos)))
 	mux.Handle("POST /api/v1/skill-repos", app.authMiddleware(http.HandlerFunc(app.handleSkillRepos)))
 	mux.Handle("PUT /api/v1/skill-repos/{skillRepoID}", app.authMiddleware(http.HandlerFunc(app.handleSkillRepoByID)))

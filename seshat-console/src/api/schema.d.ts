@@ -847,6 +847,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/users/me/workspace/chat/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a message to a personal Workspace Chat session and stream back the reply
+         * @description A personal, user-scoped playground for trying providers/models/tools live against a real LLM (web_search, rag_search, read_document_url), distinct from the async cloud job scheduler. The response body is newline-delimited JSON (one WorkspaceChatEvent object per line), not a JSON document — read it as a stream, not with a single JSON parse. session_id is client-generated and identifies one conversation; reusing it across calls continues the same in-memory SDK session (recent history remembered) until it's evicted after 2 hours of inactivity. Sessions are not persisted to the database - this is a transient test surface, not a durable chat history.
+         */
+        post: operations["streamWorkspaceChat"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/skill-repos": {
         parameters: {
             query?: never;
@@ -2655,6 +2675,52 @@ export interface components {
             organization_id: string;
             allowed_domains?: string[];
             blocked_domains?: string[];
+        };
+        WorkspaceChatStreamInput: {
+            /** @description Client-generated - identifies one conversation across calls. */
+            session_id: string;
+            organization_id: string;
+            /** @example anthropic */
+            provider: string;
+            /** @example claude-sonnet-5 */
+            model: string;
+            /** @description Optional - enables rag_search/rag_ingest scoped to this organization's embedder when set. */
+            corpus_id?: string;
+            /** @description The user's new message. Prior turns are remembered server-side via session_id, not resent here. */
+            message: string;
+        };
+        /** @description One line of the newline-delimited response stream. */
+        WorkspaceChatEvent: {
+            /** @enum {string} */
+            type: "text_delta" | "thinking_delta" | "tool_progress" | "done" | "error";
+            /** @description Present for text_delta/thinking_delta - an incremental text fragment to append. */
+            delta?: string;
+            tool?: components["schemas"]["WorkspaceChatToolProgress"];
+            /** @description Present for the error event. */
+            message?: string;
+        };
+        /** @description Present on tool_progress events. Emitted once per stage as the tool call happens (pending/running/completed/failed); web_search calls get a second "completed" event once the turn finishes, with the fully structured web_search field replacing the plain-text summary. */
+        WorkspaceChatToolProgress: {
+            /** @example web_search */
+            name?: string;
+            tool_use_id?: string;
+            /** @enum {string} */
+            stage?: "pending" | "running" | "completed" | "failed";
+            /** @description Human-readable progress text (or a truncated result summary on completion). */
+            summary?: string;
+            /** @description The tool's input query, when it has one (e.g. web_search). */
+            query?: string;
+            web_search?: components["schemas"]["WorkspaceChatWebSearchTrace"];
+        };
+        WorkspaceChatWebSearchTrace: {
+            query?: string;
+            count?: number;
+            results?: {
+                title?: string;
+                url?: string;
+                description?: string;
+                source?: string;
+            }[];
         };
         /** @description Never includes env/headers values — they're a caller-supplied secret, redacted in every response including create. */
         MCPServerConfig: {
@@ -4750,6 +4816,33 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+        };
+    };
+    streamWorkspaceChat: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkspaceChatStreamInput"];
+            };
+        };
+        responses: {
+            /** @description Newline-delimited stream of WorkspaceChatEvent objects */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/x-ndjson": components["schemas"]["WorkspaceChatEvent"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
     listSkillRepos: {

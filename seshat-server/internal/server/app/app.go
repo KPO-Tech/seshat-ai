@@ -21,6 +21,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/quotas"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/skillregistry"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/websearchsettings"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/workspacechat"
 )
 
 type App struct {
@@ -38,6 +39,7 @@ type App struct {
 	LongTermMemory    *longtermmemory.Service
 	AgentRegistry     *agentregistry.Service
 	Quotas            *quotas.Service
+	WorkspaceChat     *workspacechat.Service
 }
 
 func New(cfg serverconfig.Config) (*App, error) {
@@ -79,6 +81,8 @@ func New(cfg serverconfig.Config) (*App, error) {
 	// not per-tenant, since docling-serve isn't a secret or credential.
 	automationService.SetDoclingURL(cfg.DoclingURL)
 
+	webSearchService := websearchsettings.New(database, iamService)
+
 	return &App{
 		DB:                database,
 		IAM:               iamService,
@@ -88,11 +92,12 @@ func New(cfg serverconfig.Config) (*App, error) {
 		IngestionRunner:   knowledge.NewRunner(knowledgeService, knowledge.RunnerConfig{PollInterval: cfg.IngestionPollInterval, MaxPollInterval: cfg.IngestionMaxPollInterval}),
 		Preferences:       preferences.New(database),
 		SkillRegistry:     skillregistry.New(database, iamService),
-		WebSearchSettings: websearchsettings.New(database, iamService),
+		WebSearchSettings: webSearchService,
 		MCPRegistry:       mcpregistry.New(database, iamService),
 		Memories:          memories.New(database),
 		LongTermMemory:    longtermmemory.New(database),
 		AgentRegistry:     agentregistry.New(database, iamService),
 		Quotas:            quotas.New(database),
+		WorkspaceChat:     workspacechat.New(database, iamService, automationService, webSearchService, knowledgeService, cfg.DoclingURL),
 	}, nil
 }
