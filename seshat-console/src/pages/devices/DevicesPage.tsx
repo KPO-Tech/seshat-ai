@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Alert, Button, Drawer, Empty, Form, Input, message, Popconfirm, Space, Tag, Typography } from 'antd'
 import type { TableProps } from 'antd'
-import { PlusOutlined, DeleteOutlined, DesktopOutlined, CopyOutlined } from '@ant-design/icons'
+import { PlusOutlined, DeleteOutlined, DesktopOutlined, CopyOutlined, ScheduleOutlined } from '@ant-design/icons'
 import { useDevicesList, useRegisterDevice, useRevokeDevice, type Device, type DeviceRegisterInput } from '@/api/devices'
+import { useJobsList } from '@/api/jobs'
 import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
 import { ConsoleTable } from '@/components/ConsoleTable'
@@ -10,10 +12,12 @@ import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
 import { palette } from '@/theme/tokens'
 
 export function DevicesPage() { const organizationId = useScopedOrganizationId()
+  const navigate = useNavigate()
   const [registering, setRegistering] = useState(false)
   const [issuedToken, setIssuedToken] = useState<{ name: string; token: string } | null>(null)
 
   const { data, isLoading } = useDevicesList(organizationId ?? undefined)
+  const { data: jobs } = useJobsList(organizationId ?? undefined)
   const registerDevice = useRegisterDevice()
   const revokeDevice = useRevokeDevice()
 
@@ -39,6 +43,23 @@ export function DevicesPage() { const organizationId = useScopedOrganizationId()
       dataIndex: 'last_seen_at',
       key: 'last_seen_at',
       render: (v: string | null) => (v ? new Date(v).toLocaleString() : 'Never'), },
+    { title: 'Jobs',
+      key: 'jobs',
+      width: 110,
+      render: (_, record) => {
+        const count = (jobs ?? []).filter((job) => job.target_device_id === record.id).length
+        if (count === 0) return <Typography.Text style={{ color: palette.inkTertiary }}>None</Typography.Text>
+        return (
+          <Button
+            size="small"
+            type="link"
+            icon={<ScheduleOutlined />}
+            onClick={() => navigate(`/orgs/${organizationId}/automation/jobs?device_id=${record.id}`)}
+          >
+            {count}
+          </Button>
+        )
+      }, },
     { title: '',
       key: 'actions',
       width: 64,

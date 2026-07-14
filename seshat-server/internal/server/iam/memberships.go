@@ -46,10 +46,42 @@ func (s *Service) GetMembership(ctx context.Context, principal *Principal, membe
 		return nil, err
 	}
 	if principal.User.IsAdmin || manages || principal.User.ID == record.UserID {
-		membership := toMembership(record)
-		return &membership, nil
+		memberships := []Membership{toMembership(record)}
+		enrichMembershipsWithUsers(tx, memberships)
+		return &memberships[0], nil
 	}
 	return nil, ErrForbidden("membership access denied")
+}
+
+// enrichMembershipsWithUsers batch-loads the referenced users and populates
+// UserEmail/UserDisplayName in place. Only enriches rows the caller was
+// already authorized to see - no new access decision, just field fill-in.
+func enrichMembershipsWithUsers(tx *gorm.DB, memberships []Membership) {
+	if len(memberships) == 0 {
+		return
+	}
+	userIDs := make([]string, 0, len(memberships))
+	seen := make(map[string]bool, len(memberships))
+	for _, m := range memberships {
+		if !seen[m.UserID] {
+			seen[m.UserID] = true
+			userIDs = append(userIDs, m.UserID)
+		}
+	}
+	var users []sdb.User
+	if err := tx.Where("id IN ?", userIDs).Find(&users).Error; err != nil {
+		return
+	}
+	byID := make(map[string]sdb.User, len(users))
+	for _, u := range users {
+		byID[u.ID] = u
+	}
+	for i := range memberships {
+		if u, ok := byID[memberships[i].UserID]; ok {
+			memberships[i].UserEmail = u.Email
+			memberships[i].UserDisplayName = u.DisplayName
+		}
+	}
 }
 
 var membershipSortFields = map[string]sdb.SortField{
@@ -123,6 +155,7 @@ func (s *Service) ListMemberships(ctx context.Context, principal *Principal, org
 	for _, record := range records {
 		memberships = append(memberships, toMembership(record))
 	}
+	enrichMembershipsWithUsers(tx, memberships)
 	return memberships, total, nil
 }
 

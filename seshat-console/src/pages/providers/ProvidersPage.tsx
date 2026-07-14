@@ -89,7 +89,7 @@ export function ProvidersPage() { const organizationId = useScopedOrganizationId
   return (
     <div>
       <PageHeader
-        title="Providers"
+        title="Identity Providers"
         description="Upstream identity providers (OIDC/OAuth2/SAML) this organization trusts."
         actions={ <Space>
             <Input.Search

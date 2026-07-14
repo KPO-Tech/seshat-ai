@@ -1,14 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Button, Card, Drawer, Empty, Form, Popconfirm, Space, Tag, Typography, message } from 'antd'
 import type { TableProps } from 'antd'
-import {
-  DeleteOutlined,
-  EditOutlined,
-  MailOutlined,
-  PlusOutlined,
-  SafetyOutlined,
-  TeamOutlined,
-} from '@ant-design/icons'
+import { DeleteOutlined, EditOutlined, MailOutlined, PlusOutlined, SafetyOutlined, TeamOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import {
   useMembershipsList,
@@ -19,7 +12,6 @@ import {
 } from '@/api/memberships'
 import { useInvitationsList } from '@/api/invitations'
 import { useRolesList } from '@/api/roles'
-import { useUsersList } from '@/api/users'
 import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
 import { ConsoleTable } from '@/components/ConsoleTable'
@@ -28,25 +20,10 @@ import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
 import { UserSelect } from '@/components/UserSelect'
 import { RoleSelect } from '@/components/RoleSelect'
 import { presentDateTime, presentText } from '@/lib/present'
+import { ROLE_COLORS, formatRoleLabel } from '@/lib/roles'
 import { monoStack, palette } from '@/theme/tokens'
 
 const PAGE_SIZE = 20
-
-const ROLE_COLORS: Record<string, string> = {
-  owner: 'gold',
-  admin: 'orange',
-  member: 'blue',
-  viewer: 'default',
-}
-
-function formatRoleLabel(value: string | undefined) {
-  if (!value) return 'Unknown role'
-  return value
-    .split(/[_-]/g)
-    .filter(Boolean)
-    .map((part) => part[0]!.toUpperCase() + part.slice(1))
-    .join(' ')
-}
 
 export function MembershipsPage() {
   const navigate = useNavigate()
@@ -67,7 +44,6 @@ export function MembershipsPage() {
     offset: 0,
   })
   const roles = useRolesList(organizationId ?? undefined)
-  const users = useUsersList({ limit: 500, sort: 'email', order: 'asc' }, { enabled: true })
 
   const createMembership = useCreateMembership()
   const updateMembership = useUpdateMembership()
@@ -77,39 +53,31 @@ export function MembershipsPage() {
     () => new Map((roles.data?.roles ?? []).map((role) => [role.code ?? '', role])),
     [roles.data?.roles],
   )
-  const userById = useMemo(
-    () => new Map((users.data?.users ?? []).map((user) => [user.id ?? '', user])),
-    [users.data?.users],
-  )
 
   const totalRoles = roles.data?.roles?.length ?? 0
   const customRoles = (roles.data?.roles ?? []).filter((role) => !role.system)
-  const systemRoles = (roles.data?.roles ?? []).filter((role) => role.system)
   const pendingInvitations = invitations.data?.total ?? 0
-  const directoryAvailable = !users.isError && (users.data?.users?.length ?? 0) > 0
 
   const columns: TableProps<Membership>['columns'] = [
     {
       title: 'Member',
-      dataIndex: 'user_id',
-      key: 'user_id',
-      render: (value: string | undefined) => {
-        const user = value ? userById.get(value) : undefined
-        const primary = presentText(user?.display_name, user?.email ?? 'Unknown user')
-        const showEmail = Boolean(user?.display_name && user?.email)
+      key: 'user',
+      render: (_, record) => {
+        const primary = presentText(record.user_display_name, record.user_email ?? 'Unknown user')
+        const showEmail = Boolean(record.user_display_name && record.user_email)
 
         return (
           <Space direction="vertical" size={2}>
             <Typography.Text strong>{primary}</Typography.Text>
             {showEmail ? (
               <Typography.Text style={{ fontSize: 12, color: palette.inkSecondary }}>
-                {user?.email}
+                {record.user_email}
               </Typography.Text>
             ) : null}
             <Typography.Text
               style={{ fontSize: 12, color: palette.inkTertiary, fontFamily: monoStack }}
             >
-              {value ?? 'No user ID'}
+              {record.user_id ?? 'No user ID'}
             </Typography.Text>
           </Space>
         )
@@ -217,95 +185,30 @@ export function MembershipsPage() {
         />
       </div>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-          gap: 16,
-          alignItems: 'start',
-        }}
-      >
-        <Card title="Organization access" styles={{ body: { paddingTop: 8 } }}>
-          <ConsoleTable<Membership>
-            rowKey="id"
-            columns={columns}
-            dataSource={memberships.data?.memberships ?? []}
-            loading={memberships.isLoading || memberships.isFetching}
-            locale={{
-              emptyText: (
-                <Empty
-                  image={<TeamOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}
-                  description="No members yet"
-                  style={{ padding: '32px 0' }}
-                />
-              ),
-            }}
-            pagination={{
-              current: page,
-              pageSize: PAGE_SIZE,
-              total: memberships.data?.total ?? 0,
-              onChange: setPage,
-              showTotal: (total) => `${total} member${total === 1 ? '' : 's'}`,
-            }}
-          />
-        </Card>
-
-        <Space direction="vertical" size={16} style={{ width: '100%' }}>
-          <Card
-            title="Pending invitations"
-            extra={<Button type="link" onClick={() => navigate(`/orgs/${organizationId}/team/invitations`)}>Open</Button>}
-          >
-            <Space direction="vertical" size={10} style={{ width: '100%' }}>
-              <Typography.Text style={{ color: palette.inkSecondary }}>
-                Invite people by email when they do not already have a platform account.
-              </Typography.Text>
-              <Typography.Text style={{ fontSize: 28, fontWeight: 700, color: palette.ink }}>
-                {invitations.isLoading ? '...' : pendingInvitations}
-              </Typography.Text>
-              <Button block onClick={() => navigate(`/orgs/${organizationId}/team/invitations`)}>
-                Review invitations
-              </Button>
-            </Space>
-          </Card>
-
-          <Card
-            title="Roles and permissions"
-            extra={<Button type="link" onClick={() => navigate(`/orgs/${organizationId}/team/roles`)}>Manage</Button>}
-          >
-            <Space direction="vertical" size={12} style={{ width: '100%' }}>
-              <Typography.Text style={{ color: palette.inkSecondary }}>
-                Keep only the roles this organization actually needs. Built-in roles cover the basics, custom roles cover tighter access control.
-              </Typography.Text>
-              <div>
-                <Typography.Text strong>{customRoles.length ? 'Custom roles available' : 'Only built-in roles'}</Typography.Text>
-                <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {customRoles.length > 0 ? (
-                    customRoles.slice(0, 6).map((role) => (
-                      <Tag key={role.code} color="orange">
-                        {role.name}
-                      </Tag>
-                    ))
-                  ) : (
-                    systemRoles.map((role) => <Tag key={role.code}>{role.name}</Tag>)
-                  )}
-                  {customRoles.length > 6 ? <Tag>+{customRoles.length - 6} more</Tag> : null}
-                </div>
-              </div>
-              <Button block onClick={() => navigate(`/orgs/${organizationId}/team/roles`)}>
-                Manage roles
-              </Button>
-            </Space>
-          </Card>
-
-          {!directoryAvailable ? (
-            <Card title="Directory lookup">
-              <Typography.Text style={{ color: palette.inkSecondary }}>
-                This account cannot resolve the user directory, so the member table falls back to raw user IDs. Platform admins still see emails and display names automatically.
-              </Typography.Text>
-            </Card>
-          ) : null}
-        </Space>
-      </div>
+      <Card title="Organization access" styles={{ body: { paddingTop: 8 } }}>
+        <ConsoleTable<Membership>
+          rowKey="id"
+          columns={columns}
+          dataSource={memberships.data?.memberships ?? []}
+          loading={memberships.isLoading || memberships.isFetching}
+          locale={{
+            emptyText: (
+              <Empty
+                image={<TeamOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}
+                description="No members yet"
+                style={{ padding: '32px 0' }}
+              />
+            ),
+          }}
+          pagination={{
+            current: page,
+            pageSize: PAGE_SIZE,
+            total: memberships.data?.total ?? 0,
+            onChange: setPage,
+            showTotal: (total) => `${total} member${total === 1 ? '' : 's'}`,
+          }}
+        />
+      </Card>
 
       <MembershipFormDrawer
         membership={editing === 'new' ? null : editing}

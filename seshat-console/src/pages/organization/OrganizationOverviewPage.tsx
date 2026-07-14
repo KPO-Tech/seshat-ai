@@ -1,16 +1,11 @@
-import { Alert, Button, Card, Empty, Skeleton, Space, Tag, Typography } from 'antd'
-import {
-  ApiOutlined,
-  DatabaseOutlined,
-  DesktopOutlined,
-  MailOutlined,
-  ScheduleOutlined,
-  TeamOutlined,
-} from '@ant-design/icons'
+import { useState } from 'react'
+import { Alert, Button, Card, Empty, Skeleton, Space, Tag, Typography, message } from 'antd'
+import { DatabaseOutlined, DesktopOutlined, MailOutlined, ScheduleOutlined, TeamOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { PageHeader } from '@/components/PageHeader'
 import { StatTile } from '@/components/StatTile'
-import { useOrganizationsList, type Organization } from '@/api/organizations'
+import { OrganizationFormDrawer } from '@/components/OrganizationFormDrawer'
+import { useOrganizationsList, useUpdateOrganization } from '@/api/organizations'
 import { useMembershipsList } from '@/api/memberships'
 import { useInvitationsList } from '@/api/invitations'
 import { useJobsList } from '@/api/jobs'
@@ -24,6 +19,8 @@ import { useApplicationsList } from '@/api/applications'
 import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
 import { palette, monoStack } from '@/theme/tokens'
 import { presentText } from '@/lib/present'
+import { getOrganizationChecklist } from '@/lib/organizationProfile'
+import { getErrorMessage } from '@/api/errors'
 
 function timeAgo(iso?: string) {
   if (!iso) return ''
@@ -34,20 +31,6 @@ function timeAgo(iso?: string) {
   const hours = Math.round(minutes / 60)
   if (hours < 24) return `${hours}h ago`
   return `${Math.round(hours / 24)}d ago`
-}
-
-function hasValue(value: string | null | undefined) {
-  return Boolean(value && value.trim().length > 0)
-}
-
-function getOrganizationChecklist(organization: Organization | undefined | null) {
-  if (!organization) return []
-
-  const checks = []
-  if (!hasValue(organization.description)) checks.push('Add a short description')
-  if (!hasValue(organization.website_url)) checks.push('Add the organization website')
-  if (!hasValue(organization.support_email)) checks.push('Add a support email')
-  return checks
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -62,9 +45,11 @@ const STATUS_COLORS: Record<string, string> = {
 export function OrganizationOverviewPage() {
   const navigate = useNavigate()
   const organizationId = useScopedOrganizationId()
+  const [editingProfile, setEditingProfile] = useState(false)
   const organizations = useOrganizationsList({ sort: 'name', order: 'asc', limit: 200 })
   const organization = organizations.data?.organizations?.find((org) => org.id === organizationId)
-  const checklist = getOrganizationChecklist(organization)
+  const profile = getOrganizationChecklist(organization)
+  const updateOrg = useUpdateOrganization()
 
   const memberships = useMembershipsList(organizationId ?? undefined, {
     sort: 'created_at',
@@ -110,16 +95,16 @@ export function OrganizationOverviewPage() {
     title: string
     description: string
     actionLabel: string
-    actionPath: string
+    action: () => void
     type?: 'warning' | 'info'
   }> = []
 
-  if (checklist.length > 0) {
+  if (profile.missing.length > 0) {
     alerts.push({
       title: 'Complete the organization profile',
-      description: checklist.join(' • '),
+      description: profile.missing.join(' • '),
       actionLabel: 'Edit organization',
-      actionPath: '/platform/organizations',
+      action: () => setEditingProfile(true),
       type: 'warning',
     })
   }
@@ -129,7 +114,7 @@ export function OrganizationOverviewPage() {
       title: 'No provider credentials configured',
       description: 'Cloud jobs will rely on platform defaults until this organization has its own provider settings.',
       actionLabel: 'Open AI config',
-      actionPath: `/orgs/${organizationId}/ai/provider-settings`,
+      action: () => navigate(`/orgs/${organizationId}/ai/provider-settings`),
       type: 'warning',
     })
   }
@@ -139,7 +124,7 @@ export function OrganizationOverviewPage() {
       title: 'No embedder configured',
       description: 'Knowledge ingestion and search will fall back to the platform default if one exists.',
       actionLabel: 'Open embedder',
-      actionPath: `/orgs/${organizationId}/ai/embedder`,
+      action: () => navigate(`/orgs/${organizationId}/ai/embedder`),
       type: 'info',
     })
   }
@@ -149,7 +134,7 @@ export function OrganizationOverviewPage() {
       title: 'Automation has jobs but no devices',
       description: 'Device-targeted runs need at least one registered desktop to execute locally.',
       actionLabel: 'Open devices',
-      actionPath: `/orgs/${organizationId}/automation/devices`,
+      action: () => navigate(`/orgs/${organizationId}/automation/devices`),
       type: 'warning',
     })
   }
@@ -159,15 +144,6 @@ export function OrganizationOverviewPage() {
       <PageHeader
         title={organization?.name ?? 'Organization overview'}
         description={organization?.description || 'Team, AI, automation, knowledge, and integrations.'}
-        actions={
-          <Space>
-            <Button onClick={() => navigate('/platform/organizations')}>All organizations</Button>
-            <Button onClick={() => navigate(`/orgs/${organizationId}/team/memberships`)}>Manage team</Button>
-            <Button type="primary" onClick={() => navigate(`/orgs/${organizationId}/ai/provider-settings`)}>
-              Open AI config
-            </Button>
-          </Space>
-        }
       />
 
       <div
@@ -199,7 +175,7 @@ export function OrganizationOverviewPage() {
             <div>
               <Typography.Text strong style={{ display: 'block' }}>Profile</Typography.Text>
               <Typography.Text style={{ color: palette.inkSecondary }}>
-                {checklist.length === 0 ? 'Profile looks complete.' : `Still missing: ${checklist.join(', ')}`}
+                {profile.isReady ? 'Profile looks complete.' : `Still missing: ${profile.missing.join(', ')}`}
               </Typography.Text>
             </div>
             <div>
@@ -248,7 +224,7 @@ export function OrganizationOverviewPage() {
                         {alert.description}
                       </Typography.Text>
                       <div>
-                        <Button size="small" onClick={() => navigate(alert.actionPath)}>
+                        <Button size="small" onClick={alert.action}>
                           {alert.actionLabel}
                         </Button>
                       </div>
@@ -264,26 +240,6 @@ export function OrganizationOverviewPage() {
               style={{ padding: '12px 0' }}
             />
           )}
-        </Card>
-
-        <Card title="Quick actions">
-          <Space direction="vertical" size={10} style={{ width: '100%' }}>
-            <Button block icon={<TeamOutlined />} onClick={() => navigate(`/orgs/${organizationId}/team/memberships`)}>
-              Manage team
-            </Button>
-            <Button block icon={<ApiOutlined />} onClick={() => navigate(`/orgs/${organizationId}/ai/provider-settings`)}>
-              Provider settings
-            </Button>
-            <Button block icon={<DesktopOutlined />} onClick={() => navigate(`/orgs/${organizationId}/automation/devices`)}>
-              Devices
-            </Button>
-            <Button block icon={<ScheduleOutlined />} onClick={() => navigate(`/orgs/${organizationId}/automation/jobs`)}>
-              Jobs
-            </Button>
-            <Button block icon={<DatabaseOutlined />} onClick={() => navigate(`/orgs/${organizationId}/knowledge/corpora`)}>
-              Knowledge base
-            </Button>
-          </Space>
         </Card>
       </div>
 
@@ -366,6 +322,23 @@ export function OrganizationOverviewPage() {
           )}
         </Card>
       </div>
+
+      <OrganizationFormDrawer
+        organization={organization ?? null}
+        open={editingProfile}
+        onClose={() => setEditingProfile(false)}
+        onSubmit={(values) => {
+          if (!organizationId) return
+          updateOrg.mutate(
+            { id: organizationId, body: values },
+            {
+              onSuccess: () => setEditingProfile(false),
+              onError: (error) => message.error(getErrorMessage(error)),
+            },
+          )
+        }}
+        submitting={updateOrg.isPending}
+      />
     </div>
   )
 }

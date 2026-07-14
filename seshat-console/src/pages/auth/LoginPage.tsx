@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom'
 import { useLogin } from '@/api/auth'
 import { useAuthStore } from '@/store/auth'
 import { getErrorMessage } from '@/api/errors'
+import { resolveLandingPath } from '@/lib/landingRoute'
 import { AuthLayout } from '@/layout/AuthLayout'
 
 interface LoginFormValues {
@@ -15,11 +16,13 @@ export function LoginPage() {
   const login = useLogin()
   const navigate = useNavigate()
 
-  if (token) return <Navigate to="/platform/overview" replace />
+  if (token) return <Navigate to="/" replace />
 
   const onFinish = (values: LoginFormValues) => {
     login.mutate(values, {
-      onSuccess: () => navigate('/platform/overview', { replace: true }),
+      onSuccess: (data) => {
+        if (data.user) navigate(resolveLandingPath(data.user, data.organizations ?? []), { replace: true })
+      },
       onError: (error) => message.error(getErrorMessage(error)),
     })
   }
