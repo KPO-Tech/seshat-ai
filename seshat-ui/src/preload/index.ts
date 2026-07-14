@@ -46,6 +46,30 @@ const nexusBridge = {
       return () => ipcRenderer.removeListener('http:stream:event', handler)
     },
   },
+  updates: {
+    checkNow: (): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke('updates:check-now'),
+    quitAndInstall: () => ipcRenderer.invoke('updates:quit-and-install'),
+    onAvailable: (listener: (payload: { version: string }) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, payload: { version: string }) => listener(payload)
+      ipcRenderer.on('updates:available', handler)
+      return () => ipcRenderer.removeListener('updates:available', handler)
+    },
+    onNotAvailable: (listener: () => void) => {
+      const handler = () => listener()
+      ipcRenderer.on('updates:not-available', handler)
+      return () => ipcRenderer.removeListener('updates:not-available', handler)
+    },
+    onDownloaded: (listener: (payload: { version: string }) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, payload: { version: string }) => listener(payload)
+      ipcRenderer.on('updates:downloaded', handler)
+      return () => ipcRenderer.removeListener('updates:downloaded', handler)
+    },
+    onError: (listener: (payload: { message: string }) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, payload: { message: string }) => listener(payload)
+      ipcRenderer.on('updates:error', handler)
+      return () => ipcRenderer.removeListener('updates:error', handler)
+    },
+  },
 }
 
 contextBridge.exposeInMainWorld('nexus', nexusBridge)
