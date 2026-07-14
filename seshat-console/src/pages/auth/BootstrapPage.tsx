@@ -1,8 +1,10 @@
 import { Button, Form, Input, message, Typography } from 'antd'
+import { UserOutlined, MailOutlined, LockOutlined, ApartmentOutlined, LinkOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { useBootstrapPlatform } from '@/api/auth'
 import { getErrorMessage } from '@/api/errors'
 import { AuthLayout } from '@/layout/AuthLayout'
+import { palette } from '@/theme/tokens'
 
 interface BootstrapFormValues {
   email: string
@@ -33,35 +35,43 @@ export function BootstrapPage() {
       </Typography.Title>
       <Form<BootstrapFormValues> layout="vertical" onFinish={onFinish} disabled={bootstrap.isPending}>
         <Form.Item name="display_name" label="Your name" rules={[{ required: true, message: 'Enter your name' }]}>
-          <Input autoFocus size="large" />
+          <Input prefix={<UserOutlined style={{ color: palette.inkTertiary }} />} autoFocus size="large" />
         </Form.Item>
         <Form.Item
           name="email"
           label="Email"
           rules={[{ required: true, type: 'email', message: 'Enter a valid email' }]}
         >
-          <Input autoComplete="email" size="large" />
+          <Input prefix={<MailOutlined style={{ color: palette.inkTertiary }} />} autoComplete="email" size="large" />
         </Form.Item>
         <Form.Item
           name="password"
           label="Password"
           rules={[{ required: true, min: 8, message: 'At least 8 characters' }]}
         >
-          <Input.Password autoComplete="new-password" size="large" />
+          <Input.Password
+            prefix={<LockOutlined style={{ color: palette.inkTertiary }} />}
+            autoComplete="new-password"
+            size="large"
+          />
         </Form.Item>
         <Form.Item
           name="organization_name"
           label="Organization name"
           rules={[{ required: true, message: 'Enter an organization name' }]}
         >
-          <Input size="large" />
+          <Input prefix={<ApartmentOutlined style={{ color: palette.inkTertiary }} />} size="large" />
         </Form.Item>
         <Form.Item
           name="organization_slug"
           label="Organization slug"
           rules={[{ required: true, message: 'Enter a URL-safe slug' }]}
         >
-          <Input placeholder="seshat" size="large" />
+          <Input
+            prefix={<LinkOutlined style={{ color: palette.inkTertiary }} />}
+            placeholder="seshat"
+            size="large"
+          />
         </Form.Item>
         <Form.Item style={{ marginBottom: 0 }}>
           <Button type="primary" htmlType="submit" block size="large" loading={bootstrap.isPending}>
