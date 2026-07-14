@@ -448,6 +448,23 @@ type AgentPreset struct {
 	UpdatedAt           time.Time
 }
 
+// UsageCounter mirrors seshat-backend's own gUsageCounter
+// (internal/db/quotas.go) — a strictly personal, per-(user, metric, period)
+// running total, no organization concept, same trust level as UserMemory/
+// UserPreference. This is pure counting, never an enforced limit: there is
+// no plan/tier concept anywhere in seshat-server yet (see
+// helps/seshat-architecture-target.md §7, "Quotas") — migrating the
+// counters is a storage-location change, not a step toward billing.
+type UsageCounter struct {
+	ID        string `gorm:"primaryKey;size:32"`
+	UserID    string `gorm:"size:32;not null;uniqueIndex:idx_usage_counter_key"`
+	Metric    string `gorm:"size:64;not null;uniqueIndex:idx_usage_counter_key"`
+	PeriodKey string `gorm:"size:32;not null;uniqueIndex:idx_usage_counter_key"`
+	Count     int64  `gorm:"not null;default:0"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
 // WebSearchProviderSetting mirrors ProviderSetting's org→platform shape but
 // for web-search providers (Tavily/Exa/Jina/LangSearch/SearXNG) — deliberately
 // NOT a reuse of ProviderSetting: DefaultModel has no meaning for a search

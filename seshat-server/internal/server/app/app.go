@@ -18,6 +18,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/mcpregistry"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/memories"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/preferences"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/quotas"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/skillregistry"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/websearchsettings"
 )
@@ -36,6 +37,7 @@ type App struct {
 	Memories          *memories.Service
 	LongTermMemory    *longtermmemory.Service
 	AgentRegistry     *agentregistry.Service
+	Quotas            *quotas.Service
 }
 
 func New(cfg serverconfig.Config) (*App, error) {
@@ -91,5 +93,6 @@ func New(cfg serverconfig.Config) (*App, error) {
 		Memories:          memories.New(database),
 		LongTermMemory:    longtermmemory.New(database),
 		AgentRegistry:     agentregistry.New(database, iamService),
+		Quotas:            quotas.New(database),
 	}, nil
 }

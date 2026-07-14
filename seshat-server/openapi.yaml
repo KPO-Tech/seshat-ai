@@ -65,6 +65,12 @@ tags:
       unscoped agent_definitions table is untouched — this is one more source
       resolved at query time alongside it and the SDK's built-in registry,
       never a replacement.
+  - name: quota-usage
+    description: >-
+      A user's own personal usage counters (queries/files/ingestions, per day
+      and per month) — no organization, self-service only, same trust level as
+      preferences. Pure counting, never an enforced limit: there is no
+      plan/tier concept anywhere yet.
   - name: applications
     description: OAuth/OIDC client applications registered with the control plane.
   - name: providers
@@ -1537,6 +1543,42 @@ paths:
         "204": { description: Deleted }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/users/me/quota-usage:
+    get:
+      operationId: getMyQuotaUsage
+      tags: [quota-usage]
+      summary: Get my own usage counters
+      description: >-
+        Self-service only — there is no {userID} variant. Pure counting, no
+        enforced limit: this just lists the counters back.
+      responses:
+        "200":
+          description: My usage counters
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UsageSummary" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/users/me/quota-usage/increment:
+    post:
+      operationId: incrementMyQuotaUsage
+      tags: [quota-usage]
+      summary: Increment one of my own usage counters
+      description: >-
+        Bumps both the daily and monthly bucket for (me, metric) by delta
+        (minimum 1). Called by a connected seshat-backend after a real
+        action (chat query, file upload, ingestion) — never by end-user UI
+        directly.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/IncrementUsageInput" }
+      responses:
+        "204": { description: Incremented }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
 
   /api/v1/applications:
     get:
@@ -3807,6 +3849,30 @@ components:
         mcp_servers: { type: array, items: { type: string } }
         icon: { type: string }
         enabled: { type: boolean }
+
+    UsageEntry:
+      type: object
+      properties:
+        metric: { type: string, example: queries }
+        period: { type: string, enum: [day, month] }
+        period_key: { type: string, example: "2026-07-14" }
+        count: { type: integer, format: int64 }
+        updated_at: { type: string, format: date-time }
+
+    UsageSummary:
+      type: object
+      properties:
+        user_id: { type: string }
+        entries:
+          type: array
+          items: { $ref: "#/components/schemas/UsageEntry" }
+
+    IncrementUsageInput:
+      type: object
+      required: [metric]
+      properties:
+        metric: { type: string, example: queries }
+        delta: { type: integer, format: int64, default: 1 }
 
     Application:
       type: object

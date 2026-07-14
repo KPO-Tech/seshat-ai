@@ -108,6 +108,11 @@ type Dependencies struct {
 	// today's local-only behavior — set only by bootstrap.go when
 	// SESHAT_SERVER_URL is configured.
 	MemoriesProvider memories.Provider
+	// QuotaProvider selects standalone vs connected usage-counter storage.
+	// nil = quotas.NewLocalProvider(UsageCounterStore), i.e. today's
+	// local-only behavior — set only by bootstrap.go when SESHAT_SERVER_URL
+	// is configured. Pure counting either way, never an enforced limit.
+	QuotaProvider quotas.Provider
 }
 
 // App is the root backend service container.
@@ -156,6 +161,10 @@ func NewApp(deps Dependencies) *App {
 	knowledgeService := knowledge.NewService(deps.CorpusStore, deps.FileStore, deps.IngestionJobStore, deps.ArtifactStore, deps.RAGService).WithDocling(deps.DoclingClient)
 	skillsService := skills.NewService()
 	agentsService := agents.NewService(deps.AgentDefinitionStore, deps.AgentsCloudClient, deps.AgentsOrganizationID)
+	quotaProvider := deps.QuotaProvider
+	if quotaProvider == nil {
+		quotaProvider = quotas.NewLocalProvider(deps.UsageCounterStore)
+	}
 	return &App{
 		Auth: auth.NewService(authProvider, deps.Identity, deps.APIKeyStore, deps.GroupStore, deps.AuthConfig),
 		Query: query.NewService(query.ServiceConfig{
@@ -176,7 +185,7 @@ func NewApp(deps Dependencies) *App {
 		Settings:  settingsService,
 		WebSearch: webSearchService,
 		Audit:     audit.NewService(deps.AuditLogStore),
-		Quota:     quotas.NewService(deps.UsageCounterStore),
+		Quota:     quotas.NewService(quotaProvider),
 		Metrics:   metrics.NewService(deps.Monitoring),
 		Memories:  memoriesService,
 		Plans:     plans.NewService(deps.PlanDocumentStore),

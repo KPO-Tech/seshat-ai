@@ -74,6 +74,9 @@ func (app *App) routes() http.Handler {
 	mux.Handle("PUT /api/v1/agent-presets/{agentPresetID}", app.authMiddleware(http.HandlerFunc(app.handleAgentPresetByID)))
 	mux.Handle("DELETE /api/v1/agent-presets/{agentPresetID}", app.authMiddleware(http.HandlerFunc(app.handleAgentPresetByID)))
 
+	mux.Handle("GET /api/v1/users/me/quota-usage", app.authMiddleware(http.HandlerFunc(app.handleQuotaUsage)))
+	mux.Handle("POST /api/v1/users/me/quota-usage/increment", app.authMiddleware(http.HandlerFunc(app.handleQuotaUsageIncrement)))
+
 	mux.Handle("GET /api/v1/web-search-provider-settings/resolve", app.authMiddleware(http.HandlerFunc(app.handleWebSearchProviderSettingResolve)))
 	mux.Handle("GET /api/v1/web-search-provider-settings", app.authMiddleware(http.HandlerFunc(app.handleWebSearchProviderSettings)))
 	mux.Handle("POST /api/v1/web-search-provider-settings", app.authMiddleware(http.HandlerFunc(app.handleWebSearchProviderSettings)))

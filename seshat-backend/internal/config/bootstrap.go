@@ -24,6 +24,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudmcp"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudmemories"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudpreferences"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudquotas"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudsettings"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudwebsearch"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
@@ -31,6 +32,7 @@ import (
 	backendmemories "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/memories"
 	backendpreferences "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/preferences"
 	backendquery "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/query"
+	backendquotas "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/quotas"
 	backendsettings "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/settings"
 	appconfig "github.com/EngineerProjects/seshat/pkg/config"
 	"github.com/EngineerProjects/seshat/pkg/docling"
@@ -185,6 +187,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	var memoriesProvider backendmemories.Provider
 	var agentsCloudClient *cloudagents.Client
 	var agentsOrganizationID string
+	var quotaProvider backendquotas.Provider
 	serverURL := strings.TrimSpace(os.Getenv("SESHAT_SERVER_URL"))
 	if serverURL != "" {
 		organizationID := strings.TrimSpace(os.Getenv("SESHAT_SERVER_ORGANIZATION_ID"))
@@ -199,6 +202,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		memoriesProvider = cloudmemories.NewProvider(serverURL)
 		agentsCloudClient = cloudagents.NewClient(serverURL)
 		agentsOrganizationID = organizationID
+		quotaProvider = cloudquotas.NewProvider(serverURL)
 		fmt.Printf("[API] Identité en mode connected (seshat-server: %s)\n", serverURL)
 	}
 
@@ -572,6 +576,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		MemoriesProvider:     memoriesProvider,
 		AgentsCloudClient:    agentsCloudClient,
 		AgentsOrganizationID: agentsOrganizationID,
+		QuotaProvider:        quotaProvider,
 		AuthConfig: backendauth.ServiceConfig{
 			EnableSignup:    config.EnableSignup,
 			DefaultUserRole: config.DefaultUserRole,
