@@ -28,15 +28,45 @@ type DeleteOwnAccountParams struct {
 	ConfirmEmail string
 }
 
+// Workspace is always local — it scopes chat sessions/artifacts, not identity
+// (see helps/seshat-architecture-target.md §2a). Never delegated to a Provider.
+type Workspace struct {
+	ID             string `json:"id"`
+	OrganizationID string `json:"organization_id"`
+	Name           string `json:"name"`
+	Slug           string `json:"slug"`
+	Status         string `json:"status"`
+}
+
+type CreateWorkspaceParams struct {
+	OrganizationID string
+	Name           string
+	Slug           string
+}
+
+type UpdateWorkspaceParams struct {
+	OrganizationID *string
+	Name           *string
+	Slug           *string
+	Status         *string
+}
+
+// Service is a thin orchestrator over an injected Provider (Login/Register/
+// Logout/ResolvePrincipal/Users/Organizations — local or remote depending on
+// mode), plus identity-adjacent concerns that always stay local regardless of
+// mode: workspaces, API keys, group-based permission flags, and rich profile
+// fields that have no seshat-server equivalent.
 type Service struct {
-	identity *db.IdentityStore
-	apiKeys  *db.APIKeyStore
-	groups   *db.GroupStore
+	provider Provider
+	identity *db.IdentityStore // workspaces + profile/settings: always local
+	apiKeys  *db.APIKeyStore   // always local
+	groups   *db.GroupStore    // always local, distinct concept from seshat-server's Group
 	config   ServiceConfig
 }
 
-func NewService(identity *db.IdentityStore, apiKeys *db.APIKeyStore, groups *db.GroupStore, cfg ServiceConfig) *Service {
+func NewService(provider Provider, identity *db.IdentityStore, apiKeys *db.APIKeyStore, groups *db.GroupStore, cfg ServiceConfig) *Service {
 	return &Service{
+		provider: provider,
 		identity: identity,
 		apiKeys:  apiKeys,
 		groups:   groups,
@@ -44,145 +74,38 @@ func NewService(identity *db.IdentityStore, apiKeys *db.APIKeyStore, groups *db.
 	}
 }
 
+// ─── Auth (delegates to Provider) ──────────────────────────────────────────────
+
 func (s *Service) Login(ctx context.Context, email string, password string) (*LoginResult, error) {
-	if s == nil || s.identity == nil {
+	if s == nil || s.provider == nil {
 		return nil, bkerr.Unavailable("auth not configured", nil)
 	}
-	if strings.TrimSpace(email) == "" || password == "" {
-		return nil, bkerr.InvalidInput("email and password are required", nil)
-	}
-
-	user, err := s.identity.AuthenticateUser(ctx, email, password)
-	if err != nil {
-		return nil, bkerr.Unauthorized("invalid credentials", err)
-	}
-
-	authSession, token, err := s.identity.CreateLoginSession(ctx, user.ID, 30*24*time.Hour, map[string]any{
-		"source": "api_login",
-	})
-	if err != nil {
-		return nil, bkerr.Internal("failed to create auth session", err)
-	}
-
-	roles, err := s.identity.ListUserRoles(ctx, user.ID)
-	if err != nil {
-		return nil, bkerr.Internal("failed to load user roles", err)
-	}
-
-	result := &LoginResult{
-		Token:     token,
-		ExpiresAt: authSession.ExpiresAt,
-		User: User{
-			ID:          user.ID,
-			Email:       user.Email,
-			DisplayName: user.DisplayName,
-			Status:      user.Status,
-		},
-		Roles: make([]string, 0, len(roles)),
-	}
-	for _, role := range roles {
-		result.Roles = append(result.Roles, role.Name)
-	}
-	return result, nil
+	return s.provider.Login(ctx, email, password)
 }
 
 func (s *Service) ResolvePrincipal(ctx context.Context, token string) (*Principal, error) {
-	if s == nil || s.identity == nil {
+	if s == nil || s.provider == nil {
 		return nil, bkerr.Unavailable("auth not configured", nil)
 	}
-	if strings.TrimSpace(token) == "" {
-		return nil, bkerr.Unauthorized("missing bearer token", nil)
-	}
-
-	principal, err := s.identity.ResolvePrincipalFromToken(ctx, token)
-	if err != nil {
-		return nil, bkerr.Unauthorized("invalid auth token", err)
-	}
-	if err := s.identity.TouchAuthSession(ctx, principal.AuthSession.ID, 30*24*time.Hour); err != nil {
-		return nil, bkerr.Internal("failed to update auth session", err)
-	}
-
-	return PrincipalFromDB(principal), nil
+	return s.provider.ResolvePrincipal(ctx, token)
 }
 
 func (s *Service) Register(ctx context.Context, email, password, displayName string) (*LoginResult, error) {
-	if s == nil || s.identity == nil {
+	if s == nil || s.provider == nil {
 		return nil, bkerr.Unavailable("auth not configured", nil)
 	}
-	email = strings.TrimSpace(strings.ToLower(email))
-	if email == "" || password == "" {
-		return nil, bkerr.InvalidInput("email and password are required", nil)
-	}
-	if len(password) < 8 {
-		return nil, bkerr.InvalidInput("password must be at least 8 characters", nil)
-	}
-	if strings.TrimSpace(displayName) == "" {
-		displayName = email
-	}
-
-	// If signup is disabled, still allow if no users exist (first admin setup)
-	if !s.config.EnableSignup {
-		count, err := s.identity.CountUsers(ctx)
-		if err != nil {
-			return nil, bkerr.Internal("failed to check user count", err)
-		}
-		if count > 0 {
-			return nil, bkerr.Forbidden("signup is disabled", nil)
-		}
-	}
-
-	hash, err := db.HashPassword(password)
-	if err != nil {
-		return nil, bkerr.Internal("failed to hash password", err)
-	}
-
-	user, err := s.identity.CreateUser(ctx, db.CreateUserParams{
-		Email:        email,
-		DisplayName:  displayName,
-		PasswordHash: hash,
-		Status:       db.UserStatusActive,
-	})
-	if err != nil {
-		return nil, bkerr.InvalidInput("email already registered or invalid", err)
-	}
-
-	// First user becomes admin
-	count, err := s.identity.CountUsers(ctx)
-	if err != nil {
-		return nil, bkerr.Internal("failed to check user count", err)
-	}
-
-	role := s.config.DefaultUserRole
-	if role == "" {
-		role = "member"
-	}
-	if count == 1 {
-		// This is the first user
-		role = "admin"
-	}
-
-	if err := s.identity.AssignRoleToUser(ctx, user.ID, role); err != nil {
-		return nil, bkerr.Internal("failed to assign role", err)
-	}
-
-	return s.Login(ctx, email, password)
+	return s.provider.Register(ctx, email, password, displayName)
 }
 
 func (s *Service) Logout(ctx context.Context, principal *Principal) error {
-	if s == nil || s.identity == nil {
+	if s == nil || s.provider == nil {
 		return bkerr.Unavailable("auth not configured", nil)
 	}
-	if err := EnsureAuthenticated(principal); err != nil {
-		return err
-	}
-	if err := s.identity.RevokeAuthSession(ctx, principal.AuthSession.ID); err != nil {
-		return bkerr.Internal("failed to revoke auth session", err)
-	}
-	return nil
+	return s.provider.Logout(ctx, principal)
 }
 
 func (s *Service) DeleteOwnAccount(ctx context.Context, principal *Principal, params DeleteOwnAccountParams) error {
-	if s == nil || s.identity == nil {
+	if s == nil || s.provider == nil {
 		return bkerr.Unavailable("auth not configured", nil)
 	}
 	if err := EnsureAuthenticated(principal); err != nil {
@@ -195,7 +118,7 @@ func (s *Service) DeleteOwnAccount(ctx context.Context, principal *Principal, pa
 		return bkerr.InvalidInput("confirm_email must match your account email", nil)
 	}
 	if principal.HasRole("admin") {
-		_, total, err := s.identity.ListUsersPaginated(ctx, db.ListUsersParams{
+		_, total, err := s.provider.ListUsersPaginated(ctx, principal, db.ListUsersParams{
 			RoleFilter: "admin",
 			Page:       1,
 			PerPage:    2,
@@ -208,51 +131,228 @@ func (s *Service) DeleteOwnAccount(ctx context.Context, principal *Principal, pa
 		}
 	}
 
-	status := db.UserStatusDisabled
-	if _, err := s.identity.UpdateUser(ctx, db.UpdateUserParams{
-		ID:     principal.User.ID,
-		Status: &status,
-	}); err != nil {
-		return bkerr.Internal("failed to disable account", err)
+	if err := s.provider.DisableSelf(ctx, principal); err != nil {
+		return err
 	}
 	if s.apiKeys != nil {
 		if err := s.apiKeys.RevokeAllForUser(ctx, principal.User.ID); err != nil {
 			return bkerr.Internal("failed to revoke api keys", err)
 		}
 	}
-	if err := s.identity.RevokeAuthSessionsForUser(ctx, principal.User.ID); err != nil {
-		return bkerr.Internal("failed to revoke sessions", err)
+	if s.identity != nil {
+		// In connected mode this deletes 0 rows (local auth_sessions aren't
+		// the active session mechanism there — see cloudidentity's
+		// principal cache) but a genuine failure should still be reported,
+		// not silently discarded.
+		if err := s.identity.RevokeAuthSessionsForUser(ctx, principal.User.ID); err != nil {
+			return bkerr.Internal("failed to revoke sessions", err)
+		}
 	}
 	return nil
 }
 
-// ─── User query methods ───────────────────────────────────────────────────────
+// ─── Users (delegates to Provider) ─────────────────────────────────────────────
 
-// GetUserByID returns a user by their ID.
-func (s *Service) GetUserByID(ctx context.Context, userID string) (*db.User, error) {
-	if s == nil || s.identity == nil {
+func (s *Service) GetUserByID(ctx context.Context, principal *Principal, userID string) (*db.User, error) {
+	if s == nil || s.provider == nil {
 		return nil, bkerr.Unavailable("auth not configured", nil)
 	}
-	user, err := s.identity.GetUserByID(ctx, userID)
-	if err != nil {
-		return nil, bkerr.NotFound("user not found", err)
-	}
-	return user, nil
+	return s.provider.GetUserByID(ctx, principal, userID)
 }
 
-// ListUsersPaginated returns a paginated list of users.
-func (s *Service) ListUsersPaginated(ctx context.Context, params db.ListUsersParams) ([]db.User, int64, error) {
-	if s == nil || s.identity == nil {
+func (s *Service) ListUsersPaginated(ctx context.Context, principal *Principal, params db.ListUsersParams) ([]db.User, int64, error) {
+	if s == nil || s.provider == nil {
 		return nil, 0, bkerr.Unavailable("auth not configured", nil)
 	}
-	users, total, err := s.identity.ListUsersPaginated(ctx, params)
-	if err != nil {
-		return nil, 0, bkerr.Internal("failed to list users", err)
-	}
-	return users, total, nil
+	return s.provider.ListUsersPaginated(ctx, principal, params)
 }
 
-// ─── API Key methods ──────────────────────────────────────────────────────────
+func (s *Service) ListUsers(ctx context.Context, principal *Principal) ([]User, error) {
+	if s == nil || s.provider == nil {
+		return nil, bkerr.Unavailable("auth not configured", nil)
+	}
+	return s.provider.ListUsers(ctx, principal)
+}
+
+func (s *Service) CreateUser(ctx context.Context, principal *Principal, params CreateUserParams) (*User, error) {
+	if s == nil || s.provider == nil {
+		return nil, bkerr.Unavailable("auth not configured", nil)
+	}
+	return s.provider.CreateUser(ctx, principal, params)
+}
+
+func (s *Service) GetUser(ctx context.Context, principal *Principal, userID string) (*User, error) {
+	if s == nil || s.provider == nil {
+		return nil, bkerr.Unavailable("auth not configured", nil)
+	}
+	return s.provider.GetUser(ctx, principal, userID)
+}
+
+func (s *Service) UpdateUser(ctx context.Context, principal *Principal, userID string, params UpdateUserParams) (*User, error) {
+	if s == nil || s.provider == nil {
+		return nil, bkerr.Unavailable("auth not configured", nil)
+	}
+	return s.provider.UpdateUser(ctx, principal, userID, params)
+}
+
+func (s *Service) DeleteUser(ctx context.Context, principal *Principal, userID string) error {
+	if s == nil || s.provider == nil {
+		return bkerr.Unavailable("auth not configured", nil)
+	}
+	return s.provider.DeleteUser(ctx, principal, userID)
+}
+
+// ─── Organizations (delegates to Provider) ─────────────────────────────────────
+
+func (s *Service) ListOrganizations(ctx context.Context, principal *Principal) ([]Organization, error) {
+	if s == nil || s.provider == nil {
+		return nil, bkerr.Unavailable("auth not configured", nil)
+	}
+	return s.provider.ListOrganizations(ctx, principal)
+}
+
+func (s *Service) CreateOrganization(ctx context.Context, principal *Principal, params CreateOrganizationParams) (*Organization, error) {
+	if s == nil || s.provider == nil {
+		return nil, bkerr.Unavailable("auth not configured", nil)
+	}
+	return s.provider.CreateOrganization(ctx, principal, params)
+}
+
+func (s *Service) GetOrganization(ctx context.Context, principal *Principal, organizationID string) (*Organization, error) {
+	if s == nil || s.provider == nil {
+		return nil, bkerr.Unavailable("auth not configured", nil)
+	}
+	return s.provider.GetOrganization(ctx, principal, organizationID)
+}
+
+func (s *Service) UpdateOrganization(ctx context.Context, principal *Principal, organizationID string, params UpdateOrganizationParams) (*Organization, error) {
+	if s == nil || s.provider == nil {
+		return nil, bkerr.Unavailable("auth not configured", nil)
+	}
+	return s.provider.UpdateOrganization(ctx, principal, organizationID, params)
+}
+
+func (s *Service) DeleteOrganization(ctx context.Context, principal *Principal, organizationID string) error {
+	if s == nil || s.provider == nil {
+		return bkerr.Unavailable("auth not configured", nil)
+	}
+	return s.provider.DeleteOrganization(ctx, principal, organizationID)
+}
+
+// ─── Workspaces (always local, never delegated — see Workspace doc above) ─────
+
+func (s *Service) ListWorkspaces(ctx context.Context, principal *Principal) ([]Workspace, error) {
+	if s == nil || s.identity == nil {
+		return nil, bkerr.Unavailable("identity store not configured", nil)
+	}
+	if err := EnsureAuthenticated(principal); err != nil {
+		return nil, err
+	}
+	var (
+		workspaces []db.Workspace
+		err        error
+	)
+	if principal.HasRole("admin") {
+		workspaces, err = s.identity.ListWorkspaces(ctx)
+	} else {
+		workspaces, err = s.identity.ListWorkspacesForUser(ctx, principal.User.ID)
+	}
+	if err != nil {
+		return nil, bkerr.Internal("failed to list workspaces", err)
+	}
+	out := make([]Workspace, 0, len(workspaces))
+	for _, workspace := range workspaces {
+		copied := workspace
+		out = append(out, workspaceFromDB(&copied))
+	}
+	return out, nil
+}
+
+func (s *Service) CreateWorkspace(ctx context.Context, principal *Principal, params CreateWorkspaceParams) (*Workspace, error) {
+	if s == nil || s.identity == nil {
+		return nil, bkerr.Unavailable("identity store not configured", nil)
+	}
+	if err := EnsureAdmin(principal); err != nil {
+		return nil, err
+	}
+	workspace, err := s.identity.CreateWorkspace(ctx, db.CreateWorkspaceParams{
+		OrganizationID: params.OrganizationID,
+		Name:           params.Name,
+		Slug:           params.Slug,
+	})
+	if err != nil {
+		return nil, bkerr.InvalidInput("failed to create workspace", err)
+	}
+	result := workspaceFromDB(workspace)
+	return &result, nil
+}
+
+func (s *Service) GetWorkspace(ctx context.Context, principal *Principal, workspaceID string) (*Workspace, error) {
+	if s == nil || s.identity == nil {
+		return nil, bkerr.Unavailable("identity store not configured", nil)
+	}
+	if err := EnsureAuthenticated(principal); err != nil {
+		return nil, err
+	}
+	if !principal.CanViewWorkspace(workspaceID) {
+		return nil, bkerr.Forbidden("workspace access denied", nil)
+	}
+	workspace, err := s.identity.GetWorkspaceByID(ctx, workspaceID)
+	if err != nil {
+		return nil, bkerr.NotFound("workspace not found", err)
+	}
+	result := workspaceFromDB(workspace)
+	return &result, nil
+}
+
+func (s *Service) UpdateWorkspace(ctx context.Context, principal *Principal, workspaceID string, params UpdateWorkspaceParams) (*Workspace, error) {
+	if s == nil || s.identity == nil {
+		return nil, bkerr.Unavailable("identity store not configured", nil)
+	}
+	if err := EnsureAdmin(principal); err != nil {
+		return nil, err
+	}
+	workspace, err := s.identity.UpdateWorkspace(ctx, db.UpdateWorkspaceParams{
+		ID:             workspaceID,
+		OrganizationID: params.OrganizationID,
+		Name:           params.Name,
+		Slug:           params.Slug,
+		Status:         params.Status,
+	})
+	if err != nil {
+		return nil, bkerr.InvalidInput("failed to update workspace", err)
+	}
+	result := workspaceFromDB(workspace)
+	return &result, nil
+}
+
+func (s *Service) DeleteWorkspace(ctx context.Context, principal *Principal, workspaceID string) error {
+	if s == nil || s.identity == nil {
+		return bkerr.Unavailable("identity store not configured", nil)
+	}
+	if err := EnsureAdmin(principal); err != nil {
+		return err
+	}
+	if err := s.identity.DeleteWorkspace(ctx, workspaceID); err != nil {
+		return bkerr.InvalidInput("failed to delete workspace", err)
+	}
+	return nil
+}
+
+func workspaceFromDB(workspace *db.Workspace) Workspace {
+	if workspace == nil {
+		return Workspace{}
+	}
+	return Workspace{
+		ID:             workspace.ID,
+		OrganizationID: workspace.OrganizationID,
+		Name:           workspace.Name,
+		Slug:           workspace.Slug,
+		Status:         workspace.Status,
+	}
+}
+
+// ─── API Key methods (always local) ────────────────────────────────────────────
 
 // CreateAPIKey creates a new API key for the given user.
 func (s *Service) CreateAPIKey(ctx context.Context, userID, name string, expiresAt *time.Time) (*db.APIKey, error) {
@@ -293,6 +393,8 @@ func (s *Service) RevokeAPIKey(ctx context.Context, keyID, userID string) error 
 }
 
 // ResolveAPIKeyPrincipal resolves a Principal from an API key token (sk- prefix).
+// API keys always authenticate against the local identity store, regardless of
+// mode — they have no seshat-server equivalent.
 func (s *Service) ResolveAPIKeyPrincipal(ctx context.Context, key string) (*Principal, error) {
 	if s == nil || s.apiKeys == nil {
 		return nil, bkerr.Unavailable("api keys not configured", nil)
@@ -336,9 +438,10 @@ func (s *Service) ResolveAPIKeyPrincipal(ctx context.Context, key string) (*Prin
 	return principal, nil
 }
 
-// ─── Profile / Settings methods ───────────────────────────────────────────────
+// ─── Profile / Settings methods (always local) ─────────────────────────────────
 
-// UpdateUserProfile updates a user's profile fields.
+// UpdateUserProfile updates a user's profile fields. Always local: username/
+// bio/avatar have no seshat-server equivalent (iam.User only has DisplayName).
 func (s *Service) UpdateUserProfile(ctx context.Context, userID string, params ProfileUpdateParams) (*db.User, error) {
 	if s == nil || s.identity == nil {
 		return nil, bkerr.Unavailable("auth not configured", nil)
@@ -356,7 +459,7 @@ func (s *Service) UpdateUserProfile(ctx context.Context, userID string, params P
 	return updated, nil
 }
 
-// UpdateUserSettings merges settings into a user's settings JSON.
+// UpdateUserSettings merges settings into a user's settings JSON. Always local.
 func (s *Service) UpdateUserSettings(ctx context.Context, userID string, settings map[string]any) (*db.User, error) {
 	if s == nil || s.identity == nil {
 		return nil, bkerr.Unavailable("auth not configured", nil)
@@ -368,7 +471,10 @@ func (s *Service) UpdateUserSettings(ctx context.Context, userID string, setting
 	return updated, nil
 }
 
-// GetEffectivePermissions returns the union of all group permissions for a user.
+// GetEffectivePermissions returns the union of all group permissions for a
+// user. Always local — seshat-server's Group is a distinct concept (org-scoped
+// policy-binding subject, not a local feature-flag bundle); see
+// helps/seshat-architecture-target.md §2b.
 func (s *Service) GetEffectivePermissions(ctx context.Context, userID string) (db.GroupPermissions, error) {
 	if s == nil || s.groups == nil {
 		return db.DefaultGroupPermissions(), nil

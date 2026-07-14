@@ -4,6 +4,7 @@ import type { components } from '@/api/schema'
 
 export type PlatformProviderSetting = components['schemas']['PlatformProviderSetting']
 export type PlatformProviderSettingInput = components['schemas']['PlatformProviderSettingInput']
+export type PlatformProviderSettingUpdateInput = components['schemas']['PlatformProviderSettingUpdateInput']
 
 const LIST_KEY = 'platform-provider-settings'
 
@@ -33,7 +34,7 @@ export function useCreatePlatformProviderSetting() {
 export function useUpdatePlatformProviderSetting() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, body }: { id: string; body: PlatformProviderSettingInput }) => {
+    mutationFn: async ({ id, body }: { id: string; body: PlatformProviderSettingUpdateInput }) => {
       const { data, error } = await api.PUT('/api/v1/platform/provider-settings/{platformProviderSettingID}', {
         params: { path: { platformProviderSettingID: id } },
         body,

@@ -220,6 +220,11 @@ export type WebSearchSettings = {
   max_queries_per_day: number
   created_at?: number
   updated_at?: number
+  // Subset of allowed_domains/blocked_domains contributed by a connected
+  // seshat-server's org policy — omitted in standalone mode or when the
+  // org has no policy set.
+  org_allowed_domains?: string[]
+  org_blocked_domains?: string[]
 }
 
 export type DomainCategory = {
@@ -241,6 +246,9 @@ export type SearchProviderConfig = {
   default_base_url: string
   priority: number
   updated_at?: number
+  // "organization" | "platform" when resolved from a connected seshat-server
+  // rather than personally configured — omitted otherwise.
+  source?: string
 }
 
 export type Corpus = {
@@ -398,7 +406,7 @@ export type PlanDocument = {
 
 // ─── Agents ───────────────────────────────────────────────────────────────────
 
-export type AgentSource = 'user' | 'built-in' | 'builtin'
+export type AgentSource = 'user' | 'built-in' | 'builtin' | 'organization'
 
 export type Agent = {
   id?: string

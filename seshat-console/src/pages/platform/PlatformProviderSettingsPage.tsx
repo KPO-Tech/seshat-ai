@@ -103,8 +103,12 @@ export function PlatformProviderSettingsPage() {
               onError: (error) => message.error(getErrorMessage(error)),
             })
           } else if (editing) {
+            // provider is immutable — the update handler rejects it as an
+            // unknown field, so it must not be forwarded even though the
+            // (disabled) form field still carries its original value.
+            const { provider: _provider, ...updateBody } = values
             updateSetting.mutate(
-              { id: editing.id!, body: values },
+              { id: editing.id!, body: updateBody },
               { onSuccess: () => setEditing(null), onError: (error) => message.error(getErrorMessage(error)) },
             )
           }

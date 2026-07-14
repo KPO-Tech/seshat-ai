@@ -346,7 +346,7 @@ func (a *App) handleCorpusIngest(w http.ResponseWriter, r *http.Request, corpusI
 			IPAddress:    a.clientIP(r),
 			Metadata:     map[string]any{"file_id": body.FileID, "job_id": job.ID},
 		})
-		a.backend.Quota.Increment(r.Context(), principal.User.ID, backendquotas.MetricIngestions, 1)
+		a.backend.Quota.Increment(r.Context(), principal, backendquotas.MetricIngestions, 1)
 	}
 	writeJSON(w, http.StatusAccepted, ingestionJobToResponse(*job))
 }

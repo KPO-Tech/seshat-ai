@@ -36,11 +36,12 @@ type Service struct {
 	agents      agentsProvider      // nil = only built-in agents available
 }
 
-// agentsProvider resolves a DB-stored agent definition by slug.
-// Implemented by *agents.Service (internal/agents); the interface
-// lives here to avoid an import cycle.
+// agentsProvider resolves an agent definition by slug (local DB, then — in
+// connected mode — the caller's organization catalog, then the SDK built-in
+// registry). Implemented by *agents.Service (internal/agents); the
+// interface lives here to avoid an import cycle.
 type agentsProvider interface {
-	GetDefinition(ctx context.Context, slug string) (*agent.AgentDefinition, bool)
+	GetDefinition(ctx context.Context, principal *backendauth.Principal, slug string) (*agent.AgentDefinition, bool)
 }
 
 // ─── internal service dependency interfaces ───────────────────────────────────
@@ -55,7 +56,7 @@ type memoriesProvider interface {
 }
 
 type preferencesProvider interface {
-	BuildSystemPromptBlock(ctx context.Context, userID string) (string, error)
+	BuildSystemPromptBlock(ctx context.Context, principal *backendauth.Principal) (string, error)
 	ResolvePermissionModes(ctx context.Context, principal *backendauth.Principal, origin types.ExecutionOrigin) (types.PermissionMode, error)
 }
 
@@ -1054,7 +1055,7 @@ func (s *Service) BuildContextInput(ctx context.Context, p ContextBuildParams) (
 	if effectiveAgentSlug != "" {
 		var def *agent.AgentDefinition
 		if s.agents != nil {
-			def, _ = s.agents.GetDefinition(ctx, effectiveAgentSlug)
+			def, _ = s.agents.GetDefinition(ctx, p.Principal, effectiveAgentSlug)
 		}
 		if def == nil {
 			// Fall back to skill-derived agents.
@@ -1088,7 +1089,7 @@ func (s *Service) BuildContextInput(ctx context.Context, p ContextBuildParams) (
 
 	// Layer user preference block on top (appended, never overwritten).
 	if p.Principal != nil && s.preferences != nil {
-		if block, _ := s.preferences.BuildSystemPromptBlock(ctx, userID); block != "" {
+		if block, _ := s.preferences.BuildSystemPromptBlock(ctx, p.Principal); block != "" {
 			input.AppendSystemPrompt = appendBlock(input.AppendSystemPrompt, block)
 		}
 	}

@@ -43,6 +43,8 @@ func writeAutomationError(w http.ResponseWriter, err error) { writeControlPlaneE
 
 func writeKnowledgeError(w http.ResponseWriter, err error) { writeControlPlaneError(w, err) }
 
+func writePreferencesError(w http.ResponseWriter, err error) { writeControlPlaneError(w, err) }
+
 func writeControlPlaneError(w http.ResponseWriter, err error) {
 	var typed *apperr.Error
 	if !errors.As(err, &typed) {

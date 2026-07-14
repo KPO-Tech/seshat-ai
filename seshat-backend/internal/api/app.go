@@ -4,9 +4,9 @@ import (
 	"net"
 
 	seshat "github.com/EngineerProjects/seshat-ai/seshat-backend/internal"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudautomation"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	backendquery "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/query"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/scheduler"
 	longterm "github.com/EngineerProjects/seshat/pkg/memory/longterm"
 )
 
@@ -27,55 +27,59 @@ type App struct {
 	loginRateLimiter      *RateLimiter
 	permBroker            *backendquery.PermissionBroker
 	promptBroker          *backendquery.PromptBroker
-	schedulerWorker       *scheduler.Worker
-	automationClient      *AutomationClient
+	cloudAutomation       *cloudautomation.Service
 	enableSignup          bool
 	enableAPIKeys         bool
 	featuredRepos         []FeaturedSkillRepo
 	trustedProxyCIDRs     []*net.IPNet
 	allowedSkillRepoHosts []string
+	// connectedServerURL is non-empty iff identity runs in connected mode
+	// (SESHAT_SERVER_URL configured) — see helps/seshat-architecture-target.md §1.
+	connectedServerURL      string
+	connectedOrganizationID string
 }
 
 // AppConfig holds all configuration needed to build an App.
 type AppConfig struct {
-	Backend               *seshat.App
-	DB                    *db.DB
-	ModelStore            *db.ProviderModelStore
-	GroupStore            *db.GroupStore
-	EmbedderStore         *db.EmbedderConfigStore
-	StorageConfigStore    *db.StorageConfigStore
-	LongTermExtractor     *longterm.Extractor
-	RateLimiter           *RateLimiter
-	LoginRateLimiter      *RateLimiter
-	SchedulerWorker       *scheduler.Worker
-	AutomationServiceURL  string // AUTOMATION_SERVICE_URL env var; empty = disabled
-	AutomationAPIKey      string // AUTOMATION_API_KEY env var; empty = no auth
-	EnableSignup          bool
-	EnableAPIKeys         bool
-	FeaturedRepos         []FeaturedSkillRepo
-	TrustedProxyCIDRs     []*net.IPNet
-	AllowedSkillRepoHosts []string
+	Backend                 *seshat.App
+	DB                      *db.DB
+	ModelStore              *db.ProviderModelStore
+	GroupStore              *db.GroupStore
+	EmbedderStore           *db.EmbedderConfigStore
+	StorageConfigStore      *db.StorageConfigStore
+	LongTermExtractor       *longterm.Extractor
+	RateLimiter             *RateLimiter
+	LoginRateLimiter        *RateLimiter
+	CloudAutomation         *cloudautomation.Service
+	EnableSignup            bool
+	EnableAPIKeys           bool
+	FeaturedRepos           []FeaturedSkillRepo
+	TrustedProxyCIDRs       []*net.IPNet
+	AllowedSkillRepoHosts   []string
+	ConnectedServerURL      string
+	ConnectedOrganizationID string
 }
 
 func NewApp(cfg AppConfig) *App {
 	return &App{
-		backend:               cfg.Backend,
-		db:                    cfg.DB,
-		modelStore:            cfg.ModelStore,
-		groupStore:            cfg.GroupStore,
-		embedderStore:         cfg.EmbedderStore,
-		storageConfigStore:    cfg.StorageConfigStore,
-		longTermExtractor:     cfg.LongTermExtractor,
-		rateLimiter:           cfg.RateLimiter,
-		loginRateLimiter:      cfg.LoginRateLimiter,
-		schedulerWorker:       cfg.SchedulerWorker,
-		automationClient:      NewAutomationClient(cfg.AutomationServiceURL, cfg.AutomationAPIKey),
-		permBroker:            backendquery.NewPermissionBroker(),
-		promptBroker:          backendquery.NewPromptBroker(),
-		enableSignup:          cfg.EnableSignup,
-		enableAPIKeys:         cfg.EnableAPIKeys,
-		featuredRepos:         cfg.FeaturedRepos,
-		trustedProxyCIDRs:     cfg.TrustedProxyCIDRs,
-		allowedSkillRepoHosts: cfg.AllowedSkillRepoHosts,
+		backend:                 cfg.Backend,
+		db:                      cfg.DB,
+		modelStore:              cfg.ModelStore,
+		groupStore:              cfg.GroupStore,
+		embedderStore:           cfg.EmbedderStore,
+		storageConfigStore:      cfg.StorageConfigStore,
+		longTermExtractor:       cfg.LongTermExtractor,
+		rateLimiter:             cfg.RateLimiter,
+		loginRateLimiter:        cfg.LoginRateLimiter,
+		cloudAutomation:         cfg.CloudAutomation,
+		permBroker:              backendquery.NewPermissionBroker(),
+		promptBroker:            backendquery.NewPromptBroker(),
+		enableSignup:            cfg.EnableSignup,
+		enableAPIKeys:           cfg.EnableAPIKeys,
+		featuredRepos:           cfg.FeaturedRepos,
+		trustedProxyCIDRs:       cfg.TrustedProxyCIDRs,
+		allowedSkillRepoHosts:   cfg.AllowedSkillRepoHosts,
+		connectedServerURL:      cfg.ConnectedServerURL,
+		connectedOrganizationID: cfg.ConnectedOrganizationID,
 	}
 }

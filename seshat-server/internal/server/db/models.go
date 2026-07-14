@@ -381,3 +381,200 @@ type PlatformEmbedderSetting struct {
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 }
+
+// UserPreference is a strictly personal, one-row-per-user settings singleton
+// — unlike ProviderSetting/EmbedderSetting, there is no organization column
+// and no org/platform hierarchy: a preference only ever means one thing,
+// "this user's own preference," so self-service (principal.User.ID implicit)
+// is the only access path, see preferences.Service.
+type UserPreference struct {
+	UserID                    string `gorm:"primaryKey;size:32"`
+	PreferredName             string `gorm:"size:200"`
+	Profession                string `gorm:"size:200"`
+	About                     string `gorm:"type:text"`
+	WorkingStyle              string `gorm:"type:text"`
+	ResponseStyle             string `gorm:"type:text"`
+	ExtraContext              string `gorm:"type:text"`
+	InteractivePermissionMode string `gorm:"size:32"`
+	AutomationPermissionMode  string `gorm:"size:32"`
+	MaxSubAgentDepth          int
+	UpdatedAt                 time.Time
+}
+
+// SkillRepo is one entry in an organization's curated skills registry — just
+// a bookmarked git repo URL, nothing secret, so unlike ProviderSetting there
+// is no encryption and no org/platform tiering: reading the list only
+// requires org membership (see skillregistry.Service), only mutating it is
+// permission-gated. seshat-backend fetches these to enrich its own local
+// skill-repo catalog; installing (git clone) always happens locally.
+type SkillRepo struct {
+	ID              string `gorm:"primaryKey;size:32"`
+	OrganizationID  string `gorm:"size:32;not null;uniqueIndex:idx_skill_repo_org_name;index"`
+	CreatedByUserID string `gorm:"size:32;not null"`
+	Name            string `gorm:"size:128;not null;uniqueIndex:idx_skill_repo_org_name"`
+	URL             string `gorm:"size:500;not null"`
+	Description     string `gorm:"size:500"`
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
+// AgentPreset is one entry in an organization's shared agent-preset catalog
+// — mirrors seshat-backend's own gAgentDefinition (internal/db/agents.go)
+// field for field, with OrganizationID/CreatedByUserID added (same shape as
+// SkillRepo). Nothing here is secret (a system prompt, not a credential), so
+// like SkillRepo there is no encryption and reading only requires org
+// membership — only mutating is permission-gated (agents_registry.manage).
+// This is purely additive on the seshat-backend side: it never replaces the
+// existing 100%-local, unscoped agent_definitions table, only adds one more
+// source resolved at query time (see helps/seshat-architecture-target.md §7).
+type AgentPreset struct {
+	ID                  string `gorm:"primaryKey;size:32"`
+	OrganizationID      string `gorm:"size:32;not null;uniqueIndex:idx_agent_preset_org_slug;index"`
+	CreatedByUserID     string `gorm:"size:32;not null"`
+	Slug                string `gorm:"size:128;not null;uniqueIndex:idx_agent_preset_org_slug"`
+	Name                string `gorm:"size:255;not null;default:''"`
+	WhenToUse           string `gorm:"type:text;not null;default:''"`
+	SystemPrompt        string `gorm:"type:text;not null;default:''"`
+	Model               string `gorm:"size:255;not null;default:''"`
+	ToolsJSON           string `gorm:"column:tools_json;type:text;not null;default:'[]'"`
+	DisallowedToolsJSON string `gorm:"column:disallowed_tools_json;type:text;not null;default:'[]'"`
+	MaxTurns            int    `gorm:"not null;default:50"`
+	PermissionMode      string `gorm:"size:32;not null;default:''"`
+	Isolation           string `gorm:"size:32;not null;default:''"`
+	McpServersJSON      string `gorm:"column:mcp_servers_json;type:text;not null;default:'[]'"`
+	Icon                string `gorm:"size:64;not null;default:'🤖'"`
+	Enabled             bool   `gorm:"not null;default:true"`
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
+}
+
+// UsageCounter mirrors seshat-backend's own gUsageCounter
+// (internal/db/quotas.go) — a strictly personal, per-(user, metric, period)
+// running total, no organization concept, same trust level as UserMemory/
+// UserPreference. This is pure counting, never an enforced limit: there is
+// no plan/tier concept anywhere in seshat-server yet (see
+// helps/seshat-architecture-target.md §7, "Quotas") — migrating the
+// counters is a storage-location change, not a step toward billing.
+type UsageCounter struct {
+	ID        string `gorm:"primaryKey;size:32"`
+	UserID    string `gorm:"size:32;not null;uniqueIndex:idx_usage_counter_key"`
+	Metric    string `gorm:"size:64;not null;uniqueIndex:idx_usage_counter_key"`
+	PeriodKey string `gorm:"size:32;not null;uniqueIndex:idx_usage_counter_key"`
+	Count     int64  `gorm:"not null;default:0"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+// WebSearchProviderSetting mirrors ProviderSetting's org→platform shape but
+// for web-search providers (Tavily/Exa/Jina/LangSearch/SearXNG) — deliberately
+// NOT a reuse of ProviderSetting: DefaultModel has no meaning for a search
+// API, and SearXNG needs a second credential field (AuthUsername, basic auth)
+// no LLM provider has. See websearchsettings.Service.
+type WebSearchProviderSetting struct {
+	ID              string `gorm:"primaryKey;size:32"`
+	OrganizationID  string `gorm:"size:32;not null;uniqueIndex:idx_ws_provider_setting_org_provider;index"`
+	CreatedByUserID string `gorm:"size:32;not null"`
+	Provider        string `gorm:"size:32;not null;uniqueIndex:idx_ws_provider_setting_org_provider"`
+	BaseURL         string `gorm:"size:500"`
+	AuthUsername    string `gorm:"size:200"`
+	EncryptedAPIKey string `gorm:"type:text;not null"`
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
+// PlatformWebSearchProviderSetting is the platform-wide default, same
+// fallback role as PlatformProviderSetting.
+type PlatformWebSearchProviderSetting struct {
+	ID              string `gorm:"primaryKey;size:32"`
+	CreatedByUserID string `gorm:"size:32;not null"`
+	Provider        string `gorm:"size:32;not null;uniqueIndex"`
+	BaseURL         string `gorm:"size:500"`
+	AuthUsername    string `gorm:"size:200"`
+	EncryptedAPIKey string `gorm:"type:text;not null"`
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
+// WebSearchOrgPolicy is a strictly org-wide singleton (one row per org, no
+// per-user variant server-side) — the domain allow/block list an org wants
+// enforced for every member, merged into each user's own local policy in
+// seshat-backend (blocked domains always apply, allowed domains are additive).
+type WebSearchOrgPolicy struct {
+	OrganizationID     string `gorm:"primaryKey;size:32"`
+	CreatedByUserID    string `gorm:"size:32;not null"`
+	AllowedDomainsJSON string `gorm:"column:allowed_domains_json;type:text;not null;default:'[]'"`
+	BlockedDomainsJSON string `gorm:"column:blocked_domains_json;type:text;not null;default:'[]'"`
+	UpdatedAt          time.Time
+}
+
+// MCPServerConfig is an organization's shared MCP server definition — a
+// catalog entry that a connected seshat-backend can fetch and, once a user
+// explicitly approves it locally, load into its own local MCP runtime.
+// Execution never happens here: this table only stores/serves config, the
+// same "config centralisée, exécution locale" split already used for
+// provider settings and web search. No platform tier — an MCP tool shared
+// across the entire platform (not just one org) doesn't have a clear use
+// case today, unlike LLM/web-search provider defaults.
+type MCPServerConfig struct {
+	ID                   string `gorm:"primaryKey;size:32"`
+	OrganizationID       string `gorm:"size:32;not null;uniqueIndex:idx_mcp_server_config_org_name;index"`
+	CreatedByUserID      string `gorm:"size:32;not null"`
+	Name                 string `gorm:"size:255;not null;uniqueIndex:idx_mcp_server_config_org_name"`
+	DisplayName          string `gorm:"size:255;not null;default:''"`
+	ServerType           string `gorm:"size:32;not null;default:'stdio'"`
+	Command              string `gorm:"type:text;not null;default:''"`
+	ArgsJSON             string `gorm:"column:args_json;type:text;not null;default:'[]'"`
+	EncryptedEnvJSON     string `gorm:"column:encrypted_env_json;type:text;not null;default:''"`
+	URL                  string `gorm:"type:text;not null;default:''"`
+	EncryptedHeadersJSON string `gorm:"column:encrypted_headers_json;type:text;not null;default:''"`
+	TimeoutSecs          int    `gorm:"not null;default:30"`
+	Icon                 string `gorm:"size:64;not null;default:'🔌'"`
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
+}
+
+// UserMemory mirrors seshat-backend's own gUserMemory (internal/db/user_memories.go)
+// — a flat, personal, multi-row-per-user memory list, no organization
+// concept, same trust level as UserPreference.
+type UserMemory struct {
+	ID         string  `gorm:"primaryKey;size:32"`
+	UserID     string  `gorm:"size:32;not null;index"`
+	Type       string  `gorm:"size:64;not null;default:'fact'"`
+	Key        string  `gorm:"type:text;not null;default:''"`
+	Value      string  `gorm:"type:text;not null;default:''"`
+	Importance float64 `gorm:"not null;default:0.5"`
+	Source     string  `gorm:"size:255;not null;default:''"`
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
+// MemoryEntity/MemoryObservation/MemoryRelation mirror seshat-backend's own
+// gMemoryEntity/gMemoryObservation/gMemoryRelation (internal/db/memories.go)
+// field-for-field — the long-term memory knowledge graph behind the SDK's
+// longterm.Store interface. Personal, no organization concept, same as
+// UserMemory/UserPreference.
+type MemoryEntity struct {
+	ID         string `gorm:"primaryKey;size:32"`
+	UserID     string `gorm:"size:32;not null;index"`
+	Name       string `gorm:"type:text;not null"`
+	EntityType string `gorm:"size:128;not null;default:'entity'"`
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
+type MemoryObservation struct {
+	ID              string `gorm:"primaryKey;size:32"`
+	EntityID        string `gorm:"size:32;not null;index"`
+	Content         string `gorm:"type:text;not null"`
+	SourceSessionID string `gorm:"size:32"`
+	CreatedAt       time.Time
+}
+
+type MemoryRelation struct {
+	ID           string `gorm:"primaryKey;size:32"`
+	UserID       string `gorm:"size:32;not null;index"`
+	FromName     string `gorm:"size:256;not null"`
+	ToName       string `gorm:"size:256;not null"`
+	RelationType string `gorm:"size:128;not null"`
+	CreatedAt    time.Time
+}

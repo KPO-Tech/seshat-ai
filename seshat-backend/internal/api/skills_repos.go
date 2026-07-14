@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudskillregistry"
 	skillsloader "github.com/EngineerProjects/seshat/pkg/skills"
 	"github.com/EngineerProjects/seshat/pkg/skills/skillrepos"
 )
@@ -188,6 +189,10 @@ func (a *App) handleSkillReposList(w http.ResponseWriter, r *http.Request) {
 		URL         string `json:"url"`
 		Description string `json:"description"`
 		Installed   bool   `json:"installed"`
+		// Source is "organization" for entries pulled from a connected
+		// seshat-server's registry, omitted for the built-in/operator-configured
+		// featured repos — see internal/cloudskillregistry.
+		Source string `json:"source,omitempty"`
 	}
 
 	// Build installed list (never nil so JSON serializes as [] not null).
@@ -205,6 +210,7 @@ func (a *App) handleSkillReposList(w http.ResponseWriter, r *http.Request) {
 
 	// Build catalog from featured repos (never nil so JSON serializes as [] not null).
 	catalog := make([]catalogEntry, 0)
+	seen := make(map[string]bool)
 	for _, fr := range a.featuredRepos {
 		_, isInstalled := installedNames[fr.Name]
 		catalog = append(catalog, catalogEntry{
@@ -213,6 +219,34 @@ func (a *App) handleSkillReposList(w http.ResponseWriter, r *http.Request) {
 			Description: fr.Description,
 			Installed:   isInstalled,
 		})
+		seen[fr.Name] = true
+	}
+
+	// Additive enrichment: the organization's curated registry, fetched live
+	// per-request using the caller's own token (this handler is already
+	// admin-gated locally via requireRole("admin")). Never a hard dependency
+	// — any failure just means "nothing to add," never an error response.
+	if a.connectedServerURL != "" {
+		if principal, ok := authPrincipalFromContext(r.Context()); ok {
+			client := cloudskillregistry.NewClient(a.connectedServerURL)
+			orgRepos, err := client.ListSkillRepos(r.Context(), principal.AuthSession.ID, a.connectedOrganizationID)
+			if err == nil {
+				for _, or := range orgRepos {
+					if seen[or.Name] {
+						continue
+					}
+					_, isInstalled := installedNames[or.Name]
+					catalog = append(catalog, catalogEntry{
+						Name:        or.Name,
+						URL:         or.URL,
+						Description: or.Description,
+						Installed:   isInstalled,
+						Source:      "organization",
+					})
+					seen[or.Name] = true
+				}
+			}
+		}
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{

@@ -53,7 +53,7 @@ func (app *App) enrichContextWithAgentPrefs(ctx context.Context, principal *back
 	// Inject user ID so memory tools can scope operations without an extra DB read.
 	ctx = types.WithAgentUserID(ctx, principal.User.ID)
 
-	maxDepth, err := app.backend.Preferences.GetMaxSubAgentDepth(ctx, principal.User.ID)
+	maxDepth, err := app.backend.Preferences.GetMaxSubAgentDepth(ctx, principal)
 	if err != nil || maxDepth <= 0 {
 		return ctx
 	}
@@ -71,7 +71,7 @@ func (a *App) handleUserPreferences(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodGet:
-		prefs, err := a.backend.Preferences.Get(r.Context(), principal.User.ID)
+		prefs, err := a.backend.Preferences.Get(r.Context(), principal)
 		if err != nil {
 			writeBackendError(w, err)
 			return
@@ -105,8 +105,7 @@ func (a *App) handleUserPreferences(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		saved, err := a.backend.Preferences.Upsert(r.Context(), preferences.UpsertParams{
-			UserID:                    principal.User.ID,
+		saved, err := a.backend.Preferences.Upsert(r.Context(), principal, preferences.UpsertParams{
 			PreferredName:             body.PreferredName,
 			Profession:                body.Profession,
 			About:                     body.About,

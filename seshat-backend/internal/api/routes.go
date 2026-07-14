@@ -70,11 +70,17 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	apiV1.Handle("/agents", app.authMiddleware(http.HandlerFunc(app.handleAgents)))
 	apiV1.Handle("/agents/", app.authMiddleware(http.HandlerFunc(app.handleAgentBySlug)))
 
-	apiV1.Handle("/mcp", app.requireRole("admin", http.HandlerFunc(app.handleMCPList)))
-	apiV1.Handle("/mcp/config", app.requireRole("admin", http.HandlerFunc(app.handleMCPConfig)))
-	apiV1.Handle("/mcp/config/", app.requireRole("admin", http.HandlerFunc(app.handleMCPConfigDispatch)))
-	apiV1.Handle("/mcp/reload", app.requireRole("admin", http.HandlerFunc(app.handleMCPReload)))
-	apiV1.Handle("/mcp/tools", app.requireRole("admin", http.HandlerFunc(app.handleMCPTools)))
+	// mcpRoute's reloadsItself flag is checked right here, at the one place
+	// every MCP route is registered — see App.mcpRoute's doc comment for why
+	// this replaced a per-handler noteMCPToken() call that was easy to
+	// forget (and was, in fact, missing from handleMCPTools).
+	apiV1.Handle("/mcp", app.mcpRoute(app.handleMCPList, false))
+	apiV1.Handle("/mcp/config", app.mcpRoute(app.handleMCPConfig, false))
+	apiV1.Handle("/mcp/config/", app.mcpRoute(app.handleMCPConfigDispatch, false))
+	apiV1.Handle("/mcp/reload", app.mcpRoute(app.handleMCPReload, true))
+	apiV1.Handle("/mcp/tools", app.mcpRoute(app.handleMCPTools, false))
+	apiV1.Handle("/mcp/org-catalog", app.mcpRoute(app.handleMCPOrgCatalog, false))
+	apiV1.Handle("/mcp/org-catalog/", app.mcpRoute(app.handleMCPOrgCatalogApprove, true))
 
 	apiV1.Handle("/query", app.authMiddleware(http.HandlerFunc(app.handleQuery)))
 	apiV1.Handle("/query/stream", app.authMiddleware(http.HandlerFunc(app.handleQueryStream)))
@@ -113,20 +119,17 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	apiV1.Handle("/plans", app.authMiddleware(http.HandlerFunc(app.handlePlans)))
 	apiV1.Handle("/plans/", app.authMiddleware(http.HandlerFunc(app.handlePlanByID)))
 
-	apiV1.Handle("/scheduler/jobs", app.authMiddleware(http.HandlerFunc(app.handleSchedulerJobs)))
-	apiV1.Handle("/scheduler/jobs/", app.authMiddleware(http.HandlerFunc(app.handleSchedulerJobByID)))
+	// Cloud automation: pairing + read-only visibility only. Job management
+	// (create/edit/pause/delete/trigger) happens exclusively in
+	// seshat-console once this machine is connected — see
+	// helps/seshat-architecture-target.md.
+	apiV1.Handle("/automation/status", app.authMiddleware(http.HandlerFunc(app.handleAutomationStatus)))
+	apiV1.Handle("/automation/connect", app.authMiddleware(http.HandlerFunc(app.handleAutomationConnect)))
+	apiV1.Handle("/automation/disconnect", app.authMiddleware(http.HandlerFunc(app.handleAutomationDisconnect)))
+	apiV1.Handle("/automation/runs", app.authMiddleware(http.HandlerFunc(app.handleAutomationRuns)))
 
-	apiV1.Handle("/automation/jobs", app.authMiddleware(http.HandlerFunc(app.handleAutomationJobs)))
-	apiV1.Handle("/automation/jobs/", app.authMiddleware(http.HandlerFunc(app.handleAutomationJobByID)))
-	apiV1.Handle("/automation/runs/", app.authMiddleware(http.HandlerFunc(app.handleAutomationRun)))
-	// Internal daemon endpoint — authenticated by AUTOMATION_API_KEY, not user JWT.
-	apiV1.Handle("/automation/runtime-config", app.automationAPIKeyMiddleware(http.HandlerFunc(app.handleAutomationRuntimeConfig)))
-
-	// Admin: automation activation management (admin role required)
-	apiV1.Handle("/admin/automation/activations",
-		app.requireRole("admin", http.HandlerFunc(app.handleAdminAutomationActivations)))
-	apiV1.Handle("/admin/automation/users/",
-		app.requireRole("admin", http.HandlerFunc(app.handleAdminAutomationDispatch)))
+	// Public: needed by the Login/Register screens before any session exists.
+	apiV1.HandleFunc("/system/status", app.handleSystemStatus)
 
 	apiV1.HandleFunc("/models", handleModelsList)
 	apiV1.HandleFunc("/metrics", app.handleMetricsJSON)

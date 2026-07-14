@@ -24,7 +24,7 @@ func openMemoriesService(t *testing.T) (*Service, *backendauth.Principal) {
 	if err != nil {
 		t.Fatalf("NewUserMemoryStore: %v", err)
 	}
-	svc := NewService(store, nil, nil)
+	svc := NewService(NewLocalProvider(store), nil, nil)
 	principal := &backendauth.Principal{User: backendauth.User{ID: "usr_testmemory"}}
 	return svc, principal
 }

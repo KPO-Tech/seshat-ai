@@ -4,6 +4,9 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/agents"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/audit"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudagents"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudmcp"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudwebsearch"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/files"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge"
@@ -14,8 +17,6 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/preferences"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/query"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/quotas"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/resources"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/scheduler"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/settings"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/skills"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/websearch"
@@ -27,78 +28,145 @@ import (
 
 // Dependencies holds the external dependencies wired by the transport layer.
 type Dependencies struct {
-	Identity                 *db.IdentityStore
-	APIKeyStore              *db.APIKeyStore // nil = api keys disabled
-	GroupStore               *db.GroupStore  // nil = groups disabled
-	AuthConfig               auth.ServiceConfig
-	QueryRuntime             query.QueryRuntime
-	SessionManager           query.SessionManager
-	SessionOwnership         *db.SessionOwnershipStore // nil = unscoped mode
-	FileStore                *db.FileStore             // nil = files domain disabled
-	CorpusStore              *db.CorpusStore           // nil = knowledge domain disabled
-	IngestionJobStore        *db.KnowledgeIngestionJobStore
-	SettingStore             *db.ProviderSettingStore // nil = settings domain disabled
-	OAuthStore               *db.ProviderOAuthConnectionStore
-	OAuthClients             settings.OAuthClientFactory
+	Identity    *db.IdentityStore
+	APIKeyStore *db.APIKeyStore // nil = api keys disabled
+	GroupStore  *db.GroupStore  // nil = groups disabled
+	AuthConfig  auth.ServiceConfig
+	// AuthProvider selects standalone vs connected identity (see
+	// helps/seshat-architecture-target.md). nil = auth.NewLocalProvider(Identity),
+	// i.e. today's standalone behavior — set only by bootstrap.go when
+	// SESHAT_SERVER_URL is configured.
+	AuthProvider      auth.Provider
+	QueryRuntime      query.QueryRuntime
+	SessionManager    query.SessionManager
+	SessionOwnership  *db.SessionOwnershipStore // nil = unscoped mode
+	FileStore         *db.FileStore             // nil = files domain disabled
+	CorpusStore       *db.CorpusStore           // nil = knowledge domain disabled
+	IngestionJobStore *db.KnowledgeIngestionJobStore
+	SettingStore      *db.ProviderSettingStore // nil = settings domain disabled
+	OAuthStore        *db.ProviderOAuthConnectionStore
+	OAuthClients      settings.OAuthClientFactory
+	// SettingsProvider selects standalone vs connected provider-settings
+	// resolution (org → platform → local personal key). nil =
+	// settings.NewLocalProvider(...), i.e. today's local-only behavior — set
+	// only by bootstrap.go when SESHAT_SERVER_URL is configured.
+	SettingsProvider         settings.Provider
 	WebSearchSettings        *db.WebSearchSettingStore
 	WebSearchLogs            *db.WebSearchLogStore
 	WebSearchProviderConfigs *db.SearchProviderConfigStore
 	WebSearchRunner          websearch.Runner
-	EmbedderConfigStore      *db.EmbedderConfigStore
-	AuditLogStore            *db.AuditLogStore     // nil = audit logging disabled
-	UsageCounterStore        *db.UsageCounterStore // nil = quota tracking disabled
-	ArtifactStore            storage.ArtifactStore // nil = blob storage disabled
-	RAGService               *rag.Service          // nil = embedder not configured
-	Monitoring               metrics.Snapshotter
-	DoclingClient            *docling.Client // nil = no auto-conversion
+	// WebSearchCloudClient/WebSearchOrganizationID enrich the local
+	// provider-resolution chain and domain policy with a connected
+	// seshat-server's org/platform web-search config — nil/empty in
+	// standalone mode, set only by bootstrap.go when SESHAT_SERVER_URL is
+	// configured. See internal/cloudwebsearch's package doc.
+	WebSearchCloudClient    *cloudwebsearch.Client
+	WebSearchOrganizationID string
+	EmbedderConfigStore     *db.EmbedderConfigStore
+	AuditLogStore           *db.AuditLogStore     // nil = audit logging disabled
+	UsageCounterStore       *db.UsageCounterStore // nil = quota tracking disabled
+	ArtifactStore           storage.ArtifactStore // nil = blob storage disabled
+	RAGService              *rag.Service          // nil = embedder not configured
+	Monitoring              metrics.Snapshotter
+	DoclingClient           *docling.Client // nil = no auto-conversion
 	// New services
-	UserMemoryStore           *db.UserMemoryStore
-	LongTermMemoryStore       *db.LongTermMemoryStore
-	LongTermExtractor         *longterm.Extractor
-	PlanDocumentStore         *db.PlanDocumentStore
-	MCPServerStore            *db.MCPServerStore
-	MCPRuntime                mcp.RuntimeReloader // nil = reload/status not available
-	UserPreferencesStore      *db.UserPreferencesStore
-	AgentDefinitionStore      *db.AgentDefinitionStore
-	ScheduledJobStore         *db.ScheduledJobStore // nil = scheduler disabled
-	AutomationActivationStore *db.AutomationActivationStore
+	UserMemoryStore *db.UserMemoryStore
+	// LongTermMemoryStore is longterm.Store (an SDK interface), not a
+	// concrete store type — bootstrap.go picks *db.LongTermMemoryStore
+	// (standalone) or *cloudlongterm.RemoteStore (connected) before
+	// constructing Dependencies. See internal/memories.Service's own
+	// longTermStore field for why this is an interface.
+	LongTermMemoryStore longterm.Store
+	LongTermExtractor   *longterm.Extractor
+	PlanDocumentStore   *db.PlanDocumentStore
+	MCPServerStore      *db.MCPServerStore
+	MCPRuntime          mcp.RuntimeReloader // nil = reload/status not available
+	// MCPCloudClient/MCPOrganizationID/MCPOrgServerApprovals enrich the
+	// local MCP runtime with a connected seshat-server's shared server
+	// catalog, once the user has explicitly approved each one — nil/empty
+	// in standalone mode, set only by bootstrap.go when SESHAT_SERVER_URL
+	// is configured. See internal/cloudmcp's package doc.
+	MCPCloudClient        *cloudmcp.Client
+	MCPOrganizationID     string
+	MCPOrgServerApprovals *db.MCPOrgServerApprovalStore
+	UserPreferencesStore  *db.UserPreferencesStore
+	AgentDefinitionStore  *db.AgentDefinitionStore
+	// AgentsCloudClient/AgentsOrganizationID enrich local agent resolution
+	// with a connected seshat-server's shared preset catalog, once a caller
+	// has an authenticated principal — nil/empty in standalone mode, set
+	// only by bootstrap.go when SESHAT_SERVER_URL is configured. Purely
+	// additive, see internal/agents.Service's own doc comment.
+	AgentsCloudClient    *cloudagents.Client
+	AgentsOrganizationID string
+	// PreferencesProvider selects standalone vs connected preferences storage.
+	// nil = preferences.NewLocalProvider(UserPreferencesStore), i.e. today's
+	// local-only behavior — set only by bootstrap.go when SESHAT_SERVER_URL
+	// is configured.
+	PreferencesProvider preferences.Provider
+	// MemoriesProvider selects standalone vs connected flat-memory-list
+	// storage. nil = memories.NewLocalProvider(UserMemoryStore), i.e.
+	// today's local-only behavior — set only by bootstrap.go when
+	// SESHAT_SERVER_URL is configured.
+	MemoriesProvider memories.Provider
+	// QuotaProvider selects standalone vs connected usage-counter storage.
+	// nil = quotas.NewLocalProvider(UsageCounterStore), i.e. today's
+	// local-only behavior — set only by bootstrap.go when SESHAT_SERVER_URL
+	// is configured. Pure counting either way, never an enforced limit.
+	QuotaProvider quotas.Provider
 }
 
 // App is the root backend service container.
 // Each field is a domain service; add new domains here as the product grows.
 type App struct {
-	Auth                      *auth.Service
-	Query                     *query.Service
-	Resources                 *resources.Service
-	Files                     *files.Service
-	Knowledge                 *knowledge.Service
-	Settings                  *settings.Service
-	WebSearch                 *websearch.Service
-	Audit                     *audit.Service
-	Quota                     *quotas.Service
-	Metrics                   *metrics.Service
-	Memories                  *memories.Service
-	Plans                     *plans.Service
-	MCP                       *mcp.Service
-	Preferences               *preferences.Service
-	Skills                    *skills.Service
-	Agents                    *agents.Service
-	Scheduler                 *scheduler.Service
-	AutomationActivationStore *db.AutomationActivationStore
+	Auth        *auth.Service
+	Query       *query.Service
+	Files       *files.Service
+	Knowledge   *knowledge.Service
+	Settings    *settings.Service
+	WebSearch   *websearch.Service
+	Audit       *audit.Service
+	Quota       *quotas.Service
+	Metrics     *metrics.Service
+	Memories    *memories.Service
+	Plans       *plans.Service
+	MCP         *mcp.Service
+	Preferences *preferences.Service
+	Skills      *skills.Service
+	Agents      *agents.Service
 }
 
 func NewApp(deps Dependencies) *App {
-	settingsService := settings.NewService(deps.SettingStore, deps.OAuthStore, deps.OAuthClients)
-	webSearchService := websearch.NewService(deps.WebSearchSettings, deps.WebSearchLogs, deps.WebSearchProviderConfigs, settingsService, deps.WebSearchRunner)
-	memoriesService := memories.NewService(deps.UserMemoryStore, deps.LongTermMemoryStore, deps.LongTermExtractor)
-	preferencesService := preferences.NewService(deps.UserPreferencesStore)
+	authProvider := deps.AuthProvider
+	if authProvider == nil {
+		authProvider = auth.NewLocalProvider(deps.Identity, deps.AuthConfig)
+	}
+	localSettingsProvider := settings.NewLocalProvider(deps.SettingStore, deps.OAuthStore, deps.OAuthClients)
+	settingsProvider := deps.SettingsProvider
+	if settingsProvider == nil {
+		settingsProvider = localSettingsProvider
+	}
+	settingsService := settings.NewService(settingsProvider, localSettingsProvider)
+	webSearchService := websearch.NewService(deps.WebSearchSettings, deps.WebSearchLogs, deps.WebSearchProviderConfigs, settingsService, deps.WebSearchRunner, deps.WebSearchCloudClient, deps.WebSearchOrganizationID)
+	memoriesProvider := deps.MemoriesProvider
+	if memoriesProvider == nil {
+		memoriesProvider = memories.NewLocalProvider(deps.UserMemoryStore)
+	}
+	memoriesService := memories.NewService(memoriesProvider, deps.LongTermMemoryStore, deps.LongTermExtractor)
+	preferencesProvider := deps.PreferencesProvider
+	if preferencesProvider == nil {
+		preferencesProvider = preferences.NewLocalProvider(deps.UserPreferencesStore)
+	}
+	preferencesService := preferences.NewService(preferencesProvider)
 	filesService := files.NewService(deps.FileStore, deps.ArtifactStore).WithDocling(deps.DoclingClient)
 	knowledgeService := knowledge.NewService(deps.CorpusStore, deps.FileStore, deps.IngestionJobStore, deps.ArtifactStore, deps.RAGService).WithDocling(deps.DoclingClient)
 	skillsService := skills.NewService()
-	agentsService := agents.NewService(deps.AgentDefinitionStore)
-	schedulerService := scheduler.NewService(deps.ScheduledJobStore)
+	agentsService := agents.NewService(deps.AgentDefinitionStore, deps.AgentsCloudClient, deps.AgentsOrganizationID)
+	quotaProvider := deps.QuotaProvider
+	if quotaProvider == nil {
+		quotaProvider = quotas.NewLocalProvider(deps.UsageCounterStore)
+	}
 	return &App{
-		Auth: auth.NewService(deps.Identity, deps.APIKeyStore, deps.GroupStore, deps.AuthConfig),
+		Auth: auth.NewService(authProvider, deps.Identity, deps.APIKeyStore, deps.GroupStore, deps.AuthConfig),
 		Query: query.NewService(query.ServiceConfig{
 			Runtime:     deps.QueryRuntime,
 			Sessions:    deps.SessionManager,
@@ -112,24 +180,24 @@ func NewApp(deps Dependencies) *App {
 			Skills:      skillsService,
 			Agents:      agentsService,
 		}),
-		Resources: resources.NewService(deps.Identity),
 		Files:     filesService,
 		Knowledge: knowledgeService,
 		Settings:  settingsService,
 		WebSearch: webSearchService,
 		Audit:     audit.NewService(deps.AuditLogStore),
-		Quota:     quotas.NewService(deps.UsageCounterStore),
+		Quota:     quotas.NewService(quotaProvider),
 		Metrics:   metrics.NewService(deps.Monitoring),
 		Memories:  memoriesService,
 		Plans:     plans.NewService(deps.PlanDocumentStore),
 		MCP: mcp.NewService(mcp.ServiceConfig{
-			Store:   deps.MCPServerStore,
-			Runtime: deps.MCPRuntime,
+			Store:          deps.MCPServerStore,
+			Runtime:        deps.MCPRuntime,
+			CloudClient:    deps.MCPCloudClient,
+			OrganizationID: deps.MCPOrganizationID,
+			Approvals:      deps.MCPOrgServerApprovals,
 		}),
-		Preferences:               preferencesService,
-		Skills:                    skillsService,
-		Agents:                    agentsService,
-		Scheduler:                 schedulerService,
-		AutomationActivationStore: deps.AutomationActivationStore,
+		Preferences: preferencesService,
+		Skills:      skillsService,
+		Agents:      agentsService,
 	}
 }

@@ -229,6 +229,20 @@ func backendMigrations() []schemaMigration {
 				return db.gormDB.WithContext(ctx).AutoMigrate(&gAutomationActivation{})
 			},
 		},
+		{
+			ID:    "20260712_030_remote_principal_cache",
+			Scope: migrationScopeBackend,
+			Run: func(ctx context.Context, db *DB) error {
+				return db.gormDB.WithContext(ctx).AutoMigrate(&gRemotePrincipalCache{})
+			},
+		},
+		{
+			ID:    "20260713_031_mcp_org_server_approvals",
+			Scope: migrationScopeBackend,
+			Run: func(ctx context.Context, db *DB) error {
+				return db.gormDB.WithContext(ctx).AutoMigrate(&gMCPOrgServerApproval{})
+			},
+		},
 	}
 }
 

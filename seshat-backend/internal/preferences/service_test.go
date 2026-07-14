@@ -11,6 +11,10 @@ import (
 	"github.com/EngineerProjects/seshat/pkg/types"
 )
 
+func principalFor(userID string) *backendauth.Principal {
+	return &backendauth.Principal{User: backendauth.User{ID: userID}}
+}
+
 func openPreferencesService(t *testing.T) *Service {
 	t.Helper()
 	database, err := db.Open(context.Background(), db.DefaultSQLiteConfig(filepath.Join(t.TempDir(), "test.db")))
@@ -23,7 +27,7 @@ func openPreferencesService(t *testing.T) *Service {
 	if err != nil {
 		t.Fatalf("NewUserPreferencesStore: %v", err)
 	}
-	return NewService(store)
+	return NewService(NewLocalProvider(store))
 }
 
 // ─── nil-store guards ─────────────────────────────────────────────────────────
@@ -31,18 +35,19 @@ func openPreferencesService(t *testing.T) *Service {
 func TestPreferencesNilStoreReturnsUnavailable(t *testing.T) {
 	svc := NewService(nil)
 	ctx := context.Background()
+	principal := principalFor("usr_test")
 
 	check := func(name string, err error) {
 		t.Helper()
-		if err == nil || !strings.Contains(err.Error(), "not available") {
+		if err == nil || !strings.Contains(err.Error(), "not configured") {
 			t.Errorf("%s: expected unavailable error, got %v", name, err)
 		}
 	}
 
-	_, err := svc.Get(ctx, "usr_test")
+	_, err := svc.Get(ctx, principal)
 	check("Get", err)
 
-	_, err = svc.Upsert(ctx, UpsertParams{UserID: "usr_test"})
+	_, err = svc.Upsert(ctx, principal, UpsertParams{})
 	check("Upsert", err)
 }
 
@@ -50,7 +55,7 @@ func TestPreferencesNilStoreReturnsUnavailable(t *testing.T) {
 
 func TestGetNonExistentUserReturnsZeroPreferences(t *testing.T) {
 	svc := openPreferencesService(t)
-	prefs, err := svc.Get(context.Background(), "usr_ghost")
+	prefs, err := svc.Get(context.Background(), principalFor("usr_ghost"))
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
@@ -67,9 +72,9 @@ func TestGetNonExistentUserReturnsZeroPreferences(t *testing.T) {
 func TestUpsertAndGet(t *testing.T) {
 	svc := openPreferencesService(t)
 	ctx := context.Background()
+	principal := principalFor("usr_upsert")
 
-	saved, err := svc.Upsert(ctx, UpsertParams{
-		UserID:        "usr_upsert",
+	saved, err := svc.Upsert(ctx, principal, UpsertParams{
 		PreferredName: "Alice",
 		Profession:    "Engineer",
 		About:         "I build systems.",
@@ -81,7 +86,7 @@ func TestUpsertAndGet(t *testing.T) {
 		t.Errorf("PreferredName: want Alice, got %q", saved.PreferredName)
 	}
 
-	got, err := svc.Get(ctx, "usr_upsert")
+	got, err := svc.Get(ctx, principal)
 	if err != nil {
 		t.Fatalf("Get after Upsert: %v", err)
 	}
@@ -94,8 +99,7 @@ func TestUpsertAndGet(t *testing.T) {
 
 func TestMaxSubAgentDepthClampedAtZero(t *testing.T) {
 	svc := openPreferencesService(t)
-	saved, err := svc.Upsert(context.Background(), UpsertParams{
-		UserID:           "usr_clamp_low",
+	saved, err := svc.Upsert(context.Background(), principalFor("usr_clamp_low"), UpsertParams{
 		MaxSubAgentDepth: -5,
 	})
 	if err != nil {
@@ -108,8 +112,7 @@ func TestMaxSubAgentDepthClampedAtZero(t *testing.T) {
 
 func TestMaxSubAgentDepthClampedAtFive(t *testing.T) {
 	svc := openPreferencesService(t)
-	saved, err := svc.Upsert(context.Background(), UpsertParams{
-		UserID:           "usr_clamp_high",
+	saved, err := svc.Upsert(context.Background(), principalFor("usr_clamp_high"), UpsertParams{
 		MaxSubAgentDepth: 99,
 	})
 	if err != nil {
@@ -123,10 +126,10 @@ func TestMaxSubAgentDepthClampedAtFive(t *testing.T) {
 func TestMaxSubAgentDepthValidValues(t *testing.T) {
 	svc := openPreferencesService(t)
 	ctx := context.Background()
+	principal := principalFor("usr_depth_valid")
 
 	for _, depth := range []int{0, 1, 2, 3, 4, 5} {
-		saved, err := svc.Upsert(ctx, UpsertParams{
-			UserID:           "usr_depth_valid",
+		saved, err := svc.Upsert(ctx, principal, UpsertParams{
 			MaxSubAgentDepth: depth,
 		})
 		if err != nil {
@@ -142,7 +145,7 @@ func TestMaxSubAgentDepthValidValues(t *testing.T) {
 
 func TestGetMaxSubAgentDepthNilServiceReturnsZero(t *testing.T) {
 	svc := NewService(nil)
-	depth, err := svc.GetMaxSubAgentDepth(context.Background(), "usr_test")
+	depth, err := svc.GetMaxSubAgentDepth(context.Background(), principalFor("usr_test"))
 	if err != nil || depth != 0 {
 		t.Errorf("expected (0, nil), got (%d, %v)", depth, err)
 	}
@@ -232,7 +235,7 @@ func TestResolvePermissionModesNilPrincipalAutomationDefaults(t *testing.T) {
 
 func TestBuildSystemPromptBlockNilStoreReturnsEmpty(t *testing.T) {
 	svc := NewService(nil)
-	block, err := svc.BuildSystemPromptBlock(context.Background(), "usr_test")
+	block, err := svc.BuildSystemPromptBlock(context.Background(), principalFor("usr_test"))
 	if err != nil || block != "" {
 		t.Errorf("expected ('', nil), got (%q, %v)", block, err)
 	}
@@ -240,7 +243,7 @@ func TestBuildSystemPromptBlockNilStoreReturnsEmpty(t *testing.T) {
 
 func TestBuildSystemPromptBlockUnknownUserReturnsEmpty(t *testing.T) {
 	svc := openPreferencesService(t)
-	block, err := svc.BuildSystemPromptBlock(context.Background(), "usr_ghost")
+	block, err := svc.BuildSystemPromptBlock(context.Background(), principalFor("usr_ghost"))
 	if err != nil || block != "" {
 		t.Errorf("expected ('', nil) for unknown user, got (%q, %v)", block, err)
 	}
@@ -252,9 +255,8 @@ func TestResolvePermissionModesFromSavedPreferences(t *testing.T) {
 	svc := openPreferencesService(t)
 	ctx := context.Background()
 
-	principal := &backendauth.Principal{User: backendauth.User{ID: "usr_prefs_mode"}}
-	_, err := svc.Upsert(ctx, UpsertParams{
-		UserID:                   principal.User.ID,
+	principal := principalFor("usr_prefs_mode")
+	_, err := svc.Upsert(ctx, principal, UpsertParams{
 		AutomationPermissionMode: "never",
 	})
 	if err != nil {

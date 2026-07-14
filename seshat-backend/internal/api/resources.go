@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/resources"
 )
 
 type createUserRequest struct {
@@ -50,7 +49,7 @@ func (app *App) handleUsersLegacy(w http.ResponseWriter, r *http.Request) {
 	principal, _ := authPrincipalFromContext(r.Context())
 	switch r.Method {
 	case http.MethodGet:
-		users, err := app.backend.Resources.ListUsers(r.Context(), principal)
+		users, err := app.backend.Auth.ListUsers(r.Context(), principal)
 		if err != nil {
 			writeBackendError(w, err)
 			return
@@ -61,7 +60,7 @@ func (app *App) handleUsersLegacy(w http.ResponseWriter, r *http.Request) {
 		if !decodeJSONBody(w, r, &req) {
 			return
 		}
-		user, err := app.backend.Resources.CreateUser(r.Context(), principal, resources.CreateUserParams{
+		user, err := app.backend.Auth.CreateUser(r.Context(), principal, backendauth.CreateUserParams{
 			Email:       req.Email,
 			DisplayName: req.DisplayName,
 			Password:    req.Password,
@@ -87,7 +86,7 @@ func (app *App) handleUserByIDLegacy(w http.ResponseWriter, r *http.Request) {
 	principal, _ := authPrincipalFromContext(r.Context())
 	switch r.Method {
 	case http.MethodGet:
-		user, err := app.backend.Resources.GetUser(r.Context(), principal, userID)
+		user, err := app.backend.Auth.GetUser(r.Context(), principal, userID)
 		if err != nil {
 			writeBackendError(w, err)
 			return
@@ -98,7 +97,7 @@ func (app *App) handleUserByIDLegacy(w http.ResponseWriter, r *http.Request) {
 		if !decodeJSONBody(w, r, &req) {
 			return
 		}
-		user, err := app.backend.Resources.UpdateUser(r.Context(), principal, userID, resources.UpdateUserParams{
+		user, err := app.backend.Auth.UpdateUser(r.Context(), principal, userID, backendauth.UpdateUserParams{
 			DisplayName: req.DisplayName,
 			Password:    req.Password,
 			Status:      req.Status,
@@ -109,7 +108,7 @@ func (app *App) handleUserByIDLegacy(w http.ResponseWriter, r *http.Request) {
 		}
 		writeJSON(w, http.StatusOK, toAuthUserResponse(*user))
 	case http.MethodDelete:
-		if err := app.backend.Resources.DeleteUser(r.Context(), principal, userID); err != nil {
+		if err := app.backend.Auth.DeleteUser(r.Context(), principal, userID); err != nil {
 			writeBackendError(w, err)
 			return
 		}
@@ -123,7 +122,7 @@ func (app *App) handleOrganizations(w http.ResponseWriter, r *http.Request) {
 	principal, _ := authPrincipalFromContext(r.Context())
 	switch r.Method {
 	case http.MethodGet:
-		orgs, err := app.backend.Resources.ListOrganizations(r.Context(), principal)
+		orgs, err := app.backend.Auth.ListOrganizations(r.Context(), principal)
 		if err != nil {
 			writeBackendError(w, err)
 			return
@@ -134,7 +133,7 @@ func (app *App) handleOrganizations(w http.ResponseWriter, r *http.Request) {
 		if !decodeJSONBody(w, r, &req) {
 			return
 		}
-		org, err := app.backend.Resources.CreateOrganization(r.Context(), principal, resources.CreateOrganizationParams{
+		org, err := app.backend.Auth.CreateOrganization(r.Context(), principal, backendauth.CreateOrganizationParams{
 			Name: req.Name,
 			Slug: req.Slug,
 		})
@@ -157,7 +156,7 @@ func (app *App) handleOrganizationByID(w http.ResponseWriter, r *http.Request) {
 	principal, _ := authPrincipalFromContext(r.Context())
 	switch r.Method {
 	case http.MethodGet:
-		org, err := app.backend.Resources.GetOrganization(r.Context(), principal, orgID)
+		org, err := app.backend.Auth.GetOrganization(r.Context(), principal, orgID)
 		if err != nil {
 			writeBackendError(w, err)
 			return
@@ -168,7 +167,7 @@ func (app *App) handleOrganizationByID(w http.ResponseWriter, r *http.Request) {
 		if !decodeJSONBody(w, r, &req) {
 			return
 		}
-		org, err := app.backend.Resources.UpdateOrganization(r.Context(), principal, orgID, resources.UpdateOrganizationParams{
+		org, err := app.backend.Auth.UpdateOrganization(r.Context(), principal, orgID, backendauth.UpdateOrganizationParams{
 			Name:   req.Name,
 			Slug:   req.Slug,
 			Status: req.Status,
@@ -179,7 +178,7 @@ func (app *App) handleOrganizationByID(w http.ResponseWriter, r *http.Request) {
 		}
 		writeJSON(w, http.StatusOK, toOrganizationResponse(*org))
 	case http.MethodDelete:
-		if err := app.backend.Resources.DeleteOrganization(r.Context(), principal, orgID); err != nil {
+		if err := app.backend.Auth.DeleteOrganization(r.Context(), principal, orgID); err != nil {
 			writeBackendError(w, err)
 			return
 		}
@@ -193,7 +192,7 @@ func (app *App) handleWorkspaces(w http.ResponseWriter, r *http.Request) {
 	principal, _ := authPrincipalFromContext(r.Context())
 	switch r.Method {
 	case http.MethodGet:
-		workspaces, err := app.backend.Resources.ListWorkspaces(r.Context(), principal)
+		workspaces, err := app.backend.Auth.ListWorkspaces(r.Context(), principal)
 		if err != nil {
 			writeBackendError(w, err)
 			return
@@ -204,7 +203,7 @@ func (app *App) handleWorkspaces(w http.ResponseWriter, r *http.Request) {
 		if !decodeJSONBody(w, r, &req) {
 			return
 		}
-		workspace, err := app.backend.Resources.CreateWorkspace(r.Context(), principal, resources.CreateWorkspaceParams{
+		workspace, err := app.backend.Auth.CreateWorkspace(r.Context(), principal, backendauth.CreateWorkspaceParams{
 			OrganizationID: req.OrganizationID,
 			Name:           req.Name,
 			Slug:           req.Slug,
@@ -228,7 +227,7 @@ func (app *App) handleWorkspaceByID(w http.ResponseWriter, r *http.Request) {
 	principal, _ := authPrincipalFromContext(r.Context())
 	switch r.Method {
 	case http.MethodGet:
-		workspace, err := app.backend.Resources.GetWorkspace(r.Context(), principal, workspaceID)
+		workspace, err := app.backend.Auth.GetWorkspace(r.Context(), principal, workspaceID)
 		if err != nil {
 			writeBackendError(w, err)
 			return
@@ -239,7 +238,7 @@ func (app *App) handleWorkspaceByID(w http.ResponseWriter, r *http.Request) {
 		if !decodeJSONBody(w, r, &req) {
 			return
 		}
-		workspace, err := app.backend.Resources.UpdateWorkspace(r.Context(), principal, workspaceID, resources.UpdateWorkspaceParams{
+		workspace, err := app.backend.Auth.UpdateWorkspace(r.Context(), principal, workspaceID, backendauth.UpdateWorkspaceParams{
 			OrganizationID: req.OrganizationID,
 			Name:           req.Name,
 			Slug:           req.Slug,
@@ -251,7 +250,7 @@ func (app *App) handleWorkspaceByID(w http.ResponseWriter, r *http.Request) {
 		}
 		writeJSON(w, http.StatusOK, toWorkspaceResponse(*workspace))
 	case http.MethodDelete:
-		if err := app.backend.Resources.DeleteWorkspace(r.Context(), principal, workspaceID); err != nil {
+		if err := app.backend.Auth.DeleteWorkspace(r.Context(), principal, workspaceID); err != nil {
 			writeBackendError(w, err)
 			return
 		}
@@ -269,7 +268,7 @@ func toUserResponses(users []backendauth.User) []authUserResponse {
 	return out
 }
 
-func toOrganizationResponses(orgs []resources.Organization) []map[string]any {
+func toOrganizationResponses(orgs []backendauth.Organization) []map[string]any {
 	out := make([]map[string]any, 0, len(orgs))
 	for _, org := range orgs {
 		out = append(out, toOrganizationResponse(org))
@@ -277,7 +276,7 @@ func toOrganizationResponses(orgs []resources.Organization) []map[string]any {
 	return out
 }
 
-func toOrganizationResponse(org resources.Organization) map[string]any {
+func toOrganizationResponse(org backendauth.Organization) map[string]any {
 	return map[string]any{
 		"id":            org.ID,
 		"name":          org.Name,
@@ -287,7 +286,7 @@ func toOrganizationResponse(org resources.Organization) map[string]any {
 	}
 }
 
-func toWorkspaceResponses(workspaces []resources.Workspace) []map[string]any {
+func toWorkspaceResponses(workspaces []backendauth.Workspace) []map[string]any {
 	out := make([]map[string]any, 0, len(workspaces))
 	for _, workspace := range workspaces {
 		out = append(out, toWorkspaceResponse(workspace))
@@ -295,7 +294,7 @@ func toWorkspaceResponses(workspaces []resources.Workspace) []map[string]any {
 	return out
 }
 
-func toWorkspaceResponse(workspace resources.Workspace) map[string]any {
+func toWorkspaceResponse(workspace backendauth.Workspace) map[string]any {
 	return map[string]any{
 		"id":              workspace.ID,
 		"organization_id": workspace.OrganizationID,

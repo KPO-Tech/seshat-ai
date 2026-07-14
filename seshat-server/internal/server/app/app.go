@@ -8,20 +8,36 @@ import (
 	sdkstorage "github.com/EngineerProjects/seshat/pkg/storage"
 	sdkvector "github.com/EngineerProjects/seshat/pkg/vector"
 
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/agentregistry"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/automation"
 	serverconfig "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/config"
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/knowledge"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/longtermmemory"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/mcpregistry"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/memories"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/preferences"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/quotas"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/skillregistry"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/websearchsettings"
 )
 
 type App struct {
-	DB              *sdb.DB
-	IAM             *iam.Service
-	Automation      *automation.Service
-	Scheduler       *automation.Scheduler
-	Knowledge       *knowledge.Service
-	IngestionRunner *knowledge.Runner
+	DB                *sdb.DB
+	IAM               *iam.Service
+	Automation        *automation.Service
+	Scheduler         *automation.Scheduler
+	Knowledge         *knowledge.Service
+	IngestionRunner   *knowledge.Runner
+	Preferences       *preferences.Service
+	SkillRegistry     *skillregistry.Service
+	WebSearchSettings *websearchsettings.Service
+	MCPRegistry       *mcpregistry.Service
+	Memories          *memories.Service
+	LongTermMemory    *longtermmemory.Service
+	AgentRegistry     *agentregistry.Service
+	Quotas            *quotas.Service
 }
 
 func New(cfg serverconfig.Config) (*App, error) {
@@ -64,11 +80,19 @@ func New(cfg serverconfig.Config) (*App, error) {
 	automationService.SetDoclingURL(cfg.DoclingURL)
 
 	return &App{
-		DB:              database,
-		IAM:             iamService,
-		Automation:      automationService,
-		Scheduler:       automation.NewScheduler(automationService, cfg.SchedulerInterval).WithStaleRunTimeout(cfg.StaleRunTimeout),
-		Knowledge:       knowledgeService,
-		IngestionRunner: knowledge.NewRunner(knowledgeService, knowledge.RunnerConfig{PollInterval: cfg.IngestionPollInterval, MaxPollInterval: cfg.IngestionMaxPollInterval}),
+		DB:                database,
+		IAM:               iamService,
+		Automation:        automationService,
+		Scheduler:         automation.NewScheduler(automationService, cfg.SchedulerInterval).WithStaleRunTimeout(cfg.StaleRunTimeout),
+		Knowledge:         knowledgeService,
+		IngestionRunner:   knowledge.NewRunner(knowledgeService, knowledge.RunnerConfig{PollInterval: cfg.IngestionPollInterval, MaxPollInterval: cfg.IngestionMaxPollInterval}),
+		Preferences:       preferences.New(database),
+		SkillRegistry:     skillregistry.New(database, iamService),
+		WebSearchSettings: websearchsettings.New(database, iamService),
+		MCPRegistry:       mcpregistry.New(database, iamService),
+		Memories:          memories.New(database),
+		LongTermMemory:    longtermmemory.New(database),
+		AgentRegistry:     agentregistry.New(database, iamService),
+		Quotas:            quotas.New(database),
 	}, nil
 }

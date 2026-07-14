@@ -160,7 +160,7 @@ func (app *App) handleQuery(w http.ResponseWriter, r *http.Request) {
 	app.triggerMemoryExtraction(principal, result)
 
 	if principal != nil {
-		app.backend.Quota.Increment(r.Context(), principal.User.ID, backendquotas.MetricQueries, 1)
+		app.backend.Quota.Increment(r.Context(), principal, backendquotas.MetricQueries, 1)
 	}
 	writeJSON(w, http.StatusOK, queryResponse{
 		SessionID:   result.SessionID,
@@ -408,7 +408,7 @@ func (app *App) handleQueryStream(w http.ResponseWriter, r *http.Request) {
 	app.triggerMemoryExtraction(principal, result)
 
 	if principal != nil {
-		app.backend.Quota.Increment(r.Context(), principal.User.ID, backendquotas.MetricQueries, 1)
+		app.backend.Quota.Increment(r.Context(), principal, backendquotas.MetricQueries, 1)
 	}
 	finalData, marshalErr := json.Marshal(queryResponse{
 		SessionID:   result.SessionID,

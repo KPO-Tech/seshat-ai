@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 
 	publicskills "github.com/EngineerProjects/seshat/pkg/skills"
 	skillsloader "github.com/EngineerProjects/seshat/pkg/skills"
@@ -207,11 +206,8 @@ func (s *Service) CheckQuota(userDir string) error {
 	if _, err := os.Stat(statDir); os.IsNotExist(err) {
 		statDir = filepath.Dir(statDir)
 	}
-	var st syscall.Statfs_t
-	if err := syscall.Statfs(statDir, &st); err == nil {
-		if freeBytes := st.Bavail * uint64(st.Bsize); freeBytes < minDiskFreeBytes {
-			return fmt.Errorf("insufficient disk space (less than 50 MB free)")
-		}
+	if freeBytes, ok := freeDiskBytes(statDir); ok && freeBytes < minDiskFreeBytes {
+		return fmt.Errorf("insufficient disk space (less than 50 MB free)")
 	}
 	return nil
 }

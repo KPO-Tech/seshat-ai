@@ -5,14 +5,25 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudwebsearch"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	backendsettings "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/settings"
 	searchproviders "github.com/EngineerProjects/seshat/pkg/web/search/providers"
 )
+
+// cloudCacheTTL bounds how long a connected org's web-search config
+// (provider credentials, domain policy) is reused before being re-fetched.
+// This config changes rarely (an admin editing it in Seshat Console) but
+// was otherwise being re-resolved over HTTP on every single search/list
+// call; a short cache cuts that down to at most one fetch per window,
+// shared across every user of the org, while still picking up admin
+// changes within a bounded, short delay.
+const cloudCacheTTL = 30 * time.Second
 
 type Service struct {
 	settings        *db.WebSearchSettingStore
@@ -20,9 +31,20 @@ type Service struct {
 	providerConfigs *db.SearchProviderConfigStore
 	providers       *backendsettings.Service
 	runner          Runner
+	// cloudClient/organizationID are nil/empty in standalone mode. When set
+	// (connected mode, see internal/config/bootstrap.go), org/platform
+	// web-search providers not personally configured are merged into the
+	// resolution chain and org domain policy is merged into effective
+	// settings — see internal/cloudwebsearch's package doc for why this is
+	// additive enrichment rather than a Provider swap.
+	cloudClient    *cloudwebsearch.Client
+	organizationID string
+
+	cloudProvidersCache cloudProvidersCache
+	orgPolicyCache      orgPolicyCache
 }
 
-func NewService(settingsStore *db.WebSearchSettingStore, logStore *db.WebSearchLogStore, providerConfigs *db.SearchProviderConfigStore, providerSettings *backendsettings.Service, runner Runner) *Service {
+func NewService(settingsStore *db.WebSearchSettingStore, logStore *db.WebSearchLogStore, providerConfigs *db.SearchProviderConfigStore, providerSettings *backendsettings.Service, runner Runner, cloudClient *cloudwebsearch.Client, organizationID string) *Service {
 	if runner == nil {
 		runner = NewDefaultRunner()
 	}
@@ -32,7 +54,118 @@ func NewService(settingsStore *db.WebSearchSettingStore, logStore *db.WebSearchL
 		providerConfigs: providerConfigs,
 		providers:       providerSettings,
 		runner:          runner,
+		cloudClient:     cloudClient,
+		organizationID:  organizationID,
 	}
+}
+
+// cloudCandidate is one provider resolved from a connected seshat-server,
+// not personally configured locally.
+type cloudCandidate struct {
+	provider string
+	resolved *cloudwebsearch.ResolvedProviderSetting
+}
+
+// cloudProvidersCache holds the org's full catalog resolution (every
+// provider, not filtered to any one user's personal config) — the personal
+// skip-filter is applied per-caller after reading the cache, since which
+// providers a given user has already configured varies but the org's own
+// credentials don't.
+type cloudProvidersCache struct {
+	mu        sync.Mutex
+	results   []cloudCandidate
+	fetchedAt time.Time
+}
+
+type orgPolicyCache struct {
+	mu        sync.Mutex
+	policy    *cloudwebsearch.OrgPolicy
+	fetchedAt time.Time
+}
+
+// resolveCloudProviders returns every catalog provider not in skip that the
+// connected seshat-server has configured (org or platform tier), serving
+// from a short-lived cache shared across all users/requests when fresh.
+// Any provider that errors (most commonly: nothing configured for it) is
+// silently omitted — this is enrichment, never a hard dependency.
+func (s *Service) resolveCloudProviders(ctx context.Context, token string, skip map[string]bool) []cloudCandidate {
+	if s.cloudClient == nil || s.organizationID == "" || token == "" {
+		return nil
+	}
+	all := s.allCloudProviders(ctx, token)
+	if len(skip) == 0 {
+		return all
+	}
+	out := make([]cloudCandidate, 0, len(all))
+	for _, cand := range all {
+		if !skip[cand.provider] {
+			out = append(out, cand)
+		}
+	}
+	return out
+}
+
+// allCloudProviders resolves the org's ENTIRE catalog (unfiltered), using
+// the cache when fresh. Deliberately ignores any per-caller skip set so the
+// underlying network fetch — and its cache entry — can be shared by every
+// user of the org, not just the one making this particular call.
+func (s *Service) allCloudProviders(ctx context.Context, token string) []cloudCandidate {
+	s.cloudProvidersCache.mu.Lock()
+	if time.Since(s.cloudProvidersCache.fetchedAt) < cloudCacheTTL {
+		cached := s.cloudProvidersCache.results
+		s.cloudProvidersCache.mu.Unlock()
+		return cached
+	}
+	s.cloudProvidersCache.mu.Unlock()
+
+	var (
+		wg      sync.WaitGroup
+		mu      sync.Mutex
+		results []cloudCandidate
+	)
+	for _, cat := range providerCatalog {
+		name := cat.Name
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			resolved, err := s.cloudClient.ResolveProviderSetting(ctx, token, s.organizationID, name)
+			if err != nil || resolved == nil {
+				return
+			}
+			mu.Lock()
+			results = append(results, cloudCandidate{provider: name, resolved: resolved})
+			mu.Unlock()
+		}()
+	}
+	wg.Wait()
+
+	s.cloudProvidersCache.mu.Lock()
+	s.cloudProvidersCache.results = results
+	s.cloudProvidersCache.fetchedAt = time.Now()
+	s.cloudProvidersCache.mu.Unlock()
+	return results
+}
+
+// getOrgPolicy fetches the org's web-search domain policy, using the cache
+// when fresh — see cloudCacheTTL.
+func (s *Service) getOrgPolicy(ctx context.Context, token string) *cloudwebsearch.OrgPolicy {
+	s.orgPolicyCache.mu.Lock()
+	if time.Since(s.orgPolicyCache.fetchedAt) < cloudCacheTTL {
+		cached := s.orgPolicyCache.policy
+		s.orgPolicyCache.mu.Unlock()
+		return cached
+	}
+	s.orgPolicyCache.mu.Unlock()
+
+	policy, err := s.cloudClient.GetOrgPolicy(ctx, token, s.organizationID)
+	if err != nil {
+		return nil
+	}
+	s.orgPolicyCache.mu.Lock()
+	s.orgPolicyCache.policy = policy
+	s.orgPolicyCache.fetchedAt = time.Now()
+	s.orgPolicyCache.mu.Unlock()
+	return policy
 }
 
 // ── Provider catalog & config management ─────────────────────────────────────
@@ -97,6 +230,28 @@ func (s *Service) ListProviders(ctx context.Context, principal *backendauth.Prin
 			}
 		}
 		result = append(result, status)
+	}
+
+	if s.cloudClient != nil {
+		skip := make(map[string]bool, len(configured))
+		for name, row := range configured {
+			if row.Enabled {
+				skip[name] = true
+			}
+		}
+		for _, cand := range s.resolveCloudProviders(ctx, principal.AuthSession.ID, skip) {
+			for i := range result {
+				if result[i].Provider != cand.provider {
+					continue
+				}
+				result[i].Enabled = true
+				result[i].HasAPIKey = cand.resolved.APIKey != ""
+				result[i].BaseURL = cand.resolved.BaseURL
+				result[i].AuthUsername = cand.resolved.AuthUsername
+				result[i].Source = cand.resolved.Source
+				break
+			}
+		}
 	}
 	return result, nil
 }
@@ -192,14 +347,31 @@ func (s *Service) GetSettings(ctx context.Context, principal *backendauth.Princi
 	if s == nil || s.settings == nil || s.providers == nil {
 		return nil, bkerr.Unavailable("web search settings store not configured", nil)
 	}
+	var result *Settings
 	row, err := s.settings.GetByUserID(ctx, principal.User.ID)
 	if err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "not found") {
-			return defaultSettings(principal.User.ID), nil
+			result = defaultSettings(principal.User.ID)
+		} else {
+			return nil, bkerr.Internal("get web search settings: "+err.Error(), err)
 		}
-		return nil, bkerr.Internal("get web search settings: "+err.Error(), err)
+	} else {
+		result = settingsFromDB(*row)
 	}
-	return settingsFromDB(*row), nil
+
+	// Org domain policy merge: blocked domains are always applied on top of
+	// the user's own list (not user-removable locally), allowed domains are
+	// additive. Any failure (offline, no policy set, etc.) silently keeps
+	// the local-only policy — this is enrichment, never a hard dependency.
+	if s.cloudClient != nil && s.organizationID != "" {
+		if policy := s.getOrgPolicy(ctx, principal.AuthSession.ID); policy != nil {
+			result.OrgBlockedDomains = normalizeDomains(policy.BlockedDomains)
+			result.OrgAllowedDomains = normalizeDomains(policy.AllowedDomains)
+			result.BlockedDomains = unionDomains(result.BlockedDomains, result.OrgBlockedDomains)
+			result.AllowedDomains = unionDomains(result.AllowedDomains, result.OrgAllowedDomains)
+		}
+	}
+	return result, nil
 }
 
 func (s *Service) UpdateSettings(ctx context.Context, principal *backendauth.Principal, params UpdateSettingsParams) (*Settings, error) {
@@ -334,10 +506,12 @@ func (s *Service) resolveProviders(ctx context.Context, principal *backendauth.P
 		rows, err := s.providerConfigs.ListByUserID(ctx, principal.User.ID)
 		if err == nil {
 			var configs []SearchRunProvider
+			personallyEnabled := make(map[string]bool, len(rows))
 			for _, row := range rows {
 				if !row.Enabled {
 					continue
 				}
+				personallyEnabled[row.Provider] = true
 				cat := catalogByName(row.Provider)
 				baseURL := row.BaseURL
 				if baseURL == "" && cat != nil {
@@ -353,6 +527,16 @@ func (s *Service) resolveProviders(ctx context.Context, principal *backendauth.P
 					Secret:       strings.TrimSpace(apiKey),
 					AuthUsername: row.AuthUsername,
 				})
+			}
+			if s.cloudClient != nil {
+				for _, cand := range s.resolveCloudProviders(ctx, principal.AuthSession.ID, personallyEnabled) {
+					configs = append(configs, SearchRunProvider{
+						Provider:     cand.provider,
+						BaseURL:      strings.TrimSpace(cand.resolved.BaseURL),
+						Secret:       strings.TrimSpace(cand.resolved.APIKey),
+						AuthUsername: cand.resolved.AuthUsername,
+					})
+				}
 			}
 			if len(configs) > 0 {
 				// Sort by catalog priority so higher-priority providers are tried first.

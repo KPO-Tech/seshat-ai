@@ -254,7 +254,7 @@ func (app *App) handleMessagesSync(
 
 	app.triggerMemoryExtraction(principal, result)
 	if principal != nil {
-		app.backend.Quota.Increment(r.Context(), principal.User.ID, backendquotas.MetricQueries, 1)
+		app.backend.Quota.Increment(r.Context(), principal, backendquotas.MetricQueries, 1)
 	}
 
 	usage := anthropicUsage{}
@@ -416,7 +416,7 @@ func (app *App) handleMessagesStream(
 
 	app.triggerMemoryExtraction(principal, result)
 	if principal != nil {
-		app.backend.Quota.Increment(r.Context(), principal.User.ID, backendquotas.MetricQueries, 1)
+		app.backend.Quota.Increment(r.Context(), principal, backendquotas.MetricQueries, 1)
 	}
 
 	outputTokens := 0

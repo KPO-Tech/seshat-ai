@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Browser, Book, Brain, Flashlamp, Earth, Computer, Info,
-  Left, SunOne, Moon, Setting, User, Peoples, BuildingTwo, Workbench,
+  Left, SunOne, Moon, Setting, User, Peoples, BuildingTwo, Workbench, CloudStorage,
 } from '@icon-park/react'
 import { useUIStore } from '@/stores/ui'
 import { useAuthStore } from '@/stores/auth'
+import { api } from '@/api/client'
 import { SettingsSidebar, SETTINGS_NAV_CSS, SETTINGS_SHARED_CSS } from './SettingsNav'
 import { ProvidersView, PROVIDERS_CSS } from './ProvidersView'
 import { KnowledgeView } from './KnowledgeView'
@@ -14,6 +15,7 @@ import { AboutView } from './AboutView'
 import { CapabilitiesView, CAPABILITIES_CSS } from './CapabilitiesViews'
 import { WebSearchView } from './WebSearchView'
 import { GeneralView } from './GeneralView'
+import { CloudAutomationView } from './CloudAutomationView'
 import {
   AdminUsersView,
   AdminGroupsView,
@@ -29,7 +31,7 @@ export function Settings() {
   const location = useLocation()
   const initialTab = (() => {
     const requested = new URLSearchParams(location.search).get('tab')
-    if (requested === 'general' || requested === 'memories' || requested === 'providers' || requested === 'knowledge' || requested === 'capabilities' || requested === 'remote' || requested === 'system' || requested === 'about' || requested === 'admin-users' || requested === 'admin-groups' || requested === 'admin-organizations' || requested === 'admin-workspaces' || requested === 'admin-audit' || requested === 'admin-quotas') {
+    if (requested === 'general' || requested === 'memories' || requested === 'providers' || requested === 'knowledge' || requested === 'capabilities' || requested === 'remote' || requested === 'cloud-automation' || requested === 'system' || requested === 'about' || requested === 'admin-users' || requested === 'admin-groups' || requested === 'admin-organizations' || requested === 'admin-workspaces' || requested === 'admin-audit' || requested === 'admin-quotas') {
       return requested as TabId
     }
     return 'general' as TabId
@@ -61,6 +63,7 @@ export function Settings() {
       title: 'APPLICATION',
       items: [
         { id: 'remote' as TabId, label: 'Web Search', icon: <Earth size={20} /> },
+        { id: 'cloud-automation' as TabId, label: 'Cloud Automation', icon: <CloudStorage size={20} /> },
         { id: 'system' as TabId, label: 'System', icon: <Computer size={20} /> },
       ],
     },
@@ -122,6 +125,7 @@ export function Settings() {
           {activeTab === 'memories' && <MemoriesView />}
           {activeTab === 'capabilities' && <CapabilitiesView />}
           {activeTab === 'remote' && <WebSearchView />}
+          {activeTab === 'cloud-automation' && <CloudAutomationView />}
           {activeTab === 'system' && <SystemView />}
           {activeTab === 'about' && <AboutView />}
           {activeTab === 'admin-users' && <AdminUsersView />}
@@ -136,7 +140,15 @@ export function Settings() {
   )
 }
 
+type SystemStatus = { mode: 'standalone' | 'connected'; server_url?: string }
+
 function SystemView() {
+  const [status, setStatus] = useState<SystemStatus | null>(null)
+
+  useEffect(() => {
+    api.get<SystemStatus>('/system/status').then(setStatus).catch(() => setStatus(null))
+  }, [])
+
   return (
     <div className="sv-view">
       <header className="sv-view-header">
@@ -162,6 +174,20 @@ function SystemView() {
                 <div>
                   <div className="sv-setting-label">API Endpoint</div>
                   <div className="sv-setting-desc">http://localhost:8090</div>
+                </div>
+              </div>
+            </div>
+            <div className="sv-toggle-row">
+              <div className="sv-toggle-info">
+                <div>
+                  <div className="sv-setting-label">Identity mode</div>
+                  <div className="sv-setting-desc">
+                    {status?.mode === 'connected'
+                      ? `Connected to ${status.server_url}`
+                      : status?.mode === 'standalone'
+                        ? 'Standalone (local identity, no Seshat Server)'
+                        : 'Loading…'}
+                  </div>
                 </div>
               </div>
             </div>

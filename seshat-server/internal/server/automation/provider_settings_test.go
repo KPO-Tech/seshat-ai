@@ -128,6 +128,74 @@ func TestGetProviderSettingNeverExposesTheAPIKey(t *testing.T) {
 	}
 }
 
+func TestResolveProviderSettingMemberWithoutReadPermissionSucceeds(t *testing.T) {
+	t.Setenv(testEncryptionEnvVar, testEncryptionKey)
+	env := newTestEnv(t)
+	memberPrincipal := env.addMember(t, "member")
+
+	if _, err := env.automation.CreateProviderSetting(context.Background(), env.adminPrincipal, CreateProviderSettingParams{
+		OrganizationID: env.orgID, Provider: "mistral", DefaultModel: "mistral-small-latest", APIKey: "sk-mistral-org",
+	}); err != nil {
+		t.Fatalf("create org provider setting: %v", err)
+	}
+
+	// A member has no provider_settings.read/manage — ListProviderSettings
+	// would give them an empty list — but resolving their own effective
+	// config is a different, looser trust boundary and must succeed.
+	resolved, err := env.automation.ResolveProviderSetting(context.Background(), memberPrincipal, env.orgID, "mistral")
+	if err != nil {
+		t.Fatalf("expected a member to resolve their org's provider setting, got: %v", err)
+	}
+	if resolved.APIKey != "sk-mistral-org" || resolved.Source != "organization" {
+		t.Fatalf("unexpected resolved setting: %+v", resolved)
+	}
+}
+
+func TestResolveProviderSettingFallsBackToPlatformDefault(t *testing.T) {
+	t.Setenv(testEncryptionEnvVar, testEncryptionKey)
+	env := newTestEnv(t)
+	memberPrincipal := env.addMember(t, "member")
+
+	if _, err := env.automation.CreatePlatformProviderSetting(context.Background(), env.adminPrincipal, CreatePlatformProviderSettingParams{
+		Provider: "mistral", DefaultModel: "mistral-small-latest", APIKey: "sk-mistral-platform",
+	}); err != nil {
+		t.Fatalf("create platform provider setting: %v", err)
+	}
+
+	resolved, err := env.automation.ResolveProviderSetting(context.Background(), memberPrincipal, env.orgID, "mistral")
+	if err != nil {
+		t.Fatalf("expected fallback to the platform default to succeed, got: %v", err)
+	}
+	if resolved.APIKey != "sk-mistral-platform" || resolved.Source != "platform" {
+		t.Fatalf("unexpected resolved setting: %+v", resolved)
+	}
+}
+
+func TestResolveProviderSettingRejectsNonMember(t *testing.T) {
+	t.Setenv(testEncryptionEnvVar, testEncryptionKey)
+	env := newTestEnv(t)
+	outsider := env.addOutsider(t)
+
+	if _, err := env.automation.CreateProviderSetting(context.Background(), env.adminPrincipal, CreateProviderSettingParams{
+		OrganizationID: env.orgID, Provider: "mistral", DefaultModel: "mistral-small-latest", APIKey: "sk-mistral-org",
+	}); err != nil {
+		t.Fatalf("create org provider setting: %v", err)
+	}
+
+	if _, err := env.automation.ResolveProviderSetting(context.Background(), outsider, env.orgID, "mistral"); err == nil {
+		t.Fatal("expected a non-member of the organization to be rejected")
+	}
+}
+
+func TestResolveProviderSettingNotFound(t *testing.T) {
+	t.Setenv(testEncryptionEnvVar, testEncryptionKey)
+	env := newTestEnv(t)
+
+	if _, err := env.automation.ResolveProviderSetting(context.Background(), env.adminPrincipal, env.orgID, "anthropic"); err == nil {
+		t.Fatal("expected resolving a provider with no org or platform setting to fail")
+	}
+}
+
 func TestUpdateProviderSettingKeepsExistingKeyWhenNotSupplied(t *testing.T) {
 	t.Setenv(testEncryptionEnvVar, testEncryptionKey)
 	env := newTestEnv(t)

@@ -87,6 +87,22 @@ func TestDeviceJobRunEndToEndOverHTTP(t *testing.T) {
 		t.Fatalf("expected to claim the triggered run, got %s", claimed.ID)
 	}
 
+	// Device fetches the execution payload for the run it just claimed.
+	runJobRequest := httptest.NewRequest(http.MethodGet, "/api/v1/device/runs/"+run.ID+"/job", nil)
+	runJobRequest.Header.Set("Authorization", "Bearer "+registered.Token)
+	runJobRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(runJobRecorder, runJobRequest)
+	if runJobRecorder.Code != http.StatusOK {
+		t.Fatalf("expected run job fetch success, got %d: %s", runJobRecorder.Code, runJobRecorder.Body.String())
+	}
+	var runJob automation.RunJob
+	if err := json.NewDecoder(runJobRecorder.Body).Decode(&runJob); err != nil {
+		t.Fatalf("decode run job: %v", err)
+	}
+	if runJob.Prompt != "Sweep the local workspace." {
+		t.Fatalf("expected the claimed run's job prompt, got %q", runJob.Prompt)
+	}
+
 	// The user's own session token must not be accepted on the device protocol.
 	wrongAuthRequest := httptest.NewRequest(http.MethodPost, "/api/v1/device/runs/"+run.ID+"/start", nil)
 	wrongAuthRequest.Header.Set("Authorization", "Bearer "+token)

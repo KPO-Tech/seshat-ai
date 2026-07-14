@@ -124,6 +124,18 @@ func (d *DB) Migrate() error {
 		&KnowledgeIngestionJob{},
 		&EmbedderSetting{},
 		&PlatformEmbedderSetting{},
+		&UserPreference{},
+		&SkillRepo{},
+		&WebSearchProviderSetting{},
+		&PlatformWebSearchProviderSetting{},
+		&WebSearchOrgPolicy{},
+		&MCPServerConfig{},
+		&UserMemory{},
+		&MemoryEntity{},
+		&MemoryObservation{},
+		&MemoryRelation{},
+		&AgentPreset{},
+		&UsageCounter{},
 	)
 }
 
