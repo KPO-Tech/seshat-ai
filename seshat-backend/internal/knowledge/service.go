@@ -36,12 +36,12 @@ var doclingIngestExtensions = map[string]bool{
 }
 
 type Service struct {
-	corpora       *db.CorpusStore
-	files         *db.FileStore
-	jobs          *db.KnowledgeIngestionJobStore
-	artifacts     storage.ArtifactStore
-	rag           *rag.Service
-	doclingClient *docling.Client
+	corpora              *db.CorpusStore
+	files                *db.FileStore
+	jobs                 *db.KnowledgeIngestionJobStore
+	artifacts            storage.ArtifactStore
+	rag                  *rag.Service
+	resolveDoclingClient func(ctx context.Context) *docling.Client
 }
 
 func NewService(
@@ -60,10 +60,14 @@ func NewService(
 	}
 }
 
-// WithDocling attaches a docling client so binary files (PDF, DOCX, PPTX, XLSX,
-// audio, images) are converted to markdown before chunking and embedding.
-func (s *Service) WithDocling(client *docling.Client) *Service {
-	s.doclingClient = client
+// WithDocling attaches a resolver that returns the docling client to use for
+// binary files (PDF, DOCX, PPTX, XLSX, audio, images), converted to markdown
+// before chunking and embedding — re-evaluated on every call rather than
+// cached, since the user can change which docling-serve instance to use at
+// runtime (Settings > Knowledge), see
+// internal/config/bootstrap.go's resolveDocling closure.
+func (s *Service) WithDocling(resolve func(ctx context.Context) *docling.Client) *Service {
+	s.resolveDoclingClient = resolve
 	return s
 }
 
@@ -600,12 +604,14 @@ func (s *Service) checkFileAccess(principal *backendauth.Principal, fileRecord *
 // images to markdown, which the chunker can then split into vector records.
 func (s *Service) extractTextWithDocling(ctx context.Context, data []byte, contentType, filename string) string {
 	ext := strings.ToLower(filepath.Ext(filename))
-	if s.doclingClient != nil && doclingIngestExtensions[ext] && s.doclingClient.IsAvailable(ctx) {
-		result, err := s.doclingClient.ConvertBytes(ctx, data, filename)
-		if err == nil && strings.TrimSpace(result.Markdown) != "" {
-			return result.Markdown
+	if s.resolveDoclingClient != nil && doclingIngestExtensions[ext] {
+		if doclingClient := s.resolveDoclingClient(ctx); doclingClient != nil && doclingClient.IsAvailable(ctx) {
+			result, err := doclingClient.ConvertBytes(ctx, data, filename)
+			if err == nil && strings.TrimSpace(result.Markdown) != "" {
+				return result.Markdown
+			}
+			// Docling failed or returned empty — fall through to plain-text extraction.
 		}
-		// Docling failed or returned empty — fall through to plain-text extraction.
 	}
 	return extractText(data, contentType, filename)
 }

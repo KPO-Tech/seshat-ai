@@ -265,6 +265,12 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		return nil, nil, fmt.Errorf("init embedder config store: %w", err)
 	}
 
+	doclingConfigStore, err := db.NewDoclingConfigStore(database)
+	if err != nil {
+		_ = cleanup()
+		return nil, nil, fmt.Errorf("init docling config store: %w", err)
+	}
+
 	userMemoryStore, err := db.NewUserMemoryStore(database)
 	if err != nil {
 		_ = cleanup()
@@ -566,6 +572,26 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 
 	runtime := backendquery.NewSDKRuntime(queryClient, queryClientConfig)
 
+	// resolveDocling lets Settings > Knowledge override, at runtime, which
+	// docling-serve instance to use (self-hosted, on the local network, or
+	// an organization's own) — without needing an env var or a restart.
+	// bootDoclingClient is the fallback: whatever config.DoclingURL resolved
+	// to at boot, which already reflects the managed local venv if
+	// cmd/api/main.go auto-started one (see docling_config.go's doc comment
+	// for the full priority order).
+	bootDoclingClient := buildDoclingClient(config.DoclingURL)
+	resolveDocling := func(ctx context.Context) *docling.Client {
+		if cfg, err := doclingConfigStore.Get(ctx); err == nil && cfg != nil {
+			if !cfg.Enabled {
+				return nil
+			}
+			if cfg.BaseURL != "" {
+				return docling.NewClient(cfg.BaseURL)
+			}
+		}
+		return bootDoclingClient
+	}
+
 	backendApp := seshat.NewApp(seshat.Dependencies{
 		Identity:             identityStore,
 		APIKeyStore:          apiKeyStore,
@@ -600,7 +626,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		ArtifactStore:            artifactStore,
 		RAGService:               ragService,
 		Monitoring:               queryClient.GetMonitoring(),
-		DoclingClient:            buildDoclingClient(config.DoclingURL),
+		ResolveDoclingClient:     resolveDocling,
 		UserMemoryStore:          userMemoryStore,
 		LongTermMemoryStore:      longTermMemStore,
 		LongTermExtractor:        longTermExtractor,
@@ -651,6 +677,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		ModelStore:              modelStore,
 		GroupStore:              groupStore,
 		EmbedderStore:           embedderConfigStore,
+		DoclingStore:            doclingConfigStore,
 		StorageConfigStore:      storageConfigStore,
 		LongTermExtractor:       longTermExtractor,
 		CloudAutomation:         cloudAutomationService,

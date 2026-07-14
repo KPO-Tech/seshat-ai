@@ -1,6 +1,8 @@
 package seshat
 
 import (
+	"context"
+
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/agents"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/audit"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
@@ -68,7 +70,13 @@ type Dependencies struct {
 	ArtifactStore           storage.ArtifactStore // nil = blob storage disabled
 	RAGService              *rag.Service          // nil = embedder not configured
 	Monitoring              metrics.Snapshotter
-	DoclingClient           *docling.Client // nil = no auto-conversion
+	// ResolveDoclingClient returns the docling client to use for a given
+	// call, re-evaluated on every invocation (not cached) — nil = no
+	// auto-conversion. Set by bootstrap.go to check the user's persisted
+	// Settings > Knowledge override first, falling back to whatever was
+	// resolved from config.DoclingURL at boot (see docling_config.go's
+	// doc comment for the priority order).
+	ResolveDoclingClient func(ctx context.Context) *docling.Client
 	// New services
 	UserMemoryStore *db.UserMemoryStore
 	// LongTermMemoryStore is longterm.Store (an SDK interface), not a
@@ -157,8 +165,8 @@ func NewApp(deps Dependencies) *App {
 		preferencesProvider = preferences.NewLocalProvider(deps.UserPreferencesStore)
 	}
 	preferencesService := preferences.NewService(preferencesProvider)
-	filesService := files.NewService(deps.FileStore, deps.ArtifactStore).WithDocling(deps.DoclingClient)
-	knowledgeService := knowledge.NewService(deps.CorpusStore, deps.FileStore, deps.IngestionJobStore, deps.ArtifactStore, deps.RAGService).WithDocling(deps.DoclingClient)
+	filesService := files.NewService(deps.FileStore, deps.ArtifactStore).WithDocling(deps.ResolveDoclingClient)
+	knowledgeService := knowledge.NewService(deps.CorpusStore, deps.FileStore, deps.IngestionJobStore, deps.ArtifactStore, deps.RAGService).WithDocling(deps.ResolveDoclingClient)
 	skillsService := skills.NewService()
 	agentsService := agents.NewService(deps.AgentDefinitionStore, deps.AgentsCloudClient, deps.AgentsOrganizationID)
 	quotaProvider := deps.QuotaProvider
