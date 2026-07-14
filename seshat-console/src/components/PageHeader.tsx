@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
 import { Typography } from 'antd'
 
-/** Consistent title/description/actions row, reused across every domain page. */
 export function PageHeader({
   title,
   description,
@@ -12,26 +11,18 @@ export function PageHeader({
   actions?: ReactNode
 }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'flex-start',
-        justifyContent: 'space-between',
-        gap: 16,
-        marginBottom: 20,
-      }}
-    >
-      <div>
+    <div className="console-page-header">
+      <div className="console-page-header__meta">
         <Typography.Title level={4} style={{ margin: 0, fontWeight: 600 }}>
           {title}
         </Typography.Title>
         {description && (
-          <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+          <Typography.Text className="console-page-header__description" type="secondary">
             {description}
           </Typography.Text>
         )}
       </div>
-      {actions}
+      {actions ? <div className="console-page-header__actions">{actions}</div> : null}
     </div>
   )
 }

@@ -1,30 +1,28 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Alert, Button, Drawer, Empty, Popconfirm, Select, Space, Table, Tag, Typography, message } from 'antd'
+import { Button, Drawer, Empty, Popconfirm, Select, Space, Tag, Typography, message } from 'antd'
 import type { TableProps } from 'antd'
 import { StopOutlined, PlayCircleOutlined } from '@ant-design/icons'
 import { useRunsList, useCancelRun, type Run, type RunStatus } from '@/api/runs'
 import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
-import { OrganizationPicker } from '@/components/OrganizationPicker'
-import { useConsoleOrgStore } from '@/store/consoleOrg'
+import { ConsoleTable } from '@/components/ConsoleTable'
+import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
 import { palette, monoStack } from '@/theme/tokens'
+import { presentDateTime } from '@/lib/present'
 
 const PAGE_SIZE = 20
 
-const STATUS_COLORS: Record<string, string> = {
-  queued: 'default',
+const STATUS_COLORS: Record<string, string> = { queued: 'default',
   claimed: 'blue',
   running: 'processing',
   completed: 'green',
   failed: 'red',
-  cancelled: 'default',
-}
+  cancelled: 'default', }
 
 const CANCELLABLE = new Set(['queued', 'claimed', 'running'])
 
-export function RunsPage() {
-  const organizationId = useConsoleOrgStore((s) => s.organizationId)
+export function RunsPage() { const organizationId = useScopedOrganizationId()
   const [searchParams, setSearchParams] = useSearchParams()
   const jobIdFilter = searchParams.get('job_id') ?? undefined
   const [status, setStatus] = useState<RunStatus | undefined>(undefined)
@@ -39,49 +37,37 @@ export function RunsPage() {
   const cancelRun = useCancelRun()
 
   const columns: TableProps<Run>['columns'] = [
-    {
-      title: 'Job',
+    { title: 'Job',
       dataIndex: 'job_id',
       key: 'job_id',
-      render: (v: string) => <Typography.Text code>{v}</Typography.Text>,
-    },
-    {
-      title: 'Status',
+      render: (v: string) => <Typography.Text code>{v}</Typography.Text>, },
+    { title: 'Status',
       dataIndex: 'status',
       key: 'status',
       width: 120,
-      render: (s: string) => <Tag color={STATUS_COLORS[s]}>{s}</Tag>,
-    },
+      render: (s: string) => <Tag color={STATUS_COLORS[s]}>{s}</Tag>, },
     { title: 'Target', dataIndex: 'execution_target', key: 'execution_target', width: 100 },
-    {
-      title: 'Queued',
+    { title: 'Queued',
       dataIndex: 'queued_at',
       key: 'queued_at',
-      render: (v: string) => new Date(v).toLocaleString(),
-    },
-    {
-      title: 'Finished',
+      render: (v: string) => new Date(v).toLocaleString(), },
+    { title: 'Finished',
       dataIndex: 'finished_at',
       key: 'finished_at',
-      render: (v: string | null) => (v ? new Date(v).toLocaleString() : '—'),
-    },
-    {
-      title: '',
+      render: (v: string | null) => presentDateTime(v, 'Still running'), },
+    { title: '',
       key: 'actions',
       width: 64,
       render: (_, record) =>
         CANCELLABLE.has(record.status!) ? (
           <Popconfirm
             title="Cancel this run?"
-            onConfirm={(e) => {
-              e?.stopPropagation()
-              cancelRun.mutate(record.id!, { onError: (error) => message.error(getErrorMessage(error)) })
-            }}
+            onConfirm={(e) => { e?.stopPropagation()
+              cancelRun.mutate(record.id!, { onError: (error) => message.error(getErrorMessage(error)) }) }}
           >
             <Button size="small" danger icon={<StopOutlined />} onClick={(e) => e.stopPropagation()} aria-label="Cancel run" />
           </Popconfirm>
-        ) : null,
-    },
+        ) : null, },
   ]
 
   return (
@@ -89,9 +75,7 @@ export function RunsPage() {
       <PageHeader
         title="Runs"
         description={jobIdFilter ? `Executions of job ${jobIdFilter}.` : 'Every job execution across this organization.'}
-        actions={
-          <Space>
-            <OrganizationPicker />
+        actions={ <Space>
             {jobIdFilter && (
               <Button onClick={() => setSearchParams({})}>Clear job filter</Button>
             )}
@@ -100,46 +84,33 @@ export function RunsPage() {
               placeholder="Status"
               style={{ width: 140 }}
               value={status}
-              onChange={(v) => {
-                setPage(1)
-                setStatus(v as RunStatus | undefined)
-              }}
-              options={['queued', 'claimed', 'running', 'completed', 'failed', 'cancelled'].map((s) => ({
-                value: s,
-                label: s,
-              }))}
+              onChange={(v) => { setPage(1)
+                setStatus(v as RunStatus | undefined) }}
+              options={['queued', 'claimed', 'running', 'completed', 'failed', 'cancelled'].map((s) => ({ value: s,
+                label: s, }))}
             />
-          </Space>
-        }
+          </Space> }
       />
 
-      {!organizationId ? (
-        <Alert type="info" showIcon title="Pick an organization above to see its runs." />
-      ) : (
-        <Table<Run>
+      <ConsoleTable<Run>
           rowKey="id"
           columns={columns}
           dataSource={data?.runs ?? []}
           loading={isLoading || isFetching}
           onRow={(record) => ({ onClick: () => setDetail(record), style: { cursor: 'pointer' } })}
-          locale={{
-            emptyText: (
+          locale={{ emptyText: (
               <Empty
                 image={<PlayCircleOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}
                 description="No runs yet"
                 style={{ padding: '32px 0' }}
               />
-            ),
-          }}
-          pagination={{
-            current: page,
+            ), }}
+          pagination={{ current: page,
             pageSize: PAGE_SIZE,
             total: data?.total ?? 0,
             onChange: setPage,
-            showTotal: (total) => `${total} runs`,
-          }}
+            showTotal: (total) => `${total} runs`, }}
         />
-      )}
 
       <Drawer title="Run detail" open={detail !== null} onClose={() => setDetail(null)} size={480}>
         {detail && (
@@ -178,5 +149,4 @@ export function RunsPage() {
         )}
       </Drawer>
     </div>
-  )
-}
+  ) }

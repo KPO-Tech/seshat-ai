@@ -1,6 +1,6 @@
 import { Alert, message, Space } from 'antd'
 import { PageHeader } from '@/components/PageHeader'
-import { OrganizationPicker } from '@/components/OrganizationPicker'
+import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
 import { EmbedderSettingForm } from '@/components/EmbedderSettingForm'
 import {
   useEmbedderSetting,
@@ -8,39 +8,37 @@ import {
   useDeleteEmbedderSetting,
   type EmbedderSettingInput,
 } from '@/api/embedderSettings'
-import { useConsoleOrgStore } from '@/store/consoleOrg'
 import { getErrorMessage } from '@/api/errors'
 
 export function EmbedderSettingsPage() {
-  const organizationId = useConsoleOrgStore((s) => s.organizationId)
+  const organizationId = useScopedOrganizationId()
   const { data: setting, isLoading } = useEmbedderSetting(organizationId ?? undefined)
   const setSetting = useSetEmbedderSetting()
   const deleteSetting = useDeleteEmbedderSetting()
+
+  if (!organizationId) return null
 
   return (
     <div>
       <PageHeader
         title="Embedder Settings"
-        description="The embedder this organization uses for RAG ingestion and search — falls back to the platform default when not set."
-        actions={<OrganizationPicker />}
+        description="The embedder this organization uses for RAG ingestion and search. It falls back to the platform default when not set."
+        actions={undefined}
       />
 
-      {!organizationId ? (
-        <Alert type="info" showIcon title="Pick an organization above to view or edit its embedder configuration." />
-      ) : (
-        <Space orientation="vertical" size={16} style={{ width: '100%' }}>
+      <Space orientation="vertical" size={16} style={{ width: '100%' }}>
           <Alert
             type="info"
             showIcon
             title="Why this can only ever be one embedder"
-            description="A corpus's vectors are all produced by whichever embedder was active at ingest time — switching embedders after documents exist would silently mix incompatible vector dimensions in the same corpus. Re-ingest affected files if you do need to change providers."
+            description="A corpus's vectors are all produced by whichever embedder was active at ingest time. Switching embedders after documents exist would silently mix incompatible vector dimensions in the same corpus. Re-ingest affected files if you need to change providers."
           />
           <EmbedderSettingForm
             setting={setting}
             loading={isLoading}
             saving={setSetting.isPending}
             deleting={deleteSetting.isPending}
-            emptyDescription="No embedder configured for this organization yet — it will fall back to the platform default, if one exists."
+            emptyDescription="No embedder configured for this organization yet. It will fall back to the platform default, if one exists."
             onSave={(values: EmbedderSettingInput) => {
               setSetting.mutate(
                 { organizationId, body: values },
@@ -58,7 +56,6 @@ export function EmbedderSettingsPage() {
             }}
           />
         </Space>
-      )}
     </div>
   )
 }

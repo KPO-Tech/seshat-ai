@@ -1,78 +1,140 @@
-import { Layout, Menu, Dropdown, Avatar, Space, Typography } from 'antd'
-import { UserOutlined, LogoutOutlined, CrownOutlined } from '@ant-design/icons'
-import { Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { useAuthStore } from '@/store/auth'
+import { useEffect } from 'react'
+import { Avatar, Dropdown, Layout, Menu, Space, Tag, Typography } from 'antd'
+import { LogoutOutlined, UserOutlined } from '@ant-design/icons'
+import { Outlet, matchPath, useLocation, useNavigate } from 'react-router-dom'
+import { useOrganizationsList } from '@/api/organizations'
 import { useLogout } from '@/api/auth'
-import { navGroups, dashboardNavItem, allNavItems, platformNavGroup, allPlatformNavItems } from '@/layout/nav'
+import { OrganizationSelect } from '@/components/OrganizationSelect'
+import {
+  getActivePrimaryNavItem,
+  getActiveSecondaryNavItem,
+  getOrganizationNavItems,
+  getScopeTagLabel,
+  getSecondaryNavItems,
+  platformNavItems,
+} from '@/layout/nav'
+import { useAuthStore } from '@/store/auth'
+import { useWorkspaceOrganizationStore } from '@/store/workspaceOrganization'
 import { palette } from '@/theme/tokens'
 
 const { Sider, Header, Content } = Layout
+const EMPTY_ORGANIZATIONS: Array<{ id: string; name: string }> = []
 
 export function AppLayout() {
   const location = useLocation()
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const logout = useLogout()
-  const isAdmin = Boolean(user?.is_admin)
+  const selectedOrganizationId = useWorkspaceOrganizationStore((s) => s.organizationId)
+  const setSelectedOrganizationId = useWorkspaceOrganizationStore((s) => s.setOrganizationId)
+  const { data: organizationsData } = useOrganizationsList({ sort: 'name', order: 'asc', limit: 200 })
 
-  const allItems = [dashboardNavItem, ...allNavItems, ...(isAdmin ? allPlatformNavItems : [])]
-  const selectedKey = allItems.find((item) => location.pathname.startsWith(item.path))?.key
+  const organizations = organizationsData?.organizations ?? EMPTY_ORGANIZATIONS
+  const routeOrganizationId = matchPath('/orgs/:organizationId/*', location.pathname)?.params.organizationId ?? null
+  const fallbackOrganizationId = organizations[0]?.id ?? null
+  const selectedOrganizationExists = selectedOrganizationId
+    ? organizations.some((organization) => organization.id === selectedOrganizationId)
+    : false
+
+  useEffect(() => {
+    if (routeOrganizationId) {
+      if (selectedOrganizationId !== routeOrganizationId) {
+        setSelectedOrganizationId(routeOrganizationId)
+      }
+      return
+    }
+
+    if (!fallbackOrganizationId) return
+
+    if (!selectedOrganizationId || !selectedOrganizationExists) {
+      setSelectedOrganizationId(fallbackOrganizationId)
+    }
+  }, [
+    routeOrganizationId,
+    selectedOrganizationId,
+    selectedOrganizationExists,
+    fallbackOrganizationId,
+    setSelectedOrganizationId,
+  ])
+
+  const workspaceOrganizationId = routeOrganizationId ?? selectedOrganizationId ?? fallbackOrganizationId
+  const organizationNavItems = workspaceOrganizationId ? getOrganizationNavItems(workspaceOrganizationId) : []
+  const activePrimary = getActivePrimaryNavItem(location.pathname, workspaceOrganizationId)
+  const secondaryNavItems = getSecondaryNavItems(location.pathname, workspaceOrganizationId)
+  const activeSecondary = getActiveSecondaryNavItem(location.pathname, secondaryNavItems)
 
   const menuItems = [
-    { key: dashboardNavItem.key, label: dashboardNavItem.label, icon: dashboardNavItem.icon },
-    ...navGroups.map((group) => ({
-      key: group.key,
-      label: group.label,
+    {
+      key: 'platform-group',
       type: 'group' as const,
-      // "Users" is platform-admin only server-side (requireAdmin) — hidden
-      // here rather than left as a nav link that always 403s for everyone else.
-      children: group.items
-        .filter((item) => item.key !== 'users' || isAdmin)
-        .map((item) => ({ key: item.key, label: item.label, icon: item.icon })),
-    })),
-    ...(isAdmin
+      label: 'Platform',
+      children: platformNavItems.map((item) => ({ key: item.key, label: item.label, icon: item.icon })),
+    },
+    ...(organizationNavItems.length > 0
       ? [
           {
-            key: platformNavGroup.key,
-            label: (
-              <span>
-                <CrownOutlined style={{ marginRight: 6 }} />
-                {platformNavGroup.label}
-              </span>
-            ),
+            key: 'organization-group',
             type: 'group' as const,
-            children: platformNavGroup.items.map((item) => ({ key: item.key, label: item.label, icon: item.icon })),
+            label: 'Organization',
+            children: organizationNavItems.map((item) => ({ key: item.key, label: item.label, icon: item.icon })),
           },
         ]
       : []),
   ]
 
+  const primaryItems = [...platformNavItems, ...organizationNavItems]
+
+  const navigateToOrganization = (nextOrganizationId: string | undefined) => {
+    if (!nextOrganizationId) return
+    setSelectedOrganizationId(nextOrganizationId)
+
+    if (routeOrganizationId) {
+      const suffix = location.pathname.replace(`/orgs/${routeOrganizationId}`, '') || '/overview'
+      navigate(`/orgs/${nextOrganizationId}${suffix}`)
+      return
+    }
+
+    navigate(`/orgs/${nextOrganizationId}/overview`)
+  }
+
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Sider theme="dark" width={232} style={{ position: 'sticky', top: 0, height: '100vh', overflow: 'auto' }}>
+    <Layout className="console-shell" style={{ minHeight: '100vh', background: palette.canvas }}>
+      <Sider
+        theme="dark"
+        width={272}
+        style={{
+          position: 'sticky',
+          top: 0,
+          height: '100vh',
+          overflowX: 'hidden',
+          overflowY: 'auto',
+          borderRight: `1px solid ${palette.border}`,
+        }}
+      >
         <div
           style={{
-            color: '#fff',
+            color: palette.ink,
             fontWeight: 600,
             fontSize: 15,
-            padding: '20px 20px 16px',
+            padding: '22px 20px 18px',
             letterSpacing: 0.1,
             display: 'flex',
             alignItems: 'center',
-            gap: 8,
+            gap: 10,
           }}
         >
           <span
             style={{
-              width: 22,
-              height: 22,
-              borderRadius: 6,
+              width: 24,
+              height: 24,
+              borderRadius: 7,
               background: palette.accent,
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontSize: 12,
               fontWeight: 700,
+              color: '#1F1D22',
               flexShrink: 0,
             }}
           >
@@ -80,30 +142,67 @@ export function AppLayout() {
           </span>
           Seshat Console
         </div>
+
+        <div style={{ padding: '0 16px 16px' }}>
+          <div
+            style={{
+              padding: 14,
+              border: `1px solid ${palette.border}`,
+              borderRadius: 12,
+              background: palette.surface,
+            }}
+          >
+            <Typography.Text style={{ display: 'block', fontSize: 12, color: palette.inkTertiary, marginBottom: 8 }}>
+              Organization
+            </Typography.Text>
+            <OrganizationSelect
+              value={workspaceOrganizationId ?? undefined}
+              onChange={navigateToOrganization}
+              placeholder="Choose organization"
+              style={{ width: '100%', minWidth: 0 }}
+            />
+          </div>
+        </div>
+
         <Menu
           theme="dark"
           mode="inline"
-          selectedKeys={selectedKey ? [selectedKey] : []}
+          selectedKeys={activePrimary ? [activePrimary.key] : []}
           items={menuItems}
           style={{ borderInlineEnd: 'none' }}
           onClick={({ key }) => {
-            const target = allItems.find((item) => item.key === key)
+            const target = primaryItems.find((item) => item.key === key)
             if (target) navigate(target.path)
           }}
         />
       </Sider>
-      <Layout>
+
+      <Layout style={{ minWidth: 0 }}>
         <Header
           style={{
             background: palette.surface,
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'flex-end',
-            paddingInline: 24,
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            padding: '16px 24px',
             borderBottom: `1px solid ${palette.border}`,
-            height: 56,
+            minHeight: 72,
+            height: 'auto',
+            gap: 16,
           }}
         >
+          <div style={{ minWidth: 0, flex: '1 1 320px' }}>
+            <Space size={10} align="center" wrap>
+              <Tag color="orange" style={{ margin: 0 }}>
+                {getScopeTagLabel(location.pathname)}
+              </Tag>
+              <Typography.Title level={5} style={{ margin: 0, color: palette.ink }}>
+                {activePrimary?.label ?? 'Console'}
+              </Typography.Title>
+            </Space>
+          </div>
+
           <Dropdown
             trigger={['click']}
             menu={{
@@ -117,13 +216,38 @@ export function AppLayout() {
               ],
             }}
           >
-            <Space style={{ cursor: 'pointer' }}>
+            <Space style={{ cursor: 'pointer', flexShrink: 0, maxWidth: '100%' }}>
               <Avatar size="small" style={{ background: palette.accentSoft, color: palette.accent }} icon={<UserOutlined />} />
-              <Typography.Text style={{ fontSize: 13 }}>{user?.display_name ?? user?.email}</Typography.Text>
+              <Typography.Text className="console-user-label" style={{ fontSize: 13 }}>
+                {user?.display_name ?? user?.email}
+              </Typography.Text>
             </Space>
           </Dropdown>
         </Header>
-        <Content style={{ padding: 28, width: '100%' }}>
+
+        {secondaryNavItems.length > 1 && (
+          <div
+            className="console-subnav"
+            style={{
+              padding: '0 24px',
+              background: palette.surface,
+              borderBottom: `1px solid ${palette.borderSubtle}`,
+            }}
+          >
+            <Menu
+              mode="horizontal"
+              selectedKeys={activeSecondary ? [activeSecondary.key] : []}
+              items={secondaryNavItems.map((item) => ({ key: item.key, label: item.label }))}
+              style={{ background: 'transparent', borderBottom: 'none', minWidth: 'max-content' }}
+              onClick={({ key }) => {
+                const target = secondaryNavItems.find((item) => item.key === key)
+                if (target) navigate(target.path)
+              }}
+            />
+          </div>
+        )}
+
+        <Content className="console-content" style={{ padding: 28, width: '100%', minWidth: 0 }}>
           <Outlet />
         </Content>
       </Layout>

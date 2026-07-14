@@ -12,7 +12,7 @@ export interface ListParams {
   offset?: number
 }
 
-// Inline request bodies in openapi.yaml (not named schemas) — create attaches
+// Inline request bodies in openapi.yaml (not named schemas) - create attaches
 // an organization+role in the same call (system roles only, see
 // canonicalRoleCode server-side), update is platform-fields only.
 export interface UserCreateInput {
@@ -36,7 +36,7 @@ export function useUsersList(params: ListParams, options?: { enabled?: boolean }
   return useQuery({
     queryKey: [LIST_KEY, params],
     enabled: options?.enabled,
-    // Platform-admin only server-side (requireAdmin) — a non-admin org
+    // Platform-admin only server-side (requireAdmin) - a non-admin org
     // owner/manager gets a 403 that retrying can't fix, so don't hammer it.
     retry: false,
     queryFn: async () => {

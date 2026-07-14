@@ -1,29 +1,27 @@
 import { useEffect, useState } from 'react'
-import { Button, Drawer, Empty, Form, Input, message, Popconfirm, Select, Space, Switch, Table, Tag, Typography } from 'antd'
+import { Button, Drawer, Empty, Form, Input, message, Popconfirm, Select, Space, Switch, Tag, Typography } from 'antd'
 import type { TableProps } from 'antd'
 import { PlusOutlined, DeleteOutlined, EditOutlined, UserOutlined, KeyOutlined } from '@ant-design/icons'
-import {
-  useUsersList,
+import { useUsersList,
   useCreateUser,
   useUpdateUser,
   useDeleteUser,
   useRevokeUserSessions,
   type User,
   type UserCreateInput,
-  type UserUpdateInput,
-} from '@/api/users'
+  type UserUpdateInput, } from '@/api/users'
 import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
-import { OrganizationPicker } from '@/components/OrganizationPicker'
-import { useConsoleOrgStore } from '@/store/consoleOrg'
+import { ConsoleTable } from '@/components/ConsoleTable'
+import { OrganizationSelect } from '@/components/OrganizationSelect'
 import { palette } from '@/theme/tokens'
 
 const PAGE_SIZE = 20
 
-export function UsersPage() {
-  const [page, setPage] = useState(1)
+export function UsersPage() { const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<User | 'new' | null>(null)
+  const [newUserOrganizationId, setNewUserOrganizationId] = useState<string | undefined>(undefined)
 
   const { data, isLoading, isFetching } = useUsersList(
     { q: search || undefined, sort: 'email', order: 'asc', limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE },
@@ -35,8 +33,7 @@ export function UsersPage() {
   const revokeSessions = useRevokeUserSessions()
 
   const columns: TableProps<User>['columns'] = [
-    {
-      title: 'Email',
+    { title: 'Email',
       dataIndex: 'email',
       key: 'email',
       render: (email: string, record) => (
@@ -44,17 +41,13 @@ export function UsersPage() {
           <div style={{ fontWeight: 500 }}>{record.display_name}</div>
           <Typography.Text style={{ fontSize: 12, color: palette.inkTertiary }}>{email}</Typography.Text>
         </div>
-      ),
-    },
-    {
-      title: 'Access',
+      ), },
+    { title: 'Access',
       dataIndex: 'is_admin',
       key: 'is_admin',
       width: 140,
-      render: (isAdmin: boolean) => (isAdmin ? <Tag color="orange">Platform admin</Tag> : <Tag>Standard</Tag>),
-    },
-    {
-      title: '',
+      render: (isAdmin: boolean) => (isAdmin ? <Tag color="orange">Platform admin</Tag> : <Tag>Standard</Tag>), },
+    { title: '',
       key: 'actions',
       width: 128,
       render: (_, record) => (
@@ -68,11 +61,8 @@ export function UsersPage() {
           <Popconfirm
             title={`Revoke all sessions for ${record.email}?`}
             onConfirm={() =>
-              revokeSessions.mutate(record.id!, {
-                onSuccess: (result) => message.success(`Revoked ${result?.revoked_count ?? 0} session(s)`),
-                onError: (error) => message.error(getErrorMessage(error)),
-              })
-            }
+              revokeSessions.mutate(record.id!, { onSuccess: (result) => message.success(`Revoked ${result?.revoked_count ?? 0} session(s)`),
+                onError: (error) => message.error(getErrorMessage(error)), }) }
           >
             <Button size="small" icon={<KeyOutlined />} aria-label={`Revoke sessions for ${record.email}`} />
           </Popconfirm>
@@ -80,116 +70,89 @@ export function UsersPage() {
             title={`Delete ${record.email}?`}
             description="Cascades memberships and sessions."
             onConfirm={() =>
-              deleteUser.mutate(record.id!, {
-                onError: (error) => message.error(getErrorMessage(error)),
-              })
-            }
+              deleteUser.mutate(record.id!, { onError: (error) => message.error(getErrorMessage(error)), }) }
           >
             <Button size="small" danger icon={<DeleteOutlined />} aria-label={`Delete ${record.email}`} />
           </Popconfirm>
         </Space>
-      ),
-    },
+      ), },
   ]
 
   return (
     <div>
       <PageHeader
         title="Users"
-        description="Platform-wide user directory (platform-admin only). The organization picker only applies to new users — it doesn't filter this list."
-        actions={
-          <Space>
-            <OrganizationPicker style={{ width: 220 }} />
+        description="Platform-wide user directory. New users can optionally be attached to an organization at creation time."
+        actions={ <Space>
             <Input.Search
               placeholder="Search users"
               allowClear
-              onSearch={(value) => {
-                setPage(1)
-                setSearch(value)
-              }}
+              onSearch={(value) => { setPage(1)
+                setSearch(value) }}
               style={{ width: 220 }}
             />
             <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing('new')}>
               New user
             </Button>
-          </Space>
-        }
+          </Space> }
       />
 
-      <Table<User>
+      <ConsoleTable<User>
         rowKey="id"
         columns={columns}
         dataSource={data?.users ?? []}
         loading={isLoading || isFetching}
-        locale={{
-          emptyText: (
+        locale={{ emptyText: (
             <Empty
               image={<UserOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}
               description={search ? 'No users match your search' : 'No users yet'}
               style={{ padding: '32px 0' }}
             />
-          ),
-        }}
-        pagination={{
-          current: page,
+          ), }}
+        pagination={{ current: page,
           pageSize: PAGE_SIZE,
           total: data?.total ?? 0,
           onChange: setPage,
-          showTotal: (total) => `${total} users`,
-        }}
+          showTotal: (total) => `${total} users`, }}
       />
 
       <UserFormDrawer
         user={editing === 'new' ? null : editing}
         open={editing !== null}
+        organizationId={newUserOrganizationId}
+        setOrganizationId={setNewUserOrganizationId}
         onClose={() => setEditing(null)}
-        onSubmit={(values) => {
-          if (editing === 'new') {
-            createUser.mutate(values as UserCreateInput, {
-              onSuccess: () => setEditing(null),
-              onError: (error) => message.error(getErrorMessage(error)),
-            })
-          } else if (editing) {
-            updateUser.mutate(
+        onSubmit={(values) => { if (editing === 'new') { createUser.mutate(values as UserCreateInput, { onSuccess: () => { setEditing(null)
+                setNewUserOrganizationId(undefined) },
+              onError: (error) => message.error(getErrorMessage(error)), }) } else if (editing) { updateUser.mutate(
               { id: editing.id!, body: values as UserUpdateInput },
-              {
-                onSuccess: () => setEditing(null),
-                onError: (error) => message.error(getErrorMessage(error)),
-              },
-            )
-          }
-        }}
+              { onSuccess: () => setEditing(null),
+                onError: (error) => message.error(getErrorMessage(error)), },
+            ) } }}
         submitting={createUser.isPending || updateUser.isPending}
       />
     </div>
-  )
-}
+  ) }
 
-function UserFormDrawer({
-  user,
+function UserFormDrawer({ user,
   open,
+  organizationId,
+  setOrganizationId,
   onClose,
   onSubmit,
-  submitting,
-}: {
-  user: User | null
+  submitting, }: { user: User | null
   open: boolean
+  organizationId?: string
+  setOrganizationId: (value: string | undefined) => void
   onClose: () => void
   onSubmit: (values: UserCreateInput | UserUpdateInput) => void
-  submitting: boolean
-}) {
-  const [form] = Form.useForm<UserCreateInput>()
-  const organizationId = useConsoleOrgStore((s) => s.organizationId)
+  submitting: boolean }) { const [form] = Form.useForm<UserCreateInput>()
 
-  useEffect(() => {
-    if (open) {
-      form.setFieldsValue(
+  useEffect(() => { if (open) { form.setFieldsValue(
         user
           ? { email: user.email!, display_name: user.display_name!, is_admin: user.is_admin, password: '' }
           : { email: '', display_name: '', password: '', is_admin: false, role: 'member' },
-      )
-    }
-  }, [open, user, form])
+      ) } }, [open, user, form])
 
   return (
     <Drawer
@@ -197,22 +160,14 @@ function UserFormDrawer({
       open={open}
       onClose={onClose}
       destroyOnHidden
-      extra={
-        <Button type="primary" loading={submitting} onClick={() => form.submit()}>
+      extra={ <Button type="primary" loading={submitting} onClick={() => form.submit()}>
           Save
-        </Button>
-      }
+        </Button> }
     >
       <Form<UserCreateInput>
         form={form}
         layout="vertical"
-        onFinish={(values) => {
-          if (user) {
-            onSubmit({ email: values.email, display_name: values.display_name, is_admin: values.is_admin })
-          } else {
-            onSubmit({ ...values, organization_id: organizationId ?? undefined })
-          }
-        }}
+        onFinish={(values) => { if (user) { onSubmit({ email: values.email, display_name: values.display_name, is_admin: values.is_admin }) } else { onSubmit({ ...values, organization_id: organizationId ?? undefined }) } }}
       >
         <Form.Item name="email" label="Email" rules={[{ required: true, type: 'email', message: 'Required' }]}>
           <Input />
@@ -230,9 +185,15 @@ function UserFormDrawer({
         </Form.Item>
         {!user && (
           <>
-            <Typography.Text style={{ fontSize: 12, color: palette.inkTertiary }}>
-              Optionally attach to an organization (pick one with the selector in the page header first).
-            </Typography.Text>
+            <Form.Item label="Attach to organization">
+              <OrganizationSelect
+                value={organizationId}
+                onChange={setOrganizationId}
+                allowClear
+                placeholder="Optional"
+                style={{ width: '100%', minWidth: 0 }}
+              />
+            </Form.Item>
             <Form.Item name="role" label="Role in that organization" style={{ marginTop: 8 }}>
               <Select
                 disabled={!organizationId}
@@ -244,14 +205,13 @@ function UserFormDrawer({
                 ]}
               />
             </Form.Item>
-            {!organizationId && (
-              <Typography.Text style={{ fontSize: 12, color: palette.inkTertiary }}>
-                No organization selected — the user will be created without a membership.
-              </Typography.Text>
-            )}
+            <Typography.Text style={{ fontSize: 12, color: palette.inkTertiary }}>
+              {organizationId
+                ? 'This user will be created and attached to the selected organization.'
+                : 'No organization selected. The user will be created without a membership.'}
+            </Typography.Text>
           </>
         )}
       </Form>
     </Drawer>
-  )
-}
+  ) }

@@ -4,7 +4,7 @@ import type { components } from '@/api/schema'
 
 export type Permission = components['schemas']['Permission']
 
-/** The permission catalog is small and static per server build — fetch once, cache long. */
+/** The permission catalog is small and static per server build - fetch once, cache long. */
 export function usePermissionsList() {
   return useQuery({
     queryKey: ['permissions'],

@@ -15,11 +15,11 @@ export function LoginPage() {
   const login = useLogin()
   const navigate = useNavigate()
 
-  if (token) return <Navigate to="/dashboard" replace />
+  if (token) return <Navigate to="/platform/overview" replace />
 
   const onFinish = (values: LoginFormValues) => {
     login.mutate(values, {
-      onSuccess: () => navigate('/dashboard', { replace: true }),
+      onSuccess: () => navigate('/platform/overview', { replace: true }),
       onError: (error) => message.error(getErrorMessage(error)),
     })
   }

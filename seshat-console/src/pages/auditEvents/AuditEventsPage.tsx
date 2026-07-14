@@ -1,17 +1,16 @@
 import { useState } from 'react'
-import { Empty, Input, Space, Table, Tag, Typography } from 'antd'
+import { Empty, Input, Space, Tag, Typography } from 'antd'
 import type { TableProps } from 'antd'
 import { FileSearchOutlined } from '@ant-design/icons'
+import { useParams } from 'react-router-dom'
 import { useAuditEventsList, type AuditEvent } from '@/api/auditEvents'
 import { PageHeader } from '@/components/PageHeader'
-import { OrganizationPicker } from '@/components/OrganizationPicker'
-import { useConsoleOrgStore } from '@/store/consoleOrg'
+import { ConsoleTable } from '@/components/ConsoleTable'
 import { palette, monoStack } from '@/theme/tokens'
 
 const PAGE_SIZE = 30
 
-export function AuditEventsPage() {
-  const organizationId = useConsoleOrgStore((s) => s.organizationId)
+export function AuditEventsPage() { const { organizationId } = useParams<{ organizationId: string }>()
   const [page, setPage] = useState(1)
   const [action, setAction] = useState('')
 
@@ -21,21 +20,16 @@ export function AuditEventsPage() {
   )
 
   const columns: TableProps<AuditEvent>['columns'] = [
-    {
-      title: 'When',
+    { title: 'When',
       dataIndex: 'created_at',
       key: 'created_at',
       width: 180,
-      render: (v: string) => new Date(v).toLocaleString(),
-    },
-    {
-      title: 'Action',
+      render: (v: string) => new Date(v).toLocaleString(), },
+    { title: 'Action',
       dataIndex: 'action',
       key: 'action',
-      render: (a: string) => <Tag style={{ fontFamily: monoStack }}>{a}</Tag>,
-    },
-    {
-      title: 'Resource',
+      render: (a: string) => <Tag style={{ fontFamily: monoStack }}>{a}</Tag>, },
+    { title: 'Resource',
       key: 'resource',
       render: (_, record) => (
         <Space size={4}>
@@ -44,59 +38,46 @@ export function AuditEventsPage() {
             {record.resource_id}
           </Typography.Text>
         </Space>
-      ),
-    },
-    {
-      title: 'Actor',
+      ), },
+    { title: 'Actor',
       dataIndex: 'actor_user_id',
       key: 'actor_user_id',
-      render: (v: string) => <Typography.Text code>{v || 'system'}</Typography.Text>,
-    },
+      render: (v: string) => <Typography.Text code>{v || 'system'}</Typography.Text>, },
   ]
 
   return (
     <div>
       <PageHeader
         title="Audit Events"
-        description="Structured history of every mutating action across the control plane."
-        actions={
-          <Space>
-            <OrganizationPicker style={{ width: 220 }} />
-            <Input
-              placeholder="Filter by action (e.g. login.succeeded)"
-              allowClear
-              style={{ width: 260 }}
-              onChange={(e) => {
-                setPage(1)
-                setAction(e.target.value)
-              }}
-            />
-          </Space>
-        }
+        description={ organizationId
+            ? 'Recent changes in this organization.'
+            : 'Recent changes across the platform.' }
+        actions={ <Input
+            placeholder="Filter by action (e.g. login.succeeded)"
+            allowClear
+            style={{ width: 260 }}
+            onChange={(e) => { setPage(1)
+              setAction(e.target.value) }}
+          /> }
       />
 
-      <Table<AuditEvent>
+      <ConsoleTable<AuditEvent>
         rowKey="id"
         columns={columns}
         dataSource={data?.audit_events ?? []}
         loading={isLoading || isFetching}
-        locale={{
-          emptyText: (
+        locale={{ emptyText: (
             <Empty
               image={<FileSearchOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}
               description="No audit events"
               style={{ padding: '32px 0' }}
             />
-          ),
-        }}
-        pagination={{
-          current: page,
+          ), }}
+        pagination={{ current: page,
           pageSize: PAGE_SIZE,
           total: data?.total ?? 0,
           onChange: setPage,
-          showTotal: (total) => `${total} events`,
-        }}
+          showTotal: (total) => `${total} events`, }}
       />
     </div>
-  )
-}
+  ) }

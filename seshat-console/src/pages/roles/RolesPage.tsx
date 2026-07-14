@@ -1,17 +1,16 @@
 import { useEffect, useState } from 'react'
-import { Alert, Button, Drawer, Empty, Form, Input, message, Popconfirm, Space, Table, Tag, Typography } from 'antd'
+import { Button, Drawer, Empty, Form, Input, message, Popconfirm, Space, Tag, Typography } from 'antd'
 import type { TableProps } from 'antd'
 import { PlusOutlined, DeleteOutlined, EditOutlined, SafetyOutlined } from '@ant-design/icons'
 import { useRolesList, useCreateRole, useUpdateRole, useDeleteRole, type Role, type RoleInput } from '@/api/roles'
 import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
-import { OrganizationPicker } from '@/components/OrganizationPicker'
+import { ConsoleTable } from '@/components/ConsoleTable'
+import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
 import { PermissionChecklist } from '@/components/PermissionChecklist'
-import { useConsoleOrgStore } from '@/store/consoleOrg'
 import { palette } from '@/theme/tokens'
 
-export function RolesPage() {
-  const organizationId = useConsoleOrgStore((s) => s.organizationId)
+export function RolesPage() { const organizationId = useScopedOrganizationId()
   const [editing, setEditing] = useState<Role | 'new' | null>(null)
 
   const { data, isLoading } = useRolesList(organizationId ?? undefined)
@@ -20,8 +19,7 @@ export function RolesPage() {
   const deleteRole = useDeleteRole()
 
   const columns: TableProps<Role>['columns'] = [
-    {
-      title: 'Role',
+    { title: 'Role',
       dataIndex: 'name',
       key: 'name',
       render: (name: string, record) => (
@@ -29,24 +27,18 @@ export function RolesPage() {
           <div style={{ fontWeight: 500 }}>{name}</div>
           <Typography.Text style={{ fontSize: 12, color: palette.inkTertiary }}>{record.code}</Typography.Text>
         </div>
-      ),
-    },
-    {
-      title: 'Kind',
+      ), },
+    { title: 'Kind',
       dataIndex: 'system',
       key: 'system',
       width: 100,
-      render: (system: boolean) => (system ? <Tag>System</Tag> : <Tag color="orange">Custom</Tag>),
-    },
-    {
-      title: 'Permissions',
+      render: (system: boolean) => (system ? <Tag>System</Tag> : <Tag color="orange">Custom</Tag>), },
+    { title: 'Permissions',
       dataIndex: 'permissions',
       key: 'permissions',
       width: 110,
-      render: (permissions: string[]) => permissions?.length ?? 0,
-    },
-    {
-      title: '',
+      render: (permissions: string[]) => permissions?.length ?? 0, },
+    { title: '',
       key: 'actions',
       width: 96,
       render: (_, record) =>
@@ -65,14 +57,12 @@ export function RolesPage() {
                 deleteRole.mutate(
                   { code: record.code!, organizationId: organizationId! },
                   { onError: (error) => message.error(getErrorMessage(error)) },
-                )
-              }
+                ) }
             >
               <Button size="small" danger icon={<DeleteOutlined />} aria-label={`Delete ${record.name}`} />
             </Popconfirm>
           </Space>
-        ),
-    },
+        ), },
   ]
 
   return (
@@ -80,9 +70,7 @@ export function RolesPage() {
       <PageHeader
         title="Roles"
         description="System roles (owner/admin/member/viewer) plus custom roles defined for an organization."
-        actions={
-          <Space>
-            <OrganizationPicker />
+        actions={ <Space>
             <Button
               type="primary"
               icon={<PlusOutlined />}
@@ -91,85 +79,58 @@ export function RolesPage() {
             >
               New role
             </Button>
-          </Space>
-        }
+          </Space> }
       />
 
-      {!organizationId ? (
-        <Alert type="info" showIcon title="Pick an organization above to see its roles." />
-      ) : (
-        <Table<Role>
+      <ConsoleTable<Role>
           rowKey="code"
           columns={columns}
           dataSource={data?.roles ?? []}
           loading={isLoading}
           pagination={false}
-          locale={{
-            emptyText: (
+          locale={{ emptyText: (
               <Empty
                 image={<SafetyOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}
                 description="No roles"
                 style={{ padding: '32px 0' }}
               />
-            ),
-          }}
+            ), }}
         />
-      )}
 
       <RoleFormDrawer
         role={editing === 'new' ? null : editing}
         open={editing !== null}
         onClose={() => setEditing(null)}
-        onSubmit={(values) => {
-          if (!organizationId) return
-          if (editing === 'new') {
-            createRole.mutate(
+        onSubmit={(values) => { if (!organizationId) return
+          if (editing === 'new') { createRole.mutate(
               { ...values, organization_id: organizationId },
-              {
-                onSuccess: () => setEditing(null),
-                onError: (error) => message.error(getErrorMessage(error)),
-              },
-            )
-          } else if (editing) {
-            updateRole.mutate(
+              { onSuccess: () => setEditing(null),
+                onError: (error) => message.error(getErrorMessage(error)), },
+            ) } else if (editing) { updateRole.mutate(
               { code: editing.code!, body: { ...values, organization_id: organizationId } },
-              {
-                onSuccess: () => setEditing(null),
-                onError: (error) => message.error(getErrorMessage(error)),
-              },
-            )
-          }
-        }}
+              { onSuccess: () => setEditing(null),
+                onError: (error) => message.error(getErrorMessage(error)), },
+            ) } }}
         submitting={createRole.isPending || updateRole.isPending}
       />
     </div>
-  )
-}
+  ) }
 
-function RoleFormDrawer({
-  role,
+function RoleFormDrawer({ role,
   open,
   onClose,
   onSubmit,
-  submitting,
-}: {
-  role: Role | null
+  submitting, }: { role: Role | null
   open: boolean
   onClose: () => void
   onSubmit: (values: Omit<RoleInput, 'organization_id'>) => void
-  submitting: boolean
-}) {
-  const [form] = Form.useForm<Omit<RoleInput, 'organization_id'>>()
+  submitting: boolean }) { const [form] = Form.useForm<Omit<RoleInput, 'organization_id'>>()
 
-  useEffect(() => {
-    if (open) {
-      form.setFieldsValue(
+  useEffect(() => { if (open) { form.setFieldsValue(
         role
           ? { code: role.code, name: role.name!, description: role.description, permissions: role.permissions }
           : { code: '', name: '', description: '', permissions: [] },
-      )
-    }
-  }, [open, role, form])
+      ) } }, [open, role, form])
 
   return (
     <Drawer
@@ -178,11 +139,9 @@ function RoleFormDrawer({
       onClose={onClose}
       destroyOnHidden
       size={480}
-      extra={
-        <Button type="primary" loading={submitting} onClick={() => form.submit()}>
+      extra={ <Button type="primary" loading={submitting} onClick={() => form.submit()}>
           Save
-        </Button>
-      }
+        </Button> }
     >
       <Form form={form} layout="vertical" onFinish={onSubmit}>
         <Form.Item
@@ -204,5 +163,4 @@ function RoleFormDrawer({
         </Form.Item>
       </Form>
     </Drawer>
-  )
-}
+  ) }

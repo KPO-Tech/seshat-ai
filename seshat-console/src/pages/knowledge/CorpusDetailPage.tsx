@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import {
-  Alert,
+import { Alert,
   Button,
   Card,
   Empty,
@@ -9,15 +8,12 @@ import {
   message,
   Popconfirm,
   Space,
-  Table,
   Tag,
   Typography,
-  Upload,
-} from 'antd'
+  Upload, } from 'antd'
 import type { TableProps, UploadProps } from 'antd'
 import { ArrowLeftOutlined, DeleteOutlined, ReloadOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons'
-import {
-  useCorpus,
+import { useCorpus,
   useCorpusFiles,
   useUploadCorpusFile,
   useDetachCorpusFile,
@@ -26,23 +22,20 @@ import {
   useSearchCorpus,
   type CorpusFile,
   type IngestionJob,
-  type SearchResponse,
-} from '@/api/knowledge'
+  type SearchResponse, } from '@/api/knowledge'
 import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
+import { ConsoleTable } from '@/components/ConsoleTable'
 import { palette, monoStack } from '@/theme/tokens'
 
-const STATUS_COLOR: Record<string, string> = {
-  pending: 'default',
+const STATUS_COLOR: Record<string, string> = { pending: 'default',
   ingested: 'success',
   completed: 'success',
   failed: 'error',
   queued: 'processing',
-  running: 'processing',
-}
+  running: 'processing', }
 
-export function CorpusDetailPage() {
-  const { corpusId } = useParams<{ corpusId: string }>()
+export function CorpusDetailPage() { const { organizationId, corpusId } = useParams<{ organizationId: string; corpusId: string }>()
   const navigate = useNavigate()
   const { data: corpus } = useCorpus(corpusId)
   const { data: files, isLoading: filesLoading } = useCorpusFiles(corpusId)
@@ -53,36 +46,23 @@ export function CorpusDetailPage() {
 
   if (!corpusId) return null
 
-  const uploadProps: UploadProps = {
-    multiple: true,
+  const uploadProps: UploadProps = { multiple: true,
     showUploadList: false,
-    customRequest: ({ file, onSuccess, onError }) => {
-      uploadFile.mutate(file as File, {
-        onSuccess: (data) => {
-          onSuccess?.(data)
-          message.success(`${(file as File).name} uploaded`)
-        },
-        onError: (error) => {
-          onError?.(error as Error)
-          message.error(getErrorMessage(error))
-        },
-      })
-    },
-  }
+    customRequest: ({ file, onSuccess, onError }) => { uploadFile.mutate(file as File, { onSuccess: (data) => { onSuccess?.(data)
+          message.success(`${(file as File).name} uploaded`) },
+        onError: (error) => { onError?.(error as Error)
+          message.error(getErrorMessage(error)) }, }) }, }
 
   const fileColumns: TableProps<CorpusFile>['columns'] = [
     { title: 'Filename', dataIndex: 'filename', key: 'filename' },
-    {
-      title: 'Status',
+    { title: 'Status',
       dataIndex: 'status',
       key: 'status',
       width: 120,
-      render: (status: string) => <Tag color={STATUS_COLOR[status]}>{status}</Tag>,
-    },
+      render: (status: string) => <Tag color={STATUS_COLOR[status]}>{status}</Tag>, },
     { title: 'Chunks', dataIndex: 'chunk_count', key: 'chunk_count', width: 90 },
     { title: 'Size', dataIndex: 'size', key: 'size', width: 100, render: (size: number) => formatBytes(size) },
-    {
-      title: '',
+    { title: '',
       key: 'actions',
       width: 64,
       render: (_, record) => (
@@ -93,23 +73,19 @@ export function CorpusDetailPage() {
         >
           <Button size="small" danger icon={<DeleteOutlined />} aria-label={`Remove ${record.filename}`} />
         </Popconfirm>
-      ),
-    },
+      ), },
   ]
 
   const jobColumns: TableProps<IngestionJob>['columns'] = [
     { title: 'File', dataIndex: 'filename', key: 'filename' },
-    {
-      title: 'Status',
+    { title: 'Status',
       dataIndex: 'status',
       key: 'status',
       width: 120,
-      render: (status: string) => <Tag color={STATUS_COLOR[status]}>{status}</Tag>,
-    },
+      render: (status: string) => <Tag color={STATUS_COLOR[status]}>{status}</Tag>, },
     { title: 'Attempts', key: 'attempts', width: 100, render: (_, r) => `${r.attempt_count}/${r.max_attempts}` },
-    { title: 'Error', dataIndex: 'last_error', key: 'last_error', ellipsis: true, render: (v) => v || '—' },
-    {
-      title: '',
+    { title: 'Error', dataIndex: 'last_error', key: 'last_error', ellipsis: true, render: (v) => v || 'No error' },
+    { title: '',
       key: 'actions',
       width: 64,
       render: (_, record) =>
@@ -121,8 +97,7 @@ export function CorpusDetailPage() {
             onClick={() => retryJob.mutate(record.id!, { onError: (error) => message.error(getErrorMessage(error)) })}
             aria-label={`Retry ${record.filename}`}
           />
-        ),
-    },
+        ), },
   ]
 
   return (
@@ -130,9 +105,8 @@ export function CorpusDetailPage() {
       <PageHeader
         title={corpus?.name ?? 'Corpus'}
         description={corpus?.description || `${corpus?.chunk_count ?? 0} chunks ingested`}
-        actions={
-          <Space>
-            <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/corpora')}>
+        actions={ <Space>
+            <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(organizationId ? `/orgs/${organizationId}/knowledge/corpora` : '/corpora')}>
               Back to corpora
             </Button>
             <Upload {...uploadProps}>
@@ -140,13 +114,12 @@ export function CorpusDetailPage() {
                 Upload file
               </Button>
             </Upload>
-          </Space>
-        }
+          </Space> }
       />
 
       <Space orientation="vertical" size={20} style={{ width: '100%' }}>
         <Card title="Files" size="small">
-          <Table<CorpusFile>
+          <ConsoleTable<CorpusFile>
             rowKey="id"
             size="small"
             columns={fileColumns}
@@ -159,7 +132,7 @@ export function CorpusDetailPage() {
 
         {jobs && jobs.length > 0 && (
           <Card title="Ingestion jobs" size="small">
-            <Table<IngestionJob>
+            <ConsoleTable<IngestionJob>
               rowKey="id"
               size="small"
               columns={jobColumns}
@@ -172,24 +145,18 @@ export function CorpusDetailPage() {
         <SearchTestCard corpusId={corpusId} />
       </Space>
     </div>
-  )
-}
+  ) }
 
-function SearchTestCard({ corpusId }: { corpusId: string }) {
-  const [query, setQuery] = useState('')
+function SearchTestCard({ corpusId }: { corpusId: string }) { const [query, setQuery] = useState('')
   const [result, setResult] = useState<SearchResponse | null>(null)
   const search = useSearchCorpus(corpusId)
 
-  const runSearch = () => {
-    if (!query.trim()) return
+  const runSearch = () => { if (!query.trim()) return
     search.mutate(
       { query },
-      {
-        onSuccess: (data) => setResult(data ?? null),
-        onError: (error) => message.error(getErrorMessage(error)),
-      },
-    )
-  }
+      { onSuccess: (data) => setResult(data ?? null),
+        onError: (error) => message.error(getErrorMessage(error)), },
+    ) }
 
   return (
     <Card title="Try a search" size="small">
@@ -233,12 +200,10 @@ function SearchTestCard({ corpusId }: { corpusId: string }) {
         </Space>
       )}
     </Card>
-  )
-}
+  ) }
 
-function formatBytes(bytes: number): string {
-  if (!bytes) return '—'
+function formatBytes(bytes: number): string { if (bytes === undefined || bytes === null) return 'Unknown size'
+  if (bytes === 0) return '0 B'
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB` }

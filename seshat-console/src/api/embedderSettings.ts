@@ -10,7 +10,7 @@ const ORG_KEY = 'embedder-setting'
 const PLATFORM_KEY = 'platform-embedder-setting'
 
 // Both endpoints are singletons (at most one embedder per organization,
-// one platform-wide default) — see EmbedderSetting's doc comment on the
+// one platform-wide default) - see EmbedderSetting's doc comment on the
 // backend for why. A 404 just means "not configured yet", not an error to
 // surface loudly.
 

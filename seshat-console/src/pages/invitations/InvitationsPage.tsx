@@ -1,33 +1,28 @@
 import { useEffect, useState } from 'react'
-import { Alert, Button, Drawer, Empty, Form, Input, InputNumber, message, Popconfirm, Segmented, Space, Table, Tag, Typography } from 'antd'
+import { Button, Drawer, Empty, Form, Input, InputNumber, message, Popconfirm, Segmented, Space, Tag, Typography } from 'antd'
 import type { TableProps } from 'antd'
 import { PlusOutlined, StopOutlined, MailOutlined } from '@ant-design/icons'
-import {
-  useInvitationsList,
+import { useInvitationsList,
   useCreateInvitation,
   useRevokeInvitation,
   type Invitation,
   type InvitationCreateInput,
-  type InvitationStatus,
-} from '@/api/invitations'
+  type InvitationStatus, } from '@/api/invitations'
 import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
-import { OrganizationPicker } from '@/components/OrganizationPicker'
+import { ConsoleTable } from '@/components/ConsoleTable'
+import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
 import { RoleSelect } from '@/components/RoleSelect'
-import { useConsoleOrgStore } from '@/store/consoleOrg'
 import { palette } from '@/theme/tokens'
 
 const PAGE_SIZE = 20
 
-const STATUS_COLORS: Record<string, string> = {
-  pending: 'gold',
+const STATUS_COLORS: Record<string, string> = { pending: 'gold',
   accepted: 'green',
   revoked: 'default',
-  expired: 'red',
-}
+  expired: 'red', }
 
-export function InvitationsPage() {
-  const organizationId = useConsoleOrgStore((s) => s.organizationId)
+export function InvitationsPage() { const organizationId = useScopedOrganizationId()
   const [page, setPage] = useState(1)
   const [status, setStatus] = useState<'all' | InvitationStatus>('all')
   const [creating, setCreating] = useState(false)
@@ -41,8 +36,7 @@ export function InvitationsPage() {
   const revokeInvitation = useRevokeInvitation()
 
   const columns: TableProps<Invitation>['columns'] = [
-    {
-      title: 'Email',
+    { title: 'Email',
       dataIndex: 'email',
       key: 'email',
       render: (email: string, record) => (
@@ -50,23 +44,17 @@ export function InvitationsPage() {
           <div style={{ fontWeight: 500 }}>{email}</div>
           <Typography.Text style={{ fontSize: 12, color: palette.inkTertiary }}>{record.role}</Typography.Text>
         </div>
-      ),
-    },
-    {
-      title: 'Status',
+      ), },
+    { title: 'Status',
       dataIndex: 'status',
       key: 'status',
       width: 120,
-      render: (s: string) => <Tag color={STATUS_COLORS[s]}>{s}</Tag>,
-    },
-    {
-      title: 'Expires',
+      render: (s: string) => <Tag color={STATUS_COLORS[s]}>{s}</Tag>, },
+    { title: 'Expires',
       dataIndex: 'expires_at',
       key: 'expires_at',
-      render: (v: string) => (v ? new Date(v).toLocaleString() : '—'),
-    },
-    {
-      title: '',
+      render: (v: string) => (v ? new Date(v).toLocaleString() : 'No expiry'), },
+    { title: '',
       key: 'actions',
       width: 64,
       render: (_, record) =>
@@ -74,13 +62,11 @@ export function InvitationsPage() {
           <Popconfirm
             title={`Revoke invitation to ${record.email}?`}
             onConfirm={() =>
-              revokeInvitation.mutate(record.id!, { onError: (error) => message.error(getErrorMessage(error)) })
-            }
+              revokeInvitation.mutate(record.id!, { onError: (error) => message.error(getErrorMessage(error)) }) }
           >
             <Button size="small" danger icon={<StopOutlined />} aria-label={`Revoke invitation to ${record.email}`} />
           </Popconfirm>
-        ) : null,
-    },
+        ) : null, },
   ]
 
   return (
@@ -88,9 +74,7 @@ export function InvitationsPage() {
       <PageHeader
         title="Invitations"
         description="Pending, accepted, revoked and expired invites to join an organization."
-        actions={
-          <Space>
-            <OrganizationPicker />
+        actions={ <Space>
             <Button
               type="primary"
               icon={<PlusOutlined />}
@@ -99,21 +83,15 @@ export function InvitationsPage() {
             >
               Invite
             </Button>
-          </Space>
-        }
+          </Space> }
       />
 
-      {!organizationId ? (
-        <Alert type="info" showIcon title="Pick an organization above to see its invitations." />
-      ) : (
-        <>
+      <>
           <Segmented
             style={{ marginBottom: 16 }}
             value={status}
-            onChange={(v) => {
-              setPage(1)
-              setStatus(v as 'all' | InvitationStatus)
-            }}
+            onChange={(v) => { setPage(1)
+              setStatus(v as 'all' | InvitationStatus) }}
             options={[
               { label: 'All', value: 'all' },
               { label: 'Pending', value: 'pending' },
@@ -122,69 +100,52 @@ export function InvitationsPage() {
               { label: 'Expired', value: 'expired' },
             ]}
           />
-          <Table<Invitation>
+          <ConsoleTable<Invitation>
             rowKey="id"
             columns={columns}
             dataSource={data?.invitations ?? []}
             loading={isLoading || isFetching}
-            locale={{
-              emptyText: (
+            locale={{ emptyText: (
                 <Empty
                   image={<MailOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}
                   description="No invitations yet"
                   style={{ padding: '32px 0' }}
                 />
-              ),
-            }}
-            pagination={{
-              current: page,
+              ), }}
+            pagination={{ current: page,
               pageSize: PAGE_SIZE,
               total: data?.total ?? 0,
               onChange: setPage,
-              showTotal: (total) => `${total} invitations`,
-            }}
+              showTotal: (total) => `${total} invitations`, }}
           />
         </>
-      )}
 
       <InvitationFormDrawer
         organizationId={organizationId}
         open={creating}
         onClose={() => setCreating(false)}
-        onSubmit={(values) => {
-          if (!organizationId) return
+        onSubmit={(values) => { if (!organizationId) return
           createInvitation.mutate(
             { ...values, organization_id: organizationId },
-            {
-              onSuccess: () => setCreating(false),
-              onError: (error) => message.error(getErrorMessage(error)),
-            },
-          )
-        }}
+            { onSuccess: () => setCreating(false),
+              onError: (error) => message.error(getErrorMessage(error)), },
+          ) }}
         submitting={createInvitation.isPending}
       />
     </div>
-  )
-}
+  ) }
 
-function InvitationFormDrawer({
-  organizationId,
+function InvitationFormDrawer({ organizationId,
   open,
   onClose,
   onSubmit,
-  submitting,
-}: {
-  organizationId: string | null
+  submitting, }: { organizationId: string | null
   open: boolean
   onClose: () => void
   onSubmit: (values: Omit<InvitationCreateInput, 'organization_id'>) => void
-  submitting: boolean
-}) {
-  const [form] = Form.useForm<Omit<InvitationCreateInput, 'organization_id'>>()
+  submitting: boolean }) { const [form] = Form.useForm<Omit<InvitationCreateInput, 'organization_id'>>()
 
-  useEffect(() => {
-    if (open) form.setFieldsValue({ email: '', role: 'member', expires_in_days: 7 })
-  }, [open, form])
+  useEffect(() => { if (open) form.setFieldsValue({ email: '', role: 'member', expires_in_days: 7 }) }, [open, form])
 
   return (
     <Drawer
@@ -192,11 +153,9 @@ function InvitationFormDrawer({
       open={open}
       onClose={onClose}
       destroyOnHidden
-      extra={
-        <Button type="primary" loading={submitting} onClick={() => form.submit()}>
+      extra={ <Button type="primary" loading={submitting} onClick={() => form.submit()}>
           Send invite
-        </Button>
-      }
+        </Button> }
     >
       <Form form={form} layout="vertical" onFinish={onSubmit}>
         <Form.Item name="email" label="Email" rules={[{ required: true, type: 'email', message: 'Required' }]}>
@@ -210,5 +169,4 @@ function InvitationFormDrawer({
         </Form.Item>
       </Form>
     </Drawer>
-  )
-}
+  ) }

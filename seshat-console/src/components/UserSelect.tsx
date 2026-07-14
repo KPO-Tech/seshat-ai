@@ -3,7 +3,7 @@ import { useUsersList } from '@/api/users'
 
 /**
  * Picks one or more user IDs. `GET /users` is platform-admin only
- * (requireAdmin server-side) — a non-admin org owner/manager can't resolve
+ * (requireAdmin server-side) - a non-admin org owner/manager can't resolve
  * emails for arbitrary users, so this always still accepts a raw pasted
  * user_id (AutoComplete/tags mode), just without a searchable directory.
  */
@@ -29,7 +29,7 @@ export function UserSelect({
 }) {
   const { hasDirectory, options } = useUserOptions()
 
-  // With a directory, force picking a real option — an AutoComplete would
+  // With a directory, force picking a real option - an AutoComplete would
   // otherwise submit whatever the user typed (e.g. the displayed email) as
   // the value, not the id, silently failing with "user not found" server-side.
   // Without one (403 for non-admins), fall back to free-text id entry.

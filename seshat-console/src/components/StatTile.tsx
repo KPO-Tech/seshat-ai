@@ -56,7 +56,7 @@ export function StatTile({
                 color: palette.ink,
               }}
             >
-              {value ?? '—'}
+              {value ?? 0}
             </div>
           )}
         </div>

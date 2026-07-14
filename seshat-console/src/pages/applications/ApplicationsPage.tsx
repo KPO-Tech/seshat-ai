@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
-import {
-  Alert,
+import { Alert,
   Button,
   Drawer,
   Empty,
@@ -11,30 +10,26 @@ import {
   Select,
   Space,
   Switch,
-  Table,
   Tag,
-  Typography,
-} from 'antd'
+  Typography, } from 'antd'
 import type { TableProps } from 'antd'
 import { PlusOutlined, DeleteOutlined, EditOutlined, AppstoreOutlined, CopyOutlined } from '@ant-design/icons'
-import {
-  useApplicationsList,
+import { useApplicationsList,
   useCreateApplication,
   useUpdateApplication,
   useDeleteApplication,
   type Application,
-  type ApplicationInput,
-} from '@/api/applications'
+  type ApplicationInput, } from '@/api/applications'
 import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
-import { OrganizationPicker } from '@/components/OrganizationPicker'
-import { useConsoleOrgStore } from '@/store/consoleOrg'
+import { ConsoleTable } from '@/components/ConsoleTable'
+import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
 import { palette } from '@/theme/tokens'
+import { presentText } from '@/lib/present'
 
 const PAGE_SIZE = 20
 
-export function ApplicationsPage() {
-  const organizationId = useConsoleOrgStore((s) => s.organizationId)
+export function ApplicationsPage() { const organizationId = useScopedOrganizationId()
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<Application | 'new' | null>(null)
@@ -42,20 +37,17 @@ export function ApplicationsPage() {
     null,
   )
 
-  const { data, isLoading, isFetching } = useApplicationsList(organizationId ?? undefined, {
-    q: search || undefined,
+  const { data, isLoading, isFetching } = useApplicationsList(organizationId ?? undefined, { q: search || undefined,
     sort: 'name',
     order: 'asc',
     limit: PAGE_SIZE,
-    offset: (page - 1) * PAGE_SIZE,
-  })
+    offset: (page - 1) * PAGE_SIZE, })
   const createApp = useCreateApplication()
   const updateApp = useUpdateApplication()
   const deleteApp = useDeleteApplication()
 
   const columns: TableProps<Application>['columns'] = [
-    {
-      title: 'Name',
+    { title: 'Name',
       dataIndex: 'name',
       key: 'name',
       render: (name: string, record) => (
@@ -63,25 +55,19 @@ export function ApplicationsPage() {
           <div style={{ fontWeight: 500 }}>{record.display_name || name}</div>
           <Typography.Text style={{ fontSize: 12, color: palette.inkTertiary }}>{record.slug}</Typography.Text>
         </div>
-      ),
-    },
-    {
-      title: 'Protocol',
+      ), },
+    { title: 'Protocol',
       dataIndex: 'protocol',
       key: 'protocol',
       width: 100,
-      render: (protocol: string) => <Tag>{protocol?.toUpperCase()}</Tag>,
-    },
-    {
-      title: 'Status',
+      render: (protocol: string) => <Tag>{protocol?.toUpperCase()}</Tag>, },
+    { title: 'Status',
       dataIndex: 'enabled',
       key: 'enabled',
       width: 100,
-      render: (enabled: boolean) => (enabled ? <Tag color="green">Enabled</Tag> : <Tag>Disabled</Tag>),
-    },
-    { title: 'Client ID', dataIndex: 'client_id', key: 'client_id', render: (v) => v || '—' },
-    {
-      title: '',
+      render: (enabled: boolean) => (enabled ? <Tag color="green">Enabled</Tag> : <Tag>Disabled</Tag>), },
+    { title: 'Client ID', dataIndex: 'client_id', key: 'client_id', render: (v) => presentText(v, 'Issued after setup') },
+    { title: '',
       key: 'actions',
       width: 96,
       render: (_, record) => (
@@ -96,16 +82,12 @@ export function ApplicationsPage() {
             title={`Delete ${record.name}?`}
             description="This revokes any sessions issued through this application."
             onConfirm={() =>
-              deleteApp.mutate(record.id!, {
-                onError: (error) => message.error(getErrorMessage(error)),
-              })
-            }
+              deleteApp.mutate(record.id!, { onError: (error) => message.error(getErrorMessage(error)), }) }
           >
             <Button size="small" danger icon={<DeleteOutlined />} aria-label={`Delete ${record.name}`} />
           </Popconfirm>
         </Space>
-      ),
-    },
+      ), },
   ]
 
   return (
@@ -113,16 +95,12 @@ export function ApplicationsPage() {
       <PageHeader
         title="Applications"
         description="OAuth2/OIDC client applications registered for this organization."
-        actions={
-          <Space>
-            <OrganizationPicker />
+        actions={ <Space>
             <Input.Search
               placeholder="Search applications"
               allowClear
-              onSearch={(value) => {
-                setPage(1)
-                setSearch(value)
-              }}
+              onSearch={(value) => { setPage(1)
+                setSearch(value) }}
               style={{ width: 220 }}
               disabled={!organizationId}
             />
@@ -134,70 +112,45 @@ export function ApplicationsPage() {
             >
               New application
             </Button>
-          </Space>
-        }
+          </Space> }
       />
 
-      {!organizationId ? (
-        <Alert type="info" showIcon title="Pick an organization above to see its applications." />
-      ) : (
-        <Table<Application>
+      <ConsoleTable<Application>
           rowKey="id"
           columns={columns}
           dataSource={data?.applications ?? []}
           loading={isLoading || isFetching}
-          locale={{
-            emptyText: (
+          locale={{ emptyText: (
               <Empty
                 image={<AppstoreOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}
                 description={search ? 'No applications match your search' : 'No applications yet'}
                 style={{ padding: '32px 0' }}
               />
-            ),
-          }}
-          pagination={{
-            current: page,
+            ), }}
+          pagination={{ current: page,
             pageSize: PAGE_SIZE,
             total: data?.total ?? 0,
             onChange: setPage,
-            showTotal: (total) => `${total} applications`,
-          }}
+            showTotal: (total) => `${total} applications`, }}
         />
-      )}
 
       <ApplicationFormDrawer
         application={editing === 'new' ? null : editing}
         open={editing !== null}
         onClose={() => setEditing(null)}
-        onSubmit={(values) => {
-          if (!organizationId) return
-          if (editing === 'new') {
-            createApp.mutate(
+        onSubmit={(values) => { if (!organizationId) return
+          if (editing === 'new') { createApp.mutate(
               { ...values, organization_id: organizationId },
-              {
-                onSuccess: (created) => {
-                  setEditing(null)
-                  if (created?.client_id && created?.client_secret) {
-                    setCreatedSecret({
-                      name: created.name ?? values.name,
+              { onSuccess: (created) => { setEditing(null)
+                  if (created?.client_id && created?.client_secret) { setCreatedSecret({ name: created.name ?? values.name,
                       clientId: created.client_id,
-                      clientSecret: created.client_secret,
-                    })
-                  }
-                },
-                onError: (error) => message.error(getErrorMessage(error)),
-              },
-            )
-          } else if (editing) {
-            updateApp.mutate(
+                      clientSecret: created.client_secret, }) } },
+                onError: (error) => message.error(getErrorMessage(error)), },
+            ) } else if (editing) { updateApp.mutate(
               { id: editing.id!, body: values },
-              {
-                onSuccess: () => setEditing(null),
-                onError: (error) => message.error(getErrorMessage(error)),
-              },
-            )
-          }
-        }}
+              { onSuccess: () => setEditing(null),
+                onError: (error) => message.error(getErrorMessage(error)), },
+            ) } }}
         submitting={createApp.isPending || updateApp.isPending}
       />
 
@@ -211,7 +164,7 @@ export function ApplicationsPage() {
           type="warning"
           showIcon
           title="This client secret is shown only once"
-          description="Copy it now and store it securely — it is redacted everywhere else, including this page after you close it."
+          description="Copy it now and store it securely. It is redacted everywhere else, including this page after you close it."
           style={{ marginBottom: 16 }}
         />
         <Typography.Paragraph>
@@ -230,29 +183,20 @@ export function ApplicationsPage() {
         </Typography.Paragraph>
       </Drawer>
     </div>
-  )
-}
+  ) }
 
-function ApplicationFormDrawer({
-  application,
+function ApplicationFormDrawer({ application,
   open,
   onClose,
   onSubmit,
-  submitting,
-}: {
-  application: Application | null
+  submitting, }: { application: Application | null
   open: boolean
   onClose: () => void
   onSubmit: (values: Omit<ApplicationInput, 'organization_id'>) => void
-  submitting: boolean
-}) {
-  const [form] = Form.useForm<ApplicationInput>()
+  submitting: boolean }) { const [form] = Form.useForm<ApplicationInput>()
 
-  useEffect(() => {
-    if (open) {
-      form.setFieldsValue(
-        application ?? {
-          name: '',
+  useEffect(() => { if (open) { form.setFieldsValue(
+        application ?? { name: '',
           slug: '',
           display_name: '',
           protocol: 'oidc',
@@ -261,11 +205,8 @@ function ApplicationFormDrawer({
           allow_password_login: true,
           pkce_required: false,
           skip_consent: false,
-          issue_refresh_token: true,
-        },
-      )
-    }
-  }, [open, application, form])
+          issue_refresh_token: true, },
+      ) } }, [open, application, form])
 
   return (
     <Drawer
@@ -274,11 +215,9 @@ function ApplicationFormDrawer({
       onClose={onClose}
       destroyOnHidden
       size={480}
-      extra={
-        <Button type="primary" loading={submitting} onClick={() => form.submit()}>
+      extra={ <Button type="primary" loading={submitting} onClick={() => form.submit()}>
           Save
-        </Button>
-      }
+        </Button> }
     >
       <Form<ApplicationInput> form={form} layout="vertical" onFinish={onSubmit}>
         <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Required' }]}>
@@ -334,5 +273,4 @@ function ApplicationFormDrawer({
         </Form.Item>
       </Form>
     </Drawer>
-  )
-}
+  ) }

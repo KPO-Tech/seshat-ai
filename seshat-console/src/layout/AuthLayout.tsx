@@ -41,7 +41,7 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
           <div style={{ color: '#fff', fontSize: 26, fontWeight: 600, lineHeight: 1.3, maxWidth: 360 }}>{title}</div>
           <div style={{ marginTop: 10, fontSize: 14, lineHeight: 1.6, maxWidth: 360 }}>{subtitle}</div>
         </div>
-        <div style={{ fontSize: 12, color: palette.sidebarTextMuted }}>Cloud control plane</div>
+        <div style={{ fontSize: 12, color: palette.sidebarTextMuted }}>Seshat admin console</div>
       </div>
       <div
         style={{

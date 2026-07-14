@@ -14,7 +14,7 @@ api.use({
   },
   onResponse({ response }) {
     if (response.status === 401) {
-      // The session token is gone or expired server-side — drop it locally
+      // The session token is gone or expired server-side - drop it locally
       // too so the app falls back to the login screen instead of retrying
       // requests that will keep failing.
       useAuthStore.getState().clear()

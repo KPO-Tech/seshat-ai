@@ -78,7 +78,7 @@ export function useCorpusFiles(corpusId: string | undefined) {
   return useQuery({
     queryKey: [FILES_KEY, corpusId],
     enabled: Boolean(corpusId),
-    refetchInterval: 3000, // ingestion runs in the background — poll for status changes
+    refetchInterval: 3000, // ingestion runs in the background - poll for status changes
     queryFn: async () => {
       const { data, error } = await api.GET('/api/v1/knowledge/corpora/{corpusID}/files', {
         params: { path: { corpusID: corpusId! } },
@@ -98,7 +98,7 @@ export function useUploadCorpusFile(corpusId: string) {
       const { data, error } = await api.POST('/api/v1/knowledge/corpora/{corpusID}/files', {
         params: { path: { corpusID: corpusId } },
         // The generated type wants a JSON-shaped { file: string } body, but
-        // this is multipart/form-data — openapi-fetch's default serializer
+        // this is multipart/form-data - openapi-fetch's default serializer
         // passes a FormData body through as-is (no JSON.stringify, no
         // Content-Type override, so the browser sets the multipart
         // boundary itself). The cast is only to satisfy the mismatch

@@ -1,23 +1,21 @@
 import { useEffect, useState } from 'react'
-import { Alert, Button, Drawer, Empty, Form, Input, message, Popconfirm, Space, Table, Tag, Typography } from 'antd'
+import { Button, Drawer, Empty, Form, Input, message, Popconfirm, Space, Tag, Typography } from 'antd'
 import type { TableProps } from 'antd'
 import { PlusOutlined, DeleteOutlined, EditOutlined, SettingOutlined } from '@ant-design/icons'
-import {
-  useProviderSettingsList,
+import { useProviderSettingsList,
   useCreateProviderSetting,
   useUpdateProviderSetting,
   useDeleteProviderSetting,
   type ProviderSetting,
-  type ProviderSettingInput,
-} from '@/api/providerSettings'
+  type ProviderSettingInput, } from '@/api/providerSettings'
 import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
-import { OrganizationPicker } from '@/components/OrganizationPicker'
-import { useConsoleOrgStore } from '@/store/consoleOrg'
+import { ConsoleTable } from '@/components/ConsoleTable'
+import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
 import { palette, monoStack } from '@/theme/tokens'
+import { presentText } from '@/lib/present'
 
-export function ProviderSettingsPage() {
-  const organizationId = useConsoleOrgStore((s) => s.organizationId)
+export function ProviderSettingsPage() { const organizationId = useScopedOrganizationId()
   const [editing, setEditing] = useState<ProviderSetting | 'new' | null>(null)
 
   const { data, isLoading } = useProviderSettingsList(organizationId ?? undefined)
@@ -26,20 +24,17 @@ export function ProviderSettingsPage() {
   const deleteSetting = useDeleteProviderSetting()
 
   const columns: TableProps<ProviderSetting>['columns'] = [
-    {
-      title: 'Provider',
+    { title: 'Provider',
       dataIndex: 'provider',
       key: 'provider',
       render: (provider: string) => (
         <Tag color="default" style={{ fontFamily: monoStack, margin: 0 }}>
           {provider}
         </Tag>
-      ),
-    },
+      ), },
     { title: 'Default model', dataIndex: 'default_model', key: 'default_model' },
-    { title: 'Base URL', dataIndex: 'base_url', key: 'base_url', render: (v) => v || '—' },
-    {
-      title: '',
+    { title: 'Base URL', dataIndex: 'base_url', key: 'base_url', render: (v) => presentText(v, 'Provider default') },
+    { title: '',
       key: 'actions',
       width: 96,
       render: (_, record) => (
@@ -49,24 +44,20 @@ export function ProviderSettingsPage() {
             title={`Remove the ${record.provider} credential?`}
             description="Cloud jobs configured for this provider will fall back to the platform default (if any) or start failing at execution time."
             onConfirm={() =>
-              deleteSetting.mutate(record.id!, { onError: (error) => message.error(getErrorMessage(error)) })
-            }
+              deleteSetting.mutate(record.id!, { onError: (error) => message.error(getErrorMessage(error)) }) }
           >
             <Button size="small" danger icon={<DeleteOutlined />} aria-label={`Delete ${record.provider}`} />
           </Popconfirm>
         </Space>
-      ),
-    },
+      ), },
   ]
 
   return (
     <div>
       <PageHeader
         title="Provider Settings"
-        description="This organization's own LLM credentials — takes priority over the platform default when configured."
-        actions={
-          <Space>
-            <OrganizationPicker />
+        description="This organization's own LLM credentials. They override the platform default when present."
+        actions={ <Space>
             <Button
               type="primary"
               icon={<PlusOutlined />}
@@ -75,75 +66,54 @@ export function ProviderSettingsPage() {
             >
               New credential
             </Button>
-          </Space>
-        }
+          </Space> }
       />
 
-      {!organizationId ? (
-        <Alert type="info" showIcon title="Pick an organization above to see its provider settings." />
-      ) : (
-        <Table<ProviderSetting>
+      <ConsoleTable<ProviderSetting>
           rowKey="id"
           columns={columns}
           dataSource={data ?? []}
           loading={isLoading}
           pagination={false}
-          locale={{
-            emptyText: (
+          locale={{ emptyText: (
               <Empty
                 image={<SettingOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}
-                description="No provider credentials configured — cloud jobs fall back to the platform default"
+                description="No provider credentials configured. Cloud jobs fall back to the platform default."
                 style={{ padding: '32px 0' }}
               />
-            ),
-          }}
+            ), }}
         />
-      )}
 
       <ProviderSettingFormDrawer
         setting={editing === 'new' ? null : editing}
         open={editing !== null}
         onClose={() => setEditing(null)}
-        onSubmit={(values) => {
-          if (!organizationId) return
-          if (editing === 'new') {
-            createSetting.mutate(
+        onSubmit={(values) => { if (!organizationId) return
+          if (editing === 'new') { createSetting.mutate(
               { ...values, organization_id: organizationId },
               { onSuccess: () => setEditing(null), onError: (error) => message.error(getErrorMessage(error)) },
-            )
-          } else if (editing) {
-            const { provider: _provider, ...updateBody } = values
+            ) } else if (editing) { const { provider: _provider, ...updateBody } = values
             updateSetting.mutate(
               { id: editing.id!, body: updateBody },
               { onSuccess: () => setEditing(null), onError: (error) => message.error(getErrorMessage(error)) },
-            )
-          }
-        }}
+            ) } }}
         submitting={createSetting.isPending || updateSetting.isPending}
       />
     </div>
-  )
-}
+  ) }
 
-function ProviderSettingFormDrawer({
-  setting,
+function ProviderSettingFormDrawer({ setting,
   open,
   onClose,
   onSubmit,
-  submitting,
-}: {
-  setting: ProviderSetting | null
+  submitting, }: { setting: ProviderSetting | null
   open: boolean
   onClose: () => void
   onSubmit: (values: Omit<ProviderSettingInput, 'organization_id'>) => void
-  submitting: boolean
-}) {
-  const [form] = Form.useForm<Omit<ProviderSettingInput, 'organization_id'>>()
+  submitting: boolean }) { const [form] = Form.useForm<Omit<ProviderSettingInput, 'organization_id'>>()
   const isEdit = setting !== null
 
-  useEffect(() => {
-    if (open) form.setFieldsValue(setting ?? { provider: '', default_model: '' })
-  }, [open, setting, form])
+  useEffect(() => { if (open) form.setFieldsValue(setting ?? { provider: '', default_model: '' }) }, [open, setting, form])
 
   return (
     <Drawer
@@ -151,11 +121,9 @@ function ProviderSettingFormDrawer({
       open={open}
       onClose={onClose}
       destroyOnHidden
-      extra={
-        <Button type="primary" loading={submitting} onClick={() => form.submit()}>
+      extra={ <Button type="primary" loading={submitting} onClick={() => form.submit()}>
           Save
-        </Button>
-      }
+        </Button> }
     >
       <Form form={form} layout="vertical" onFinish={onSubmit}>
         <Form.Item
@@ -170,7 +138,7 @@ function ProviderSettingFormDrawer({
           <Input placeholder="claude-sonnet-5" />
         </Form.Item>
         <Form.Item name="base_url" label="Base URL">
-          <Input placeholder="Optional — leave empty to use the provider's default" />
+          <Input placeholder="Optional. Leave empty to use the provider's default" />
         </Form.Item>
         <Form.Item
           name="api_key"
@@ -187,5 +155,4 @@ function ProviderSettingFormDrawer({
         )}
       </Form>
     </Drawer>
-  )
-}
+  ) }
