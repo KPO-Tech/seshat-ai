@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Button, Drawer, Form, Input, message, Popconfirm, Space, Tag, Typography } from 'antd'
+import { useEffect, useMemo, useState } from 'react'
+import { Button, Drawer, Form, Input, Select, message, Popconfirm, Space, Tag, Typography } from 'antd'
 import { CrownOutlined, DeleteOutlined, DownOutlined, EditOutlined, RightOutlined } from '@ant-design/icons'
 import {
   useProviderSettingsList,
@@ -14,6 +14,7 @@ import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
 import { ProviderIcon } from '@/components/ProviderIcon'
 import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
+import { getProviderModels } from '@/lib/providerCatalog'
 import { palette, monoStack } from '@/theme/tokens'
 
 const SUPPORTED_PROVIDERS = [
@@ -156,7 +157,7 @@ export function ProviderSettingsPage() {
               </div>
 
               {isConfigured && isExpanded && (
-                <div style={{ borderTop: `1px solid ${palette.border}`, padding: '14px 18px', display: 'flex', gap: 32 }}>
+                <div style={{ borderTop: `1px solid ${palette.border}`, padding: '14px 18px', display: 'flex', gap: 32, flexWrap: 'wrap' }}>
                   <div>
                     <Typography.Text style={{ display: 'block', fontSize: 11, fontWeight: 700, color: palette.inkTertiary }}>
                       DEFAULT MODEL
@@ -223,14 +224,19 @@ function ProviderSettingFormDrawer({
   submitting: boolean
 }) {
   const [form] = Form.useForm<Omit<ProviderSettingInput, 'organization_id'>>()
+  const watchedModelId = Form.useWatch('default_model', form)
   const isEdit = setting !== null
+  const modelOptions = useMemo(() => getProviderModels(provider, setting?.default_model), [provider, setting?.default_model])
+  const selectedModel = modelOptions.find((model) => model.id === watchedModelId) ?? null
+  const supportsStaticCatalog = modelOptions.length > 0
 
   useEffect(() => {
     if (!open || !provider) return
+    const fallbackModel = setting?.default_model ?? modelOptions[0]?.id ?? ''
     form.setFieldsValue(
-      setting ?? { provider, default_model: '', base_url: PROVIDER_DEFAULT_URLS[provider] ?? '' },
+      setting ?? { provider, default_model: fallbackModel, base_url: PROVIDER_DEFAULT_URLS[provider] ?? '' },
     )
-  }, [open, provider, setting, form])
+  }, [open, provider, setting, form, modelOptions])
 
   return (
     <Drawer
@@ -245,9 +251,38 @@ function ProviderSettingFormDrawer({
       }
     >
       <Form key={provider ?? 'none'} form={form} layout="vertical" onFinish={onSubmit}>
-        <Form.Item name="default_model" label="Default model" rules={[{ required: true, message: 'Required' }]}>
-          <Input placeholder="claude-sonnet-5" />
-        </Form.Item>
+        {supportsStaticCatalog ? (
+          <Form.Item name="default_model" label="Default model" rules={[{ required: true, message: 'Required' }]}>
+            <Select
+              showSearch
+              optionFilterProp="label"
+              placeholder="Select the default model"
+              options={modelOptions.map((model) => ({ label: `${model.label} (${model.id})`, value: model.id }))}
+            />
+          </Form.Item>
+        ) : (
+          <Form.Item name="default_model" label="Default model" rules={[{ required: true, message: 'Required' }]}>
+            <Input placeholder="llama3.1:8b" />
+          </Form.Item>
+        )}
+
+        {supportsStaticCatalog ? (
+          <div style={{ marginTop: -8, marginBottom: 16 }}>
+            <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
+              Suggested models from the shared Seshat provider catalog.
+            </Typography.Text>
+            {selectedModel?.description ? (
+              <Typography.Text style={{ fontSize: 12, display: 'block', marginTop: 4 }}>
+                {selectedModel.description}
+              </Typography.Text>
+            ) : null}
+          </div>
+        ) : (
+          <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: -8, marginBottom: 16 }}>
+            This provider has no static catalog here yet. For Ollama, keep using a direct model identifier available on the target runtime.
+          </Typography.Text>
+        )}
+
         <Form.Item name="base_url" label="Base URL">
           <Input placeholder="Leave empty to use the provider's default" />
         </Form.Item>

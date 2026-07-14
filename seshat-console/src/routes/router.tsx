@@ -9,10 +9,19 @@ import { lazyPage, renderLazyPage } from '@/routes/lazyPage'
 const BootstrapPage = lazyPage(() => import('@/pages/auth/BootstrapPage').then((module) => ({ default: module.BootstrapPage })))
 const LoginPage = lazyPage(() => import('@/pages/auth/LoginPage').then((module) => ({ default: module.LoginPage })))
 const PlatformOverviewPage = lazyPage(() => import('@/pages/dashboard/DashboardPage').then((module) => ({ default: module.DashboardPage })))
+const WorkspaceOverviewPage = lazyPage(() => import('@/pages/workspace/WorkspaceOverviewPage').then((module) => ({ default: module.WorkspaceOverviewPage })))
+const WorkspaceChatPage = lazyPage(() => import('@/pages/workspace/WorkspaceChatPage').then((module) => ({ default: module.WorkspaceChatPage })))
+const WorkspaceWorkflowsPage = lazyPage(() => import('@/pages/workspace/WorkspaceWorkflowsPage').then((module) => ({ default: module.WorkspaceWorkflowsPage })))
+const WorkspaceAgentsPage = lazyPage(() => import('@/pages/workspace/WorkspaceAgentsPage').then((module) => ({ default: module.WorkspaceAgentsPage })))
+const WorkspaceRunsPage = lazyPage(() => import('@/pages/workspace/WorkspaceRunsPage').then((module) => ({ default: module.WorkspaceRunsPage })))
 const OrganizationOverviewPage = lazyPage(() => import('@/pages/organization/OrganizationOverviewPage').then((module) => ({ default: module.OrganizationOverviewPage })))
 const OrganizationsPage = lazyPage(() => import('@/pages/organizations/OrganizationsPage').then((module) => ({ default: module.OrganizationsPage })))
 const MyOrganizationsPage = lazyPage(() => import('@/pages/myOrganizations/MyOrganizationsPage').then((module) => ({ default: module.MyOrganizationsPage })))
 const MyProfilePage = lazyPage(() => import('@/pages/profile/MyProfilePage').then((module) => ({ default: module.MyProfilePage })))
+const PreferencesPage = lazyPage(() => import('@/pages/profile/PreferencesPage').then((module) => ({ default: module.PreferencesPage })))
+const MemoriesPage = lazyPage(() => import('@/pages/profile/MemoriesPage').then((module) => ({ default: module.MemoriesPage })))
+const MemoryGraphPage = lazyPage(() => import('@/pages/profile/MemoryGraphPage').then((module) => ({ default: module.MemoryGraphPage })))
+const QuotaUsagePage = lazyPage(() => import('@/pages/profile/QuotaUsagePage').then((module) => ({ default: module.QuotaUsagePage })))
 const MembershipsPage = lazyPage(() => import('@/pages/memberships/MembershipsPage').then((module) => ({ default: module.MembershipsPage })))
 const InvitationsPage = lazyPage(() => import('@/pages/invitations/InvitationsPage').then((module) => ({ default: module.InvitationsPage })))
 const TeamsPage = lazyPage(() => import('@/pages/teams/TeamsPage').then((module) => ({ default: module.TeamsPage })))
@@ -25,6 +34,9 @@ const DevicesPage = lazyPage(() => import('@/pages/devices/DevicesPage').then((m
 const JobsPage = lazyPage(() => import('@/pages/jobs/JobsPage').then((module) => ({ default: module.JobsPage })))
 const RunsPage = lazyPage(() => import('@/pages/runs/RunsPage').then((module) => ({ default: module.RunsPage })))
 const ProviderSettingsPage = lazyPage(() => import('@/pages/providerSettings/ProviderSettingsPage').then((module) => ({ default: module.ProviderSettingsPage })))
+const MCPServersPage = lazyPage(() => import('@/pages/mcpServers/MCPServersPage').then((module) => ({ default: module.MCPServersPage })))
+const SkillReposPage = lazyPage(() => import('@/pages/skillRepos/SkillReposPage').then((module) => ({ default: module.SkillReposPage })))
+const AgentPresetsPage = lazyPage(() => import('@/pages/agentPresets/AgentPresetsPage').then((module) => ({ default: module.AgentPresetsPage })))
 const AuditEventsPage = lazyPage(() => import('@/pages/auditEvents/AuditEventsPage').then((module) => ({ default: module.AuditEventsPage })))
 const CorporaPage = lazyPage(() => import('@/pages/knowledge/CorporaPage').then((module) => ({ default: module.CorporaPage })))
 const CorpusDetailPage = lazyPage(() => import('@/pages/knowledge/CorpusDetailPage').then((module) => ({ default: module.CorpusDetailPage })))
@@ -48,7 +60,19 @@ export const router = createBrowserRouter([
             children: [
               { index: true, element: <LandingRedirect /> },
               { path: '/my-organizations', element: renderLazyPage(MyOrganizationsPage) },
-              { path: '/profile', element: renderLazyPage(MyProfilePage) },
+              { path: '/workspace', element: <Navigate to="/workspace/overview" replace /> },
+              { path: '/workspace/overview', element: renderLazyPage(WorkspaceOverviewPage) },
+              { path: '/workspace/chat', element: renderLazyPage(WorkspaceChatPage) },
+              { path: '/workspace/workflows', element: renderLazyPage(WorkspaceWorkflowsPage) },
+              { path: '/workspace/agents', element: renderLazyPage(WorkspaceAgentsPage) },
+              { path: '/workspace/runs', element: renderLazyPage(WorkspaceRunsPage) },
+              { path: '/profile', element: <Navigate to="/me/profile" replace /> },
+              { path: '/me', element: <Navigate to="/me/profile" replace /> },
+              { path: '/me/profile', element: renderLazyPage(MyProfilePage) },
+              { path: '/me/preferences', element: renderLazyPage(PreferencesPage) },
+              { path: '/me/memories', element: renderLazyPage(MemoriesPage) },
+              { path: '/me/memory-graph', element: renderLazyPage(MemoryGraphPage) },
+              { path: '/me/quota-usage', element: renderLazyPage(QuotaUsagePage) },
               { path: '/no-access', element: renderLazyPage(NoAccessPage) },
               {
                 element: <RequireSuperAdmin />,
@@ -74,6 +98,9 @@ export const router = createBrowserRouter([
                   { path: 'ai/provider-settings', element: renderLazyPage(ProviderSettingsPage) },
                   { path: 'ai/embedder', element: renderLazyPage(EmbedderSettingsPage) },
                   { path: 'ai/web-search', element: renderLazyPage(WebSearchSettingsPage) },
+                  { path: 'ai/mcp-servers', element: renderLazyPage(MCPServersPage) },
+                  { path: 'catalog/agent-presets', element: renderLazyPage(AgentPresetsPage) },
+                  { path: 'catalog/skill-repos', element: renderLazyPage(SkillReposPage) },
                   { path: 'automation/devices', element: renderLazyPage(DevicesPage) },
                   { path: 'automation/jobs', element: renderLazyPage(JobsPage) },
                   { path: 'automation/runs', element: renderLazyPage(RunsPage) },

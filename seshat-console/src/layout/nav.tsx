@@ -4,11 +4,14 @@ import {
   AppstoreOutlined,
   DashboardOutlined,
   DatabaseOutlined,
+  ExperimentOutlined,
   FileSearchOutlined,
+  RobotOutlined,
   SafetyOutlined,
   ScheduleOutlined,
   SettingOutlined,
   TeamOutlined,
+  UserOutlined,
 } from '@ant-design/icons'
 
 export interface NavItem {
@@ -54,6 +57,26 @@ export const platformNavItems: NavItem[] = [
   },
 ]
 
+export const workspaceNavItems: NavItem[] = [
+  {
+    key: 'workspace-home',
+    label: 'Workspace',
+    path: '/workspace/overview',
+    matchPrefix: '/workspace/',
+    icon: <ExperimentOutlined />,
+  },
+]
+
+export const accountNavItems: NavItem[] = [
+  {
+    key: 'account-home',
+    label: 'My Account',
+    path: '/me/profile',
+    matchPrefix: '/me/',
+    icon: <UserOutlined />,
+  },
+]
+
 export function getOrganizationNavItems(organizationId: string): NavItem[] {
   return [
     {
@@ -76,6 +99,13 @@ export function getOrganizationNavItems(organizationId: string): NavItem[] {
       path: `/orgs/${organizationId}/ai/provider-settings`,
       matchPrefix: `/orgs/${organizationId}/ai/`,
       icon: <SettingOutlined />,
+    },
+    {
+      key: 'org-agents',
+      label: 'Agents & Skills',
+      path: `/orgs/${organizationId}/catalog/agent-presets`,
+      matchPrefix: `/orgs/${organizationId}/catalog/`,
+      icon: <RobotOutlined />,
     },
     {
       key: 'org-automation',
@@ -109,6 +139,76 @@ export function getOrganizationNavItems(organizationId: string): NavItem[] {
 }
 
 export function getSecondaryNavItems(pathname: string, organizationId: string | null): SecondaryNavItem[] {
+  if (pathname.startsWith('/workspace/')) {
+    return [
+      {
+        key: 'workspace-overview',
+        label: 'Overview',
+        path: '/workspace/overview',
+        matchPrefix: '/workspace/overview',
+      },
+      {
+        key: 'workspace-chat',
+        label: 'Chat',
+        path: '/workspace/chat',
+        matchPrefix: '/workspace/chat',
+      },
+      {
+        key: 'workspace-workflows',
+        label: 'Workflows',
+        path: '/workspace/workflows',
+        matchPrefix: '/workspace/workflows',
+      },
+      {
+        key: 'workspace-agents',
+        label: 'Agents',
+        path: '/workspace/agents',
+        matchPrefix: '/workspace/agents',
+      },
+      {
+        key: 'workspace-runs',
+        label: 'Runs',
+        path: '/workspace/runs',
+        matchPrefix: '/workspace/runs',
+      },
+    ]
+  }
+
+  if (pathname.startsWith('/me/')) {
+    return [
+      {
+        key: 'personal-profile',
+        label: 'Profile',
+        path: '/me/profile',
+        matchPrefix: '/me/profile',
+      },
+      {
+        key: 'personal-preferences',
+        label: 'Preferences',
+        path: '/me/preferences',
+        matchPrefix: '/me/preferences',
+      },
+      {
+        key: 'personal-memories',
+        label: 'Memories',
+        path: '/me/memories',
+        matchPrefix: '/me/memories',
+      },
+      {
+        key: 'personal-memory-graph',
+        label: 'Memory Graph',
+        path: '/me/memory-graph',
+        matchPrefix: '/me/memory-graph',
+      },
+      {
+        key: 'personal-usage',
+        label: 'Usage',
+        path: '/me/quota-usage',
+        matchPrefix: '/me/quota-usage',
+      },
+    ]
+  }
+
   if (pathname.startsWith('/platform/security/')) {
     return [
       {
@@ -189,6 +289,29 @@ export function getSecondaryNavItems(pathname: string, organizationId: string | 
         path: `/orgs/${organizationId}/ai/web-search`,
         matchPrefix: `/orgs/${organizationId}/ai/web-search`,
       },
+      {
+        key: 'org-ai-mcp',
+        label: 'MCP Servers',
+        path: `/orgs/${organizationId}/ai/mcp-servers`,
+        matchPrefix: `/orgs/${organizationId}/ai/mcp-servers`,
+      },
+    ]
+  }
+
+  if (pathname.startsWith(`/orgs/${organizationId}/catalog/`)) {
+    return [
+      {
+        key: 'org-catalog-agent-presets',
+        label: 'Agent Presets',
+        path: `/orgs/${organizationId}/catalog/agent-presets`,
+        matchPrefix: `/orgs/${organizationId}/catalog/agent-presets`,
+      },
+      {
+        key: 'org-catalog-skill-repos',
+        label: 'Skill Repos',
+        path: `/orgs/${organizationId}/catalog/skill-repos`,
+        matchPrefix: `/orgs/${organizationId}/catalog/skill-repos`,
+      },
     ]
   }
 
@@ -237,7 +360,7 @@ export function getSecondaryNavItems(pathname: string, organizationId: string | 
 
 export function getActivePrimaryNavItem(pathname: string, organizationId: string | null) {
   const orgItems = organizationId ? getOrganizationNavItems(organizationId) : []
-  return [...platformNavItems, ...orgItems].find((item) => matchesPath(pathname, item))
+  return [...platformNavItems, ...workspaceNavItems, ...accountNavItems, ...orgItems].find((item) => matchesPath(pathname, item))
 }
 
 export function getActiveSecondaryNavItem(pathname: string, items: SecondaryNavItem[]) {
@@ -246,9 +369,14 @@ export function getActiveSecondaryNavItem(pathname: string, items: SecondaryNavI
 
 export function getScopeLabel(pathname: string, organizationName: string | null) {
   if (pathname.startsWith('/orgs/')) return organizationName ?? 'Organization'
+  if (pathname.startsWith('/workspace/')) return 'Personal'
+  if (pathname.startsWith('/me/')) return 'Personal'
   return 'Platform'
 }
 
 export function getScopeTagLabel(pathname: string) {
-  return pathname.startsWith('/orgs/') ? 'Organization' : 'Platform'
+  if (pathname.startsWith('/orgs/')) return 'Organization'
+  if (pathname.startsWith('/workspace/')) return 'Personal'
+  if (pathname.startsWith('/me/')) return 'Personal'
+  return 'Platform'
 }

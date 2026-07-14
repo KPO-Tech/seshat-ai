@@ -218,7 +218,7 @@ export function OrganizationOverviewPage() {
                   key={alert.title}
                   type={alert.type ?? 'warning'}
                   showIcon
-                  message={alert.title}
+                  title={alert.title}
                   description={
                     <Space direction="vertical" size={8} style={{ width: '100%' }}>
                       <Typography.Text style={{ color: palette.inkSecondary }}>

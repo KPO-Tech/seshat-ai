@@ -6,7 +6,7 @@
 #   make test           → run all Go tests in the workspace
 #   make install-python → install / update docling-serve
 #   make start-docling  → start docling-serve manually
-#   make deploy-up       → build + start seshat-server/seshat-console/Postgres
+#   make deploy-up       → build + start seshat-server/seshat-console/Postgres/SearXNG
 #   make deploy-down     → stop that stack
 
 ROOT              := $(shell pwd)
@@ -108,18 +108,19 @@ build-automation: ## Compile the automation daemon binary → seshat/seshat-auto
 run-automation: ## Run the automation daemon only (reads env / .env)
 	@cd $(DAEMON_DIR) && go run $(DAEMON_CMD)
 
-# ─── Deploy stack (seshat-server + seshat-console + Postgres) ─────────────────
+# ─── Deploy stack (seshat-server + seshat-console + Postgres + SearXNG) ──────
 # See deploy/README.md. First run: cp deploy/.env.example deploy/.env and
 # fill in POSTGRES_PASSWORD + SESHAT_SERVER_ENCRYPTION_KEY.
 
-deploy-up: ## Build and start the deploy stack (Postgres + seshat-server + seshat-console)
+deploy-up: ## Build and start the deploy stack (Postgres + seshat-server + seshat-console + SearXNG)
 	@if [ ! -f $(DEPLOY_DIR)/.env ]; then \
 	  printf '\033[33m[deploy]\033[0m no deploy/.env — copying deploy/.env.example, edit it then re-run.\n'; \
 	  cp $(DEPLOY_DIR)/.env.example $(DEPLOY_DIR)/.env; \
 	  exit 1; \
 	fi
 	@cd $(DEPLOY_DIR) && docker compose up --build -d
-	@printf '\033[32m[deploy]\033[0m console: http://localhost:3000  api: http://localhost:8081\n'
+	@printf '\033[32m[deploy]\033[0m console: http://localhost:%s  api: http://localhost:%s  searxng: http://localhost:%s\n' \
+	  "$${SESHAT_CONSOLE_PORT:-3000}" "$${SESHAT_SERVER_PORT:-8081}" "$${SEARXNG_PORT:-8080}"
 
 deploy-down: ## Stop the deploy stack (add ARGS=-v to also wipe the Postgres volume)
 	@cd $(DEPLOY_DIR) && docker compose down $(ARGS)
