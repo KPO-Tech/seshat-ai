@@ -19,11 +19,34 @@ type createCorpusRequest struct {
 	OrganizationID string `json:"organization_id"`
 	Name           string `json:"name"`
 	Description    string `json:"description"`
+	FolderID       string `json:"folder_id"`
+}
+
+type updateCorpusRequest struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	FolderID    string `json:"folder_id"`
 }
 
 type searchCorpusRequest struct {
 	Query string `json:"query"`
 	TopK  int    `json:"top_k"`
+}
+
+// parseFolderFilter reads the ?folder_id= query param into
+// knowledge.Service.ListCorpora's tri-state filter: absent means no filter,
+// the literal value "unfiled" means folder_id IS NULL, anything else
+// filters to that folder id.
+func parseFolderFilter(r *http.Request) *string {
+	if !r.URL.Query().Has("folder_id") {
+		return nil
+	}
+	value := strings.TrimSpace(r.URL.Query().Get("folder_id"))
+	if value == "unfiled" {
+		empty := ""
+		return &empty
+	}
+	return &value
 }
 
 func (app *App) handleCorpora(w http.ResponseWriter, r *http.Request) {
@@ -41,7 +64,7 @@ func (app *App) handleCorpora(w http.ResponseWriter, r *http.Request) {
 			writeJSONError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		corpora, total, err := app.backend.Knowledge.ListCorpora(r.Context(), principal, organizationID, sdb.ListParams{
+		corpora, total, err := app.backend.Knowledge.ListCorpora(r.Context(), principal, organizationID, parseFolderFilter(r), sdb.ListParams{
 			Search: query.Search,
 			Sort:   query.Sort,
 			Order:  query.Order,
@@ -62,6 +85,7 @@ func (app *App) handleCorpora(w http.ResponseWriter, r *http.Request) {
 			OrganizationID: req.OrganizationID,
 			Name:           req.Name,
 			Description:    req.Description,
+			FolderID:       req.FolderID,
 		})
 		if err != nil {
 			writeKnowledgeError(w, err)
@@ -88,6 +112,21 @@ func (app *App) handleCorpusByID(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		corpus, err := app.backend.Knowledge.GetCorpus(r.Context(), principal, corpusID)
+		if err != nil {
+			writeKnowledgeError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, corpus)
+	case http.MethodPut:
+		var req updateCorpusRequest
+		if !decodeJSONBody(w, r, &req) {
+			return
+		}
+		corpus, err := app.backend.Knowledge.UpdateCorpus(r.Context(), principal, corpusID, knowledge.UpdateCorpusParams{
+			Name:        req.Name,
+			Description: req.Description,
+			FolderID:    req.FolderID,
+		})
 		if err != nil {
 			writeKnowledgeError(w, err)
 			return

@@ -4,6 +4,10 @@ import type { components } from '@/api/schema'
 
 export type Corpus = components['schemas']['Corpus']
 export type CorpusInput = components['schemas']['CorpusInput']
+export type CorpusUpdateInput = components['schemas']['CorpusUpdateInput']
+export type CorpusFolder = components['schemas']['CorpusFolder']
+export type CorpusFolderInput = components['schemas']['CorpusFolderInput']
+export type CorpusFolderUpdateInput = components['schemas']['CorpusFolderUpdateInput']
 export type CorpusFile = components['schemas']['CorpusFile']
 export type IngestionJob = components['schemas']['IngestionJob']
 export type SearchResponse = components['schemas']['SearchResponse']
@@ -14,19 +18,24 @@ export interface ListParams {
   order?: 'asc' | 'desc'
   limit?: number
   offset?: number
+  // Omit for every corpus regardless of folder. "unfiled" filters to
+  // corpora with no folder. Any other value filters to that folder's id.
+  folderId?: string
 }
 
 const CORPORA_KEY = 'corpora'
+const FOLDERS_KEY = 'corpus-folders'
 const FILES_KEY = 'corpus-files'
 const JOBS_KEY = 'ingestion-jobs'
 
 export function useCorporaList(organizationId: string | undefined, params: ListParams) {
+  const { folderId, ...rest } = params
   return useQuery({
     queryKey: [CORPORA_KEY, organizationId, params],
     enabled: Boolean(organizationId),
     queryFn: async () => {
       const { data, error } = await api.GET('/api/v1/knowledge/corpora', {
-        params: { query: { organization_id: organizationId, ...params } },
+        params: { query: { organization_id: organizationId, folder_id: folderId, ...rest } },
       })
       if (error) throw error
       return data
@@ -58,6 +67,81 @@ export function useCreateCorpus() {
       return data
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [CORPORA_KEY] }),
+  })
+}
+
+export function useUpdateCorpus() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, body }: { id: string; body: CorpusUpdateInput }) => {
+      const { data, error } = await api.PUT('/api/v1/knowledge/corpora/{corpusID}', {
+        params: { path: { corpusID: id } },
+        body,
+      })
+      if (error) throw error
+      return data
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: [CORPORA_KEY] })
+      queryClient.invalidateQueries({ queryKey: [CORPORA_KEY, 'detail', variables.id] })
+    },
+  })
+}
+
+export function useCorpusFoldersList(organizationId: string | undefined) {
+  return useQuery({
+    queryKey: [FOLDERS_KEY, organizationId],
+    enabled: Boolean(organizationId),
+    queryFn: async () => {
+      const { data, error } = await api.GET('/api/v1/knowledge/corpus-folders', {
+        params: { query: { organization_id: organizationId } },
+      })
+      if (error) throw error
+      return data.corpus_folders ?? []
+    },
+  })
+}
+
+export function useCreateCorpusFolder() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (body: CorpusFolderInput) => {
+      const { data, error } = await api.POST('/api/v1/knowledge/corpus-folders', { body })
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [FOLDERS_KEY] }),
+  })
+}
+
+export function useUpdateCorpusFolder() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, body }: { id: string; body: CorpusFolderUpdateInput }) => {
+      const { data, error } = await api.PUT('/api/v1/knowledge/corpus-folders/{folderID}', {
+        params: { path: { folderID: id } },
+        body,
+      })
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [FOLDERS_KEY] }),
+  })
+}
+
+export function useDeleteCorpusFolder() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await api.DELETE('/api/v1/knowledge/corpus-folders/{folderID}', {
+        params: { path: { folderID: id } },
+      })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [FOLDERS_KEY] })
+      queryClient.invalidateQueries({ queryKey: [CORPORA_KEY] })
+    },
   })
 }
 

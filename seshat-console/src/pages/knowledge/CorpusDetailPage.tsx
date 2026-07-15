@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Alert, Button, Card, Empty, Input, message, Popconfirm, Space, Tag, Typography, Upload } from 'antd'
 import type { TableProps, UploadProps } from 'antd'
-import { ArrowLeftOutlined, DeleteOutlined, ReloadOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, DeleteOutlined, EditOutlined, ReloadOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons'
 import {
   useCorpus,
   useCorpusFiles,
+  useCorpusFoldersList,
+  useUpdateCorpus,
   useUploadCorpusFile,
   useDetachCorpusFile,
   useIngestionJobs,
@@ -18,6 +20,7 @@ import {
 import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
 import { ConsoleTable } from '@/components/ConsoleTable'
+import { CorpusFormDrawer } from '@/components/knowledge/CorpusFormDrawer'
 import { palette, monoStack } from '@/theme/tokens'
 
 const STATUS_COLOR: Record<string, string> = {
@@ -32,14 +35,18 @@ const STATUS_COLOR: Record<string, string> = {
 export function CorpusDetailPage() {
   const { organizationId, corpusId } = useParams<{ organizationId: string; corpusId: string }>()
   const navigate = useNavigate()
+  const [editing, setEditing] = useState(false)
   const { data: corpus } = useCorpus(corpusId)
   const { data: files, isLoading: filesLoading } = useCorpusFiles(corpusId)
   const { data: jobs } = useIngestionJobs(corpusId)
   const uploadFile = useUploadCorpusFile(corpusId ?? '')
   const detachFile = useDetachCorpusFile(corpusId ?? '')
   const retryJob = useRetryIngestionJob(corpusId ?? '')
+  const updateCorpus = useUpdateCorpus()
 
   const canonicalOrganizationId = corpus?.organization_id ?? organizationId
+  const folders = useCorpusFoldersList(canonicalOrganizationId ?? undefined)
+  const parentFolder = folders.data?.find((folder) => folder.id === corpus?.folder_id) ?? null
   const corporaPath = canonicalOrganizationId ? `/orgs/${canonicalOrganizationId}/knowledge/corpora` : null
   const corpusDetailPath =
     canonicalOrganizationId && corpus?.id
@@ -144,6 +151,9 @@ export function CorpusDetailPage() {
             <Button icon={<ArrowLeftOutlined />} onClick={() => corporaPath && navigate(corporaPath)} disabled={!corporaPath}>
               Back to corpora
             </Button>
+            <Button icon={<EditOutlined />} onClick={() => setEditing(true)} disabled={!corpus}>
+              Edit
+            </Button>
             <Upload {...uploadProps}>
               <Button type="primary" icon={<UploadOutlined />} loading={uploadFile.isPending}>
                 Upload file
@@ -152,6 +162,15 @@ export function CorpusDetailPage() {
           </Space>
         }
       />
+
+      {parentFolder && (
+        <Tag
+          style={{ cursor: 'pointer', width: 'fit-content', marginBottom: 20 }}
+          onClick={() => canonicalOrganizationId && navigate(`/orgs/${canonicalOrganizationId}/knowledge/folders/${parentFolder.id}`)}
+        >
+          {parentFolder.icon} {parentFolder.name}
+        </Tag>
+      )}
 
       <Space direction="vertical" size={20} style={{ width: '100%' }}>
         <Card title="Files" size="small">
@@ -180,6 +199,25 @@ export function CorpusDetailPage() {
 
         <SearchTestCard corpusId={corpusId} />
       </Space>
+
+      {corpus && (
+        <CorpusFormDrawer
+          corpus={corpus}
+          open={editing}
+          onClose={() => setEditing(false)}
+          folders={folders.data ?? []}
+          onSubmit={(values) => {
+            updateCorpus.mutate(
+              { id: corpus.id!, body: values },
+              {
+                onSuccess: () => setEditing(false),
+                onError: (error) => message.error(getErrorMessage(error)),
+              },
+            )
+          }}
+          submitting={updateCorpus.isPending}
+        />
+      )}
     </div>
   )
 }

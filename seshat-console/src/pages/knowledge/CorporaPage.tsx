@@ -1,201 +1,133 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Button, Drawer, Empty, Form, Input, message, Popconfirm, Space, Typography } from 'antd'
-import type { TableProps } from 'antd'
-import { PlusOutlined, DeleteOutlined, DatabaseOutlined } from '@ant-design/icons'
+import { useMemo, useState } from 'react'
+import { Button, Card, Input, Space, message } from 'antd'
+import { PlusOutlined, FolderAddOutlined } from '@ant-design/icons'
 import {
   useCorporaList,
+  useCorpusFoldersList,
   useCreateCorpus,
-  useDeleteCorpus,
-  type Corpus,
-  type CorpusInput,
+  useCreateCorpusFolder,
 } from '@/api/knowledge'
 import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
-import { ConsoleTable } from '@/components/ConsoleTable'
+import { CorporaTable } from '@/components/knowledge/CorporaTable'
+import { CorpusFormDrawer } from '@/components/knowledge/CorpusFormDrawer'
+import { CorpusFolderFormDrawer } from '@/components/knowledge/CorpusFolderFormDrawer'
+import { FolderCard } from '@/components/knowledge/FolderCard'
 import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
-import { palette } from '@/theme/tokens'
 
-const PAGE_SIZE = 20
+// No server-side pagination here - folder corpus counts and the "unfiled"
+// split are computed client-side from one fetch, so a generous limit
+// stands in for "everything" rather than a paged view. Fine for the corpus
+// counts an organization actually has today; revisit if that stops holding.
+const FETCH_LIMIT = 500
 
 export function CorporaPage() {
-  const navigate = useNavigate()
   const organizationId = useScopedOrganizationId()
-  const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
-  const [creating, setCreating] = useState(false)
+  const [creatingCorpus, setCreatingCorpus] = useState(false)
+  const [creatingFolder, setCreatingFolder] = useState(false)
 
   const { data, isLoading, isFetching } = useCorporaList(organizationId ?? undefined, {
     q: search || undefined,
     sort: 'name',
     order: 'asc',
-    limit: PAGE_SIZE,
-    offset: (page - 1) * PAGE_SIZE,
+    limit: FETCH_LIMIT,
   })
+  const folders = useCorpusFoldersList(organizationId ?? undefined)
   const createCorpus = useCreateCorpus()
-  const deleteCorpus = useDeleteCorpus()
+  const createFolder = useCreateCorpusFolder()
 
-  const buildCorpusDetailPath = (corpusId: string, corpusOrganizationId?: string | null) => {
-    const targetOrganizationId = corpusOrganizationId ?? organizationId
-    if (!targetOrganizationId) return null
-    return `/orgs/${targetOrganizationId}/knowledge/corpora/${corpusId}`
-  }
-
-  const columns: TableProps<Corpus>['columns'] = [
-    {
-      title: 'Name',
-      dataIndex: 'name',
-      key: 'name',
-      render: (name: string, record) => (
-        <div>
-          <div style={{ fontWeight: 500 }}>{name}</div>
-          {record.description && (
-            <Typography.Text style={{ fontSize: 12, color: palette.inkTertiary }}>
-              {record.description}
-            </Typography.Text>
-          )}
-        </div>
-      ),
-    },
-    { title: 'Chunks', dataIndex: 'chunk_count', key: 'chunk_count', width: 100 },
-    {
-      title: '',
-      key: 'actions',
-      width: 64,
-      render: (_, record) => (
-        <Popconfirm
-          title={`Delete ${record.name}?`}
-          description="Removes its files, ingestion jobs, and vector data."
-          onConfirm={(event) => {
-            event?.stopPropagation()
-            deleteCorpus.mutate(record.id!, {
-              onError: (error) => message.error(getErrorMessage(error)),
-            })
-          }}
-        >
-          <Button
-            size="small"
-            danger
-            icon={<DeleteOutlined />}
-            onClick={(event) => event.stopPropagation()}
-            aria-label={`Delete ${record.name}`}
-          />
-        </Popconfirm>
-      ),
-    },
-  ]
+  const allCorpora = data?.corpora
+  const unfiledCorpora = useMemo(() => (allCorpora ?? []).filter((corpus) => !corpus.folder_id), [allCorpora])
+  const corpusCountByFolder = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const corpus of allCorpora ?? []) {
+      if (corpus.folder_id) counts.set(corpus.folder_id, (counts.get(corpus.folder_id) ?? 0) + 1)
+    }
+    return counts
+  }, [allCorpora])
 
   return (
     <div>
       <PageHeader
         title="Corpora"
-        description="RAG document collections. Upload files, watch ingestion, and search."
+        description="RAG document collections, organized into folders. Upload files, watch ingestion, and search."
         actions={
           <Space>
             <Input.Search
               placeholder="Search corpora"
               allowClear
-              onSearch={(value) => {
-                setPage(1)
-                setSearch(value)
-              }}
+              onSearch={setSearch}
               style={{ width: 220 }}
               disabled={!organizationId}
             />
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)} disabled={!organizationId}>
+            <Button icon={<FolderAddOutlined />} onClick={() => setCreatingFolder(true)} disabled={!organizationId}>
+              New folder
+            </Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreatingCorpus(true)} disabled={!organizationId}>
               New corpus
             </Button>
           </Space>
         }
       />
 
-      <ConsoleTable<Corpus>
-        rowKey="id"
-        columns={columns}
-        dataSource={data?.corpora ?? []}
-        loading={isLoading || isFetching}
-        onRow={(record) => {
-          const detailPath = record.id ? buildCorpusDetailPath(record.id, record.organization_id) : null
-          if (!detailPath) return {}
-          return {
-            onClick: () => navigate(detailPath),
-            style: { cursor: 'pointer' },
-          }
-        }}
-        locale={{
-          emptyText: (
-            <Empty
-              image={<DatabaseOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}
-              description={search ? 'No corpora match your search' : 'No corpora yet'}
-              style={{ padding: '32px 0' }}
-            />
-          ),
-        }}
-        pagination={{
-          current: page,
-          pageSize: PAGE_SIZE,
-          total: data?.total ?? 0,
-          onChange: setPage,
-          showTotal: (total) => `${total} ${total === 1 ? 'corpus' : 'corpora'}`,
-        }}
-      />
+      {(folders.data?.length ?? 0) > 0 && (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: 16,
+            marginBottom: 24,
+          }}
+        >
+          {folders.data!.map((folder) => (
+            <FolderCard key={folder.id} folder={folder} corpusCount={corpusCountByFolder.get(folder.id!) ?? 0} />
+          ))}
+        </div>
+      )}
+
+      <Card title="Unfiled corpora" styles={{ body: { padding: 0 } }}>
+        <CorporaTable
+          organizationId={organizationId}
+          corpora={unfiledCorpora}
+          loading={isLoading || isFetching}
+          emptyDescription={search ? 'No corpora match your search' : 'No unfiled corpora'}
+        />
+      </Card>
 
       <CorpusFormDrawer
-        open={creating}
-        onClose={() => setCreating(false)}
+        open={creatingCorpus}
+        onClose={() => setCreatingCorpus(false)}
+        folders={folders.data ?? []}
         onSubmit={(values) => {
           if (!organizationId) return
           createCorpus.mutate(
             { ...values, organization_id: organizationId },
             {
-              onSuccess: () => setCreating(false),
+              onSuccess: () => setCreatingCorpus(false),
               onError: (error) => message.error(getErrorMessage(error)),
             },
           )
         }}
         submitting={createCorpus.isPending}
       />
+
+      <CorpusFolderFormDrawer
+        folder={null}
+        open={creatingFolder}
+        onClose={() => setCreatingFolder(false)}
+        onSubmit={(values) => {
+          if (!organizationId) return
+          createFolder.mutate(
+            { ...values, organization_id: organizationId },
+            {
+              onSuccess: () => setCreatingFolder(false),
+              onError: (error) => message.error(getErrorMessage(error)),
+            },
+          )
+        }}
+        submitting={createFolder.isPending}
+      />
     </div>
-  )
-}
-
-function CorpusFormDrawer({
-  open,
-  onClose,
-  onSubmit,
-  submitting,
-}: {
-  open: boolean
-  onClose: () => void
-  onSubmit: (values: Omit<CorpusInput, 'organization_id'>) => void
-  submitting: boolean
-}) {
-  const [form] = Form.useForm<CorpusInput>()
-
-  useEffect(() => {
-    if (open) form.setFieldsValue({ name: '', description: '' })
-  }, [open, form])
-
-  return (
-    <Drawer
-      title="New corpus"
-      open={open}
-      onClose={onClose}
-      destroyOnHidden
-      extra={
-        <Button type="primary" loading={submitting} onClick={() => form.submit()}>
-          Save
-        </Button>
-      }
-    >
-      <Form<CorpusInput> form={form} layout="vertical" onFinish={onSubmit}>
-        <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Required' }]}>
-          <Input placeholder="Supplier Policies" />
-        </Form.Item>
-        <Form.Item name="description" label="Description">
-          <Input.TextArea rows={3} placeholder="What this corpus is for" />
-        </Form.Item>
-      </Form>
-    </Drawer>
   )
 }

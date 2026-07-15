@@ -1493,13 +1493,67 @@ export interface paths {
         };
         /** Get a corpus */
         get: operations["getCorpus"];
-        put?: never;
+        /**
+         * Rename/redescribe a corpus, or move it in or out of a folder
+         * @description Requires knowledge.manage or organization.manage.
+         */
+        put: operations["updateCorpus"];
         post?: never;
         /**
          * Delete a corpus
          * @description Requires knowledge.manage or organization.manage. Removes the corpus's files, ingestion jobs, and its entire vector namespace.
          */
         delete: operations["deleteCorpus"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge/corpus-folders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List an organization's corpus folders
+         * @description Open to any member of the organization - a folder's name/description isn't secret.
+         */
+        get: operations["listCorpusFolders"];
+        put?: never;
+        /**
+         * Create a corpus folder
+         * @description Requires knowledge.manage or organization.manage.
+         */
+        post: operations["createCorpusFolder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge/corpus-folders/{folderID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                folderID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Rename/redescribe a corpus folder
+         * @description Requires knowledge.manage or organization.manage.
+         */
+        put: operations["updateCorpusFolder"];
+        post?: never;
+        /**
+         * Delete a corpus folder
+         * @description Requires knowledge.manage or organization.manage. Unfiles (does not delete) every corpus currently in this folder before removing it.
+         */
+        delete: operations["deleteCorpusFolder"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2948,6 +3002,8 @@ export interface components {
             name?: string;
             description?: string;
             chunk_count?: number;
+            /** @description Optional - which CorpusFolder this corpus is filed under, if any. */
+            folder_id?: string;
             /** Format: date-time */
             created_at?: string;
             /** Format: date-time */
@@ -2957,6 +3013,40 @@ export interface components {
             organization_id: string;
             name: string;
             description?: string;
+            folder_id?: string;
+        };
+        CorpusUpdateInput: {
+            name: string;
+            description?: string;
+            /** @description Omit or send an empty string to unfile the corpus. */
+            folder_id?: string;
+        };
+        CorpusFolder: {
+            id?: string;
+            organization_id?: string;
+            created_by_user_id?: string;
+            /** @example Legal & Compliance */
+            name?: string;
+            description?: string;
+            /** @example 📁 */
+            icon?: string;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        CorpusFolderInput: {
+            organization_id: string;
+            /** @example Legal & Compliance */
+            name: string;
+            description?: string;
+            /** @example 📁 */
+            icon?: string;
+        };
+        CorpusFolderUpdateInput: {
+            name: string;
+            description?: string;
+            icon?: string;
         };
         CorpusFile: {
             id?: string;
@@ -6145,6 +6235,8 @@ export interface operations {
                 order?: components["parameters"]["order"];
                 /** @description Free-text search, fields vary per resource. */
                 q?: components["parameters"]["q"];
+                /** @description Omit for every corpus regardless of folder. The literal value "unfiled" filters to corpora with no folder. Any other value filters to that folder's corpora. */
+                folder_id?: string;
             };
             header?: never;
             path?: never;
@@ -6217,12 +6309,147 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    updateCorpus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                corpusID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorpusUpdateInput"];
+            };
+        };
+        responses: {
+            /** @description Updated corpus */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Corpus"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
     deleteCorpus: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 corpusID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listCorpusFolders: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Corpus folder list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        corpus_folders?: components["schemas"]["CorpusFolder"][];
+                        count?: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createCorpusFolder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorpusFolderInput"];
+            };
+        };
+        responses: {
+            /** @description Folder created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorpusFolder"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    updateCorpusFolder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                folderID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorpusFolderUpdateInput"];
+            };
+        };
+        responses: {
+            /** @description Updated folder */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorpusFolder"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    deleteCorpusFolder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                folderID: string;
             };
             cookie?: never;
         };

@@ -119,6 +119,7 @@ func (d *DB) Migrate() error {
 		&JobRun{},
 		&ProviderSetting{},
 		&Corpus{},
+		&CorpusFolder{},
 		&CorpusFile{},
 		&KnowledgeIngestionJob{},
 		&EmbedderSetting{},

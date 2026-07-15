@@ -116,6 +116,7 @@ type Corpus struct {
 	Name            string    `json:"name"`
 	Description     string    `json:"description,omitempty"`
 	ChunkCount      int       `json:"chunk_count"`
+	FolderID        *string   `json:"folder_id,omitempty"`
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
 }
@@ -124,6 +125,16 @@ type CreateCorpusParams struct {
 	OrganizationID string
 	Name           string
 	Description    string
+	FolderID       string
+}
+
+// UpdateCorpusParams edits a corpus's own fields - name/description/folder
+// assignment. There was no way to do any of this before (Corpus had no
+// Update method at all), which folder assignment now needs.
+type UpdateCorpusParams struct {
+	Name        string
+	Description string
+	FolderID    string
 }
 
 // CorpusFile is one uploaded document and its ingestion status.
@@ -176,7 +187,11 @@ var corpusSearchColumns = []string{"name", "description"}
 // visibility like every other list endpoint: a caller lacking
 // knowledge.read/knowledge.manage/organization.manage gets an empty list,
 // not a 403.
-func (s *Service) ListCorpora(ctx context.Context, principal *iam.Principal, organizationID string, listParams sdb.ListParams) ([]Corpus, int64, error) {
+//
+// folderFilter is a tri-state: nil means no folder filter at all (every
+// corpus regardless of folder), a pointer to "" means "unfiled only"
+// (folder_id IS NULL), and a pointer to a real id filters to that folder.
+func (s *Service) ListCorpora(ctx context.Context, principal *iam.Principal, organizationID string, folderFilter *string, listParams sdb.ListParams) ([]Corpus, int64, error) {
 	if principal == nil {
 		return nil, 0, ErrUnauthorized("authentication required")
 	}
@@ -191,6 +206,13 @@ func (s *Service) ListCorpora(ctx context.Context, principal *iam.Principal, org
 	}
 
 	query := s.db.Gorm().WithContext(ctx).Model(&sdb.Corpus{}).Where("organization_id = ?", organizationID)
+	if folderFilter != nil {
+		if *folderFilter == "" {
+			query = query.Where("folder_id IS NULL")
+		} else {
+			query = query.Where("folder_id = ?", *folderFilter)
+		}
+	}
 	sortField, err := sdb.ResolveSortField(corpusSortFields, listParams.Sort)
 	if err != nil {
 		return nil, 0, ErrInvalidInput(err.Error())
@@ -237,6 +259,10 @@ func (s *Service) CreateCorpus(ctx context.Context, principal *iam.Principal, pa
 	var corpus sdb.Corpus
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		tx = tx.WithContext(ctx)
+		folderID, err := s.validateFolderID(tx, organizationID, params.FolderID)
+		if err != nil {
+			return err
+		}
 		corpusID, err := newID("corpus")
 		if err != nil {
 			return err
@@ -247,6 +273,7 @@ func (s *Service) CreateCorpus(ctx context.Context, principal *iam.Principal, pa
 			CreatedByUserID: principal.User.ID,
 			Name:            name,
 			Description:     strings.TrimSpace(params.Description),
+			FolderID:        folderID,
 		}
 		if err := tx.Create(&corpus).Error; err != nil {
 			return err
@@ -258,6 +285,70 @@ func (s *Service) CreateCorpus(ctx context.Context, principal *iam.Principal, pa
 	}
 	result := toCorpus(corpus)
 	return &result, nil
+}
+
+// UpdateCorpus edits name/description/folder. Requires knowledge.manage or
+// organization.manage. Passing an empty FolderID unfiles the corpus.
+func (s *Service) UpdateCorpus(ctx context.Context, principal *iam.Principal, corpusID string, params UpdateCorpusParams) (*Corpus, error) {
+	if principal == nil {
+		return nil, ErrUnauthorized("authentication required")
+	}
+	corpusID = strings.TrimSpace(corpusID)
+	name := strings.TrimSpace(params.Name)
+	if corpusID == "" || name == "" {
+		return nil, ErrInvalidInput("corpus_id and name are required")
+	}
+
+	var corpus sdb.Corpus
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		tx = tx.WithContext(ctx)
+		if err := tx.First(&corpus, "id = ?", corpusID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrNotFound("corpus not found")
+			}
+			return err
+		}
+		if !principal.User.IsAdmin {
+			if err := s.iam.CheckOrganizationPermission(tx, principal, corpus.OrganizationID, "knowledge.manage", "organization.manage"); err != nil {
+				return err
+			}
+		}
+		folderID, err := s.validateFolderID(tx, corpus.OrganizationID, params.FolderID)
+		if err != nil {
+			return err
+		}
+		corpus.Name = name
+		corpus.Description = strings.TrimSpace(params.Description)
+		corpus.FolderID = folderID
+		if err := tx.Save(&corpus).Error; err != nil {
+			return err
+		}
+		return s.iam.AppendAuditEvent(tx, principal, corpus.OrganizationID, "corpus.updated", "corpus", corpus.ID, map[string]string{"name": corpus.Name})
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := toCorpus(corpus)
+	return &result, nil
+}
+
+// validateFolderID trims folderID and, if non-empty, confirms a
+// CorpusFolder with that id exists in organizationID - returns nil (no
+// folder) for an empty string, an error for a folder that doesn't exist or
+// belongs to a different organization.
+func (s *Service) validateFolderID(tx *gorm.DB, organizationID, folderID string) (*string, error) {
+	folderID = strings.TrimSpace(folderID)
+	if folderID == "" {
+		return nil, nil
+	}
+	var count int64
+	if err := tx.Model(&sdb.CorpusFolder{}).Where("id = ? AND organization_id = ?", folderID, organizationID).Count(&count).Error; err != nil {
+		return nil, err
+	}
+	if count == 0 {
+		return nil, ErrInvalidInput("folder not found in this organization")
+	}
+	return &folderID, nil
 }
 
 // DeleteCorpus removes the corpus, its files, and its vector namespace.
@@ -348,6 +439,7 @@ func toCorpus(r sdb.Corpus) Corpus {
 		Name:            r.Name,
 		Description:     r.Description,
 		ChunkCount:      r.ChunkCount,
+		FolderID:        r.FolderID,
 		CreatedAt:       r.CreatedAt,
 		UpdatedAt:       r.UpdatedAt,
 	}
