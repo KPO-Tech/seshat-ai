@@ -135,6 +135,7 @@ func (app *App) routes() http.Handler {
 	mux.Handle("POST /api/v1/knowledge/corpus-folders", app.authMiddleware(http.HandlerFunc(app.handleCorpusFolders)))
 	mux.Handle("PUT /api/v1/knowledge/corpus-folders/{folderID}", app.authMiddleware(http.HandlerFunc(app.handleCorpusFolderByID)))
 	mux.Handle("DELETE /api/v1/knowledge/corpus-folders/{folderID}", app.authMiddleware(http.HandlerFunc(app.handleCorpusFolderByID)))
+	mux.Handle("POST /api/v1/knowledge/corpus-folders/{folderID}/search", app.authMiddleware(http.HandlerFunc(app.handleCorpusFolderSearch)))
 	mux.Handle("GET /api/v1/knowledge/corpora/{corpusID}/files", app.authMiddleware(http.HandlerFunc(app.handleCorpusFiles)))
 	mux.Handle("POST /api/v1/knowledge/corpora/{corpusID}/files", app.authMiddleware(http.HandlerFunc(app.handleCorpusFiles)))
 	mux.Handle("DELETE /api/v1/knowledge/corpora/{corpusID}/files/{fileID}", app.authMiddleware(http.HandlerFunc(app.handleCorpusFileByID)))

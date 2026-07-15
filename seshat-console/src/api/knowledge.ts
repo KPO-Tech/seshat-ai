@@ -11,6 +11,7 @@ export type CorpusFolderUpdateInput = components['schemas']['CorpusFolderUpdateI
 export type CorpusFile = components['schemas']['CorpusFile']
 export type IngestionJob = components['schemas']['IngestionJob']
 export type SearchResponse = components['schemas']['SearchResponse']
+export type FolderSearchResponse = components['schemas']['FolderSearchResponse']
 
 export interface ListParams {
   q?: string
@@ -250,6 +251,22 @@ export function useSearchCorpus(corpusId: string) {
     mutationFn: async ({ query, topK }: { query: string; topK?: number }) => {
       const { data, error } = await api.POST('/api/v1/knowledge/corpora/{corpusID}/search', {
         params: { path: { corpusID: corpusId } },
+        body: { query, top_k: topK },
+      })
+      if (error) throw error
+      return data
+    },
+  })
+}
+
+// Searches every corpus filed under a folder at once, merging hits by
+// score - see the backend's SearchFolder doc comment for why that's valid
+// (every corpus in an org shares that org's one embedder).
+export function useSearchFolder(folderId: string) {
+  return useMutation({
+    mutationFn: async ({ query, topK }: { query: string; topK?: number }) => {
+      const { data, error } = await api.POST('/api/v1/knowledge/corpus-folders/{folderID}/search', {
+        params: { path: { folderID: folderId } },
         body: { query, top_k: topK },
       })
       if (error) throw error

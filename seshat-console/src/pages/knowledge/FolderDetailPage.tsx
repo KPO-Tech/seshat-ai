@@ -8,6 +8,7 @@ import {
   useCreateCorpus,
   useUpdateCorpusFolder,
   useDeleteCorpusFolder,
+  useSearchFolder,
 } from '@/api/knowledge'
 import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
@@ -15,6 +16,7 @@ import { CorporaTable } from '@/components/knowledge/CorporaTable'
 import { CorpusFormDrawer } from '@/components/knowledge/CorpusFormDrawer'
 import { CorpusFolderFormDrawer } from '@/components/knowledge/CorpusFolderFormDrawer'
 import { FolderIcon } from '@/components/knowledge/FolderIcon'
+import { SearchTestCard } from '@/components/knowledge/SearchTestCard'
 import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
 
 const FETCH_LIMIT = 500
@@ -38,6 +40,7 @@ export function FolderDetailPage() {
   const createCorpus = useCreateCorpus()
   const updateFolder = useUpdateCorpusFolder()
   const deleteFolder = useDeleteCorpusFolder()
+  const searchFolder = useSearchFolder(folderId ?? '')
 
   const corporaPath = organizationId ? `/orgs/${organizationId}/knowledge/corpora` : null
 
@@ -88,6 +91,17 @@ export function FolderDetailPage() {
         loading={isLoading || isFetching}
         emptyDescription="No corpora in this folder yet"
       />
+
+      {(data?.corpora?.length ?? 0) > 0 && (
+        <div style={{ marginTop: 20 }}>
+          <SearchTestCard
+            title="Try a search across this folder"
+            placeholder="Ask something any corpus in this folder should be able to answer"
+            showCorpusName
+            search={searchFolder}
+          />
+        </div>
+      )}
 
       <CorpusFormDrawer
         open={creatingCorpus}

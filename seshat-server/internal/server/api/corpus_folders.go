@@ -57,6 +57,37 @@ func (app *App) handleCorpusFolders(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleCorpusFolderSearch searches every corpus filed under a folder at
+// once, merging results by score - see knowledge.Service.SearchFolder's
+// doc comment for why that's valid (every corpus in an org shares that
+// org's one embedder).
+func (app *App) handleCorpusFolderSearch(w http.ResponseWriter, r *http.Request) {
+	principal, ok := authPrincipalFromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "missing principal")
+		return
+	}
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	folderID := strings.TrimSpace(r.PathValue("folderID"))
+	if folderID == "" {
+		writeJSONError(w, http.StatusBadRequest, "missing folder id")
+		return
+	}
+	var req searchCorpusRequest
+	if !decodeJSONBody(w, r, &req) {
+		return
+	}
+	resp, err := app.backend.Knowledge.SearchFolder(r.Context(), principal, folderID, req.Query, req.TopK)
+	if err != nil {
+		writeKnowledgeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
 func (app *App) handleCorpusFolderByID(w http.ResponseWriter, r *http.Request) {
 	principal, ok := authPrincipalFromContext(r.Context())
 	if !ok {

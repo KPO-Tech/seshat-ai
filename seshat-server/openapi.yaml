@@ -2699,6 +2699,44 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/knowledge/corpus-folders/{folderID}/search:
+    parameters:
+      - name: folderID
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      operationId: searchCorpusFolder
+      tags: [knowledge]
+      summary: Search every corpus filed under a folder at once
+      description: >-
+        Requires knowledge.read/knowledge.manage or organization.manage.
+        Searches each corpus in the folder and merges the hits into one
+        list ranked by score - valid because every corpus in an
+        organization shares that organization's single embedder, so scores
+        are directly comparable. Each result's metadata gains
+        corpus_id/corpus_name so the caller can tell which corpus it came
+        from.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                query: { type: string }
+                top_k: { type: integer, minimum: 1, maximum: 20, description: "Defaults to 5." }
+              required: [query]
+      responses:
+        "200":
+          description: Merged search results
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FolderSearchResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/knowledge/corpora/{corpusID}/files:
     parameters:
       - name: corpusID
@@ -4849,6 +4887,23 @@ components:
               text: { type: string }
               score: { type: number, format: float }
               metadata: { type: object, additionalProperties: { type: string } }
+
+    FolderSearchResponse:
+      type: object
+      properties:
+        folder_id: { type: string }
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              key: { type: string }
+              text: { type: string }
+              score: { type: number, format: float }
+              metadata:
+                type: object
+                additionalProperties: { type: string }
+                description: Includes corpus_id/corpus_name identifying which corpus this hit came from, in addition to the usual filename/position keys.
 
     EmbedderSetting:
       type: object

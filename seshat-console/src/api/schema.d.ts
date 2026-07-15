@@ -1579,6 +1579,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/knowledge/corpus-folders/{folderID}/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                folderID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Search every corpus filed under a folder at once
+         * @description Requires knowledge.read/knowledge.manage or organization.manage. Searches each corpus in the folder and merges the hits into one list ranked by score - valid because every corpus in an organization shares that organization's single embedder, so scores are directly comparable. Each result's metadata gains corpus_id/corpus_name so the caller can tell which corpus it came from.
+         */
+        post: operations["searchCorpusFolder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/knowledge/corpora/{corpusID}/files": {
         parameters: {
             query?: never;
@@ -3142,6 +3164,19 @@ export interface components {
                 text?: string;
                 /** Format: float */
                 score?: number;
+                metadata?: {
+                    [key: string]: string;
+                };
+            }[];
+        };
+        FolderSearchResponse: {
+            folder_id?: string;
+            results?: {
+                key?: string;
+                text?: string;
+                /** Format: float */
+                score?: number;
+                /** @description Includes corpus_id/corpus_name identifying which corpus this hit came from, in addition to the usual filename/position keys. */
                 metadata?: {
                     [key: string]: string;
                 };
@@ -6545,6 +6580,39 @@ export interface operations {
                 };
                 content?: never;
             };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    searchCorpusFolder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                folderID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    query: string;
+                    /** @description Defaults to 5. */
+                    top_k?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Merged search results */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FolderSearchResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
         };
