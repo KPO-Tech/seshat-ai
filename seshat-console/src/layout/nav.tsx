@@ -153,12 +153,6 @@ export function getSecondaryNavItems(pathname: string, organizationId: string | 
         path: '/workspace/chat',
         matchPrefix: '/workspace/chat',
       },
-      {
-        key: 'workspace-agents',
-        label: 'Agents',
-        path: '/workspace/agents',
-        matchPrefix: '/workspace/agents',
-      },
     ]
   }
 
