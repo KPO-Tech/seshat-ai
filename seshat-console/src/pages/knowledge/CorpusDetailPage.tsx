@@ -6,8 +6,8 @@ import { ArrowLeftOutlined, DeleteOutlined, EditOutlined, ReloadOutlined, Upload
 import {
   useCorpus,
   useCorpusFiles,
-  useCorpusFoldersList,
   useUpdateCorpus,
+  useDeleteCorpus,
   useUploadCorpusFile,
   useDetachCorpusFile,
   useIngestionJobs,
@@ -42,11 +42,10 @@ export function CorpusDetailPage() {
   const detachFile = useDetachCorpusFile(corpusId ?? '')
   const retryJob = useRetryIngestionJob(corpusId ?? '')
   const updateCorpus = useUpdateCorpus()
+  const deleteCorpus = useDeleteCorpus()
   const searchCorpus = useSearchCorpus(corpusId ?? '')
 
   const canonicalOrganizationId = corpus?.organization_id ?? organizationId
-  const folders = useCorpusFoldersList(canonicalOrganizationId ?? undefined)
-  const parentFolder = folders.data?.find((folder) => folder.id === corpus?.folder_id) ?? null
   const corporaPath = canonicalOrganizationId ? `/orgs/${canonicalOrganizationId}/knowledge/corpora` : null
   const corpusDetailPath =
     canonicalOrganizationId && corpus?.id
@@ -154,6 +153,20 @@ export function CorpusDetailPage() {
             <Button icon={<EditOutlined />} onClick={() => setEditing(true)} disabled={!corpus}>
               Edit
             </Button>
+            <Popconfirm
+              title={`Delete ${corpus?.name ?? 'this corpus'}?`}
+              description="Deletes its files, ingestion jobs, and entire vector namespace."
+              onConfirm={() =>
+                deleteCorpus.mutate(corpusId, {
+                  onSuccess: () => corporaPath && navigate(corporaPath),
+                  onError: (error) => message.error(getErrorMessage(error)),
+                })
+              }
+            >
+              <Button danger icon={<DeleteOutlined />} disabled={!corpus}>
+                Delete
+              </Button>
+            </Popconfirm>
             <Upload {...uploadProps}>
               <Button type="primary" icon={<UploadOutlined />} loading={uploadFile.isPending}>
                 Upload file
@@ -162,15 +175,6 @@ export function CorpusDetailPage() {
           </Space>
         }
       />
-
-      {parentFolder && (
-        <Tag
-          style={{ cursor: 'pointer', width: 'fit-content', marginBottom: 20 }}
-          onClick={() => canonicalOrganizationId && navigate(`/orgs/${canonicalOrganizationId}/knowledge/folders/${parentFolder.id}`)}
-        >
-          {parentFolder.icon} {parentFolder.name}
-        </Tag>
-      )}
 
       <Space direction="vertical" size={20} style={{ width: '100%' }}>
         <Card title="Files" size="small">
@@ -205,7 +209,6 @@ export function CorpusDetailPage() {
           corpus={corpus}
           open={editing}
           onClose={() => setEditing(false)}
-          folders={folders.data ?? []}
           onSubmit={(values) => {
             updateCorpus.mutate(
               { id: corpus.id!, body: values },

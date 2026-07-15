@@ -41,7 +41,7 @@ func TestListCorporaIsScopedByOrganizationAndPermission(t *testing.T) {
 
 	// A member without knowledge.read/manage sees an empty list, not a 403 —
 	// same scoped-visibility convention as every other list endpoint.
-	corpora, total, err := env.knowledge.ListCorpora(context.Background(), memberPrincipal, env.orgID, nil, sdb.ListParams{Sort: "name", Order: "asc", Limit: 50})
+	corpora, total, err := env.knowledge.ListCorpora(context.Background(), memberPrincipal, env.orgID, sdb.ListParams{Sort: "name", Order: "asc", Limit: 50})
 	if err != nil {
 		t.Fatalf("unexpected error listing as member: %v", err)
 	}
@@ -49,7 +49,7 @@ func TestListCorporaIsScopedByOrganizationAndPermission(t *testing.T) {
 		t.Fatalf("expected a member without knowledge permissions to see no corpora, got %d", len(corpora))
 	}
 
-	corpora, total, err = env.knowledge.ListCorpora(context.Background(), env.adminPrincipal, env.orgID, nil, sdb.ListParams{Sort: "name", Order: "asc", Limit: 50})
+	corpora, total, err = env.knowledge.ListCorpora(context.Background(), env.adminPrincipal, env.orgID, sdb.ListParams{Sort: "name", Order: "asc", Limit: 50})
 	if err != nil {
 		t.Fatalf("list as admin: %v", err)
 	}

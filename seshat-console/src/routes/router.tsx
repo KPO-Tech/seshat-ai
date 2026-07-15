@@ -38,7 +38,6 @@ const AgentPresetsPage = lazyPage(() => import('@/pages/agentPresets/AgentPreset
 const AuditEventsPage = lazyPage(() => import('@/pages/auditEvents/AuditEventsPage').then((module) => ({ default: module.AuditEventsPage })))
 const CorporaPage = lazyPage(() => import('@/pages/knowledge/CorporaPage').then((module) => ({ default: module.CorporaPage })))
 const CorpusDetailPage = lazyPage(() => import('@/pages/knowledge/CorpusDetailPage').then((module) => ({ default: module.CorpusDetailPage })))
-const FolderDetailPage = lazyPage(() => import('@/pages/knowledge/FolderDetailPage').then((module) => ({ default: module.FolderDetailPage })))
 const EmbedderSettingsPage = lazyPage(() => import('@/pages/knowledge/EmbedderSettingsPage').then((module) => ({ default: module.EmbedderSettingsPage })))
 const WebSearchSettingsPage = lazyPage(() => import('@/pages/webSearch/WebSearchSettingsPage').then((module) => ({ default: module.WebSearchSettingsPage })))
 const SystemStatusPage = lazyPage(() => import('@/pages/system/SystemStatusPage').then((module) => ({ default: module.SystemStatusPage })))
@@ -103,7 +102,6 @@ export const router = createBrowserRouter([
                   { path: 'automation/runs', element: renderLazyPage(RunsPage) },
                   { path: 'knowledge/corpora', element: renderLazyPage(CorporaPage) },
                   { path: 'knowledge/corpora/:corpusId', element: renderLazyPage(CorpusDetailPage) },
-                  { path: 'knowledge/folders/:folderId', element: renderLazyPage(FolderDetailPage) },
                   { path: 'integrations/applications', element: renderLazyPage(ApplicationsPage) },
                   { path: 'integrations/providers', element: renderLazyPage(ProvidersPage) },
                   { path: 'activity/audit', element: renderLazyPage(AuditEventsPage) },

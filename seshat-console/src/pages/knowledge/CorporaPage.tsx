@@ -1,31 +1,22 @@
-import { useMemo, useState } from 'react'
-import { Button, Card, Input, Space, message } from 'antd'
-import { PlusOutlined, FolderAddOutlined } from '@ant-design/icons'
-import {
-  useCorporaList,
-  useCorpusFoldersList,
-  useCreateCorpus,
-  useCreateCorpusFolder,
-} from '@/api/knowledge'
+import { useState } from 'react'
+import { Button, Empty, Input, Space, Spin, message } from 'antd'
+import { PlusOutlined } from '@ant-design/icons'
+import { useCorporaList, useCreateCorpus } from '@/api/knowledge'
 import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
-import { CorporaTable } from '@/components/knowledge/CorporaTable'
+import { CorpusCard } from '@/components/knowledge/CorpusCard'
 import { CorpusFormDrawer } from '@/components/knowledge/CorpusFormDrawer'
-import { CorpusFolderFormDrawer } from '@/components/knowledge/CorpusFolderFormDrawer'
-import { FolderCard } from '@/components/knowledge/FolderCard'
 import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
 
-// No server-side pagination here - folder corpus counts and the "unfiled"
-// split are computed client-side from one fetch, so a generous limit
-// stands in for "everything" rather than a paged view. Fine for the corpus
-// counts an organization actually has today; revisit if that stops holding.
+// No server-side pagination here - a generous limit stands in for
+// "everything" rather than a paged view. Fine for the corpus counts an
+// organization actually has today; revisit if that stops holding.
 const FETCH_LIMIT = 500
 
 export function CorporaPage() {
   const organizationId = useScopedOrganizationId()
   const [search, setSearch] = useState('')
   const [creatingCorpus, setCreatingCorpus] = useState(false)
-  const [creatingFolder, setCreatingFolder] = useState(false)
 
   const { data, isLoading, isFetching } = useCorporaList(organizationId ?? undefined, {
     q: search || undefined,
@@ -33,25 +24,15 @@ export function CorporaPage() {
     order: 'asc',
     limit: FETCH_LIMIT,
   })
-  const folders = useCorpusFoldersList(organizationId ?? undefined)
   const createCorpus = useCreateCorpus()
-  const createFolder = useCreateCorpusFolder()
 
-  const allCorpora = data?.corpora
-  const unfiledCorpora = useMemo(() => (allCorpora ?? []).filter((corpus) => !corpus.folder_id), [allCorpora])
-  const corpusCountByFolder = useMemo(() => {
-    const counts = new Map<string, number>()
-    for (const corpus of allCorpora ?? []) {
-      if (corpus.folder_id) counts.set(corpus.folder_id, (counts.get(corpus.folder_id) ?? 0) + 1)
-    }
-    return counts
-  }, [allCorpora])
+  const corpora = data?.corpora ?? []
 
   return (
     <div>
       <PageHeader
         title="Corpora"
-        description="RAG document collections, organized into folders. Upload files, watch ingestion, and search."
+        description="RAG document collections. Upload files, watch ingestion, and search."
         actions={
           <Space>
             <Input.Search
@@ -61,9 +42,6 @@ export function CorporaPage() {
               style={{ width: 220 }}
               disabled={!organizationId}
             />
-            <Button icon={<FolderAddOutlined />} onClick={() => setCreatingFolder(true)} disabled={!organizationId}>
-              New folder
-            </Button>
             <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreatingCorpus(true)} disabled={!organizationId}>
               New corpus
             </Button>
@@ -71,34 +49,29 @@ export function CorporaPage() {
         }
       />
 
-      {(folders.data?.length ?? 0) > 0 && (
+      {isLoading || isFetching ? (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
+          <Spin />
+        </div>
+      ) : corpora.length === 0 ? (
+        <Empty description={search ? 'No corpora match your search' : 'No corpora yet'} />
+      ) : (
         <div
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
             gap: 16,
-            marginBottom: 24,
           }}
         >
-          {folders.data!.map((folder) => (
-            <FolderCard key={folder.id} folder={folder} corpusCount={corpusCountByFolder.get(folder.id!) ?? 0} />
+          {corpora.map((corpus) => (
+            <CorpusCard key={corpus.id} corpus={corpus} />
           ))}
         </div>
       )}
 
-      <Card title="Unfiled corpora" styles={{ body: { padding: 0 } }}>
-        <CorporaTable
-          organizationId={organizationId}
-          corpora={unfiledCorpora}
-          loading={isLoading || isFetching}
-          emptyDescription={search ? 'No corpora match your search' : 'No unfiled corpora'}
-        />
-      </Card>
-
       <CorpusFormDrawer
         open={creatingCorpus}
         onClose={() => setCreatingCorpus(false)}
-        folders={folders.data ?? []}
         onSubmit={(values) => {
           if (!organizationId) return
           createCorpus.mutate(
@@ -110,23 +83,6 @@ export function CorporaPage() {
           )
         }}
         submitting={createCorpus.isPending}
-      />
-
-      <CorpusFolderFormDrawer
-        folder={null}
-        open={creatingFolder}
-        onClose={() => setCreatingFolder(false)}
-        onSubmit={(values) => {
-          if (!organizationId) return
-          createFolder.mutate(
-            { ...values, organization_id: organizationId },
-            {
-              onSuccess: () => setCreatingFolder(false),
-              onError: (error) => message.error(getErrorMessage(error)),
-            },
-          )
-        }}
-        submitting={createFolder.isPending}
       />
     </div>
   )

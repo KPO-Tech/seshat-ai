@@ -326,27 +326,6 @@ type Corpus struct {
 	Name            string `gorm:"size:255;not null"`
 	Description     string `gorm:"size:1000"`
 	ChunkCount      int    `gorm:"not null;default:0"`
-	// FolderID is optional - a corpus can stay unfiled. Deleting the folder
-	// nullifies this rather than cascading, since a folder is purely
-	// organizational (see CorpusFolder's doc comment).
-	FolderID  *string `gorm:"size:32;index"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
-}
-
-// CorpusFolder is a one-level grouping of an organization's corpora - a
-// real named/described object (creatable empty, renamable) rather than a
-// freeform tag on Corpus, mirroring SkillRepo/MCPServerConfig's shape.
-// Deliberately not nestable (no ParentFolderID) - a single level is enough
-// for "group corpora like folders" without the UX cost of an arbitrary
-// tree.
-type CorpusFolder struct {
-	ID              string `gorm:"primaryKey;size:32"`
-	OrganizationID  string `gorm:"size:32;not null;uniqueIndex:idx_corpus_folder_org_name;index"`
-	CreatedByUserID string `gorm:"size:32;not null"`
-	Name            string `gorm:"size:255;not null;uniqueIndex:idx_corpus_folder_org_name"`
-	Description     string `gorm:"size:1000"`
-	Icon            string `gorm:"size:64;not null;default:'📁'"`
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 }

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
@@ -168,80 +167,6 @@ func (s *Service) Search(ctx context.Context, principal *iam.Principal, params S
 		return nil, ErrInvalidInput("search corpus: " + err.Error())
 	}
 	return &resp, nil
-}
-
-// FolderSearchResponse mirrors sdkrag.SearchResponse but merges hits from
-// every corpus in a folder, ranked together by score. Each result's
-// Metadata gains corpus_id/corpus_name so the caller can tell which corpus
-// it came from.
-type FolderSearchResponse struct {
-	FolderID string                `json:"folder_id"`
-	Results  []sdkrag.SearchResult `json:"results"`
-}
-
-// SearchFolder searches every corpus filed under a folder and merges the
-// results by score into one ranked list. This is valid because every
-// corpus in an organization shares that organization's single embedder
-// (see EmbedderSetting's doc comment on why only one is ever active) - the
-// scores are directly comparable, unlike an arbitrary cross-tenant search
-// would be. Requires knowledge.read/knowledge.manage/organization.manage,
-// same trust level as a single corpus's Search.
-func (s *Service) SearchFolder(ctx context.Context, principal *iam.Principal, folderID, query string, topK int) (*FolderSearchResponse, error) {
-	if principal == nil {
-		return nil, ErrUnauthorized("authentication required")
-	}
-	folderID = strings.TrimSpace(folderID)
-	if folderID == "" {
-		return nil, ErrInvalidInput("folder id is required")
-	}
-	query = strings.TrimSpace(query)
-	if query == "" {
-		return nil, ErrInvalidInput("query is required")
-	}
-	if topK <= 0 {
-		topK = 5
-	}
-
-	var folder sdb.CorpusFolder
-	if err := s.db.Gorm().WithContext(ctx).First(&folder, "id = ?", folderID).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrNotFound("folder not found")
-		}
-		return nil, err
-	}
-	if !principal.User.IsAdmin {
-		if err := s.iam.CheckOrganizationPermission(s.db.Gorm().WithContext(ctx), principal, folder.OrganizationID, "knowledge.read", "knowledge.manage", "organization.manage"); err != nil {
-			return nil, err
-		}
-	}
-
-	var corpora []sdb.Corpus
-	if err := s.db.Gorm().WithContext(ctx).Where("folder_id = ?", folder.ID).Find(&corpora).Error; err != nil {
-		return nil, err
-	}
-
-	allResults := make([]sdkrag.SearchResult, 0, topK*max(len(corpora), 1))
-	for _, corpus := range corpora {
-		resp, err := s.Search(ctx, principal, SearchParams{CorpusID: corpus.ID, Query: query, TopK: topK})
-		if err != nil {
-			return nil, err
-		}
-		for _, result := range resp.Results {
-			if result.Metadata == nil {
-				result.Metadata = map[string]string{}
-			}
-			result.Metadata["corpus_id"] = corpus.ID
-			result.Metadata["corpus_name"] = corpus.Name
-			allResults = append(allResults, result)
-		}
-	}
-
-	sort.Slice(allResults, func(i, j int) bool { return allResults[i].Score > allResults[j].Score })
-	if len(allResults) > topK {
-		allResults = allResults[:topK]
-	}
-
-	return &FolderSearchResponse{FolderID: folder.ID, Results: allResults}, nil
 }
 
 // ─── Ingestion worker (called by Runner; see runner.go) ──────────────────

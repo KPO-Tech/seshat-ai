@@ -2529,13 +2529,6 @@ paths:
         - $ref: "#/components/parameters/sort"
         - $ref: "#/components/parameters/order"
         - $ref: "#/components/parameters/q"
-        - name: folder_id
-          in: query
-          description: >-
-            Omit for every corpus regardless of folder. The literal value
-            "unfiled" filters to corpora with no folder. Any other value
-            filters to that folder's corpora.
-          schema: { type: string }
       responses:
         "200":
           description: Corpus list
@@ -2616,124 +2609,6 @@ paths:
         corpus's files, ingestion jobs, and its entire vector namespace.
       responses:
         "204": { description: Deleted }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
-
-  /api/v1/knowledge/corpus-folders:
-    get:
-      operationId: listCorpusFolders
-      tags: [knowledge]
-      summary: List an organization's corpus folders
-      description: Open to any member of the organization - a folder's name/description isn't secret.
-      parameters:
-        - $ref: "#/components/parameters/organizationIDQuery"
-      responses:
-        "200":
-          description: Corpus folder list
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  corpus_folders:
-                    type: array
-                    items: { $ref: "#/components/schemas/CorpusFolder" }
-                  count: { type: integer }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-    post:
-      operationId: createCorpusFolder
-      tags: [knowledge]
-      summary: Create a corpus folder
-      description: Requires knowledge.manage or organization.manage.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/CorpusFolderInput" }
-      responses:
-        "201":
-          description: Folder created
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/CorpusFolder" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "409": { $ref: "#/components/responses/Conflict" }
-
-  /api/v1/knowledge/corpus-folders/{folderID}:
-    parameters:
-      - name: folderID
-        in: path
-        required: true
-        schema: { type: string }
-    put:
-      operationId: updateCorpusFolder
-      tags: [knowledge]
-      summary: Rename/redescribe a corpus folder
-      description: Requires knowledge.manage or organization.manage.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/CorpusFolderUpdateInput" }
-      responses:
-        "200":
-          description: Updated folder
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/CorpusFolder" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "409": { $ref: "#/components/responses/Conflict" }
-    delete:
-      operationId: deleteCorpusFolder
-      tags: [knowledge]
-      summary: Delete a corpus folder
-      description: >-
-        Requires knowledge.manage or organization.manage. Unfiles (does not
-        delete) every corpus currently in this folder before removing it.
-      responses:
-        "204": { description: Deleted }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
-
-  /api/v1/knowledge/corpus-folders/{folderID}/search:
-    parameters:
-      - name: folderID
-        in: path
-        required: true
-        schema: { type: string }
-    post:
-      operationId: searchCorpusFolder
-      tags: [knowledge]
-      summary: Search every corpus filed under a folder at once
-      description: >-
-        Requires knowledge.read/knowledge.manage or organization.manage.
-        Searches each corpus in the folder and merges the hits into one
-        list ranked by score - valid because every corpus in an
-        organization shares that organization's single embedder, so scores
-        are directly comparable. Each result's metadata gains
-        corpus_id/corpus_name so the caller can tell which corpus it came
-        from.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                query: { type: string }
-                top_k: { type: integer, minimum: 1, maximum: 20, description: "Defaults to 5." }
-              required: [query]
-      responses:
-        "200":
-          description: Merged search results
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/FolderSearchResponse" }
-        "400": { $ref: "#/components/responses/BadRequest" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
@@ -4788,9 +4663,6 @@ components:
         name: { type: string }
         description: { type: string }
         chunk_count: { type: integer }
-        folder_id:
-          type: string
-          description: Optional - which CorpusFolder this corpus is filed under, if any.
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
 
@@ -4800,7 +4672,6 @@ components:
         organization_id: { type: string }
         name: { type: string }
         description: { type: string }
-        folder_id: { type: string }
       required: [organization_id, name]
 
     # Distinct from CorpusInput: organization_id is immutable after creation.
@@ -4810,39 +4681,6 @@ components:
       properties:
         name: { type: string }
         description: { type: string }
-        folder_id:
-          type: string
-          description: Omit or send an empty string to unfile the corpus.
-
-    CorpusFolder:
-      type: object
-      properties:
-        id: { type: string }
-        organization_id: { type: string }
-        created_by_user_id: { type: string }
-        name: { type: string, example: "Legal & Compliance" }
-        description: { type: string }
-        icon: { type: string, example: "📁" }
-        created_at: { type: string, format: date-time }
-        updated_at: { type: string, format: date-time }
-
-    CorpusFolderInput:
-      type: object
-      required: [organization_id, name]
-      properties:
-        organization_id: { type: string }
-        name: { type: string, example: "Legal & Compliance" }
-        description: { type: string }
-        icon: { type: string, example: "📁" }
-
-    # Distinct from CorpusFolderInput: organization_id is immutable after creation.
-    CorpusFolderUpdateInput:
-      type: object
-      required: [name]
-      properties:
-        name: { type: string }
-        description: { type: string }
-        icon: { type: string }
 
     CorpusFile:
       type: object
@@ -4887,23 +4725,6 @@ components:
               text: { type: string }
               score: { type: number, format: float }
               metadata: { type: object, additionalProperties: { type: string } }
-
-    FolderSearchResponse:
-      type: object
-      properties:
-        folder_id: { type: string }
-        results:
-          type: array
-          items:
-            type: object
-            properties:
-              key: { type: string }
-              text: { type: string }
-              score: { type: number, format: float }
-              metadata:
-                type: object
-                additionalProperties: { type: string }
-                description: Includes corpus_id/corpus_name identifying which corpus this hit came from, in addition to the usual filename/position keys.
 
     EmbedderSetting:
       type: object

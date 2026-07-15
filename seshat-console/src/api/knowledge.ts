@@ -5,13 +5,9 @@ import type { components } from '@/api/schema'
 export type Corpus = components['schemas']['Corpus']
 export type CorpusInput = components['schemas']['CorpusInput']
 export type CorpusUpdateInput = components['schemas']['CorpusUpdateInput']
-export type CorpusFolder = components['schemas']['CorpusFolder']
-export type CorpusFolderInput = components['schemas']['CorpusFolderInput']
-export type CorpusFolderUpdateInput = components['schemas']['CorpusFolderUpdateInput']
 export type CorpusFile = components['schemas']['CorpusFile']
 export type IngestionJob = components['schemas']['IngestionJob']
 export type SearchResponse = components['schemas']['SearchResponse']
-export type FolderSearchResponse = components['schemas']['FolderSearchResponse']
 
 export interface ListParams {
   q?: string
@@ -19,24 +15,19 @@ export interface ListParams {
   order?: 'asc' | 'desc'
   limit?: number
   offset?: number
-  // Omit for every corpus regardless of folder. "unfiled" filters to
-  // corpora with no folder. Any other value filters to that folder's id.
-  folderId?: string
 }
 
 const CORPORA_KEY = 'corpora'
-const FOLDERS_KEY = 'corpus-folders'
 const FILES_KEY = 'corpus-files'
 const JOBS_KEY = 'ingestion-jobs'
 
 export function useCorporaList(organizationId: string | undefined, params: ListParams) {
-  const { folderId, ...rest } = params
   return useQuery({
     queryKey: [CORPORA_KEY, organizationId, params],
     enabled: Boolean(organizationId),
     queryFn: async () => {
       const { data, error } = await api.GET('/api/v1/knowledge/corpora', {
-        params: { query: { organization_id: organizationId, folder_id: folderId, ...rest } },
+        params: { query: { organization_id: organizationId, ...params } },
       })
       if (error) throw error
       return data
@@ -85,63 +76,6 @@ export function useUpdateCorpus() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: [CORPORA_KEY] })
       queryClient.invalidateQueries({ queryKey: [CORPORA_KEY, 'detail', variables.id] })
-    },
-  })
-}
-
-export function useCorpusFoldersList(organizationId: string | undefined) {
-  return useQuery({
-    queryKey: [FOLDERS_KEY, organizationId],
-    enabled: Boolean(organizationId),
-    queryFn: async () => {
-      const { data, error } = await api.GET('/api/v1/knowledge/corpus-folders', {
-        params: { query: { organization_id: organizationId } },
-      })
-      if (error) throw error
-      return data.corpus_folders ?? []
-    },
-  })
-}
-
-export function useCreateCorpusFolder() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (body: CorpusFolderInput) => {
-      const { data, error } = await api.POST('/api/v1/knowledge/corpus-folders', { body })
-      if (error) throw error
-      return data
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: [FOLDERS_KEY] }),
-  })
-}
-
-export function useUpdateCorpusFolder() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ id, body }: { id: string; body: CorpusFolderUpdateInput }) => {
-      const { data, error } = await api.PUT('/api/v1/knowledge/corpus-folders/{folderID}', {
-        params: { path: { folderID: id } },
-        body,
-      })
-      if (error) throw error
-      return data
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: [FOLDERS_KEY] }),
-  })
-}
-
-export function useDeleteCorpusFolder() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await api.DELETE('/api/v1/knowledge/corpus-folders/{folderID}', {
-        params: { path: { folderID: id } },
-      })
-      if (error) throw error
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [FOLDERS_KEY] })
-      queryClient.invalidateQueries({ queryKey: [CORPORA_KEY] })
     },
   })
 }
@@ -251,22 +185,6 @@ export function useSearchCorpus(corpusId: string) {
     mutationFn: async ({ query, topK }: { query: string; topK?: number }) => {
       const { data, error } = await api.POST('/api/v1/knowledge/corpora/{corpusID}/search', {
         params: { path: { corpusID: corpusId } },
-        body: { query, top_k: topK },
-      })
-      if (error) throw error
-      return data
-    },
-  })
-}
-
-// Searches every corpus filed under a folder at once, merging hits by
-// score - see the backend's SearchFolder doc comment for why that's valid
-// (every corpus in an org shares that org's one embedder).
-export function useSearchFolder(folderId: string) {
-  return useMutation({
-    mutationFn: async ({ query, topK }: { query: string; topK?: number }) => {
-      const { data, error } = await api.POST('/api/v1/knowledge/corpus-folders/{folderID}/search', {
-        params: { path: { folderID: folderId } },
         body: { query, top_k: topK },
       })
       if (error) throw error

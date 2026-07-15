@@ -11,18 +11,13 @@ interface SearchHit {
   metadata?: Record<string, string>
 }
 
-// Shared by CorpusDetailPage (search one corpus) and FolderDetailPage
-// (search every corpus in a folder at once, merged by score) - both
-// mutation hooks share the same {query, topK?} -> {results} shape.
 export function SearchTestCard<T extends { results?: SearchHit[] }>({
   title = 'Try a search',
   placeholder = 'Ask something this should be able to answer',
-  showCorpusName = false,
   search,
 }: {
   title?: string
   placeholder?: string
-  showCorpusName?: boolean
   search: UseMutationResult<T | undefined, Error, { query: string; topK?: number }>
 }) {
   const [query, setQuery] = useState('')
@@ -60,11 +55,6 @@ export function SearchTestCard<T extends { results?: SearchHit[] }>({
             <div key={index} style={{ paddingBottom: 12, borderBottom: `1px solid ${palette.border}` }}>
               <Space style={{ marginBottom: 4 }}>
                 <Tag style={{ fontFamily: monoStack, margin: 0 }}>score {item.score?.toFixed(3)}</Tag>
-                {showCorpusName && item.metadata?.corpus_name && (
-                  <Tag color="blue" style={{ margin: 0 }}>
-                    {item.metadata.corpus_name}
-                  </Tag>
-                )}
                 {item.metadata?.filename && (
                   <Typography.Text style={{ fontSize: 12, color: palette.inkTertiary }}>{item.metadata.filename}</Typography.Text>
                 )}

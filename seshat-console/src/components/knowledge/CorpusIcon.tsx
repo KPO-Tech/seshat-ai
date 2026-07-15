@@ -1,7 +1,7 @@
 import { palette } from '@/theme/tokens'
 
 // A rotating set of accent colors from the existing warm palette (not
-// invented hues) so folders read as visually distinct at a glance, Google
+// invented hues) so corpora read as visually distinct at a glance, Google
 // Drive/Canva-style, without adding a "color" field to the backend model -
 // purely a deterministic-per-id display choice.
 const FOLDER_COLORS = [
@@ -13,7 +13,7 @@ const FOLDER_COLORS = [
   palette.accentSecondary,
 ]
 
-function colorForFolderId(id: string): string {
+function colorForId(id: string): string {
   let hash = 0
   for (let i = 0; i < id.length; i++) {
     hash = (hash * 31 + id.charCodeAt(i)) >>> 0
@@ -21,8 +21,8 @@ function colorForFolderId(id: string): string {
   return FOLDER_COLORS[hash % FOLDER_COLORS.length]
 }
 
-export function FolderIcon({ folderId, emoji, size = 56 }: { folderId: string; emoji: string; size?: number }) {
-  const color = colorForFolderId(folderId)
+export function CorpusIcon({ id, emoji = '📁', size = 56 }: { id: string; emoji?: string; size?: number }) {
+  const color = colorForId(id)
   const height = size * 0.8
 
   return (
