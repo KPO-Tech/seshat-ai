@@ -11,9 +11,7 @@ const LoginPage = lazyPage(() => import('@/pages/auth/LoginPage').then((module) 
 const PlatformOverviewPage = lazyPage(() => import('@/pages/dashboard/DashboardPage').then((module) => ({ default: module.DashboardPage })))
 const WorkspaceOverviewPage = lazyPage(() => import('@/pages/workspace/WorkspaceOverviewPage').then((module) => ({ default: module.WorkspaceOverviewPage })))
 const WorkspaceChatPage = lazyPage(() => import('@/pages/workspace/WorkspaceChatPage').then((module) => ({ default: module.WorkspaceChatPage })))
-const WorkspaceWorkflowsPage = lazyPage(() => import('@/pages/workspace/WorkspaceWorkflowsPage').then((module) => ({ default: module.WorkspaceWorkflowsPage })))
 const WorkspaceAgentsPage = lazyPage(() => import('@/pages/workspace/WorkspaceAgentsPage').then((module) => ({ default: module.WorkspaceAgentsPage })))
-const WorkspaceRunsPage = lazyPage(() => import('@/pages/workspace/WorkspaceRunsPage').then((module) => ({ default: module.WorkspaceRunsPage })))
 const OrganizationOverviewPage = lazyPage(() => import('@/pages/organization/OrganizationOverviewPage').then((module) => ({ default: module.OrganizationOverviewPage })))
 const OrganizationsPage = lazyPage(() => import('@/pages/organizations/OrganizationsPage').then((module) => ({ default: module.OrganizationsPage })))
 const MyOrganizationsPage = lazyPage(() => import('@/pages/myOrganizations/MyOrganizationsPage').then((module) => ({ default: module.MyOrganizationsPage })))
@@ -63,9 +61,7 @@ export const router = createBrowserRouter([
               { path: '/workspace', element: <Navigate to="/workspace/overview" replace /> },
               { path: '/workspace/overview', element: renderLazyPage(WorkspaceOverviewPage) },
               { path: '/workspace/chat', element: renderLazyPage(WorkspaceChatPage) },
-              { path: '/workspace/workflows', element: renderLazyPage(WorkspaceWorkflowsPage) },
               { path: '/workspace/agents', element: renderLazyPage(WorkspaceAgentsPage) },
-              { path: '/workspace/runs', element: renderLazyPage(WorkspaceRunsPage) },
               { path: '/profile', element: <Navigate to="/me/profile" replace /> },
               { path: '/me', element: <Navigate to="/me/profile" replace /> },
               { path: '/me/profile', element: renderLazyPage(MyProfilePage) },
