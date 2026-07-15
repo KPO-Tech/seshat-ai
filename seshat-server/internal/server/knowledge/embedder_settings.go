@@ -63,6 +63,28 @@ func (s *Service) GetEmbedderSetting(ctx context.Context, principal *iam.Princip
 	return &setting, nil
 }
 
+// HasUsableEmbedderSetting reports whether this organization has an
+// embedder setting that could actually authenticate against a hosted API -
+// i.e. it exists AND has a stored key, or is ollama (which legitimately
+// needs none). An embedder setting that exists but has no key (possible
+// only if it was created before its provider needed one, or the console
+// bug that let the API key field go unvalidated) can never work against a
+// hosted API and should be treated the same as "not configured yet" by
+// cross-settings credential propagation (see api/provider_embedder_link.go)
+// - otherwise a broken setting permanently blocks the good key from a
+// matching provider setting from ever reaching it.
+func (s *Service) HasUsableEmbedderSetting(ctx context.Context, organizationID string) (bool, error) {
+	var record sdb.EmbedderSetting
+	err := s.db.Gorm().WithContext(ctx).Where("organization_id = ?", organizationID).First(&record).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return record.Provider == "ollama" || record.EncryptedAPIKey != "", nil
+}
+
 // SetEmbedderSetting requires knowledge.manage or organization.manage.
 func (s *Service) SetEmbedderSetting(ctx context.Context, principal *iam.Principal, organizationID string, params SetEmbedderSettingParams) (*EmbedderSetting, error) {
 	if principal == nil {

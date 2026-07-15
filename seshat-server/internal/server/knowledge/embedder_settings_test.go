@@ -45,6 +45,69 @@ func TestSetEmbedderSettingEncryptsTheAPIKeyAtRest(t *testing.T) {
 	}
 }
 
+func TestHasUsableEmbedderSetting(t *testing.T) {
+	t.Setenv(testEncryptionEnvVar, testEncryptionKey)
+	env := newTestEnv(t)
+
+	usable, err := env.knowledge.HasUsableEmbedderSetting(context.Background(), env.orgID)
+	if err != nil {
+		t.Fatalf("check with none configured: %v", err)
+	}
+	if usable {
+		t.Fatal("expected no embedder setting to be unusable")
+	}
+
+	// A keyless openai-wire setting - the exact shape of the real bug
+	// (console form let this save with no api_key at all) - must never
+	// count as usable, since it can never authenticate against a hosted
+	// API.
+	if _, err := env.knowledge.SetEmbedderSetting(context.Background(), env.adminPrincipal, env.orgID, SetEmbedderSettingParams{
+		Provider: "openai", Model: "mistral-embed", BaseURL: "https://api.mistral.ai/v1",
+	}); err != nil {
+		t.Fatalf("set keyless embedder: %v", err)
+	}
+	usable, err = env.knowledge.HasUsableEmbedderSetting(context.Background(), env.orgID)
+	if err != nil {
+		t.Fatalf("check keyless openai: %v", err)
+	}
+	if usable {
+		t.Fatal("expected a keyless openai-wire embedder setting to be unusable")
+	}
+
+	// Fixing it up with a real key (mirroring cross-settings credential
+	// propagation) must flip it to usable.
+	if _, err := env.knowledge.SetEmbedderSetting(context.Background(), env.adminPrincipal, env.orgID, SetEmbedderSettingParams{
+		Provider: "openai", Model: "mistral-embed", BaseURL: "https://api.mistral.ai/v1", APIKey: "sk-mistral-real-key",
+	}); err != nil {
+		t.Fatalf("fix up embedder with a real key: %v", err)
+	}
+	usable, err = env.knowledge.HasUsableEmbedderSetting(context.Background(), env.orgID)
+	if err != nil {
+		t.Fatalf("check keyed openai: %v", err)
+	}
+	if !usable {
+		t.Fatal("expected an openai-wire embedder setting with a key to be usable")
+	}
+}
+
+func TestHasUsableEmbedderSettingTreatsOllamaAsUsableWithoutAKey(t *testing.T) {
+	t.Setenv(testEncryptionEnvVar, testEncryptionKey)
+	env := newTestEnv(t)
+
+	if _, err := env.knowledge.SetEmbedderSetting(context.Background(), env.adminPrincipal, env.orgID, SetEmbedderSettingParams{
+		Provider: "ollama", Model: "nomic-embed-text", BaseURL: "http://localhost:11434",
+	}); err != nil {
+		t.Fatalf("set ollama embedder: %v", err)
+	}
+	usable, err := env.knowledge.HasUsableEmbedderSetting(context.Background(), env.orgID)
+	if err != nil {
+		t.Fatalf("check ollama: %v", err)
+	}
+	if !usable {
+		t.Fatal("expected a keyless ollama embedder setting to be usable - a local instance legitimately needs no key")
+	}
+}
+
 func TestSetEmbedderSettingIsUpsertNotDuplicate(t *testing.T) {
 	t.Setenv(testEncryptionEnvVar, testEncryptionKey)
 	env := newTestEnv(t)

@@ -63,9 +63,12 @@ func llmProviderForEmbedderSetting(embedderProvider, embedderBaseURL string) (pr
 
 // autoConfigureEmbedderFromProvider best-effort creates this organization's
 // embedder setting from a just-created/updated LLM provider setting, if it
-// doesn't already have one of its own. Errors are swallowed — this is a
-// convenience on top of an already-successful provider-setting write, not
-// something that should fail the caller's request.
+// doesn't already have a USABLE one of its own (see
+// knowledge.Service.HasUsableEmbedderSetting - an embedder setting with no
+// stored key can never work, so it doesn't count as "already configured"
+// here). Errors are swallowed — this is a convenience on top of an
+// already-successful provider-setting write, not something that should
+// fail the caller's request.
 func (app *App) autoConfigureEmbedderFromProvider(ctx context.Context, principal *iam.Principal, organizationID, llmProvider, llmBaseURL, apiKey string) {
 	if apiKey == "" {
 		return
@@ -74,8 +77,8 @@ func (app *App) autoConfigureEmbedderFromProvider(ctx context.Context, principal
 	if !ok {
 		return
 	}
-	if _, err := app.backend.Knowledge.GetEmbedderSetting(ctx, principal, organizationID); err == nil {
-		return // already configured - never overwrite an existing choice
+	if usable, err := app.backend.Knowledge.HasUsableEmbedderSetting(ctx, organizationID); err != nil || usable {
+		return
 	}
 	_, _ = app.backend.Knowledge.SetEmbedderSetting(ctx, principal, organizationID, knowledge.SetEmbedderSettingParams{
 		Provider: provider,
