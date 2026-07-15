@@ -31,16 +31,20 @@ type User struct {
 }
 
 type Organization struct {
-	ID           string    `json:"id"`
-	Name         string    `json:"name"`
-	Slug         string    `json:"slug"`
-	Description  string    `json:"description"`
-	WebsiteURL   string    `json:"website_url"`
-	SupportEmail string    `json:"support_email"`
-	IsDefault    bool      `json:"is_default"`
-	IsActive     bool      `json:"is_active"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID                     string    `json:"id"`
+	Name                   string    `json:"name"`
+	Slug                   string    `json:"slug"`
+	Description            string    `json:"description"`
+	WebsiteURL             string    `json:"website_url"`
+	SupportEmail           string    `json:"support_email"`
+	IsDefault              bool      `json:"is_default"`
+	IsActive               bool      `json:"is_active"`
+	ShareProviderSettings  bool      `json:"share_provider_settings"`
+	ShareEmbedderSettings  bool      `json:"share_embedder_settings"`
+	ShareWebSearchSettings bool      `json:"share_web_search_settings"`
+	ShareMCPServers        bool      `json:"share_mcp_servers"`
+	CreatedAt              time.Time `json:"created_at"`
+	UpdatedAt              time.Time `json:"updated_at"`
 }
 
 type Membership struct {
@@ -837,16 +841,20 @@ func toUser(record sdb.User) User {
 
 func toOrganization(record sdb.Organization) Organization {
 	return Organization{
-		ID:           record.ID,
-		Name:         record.Name,
-		Slug:         record.Slug,
-		Description:  record.Description,
-		WebsiteURL:   record.WebsiteURL,
-		SupportEmail: record.SupportEmail,
-		IsDefault:    record.IsDefault,
-		IsActive:     record.IsActive,
-		CreatedAt:    record.CreatedAt,
-		UpdatedAt:    record.UpdatedAt,
+		ID:                     record.ID,
+		Name:                   record.Name,
+		Slug:                   record.Slug,
+		Description:            record.Description,
+		WebsiteURL:             record.WebsiteURL,
+		SupportEmail:           record.SupportEmail,
+		IsDefault:              record.IsDefault,
+		IsActive:               record.IsActive,
+		ShareProviderSettings:  record.ShareProviderSettings,
+		ShareEmbedderSettings:  record.ShareEmbedderSettings,
+		ShareWebSearchSettings: record.ShareWebSearchSettings,
+		ShareMCPServers:        record.ShareMCPServers,
+		CreatedAt:              record.CreatedAt,
+		UpdatedAt:              record.UpdatedAt,
 	}
 }
 

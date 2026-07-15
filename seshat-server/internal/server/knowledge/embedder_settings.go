@@ -186,7 +186,7 @@ func (s *Service) resolveEmbedderConfig(ctx context.Context, organizationID stri
 	}
 
 	tx := s.db.Gorm().WithContext(ctx)
-	defaultOrgID, found, err := s.iam.DefaultOrganizationID(tx)
+	defaultOrgID, found, err := s.iam.DefaultOrganizationIDForDomain(tx, iam.SharedDomainEmbedderSettings)
 	if err != nil {
 		return sdkembedder.Config{}, false, err
 	}

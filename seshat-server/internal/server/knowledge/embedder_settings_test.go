@@ -138,3 +138,34 @@ func TestResolveEmbedderConfigPrefersOrgOverPlatformDefault(t *testing.T) {
 		t.Fatal("expected a different organization with no embedder of its own to still resolve the platform default")
 	}
 }
+
+func TestResolveEmbedderConfigHonorsShareEmbedderSettingsOptOut(t *testing.T) {
+	env := newTestEnv(t)
+
+	defaultOrg, err := env.iam.CreateOrganization(context.Background(), env.adminPrincipal, iam.CreateOrganizationParams{
+		Name: "Default Org", Slug: "default-org",
+	})
+	if err != nil {
+		t.Fatalf("create default org: %v", err)
+	}
+	if _, err := env.iam.SetOrganizationDefault(context.Background(), env.adminPrincipal, defaultOrg.ID, true); err != nil {
+		t.Fatalf("set organization default: %v", err)
+	}
+	if _, err := env.knowledge.SetEmbedderSetting(context.Background(), env.adminPrincipal, defaultOrg.ID, SetEmbedderSettingParams{
+		Provider: "openai", Model: "platform-default-model", BaseURL: "https://platform.example.com",
+	}); err != nil {
+		t.Fatalf("set embedder on the default org: %v", err)
+	}
+	shareEmbedderSettings := false
+	if _, err := env.iam.SetOrganizationSharedDomains(context.Background(), env.adminPrincipal, defaultOrg.ID, nil, &shareEmbedderSettings, nil, nil); err != nil {
+		t.Fatalf("opt out of sharing embedder settings: %v", err)
+	}
+
+	_, ok, err := env.knowledge.resolveEmbedderConfig(context.Background(), env.orgID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if ok {
+		t.Fatal("expected the fallback to be skipped once the default org opted out of sharing embedder settings")
+	}
+}

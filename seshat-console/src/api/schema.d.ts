@@ -237,6 +237,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organizationID}/shared-domains": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Choose which settings domains this organization shares while it's the platform default (platform admin only)
+         * @description Only meaningful while this organization holds is_default. Lets a platform admin share, say, this organization's MCP servers with every other organization while keeping its LLM provider credentials private to itself, instead of is_default sharing everything unconditionally. Fields omitted from the body leave that domain's flag unchanged.
+         */
+        put: operations["setOrganizationSharedDomains"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/docling-status": {
         parameters: {
             query?: never;
@@ -2003,10 +2023,18 @@ export interface components {
             website_url?: string;
             /** Format: email */
             support_email?: string;
-            /** @description Whether this organization's own ProviderSetting/EmbedderSetting rows are used as the platform-wide fallback for organizations with no config of their own. At most one organization holds this at a time. */
+            /** @description Whether this organization's own ProviderSetting/EmbedderSetting/WebSearchProviderSetting/MCPServerConfig rows are used as the platform-wide fallback for organizations with no config of their own. At most one organization holds this at a time. */
             is_default?: boolean;
             /** @description Administrative/visual flag only - not enforced on any request path yet. */
             is_active?: boolean;
+            /** @description Only meaningful while is_default is true - whether this organization's LLM provider credentials are actually shared as the platform-wide fallback. Lets an admin keep IsDefault for some domains while excluding others. */
+            share_provider_settings?: boolean;
+            /** @description Only meaningful while is_default is true - whether this organization's embedder configuration is shared as the platform-wide fallback. */
+            share_embedder_settings?: boolean;
+            /** @description Only meaningful while is_default is true - whether this organization's web-search provider credentials are shared as the platform-wide fallback. */
+            share_web_search_settings?: boolean;
+            /** @description Only meaningful while is_default is true - whether this organization's MCP server configs are shared as the platform-wide fallback. */
+            share_mcp_servers?: boolean;
             /** Format: date-time */
             created_at?: string;
             /** Format: date-time */
@@ -2019,6 +2047,12 @@ export interface components {
             website_url?: string;
             /** Format: email */
             support_email?: string;
+        };
+        OrganizationSharedDomainsInput: {
+            share_provider_settings?: boolean;
+            share_embedder_settings?: boolean;
+            share_web_search_settings?: boolean;
+            share_mcp_servers?: boolean;
         };
         Membership: {
             id?: string;
@@ -3509,6 +3543,34 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Updated organization */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Organization"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    setOrganizationSharedDomains: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationID: components["parameters"]["organizationIDPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrganizationSharedDomainsInput"];
+            };
+        };
         responses: {
             /** @description Updated organization */
             200: {

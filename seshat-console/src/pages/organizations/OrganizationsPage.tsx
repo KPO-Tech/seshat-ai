@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Avatar, Button, Card, Empty, Input, message, Popconfirm, Space, Tag, Typography } from 'antd'
+import { Avatar, Button, Card, Empty, Input, message, Popconfirm, Popover, Space, Switch, Tag, Typography } from 'antd'
 import type { TableProps } from 'antd'
 import {
   ApartmentOutlined,
@@ -10,6 +10,7 @@ import {
   PlayCircleOutlined,
   PlusOutlined,
   RightOutlined,
+  ShareAltOutlined,
   WarningOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
@@ -20,6 +21,7 @@ import {
   useDeleteOrganization,
   useSetOrganizationDefault,
   useSetOrganizationActive,
+  useSetOrganizationSharedDomains,
   type Organization,
 } from '@/api/organizations'
 import { getErrorMessage } from '@/api/errors'
@@ -55,6 +57,7 @@ export function OrganizationsPage() {
   const deleteOrg = useDeleteOrganization()
   const setDefault = useSetOrganizationDefault()
   const setActive = useSetOrganizationActive()
+  const setSharedDomains = useSetOrganizationSharedDomains()
 
   const organizations = data?.organizations ?? []
   const defaultOrg = organizations.find((org) => org.is_default)
@@ -170,6 +173,51 @@ export function OrganizationsPage() {
                 aria-label={`Set ${record.name} as default`}
               />
             </Popconfirm>
+          )}
+          {record.is_default && (
+            <Popover
+              trigger="click"
+              placement="bottomRight"
+              title="Shared with every organization"
+              content={
+                <div onClick={(event) => event.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: 10, width: 260 }}>
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    Only matters while this org is the platform default. Turn off whatever shouldn't be shared with
+                    every other organization.
+                  </Typography.Text>
+                  {(
+                    [
+                      { key: 'share_provider_settings', label: 'LLM provider settings' },
+                      { key: 'share_embedder_settings', label: 'Embedder settings' },
+                      { key: 'share_web_search_settings', label: 'Web search settings' },
+                      { key: 'share_mcp_servers', label: 'MCP servers' },
+                    ] as const
+                  ).map((domain) => (
+                    <div key={domain.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Typography.Text style={{ fontSize: 13 }}>{domain.label}</Typography.Text>
+                      <Switch
+                        size="small"
+                        checked={record[domain.key] ?? true}
+                        loading={setSharedDomains.isPending}
+                        onChange={(checked) =>
+                          setSharedDomains.mutate(
+                            { id: record.id!, body: { [domain.key]: checked } },
+                            { onError: (error) => message.error(getErrorMessage(error)) },
+                          )
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
+              }
+            >
+              <Button
+                size="small"
+                icon={<ShareAltOutlined />}
+                onClick={(event) => event.stopPropagation()}
+                aria-label={`Manage what ${record.name} shares as the platform default`}
+              />
+            </Popover>
           )}
           <Button
             size="small"

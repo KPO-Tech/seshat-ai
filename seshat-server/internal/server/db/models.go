@@ -30,9 +30,20 @@ type Organization struct {
 	// IsActive is administrative/visual only for now - no request path
 	// checks it. Lets a platform admin flag an organization as retired
 	// without deleting it.
-	IsActive  bool `gorm:"not null;default:true"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	IsActive bool `gorm:"not null;default:true"`
+	// The four Share* flags only matter while this organization holds
+	// IsDefault - they let a platform admin share, say, this org's MCP
+	// servers with every other organization while keeping its own LLM
+	// provider credentials private to itself, instead of the all-or-nothing
+	// behavior of IsDefault alone. Default true so flipping IsDefault on
+	// keeps today's existing all-shared behavior until an admin opts a
+	// domain out (see iam.Service.DefaultOrganizationIDForDomain).
+	ShareProviderSettings  bool `gorm:"not null;default:true"`
+	ShareEmbedderSettings  bool `gorm:"not null;default:true"`
+	ShareWebSearchSettings bool `gorm:"not null;default:true"`
+	ShareMCPServers        bool `gorm:"not null;default:true"`
+	CreatedAt              time.Time
+	UpdatedAt              time.Time
 }
 
 // Membership binds one user to one organization with a role.

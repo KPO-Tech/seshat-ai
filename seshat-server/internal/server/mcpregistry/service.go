@@ -322,7 +322,7 @@ func (s *Service) listServerConfigsWithFallback(tx *gorm.DB, organizationID stri
 	if len(records) > 0 {
 		return records, nil
 	}
-	defaultOrgID, found, err := s.iam.DefaultOrganizationID(tx)
+	defaultOrgID, found, err := s.iam.DefaultOrganizationIDForDomain(tx, iam.SharedDomainMCPServers)
 	if err != nil {
 		return nil, err
 	}

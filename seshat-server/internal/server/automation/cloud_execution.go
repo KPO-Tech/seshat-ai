@@ -17,6 +17,7 @@ import (
 	sdktypes "github.com/EngineerProjects/seshat/pkg/types"
 
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
 )
 
 // cloudMaxTokens caps a single cloud job's response. Not yet exposed as a
@@ -189,7 +190,7 @@ func (s *Service) resolveProviderCredentials(ctx context.Context, organizationID
 	}
 
 	tx := s.db.Gorm().WithContext(ctx)
-	defaultOrgID, found, err := s.iam.DefaultOrganizationID(tx)
+	defaultOrgID, found, err := s.iam.DefaultOrganizationIDForDomain(tx, iam.SharedDomainProviderSettings)
 	if err != nil {
 		return "", "", false, err
 	}
