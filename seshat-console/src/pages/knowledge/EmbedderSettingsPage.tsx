@@ -355,7 +355,8 @@ function EmbedderSettingFormDrawer({
         <Form.Item
           name="api_key"
           label="API key"
-          extra={isEdit ? 'Leave empty to keep the current key unchanged.' : 'Optional. A local Ollama instance typically needs none.'}
+          rules={[{ required: !isEdit && !isOllama, message: 'Required for a hosted embedding API' }]}
+          extra={isEdit ? 'Leave empty to keep the current key unchanged.' : isOllama ? 'Optional. A local Ollama instance typically needs none.' : undefined}
         >
           <Input.Password autoComplete="new-password" placeholder={isEdit ? '••••••••' : undefined} />
         </Form.Item>
