@@ -956,7 +956,7 @@ export interface paths {
         };
         /**
          * List an organization's curated skill repos
-         * @description Open to any member of the organization, not gated behind a specific permission — these are public repo URLs, nothing secret to protect. A caller who isn't a member of the organization at all is rejected.
+         * @description Open to any member of the organization, not gated behind a specific permission — these are public repo URLs, nothing secret to protect. A caller who isn't a member of the organization at all is rejected. Falls back to whichever organization is flagged as the platform default when this org has none of its own (see each row's `source`) - unlike provider-settings/embedder-settings/MCP servers, this fallback lives directly in this list rather than a separate resolve endpoint, since there's no secret data here to keep out of it.
          */
         get: operations["listSkillRepos"];
         put?: never;
@@ -2075,6 +2075,8 @@ export interface components {
             share_web_search_settings?: boolean;
             /** @description Only meaningful while is_default is true - whether this organization's MCP server configs are shared as the platform-wide fallback. */
             share_mcp_servers?: boolean;
+            /** @description Only meaningful while is_default is true - whether this organization's skill repos are shared as the platform-wide fallback. */
+            share_skill_repos?: boolean;
             /** @description This organization's own email domain (e.g. "acmecorp.com"), if set. Self-service registration (POST /auth/register) auto-joins a new user to this organization as a pending member when their email matches. At most one organization holds a given domain. */
             domain?: string;
             /** Format: date-time */
@@ -2096,6 +2098,7 @@ export interface components {
             share_embedder_settings?: boolean;
             share_web_search_settings?: boolean;
             share_mcp_servers?: boolean;
+            share_skill_repos?: boolean;
         };
         Membership: {
             id?: string;
@@ -2376,6 +2379,11 @@ export interface components {
             /** @example https://github.com/EngineerProjects/seshat-skills */
             url?: string;
             description?: string;
+            /**
+             * @description "organization" is this org's own row, editable/deletable by this org's admins. "platform" means this org has none of its own and this was inherited from whichever organization is flagged is_default (see Organization.share_skill_repos) - read-only from here, since it doesn't actually belong to this organization.
+             * @enum {string}
+             */
+            source?: "organization" | "platform";
             /** Format: date-time */
             created_at?: string;
             /** Format: date-time */

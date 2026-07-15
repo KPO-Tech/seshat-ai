@@ -213,7 +213,7 @@ func TestResolveProviderSettingHonorsShareWebSearchSettingsOptOut(t *testing.T) 
 		t.Fatalf("create default org's setting: %v", err)
 	}
 	shareWebSearchSettings := false
-	if _, err := env.iam.SetOrganizationSharedDomains(context.Background(), env.adminPrincipal, defaultOrg.ID, nil, nil, &shareWebSearchSettings, nil); err != nil {
+	if _, err := env.iam.SetOrganizationSharedDomains(context.Background(), env.adminPrincipal, defaultOrg.ID, nil, nil, &shareWebSearchSettings, nil, nil); err != nil {
 		t.Fatalf("opt out of sharing web search settings: %v", err)
 	}
 

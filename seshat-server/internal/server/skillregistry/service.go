@@ -27,6 +27,13 @@ type SkillRepo struct {
 	Description     string    `json:"description,omitempty"`
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
+	// Source is "organization" (this org's own row - editable/deletable by
+	// this org's admins) or "platform" (inherited from whichever org is
+	// flagged IsDefault, because this org has none of its own - read-only
+	// here; only that other org's own admins can edit/delete it, exactly
+	// like every other hybrid org/platform-default resolution in this
+	// codebase). See ListSkillRepos.
+	Source string `json:"source"`
 }
 
 type CreateSkillRepoParams struct {
@@ -56,6 +63,13 @@ func New(database *sdb.DB, iamService *iam.Service) *Service {
 // rejected outright (unlike ProviderSetting's list, which degrades to an
 // empty list for a member merely lacking a permission — here, not being a
 // member at all is a harder boundary).
+//
+// Unlike ProviderSetting/EmbedderSetting/MCPServerConfig, there's no secret
+// data here and no separate "resolve" endpoint - a connected seshat-backend
+// fetches this same list to enrich its own catalog. So the org/platform-
+// default fallback lives directly in this one function (each row's Source
+// says which tier it actually came from) rather than being kept out of an
+// admin-facing list, unlike those other domains.
 func (s *Service) ListSkillRepos(ctx context.Context, principal *iam.Principal, organizationID string) ([]SkillRepo, error) {
 	if principal == nil {
 		return nil, iam.ErrUnauthorized("authentication required")
@@ -72,13 +86,33 @@ func (s *Service) ListSkillRepos(ctx context.Context, principal *iam.Principal, 
 	if !allowed {
 		return nil, iam.ErrForbidden("not a member of this organization")
 	}
+
 	var records []sdb.SkillRepo
 	if err := tx.Where("organization_id = ?", organizationID).Order("name asc").Find(&records).Error; err != nil {
 		return nil, err
 	}
-	result := make([]SkillRepo, 0, len(records))
-	for _, record := range records {
-		result = append(result, toSkillRepo(record))
+	if len(records) > 0 {
+		result := make([]SkillRepo, 0, len(records))
+		for _, record := range records {
+			result = append(result, toSkillRepo(record, "organization"))
+		}
+		return result, nil
+	}
+
+	defaultOrgID, found, err := s.iam.DefaultOrganizationIDForDomain(tx, iam.SharedDomainSkillRepos)
+	if err != nil {
+		return nil, err
+	}
+	if !found || defaultOrgID == organizationID {
+		return []SkillRepo{}, nil
+	}
+	var defaultRecords []sdb.SkillRepo
+	if err := tx.Where("organization_id = ?", defaultOrgID).Order("name asc").Find(&defaultRecords).Error; err != nil {
+		return nil, err
+	}
+	result := make([]SkillRepo, 0, len(defaultRecords))
+	for _, record := range defaultRecords {
+		result = append(result, toSkillRepo(record, "platform"))
 	}
 	return result, nil
 }
@@ -127,7 +161,7 @@ func (s *Service) CreateSkillRepo(ctx context.Context, principal *iam.Principal,
 	if err != nil {
 		return nil, err
 	}
-	result := toSkillRepo(record)
+	result := toSkillRepo(record, "organization")
 	return &result, nil
 }
 
@@ -162,7 +196,7 @@ func (s *Service) UpdateSkillRepo(ctx context.Context, principal *iam.Principal,
 	if err != nil {
 		return nil, err
 	}
-	result := toSkillRepo(record)
+	result := toSkillRepo(record, "organization")
 	return &result, nil
 }
 
@@ -189,10 +223,10 @@ func (s *Service) DeleteSkillRepo(ctx context.Context, principal *iam.Principal,
 	})
 }
 
-func toSkillRepo(r sdb.SkillRepo) SkillRepo {
+func toSkillRepo(r sdb.SkillRepo, source string) SkillRepo {
 	return SkillRepo{
 		ID: r.ID, OrganizationID: r.OrganizationID, CreatedByUserID: r.CreatedByUserID,
 		Name: r.Name, URL: r.URL, Description: r.Description,
-		CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt,
+		CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt, Source: source,
 	}
 }

@@ -43,6 +43,7 @@ type Organization struct {
 	ShareEmbedderSettings  bool      `json:"share_embedder_settings"`
 	ShareWebSearchSettings bool      `json:"share_web_search_settings"`
 	ShareMCPServers        bool      `json:"share_mcp_servers"`
+	ShareSkillRepos        bool      `json:"share_skill_repos"`
 	Domain                 *string   `json:"domain,omitempty"`
 	CreatedAt              time.Time `json:"created_at"`
 	UpdatedAt              time.Time `json:"updated_at"`
@@ -982,6 +983,7 @@ func toOrganization(record sdb.Organization) Organization {
 		ShareEmbedderSettings:  record.ShareEmbedderSettings,
 		ShareWebSearchSettings: record.ShareWebSearchSettings,
 		ShareMCPServers:        record.ShareMCPServers,
+		ShareSkillRepos:        record.ShareSkillRepos,
 		Domain:                 record.Domain,
 		CreatedAt:              record.CreatedAt,
 		UpdatedAt:              record.UpdatedAt,

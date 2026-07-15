@@ -150,6 +150,80 @@ func TestListSkillReposRejectsNonMember(t *testing.T) {
 	}
 }
 
+func TestListSkillReposFallsBackToPlatformDefault(t *testing.T) {
+	env := newTestEnv(t)
+
+	defaultOrg, err := env.iam.CreateOrganization(context.Background(), env.adminPrincipal, iam.CreateOrganizationParams{
+		Name: "Default Org", Slug: "default-org",
+	})
+	if err != nil {
+		t.Fatalf("create default org: %v", err)
+	}
+	if _, err := env.iam.SetOrganizationDefault(context.Background(), env.adminPrincipal, defaultOrg.ID, true); err != nil {
+		t.Fatalf("set organization default: %v", err)
+	}
+	if _, err := env.svc.CreateSkillRepo(context.Background(), env.adminPrincipal, CreateSkillRepoParams{
+		OrganizationID: defaultOrg.ID, Name: "platform-skills", URL: "https://github.com/EngineerProjects/platform-skills",
+	}); err != nil {
+		t.Fatalf("create repo on the default org: %v", err)
+	}
+
+	// env.orgID has no skill repos of its own yet - should fall back.
+	repos, err := env.svc.ListSkillRepos(context.Background(), env.adminPrincipal, env.orgID)
+	if err != nil {
+		t.Fatalf("list with fallback: %v", err)
+	}
+	if len(repos) != 1 || repos[0].Name != "platform-skills" || repos[0].Source != "platform" {
+		t.Fatalf("expected fallback to the default org's repo marked platform, got: %+v", repos)
+	}
+
+	// Once the org configures even one repo of its own, the platform
+	// default no longer shows up at all - all-or-nothing, not merged.
+	if _, err := env.svc.CreateSkillRepo(context.Background(), env.adminPrincipal, CreateSkillRepoParams{
+		OrganizationID: env.orgID, Name: "org-own-skills", URL: "https://github.com/example/org-own-skills",
+	}); err != nil {
+		t.Fatalf("create org's own repo: %v", err)
+	}
+	repos, err = env.svc.ListSkillRepos(context.Background(), env.adminPrincipal, env.orgID)
+	if err != nil {
+		t.Fatalf("list after org configures its own: %v", err)
+	}
+	if len(repos) != 1 || repos[0].Name != "org-own-skills" || repos[0].Source != "organization" {
+		t.Fatalf("expected only the org's own repo marked organization, no fallback mixed in, got: %+v", repos)
+	}
+}
+
+func TestListSkillReposHonorsShareSkillReposOptOut(t *testing.T) {
+	env := newTestEnv(t)
+
+	defaultOrg, err := env.iam.CreateOrganization(context.Background(), env.adminPrincipal, iam.CreateOrganizationParams{
+		Name: "Default Org", Slug: "default-org",
+	})
+	if err != nil {
+		t.Fatalf("create default org: %v", err)
+	}
+	if _, err := env.iam.SetOrganizationDefault(context.Background(), env.adminPrincipal, defaultOrg.ID, true); err != nil {
+		t.Fatalf("set organization default: %v", err)
+	}
+	if _, err := env.svc.CreateSkillRepo(context.Background(), env.adminPrincipal, CreateSkillRepoParams{
+		OrganizationID: defaultOrg.ID, Name: "platform-skills", URL: "https://github.com/EngineerProjects/platform-skills",
+	}); err != nil {
+		t.Fatalf("create repo on the default org: %v", err)
+	}
+	shareSkillRepos := false
+	if _, err := env.iam.SetOrganizationSharedDomains(context.Background(), env.adminPrincipal, defaultOrg.ID, nil, nil, nil, nil, &shareSkillRepos); err != nil {
+		t.Fatalf("opt out of sharing skill repos: %v", err)
+	}
+
+	repos, err := env.svc.ListSkillRepos(context.Background(), env.adminPrincipal, env.orgID)
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(repos) != 0 {
+		t.Fatalf("expected the fallback to be skipped once the default org opted out of sharing skill repos, got: %+v", repos)
+	}
+}
+
 func TestCreateSkillRepoRejectsDuplicateName(t *testing.T) {
 	env := newTestEnv(t)
 	params := CreateSkillRepoParams{OrganizationID: env.orgID, Name: "seshat-skills", URL: "https://github.com/EngineerProjects/seshat-skills"}

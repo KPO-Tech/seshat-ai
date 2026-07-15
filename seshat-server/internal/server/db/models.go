@@ -42,6 +42,7 @@ type Organization struct {
 	ShareEmbedderSettings  bool `gorm:"not null;default:true"`
 	ShareWebSearchSettings bool `gorm:"not null;default:true"`
 	ShareMCPServers        bool `gorm:"not null;default:true"`
+	ShareSkillRepos        bool `gorm:"not null;default:true"`
 	// Domain is the organization's own email domain (e.g. "acmecorp.com"),
 	// used by self-service registration to auto-join a new user to this org
 	// as a pending member. A *string (not string) so an org without a
@@ -410,9 +411,14 @@ type UserPreference struct {
 
 // SkillRepo is one entry in an organization's curated skills registry — just
 // a bookmarked git repo URL, nothing secret, so unlike ProviderSetting there
-// is no encryption and no org/platform tiering: reading the list only
-// requires org membership (see skillregistry.Service), only mutating it is
-// permission-gated. seshat-backend fetches these to enrich its own local
+// is no encryption. Reading the list only requires org membership (see
+// skillregistry.Service), only mutating it is permission-gated. Unlike
+// ProviderSetting/EmbedderSetting/MCPServerConfig there's no separate
+// resolve endpoint for the org/platform-default fallback either - since
+// there's nothing secret to keep out of the admin-facing list, the
+// fallback (see Organization.ShareSkillRepos) lives directly in
+// ListSkillRepos, with each row's Source saying which org it actually came
+// from. seshat-backend fetches this same list to enrich its own local
 // skill-repo catalog; installing (git clone) always happens locally.
 type SkillRepo struct {
 	ID              string `gorm:"primaryKey;size:32"`
