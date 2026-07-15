@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/api/client'
 import type { components } from '@/api/schema'
+import { EMBEDDER_SETTING_KEY, PROVIDER_SETTINGS_LIST_KEY } from '@/api/settingsQueryKeys'
 
 export type EmbedderSetting = components['schemas']['EmbedderSetting']
 export type EmbedderSettingInput = components['schemas']['EmbedderSettingInput']
 
-const ORG_KEY = 'embedder-setting'
+const ORG_KEY = EMBEDDER_SETTING_KEY
 
 // A singleton per organization (at most one embedder each) - see
 // EmbedderSetting's doc comment on the backend for why. A 404 just means
@@ -30,6 +31,11 @@ export function useEmbedderSetting(organizationId: string | undefined) {
   })
 }
 
+// Configuring an embedder (openai + a mistral/openai base_url, with an
+// api_key) may have auto-configured this organization's LLM provider
+// setting server-side too (see seshat-server's
+// autoConfigureProviderFromEmbedder) - invalidate both so the console
+// reflects that without a manual refresh.
 export function useSetEmbedderSetting() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -40,7 +46,10 @@ export function useSetEmbedderSetting() {
       if (error) throw error
       return data
     },
-    onSuccess: (_data, variables) => queryClient.invalidateQueries({ queryKey: [ORG_KEY, variables.organizationId] }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: [ORG_KEY, variables.organizationId] })
+      queryClient.invalidateQueries({ queryKey: [PROVIDER_SETTINGS_LIST_KEY] })
+    },
   })
 }
 
@@ -54,5 +63,19 @@ export function useDeleteEmbedderSetting() {
       if (error) throw error
     },
     onSuccess: (_data, organizationId) => queryClient.invalidateQueries({ queryKey: [ORG_KEY, organizationId] }),
+  })
+}
+
+// A static curated list for OpenAI-compatible providers, or a live probe of
+// an Ollama instance's installed models classified as embedding-capable -
+// a self-hosted Ollama's installed models can't be known ahead of time.
+// Always resolves (never throws) so the form can fall back to manual entry.
+export function useDetectEmbedderModels() {
+  return useMutation({
+    mutationFn: async (body: { provider: string; base_url?: string }) => {
+      const { data, error } = await api.POST('/api/v1/embedder-settings/detect-models', { body })
+      if (error) throw error
+      return data
+    },
   })
 }

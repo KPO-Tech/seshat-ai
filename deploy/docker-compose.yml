@@ -114,6 +114,12 @@ services:
       SESHAT_SERVER_S3_SECRET_ACCESS_KEY: ${SESHAT_SERVER_S3_SECRET_ACCESS_KEY:-}
       SESHAT_SERVER_S3_REGION: ${SESHAT_SERVER_S3_REGION:-}
       SESHAT_SERVER_S3_KEY_PREFIX: ${SESHAT_SERVER_S3_KEY_PREFIX:-}
+    # Lets this container reach services running directly on the host (e.g.
+    # a local Ollama for LLM/embedder settings) via http://host.docker.internal:<port>
+    # instead of localhost, which inside a container means the container
+    # itself, not the host machine.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "${SESHAT_SERVER_PORT:-8081}:8081"
 

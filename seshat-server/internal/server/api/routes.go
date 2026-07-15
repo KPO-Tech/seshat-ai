@@ -115,6 +115,7 @@ func (app *App) routes() http.Handler {
 	mux.Handle("GET /api/v1/provider-settings", app.authMiddleware(http.HandlerFunc(app.handleProviderSettings)))
 	mux.Handle("POST /api/v1/provider-settings", app.authMiddleware(http.HandlerFunc(app.handleProviderSettings)))
 	mux.Handle("GET /api/v1/provider-settings/resolve", app.authMiddleware(http.HandlerFunc(app.handleProviderSettingResolve)))
+	mux.Handle("POST /api/v1/provider-settings/detect-models", app.authMiddleware(http.HandlerFunc(app.handleProviderSettingsDetectModels)))
 	mux.Handle("GET /api/v1/provider-settings/{providerSettingID}", app.authMiddleware(http.HandlerFunc(app.handleProviderSettingByID)))
 	mux.Handle("PUT /api/v1/provider-settings/{providerSettingID}", app.authMiddleware(http.HandlerFunc(app.handleProviderSettingByID)))
 	mux.Handle("DELETE /api/v1/provider-settings/{providerSettingID}", app.authMiddleware(http.HandlerFunc(app.handleProviderSettingByID)))
@@ -149,6 +150,7 @@ func (app *App) routes() http.Handler {
 	mux.Handle("GET /api/v1/embedder-settings", app.authMiddleware(http.HandlerFunc(app.handleEmbedderSettings)))
 	mux.Handle("PUT /api/v1/embedder-settings", app.authMiddleware(http.HandlerFunc(app.handleEmbedderSettings)))
 	mux.Handle("DELETE /api/v1/embedder-settings", app.authMiddleware(http.HandlerFunc(app.handleEmbedderSettings)))
+	mux.Handle("POST /api/v1/embedder-settings/detect-models", app.authMiddleware(http.HandlerFunc(app.handleEmbedderSettingsDetectModels)))
 
 	// Devices — admin surface is user-authenticated (register/list/revoke);
 	// the /device/* protocol below is device-token-authenticated instead.

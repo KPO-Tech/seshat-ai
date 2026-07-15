@@ -1294,6 +1294,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/provider-settings/detect-models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Probe a live Ollama instance for its installed LLM models
+         * @description Only does anything for provider "ollama" — every other provider has a static model catalog in the console already, since a hosted provider's model list doesn't vary per install. A self-hosted Ollama's installed models do, so this calls its /api/tags endpoint live. Embedding models are already filtered out of the result. Returns an empty list (never an error status) if the target Ollama is unreachable, so the console can fall back to manual model entry.
+         */
+        post: operations["detectProviderModels"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/web-search-provider-settings": {
         parameters: {
             query?: never;
@@ -1712,6 +1732,26 @@ export interface paths {
          * @description Requires knowledge.manage or organization.manage. The organization falls back to the platform default (if any) for subsequent ingest/search calls; existing corpora are not re-embedded.
          */
         delete: operations["deleteEmbedderSetting"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/embedder-settings/detect-models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Detect embedding-capable models for a provider
+         * @description For OpenAI-compatible providers this returns a static curated list (their model catalogs don't vary per install). For "ollama" it probes the target instance's /api/tags live and classifies each installed model as embedding-capable by name/family heuristics, since a self-hosted Ollama's installed models are unknowable ahead of time. Returns an empty list (never an error status) if the target Ollama is unreachable, so the console can fall back to manual model entry.
+         */
+        post: operations["detectEmbedderModels"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2800,6 +2840,18 @@ export interface components {
             /** @description Omit/empty to keep the existing stored key unchanged. */
             api_key?: string;
         };
+        DetectModelsInput: {
+            /** @example ollama */
+            provider: string;
+            /** @description Defaults to http://localhost:11434 (Ollama's own default) if omitted. */
+            base_url?: string;
+        };
+        DetectedProviderModels: {
+            /** @description Empty for non-Ollama providers, or if the target Ollama was unreachable. */
+            models?: string[];
+            /** @description Set only if the probe failed (models is still present, just empty). */
+            error?: string;
+        };
         /** @description Never includes the API key — it's a caller-supplied secret, redacted in every response including create. No default_model field, unlike ProviderSetting — a web-search provider has no such concept. */
         WebSearchProviderSetting: {
             id?: string;
@@ -3114,6 +3166,12 @@ export interface components {
             base_url: string;
             /** @description Optional (e.g. a local Ollama needs none). Empty on update keeps the existing key unchanged. */
             api_key?: string;
+        };
+        DetectedEmbedderModels: {
+            /** @description A static curated list for non-Ollama providers, or the subset of a live Ollama instance's installed models classified as embedding-capable by name/family. Empty if the target Ollama was unreachable. */
+            embedding_models?: string[];
+            /** @description Set only if a live Ollama probe failed (embedding_models is still present, just empty). */
+            error?: string;
         };
         /** @description The device's bearer token is never part of this view — see RegisterDeviceResult for the one-time reveal. */
         Device: {
@@ -5907,6 +5965,31 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    detectProviderModels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DetectModelsInput"];
+            };
+        };
+        responses: {
+            /** @description Detected models (possibly empty) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DetectedProviderModels"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
     listWebSearchProviderSettings: {
         parameters: {
             query?: {
@@ -6731,6 +6814,31 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    detectEmbedderModels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DetectModelsInput"];
+            };
+        };
+        responses: {
+            /** @description Detected embedding models (possibly empty) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DetectedEmbedderModels"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
         };
     };
     listDevices: {

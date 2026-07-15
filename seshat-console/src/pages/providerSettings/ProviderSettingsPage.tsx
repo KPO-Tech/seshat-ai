@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Button, Drawer, Form, Input, Select, message, Popconfirm, Space, Tag, Typography } from 'antd'
-import { CrownOutlined, DeleteOutlined, DownOutlined, EditOutlined, RightOutlined } from '@ant-design/icons'
+import { CrownOutlined, DeleteOutlined, DownOutlined, EditOutlined, ReloadOutlined, RightOutlined } from '@ant-design/icons'
 import {
   useProviderSettingsList,
   useCreateProviderSetting,
   useUpdateProviderSetting,
   useDeleteProviderSetting,
   useSetProviderSettingDefault,
+  useDetectProviderModels,
   type ProviderSetting,
   type ProviderSettingInput,
 } from '@/api/providerSettings'
 import { getErrorMessage } from '@/api/errors'
+import { AutofillGuard } from '@/components/AutofillGuard'
 import { PageHeader } from '@/components/PageHeader'
 import { ProviderIcon } from '@/components/ProviderIcon'
 import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
@@ -225,10 +227,15 @@ function ProviderSettingFormDrawer({
 }) {
   const [form] = Form.useForm<Omit<ProviderSettingInput, 'organization_id'>>()
   const watchedModelId = Form.useWatch('default_model', form)
+  const watchedBaseURL = Form.useWatch('base_url', form)
   const isEdit = setting !== null
+  const isOllama = provider === 'ollama'
   const modelOptions = useMemo(() => getProviderModels(provider, setting?.default_model), [provider, setting?.default_model])
   const selectedModel = modelOptions.find((model) => model.id === watchedModelId) ?? null
   const supportsStaticCatalog = modelOptions.length > 0
+
+  const detectModels = useDetectProviderModels()
+  const [detectedModels, setDetectedModels] = useState<string[]>([])
 
   useEffect(() => {
     if (!open || !provider) return
@@ -236,7 +243,29 @@ function ProviderSettingFormDrawer({
     form.setFieldsValue(
       setting ?? { provider, default_model: fallbackModel, base_url: PROVIDER_DEFAULT_URLS[provider] ?? '' },
     )
+    setDetectedModels([])
   }, [open, provider, setting, form, modelOptions])
+
+  const handleDetectModels = () => {
+    if (!provider) return
+    detectModels.mutate(
+      { provider, base_url: watchedBaseURL || undefined },
+      {
+        onSuccess: (data) => {
+          const models = data?.models ?? []
+          setDetectedModels(models)
+          if (models.length === 0) {
+            message.warning(
+              `No models found — check that Ollama is running and reachable at ${watchedBaseURL || PROVIDER_DEFAULT_URLS.ollama}`,
+            )
+          } else {
+            message.success(`Found ${models.length} model${models.length === 1 ? '' : 's'}`)
+          }
+        },
+        onError: (error) => message.error(getErrorMessage(error)),
+      },
+    )
+  }
 
   return (
     <Drawer
@@ -250,7 +279,33 @@ function ProviderSettingFormDrawer({
         </Button>
       }
     >
-      <Form key={provider ?? 'none'} form={form} layout="vertical" onFinish={onSubmit}>
+      <Form key={provider ?? 'none'} form={form} layout="vertical" onFinish={onSubmit} autoComplete="off">
+        <AutofillGuard />
+        <Form.Item
+          name="base_url"
+          label="Base URL"
+          extra={
+            isOllama
+              ? "seshat-server itself runs in a container in this project's docker-compose stack — from inside it, localhost means the container, not your machine. Use http://host.docker.internal:11434 to reach an Ollama running on your host."
+              : undefined
+          }
+        >
+          <Input autoComplete="off" placeholder="Leave empty to use the provider's default" />
+        </Form.Item>
+
+        {isOllama && (
+          <div style={{ marginTop: -8, marginBottom: 16 }}>
+            <Button size="small" icon={<ReloadOutlined />} loading={detectModels.isPending} onClick={handleDetectModels}>
+              Detect models
+            </Button>
+            <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 6 }}>
+              {detectedModels.length > 0
+                ? `${detectedModels.length} model${detectedModels.length === 1 ? '' : 's'} found on this Ollama instance.`
+                : 'Probes the base URL above for installed models.'}
+            </Typography.Text>
+          </div>
+        )}
+
         {supportsStaticCatalog ? (
           <Form.Item name="default_model" label="Default model" rules={[{ required: true, message: 'Required' }]}>
             <Select
@@ -260,13 +315,22 @@ function ProviderSettingFormDrawer({
               options={modelOptions.map((model) => ({ label: `${model.label} (${model.id})`, value: model.id }))}
             />
           </Form.Item>
+        ) : isOllama && detectedModels.length > 0 ? (
+          <Form.Item name="default_model" label="Default model" rules={[{ required: true, message: 'Required' }]}>
+            <Select
+              showSearch
+              optionFilterProp="label"
+              placeholder="Select the default model"
+              options={detectedModels.map((model) => ({ label: model, value: model }))}
+            />
+          </Form.Item>
         ) : (
           <Form.Item name="default_model" label="Default model" rules={[{ required: true, message: 'Required' }]}>
-            <Input placeholder="llama3.1:8b" />
+            <Input autoComplete="off" placeholder="llama3.1:8b" />
           </Form.Item>
         )}
 
-        {supportsStaticCatalog ? (
+        {supportsStaticCatalog && (
           <div style={{ marginTop: -8, marginBottom: 16 }}>
             <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
               Suggested models from the shared Seshat provider catalog.
@@ -277,22 +341,15 @@ function ProviderSettingFormDrawer({
               </Typography.Text>
             ) : null}
           </div>
-        ) : (
-          <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: -8, marginBottom: 16 }}>
-            This provider has no static catalog here yet. For Ollama, keep using a direct model identifier available on the target runtime.
-          </Typography.Text>
         )}
 
-        <Form.Item name="base_url" label="Base URL">
-          <Input placeholder="Leave empty to use the provider's default" />
-        </Form.Item>
         <Form.Item
           name="api_key"
           label="API key"
           rules={[{ required: !isEdit, message: 'Required' }]}
           extra={isEdit ? 'Leave empty to keep the current key unchanged.' : undefined}
         >
-          <Input.Password autoComplete="off" placeholder={isEdit ? '••••••••' : undefined} />
+          <Input.Password autoComplete="new-password" placeholder={isEdit ? '••••••••' : undefined} />
         </Form.Item>
         {!isEdit && (
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>

@@ -1,23 +1,93 @@
 import { useEffect, useState } from 'react'
 import { Alert, Button, Drawer, Form, Input, Popconfirm, Select, Space, Tag, Typography, message } from 'antd'
-import { DeleteOutlined, EditOutlined } from '@ant-design/icons'
+import { DeleteOutlined, EditOutlined, ReloadOutlined } from '@ant-design/icons'
 import {
   useEmbedderSetting,
   useSetEmbedderSetting,
   useDeleteEmbedderSetting,
+  useDetectEmbedderModels,
   type EmbedderSetting,
   type EmbedderSettingInput,
 } from '@/api/embedderSettings'
 import { getErrorMessage } from '@/api/errors'
+import { AutofillGuard } from '@/components/AutofillGuard'
 import { PageHeader } from '@/components/PageHeader'
 import { ProviderIcon } from '@/components/ProviderIcon'
 import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
 import { palette, monoStack } from '@/theme/tokens'
 
-const EMBEDDER_PROVIDERS = [
-  { id: 'openai', name: 'OpenAI-compatible', desc: 'Any OpenAI-compatible embeddings endpoint (OpenAI itself, Mistral, and most hosted providers)' },
-  { id: 'ollama', name: 'Ollama', desc: 'Run an embedding model locally on your own infrastructure' },
+// The SDK only understands two embedding *wire formats* - "openai" (a
+// generic POST /embeddings shape used by OpenAI, Mistral, and most hosted
+// vendors) and "ollama" (POST /api/embed) - see
+// seshat/internal/rag/embedder/embedder.go. So "Mistral" can never be its
+// own wire-level provider value; it's a vendor CATALOG entry that fills in
+// the right openai-wire base_url/model, same idea as providerCatalog.ts
+// does for LLM providers.
+interface EmbedderVendor {
+  id: string
+  name: string
+  wireProvider: 'openai' | 'ollama'
+  baseURL: string
+  // Substring to recognize an existing setting as this vendor when editing
+  // (only the wire provider + base_url are actually persisted, not which
+  // catalog entry was originally picked). Omitted for ollama (matched by
+  // wireProvider alone) and the generic fallback (matches nothing else).
+  hostMatch?: string
+  defaultModel: string
+  desc: string
+}
+
+const EMBEDDER_VENDORS: EmbedderVendor[] = [
+  {
+    id: 'mistral',
+    name: 'Mistral',
+    wireProvider: 'openai',
+    baseURL: 'https://api.mistral.ai/v1',
+    hostMatch: 'api.mistral.ai',
+    defaultModel: 'mistral-embed',
+    desc: 'Free tier available — verified working end-to-end with Seshat',
+  },
+  {
+    id: 'openai',
+    name: 'OpenAI',
+    wireProvider: 'openai',
+    baseURL: 'https://api.openai.com/v1',
+    hostMatch: 'api.openai.com',
+    defaultModel: 'text-embedding-3-small',
+    desc: 'text-embedding-3-small, text-embedding-3-large, text-embedding-ada-002',
+  },
+  {
+    id: 'ollama',
+    name: 'Ollama',
+    wireProvider: 'ollama',
+    baseURL: 'http://localhost:11434',
+    defaultModel: '',
+    desc: 'Run an embedding model locally on your own infrastructure',
+  },
+  {
+    id: 'openai-compatible',
+    name: 'Other OpenAI-compatible',
+    wireProvider: 'openai',
+    baseURL: '',
+    defaultModel: '',
+    desc: 'Any other OpenAI-compatible embeddings endpoint',
+  },
 ]
+
+function vendorForSetting(provider?: string, baseURL?: string): EmbedderVendor {
+  if (provider === 'ollama') return EMBEDDER_VENDORS.find((v) => v.id === 'ollama')!
+  const normalized = (baseURL ?? '').toLowerCase()
+  const matched = EMBEDDER_VENDORS.find((v) => v.hostMatch && normalized.includes(v.hostMatch))
+  return matched ?? EMBEDDER_VENDORS.find((v) => v.id === 'openai-compatible')!
+}
+
+// Shown as suggestions once a vendor is picked, before any live detection
+// has run - the "openai" wire format's own list is also what a live probe
+// would return anyway (see the backend's detect-models handler), so this
+// isn't duplicated guesswork.
+const EMBEDDER_STATIC_MODELS: Record<string, string[]> = {
+  openai: ['text-embedding-3-small', 'text-embedding-3-large', 'text-embedding-ada-002', 'mistral-embed'],
+}
 
 export function EmbedderSettingsPage() {
   const organizationId = useScopedOrganizationId()
@@ -31,7 +101,7 @@ export function EmbedderSettingsPage() {
   if (!organizationId || isLoading) return null
 
   const isConfigured = Boolean(setting)
-  const catalogEntry = EMBEDDER_PROVIDERS.find((p) => p.id === setting?.provider)
+  const vendor = isConfigured ? vendorForSetting(setting?.provider, setting?.base_url) : null
 
   return (
     <div>
@@ -61,11 +131,11 @@ export function EmbedderSettingsPage() {
             }}
           >
             <Space size={14} align="start">
-              <ProviderIcon provider={setting?.provider ?? 'embedder'} size={36} />
+              <ProviderIcon provider={vendor?.id ?? 'embedder'} size={36} />
               <div>
-                <Typography.Text strong>{catalogEntry?.name ?? 'Embedder'}</Typography.Text>
+                <Typography.Text strong>{vendor?.name ?? 'Embedder'}</Typography.Text>
                 <Typography.Text style={{ display: 'block', fontSize: 12, color: palette.inkTertiary }}>
-                  {catalogEntry?.desc ?? 'No embedder configured for this organization yet'}
+                  {vendor?.desc ?? 'No embedder configured for this organization yet'}
                 </Typography.Text>
               </div>
             </Space>
@@ -152,11 +222,63 @@ function EmbedderSettingFormDrawer({
   submitting: boolean
 }) {
   const [form] = Form.useForm<EmbedderSettingInput>()
+  const watchedBaseURL = Form.useWatch('base_url', form)
   const isEdit = setting !== null
 
+  const [vendorId, setVendorId] = useState('mistral')
+  const vendor = EMBEDDER_VENDORS.find((v) => v.id === vendorId) ?? EMBEDDER_VENDORS[0]
+  const isOllama = vendor.wireProvider === 'ollama'
+
+  const detectModels = useDetectEmbedderModels()
+  const [modelOptions, setModelOptions] = useState<string[]>([])
+
   useEffect(() => {
-    if (open) form.setFieldsValue(setting ?? { provider: 'openai', model: '', base_url: '' })
+    if (!open) return
+    const initialVendor = vendorForSetting(setting?.provider, setting?.base_url)
+    setVendorId(initialVendor.id)
+    form.setFieldsValue(
+      setting
+        ? { provider: setting.provider, model: setting.model, base_url: setting.base_url }
+        : { provider: initialVendor.wireProvider, model: initialVendor.defaultModel, base_url: initialVendor.baseURL },
+    )
+    setModelOptions(mergeWithCurrent(EMBEDDER_STATIC_MODELS[initialVendor.wireProvider] ?? [], setting?.model))
   }, [open, setting, form])
+
+  const handleVendorChange = (nextVendorId: string) => {
+    const nextVendor = EMBEDDER_VENDORS.find((v) => v.id === nextVendorId)
+    if (!nextVendor) return
+    setVendorId(nextVendorId)
+    form.setFieldValue('provider', nextVendor.wireProvider)
+
+    const currentBaseURL = form.getFieldValue('base_url')
+    const baseURLWasAKnownDefault = !currentBaseURL || EMBEDDER_VENDORS.some((v) => v.baseURL && v.baseURL === currentBaseURL)
+    if (baseURLWasAKnownDefault) form.setFieldValue('base_url', nextVendor.baseURL)
+
+    const currentModel = form.getFieldValue('model')
+    const modelWasAKnownDefault = !currentModel || EMBEDDER_VENDORS.some((v) => v.defaultModel && v.defaultModel === currentModel)
+    if (modelWasAKnownDefault) form.setFieldValue('model', nextVendor.defaultModel)
+
+    setModelOptions(EMBEDDER_STATIC_MODELS[nextVendor.wireProvider] ?? [])
+  }
+
+  const handleDetectModels = () => {
+    const provider = form.getFieldValue('provider')
+    detectModels.mutate(
+      { provider, base_url: watchedBaseURL || undefined },
+      {
+        onSuccess: (data) => {
+          const models = data?.embedding_models ?? []
+          setModelOptions(models)
+          if (models.length === 0) {
+            message.warning(`No embedding models found — check the base URL${isOllama ? ' and that Ollama is reachable' : ''}.`)
+          } else {
+            message.success(`Found ${models.length} model${models.length === 1 ? '' : 's'}`)
+          }
+        },
+        onError: (error) => message.error(getErrorMessage(error)),
+      },
+    )
+  }
 
   return (
     <Drawer
@@ -170,36 +292,79 @@ function EmbedderSettingFormDrawer({
         </Button>
       }
     >
-      <Form form={form} layout="vertical" onFinish={onSubmit}>
-        <Form.Item name="provider" label="Provider" rules={[{ required: true, message: 'Required' }]}>
+      <Form form={form} layout="vertical" onFinish={onSubmit} autoComplete="off">
+        <AutofillGuard />
+        <Form.Item label="Provider" required>
           <Select
-            options={EMBEDDER_PROVIDERS.map((p) => ({ value: p.id, label: p.name }))}
+            value={vendorId}
+            onChange={handleVendorChange}
+            options={EMBEDDER_VENDORS.map((v) => ({ value: v.id, label: v.name }))}
           />
         </Form.Item>
-        <Form.Item
-          name="model"
-          label="Model"
-          rules={[{ required: true, message: 'Required' }]}
-          extra="e.g. text-embedding-3-small, mistral-embed, nomic-embed-text"
-        >
-          <Input placeholder="text-embedding-3-small" />
+        {/* The actual wire-format value ("openai"/"ollama") the vendor above resolves to - never edited directly. */}
+        <Form.Item name="provider" hidden rules={[{ required: true, message: 'Required' }]}>
+          <Input />
         </Form.Item>
+        <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: -12, marginBottom: 16 }}>
+          {vendor.desc}
+        </Typography.Text>
         <Form.Item
           name="base_url"
           label="Base URL"
           rules={[{ required: true, message: 'Required' }]}
-          extra="An OpenAI-compatible embeddings endpoint (many providers, including Mistral, work directly against provider: openai)."
+          extra={
+            isOllama
+              ? "seshat-server itself runs in a container in this project's docker-compose stack — from inside it, localhost means the container, not your machine. Use http://host.docker.internal:11434 to reach an Ollama running on your host."
+              : 'An OpenAI-compatible embeddings endpoint. Pick "Other OpenAI-compatible" above for a vendor not listed by name.'
+          }
         >
-          <Input placeholder="https://api.openai.com/v1" />
+          <Input autoComplete="off" placeholder="https://api.openai.com/v1" />
         </Form.Item>
+
+        <div style={{ marginTop: -8, marginBottom: 16 }}>
+          <Button size="small" icon={<ReloadOutlined />} loading={detectModels.isPending} onClick={handleDetectModels}>
+            Detect models
+          </Button>
+          <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 6 }}>
+            {modelOptions.length > 0
+              ? `${modelOptions.length} model${modelOptions.length === 1 ? '' : 's'} available.`
+              : 'Probes the base URL above for installed embedding models.'}
+          </Typography.Text>
+        </div>
+
+        {modelOptions.length > 0 ? (
+          <Form.Item name="model" label="Model" rules={[{ required: true, message: 'Required' }]}>
+            <Select
+              showSearch
+              optionFilterProp="label"
+              placeholder="Select a model"
+              options={modelOptions.map((model) => ({ label: model, value: model }))}
+            />
+          </Form.Item>
+        ) : (
+          <Form.Item
+            name="model"
+            label="Model"
+            rules={[{ required: true, message: 'Required' }]}
+            extra="e.g. text-embedding-3-small, mistral-embed, nomic-embed-text"
+          >
+            <Input autoComplete="off" placeholder="text-embedding-3-small" />
+          </Form.Item>
+        )}
+
         <Form.Item
           name="api_key"
           label="API key"
           extra={isEdit ? 'Leave empty to keep the current key unchanged.' : 'Optional. A local Ollama instance typically needs none.'}
         >
-          <Input.Password autoComplete="off" placeholder={isEdit ? '••••••••' : undefined} />
+          <Input.Password autoComplete="new-password" placeholder={isEdit ? '••••••••' : undefined} />
         </Form.Item>
       </Form>
     </Drawer>
   )
+}
+
+function mergeWithCurrent(options: string[], current: string | null | undefined): string[] {
+  if (!current || options.includes(current)) return options
+  return [current, ...options]
 }

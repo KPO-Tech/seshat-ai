@@ -14,6 +14,7 @@ import { PageHeader } from '@/components/PageHeader'
 import { CorporaTable } from '@/components/knowledge/CorporaTable'
 import { CorpusFormDrawer } from '@/components/knowledge/CorpusFormDrawer'
 import { CorpusFolderFormDrawer } from '@/components/knowledge/CorpusFolderFormDrawer'
+import { FolderIcon } from '@/components/knowledge/FolderIcon'
 import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
 
 const FETCH_LIMIT = 500
@@ -44,37 +45,42 @@ export function FolderDetailPage() {
 
   return (
     <div>
-      <PageHeader
-        title={folder ? `${folder.icon} ${folder.name}` : 'Folder'}
-        description={folder?.description || 'Corpora filed under this folder.'}
-        actions={
-          <Space>
-            <Button icon={<ArrowLeftOutlined />} onClick={() => corporaPath && navigate(corporaPath)} disabled={!corporaPath}>
-              Back to corpora
-            </Button>
-            <Button icon={<EditOutlined />} onClick={() => setEditingFolder(true)} disabled={!folder}>
-              Rename
-            </Button>
-            <Popconfirm
-              title={`Delete ${folder?.name ?? 'this folder'}?`}
-              description="Corpora inside are unfiled, not deleted."
-              onConfirm={() =>
-                deleteFolder.mutate(folderId, {
-                  onSuccess: () => corporaPath && navigate(corporaPath),
-                  onError: (error) => message.error(getErrorMessage(error)),
-                })
-              }
-            >
-              <Button danger icon={<DeleteOutlined />} disabled={!folder}>
-                Delete
-              </Button>
-            </Popconfirm>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreatingCorpus(true)} disabled={!organizationId}>
-              New corpus
-            </Button>
-          </Space>
-        }
-      />
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+        {folder && <FolderIcon folderId={folder.id!} emoji={folder.icon || '📁'} size={48} />}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <PageHeader
+            title={folder?.name ?? 'Folder'}
+            description={folder?.description || 'Corpora filed under this folder.'}
+            actions={
+              <Space>
+                <Button icon={<ArrowLeftOutlined />} onClick={() => corporaPath && navigate(corporaPath)} disabled={!corporaPath}>
+                  Back to corpora
+                </Button>
+                <Button icon={<EditOutlined />} onClick={() => setEditingFolder(true)} disabled={!folder}>
+                  Rename
+                </Button>
+                <Popconfirm
+                  title={`Delete ${folder?.name ?? 'this folder'}?`}
+                  description="Corpora inside are unfiled, not deleted."
+                  onConfirm={() =>
+                    deleteFolder.mutate(folderId, {
+                      onSuccess: () => corporaPath && navigate(corporaPath),
+                      onError: (error) => message.error(getErrorMessage(error)),
+                    })
+                  }
+                >
+                  <Button danger icon={<DeleteOutlined />} disabled={!folder}>
+                    Delete
+                  </Button>
+                </Popconfirm>
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreatingCorpus(true)} disabled={!organizationId}>
+                  New corpus
+                </Button>
+              </Space>
+            }
+          />
+        </div>
+      </div>
 
       <CorporaTable
         organizationId={organizationId}

@@ -2195,6 +2195,32 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/provider-settings/detect-models:
+    post:
+      operationId: detectProviderModels
+      tags: [provider-settings]
+      summary: Probe a live Ollama instance for its installed LLM models
+      description: >-
+        Only does anything for provider "ollama" — every other provider has
+        a static model catalog in the console already, since a hosted
+        provider's model list doesn't vary per install. A self-hosted
+        Ollama's installed models do, so this calls its /api/tags endpoint
+        live. Embedding models are already filtered out of the result.
+        Returns an empty list (never an error status) if the target Ollama
+        is unreachable, so the console can fall back to manual model entry.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DetectModelsInput" }
+      responses:
+        "200":
+          description: Detected models (possibly empty)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DetectedProviderModels" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
   /api/v1/web-search-provider-settings:
     get:
       operationId: listWebSearchProviderSettings
@@ -2917,6 +2943,33 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/embedder-settings/detect-models:
+    post:
+      operationId: detectEmbedderModels
+      tags: [knowledge]
+      summary: Detect embedding-capable models for a provider
+      description: >-
+        For OpenAI-compatible providers this returns a static curated list
+        (their model catalogs don't vary per install). For "ollama" it
+        probes the target instance's /api/tags live and classifies each
+        installed model as embedding-capable by name/family heuristics,
+        since a self-hosted Ollama's installed models are unknowable ahead
+        of time. Returns an empty list (never an error status) if the
+        target Ollama is unreachable, so the console can fall back to
+        manual model entry.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DetectModelsInput" }
+      responses:
+        "200":
+          description: Detected embedding models (possibly empty)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DetectedEmbedderModels" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
 
   /api/v1/devices:
     get:
@@ -4425,6 +4478,29 @@ components:
           type: string
           description: Omit/empty to keep the existing stored key unchanged.
 
+    # Shared by detectProviderModels and detectEmbedderModels — both only
+    # probe live for provider "ollama", every other provider already has a
+    # static catalog client-side.
+    DetectModelsInput:
+      type: object
+      required: [provider]
+      properties:
+        provider: { type: string, example: ollama }
+        base_url:
+          type: string
+          description: Defaults to http://localhost:11434 (Ollama's own default) if omitted.
+
+    DetectedProviderModels:
+      type: object
+      properties:
+        models:
+          type: array
+          items: { type: string }
+          description: Empty for non-Ollama providers, or if the target Ollama was unreachable.
+        error:
+          type: string
+          description: Set only if the probe failed (models is still present, just empty).
+
     WebSearchProviderSetting:
       type: object
       description: >-
@@ -4795,6 +4871,21 @@ components:
           type: string
           description: Optional (e.g. a local Ollama needs none). Empty on update keeps the existing key unchanged.
       required: [provider, model, base_url]
+
+    DetectedEmbedderModels:
+      type: object
+      properties:
+        embedding_models:
+          type: array
+          items: { type: string }
+          description: >-
+            A static curated list for non-Ollama providers, or the subset of
+            a live Ollama instance's installed models classified as
+            embedding-capable by name/family. Empty if the target Ollama was
+            unreachable.
+        error:
+          type: string
+          description: Set only if a live Ollama probe failed (embedding_models is still present, just empty).
 
     Device:
       type: object

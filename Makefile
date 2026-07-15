@@ -119,8 +119,8 @@ deploy-up: ## Build and start the deploy stack (Postgres + seshat-server + sesha
 	  exit 1; \
 	fi
 	@cd $(DEPLOY_DIR) && docker compose up --build -d
-	@printf '\033[32m[deploy]\033[0m console: http://localhost:%s  api: http://localhost:%s  searxng: http://localhost:%s\n' \
-	  "$${SESHAT_CONSOLE_PORT:-3000}" "$${SESHAT_SERVER_PORT:-8081}" "$${SEARXNG_PORT:-8080}"
+	@printf '\033[32m[deploy]\033[0m console: http://localhost:%s  api: http://localhost:%s  searxng: http://localhost:%s  minio: http://localhost:%s\n' \
+	  "$${SESHAT_CONSOLE_PORT:-3000}" "$${SESHAT_SERVER_PORT:-8081}" "$${SEARXNG_PORT:-8080}" "$${MINIO_CONSOLE_PORT:-9001}"
 
 deploy-down: ## Stop the deploy stack (add ARGS=-v to also wipe the Postgres volume)
 	@cd $(DEPLOY_DIR) && docker compose down $(ARGS)

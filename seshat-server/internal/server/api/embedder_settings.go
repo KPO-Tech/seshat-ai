@@ -54,6 +54,9 @@ func (app *App) handleEmbedderSettings(w http.ResponseWriter, r *http.Request) {
 			writeKnowledgeError(w, err)
 			return
 		}
+		if req.APIKey != "" {
+			app.autoConfigureProviderFromEmbedder(r.Context(), principal, req.OrganizationID, req.Provider, req.BaseURL, req.APIKey)
+		}
 		writeJSON(w, http.StatusOK, setting)
 	case http.MethodDelete:
 		organizationID := strings.TrimSpace(r.URL.Query().Get("organization_id"))
