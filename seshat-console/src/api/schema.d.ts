@@ -1361,7 +1361,7 @@ export interface paths {
         };
         /**
          * Resolve every MCP server config an organization has shared
-         * @description Unlike the list endpoint, this INCLUDES decrypted env/headers values — the point is for a connected seshat-backend to actually load these servers into its local MCP runtime, once the user has explicitly approved each one (stdio servers spawn an arbitrary command locally). Authorization is deliberately looser than mcp_registry.manage: any member of the organization can resolve "what has my org shared". Unlike web search's provider-by-provider resolve, there's no org→platform fallback here — just every server the organization has defined.
+         * @description Unlike the list endpoint, this INCLUDES decrypted env/headers values — the point is for a connected seshat-backend to actually load these servers into its local MCP runtime, once the user has explicitly approved each one (stdio servers spawn an arbitrary command locally). Authorization is deliberately looser than mcp_registry.manage: any member of the organization can resolve "what has my org shared". Falls back to whichever organization is flagged as the platform default when this org has none of its own (same hybrid model as provider-settings/embedder-settings) - an org with even one server of its own never sees the default org's servers mixed in.
          */
         get: operations["resolveMCPServerConfigs"];
         put?: never;

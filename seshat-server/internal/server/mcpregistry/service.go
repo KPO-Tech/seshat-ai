@@ -2,10 +2,15 @@
 // configurations once, so every connected seshat-backend can pick them up
 // instead of each user re-entering the same command/URL/credentials. This
 // is config only — execution always happens locally on the member's own
-// machine (see helps/seshat-architecture-target.md, "MCP config"). Unlike
-// LLM/web-search provider settings there is no platform tier: an MCP tool
-// shared across the entire platform (not just one org) has no clear use
-// case today.
+// machine (see helps/seshat-architecture-target.md, "MCP config").
+//
+// Like LLM/embedder/web-search provider settings, an organization with no
+// MCP servers of its own falls back to whichever organization is currently
+// flagged IsDefault (see iam.Service.DefaultOrganizationID) - but only at
+// resolve time (ResolveServerConfigs), not in the admin CRUD list. This
+// mirrors resolveEmbedderConfig/resolveProviderCredentials exactly: the
+// fallback is a runtime behavior for actually connecting to servers, not
+// something the admin UI blends into "this org's own configuration".
 package mcpregistry
 
 import (
@@ -269,9 +274,9 @@ func (s *Service) DeleteServerConfig(ctx context.Context, principal *iam.Princip
 // ResolveServerConfigs is open to any org member — a member needs to see
 // (and load, once they explicitly approve it locally) every MCP server
 // their org has shared, the same trust level as resolving their own
-// session. Unlike web search's provider-by-provider resolve, there's no
-// org→platform fallback to pick between here: just "every server this org
-// has defined."
+// session. Falls back to whichever organization is flagged IsDefault when
+// this org has none of its own (see listServerConfigsWithFallback) - same
+// hybrid BYOK/managed model as provider-settings/embedder-settings.
 func (s *Service) ResolveServerConfigs(ctx context.Context, principal *iam.Principal, organizationID string) ([]ResolvedMCPServerConfig, error) {
 	if principal == nil {
 		return nil, iam.ErrUnauthorized("authentication required")
@@ -288,8 +293,8 @@ func (s *Service) ResolveServerConfigs(ctx context.Context, principal *iam.Princ
 	if !allowed {
 		return nil, iam.ErrForbidden("not a member of this organization")
 	}
-	var records []sdb.MCPServerConfig
-	if err := tx.Where("organization_id = ?", organizationID).Order("name asc").Find(&records).Error; err != nil {
+	records, err := s.listServerConfigsWithFallback(tx, organizationID)
+	if err != nil {
 		return nil, err
 	}
 	out := make([]ResolvedMCPServerConfig, 0, len(records))
@@ -301,6 +306,33 @@ func (s *Service) ResolveServerConfigs(ctx context.Context, principal *iam.Princ
 		out = append(out, resolved)
 	}
 	return out, nil
+}
+
+// listServerConfigsWithFallback returns this organization's own MCP server
+// configs, or - only when it has none at all - whichever organization is
+// currently flagged IsDefault (see iam.Service.DefaultOrganizationID). An
+// org that configures even one server of its own never sees the platform
+// default's servers mixed in; it's all-or-nothing, matching how an org's
+// own ProviderSetting/EmbedderSetting always wins outright when present.
+func (s *Service) listServerConfigsWithFallback(tx *gorm.DB, organizationID string) ([]sdb.MCPServerConfig, error) {
+	var records []sdb.MCPServerConfig
+	if err := tx.Where("organization_id = ?", organizationID).Order("name asc").Find(&records).Error; err != nil {
+		return nil, err
+	}
+	if len(records) > 0 {
+		return records, nil
+	}
+	defaultOrgID, found, err := s.iam.DefaultOrganizationID(tx)
+	if err != nil {
+		return nil, err
+	}
+	if !found || defaultOrgID == organizationID {
+		return records, nil
+	}
+	if err := tx.Where("organization_id = ?", defaultOrgID).Order("name asc").Find(&records).Error; err != nil {
+		return nil, err
+	}
+	return records, nil
 }
 
 // ─── converters ───────────────────────────────────────────────────────────────

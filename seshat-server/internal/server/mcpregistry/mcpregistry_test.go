@@ -218,6 +218,61 @@ func TestCreateServerConfigRejectsDuplicateName(t *testing.T) {
 	}
 }
 
+func TestResolveServerConfigsFallsBackToPlatformDefault(t *testing.T) {
+	t.Setenv(testEncryptionEnvVar, testEncryptionKey)
+	env := newTestEnv(t)
+
+	defaultOrg, err := env.iam.CreateOrganization(context.Background(), env.adminPrincipal, iam.CreateOrganizationParams{
+		Name: "Default Org", Slug: "default-org",
+	})
+	if err != nil {
+		t.Fatalf("create default org: %v", err)
+	}
+	if _, err := env.iam.SetOrganizationDefault(context.Background(), env.adminPrincipal, defaultOrg.ID, true); err != nil {
+		t.Fatalf("set organization default: %v", err)
+	}
+	if _, err := env.svc.CreateServerConfig(context.Background(), env.adminPrincipal, CreateServerConfigParams{
+		OrganizationID: defaultOrg.ID, Name: "platform-playwright", ServerType: "http", URL: "https://mcp.example.com/playwright",
+	}); err != nil {
+		t.Fatalf("create config on the default org: %v", err)
+	}
+
+	// env.orgID has no MCP servers of its own yet - resolving should fall
+	// back to the default org's.
+	resolved, err := env.svc.ResolveServerConfigs(context.Background(), env.adminPrincipal, env.orgID)
+	if err != nil {
+		t.Fatalf("resolve with fallback: %v", err)
+	}
+	if len(resolved) != 1 || resolved[0].Name != "platform-playwright" {
+		t.Fatalf("expected fallback to the default org's server, got: %+v", resolved)
+	}
+
+	// The admin CRUD list must NOT blend in the fallback - it's a resolve-
+	// time only behavior.
+	list, err := env.svc.ListServerConfigs(context.Background(), env.adminPrincipal, env.orgID)
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(list) != 0 {
+		t.Fatalf("expected the admin list to stay empty (no blending), got: %+v", list)
+	}
+
+	// Once the org configures even one server of its own, the platform
+	// default no longer shows up at all - all-or-nothing, not merged.
+	if _, err := env.svc.CreateServerConfig(context.Background(), env.adminPrincipal, CreateServerConfigParams{
+		OrganizationID: env.orgID, Name: "org-own-server", ServerType: "stdio", Command: "echo",
+	}); err != nil {
+		t.Fatalf("create org's own config: %v", err)
+	}
+	resolved, err = env.svc.ResolveServerConfigs(context.Background(), env.adminPrincipal, env.orgID)
+	if err != nil {
+		t.Fatalf("resolve after org configures its own: %v", err)
+	}
+	if len(resolved) != 1 || resolved[0].Name != "org-own-server" {
+		t.Fatalf("expected only the org's own server, no fallback mixed in, got: %+v", resolved)
+	}
+}
+
 func TestHeadersEncryptionRoundTrip(t *testing.T) {
 	t.Setenv(testEncryptionEnvVar, testEncryptionKey)
 	env := newTestEnv(t)

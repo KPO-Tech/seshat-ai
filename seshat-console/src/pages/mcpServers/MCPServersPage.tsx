@@ -105,7 +105,7 @@ export function MCPServersPage() {
     <div>
       <PageHeader
         title="MCP Servers"
-        description="Organization-shared MCP server definitions. Secrets are encrypted at rest and never echoed back in list responses."
+        description="Organization-shared MCP server definitions. Secrets are encrypted at rest and never echoed back in list responses. Falls back to this platform's default organization's servers when this organization has none of its own."
         actions={
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing('new')} disabled={!organizationId}>
             New MCP server
