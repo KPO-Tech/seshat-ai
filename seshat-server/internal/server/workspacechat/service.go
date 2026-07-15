@@ -11,9 +11,13 @@ package workspacechat
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"log"
 	"strings"
 	"sync"
 	"time"
+
+	"gorm.io/gorm"
 
 	sdkproviders "github.com/EngineerProjects/seshat/pkg/providers"
 	"github.com/EngineerProjects/seshat/pkg/sdk"
@@ -29,10 +33,20 @@ import (
 
 // sessionIdleTimeout is how long an unused chat session keeps its
 // underlying sdk.Client (and the LLM-side conversation history it holds in
-// memory) alive. This is a personal experimentation surface, not a durable
-// conversation store — see workspaceChat/transport.ts's own note that
-// "persistent conversation sessions are optional, not required".
+// memory) alive. Deliberately much shorter than sessionRetention — by the
+// time a persisted conversation is old enough to be purged, its in-memory
+// SDK client has always already been evicted here, so the two mechanisms
+// never need to coordinate.
 const sessionIdleTimeout = 2 * time.Hour
+
+// sessionRetention is how long a persisted conversation (see persistTurn,
+// GetSession, and Cleanup) is kept before it's treated as gone. This is a
+// personal experimentation surface, not a durable conversation store — see
+// workspaceChat/transport.ts's own note that "persistent conversation
+// sessions are optional, not required": bluntly deleting everything past a
+// fixed window is deliberately simpler than any per-conversation retention
+// policy.
+const sessionRetention = 48 * time.Hour
 
 // Service owns the in-memory registry of live chat sessions (one
 // sdk.Client+sdk.Session per browser conversation) and resolves the
@@ -150,32 +164,188 @@ func (s *Service) StreamChat(ctx context.Context, principal *iam.Principal, para
 		return err
 	}
 
+	// Recorded verbatim (Done excluded, it carries no replayable state) so
+	// this turn can be persisted and later replayed through the console's
+	// own event reducer on reload - see persistTurn.
+	var recordedEvents []Event
+	var answerText strings.Builder
+	record := func(e Event) {
+		recordedEvents = append(recordedEvents, e)
+		if e.Type == EventTextDelta {
+			answerText.WriteString(e.Delta)
+		}
+		emit(e)
+	}
+
 	sess.SetResponseChunkFn(func(chunk sdk.ResponseChunk) {
 		if chunk.Delta == "" {
 			return
 		}
 		if chunk.DeltaType == "thinking_delta" {
-			emit(Event{Type: EventThinkingDelta, Delta: chunk.Delta})
+			record(Event{Type: EventThinkingDelta, Delta: chunk.Delta})
 			return
 		}
-		emit(Event{Type: EventTextDelta, Delta: chunk.Delta})
+		record(Event{Type: EventTextDelta, Delta: chunk.Delta})
 	})
 	sess.SetProgressFn(func(progress sdk.ToolProgress) {
-		emit(Event{Type: EventToolProgress, Tool: toToolProgressEvent(progress)})
+		record(Event{Type: EventToolProgress, Tool: toToolProgressEvent(progress)})
 	})
 
 	resp, err := sess.SubmitMessage(ctx, params.Message)
 	if err != nil {
-		emit(Event{Type: EventError, Message: err.Error()})
+		record(Event{Type: EventError, Message: err.Error()})
+		s.persistTurn(ctx, principal, params, answerText.String(), recordedEvents)
 		return nil
 	}
 
 	for _, entry := range buildWebSearchEnrichments(resp) {
-		emit(Event{Type: EventToolProgress, Tool: entry})
+		record(Event{Type: EventToolProgress, Tool: entry})
 	}
 
 	emit(Event{Type: EventDone})
+	s.persistTurn(ctx, principal, params, answerText.String(), recordedEvents)
 	return nil
+}
+
+// persistTurn saves the user's message and the assistant's recorded events
+// for this turn, creating the session row on its first message. Best-effort
+// like the RAG/web-search credential lookups above - a persistence failure
+// doesn't fail (or even surface an error on) an otherwise-successful chat
+// turn the caller already received.
+func (s *Service) persistTurn(ctx context.Context, principal *iam.Principal, params StreamChatParams, answerText string, events []Event) {
+	err := s.db.Gorm().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		now := time.Now().UTC()
+		var session sdb.WorkspaceChatSession
+		err := tx.Where("id = ?", params.SessionID).First(&session).Error
+		switch {
+		case errors.Is(err, gorm.ErrRecordNotFound):
+			session = sdb.WorkspaceChatSession{
+				ID: params.SessionID, UserID: principal.User.ID, OrganizationID: params.OrganizationID,
+				Title: truncate(params.Message, 72), CreatedAt: now, UpdatedAt: now,
+			}
+			if err := tx.Create(&session).Error; err != nil {
+				return err
+			}
+		case err != nil:
+			return err
+		default:
+			if err := tx.Model(&session).Update("updated_at", now).Error; err != nil {
+				return err
+			}
+		}
+
+		userMsgID, err := sdb.NewID("wchatmsg")
+		if err != nil {
+			return err
+		}
+		if err := tx.Create(&sdb.WorkspaceChatMessageRecord{
+			ID: userMsgID, SessionID: session.ID, Role: "user", Content: params.Message, CreatedAt: now,
+		}).Error; err != nil {
+			return err
+		}
+
+		eventsJSON, err := json.Marshal(events)
+		if err != nil {
+			return err
+		}
+		assistantMsgID, err := sdb.NewID("wchatmsg")
+		if err != nil {
+			return err
+		}
+		return tx.Create(&sdb.WorkspaceChatMessageRecord{
+			ID: assistantMsgID, SessionID: session.ID, Role: "assistant",
+			Content: answerText, EventsJSON: string(eventsJSON), CreatedAt: now,
+		}).Error
+	})
+	if err != nil {
+		log.Printf("[workspacechat] persist turn failed: %v", err)
+	}
+}
+
+// SessionHistory is a previously persisted conversation, ready to replay
+// client-side.
+type SessionHistory struct {
+	ID       string           `json:"id"`
+	Title    string           `json:"title"`
+	Messages []HistoryMessage `json:"messages"`
+}
+
+type HistoryMessage struct {
+	Role      string  `json:"role"`
+	Content   string  `json:"content"`
+	CreatedAt string  `json:"created_at"`
+	Events    []Event `json:"events,omitempty"`
+}
+
+// GetSession loads a persisted conversation, scoped to its owner - a 404
+// covers both "never existed" and "past the 48h retention window" (the
+// query filters on updated_at itself, not a separate purge having already
+// run), so the console can't tell the two apart and just starts fresh
+// either way.
+func (s *Service) GetSession(ctx context.Context, principal *iam.Principal, sessionID string) (*SessionHistory, error) {
+	if principal == nil {
+		return nil, apperr.Unauthorized("authentication required")
+	}
+	sessionID = strings.TrimSpace(sessionID)
+	if sessionID == "" {
+		return nil, apperr.InvalidInput("session_id is required")
+	}
+
+	tx := s.db.Gorm().WithContext(ctx)
+	var session sdb.WorkspaceChatSession
+	cutoff := time.Now().UTC().Add(-sessionRetention)
+	err := tx.Where("id = ? AND user_id = ? AND updated_at > ?", sessionID, principal.User.ID, cutoff).First(&session).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, apperr.NotFound("session not found")
+		}
+		return nil, err
+	}
+
+	var records []sdb.WorkspaceChatMessageRecord
+	if err := tx.Where("session_id = ?", session.ID).Order("created_at asc").Find(&records).Error; err != nil {
+		return nil, err
+	}
+
+	messages := make([]HistoryMessage, 0, len(records))
+	for _, record := range records {
+		msg := HistoryMessage{Role: record.Role, Content: record.Content, CreatedAt: record.CreatedAt.Format(time.RFC3339)}
+		if record.EventsJSON != "" {
+			var events []Event
+			if err := json.Unmarshal([]byte(record.EventsJSON), &events); err == nil {
+				msg.Events = events
+			}
+		}
+		messages = append(messages, msg)
+	}
+
+	return &SessionHistory{ID: session.ID, Title: session.Title, Messages: messages}, nil
+}
+
+// purgeExpiredSessions deletes every session (and its messages) untouched
+// for longer than sessionRetention. Called periodically by Cleanup.
+func (s *Service) purgeExpiredSessions(ctx context.Context) {
+	err := s.db.Gorm().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		cutoff := time.Now().UTC().Add(-sessionRetention)
+		var expired []sdb.WorkspaceChatSession
+		if err := tx.Where("updated_at < ?", cutoff).Find(&expired).Error; err != nil {
+			return err
+		}
+		if len(expired) == 0 {
+			return nil
+		}
+		ids := make([]string, len(expired))
+		for i, session := range expired {
+			ids[i] = session.ID
+		}
+		if err := tx.Where("session_id IN ?", ids).Delete(&sdb.WorkspaceChatMessageRecord{}).Error; err != nil {
+			return err
+		}
+		return tx.Where("id IN ?", ids).Delete(&sdb.WorkspaceChatSession{}).Error
+	})
+	if err != nil {
+		log.Printf("[workspacechat] purge expired sessions failed: %v", err)
+	}
 }
 
 func (s *Service) getOrCreateSession(ctx context.Context, principal *iam.Principal, params StreamChatParams) (*sdk.Session, error) {

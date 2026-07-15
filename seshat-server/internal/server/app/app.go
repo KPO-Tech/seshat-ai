@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"time"
 
 	sdkdocling "github.com/EngineerProjects/seshat/pkg/docling"
 	sdkstorage "github.com/EngineerProjects/seshat/pkg/storage"
@@ -25,21 +26,22 @@ import (
 )
 
 type App struct {
-	DB                *sdb.DB
-	IAM               *iam.Service
-	Automation        *automation.Service
-	Scheduler         *automation.Scheduler
-	Knowledge         *knowledge.Service
-	IngestionRunner   *knowledge.Runner
-	Preferences       *preferences.Service
-	SkillRegistry     *skillregistry.Service
-	WebSearchSettings *websearchsettings.Service
-	MCPRegistry       *mcpregistry.Service
-	Memories          *memories.Service
-	LongTermMemory    *longtermmemory.Service
-	AgentRegistry     *agentregistry.Service
-	Quotas            *quotas.Service
-	WorkspaceChat     *workspacechat.Service
+	DB                   *sdb.DB
+	IAM                  *iam.Service
+	Automation           *automation.Service
+	Scheduler            *automation.Scheduler
+	Knowledge            *knowledge.Service
+	IngestionRunner      *knowledge.Runner
+	Preferences          *preferences.Service
+	SkillRegistry        *skillregistry.Service
+	WebSearchSettings    *websearchsettings.Service
+	MCPRegistry          *mcpregistry.Service
+	Memories             *memories.Service
+	LongTermMemory       *longtermmemory.Service
+	AgentRegistry        *agentregistry.Service
+	Quotas               *quotas.Service
+	WorkspaceChat        *workspacechat.Service
+	WorkspaceChatCleanup *workspacechat.Cleanup
 }
 
 func New(cfg serverconfig.Config) (*App, error) {
@@ -82,22 +84,24 @@ func New(cfg serverconfig.Config) (*App, error) {
 	automationService.SetDoclingURL(cfg.DoclingURL)
 
 	webSearchService := websearchsettings.New(database, iamService)
+	workspaceChatService := workspacechat.New(database, iamService, automationService, webSearchService, knowledgeService, cfg.DoclingURL)
 
 	return &App{
-		DB:                database,
-		IAM:               iamService,
-		Automation:        automationService,
-		Scheduler:         automation.NewScheduler(automationService, cfg.SchedulerInterval).WithStaleRunTimeout(cfg.StaleRunTimeout),
-		Knowledge:         knowledgeService,
-		IngestionRunner:   knowledge.NewRunner(knowledgeService, knowledge.RunnerConfig{PollInterval: cfg.IngestionPollInterval, MaxPollInterval: cfg.IngestionMaxPollInterval}),
-		Preferences:       preferences.New(database),
-		SkillRegistry:     skillregistry.New(database, iamService),
-		WebSearchSettings: webSearchService,
-		MCPRegistry:       mcpregistry.New(database, iamService),
-		Memories:          memories.New(database),
-		LongTermMemory:    longtermmemory.New(database),
-		AgentRegistry:     agentregistry.New(database, iamService),
-		Quotas:            quotas.New(database),
-		WorkspaceChat:     workspacechat.New(database, iamService, automationService, webSearchService, knowledgeService, cfg.DoclingURL),
+		DB:                   database,
+		IAM:                  iamService,
+		Automation:           automationService,
+		Scheduler:            automation.NewScheduler(automationService, cfg.SchedulerInterval).WithStaleRunTimeout(cfg.StaleRunTimeout),
+		Knowledge:            knowledgeService,
+		IngestionRunner:      knowledge.NewRunner(knowledgeService, knowledge.RunnerConfig{PollInterval: cfg.IngestionPollInterval, MaxPollInterval: cfg.IngestionMaxPollInterval}),
+		Preferences:          preferences.New(database),
+		SkillRegistry:        skillregistry.New(database, iamService),
+		WebSearchSettings:    webSearchService,
+		MCPRegistry:          mcpregistry.New(database, iamService),
+		Memories:             memories.New(database),
+		LongTermMemory:       longtermmemory.New(database),
+		AgentRegistry:        agentregistry.New(database, iamService),
+		Quotas:               quotas.New(database),
+		WorkspaceChat:        workspaceChatService,
+		WorkspaceChatCleanup: workspacechat.NewCleanup(workspaceChatService, time.Hour),
 	}, nil
 }

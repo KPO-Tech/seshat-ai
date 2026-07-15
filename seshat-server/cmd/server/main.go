@@ -30,6 +30,9 @@ func main() {
 	app.IngestionRunner.Start()
 	defer app.IngestionRunner.Stop()
 
+	app.WorkspaceChatCleanup.Start()
+	defer app.WorkspaceChatCleanup.Stop()
+
 	router := serverapi.CreateRouter(serverapi.Config{
 		Port:               cfg.Port,
 		ReadTimeout:        cfg.ReadTimeout,

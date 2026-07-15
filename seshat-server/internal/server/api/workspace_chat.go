@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/workspacechat"
 )
@@ -60,4 +61,28 @@ func (app *App) handleWorkspaceChatStream(w http.ResponseWriter, r *http.Request
 		writeControlPlaneError(w, err)
 		return
 	}
+}
+
+// handleWorkspaceChatSession — GET /api/v1/users/me/workspace/chat/sessions/{sessionID}.
+// Lets the console reload a conversation after a refresh; a 404 means either
+// the session never existed or has aged past workspacechat's 48h retention -
+// the caller can't tell the difference and just starts a fresh session either way.
+func (app *App) handleWorkspaceChatSession(w http.ResponseWriter, r *http.Request) {
+	principal, ok := authPrincipalFromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "missing principal")
+		return
+	}
+	sessionID := strings.TrimSpace(r.PathValue("sessionID"))
+	if sessionID == "" {
+		writeJSONError(w, http.StatusBadRequest, "missing session id")
+		return
+	}
+
+	history, err := app.backend.WorkspaceChat.GetSession(r.Context(), principal, sessionID)
+	if err != nil {
+		writeControlPlaneError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, history)
 }

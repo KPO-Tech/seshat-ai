@@ -1491,8 +1491,10 @@ paths:
         session_id is client-generated and identifies one conversation;
         reusing it across calls continues the same in-memory SDK session
         (recent history remembered) until it's evicted after 2 hours of
-        inactivity. Sessions are not persisted to the database - this is a
-        transient test surface, not a durable chat history.
+        inactivity. Turns are also persisted to the database so a page
+        refresh can reload the conversation via GET
+        /users/me/workspace/chat/sessions/{sessionID}, but only for 48 hours -
+        this remains a transient test surface, not a durable chat history.
       requestBody:
         required: true
         content:
@@ -1507,6 +1509,30 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/users/me/workspace/chat/sessions/{sessionID}:
+    get:
+      operationId: getWorkspaceChatSession
+      tags: [workspace-chat]
+      summary: Reload a persisted Workspace Chat conversation
+      description: >-
+        Scoped to the requesting user; a session created by another user is
+        indistinguishable from one that never existed. A session past the
+        48-hour retention window returns 404 rather than an empty/expired
+        marker, since the console treats both cases identically (start fresh).
+      parameters:
+        - name: sessionID
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: The persisted conversation, ordered oldest to newest
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkspaceChatSessionHistory" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /api/v1/skill-repos:
     get:
@@ -4283,6 +4309,26 @@ components:
               url: { type: string }
               description: { type: string }
               source: { type: string }
+
+    WorkspaceChatSessionHistory:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        messages:
+          type: array
+          items: { $ref: "#/components/schemas/WorkspaceChatHistoryMessage" }
+
+    WorkspaceChatHistoryMessage:
+      type: object
+      properties:
+        role: { type: string, enum: [user, assistant] }
+        content: { type: string }
+        created_at: { type: string, format: date-time }
+        events:
+          type: array
+          description: Present for assistant messages only - the ordered event log of that turn, replayable through the same client-side reducer used for live streaming to reconstruct identical content/trace.
+          items: { $ref: "#/components/schemas/WorkspaceChatEvent" }
 
     MCPServerConfig:
       type: object

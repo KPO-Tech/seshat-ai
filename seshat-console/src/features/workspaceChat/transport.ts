@@ -1,5 +1,21 @@
+import { api } from '@/api/client'
 import { useAuthStore } from '@/store/auth'
 import type { WorkspaceChatEvent } from '@/features/workspaceChat/types'
+import type { components } from '@/api/schema'
+
+export type WorkspaceChatSessionHistory = components['schemas']['WorkspaceChatSessionHistory']
+
+// Loads a persisted conversation for the "survive a refresh" feature -
+// returns null for a 404 (session never existed or aged past the 48h
+// retention window), since the caller treats both cases identically.
+export async function fetchWorkspaceChatSession(sessionId: string): Promise<WorkspaceChatSessionHistory | null> {
+  const { data, error, response } = await api.GET('/api/v1/users/me/workspace/chat/sessions/{sessionID}', {
+    params: { path: { sessionID: sessionId } },
+  })
+  if (response.status === 404) return null
+  if (error) throw error
+  return data ?? null
+}
 
 export interface WorkspaceChatStreamParams {
   sessionId: string

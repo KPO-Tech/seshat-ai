@@ -7,7 +7,8 @@ import { ProviderIcon } from '@/components/ProviderIcon'
 import { WorkspaceChatMessage } from '@/components/workspace/WorkspaceChatMessage'
 import { getProviderLabel, getProviderModels } from '@/lib/providerCatalog'
 import { createWorkspaceChatMessage, createWorkspaceChatSession } from '@/features/workspaceChat/storage'
-import { streamWorkspaceChat } from '@/features/workspaceChat/transport'
+import { fetchWorkspaceChatSession, streamWorkspaceChat, type WorkspaceChatSessionHistory } from '@/features/workspaceChat/transport'
+import { clearStoredSessionId, getStoredSessionId, setStoredSessionId } from '@/features/workspaceChat/localSession'
 import type { WorkspaceChatEvent, WorkspaceChatSession, WorkspaceTraceStep } from '@/features/workspaceChat/types'
 import { useAuthStore } from '@/store/auth'
 import { useWorkspaceOrganizationStore } from '@/store/workspaceOrganization'
@@ -93,6 +94,80 @@ function replaceLastMessage(session: WorkspaceChatSession, updated: WorkspaceCha
   return { ...session, messages, updatedAt: new Date().toISOString() }
 }
 
+// Rebuilds a session from persisted history by replaying each assistant
+// turn's stored event log through the exact same reducer used for live
+// streaming - so a reloaded conversation ends up with identical content and
+// trace to how it looked live, instead of duplicating that logic server-side.
+function buildSessionFromHistory(history: WorkspaceChatSessionHistory, organizationId: string): WorkspaceChatSession {
+  const activeThinkingIdRef = { current: null as string | null }
+  const historyMessages = history.messages ?? []
+  const fallbackTimestamp = new Date().toISOString()
+
+  let session: WorkspaceChatSession = {
+    id: history.id ?? generateID('wchat'),
+    title: history.title || 'New chat',
+    createdAt: historyMessages[0]?.created_at ?? fallbackTimestamp,
+    updatedAt: historyMessages[historyMessages.length - 1]?.created_at ?? fallbackTimestamp,
+    messages: [],
+    config: {
+      organizationId,
+      providerSettingId: null,
+      modelId: '',
+      agentPresetId: null,
+      corpusId: null,
+      permissionMode: '',
+      executionOrigin: 'interactive',
+    },
+  }
+
+  for (const historyMessage of historyMessages) {
+    if (historyMessage.role !== 'assistant') {
+      session = {
+        ...session,
+        messages: [
+          ...session.messages,
+          {
+            id: generateID('wmsg'),
+            role: 'user',
+            content: historyMessage.content ?? '',
+            createdAt: historyMessage.created_at ?? fallbackTimestamp,
+            status: 'complete',
+          },
+        ],
+      }
+      continue
+    }
+
+    activeThinkingIdRef.current = null
+    session = {
+      ...session,
+      messages: [
+        ...session.messages,
+        {
+          id: generateID('wmsg'),
+          role: 'assistant',
+          content: '',
+          createdAt: historyMessage.created_at ?? fallbackTimestamp,
+          status: 'draft',
+          trace: [],
+        },
+      ],
+    }
+    for (const event of historyMessage.events ?? []) {
+      session = applyEventToSession(session, event, activeThinkingIdRef)
+    }
+    // A successful turn never persists a "done" event (see
+    // workspacechat.Service.StreamChat) - an error event already flips
+    // status itself, so anything still "draft" after replay finished normally.
+    const lastIndex = session.messages.length - 1
+    if (session.messages[lastIndex].status === 'draft') {
+      session = replaceLastMessage(session, { ...session.messages[lastIndex], status: 'complete' })
+    }
+  }
+
+  return session
+}
+
 const NEAR_BOTTOM_THRESHOLD_PX = 120
 
 export function WorkspaceChatPage() {
@@ -108,6 +183,7 @@ export function WorkspaceChatPage() {
   const [composerError, setComposerError] = useState<string | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [isPinnedToBottom, setIsPinnedToBottom] = useState(true)
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
 
   const abortControllerRef = useRef<AbortController | null>(null)
   const activeThinkingIdRef = useRef<string | null>(null)
@@ -164,13 +240,56 @@ export function WorkspaceChatPage() {
     }
   }
 
+  // Tries to reattach to the conversation this browser last had open for
+  // this organization (survives a refresh, per user request - not a full
+  // conversation history list) before falling back to a fresh session.
   useEffect(() => {
     stopStreaming()
-    const next = createWorkspaceChatSession({ organizationId: activeOrganizationId ?? null })
-    setChatSession(next)
     setDraftPrompt('')
     setComposerError(null)
     setIsGenerating(false)
+
+    if (!activeOrganizationId) {
+      setChatSession(null)
+      return
+    }
+
+    const orgId = activeOrganizationId
+    const storedSessionId = getStoredSessionId(orgId)
+    if (!storedSessionId) {
+      const next = createWorkspaceChatSession({ organizationId: orgId })
+      setStoredSessionId(orgId, next.id)
+      setChatSession(next)
+      return
+    }
+
+    let cancelled = false
+    setIsLoadingHistory(true)
+    fetchWorkspaceChatSession(storedSessionId)
+      .then((history) => {
+        if (cancelled) return
+        if (history) {
+          setChatSession(buildSessionFromHistory(history, orgId))
+          return
+        }
+        clearStoredSessionId(orgId)
+        const next = createWorkspaceChatSession({ organizationId: orgId })
+        setStoredSessionId(orgId, next.id)
+        setChatSession(next)
+      })
+      .catch(() => {
+        if (cancelled) return
+        const next = createWorkspaceChatSession({ organizationId: orgId })
+        setStoredSessionId(orgId, next.id)
+        setChatSession(next)
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingHistory(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
   }, [activeOrganizationId])
 
   useEffect(() => {
@@ -254,6 +373,7 @@ export function WorkspaceChatPage() {
       modelId: selectedModelId ?? '',
       agentPresetId: selectedAgentPresetId,
     })
+    if (activeOrganizationId) setStoredSessionId(activeOrganizationId, next.id)
     setChatSession(next)
     setDraftPrompt('')
     setComposerError(null)
@@ -261,7 +381,7 @@ export function WorkspaceChatPage() {
 
   const handleSend = () => {
     const content = draftPrompt.trim()
-    if (!content || isGenerating) return
+    if (!content || isGenerating || isLoadingHistory) return
     if (!activeOrganizationId) {
       setComposerError('Select an organization before sending a prompt.')
       return
@@ -289,6 +409,7 @@ export function WorkspaceChatPage() {
     // sessionId could still be empty when streamWorkspaceChat is called.
     const baseSession = chatSession ?? createWorkspaceChatSession({ organizationId: activeOrganizationId })
     const sessionId = baseSession.id
+    if (!chatSession) setStoredSessionId(activeOrganizationId, sessionId)
     const nextTitle = baseSession.messages.length === 0 ? content.slice(0, 72) || 'New chat' : baseSession.title
 
     setChatSession({
@@ -363,7 +484,11 @@ export function WorkspaceChatPage() {
         </div>
 
         <div className="workspace-chat-stage">
-          {hasMessages ? (
+          {isLoadingHistory ? (
+            <div className="workspace-chat-empty">
+              <Typography.Text type="secondary">Loading conversation…</Typography.Text>
+            </div>
+          ) : hasMessages ? (
             <div className="workspace-chat-thread">
               {chatSession?.messages.map((message) => (
                 <WorkspaceChatMessage key={message.id} message={message} />
@@ -401,6 +526,7 @@ export function WorkspaceChatPage() {
               variant="borderless"
               placeholder="Write a message..."
               className="workspace-chat-composer__input"
+              disabled={isLoadingHistory}
               onChange={(event) => setDraftPrompt(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === 'Enter' && !event.shiftKey) {
@@ -460,7 +586,7 @@ export function WorkspaceChatPage() {
                   className="workspace-chat-composer__send"
                   onClick={handleSend}
                   loading={isGenerating}
-                  disabled={isGenerating}
+                  disabled={isGenerating || isLoadingHistory}
                 />
               </Tooltip>
             </div>

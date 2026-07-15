@@ -546,3 +546,32 @@ type MemoryRelation struct {
 	RelationType string `gorm:"size:128;not null"`
 	CreatedAt    time.Time
 }
+
+// WorkspaceChatSession is one persisted personal chat conversation (see
+// internal/server/workspacechat) - a transient test surface, not a durable
+// record: rows past workspacechat's 48h retention window are purged by its
+// periodic cleanup and treated as "doesn't exist" by reads even before that
+// sweep runs.
+type WorkspaceChatSession struct {
+	ID             string `gorm:"primaryKey;size:32"`
+	UserID         string `gorm:"size:32;not null;index:idx_workspace_chat_session_user"`
+	OrganizationID string `gorm:"size:32;not null"`
+	Title          string `gorm:"size:255"`
+	CreatedAt      time.Time
+	UpdatedAt      time.Time `gorm:"index"`
+}
+
+// WorkspaceChatMessageRecord is one persisted message in a
+// WorkspaceChatSession. EventsJSON is empty for user messages; for
+// assistant messages it's the ordered list of workspacechat.Event the turn
+// streamed, so the console can replay them through the exact same reducer
+// used live and end up with an identical rendered message (content + trace)
+// after a reload, instead of duplicating that reconstruction logic in Go.
+type WorkspaceChatMessageRecord struct {
+	ID         string `gorm:"primaryKey;size:32"`
+	SessionID  string `gorm:"size:32;not null;index:idx_workspace_chat_message_session"`
+	Role       string `gorm:"size:16;not null"`
+	Content    string `gorm:"type:text"`
+	EventsJSON string `gorm:"type:text"`
+	CreatedAt  time.Time
+}

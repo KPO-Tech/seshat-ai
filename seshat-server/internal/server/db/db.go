@@ -133,6 +133,8 @@ func (d *DB) Migrate() error {
 		&MemoryRelation{},
 		&AgentPreset{},
 		&UsageCounter{},
+		&WorkspaceChatSession{},
+		&WorkspaceChatMessageRecord{},
 	)
 }
 

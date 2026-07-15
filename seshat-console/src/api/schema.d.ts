@@ -858,9 +858,29 @@ export interface paths {
         put?: never;
         /**
          * Send a message to a personal Workspace Chat session and stream back the reply
-         * @description A personal, user-scoped playground for trying providers/models/tools live against a real LLM (web_search, rag_search, read_document_url), distinct from the async cloud job scheduler. The response body is newline-delimited JSON (one WorkspaceChatEvent object per line), not a JSON document — read it as a stream, not with a single JSON parse. session_id is client-generated and identifies one conversation; reusing it across calls continues the same in-memory SDK session (recent history remembered) until it's evicted after 2 hours of inactivity. Sessions are not persisted to the database - this is a transient test surface, not a durable chat history.
+         * @description A personal, user-scoped playground for trying providers/models/tools live against a real LLM (web_search, rag_search, read_document_url), distinct from the async cloud job scheduler. The response body is newline-delimited JSON (one WorkspaceChatEvent object per line), not a JSON document — read it as a stream, not with a single JSON parse. session_id is client-generated and identifies one conversation; reusing it across calls continues the same in-memory SDK session (recent history remembered) until it's evicted after 2 hours of inactivity. Turns are also persisted to the database so a page refresh can reload the conversation via GET /users/me/workspace/chat/sessions/{sessionID}, but only for 48 hours - this remains a transient test surface, not a durable chat history.
          */
         post: operations["streamWorkspaceChat"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/me/workspace/chat/sessions/{sessionID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Reload a persisted Workspace Chat conversation
+         * @description Scoped to the requesting user; a session created by another user is indistinguishable from one that never existed. A session past the 48-hour retention window returns 404 rather than an empty/expired marker, since the console treats both cases identically (start fresh).
+         */
+        get: operations["getWorkspaceChatSession"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2721,6 +2741,20 @@ export interface components {
                 description?: string;
                 source?: string;
             }[];
+        };
+        WorkspaceChatSessionHistory: {
+            id?: string;
+            title?: string;
+            messages?: components["schemas"]["WorkspaceChatHistoryMessage"][];
+        };
+        WorkspaceChatHistoryMessage: {
+            /** @enum {string} */
+            role?: "user" | "assistant";
+            content?: string;
+            /** Format: date-time */
+            created_at?: string;
+            /** @description Present for assistant messages only - the ordered event log of that turn, replayable through the same client-side reducer used for live streaming to reconstruct identical content/trace. */
+            events?: components["schemas"]["WorkspaceChatEvent"][];
         };
         /** @description Never includes env/headers values — they're a caller-supplied secret, redacted in every response including create. */
         MCPServerConfig: {
@@ -4843,6 +4877,30 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+        };
+    };
+    getWorkspaceChatSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sessionID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The persisted conversation, ordered oldest to newest */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceChatSessionHistory"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
         };
     };
     listSkillRepos: {
