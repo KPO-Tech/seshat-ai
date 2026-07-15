@@ -42,6 +42,7 @@ type App struct {
 	Quotas               *quotas.Service
 	WorkspaceChat        *workspacechat.Service
 	WorkspaceChatCleanup *workspacechat.Cleanup
+	MembershipExpiry     *iam.MembershipExpiry
 }
 
 func New(cfg serverconfig.Config) (*App, error) {
@@ -103,5 +104,6 @@ func New(cfg serverconfig.Config) (*App, error) {
 		Quotas:               quotas.New(database),
 		WorkspaceChat:        workspaceChatService,
 		WorkspaceChatCleanup: workspacechat.NewCleanup(workspaceChatService, time.Hour),
+		MembershipExpiry:     iam.NewMembershipExpiry(iamService, cfg.MembershipConfirmationWindow, time.Hour),
 	}, nil
 }

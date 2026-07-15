@@ -32,24 +32,29 @@ type Config struct {
 	// before chunking. Empty disables it — plain-text/markdown/JSON files
 	// still ingest fine either way.
 	DoclingURL string
+	// MembershipConfirmationWindow is how long a self-registered "pending"
+	// membership (see iam.Service.Register) stays fully usable before
+	// iam.Service.BlockExpiredPendingMemberships blocks it unconfirmed.
+	MembershipConfirmationWindow time.Duration
 }
 
 func LoadFromEnv() Config {
 	return Config{
-		Port:                     envInt("SESHAT_SERVER_PORT", 8081),
-		ReadTimeout:              15 * time.Second,
-		WriteTimeout:             15 * time.Second,
-		IdleTimeout:              60 * time.Second,
-		DB:                       dbConfigFromEnv(),
-		SessionTTL:               envDuration("SESHAT_SERVER_SESSION_TTL", 24*time.Hour),
-		CORSAllowedOrigins:       corsAllowedOriginsFromEnv(),
-		SchedulerInterval:        envDuration("SESHAT_SERVER_SCHEDULER_INTERVAL", 30*time.Second),
-		StaleRunTimeout:          envDuration("SESHAT_SERVER_STALE_RUN_TIMEOUT", 10*time.Minute),
-		Storage:                  storageConfigFromEnv(),
-		IngestionPollInterval:    envDuration("SESHAT_SERVER_INGESTION_POLL_INTERVAL", 500*time.Millisecond),
-		IngestionMaxPollInterval: envDuration("SESHAT_SERVER_INGESTION_MAX_POLL_INTERVAL", 5*time.Second),
-		Vector:                   vectorConfigFromEnv(),
-		DoclingURL:               strings.TrimSpace(os.Getenv("SESHAT_SERVER_DOCLING_URL")),
+		Port:                         envInt("SESHAT_SERVER_PORT", 8081),
+		ReadTimeout:                  15 * time.Second,
+		WriteTimeout:                 15 * time.Second,
+		IdleTimeout:                  60 * time.Second,
+		DB:                           dbConfigFromEnv(),
+		SessionTTL:                   envDuration("SESHAT_SERVER_SESSION_TTL", 24*time.Hour),
+		CORSAllowedOrigins:           corsAllowedOriginsFromEnv(),
+		SchedulerInterval:            envDuration("SESHAT_SERVER_SCHEDULER_INTERVAL", 30*time.Second),
+		StaleRunTimeout:              envDuration("SESHAT_SERVER_STALE_RUN_TIMEOUT", 10*time.Minute),
+		Storage:                      storageConfigFromEnv(),
+		IngestionPollInterval:        envDuration("SESHAT_SERVER_INGESTION_POLL_INTERVAL", 500*time.Millisecond),
+		IngestionMaxPollInterval:     envDuration("SESHAT_SERVER_INGESTION_MAX_POLL_INTERVAL", 5*time.Second),
+		Vector:                       vectorConfigFromEnv(),
+		DoclingURL:                   strings.TrimSpace(os.Getenv("SESHAT_SERVER_DOCLING_URL")),
+		MembershipConfirmationWindow: envDuration("SESHAT_SERVER_MEMBERSHIP_CONFIRMATION_WINDOW", 60*24*time.Hour),
 	}
 }
 

@@ -67,6 +67,27 @@ export function useLogin() {
   })
 }
 
+export function useRegister() {
+  const setSession = useAuthStore((s) => s.setSession)
+  return useMutation({
+    mutationFn: async (body: { email: string; password: string; display_name: string }) => {
+      const { data, error } = await api.POST('/api/v1/auth/register', { body })
+      if (error) throw error
+      return data
+    },
+    onSuccess: (data) => {
+      if (data.token && data.user) {
+        setSession({
+          token: data.token,
+          user: data.user,
+          organizations: data.organizations ?? [],
+          memberships: data.memberships ?? [],
+        })
+      }
+    },
+  })
+}
+
 export function useLogout() {
   const clear = useAuthStore((s) => s.clear)
   return useMutation({

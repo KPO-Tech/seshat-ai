@@ -42,8 +42,14 @@ type Organization struct {
 	ShareEmbedderSettings  bool `gorm:"not null;default:true"`
 	ShareWebSearchSettings bool `gorm:"not null;default:true"`
 	ShareMCPServers        bool `gorm:"not null;default:true"`
-	CreatedAt              time.Time
-	UpdatedAt              time.Time
+	// Domain is the organization's own email domain (e.g. "acmecorp.com"),
+	// used by self-service registration to auto-join a new user to this org
+	// as a pending member. A *string (not string) so an org without a
+	// domain stores NULL, not "" - a unique index allows any number of NULLs
+	// but would reject a second org ever setting an empty string.
+	Domain    *string `gorm:"uniqueIndex;size:255"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 // Membership binds one user to one organization with a role.
@@ -52,7 +58,16 @@ type Membership struct {
 	UserID         string `gorm:"size:32;not null;uniqueIndex:idx_membership_user_org;index:idx_membership_user"`
 	OrganizationID string `gorm:"size:32;not null;uniqueIndex:idx_membership_user_org;index:idx_membership_org"`
 	Role           string `gorm:"size:64;not null"`
-	CreatedAt      time.Time
+	// Status is "active" (default - every pre-existing membership-creation
+	// path is unaffected, see the Go zero-value/gorm-default-tag omission
+	// behavior), "pending" (self-registered via a matched org email domain -
+	// full access already, just flagged for admin attention), or "blocked"
+	// (excluded from every authorization check in access.go, as if the
+	// membership didn't exist - set by BlockExpiredPendingMemberships once
+	// a pending membership ages past the confirmation window unconfirmed).
+	Status       string `gorm:"size:16;not null;default:'active'"`
+	PendingSince *time.Time
+	CreatedAt    time.Time
 }
 
 // Session is an active bearer-token login. Token stores the SHA-256 hash

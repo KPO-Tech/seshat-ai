@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Button, Card, Drawer, Empty, Form, Input, Popconfirm, Segmented, Space, Tag, Typography, message } from 'antd'
 import type { TableProps } from 'antd'
-import { ClusterOutlined, CrownOutlined, DeleteOutlined, EditOutlined, MailOutlined, PlusOutlined, SafetyOutlined, TeamOutlined } from '@ant-design/icons'
+import { CheckOutlined, ClusterOutlined, CrownOutlined, DeleteOutlined, EditOutlined, MailOutlined, PlusOutlined, SafetyOutlined, TeamOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import {
   useMembershipsList,
   useCreateMembership,
   useUpdateMembership,
+  useConfirmMembership,
   useDeleteMembership,
   type Membership,
 } from '@/api/memberships'
@@ -52,6 +53,7 @@ export function MembershipsPage() {
 
   const createMembership = useCreateMembership()
   const updateMembership = useUpdateMembership()
+  const confirmMembership = useConfirmMembership()
   const deleteMembership = useDeleteMembership()
   const createUser = useCreateUser()
   const updateUser = useUpdateUser()
@@ -94,6 +96,11 @@ export function MembershipsPage() {
               {record.user_is_admin && (
                 <Tag color="gold" icon={<CrownOutlined />} style={{ margin: 0 }}>
                   Platform Admin
+                </Tag>
+              )}
+              {record.status === 'pending' && (
+                <Tag color="blue" style={{ margin: 0 }}>
+                  New
                 </Tag>
               )}
             </Space>
@@ -144,7 +151,7 @@ export function MembershipsPage() {
     {
       title: '',
       key: 'actions',
-      width: 140,
+      width: 180,
       render: (_, record) => (
         <Space>
           {isPlatformAdmin && (
@@ -163,6 +170,18 @@ export function MembershipsPage() {
                 aria-label={record.user_is_admin ? 'Revoke platform admin' : 'Grant platform admin'}
               />
             </Popconfirm>
+          )}
+          {record.status === 'pending' && (
+            <Button
+              size="small"
+              icon={<CheckOutlined />}
+              onClick={() =>
+                confirmMembership.mutate(record.id!, {
+                  onError: (error) => message.error(getErrorMessage(error)),
+                })
+              }
+              aria-label="Confirm member"
+            />
           )}
           <Button size="small" icon={<EditOutlined />} onClick={() => setEditing(record)} aria-label="Edit member role" />
           <Popconfirm

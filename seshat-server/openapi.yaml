@@ -210,6 +210,38 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
+  /api/v1/auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Self-service account creation
+      description: >
+        Unlike bootstrap (one-time, first account only) or admin-created
+        users, anyone can call this. If the email's domain matches an
+        organization's own `domain`, the new user is immediately auto-joined
+        to that organization as a "pending" member - full access already,
+        just flagged for admin attention (see Membership.status) until
+        confirmed (`POST /memberships/{id}/confirm`) or auto-blocked after
+        `SESHAT_SERVER_MEMBERSHIP_CONFIRMATION_WINDOW` (default ~2 months)
+        unconfirmed. No domain match just creates the account with no
+        memberships - use `POST /organizations` afterwards to found a new
+        one. Rate limited to 3 attempts/minute per client IP (burst 5).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RegisterInput" }
+      responses:
+        "201":
+          description: Account created (and, if the email domain matched an organization, auto-joined pending)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
   /api/v1/auth/me:
     get:
       operationId: getCurrentPrincipal
@@ -841,6 +873,29 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/memberships/{membershipID}/confirm:
+    post:
+      operationId: confirmMembership
+      tags: [memberships]
+      summary: Finalize a self-registered pending membership
+      description: >
+        Requires `members.manage` or `organization.manage`. Sets status to
+        "active" and clears pending_since. A no-op (not an error) on a
+        membership that isn't pending.
+      parameters:
+        - name: membershipID
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Confirmed membership
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Membership" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /api/v1/invitations:
     get:
@@ -3432,6 +3487,9 @@ components:
         share_mcp_servers:
           type: boolean
           description: Only meaningful while is_default is true - whether this organization's MCP server configs are shared as the platform-wide fallback.
+        domain:
+          type: string
+          description: This organization's own email domain (e.g. "acmecorp.com"), if set. Self-service registration (POST /auth/register) auto-joins a new user to this organization as a pending member when their email matches. At most one organization holds a given domain.
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
 
@@ -3444,6 +3502,7 @@ components:
         description: { type: string }
         website_url: { type: string }
         support_email: { type: string, format: email }
+        domain: { type: string }
 
     # All fields optional - omit one to leave that domain's flag unchanged.
     OrganizationSharedDomainsInput:
@@ -3463,6 +3522,20 @@ components:
         role:
           type: string
           description: A system role code (owner/admin/member/viewer) or a custom role code defined for this organization.
+        status:
+          type: string
+          enum: [active, pending, blocked]
+          description: >-
+            "active" (default) has full access. "pending" (self-registered
+            via a matched organization email domain) also has full access,
+            just flagged for admin attention - see pending_since and
+            POST /memberships/{id}/confirm. "blocked" (past the
+            confirmation window unconfirmed) has no access at all, as if
+            the membership didn't exist.
+        pending_since:
+          type: string
+          format: date-time
+          description: Set when status is "pending" - when the confirmation window (SESHAT_SERVER_MEMBERSHIP_CONFIRMATION_WINDOW) started counting down.
         created_at: { type: string, format: date-time }
         user_email:
           type: string
@@ -4162,6 +4235,14 @@ components:
         memberships:
           type: array
           items: { $ref: "#/components/schemas/Membership" }
+
+    RegisterInput:
+      type: object
+      required: [email, password, display_name]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, format: password }
+        display_name: { type: string }
 
     ProviderSetting:
       type: object

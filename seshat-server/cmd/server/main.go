@@ -33,6 +33,9 @@ func main() {
 	app.WorkspaceChatCleanup.Start()
 	defer app.WorkspaceChatCleanup.Stop()
 
+	app.MembershipExpiry.Start()
+	defer app.MembershipExpiry.Stop()
+
 	router := serverapi.CreateRouter(serverapi.Config{
 		Port:               cfg.Port,
 		ReadTimeout:        cfg.ReadTimeout,

@@ -43,19 +43,22 @@ type Organization struct {
 	ShareEmbedderSettings  bool      `json:"share_embedder_settings"`
 	ShareWebSearchSettings bool      `json:"share_web_search_settings"`
 	ShareMCPServers        bool      `json:"share_mcp_servers"`
+	Domain                 *string   `json:"domain,omitempty"`
 	CreatedAt              time.Time `json:"created_at"`
 	UpdatedAt              time.Time `json:"updated_at"`
 }
 
 type Membership struct {
-	ID              string    `json:"id"`
-	UserID          string    `json:"user_id"`
-	OrganizationID  string    `json:"organization_id"`
-	Role            string    `json:"role"`
-	CreatedAt       time.Time `json:"created_at"`
-	UserEmail       string    `json:"user_email,omitempty"`
-	UserDisplayName string    `json:"user_display_name,omitempty"`
-	UserIsAdmin     bool      `json:"user_is_admin,omitempty"`
+	ID              string     `json:"id"`
+	UserID          string     `json:"user_id"`
+	OrganizationID  string     `json:"organization_id"`
+	Role            string     `json:"role"`
+	Status          string     `json:"status"`
+	PendingSince    *time.Time `json:"pending_since,omitempty"`
+	CreatedAt       time.Time  `json:"created_at"`
+	UserEmail       string     `json:"user_email,omitempty"`
+	UserDisplayName string     `json:"user_display_name,omitempty"`
+	UserIsAdmin     bool       `json:"user_is_admin,omitempty"`
 }
 
 type Session struct {
@@ -145,6 +148,7 @@ type CreateOrganizationParams struct {
 	Description  string `json:"description"`
 	WebsiteURL   string `json:"website_url"`
 	SupportEmail string `json:"support_email"`
+	Domain       string `json:"domain"`
 }
 
 type CreateUserParams struct {
@@ -318,6 +322,112 @@ func (s *Service) Bootstrap(ctx context.Context, params BootstrapParams) (*AuthR
 			User:          toUser(user),
 			Organizations: []Organization{toOrganization(org)},
 			Memberships:   []Membership{toMembership(membership)},
+		}
+		return nil
+	})
+	return result, err
+}
+
+type RegisterParams struct {
+	Email       string `json:"email"`
+	Password    string `json:"password"`
+	DisplayName string `json:"display_name"`
+}
+
+// Register is the platform's self-service account creation path - unlike
+// Bootstrap (single-shot, first account only) or CreateUser (admin-only),
+// anyone can call this. If the email's domain matches an organization's own
+// Domain, the new user is immediately auto-joined to that organization as a
+// "pending" member: full access already (see the membership Status
+// enforcement in access.go), just flagged for admin attention until
+// confirmed or until BlockExpiredPendingMemberships blocks it unconfirmed.
+// No domain match just creates the account with no memberships -
+// CreateOrganization (already self-serve) covers "I'm the first person
+// from a brand-new company."
+func (s *Service) Register(ctx context.Context, params RegisterParams) (*AuthResult, error) {
+	email := normalizeEmail(params.Email)
+	password := strings.TrimSpace(params.Password)
+	displayName := strings.TrimSpace(params.DisplayName)
+	if email == "" || password == "" {
+		return nil, ErrInvalidInput("email and password are required")
+	}
+	if displayName == "" {
+		return nil, ErrInvalidInput("display_name is required")
+	}
+
+	var result *AuthResult
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		tx = tx.WithContext(ctx)
+		var existing int64
+		if err := tx.Model(&sdb.User{}).Where("email = ?", email).Count(&existing).Error; err != nil {
+			return err
+		}
+		if existing > 0 {
+			return ErrConflict("an account with this email already exists")
+		}
+
+		now := time.Now().UTC()
+		passwordHash, err := hashPassword(password)
+		if err != nil {
+			return fmt.Errorf("hash password: %w", err)
+		}
+		userID, err := newID("usr")
+		if err != nil {
+			return err
+		}
+		user := sdb.User{
+			ID: userID, Email: email, DisplayName: displayName, PasswordHash: passwordHash,
+			CreatedAt: now, UpdatedAt: now,
+		}
+		if err := tx.Create(&user).Error; err != nil {
+			if isUniqueConstraintError(err) {
+				return ErrConflict("an account with this email already exists")
+			}
+			return err
+		}
+
+		organizations := []Organization{}
+		memberships := []Membership{}
+		if domain := emailDomain(email); domain != "" {
+			var org sdb.Organization
+			err := tx.Where("domain = ?", domain).First(&org).Error
+			switch {
+			case err == nil:
+				membershipID, err := newID("mem")
+				if err != nil {
+					return err
+				}
+				membership := sdb.Membership{
+					ID: membershipID, UserID: user.ID, OrganizationID: org.ID, Role: "member",
+					Status: "pending", PendingSince: &now, CreatedAt: now,
+				}
+				if err := tx.Create(&membership).Error; err != nil {
+					return err
+				}
+				if err := appendAuditEvent(tx, nil, org.ID, "membership.self_registered", "membership", membership.ID, map[string]string{"user_id": user.ID, "email": email}); err != nil {
+					return err
+				}
+				organizations = append(organizations, toOrganization(org))
+				memberships = append(memberships, toMembership(membership))
+			case errors.Is(err, gorm.ErrRecordNotFound):
+				// No organization claims this email domain - the account is
+				// still created, just with no memberships yet.
+			default:
+				return err
+			}
+		}
+
+		session, rawToken, err := s.newSession(user.ID, now)
+		if err != nil {
+			return err
+		}
+		if err := tx.Create(&session).Error; err != nil {
+			return err
+		}
+
+		result = &AuthResult{
+			Token: rawToken, User: toUser(user),
+			Organizations: organizations, Memberships: memberships,
 		}
 		return nil
 	})
@@ -541,6 +651,7 @@ func (s *Service) CreateOrganization(ctx context.Context, principal *Principal, 
 	description := strings.TrimSpace(params.Description)
 	websiteURL := strings.TrimSpace(params.WebsiteURL)
 	supportEmail := normalizeEmail(params.SupportEmail)
+	domain := normalizeDomain(params.Domain)
 	if name == "" || slug == "" {
 		return nil, ErrInvalidInput("name and slug are required")
 	}
@@ -555,16 +666,28 @@ func (s *Service) CreateOrganization(ctx context.Context, principal *Principal, 
 		if existing > 0 {
 			return ErrConflict("organization slug already exists")
 		}
+		if domain != nil {
+			var conflictingDomain int64
+			if err := tx.Model(&sdb.Organization{}).Where("domain = ?", *domain).Count(&conflictingDomain).Error; err != nil {
+				return err
+			}
+			if conflictingDomain > 0 {
+				return ErrConflict("an organization with this email domain already exists")
+			}
+		}
 
 		now := time.Now().UTC()
 		organizationIDValue, err := newID("org")
 		if err != nil {
 			return err
 		}
-		record := sdb.Organization{ID: organizationIDValue, Name: name, Slug: slug, Description: description, WebsiteURL: websiteURL, SupportEmail: supportEmail, CreatedAt: now, UpdatedAt: now}
+		record := sdb.Organization{
+			ID: organizationIDValue, Name: name, Slug: slug, Description: description,
+			WebsiteURL: websiteURL, SupportEmail: supportEmail, Domain: domain, CreatedAt: now, UpdatedAt: now,
+		}
 		if err := tx.Create(&record).Error; err != nil {
 			if isUniqueConstraintError(err) {
-				return ErrConflict("organization slug already exists")
+				return ErrConflict("organization slug or email domain already exists")
 			}
 			return err
 		}
@@ -773,9 +896,15 @@ func requireAdmin(principal *Principal) error {
 
 // membershipsByUser loads every membership for one user, ordered the same
 // way the old in-memory scan did (oldest first).
+// membershipsByUser is used only for session/auth resolution (Login,
+// ResolvePrincipal) - excludes "blocked" memberships so a blocked org
+// disappears from a user's session context entirely, same as never having
+// been a member. Admin-facing membership listings (ListMemberships et al.)
+// are unaffected - a "blocked" row still exists and should stay visible so
+// an admin can un-block it.
 func membershipsByUser(tx *gorm.DB, userID string) ([]Membership, error) {
 	var records []sdb.Membership
-	if err := tx.Where("user_id = ?", userID).Order("created_at asc").Find(&records).Error; err != nil {
+	if err := tx.Where("user_id = ? AND status <> ?", userID, "blocked").Order("created_at asc").Find(&records).Error; err != nil {
 		return nil, err
 	}
 	memberships := make([]Membership, 0, len(records))
@@ -853,13 +982,17 @@ func toOrganization(record sdb.Organization) Organization {
 		ShareEmbedderSettings:  record.ShareEmbedderSettings,
 		ShareWebSearchSettings: record.ShareWebSearchSettings,
 		ShareMCPServers:        record.ShareMCPServers,
+		Domain:                 record.Domain,
 		CreatedAt:              record.CreatedAt,
 		UpdatedAt:              record.UpdatedAt,
 	}
 }
 
 func toMembership(record sdb.Membership) Membership {
-	return Membership{ID: record.ID, UserID: record.UserID, OrganizationID: record.OrganizationID, Role: record.Role, CreatedAt: record.CreatedAt}
+	return Membership{
+		ID: record.ID, UserID: record.UserID, OrganizationID: record.OrganizationID, Role: record.Role,
+		Status: record.Status, PendingSince: record.PendingSince, CreatedAt: record.CreatedAt,
+	}
 }
 
 func toSession(record sdb.Session) Session {
@@ -949,6 +1082,28 @@ func normalizeSlug(slug string) string {
 	slug = strings.ToLower(strings.TrimSpace(slug))
 	slug = strings.ReplaceAll(slug, " ", "-")
 	return slug
+}
+
+// normalizeDomain returns nil for an empty domain rather than a pointer to
+// "" - a *string so the DB column stores NULL (a unique index allows any
+// number of NULLs, but would reject two organizations both storing "").
+func normalizeDomain(domain string) *string {
+	domain = strings.ToLower(strings.TrimSpace(domain))
+	domain = strings.TrimPrefix(domain, "@")
+	if domain == "" {
+		return nil
+	}
+	return &domain
+}
+
+// emailDomain returns the lowercased part of an email after "@", or "" if
+// the email has no "@" (already validated non-empty by the caller).
+func emailDomain(email string) string {
+	_, domain, found := strings.Cut(normalizeEmail(email), "@")
+	if !found {
+		return ""
+	}
+	return domain
 }
 
 func maskedStoredSecret(secret string) string {

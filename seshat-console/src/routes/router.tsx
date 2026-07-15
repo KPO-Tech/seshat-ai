@@ -8,6 +8,7 @@ import { lazyPage, renderLazyPage } from '@/routes/lazyPage'
 
 const BootstrapPage = lazyPage(() => import('@/pages/auth/BootstrapPage').then((module) => ({ default: module.BootstrapPage })))
 const LoginPage = lazyPage(() => import('@/pages/auth/LoginPage').then((module) => ({ default: module.LoginPage })))
+const RegisterPage = lazyPage(() => import('@/pages/auth/RegisterPage').then((module) => ({ default: module.RegisterPage })))
 const PlatformOverviewPage = lazyPage(() => import('@/pages/dashboard/DashboardPage').then((module) => ({ default: module.DashboardPage })))
 const WorkspaceOverviewPage = lazyPage(() => import('@/pages/workspace/WorkspaceOverviewPage').then((module) => ({ default: module.WorkspaceOverviewPage })))
 const WorkspaceChatPage = lazyPage(() => import('@/pages/workspace/WorkspaceChatPage').then((module) => ({ default: module.WorkspaceChatPage })))
@@ -49,6 +50,7 @@ export const router = createBrowserRouter([
     children: [
       { path: '/bootstrap', element: renderLazyPage(BootstrapPage) },
       { path: '/login', element: renderLazyPage(LoginPage) },
+      { path: '/register', element: renderLazyPage(RegisterPage) },
       {
         element: <ProtectedRoute />,
         children: [

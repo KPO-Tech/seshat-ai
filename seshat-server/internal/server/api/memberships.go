@@ -115,3 +115,25 @@ func (app *App) handleMembershipByID(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
+
+// handleMembershipConfirm — POST /api/v1/memberships/{membershipID}/confirm.
+// Finalizes a self-registered "pending" membership (see iam.Service.Register)
+// before it would otherwise be auto-blocked by BlockExpiredPendingMemberships.
+func (app *App) handleMembershipConfirm(w http.ResponseWriter, r *http.Request) {
+	principal, ok := authPrincipalFromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "missing principal")
+		return
+	}
+	membershipID := strings.TrimSpace(r.PathValue("membershipID"))
+	if membershipID == "" {
+		writeJSONError(w, http.StatusBadRequest, "missing membership id")
+		return
+	}
+	membership, err := app.backend.IAM.ConfirmMembership(r.Context(), principal, membershipID)
+	if err != nil {
+		writeIAMError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, membership)
+}

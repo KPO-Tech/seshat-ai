@@ -281,6 +281,50 @@ func (s *Service) UpdateMembership(ctx context.Context, principal *Principal, me
 	return membership, err
 }
 
+// ConfirmMembership lets an org admin finalize a self-registered "pending"
+// membership (see Register) before BlockExpiredPendingMemberships would
+// otherwise block it unconfirmed. A no-op (not an error) on a membership
+// that's already active - confirming twice, or confirming a membership that
+// was never pending, is harmless.
+func (s *Service) ConfirmMembership(ctx context.Context, principal *Principal, membershipID string) (*Membership, error) {
+	if principal == nil {
+		return nil, ErrUnauthorized("authentication required")
+	}
+	membershipID = strings.TrimSpace(membershipID)
+	if membershipID == "" {
+		return nil, ErrInvalidInput("membership_id is required")
+	}
+
+	var membership *Membership
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		tx = tx.WithContext(ctx)
+		var record sdb.Membership
+		if err := tx.First(&record, "id = ?", membershipID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrNotFound("membership not found")
+			}
+			return err
+		}
+		if err := requireOrganizationPermission(tx, principal, record.OrganizationID, "members.manage", "organization.manage"); err != nil {
+			return err
+		}
+		if record.Status != "active" {
+			record.Status = "active"
+			record.PendingSince = nil
+			if err := tx.Save(&record).Error; err != nil {
+				return err
+			}
+			if err := appendAuditEvent(tx, principal, record.OrganizationID, "membership.confirmed", "membership", record.ID, map[string]string{"user_id": record.UserID}); err != nil {
+				return err
+			}
+		}
+		converted := toMembership(record)
+		membership = &converted
+		return nil
+	})
+	return membership, err
+}
+
 // DeleteMembership removes one membership. Organization managers may remove
 // any member, and a user may always remove their own membership to leave an
 // organization. The last owner membership can never be removed, since only

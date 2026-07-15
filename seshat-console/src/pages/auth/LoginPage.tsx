@@ -1,6 +1,6 @@
 import { Button, Form, Input, message, Typography } from 'antd'
 import { MailOutlined, LockOutlined } from '@ant-design/icons'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useLogin } from '@/api/auth'
 import { useAuthStore } from '@/store/auth'
 import { getErrorMessage } from '@/api/errors'
@@ -57,12 +57,15 @@ export function LoginPage() {
             size="large"
           />
         </Form.Item>
-        <Form.Item style={{ marginBottom: 0 }}>
+        <Form.Item style={{ marginBottom: 16 }}>
           <Button type="primary" htmlType="submit" block size="large" loading={login.isPending}>
             Log in
           </Button>
         </Form.Item>
       </Form>
+      <Typography.Text type="secondary">
+        No account yet? <Link to="/register">Sign up</Link>
+      </Typography.Text>
     </AuthLayout>
   )
 }

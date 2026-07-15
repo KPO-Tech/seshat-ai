@@ -20,6 +20,12 @@ type loginRequest struct {
 	Password string `json:"password"`
 }
 
+type registerRequest struct {
+	Email       string `json:"email"`
+	Password    string `json:"password"`
+	DisplayName string `json:"display_name"`
+}
+
 func (app *App) handleBootstrapStatus(w http.ResponseWriter, r *http.Request) {
 	initialized, err := app.backend.IAM.BootstrapStatus(r.Context())
 	if err != nil {
@@ -59,6 +65,26 @@ func (app *App) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, result)
+}
+
+// handleRegister — POST /api/v1/auth/register (public, rate-limited).
+// Self-service account creation; see iam.Service.Register for the
+// domain-matched auto-join-as-pending behavior.
+func (app *App) handleRegister(w http.ResponseWriter, r *http.Request) {
+	var req registerRequest
+	if !decodeJSONBody(w, r, &req) {
+		return
+	}
+	result, err := app.backend.IAM.Register(r.Context(), iam.RegisterParams{
+		Email:       req.Email,
+		Password:    req.Password,
+		DisplayName: req.DisplayName,
+	})
+	if err != nil {
+		writeIAMError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, result)
 }
 
 func (app *App) handleLogout(w http.ResponseWriter, r *http.Request) {

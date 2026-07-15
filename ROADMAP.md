@@ -4,7 +4,7 @@ Scope: `seshat-server` (the cloud control plane API) and `seshat-console` (its d
 
 Related docs: `docs/casdoor-frontend-mapping.md` (frontend screen-by-screen build order), `deploy/README.md` (how to run the stack), `seshat-console/README.md`.
 
-Last updated: 2026-07-14.
+Last updated: 2026-07-15.
 
 ---
 
@@ -32,6 +32,27 @@ Last updated: 2026-07-14.
 The console's screen backlog from `docs/casdoor-frontend-mapping.md` is now fully cleared — all Tier A/B/C domains plus the fully-native automation domains (Devices/Jobs/Runs/Provider Settings) are built and verified live. See "Smaller known follow-ups" and the sections below for what's left; nothing there is a missing screen anymore.
 
 **2026-07-12 build note (Devices/Jobs/Runs/Provider Settings + Sessions/Audit Events):** Jobs' form is conditional on `trigger_type` (cron_expr/interval_seconds/run_at date-picker) and `execution_target` (target_device_id select from the org's devices / model_override text input) — `configuration` (an arbitrary key-value map) is deliberately not exposed in the UI yet, matching Applications/Providers' same omission. Jobs page links to a job-scoped Runs view via `/runs?job_id=...` (read by `RunsPage` by via `useSearchParams`, with a "Clear job filter" affordance) rather than a separate nested route. Devices' registration flow shows the one-time bearer token in a "shown only once" drawer, same pattern as Applications' client secret. Runs page has a detail drawer (click a row) showing `output_text`/`error_text`/`exit_reason`, and a cancel action for `queued`/`claimed`/`running` rows. Sessions and Audit Events are both read-only-plus-filters (Sessions: revoke only; Audit Events: no mutations at all) — visibility is permission-scoped server-side (platform admin sees everything, a regular user only their own), not organization-required like the other domains, so their `OrganizationPicker` is an optional narrowing filter. Verified live end-to-end (register a device, create+trigger a job, confirm the run appears filtered, cancel/view details, browse audit events) against a real running server via a real browser, zero HTTP errors.
+
+---
+
+## Self-service registration by email domain (MVP shipped 2026-07-15, email verification deferred)
+
+Driven by a real onboarding concern: manually creating every new hire's account (or sharing a single join code/password across a whole company) doesn't scale, and a shared code is also a weaker security boundary than proving ownership of a company email address. `seshat-server` had no self-service account-creation path at all before this — `Bootstrap` is strictly single-shot (first platform admin only), `CreateUser` is admin-only, and `AcceptInvitation` requires an already-authenticated principal (it attaches an *existing* account to an org, it can't create a new one).
+
+**Shipped now — the simple case, no email sending involved:**
+- `Organization.domain` (nullable, unique) — an org sets its own email domain (e.g. `acmecorp.com`) via the normal organization settings form.
+- `POST /api/v1/auth/register` (public, rate-limited separately from login) creates a `User` and, if the email's domain matches an organization's `domain`, immediately auto-joins them as a `Membership` with `status: "pending"` — full access already (identical to `"active"`), just flagged for admin attention. No domain match just creates the account with no memberships; the existing self-serve `CreateOrganization` covers "I'm the first person from a brand-new company."
+- `status: "blocked"` is excluded from every authorization check (`canAccessOrganization`, `effectivePermissionsForPrincipal`, `membershipsByUser`) as if the membership never existed — verified live that an existing session gets a 403 the moment its membership is blocked, and a fresh login shows zero memberships for that org.
+- `POST /api/v1/memberships/{id}/confirm` (admin, `members.manage`/`organization.manage`) finalizes a pending membership early. A periodic sweep (`iam.MembershipExpiry`, same Start/Stop/loop shape as `workspacechat.Cleanup`) auto-blocks any pending membership past `SESHAT_SERVER_MEMBERSHIP_CONFIRMATION_WINDOW` (default ~2 months) left unconfirmed.
+- Console: `/register` page (public, mirrors `/login`), an "Email domain" field on the organization form, and a blue "New" tag + a one-click "Confirm" action on pending rows in Team & Access.
+- Verified live end-to-end against a throwaway server (not the shared dev stack): register with a domain-matched email → pending membership with immediate access → admin confirm → separately, artificially aged a second pending membership and confirmed the sweep blocks it and that both an existing session and a fresh login lose access to that org.
+
+**Deferred — a real design exists but isn't built:**
+- No email actually gets sent anywhere yet (no SMTP/mailer package exists in `seshat-server` — checked, zero email dependency in `go.mod`). Planned: a small `internal/server/email` package (`Sender` interface, a `net/smtp`-based implementation — no new go.mod dependency needed — plus a `NoopSender` fallback when `SESHAT_SERVER_SMTP_HOST` is unset, same degrade-gracefully pattern as Docling being optional).
+- Email-verify-before-anything: `User.PendingEmailVerification bool` (default `false` so existing accounts are grandfathered in as verified; deliberately this polarity, not `EmailVerified`, so new registrations can explicitly set it `true` without colliding with GORM's zero-value/`default:` tag omission behavior — a real gotcha hit and worked around elsewhere this same session). A hash-only verification token (same pattern as `Invitation.Token`/`sdb.HashOpaqueToken`), a new `POST /auth/verify-email`, and a console `VerifyEmailPage.tsx`. The domain-match-to-pending-membership step would move from register-time to verify-time, so an unconfirmed signup never pollutes Team & Access with a phantom pending row.
+- An email notification to the organization's admins (v1 scope: whoever holds the `"owner"` role — deliberately not a full RBAC resolution of every custom role granting `organization.manage`) the moment a pending membership is created, so the 2-month window isn't the only signal an admin ever gets.
+- A new `SESHAT_SERVER_CONSOLE_URL` env var (doesn't exist today) to build the clickable link inside the verification email.
+- A resend-verification-email endpoint (not designed in detail, just noted as the natural next gap once the above exists).
 
 ---
 

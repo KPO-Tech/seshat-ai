@@ -78,6 +78,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Self-service account creation
+         * @description Unlike bootstrap (one-time, first account only) or admin-created users, anyone can call this. If the email's domain matches an organization's own `domain`, the new user is immediately auto-joined to that organization as a "pending" member - full access already, just flagged for admin attention (see Membership.status) until confirmed (`POST /memberships/{id}/confirm`) or auto-blocked after `SESHAT_SERVER_MEMBERSHIP_CONFIRMATION_WINDOW` (default ~2 months) unconfirmed. No domain match just creates the account with no memberships - use `POST /organizations` afterwards to found a new one. Rate limited to 3 attempts/minute per client IP (burst 5).
+         */
+        post: operations["register"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/me": {
         parameters: {
             query?: never;
@@ -465,6 +485,26 @@ export interface paths {
          * @description An org manager may remove any member; any user may remove their own membership to leave the organization. Cannot remove the last owner.
          */
         delete: operations["deleteMembership"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/memberships/{membershipID}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Finalize a self-registered pending membership
+         * @description Requires `members.manage` or `organization.manage`. Sets status to "active" and clears pending_since. A no-op (not an error) on a membership that isn't pending.
+         */
+        post: operations["confirmMembership"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2035,6 +2075,8 @@ export interface components {
             share_web_search_settings?: boolean;
             /** @description Only meaningful while is_default is true - whether this organization's MCP server configs are shared as the platform-wide fallback. */
             share_mcp_servers?: boolean;
+            /** @description This organization's own email domain (e.g. "acmecorp.com"), if set. Self-service registration (POST /auth/register) auto-joins a new user to this organization as a pending member when their email matches. At most one organization holds a given domain. */
+            domain?: string;
             /** Format: date-time */
             created_at?: string;
             /** Format: date-time */
@@ -2047,6 +2089,7 @@ export interface components {
             website_url?: string;
             /** Format: email */
             support_email?: string;
+            domain?: string;
         };
         OrganizationSharedDomainsInput: {
             share_provider_settings?: boolean;
@@ -2060,6 +2103,16 @@ export interface components {
             organization_id?: string;
             /** @description A system role code (owner/admin/member/viewer) or a custom role code defined for this organization. */
             role?: string;
+            /**
+             * @description "active" (default) has full access. "pending" (self-registered via a matched organization email domain) also has full access, just flagged for admin attention - see pending_since and POST /memberships/{id}/confirm. "blocked" (past the confirmation window unconfirmed) has no access at all, as if the membership didn't exist.
+             * @enum {string}
+             */
+            status?: "active" | "pending" | "blocked";
+            /**
+             * Format: date-time
+             * @description Set when status is "pending" - when the confirmation window (SESHAT_SERVER_MEMBERSHIP_CONFIRMATION_WINDOW) started counting down.
+             */
+            pending_since?: string;
             /** Format: date-time */
             created_at?: string;
             /** @description Denormalized for display - resolving a teammate's identity from a membership shouldn't require a separate admin-only user lookup. */
@@ -2633,6 +2686,13 @@ export interface components {
             user?: components["schemas"]["User"];
             organizations?: components["schemas"]["Organization"][];
             memberships?: components["schemas"]["Membership"][];
+        };
+        RegisterInput: {
+            /** Format: email */
+            email: string;
+            /** Format: password */
+            password: string;
+            display_name: string;
         };
         /** @description Never includes the API key — it's a caller-supplied secret, redacted in every response including create. */
         ProviderSetting: {
@@ -3276,6 +3336,33 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    register: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterInput"];
+            };
+        };
+        responses: {
+            /** @description Account created (and, if the email domain matched an organization, auto-joined pending) */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            409: components["responses"]["Conflict"];
             429: components["responses"]["TooManyRequests"];
         };
     };
@@ -4091,6 +4178,30 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    confirmMembership: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                membershipID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Confirmed membership */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Membership"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     listInvitations: {

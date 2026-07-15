@@ -62,6 +62,20 @@ export function useUpdateMembership() {
   })
 }
 
+export function useConfirmMembership() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await api.POST('/api/v1/memberships/{membershipID}/confirm', {
+        params: { path: { membershipID: id } },
+      })
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [LIST_KEY] }),
+  })
+}
+
 export function useDeleteMembership() {
   const queryClient = useQueryClient()
   return useMutation({

@@ -195,7 +195,7 @@ func effectivePermissionsForPrincipal(tx *gorm.DB, principal *Principal, organiz
 	}
 
 	var memberships []sdb.Membership
-	if err := tx.Where("user_id = ? AND organization_id = ?", principal.User.ID, organizationID).Find(&memberships).Error; err != nil {
+	if err := tx.Where("user_id = ? AND organization_id = ? AND status <> ?", principal.User.ID, organizationID, "blocked").Find(&memberships).Error; err != nil {
 		return nil, err
 	}
 	if len(memberships) == 0 {
@@ -323,7 +323,7 @@ func canAccessOrganization(tx *gorm.DB, principal *Principal, organizationID str
 		return count > 0, nil
 	}
 	var count int64
-	if err := tx.Model(&sdb.Membership{}).Where("user_id = ? AND organization_id = ?", principal.User.ID, organizationID).Count(&count).Error; err != nil {
+	if err := tx.Model(&sdb.Membership{}).Where("user_id = ? AND organization_id = ? AND status <> ?", principal.User.ID, organizationID, "blocked").Count(&count).Error; err != nil {
 		return false, err
 	}
 	return count > 0, nil
