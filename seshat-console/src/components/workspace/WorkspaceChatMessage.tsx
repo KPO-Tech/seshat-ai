@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Typography } from 'antd'
 import { CheckCircleOutlined, ClockCircleOutlined, DatabaseOutlined, FileSearchOutlined, GlobalOutlined, LoadingOutlined } from '@ant-design/icons'
 import ReactMarkdown from 'react-markdown'
@@ -111,7 +112,13 @@ function TraceStepRow({ step }: { step: WorkspaceTraceStep }) {
   )
 }
 
-export function WorkspaceChatMessage({ message }: { message: WorkspaceChatMessageModel }) {
+// Memoized: the parent re-renders on every streaming flush (see
+// WorkspaceChatPage's FLUSH_INTERVAL_MS), but only the trailing message's
+// object identity actually changes each time. Without this, every prior
+// message in a growing thread would re-run its (non-trivial) ReactMarkdown
+// parse on every flush too, and that compounding cost is what made longer
+// conversations feel like the page had frozen, including scrolling.
+export const WorkspaceChatMessage = memo(function WorkspaceChatMessage({ message }: { message: WorkspaceChatMessageModel }) {
   const content = sealOpenFences(message.content)
   const role = getRoleLabel(message.role)
   const timeLabel = formatMessageTime(message.createdAt)
@@ -175,4 +182,4 @@ export function WorkspaceChatMessage({ message }: { message: WorkspaceChatMessag
       </div>
     </article>
   )
-}
+})

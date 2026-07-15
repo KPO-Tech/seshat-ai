@@ -120,13 +120,11 @@ export function AppLayout() {
   }
 
   return (
-    <Layout className="console-shell" style={{ minHeight: '100vh', background: palette.canvas }}>
+    <Layout className="console-shell" style={{ height: '100vh', overflow: 'hidden', background: palette.canvas }}>
       <Sider
         theme="dark"
         width={272}
         style={{
-          position: 'sticky',
-          top: 0,
           height: '100vh',
           overflowX: 'hidden',
           overflowY: 'auto',
@@ -199,7 +197,7 @@ export function AppLayout() {
         />
       </Sider>
 
-      <Layout style={{ minWidth: 0 }}>
+      <Layout style={{ minWidth: 0, height: '100vh' }}>
         <Header
           style={{
             background: palette.surface,
@@ -210,6 +208,7 @@ export function AppLayout() {
             borderBottom: `1px solid ${palette.border}`,
             minHeight: 56,
             height: 56,
+            flexShrink: 0,
             lineHeight: 'normal',
             gap: 12,
           }}
@@ -265,6 +264,7 @@ export function AppLayout() {
               padding: '0 24px',
               background: palette.surface,
               borderBottom: `1px solid ${palette.borderSubtle}`,
+              flexShrink: 0,
             }}
           >
             <Menu
@@ -280,7 +280,10 @@ export function AppLayout() {
           </div>
         )}
 
-        <Content className="console-content" style={{ padding: 28, width: '100%', minWidth: 0 }}>
+        <Content
+          className="console-content"
+          style={{ padding: 28, width: '100%', minWidth: 0, flex: '1 1 auto', minHeight: 0, overflowY: 'auto' }}
+        >
           <Outlet />
         </Content>
       </Layout>

@@ -170,6 +170,13 @@ function buildSessionFromHistory(history: WorkspaceChatSessionHistory, organizat
 
 const NEAR_BOTTOM_THRESHOLD_PX = 120
 
+// AppLayout's Content is the app's one scrollable region (header/sidebar
+// are fixed) - a plain class lookup is enough since it's a singleton per
+// page, no need to thread a ref down through the router/Outlet.
+function getScrollContainer(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('.console-content')
+}
+
 export function WorkspaceChatPage() {
   const organizations = useAuthStore((state) => state.organizations)
   const selectedOrganizationId = useWorkspaceOrganizationStore((state) => state.organizationId)
@@ -187,7 +194,6 @@ export function WorkspaceChatPage() {
 
   const abortControllerRef = useRef<AbortController | null>(null)
   const activeThinkingIdRef = useRef<string | null>(null)
-  const bottomSentinelRef = useRef<HTMLDivElement | null>(null)
   const pendingEventsRef = useRef<WorkspaceChatEvent[]>([])
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -332,16 +338,27 @@ export function WorkspaceChatPage() {
   }, [agentPresets.data, selectedAgentPresetId])
 
   useEffect(() => {
-    if (isPinnedToBottom) bottomSentinelRef.current?.scrollIntoView({ block: 'end' })
+    const el = getScrollContainer()
+    // Scrolling the container to its own bottom (rather than
+    // scrollIntoView on a trailing sentinel) matters here: scrollIntoView
+    // aligns the sentinel's edge with the viewport edge and ignores the
+    // sticky composer that follows it in the DOM, which pushed the
+    // composer out of view during generation. Going straight to
+    // scrollHeight always reveals whatever is actually last (composer
+    // included, since it's sticky within this same container).
+    if (isPinnedToBottom && el) el.scrollTop = el.scrollHeight
   }, [chatSession?.messages, isPinnedToBottom])
 
   useEffect(() => {
+    const el = getScrollContainer()
+    if (!el) return
     function handleScroll() {
-      const distanceFromBottom = document.documentElement.scrollHeight - window.scrollY - window.innerHeight
+      if (!el) return
+      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
       setIsPinnedToBottom(distanceFromBottom < NEAR_BOTTOM_THRESHOLD_PX)
     }
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
+    el.addEventListener('scroll', handleScroll, { passive: true })
+    return () => el.removeEventListener('scroll', handleScroll)
   }, [])
 
   useEffect(() => () => stopStreaming(), [])
@@ -493,7 +510,6 @@ export function WorkspaceChatPage() {
               {chatSession?.messages.map((message) => (
                 <WorkspaceChatMessage key={message.id} message={message} />
               ))}
-              <div ref={bottomSentinelRef} />
             </div>
           ) : (
             <div className="workspace-chat-empty">
@@ -513,7 +529,10 @@ export function WorkspaceChatPage() {
             shape="circle"
             className="workspace-chat-scroll-button"
             icon={<ArrowDownOutlined />}
-            onClick={() => bottomSentinelRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' })}
+            onClick={() => {
+              const el = getScrollContainer()
+              el?.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+            }}
             aria-label="Scroll to latest message"
           />
         ) : null}
