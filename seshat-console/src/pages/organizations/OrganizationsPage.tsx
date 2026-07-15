@@ -154,26 +154,29 @@ export function OrganizationsPage() {
           <Button size="small" onClick={() => navigate(`/orgs/${record.id}/overview`)} icon={<RightOutlined />}>
             Open
           </Button>
-          {!record.is_default && (
-            <Popconfirm
-              title={`Set ${record.name} as the platform default?`}
-              description="This replaces the current default organization (if any). AI provider/embedder resolution for every org with no config of its own will use this org's settings."
-              onConfirm={(event) => {
-                event?.stopPropagation()
-                setDefault.mutate(
-                  { id: record.id!, isDefault: true },
-                  { onError: (error) => message.error(getErrorMessage(error)) },
-                )
-              }}
-            >
-              <Button
-                size="small"
-                icon={<CrownOutlined />}
-                onClick={(event) => event.stopPropagation()}
-                aria-label={`Set ${record.name} as default`}
-              />
-            </Popconfirm>
-          )}
+          <Popconfirm
+            title={record.is_default ? `Remove ${record.name} as the platform default?` : `Set ${record.name} as the platform default?`}
+            description={
+              record.is_default
+                ? "No organization will be flagged as the platform default afterwards - organizations with no config of their own will resolve nothing until a new default is set."
+                : "This replaces the current default organization (if any). AI provider/embedder resolution for every org with no config of its own will use this org's settings."
+            }
+            onConfirm={(event) => {
+              event?.stopPropagation()
+              setDefault.mutate(
+                { id: record.id!, isDefault: !record.is_default },
+                { onError: (error) => message.error(getErrorMessage(error)) },
+              )
+            }}
+          >
+            <Button
+              size="small"
+              type={record.is_default ? 'primary' : 'default'}
+              icon={<CrownOutlined />}
+              onClick={(event) => event.stopPropagation()}
+              aria-label={record.is_default ? `Remove ${record.name} as default` : `Set ${record.name} as default`}
+            />
+          </Popconfirm>
           {record.is_default && (
             <Popover
               trigger="click"
