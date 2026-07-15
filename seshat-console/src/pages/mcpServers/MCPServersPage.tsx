@@ -18,12 +18,18 @@ import { ConsoleTable } from '@/components/ConsoleTable'
 import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
 import { monoStack, palette } from '@/theme/tokens'
 
+// "sdk" is deliberately not offered here: it identifies an MCP tool built
+// into the SDK's own binary (see seshat/internal/tools/system/mcp -
+// McpServerType), which is inherently local to one installation, not
+// something an org admin can share remotely. The transport type actually
+// used when a connected seshat-backend resolves an org-shared config
+// (seshat/pkg/mcp.TransportType) only defines stdio/http/sse/websocket -
+// there's no matching "sdk" transport for it to dispatch on.
 const SERVER_TYPE_OPTIONS = [
   { value: 'stdio', label: 'stdio' },
   { value: 'http', label: 'http' },
   { value: 'sse', label: 'sse' },
   { value: 'websocket', label: 'websocket' },
-  { value: 'sdk', label: 'sdk' },
 ]
 
 export function MCPServersPage() {

@@ -4339,7 +4339,7 @@ components:
         created_by_user_id: { type: string }
         name: { type: string, example: internal-jira }
         display_name: { type: string }
-        server_type: { type: string, enum: [stdio, http, sse, websocket, sdk], example: stdio }
+        server_type: { type: string, enum: [stdio, http, sse, websocket], example: stdio }
         command: { type: string, description: Only meaningful for server_type=stdio. }
         args: { type: array, items: { type: string } }
         url: { type: string, description: Only meaningful for server_type=http/sse/websocket. }
@@ -4355,7 +4355,7 @@ components:
         id: { type: string }
         name: { type: string }
         display_name: { type: string }
-        server_type: { type: string, enum: [stdio, http, sse, websocket, sdk] }
+        server_type: { type: string, enum: [stdio, http, sse, websocket] }
         command: { type: string }
         args: { type: array, items: { type: string } }
         env: { type: object, additionalProperties: { type: string } }
@@ -4371,7 +4371,7 @@ components:
         organization_id: { type: string }
         name: { type: string, example: internal-jira }
         display_name: { type: string }
-        server_type: { type: string, enum: [stdio, http, sse, websocket, sdk], default: stdio }
+        server_type: { type: string, enum: [stdio, http, sse, websocket], default: stdio }
         command: { type: string }
         args: { type: array, items: { type: string } }
         env:
@@ -4394,7 +4394,7 @@ components:
       type: object
       properties:
         display_name: { type: string }
-        server_type: { type: string, enum: [stdio, http, sse, websocket, sdk] }
+        server_type: { type: string, enum: [stdio, http, sse, websocket] }
         command: { type: string }
         args: { type: array, items: { type: string } }
         env:

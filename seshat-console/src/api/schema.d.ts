@@ -2768,7 +2768,7 @@ export interface components {
              * @example stdio
              * @enum {string}
              */
-            server_type?: "stdio" | "http" | "sse" | "websocket" | "sdk";
+            server_type?: "stdio" | "http" | "sse" | "websocket";
             /** @description Only meaningful for server_type=stdio. */
             command?: string;
             args?: string[];
@@ -2783,7 +2783,7 @@ export interface components {
             name?: string;
             display_name?: string;
             /** @enum {string} */
-            server_type?: "stdio" | "http" | "sse" | "websocket" | "sdk";
+            server_type?: "stdio" | "http" | "sse" | "websocket";
             command?: string;
             args?: string[];
             env?: {
@@ -2805,7 +2805,7 @@ export interface components {
              * @default stdio
              * @enum {string}
              */
-            server_type: "stdio" | "http" | "sse" | "websocket" | "sdk";
+            server_type: "stdio" | "http" | "sse" | "websocket";
             command?: string;
             args?: string[];
             /** @description Encrypted at rest. Optional on create. */
@@ -2824,7 +2824,7 @@ export interface components {
         MCPServerConfigUpdateInput: {
             display_name?: string;
             /** @enum {string} */
-            server_type?: "stdio" | "http" | "sse" | "websocket" | "sdk";
+            server_type?: "stdio" | "http" | "sse" | "websocket";
             command?: string;
             args?: string[];
             /** @description Omit to keep the existing stored env unchanged. */
