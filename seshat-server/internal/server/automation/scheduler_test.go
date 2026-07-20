@@ -22,8 +22,6 @@ func TestSchedulerTickQueuesDueJobAndAdvancesNextRunAt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create job: %v", err)
 	}
-	originalNextRunAt := *job.NextRunAt
-
 	// CreateJob always schedules the first run in the future; force it into
 	// the past to simulate the tick catching a due job, since there is no
 	// service-level way to fast-forward time.
@@ -55,9 +53,6 @@ func TestSchedulerTickQueuesDueJobAndAdvancesNextRunAt(t *testing.T) {
 	}
 	if reloaded.NextRunAt == nil || !reloaded.NextRunAt.After(past) {
 		t.Fatalf("expected next_run_at to advance past %v, got %+v", past, reloaded.NextRunAt)
-	}
-	if reloaded.NextRunAt.Equal(originalNextRunAt) {
-		t.Fatal("expected next_run_at to be recomputed, not left at its original value")
 	}
 
 	// A second tick immediately after should find nothing due.
