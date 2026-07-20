@@ -8,6 +8,11 @@
 #   make start-docling  → start docling-serve manually
 #   make deploy-up       → build + start seshat-server/seshat-console/Postgres/SearXNG
 #   make deploy-down     → stop that stack
+#
+# Windows: run these targets from Git Bash (not plain PowerShell/cmd) — GNU
+# Make needs a POSIX sh on PATH to execute the recipes below, and Git for
+# Windows already provides one. UI package manager and process-kill in `stop`
+# auto-detect and fall back to npm/PowerShell when bun/pkill aren't installed.
 
 ROOT              := $(shell pwd)
 GO_PACKAGES       := ./seshat-backend/... ./seshat-server/...
@@ -32,6 +37,12 @@ DEPLOY_DIR        := $(ROOT)/deploy
 
 # Detect OS for open/xdg-open
 UNAME := $(shell uname -s)
+
+# UI package manager: prefer bun (faster, what CI/most contributors use), but
+# fall back to npm when bun isn't installed — e.g. a fresh Windows machine.
+# Both understand `install` and `run <script>` identically, so every ui-*
+# target below works unmodified under either.
+UI_PKG_MGR := $(shell command -v bun >/dev/null 2>&1 && echo bun || echo npm)
 
 .PHONY: help \
         setup \
@@ -62,16 +73,22 @@ dev: ui-install ## Start local backend + Electron UI
 	@printf '\033[32m[nexus]\033[0m starting local backend…\n'
 	@cd $(BACKEND_DIR) && go run $(BACKEND_CMD) &
 	@printf '\033[32m[nexus]\033[0m starting Electron UI…\n'
-	@cd $(UI_DIR) && bun run start
+	@cd $(UI_DIR) && $(UI_PKG_MGR) run start
 
 stop: ## Stop backend, server, automation, and UI processes
-	@pkill -f "go run.*cmd/api" 2>/dev/null || true
-	@pkill -f "go run.*cmd/server" 2>/dev/null || true
-	@pkill -x $(BACKEND_BIN) 2>/dev/null || true
-	@pkill -x $(SERVER_BIN) 2>/dev/null || true
-	@pkill -f "electron-vite" 2>/dev/null || true
-	@pkill -f "[e]lectron.*nexus" 2>/dev/null || true
-	@pkill -x $(DAEMON_BIN) 2>/dev/null || true
+	@if command -v pkill >/dev/null 2>&1; then \
+	  pkill -f "go run.*cmd/api" 2>/dev/null || true; \
+	  pkill -f "go run.*cmd/server" 2>/dev/null || true; \
+	  pkill -x $(BACKEND_BIN) 2>/dev/null || true; \
+	  pkill -x $(SERVER_BIN) 2>/dev/null || true; \
+	  pkill -f "electron-vite" 2>/dev/null || true; \
+	  pkill -f "[e]lectron.*nexus" 2>/dev/null || true; \
+	  pkill -x $(DAEMON_BIN) 2>/dev/null || true; \
+	elif command -v powershell.exe >/dev/null 2>&1; then \
+	  powershell.exe -NoProfile -Command \
+	    "Get-CimInstance Win32_Process | Where-Object { \$$_.Name -match '^(go|seshat-api|seshat-server|seshat-automation|electron|node)(\.exe)?\$$' -and \$$_.CommandLine -match 'cmd.(api|server)|electron-vite|seshat-(api|server|automation)' } | ForEach-Object { Stop-Process -Id \$$_.ProcessId -Force -ErrorAction SilentlyContinue }" \
+	    2>/dev/null || true; \
+	fi
 	@printf '\033[32m[nexus]\033[0m stopped.\n'
 
 dev-full: ui-install ## Start local backend + automation daemon + Electron UI
@@ -80,7 +97,7 @@ dev-full: ui-install ## Start local backend + automation daemon + Electron UI
 	@printf '\033[32m[nexus]\033[0m starting automation daemon…\n'
 	@go run $(DAEMON_PKG)@$(SESHAT_VERSION) &
 	@printf '\033[32m[nexus]\033[0m starting Electron UI…\n'
-	@cd $(UI_DIR) && bun run start
+	@cd $(UI_DIR) && $(UI_PKG_MGR) run start
 
 # ─── Backend ──────────────────────────────────────────────────────────────────
 
@@ -176,19 +193,19 @@ hooks: ## Install git hooks from .githooks/
 
 # ─── UI ───────────────────────────────────────────────────────────────────────
 
-ui-install: ## Install UI dependencies via bun
+ui-install: ## Install UI dependencies via bun (falls back to npm if bun isn't installed)
 	@if [ ! -d "$(UI_DIR)/node_modules" ]; then \
-	  printf '\033[32m[ui]\033[0m installing dependencies…\n'; \
-	  cd $(UI_DIR) && bun install; \
+	  printf '\033[32m[ui]\033[0m installing dependencies with %s…\n' $(UI_PKG_MGR); \
+	  cd $(UI_DIR) && $(UI_PKG_MGR) install; \
 	else \
 	  printf '\033[32m[ui]\033[0m node_modules present — skipping install\n'; \
 	fi
 
 ui-build: ui-install ## Build UI for production (Electron package)
-	cd $(UI_DIR) && bun run build
+	cd $(UI_DIR) && $(UI_PKG_MGR) run build
 
 ui-dev: ui-install ## Start Vite dev server only (web preview, no Electron)
-	cd $(UI_DIR) && bun run dev
+	cd $(UI_DIR) && $(UI_PKG_MGR) run dev
 
 # ─── Setup ────────────────────────────────────────────────────────────────────
 
