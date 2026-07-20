@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	publicskills "github.com/EngineerProjects/seshat/pkg/skills"
+	publicskills "github.com/KPO-Tech/seshat/pkg/skills"
 )
 
 // ─── ValidateName ─────────────────────────────────────────────────────────────

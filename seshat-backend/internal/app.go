@@ -22,10 +22,10 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/settings"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/skills"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/websearch"
-	"github.com/EngineerProjects/seshat/pkg/docling"
-	longterm "github.com/EngineerProjects/seshat/pkg/memory/longterm"
-	"github.com/EngineerProjects/seshat/pkg/rag"
-	"github.com/EngineerProjects/seshat/pkg/storage"
+	"github.com/KPO-Tech/seshat/pkg/docling"
+	longterm "github.com/KPO-Tech/seshat/pkg/memory/longterm"
+	"github.com/KPO-Tech/seshat/pkg/rag"
+	"github.com/KPO-Tech/seshat/pkg/storage"
 )
 
 // Dependencies holds the external dependencies wired by the transport layer.

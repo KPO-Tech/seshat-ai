@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudskillregistry"
-	skillsloader "github.com/EngineerProjects/seshat/pkg/skills"
-	"github.com/EngineerProjects/seshat/pkg/skills/skillrepos"
+	skillsloader "github.com/KPO-Tech/seshat/pkg/skills"
+	"github.com/KPO-Tech/seshat/pkg/skills/skillrepos"
 )
 
 // FeaturedSkillRepo describes a curated skill repository shown in the install catalog.

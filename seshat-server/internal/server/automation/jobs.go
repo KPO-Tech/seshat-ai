@@ -9,7 +9,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/EngineerProjects/seshat/pkg/automation"
+	"github.com/KPO-Tech/seshat/pkg/automation"
 
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"

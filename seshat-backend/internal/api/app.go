@@ -7,7 +7,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudautomation"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	backendquery "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/query"
-	longterm "github.com/EngineerProjects/seshat/pkg/memory/longterm"
+	longterm "github.com/KPO-Tech/seshat/pkg/memory/longterm"
 )
 
 // App is the HTTP transport layer. It holds only infrastructure state;

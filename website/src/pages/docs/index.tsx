@@ -141,12 +141,12 @@ export default function Docs() {
           </div>
           <div className={styles.quickCode}>
             <BashLine
-              code="curl -fsSL https://raw.githubusercontent.com/EngineerProjects/seshat/main/scripts/install.sh | bash"
+              code="curl -fsSL https://raw.githubusercontent.com/KPO-Tech/seshat/main/scripts/install.sh | bash"
               className={styles.quickCommand}
             />
           </div>
           <a
-            href="https://github.com/EngineerProjects/seshat#installation"
+            href="https://github.com/KPO-Tech/seshat#installation"
             className={styles.quickCta}
             target="_blank"
             rel="noreferrer"

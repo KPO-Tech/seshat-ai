@@ -7,7 +7,7 @@ import (
 
 	"gorm.io/gorm"
 
-	sdkembedder "github.com/EngineerProjects/seshat/pkg/rag/embedder"
+	sdkembedder "github.com/KPO-Tech/seshat/pkg/rag/embedder"
 
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"

@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
-	"github.com/EngineerProjects/seshat/pkg/storage"
+	"github.com/KPO-Tech/seshat/pkg/storage"
 )
 
 type storageConfigResponse struct {

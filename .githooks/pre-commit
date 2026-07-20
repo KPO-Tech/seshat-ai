@@ -4,12 +4,11 @@ set -euo pipefail
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 
-GO_PACKAGES=(./seshat-backend/... ./seshat-server/... ./seshat/...)
+GO_PACKAGES=(./seshat-backend/... ./seshat-server/...)
 LINT_PACKAGES=(./seshat-backend/... ./seshat-server/... )
 
 echo "→ gofmt check..."
 UNFORMATTED=$(find . -name "*.go" \
-  -not -path "./seshat/*" \
   -not -path "./vendor/*" \
   | xargs gofmt -l 2>/dev/null || true)
 if [ -n "$UNFORMATTED" ]; then

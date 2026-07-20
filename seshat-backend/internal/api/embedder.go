@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
-	ragembedder "github.com/EngineerProjects/seshat/pkg/rag/embedder"
+	ragembedder "github.com/KPO-Tech/seshat/pkg/rag/embedder"
 )
 
 type embedderConfigResponse struct {

@@ -9,12 +9,12 @@ import (
 
 	"gorm.io/gorm"
 
-	sdkautomation "github.com/EngineerProjects/seshat/pkg/automation"
-	sdkconfig "github.com/EngineerProjects/seshat/pkg/config"
-	sdkproviders "github.com/EngineerProjects/seshat/pkg/providers"
-	sdkrag "github.com/EngineerProjects/seshat/pkg/rag"
-	"github.com/EngineerProjects/seshat/pkg/sdk"
-	sdktypes "github.com/EngineerProjects/seshat/pkg/types"
+	sdkautomation "github.com/KPO-Tech/seshat/pkg/automation"
+	sdkconfig "github.com/KPO-Tech/seshat/pkg/config"
+	sdkproviders "github.com/KPO-Tech/seshat/pkg/providers"
+	sdkrag "github.com/KPO-Tech/seshat/pkg/rag"
+	"github.com/KPO-Tech/seshat/pkg/sdk"
+	sdktypes "github.com/KPO-Tech/seshat/pkg/types"
 
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"

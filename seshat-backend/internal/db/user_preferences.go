@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/EngineerProjects/seshat/pkg/types"
+	"github.com/KPO-Tech/seshat/pkg/types"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )

@@ -21,9 +21,9 @@ const REPOS: RepoCard[] = [
   {
     name: 'seshat',
     label: 'Runtime Repository',
-    href: 'https://github.com/EngineerProjects/seshat',
-    issues: 'https://github.com/EngineerProjects/seshat/issues',
-    discussions: 'https://github.com/EngineerProjects/seshat/discussions',
+    href: 'https://github.com/KPO-Tech/seshat',
+    issues: 'https://github.com/KPO-Tech/seshat/issues',
+    discussions: 'https://github.com/KPO-Tech/seshat/discussions',
     body: 'This is the open-source Go runtime and CLI app foundation: agent loop, tool execution, permissions, sessions, MCP, skills, memory, RAG, providers, SDK primitives, and the core execution model.',
     areas: [
       'CLI app UX, terminal workflows, sessions, and command surfaces',
@@ -162,7 +162,7 @@ export default function Contribution() {
             </p>
           </div>
           <div className={styles.heroActions}>
-            <a href="https://github.com/EngineerProjects/seshat" className={styles.primaryLink} target="_blank" rel="noreferrer">Open `seshat`</a>
+            <a href="https://github.com/KPO-Tech/seshat" className={styles.primaryLink} target="_blank" rel="noreferrer">Open `seshat`</a>
             <a href="https://github.com/EngineerProjects/seshat-ai" className={styles.secondaryLink} target="_blank" rel="noreferrer">Open `seshat-ai`</a>
           </div>
         </div>
@@ -277,9 +277,9 @@ export default function Contribution() {
             ))}
           </ol>
           <div className={styles.quickLinks}>
-            <a href="https://github.com/EngineerProjects/seshat" className={styles.quickLink} target="_blank" rel="noreferrer">Runtime repo</a>
-            <a href="https://github.com/EngineerProjects/seshat/issues" className={styles.quickLink} target="_blank" rel="noreferrer">Runtime issues</a>
-            <a href="https://github.com/EngineerProjects/seshat/discussions" className={styles.quickLink} target="_blank" rel="noreferrer">Runtime discussions</a>
+            <a href="https://github.com/KPO-Tech/seshat" className={styles.quickLink} target="_blank" rel="noreferrer">Runtime repo</a>
+            <a href="https://github.com/KPO-Tech/seshat/issues" className={styles.quickLink} target="_blank" rel="noreferrer">Runtime issues</a>
+            <a href="https://github.com/KPO-Tech/seshat/discussions" className={styles.quickLink} target="_blank" rel="noreferrer">Runtime discussions</a>
             <a href="https://github.com/EngineerProjects/seshat-ai" className={styles.quickLink} target="_blank" rel="noreferrer">Platform repo</a>
             <a href="https://github.com/EngineerProjects/seshat-ai/issues" className={styles.quickLink} target="_blank" rel="noreferrer">Platform issues</a>
             <Link to={`${base}/guides/cli`} className={styles.quickLink}>CLI guide</Link>

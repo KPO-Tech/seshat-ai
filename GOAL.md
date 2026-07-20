@@ -10,7 +10,7 @@ This document describes what SeshatOS is building, where the project is going, a
 
 It is built on two open-source repositories:
 
-- 🔧 **[seshat](https://github.com/EngineerProjects/seshat)** (Apache 2.0) — the Go agent runtime: multi-turn execution, tools, permissions, providers, MCP, RAG, skills, sub-agents, streaming. Ships a CLI tool developers can use directly.
+- 🔧 **[seshat](https://github.com/KPO-Tech/seshat)** (Apache 2.0) — the Go agent runtime: multi-turn execution, tools, permissions, providers, MCP, RAG, skills, sub-agents, streaming. Ships a CLI tool developers can use directly.
 - 🏗️ **[seshat-ai](https://github.com/EngineerProjects/seshat-ai)** (AGPL-3.0) — the production platform on top: multi-user auth, organizations, workspaces, REST API, sessions, memory, plans, skills, scheduler, knowledge base, audit — and the desktop application.
 
 The dependency is strictly one-way: seshat-ai builds on seshat. seshat has no knowledge of seshat-ai.
@@ -92,7 +92,7 @@ SeshatOS cannot build everything. The platform is designed so the community can.
 - ⚡ **Skills** are the primary extension mechanism — a Markdown file that teaches the agent how to work in a specific context. Anyone can write and publish skills. The official collection is [seshat-skills](https://github.com/EngineerProjects/seshat-skills); community repos are installable from any URL.
 - 🔌 **MCP servers** extend what agents can do. The MCP ecosystem has 10,000+ servers (GitHub, Postgres, Slack, Docker, Notion, and more). SeshatOS is a first-class MCP client — any MCP server works immediately.
 - 🤖 **Custom agents** — users define specialized agents with their own system prompts, tools, permission modes, and models.
-- 📦 **The SDK** — [seshat](https://github.com/EngineerProjects/seshat) ships a Go SDK and a stable HTTP + SSE API. seshat-ai is itself a consumer of that SDK. Developers can build their own products on top.
+- 📦 **The SDK** — [seshat](https://github.com/KPO-Tech/seshat) ships a Go SDK and a stable HTTP + SSE API. seshat-ai is itself a consumer of that SDK. Developers can build their own products on top.
 
 We actively want the community to push SeshatOS into directions we have not imagined. The architecture (skills, MCP, pluggable providers, SDK) is designed to accommodate this.
 

@@ -8,7 +8,7 @@ import (
 
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
-	"github.com/EngineerProjects/seshat/pkg/types"
+	"github.com/KPO-Tech/seshat/pkg/types"
 )
 
 func principalFor(userID string) *backendauth.Principal {

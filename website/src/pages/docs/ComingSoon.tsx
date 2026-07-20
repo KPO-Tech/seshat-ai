@@ -47,7 +47,7 @@ export default function ComingSoon() {
         <p className={styles.note}>
           This page is actively being written. Check back soon or{' '}
           <a
-            href="https://github.com/EngineerProjects/seshat/discussions"
+            href="https://github.com/KPO-Tech/seshat/discussions"
             target="_blank"
             rel="noreferrer"
             className={styles.link}

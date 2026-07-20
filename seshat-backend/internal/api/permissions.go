@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	backendquery "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/query"
-	"github.com/EngineerProjects/seshat/pkg/types"
+	"github.com/KPO-Tech/seshat/pkg/types"
 )
 
 func (app *App) handlePermissionDecision(w http.ResponseWriter, r *http.Request) {

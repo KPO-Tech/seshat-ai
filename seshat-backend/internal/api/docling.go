@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
-	"github.com/EngineerProjects/seshat/pkg/docling"
+	"github.com/KPO-Tech/seshat/pkg/docling"
 )
 
 type doclingConfigResponse struct {

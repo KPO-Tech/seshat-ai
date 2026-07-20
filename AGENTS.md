@@ -6,16 +6,20 @@ Read this file before changing code in this repository.
 
 ## Project overview
 
-`seshat-ai` is the private product layer built on top of [seshat](https://github.com/EngineerProjects/seshat), the open-source Go runtime.
+`seshat-ai` is the private product layer built on top of [seshat](https://github.com/KPO-Tech/seshat), the open-source Go runtime.
 
-The repository now contains four main sub-projects:
+The repository now contains three main sub-projects:
 
 | Directory | Language | Role |
 |---|---|---|
 | `seshat-backend/` | Go | local backend / desktop HTTP API |
 | `seshat-server/` | Go | cloud server for auth, orgs, jobs, sync |
 | `seshat-ui/` | TypeScript / Electron | desktop client that consumes the local API |
-| `seshat/` | Go (submodule) | open-source runtime — never modify casually |
+
+`seshat` — the open-source runtime — is not vendored here. It's an external Go module,
+`github.com/KPO-Tech/seshat`, required directly in `seshat-backend/go.mod` and
+`seshat-server/go.mod`. Never add a local `replace` directive for it; bump the version with
+`go get github.com/KPO-Tech/seshat@vX.Y.Z` instead.
 
 Dependency direction is one-way:
 
@@ -36,9 +40,9 @@ seshat          → seshat-server    (never)
 Always run these before finishing Go work:
 
 ```bash
-go build ./seshat-backend/... ./seshat-server/... ./seshat/...
-go vet ./seshat-backend/... ./seshat-server/... ./seshat/...
-go test -race ./seshat-backend/... ./seshat-server/... ./seshat/...
+go build ./seshat-backend/... ./seshat-server/...
+go vet ./seshat-backend/... ./seshat-server/...
+go test -race ./seshat-backend/... ./seshat-server/...
 gofmt -w .
 ```
 
@@ -122,10 +126,9 @@ Do not:
 
 ## Rules for seshat
 
-- Never modify files inside `seshat/` unless the task explicitly requires runtime changes.
-- If the backend/server needs something missing from `seshat/pkg/*`, add it in `seshat` first, then consume it here.
+- `seshat` is not part of this repository. It's an external Go module, `github.com/KPO-Tech/seshat`, developed in its own repo and pinned by version in `seshat-backend/go.mod` and `seshat-server/go.mod`.
+- Never add a local `replace` directive for it. If the backend/server needs something missing from `seshat/pkg/*`, add it in the seshat repo first, tag a release, then bump the version here with `go get github.com/KPO-Tech/seshat@vX.Y.Z`.
 - The local backend module path lives in `seshat-backend/go.mod` and intentionally keeps `module github.com/EngineerProjects/seshat-ai/seshat-backend`.
-- The `replace` wiring between `seshat-backend`, `seshat-server`, and `seshat` is intentional. Do not change it casually.
 
 ---
 

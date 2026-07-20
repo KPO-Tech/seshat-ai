@@ -6,9 +6,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/EngineerProjects/seshat/pkg/providers"
-	"github.com/EngineerProjects/seshat/pkg/sdk"
-	"github.com/EngineerProjects/seshat/pkg/types"
+	"github.com/KPO-Tech/seshat/pkg/providers"
+	"github.com/KPO-Tech/seshat/pkg/sdk"
+	"github.com/KPO-Tech/seshat/pkg/types"
 )
 
 type QueryRuntime interface {

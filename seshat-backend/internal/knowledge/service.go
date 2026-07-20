@@ -10,9 +10,9 @@ import (
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
-	"github.com/EngineerProjects/seshat/pkg/docling"
-	"github.com/EngineerProjects/seshat/pkg/rag"
-	"github.com/EngineerProjects/seshat/pkg/storage"
+	"github.com/KPO-Tech/seshat/pkg/docling"
+	"github.com/KPO-Tech/seshat/pkg/rag"
+	"github.com/KPO-Tech/seshat/pkg/storage"
 )
 
 // doclingIngestExtensions lists file extensions whose binary content docling can

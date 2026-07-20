@@ -13,7 +13,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudwebsearch"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	backendsettings "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/settings"
-	searchproviders "github.com/EngineerProjects/seshat/pkg/web/search/providers"
+	searchproviders "github.com/KPO-Tech/seshat/pkg/web/search/providers"
 )
 
 // cloudCacheTTL bounds how long a connected org's web-search config

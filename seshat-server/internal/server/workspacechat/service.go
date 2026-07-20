@@ -19,9 +19,9 @@ import (
 
 	"gorm.io/gorm"
 
-	sdkproviders "github.com/EngineerProjects/seshat/pkg/providers"
-	"github.com/EngineerProjects/seshat/pkg/sdk"
-	sdktypes "github.com/EngineerProjects/seshat/pkg/types"
+	sdkproviders "github.com/KPO-Tech/seshat/pkg/providers"
+	"github.com/KPO-Tech/seshat/pkg/sdk"
+	sdktypes "github.com/KPO-Tech/seshat/pkg/types"
 
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/apperr"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/automation"

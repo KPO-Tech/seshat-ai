@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	backendagents "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/agents"
-	pkgagent "github.com/EngineerProjects/seshat/pkg/agent"
+	pkgagent "github.com/KPO-Tech/seshat/pkg/agent"
 )
 
 // ─── Response DTOs ────────────────────────────────────────────────────────────

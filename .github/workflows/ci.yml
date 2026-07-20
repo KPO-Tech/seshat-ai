@@ -15,8 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - uses: actions/setup-go@v5
         with:
@@ -25,18 +23,15 @@ jobs:
             go.work.sum
             seshat-backend/go.sum
             seshat-server/go.sum
-            seshat/go.sum
 
       - name: Build
-        run: go build ./seshat-backend/... ./seshat-server/... ./seshat/...
+        run: go build ./seshat-backend/... ./seshat-server/...
 
   test:
     name: Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - uses: actions/setup-go@v5
         with:
@@ -45,18 +40,15 @@ jobs:
             go.work.sum
             seshat-backend/go.sum
             seshat-server/go.sum
-            seshat/go.sum
 
       - name: Tests
-        run: go test -race ./seshat-backend/... ./seshat-server/... ./seshat/... -timeout 300s
+        run: go test -race ./seshat-backend/... ./seshat-server/... -timeout 300s
 
   lint:
     name: Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - uses: actions/setup-go@v5
         with:
@@ -65,11 +57,10 @@ jobs:
             go.work.sum
             seshat-backend/go.sum
             seshat-server/go.sum
-            seshat/go.sum
 
       - name: Check formatting
         run: |
-          UNFORMATTED=$(find . -name "*.go" -not -path "./seshat/*" | xargs gofmt -l)
+          UNFORMATTED=$(find . -name "*.go" | xargs gofmt -l)
           if [ -n "$UNFORMATTED" ]; then
             echo "Unformatted files:"
             echo "$UNFORMATTED"
@@ -77,7 +68,7 @@ jobs:
           fi
 
       - name: go vet
-        run: go vet ./seshat-backend/... ./seshat-server/... ./seshat/...
+        run: go vet ./seshat-backend/... ./seshat-server/...
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6

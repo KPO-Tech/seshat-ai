@@ -10,7 +10,7 @@
 #   make deploy-down     → stop that stack
 
 ROOT              := $(shell pwd)
-GO_PACKAGES       := ./seshat-backend/... ./seshat-server/... ./seshat/...
+GO_PACKAGES       := ./seshat-backend/... ./seshat-server/...
 LINT_PACKAGES     := ./seshat-backend/... ./seshat-server/...
 BACKEND_DIR       := $(ROOT)/seshat-backend
 BACKEND_CMD       := ./cmd/api
@@ -23,9 +23,11 @@ SERVER_BIN_DIR    := $(SERVER_DIR)/bin
 SERVER_BIN        := seshat-server
 SERVER_BIN_PATH   := $(SERVER_BIN_DIR)/$(SERVER_BIN)
 UI_DIR            := $(ROOT)/seshat-ui
-DAEMON_DIR        := $(ROOT)/seshat
 DAEMON_BIN        := seshat-automation
-DAEMON_CMD        := ./cmd/automation-server
+DAEMON_BIN_DIR    := $(ROOT)/bin
+DAEMON_BIN_PATH   := $(DAEMON_BIN_DIR)/$(DAEMON_BIN)
+DAEMON_PKG        := github.com/KPO-Tech/seshat/cmd/automation-server
+SESHAT_VERSION    := v0.2.2
 DEPLOY_DIR        := $(ROOT)/deploy
 
 # Detect OS for open/xdg-open
@@ -76,7 +78,7 @@ dev-full: ui-install ## Start local backend + automation daemon + Electron UI
 	@printf '\033[32m[nexus]\033[0m starting local backend…\n'
 	@cd $(BACKEND_DIR) && go run $(BACKEND_CMD) &
 	@printf '\033[32m[nexus]\033[0m starting automation daemon…\n'
-	@cd $(DAEMON_DIR) && go run $(DAEMON_CMD) &
+	@go run $(DAEMON_PKG)@$(SESHAT_VERSION) &
 	@printf '\033[32m[nexus]\033[0m starting Electron UI…\n'
 	@cd $(UI_DIR) && bun run start
 
@@ -100,13 +102,15 @@ build-server: ## Compile the cloud server binary → seshat-server/bin/seshat-se
 run-server: ## Run the cloud server only (auth/org/jobs/sync bootstrap)
 	@cd $(SERVER_DIR) && go run $(SERVER_CMD)
 
-build-automation: ## Compile the automation daemon binary → seshat/seshat-automation
+build-automation: ## Compile the automation daemon binary → bin/seshat-automation
 	@printf '\033[32m[go]\033[0m building %s…\n' $(DAEMON_BIN)
-	@cd $(DAEMON_DIR) && go build -o $(DAEMON_BIN) $(DAEMON_CMD)
-	@printf '\033[32m[go]\033[0m binary ready: %s/%s\n' $(DAEMON_DIR) $(DAEMON_BIN)
+	@mkdir -p $(DAEMON_BIN_DIR)
+	@GOBIN=$(DAEMON_BIN_DIR) go install $(DAEMON_PKG)@$(SESHAT_VERSION)
+	@mv $(DAEMON_BIN_DIR)/automation-server $(DAEMON_BIN_PATH)
+	@printf '\033[32m[go]\033[0m binary ready: %s\n' $(DAEMON_BIN_PATH)
 
 run-automation: ## Run the automation daemon only (reads env / .env)
-	@cd $(DAEMON_DIR) && go run $(DAEMON_CMD)
+	@go run $(DAEMON_PKG)@$(SESHAT_VERSION)
 
 # ─── Deploy stack (seshat-server + seshat-console + Postgres + SearXNG) ──────
 # See deploy/README.md. First run: cp deploy/.env.example deploy/.env and
@@ -151,7 +155,7 @@ test-pkg: ## Run tests for a specific package (PKG=./seshat-backend/internal/sch
 # ─── Code quality ─────────────────────────────────────────────────────────────
 
 fmt: ## Format all Go source files with gofmt
-	gofmt -w $(shell find . -name "*.go" -not -path "./vendor/*" -not -path "./seshat/*")
+	gofmt -w $(shell find . -name "*.go" -not -path "./vendor/*")
 
 vet: ## Run go vet across all Go modules in the workspace
 	go vet $(GO_PACKAGES)

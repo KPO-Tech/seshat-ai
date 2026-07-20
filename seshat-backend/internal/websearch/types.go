@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	webcore "github.com/EngineerProjects/seshat/pkg/web"
+	webcore "github.com/KPO-Tech/seshat/pkg/web"
 )
 
 // ProviderCatalogEntry describes a search provider type and its requirements.

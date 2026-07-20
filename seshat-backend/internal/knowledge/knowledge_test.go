@@ -11,9 +11,9 @@ import (
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge"
-	"github.com/EngineerProjects/seshat/pkg/rag"
-	"github.com/EngineerProjects/seshat/pkg/storage"
-	"github.com/EngineerProjects/seshat/pkg/vector"
+	"github.com/KPO-Tech/seshat/pkg/rag"
+	"github.com/KPO-Tech/seshat/pkg/storage"
+	"github.com/KPO-Tech/seshat/pkg/vector"
 )
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

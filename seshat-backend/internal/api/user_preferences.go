@@ -6,7 +6,7 @@ import (
 
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/preferences"
-	"github.com/EngineerProjects/seshat/pkg/types"
+	"github.com/KPO-Tech/seshat/pkg/types"
 )
 
 type userPreferencesResponse struct {

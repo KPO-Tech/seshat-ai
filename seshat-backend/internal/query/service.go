@@ -14,12 +14,12 @@ import (
 	backendmemories "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/memories"
 	bksettings "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/settings"
 	bkwebsearch "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/websearch"
-	"github.com/EngineerProjects/seshat/pkg/agent"
-	"github.com/EngineerProjects/seshat/pkg/rag"
-	"github.com/EngineerProjects/seshat/pkg/sdk"
-	"github.com/EngineerProjects/seshat/pkg/types"
-	webcore "github.com/EngineerProjects/seshat/pkg/web"
-	"github.com/EngineerProjects/seshat/pkg/workspace"
+	"github.com/KPO-Tech/seshat/pkg/agent"
+	"github.com/KPO-Tech/seshat/pkg/rag"
+	"github.com/KPO-Tech/seshat/pkg/sdk"
+	"github.com/KPO-Tech/seshat/pkg/types"
+	webcore "github.com/KPO-Tech/seshat/pkg/web"
+	"github.com/KPO-Tech/seshat/pkg/workspace"
 )
 
 type Service struct {

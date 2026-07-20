@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	sdkstorage "github.com/EngineerProjects/seshat/pkg/storage"
-	sdkvector "github.com/EngineerProjects/seshat/pkg/vector"
+	sdkstorage "github.com/KPO-Tech/seshat/pkg/storage"
+	sdkvector "github.com/KPO-Tech/seshat/pkg/vector"
 
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 )

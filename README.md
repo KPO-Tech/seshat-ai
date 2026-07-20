@@ -19,15 +19,15 @@
 
 <p align="center">
   <a href="https://seshat-ai.com"><b>🌐 seshat-ai.com</b></a> ·
-  <a href="https://github.com/EngineerProjects/seshat"><b>⚙️ seshat (engine)</b></a> ·
-  <a href="https://github.com/EngineerProjects/seshat/discussions"><b>💬 Discussions</b></a>
+  <a href="https://github.com/KPO-Tech/seshat"><b>⚙️ seshat (engine)</b></a> ·
+  <a href="https://github.com/KPO-Tech/seshat/discussions"><b>💬 Discussions</b></a>
 </p>
 
 ---
 
 ## What SeshatOS Is Today
 
-SeshatOS is the platform layer built on top of [seshat](https://github.com/EngineerProjects/seshat), the open-source Go runtime.
+SeshatOS is the platform layer built on top of [seshat](https://github.com/KPO-Tech/seshat), the open-source Go runtime.
 
 Its current wedge is not "AI for everything." It is much narrower and more useful:
 
@@ -57,13 +57,13 @@ The project still keeps a larger open-source direction: organized agent teams, r
 
 But the current product message should stay disciplined. Today, the strongest claim is that SeshatOS is a governed, self-hosted agent platform for real organizations. The larger vision matters for contributors and long-term partners; the narrower wedge is what makes the platform credible now.
 
-- Engine repository: https://github.com/EngineerProjects/seshat
+- Engine repository: https://github.com/KPO-Tech/seshat
 - Public docs: https://seshat-ai.com/docs
 - Vision and direction: https://seshat-ai.com/docs/learn/vision
 
 ## Architecture At A Glance
 
-The **`seshat-ai`** repository contains **SeshatOS**, a self-hosted AI workspace for teams built as a desktop app plus a full REST API. It sits on top of **[seshat](https://github.com/EngineerProjects/seshat)**, the open-source Go runtime for multi-turn AI agents with tools, permissions, sessions, RAG, and MCP.
+The **`seshat-ai`** repository contains **SeshatOS**, a self-hosted AI workspace for teams built as a desktop app plus a full REST API. It sits on top of **[seshat](https://github.com/KPO-Tech/seshat)**, the open-source Go runtime for multi-turn AI agents with tools, permissions, sessions, RAG, and MCP.
 
 ```
 ┌─────────────────────────────────┐
@@ -76,7 +76,7 @@ The **`seshat-ai`** repository contains **SeshatOS**, a self-hosted AI workspace
 └────────────┬────────────────────┘
              │ Go SDK (pkg/sdk), used directly in both modes
 ┌────────────▼────────────────────┐
-│  seshat  (submodule)            │  Agent runtime, tools, providers, MCP
+│  seshat  (external Go module)   │  Agent runtime, tools, providers, MCP
 └─────────────────────────────────┘
 
   ── optional "connected" mode (SESHAT_SERVER_URL) ──
@@ -179,7 +179,6 @@ seshat-ai/
 │   ├── cmd/server/           ← cloud-server entrypoint
 │   └── internal/server/      ← cloud domains: iam, automation, knowledge, memories, ...
 ├── seshat-console/           ← web admin frontend for seshat-server (React + TypeScript)
-├── seshat/                   ← submodule: github.com/EngineerProjects/seshat
 ├── seshat-ui/                ← Electron desktop app (React + TypeScript)
 ├── deploy/                   ← docker-compose stack: postgres + seshat-server + seshat-console
 └── docs/                     ← Architecture, development guide, UI docs
@@ -193,12 +192,11 @@ seshat-ai/
 
 - Go 1.26+
 - Node 22+ (for the desktop UI)
-- Git with submodule support
 
 ### Clone
 
 ```bash
-git clone --recurse-submodules https://github.com/EngineerProjects/seshat-ai.git
+git clone https://github.com/EngineerProjects/seshat-ai.git
 cd seshat-ai
 ```
 
@@ -548,6 +546,6 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md). PRs target `dev`, never directly `main
 
 SeshatOS is licensed under the **GNU Affero General Public License v3.0** (AGPL-3.0).
 
-The underlying runtime, [seshat](https://github.com/EngineerProjects/seshat), is Apache 2.0.
+The underlying runtime, [seshat](https://github.com/KPO-Tech/seshat), is Apache 2.0.
 
 See [`LICENSE`](LICENSE) for the full text.

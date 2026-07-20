@@ -9,7 +9,7 @@ package automation
 import (
 	"context"
 
-	sdkrag "github.com/EngineerProjects/seshat/pkg/rag"
+	sdkrag "github.com/KPO-Tech/seshat/pkg/rag"
 
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/apperr"
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"

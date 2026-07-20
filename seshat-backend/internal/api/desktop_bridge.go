@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/EngineerProjects/seshat/pkg/runtimepath"
+	"github.com/KPO-Tech/seshat/pkg/runtimepath"
 )
 
 const desktopBridgeSecretFile = "desktop-bridge-secret"

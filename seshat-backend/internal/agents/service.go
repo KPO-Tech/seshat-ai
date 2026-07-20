@@ -8,8 +8,8 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudagents"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
-	pkgagent "github.com/EngineerProjects/seshat/pkg/agent"
-	"github.com/EngineerProjects/seshat/pkg/types"
+	pkgagent "github.com/KPO-Tech/seshat/pkg/agent"
+	"github.com/KPO-Tech/seshat/pkg/types"
 )
 
 // Service manages user-defined agent definitions. cloudClient/organizationID

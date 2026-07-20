@@ -18,11 +18,11 @@ import (
 
 	"gorm.io/gorm"
 
-	sdkdocling "github.com/EngineerProjects/seshat/pkg/docling"
-	sdkrag "github.com/EngineerProjects/seshat/pkg/rag"
-	sdkembedder "github.com/EngineerProjects/seshat/pkg/rag/embedder"
-	sdkstorage "github.com/EngineerProjects/seshat/pkg/storage"
-	sdkvector "github.com/EngineerProjects/seshat/pkg/vector"
+	sdkdocling "github.com/KPO-Tech/seshat/pkg/docling"
+	sdkrag "github.com/KPO-Tech/seshat/pkg/rag"
+	sdkembedder "github.com/KPO-Tech/seshat/pkg/rag/embedder"
+	sdkstorage "github.com/KPO-Tech/seshat/pkg/storage"
+	sdkvector "github.com/KPO-Tech/seshat/pkg/vector"
 
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/apperr"
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"

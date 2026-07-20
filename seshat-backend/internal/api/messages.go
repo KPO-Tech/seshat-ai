@@ -33,8 +33,8 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/query"
 	backendquotas "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/quotas"
-	"github.com/EngineerProjects/seshat/pkg/sdk"
-	"github.com/EngineerProjects/seshat/pkg/types"
+	"github.com/KPO-Tech/seshat/pkg/sdk"
+	"github.com/KPO-Tech/seshat/pkg/types"
 )
 
 // ─── Request types ────────────────────────────────────────────────────────────

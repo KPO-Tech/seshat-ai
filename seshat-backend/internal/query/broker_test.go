@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/EngineerProjects/seshat/pkg/types"
+	"github.com/KPO-Tech/seshat/pkg/types"
 )
 
 // ─── PermissionBroker ─────────────────────────────────────────────────────────

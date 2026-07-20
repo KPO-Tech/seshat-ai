@@ -9,8 +9,8 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudmcp"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
-	enginemcp "github.com/EngineerProjects/seshat/pkg/mcp"
-	"github.com/EngineerProjects/seshat/pkg/sdk"
+	enginemcp "github.com/KPO-Tech/seshat/pkg/mcp"
+	"github.com/KPO-Tech/seshat/pkg/sdk"
 )
 
 // RuntimeReloader is the subset of the query runtime needed for MCP reload operations.

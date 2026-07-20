@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
-	"github.com/EngineerProjects/seshat/pkg/sdk"
+	"github.com/KPO-Tech/seshat/pkg/sdk"
 )
 
 // ─── minimal runtime stubs ────────────────────────────────────────────────────

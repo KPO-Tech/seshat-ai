@@ -3,7 +3,7 @@ package query
 import (
 	"sync"
 
-	"github.com/EngineerProjects/seshat/pkg/types"
+	"github.com/KPO-Tech/seshat/pkg/types"
 )
 
 // BrokerResolveResult is the outcome of a broker resolve call.

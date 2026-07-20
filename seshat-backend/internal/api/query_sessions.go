@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/EngineerProjects/seshat/pkg/types"
+	"github.com/KPO-Tech/seshat/pkg/types"
 )
 
 // handleSessions handles GET /api/v1/sessions (list) and POST /api/v1/sessions (create).

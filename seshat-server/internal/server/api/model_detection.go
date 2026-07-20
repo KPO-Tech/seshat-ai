@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	sdkproviders "github.com/EngineerProjects/seshat/pkg/providers"
+	sdkproviders "github.com/KPO-Tech/seshat/pkg/providers"
 )
 
 type detectModelsRequest struct {

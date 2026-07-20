@@ -3,7 +3,7 @@ module github.com/EngineerProjects/seshat-ai/seshat-server
 go 1.26.4
 
 require (
-	github.com/EngineerProjects/seshat v0.0.0-00010101000000-000000000000
+	github.com/KPO-Tech/seshat v0.2.2
 	github.com/glebarez/sqlite v1.11.0
 	golang.org/x/crypto v0.52.0
 	golang.org/x/time v0.15.0
@@ -121,5 +121,3 @@ require (
 	modernc.org/memory v1.11.0 // indirect
 	modernc.org/sqlite v1.39.1 // indirect
 )
-
-replace github.com/EngineerProjects/seshat => ../seshat
