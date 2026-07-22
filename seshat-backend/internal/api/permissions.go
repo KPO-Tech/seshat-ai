@@ -26,6 +26,7 @@ func (app *App) handlePermissionDecision(w http.ResponseWriter, r *http.Request)
 	var body struct {
 		Approved  bool   `json:"approved"`
 		SessionID string `json:"session_id"`
+		Reason    string `json:"reason"`
 	}
 	if !decodeJSONBody(w, r, &body) {
 		return
@@ -39,7 +40,7 @@ func (app *App) handlePermissionDecision(w http.ResponseWriter, r *http.Request)
 		writeJSONError(w, http.StatusBadRequest, "session_id is required")
 		return
 	}
-	switch app.permBroker.Resolve(toolUseID, principal.User.ID, sessionID, body.Approved) {
+	switch app.permBroker.Resolve(toolUseID, principal.User.ID, sessionID, body.Approved, strings.TrimSpace(body.Reason)) {
 	case backendquery.BrokerResolveResolved:
 		w.WriteHeader(http.StatusNoContent)
 	case backendquery.BrokerResolveForbidden:

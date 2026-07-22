@@ -3903,9 +3903,37 @@ func TestPermissionDecisionRejectsDifferentUserOrSession(t *testing.T) {
 	}
 
 	select {
-	case approved := <-ch:
-		if !approved {
+	case decision := <-ch:
+		if !decision.Approved {
 			t.Fatal("expected permission approval to resolve true")
+		}
+	default:
+		t.Fatal("expected permission broker resolution")
+	}
+}
+
+func TestPermissionDecisionCarriesDenyReason(t *testing.T) {
+	fx := newSecurityTestFixture(t)
+	ch := fx.app.permBroker.Await("tool-2", fx.adminID, "session-a")
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/permissions/tool-2", bytes.NewReader(
+		[]byte(`{"approved":false,"session_id":"session-a","reason":"please use a read-only approach instead"}`),
+	))
+	req.Header.Set("Authorization", "Bearer "+fx.adminToken)
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+	fx.router.ServeHTTP(resp, req)
+	if resp.Code != http.StatusNoContent {
+		t.Fatalf("expected denial 204, got %d: %s", resp.Code, resp.Body.String())
+	}
+
+	select {
+	case decision := <-ch:
+		if decision.Approved {
+			t.Fatal("expected permission denial to resolve false")
+		}
+		if decision.Reason != "please use a read-only approach instead" {
+			t.Fatalf("expected deny reason to flow through, got %q", decision.Reason)
 		}
 	default:
 		t.Fatal("expected permission broker resolution")

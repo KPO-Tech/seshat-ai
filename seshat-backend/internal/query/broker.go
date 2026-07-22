@@ -15,6 +15,15 @@ const (
 	BrokerResolveResolved  BrokerResolveResult = iota
 )
 
+// PermissionDecision carries a human's approve/deny choice for a pending
+// tool-permission request, plus an optional explanation. Reason is only
+// meaningful when Approved is false — it flows back to the model as the
+// denied tool call's result text.
+type PermissionDecision struct {
+	Approved bool
+	Reason   string
+}
+
 // PermissionBroker bridges tool-approval SSE events to their pending permission channels.
 type PermissionBroker struct {
 	mu      sync.Mutex
@@ -24,15 +33,15 @@ type PermissionBroker struct {
 type pendingPermission struct {
 	userID    string
 	sessionID string
-	ch        chan bool
+	ch        chan PermissionDecision
 }
 
 func NewPermissionBroker() *PermissionBroker {
 	return &PermissionBroker{pending: make(map[string]pendingPermission)}
 }
 
-func (b *PermissionBroker) Await(id, userID, sessionID string) chan bool {
-	ch := make(chan bool, 1)
+func (b *PermissionBroker) Await(id, userID, sessionID string) chan PermissionDecision {
+	ch := make(chan PermissionDecision, 1)
 	b.mu.Lock()
 	b.pending[id] = pendingPermission{userID: userID, sessionID: sessionID, ch: ch}
 	b.mu.Unlock()
@@ -45,7 +54,7 @@ func (b *PermissionBroker) Cancel(id string) {
 	b.mu.Unlock()
 }
 
-func (b *PermissionBroker) Resolve(id, userID, sessionID string, approved bool) BrokerResolveResult {
+func (b *PermissionBroker) Resolve(id, userID, sessionID string, approved bool, reason string) BrokerResolveResult {
 	b.mu.Lock()
 	pending, ok := b.pending[id]
 	if !ok {
@@ -58,7 +67,7 @@ func (b *PermissionBroker) Resolve(id, userID, sessionID string, approved bool) 
 	}
 	delete(b.pending, id)
 	b.mu.Unlock()
-	pending.ch <- approved
+	pending.ch <- PermissionDecision{Approved: approved, Reason: reason}
 	return BrokerResolveResolved
 }
 

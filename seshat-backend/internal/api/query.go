@@ -340,8 +340,12 @@ func (app *App) handleQueryStream(w http.ResponseWriter, r *http.Request) {
 		defer app.permBroker.Cancel(toolUseID)
 
 		select {
-		case approved := <-ch:
-			return types.PromptResponse{Value: approved}, nil
+		case decision := <-ch:
+			response := types.PromptResponse{Value: decision.Approved}
+			if !decision.Approved && decision.Reason != "" {
+				response.Metadata = map[string]any{"reason": decision.Reason}
+			}
+			return response, nil
 		case <-ctx.Done():
 			return types.PromptResponse{Cancelled: true}, nil
 		}
