@@ -22,6 +22,7 @@ type App struct {
 	groupStore         *db.GroupStore
 	embedderStore      *db.EmbedderConfigStore
 	doclingStore       *db.DoclingConfigStore
+	localSTTStore      *db.LocalSTTConfigStore
 	storageConfigStore *db.StorageConfigStore
 	// Long-term memory — kept here because extraction is fire-and-forget
 	// and depends on the extractor which lives outside seshat.App lifecycle
@@ -44,8 +45,10 @@ type App struct {
 	// user account, so there's no deployment-time value to store.
 	connectedServerURL string
 	// transcribeAudio defaults to sdk.TranscribeAudio; overridden in tests to
-	// avoid a real call to OpenAI's Whisper API.
-	transcribeAudio func(ctx context.Context, apiKey string, audioData []byte) (*sdk.TranscriptionResult, error)
+	// avoid a real network call. baseURL is empty for OpenAI's cloud API, or
+	// a local whisper-server URL when local transcription is configured
+	// (see local_stt.go) — apiKey is ignored in that case.
+	transcribeAudio func(ctx context.Context, apiKey string, audioData []byte, baseURL string) (*sdk.TranscriptionResult, error)
 }
 
 // AppConfig holds all configuration needed to build an App.
@@ -56,6 +59,7 @@ type AppConfig struct {
 	GroupStore            *db.GroupStore
 	EmbedderStore         *db.EmbedderConfigStore
 	DoclingStore          *db.DoclingConfigStore
+	LocalSTTStore         *db.LocalSTTConfigStore
 	StorageConfigStore    *db.StorageConfigStore
 	LongTermExtractor     *longterm.Extractor
 	RateLimiter           *RateLimiter
@@ -77,6 +81,7 @@ func NewApp(cfg AppConfig) *App {
 		groupStore:            cfg.GroupStore,
 		embedderStore:         cfg.EmbedderStore,
 		doclingStore:          cfg.DoclingStore,
+		localSTTStore:         cfg.LocalSTTStore,
 		storageConfigStore:    cfg.StorageConfigStore,
 		longTermExtractor:     cfg.LongTermExtractor,
 		rateLimiter:           cfg.RateLimiter,
@@ -90,7 +95,10 @@ func NewApp(cfg AppConfig) *App {
 		trustedProxyCIDRs:     cfg.TrustedProxyCIDRs,
 		allowedSkillRepoHosts: cfg.AllowedSkillRepoHosts,
 		connectedServerURL:    cfg.ConnectedServerURL,
-		transcribeAudio: func(ctx context.Context, apiKey string, audioData []byte) (*sdk.TranscriptionResult, error) {
+		transcribeAudio: func(ctx context.Context, apiKey string, audioData []byte, baseURL string) (*sdk.TranscriptionResult, error) {
+			if baseURL != "" {
+				return sdk.TranscribeAudio(ctx, apiKey, audioData, sdk.WithTranscribeBaseURL(baseURL))
+			}
 			return sdk.TranscribeAudio(ctx, apiKey, audioData)
 		},
 	}

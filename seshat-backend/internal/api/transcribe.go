@@ -11,10 +11,12 @@ import (
 const maxTranscribeUploadSize = 26 << 20 // ~26 MB, headroom over OpenAI's 25 MB cap
 
 // handleTranscribe — POST /api/v1/transcribe. Voice-input control: takes a
-// recorded audio clip and returns its transcript using the caller's own
-// configured OpenAI provider key, independent of any chat session (compare
-// the engine's agent-facing speech_to_text tool, which only runs when the
-// model itself decides to call it mid-turn).
+// recorded audio clip and returns its transcript, independent of any chat
+// session (compare the engine's agent-facing speech_to_text tool, which
+// only runs when the model itself decides to call it mid-turn). Prefers a
+// locally running whisper.cpp server when one has been configured (see
+// local_stt.go, set by the Electron main process); falls back to the
+// caller's own configured OpenAI provider key otherwise.
 func (a *App) handleTranscribe(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -43,13 +45,13 @@ func (a *App) handleTranscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	apiKey, err := a.resolveOpenAIKeyForTranscription(r, principal)
+	apiKey, baseURL, err := a.resolveTranscriptionTarget(r, principal)
 	if err != nil {
 		writeJSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	result, err := a.transcribeAudio(r.Context(), apiKey, audioData)
+	result, err := a.transcribeAudio(r.Context(), apiKey, audioData, baseURL)
 	if err != nil {
 		writeJSONError(w, http.StatusBadGateway, "transcription failed: "+err.Error())
 		return
@@ -60,6 +62,20 @@ func (a *App) handleTranscribe(w http.ResponseWriter, r *http.Request) {
 		"language": result.Language,
 		"duration": result.Duration,
 	})
+}
+
+// resolveTranscriptionTarget picks a locally running whisper.cpp server
+// when one is configured and enabled (no API key needed - whisper-server
+// doesn't check auth), otherwise falls back to the caller's OpenAI provider
+// key against the default cloud API (empty baseURL).
+func (a *App) resolveTranscriptionTarget(r *http.Request, principal *backendauth.Principal) (apiKey, baseURL string, err error) {
+	if a.localSTTStore != nil {
+		if cfg, err := a.localSTTStore.Get(r.Context()); err == nil && cfg != nil && cfg.Enabled && cfg.BaseURL != "" {
+			return "", cfg.BaseURL, nil
+		}
+	}
+	apiKey, err = a.resolveOpenAIKeyForTranscription(r, principal)
+	return apiKey, "", err
 }
 
 // resolveOpenAIKeyForTranscription finds the caller's configured OpenAI

@@ -7,8 +7,10 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	"github.com/KPO-Tech/seshat/pkg/sdk"
 )
 
@@ -76,7 +78,7 @@ func TestHandleTranscribeReturnsTranscript(t *testing.T) {
 	createProviderSettingWithKeyForTest(t, router, token, "openai", "My OpenAI", "sk-test-key")
 
 	var gotAPIKey string
-	app.transcribeAudio = func(ctx context.Context, apiKey string, audioData []byte) (*sdk.TranscriptionResult, error) {
+	app.transcribeAudio = func(ctx context.Context, apiKey string, audioData []byte, baseURL string) (*sdk.TranscriptionResult, error) {
 		gotAPIKey = apiKey
 		return &sdk.TranscriptionResult{Text: "hello from the test", Language: "en", Duration: 2.5}, nil
 	}
@@ -99,12 +101,57 @@ func TestHandleTranscribeReturnsTranscript(t *testing.T) {
 	}
 }
 
+func TestHandleTranscribePrefersLocalWhisperServer(t *testing.T) {
+	app, _ := newSettingsTestApp(t, nil)
+	router := CreateRouter(defaultAPIConfig, app)
+	token := loginAs(t, router, "admin@settings.test", "adminpass")
+	// Deliberately no OpenAI provider configured - proves the local path
+	// doesn't fall back to (or need) one.
+
+	sttDB, err := db.Open(context.Background(), db.DefaultSQLiteConfig(filepath.Join(t.TempDir(), "local-stt-test.db")))
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	t.Cleanup(func() { sttDB.Close() })
+	localSTTStore, err := db.NewLocalSTTConfigStore(sttDB)
+	if err != nil {
+		t.Fatalf("NewLocalSTTConfigStore: %v", err)
+	}
+	if _, err := localSTTStore.Upsert(context.Background(), db.UpsertLocalSTTConfigParams{
+		BaseURL: "http://127.0.0.1:7890",
+		Enabled: true,
+	}); err != nil {
+		t.Fatalf("upsert local stt config: %v", err)
+	}
+	app.localSTTStore = localSTTStore
+
+	var gotAPIKey, gotBaseURL string
+	app.transcribeAudio = func(ctx context.Context, apiKey string, audioData []byte, baseURL string) (*sdk.TranscriptionResult, error) {
+		gotAPIKey = apiKey
+		gotBaseURL = baseURL
+		return &sdk.TranscriptionResult{Text: "local transcript"}, nil
+	}
+
+	req := newTranscribeRequest(t, token)
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", resp.Code, resp.Body.String())
+	}
+	if gotBaseURL != "http://127.0.0.1:7890" {
+		t.Fatalf("expected the local whisper-server URL to be used, got %q", gotBaseURL)
+	}
+	if gotAPIKey != "" {
+		t.Fatalf("expected no API key to be needed for the local server, got %q", gotAPIKey)
+	}
+}
+
 func TestHandleTranscribePropagatesTranscriptionFailure(t *testing.T) {
 	app, _ := newSettingsTestApp(t, nil)
 	router := CreateRouter(defaultAPIConfig, app)
 	token := loginAs(t, router, "admin@settings.test", "adminpass")
 	createProviderSettingWithKeyForTest(t, router, token, "openai", "My OpenAI", "sk-test-key")
-	app.transcribeAudio = func(ctx context.Context, apiKey string, audioData []byte) (*sdk.TranscriptionResult, error) {
+	app.transcribeAudio = func(ctx context.Context, apiKey string, audioData []byte, baseURL string) (*sdk.TranscriptionResult, error) {
 		return nil, errTranscribeTest
 	}
 

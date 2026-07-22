@@ -52,6 +52,18 @@ import (
 	"github.com/KPO-Tech/seshat/pkg/vector"
 )
 
+// defaultServerURL is this build's baked-in seshat-server URL, used only
+// when SESHAT_SERVER_URL isn't set in the environment - empty in ordinary
+// dev builds (today's exact standalone-by-default behavior, unchanged), set
+// via `-ldflags "-X .../internal/config.defaultServerURL=https://..."` for
+// a packaged release build that should always connect to one specific,
+// operator-controlled seshat-server without the end user configuring
+// anything (mirrors main.version's existing ldflags stamping, see
+// cmd/api/main.go and .github/workflows/release-desktop.yml). Not yet wired
+// into that release workflow — there is no deployed production
+// seshat-server to point it at yet; this only lands the mechanism.
+var defaultServerURL = ""
+
 // BuildApp wires all infrastructure (DB, stores, query runtime, RAG, MCP, skills)
 // and returns a ready-to-serve *api.App, a cleanup function, and an error.
 //
@@ -181,27 +193,29 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	var settingsProvider backendsettings.Provider
 	var preferencesProvider backendpreferences.Provider
 	var webSearchCloudClient *cloudwebsearch.Client
-	var webSearchOrganizationID string
 	var mcpCloudClient *cloudmcp.Client
-	var mcpOrganizationID string
 	var memoriesProvider backendmemories.Provider
 	var agentsCloudClient *cloudagents.Client
-	var agentsOrganizationID string
 	var quotaProvider backendquotas.Provider
 	serverURL := strings.TrimSpace(os.Getenv("SESHAT_SERVER_URL"))
+	if serverURL == "" {
+		serverURL = defaultServerURL
+	}
 	if serverURL != "" {
-		organizationID := strings.TrimSpace(os.Getenv("SESHAT_SERVER_ORGANIZATION_ID"))
-		authProvider = cloudidentity.NewProvider(serverURL, organizationID, cloudidentity.NewCache(database), identityStore)
+		// No organization id configured here - seshat-server enforces at
+		// most one organization per user account, so it's resolved fresh
+		// per login/request from the caller's own principal instead (see
+		// auth.Principal.OrganizationID). A fixed, deployment-time org id
+		// used to be required here; it silently produced the wrong role for
+		// anyone whose actual membership didn't match it.
+		authProvider = cloudidentity.NewProvider(serverURL, cloudidentity.NewCache(database), identityStore)
 		localSettingsProvider := backendsettings.NewLocalProvider(settingStore, oauthStore, nil)
-		settingsProvider = cloudsettings.NewProvider(serverURL, organizationID, localSettingsProvider)
+		settingsProvider = cloudsettings.NewProvider(serverURL, localSettingsProvider)
 		preferencesProvider = cloudpreferences.NewProvider(serverURL)
 		webSearchCloudClient = cloudwebsearch.NewClient(serverURL)
-		webSearchOrganizationID = organizationID
 		mcpCloudClient = cloudmcp.NewClient(serverURL)
-		mcpOrganizationID = organizationID
 		memoriesProvider = cloudmemories.NewProvider(serverURL)
 		agentsCloudClient = cloudagents.NewClient(serverURL)
-		agentsOrganizationID = organizationID
 		quotaProvider = cloudquotas.NewProvider(serverURL)
 		fmt.Printf("[API] Identité en mode connected (seshat-server: %s)\n", serverURL)
 	}
@@ -269,6 +283,12 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	if err != nil {
 		_ = cleanup()
 		return nil, nil, fmt.Errorf("init docling config store: %w", err)
+	}
+
+	localSTTConfigStore, err := db.NewLocalSTTConfigStore(database)
+	if err != nil {
+		_ = cleanup()
+		return nil, nil, fmt.Errorf("init local stt config store: %w", err)
 	}
 
 	userMemoryStore, err := db.NewUserMemoryStore(database)
@@ -593,16 +613,15 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	}
 
 	backendApp := seshat.NewApp(seshat.Dependencies{
-		Identity:             identityStore,
-		APIKeyStore:          apiKeyStore,
-		GroupStore:           groupStore,
-		AuthProvider:         authProvider,
-		SettingsProvider:     settingsProvider,
-		PreferencesProvider:  preferencesProvider,
-		MemoriesProvider:     memoriesProvider,
-		AgentsCloudClient:    agentsCloudClient,
-		AgentsOrganizationID: agentsOrganizationID,
-		QuotaProvider:        quotaProvider,
+		Identity:            identityStore,
+		APIKeyStore:         apiKeyStore,
+		GroupStore:          groupStore,
+		AuthProvider:        authProvider,
+		SettingsProvider:    settingsProvider,
+		PreferencesProvider: preferencesProvider,
+		MemoriesProvider:    memoriesProvider,
+		AgentsCloudClient:   agentsCloudClient,
+		QuotaProvider:       quotaProvider,
 		AuthConfig: backendauth.ServiceConfig{
 			EnableSignup:    config.EnableSignup,
 			DefaultUserRole: config.DefaultUserRole,
@@ -620,7 +639,6 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		WebSearchLogs:            webSearchLogStore,
 		WebSearchProviderConfigs: searchProviderConfigStore,
 		WebSearchCloudClient:     webSearchCloudClient,
-		WebSearchOrganizationID:  webSearchOrganizationID,
 		AuditLogStore:            auditLogStore,
 		UsageCounterStore:        usageCounterStore,
 		ArtifactStore:            artifactStore,
@@ -634,7 +652,6 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		MCPServerStore:           mcpServerStore,
 		MCPRuntime:               runtime,
 		MCPCloudClient:           mcpCloudClient,
-		MCPOrganizationID:        mcpOrganizationID,
 		MCPOrgServerApprovals:    mcpOrgServerApprovalStore,
 		UserPreferencesStore:     userPreferencesStore,
 		AgentDefinitionStore:     agentDefinitionStore,
@@ -672,24 +689,24 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	fmt.Printf("[API] Cloud automation worker démarré\n")
 
 	app := api.NewApp(api.AppConfig{
-		Backend:                 backendApp,
-		DB:                      database,
-		ModelStore:              modelStore,
-		GroupStore:              groupStore,
-		EmbedderStore:           embedderConfigStore,
-		DoclingStore:            doclingConfigStore,
-		StorageConfigStore:      storageConfigStore,
-		LongTermExtractor:       longTermExtractor,
-		CloudAutomation:         cloudAutomationService,
-		RateLimiter:             api.NewRateLimiter(config.RateLimitPerMinute, time.Minute),
-		LoginRateLimiter:        api.NewRateLimiter(10, 15*time.Minute),
-		EnableSignup:            config.EnableSignup,
-		EnableAPIKeys:           config.EnableAPIKeys,
-		FeaturedRepos:           featuredRepos,
-		TrustedProxyCIDRs:       api.ParseTrustedProxies(config.TrustedProxies),
-		AllowedSkillRepoHosts:   api.ParseSkillRepoHosts(config.SkillRepoHosts),
-		ConnectedServerURL:      serverURL,
-		ConnectedOrganizationID: strings.TrimSpace(os.Getenv("SESHAT_SERVER_ORGANIZATION_ID")),
+		Backend:               backendApp,
+		DB:                    database,
+		ModelStore:            modelStore,
+		GroupStore:            groupStore,
+		EmbedderStore:         embedderConfigStore,
+		DoclingStore:          doclingConfigStore,
+		LocalSTTStore:         localSTTConfigStore,
+		StorageConfigStore:    storageConfigStore,
+		LongTermExtractor:     longTermExtractor,
+		CloudAutomation:       cloudAutomationService,
+		RateLimiter:           api.NewRateLimiter(config.RateLimitPerMinute, time.Minute),
+		LoginRateLimiter:      api.NewRateLimiter(10, 15*time.Minute),
+		EnableSignup:          config.EnableSignup,
+		EnableAPIKeys:         config.EnableAPIKeys,
+		FeaturedRepos:         featuredRepos,
+		TrustedProxyCIDRs:     api.ParseTrustedProxies(config.TrustedProxies),
+		AllowedSkillRepoHosts: api.ParseSkillRepoHosts(config.SkillRepoHosts),
+		ConnectedServerURL:    serverURL,
 	})
 
 	knowledgeRunner := backendknowledge.NewRunner(backendApp.Knowledge, backendknowledge.RunnerConfig{
