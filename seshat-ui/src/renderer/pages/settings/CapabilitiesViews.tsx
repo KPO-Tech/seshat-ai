@@ -1398,19 +1398,30 @@ function MultimodalPanel() {
   )
 }
 
-type WhisperStatus = { supported: boolean; downloaded: boolean; running: boolean; port?: number }
+type WhisperStatus = { supported: boolean; downloaded: boolean; running: boolean; port?: number; modelId: string }
+type WhisperModelInfo = { id: string; filename: string; label: string; approxSizeBytes: number; description: string }
 type WhisperProgress = { phase: 'binary' | 'model'; receivedBytes: number; totalBytes: number }
+
+function formatBytes(bytes: number): string {
+  if (bytes >= 1_000_000_000) return `${(bytes / 1_000_000_000).toFixed(1)} GB`
+  return `${Math.round(bytes / 1_000_000)} MB`
+}
 
 function SpeechToTextCard() {
   const [status, setStatus] = useState<WhisperStatus | null>(null)
+  const [models, setModels] = useState<WhisperModelInfo[]>([])
+  const [pendingModelId, setPendingModelId] = useState<string>('small')
   const [downloading, setDownloading] = useState(false)
+  const [switching, setSwitching] = useState(false)
   const [progress, setProgress] = useState<WhisperProgress | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const refreshStatus = useCallback(async () => {
     try {
-      setStatus((await window.nexus?.whisper?.status()) ?? null)
+      const next = (await window.nexus?.whisper?.status()) ?? null
+      setStatus(next)
+      if (next) setPendingModelId(next.modelId)
     } catch {
       setStatus(null)
     }
@@ -1418,6 +1429,7 @@ function SpeechToTextCard() {
 
   useEffect(() => {
     void refreshStatus()
+    window.nexus?.whisper?.models().then(setModels).catch(() => {})
   }, [refreshStatus])
 
   useEffect(() => {
@@ -1429,13 +1441,31 @@ function SpeechToTextCard() {
     setDownloading(true)
     setProgress(null)
     try {
-      await window.nexus?.whisper?.download()
+      await window.nexus?.whisper?.download(pendingModelId)
       await window.nexus?.whisper?.enable()
       await refreshStatus()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to set up local transcription.')
     } finally {
       setDownloading(false)
+      setProgress(null)
+    }
+  }
+
+  async function handleSwitchModel(nextModelId: string) {
+    if (!status || nextModelId === status.modelId) return
+    setPendingModelId(nextModelId)
+    setError(null)
+    setSwitching(true)
+    setProgress(null)
+    try {
+      await window.nexus?.whisper?.switchModel(nextModelId)
+      await refreshStatus()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to switch models.')
+      setPendingModelId(status.modelId)
+    } finally {
+      setSwitching(false)
       setProgress(null)
     }
   }
@@ -1469,6 +1499,8 @@ function SpeechToTextCard() {
   const progressPercent = progress && progress.totalBytes > 0
     ? Math.round((progress.receivedBytes / progress.totalBytes) * 100)
     : null
+  const busyDownloadingOrSwitching = downloading || switching
+  const selectedModel = models.find((m) => m.id === pendingModelId)
 
   return (
     <div className="sv-card">
@@ -1486,34 +1518,66 @@ function SpeechToTextCard() {
             <div className="sv-setting-label">Local (whisper.cpp)</div>
             <div className="sv-setting-desc">
               {status?.supported === false
-                ? "Not available on macOS yet — whisper.cpp doesn't publish a prebuilt server binary for it."
+                ? "Not available on macOS yet: whisper.cpp doesn't publish a prebuilt server binary for it."
                 : 'Runs on this machine, no API key needed. Falls back to your configured OpenAI provider when off.'}
             </div>
           </div>
-          {status?.supported !== false && (
-            status?.running ? (
+          {status?.supported !== false && status?.downloaded && (
+            status.running ? (
               <button className="sv-danger-btn" onClick={() => void handleDisable()} disabled={busy}>
                 {busy ? 'Stopping…' : 'Disable'}
               </button>
-            ) : status?.downloaded ? (
-              <button className="modal-btn-submit" onClick={() => void handleEnable()} disabled={busy}>
-                {busy ? 'Starting…' : 'Enable'}
-              </button>
             ) : (
-              <button className="modal-btn-submit" onClick={() => void handleDownloadAndEnable()} disabled={downloading}>
-                {downloading ? 'Downloading…' : 'Download & Enable'}
+              <button className="modal-btn-submit" onClick={() => void handleEnable()} disabled={busy || busyDownloadingOrSwitching}>
+                {busy ? 'Starting…' : 'Enable'}
               </button>
             )
           )}
         </div>
-        {downloading && (
-          <div className="sv-setting-desc" style={{ marginTop: 8 }}>
-            {progress
-              ? `${progress.phase === 'binary' ? 'Downloading whisper.cpp' : 'Downloading model'}${progressPercent !== null ? ` — ${progressPercent}%` : '…'}`
-              : 'Starting download…'}
+
+        {status?.supported !== false && (
+          <div className="sv-field" style={{ marginTop: 12 }}>
+            <label>Model</label>
+            <div className="sv-select-static">
+              <select
+                value={pendingModelId}
+                disabled={busyDownloadingOrSwitching}
+                onChange={(e) => {
+                  if (status?.downloaded) void handleSwitchModel(e.target.value)
+                  else setPendingModelId(e.target.value)
+                }}
+                style={{ width: '100%', background: 'transparent', border: 'none', color: 'inherit', font: 'inherit' }}
+              >
+                {models.map((m) => (
+                  <option key={m.id} value={m.id}>{m.label} ({formatBytes(m.approxSizeBytes)})</option>
+                ))}
+              </select>
+            </div>
+            {selectedModel && (
+              <div className="sv-setting-desc" style={{ marginTop: 4 }}>{selectedModel.description}</div>
+            )}
           </div>
         )}
-        {status?.running && (
+
+        {!status?.downloaded && status?.supported !== false && (
+          <button
+            className="modal-btn-submit"
+            style={{ marginTop: 12 }}
+            onClick={() => void handleDownloadAndEnable()}
+            disabled={downloading}
+          >
+            {downloading ? 'Downloading…' : 'Download & Enable'}
+          </button>
+        )}
+
+        {busyDownloadingOrSwitching && (
+          <div className="sv-setting-desc" style={{ marginTop: 8 }}>
+            {progress
+              ? `${progress.phase === 'binary' ? 'Downloading whisper.cpp' : 'Downloading model'}${progressPercent !== null ? `: ${progressPercent}%` : '…'}`
+              : switching ? 'Switching model…' : 'Starting download…'}
+          </div>
+        )}
+        {status?.running && !busyDownloadingOrSwitching && (
           <div className="sv-setting-desc" style={{ marginTop: 8, color: '#34d399' }}>
             <CheckOne size={13} /> Running locally on port {status.port}.
           </div>
