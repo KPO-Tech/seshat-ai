@@ -13,7 +13,7 @@ export type ChatAttachment = {
   local_path?: string
 }
 
-type UIPermissionMode = 'onRequest' | 'auto' | 'bypass'
+type UIExecutionMode = 'execute' | 'plan'
 
 type Props = {
   value: string
@@ -27,8 +27,8 @@ type Props = {
   statusText?: string
   selectedCorpusId?: string | null
   onCorpusChange?: (id: string | null) => void
-  permissionMode?: UIPermissionMode
-  onPermissionModeChange?: (mode: UIPermissionMode) => void
+  executionMode?: UIExecutionMode
+  onExecutionModeChange?: (mode: UIExecutionMode) => void
   projectPath?: string
   onProjectChange?: (path: string) => void
   attachments?: ChatAttachment[]
@@ -37,8 +37,14 @@ type Props = {
   isUploadingAttachments?: boolean
 }
 
-const PERMISSION_CYCLE: UIPermissionMode[] = ['onRequest', 'auto', 'bypass']
-const PERMISSION_LABEL: Record<UIPermissionMode, string> = { onRequest: 'Ask First', auto: 'Auto', bypass: 'Bypass' }
+// This button used to hold the permission-mode (Smart/Auto) toggle — that
+// one stays put in the chat top bar's shield button (ChatTopBar.tsx),
+// untouched. This slot is now a host-triggered execution-mode control:
+// forces the session into Plan mode (or back to Execute) independent of
+// whether the model itself decides to call enter_plan_mode. See
+// seshat-backend's Session.ForcePlanMode()/ClearPlanMode().
+const EXECUTION_CYCLE: UIExecutionMode[] = ['execute', 'plan']
+const EXECUTION_LABEL: Record<UIExecutionMode, string> = { execute: 'Execute', plan: 'Plan' }
 
 export function ChatInput({
   value,
@@ -52,8 +58,8 @@ export function ChatInput({
   statusText,
   selectedCorpusId,
   onCorpusChange,
-  permissionMode,
-  onPermissionModeChange,
+  executionMode,
+  onExecutionModeChange,
   projectPath,
   onProjectChange,
   attachments = [],
@@ -216,7 +222,7 @@ export function ChatInput({
             disabled={isUploadingAttachments}
             onClick={() => fileInputRef.current?.click()}
           >
-            <Plus size={18} />
+            <Plus size={15} />
           </button>
           <input
             ref={fileInputRef}
@@ -240,7 +246,7 @@ export function ChatInput({
                 }
               }}
             >
-              <FolderClose size={18} />
+              <FolderClose size={15} />
             </button>
             {projectLabel && (
               <>
@@ -261,7 +267,7 @@ export function ChatInput({
               title="Attach knowledge base"
               onClick={() => setCorpusDropdownOpen(v => !v)}
             >
-              <AtSign size={18} />
+              <AtSign size={15} />
             </button>
             {corpusDropdownOpen && (
               <div className="chat-corpus-dropdown">
@@ -285,7 +291,7 @@ export function ChatInput({
               </div>
             )}
           </div>
-          <button className="chat-tool-icon"><Voice size={18} /></button>
+          <button className="chat-tool-icon"><Voice size={15} /></button>
           {isStreaming && (
             <div className="chat-status-inline" aria-live="polite">
               <LoadingOne size={14} className="chat-status-spin" />
@@ -299,21 +305,22 @@ export function ChatInput({
             <button
               className="chat-auto-btn"
               onClick={() => {
-                if (!onPermissionModeChange) return
-                const current = permissionMode ?? 'onRequest'
-                const next = PERMISSION_CYCLE[(PERMISSION_CYCLE.indexOf(current) + 1) % PERMISSION_CYCLE.length]
-                onPermissionModeChange(next)
+                if (!onExecutionModeChange) return
+                const current = executionMode ?? 'execute'
+                const currentIndex = EXECUTION_CYCLE.indexOf(current)
+                const next = EXECUTION_CYCLE[(currentIndex + 1) % EXECUTION_CYCLE.length]
+                onExecutionModeChange(next)
               }}
-              title={`Permission: ${PERMISSION_LABEL[permissionMode ?? 'onRequest']} — click to cycle`}
-              data-mode={permissionMode ?? 'onRequest'}
+              title={`Mode: ${EXECUTION_LABEL[executionMode ?? 'execute']} — click to toggle`}
+              data-mode={executionMode ?? 'execute'}
             >
               <span className="chat-auto-dot" />
-              <span>{PERMISSION_LABEL[permissionMode ?? 'onRequest']}</span>
+              <span>{EXECUTION_LABEL[executionMode ?? 'execute']}</span>
             </button>
           )}
           {isStreaming ? (
             <button className="chat-stop-btn" onClick={onStop} type="button" title="Stop">
-              <CloseSmall size={18} />
+              <CloseSmall size={16} />
             </button>
           ) : (
             <button
@@ -321,7 +328,7 @@ export function ChatInput({
               onClick={() => value.trim() && onSend()}
               type="button"
             >
-              <Send size={18} theme={value.trim() ? 'filled' : 'outline'} />
+              <Send size={16} theme={value.trim() ? 'filled' : 'outline'} />
             </button>
           )}
         </div>
@@ -477,8 +484,8 @@ export const CHAT_INPUT_CSS = `
   background: var(--color-surface);
   border: 1px solid var(--color-border-subtle);
   color: var(--color-text);
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -545,8 +552,8 @@ export const CHAT_INPUT_CSS = `
 .chat-send-btn {
   background: var(--color-surface);
   color: var(--color-text-muted);
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   border: none;
   display: flex;
@@ -565,8 +572,8 @@ export const CHAT_INPUT_CSS = `
 .chat-stop-btn {
   background: var(--color-primary-subtle);
   color: var(--color-primary);
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   border: 1px solid var(--color-primary-hover);
   display: flex;
@@ -602,31 +609,22 @@ export const CHAT_INPUT_CSS = `
   transition: background 0.15s;
 }
 
-.chat-auto-btn[data-mode="onRequest"] {
-  border-color: color-mix(in srgb, var(--color-success) 32%, transparent);
-  color: var(--color-success);
-}
-
-.chat-auto-btn[data-mode="onRequest"] .chat-auto-dot {
-  background: var(--color-success);
-}
-
-.chat-auto-btn[data-mode="auto"] {
+.chat-auto-btn[data-mode="execute"] {
   border-color: color-mix(in srgb, var(--color-primary) 32%, transparent);
   color: var(--color-primary);
 }
 
-.chat-auto-btn[data-mode="auto"] .chat-auto-dot {
+.chat-auto-btn[data-mode="execute"] .chat-auto-dot {
   background: var(--color-primary);
 }
 
-.chat-auto-btn[data-mode="bypass"] {
-  border-color: color-mix(in srgb, var(--color-error) 32%, transparent);
-  color: var(--color-error);
+.chat-auto-btn[data-mode="plan"] {
+  border-color: color-mix(in srgb, #60a5fa 32%, transparent);
+  color: #60a5fa;
 }
 
-.chat-auto-btn[data-mode="bypass"] .chat-auto-dot {
-  background: var(--color-error);
+.chat-auto-btn[data-mode="plan"] .chat-auto-dot {
+  background: #60a5fa;
 }
 
 .chat-status-inline {

@@ -99,6 +99,18 @@ export function Conversation() {
     }
   }, [id, setPermissionMode])
 
+  // Host-forced execution mode ("plan"/"execute") — distinct from permission
+  // mode, and lives only on the ChatInput button, not the top-bar shield.
+  // Optimistically updates the session's live agent state so the control
+  // reflects the choice immediately, then persists it server-side; applied
+  // to the SDK session ahead of the *next* turn (see seshat-backend's
+  // Session.ForcePlanMode()/ClearPlanMode() wiring).
+  const handleExecutionModeSelect = useCallback((mode: 'execute' | 'plan') => {
+    if (!id) return
+    useSessionStore.getState().updateAgentState(id, { executionMode: mode })
+    void api.patch(`/sessions/${id}`, { execution_mode: mode }).catch(() => {})
+  }, [id])
+
   const handleProjectChange = useCallback((path: string) => {
     if (!id) return
     updateSession(id, { projectPath: path })
@@ -457,8 +469,8 @@ export function Conversation() {
             statusText={agentState.activeTool?.message || (isStreaming ? 'SeshatOS is running…' : undefined)}
             selectedCorpusId={selectedCorpusId}
             onCorpusChange={setSelectedCorpusId}
-            permissionMode={permissionMode}
-            onPermissionModeChange={handlePermissionModeSelect}
+            executionMode={agentState.executionMode === 'pair_programming' ? 'execute' : agentState.executionMode}
+            onExecutionModeChange={handleExecutionModeSelect}
             projectPath={session.projectPath}
             onProjectChange={handleProjectChange}
             attachments={attachments}
@@ -551,7 +563,7 @@ ${MESSAGE_ITEM_CSS}
 }
 
 .conv-input-area {
-  padding: 0 24px 32px;
+  padding: 0 24px 14px;
   background: linear-gradient(to top, var(--color-bg) 70%, transparent);
   flex-shrink: 0;
 }

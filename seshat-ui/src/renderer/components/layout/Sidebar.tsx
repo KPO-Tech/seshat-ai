@@ -11,7 +11,6 @@ import {
   Edit,
   EditTwo,
   Layers,
-  Robot,
 } from '@icon-park/react'
 import { useUIStore } from '@/stores/ui'
 import { useAuthStore } from '@/stores/auth'
@@ -167,13 +166,6 @@ export function Sidebar() {
             active={pathname === '/skills-creator'}
             onClick={() => navigate('/skills-creator')}
             accent
-          />
-          <SidebarItem
-            icon={<Robot theme="outline" size={20} />}
-            label="Agents"
-            collapsed={collapsed}
-            active={pathname === '/agents'}
-            onClick={() => navigate('/agents')}
           />
           <SidebarItem
             icon={<Layers theme="outline" size={20} />}
@@ -625,6 +617,7 @@ const SIDEBAR_CSS = `
 }
 
 .sb-footer {
+  margin-top: 20px;
   padding: 16px 12px 32px;
   border-top: 1px solid var(--color-border-subtle);
 }
