@@ -1,8 +1,10 @@
 import type { IpcMain, IpcMainInvokeEvent } from 'electron'
 import {
   getWhisperStatus,
-  downloadWhisper,
-  switchModel,
+  downloadDefaultModels,
+  downloadModel,
+  activateModel,
+  deleteModel,
   enableLocalWhisper,
   disableLocalWhisper,
   MODEL_CATALOG,
@@ -12,26 +14,37 @@ import {
 
 const PROGRESS_CHANNEL = 'whisper:progress'
 
+function forwardProgress(event: IpcMainInvokeEvent) {
+  return (progress: WhisperProgress) => {
+    if (!event.sender.isDestroyed()) {
+      event.sender.send(PROGRESS_CHANNEL, progress)
+    }
+  }
+}
+
 export function registerWhisperHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('whisper:status', () => getWhisperStatus())
 
   ipcMain.handle('whisper:models', () => MODEL_CATALOG)
 
-  ipcMain.handle('whisper:download', async (event: IpcMainInvokeEvent, modelId?: WhisperModelId) => {
-    await downloadWhisper(modelId, (progress: WhisperProgress) => {
-      if (!event.sender.isDestroyed()) {
-        event.sender.send(PROGRESS_CHANNEL, progress)
-      }
-    })
+  ipcMain.handle('whisper:download-defaults', async (event: IpcMainInvokeEvent) => {
+    await downloadDefaultModels(forwardProgress(event))
+    await enableLocalWhisper()
     return getWhisperStatus()
   })
 
-  ipcMain.handle('whisper:switch-model', async (event: IpcMainInvokeEvent, modelId: WhisperModelId) => {
-    await switchModel(modelId, (progress: WhisperProgress) => {
-      if (!event.sender.isDestroyed()) {
-        event.sender.send(PROGRESS_CHANNEL, progress)
-      }
-    })
+  ipcMain.handle('whisper:download-model', async (event: IpcMainInvokeEvent, modelId: WhisperModelId) => {
+    await downloadModel(modelId, forwardProgress(event))
+    return getWhisperStatus()
+  })
+
+  ipcMain.handle('whisper:activate-model', async (event: IpcMainInvokeEvent, modelId: WhisperModelId) => {
+    await activateModel(modelId, forwardProgress(event))
+    return getWhisperStatus()
+  })
+
+  ipcMain.handle('whisper:delete-model', async (_event: IpcMainInvokeEvent, modelId: WhisperModelId) => {
+    await deleteModel(modelId)
     return getWhisperStatus()
   })
 

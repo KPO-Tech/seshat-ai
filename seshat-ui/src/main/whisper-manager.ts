@@ -14,7 +14,7 @@ const WHISPER_RELEASE_BASE = `https://github.com/ggml-org/whisper.cpp/releases/d
 const MODEL_BASE_URL = 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main'
 const READY_POLL_INTERVAL_MS = 500
 const READY_TIMEOUT_MS = 30_000
-const SELECTED_MODEL_FILE = 'selected-model.json'
+const ACTIVE_MODEL_FILE = 'active-model.json'
 
 // Multilingual, non-quantized tiers only for now - quantized (q5/q8) variants
 // exist too but would clutter this first pass of the picker. Sizes are the
@@ -38,26 +38,31 @@ export const MODEL_CATALOG: WhisperModelInfo[] = [
   { id: 'large-v3', filename: 'ggml-large-v3.bin', label: 'Large v3', approxSizeBytes: 3_095_000_000, description: 'Best accuracy; largest download and slowest to run.' },
 ]
 
-const DEFAULT_MODEL_ID: WhisperModelId = 'small'
+// First-time setup downloads both of these together, so there's an
+// immediate fast/quality pair to compare without a second download - small
+// becomes the active one since it's the better default.
+const DEFAULT_MODEL_IDS: WhisperModelId[] = ['tiny', 'small']
+const DEFAULT_ACTIVE_MODEL_ID: WhisperModelId = 'small'
 
 function modelInfo(id: WhisperModelId): WhisperModelInfo {
-  return MODEL_CATALOG.find((m) => m.id === id) ?? MODEL_CATALOG.find((m) => m.id === DEFAULT_MODEL_ID)!
+  return MODEL_CATALOG.find((m) => m.id === id) ?? MODEL_CATALOG.find((m) => m.id === DEFAULT_ACTIVE_MODEL_ID)!
 }
 
 export type WhisperPhase = 'binary' | 'model'
 
 export type WhisperProgress = {
   phase: WhisperPhase
+  modelId?: WhisperModelId
   receivedBytes: number
   totalBytes: number
 }
 
 export type WhisperStatus = {
   supported: boolean
-  downloaded: boolean
   running: boolean
   port?: number
-  modelId: WhisperModelId
+  activeModelId: WhisperModelId
+  downloadedModelIds: WhisperModelId[]
 }
 
 let serverProcess: ChildProcess | null = null
@@ -67,9 +72,9 @@ function whisperDir() {
   return join(resolveRuntimeRoot(), 'whisper')
 }
 
-async function readSelectedModelId(): Promise<WhisperModelId> {
+async function readActiveModelId(): Promise<WhisperModelId> {
   try {
-    const raw = await readFile(join(whisperDir(), SELECTED_MODEL_FILE), 'utf-8')
+    const raw = await readFile(join(whisperDir(), ACTIVE_MODEL_FILE), 'utf-8')
     const parsed = JSON.parse(raw) as { modelId?: string }
     if (MODEL_CATALOG.some((m) => m.id === parsed.modelId)) {
       return parsed.modelId as WhisperModelId
@@ -77,16 +82,20 @@ async function readSelectedModelId(): Promise<WhisperModelId> {
   } catch {
     // no selection saved yet - fall through to the default
   }
-  return DEFAULT_MODEL_ID
+  return DEFAULT_ACTIVE_MODEL_ID
 }
 
-async function writeSelectedModelId(id: WhisperModelId): Promise<void> {
+async function writeActiveModelId(id: WhisperModelId): Promise<void> {
   await mkdir(whisperDir(), { recursive: true })
-  await writeFile(join(whisperDir(), SELECTED_MODEL_FILE), JSON.stringify({ modelId: id }), 'utf-8')
+  await writeFile(join(whisperDir(), ACTIVE_MODEL_FILE), JSON.stringify({ modelId: id }), 'utf-8')
 }
 
 function modelPath(id: WhisperModelId) {
   return join(whisperDir(), modelInfo(id).filename)
+}
+
+function downloadedModelIds(): WhisperModelId[] {
+  return MODEL_CATALOG.filter((m) => existsSync(modelPath(m.id))).map((m) => m.id)
 }
 
 type PlatformAsset = {
@@ -118,19 +127,16 @@ export function isWhisperSupported(): boolean {
 }
 
 export async function getWhisperStatus(): Promise<WhisperStatus> {
-  const binaryPath = serverBinaryPath()
-  const modelId = await readSelectedModelId()
-  const downloaded = !!binaryPath && existsSync(binaryPath) && existsSync(modelPath(modelId))
   return {
     supported: isWhisperSupported(),
-    downloaded,
     running: serverProcess != null,
     port: serverPort ?? undefined,
-    modelId,
+    activeModelId: await readActiveModelId(),
+    downloadedModelIds: downloadedModelIds(),
   }
 }
 
-async function downloadToFile(url: string, destPath: string, phase: WhisperPhase, onProgress?: (p: WhisperProgress) => void) {
+async function downloadToFile(url: string, destPath: string, onProgress?: (receivedBytes: number, totalBytes: number) => void) {
   const res = await fetch(url)
   if (!res.ok || !res.body) {
     throw new Error(`download failed (${res.status}): ${url}`)
@@ -149,7 +155,7 @@ async function downloadToFile(url: string, destPath: string, phase: WhisperPhase
       await new Promise<void>((resolve, reject) => {
         fileStream.write(value, (err) => (err ? reject(err) : resolve()))
       })
-      onProgress?.({ phase, receivedBytes, totalBytes })
+      onProgress?.(receivedBytes, totalBytes)
     }
   } finally {
     reader.releaseLock()
@@ -183,7 +189,8 @@ async function ensureBinaryDownloaded(onProgress?: (p: WhisperProgress) => void)
   await mkdir(binDir, { recursive: true })
 
   const archivePath = join(dir, asset.archiveName)
-  await downloadToFile(`${WHISPER_RELEASE_BASE}/${asset.archiveName}`, archivePath, 'binary', onProgress)
+  await downloadToFile(`${WHISPER_RELEASE_BASE}/${asset.archiveName}`, archivePath, (receivedBytes, totalBytes) =>
+    onProgress?.({ phase: 'binary', receivedBytes, totalBytes }))
   await extractArchive(archivePath, binDir)
   await unlink(archivePath).catch(() => {})
 
@@ -208,46 +215,58 @@ async function ensureBinaryDownloaded(onProgress?: (p: WhisperProgress) => void)
 async function ensureModelDownloaded(id: WhisperModelId, onProgress?: (p: WhisperProgress) => void): Promise<void> {
   const path = modelPath(id)
   if (existsSync(path)) return
-  await downloadToFile(`${MODEL_BASE_URL}/${modelInfo(id).filename}`, path, 'model', onProgress)
+  await downloadToFile(`${MODEL_BASE_URL}/${modelInfo(id).filename}`, path, (receivedBytes, totalBytes) =>
+    onProgress?.({ phase: 'model', modelId: id, receivedBytes, totalBytes }))
 }
 
 /**
- * Downloads the platform's whisper-server binary (if not already present)
- * plus the given model (if not already present), and records it as the
- * selected model. Only one model is kept on disk at a time - see
- * switchModel for changing the selection later.
+ * First-time setup: downloads the whisper-server binary plus both default
+ * models (tiny + small) so there's an immediate fast/quality pair to try,
+ * and makes small the active one.
  */
-export async function downloadWhisper(modelId: WhisperModelId = DEFAULT_MODEL_ID, onProgress?: (p: WhisperProgress) => void): Promise<void> {
+export async function downloadDefaultModels(onProgress?: (p: WhisperProgress) => void): Promise<void> {
+  await ensureBinaryDownloaded(onProgress)
+  for (const id of DEFAULT_MODEL_IDS) {
+    await ensureModelDownloaded(id, onProgress)
+  }
+  await writeActiveModelId(DEFAULT_ACTIVE_MODEL_ID)
+}
+
+/** Adds one more model to local storage, alongside whatever's already downloaded. */
+export async function downloadModel(modelId: WhisperModelId, onProgress?: (p: WhisperProgress) => void): Promise<void> {
   await ensureBinaryDownloaded(onProgress)
   await ensureModelDownloaded(modelId, onProgress)
-  await writeSelectedModelId(modelId)
 }
 
 /**
- * Switches to a different model: stops the server if it's running, removes
- * the previously selected model file (single-model-at-a-time storage - the
- * large tiers are multiple GB, not worth keeping several around), downloads
- * the new one if needed, and restarts the server if it had been running.
+ * Makes modelId the one whisper-server runs with. Downloads it first if it
+ * isn't already on disk. whisper-server has no hot model reload (--model is
+ * fixed at spawn time), so this restarts the process when it's running -
+ * nothing downloaded is deleted, multiple models can stay side by side.
  */
-export async function switchModel(modelId: WhisperModelId, onProgress?: (p: WhisperProgress) => void): Promise<void> {
-  const previous = await readSelectedModelId()
+export async function activateModel(modelId: WhisperModelId, onProgress?: (p: WhisperProgress) => void): Promise<void> {
   const wasRunning = serverProcess != null
   if (wasRunning) {
     stopWhisperServerProcess()
   }
 
   await ensureModelDownloaded(modelId, onProgress)
-  await writeSelectedModelId(modelId)
-
-  if (previous !== modelId) {
-    const previousPath = modelPath(previous)
-    if (existsSync(previousPath)) {
-      await unlink(previousPath).catch(() => {})
-    }
-  }
+  await writeActiveModelId(modelId)
 
   if (wasRunning) {
     await enableLocalWhisper()
+  }
+}
+
+/** Removes a downloaded model's file. Refuses to delete the active model - switch first. */
+export async function deleteModel(modelId: WhisperModelId): Promise<void> {
+  const active = await readActiveModelId()
+  if (modelId === active) {
+    throw new Error('Switch to a different model before deleting this one.')
+  }
+  const path = modelPath(modelId)
+  if (existsSync(path)) {
+    await unlink(path)
   }
 }
 
@@ -283,13 +302,13 @@ async function waitUntilReady(port: number): Promise<void> {
   throw new Error('whisper-server did not become ready in time')
 }
 
-/** Spawns whisper-server (if not already running) and tells seshat-backend where it is. */
+/** Spawns whisper-server (if not already running) using the active model, and tells seshat-backend where it is. */
 export async function enableLocalWhisper(): Promise<void> {
   if (serverProcess) return
 
   const binaryPath = serverBinaryPath()
   const status = await getWhisperStatus()
-  if (!status.supported || !binaryPath || !status.downloaded) {
+  if (!status.supported || !binaryPath || !status.downloadedModelIds.includes(status.activeModelId)) {
     throw new Error('whisper.cpp is not downloaded yet.')
   }
 
@@ -298,7 +317,7 @@ export async function enableLocalWhisper(): Promise<void> {
   const logStream = createWriteStream(logPath, { flags: 'a' })
 
   const child = spawn(binaryPath, [
-    '--model', modelPath(status.modelId),
+    '--model', modelPath(status.activeModelId),
     '--host', '127.0.0.1',
     '--port', String(port),
   ], {
@@ -339,7 +358,7 @@ export async function disableLocalWhisper(): Promise<void> {
   await callBackendAsCurrentUser('/settings/local-stt', 'PUT', { enabled: false, base_url: '' }).catch(() => {})
 }
 
-/** Best-effort kill with no backend call - used on app quit and before switching models. */
+/** Best-effort kill with no backend call - used on app quit and before switching the active model. */
 export function stopWhisperServerProcess(): void {
   if (!serverProcess) return
   const child = serverProcess
