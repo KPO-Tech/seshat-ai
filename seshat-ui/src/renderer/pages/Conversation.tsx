@@ -6,7 +6,6 @@ import { useUIStore } from '@/stores/ui'
 import { ChatTopBar, CHAT_TOP_BAR_CSS } from '@/components/chat/ChatTopBar'
 import { ChatInput, CHAT_INPUT_CSS, type ChatAttachment } from '@/components/chat/ChatInput'
 import { MessageItem, MESSAGE_ITEM_CSS, isRenderableMessage } from '@/components/chat/MessageItem'
-import { PlanModal } from '@/components/chat/plan/PlanModal'
 import { PlanArtifactCard } from '@/components/chat/plan/PlanArtifactCard'
 import { useChat } from '@/hooks/useChat'
 import { useProviders, fetchProviderModels } from '@/hooks/useProviders'
@@ -185,6 +184,16 @@ export function Conversation() {
     if (rightPanel.open && rightPanel.kind === 'agent' && rightPanel.sessionId === id) return
     openRightPanel({ kind: 'agent', title: 'Agent Monitor', sessionId: id, width: 380 })
   }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-open the plan review panel when the agent calls exit_plan_mode
+  // without a structured PlanDocument (no submit_plan) — PlanEditorPanel
+  // falls back to rendering the raw plan text in this case, so there's no
+  // inline PlanArtifactCard to click through first.
+  useEffect(() => {
+    if (!id || !isPlanPending || pendingPlan) return
+    if (rightPanel.open && rightPanel.kind === 'plan' && rightPanel.sessionId === id) return
+    openRightPanel({ kind: 'plan', title: 'Implementation Plan', sessionId: id, width: 520 })
+  }, [id, isPlanPending, pendingPlan]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-scroll on new messages and on each streaming token
   useEffect(() => {
@@ -434,9 +443,6 @@ export function Conversation() {
           <PlanArtifactCard plan={pendingPlan} sessionId={id} onProceed={handlePlanProceed} />
         </div>
       )}
-
-      {/* ── Plan modal fallback — for agents using exit_plan_mode without submit_plan ── */}
-      {id && isPlanPending && !pendingPlan && <PlanModal sessionId={id} />}
 
       {/* ── AskUser pending banner ── */}
       {pendingAskUser && pendingAskUser.type === 'tool_use' && pendingAskUser._prompt && (

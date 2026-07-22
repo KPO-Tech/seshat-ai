@@ -121,14 +121,22 @@ function renderPanelBody(panel: ReturnType<typeof useUIStore.getState>['rightPan
       const planPendingPermission = planSessionId
         ? useSessionStore.getState().getAgentState(planSessionId).pendingPermission
         : null
-      const pendingPerm = planPendingPermission?.toolName === 'exit_plan_mode'
+      const isExitPlanMode = planPendingPermission?.toolName === 'exit_plan_mode'
+      const pendingPerm = isExitPlanMode
         ? { toolUseId: planPendingPermission.toolUseId }
         : null
+      // No structured PlanDocument (agent called exit_plan_mode without
+      // submit_plan) — fall back to the raw plan text so PlanEditorPanel can
+      // still render the same annotate/comment review experience.
+      const rawContent = !panel.planId && isExitPlanMode
+        ? (planPendingPermission.toolInput.plan as string | undefined) ?? ''
+        : undefined
       return (
         <PlanEditorPanel
-          planId={panel.planId ?? ''}
+          planId={panel.planId}
           sessionId={planSessionId}
           pendingPermission={pendingPerm}
+          rawContent={rawContent}
         />
       )
     }
