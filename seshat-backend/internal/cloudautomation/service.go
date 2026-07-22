@@ -3,6 +3,9 @@ package cloudautomation
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"os"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -47,6 +50,44 @@ func (s *Service) Connect(ctx context.Context, userID, serverURL, deviceToken st
 		return nil, err
 	}
 	return s.Status(ctx)
+}
+
+// RegisterAndConnect self-registers this machine as a device with serverURL
+// using the caller's own session token (no device token exists yet — that's
+// what this call produces), then persists the result exactly like a manually
+// pasted token would via Connect. name defaults to the local hostname when
+// the caller doesn't supply one. Safe to call when already connected: it
+// just returns the existing status without registering a second device.
+func (s *Service) RegisterAndConnect(ctx context.Context, userID, serverURL, userToken, organizationID, name string) (*Status, error) {
+	if existing, err := s.Status(ctx); err == nil && existing.Connected {
+		return existing, nil
+	}
+
+	serverURL = strings.TrimSpace(serverURL)
+	userToken = strings.TrimSpace(userToken)
+	organizationID = strings.TrimSpace(organizationID)
+	if serverURL == "" || userToken == "" || organizationID == "" {
+		return nil, fmt.Errorf("server_url, session token and organization are required")
+	}
+	name = strings.TrimSpace(name)
+	if name == "" {
+		if hostname, err := os.Hostname(); err == nil && hostname != "" {
+			name = hostname
+		} else {
+			name = "seshat-backend device"
+		}
+	}
+
+	result, err := registerDevice(ctx, &http.Client{Timeout: 15 * time.Second}, serverURL, userToken, registerDeviceParams{
+		OrganizationID: organizationID,
+		Name:           name,
+		Platform:       runtime.GOOS,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("could not register this device: %w", err)
+	}
+
+	return s.Connect(ctx, userID, serverURL, result.Token)
 }
 
 func (s *Service) Disconnect(ctx context.Context) error {

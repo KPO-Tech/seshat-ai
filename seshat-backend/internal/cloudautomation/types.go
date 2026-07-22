@@ -42,6 +42,22 @@ type Device struct {
 	Status string `json:"status"`
 }
 
+// registerDeviceParams/registerDeviceResult mirror seshat-server's
+// automation.RegisterDeviceParams/RegisterDeviceResult (POST /api/v1/devices)
+// — the self-service, user-session-authenticated registration call, distinct
+// from the device-token-authenticated protocol Client wraps.
+type registerDeviceParams struct {
+	OrganizationID string `json:"organization_id"`
+	Name           string `json:"name"`
+	Platform       string `json:"platform"`
+	AppVersion     string `json:"app_version"`
+}
+
+type registerDeviceResult struct {
+	Device Device `json:"device"`
+	Token  string `json:"token"`
+}
+
 // Run mirrors seshat-server's Run schema — tracking fields only, never the
 // execution payload (see RunJob).
 type Run struct {

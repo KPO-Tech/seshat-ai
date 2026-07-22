@@ -127,6 +127,7 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	// helps/seshat-architecture-target.md.
 	apiV1.Handle("/automation/status", app.authMiddleware(http.HandlerFunc(app.handleAutomationStatus)))
 	apiV1.Handle("/automation/connect", app.authMiddleware(http.HandlerFunc(app.handleAutomationConnect)))
+	apiV1.Handle("/automation/register-device", app.authMiddleware(http.HandlerFunc(app.handleAutomationRegisterDevice)))
 	apiV1.Handle("/automation/disconnect", app.authMiddleware(http.HandlerFunc(app.handleAutomationDisconnect)))
 	apiV1.Handle("/automation/runs", app.authMiddleware(http.HandlerFunc(app.handleAutomationRuns)))
 
