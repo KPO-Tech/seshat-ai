@@ -17,7 +17,7 @@ const (
 
 // PermissionDecision carries a human's approve/deny choice for a pending
 // tool-permission request, plus an optional explanation. Reason is only
-// meaningful when Approved is false — it flows back to the model as the
+// meaningful when Approved is false: it flows back to the model as the
 // denied tool call's result text.
 type PermissionDecision struct {
 	Approved bool

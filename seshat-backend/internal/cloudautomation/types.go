@@ -43,8 +43,8 @@ type Device struct {
 }
 
 // registerDeviceParams/registerDeviceResult mirror seshat-server's
-// automation.RegisterDeviceParams/RegisterDeviceResult (POST /api/v1/devices)
-// — the self-service, user-session-authenticated registration call, distinct
+// automation.RegisterDeviceParams/RegisterDeviceResult (POST /api/v1/devices),
+// the self-service, user-session-authenticated registration call, distinct
 // from the device-token-authenticated protocol Client wraps.
 type registerDeviceParams struct {
 	OrganizationID string `json:"organization_id"`

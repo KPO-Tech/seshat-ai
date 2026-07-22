@@ -58,7 +58,7 @@ func (a *App) handleAutomationConnect(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, status)
 }
 
-// handleAutomationRegisterDevice — POST /api/v1/automation/register-device.
+// handleAutomationRegisterDevice: POST /api/v1/automation/register-device.
 // One-click pairing: registers this machine as a device using the caller's
 // existing authenticated session (no manual server_url/device_token entry),
 // only available when this backend is itself running in connected mode.
@@ -78,7 +78,7 @@ func (a *App) handleAutomationRegisterDevice(w http.ResponseWriter, r *http.Requ
 	var req struct {
 		Name string `json:"name"`
 	}
-	_ = json.NewDecoder(r.Body).Decode(&req) // name is optional — a missing/invalid body just means "use the default"
+	_ = json.NewDecoder(r.Body).Decode(&req) // name is optional; a missing/invalid body just means "use the default"
 
 	status, err := a.cloudAutomation.RegisterAndConnect(
 		r.Context(),

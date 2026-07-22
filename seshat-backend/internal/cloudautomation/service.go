@@ -53,7 +53,7 @@ func (s *Service) Connect(ctx context.Context, userID, serverURL, deviceToken st
 }
 
 // RegisterAndConnect self-registers this machine as a device with serverURL
-// using the caller's own session token (no device token exists yet — that's
+// using the caller's own session token (no device token exists yet; that's
 // what this call produces), then persists the result exactly like a manually
 // pasted token would via Connect. name defaults to the local hostname when
 // the caller doesn't supply one. Safe to call when already connected: it

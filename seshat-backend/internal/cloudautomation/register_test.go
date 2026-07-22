@@ -98,7 +98,7 @@ func TestRegisterAndConnectIsIdempotentWhenAlreadyConnected(t *testing.T) {
 		t.Fatalf("expected exactly one registration call, got %d", registerCalls)
 	}
 
-	// Already connected — a second call must be a no-op, not a second device.
+	// Already connected: a second call must be a no-op, not a second device.
 	status, err := service.RegisterAndConnect(context.Background(), "usr_1", fakeServer.URL, "tok", "org_1", "")
 	if err != nil {
 		t.Fatalf("second register and connect: %v", err)
