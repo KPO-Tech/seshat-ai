@@ -2,10 +2,10 @@ import { contextBridge, ipcRenderer } from 'electron'
 
 type WhisperStatus = {
   supported: boolean
-  downloaded: boolean
   running: boolean
   port?: number
-  modelId: string
+  activeModelId: string
+  downloadedModelIds: string[]
 }
 
 type WhisperModelInfo = {
@@ -18,6 +18,7 @@ type WhisperModelInfo = {
 
 type WhisperProgress = {
   phase: 'binary' | 'model'
+  modelId?: string
   receivedBytes: number
   totalBytes: number
 }
@@ -71,8 +72,10 @@ const nexusBridge = {
   whisper: {
     status: (): Promise<WhisperStatus> => ipcRenderer.invoke('whisper:status'),
     models: (): Promise<WhisperModelInfo[]> => ipcRenderer.invoke('whisper:models'),
-    download: (modelId?: string): Promise<WhisperStatus> => ipcRenderer.invoke('whisper:download', modelId),
-    switchModel: (modelId: string): Promise<WhisperStatus> => ipcRenderer.invoke('whisper:switch-model', modelId),
+    downloadDefaults: (): Promise<WhisperStatus> => ipcRenderer.invoke('whisper:download-defaults'),
+    downloadModel: (modelId: string): Promise<WhisperStatus> => ipcRenderer.invoke('whisper:download-model', modelId),
+    activateModel: (modelId: string): Promise<WhisperStatus> => ipcRenderer.invoke('whisper:activate-model', modelId),
+    deleteModel: (modelId: string): Promise<WhisperStatus> => ipcRenderer.invoke('whisper:delete-model', modelId),
     enable: (): Promise<WhisperStatus> => ipcRenderer.invoke('whisper:enable'),
     disable: (): Promise<WhisperStatus> => ipcRenderer.invoke('whisper:disable'),
     onProgress: (listener: (progress: WhisperProgress) => void) => {

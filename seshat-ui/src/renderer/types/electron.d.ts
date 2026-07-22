@@ -39,13 +39,15 @@ interface Window {
       onStreamEvent: (streamId: string, listener: (event: { name: string; data: Record<string, unknown> }) => void) => () => void
     }
     whisper?: {
-      status: () => Promise<{ supported: boolean; downloaded: boolean; running: boolean; port?: number; modelId: string }>
+      status: () => Promise<{ supported: boolean; running: boolean; port?: number; activeModelId: string; downloadedModelIds: string[] }>
       models: () => Promise<Array<{ id: string; filename: string; label: string; approxSizeBytes: number; description: string }>>
-      download: (modelId?: string) => Promise<{ supported: boolean; downloaded: boolean; running: boolean; port?: number; modelId: string }>
-      switchModel: (modelId: string) => Promise<{ supported: boolean; downloaded: boolean; running: boolean; port?: number; modelId: string }>
-      enable: () => Promise<{ supported: boolean; downloaded: boolean; running: boolean; port?: number; modelId: string }>
-      disable: () => Promise<{ supported: boolean; downloaded: boolean; running: boolean; port?: number; modelId: string }>
-      onProgress: (listener: (progress: { phase: 'binary' | 'model'; receivedBytes: number; totalBytes: number }) => void) => () => void
+      downloadDefaults: () => Promise<{ supported: boolean; running: boolean; port?: number; activeModelId: string; downloadedModelIds: string[] }>
+      downloadModel: (modelId: string) => Promise<{ supported: boolean; running: boolean; port?: number; activeModelId: string; downloadedModelIds: string[] }>
+      activateModel: (modelId: string) => Promise<{ supported: boolean; running: boolean; port?: number; activeModelId: string; downloadedModelIds: string[] }>
+      deleteModel: (modelId: string) => Promise<{ supported: boolean; running: boolean; port?: number; activeModelId: string; downloadedModelIds: string[] }>
+      enable: () => Promise<{ supported: boolean; running: boolean; port?: number; activeModelId: string; downloadedModelIds: string[] }>
+      disable: () => Promise<{ supported: boolean; running: boolean; port?: number; activeModelId: string; downloadedModelIds: string[] }>
+      onProgress: (listener: (progress: { phase: 'binary' | 'model'; modelId?: string; receivedBytes: number; totalBytes: number }) => void) => () => void
     }
     updates?: {
       checkNow: () => Promise<{ ok: boolean; error?: string }>
