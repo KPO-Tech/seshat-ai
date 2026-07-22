@@ -31,7 +31,7 @@ export function Sidebar() {
   const updateSession = useSessionStore((s) => s.updateSession)
   const user = useAuthStore((s) => s.user)
   const navigate = useNavigate()
-  const { pathname, search } = useLocation()
+  const { pathname } = useLocation()
   
   const [recentsOpen, setRecentsOpen] = useState(true)
   const [menuSessionId, setMenuSessionId] = useState<string | null>(null)
@@ -172,8 +172,8 @@ export function Sidebar() {
             icon={<Time theme="outline" size={20} />}
             label="Scheduling"
             collapsed={collapsed}
-            active={pathname === '/settings' && new URLSearchParams(search).get('tab') === 'cloud-automation'}
-            onClick={() => navigate('/settings?tab=cloud-automation')}
+            active={pathname === '/scheduling'}
+            onClick={() => navigate('/scheduling')}
           />
           <SidebarItem
             icon={<Layers theme="outline" size={20} />}
