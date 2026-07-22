@@ -205,13 +205,14 @@ export function Conversation() {
   useEffect(() => {
     if (!session?.draftPrompt || !session.id) return
     const draft = session.draftPrompt
-    updateSession(session.id, { draftPrompt: undefined })
+    const draftFileIds = session.draftFileIds
+    updateSession(session.id, { draftPrompt: undefined, draftFileIds: undefined })
     if (session.messages.length === 0) {
-      void sendMessage(draft)
+      void sendMessage(draft, { fileIds: draftFileIds })
       return
     }
     setInputValue(draft)
-  }, [sendMessage, session?.draftPrompt, session?.id, session?.messages.length, updateSession])
+  }, [sendMessage, session?.draftPrompt, session?.draftFileIds, session?.id, session?.messages.length, updateSession])
 
   const sessionHasData = Boolean(session && (session.messages.length > 0 || session.draftPrompt))
 

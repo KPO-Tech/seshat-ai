@@ -16,6 +16,11 @@ export type ChatSession = {
   workspacePath?: string
   projectPath?: string
   draftPrompt?: string
+  // File IDs already uploaded (via /sessions/:id/files) before this session's
+  // first message was sent - attached from the Home screen, where a session
+  // has to exist for the upload but the real send is deferred to
+  // Conversation.tsx's draftPrompt auto-send effect. See Home.tsx.
+  draftFileIds?: string[]
   planArtifact?: string
   // Active plan documents keyed by plan_id
   plans?: Record<string, PlanDocument>
