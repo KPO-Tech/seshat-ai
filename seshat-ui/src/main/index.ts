@@ -3,8 +3,10 @@ import { join } from 'path'
 import { registerSystemHandlers } from './ipc/system'
 import { registerSecureStoreHandlers } from './ipc/secure-store'
 import { registerBackendHandlers } from './ipc/backend'
+import { registerWhisperHandlers } from './ipc/whisper'
 import { resolveRuntimeRoot } from './runtime'
 import { startBackendSidecar, stopBackendSidecar } from './backend-process'
+import { stopWhisperServerProcess } from './whisper-manager'
 import { setupAutoUpdater } from './auto-update'
 
 function configureRuntimePaths() {
@@ -62,6 +64,7 @@ app.whenReady().then(async () => {
   registerSystemHandlers(ipcMain)
   registerSecureStoreHandlers(ipcMain)
   registerBackendHandlers(ipcMain)
+  registerWhisperHandlers(ipcMain)
 
   // Packaged Electron apps deny every permission request by default when no
   // handler is registered. The voice-input control needs the renderer's
@@ -96,5 +99,6 @@ app.on('window-all-closed', () => {
 })
 
 app.on('will-quit', () => {
+  stopWhisperServerProcess()
   stopBackendSidecar()
 })

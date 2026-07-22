@@ -328,6 +328,19 @@ async function startStream(event: IpcMainInvokeEvent, payload: StreamStartPayloa
   return { streamId }
 }
 
+// Authenticated backend call issued by the main process itself (not through
+// the renderer IPC bridge) - reuses the same stored session/trust handshake
+// as every renderer-originated call. Used by whisper-manager.ts to report
+// the local whisper-server's status to seshat-backend once it's spawned.
+export async function callBackendAsCurrentUser(path: string, method: string, body?: unknown) {
+  const session = await loadSession()
+  const payload = await performJSONRequest(path, method, body, session?.token)
+  if (!payload.ok) {
+    throw new Error(extractErrorMessage(payload))
+  }
+  return payload.data
+}
+
 export function registerBackendHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('auth:login', async (event, credentials: { email: string; password: string }) => {
     assertTrustedSender(event)

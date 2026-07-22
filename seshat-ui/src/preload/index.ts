@@ -46,6 +46,22 @@ const nexusBridge = {
       return () => ipcRenderer.removeListener('http:stream:event', handler)
     },
   },
+  whisper: {
+    status: (): Promise<{ supported: boolean; downloaded: boolean; running: boolean; port?: number }> =>
+      ipcRenderer.invoke('whisper:status'),
+    download: (): Promise<{ supported: boolean; downloaded: boolean; running: boolean; port?: number }> =>
+      ipcRenderer.invoke('whisper:download'),
+    enable: (): Promise<{ supported: boolean; downloaded: boolean; running: boolean; port?: number }> =>
+      ipcRenderer.invoke('whisper:enable'),
+    disable: (): Promise<{ supported: boolean; downloaded: boolean; running: boolean; port?: number }> =>
+      ipcRenderer.invoke('whisper:disable'),
+    onProgress: (listener: (progress: { phase: 'binary' | 'model'; receivedBytes: number; totalBytes: number }) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, progress: { phase: 'binary' | 'model'; receivedBytes: number; totalBytes: number }) =>
+        listener(progress)
+      ipcRenderer.on('whisper:progress', handler)
+      return () => ipcRenderer.removeListener('whisper:progress', handler)
+    },
+  },
   updates: {
     checkNow: (): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke('updates:check-now'),
     quitAndInstall: () => ipcRenderer.invoke('updates:quit-and-install'),
