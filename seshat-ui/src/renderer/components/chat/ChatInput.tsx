@@ -2,6 +2,7 @@ import { useRef, useEffect, useState, useCallback } from 'react'
 import { Plus, FolderClose, AtSign, Voice, Send, CheckCorrect, LoadingOne, CloseSmall, Close } from '@icon-park/react'
 import { api, ApiError } from '@/api/client'
 import type { Corpus } from '@/api/types'
+import { startWavRecording, type WavRecording } from '@/lib/wavRecorder'
 
 type SkillOption = { Name: string; DisplayName: string; Description: string; Source: string; UserInvocable?: boolean; IsHidden?: boolean }
 export type ChatAttachment = {
@@ -77,8 +78,7 @@ export function ChatInput({
   const corpusDropdownRef = useRef<HTMLDivElement>(null)
   const [recordingState, setRecordingState] = useState<'idle' | 'recording' | 'transcribing'>('idle')
   const [recordError, setRecordError] = useState<string | null>(null)
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const audioChunksRef = useRef<Blob[]>([])
+  const wavRecordingRef = useRef<WavRecording | null>(null)
   const micStreamRef = useRef<MediaStream | null>(null)
 
   useEffect(() => {
@@ -97,36 +97,33 @@ export function ChatInput({
     }
   }, [])
 
-  async function handleRecordingStopped(mimeType: string) {
-    micStreamRef.current?.getTracks().forEach((track) => track.stop())
-    micStreamRef.current = null
-    const chunks = audioChunksRef.current
-    audioChunksRef.current = []
-    if (chunks.length === 0) {
-      setRecordingState('idle')
-      return
-    }
-
-    setRecordingState('transcribing')
-    try {
-      const blob = new Blob(chunks, { type: mimeType || 'audio/webm' })
-      const form = new FormData()
-      form.append('audio', blob, 'recording.webm')
-      const result = await api.upload<{ text: string }>('/transcribe', form)
-      if (result.text) {
-        onChange(value.trim() ? `${value.trim()} ${result.text}` : result.text)
-      }
-    } catch (err) {
-      setRecordError(err instanceof ApiError ? err.message : 'Transcription failed.')
-    } finally {
-      setRecordingState('idle')
-    }
-  }
-
   async function handleMicClick() {
     if (recordingState === 'transcribing') return
+
     if (recordingState === 'recording') {
-      mediaRecorderRef.current?.stop()
+      setRecordingState('transcribing')
+      const blob = await wavRecordingRef.current?.stop()
+      wavRecordingRef.current = null
+      micStreamRef.current?.getTracks().forEach((track) => track.stop())
+      micStreamRef.current = null
+
+      if (!blob || blob.size <= 44) {
+        // Nothing but the WAV header was captured.
+        setRecordingState('idle')
+        return
+      }
+      try {
+        const form = new FormData()
+        form.append('audio', blob, 'recording.wav')
+        const result = await api.upload<{ text: string }>('/transcribe', form)
+        if (result.text) {
+          onChange(value.trim() ? `${value.trim()} ${result.text}` : result.text)
+        }
+      } catch (err) {
+        setRecordError(err instanceof ApiError ? err.message : 'Transcription failed.')
+      } finally {
+        setRecordingState('idle')
+      }
       return
     }
 
@@ -134,14 +131,7 @@ export function ChatInput({
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       micStreamRef.current = stream
-      const recorder = new MediaRecorder(stream)
-      audioChunksRef.current = []
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunksRef.current.push(e.data)
-      }
-      recorder.onstop = () => { void handleRecordingStopped(recorder.mimeType) }
-      mediaRecorderRef.current = recorder
-      recorder.start()
+      wavRecordingRef.current = startWavRecording(stream)
       setRecordingState('recording')
     } catch {
       setRecordError('Microphone access was denied.')
