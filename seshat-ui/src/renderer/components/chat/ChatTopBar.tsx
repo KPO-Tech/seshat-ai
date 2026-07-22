@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Browser, CheckCorrect, Shield, More, Robot } from '@icon-park/react'
+import { Browser, CheckCorrect, Shield, Robot } from '@icon-park/react'
 import { SelectorPill, SELECTOR_PILL_CSS } from '@/components/ui/SelectorPill'
 import { IconButton, ICON_BUTTON_CSS } from '@/components/ui/IconButton'
 import type { UIPermissionMode } from '@/stores/ui'
@@ -183,7 +183,6 @@ export function ChatTopBar({
             onClick={onToggleMonitor}
           />
         )}
-        <IconButton icon={<More size={18} />} variant="bordered" size={34} title="More options" />
       </div>
     </div>
   )

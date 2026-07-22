@@ -11,6 +11,7 @@ import {
   Edit,
   EditTwo,
   Layers,
+  Time,
 } from '@icon-park/react'
 import { useUIStore } from '@/stores/ui'
 import { useAuthStore } from '@/stores/auth'
@@ -30,7 +31,7 @@ export function Sidebar() {
   const updateSession = useSessionStore((s) => s.updateSession)
   const user = useAuthStore((s) => s.user)
   const navigate = useNavigate()
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
   
   const [recentsOpen, setRecentsOpen] = useState(true)
   const [menuSessionId, setMenuSessionId] = useState<string | null>(null)
@@ -166,6 +167,13 @@ export function Sidebar() {
             active={pathname === '/skills-creator'}
             onClick={() => navigate('/skills-creator')}
             accent
+          />
+          <SidebarItem
+            icon={<Time theme="outline" size={20} />}
+            label="Scheduling"
+            collapsed={collapsed}
+            active={pathname === '/settings' && new URLSearchParams(search).get('tab') === 'cloud-automation'}
+            onClick={() => navigate('/settings?tab=cloud-automation')}
           />
           <SidebarItem
             icon={<Layers theme="outline" size={20} />}
