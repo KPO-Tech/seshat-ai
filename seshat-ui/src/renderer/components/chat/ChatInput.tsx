@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { Plus, FolderClose, AtSign, Voice, Send, CheckCorrect, LoadingOne, CloseSmall, Close } from '@icon-park/react'
-import { api } from '@/api/client'
+import { api, ApiError } from '@/api/client'
 import type { Corpus } from '@/api/types'
 
 type SkillOption = { Name: string; DisplayName: string; Description: string; Source: string; UserInvocable?: boolean; IsHidden?: boolean }
@@ -75,6 +75,11 @@ export function ChatInput({
   const [corpora, setCorpora] = useState<Corpus[]>([])
   const [corpusDropdownOpen, setCorpusDropdownOpen] = useState(false)
   const corpusDropdownRef = useRef<HTMLDivElement>(null)
+  const [recordingState, setRecordingState] = useState<'idle' | 'recording' | 'transcribing'>('idle')
+  const [recordError, setRecordError] = useState<string | null>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
+  const micStreamRef = useRef<MediaStream | null>(null)
 
   useEffect(() => {
     api.get<{ skills: SkillOption[] }>('/skills')
@@ -84,6 +89,64 @@ export function ChatInput({
       .then(d => setCorpora(d.corpora ?? []))
       .catch(() => {})
   }, [])
+
+  // Release the mic if the component unmounts mid-recording.
+  useEffect(() => {
+    return () => {
+      micStreamRef.current?.getTracks().forEach((track) => track.stop())
+    }
+  }, [])
+
+  async function handleRecordingStopped(mimeType: string) {
+    micStreamRef.current?.getTracks().forEach((track) => track.stop())
+    micStreamRef.current = null
+    const chunks = audioChunksRef.current
+    audioChunksRef.current = []
+    if (chunks.length === 0) {
+      setRecordingState('idle')
+      return
+    }
+
+    setRecordingState('transcribing')
+    try {
+      const blob = new Blob(chunks, { type: mimeType || 'audio/webm' })
+      const form = new FormData()
+      form.append('audio', blob, 'recording.webm')
+      const result = await api.upload<{ text: string }>('/transcribe', form)
+      if (result.text) {
+        onChange(value.trim() ? `${value.trim()} ${result.text}` : result.text)
+      }
+    } catch (err) {
+      setRecordError(err instanceof ApiError ? err.message : 'Transcription failed.')
+    } finally {
+      setRecordingState('idle')
+    }
+  }
+
+  async function handleMicClick() {
+    if (recordingState === 'transcribing') return
+    if (recordingState === 'recording') {
+      mediaRecorderRef.current?.stop()
+      return
+    }
+
+    setRecordError(null)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      micStreamRef.current = stream
+      const recorder = new MediaRecorder(stream)
+      audioChunksRef.current = []
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data)
+      }
+      recorder.onstop = () => { void handleRecordingStopped(recorder.mimeType) }
+      mediaRecorderRef.current = recorder
+      recorder.start()
+      setRecordingState('recording')
+    } catch {
+      setRecordError('Microphone access was denied.')
+    }
+  }
 
   // Close corpus dropdown on outside click
   useEffect(() => {
@@ -291,7 +354,24 @@ export function ChatInput({
               </div>
             )}
           </div>
-          <button className="chat-tool-icon"><Voice size={15} /></button>
+          <button
+            className={`chat-tool-icon${recordingState === 'recording' ? ' chat-tool-icon-recording' : ''}`}
+            type="button"
+            title={
+              recordingState === 'recording'
+                ? 'Stop recording'
+                : recordingState === 'transcribing'
+                  ? 'Transcribing…'
+                  : 'Record a voice message'
+            }
+            disabled={recordingState === 'transcribing'}
+            onClick={() => void handleMicClick()}
+          >
+            {recordingState === 'transcribing'
+              ? <LoadingOne size={15} className="chat-status-spin" />
+              : <Voice size={15} />}
+          </button>
+          {recordError && <span className="chat-record-error">{recordError}</span>}
           {isStreaming && (
             <div className="chat-status-inline" aria-live="polite">
               <LoadingOne size={14} className="chat-status-spin" />
@@ -513,6 +593,30 @@ export const CHAT_INPUT_CSS = `
   display: flex;
   align-items: center;
   transition: color 0.15s;
+}
+
+.chat-tool-icon:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.chat-tool-icon-recording {
+  color: #f87171 !important;
+  animation: chat-mic-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes chat-mic-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+.chat-record-error {
+  font-size: 11px;
+  color: #f87171;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
 }
 
 .chat-tool-icon:hover {
