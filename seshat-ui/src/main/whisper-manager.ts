@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from 'child_process'
 import { createWriteStream, existsSync } from 'fs'
-import { mkdir, chmod, readdir, stat } from 'fs/promises'
+import { mkdir, chmod, readdir, stat, readFile, writeFile, unlink } from 'fs/promises'
 import { join } from 'path'
 import { createServer } from 'net'
 import { resolveRuntimeRoot } from './runtime'
@@ -11,10 +11,38 @@ import { callBackendAsCurrentUser } from './ipc/backend'
 // transcription is Windows/Linux only until that changes.
 const WHISPER_RELEASE_TAG = 'v1.9.1'
 const WHISPER_RELEASE_BASE = `https://github.com/ggml-org/whisper.cpp/releases/download/${WHISPER_RELEASE_TAG}`
-const MODEL_NAME = 'ggml-base.bin'
-const MODEL_URL = `https://huggingface.co/ggerganov/whisper.cpp/resolve/main/${MODEL_NAME}`
+const MODEL_BASE_URL = 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main'
 const READY_POLL_INTERVAL_MS = 500
 const READY_TIMEOUT_MS = 30_000
+const SELECTED_MODEL_FILE = 'selected-model.json'
+
+// Multilingual, non-quantized tiers only for now - quantized (q5/q8) variants
+// exist too but would clutter this first pass of the picker. Sizes are the
+// real download sizes as of whisper.cpp's ggerganov/whisper.cpp HF repo.
+export type WhisperModelId = 'tiny' | 'base' | 'small' | 'medium' | 'large-v3-turbo' | 'large-v3'
+
+export type WhisperModelInfo = {
+  id: WhisperModelId
+  filename: string
+  label: string
+  approxSizeBytes: number
+  description: string
+}
+
+export const MODEL_CATALOG: WhisperModelInfo[] = [
+  { id: 'tiny', filename: 'ggml-tiny.bin', label: 'Tiny', approxSizeBytes: 77_700_000, description: 'Fastest, least accurate - good for quick drafts.' },
+  { id: 'base', filename: 'ggml-base.bin', label: 'Base', approxSizeBytes: 148_000_000, description: 'Fast, modest accuracy.' },
+  { id: 'small', filename: 'ggml-small.bin', label: 'Small', approxSizeBytes: 487_600_000, description: 'Good balance of speed and accuracy - recommended default.' },
+  { id: 'medium', filename: 'ggml-medium.bin', label: 'Medium', approxSizeBytes: 1_533_800_000, description: 'High accuracy, noticeably slower.' },
+  { id: 'large-v3-turbo', filename: 'ggml-large-v3-turbo.bin', label: 'Large v3 Turbo', approxSizeBytes: 1_624_600_000, description: 'Near large-v3 accuracy at roughly half the compute cost.' },
+  { id: 'large-v3', filename: 'ggml-large-v3.bin', label: 'Large v3', approxSizeBytes: 3_095_000_000, description: 'Best accuracy; largest download and slowest to run.' },
+]
+
+const DEFAULT_MODEL_ID: WhisperModelId = 'small'
+
+function modelInfo(id: WhisperModelId): WhisperModelInfo {
+  return MODEL_CATALOG.find((m) => m.id === id) ?? MODEL_CATALOG.find((m) => m.id === DEFAULT_MODEL_ID)!
+}
 
 export type WhisperPhase = 'binary' | 'model'
 
@@ -29,6 +57,7 @@ export type WhisperStatus = {
   downloaded: boolean
   running: boolean
   port?: number
+  modelId: WhisperModelId
 }
 
 let serverProcess: ChildProcess | null = null
@@ -38,8 +67,26 @@ function whisperDir() {
   return join(resolveRuntimeRoot(), 'whisper')
 }
 
-function modelPath() {
-  return join(whisperDir(), MODEL_NAME)
+async function readSelectedModelId(): Promise<WhisperModelId> {
+  try {
+    const raw = await readFile(join(whisperDir(), SELECTED_MODEL_FILE), 'utf-8')
+    const parsed = JSON.parse(raw) as { modelId?: string }
+    if (MODEL_CATALOG.some((m) => m.id === parsed.modelId)) {
+      return parsed.modelId as WhisperModelId
+    }
+  } catch {
+    // no selection saved yet - fall through to the default
+  }
+  return DEFAULT_MODEL_ID
+}
+
+async function writeSelectedModelId(id: WhisperModelId): Promise<void> {
+  await mkdir(whisperDir(), { recursive: true })
+  await writeFile(join(whisperDir(), SELECTED_MODEL_FILE), JSON.stringify({ modelId: id }), 'utf-8')
+}
+
+function modelPath(id: WhisperModelId) {
+  return join(whisperDir(), modelInfo(id).filename)
 }
 
 type PlatformAsset = {
@@ -72,12 +119,14 @@ export function isWhisperSupported(): boolean {
 
 export async function getWhisperStatus(): Promise<WhisperStatus> {
   const binaryPath = serverBinaryPath()
-  const downloaded = !!binaryPath && existsSync(binaryPath) && existsSync(modelPath())
+  const modelId = await readSelectedModelId()
+  const downloaded = !!binaryPath && existsSync(binaryPath) && existsSync(modelPath(modelId))
   return {
     supported: isWhisperSupported(),
     downloaded,
     running: serverProcess != null,
     port: serverPort ?? undefined,
+    modelId,
   }
 }
 
@@ -121,18 +170,13 @@ function extractArchive(archivePath: string, destDir: string): Promise<void> {
   })
 }
 
-/**
- * Downloads the platform's prebuilt whisper.cpp archive plus a default
- * ggml model, and extracts the archive - everything needed to spawn
- * whisper-server locally, no compilation and no extra runtime deps
- * (extraction shells out to the OS's own tar, which also handles .zip via
- * libarchive on Windows/Linux; no bundled unzip library needed).
- */
-export async function downloadWhisper(onProgress?: (p: WhisperProgress) => void): Promise<void> {
+async function ensureBinaryDownloaded(onProgress?: (p: WhisperProgress) => void): Promise<void> {
   const asset = platformAsset()
   if (!asset) {
     throw new Error('Local transcription is not available on this platform yet.')
   }
+  const binaryPath = serverBinaryPath()
+  if (binaryPath && existsSync(binaryPath)) return
 
   const dir = whisperDir()
   const binDir = join(dir, 'bin')
@@ -141,16 +185,17 @@ export async function downloadWhisper(onProgress?: (p: WhisperProgress) => void)
   const archivePath = join(dir, asset.archiveName)
   await downloadToFile(`${WHISPER_RELEASE_BASE}/${asset.archiveName}`, archivePath, 'binary', onProgress)
   await extractArchive(archivePath, binDir)
+  await unlink(archivePath).catch(() => {})
 
-  const binaryPath = join(binDir, asset.binaryRelPath)
-  if (!existsSync(binaryPath)) {
-    throw new Error(`whisper-server binary not found after extraction (expected at ${binaryPath})`)
+  const resolvedBinaryPath = join(binDir, asset.binaryRelPath)
+  if (!existsSync(resolvedBinaryPath)) {
+    throw new Error(`whisper-server binary not found after extraction (expected at ${resolvedBinaryPath})`)
   }
   if (process.platform !== 'win32') {
-    await chmod(binaryPath, 0o755)
+    await chmod(resolvedBinaryPath, 0o755)
     // Shared libraries in the same folder also need to stay executable/readable;
     // tar preserves their original perms, but be defensive on stricter umasks.
-    const siblingDir = join(binaryPath, '..')
+    const siblingDir = join(resolvedBinaryPath, '..')
     const entries = await readdir(siblingDir).catch(() => [])
     for (const entry of entries) {
       const full = join(siblingDir, entry)
@@ -158,8 +203,52 @@ export async function downloadWhisper(onProgress?: (p: WhisperProgress) => void)
       if (info?.isFile()) await chmod(full, 0o755).catch(() => {})
     }
   }
+}
 
-  await downloadToFile(MODEL_URL, modelPath(), 'model', onProgress)
+async function ensureModelDownloaded(id: WhisperModelId, onProgress?: (p: WhisperProgress) => void): Promise<void> {
+  const path = modelPath(id)
+  if (existsSync(path)) return
+  await downloadToFile(`${MODEL_BASE_URL}/${modelInfo(id).filename}`, path, 'model', onProgress)
+}
+
+/**
+ * Downloads the platform's whisper-server binary (if not already present)
+ * plus the given model (if not already present), and records it as the
+ * selected model. Only one model is kept on disk at a time - see
+ * switchModel for changing the selection later.
+ */
+export async function downloadWhisper(modelId: WhisperModelId = DEFAULT_MODEL_ID, onProgress?: (p: WhisperProgress) => void): Promise<void> {
+  await ensureBinaryDownloaded(onProgress)
+  await ensureModelDownloaded(modelId, onProgress)
+  await writeSelectedModelId(modelId)
+}
+
+/**
+ * Switches to a different model: stops the server if it's running, removes
+ * the previously selected model file (single-model-at-a-time storage - the
+ * large tiers are multiple GB, not worth keeping several around), downloads
+ * the new one if needed, and restarts the server if it had been running.
+ */
+export async function switchModel(modelId: WhisperModelId, onProgress?: (p: WhisperProgress) => void): Promise<void> {
+  const previous = await readSelectedModelId()
+  const wasRunning = serverProcess != null
+  if (wasRunning) {
+    stopWhisperServerProcess()
+  }
+
+  await ensureModelDownloaded(modelId, onProgress)
+  await writeSelectedModelId(modelId)
+
+  if (previous !== modelId) {
+    const previousPath = modelPath(previous)
+    if (existsSync(previousPath)) {
+      await unlink(previousPath).catch(() => {})
+    }
+  }
+
+  if (wasRunning) {
+    await enableLocalWhisper()
+  }
 }
 
 function findFreePort(): Promise<number> {
@@ -209,7 +298,7 @@ export async function enableLocalWhisper(): Promise<void> {
   const logStream = createWriteStream(logPath, { flags: 'a' })
 
   const child = spawn(binaryPath, [
-    '--model', modelPath(),
+    '--model', modelPath(status.modelId),
     '--host', '127.0.0.1',
     '--port', String(port),
   ], {
@@ -250,7 +339,7 @@ export async function disableLocalWhisper(): Promise<void> {
   await callBackendAsCurrentUser('/settings/local-stt', 'PUT', { enabled: false, base_url: '' }).catch(() => {})
 }
 
-/** Best-effort kill with no backend call - used on app quit. */
+/** Best-effort kill with no backend call - used on app quit and before switching models. */
 export function stopWhisperServerProcess(): void {
   if (!serverProcess) return
   const child = serverProcess

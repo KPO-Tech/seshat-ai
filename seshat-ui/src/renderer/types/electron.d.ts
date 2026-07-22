@@ -39,10 +39,12 @@ interface Window {
       onStreamEvent: (streamId: string, listener: (event: { name: string; data: Record<string, unknown> }) => void) => () => void
     }
     whisper?: {
-      status: () => Promise<{ supported: boolean; downloaded: boolean; running: boolean; port?: number }>
-      download: () => Promise<{ supported: boolean; downloaded: boolean; running: boolean; port?: number }>
-      enable: () => Promise<{ supported: boolean; downloaded: boolean; running: boolean; port?: number }>
-      disable: () => Promise<{ supported: boolean; downloaded: boolean; running: boolean; port?: number }>
+      status: () => Promise<{ supported: boolean; downloaded: boolean; running: boolean; port?: number; modelId: string }>
+      models: () => Promise<Array<{ id: string; filename: string; label: string; approxSizeBytes: number; description: string }>>
+      download: (modelId?: string) => Promise<{ supported: boolean; downloaded: boolean; running: boolean; port?: number; modelId: string }>
+      switchModel: (modelId: string) => Promise<{ supported: boolean; downloaded: boolean; running: boolean; port?: number; modelId: string }>
+      enable: () => Promise<{ supported: boolean; downloaded: boolean; running: boolean; port?: number; modelId: string }>
+      disable: () => Promise<{ supported: boolean; downloaded: boolean; running: boolean; port?: number; modelId: string }>
       onProgress: (listener: (progress: { phase: 'binary' | 'model'; receivedBytes: number; totalBytes: number }) => void) => () => void
     }
     updates?: {
