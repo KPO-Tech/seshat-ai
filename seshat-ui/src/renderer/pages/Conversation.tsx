@@ -98,7 +98,7 @@ export function Conversation() {
     }
   }, [id, setPermissionMode])
 
-  // Host-forced execution mode ("plan"/"execute") — distinct from permission
+  // Host-forced execution mode ("plan"/"execute"), distinct from permission
   // mode, and lives only on the ChatInput button, not the top-bar shield.
   // Optimistically updates the session's live agent state so the control
   // reflects the choice immediately, then persists it server-side; applied
@@ -186,7 +186,7 @@ export function Conversation() {
   }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-open the plan review panel when the agent calls exit_plan_mode
-  // without a structured PlanDocument (no submit_plan) — PlanEditorPanel
+  // without a structured PlanDocument (no submit_plan): PlanEditorPanel
   // falls back to rendering the raw plan text in this case, so there's no
   // inline PlanArtifactCard to click through first.
   useEffect(() => {

@@ -126,7 +126,7 @@ function renderPanelBody(panel: ReturnType<typeof useUIStore.getState>['rightPan
         ? { toolUseId: planPendingPermission.toolUseId }
         : null
       // No structured PlanDocument (agent called exit_plan_mode without
-      // submit_plan) — fall back to the raw plan text so PlanEditorPanel can
+      // submit_plan): fall back to the raw plan text so PlanEditorPanel can
       // still render the same annotate/comment review experience.
       const rawContent = !panel.planId && isExitPlanMode
         ? (planPendingPermission.toolInput.plan as string | undefined) ?? ''

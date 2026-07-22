@@ -471,7 +471,7 @@ type Annotation = {
 
 type Props = {
   // planId is set when the agent submitted a structured plan document via
-  // submit_plan — content is fetched/persisted through /plans/:id. When
+  // submit_plan; content is fetched/persisted through /plans/:id. When
   // absent, rawContent carries the plain-text plan from exit_plan_mode's
   // toolInput.plan instead: same review experience (markdown, annotations,
   // comments), just nothing to persist server-side, so editing is disabled.
@@ -636,7 +636,7 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
 
   // Reject and "send feedback" are the same action: deny exit_plan_mode and
   // attach whatever feedback was collected as the deny reason, so the model
-  // sees it as the tool's rejection text and revises within the same turn —
+  // sees it as the tool's rejection text and revises within the same turn,
   // no new user message/turn required. An empty reason is just a plain no.
   async function handleDeny() {
     if (sending || !pendingPermission) return

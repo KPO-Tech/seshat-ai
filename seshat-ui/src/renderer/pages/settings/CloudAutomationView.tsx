@@ -60,8 +60,8 @@ export function CloudAutomationView() {
     api.get<SystemStatus>('/system/status').then(setSystemStatus).catch(() => setSystemStatus(null))
   }, [])
 
-  // This machine is already logged into its organization's Seshat Server —
-  // one click registers it as a device using that existing session, no
+  // This machine is already logged into its organization's Seshat Server,
+  // so one click registers it as a device using that existing session, no
   // manual server_url/device_token copy-paste required.
   async function handleRegisterDevice() {
     setRegistering(true)
@@ -214,7 +214,7 @@ export function CloudAutomationView() {
               </div>
               <div className="sv-card-body">
                 <div className="sv-setting-desc">
-                  You're already signed in to your organization's Seshat Server — one click enrolls this
+                  You're already signed in to your organization's Seshat Server. One click enrolls this
                   machine so it can run jobs assigned to it. No separate token to copy.
                 </div>
                 <button className="modal-btn-submit" onClick={() => void handleRegisterDevice()} disabled={registering}>

@@ -37,7 +37,7 @@ type Props = {
   isUploadingAttachments?: boolean
 }
 
-// This button used to hold the permission-mode (Smart/Auto) toggle — that
+// This button used to hold the permission-mode (Smart/Auto) toggle; that
 // one stays put in the chat top bar's shield button (ChatTopBar.tsx),
 // untouched. This slot is now a host-triggered execution-mode control:
 // forces the session into Plan mode (or back to Execute) independent of
@@ -311,7 +311,7 @@ export function ChatInput({
                 const next = EXECUTION_CYCLE[(currentIndex + 1) % EXECUTION_CYCLE.length]
                 onExecutionModeChange(next)
               }}
-              title={`Mode: ${EXECUTION_LABEL[executionMode ?? 'execute']} — click to toggle`}
+              title={`Mode: ${EXECUTION_LABEL[executionMode ?? 'execute']} (click to toggle)`}
               data-mode={executionMode ?? 'execute'}
             >
               <span className="chat-auto-dot" />
