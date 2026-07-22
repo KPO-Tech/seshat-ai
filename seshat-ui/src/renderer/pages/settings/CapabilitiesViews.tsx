@@ -1393,37 +1393,138 @@ function MultimodalPanel() {
         </div>
       </div>
 
-      <div className="sv-card">
-        <div className="sv-card-head">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div className="sv-card-brand">
-              <div>
-                <div className="sv-brand-name">Speech to Text</div>
-                <div className="sv-brand-sub">Voice input provider for chat on desktop and WebUI</div>
-              </div>
-            </div>
-            <input type="checkbox" defaultChecked />
-          </div>
-        </div>
-        <div className="sv-card-body">
-          <div className="sv-field">
-            <label>Provider</label>
-            <div className="sv-select-static">
-              <div className="sv-select-box">
-                <span>OpenAI Whisper</span>
-                <Down size={16} />
-              </div>
-            </div>
-          </div>
-          <div className="sv-field">
-            <label>API Key</label>
-            <div className="sv-input-box">
-              <input type="password" placeholder="••••••••" />
-            </div>
+      <SpeechToTextCard />
+    </>
+  )
+}
+
+type WhisperStatus = { supported: boolean; downloaded: boolean; running: boolean; port?: number }
+type WhisperProgress = { phase: 'binary' | 'model'; receivedBytes: number; totalBytes: number }
+
+function SpeechToTextCard() {
+  const [status, setStatus] = useState<WhisperStatus | null>(null)
+  const [downloading, setDownloading] = useState(false)
+  const [progress, setProgress] = useState<WhisperProgress | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const refreshStatus = useCallback(async () => {
+    try {
+      setStatus((await window.nexus?.whisper?.status()) ?? null)
+    } catch {
+      setStatus(null)
+    }
+  }, [])
+
+  useEffect(() => {
+    void refreshStatus()
+  }, [refreshStatus])
+
+  useEffect(() => {
+    return window.nexus?.whisper?.onProgress?.(setProgress)
+  }, [])
+
+  async function handleDownloadAndEnable() {
+    setError(null)
+    setDownloading(true)
+    setProgress(null)
+    try {
+      await window.nexus?.whisper?.download()
+      await window.nexus?.whisper?.enable()
+      await refreshStatus()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to set up local transcription.')
+    } finally {
+      setDownloading(false)
+      setProgress(null)
+    }
+  }
+
+  async function handleEnable() {
+    setError(null)
+    setBusy(true)
+    try {
+      await window.nexus?.whisper?.enable()
+      await refreshStatus()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start local transcription.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleDisable() {
+    setError(null)
+    setBusy(true)
+    try {
+      await window.nexus?.whisper?.disable()
+      await refreshStatus()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to stop local transcription.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const progressPercent = progress && progress.totalBytes > 0
+    ? Math.round((progress.receivedBytes / progress.totalBytes) * 100)
+    : null
+
+  return (
+    <div className="sv-card">
+      <div className="sv-card-head">
+        <div className="sv-card-brand">
+          <div>
+            <div className="sv-brand-name">Speech to Text</div>
+            <div className="sv-brand-sub">Voice input transcription for the mic button in chat</div>
           </div>
         </div>
       </div>
-    </>
+      <div className="sv-card-body">
+        <div className="sv-toggle-row">
+          <div>
+            <div className="sv-setting-label">Local (whisper.cpp)</div>
+            <div className="sv-setting-desc">
+              {status?.supported === false
+                ? "Not available on macOS yet — whisper.cpp doesn't publish a prebuilt server binary for it."
+                : 'Runs on this machine, no API key needed. Falls back to your configured OpenAI provider when off.'}
+            </div>
+          </div>
+          {status?.supported !== false && (
+            status?.running ? (
+              <button className="sv-danger-btn" onClick={() => void handleDisable()} disabled={busy}>
+                {busy ? 'Stopping…' : 'Disable'}
+              </button>
+            ) : status?.downloaded ? (
+              <button className="modal-btn-submit" onClick={() => void handleEnable()} disabled={busy}>
+                {busy ? 'Starting…' : 'Enable'}
+              </button>
+            ) : (
+              <button className="modal-btn-submit" onClick={() => void handleDownloadAndEnable()} disabled={downloading}>
+                {downloading ? 'Downloading…' : 'Download & Enable'}
+              </button>
+            )
+          )}
+        </div>
+        {downloading && (
+          <div className="sv-setting-desc" style={{ marginTop: 8 }}>
+            {progress
+              ? `${progress.phase === 'binary' ? 'Downloading whisper.cpp' : 'Downloading model'}${progressPercent !== null ? ` — ${progressPercent}%` : '…'}`
+              : 'Starting download…'}
+          </div>
+        )}
+        {status?.running && (
+          <div className="sv-setting-desc" style={{ marginTop: 8, color: '#34d399' }}>
+            <CheckOne size={13} /> Running locally on port {status.port}.
+          </div>
+        )}
+        {error && (
+          <div className="sv-setting-desc" style={{ marginTop: 8, color: 'var(--color-error)' }}>
+            {error}
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 

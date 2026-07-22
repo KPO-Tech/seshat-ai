@@ -38,6 +38,13 @@ interface Window {
       cancelStream: (streamId: string) => Promise<void>
       onStreamEvent: (streamId: string, listener: (event: { name: string; data: Record<string, unknown> }) => void) => () => void
     }
+    whisper?: {
+      status: () => Promise<{ supported: boolean; downloaded: boolean; running: boolean; port?: number }>
+      download: () => Promise<{ supported: boolean; downloaded: boolean; running: boolean; port?: number }>
+      enable: () => Promise<{ supported: boolean; downloaded: boolean; running: boolean; port?: number }>
+      disable: () => Promise<{ supported: boolean; downloaded: boolean; running: boolean; port?: number }>
+      onProgress: (listener: (progress: { phase: 'binary' | 'model'; receivedBytes: number; totalBytes: number }) => void) => () => void
+    }
     updates?: {
       checkNow: () => Promise<{ ok: boolean; error?: string }>
       quitAndInstall: () => Promise<void>
