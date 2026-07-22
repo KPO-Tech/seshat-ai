@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, shell, ipcMain, globalShortcut, dialog } from 'electron'
+import { app, BrowserWindow, Menu, shell, ipcMain, globalShortcut, dialog, session } from 'electron'
 import { join } from 'path'
 import { registerSystemHandlers } from './ipc/system'
 import { registerSecureStoreHandlers } from './ipc/secure-store'
@@ -62,6 +62,16 @@ app.whenReady().then(async () => {
   registerSystemHandlers(ipcMain)
   registerSecureStoreHandlers(ipcMain)
   registerBackendHandlers(ipcMain)
+
+  // Packaged Electron apps deny every permission request by default when no
+  // handler is registered. The voice-input control needs the renderer's
+  // navigator.mediaDevices.getUserMedia({ audio: true }) to actually reach
+  // the OS mic prompt instead of silently failing, so allow only 'media'
+  // (mic/camera) here; everything else stays denied.
+  session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
+    callback(permission === 'media')
+  })
+  session.defaultSession.setPermissionCheckHandler((_webContents, permission) => permission === 'media')
 
   try {
     await startBackendSidecar()
