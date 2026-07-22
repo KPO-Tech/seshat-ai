@@ -26,6 +26,7 @@ export function Home() {
   const [loadingModelsFor, setLoadingModelsFor] = useState<string | null>(null)
   const [isCreatingSession, setIsCreatingSession] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [projectPath, setProjectPath] = useState('')
 
   const selectedProvider = providers.find((provider) => provider.id === selectedProviderId) ?? null
   // Use useMemo so the empty-array fallback is a stable reference across renders.
@@ -122,6 +123,14 @@ export function Home() {
         permission_mode: permissionMode,
       })
 
+      // Persist the chosen working folder before the conversation mounts and
+      // fires its first turn. Creation itself doesn't take project_path, so
+      // this has to land before navigate() or the first message could run
+      // against the default per-session workspace instead.
+      if (projectPath) {
+        await api.patch(`/sessions/${response.session_id}`, { project_path: projectPath }).catch(() => {})
+      }
+
       addSession({
         id: response.session_id,
         title: UNTITLED_SESSION_TITLE,
@@ -133,8 +142,10 @@ export function Home() {
         modelId: selectedModel.model_id,
         modelLabel: selectedModel.display_name || selectedModel.model_id,
         draftPrompt: prompt,
+        projectPath: projectPath || undefined,
       })
       setInputValue('')
+      setProjectPath('')
       navigate(`/conversation/${response.session_id}`)
     } catch (error) {
       setErrorMessage(
@@ -201,6 +212,8 @@ export function Home() {
             onSend={handleSend}
             placeholder="Send a message, upload files, open a folder, or create a scheduled task..."
             maxHeight={200}
+            projectPath={projectPath}
+            onProjectChange={setProjectPath}
           />
           <div className="home-input-hint">
             Press Enter to send, Shift + Enter for new line
