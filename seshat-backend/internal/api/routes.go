@@ -121,15 +121,18 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	apiV1.Handle("/plans", app.authMiddleware(http.HandlerFunc(app.handlePlans)))
 	apiV1.Handle("/plans/", app.authMiddleware(http.HandlerFunc(app.handlePlanByID)))
 
-	// Cloud automation: pairing + read-only visibility only. Job management
-	// (create/edit/pause/delete/trigger) happens exclusively in
-	// seshat-console once this machine is connected — see
+	// Cloud automation: pairing, plus job management (create/edit/pause/
+	// delete/trigger) proxied to seshat-server using the caller's own
+	// session token, the same way seshat-console calls it. See
 	// helps/seshat-architecture-target.md.
 	apiV1.Handle("/automation/status", app.authMiddleware(http.HandlerFunc(app.handleAutomationStatus)))
 	apiV1.Handle("/automation/connect", app.authMiddleware(http.HandlerFunc(app.handleAutomationConnect)))
 	apiV1.Handle("/automation/register-device", app.authMiddleware(http.HandlerFunc(app.handleAutomationRegisterDevice)))
 	apiV1.Handle("/automation/disconnect", app.authMiddleware(http.HandlerFunc(app.handleAutomationDisconnect)))
 	apiV1.Handle("/automation/runs", app.authMiddleware(http.HandlerFunc(app.handleAutomationRuns)))
+	apiV1.Handle("/automation/devices", app.authMiddleware(http.HandlerFunc(app.handleAutomationDevices)))
+	apiV1.Handle("/automation/jobs", app.authMiddleware(http.HandlerFunc(app.handleAutomationJobs)))
+	apiV1.Handle("/automation/jobs/", app.authMiddleware(http.HandlerFunc(app.handleAutomationJobDispatch)))
 
 	// Public: needed by the Login/Register screens before any session exists.
 	apiV1.HandleFunc("/system/status", app.handleSystemStatus)

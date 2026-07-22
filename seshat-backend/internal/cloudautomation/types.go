@@ -1,8 +1,10 @@
 // Package cloudautomation makes seshat-backend a real device client of
 // seshat-server's automation control plane (register/heartbeat/claim/
 // start/heartbeat/complete/fail — see helps/seshat-architecture-target.md).
-// Job management (create/edit/pause/delete/trigger) happens exclusively in
-// seshat-console; this package only ever executes what it's assigned.
+// It also proxies job management (create/edit/pause/delete/trigger) via
+// JobsClient, using the caller's own session token exactly like
+// seshat-console does; seshat-server enforces the same jobs.manage/
+// jobs.read permission check regardless of which client calls it.
 package cloudautomation
 
 import (
@@ -37,9 +39,11 @@ type Status struct {
 // Device mirrors seshat-server's Device schema — only the fields this
 // package actually uses.
 type Device struct {
-	ID     string `json:"id"`
-	Name   string `json:"name"`
-	Status string `json:"status"`
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	Platform   string `json:"platform,omitempty"`
+	Status     string `json:"status"`
+	LastSeenAt string `json:"last_seen_at,omitempty"`
 }
 
 // registerDeviceParams/registerDeviceResult mirror seshat-server's
@@ -61,9 +65,62 @@ type registerDeviceResult struct {
 // Run mirrors seshat-server's Run schema — tracking fields only, never the
 // execution payload (see RunJob).
 type Run struct {
-	ID     string `json:"id"`
-	JobID  string `json:"job_id"`
-	Status string `json:"status"`
+	ID               string `json:"id"`
+	JobID            string `json:"job_id"`
+	OrganizationID   string `json:"organization_id,omitempty"`
+	ExecutionTarget  string `json:"execution_target,omitempty"`
+	AssignedDeviceID string `json:"assigned_device_id,omitempty"`
+	Status           string `json:"status"`
+	QueuedAt         string `json:"queued_at,omitempty"`
+	ClaimedAt        string `json:"claimed_at,omitempty"`
+	StartedAt        string `json:"started_at,omitempty"`
+	LastHeartbeatAt  string `json:"last_heartbeat_at,omitempty"`
+	FinishedAt       string `json:"finished_at,omitempty"`
+	ExitReason       string `json:"exit_reason,omitempty"`
+	OutputText       string `json:"output_text,omitempty"`
+	ErrorText        string `json:"error_text,omitempty"`
+}
+
+// Job mirrors seshat-server's Job schema (automation.Job / openapi Job).
+type Job struct {
+	ID              string            `json:"id"`
+	OrganizationID  string            `json:"organization_id"`
+	CreatedByUserID string            `json:"created_by_user_id,omitempty"`
+	Name            string            `json:"name"`
+	Description     string            `json:"description,omitempty"`
+	Status          string            `json:"status"`
+	TriggerType     string            `json:"trigger_type"`
+	CronExpr        string            `json:"cron_expr,omitempty"`
+	IntervalSeconds int               `json:"interval_seconds,omitempty"`
+	RunAt           string            `json:"run_at,omitempty"`
+	NextRunAt       string            `json:"next_run_at,omitempty"`
+	LastRunAt       string            `json:"last_run_at,omitempty"`
+	LastRunStatus   string            `json:"last_run_status,omitempty"`
+	ExecutionTarget string            `json:"execution_target"`
+	TargetDeviceID  string            `json:"target_device_id,omitempty"`
+	Prompt          string            `json:"prompt"`
+	ModelOverride   string            `json:"model_override,omitempty"`
+	Configuration   map[string]string `json:"configuration,omitempty"`
+	CreatedAt       string            `json:"created_at,omitempty"`
+	UpdatedAt       string            `json:"updated_at,omitempty"`
+}
+
+// JobParams is the shared request shape for creating and updating a job,
+// mirroring seshat-server's CreateJobParams/UpdateJobParams (they differ
+// only by OrganizationID, which CreateJob takes as a separate argument here
+// since a job can never move between organizations).
+type JobParams struct {
+	Name            string            `json:"name"`
+	Description     string            `json:"description,omitempty"`
+	TriggerType     string            `json:"trigger_type"`
+	CronExpr        string            `json:"cron_expr,omitempty"`
+	IntervalSeconds int               `json:"interval_seconds,omitempty"`
+	RunAt           string            `json:"run_at,omitempty"`
+	ExecutionTarget string            `json:"execution_target"`
+	TargetDeviceID  string            `json:"target_device_id,omitempty"`
+	Prompt          string            `json:"prompt"`
+	ModelOverride   string            `json:"model_override,omitempty"`
+	Configuration   map[string]string `json:"configuration,omitempty"`
 }
 
 // RunJob is the execution payload for a run this device has claimed —

@@ -5,9 +5,8 @@ import (
 	"net/http"
 )
 
-// Job management (create/edit/pause/delete/trigger) is not exposed here —
-// it happens exclusively in seshat-console once this machine is connected.
-// These handlers only cover pairing this device and read-only visibility.
+// These handlers cover pairing this device and read-only run visibility.
+// Job management (create/edit/pause/delete/trigger) lives in automation_jobs.go.
 
 func (a *App) cloudAutomationAvailable(w http.ResponseWriter) bool {
 	if a.cloudAutomation == nil {
