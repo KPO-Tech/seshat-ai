@@ -33,6 +33,14 @@ export function AppLayout() {
 
   const organizations = organizationsData?.organizations ?? EMPTY_ORGANIZATIONS
   const routeOrganizationId = matchPath('/orgs/:organizationId/*', location.pathname)?.params.organizationId ?? null
+  // The generic "Organization" scope tag alone doesn't say WHICH one when
+  // there's more than one on the platform (a platform admin browsing
+  // several orgs in a row has no other always-visible indicator beyond the
+  // sidebar dropdown's current value) - so every org-scoped page's header
+  // names it explicitly, not just the Overview page.
+  const routeOrganizationName = routeOrganizationId
+    ? (organizations.find((organization) => organization.id === routeOrganizationId)?.name ?? null)
+    : null
   const fallbackOrganizationId = organizations[0]?.id ?? null
   const selectedOrganizationExists = selectedOrganizationId
     ? organizations.some((organization) => organization.id === selectedOrganizationId)
@@ -221,7 +229,7 @@ export function AppLayout() {
                 </Button>
               )}
               <Tag color="orange" style={{ margin: 0, flexShrink: 0 }}>
-                {getScopeTagLabel(location.pathname)}
+                {routeOrganizationName ? `Organization: ${routeOrganizationName}` : getScopeTagLabel(location.pathname)}
               </Tag>
               <Typography.Text strong style={{ fontSize: 16, color: palette.ink }} ellipsis>
                 {activePrimary?.label ?? 'Console'}

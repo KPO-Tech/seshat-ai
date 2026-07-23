@@ -10,6 +10,7 @@ import {
   SafetyOutlined,
   ScheduleOutlined,
   SettingOutlined,
+  SlidersOutlined,
   TeamOutlined,
   UserOutlined,
 } from '@ant-design/icons'
@@ -101,6 +102,13 @@ export function getOrganizationNavItems(organizationId: string): NavItem[] {
       icon: <SettingOutlined />,
     },
     {
+      key: 'org-preferences',
+      label: 'Preferences',
+      path: `/orgs/${organizationId}/preferences`,
+      matchPrefix: `/orgs/${organizationId}/preferences`,
+      icon: <SlidersOutlined />,
+    },
+    {
       key: 'org-agents',
       label: 'Agents & Skills',
       path: `/orgs/${organizationId}/catalog/agent-presets`,
@@ -163,6 +171,12 @@ export function getSecondaryNavItems(pathname: string, organizationId: string | 
         label: 'Profile',
         path: '/me/profile',
         matchPrefix: '/me/profile',
+      },
+      {
+        key: 'personal-security',
+        label: 'Security',
+        path: '/me/security',
+        matchPrefix: '/me/security',
       },
       {
         key: 'personal-preferences',

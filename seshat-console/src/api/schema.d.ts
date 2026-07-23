@@ -98,6 +98,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/forgot-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request a password reset link by email
+         * @description Always returns 200 with the same generic message regardless of whether the email matches an account — a different response would let an attacker enumerate accounts by email. If a match exists, a 1-hour-lived reset link is emailed (see /reset-password). Rate limited to 3 attempts/minute per client IP (burst 3) — the tightest limit of any endpoint, since this is both an email-enumeration and inbox-spam vector.
+         */
+        post: operations["forgotPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Redeem a password-reset token
+         * @description No authentication required — the token itself is the credential. Deliberately generic on failure (401 regardless of whether the token is unknown, already used, or expired) to avoid leaking feedback useful for guessing tokens. On success, every existing session for the account is revoked. Rate limited to 5 attempts/minute per client IP (burst 5).
+         */
+        post: operations["resetPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/me": {
         parameters: {
             query?: never;
@@ -309,7 +349,7 @@ export interface paths {
         put?: never;
         /**
          * Create a user (platform admin only)
-         * @description If `organization_id` is set, also creates a membership with `role` (default `member`) in the same call.
+         * @description If `organization_id` is set, also creates a membership with `role` (default `member`) in the same call. Always creates a regular (non-platform-admin) account — there is no is_admin field here or anywhere else in this API. Platform-admin status is granted exactly once, by seeding from env vars at server boot, and never through any API action afterwards, by anyone.
          */
         post: operations["createUser"];
         delete?: never;
@@ -334,7 +374,7 @@ export interface paths {
         get: operations["getUser"];
         /**
          * Update a user (platform admin only)
-         * @description Cannot demote the last platform admin.
+         * @description Email and display name only — no is_admin field, see createUser's description for why.
          */
         put: operations["updateUser"];
         post?: never;
@@ -460,6 +500,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/memberships/direct": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a new account and attach it to an organization in one step
+         * @description Sibling action to POST /memberships (which only attaches an EXISTING user) — this creates the account too. Requires members.manage or organization.manage (org-admin, unlike POST /users which is platform-superadmin-only). No password field: one is generated internally and never exposed — the new member sets their own via an emailed welcome link that reuses the same /reset-password flow as a forgotten-password reset. Optionally attaches the new member to one or more existing groups in the same step via group_ids.
+         */
+        post: operations["createOrganizationMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/memberships/{membershipID}": {
         parameters: {
             query?: never;
@@ -525,6 +585,26 @@ export interface paths {
          * @description Requires `invitations.manage`, `members.manage` or `organization.manage`. Rejects a duplicate pending invite or an email already belonging to a member.
          */
         post: operations["createInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/invitations/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview an invitation by its raw token, unauthenticated
+         * @description No auth required — the invited person usually doesn't have an account yet, so gating the preview behind login would be backwards. Returns valid:false (still HTTP 200, not an error) for an unknown, expired, or already-used token, so the console can render "this invitation is no longer valid" instead of a raw error. Never includes the invitation id, inviter, or raw token.
+         */
+        get: operations["lookupInvitation"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -740,6 +820,26 @@ export interface paths {
          */
         get: operations["listAuditEvents"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/me/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Change my own password
+         * @description Self-service only — requires re-proving the current password, so a stolen bearer token alone can't rotate credentials. Does not revoke the current session.
+         */
+        put: operations["changeMyPassword"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1707,6 +1807,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organization-preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get an organization's preference defaults
+         * @description A singleton per organization — this organization's OWN values only, no platform-default fallback (an admin editing their org's preferences needs to see exactly what's set for THIS org). Requires organization.manage. 404 if none is configured. A member's effective preferences (personal value, else this, else the platform-default organization's) are visible via GET /api/v1/users/me/preferences instead, not here.
+         */
+        get: operations["getOrganizationPreferences"];
+        /**
+         * Create or update an organization's preference defaults
+         * @description Requires organization.manage. Upsert — creates the organization's preferences if none exist yet, otherwise updates them in place. Only fields that also exist at the personal level are supported here (working_style, response_style, extra_context, the two permission modes, max_sub_agent_depth) — preferred_name/profession/ about only make sense per-person and have no organization equivalent.
+         */
+        put: operations["setOrganizationPreferences"];
+        post?: never;
+        /**
+         * Delete an organization's preference defaults
+         * @description Requires organization.manage. Members of this organization fall back to the platform-default organization's preferences (if any and shared) for subsequent GET /api/v1/users/me/preferences calls.
+         */
+        delete: operations["deleteOrganizationPreferences"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/devices": {
         parameters: {
             query?: never;
@@ -2121,6 +2249,8 @@ export interface components {
             share_mcp_servers?: boolean;
             /** @description Only meaningful while is_default is true - whether this organization's skill repos are shared as the platform-wide fallback. */
             share_skill_repos?: boolean;
+            /** @description Only meaningful while is_default is true - whether this organization's preference defaults are shared as the platform-wide fallback. */
+            share_organization_preferences?: boolean;
             /** @description This organization's own email domain (e.g. "acmecorp.com"), if set. Self-service registration (POST /auth/register) auto-joins a new user to this organization as a pending member when their email matches. At most one organization holds a given domain. */
             domain?: string;
             /** Format: date-time */
@@ -2143,6 +2273,7 @@ export interface components {
             share_web_search_settings?: boolean;
             share_mcp_servers?: boolean;
             share_skill_repos?: boolean;
+            share_organization_preferences?: boolean;
         };
         Membership: {
             id?: string;
@@ -2162,6 +2293,8 @@ export interface components {
             pending_since?: string;
             /** Format: date-time */
             created_at?: string;
+            /** @description The resolved effective permission set (role + custom role + policy bindings + group membership) for this membership's role, in this organization, at fetch time. Only populated on the session-bootstrap paths (bootstrap/register/login/auth-me) — clients should check for e.g. "organization.manage" here rather than hardcoding role names, since custom roles can grant the same permission under any name. */
+            permissions?: string[];
             /** @description Denormalized for display - resolving a teammate's identity from a membership shouldn't require a separate admin-only user lookup. */
             user_email?: string;
             user_display_name?: string;
@@ -2241,6 +2374,15 @@ export interface components {
             accepted_at?: string | null;
             /** Format: date-time */
             revoked_at?: string | null;
+        };
+        InvitationPreview: {
+            organization_name?: string;
+            /** Format: email */
+            email?: string;
+            role?: string;
+            /** Format: date-time */
+            expires_at?: string;
+            valid?: boolean;
         };
         Group: {
             id?: string;
@@ -3085,6 +3227,27 @@ export interface components {
             /** @description Optional (e.g. a local Ollama needs none). Empty on update keeps the existing key unchanged. */
             api_key?: string;
         };
+        /** @description Default values for the subset of UserPreferences fields that make sense at an organization scope — deliberately excludes preferred_name/profession/about, which only make sense per-person. */
+        OrganizationPreferences: {
+            organization_id?: string;
+            working_style?: string;
+            response_style?: string;
+            extra_context?: string;
+            interactive_permission_mode?: string;
+            automation_permission_mode?: string;
+            max_sub_agent_depth?: number;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        OrganizationPreferencesInput: {
+            organization_id: string;
+            working_style?: string;
+            response_style?: string;
+            extra_context?: string;
+            interactive_permission_mode?: string;
+            automation_permission_mode?: string;
+            max_sub_agent_depth?: number;
+        };
         DetectedEmbedderModels: {
             /** @description A static curated list for non-Ollama providers, or the subset of a live Ollama instance's installed models classified as embedding-capable by name/family. Empty if the target Ollama was unreachable. */
             embedding_models?: string[];
@@ -3437,6 +3600,66 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             409: components["responses"]["Conflict"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    forgotPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: email */
+                    email: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Request accepted (does not imply an email was actually sent) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message?: string;
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    resetPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    token: string;
+                    /** Format: password */
+                    new_password: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Password reset */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
             429: components["responses"]["TooManyRequests"];
         };
     };
@@ -3821,8 +4044,6 @@ export interface operations {
                     organization_id?: string;
                     /** @enum {string} */
                     role?: "owner" | "admin" | "member" | "viewer";
-                    /** @description Grants platform-wide admin privileges. */
-                    is_admin?: boolean;
                 };
             };
         };
@@ -3880,7 +4101,6 @@ export interface operations {
                     /** Format: email */
                     email: string;
                     display_name: string;
-                    is_admin?: boolean;
                 };
             };
         };
@@ -4175,6 +4395,43 @@ export interface operations {
             409: components["responses"]["Conflict"];
         };
     };
+    createOrganizationMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    organization_id: string;
+                    /** Format: email */
+                    email: string;
+                    display_name: string;
+                    /** @description A system role code (owner/admin/member/viewer) or a custom role code defined for this organization. Defaults to "member". */
+                    role?: string;
+                    /** @description Existing groups (in the same organization) to attach the new member to immediately. */
+                    group_ids?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Account created and attached as a member */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Membership"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
     getMembership: {
         parameters: {
             query?: never;
@@ -4346,6 +4603,29 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    lookupInvitation: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Invitation preview */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationPreview"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
         };
     };
     getInvitation: {
@@ -4790,6 +5070,33 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+        };
+    };
+    changeMyPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    current_password: string;
+                    new_password: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Password updated */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
         };
     };
     getMyPreferences: {
@@ -6649,6 +6956,80 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+        };
+    };
+    getOrganizationPreferences: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Organization preferences */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationPreferences"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    setOrganizationPreferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrganizationPreferencesInput"];
+            };
+        };
+        responses: {
+            /** @description Organization preferences created or updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationPreferences"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    deleteOrganizationPreferences: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     listDevices: {

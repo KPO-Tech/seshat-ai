@@ -1,6 +1,6 @@
 import { Button, Form, Input, message, Typography } from 'antd'
 import { MailOutlined, LockOutlined, UserOutlined } from '@ant-design/icons'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { useRegister } from '@/api/auth'
 import { useAuthStore } from '@/store/auth'
 import { getErrorMessage } from '@/api/errors'
@@ -18,13 +18,15 @@ export function RegisterPage() {
   const token = useAuthStore((s) => s.token)
   const register = useRegister()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const next = searchParams.get('next')
 
-  if (token) return <Navigate to="/" replace />
+  if (token) return <Navigate to={next || '/'} replace />
 
   const onFinish = (values: RegisterFormValues) => {
     register.mutate(values, {
       onSuccess: (data) => {
-        if (data.user) navigate(resolveLandingPath(data.user, data.organizations ?? []), { replace: true })
+        if (data.user) navigate(next || resolveLandingPath(data.user, data.organizations ?? []), { replace: true })
       },
       onError: (error) => message.error(getErrorMessage(error)),
     })
@@ -71,7 +73,7 @@ export function RegisterPage() {
         </Form.Item>
       </Form>
       <Typography.Text type="secondary">
-        Already have an account? <Link to="/login">Log in</Link>
+        Already have an account? <Link to={next ? `/login?next=${encodeURIComponent(next)}` : '/login'}>Log in</Link>
       </Typography.Text>
     </AuthLayout>
   )

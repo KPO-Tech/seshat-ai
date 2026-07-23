@@ -258,10 +258,19 @@ function WebSearchProviderFormDrawer({
         <Form.Item
           name="api_key"
           label={isSearxng ? 'Auth password' : 'API key'}
-          rules={[{ required: !isEdit, message: 'Required' }]}
-          extra={isEdit ? 'Leave empty to keep the current value unchanged.' : undefined}
+          rules={[{ required: !isEdit && !isSearxng, message: 'Required' }]}
+          extra={
+            isEdit
+              ? 'Leave empty to keep the current value unchanged.'
+              : isSearxng
+                ? "Leave empty if your SearXNG instance doesn't require HTTP basic auth."
+                : undefined
+          }
         >
-          <Input.Password autoComplete="new-password" placeholder={isEdit ? '••••••••' : undefined} />
+          <Input.Password
+            autoComplete="new-password"
+            placeholder={isEdit ? '••••••••' : isSearxng ? 'Optional' : undefined}
+          />
         </Form.Item>
         {!isEdit && (
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
