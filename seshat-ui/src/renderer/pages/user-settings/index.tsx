@@ -36,9 +36,9 @@ const NAV_GROUPS = [
   {
     title: 'USER',
     items: [
-      { id: 'profile'     as TabId, label: 'Profile',     icon: <User size={20} theme="outline" /> },
-      { id: 'account'     as TabId, label: 'Account',     icon: <SettingTwo size={20} theme="outline" /> },
-      { id: 'connections' as TabId, label: 'Connections', icon: <LinkOne size={20} theme="outline" /> },
+      { id: 'profile'     as TabId, label: 'Profile',     icon: <User size={16} theme="outline" /> },
+      { id: 'account'     as TabId, label: 'Account',     icon: <SettingTwo size={16} theme="outline" /> },
+      { id: 'connections' as TabId, label: 'Connections', icon: <LinkOne size={16} theme="outline" /> },
     ],
   },
 ]
@@ -92,14 +92,14 @@ export function UserSettings() {
         onClick={() => navigate(-1)}
         title={sidebarCollapsed ? 'Back' : undefined}
       >
-        <Left size={16} />
+        <Left size={13} />
         {!sidebarCollapsed && <span>Back</span>}
       </button>
       <button
         className="snav-theme-toggle"
         onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
       >
-        {theme === 'dark' ? <SunOne size={18} /> : <Moon size={18} />}
+        {theme === 'dark' ? <SunOne size={15} /> : <Moon size={15} />}
       </button>
     </div>
   )
@@ -210,7 +210,7 @@ function ProfileView() {
         void window.nexus?.auth?.updateUser(nextUser).catch(() => {})
       }
       setEditName(false)
-    } catch (e: any) { setError(e?.message ?? 'Failed to save') }
+    } catch (e: unknown) { setError((e as { message?: string })?.message ?? 'Failed to save') }
     finally { setSaving(false) }
   }
 
@@ -221,7 +221,7 @@ function ProfileView() {
       const updated = await api.put<AgentPrefs>('/users/me/settings', merged)
       setPrefs(updated)
       return updated
-    } catch (e: any) { setError(e?.message ?? 'Failed to save') }
+    } catch (e: unknown) { setError((e as { message?: string })?.message ?? 'Failed to save') }
     finally { setSaving(false) }
   }
 
@@ -291,13 +291,13 @@ function ProfileView() {
                     maxLength={80}
                   />
                 </div>
-                <button className="up-confirm-btn" onClick={saveName} disabled={saving}><Check size={15} /></button>
-                <button className="up-cancel-btn" onClick={() => { setEditName(false); setNameVal(profile.display_name) }}><Close size={15} /></button>
+                <button className="up-confirm-btn" onClick={saveName} disabled={saving}><Check size={12} /></button>
+                <button className="up-cancel-btn" onClick={() => { setEditName(false); setNameVal(profile.display_name) }}><Close size={12} /></button>
               </div>
             ) : (
               <div className="up-field-editable" onClick={() => setEditName(true)}>
                 <span>{profile.display_name || <em style={{ color: 'var(--color-text-muted)' }}>Not set</em>}</span>
-                <Edit size={13} className="up-edit-hint" />
+                <Edit size={11} className="up-edit-hint" />
               </div>
             )}
           </div>
@@ -315,7 +315,7 @@ function ProfileView() {
       <div className="sv-card" style={{ marginBottom: 24 }}>
         <div className="sv-card-head">
           <div className="sv-card-brand">
-            <div className="sv-brand-icon"><Robot size={18} /></div>
+            <div className="sv-brand-icon"><Robot size={15} /></div>
             <div>
               <div className="sv-brand-name">Agent Preferences</div>
               <div className="sv-brand-sub">How SeshatOS agents interact with you</div>
@@ -342,13 +342,13 @@ function ProfileView() {
                     maxLength={40}
                   />
                 </div>
-                <button className="up-confirm-btn" onClick={saveAgentName} disabled={saving}><Check size={15} /></button>
-                <button className="up-cancel-btn" onClick={() => { setEditAgentName(false); setAgentNameVal(prefs.preferred_name || '') }}><Close size={15} /></button>
+                <button className="up-confirm-btn" onClick={saveAgentName} disabled={saving}><Check size={12} /></button>
+                <button className="up-cancel-btn" onClick={() => { setEditAgentName(false); setAgentNameVal(prefs.preferred_name || '') }}><Close size={12} /></button>
               </div>
             ) : (
               <div className="up-field-editable" onClick={() => setEditAgentName(true)}>
                 <span>{prefs.preferred_name || <em style={{ color: 'var(--color-text-muted)' }}>Same as your full name</em>}</span>
-                <Edit size={13} className="up-edit-hint" />
+                <Edit size={11} className="up-edit-hint" />
               </div>
             )}
           </div>
@@ -364,7 +364,7 @@ function ProfileView() {
                 <span style={{ color: prefs.work_type ? 'var(--color-text)' : 'var(--color-text-muted)' }}>
                   {prefs.work_type || 'Select your role…'}
                 </span>
-                <Down size={14} style={{ color: 'var(--color-text-muted)', transform: workDropOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+                <Down size={11} style={{ color: 'var(--color-text-muted)', transform: workDropOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
               </button>
               {workDropOpen && (
                 <div className="up-work-dropdown">
@@ -375,7 +375,7 @@ function ProfileView() {
                       onClick={() => saveWorkType(wt)}
                     >
                       {wt}
-                      {prefs.work_type === wt && <Check size={13} />}
+                      {prefs.work_type === wt && <Check size={11} />}
                     </button>
                   ))}
                 </div>
@@ -389,7 +389,7 @@ function ProfileView() {
               <label style={{ marginBottom: 0 }}>Instructions for Agents</label>
               {!editInstructions && (
                 <button className="up-ghost-btn" onClick={() => setEditInstructions(true)}>
-                  <WriteIcon size={13} /> Edit
+                  <WriteIcon size={11} /> Edit
                 </button>
               )}
             </div>
@@ -477,8 +477,8 @@ function AccountView() {
       await api.delete('/users/me', { confirm_email: confirmEmail.trim() })
       logout()
       navigate('/login', { replace: true })
-    } catch (e: any) {
-      setDeleteError(e?.message ?? 'Failed to close account')
+    } catch (e: unknown) {
+      setDeleteError((e as { message?: string })?.message ?? 'Failed to close account')
     } finally {
       setDeleting(false)
     }
@@ -498,7 +498,7 @@ function AccountView() {
       <div className="sv-card" style={{ marginBottom: 24 }}>
         <div className="sv-card-head">
           <div className="sv-card-brand">
-            <div className="sv-brand-icon"><Logout size={18} /></div>
+            <div className="sv-brand-icon"><Logout size={15} /></div>
             <div>
               <div className="sv-brand-name">Session</div>
               <div className="sv-brand-sub">Your active login session on this device</div>
@@ -514,7 +514,7 @@ function AccountView() {
               </div>
             </div>
             <button className="up-ghost-btn" onClick={handleLogout} disabled={loggingOut} style={{ flexShrink: 0 }}>
-              <Logout size={15} />
+              <Logout size={12} />
               {loggingOut ? 'Signing out…' : 'Sign out'}
             </button>
           </div>
@@ -524,7 +524,7 @@ function AccountView() {
       <div className="sv-card" style={{ borderColor: 'rgba(201,107,92,0.3)' }}>
         <div className="sv-card-head" style={{ background: 'rgba(201,107,92,0.05)' }}>
           <div className="sv-card-brand">
-            <div className="sv-brand-icon" style={{ borderColor: 'rgba(201,107,92,0.3)', color: 'var(--color-error)' }}><Delete size={18} /></div>
+            <div className="sv-brand-icon" style={{ borderColor: 'rgba(201,107,92,0.3)', color: 'var(--color-error)' }}><Delete size={15} /></div>
             <div>
               <div className="sv-brand-name" style={{ color: 'var(--color-error)' }}>Danger zone</div>
               <div className="sv-brand-sub">Access is revoked immediately after confirmation</div>
@@ -540,7 +540,7 @@ function AccountView() {
               </div>
             </div>
             <button className="sv-danger-btn" onClick={() => setDeleteOpen(true)} style={{ width: 'auto', padding: '8px 16px', flexShrink: 0 }}>
-              <Delete size={15} /> Delete account
+              <Delete size={12} /> Delete account
             </button>
           </div>
         </div>
@@ -551,7 +551,7 @@ function AccountView() {
           <div className="modal-shell up-delete-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Delete account</h2>
-              <button className="modal-close-btn" onClick={closeDeleteModal}><Close size={18} /></button>
+              <button className="modal-close-btn" onClick={closeDeleteModal}><Close size={15} /></button>
             </div>
             <div className="modal-content">
               <p className="up-delete-copy">
@@ -572,7 +572,7 @@ function AccountView() {
             <div className="modal-footer">
               <button className="modal-btn-cancel" onClick={closeDeleteModal} disabled={deleting}>Cancel</button>
               <button className="sv-danger-btn up-delete-submit" onClick={handleDeleteAccount} disabled={!canDelete || deleting}>
-                <Delete size={15} />
+                <Delete size={12} />
                 {deleting ? 'Closing account…' : 'Delete account'}
               </button>
             </div>
@@ -600,7 +600,7 @@ function ConnectionsView() {
       <div className="sv-card" style={{ marginBottom: 24 }}>
         <div className="sv-card-head">
           <div className="sv-card-brand">
-            <div className="sv-brand-icon"><LinkOne size={18} /></div>
+            <div className="sv-brand-icon"><LinkOne size={15} /></div>
             <div>
               <div className="sv-brand-name">Provider auth moved</div>
               <div className="sv-brand-sub">Model provider connections now belong to Settings → Providers</div>
@@ -622,7 +622,7 @@ function ConnectionsView() {
       <div className="sv-card">
         <div className="sv-card-head">
           <div className="sv-card-brand">
-            <div className="sv-brand-icon"><LinkOne size={18} /></div>
+            <div className="sv-brand-icon"><LinkOne size={15} /></div>
             <div>
               <div className="sv-brand-name">Coming next</div>
               <div className="sv-brand-sub">GitHub, Google, Slack, and other user-linked accounts can be added here later</div>
@@ -653,24 +653,24 @@ ${SETTINGS_SHARED_CSS}
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 800;
   color: white;
   flex-shrink: 0;
 }
 
 /* ── Inline field edit ── */
-.up-inline-edit { display: flex; align-items: center; gap: 8px; }
-.up-confirm-btn { background: none; border: none; padding: 8px; border-radius: 7px; cursor: pointer; color: var(--color-success); display: flex; }
+.up-inline-edit { display: flex; align-items: center; gap: 6px; }
+.up-confirm-btn { background: none; border: none; padding: 6px; border-radius: 5px; cursor: pointer; color: var(--color-success); display: flex; }
 .up-confirm-btn:hover { background: rgba(111,175,123,0.12); }
 .up-confirm-btn:disabled { opacity: 0.4; cursor: default; }
-.up-cancel-btn  { background: none; border: none; padding: 8px; border-radius: 7px; cursor: pointer; color: var(--color-text-muted); display: flex; }
+.up-cancel-btn  { background: none; border: none; padding: 6px; border-radius: 5px; cursor: pointer; color: var(--color-text-muted); display: flex; }
 .up-cancel-btn:hover { background: var(--color-hover); }
 
 .up-field-editable {
-  display: flex; align-items: center; gap: 8px;
-  padding: 10px 14px; border-radius: 10px;
-  font-size: 14px; color: var(--color-text);
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 10px; border-radius: 8px;
+  font-size: 12px; color: var(--color-text);
   cursor: pointer; transition: background 0.1s;
   border: 1.5px solid transparent;
 }
@@ -683,23 +683,23 @@ ${SETTINGS_SHARED_CSS}
 .up-work-trigger {
   width: 100%;
   display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 16px; border-radius: 10px;
+  padding: 7px 11px; border-radius: 8px;
   background: var(--color-surface); border: 1.5px solid var(--color-border);
-  font-size: 14px; font-weight: 500; cursor: pointer;
+  font-size: 12px; font-weight: 500; cursor: pointer;
   transition: border-color 0.15s; font-family: inherit;
 }
 .up-work-trigger:hover { border-color: var(--color-text-muted); }
 .up-work-dropdown {
   position: absolute; top: calc(100% + 6px); left: 0; right: 0;
   background: var(--color-bg); border: 1.5px solid var(--color-border);
-  border-radius: 12px; overflow: hidden; z-index: 50;
+  border-radius: 9px; overflow: hidden; z-index: 50;
   box-shadow: 0 8px 24px rgba(0,0,0,0.15);
   max-height: 280px; overflow-y: auto;
 }
 .up-work-option {
   display: flex; align-items: center; justify-content: space-between;
-  width: 100%; padding: 10px 16px; background: none; border: none;
-  font-size: 14px; font-weight: 500; color: var(--color-text-secondary);
+  width: 100%; padding: 7px 11px; background: none; border: none;
+  font-size: 12px; font-weight: 500; color: var(--color-text-secondary);
   cursor: pointer; text-align: left; font-family: inherit; transition: background 0.1s;
 }
 .up-work-option:hover { background: var(--color-hover); color: var(--color-text); }
@@ -709,14 +709,14 @@ ${SETTINGS_SHARED_CSS}
 .up-textarea {
   width: 100%; background: var(--color-surface);
   border: 1.5px solid var(--color-primary);
-  padding: 12px 14px; border-radius: 10px;
-  color: var(--color-text); font-size: 14px; line-height: 1.6;
+  padding: 8px 10px; border-radius: 8px;
+  color: var(--color-text); font-size: 12px; line-height: 1.6;
   outline: none; font-family: inherit; resize: vertical;
   box-sizing: border-box;
 }
 .up-instructions-preview {
-  min-height: 60px; padding: 12px 14px; border-radius: 10px;
-  font-size: 14px; line-height: 1.6; cursor: pointer;
+  min-height: 60px; padding: 8px 10px; border-radius: 8px;
+  font-size: 12px; line-height: 1.6; cursor: pointer;
   border: 1.5px solid transparent; transition: background 0.1s, border-color 0.1s;
   color: var(--color-text-secondary);
 }
@@ -726,9 +726,9 @@ ${SETTINGS_SHARED_CSS}
 /* ── Shared action buttons ── */
 .up-ghost-btn {
   background: none; border: 1px solid var(--color-border);
-  color: var(--color-text-secondary); font-size: 13px; font-weight: 600;
-  display: flex; align-items: center; gap: 6px; cursor: pointer;
-  padding: 7px 14px; border-radius: 8px; transition: background 0.1s;
+  color: var(--color-text-secondary); font-size: 11px; font-weight: 600;
+  display: flex; align-items: center; gap: 5px; cursor: pointer;
+  padding: 5px 10px; border-radius: 6px; transition: background 0.1s;
   font-family: inherit;
 }
 .up-ghost-btn:hover:not(:disabled) { background: var(--color-hover); color: var(--color-text); }
@@ -736,8 +736,8 @@ ${SETTINGS_SHARED_CSS}
 
 .up-primary-btn {
   background: var(--color-primary); color: white; border: none;
-  font-size: 13px; font-weight: 600; display: flex; align-items: center;
-  gap: 6px; cursor: pointer; padding: 8px 18px; border-radius: 8px;
+  font-size: 11px; font-weight: 600; display: flex; align-items: center;
+  gap: 5px; cursor: pointer; padding: 6px 13px; border-radius: 6px;
   font-family: inherit;
 }
 .up-primary-btn:hover:not(:disabled) { opacity: 0.9; }
@@ -748,45 +748,45 @@ ${SETTINGS_SHARED_CSS}
 .up-delete-copy {
   margin: 0 0 18px;
   color: var(--color-text-secondary);
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1.6;
 }
 .up-delete-submit {
   width: auto;
-  padding: 9px 18px;
+  padding: 6px 13px;
 }
 .up-inline-error {
   margin-top: 14px;
   border: 1px solid var(--color-error);
   background: color-mix(in srgb, var(--color-error) 10%, transparent);
   color: var(--color-error);
-  border-radius: 10px;
-  padding: 10px 12px;
-  font-size: 13px;
+  border-radius: 8px;
+  padding: 7px 8px;
+  font-size: 11px;
   line-height: 1.5;
 }
-.up-connection-stack { display: flex; flex-direction: column; gap: 16px; }
+.up-connection-stack { display: flex; flex-direction: column; gap: 12px; }
 .up-connection-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 16px;
+  gap: 12px;
   align-items: start;
 }
-.up-connection-meta { display: flex; flex-direction: column; gap: 14px; }
+.up-connection-meta { display: flex; flex-direction: column; gap: 11px; }
 .up-connection-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 .up-status-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 11px;
-  border-radius: 999px;
-  font-size: 12px;
+  gap: 5px;
+  padding: 5px 8px;
+  border-radius: 779px;
+  font-size: 10px;
   font-weight: 700;
   border: 1px solid var(--color-border);
   color: var(--color-text-secondary);
@@ -808,23 +808,23 @@ ${SETTINGS_SHARED_CSS}
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
-  padding: 16px;
-  border-radius: 14px;
+  gap: 12px;
+  padding: 11px;
+  border-radius: 11px;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
 }
 .up-connection-code {
   margin: 10px 0 6px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 24px;
+  font-size: 21px;
   font-weight: 700;
   letter-spacing: 0.18em;
   color: var(--color-text);
 }
 .up-support-note {
   color: var(--color-text-secondary);
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1.6;
 }
 

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { NexusLogo } from '@/components/NexusLogo'
+import { Titlebar } from '@/components/layout/Titlebar'
 
 type Props = {
   children: ReactNode
@@ -11,9 +12,17 @@ export function AuthLayout({ children, title, subtitle }: Props) {
   return (
     <>
       <style>{`
+        .auth-page {
+          display: flex;
+          flex-direction: column;
+          height: 100vh;
+          overflow: hidden;
+        }
+
         .auth-root {
           display: flex;
-          height: 100vh;
+          flex: 1;
+          min-height: 0;
           overflow: hidden;
           background-color: var(--color-bg);
         }
@@ -30,21 +39,21 @@ export function AuthLayout({ children, title, subtitle }: Props) {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          padding: 64px 56px;
+          padding: 45px 39px;
         }
 
         .auth-left-inner {
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 28px;
+          gap: 21px;
           text-align: center;
           width: 100%;
           max-width: 340px;
         }
 
         .auth-brand-name {
-          font-size: 22px;
+          font-size: 19px;
           font-weight: 700;
           letter-spacing: -0.01em;
           color: var(--color-text);
@@ -52,7 +61,7 @@ export function AuthLayout({ children, title, subtitle }: Props) {
         }
 
         .auth-brand-sub {
-          font-size: 11px;
+          font-size: 10px;
           font-weight: 600;
           color: var(--color-primary);
           letter-spacing: 0.14em;
@@ -66,7 +75,7 @@ export function AuthLayout({ children, title, subtitle }: Props) {
         }
 
         .auth-tagline {
-          font-size: 14px;
+          font-size: 12px;
           color: var(--color-text-secondary);
           line-height: 1.8;
           max-width: 260px;
@@ -76,7 +85,7 @@ export function AuthLayout({ children, title, subtitle }: Props) {
         .auth-features {
           display: flex;
           flex-direction: column;
-          gap: 13px;
+          gap: 10px;
           align-self: stretch;
           max-width: 260px;
           margin: 0 auto;
@@ -85,7 +94,7 @@ export function AuthLayout({ children, title, subtitle }: Props) {
         .auth-feature-row {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 9px;
         }
 
         .auth-feature-dot {
@@ -97,7 +106,7 @@ export function AuthLayout({ children, title, subtitle }: Props) {
         }
 
         .auth-feature-label {
-          font-size: 13px;
+          font-size: 11px;
           color: var(--color-text-muted);
           letter-spacing: 0.01em;
         }
@@ -109,7 +118,7 @@ export function AuthLayout({ children, title, subtitle }: Props) {
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 48px 32px;
+          padding: 34px 22px;
           background-color: var(--color-bg);
         }
 
@@ -126,7 +135,7 @@ export function AuthLayout({ children, title, subtitle }: Props) {
 
         .auth-form-title {
           margin: 0 0 8px;
-          font-size: 24px;
+          font-size: 21px;
           font-weight: 700;
           color: var(--color-primary);
           letter-spacing: -0.3px;
@@ -134,7 +143,7 @@ export function AuthLayout({ children, title, subtitle }: Props) {
 
         .auth-form-subtitle {
           margin: 0;
-          font-size: 14px;
+          font-size: 12px;
           color: var(--color-text-secondary);
           line-height: 1.5;
         }
@@ -145,7 +154,7 @@ export function AuthLayout({ children, title, subtitle }: Props) {
             display: none;
           }
           .auth-right {
-            padding: 32px 20px;
+            padding: 22px 14px;
           }
         }
 
@@ -158,13 +167,15 @@ export function AuthLayout({ children, title, subtitle }: Props) {
         }
       `}</style>
 
+      <div className="auth-page">
+      <Titlebar center="SeshatOS" />
       <div className="auth-root">
 
         {/* ─── LEFT PANEL ─── */}
         <div className="auth-left">
           <div className="auth-left-inner">
 
-            <NexusLogo size={80} />
+            <NexusLogo size={66} />
 
             <div>
               <div className="auth-brand-name">SeshatOS</div>
@@ -207,6 +218,7 @@ export function AuthLayout({ children, title, subtitle }: Props) {
           </div>
         </div>
 
+      </div>
       </div>
     </>
   )

@@ -128,7 +128,7 @@ export function CloudAutomationView() {
           <div className="sv-card">
             <div className="sv-card-head">
               <div className="sv-card-brand">
-                <div className="sv-brand-icon"><CloudStorage theme="outline" size={20} /></div>
+                <div className="sv-brand-icon"><CloudStorage theme="outline" size={16} /></div>
                 <div>
                   <div className="sv-brand-name">{status.device_name || 'This device'}</div>
                   <div className="sv-brand-sub">{status.server_url}</div>
@@ -161,11 +161,11 @@ export function CloudAutomationView() {
                 rel="noreferrer"
                 style={{ justifyContent: 'center', textDecoration: 'none' }}
               >
-                <LinkCloud theme="outline" size={16} />
+                <LinkCloud theme="outline" size={13} />
                 Open Seshat Console
               </a>
               <button className="sv-danger-btn" onClick={() => void handleDisconnect()}>
-                <Unlink theme="outline" size={16} />
+                <Unlink theme="outline" size={13} />
                 Disconnect
               </button>
             </div>
@@ -174,7 +174,7 @@ export function CloudAutomationView() {
           <div className="sv-card">
             <div className="sv-card-head">
               <div className="sv-card-brand">
-                <div className="sv-brand-icon"><Refresh theme="outline" size={20} /></div>
+                <div className="sv-brand-icon"><Refresh theme="outline" size={16} /></div>
                 <div>
                   <div className="sv-brand-name">Recent runs on this device</div>
                   <div className="sv-brand-sub">Read-only — manage jobs in Seshat Console</div>
@@ -205,7 +205,7 @@ export function CloudAutomationView() {
             <div className="sv-card">
               <div className="sv-card-head">
                 <div className="sv-card-brand">
-                  <div className="sv-brand-icon"><CloudStorage theme="outline" size={20} /></div>
+                  <div className="sv-brand-icon"><CloudStorage theme="outline" size={16} /></div>
                   <div>
                     <div className="sv-brand-name">Register this device</div>
                     <div className="sv-brand-sub">{systemStatus.server_url}</div>
@@ -234,7 +234,7 @@ export function CloudAutomationView() {
             <div className="sv-card">
               <div className="sv-card-head">
                 <div className="sv-card-brand">
-                  <div className="sv-brand-icon"><CloudStorage theme="outline" size={20} /></div>
+                  <div className="sv-brand-icon"><CloudStorage theme="outline" size={16} /></div>
                   <div>
                     <div className="sv-brand-name">Connect to Seshat Server</div>
                     <div className="sv-brand-sub">Pair this machine to run device-targeted jobs</div>

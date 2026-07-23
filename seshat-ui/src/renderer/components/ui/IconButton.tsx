@@ -69,14 +69,14 @@ export const ICON_BUTTON_CSS = `
 }
 
 .icon-btn--active-green {
-  background: rgba(52, 211, 153, 0.1) !important;
-  color: #34d399 !important;
-  border-color: rgba(52, 211, 153, 0.25) !important;
+  background: rgba(var(--color-success-rgb), 0.1) !important;
+  color: var(--color-success) !important;
+  border-color: rgba(var(--color-success-rgb), 0.25) !important;
 }
 
 .icon-btn--active-red {
-  background: rgba(239, 68, 68, 0.12) !important;
-  color: #ef4444 !important;
-  border-color: rgba(239, 68, 68, 0.3) !important;
+  background: rgba(var(--color-error-rgb), 0.12) !important;
+  color: var(--color-error) !important;
+  border-color: rgba(var(--color-error-rgb), 0.3) !important;
 }
 `

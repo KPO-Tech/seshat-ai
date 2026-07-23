@@ -1,11 +1,13 @@
-import { useMemo } from 'react'
-import { Book, Browser, CheckOne, Close, DocDetail, FileTextOne, Peoples, Robot, LoadingOne } from '@icon-park/react'
+import { useMemo, useRef } from 'react'
+import { Book, Browser, CheckOne, Close, DocDetail, FileTextOne, Robot, LoadingOne, Square } from '@icon-park/react'
 import { MarkdownView } from '@/components/MarkdownView'
 import { derivePlanSnapshot } from '@/lib/plan'
 import { useUIStore } from '@/stores/ui'
 import { useSessionStore } from '@/stores/session'
 import { SubagentPanel } from '@/components/chat/subagent/SubagentPanel'
 import { PlanEditorPanel } from '@/components/chat/plan/PlanEditorPanel'
+import { flattenRightPanels } from '@/stores/ui'
+import type { RightPanelInstance, RightPanelKind, RightPanelColumn } from '@/stores/ui'
 import type { AgentState } from '@/stores/session'
 import type { Message } from '@/api/types'
 
@@ -15,15 +17,122 @@ import type { Message } from '@/api/types'
 const EMPTY_MESSAGES: Message[] = []
 
 export function RightPanelHost() {
-  const panel = useUIStore((s) => s.rightPanel)
+  const rightColumns = useUIStore((s) => s.rightColumns)
+  const maximizedPanelId = useUIStore((s) => s.maximizedPanelId)
   const closeRightPanel = useUIStore((s) => s.closeRightPanel)
+  const toggleMaximizePanel = useUIStore((s) => s.toggleMaximizePanel)
 
-  if (!panel.open || !panel.kind) return null
+  if (rightColumns.length === 0) return null
+
+  const maximized = maximizedPanelId ? flattenRightPanels(rightColumns).find((p) => p.id === maximizedPanelId) : undefined
+
+  if (maximized) {
+    return (
+      <div className="right-panel-stack right-panel-stack--maximized">
+        <style>{RIGHT_PANEL_CSS}</style>
+        <PanelFrame
+          panel={maximized}
+          isMaximized
+          onClose={() => closeRightPanel(maximized.id)}
+          onToggleMaximize={() => toggleMaximizePanel(maximized.id)}
+        />
+      </div>
+    )
+  }
 
   return (
-    <aside className="right-panel" style={{ width: `${panel.width}px` }}>
+    <div className="right-panel-columns">
       <style>{RIGHT_PANEL_CSS}</style>
+      {rightColumns.map((column) => (
+        <RightPanelColumnView key={column.id} column={column} />
+      ))}
+    </div>
+  )
+}
 
+function RightPanelColumnView({ column }: { column: RightPanelColumn }) {
+  const closeRightPanel = useUIStore((s) => s.closeRightPanel)
+  const setRightPanelWidth = useUIStore((s) => s.setRightPanelWidth)
+  const setRightPanelSplit = useUIStore((s) => s.setRightPanelSplit)
+  const toggleMaximizePanel = useUIStore((s) => s.toggleMaximizePanel)
+  const widthDrag = useRef<{ startX: number; startWidth: number } | null>(null)
+  const splitDrag = useRef<{ startY: number; startSplit: number; containerHeight: number } | null>(null)
+
+  function onWidthDragStart(e: React.MouseEvent) {
+    e.preventDefault()
+    widthDrag.current = { startX: e.clientX, startWidth: column.width }
+    const onMove = (ev: MouseEvent) => {
+      if (!widthDrag.current) return
+      const delta = widthDrag.current.startX - ev.clientX
+      setRightPanelWidth(column.id, widthDrag.current.startWidth + delta)
+    }
+    const onUp = () => {
+      widthDrag.current = null
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }
+
+  function onSplitDragStart(e: React.MouseEvent, containerHeight: number) {
+    e.preventDefault()
+    splitDrag.current = { startY: e.clientY, startSplit: column.split, containerHeight }
+    const onMove = (ev: MouseEvent) => {
+      if (!splitDrag.current) return
+      const delta = ev.clientY - splitDrag.current.startY
+      setRightPanelSplit(column.id, splitDrag.current.startSplit + delta / splitDrag.current.containerHeight)
+    }
+    const onUp = () => {
+      splitDrag.current = null
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }
+
+  return (
+    <div className="right-panel-stack" style={{ width: `${column.width}px` }}>
+      <div className="right-panel-resize-handle" onMouseDown={onWidthDragStart} title="Drag to resize" />
+      {column.panels.map((panel, index) => (
+        <div
+          key={panel.id}
+          className="right-panel-slot"
+          style={column.panels.length === 2 ? { flex: index === 0 ? column.split : 1 - column.split } : { flex: 1 }}
+        >
+          <PanelFrame
+            panel={panel}
+            isMaximized={false}
+            onClose={() => closeRightPanel(panel.id)}
+            onToggleMaximize={() => toggleMaximizePanel(panel.id)}
+          />
+          {column.panels.length === 2 && index === 0 && (
+            <div
+              className="right-panel-split-handle"
+              onMouseDown={(e) => onSplitDragStart(e, e.currentTarget.parentElement?.parentElement?.clientHeight ?? 600)}
+              title="Drag to resize"
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function PanelFrame({
+  panel,
+  isMaximized,
+  onClose,
+  onToggleMaximize,
+}: {
+  panel: RightPanelInstance
+  isMaximized: boolean
+  onClose: () => void
+  onToggleMaximize: () => void
+}) {
+  return (
+    <aside className="right-panel">
       <div className="right-panel-header">
         <div className="right-panel-heading">
           <span className="right-panel-icon">{renderPanelIcon(panel.kind)}</span>
@@ -32,9 +141,14 @@ export function RightPanelHost() {
             {panel.sourceLabel && <p className="right-panel-meta">{panel.sourceLabel}</p>}
           </div>
         </div>
-        <button className="right-panel-close" type="button" onClick={closeRightPanel}>
-          <Close size={16} />
-        </button>
+        <div className="right-panel-actions">
+          <button className="right-panel-maximize-btn" type="button" onClick={onToggleMaximize} title={isMaximized ? 'Restore' : 'Maximize'}>
+            <Square size={10} theme={isMaximized ? 'filled' : 'outline'} />
+          </button>
+          <button className="right-panel-close" type="button" onClick={onClose}>
+            <Close size={11} />
+          </button>
+        </div>
       </div>
 
       <div className="right-panel-body">{renderPanelBody(panel)}</div>
@@ -42,26 +156,24 @@ export function RightPanelHost() {
   )
 }
 
-function renderPanelIcon(kind: NonNullable<ReturnType<typeof useUIStore.getState>['rightPanel']['kind']>) {
+function renderPanelIcon(kind: RightPanelKind) {
   switch (kind) {
     case 'browser':
-      return <Browser size={16} />
-    case 'subagents':
-      return <Peoples size={16} />
+      return <Browser size={11} />
     case 'subagent':
-      return <Robot size={16} />
+      return <Robot size={11} />
     case 'agent':
-      return <Robot size={16} />
+      return <Robot size={11} />
     case 'knowledge':
-      return <Book size={16} />
+      return <Book size={11} />
     case 'plan':
-      return <DocDetail size={16} />
+      return <DocDetail size={11} />
     default:
-      return <FileTextOne size={16} />
+      return <FileTextOne size={11} />
   }
 }
 
-function renderPanelBody(panel: ReturnType<typeof useUIStore.getState>['rightPanel']) {
+function renderPanelBody(panel: RightPanelInstance) {
   switch (panel.kind) {
     case 'agent':
       return <AgentMonitorPanel sessionId={panel.sessionId ?? ''} />
@@ -74,41 +186,14 @@ function renderPanelBody(panel: ReturnType<typeof useUIStore.getState>['rightPan
           description="Generated markdown content will render here when a note or document is opened."
         />
       )
-    case 'pdf':
-      return (
-        <EmptyState
-          title="PDF preview"
-          description={
-            panel.documentPath
-              ? `Ready to display ${panel.documentPath} here.`
-              : 'Generated PDFs will open here when the viewer is wired in.'
-          }
-        />
-      )
-    case 'subagents':
-      return panel.agentNames?.length ? (
-        <div className="right-panel-list">
-          {panel.agentNames.map((agentName) => (
-            <div key={agentName} className="right-panel-list-item">
-              <span className="right-panel-list-title">{agentName}</span>
-              <span className="right-panel-list-status">Running</span>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <EmptyState
-          title="Subagents"
-          description="Background agents and their activity will appear here."
-        />
-      )
     case 'browser':
       return (
         <EmptyState
-          title="Browser vision"
+          title="Browser"
           description={
             panel.browserUrl
               ? `This panel is ready to host a browser view for ${panel.browserUrl}.`
-              : 'Browser previews and vision sessions will open here later.'
+              : 'An embedded browser preview will open here.'
           }
         />
       )
@@ -116,30 +201,8 @@ function renderPanelBody(panel: ReturnType<typeof useUIStore.getState>['rightPan
       return <KnowledgePanel results={panel.knowledgeResults ?? []} />
     case 'subagent':
       return <SubagentPanel sessionId={panel.sessionId ?? ''} toolUseId={panel.subagentToolUseId ?? ''} />
-    case 'plan': {
-      const planSessionId = panel.sessionId ?? ''
-      const planPendingPermission = planSessionId
-        ? useSessionStore.getState().getAgentState(planSessionId).pendingPermission
-        : null
-      const isExitPlanMode = planPendingPermission?.toolName === 'exit_plan_mode'
-      const pendingPerm = isExitPlanMode
-        ? { toolUseId: planPendingPermission.toolUseId }
-        : null
-      // No structured PlanDocument (agent called exit_plan_mode without
-      // submit_plan): fall back to the raw plan text so PlanEditorPanel can
-      // still render the same annotate/comment review experience.
-      const rawContent = !panel.planId && isExitPlanMode
-        ? (planPendingPermission.toolInput.plan as string | undefined) ?? ''
-        : undefined
-      return (
-        <PlanEditorPanel
-          planId={panel.planId}
-          sessionId={planSessionId}
-          pendingPermission={pendingPerm}
-          rawContent={rawContent}
-        />
-      )
-    }
+    case 'plan':
+      return <PlanEditorPanelHost panel={panel} />
     default:
       return (
         <EmptyState
@@ -150,7 +213,41 @@ function renderPanelBody(panel: ReturnType<typeof useUIStore.getState>['rightPan
   }
 }
 
-function KnowledgePanel({ results }: { results: NonNullable<ReturnType<typeof useUIStore.getState>['rightPanel']['knowledgeResults']> }) {
+// Subscribes reactively to the plan session's pendingPermission, unlike a
+// plain getState() snapshot (the previous implementation) which reads the
+// store once and never updates again — since renderPanelBody is an ordinary
+// function, not a component, that snapshot would only ever refresh if some
+// unrelated state change happened to re-render RightPanelHost. A permission
+// resolved elsewhere (e.g. via handlePermissionDecision in Conversation.tsx)
+// could then leave this panel showing a stale "Proceed" button after the
+// user had already approved or denied it.
+function PlanEditorPanelHost({ panel }: { panel: RightPanelInstance }) {
+  const planSessionId = panel.sessionId ?? ''
+  const pendingPermission = useSessionStore((s) =>
+    planSessionId ? s.getAgentState(planSessionId).pendingPermission : null
+  )
+  const isExitPlanMode = pendingPermission?.toolName === 'exit_plan_mode'
+  const pendingPerm = isExitPlanMode
+    ? { toolUseId: pendingPermission.toolUseId }
+    : null
+  // No structured PlanDocument (agent called exit_plan_mode without
+  // submit_plan): fall back to the raw plan text so PlanEditorPanel can
+  // still render the same annotate/comment review experience.
+  const rawContent = !panel.planId && isExitPlanMode
+    ? (pendingPermission.toolInput.plan as string | undefined) ?? ''
+    : undefined
+
+  return (
+    <PlanEditorPanel
+      planId={panel.planId}
+      sessionId={planSessionId}
+      pendingPermission={pendingPerm}
+      rawContent={rawContent}
+    />
+  )
+}
+
+function KnowledgePanel({ results }: { results: NonNullable<RightPanelInstance['knowledgeResults']> }) {
   if (results.length === 0) {
     return (
       <EmptyState
@@ -181,7 +278,6 @@ function KnowledgePanel({ results }: { results: NonNullable<ReturnType<typeof us
 
 function AgentMonitorPanel({ sessionId }: { sessionId: string }) {
   const agentState = useSessionStore((s) => s.getAgentState(sessionId))
-  const isStreaming = useSessionStore((s) => s.isSessionStreaming(sessionId))
   const planArtifact = useSessionStore(
     (s) => s.sessions.find((session) => session.id === sessionId)?.planArtifact,
   )
@@ -196,35 +292,70 @@ function AgentMonitorPanel({ sessionId }: { sessionId: string }) {
 
   return (
     <div className="am-root">
-      <ModeBadge state={agentState} isStreaming={isStreaming} />
       <TurnTokenStats state={agentState} />
       {agentState.activeTool && <ActiveToolSection state={agentState} />}
+      <SubagentsSection sessionId={sessionId} />
       {planArtifact && <PlanArtifactSection sessionId={sessionId} planArtifact={planArtifact} />}
       <PlanSection plan={plan} />
     </div>
   )
 }
 
-const MODE_META: Record<AgentState['executionMode'], { label: string; color: string; dot: string }> = {
-  execute:         { label: 'Execute',         color: 'var(--color-accent)',  dot: '#ef7c2f' },
-  plan:            { label: 'Plan',             color: '#60a5fa',              dot: '#3b82f6' },
-  pair_programming:{ label: 'Pair Programming', color: '#a78bfa',              dot: '#7c3aed' },
-}
+// Aggregated view of every sub-agent spawned from this session (via the `agent`
+// or `spawn_agent` tools) — previously the Agent Monitor only ever showed the
+// main agent's own state, with no way to see how many sub-agents were active,
+// completed, or failed without scrolling back through the transcript to find
+// their individual cards. Renders nothing once no sub-agent has been spawned.
+function SubagentsSection({ sessionId }: { sessionId: string }) {
+  const subagents = useSessionStore((s) => s.subagentsBySession[sessionId])
+  const openRightPanel = useUIStore((s) => s.openRightPanel)
 
-function ModeBadge({ state, isStreaming }: { state: AgentState; isStreaming: boolean }) {
-  const meta = MODE_META[state.executionMode] ?? MODE_META.execute
+  const entries = useMemo(
+    () => Object.entries(subagents ?? {}).sort(([, a], [, b]) => b.startedAt - a.startedAt),
+    [subagents],
+  )
+
+  if (entries.length === 0) return null
+
+  const runningCount = entries.filter(([, sub]) => sub.status === 'running').length
+  const failedCount = entries.filter(([, sub]) => sub.status === 'failed').length
+
   return (
-    <div className="am-section am-mode-section">
-      <span className="am-section-label">Mode</span>
-      <div className="am-mode-badge" style={{ '--mode-color': meta.color } as React.CSSProperties}>
-        <span
-          className={`am-mode-dot${isStreaming && state.isThinking ? ' am-mode-dot--pulse' : ''}`}
-          style={{ background: meta.dot }}
-        />
-        <span className="am-mode-name">{meta.label}</span>
-        {isStreaming && state.isThinking && (
-          <span className="am-mode-thinking">thinking…</span>
-        )}
+    <div className="am-section">
+      <div className="am-section-head">
+        <span className="am-section-label">Sub-agents</span>
+        <span className="am-plan-meta">
+          {runningCount > 0 ? `${runningCount} running · ` : ''}
+          {entries.length} total
+          {failedCount > 0 ? ` · ${failedCount} failed` : ''}
+        </span>
+      </div>
+      <div className="am-subagent-list">
+        {entries.map(([toolUseId, sub]) => (
+          <button
+            key={toolUseId}
+            type="button"
+            className={`am-subagent-row am-subagent-row--${sub.status}`}
+            onClick={() => openRightPanel({
+              kind: 'subagent',
+              title: sub.agentType,
+              sessionId,
+              subagentToolUseId: toolUseId,
+            } as Parameters<typeof openRightPanel>[0])}
+          >
+            <span className="am-subagent-status-icon">
+              {sub.status === 'running'
+                ? <LoadingOne size={10} />
+                : sub.status === 'completed'
+                  ? <CheckOne size={10} />
+                  : <Close size={10} />}
+            </span>
+            <span className="am-subagent-copy">
+              <span className="am-subagent-type">{sub.agentType.replace(/_/g, ' ').replace(/-/g, ' ')}</span>
+              {sub.task && <span className="am-subagent-task">{sub.task}</span>}
+            </span>
+          </button>
+        ))}
       </div>
     </div>
   )
@@ -255,8 +386,7 @@ function PlanSection({ plan }: { plan: ReturnType<typeof derivePlanSnapshot> }) 
         <span className="am-section-label">Plan</span>
         {plan.items.length > 0 && (
           <span className="am-plan-meta">
-            {plan.completedCount}/{plan.items.length} done
-            {plan.source === 'todo_write' ? ' · Todo' : ' · Tasks'}
+            {plan.completedCount}/{plan.items.length} done · Tasks
           </span>
         )}
       </div>
@@ -268,7 +398,7 @@ function PlanSection({ plan }: { plan: ReturnType<typeof derivePlanSnapshot> }) 
           {plan.items.map((item) => (
             <div key={item.id} className={`am-plan-item am-plan-item--${item.status}`}>
               <div className="am-plan-marker">
-                {item.status === 'completed' ? <CheckOne size={12} /> : <span className="am-plan-dot" />}
+                {item.status === 'completed' ? <CheckOne size={10} /> : <span className="am-plan-dot" />}
               </div>
               <div className="am-plan-copy">
                 <span className="am-plan-title">{item.title}</span>
@@ -300,7 +430,7 @@ function ActiveToolSection({ state }: { state: AgentState }) {
       <span className="am-section-label">Running</span>
       <div className="am-active-tool">
         <span className="am-active-spinner">
-          <LoadingOne size={13} />
+          <LoadingOne size={10} />
         </span>
         <div className="am-active-copy">
           <span className="am-active-name">{toolDisplayName(tool.toolName)}</span>
@@ -323,11 +453,10 @@ function PlanArtifactSection({ sessionId, planArtifact }: { sessionId: string; p
           kind: 'markdown',
           title: 'Implementation Plan',
           sessionId,
-          width: 480,
           markdown: planArtifact,
         })}
       >
-        <FileTextOne size={13} />
+        <FileTextOne size={10} />
         <span>Implementation Plan</span>
       </button>
     </div>
@@ -338,7 +467,7 @@ function toolDisplayName(name: string): string {
   const map: Record<string, string> = {
     bash: 'Bash', read: 'Read', write: 'Write', edit: 'Edit',
     glob: 'Glob', grep: 'Grep', web_search: 'Web Search', web_fetch: 'Web Fetch',
-    agent: 'Agent', todo_write: 'Todo Write',
+    agent: 'Agent',
     task_create: 'Task Create', task_update: 'Task Update',
     file_read: 'Read File', file_write: 'Write File', file_edit: 'Edit File',
   }
@@ -359,9 +488,84 @@ function EmptyState({ title, description }: { title: string; description: string
 }
 
 const RIGHT_PANEL_CSS = `
-.right-panel {
+.right-panel-columns {
+  display: flex;
+  flex-direction: row;
   flex-shrink: 0;
   height: 100%;
+  min-width: 0;
+}
+
+.right-panel-stack {
+  flex-shrink: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  position: relative;
+}
+
+/* position:absolute's containing block is the nearest positioned
+   ancestor's *padding* box, which includes the padding area itself — so
+   inset:0 alone would render behind .shell-main's padding-left (i.e.
+   behind the sidebar, which only visually reserves that space via
+   padding, not real layout width). Pin "left" to the same width .shell-main
+   already uses for its own padding so the maximized panel starts exactly
+   where the sidebar ends, on both open and collapsed states. */
+.right-panel-stack--maximized {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: var(--sidebar-width);
+  z-index: 50;
+}
+
+.shell-main.collapsed .right-panel-stack--maximized {
+  left: var(--sidebar-collapsed-width);
+}
+
+.shell-main.no-sidebar .right-panel-stack--maximized {
+  left: 0;
+}
+
+.right-panel-resize-handle {
+  position: absolute;
+  left: -3px;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: ew-resize;
+  z-index: 10;
+}
+
+.right-panel-resize-handle:hover,
+.right-panel-resize-handle:active {
+  background: color-mix(in srgb, var(--color-accent, #f97316) 40%, transparent);
+}
+
+.right-panel-slot {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.right-panel-split-handle {
+  height: 6px;
+  margin: -3px 0;
+  cursor: ns-resize;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.right-panel-split-handle:hover,
+.right-panel-split-handle:active {
+  background: color-mix(in srgb, var(--color-accent, #f97316) 40%, transparent);
+}
+
+.right-panel {
+  flex: 1;
+  min-height: 0;
   border-left: 1px solid var(--color-border-subtle);
   background: rgba(43, 41, 48, 0.96);
   backdrop-filter: blur(14px);
@@ -370,26 +574,51 @@ const RIGHT_PANEL_CSS = `
   min-width: 0;
 }
 
+.right-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.right-panel-maximize-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.right-panel-maximize-btn:hover {
+  background: var(--color-hover);
+  color: var(--color-text);
+}
+
 .right-panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 18px 18px 14px;
+  gap: 6px;
+  padding: 7px 8px 6px;
   border-bottom: 1px solid var(--color-border-subtle);
 }
 
 .right-panel-heading {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
 }
 
 .right-panel-icon {
-  width: 30px;
-  height: 30px;
-  border-radius: 10px;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
   background: rgba(239, 124, 47, 0.12);
   color: var(--color-accent);
   display: flex;
@@ -404,14 +633,14 @@ const RIGHT_PANEL_CSS = `
 
 .right-panel-title {
   margin: 0;
-  font-size: 15px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--color-text);
 }
 
 .right-panel-meta {
-  margin: 4px 0 0;
-  font-size: 12px;
+  margin: 1px 0 0;
+  font-size: 10px;
   color: var(--color-text-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -419,9 +648,9 @@ const RIGHT_PANEL_CSS = `
 }
 
 .right-panel-close {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
   border: none;
   background: transparent;
   color: var(--color-text-muted);
@@ -441,25 +670,47 @@ const RIGHT_PANEL_CSS = `
   min-height: 0;
   overflow-y: auto;
   padding: 0;
+  scrollbar-width: thin;
+}
+
+/* Narrower and lower-contrast than the app-wide default (5px,
+   rgba(128,128,128,0.3) on hover) - this panel's scrollbar sits right
+   against the window edge, where the wider/greyer default reads as an
+   overly prominent stripe rather than a scroll affordance. */
+.right-panel-body::-webkit-scrollbar {
+  width: 3px;
+}
+
+.right-panel-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.right-panel-body::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.right-panel-body:hover::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.18);
 }
 
 .right-panel-empty {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 20px 18px;
+  gap: 8px;
+  padding: 14px 13px;
 }
 
 .right-panel-empty h3 {
   margin: 0;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--color-text);
 }
 
 .right-panel-empty p {
   margin: 0;
-  font-size: 13px;
+  font-size: 11px;
   line-height: 1.6;
   color: var(--color-text-secondary);
 }
@@ -467,34 +718,34 @@ const RIGHT_PANEL_CSS = `
 .right-panel-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 20px 18px;
+  gap: 8px;
+  padding: 14px 13px;
 }
 
 .right-panel-list-item {
   border: 1px solid var(--color-border-subtle);
-  border-radius: 14px;
-  padding: 12px 14px;
+  border-radius: 11px;
+  padding: 8px 10px;
   background: rgba(255, 255, 255, 0.02);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
 }
 
 .right-panel-list-title {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--color-text);
 }
 
 .right-panel-list-status {
-  font-size: 12px;
+  font-size: 10px;
   color: var(--color-text-muted);
 }
 
 .right-panel-list-copy {
   margin: 0;
-  font-size: 13px;
+  font-size: 11px;
   line-height: 1.6;
   color: var(--color-text-secondary);
   white-space: pre-wrap;
@@ -511,18 +762,18 @@ const RIGHT_PANEL_CSS = `
 }
 
 .am-section {
-  padding: 16px 18px;
+  padding: 11px 13px;
   border-bottom: 1px solid var(--color-border-subtle);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .am-section-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 9px;
 }
 
 .am-section-label {
@@ -534,70 +785,29 @@ const RIGHT_PANEL_CSS = `
 }
 
 .am-plan-meta {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--color-text-muted);
-}
-
-/* Mode badge */
-.am-mode-section {}
-
-.am-mode-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 12px;
-  border-radius: 20px;
-  border: 1px solid color-mix(in srgb, var(--mode-color) 30%, transparent);
-  background: color-mix(in srgb, var(--mode-color) 10%, transparent);
-}
-
-.am-mode-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.am-mode-dot--pulse {
-  animation: am-pulse 1.4s ease-in-out infinite;
-}
-
-@keyframes am-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%       { opacity: 0.4; transform: scale(0.75); }
-}
-
-.am-mode-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--mode-color);
-}
-
-.am-mode-thinking {
-  font-size: 11px;
-  color: var(--color-text-muted);
-  font-style: italic;
 }
 
 /* Stats grid */
 .am-stat-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 6px;
 }
 
 .am-stat {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--color-border-subtle);
-  border-radius: 10px;
-  padding: 10px 12px;
+  border-radius: 8px;
+  padding: 7px 8px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
 }
 
 .am-stat-value {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--color-text);
   font-variant-numeric: tabular-nums;
@@ -612,7 +822,7 @@ const RIGHT_PANEL_CSS = `
 
 .am-empty-hint {
   margin: 0;
-  font-size: 12px;
+  font-size: 10px;
   color: var(--color-text-muted);
   font-style: italic;
 }
@@ -620,16 +830,16 @@ const RIGHT_PANEL_CSS = `
 .am-plan-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .am-plan-item {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: 8px;
+  padding: 7px 8px;
   border: 1px solid var(--color-border-subtle);
-  border-radius: 12px;
+  border-radius: 9px;
   background: rgba(255, 255, 255, 0.02);
 }
 
@@ -643,8 +853,8 @@ const RIGHT_PANEL_CSS = `
 }
 
 .am-plan-item--failed {
-  border-color: rgba(239, 68, 68, 0.28);
-  background: rgba(239, 68, 68, 0.05);
+  border-color: rgba(var(--color-error-rgb), 0.28);
+  background: rgba(var(--color-error-rgb), 0.05);
 }
 
 .am-plan-marker {
@@ -654,7 +864,7 @@ const RIGHT_PANEL_CSS = `
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #34d399;
+  color: var(--color-success);
   flex-shrink: 0;
 }
 
@@ -671,39 +881,121 @@ const RIGHT_PANEL_CSS = `
 }
 
 .am-plan-item--failed .am-plan-dot {
-  background: #ef4444;
+  background: var(--color-error);
 }
 
 .am-plan-copy {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
 }
 
 .am-plan-title {
-  font-size: 13px;
+  font-size: 11px;
   line-height: 1.45;
   color: var(--color-text);
 }
 
 .am-plan-detail {
-  font-size: 12px;
+  font-size: 10px;
   color: var(--color-text-secondary);
   line-height: 1.45;
 }
 
+/* Sub-agents list */
+.am-subagent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.am-subagent-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 8px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  width: 100%;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.am-subagent-row:hover {
+  border-color: var(--color-border);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.am-subagent-row--running {
+  border-color: rgba(239, 124, 47, 0.28);
+  background: rgba(239, 124, 47, 0.05);
+}
+
+.am-subagent-row--failed {
+  border-color: rgba(var(--color-error-rgb), 0.28);
+  background: rgba(var(--color-error-rgb), 0.05);
+}
+
+.am-subagent-row--completed {
+  opacity: 0.72;
+}
+
+.am-subagent-status-icon {
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.am-subagent-row--running .am-subagent-status-icon {
+  color: var(--color-accent);
+  animation: am-spin 1s linear infinite;
+}
+
+.am-subagent-row--completed .am-subagent-status-icon { color: var(--color-success); }
+.am-subagent-row--failed .am-subagent-status-icon { color: var(--color-error); }
+
+.am-subagent-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.am-subagent-type {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text);
+  text-transform: capitalize;
+}
+
+.am-subagent-task {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Active tool indicator */
 .am-section--compact {
-  padding: 12px 18px;
+  padding: 8px 13px;
 }
 
 .am-active-tool {
   display: flex;
   align-items: flex-start;
-  gap: 9px;
-  padding: 9px 12px;
-  border-radius: 10px;
+  gap: 7px;
+  padding: 6px 8px;
+  border-radius: 8px;
   border: 1px solid rgba(239, 124, 47, 0.25);
   background: rgba(239, 124, 47, 0.06);
 }
@@ -730,13 +1022,13 @@ const RIGHT_PANEL_CSS = `
 }
 
 .am-active-name {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--color-accent);
 }
 
 .am-active-msg {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--color-text-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -747,13 +1039,13 @@ const RIGHT_PANEL_CSS = `
 .am-artifact-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 9px 12px;
-  border-radius: 10px;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 8px;
   border: 1px solid var(--color-border-subtle);
   background: rgba(255, 255, 255, 0.03);
   color: var(--color-text);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 500;
   cursor: pointer;
   width: 100%;

@@ -5,6 +5,7 @@ interface Window {
     showFile: (p: string) => Promise<void>
     openExternal: (url: string) => Promise<void>
     selectFile: (opts?: Electron.OpenDialogOptions) => Promise<Electron.OpenDialogReturnValue>
+    saveFile: (defaultName: string, content: string) => Promise<{ canceled: boolean; filePath?: string }>
     dialog: {
       openDirectory: () => Promise<Electron.OpenDialogReturnValue>
     }
@@ -34,7 +35,7 @@ interface Window {
         fields?: Array<{ name: string; value: string }>
         files?: Array<{ name: string; filename: string; mimeType?: string; data: ArrayBuffer }>
       }) => Promise<{ ok: boolean; status: number; data?: unknown; text?: string }>
-      startStream: (payload: { path: string; method?: string; body?: unknown }) => Promise<{ streamId: string }>
+      startStream: (payload: { path: string; method?: string; body?: unknown }) => Promise<{ streamId: string } | { error: string; retryable: boolean }>
       cancelStream: (streamId: string) => Promise<void>
       onStreamEvent: (streamId: string, listener: (event: { name: string; data: Record<string, unknown> }) => void) => () => void
     }

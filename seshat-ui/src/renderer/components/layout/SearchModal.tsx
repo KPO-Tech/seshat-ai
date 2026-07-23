@@ -163,7 +163,7 @@ export function SearchModal({ open, sessions, onClose, onSelect }: Props) {
       <style>{SEARCH_CSS}</style>
       <div className="srch-shell" role="dialog" aria-modal="true" aria-label="Search conversations">
         <div className="srch-input-row">
-          <Search size={18} className="srch-input-icon" />
+          <Search size={15} className="srch-input-icon" />
           <input
             ref={inputRef}
             className="srch-input"
@@ -173,9 +173,9 @@ export function SearchModal({ open, sessions, onClose, onSelect }: Props) {
             autoComplete="off"
             spellCheck={false}
           />
-          {loading ? <Sync size={14} className="spin srch-loading-icon" /> : null}
+          {loading ? <Sync size={11} className="spin srch-loading-icon" /> : null}
           <button className="srch-esc-btn" onClick={onClose} tabIndex={-1}>
-            <Close size={14} />
+            <Close size={11} />
           </button>
         </div>
 
@@ -226,7 +226,7 @@ const SEARCH_CSS = `
   width: 100%; max-width: 560px;
   background: var(--color-bg);
   border: 1px solid var(--color-border);
-  border-radius: 16px;
+  border-radius: 12px;
   box-shadow: 0 24px 64px rgba(0,0,0,0.32);
   overflow: hidden;
   animation: srch-in 0.15s ease-out;
@@ -240,8 +240,8 @@ const SEARCH_CSS = `
 }
 
 .srch-input-row {
-  display: flex; align-items: center; gap: 12px;
-  padding: 14px 18px;
+  display: flex; align-items: center; gap: 9px;
+  padding: 10px 13px;
   border-bottom: 1px solid var(--color-border-subtle);
   flex-shrink: 0;
 }
@@ -251,7 +251,7 @@ const SEARCH_CSS = `
 
 .srch-input {
   flex: 1; background: none; border: none; outline: none;
-  font-size: 16px; font-weight: 500; color: var(--color-text);
+  font-size: 14px; font-weight: 500; color: var(--color-text);
   font-family: var(--font-sans);
 }
 
@@ -259,21 +259,21 @@ const SEARCH_CSS = `
 
 .srch-esc-btn {
   background: var(--color-surface); border: 1px solid var(--color-border);
-  color: var(--color-text-muted); border-radius: 6px;
-  padding: 4px 8px; cursor: pointer; flex-shrink: 0;
+  color: var(--color-text-muted); border-radius: 5px;
+  padding: 3px 6px; cursor: pointer; flex-shrink: 0;
   display: flex; align-items: center;
 }
 .srch-esc-btn:hover { background: var(--color-hover); }
 
 .srch-results {
   overflow-y: auto; flex: 1;
-  padding: 6px;
-  display: flex; flex-direction: column; gap: 1px;
+  padding: 4px;
+  display: flex; flex-direction: column; gap: 2px;
 }
 
 .srch-item {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; padding: 10px 12px; border-radius: 10px;
+  gap: 9px; padding: 7px 8px; border-radius: 8px;
   border: none; background: transparent; text-align: left;
   cursor: pointer; width: 100%; transition: background 0.08s;
 }
@@ -290,43 +290,43 @@ const SEARCH_CSS = `
 .srch-item-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 
 .srch-item-title {
-  font-size: 14px; font-weight: 600; color: var(--color-text);
+  font-size: 12px; font-weight: 600; color: var(--color-text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
 .srch-item-preview {
-  font-size: 12px; color: var(--color-text-muted);
+  font-size: 10px; color: var(--color-text-muted);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
 .srch-item-date {
-  font-size: 11px; color: var(--color-text-muted);
+  font-size: 10px; color: var(--color-text-muted);
   white-space: nowrap; flex-shrink: 0;
 }
 
 .srch-empty {
   display: flex; align-items: center; justify-content: center;
-  min-height: 160px; color: var(--color-text-muted); font-size: 13px;
+  min-height: 160px; color: var(--color-text-muted); font-size: 11px;
 }
 
 .srch-mark {
   background: rgba(239, 124, 47, 0.18);
   color: inherit;
   padding: 0 2px;
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 .srch-footer {
-  display: flex; align-items: center; gap: 16px; justify-content: flex-end;
-  padding: 12px 16px; border-top: 1px solid var(--color-border-subtle);
-  color: var(--color-text-muted); font-size: 12px;
+  display: flex; align-items: center; gap: 12px; justify-content: flex-end;
+  padding: 8px 11px; border-top: 1px solid var(--color-border-subtle);
+  color: var(--color-text-muted); font-size: 10px;
 }
 
 .srch-footer kbd {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 6px;
-  padding: 2px 6px;
+  border-radius: 5px;
+  padding: 2px 4px;
   font-family: var(--font-mono, monospace);
 }
 

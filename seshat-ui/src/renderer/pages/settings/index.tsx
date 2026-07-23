@@ -47,41 +47,41 @@ export function Settings() {
     {
       title: 'PERSONAL',
       items: [
-        { id: 'general' as TabId, label: 'General', icon: <Setting size={20} /> },
-        { id: 'memories' as TabId, label: 'Memories', icon: <Brain size={20} /> },
+        { id: 'general' as TabId, label: 'General', icon: <Setting size={16} /> },
+        { id: 'memories' as TabId, label: 'Memories', icon: <Brain size={16} /> },
       ],
     },
     {
       title: 'AI CORE',
       items: [
-        { id: 'providers' as TabId, label: 'Providers', icon: <Browser size={20} /> },
-        { id: 'knowledge' as TabId, label: 'Knowledge', icon: <Book size={20} /> },
-        { id: 'capabilities' as TabId, label: 'Capabilities', icon: <Flashlamp size={20} /> },
+        { id: 'providers' as TabId, label: 'Providers', icon: <Browser size={16} /> },
+        { id: 'knowledge' as TabId, label: 'Knowledge', icon: <Book size={16} /> },
+        { id: 'capabilities' as TabId, label: 'Capabilities', icon: <Flashlamp size={16} /> },
       ],
     },
     {
       title: 'APPLICATION',
       items: [
-        { id: 'remote' as TabId, label: 'Web Search', icon: <Earth size={20} /> },
-        { id: 'cloud-automation' as TabId, label: 'Cloud Automation', icon: <CloudStorage size={20} /> },
-        { id: 'system' as TabId, label: 'System', icon: <Computer size={20} /> },
+        { id: 'remote' as TabId, label: 'Web Search', icon: <Earth size={16} /> },
+        { id: 'cloud-automation' as TabId, label: 'Cloud Automation', icon: <CloudStorage size={16} /> },
+        { id: 'system' as TabId, label: 'System', icon: <Computer size={16} /> },
       ],
     },
     ...(isAdmin ? [{
       title: 'ADMIN',
       items: [
-        { id: 'admin-users' as TabId, label: 'Users', icon: <User size={20} /> },
-        { id: 'admin-groups' as TabId, label: 'Groups', icon: <Peoples size={20} /> },
-        { id: 'admin-organizations' as TabId, label: 'Organizations', icon: <BuildingTwo size={20} /> },
-        { id: 'admin-workspaces' as TabId, label: 'Workspaces', icon: <Workbench size={20} /> },
-        { id: 'admin-audit' as TabId, label: 'Audit Logs', icon: <Info size={20} /> },
-        { id: 'admin-quotas' as TabId, label: 'Quotas', icon: <Flashlamp size={20} /> },
+        { id: 'admin-users' as TabId, label: 'Users', icon: <User size={16} /> },
+        { id: 'admin-groups' as TabId, label: 'Groups', icon: <Peoples size={16} /> },
+        { id: 'admin-organizations' as TabId, label: 'Organizations', icon: <BuildingTwo size={16} /> },
+        { id: 'admin-workspaces' as TabId, label: 'Workspaces', icon: <Workbench size={16} /> },
+        { id: 'admin-audit' as TabId, label: 'Audit Logs', icon: <Info size={16} /> },
+        { id: 'admin-quotas' as TabId, label: 'Quotas', icon: <Flashlamp size={16} /> },
       ],
     }] : []),
     {
       title: 'OTHER',
       items: [
-        { id: 'about' as TabId, label: 'About', icon: <Info size={20} /> },
+        { id: 'about' as TabId, label: 'About', icon: <Info size={16} /> },
       ],
     },
   ]
@@ -93,14 +93,14 @@ export function Settings() {
         onClick={() => navigate(-1)}
         title={sidebarCollapsed ? 'Back to Chat' : undefined}
       >
-        <Left size={16} />
+        <Left size={13} />
         {!sidebarCollapsed && <span>Back to Chat</span>}
       </button>
       <button
         className="snav-theme-toggle"
         onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
       >
-        {theme === 'dark' ? <SunOne size={18} /> : <Moon size={18} />}
+        {theme === 'dark' ? <SunOne size={15} /> : <Moon size={15} />}
       </button>
     </div>
   )
@@ -140,7 +140,7 @@ export function Settings() {
   )
 }
 
-type SystemStatus = { mode: 'standalone' | 'connected'; server_url?: string }
+type SystemStatus = { mode: 'standalone' | 'connected'; server_url?: string; sandbox_confined?: boolean }
 
 function SystemView() {
   const [status, setStatus] = useState<SystemStatus | null>(null)
@@ -161,7 +161,7 @@ function SystemView() {
         <div className="sv-card">
           <div className="sv-card-head">
             <div className="sv-card-brand">
-              <div className="sv-brand-icon"><Computer size={20} /></div>
+              <div className="sv-brand-icon"><Computer size={16} /></div>
               <div>
                 <div className="sv-brand-name">Backend</div>
                 <div className="sv-brand-sub">SeshatOS API</div>
@@ -186,6 +186,23 @@ function SystemView() {
                       ? `Connected to ${status.server_url}`
                       : status?.mode === 'standalone'
                         ? 'Standalone (local identity, no Seshat Server)'
+                        : 'Loading…'}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="sv-toggle-row">
+              <div className="sv-toggle-info">
+                <div>
+                  <div className="sv-setting-label">Sandbox</div>
+                  <div
+                    className="sv-setting-desc"
+                    style={status?.sandbox_confined === false ? { color: 'var(--color-warning)' } : undefined}
+                  >
+                    {status?.sandbox_confined === true
+                      ? 'Shell commands run inside an OS-level sandbox (Landlock)'
+                      : status?.sandbox_confined === false
+                        ? 'No OS-level sandbox on this host — shell commands run unconfined (Landlock is Linux-only)'
                         : 'Loading…'}
                   </div>
                 </div>

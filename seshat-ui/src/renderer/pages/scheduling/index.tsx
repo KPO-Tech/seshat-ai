@@ -72,6 +72,7 @@ function describeTrigger(job: Job): string {
 export function SchedulingPage() {
   const navigate = useNavigate()
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null)
+  const [statusLoading, setStatusLoading] = useState(true)
   const [jobs, setJobs] = useState<Job[]>([])
   const [devices, setDevices] = useState<Device[]>([])
   const [loading, setLoading] = useState(true)
@@ -105,7 +106,10 @@ export function SchedulingPage() {
   }, [])
 
   useEffect(() => {
-    api.get<SystemStatus>('/system/status').then(setSystemStatus).catch(() => setSystemStatus(null))
+    api.get<SystemStatus>('/system/status')
+      .then(setSystemStatus)
+      .catch(() => setSystemStatus(null))
+      .finally(() => setStatusLoading(false))
     void loadJobs()
     api.get<{ devices: Device[] }>('/automation/devices').then((r) => setDevices(r.devices ?? [])).catch(() => {})
   }, [loadJobs])
@@ -186,26 +190,28 @@ export function SchedulingPage() {
 
       <header className="sch-topbar">
         <button className="sch-back-chip" onClick={() => navigate('/')}>
-          <Left size={14} /> Home
+          <Left size={11} /> Home
         </button>
         <span className="sch-topbar-sep">/</span>
         <span className="sch-topbar-title">Scheduling</span>
         <button className="sch-new-btn" onClick={openCreateForm} disabled={systemStatus?.mode !== 'connected'}>
-          <Plus size={14} /> New Job
+          <Plus size={11} /> New Job
         </button>
       </header>
 
       <div className="sch-body">
-        {systemStatus?.mode !== 'connected' ? (
+        {statusLoading ? (
+          <div className="sch-loading">Loading…</div>
+        ) : systemStatus?.mode !== 'connected' ? (
           <div className="sch-empty">
-            <Caution size={28} />
+            <Caution size={23} />
             <h2>Scheduling requires an organization server</h2>
             <p>
               Jobs run through your organization's Seshat Server. Connect this machine to one in
               Settings → Cloud Automation to create and manage scheduled jobs.
             </p>
             <button className="sch-empty-cta" onClick={() => navigate('/settings?tab=cloud-automation')}>
-              <LinkCloud size={14} /> Go to Cloud Automation settings
+              <LinkCloud size={11} /> Go to Cloud Automation settings
             </button>
           </div>
         ) : loading ? (
@@ -216,7 +222,7 @@ export function SchedulingPage() {
           <>
             {forbidden && (
               <div className="sch-notice">
-                <Caution size={14} />
+                <Caution size={11} />
                 You don't have permission to manage scheduled jobs in this organization. Ask an admin
                 to grant you the jobs.manage role.
               </div>
@@ -225,11 +231,11 @@ export function SchedulingPage() {
 
             {jobs.length === 0 && !forbidden ? (
               <div className="sch-empty">
-                <History size={28} />
+                <History size={23} />
                 <h2>No scheduled jobs yet</h2>
                 <p>Create a job to run a prompt on a schedule, on a timer, or once at a specific time.</p>
                 <button className="sch-empty-cta" onClick={openCreateForm}>
-                  <Plus size={14} /> New Job
+                  <Plus size={11} /> New Job
                 </button>
               </div>
             ) : (
@@ -259,7 +265,7 @@ export function SchedulingPage() {
                           onClick={() => void handleRunNow(job)}
                           disabled={runningJobId === job.id}
                         >
-                          <Play size={15} />
+                          <Play size={12} />
                         </button>
                         <button
                           className="sch-icon-btn"
@@ -267,20 +273,20 @@ export function SchedulingPage() {
                           onClick={() => void handleTogglePaused(job)}
                           disabled={pausingJobId === job.id}
                         >
-                          {job.status === 'active' ? <PauseOne size={15} /> : <Play size={15} />}
+                          {job.status === 'active' ? <PauseOne size={12} /> : <Play size={12} />}
                         </button>
                         <button className="sch-icon-btn" title="View runs" onClick={() => void toggleRuns(job)}>
-                          <History size={15} />
+                          <History size={12} />
                         </button>
                         <button className="sch-icon-btn" title="Edit" onClick={() => openEditForm(job)}>
-                          <Edit size={15} />
+                          <Edit size={12} />
                         </button>
                         <button
                           className="sch-icon-btn sch-icon-btn--danger"
                           title="Delete"
                           onClick={() => setDeletingJobId(job.id)}
                         >
-                          <Delete size={15} />
+                          <Delete size={12} />
                         </button>
                       </div>
                     </div>
@@ -395,7 +401,7 @@ function JobFormModal({
       <div className="sch-modal" role="dialog" aria-modal="true">
         <div className="sch-modal-header">
           <h2>{isEdit ? 'Edit Job' : 'New Job'}</h2>
-          <button className="sch-modal-close" onClick={onClose}><CloseOne size={16} /></button>
+          <button className="sch-modal-close" onClick={onClose}><CloseOne size={13} /></button>
         </div>
         <form className="sch-modal-body" onSubmit={(e) => void handleSubmit(e)}>
           {error && <div className="sch-error-banner">{error}</div>}
@@ -502,153 +508,153 @@ const CSS = `
 }
 
 .sch-topbar {
-  display: flex; align-items: center; gap: 8px;
-  padding: 0 24px; height: 52px; flex-shrink: 0;
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 17px; height: 52px; flex-shrink: 0;
   background: var(--color-bg);
   border-bottom: 1px solid var(--color-border-subtle);
 }
 .sch-back-chip {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 5px 10px; border-radius: 7px; border: none;
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 7px; border-radius: 5px; border: none;
   background: var(--color-hover); color: var(--color-text-secondary);
-  font-size: 12px; font-weight: 600; cursor: pointer;
+  font-size: 10px; font-weight: 600; cursor: pointer;
 }
 .sch-back-chip:hover { background: var(--color-border); color: var(--color-text); }
-.sch-topbar-sep { color: var(--color-text-muted); font-size: 14px; }
-.sch-topbar-title { font-size: 15px; font-weight: 700; }
+.sch-topbar-sep { color: var(--color-text-muted); font-size: 12px; }
+.sch-topbar-title { font-size: 13px; font-weight: 700; }
 .sch-new-btn {
   margin-left: auto;
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 7px 14px; border-radius: 9px; border: none;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 10px; border-radius: 7px; border: none;
   background: var(--color-cta); color: white;
-  font-size: 12px; font-weight: 700; cursor: pointer;
+  font-size: 10px; font-weight: 700; cursor: pointer;
 }
 .sch-new-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.sch-body { flex: 1; overflow-y: auto; padding: 28px 32px; }
+.sch-body { flex: 1; overflow-y: auto; padding: 20px 22px; }
 
 .sch-loading, .sch-error-banner {
-  padding: 14px 16px; border-radius: 10px; font-size: 13px;
+  padding: 10px 11px; border-radius: 8px; font-size: 11px;
 }
 .sch-loading { color: var(--color-text-muted); }
 .sch-error-banner {
-  background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25);
-  color: #f87171; margin-bottom: 16px;
+  background: rgba(var(--color-error-rgb), 0.08); border: 1px solid rgba(var(--color-error-rgb), 0.25);
+  color: var(--color-error); margin-bottom: 16px;
 }
 .sch-notice {
-  display: flex; align-items: center; gap: 8px;
-  padding: 12px 16px; border-radius: 10px; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 11px; border-radius: 8px; margin-bottom: 16px;
   background: rgba(239, 124, 47, 0.08); border: 1px solid rgba(239, 124, 47, 0.25);
-  color: var(--color-accent); font-size: 13px;
+  color: var(--color-accent); font-size: 11px;
 }
 
 .sch-empty {
   display: flex; flex-direction: column; align-items: center; text-align: center;
-  gap: 12px; max-width: 420px; margin: 60px auto 0; color: var(--color-text-muted);
+  gap: 9px; max-width: 420px; margin: 60px auto 0; color: var(--color-text-muted);
 }
-.sch-empty h2 { font-size: 17px; font-weight: 700; color: var(--color-text); margin: 4px 0 0; }
-.sch-empty p { font-size: 13px; line-height: 1.6; margin: 0; }
+.sch-empty h2 { font-size: 15px; font-weight: 700; color: var(--color-text); margin: 4px 0 0; }
+.sch-empty p { font-size: 11px; line-height: 1.6; margin: 0; }
 .sch-empty-cta {
   margin-top: 8px;
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 8px 16px; border-radius: 9px; border: none;
-  background: var(--color-cta); color: white; font-size: 12px; font-weight: 700; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 11px; border-radius: 7px; border: none;
+  background: var(--color-cta); color: white; font-size: 10px; font-weight: 700; cursor: pointer;
 }
 
-.sch-job-list { display: flex; flex-direction: column; gap: 10px; }
+.sch-job-list { display: flex; flex-direction: column; gap: 8px; }
 .sch-job-card {
-  border: 1px solid var(--color-border-subtle); border-radius: 14px;
+  border: 1px solid var(--color-border-subtle); border-radius: 11px;
   background: var(--color-bg);
 }
-.sch-job-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 16px 18px; }
-.sch-job-main { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.sch-job-name-row { display: flex; align-items: center; gap: 8px; }
-.sch-job-name { font-size: 14px; font-weight: 700; }
-.sch-job-desc { font-size: 12px; color: var(--color-text-muted); }
-.sch-job-meta { display: flex; gap: 14px; font-size: 11px; color: var(--color-text-muted); flex-wrap: wrap; }
+.sch-job-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 11px 13px; }
+.sch-job-main { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.sch-job-name-row { display: flex; align-items: center; gap: 6px; }
+.sch-job-name { font-size: 12px; font-weight: 700; }
+.sch-job-desc { font-size: 10px; color: var(--color-text-muted); }
+.sch-job-meta { display: flex; gap: 11px; font-size: 10px; color: var(--color-text-muted); flex-wrap: wrap; }
 
 .sch-badge {
   font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
-  padding: 2px 8px; border-radius: 999px; flex-shrink: 0;
+  padding: 2px 6px; border-radius: 779px; flex-shrink: 0;
 }
-.sch-badge--active { background: rgba(52, 211, 153, 0.12); color: #34d399; }
+.sch-badge--active { background: rgba(var(--color-success-rgb), 0.12); color: var(--color-success); }
 .sch-badge--paused { background: rgba(148, 163, 184, 0.15); color: var(--color-text-muted); }
 .sch-badge--target { background: rgba(239, 124, 47, 0.1); color: var(--color-accent); }
-.sch-badge--run-completed { background: rgba(52, 211, 153, 0.12); color: #34d399; }
-.sch-badge--run-failed { background: rgba(239, 68, 68, 0.1); color: #f87171; }
+.sch-badge--run-completed { background: rgba(var(--color-success-rgb), 0.12); color: var(--color-success); }
+.sch-badge--run-failed { background: rgba(var(--color-error-rgb), 0.1); color: var(--color-error); }
 .sch-badge--run-cancelled { background: rgba(148, 163, 184, 0.15); color: var(--color-text-muted); }
-.sch-badge--run-queued, .sch-badge--run-claimed, .sch-badge--run-running { background: rgba(96, 165, 250, 0.12); color: #60a5fa; }
+.sch-badge--run-queued, .sch-badge--run-claimed, .sch-badge--run-running { background: rgba(var(--color-info-rgb), 0.12); color: var(--color-info); }
 
-.sch-job-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.sch-job-actions { display: flex; gap: 3px; flex-shrink: 0; }
 .sch-icon-btn {
-  width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--color-border-subtle);
+  width: 30px; height: 30px; border-radius: 6px; border: 1px solid var(--color-border-subtle);
   background: transparent; color: var(--color-text-muted); display: flex; align-items: center; justify-content: center;
   cursor: pointer;
 }
 .sch-icon-btn:hover:not(:disabled) { background: var(--color-hover); color: var(--color-text); }
 .sch-icon-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.sch-icon-btn--danger:hover:not(:disabled) { background: rgba(239, 68, 68, 0.1); color: #f87171; }
+.sch-icon-btn--danger:hover:not(:disabled) { background: rgba(var(--color-error-rgb), 0.1); color: var(--color-error); }
 
 .sch-runs-panel {
-  border-top: 1px solid var(--color-border-subtle); padding: 10px 18px 14px;
-  display: flex; flex-direction: column; gap: 6px;
+  border-top: 1px solid var(--color-border-subtle); padding: 7px 13px 10px;
+  display: flex; flex-direction: column; gap: 5px;
 }
-.sch-runs-loading, .sch-runs-empty { font-size: 12px; color: var(--color-text-muted); }
-.sch-run-row { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+.sch-runs-loading, .sch-runs-empty { font-size: 10px; color: var(--color-text-muted); }
+.sch-run-row { display: flex; align-items: center; gap: 8px; font-size: 10px; }
 .sch-run-time { color: var(--color-text-muted); }
-.sch-run-error { color: #f87171; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sch-run-error { color: var(--color-error); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .sch-confirm-row {
-  border-top: 1px solid var(--color-border-subtle); padding: 10px 18px;
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  font-size: 12px; color: var(--color-text);
+  border-top: 1px solid var(--color-border-subtle); padding: 7px 13px;
+  display: flex; align-items: center; justify-content: space-between; gap: 9px;
+  font-size: 10px; color: var(--color-text);
 }
-.sch-confirm-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.sch-confirm-actions { display: flex; gap: 6px; flex-shrink: 0; }
 .sch-confirm-cancel {
   background: transparent; border: 1px solid var(--color-border-subtle); color: var(--color-text-muted);
-  padding: 5px 12px; border-radius: 8px; font-size: 12px; cursor: pointer;
+  padding: 4px 8px; border-radius: 6px; font-size: 10px; cursor: pointer;
 }
 .sch-confirm-delete {
-  background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171;
-  padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer;
+  background: rgba(var(--color-error-rgb), 0.12); border: 1px solid rgba(var(--color-error-rgb), 0.3); color: var(--color-error);
+  padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 600; cursor: pointer;
 }
 
 /* Modal */
 .sch-modal-backdrop {
   position: fixed; inset: 0; z-index: 900;
-  display: flex; align-items: center; justify-content: center; padding: 24px;
+  display: flex; align-items: center; justify-content: center; padding: 17px;
   background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(6px);
 }
 .sch-modal {
   background: var(--color-surface); border: 1px solid var(--color-border-subtle);
-  border-radius: 16px; width: 100%; max-width: 520px; max-height: calc(100vh - 80px);
+  border-radius: 12px; width: 100%; max-width: 520px; max-height: calc(100vh - 80px);
   display: flex; flex-direction: column; overflow: hidden;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
 }
 .sch-modal-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 20px; border-bottom: 1px solid var(--color-border-subtle);
+  padding: 11px 14px; border-bottom: 1px solid var(--color-border-subtle);
 }
-.sch-modal-header h2 { font-size: 16px; margin: 0; font-weight: 700; }
+.sch-modal-header h2 { font-size: 14px; margin: 0; font-weight: 700; }
 .sch-modal-close { background: none; border: none; color: var(--color-text-muted); cursor: pointer; display: flex; }
-.sch-modal-body { padding: 18px 20px; overflow-y: auto; flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 14px; }
-.sch-field { display: flex; flex-direction: column; gap: 6px; }
-.sch-field label { font-size: 12px; font-weight: 600; color: var(--color-text-secondary); }
+.sch-modal-body { padding: 13px 14px; overflow-y: auto; flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 11px; }
+.sch-field { display: flex; flex-direction: column; gap: 5px; }
+.sch-field label { font-size: 10px; font-weight: 600; color: var(--color-text-secondary); }
 .sch-field input, .sch-field select, .sch-field textarea {
   background: var(--color-bg); border: 1px solid var(--color-border);
-  padding: 9px 12px; border-radius: 10px; color: var(--color-text); font-size: 13px;
+  padding: 6px 8px; border-radius: 8px; color: var(--color-text); font-size: 11px;
   outline: none; font-family: inherit; resize: vertical;
 }
 .sch-field input:focus, .sch-field select:focus, .sch-field textarea:focus { border-color: var(--color-primary); }
-.sch-field-hint { font-size: 11px; color: var(--color-text-muted); }
-.sch-modal-footer { display: flex; justify-content: flex-end; gap: 10px; padding-top: 4px; }
+.sch-field-hint { font-size: 10px; color: var(--color-text-muted); }
+.sch-modal-footer { display: flex; justify-content: flex-end; gap: 8px; padding-top: 3px; }
 .sch-modal-btn-cancel {
   background: var(--color-bg); border: 1px solid var(--color-border); color: var(--color-text);
-  padding: 8px 18px; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 13px;
+  padding: 6px 13px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 11px;
 }
 .sch-modal-btn-submit {
   background: var(--color-cta); color: white; border: none;
-  padding: 8px 18px; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 13px;
+  padding: 6px 13px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 11px;
 }
 .sch-modal-btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
 `

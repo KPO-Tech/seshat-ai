@@ -78,7 +78,7 @@ function buildBackendURL(path: string) {
   return `${resolveBackendOrigin()}/api/v1${normalized}`
 }
 
-async function ensureBackendTrusted() {
+export async function ensureBackendTrusted() {
   if (backendTrustPromise) {
     return backendTrustPromise
   }
@@ -177,6 +177,22 @@ function extractErrorMessage(payload: { status: number; data?: any; text?: strin
   return payload.text || `HTTP ${payload.status}`
 }
 
+// True for a connection-level failure (backend unreachable, dropped mid-stream,
+// DNS/timeout) as opposed to a real API error (4xx/5xx with a body). Node's
+// fetch (undici) throws a TypeError for these, mirroring the browser fetch
+// contract — this is the SAME check the renderer's browser-fetch fallback path
+// already relies on. It's evaluated here, in the main process, on the actual
+// error object before it crosses the IPC boundary: Electron's ipcMain.handle
+// only preserves an Error's message across that boundary, not its prototype
+// chain, so `error instanceof TypeError` would always be false by the time it
+// reached the renderer — that mismatch is why the retry path was effectively
+// dead for the Electron build (the app's primary runtime mode) despite working
+// in the browser-dev fallback. Retryability is carried across explicitly
+// instead (see startStream's return shape and the stream 'error' event).
+function isRetryableNetworkError(error: unknown): boolean {
+  return error instanceof TypeError
+}
+
 async function performJSONRequest(path: string, method: string, body: unknown, token?: string) {
   await ensureBackendTrusted()
   const headers: Record<string, string> = {
@@ -227,8 +243,11 @@ async function performUploadRequest(path: string, payload: UploadPayload, token?
   return parsed
 }
 
-async function startStream(event: IpcMainInvokeEvent, payload: StreamStartPayload, token?: string) {
-  await ensureBackendTrusted()
+async function startStream(
+  event: IpcMainInvokeEvent,
+  payload: StreamStartPayload,
+  token?: string,
+): Promise<{ streamId: string } | { error: string; retryable: boolean }> {
   const controller = new AbortController()
   const headers: Record<string, string> = {
     Accept: 'text/event-stream',
@@ -238,12 +257,26 @@ async function startStream(event: IpcMainInvokeEvent, payload: StreamStartPayloa
     headers.Authorization = `Bearer ${token}`
   }
 
-  const res = await fetch(buildBackendURL(payload.path), {
-    method: payload.method || 'POST',
-    headers,
-    body: JSON.stringify(payload.body ?? {}),
-    signal: controller.signal,
-  })
+  // The trust handshake and the stream request are both real network calls —
+  // either can fail purely because the backend isn't reachable yet (fresh
+  // launch, backend still starting, temporary drop). That's a connectivity
+  // failure the caller can retry, not an application error, so it's reported
+  // as a value (see isRetryableNetworkError's doc comment) rather than thrown.
+  let res: Response
+  try {
+    await ensureBackendTrusted()
+    res = await fetch(buildBackendURL(payload.path), {
+      method: payload.method || 'POST',
+      headers,
+      body: JSON.stringify(payload.body ?? {}),
+      signal: controller.signal,
+    })
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : 'Failed to reach the backend',
+      retryable: isRetryableNetworkError(error),
+    }
+  }
   if (!res.ok) {
     const parsed = await parseResponse(res)
     if (res.status === 401) {
@@ -312,7 +345,10 @@ async function startStream(event: IpcMainInvokeEvent, payload: StreamStartPayloa
         event.sender.send(STREAM_EVENT_CHANNEL, {
           streamId,
           name: 'error',
-          data: { error: error instanceof Error ? error.message : 'Streaming failed' },
+          data: {
+            error: error instanceof Error ? error.message : 'Streaming failed',
+            retryable: isRetryableNetworkError(error),
+          },
         } satisfies StreamEventMessage)
       }
     } finally {
@@ -332,6 +368,13 @@ async function startStream(event: IpcMainInvokeEvent, payload: StreamStartPayloa
 // the renderer IPC bridge) - reuses the same stored session/trust handshake
 // as every renderer-originated call. Used by whisper-manager.ts to report
 // the local whisper-server's status to seshat-backend once it's spawned.
+// Used by terminal-relay.ts to authenticate the outbound terminal WebSocket
+// with the same session token every other backend call uses.
+export async function getCurrentAuthToken(): Promise<string | undefined> {
+  const session = await loadSession()
+  return session?.token
+}
+
 export async function callBackendAsCurrentUser(path: string, method: string, body?: unknown) {
   const session = await loadSession()
   const payload = await performJSONRequest(path, method, body, session?.token)

@@ -60,6 +60,7 @@
   "build": {
     "appId": "com.seshat.os",
     "productName": "SeshatOS",
+    "npmRebuild": false,
     "directories": {
       "output": "dist"
     },
@@ -74,10 +75,15 @@
       }
     ],
     "linux": {
-      "target": ["AppImage", "deb"]
+      "target": [
+        "AppImage",
+        "deb"
+      ]
     },
     "win": {
-      "target": ["nsis"]
+      "target": [
+        "nsis"
+      ]
     },
     "publish": [
       {

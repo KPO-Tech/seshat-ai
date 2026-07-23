@@ -65,7 +65,7 @@ seshat-ui/
 │       ├── components/
 │       │   ├── auth/          ← AuthGuard, AuthLayout, FormPrimitives
 │       │   ├── chat/          ← ChatInput, ChatTopBar, MessageItem, ToolBlock, ...
-│       │   │   ├── plan/      ← PlanArtifactCard, PlanEditorPanel, PlanModal, PlanPanel
+│       │   │   ├── plan/      ← PlanArtifactCard, PlanEditorPanel
 │       │   │   ├── subagent/  ← SubagentPanel
 │       │   │   └── tool-block/ ← per-tool renderers (Bash, Task, WebSearch, AskUser, ...)
 │       │   ├── layout/        ← Shell, Sidebar, RightPanelHost, SearchModal, ErrorBoundary
@@ -85,7 +85,7 @@ seshat-ui/
 │       │   ├── Home.tsx       ← new-chat landing
 │       │   ├── Conversation.tsx ← active session view
 │       │   ├── Login.tsx / Register.tsx
-│       │   ├── ScheduledTasks.tsx
+│       │   ├── scheduling/index.tsx ← SchedulingPage (formerly ScheduledTasks.tsx; old /scheduled-tasks, /automation routes redirect here)
 │       │   ├── settings/      ← admin + per-user settings views
 │       │   │   ├── index.tsx, SettingsNav.tsx
 │       │   │   ├── AdminViews.tsx, GeneralView.tsx, ProvidersView.tsx
@@ -201,7 +201,7 @@ The backgrounds are **warm tinted** (slight purple-brown cast), not neutral gray
 ### Spacing and shape
 
 - **Border radius scale**: 6px (small chips) → 8px (small buttons) → 10px (sidebar items) → 12px (menus, tags) → 14px (dropdowns) → 20px (chat input wrapper).
-- **Sidebar**: 260px expanded, 68px collapsed. Animated at `0.2s cubic-bezier(0.4, 0, 0.2, 1)`.
+- **Sidebar**: 224px expanded, 56px collapsed (`--sidebar-width` / `--sidebar-collapsed-width` in `tokens.css`). Animated at `0.2s cubic-bezier(0.4, 0, 0.2, 1)`.
 - **Title bar**: 42px high. Custom (`frame: false`). Drag region on the center/left, no-drag on controls.
 - **Right panel**: 420px default, resizable between 320px and 720px.
 - **Input gradient border**: The chat input uses a `background-image` trick to render a gradient border — `linear-gradient(135deg, --color-primary, --color-accent, --color-surface-elevated)`. Do not break this pattern.
