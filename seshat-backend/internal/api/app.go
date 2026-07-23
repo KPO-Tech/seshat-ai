@@ -26,11 +26,15 @@ type App struct {
 	storageConfigStore *db.StorageConfigStore
 	// Long-term memory — kept here because extraction is fire-and-forget
 	// and depends on the extractor which lives outside seshat.App lifecycle
-	longTermExtractor     *longterm.Extractor
-	rateLimiter           *RateLimiter
-	loginRateLimiter      *RateLimiter
-	permBroker            *backendquery.PermissionBroker
-	promptBroker          *backendquery.PromptBroker
+	longTermExtractor *longterm.Extractor
+	rateLimiter       *RateLimiter
+	loginRateLimiter  *RateLimiter
+	permBroker        *backendquery.PermissionBroker
+	promptBroker      *backendquery.PromptBroker
+	// terminalRelay is shared with the SDKRuntime constructed in bootstrap.go
+	// (via SDKRuntime.SetTerminalRelay) — both need the same instance so a
+	// terminal registered here is visible to bash-tool calls there.
+	terminalRelay         *backendquery.TerminalRelay
 	cloudAutomation       *cloudautomation.Service
 	enableSignup          bool
 	enableAPIKeys         bool
@@ -71,9 +75,19 @@ type AppConfig struct {
 	TrustedProxyCIDRs     []*net.IPNet
 	AllowedSkillRepoHosts []string
 	ConnectedServerURL    string
+	// TerminalRelay, when set, is shared with the SDKRuntime constructed in
+	// bootstrap.go so a terminal registered via the WS handler here is
+	// visible to bash-tool calls made through that runtime. Falls back to a
+	// standalone instance (matching prior behavior) when nil, e.g. in tests
+	// that construct an App without a full bootstrap.
+	TerminalRelay *backendquery.TerminalRelay
 }
 
 func NewApp(cfg AppConfig) *App {
+	terminalRelay := cfg.TerminalRelay
+	if terminalRelay == nil {
+		terminalRelay = backendquery.NewTerminalRelay()
+	}
 	return &App{
 		backend:               cfg.Backend,
 		db:                    cfg.DB,
@@ -89,6 +103,7 @@ func NewApp(cfg AppConfig) *App {
 		cloudAutomation:       cfg.CloudAutomation,
 		permBroker:            backendquery.NewPermissionBroker(),
 		promptBroker:          backendquery.NewPromptBroker(),
+		terminalRelay:         terminalRelay,
 		enableSignup:          cfg.EnableSignup,
 		enableAPIKeys:         cfg.EnableAPIKeys,
 		featuredRepos:         cfg.FeaturedRepos,

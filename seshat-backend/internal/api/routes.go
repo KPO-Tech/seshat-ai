@@ -88,6 +88,9 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 
 	apiV1.Handle("/permissions/", app.authMiddleware(http.HandlerFunc(app.handlePermissionDecision)))
 	apiV1.Handle("/prompts/", app.authMiddleware(http.HandlerFunc(app.handlePromptResponse)))
+	apiV1.Handle("/subagents/", app.authMiddleware(http.HandlerFunc(app.handleSubagentCancel)))
+
+	apiV1.Handle("/terminal/ws/", app.authMiddleware(http.HandlerFunc(app.handleTerminalWS)))
 
 	apiV1.Handle("/sessions", app.authMiddleware(http.HandlerFunc(app.handleSessions)))
 	apiV1.Handle("/sessions/search", app.authMiddleware(http.HandlerFunc(app.handleSessionSearch)))
@@ -201,16 +204,60 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	return mux
 }
 
+// commitTrackingWriter wraps a ResponseWriter to record whether a response has
+// already been started (headers written or body bytes flushed). recoverMiddleware
+// uses this to tell an early panic (safe to answer with a normal JSON error) apart
+// from a panic mid-stream, where the client has already received a 200 and
+// SSE framing has begun — see recoverMiddleware for why that distinction matters.
+type commitTrackingWriter struct {
+	http.ResponseWriter
+	committed bool
+}
+
+func (w *commitTrackingWriter) WriteHeader(status int) {
+	w.committed = true
+	w.ResponseWriter.WriteHeader(status)
+}
+
+func (w *commitTrackingWriter) Write(b []byte) (int, error) {
+	w.committed = true
+	return w.ResponseWriter.Write(b)
+}
+
+// Flush lets streaming handlers (SSE) keep using this writer as an http.Flusher —
+// without this, wrapping w here would silently break flushing for every handler.
+func (w *commitTrackingWriter) Flush() {
+	if f, ok := w.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
 // recoverMiddleware catches panics in handlers and returns a 500 instead of crashing the process.
+//
+// If the panic happens before the response was committed, it answers with a normal
+// JSON error body. If it happens after (e.g. partway through an SSE stream, once
+// headers and possibly several events have already been flushed to the client),
+// calling WriteHeader/writeJSONError here would be a silent no-op for the status
+// line and would instead splice a bare, non-SSE-framed JSON object into the
+// half-open stream — which the client can't tell apart from a corrupted or
+// truncated connection. In that case it writes a protocol-conformant
+// `event: error` SSE frame instead, matching the contract documented in
+// query_sse.go, so streaming clients can detect and report the failure cleanly.
 func recoverMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cw := &commitTrackingWriter{ResponseWriter: w}
 		defer func() {
 			if rec := recover(); rec != nil {
 				logError(r, "panic recovered: %v\n%s", rec, debug.Stack())
-				writeJSONError(w, http.StatusInternalServerError, "internal server error")
+				if cw.committed {
+					fmt.Fprintf(cw, "event: error\ndata: {\"error\":\"internal server error\"}\n\n")
+					cw.Flush()
+					return
+				}
+				writeJSONError(cw, http.StatusInternalServerError, "internal server error")
 			}
 		}()
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(cw, r)
 	})
 }
 
