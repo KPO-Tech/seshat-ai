@@ -7,8 +7,8 @@ export const TOOL_BLOCK_CSS = `
   background: var(--color-bg);
 }
 
-.tb-root--completed { border-color: rgba(52, 211, 153, 0.18); }
-.tb-root--failed { border-color: rgba(248, 113, 113, 0.22); }
+.tb-root--completed { border-color: rgba(var(--color-success-rgb), 0.18); }
+.tb-root--failed { border-color: rgba(var(--color-error-rgb), 0.22); }
 .tb-root--running { border-color: rgba(239, 124, 47, 0.22); }
 .tb-root--awaiting_approval { border-color: rgba(251, 191, 36, 0.32); }
 
@@ -98,9 +98,9 @@ export const TOOL_BLOCK_CSS = `
 .tb-status-icon { display: flex; align-items: center; }
 
 .tb-status--completed .tb-status-icon,
-.tb-status--completed .tb-status-label { color: #34d399; }
+.tb-status--completed .tb-status-label { color: var(--color-success); }
 .tb-status--failed .tb-status-icon,
-.tb-status--failed .tb-status-label { color: #f87171; }
+.tb-status--failed .tb-status-label { color: var(--color-error); }
 .tb-status--running .tb-status-icon,
 .tb-status--running .tb-status-label { color: var(--color-accent); }
 .tb-status--pending .tb-status-icon,
@@ -158,7 +158,7 @@ export const TOOL_BLOCK_CSS = `
   overflow: hidden;
 }
 
-.tb-code--error { background: rgba(248, 113, 113, 0.06); }
+.tb-code--error { background: rgba(var(--color-error-rgb), 0.06); }
 
 .tb-pre {
   margin: 0;
@@ -261,9 +261,9 @@ export const TOOL_BLOCK_CSS = `
 }
 
 .tb-approval-btn--allow {
-  background: rgba(52, 211, 153, 0.14);
-  border-color: rgba(52, 211, 153, 0.3);
-  color: #34d399;
+  background: rgba(var(--color-success-rgb), 0.14);
+  border-color: rgba(var(--color-success-rgb), 0.3);
+  color: var(--color-success);
 }
 
 .tb-ask-card {
@@ -329,8 +329,8 @@ export const TOOL_BLOCK_CSS = `
 }
 
 .tb-ask-option--selected {
-  border-color: rgba(52, 211, 153, 0.28);
-  background: rgba(52, 211, 153, 0.08);
+  border-color: rgba(var(--color-success-rgb), 0.28);
+  background: rgba(var(--color-success-rgb), 0.08);
 }
 
 .tb-ask-option:disabled {
@@ -363,8 +363,8 @@ export const TOOL_BLOCK_CSS = `
 }
 
 .tb-ask-answer-label {
-  background: rgba(52, 211, 153, 0.12);
-  color: #34d399;
+  background: rgba(var(--color-success-rgb), 0.12);
+  color: var(--color-success);
 }
 
 .tb-ask-answer-value {
@@ -422,11 +422,11 @@ export const TOOL_BLOCK_CSS = `
 }
 
 .tb-ask-submit {
-  border: 1px solid rgba(52, 211, 153, 0.3);
+  border: 1px solid rgba(var(--color-success-rgb), 0.3);
   border-radius: 8px;
   padding: 8px 12px;
-  background: rgba(52, 211, 153, 0.14);
-  color: #34d399;
+  background: rgba(var(--color-success-rgb), 0.14);
+  color: var(--color-success);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -534,7 +534,7 @@ export const TOOL_BLOCK_CSS = `
 }
 
 .tb-plan-item--completed .tb-plan-marker {
-  background: #34d399;
+  background: var(--color-success);
 }
 
 .tb-plan-copy {
@@ -692,11 +692,11 @@ export const TOOL_BLOCK_CSS = `
 }
 
 .tb-diff-line--del {
-  background: rgba(239, 68, 68, 0.10);
+  background: rgba(var(--color-error-rgb), 0.10);
 }
 
 .tb-diff-line--add {
-  background: rgba(52, 211, 153, 0.08);
+  background: rgba(var(--color-success-rgb), 0.08);
 }
 
 .tb-diff-sign {
@@ -747,8 +747,8 @@ export const TOOL_BLOCK_CSS = `
 /* ── pre error variant ── */
 .tb-pre--error {
   color: #fca5a5;
-  background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.18);
+  background: rgba(var(--color-error-rgb), 0.08);
+  border: 1px solid rgba(var(--color-error-rgb), 0.18);
   border-radius: 8px;
   padding: 10px 12px;
   font-size: 12px;

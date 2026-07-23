@@ -2,31 +2,22 @@ import { memo } from 'react'
 import { Down } from '@icon-park/react'
 import type { ToolStatus } from '@/api/types'
 import { useUIStore } from '@/stores/ui'
-import { ApprovalSection, StatusBadge } from './tool-block/common'
+import { StatusBadge } from './tool-block/common'
 import { headerSummary, toolIcon, toolLabel, inputSnippetForSilent } from './tool-block/helpers'
-import { AskUserToolView } from './tool-block/renderers/AskUserToolView'
-import { BashToolView } from './tool-block/renderers/BashToolView'
-import { EditToolView } from './tool-block/renderers/EditToolView'
-import { GenericToolView } from './tool-block/renderers/GenericToolView'
-import { GlobToolView } from './tool-block/renderers/GlobToolView'
-import { GrepToolView } from './tool-block/renderers/GrepToolView'
-import { ImageGenToolView } from './tool-block/renderers/ImageGenToolView'
-import { RagSearchToolView } from './tool-block/renderers/RagSearchToolView'
-import { ReadToolView } from './tool-block/renderers/ReadToolView'
+import { renderBody } from './tool-block/renderBody'
 import { SilentToolView } from './tool-block/renderers/SilentToolView'
-import { SttToolView } from './tool-block/renderers/SttToolView'
-import { TaskToolView } from './tool-block/renderers/TaskToolView'
-import { TodoWriteToolView } from './tool-block/renderers/TodoWriteToolView'
-import { TtsToolView } from './tool-block/renderers/TtsToolView'
-import { WebFetchToolView } from './tool-block/renderers/WebFetchToolView'
-import { WebSearchToolView } from './tool-block/renderers/WebSearchToolView'
-import { WriteToolView } from './tool-block/renderers/WriteToolView'
 import { TOOL_BLOCK_CSS } from './tool-block/styles'
-import type { ToolBlockProps, ToolViewProps } from './tool-block/types'
+import type { ToolBlockProps } from './tool-block/types'
 
+// Tools rendered as a terse single line instead of a full bordered card.
+// Note: since MessageItem.groupBlocks() now wraps any GROUPABLE_TOOLS run
+// (a superset of this set, see tool-block/quietGroupPhrase.ts) in a
+// quiet-group before ToolBlock ever sees it, this branch is effectively a
+// safety net for silent tools that end up here some other way (e.g. a lone
+// block adjacent to a non-tool_use block that breaks grouping upstream).
 const SILENT_TOOLS = new Set([
   // file tools with no user-visible output
-  'read', 'file_read', 'read_file', 'glob',
+  'read', 'file_read', 'read_file',
   // task plumbing
   'task_get', 'task_stop', 'task_output',
   // internal discovery & control
@@ -49,51 +40,10 @@ const SILENT_TOOLS = new Set([
   'mailbox_send', 'mailbox_broadcast', 'send_agent_message',
 ])
 
-function renderBody(props: ToolViewProps, onSubmitPrompt?: ToolBlockProps['onSubmitPrompt']) {
-  const { tool } = props
-  switch (tool.name) {
-    case 'bash':
-      return <BashToolView {...props} />
-    case 'ask_user_question':
-      return <AskUserToolView {...props} onSubmitPrompt={onSubmitPrompt} />
-    case 'todo_write':
-      return <TodoWriteToolView {...props} />
-    case 'task_create':
-    case 'task_update':
-    case 'task_list':
-      return <TaskToolView {...props} />
-    case 'web_search':
-      return <WebSearchToolView {...props} />
-    case 'web_fetch':
-    case 'read_document_url':
-    case 'read_url':
-      return <WebFetchToolView {...props} />
-    case 'edit':
-    case 'file_edit':
-    case 'edit_file':
-      return <EditToolView {...props} />
-    case 'write':
-    case 'file_write':
-    case 'write_file':
-      return <WriteToolView {...props} />
-    case 'glob':
-      return <GlobToolView {...props} />
-    case 'grep':
-      return <GrepToolView {...props} />
-    case 'generate_image':
-      return <ImageGenToolView {...props} />
-    case 'text_to_speech':
-      return <TtsToolView {...props} />
-    case 'speech_to_text':
-      return <SttToolView {...props} />
-    case 'rag_search':
-      return <RagSearchToolView {...props} />
-    default:
-      return <GenericToolView {...props} />
-  }
-}
-
-export const ToolBlock = memo(function ToolBlock({ tool, onApprove, onDeny, onSubmitPrompt }: ToolBlockProps) {
+// Note: awaiting_approval tool_use blocks never reach ToolBlock — MessageItem
+// renders PermissionCard standalone for that status instead (see
+// MessageItem.tsx's tool_use branch).
+export const ToolBlock = memo(function ToolBlock({ tool, onSubmitPrompt }: ToolBlockProps) {
   const expanded = useUIStore((s) => s.toolExpansion[tool.id] ?? false)
   const setToolExpansion = useUIStore((s) => s.setToolExpansion)
   const result = tool._result
@@ -112,7 +62,7 @@ export const ToolBlock = memo(function ToolBlock({ tool, onApprove, onDeny, onSu
     )
   }
 
-  const showBody = expanded || status === 'awaiting_approval' || Boolean(tool._prompt)
+  const showBody = expanded || Boolean(tool._prompt)
 
   return (
     <div className={`tb-root tb-root--${status}`}>
@@ -134,16 +84,13 @@ export const ToolBlock = memo(function ToolBlock({ tool, onApprove, onDeny, onSu
         <div className="tb-header-right">
           <StatusBadge status={status} durationMs={result?.durationMs} />
           <span className={`tb-chevron${showBody ? ' tb-chevron--open' : ''}`}>
-            <Down size={13} />
+            <Down size={11} />
           </span>
         </div>
       </button>
 
       {showBody && (
         <div className="tb-body">
-          {status === 'awaiting_approval' && (
-            <ApprovalSection tool={tool} onApprove={onApprove} onDeny={onDeny} />
-          )}
           {renderBody({ tool, result, status }, onSubmitPrompt)}
         </div>
       )}

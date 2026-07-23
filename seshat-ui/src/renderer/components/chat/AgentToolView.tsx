@@ -31,7 +31,7 @@ function fmtTokens(n: number): string {
 const AGENT_CARDS_CSS = `
 .agent-cards-row {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
   overflow-x: auto;
   scrollbar-width: thin;
@@ -44,7 +44,7 @@ const AGENT_CARDS_CSS = `
 
 .agent-cards-row::-webkit-scrollbar-thumb {
   background: var(--color-border-subtle);
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 .agent-card {
@@ -52,7 +52,7 @@ const AGENT_CARDS_CSS = `
   min-width: 240px;
   max-width: 100%;
   border: 1px solid var(--color-border-subtle);
-  border-radius: 12px;
+  border-radius: 9px;
   background: var(--color-surface);
   overflow: hidden;
   display: flex;
@@ -71,24 +71,24 @@ const AGENT_CARDS_CSS = `
 }
 
 .agent-card--completed {
-  border-color: rgba(52, 211, 153, 0.2);
+  border-color: rgba(var(--color-success-rgb), 0.2);
 }
 
 .agent-card--failed {
-  border-color: rgba(248, 113, 113, 0.24);
+  border-color: rgba(var(--color-error-rgb), 0.24);
 }
 
 .agent-card-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 14px 8px;
+  gap: 8px;
+  padding: 8px 10px 6px;
 }
 
 .agent-card-icon {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: 6px;
   background: rgba(239, 124, 47, 0.12);
   display: flex;
   align-items: center;
@@ -98,13 +98,13 @@ const AGENT_CARDS_CSS = `
 }
 
 .agent-card-icon--completed {
-  background: rgba(52, 211, 153, 0.12);
-  color: #34d399;
+  background: rgba(var(--color-success-rgb), 0.12);
+  color: var(--color-success);
 }
 
 .agent-card-icon--failed {
-  background: rgba(248, 113, 113, 0.12);
-  color: #f87171;
+  background: rgba(var(--color-error-rgb), 0.12);
+  color: var(--color-error);
 }
 
 .agent-card-meta {
@@ -116,7 +116,7 @@ const AGENT_CARDS_CSS = `
 }
 
 .agent-card-type {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -126,14 +126,14 @@ const AGENT_CARDS_CSS = `
 .agent-card-status {
   display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 12px;
+  gap: 4px;
+  font-size: 10px;
   font-weight: 600;
 }
 
 .agent-card-status--running { color: var(--color-accent); }
-.agent-card-status--completed { color: #34d399; }
-.agent-card-status--failed { color: #f87171; }
+.agent-card-status--completed { color: var(--color-success); }
+.agent-card-status--failed { color: var(--color-error); }
 .agent-card-status--pending { color: var(--color-text-muted); }
 
 .agent-card-spin {
@@ -146,15 +146,15 @@ const AGENT_CARDS_CSS = `
 }
 
 .agent-card-body {
-  padding: 0 14px 12px;
+  padding: 0 10px 8px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   flex: 1;
 }
 
 .agent-card-task {
-  font-size: 13px;
+  font-size: 11px;
   line-height: 1.5;
   color: var(--color-text);
   display: -webkit-box;
@@ -164,19 +164,19 @@ const AGENT_CARDS_CSS = `
 }
 
 .agent-card-activity {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--color-text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: 4px 8px;
+  padding: 3px 6px;
   background: rgba(255, 255, 255, 0.04);
-  border-radius: 6px;
+  border-radius: 5px;
   border: 1px solid var(--color-border-subtle);
 }
 
 .agent-card-footer {
-  padding: 8px 14px;
+  padding: 6px 10px;
   border-top: 1px solid var(--color-border-subtle);
   display: flex;
   align-items: center;
@@ -184,16 +184,16 @@ const AGENT_CARDS_CSS = `
 }
 
 .agent-card-view-link {
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 600;
   color: var(--color-accent);
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
 }
 
 .agent-card-turn-badge {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--color-text-muted);
 }
 `
@@ -216,15 +216,24 @@ function AgentToolCard({ tool, sessionId, status }: AgentToolCardProps) {
     ?? subagent?.task
     ?? ''
 
-  const derivedStatus: ToolStatus = subagent?.status === 'failed'
-    ? 'failed'
-    : subagent?.status === 'completed'
-      ? 'completed'
-      : status === 'completed'
+  // Once a sub-agent entry exists, it is the source of truth for lifecycle status —
+  // including 'running'. Falling back to the outer tool-call's own `status` while a
+  // sub-agent is still running would be wrong for async tools like spawn_agent: the
+  // outer call returns (and its block flips to 'completed') within milliseconds of
+  // starting the background agent, well before the agent itself is actually done.
+  // The outer `status` is only a reasonable proxy before any sub-agent entry exists
+  // at all (the brief window right as the tool call is first dispatched).
+  const derivedStatus: ToolStatus = subagent
+    ? subagent.status === 'failed'
+      ? 'failed'
+      : subagent.status === 'completed'
         ? 'completed'
-        : status === 'failed'
-          ? 'failed'
-          : 'running'
+        : 'running'
+    : status === 'completed'
+      ? 'completed'
+      : status === 'failed'
+        ? 'failed'
+        : 'running'
 
   const activeTool = subagent?.activeTool
   const turnNumber = subagent?.turnNumber ?? 0
@@ -237,7 +246,6 @@ function AgentToolCard({ tool, sessionId, status }: AgentToolCardProps) {
       kind: 'subagent',
       title: agentType,
       sessionId,
-      width: 480,
       // Pass toolUseId via sessionId slot — we'll use a custom payload
       subagentToolUseId: tool.id,
     } as Parameters<typeof openRightPanel>[0])
@@ -254,10 +262,10 @@ function AgentToolCard({ tool, sessionId, status }: AgentToolCardProps) {
       <div className="agent-card-header">
         <div className={`agent-card-icon agent-card-icon--${derivedStatus}`}>
           {derivedStatus === 'completed'
-            ? <CheckOne size={16} />
+            ? <CheckOne size={13} />
             : derivedStatus === 'failed'
-              ? <CloseOne size={16} />
-              : <Robot size={16} />
+              ? <CloseOne size={13} />
+              : <Robot size={13} />
           }
         </div>
         <div className="agent-card-meta">
@@ -267,7 +275,7 @@ function AgentToolCard({ tool, sessionId, status }: AgentToolCardProps) {
           <span className={`agent-card-status agent-card-status--${derivedStatus}`}>
             {derivedStatus === 'running' && (
               <span className="agent-card-spin" style={{ display: 'flex' }}>
-                <LoadingOne size={12} />
+                <LoadingOne size={10} />
               </span>
             )}
             {derivedStatus === 'completed'

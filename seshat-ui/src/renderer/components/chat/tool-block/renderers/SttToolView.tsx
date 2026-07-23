@@ -3,28 +3,28 @@ import type { ToolViewProps } from '../types'
 
 const CSS = `
 .tb-stt-transcript {
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1.65;
   color: var(--color-text);
-  padding: 10px 12px;
+  padding: 7px 8px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
+  border-radius: 6px;
   white-space: pre-wrap;
 }
 
 .tb-stt-meta {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 11px;
+  gap: 8px;
+  font-size: 10px;
   color: var(--color-text-muted);
   flex-wrap: wrap;
 }
 
 .tb-stt-chip {
-  padding: 2px 7px;
-  border-radius: 4px;
+  padding: 2px 5px;
+  border-radius: 3px;
   background: rgba(255,255,255,0.05);
   border: 1px solid var(--color-border-subtle);
   font-family: monospace;

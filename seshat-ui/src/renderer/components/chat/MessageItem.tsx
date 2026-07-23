@@ -4,8 +4,11 @@ import { NexusLogo } from '@/components/NexusLogo'
 import { MarkdownView } from '@/components/MarkdownView'
 import { useUIStore } from '@/stores/ui'
 import { ToolBlock } from './ToolBlock'
+import { PermissionCard } from './PermissionCard'
 import { AgentCardsRow } from './AgentToolView'
 import { TaskListWidget } from './TaskListWidget'
+import { QuietToolGroup } from './QuietToolGroup'
+import { isGroupable, breaksGroup } from './tool-block/quietGroupPhrase'
 import type { Message, ToolUseBlock, ToolStatus } from '@/api/types'
 
 // Mode-switching system tools are handled silently by the Agent Monitor panel.
@@ -51,7 +54,7 @@ function ThinkingBlock({ thinkingId, thinking }: { thinkingId: string; thinking:
         aria-expanded={expanded}
       >
         <span className={`msg-thinking-chevron${expanded ? ' open' : ''}`}>
-          <Down size={11} />
+          <Down size={10} />
         </span>
         <span className="msg-thinking-label">Thinking</span>
       </button>
@@ -81,6 +84,7 @@ type RenderItem =
   | { kind: 'block'; block: Message['content'][number]; index: number }
   | { kind: 'agent-group'; tools: ToolUseBlock[] }
   | { kind: 'task-group'; tools: ToolUseBlock[] }
+  | { kind: 'quiet-group'; tools: ToolUseBlock[] }
 
 function groupBlocks(blocks: Message['content']): RenderItem[] {
   // Collect all task tools from the message for the widget
@@ -120,6 +124,27 @@ function groupBlocks(blocks: Message['content']): RenderItem[] {
       continue
     }
 
+    if (
+      block.type === 'tool_use' &&
+      isGroupable(block.name) &&
+      !breaksGroup(block)
+    ) {
+      const group: ToolUseBlock[] = [block]
+      let j = i + 1
+      while (
+        j < blocks.length &&
+        blocks[j].type === 'tool_use' &&
+        isGroupable((blocks[j] as ToolUseBlock).name) &&
+        !breaksGroup(blocks[j] as ToolUseBlock)
+      ) {
+        group.push(blocks[j] as ToolUseBlock)
+        j++
+      }
+      items.push({ kind: 'quiet-group', tools: group })
+      i = j
+      continue
+    }
+
     items.push({ kind: 'block', block, index: i })
     i++
   }
@@ -154,7 +179,7 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, showA
     <div className={`msg-row ${isUser ? 'user' : 'assistant'}${compact ? ' compact' : ''}`}>
       {!isUser && showAvatar && (
         <div className="msg-agent-icon">
-          <NexusLogo size={20} />
+          <NexusLogo size={16} />
         </div>
       )}
       {!isUser && !showAvatar && <div className="msg-agent-spacer" aria-hidden="true" />}
@@ -184,6 +209,16 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, showA
             )
           }
 
+          if (item.kind === 'quiet-group') {
+            return (
+              <QuietToolGroup
+                key={item.tools[0]?.id || `${message.id ?? 'msg'}-quiet-${i}`}
+                tools={item.tools}
+                onSubmitPrompt={onSubmitToolPrompt}
+              />
+            )
+          }
+
           const block = item.block
           if (block.type === 'text') {
             return (
@@ -197,12 +232,21 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, showA
             return <ThinkingBlock key={thinkingId} thinkingId={thinkingId} thinking={block.thinking} />
           }
           if (block.type === 'tool_use') {
+            const key = block.id || `${message.id ?? 'msg'}-tool-${item.index}`
+            if (block._status === 'awaiting_approval') {
+              return (
+                <PermissionCard
+                  key={key}
+                  tool={block}
+                  onApprove={onApproveTool}
+                  onDeny={onDenyTool}
+                />
+              )
+            }
             return (
               <ToolBlock
-                key={block.id || `${message.id ?? 'msg'}-tool-${item.index}`}
+                key={key}
                 tool={block}
-                onApprove={onApproveTool}
-                onDeny={onDenyTool}
                 onSubmitPrompt={onSubmitToolPrompt}
               />
             )
@@ -223,7 +267,7 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, showA
                 if (copyText) void navigator.clipboard.writeText(copyText)
               }}
             >
-              <Copy size={14} />
+              <Copy size={11} />
             </button>
           </div>
         )}
@@ -235,7 +279,7 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, showA
 export const MESSAGE_ITEM_CSS = `
 .msg-row {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   width: 100%;
   align-items: flex-start;
   margin-top: 20px;
@@ -273,7 +317,7 @@ export const MESSAGE_ITEM_CSS = `
 .msg-content {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
   flex: 1;
   min-width: 0;
 }
@@ -284,7 +328,7 @@ export const MESSAGE_ITEM_CSS = `
 }
 
 .msg-bubble {
-  font-size: 15px;
+  font-size: 13px;
   line-height: 1.6;
   color: var(--color-text);
 }
@@ -298,8 +342,8 @@ export const MESSAGE_ITEM_CSS = `
 
 .msg-row.user .msg-bubble {
   background: var(--color-surface);
-  padding: 10px 16px;
-  border-radius: 18px 18px 2px 18px;
+  padding: 7px 11px;
+  border-radius: 14px 14px 3px 14px;
   border: 1px solid var(--color-border-subtle);
 }
 
@@ -314,7 +358,7 @@ export const MESSAGE_ITEM_CSS = `
 .msg-thinking-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   background: transparent;
   border: none;
   padding: 2px 0;
@@ -327,7 +371,7 @@ export const MESSAGE_ITEM_CSS = `
 }
 
 .msg-thinking-label {
-  font-size: 12px;
+  font-size: 10px;
   color: inherit;
   font-style: italic;
 }
@@ -345,9 +389,9 @@ export const MESSAGE_ITEM_CSS = `
 
 .msg-thinking-body {
   margin-top: 6px;
-  padding-left: 12px;
+  padding-left: 8px;
   border-left: 2px solid rgba(239, 124, 47, 0.22);
-  font-size: 13px;
+  font-size: 11px;
   font-style: italic;
   color: var(--color-text-muted);
   line-height: 1.65;
@@ -356,7 +400,7 @@ export const MESSAGE_ITEM_CSS = `
 .msg-footer {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 9px;
   margin-top: 2px;
   opacity: 0;
   transition: opacity 0.2s;
@@ -378,7 +422,7 @@ export const MESSAGE_ITEM_CSS = `
   padding: 2px;
   display: flex;
   align-items: center;
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 .msg-action-btn:hover {

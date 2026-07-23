@@ -1,31 +1,51 @@
 import {
-  Terminal, Globe, FileTextOne, Robot,
+  Terminal, Globe, FileTextOne, Robot, Browser, PlugOne,
+  MindMapping, Notebook, Calculator, Comment, Calendar,
 } from '@icon-park/react'
 import type { ToolStatus, ToolUseBlock } from '@/api/types'
 import type { AskUserOption, AskUserQuestion, WebSearchHit } from './types'
 
 export function toolIcon(name: string) {
-  if (name === 'bash') return <Terminal size={14} />
-  if (name === 'ask_user_question') return <FileTextOne size={14} />
-  if (['todo_write', 'task_create', 'task_update', 'task_list'].includes(name)) return <FileTextOne size={14} />
-  if (name === 'web_search' || name === 'web_fetch') return <Globe size={14} />
-  if (name === 'agent') return <Robot size={14} />
+  if (name === 'bash') return <Terminal size={11} />
+  if (name === 'ask_user_question') return <FileTextOne size={11} />
+  if (['task_create', 'task_update', 'task_list'].includes(name)) return <FileTextOne size={11} />
+  if (name === 'web_search' || name === 'web_fetch') return <Globe size={11} />
+  if (name.startsWith('browser_')) return <Browser size={11} />
+  if (name.startsWith('mcp__') || name === 'mcp') return <PlugOne size={11} />
+  if (name === 'agent') return <Robot size={11} />
+  if (name.startsWith('memory_')) return <MindMapping size={11} />
+  if (name.startsWith('notebook_')) return <Notebook size={11} />
+  if (['calculator', 'statistics', 'unit_convert', 'financial_calc'].includes(name)) return <Calculator size={11} />
+  if (name.startsWith('hn_') || name.startsWith('devto_')) return <Comment size={11} />
+  if (['schedule_job', 'list_jobs'].includes(name)) return <Calendar size={11} />
   if (['glob', 'grep', 'read', 'write', 'edit', 'file_read', 'file_write', 'file_edit'].includes(name)) {
-    return <FileTextOne size={14} />
+    return <FileTextOne size={11} />
   }
-  return <Terminal size={14} />
+  return <Terminal size={11} />
 }
 
 export function toolLabel(name: string): string {
+  // Dynamic MCP tool names ("mcp__github__search_issues") mangle into "mcp
+  // github search issues" under the generic underscore→space fallback below —
+  // split server from tool explicitly so the label stays readable.
+  if (name.startsWith('mcp__')) {
+    const rest = name.slice('mcp__'.length)
+    const sepIndex = rest.indexOf('__')
+    const server = sepIndex >= 0 ? rest.slice(0, sepIndex) : ''
+    const toolPart = sepIndex >= 0 ? rest.slice(sepIndex + 2) : rest
+    const readableTool = toolPart.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
+    return server ? `${server}: ${readableTool}` : readableTool
+  }
+
   const labels: Record<string, string> = {
     bash: 'Bash',
     ask_user_question: 'Ask User Question',
-    todo_write: 'Todo Write',
     task_create: 'Task Create',
     task_update: 'Task Update',
     task_list: 'Task List',
     web_search: 'Web Search',
     web_fetch: 'Web Fetch',
+    mcp: 'MCP',
     agent: 'Agent',
     glob: 'Glob',
     grep: 'Grep',
@@ -46,12 +66,6 @@ export function headerSummary(tool: ToolUseBlock, status: ToolStatus): string {
   }
   if ((status === 'running' || status === 'awaiting_approval') && tool._message) {
     return tool._message
-  }
-  if (tool.name === 'todo_write') {
-    const todos = parseTodoItems(tool.input)
-    const active = todos.find((todo) => todo.status === 'in_progress')
-    if (active) return active.activeForm || active.content
-    if (todos.length > 0) return `${todos.length} item${todos.length > 1 ? 's' : ''}`
   }
   if (tool.name === 'task_create') {
     return typeof tool.input.subject === 'string' ? compact(tool.input.subject, 56) : ''
@@ -196,28 +210,6 @@ export function parseWebSearchHits(content?: string): WebSearchHit[] {
   return hits
 }
 
-export type TodoItemView = {
-  content: string
-  status: string
-  activeForm?: string
-}
-
-export function parseTodoItems(input: Record<string, unknown>): TodoItemView[] {
-  const rawTodos = input.todos
-  if (!Array.isArray(rawTodos)) return []
-
-  return rawTodos.flatMap((entry) => {
-    if (!entry || typeof entry !== 'object') return []
-    const todo = entry as Record<string, unknown>
-    if (typeof todo.content !== 'string') return []
-    return [{
-      content: todo.content,
-      status: typeof todo.status === 'string' ? todo.status : 'pending',
-      activeForm: typeof todo.activeForm === 'string' ? todo.activeForm : undefined,
-    }]
-  })
-}
-
 export function inputSnippetForSilent(tool: ToolUseBlock): string {
   const inp = tool.input
   const str = (k: string) => (typeof inp[k] === 'string' ? (inp[k] as string) : '')
@@ -293,6 +285,16 @@ function inputSnippet(tool: ToolUseBlock): string {
   if (tool.name === 'web_fetch') {
     const url = typeof tool.input.url === 'string' ? tool.input.url : ''
     try { return new URL(url).hostname } catch { return compact(url, 48) }
+  }
+  if (tool.name.startsWith('browser_')) {
+    const url = typeof tool.input.url === 'string' ? tool.input.url : ''
+    if (url) { try { return new URL(url).hostname } catch { return compact(url, 48) } }
+    const elementId = typeof tool.input.element_id === 'string' ? tool.input.element_id : ''
+    if (elementId) return elementId
+    const key = typeof tool.input.key === 'string' ? tool.input.key : ''
+    if (key) return key
+    const pageId = typeof tool.input.page_id === 'string' ? tool.input.page_id : ''
+    return pageId
   }
   const first = Object.values(tool.input)[0]
   if (typeof first !== 'string') return ''
