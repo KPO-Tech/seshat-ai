@@ -14,11 +14,18 @@ import (
 
 // UpdateUserParams contains mutable user fields exposed by the control plane.
 // Password rotation intentionally stays outside this path so the mutation rules
-// for credentials can evolve separately later.
+// for credentials can evolve separately later. Deliberately has no IsAdmin
+// field - platform super-admin status is granted exactly once, by
+// EnsureSuperAdmin seeding from env vars at server boot (see its doc
+// comment), and never through any API/console action afterwards, by
+// anyone, including an existing super-admin. This is a hard architectural
+// invariant, not an oversight: a one-click "grant platform admin" button
+// on an arbitrary organization's membership list would let any platform
+// admin mint an unlimited number of platform admins, which contradicts
+// "exactly one super-admin, seeded once."
 type UpdateUserParams struct {
 	Email       string `json:"email"`
 	DisplayName string `json:"display_name"`
-	IsAdmin     bool   `json:"is_admin"`
 }
 
 // GetUser returns a user record for admins or the user themself.
@@ -78,20 +85,8 @@ func (s *Service) UpdateUser(ctx context.Context, principal *Principal, userID s
 			return ErrConflict("user email already exists")
 		}
 
-		// Never allow the platform to remove admin privileges from the last admin.
-		if record.IsAdmin && !params.IsAdmin {
-			hasAnother, err := hasAnotherAdmin(tx, record.ID)
-			if err != nil {
-				return err
-			}
-			if !hasAnother {
-				return ErrConflict("cannot demote the last admin")
-			}
-		}
-
 		record.Email = email
 		record.DisplayName = displayName
-		record.IsAdmin = params.IsAdmin
 		record.UpdatedAt = time.Now().UTC()
 		if err := tx.Save(&record).Error; err != nil {
 			if isUniqueConstraintError(err) {

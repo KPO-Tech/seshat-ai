@@ -11,7 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/EngineerProjects/seshat/pkg/runtimepath"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
+	"github.com/KPO-Tech/seshat/pkg/runtimepath"
 )
 
 const desktopBridgeSecretFile = "desktop-bridge-secret"
@@ -79,13 +80,13 @@ func (app *App) handleDesktopHandshake(w http.ResponseWriter, r *http.Request) {
 	}
 	nonce := strings.TrimSpace(r.URL.Query().Get("nonce"))
 	if nonce == "" || len(nonce) > 512 {
-		writeJSONError(w, http.StatusBadRequest, "nonce is required")
+		writeBackendError(w, bkerr.InvalidInput("nonce is required", nil))
 		return
 	}
 	secret, err := ensureDesktopBridgeSecret()
 	if err != nil {
 		logError(r, "desktop handshake secret unavailable: %v", err)
-		writeJSONError(w, http.StatusServiceUnavailable, "desktop handshake unavailable")
+		writeBackendError(w, bkerr.Unavailable("desktop handshake unavailable", err))
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{

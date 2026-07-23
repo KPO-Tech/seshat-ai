@@ -1,7 +1,7 @@
 import { Copy, CheckOne, CloseOne, LoadingOne } from '@icon-park/react'
 import type { ReactNode } from 'react'
-import type { ToolStatus, ToolUseBlock } from '@/api/types'
-import { fallbackApprovalDescription, fmtDuration, statusLabel } from './helpers'
+import type { ToolStatus } from '@/api/types'
+import { fmtDuration, statusLabel } from './helpers'
 
 export function Section({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -31,7 +31,7 @@ export function CodeBox({
           title="Copy"
           onClick={() => void navigator.clipboard.writeText(content)}
         >
-          <Copy size={12} />
+          <Copy size={10} />
         </button>
       )}
     </div>
@@ -42,48 +42,14 @@ export function StatusBadge({ status, durationMs }: { status: ToolStatus; durati
   return (
     <div className={`tb-status tb-status--${status}`}>
       <span className="tb-status-icon">
-        {status === 'completed' && <CheckOne size={12} />}
-        {status === 'failed' && <CloseOne size={12} />}
-        {status === 'running' && <LoadingOne size={12} className="tb-spin" />}
+        {status === 'completed' && <CheckOne size={10} />}
+        {status === 'failed' && <CloseOne size={10} />}
+        {status === 'running' && <LoadingOne size={10} className="tb-spin" />}
         {(status === 'pending' || status === 'awaiting_approval') && <span className="tb-dot" />}
       </span>
       <span className="tb-status-label">{statusLabel(status)}</span>
       {durationMs != null && status !== 'running' && status !== 'awaiting_approval' && (
         <span className="tb-duration">{fmtDuration(durationMs)}</span>
-      )}
-    </div>
-  )
-}
-
-export function ApprovalSection({
-  tool,
-  onApprove,
-  onDeny,
-}: {
-  tool: ToolUseBlock
-  onApprove?: (toolUseId: string) => void
-  onDeny?: (toolUseId: string) => void
-}) {
-  const description = tool._approval?.description || fallbackApprovalDescription(tool)
-  return (
-    <div className="tb-approval">
-      <div className="tb-approval-copy">
-        <strong>Requires Validation</strong>
-        <p>{description}</p>
-      </div>
-      {(onApprove || onDeny) && (
-        <div className="tb-approval-actions">
-          {onDeny && (
-            <button className="tb-approval-btn tb-approval-btn--deny" type="button" onClick={() => onDeny(tool.id)}>
-              Deny
-            </button>
-          )}
-          {onApprove && (
-            <button className="tb-approval-btn tb-approval-btn--allow" type="button" onClick={() => onApprove(tool.id)}>
-              Validate
-            </button>
-          )}
-        </div>
       )}
     </div>
   )

@@ -11,7 +11,7 @@ import {
   Edit,
   EditTwo,
   Layers,
-  Robot,
+  Time,
 } from '@icon-park/react'
 import { useUIStore } from '@/stores/ui'
 import { useAuthStore } from '@/stores/auth'
@@ -20,6 +20,7 @@ import { NexusLogo } from '@/components/NexusLogo'
 import { useEffect, useState } from 'react'
 import { api } from '@/api/client'
 import { UNTITLED_SESSION_TITLE } from '@/lib/sessionTitle'
+import { deleteSession } from '@/lib/deleteSession'
 import { SearchModal } from './SearchModal'
 
 export function Sidebar() {
@@ -27,7 +28,6 @@ export function Sidebar() {
   const sessions = useSessionStore((s) => s.sessions)
   const activeId = useSessionStore((s) => s.activeId)
   const setActive = useSessionStore((s) => s.setActive)
-  const removeSession = useSessionStore((s) => s.removeSession)
   const updateSession = useSessionStore((s) => s.updateSession)
   const user = useAuthStore((s) => s.user)
   const navigate = useNavigate()
@@ -82,14 +82,7 @@ export function Sidebar() {
   async function handleDeleteSession(id: string) {
     setMenuSessionId(null)
     try {
-      await api.delete(`/sessions/${id}`)
-      removeSession(id)
-      // Close the right panel if it belongs to the deleted session so the
-      // AgentMonitorPanel doesn't keep rendering for a non-existent session.
-      const { rightPanel, closeRightPanel } = useUIStore.getState()
-      if (rightPanel.open && rightPanel.sessionId === id) {
-        closeRightPanel()
-      }
+      await deleteSession(id)
       if (activeId === id) {
         navigate('/')
       }
@@ -131,7 +124,7 @@ export function Sidebar() {
         {/* ── Header ── */}
         <div className="sb-header">
           <div className="sb-logo-wrap">
-            <NexusLogo size={collapsed ? 32 : 28} />
+            <NexusLogo size={collapsed ? 26 : 22} />
             {!collapsed && <span className="sb-brand">SeshatOS</span>}
           </div>
         </div>
@@ -139,7 +132,7 @@ export function Sidebar() {
         {/* ── Primary Actions (OS Apps) ── */}
         <div className="sb-section">
           <SidebarItem
-            icon={<Plus theme="outline" size={20} />}
+            icon={<Plus theme="outline" size={16} />}
             label="New Chat"
             shortcut="⌘K"
             collapsed={collapsed}
@@ -147,21 +140,21 @@ export function Sidebar() {
             onClick={startNewChat}
           />
           <SidebarItem
-            icon={<Search theme="outline" size={20} />}
+            icon={<Search theme="outline" size={16} />}
             label="Search"
             shortcut="⌘K"
             collapsed={collapsed}
             onClick={() => setSearchOpen(true)}
           />
           <SidebarItem
-            icon={<Peoples theme="outline" size={20} />}
+            icon={<Peoples theme="outline" size={16} />}
             label="Teams"
             collapsed={collapsed}
             active={pathname.startsWith('/teams')}
             onClick={() => navigate('/teams')}
           />
           <SidebarItem
-            icon={<EditTwo theme="outline" size={20} />}
+            icon={<EditTwo theme="outline" size={16} />}
             label="Skills Creator"
             collapsed={collapsed}
             active={pathname === '/skills-creator'}
@@ -169,14 +162,14 @@ export function Sidebar() {
             accent
           />
           <SidebarItem
-            icon={<Robot theme="outline" size={20} />}
-            label="Agents"
+            icon={<Time theme="outline" size={16} />}
+            label="Scheduling"
             collapsed={collapsed}
-            active={pathname === '/agents'}
-            onClick={() => navigate('/agents')}
+            active={pathname === '/scheduling'}
+            onClick={() => navigate('/scheduling')}
           />
           <SidebarItem
-            icon={<Layers theme="outline" size={20} />}
+            icon={<Layers theme="outline" size={16} />}
             label="Workspace"
             collapsed={collapsed}
             active={pathname === '/workspace'}
@@ -196,7 +189,7 @@ export function Sidebar() {
                 onClick={() => setRecentsOpen(!recentsOpen)}
               >
                 <span>Recents</span>
-                {recentsOpen ? <Down size={14} /> : <Right size={14} />}
+                {recentsOpen ? <Down size={12} /> : <Right size={12} />}
               </button>
               
               {recentsOpen && (
@@ -243,11 +236,11 @@ export function Sidebar() {
                             {menuSessionId === s.id && (
                               <div className="sb-recent-menu">
                                 <button type="button" onClick={() => startRenameSession(s.id, s.title)}>
-                                  <Edit size={14} />
+                                  <Edit size={12} />
                                   <span>Rename</span>
                                 </button>
                                 <button type="button" className="danger" onClick={() => { void handleDeleteSession(s.id) }}>
-                                  <Delete size={14} />
+                                  <Delete size={12} />
                                   <span>Delete</span>
                                 </button>
                               </div>
@@ -269,18 +262,18 @@ export function Sidebar() {
         {/* ── Footer ── */}
         <div className="sb-footer">
           <div className={`sb-footer-items ${collapsed ? 'collapsed' : ''}`}>
-            <button 
-              className="sb-footer-btn" 
+            <button
+              className="sb-footer-btn"
               onClick={() => navigate('/settings')}
               title={collapsed ? "Settings" : ""}
             >
-              <SettingTwo theme="outline" size={collapsed ? 24 : 22} />
+              <SettingTwo theme="outline" size={collapsed ? 20 : 18} />
               {!collapsed && <span>Settings</span>}
             </button>
-            
+
             <button className="sb-footer-btn profile" onClick={() => navigate('/user-settings')} title={collapsed ? user?.display_name || user?.email : ""}>
               <div className="sb-avatar-circle">
-                <User theme="outline" size={collapsed ? 18 : 16} />
+                <User theme="outline" size={collapsed ? 14 : 13} />
               </div>
             </button>
           </div>
@@ -346,7 +339,7 @@ const SIDEBAR_CSS = `
 }
 
 .sb-header {
-  padding: 20px 20px 12px;
+  padding: 14px 14px 8px;
   flex-shrink: 0;
   display: flex;
   justify-content: center;
@@ -354,27 +347,27 @@ const SIDEBAR_CSS = `
 
 .sb-root:not(.collapsed) .sb-header {
   justify-content: flex-start;
-  padding-left: 24px;
+  padding-left: 16px;
 }
 
 .sb-logo-wrap {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .sb-brand {
-  font-size: 19px;
+  font-size: var(--font-size-lg);
   font-weight: 800;
   color: var(--color-text);
   letter-spacing: -0.02em;
 }
 
 .sb-section {
-  padding: 4px 12px;
+  padding: 4px 8px;
   display: flex;
   flex-direction: column;
-  gap: 2px; 
+  gap: 1px;
 }
 
 .sb-root.collapsed .sb-section {
@@ -384,33 +377,33 @@ const SIDEBAR_CSS = `
 .sb-scroll {
   flex: 1;
   overflow-y: auto;
-  padding: 12px 14px;
+  padding: 8px 10px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
 }
 
 .sb-nav-group {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .sb-recents-list {
-  padding-left: 10px;
+  padding-left: 8px;
   overflow: visible;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding-right: 6px;
+  gap: 2px;
+  padding-right: 4px;
 }
 
 .sb-nav-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 10px;
-  font-size: 11px;
+  padding: 0 8px;
+  font-size: var(--font-size-2xs);
   font-weight: 700;
   color: var(--color-text-muted);
   background: none;
@@ -425,9 +418,9 @@ const SIDEBAR_CSS = `
   position: relative;
   display: flex;
   align-items: center;
-  gap: 6px;
-  border-radius: 10px;
-  padding: 2px;
+  gap: 4px;
+  border-radius: 8px;
+  padding: 1px;
   overflow: visible;
 }
 
@@ -440,12 +433,12 @@ const SIDEBAR_CSS = `
   min-width: 0;
   display: block;
   width: 100%;
-  padding: 8px 10px;
-  font-size: 13px;
+  padding: 5px 8px;
+  font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
   background: none;
   border: none;
-  border-radius: 8px;
+  border-radius: 7px;
   text-align: left;
   cursor: pointer;
   transition: all 0.15s;
@@ -475,9 +468,9 @@ const SIDEBAR_CSS = `
 }
 
 .sb-recent-menu-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
   border: none;
   background: transparent;
   color: var(--color-text-muted);
@@ -490,7 +483,7 @@ const SIDEBAR_CSS = `
 }
 
 .sb-recent-menu-icon {
-  font-size: 17px;
+  font-size: var(--font-size-md);
   line-height: 1;
   transform: translateY(-1px);
 }
@@ -527,12 +520,12 @@ const SIDEBAR_CSS = `
   border: none;
   background: transparent;
   color: var(--color-text);
-  border-radius: 8px;
-  padding: 9px 10px;
+  border-radius: 7px;
+  padding: 7px 8px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
+  gap: 6px;
+  font-size: var(--font-size-sm);
   cursor: pointer;
   text-align: left;
   white-space: nowrap;
@@ -552,23 +545,23 @@ const SIDEBAR_CSS = `
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(239, 124, 47, 0.22);
   color: var(--color-text);
-  border-radius: 8px;
-  padding: 8px 10px;
-  font-size: 13px;
+  border-radius: 7px;
+  padding: 5px 8px;
+  font-size: var(--font-size-sm);
   outline: none;
 }
 
 .sb-item {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   width: 100%;
-  padding: 8px 12px;
-  border-radius: 10px;
+  padding: 6px 10px;
+  border-radius: 8px;
   border: none;
   background: transparent;
   color: var(--color-text-secondary);
-  font-size: 14px;
+  font-size: var(--font-size-base);
   font-weight: 600;
   cursor: pointer;
   transition: all 0.1s;
@@ -578,8 +571,8 @@ const SIDEBAR_CSS = `
 
 .sb-item.collapsed {
   justify-content: center;
-  padding: 12px 0;
-  width: 44px;
+  padding: 8px 0;
+  width: 36px;
   margin: 0 auto;
 }
 
@@ -616,16 +609,17 @@ const SIDEBAR_CSS = `
 }
 
 .sb-item-shortcut {
-  font-size: 11px;
+  font-size: var(--font-size-2xs);
   font-weight: 700;
   color: var(--color-text-muted);
   background: var(--color-border-subtle);
-  padding: 2px 6px;
-  border-radius: 5px;
+  padding: 1px 5px;
+  border-radius: 4px;
 }
 
 .sb-footer {
-  padding: 16px 12px 32px;
+  margin-top: 12px;
+  padding: 10px 10px 16px;
   border-top: 1px solid var(--color-border-subtle);
 }
 
@@ -633,12 +627,12 @@ const SIDEBAR_CSS = `
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 8px;
+  padding: 0 6px;
 }
 
 .sb-footer-items.collapsed {
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   padding: 0;
 }
 
@@ -647,13 +641,13 @@ const SIDEBAR_CSS = `
   border: none;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   color: var(--color-text-secondary);
-  font-size: 15px;
+  font-size: var(--font-size-base);
   font-weight: 600;
   cursor: pointer;
-  padding: 10px;
-  border-radius: 10px;
+  padding: 6px 8px;
+  border-radius: 8px;
   transition: background 0.15s;
 }
 
@@ -663,8 +657,8 @@ const SIDEBAR_CSS = `
 }
 
 .sb-avatar-circle {
-  width: 36px;
-  height: 36px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -676,8 +670,8 @@ const SIDEBAR_CSS = `
 }
 
 .sb-empty {
-  padding: 4px 24px 8px;
-  font-size: 11px;
+  padding: 4px 16px 8px;
+  font-size: var(--font-size-2xs);
   color: var(--color-text-muted);
   font-style: italic;
 }

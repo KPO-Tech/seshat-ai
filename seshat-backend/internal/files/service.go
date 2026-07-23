@@ -15,9 +15,9 @@ import (
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
-	"github.com/EngineerProjects/seshat/pkg/docling"
-	"github.com/EngineerProjects/seshat/pkg/storage"
-	"github.com/EngineerProjects/seshat/pkg/workspace"
+	"github.com/KPO-Tech/seshat/pkg/docling"
+	"github.com/KPO-Tech/seshat/pkg/storage"
+	"github.com/KPO-Tech/seshat/pkg/workspace"
 )
 
 type Service struct {

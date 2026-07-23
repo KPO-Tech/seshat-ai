@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { AuthLayout } from '@/components/auth/AuthLayout'
 import {
   Field, InputWithIcon, EyeToggle, CustomCheckbox,
-  PrimaryButton, Divider, OAuthButtons,
+  PrimaryButton,
   EmailIcon, LockIcon,
 } from '@/components/auth/FormPrimitives'
 import { api } from '@/api/client'
@@ -87,8 +87,8 @@ export function Register() {
         <div style={{
           padding: '14px 16px',
           borderRadius: 8,
-          backgroundColor: 'rgba(255,255,255,0.04)',
-          border: '1px solid rgba(255,255,255,0.08)',
+          backgroundColor: 'var(--color-hover)',
+          border: '1px solid var(--color-border-subtle)',
           color: 'var(--text-secondary)',
           fontSize: 13.5,
           lineHeight: 1.6,
@@ -162,17 +162,15 @@ export function Register() {
         {/* Terms */}
         <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)' }}>
           <CustomCheckbox checked={agreed} onChange={setAgreed} />
-          <span>
-            I agree to the <a href="#" style={{ color: 'var(--brand)' }}>Terms</a> and <a href="#" style={{ color: 'var(--brand)' }}>Privacy Policy</a>
-          </span>
+          <span>I agree to the Terms and Privacy Policy</span>
         </label>
 
         {error && (
           <div style={{
             padding: '10px 14px',
             borderRadius: 8,
-            backgroundColor: 'rgba(245,63,63,0.08)',
-            border: '1px solid rgba(245,63,63,0.2)',
+            backgroundColor: 'rgba(var(--color-error-rgb), 0.08)',
+            border: '1px solid rgba(var(--color-error-rgb), 0.2)',
             color: 'var(--danger)',
             fontSize: 13,
           }}>
@@ -183,9 +181,6 @@ export function Register() {
         <PrimaryButton loading={loading} disabled={!canSubmit}>
           Create account
         </PrimaryButton>
-
-        <Divider />
-        <OAuthButtons />
 
         <p style={{ margin: '8px 0 0', textAlign: 'center', fontSize: 13, color: 'var(--text-secondary)' }}>
           Already have an account?{' '}
@@ -209,8 +204,8 @@ function RequirementRow({ label, met }: Requirement) {
         height: 16,
         borderRadius: 999,
         fontSize: 11,
-        background: met ? 'rgba(0,180,120,0.14)' : 'rgba(255,255,255,0.06)',
-        border: met ? '1px solid rgba(0,180,120,0.28)' : '1px solid rgba(255,255,255,0.08)',
+        background: met ? 'rgba(var(--color-success-rgb), 0.14)' : 'var(--color-hover)',
+        border: met ? '1px solid rgba(var(--color-success-rgb), 0.28)' : '1px solid var(--color-border-subtle)',
       }}>{met ? '✓' : ''}</span>
       <span>{label}</span>
     </div>

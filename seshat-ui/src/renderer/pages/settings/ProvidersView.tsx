@@ -195,7 +195,7 @@ export function ProvidersView() {
           <p>Manage AI provider connections, API keys, OAuth, and available models.</p>
         </div>
         <button className="pv-add-btn" onClick={() => setShowAddProvider(true)}>
-          <Plus size={16} />
+          <Plus size={13} />
           <span>Add Provider</span>
         </button>
       </header>
@@ -220,13 +220,13 @@ export function ProvidersView() {
             <div key={setting.id} className={`pv-card ${isExpanded ? 'expanded' : ''} ${setting.is_default ? 'is-default' : ''}`}>
               <div className="pv-card-header" onClick={() => handleExpand(setting)}>
                 <div className="pv-brand">
-                  <ProviderIcon provider={setting.provider} size={44} />
+                  <ProviderIcon provider={setting.provider} size={34} />
                   <div className="pv-meta">
                     <div className="pv-name">
                       {setting.name}
                       {setting.is_default && (
                         <span className="pv-default-provider-pill">
-                          <Crown size={10} /> default
+                          <Crown size={9} /> default
                         </span>
                       )}
                       {isReadOnly && (
@@ -252,7 +252,7 @@ export function ProvidersView() {
                       onClick={(e) => { e.stopPropagation(); handleSetDefault(setting.id) }}
                       disabled={settingDefaultId === setting.id}
                     >
-                      <Crown size={16} />
+                      <Crown size={13} />
                     </button>
                   )}
                   {!isReadOnly && (
@@ -261,11 +261,11 @@ export function ProvidersView() {
                       onClick={(e) => { e.stopPropagation(); handleDelete(setting.id) }}
                       disabled={deletingId === setting.id}
                     >
-                      <Delete size={16} />
+                      <Delete size={13} />
                     </button>
                   )}
                   <button className="pv-icon-btn">
-                    {isExpanded ? <Down size={16} /> : <Right size={16} />}
+                    {isExpanded ? <Down size={13} /> : <Right size={13} />}
                   </button>
                 </div>
               </div>
@@ -276,7 +276,7 @@ export function ProvidersView() {
                     <div className="pv-config-form">
                       {setting.base_url && (
                         <div className="pv-form-field">
-                          <label><LinkCloud size={14} /> Base URL</label>
+                          <label><LinkCloud size={12} /> Base URL</label>
                           <div className="pv-input-group">
                             <input type="text" value={setting.base_url} readOnly />
                           </div>
@@ -284,7 +284,7 @@ export function ProvidersView() {
                       )}
 
                       <div className="pv-form-field">
-                        <label><Shield size={14} /> Authentication</label>
+                        <label><Shield size={12} /> Authentication</label>
                         <div className="pv-auth-method">
                           {setting.auth_kind === 'oauth'
                             ? setting.provider === 'codex' ? 'ChatGPT Pro OAuth' : 'OpenAI OAuth'
@@ -298,7 +298,7 @@ export function ProvidersView() {
                         <ProviderOAuthSection setting={setting} onChanged={refetch} />
                       ) : setting.provider !== 'ollama' ? (
                         <div className="pv-form-field">
-                          <label><Shield size={14} /> API Key</label>
+                          <label><Shield size={12} /> API Key</label>
                           <div className="pv-input-group">
                             <input
                               type="password"
@@ -313,7 +313,7 @@ export function ProvidersView() {
                       <div className="pv-models">
                         <div className="pv-models-toggle-bar">
                           <div className="pv-toggle-left">
-                            <Down size={16} />
+                            <Down size={13} />
                             <h3>Models</h3>
                             {isLoading && <span className="pv-loading-dot" />}
                           </div>
@@ -323,14 +323,14 @@ export function ProvidersView() {
                               onClick={() => handleSync(setting.id)}
                               disabled={isSyncing}
                             >
-                              <Sync size={14} className={isSyncing ? 'spin' : ''} />
+                              <Sync size={12} className={isSyncing ? 'spin' : ''} />
                               {isSyncing ? 'Syncing…' : 'Sync'}
                             </button>
                             <button
                               className="pv-ghost-btn"
                               onClick={() => setAddModelFor(setting.id)}
                             >
-                              <Plus size={14} /> Custom
+                              <Plus size={12} /> Custom
                             </button>
                           </div>
                         </div>
@@ -447,8 +447,8 @@ function ProviderOAuthSection({ setting, onChanged }: {
           window.open(started.verification_url, '_blank', 'noopener,noreferrer')
         }
       }
-    } catch (e: any) {
-      setError(e?.message ?? 'Failed to start connection')
+    } catch (e: unknown) {
+      setError((e as { message?: string })?.message ?? 'Failed to start connection')
     } finally {
       setConnecting(false)
     }
@@ -465,8 +465,8 @@ function ProviderOAuthSection({ setting, onChanged }: {
       } else if (updated.last_error) {
         setError(updated.last_error)
       }
-    } catch (e: any) {
-      setError(e?.message ?? 'Failed to refresh connection state')
+    } catch (e: unknown) {
+      setError((e as { message?: string })?.message ?? 'Failed to refresh connection state')
     } finally {
       setPolling(false)
     }
@@ -479,8 +479,8 @@ function ProviderOAuthSection({ setting, onChanged }: {
       await disconnectProviderOAuth(setting.id)
       setChallenge(null)
       await onChanged()
-    } catch (e: any) {
-      setError(e?.message ?? 'Failed to disconnect provider')
+    } catch (e: unknown) {
+      setError((e as { message?: string })?.message ?? 'Failed to disconnect provider')
     } finally {
       setDisconnecting(false)
     }
@@ -499,7 +499,7 @@ function ProviderOAuthSection({ setting, onChanged }: {
 
   return (
     <div className="pv-form-field">
-      <label><Shield size={14} /> OpenAI Account</label>
+      <label><Shield size={12} /> OpenAI Account</label>
       <div className="pv-oauth-panel">
         <div className="pv-oauth-top">
           <div className="pv-oauth-meta">
@@ -627,8 +627,8 @@ function AddProviderModal({ onClose, onSuccess }: { onClose: () => void; onSucce
         base_url: baseUrl || undefined,
       })
       onSuccess()
-    } catch (e: any) {
-      setError(e?.message ?? 'Failed to add provider')
+    } catch (e: unknown) {
+      setError((e as { message?: string })?.message ?? 'Failed to add provider')
     } finally {
       setSubmitting(false)
     }
@@ -639,7 +639,7 @@ function AddProviderModal({ onClose, onSuccess }: { onClose: () => void; onSucce
       <div className="modal-shell">
         <header className="modal-header">
           <h2>Add Provider</h2>
-          <button className="modal-close-btn" onClick={onClose}><Close size={20} /></button>
+          <button className="modal-close-btn" onClick={onClose}><Close size={16} /></button>
         </header>
         <div className="modal-content">
           <div className="modal-field" style={{ position: 'relative', zIndex: 100, marginBottom: 24 }}>
@@ -648,11 +648,11 @@ function AddProviderModal({ onClose, onSuccess }: { onClose: () => void; onSucce
               <div className="pv-select-box" onClick={() => setIsDropOpen(!isDropOpen)}>
                 {selected ? (
                   <div className="pv-selected-preview">
-                    <ProviderIcon provider={selected.id} size={24} />
+                    <ProviderIcon provider={selected.id} size={20} />
                     <span>{selected.name}</span>
                   </div>
                 ) : <span className="pv-select-placeholder">Select a provider</span>}
-                <Down size={16} className={isDropOpen ? 'rotated' : ''} />
+                <Down size={13} className={isDropOpen ? 'rotated' : ''} />
               </div>
               {isDropOpen && (
                 <div className="pv-select-dropdown">
@@ -667,7 +667,7 @@ function AddProviderModal({ onClose, onSuccess }: { onClose: () => void; onSucce
                         setIsDropOpen(false)
                       }}
                     >
-                      <ProviderIcon provider={p.id} size={36} />
+                      <ProviderIcon provider={p.id} size={28} />
                       <div className="pv-option-text">
                         <div className="pv-option-name">{p.name}</div>
                         <div className="pv-option-desc">{p.desc}</div>
@@ -773,8 +773,8 @@ function AddCustomModelModal({ settingId, onClose, onSuccess }: {
         max_output: maxOutput ? parseInt(maxOutput) : undefined,
       })
       onSuccess(model)
-    } catch (e: any) {
-      setError(e?.message ?? 'Failed to add model')
+    } catch (e: unknown) {
+      setError((e as { message?: string })?.message ?? 'Failed to add model')
     } finally {
       setSubmitting(false)
     }
@@ -785,7 +785,7 @@ function AddCustomModelModal({ settingId, onClose, onSuccess }: {
       <div className="modal-shell">
         <header className="modal-header">
           <h2>Add Custom Model</h2>
-          <button className="modal-close-btn" onClick={onClose}><Close size={20} /></button>
+          <button className="modal-close-btn" onClick={onClose}><Close size={16} /></button>
         </header>
         <div className="modal-content modal-grid-2">
           <div className="modal-field modal-full">
@@ -836,110 +836,110 @@ function AddCustomModelModal({ settingId, onClose, onSuccess }: {
 export const PROVIDERS_CSS = `
 .pv-root { display: flex; flex-direction: column; }
 .pv-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 40px; }
-.pv-header-info h1 { font-size: 26px; font-weight: 700; margin: 0 0 6px; color: var(--color-text); }
-.pv-header-info p { color: var(--color-text-muted); margin: 0; font-size: 15px; }
-.pv-add-btn { background: var(--color-primary); color: white; border: none; padding: 9px 18px; border-radius: 9px; display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 14px; cursor: pointer; flex-shrink: 0; }
+.pv-header-info h1 { font-size: var(--font-size-xl); font-weight: 700; margin: 0 0 4px; color: var(--color-text); }
+.pv-header-info p { color: var(--color-text-muted); margin: 0; font-size: var(--font-size-sm); }
+.pv-add-btn { background: var(--color-primary); color: white; border: none; padding: 7px 14px; border-radius: 8px; display: flex; align-items: center; gap: 7px; font-weight: 600; font-size: var(--font-size-sm); cursor: pointer; flex-shrink: 0; }
 .pv-add-btn:hover { opacity: 0.9; }
 
-.pv-empty { text-align: center; padding: 60px 20px; color: var(--color-text-muted); font-size: 14px; }
+.pv-empty { text-align: center; padding: 36px 20px; color: var(--color-text-muted); font-size: var(--font-size-sm); }
 
-.pv-card { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 14px; margin-bottom: 12px; overflow: visible; }
+.pv-card { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 10px; margin-bottom: 8px; overflow: visible; }
 .pv-card.expanded { border-color: var(--color-primary); box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
 .pv-card.is-default { border-color: rgba(239,124,47,0.35); }
-.pv-default-provider-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: var(--color-primary); background: var(--color-primary-subtle); padding: 1px 7px; border-radius: 5px; font-weight: 700; margin-left: 8px; vertical-align: middle; }
-.pv-origin-badge { display: inline-flex; align-items: center; font-size: 10px; color: var(--color-text-muted); background: var(--color-surface); border: 1px solid var(--color-border); padding: 1px 7px; border-radius: 5px; font-weight: 600; margin-left: 8px; vertical-align: middle; }
+.pv-default-provider-pill { display: inline-flex; align-items: center; gap: 3px; font-size: var(--font-size-2xs); color: var(--color-primary); background: var(--color-primary-subtle); padding: 1px 6px; border-radius: 4px; font-weight: 700; margin-left: 6px; vertical-align: middle; }
+.pv-origin-badge { display: inline-flex; align-items: center; font-size: var(--font-size-2xs); color: var(--color-text-muted); background: var(--color-surface); border: 1px solid var(--color-border); padding: 1px 6px; border-radius: 4px; font-weight: 600; margin-left: 6px; vertical-align: middle; }
 .pv-default-btn { color: var(--color-text-muted); }
 .pv-default-btn:hover { color: var(--color-primary) !important; }
-.pv-card-header { padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; border-radius: 14px; }
-.pv-card.expanded .pv-card-header { border-radius: 14px 14px 0 0; }
+.pv-card-header { padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; border-radius: 10px; }
+.pv-card.expanded .pv-card-header { border-radius: 10px 10px 0 0; }
 .pv-brand { display: flex; align-items: center; gap: 18px; }
 .pv-meta { display: flex; flex-direction: column; gap: 2px; }
-.pv-name { font-weight: 700; font-size: 16px; color: var(--color-text); }
-.pv-id { font-size: 12px; color: var(--color-text-muted); }
+.pv-name { font-weight: 700; font-size: var(--font-size-base); color: var(--color-text); }
+.pv-id { font-size: var(--font-size-2xs); color: var(--color-text-muted); }
 .pv-card-controls { display: flex; align-items: center; gap: 14px; }
-.pv-status-pill { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 7px; }
+.pv-status-pill { font-size: var(--font-size-2xs); font-weight: 700; padding: 2px 8px; border-radius: 6px; }
 .pv-status-pill.connected { color: var(--color-success); background: rgba(111,175,123,0.12); }
 .pv-status-pill.pending { color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 12%, transparent); }
 .pv-status-pill.error { color: var(--color-error); background: color-mix(in srgb, var(--color-error) 10%, transparent); }
 .pv-status-pill.disconnected { color: var(--color-text-muted); background: var(--color-surface); border: 1px solid var(--color-border); }
-.pv-icon-btn { background: none; border: none; color: var(--color-text-muted); cursor: pointer; padding: 6px; display: flex; border-radius: 6px; transition: background 0.1s, color 0.1s; }
+.pv-icon-btn { background: none; border: none; color: var(--color-text-muted); cursor: pointer; padding: 5px; display: flex; border-radius: 6px; transition: background 0.1s, color 0.1s; }
 .pv-icon-btn:hover { background: var(--color-hover); color: var(--color-text); }
 .pv-icon-btn:disabled { opacity: 0.4; cursor: default; }
 
-.pv-card-body { border-top: 1px solid var(--color-border); padding: 32px; }
+.pv-card-body { border-top: 1px solid var(--color-border); padding: 18px; }
 .pv-body-layout { display: grid; grid-template-columns: 1fr 320px; gap: 48px; }
 .pv-config-form { min-width: 0; }
 .pv-form-field { margin-bottom: 20px; }
-.pv-form-field label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--color-text-secondary); margin-bottom: 8px; }
+.pv-form-field label { display: flex; align-items: center; gap: 6px; font-size: var(--font-size-xs); font-weight: 600; color: var(--color-text-secondary); margin-bottom: 6px; }
 .pv-input-group { display: flex; gap: 10px; }
-.pv-input-group input { flex: 1; background: var(--color-surface); border: 1px solid var(--color-border); padding: 9px 14px; border-radius: 10px; color: var(--color-text); font-size: 14px; outline: none; font-family: inherit; min-width: 0; }
-.pv-auth-method { background: var(--color-surface); border: 1px solid var(--color-border); padding: 10px 14px; border-radius: 10px; color: var(--color-text); font-size: 14px; }
+.pv-input-group input { flex: 1; background: var(--color-surface); border: 1px solid var(--color-border); padding: 7px 10px; border-radius: 8px; color: var(--color-text); font-size: var(--font-size-sm); outline: none; font-family: inherit; min-width: 0; }
+.pv-auth-method { background: var(--color-surface); border: 1px solid var(--color-border); padding: 7px 10px; border-radius: 8px; color: var(--color-text); font-size: var(--font-size-sm); }
 
-.pv-oauth-panel { display: flex; flex-direction: column; gap: 14px; padding: 16px; border-radius: 12px; border: 1px solid var(--color-border); background: var(--color-surface); }
+.pv-oauth-panel { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 10px; border: 1px solid var(--color-border); background: var(--color-surface); }
 .pv-oauth-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .pv-oauth-meta { display: flex; flex-direction: column; gap: 14px; }
-.pv-oauth-title { font-size: 12px; font-weight: 700; color: var(--color-text-secondary); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
-.pv-oauth-copy { font-size: 13px; line-height: 1.6; color: var(--color-text-muted); }
+.pv-oauth-title { font-size: var(--font-size-2xs); font-weight: 700; color: var(--color-text-secondary); margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.04em; }
+.pv-oauth-copy { font-size: var(--font-size-xs); line-height: 1.5; color: var(--color-text-muted); }
 .pv-oauth-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
-.pv-oauth-note { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 16px; border-radius: 12px; border: 1px solid var(--color-border); background: var(--color-bg); }
-.pv-oauth-code { font-size: 24px; letter-spacing: 0.14em; font-weight: 800; color: var(--color-text); margin: 8px 0; }
-.pv-inline-error { border: 1px solid var(--color-error); background: color-mix(in srgb, var(--color-error) 10%, transparent); color: var(--color-error); border-radius: 10px; padding: 10px 12px; font-size: 13px; line-height: 1.5; }
+.pv-oauth-note { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 12px; border-radius: 10px; border: 1px solid var(--color-border); background: var(--color-bg); }
+.pv-oauth-code { font-size: 18px; letter-spacing: 0.14em; font-weight: 800; color: var(--color-text); margin: 6px 0; }
+.pv-inline-error { border: 1px solid var(--color-error); background: color-mix(in srgb, var(--color-error) 10%, transparent); color: var(--color-error); border-radius: 8px; padding: 8px 10px; font-size: var(--font-size-xs); line-height: 1.5; }
 
-.pv-models { margin-top: 32px; }
-.pv-models-toggle-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-.pv-toggle-left { display: flex; align-items: center; gap: 10px; color: var(--color-text-secondary); }
-.pv-models-toggle-bar h3 { font-size: 14px; margin: 0; font-weight: 700; color: var(--color-text); }
+.pv-models { margin-top: 20px; }
+.pv-models-toggle-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.pv-toggle-left { display: flex; align-items: center; gap: 7px; color: var(--color-text-secondary); }
+.pv-models-toggle-bar h3 { font-size: var(--font-size-sm); margin: 0; font-weight: 700; color: var(--color-text); }
 .pv-loading-dot { width: 6px; height: 6px; background: var(--color-primary); border-radius: 50%; animation: pulse-opacity 1s infinite; }
-.pv-toggle-actions { display: flex; gap: 12px; }
-.pv-ghost-btn { background: none; border: 1px solid var(--color-border); color: var(--color-text-secondary); font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 5px 12px; border-radius: 7px; transition: background 0.1s; }
+.pv-toggle-actions { display: flex; gap: 8px; }
+.pv-ghost-btn { background: none; border: 1px solid var(--color-border); color: var(--color-text-secondary); font-size: var(--font-size-xs); font-weight: 600; display: flex; align-items: center; gap: 5px; cursor: pointer; padding: 4px 9px; border-radius: 6px; transition: background 0.1s; }
 .pv-ghost-btn:hover { background: var(--color-hover); }
 .pv-ghost-btn:disabled { opacity: 0.5; cursor: default; }
 
-.pv-models-table { border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-bg); overflow: hidden; }
-.pv-table-head { padding: 8px 16px; background: var(--color-surface); border-bottom: 1px solid var(--color-border); font-size: 11px; font-weight: 800; color: var(--color-text-muted); letter-spacing: 0.06em; }
-.pv-models-loading { padding: 20px 16px; color: var(--color-text-muted); font-size: 13px; }
-.pv-models-empty { padding: 20px 16px; color: var(--color-text-muted); font-size: 13px; }
-.pv-model-row { padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--color-border-subtle); cursor: pointer; transition: background 0.1s; }
+.pv-models-table { border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-bg); overflow: hidden; }
+.pv-table-head { padding: 6px 12px; background: var(--color-surface); border-bottom: 1px solid var(--color-border); font-size: var(--font-size-2xs); font-weight: 800; color: var(--color-text-muted); letter-spacing: 0.06em; }
+.pv-models-loading { padding: 14px 12px; color: var(--color-text-muted); font-size: var(--font-size-xs); }
+.pv-models-empty { padding: 14px 12px; color: var(--color-text-muted); font-size: var(--font-size-xs); }
+.pv-model-row { padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--color-border-subtle); cursor: pointer; transition: background 0.1s; }
 .pv-model-row:last-child { border-bottom: none; }
 .pv-model-row:hover { background: var(--color-hover); }
-.pv-model-row.active { background: var(--color-primary-subtle); border-left: 3px solid var(--color-primary); padding-left: 13px; }
+.pv-model-row.active { background: var(--color-primary-subtle); border-left: 3px solid var(--color-primary); padding-left: 9px; }
 .pv-model-info { flex: 1; min-width: 0; }
-.pv-model-name { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; color: var(--color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pv-default-pill { font-size: 10px; color: var(--color-cta); background: var(--color-primary-subtle); padding: 1px 6px; border-radius: 4px; font-weight: 700; flex-shrink: 0; }
-.pv-user-pill { font-size: 10px; color: var(--color-accent); background: rgba(200,154,106,0.12); padding: 1px 6px; border-radius: 4px; font-weight: 700; flex-shrink: 0; }
-.pv-model-id { font-size: 11px; color: var(--color-text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pv-model-actions { flex-shrink: 0; display: flex; align-items: center; gap: 12px; margin-left: 12px; }
-.pv-ctx { font-size: 12px; color: var(--color-text-muted); }
+.pv-model-name { font-size: var(--font-size-xs); font-weight: 600; display: flex; align-items: center; gap: 6px; color: var(--color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pv-default-pill { font-size: var(--font-size-2xs); color: var(--color-cta); background: var(--color-primary-subtle); padding: 1px 5px; border-radius: 4px; font-weight: 700; flex-shrink: 0; }
+.pv-user-pill { font-size: var(--font-size-2xs); color: var(--color-accent); background: rgba(200,154,106,0.12); padding: 1px 5px; border-radius: 4px; font-weight: 700; flex-shrink: 0; }
+.pv-model-id { font-size: var(--font-size-2xs); color: var(--color-text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pv-model-actions { flex-shrink: 0; display: flex; align-items: center; gap: 8px; margin-left: 8px; }
+.pv-ctx { font-size: var(--font-size-2xs); color: var(--color-text-muted); }
 
-.pv-details { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; align-self: flex-start; position: sticky; top: 0; }
-.pv-details-header { padding: 12px 18px; border-bottom: 1px solid var(--color-border); font-size: 11px; font-weight: 800; color: var(--color-text-muted); letter-spacing: 0.06em; }
-.pv-details-body { padding: 18px; }
-.pv-details-empty { padding: 32px 18px; text-align: center; color: var(--color-text-muted); font-size: 13px; line-height: 1.5; }
-.pv-detail-entry { margin-bottom: 16px; }
+.pv-details { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 10px; align-self: flex-start; position: sticky; top: 0; }
+.pv-details-header { padding: 8px 12px; border-bottom: 1px solid var(--color-border); font-size: var(--font-size-2xs); font-weight: 800; color: var(--color-text-muted); letter-spacing: 0.06em; }
+.pv-details-body { padding: 12px; }
+.pv-details-empty { padding: 20px 12px; text-align: center; color: var(--color-text-muted); font-size: var(--font-size-xs); line-height: 1.5; }
+.pv-detail-entry { margin-bottom: 10px; }
 .pv-detail-entry:last-child { margin-bottom: 0; }
-.pv-detail-label { font-size: 11px; font-weight: 700; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px; }
-.pv-detail-value { font-size: 13px; line-height: 1.6; color: var(--color-text); }
-.pv-detail-value.mono { font-family: monospace; font-size: 12px; }
-.pv-default-badge { margin-top: 16px; padding: 8px 12px; background: var(--color-primary-subtle); border: 1px solid rgba(239,124,47,0.2); border-radius: 8px; font-size: 12px; color: var(--color-primary); font-weight: 600; text-align: center; }
+.pv-detail-label { font-size: var(--font-size-2xs); font-weight: 700; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+.pv-detail-value { font-size: var(--font-size-xs); line-height: 1.5; color: var(--color-text); }
+.pv-detail-value.mono { font-family: monospace; font-size: var(--font-size-2xs); }
+.pv-default-badge { margin-top: 10px; padding: 6px 10px; background: var(--color-primary-subtle); border: 1px solid rgba(239,124,47,0.2); border-radius: 7px; font-size: var(--font-size-2xs); color: var(--color-primary); font-weight: 600; text-align: center; }
 
-.pv-custom-select { border: 1.5px solid var(--color-border); border-radius: 10px; position: relative; background: var(--color-bg); }
+.pv-custom-select { border: 1.5px solid var(--color-border); border-radius: 8px; position: relative; background: var(--color-bg); }
 .pv-custom-select.open { border-color: var(--color-primary); }
-.pv-select-box { padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; font-weight: 500; min-height: 46px; color: var(--color-text); gap: 12px; }
-.pv-select-placeholder { color: var(--color-text-muted); font-size: 14px; }
-.pv-selected-preview { display: flex; align-items: center; gap: 12px; }
-.pv-selected-preview span { font-weight: 600; font-size: 14px; }
-.pv-select-dropdown { position: absolute; top: calc(100% + 4px); left: -1.5px; right: -1.5px; max-height: 320px; overflow-y: auto; background: var(--color-bg); border: 1.5px solid var(--color-border); border-radius: 10px; box-shadow: var(--shadow-large); z-index: 1000; }
-.pv-option-row { padding: 12px 16px; display: flex; align-items: center; gap: 14px; cursor: pointer; transition: background 0.1s; }
+.pv-select-box { padding: 7px 10px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; font-weight: 500; min-height: 36px; color: var(--color-text); gap: 8px; }
+.pv-select-placeholder { color: var(--color-text-muted); font-size: var(--font-size-sm); }
+.pv-selected-preview { display: flex; align-items: center; gap: 8px; }
+.pv-selected-preview span { font-weight: 600; font-size: var(--font-size-sm); }
+.pv-select-dropdown { position: absolute; top: calc(100% + 4px); left: -1.5px; right: -1.5px; max-height: 320px; overflow-y: auto; background: var(--color-bg); border: 1.5px solid var(--color-border); border-radius: 8px; box-shadow: var(--shadow-large); z-index: 1000; }
+.pv-option-row { padding: 8px 10px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: background 0.1s; }
 .pv-option-row:hover { background: var(--color-hover); }
 .pv-option-row.active { background: var(--color-primary-subtle); }
-.pv-option-name { font-weight: 700; font-size: 14px; color: var(--color-text); }
-.pv-option-desc { font-size: 12px; color: var(--color-text-muted); margin-top: 2px; }
+.pv-option-name { font-weight: 700; font-size: var(--font-size-sm); color: var(--color-text); }
+.pv-option-desc { font-size: var(--font-size-2xs); color: var(--color-text-muted); margin-top: 2px; }
 .rotated { transform: rotate(180deg); transition: transform 0.15s; }
 
 .pv-auth-mode-row { display: flex; gap: 10px; }
-.pv-auth-mode-btn { flex: 1; border: 1px solid var(--color-border); background: var(--color-bg); color: var(--color-text-secondary); border-radius: 10px; padding: 10px 12px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
+.pv-auth-mode-btn { flex: 1; border: 1px solid var(--color-border); background: var(--color-bg); color: var(--color-text-secondary); border-radius: 8px; padding: 7px 10px; font-size: var(--font-size-xs); font-weight: 700; cursor: pointer; font-family: inherit; }
 .pv-auth-mode-btn.active { border-color: var(--color-primary); background: var(--color-primary-subtle); color: var(--color-primary); }
-.pv-auth-mode-help { margin-top: 8px; font-size: 12px; line-height: 1.5; color: var(--color-text-muted); }
+.pv-auth-mode-help { margin-top: 6px; font-size: var(--font-size-2xs); line-height: 1.5; color: var(--color-text-muted); }
 
 .spin { animation: spin 1s linear infinite; }
 
@@ -954,25 +954,25 @@ export const PROVIDERS_CSS = `
 }
 
 .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999; }
-.modal-shell { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 18px; width: 500px; max-width: calc(100vw - 48px); box-shadow: var(--shadow-large); }
-.modal-header { padding: 22px 28px 0; display: flex; align-items: center; justify-content: space-between; }
-.modal-header h2 { font-size: 18px; font-weight: 700; color: var(--color-text); }
+.modal-shell { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 14px; width: 440px; max-width: calc(100vw - 48px); box-shadow: var(--shadow-large); }
+.modal-header { padding: 16px 18px 0; display: flex; align-items: center; justify-content: space-between; }
+.modal-header h2 { font-size: var(--font-size-lg); font-weight: 700; color: var(--color-text); }
 .modal-close-btn { background: none; border: none; color: var(--color-text-muted); cursor: pointer; padding: 4px; display: flex; border-radius: 6px; }
 .modal-close-btn:hover { background: var(--color-hover); }
-.modal-content { padding: 24px 28px; }
-.modal-content.modal-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.modal-content { padding: 16px 18px; }
+.modal-content.modal-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .modal-field { display: flex; flex-direction: column; gap: 6px; }
 .modal-field.modal-full { grid-column: 1 / -1; }
-.modal-field label { font-size: 13px; font-weight: 600; color: var(--color-text-secondary); }
+.modal-field label { font-size: var(--font-size-xs); font-weight: 600; color: var(--color-text-secondary); }
 .modal-label-opt { font-weight: 400; color: var(--color-text-muted); }
-.modal-field input, .modal-field textarea { background: var(--color-bg); border: 1px solid var(--color-border); padding: 9px 14px; border-radius: 9px; color: var(--color-text); font-size: 14px; outline: none; font-family: inherit; width: 100%; }
+.modal-field input, .modal-field textarea { background: var(--color-bg); border: 1px solid var(--color-border); padding: 7px 10px; border-radius: 8px; color: var(--color-text); font-size: var(--font-size-sm); outline: none; font-family: inherit; width: 100%; }
 .modal-field input:focus, .modal-field textarea:focus { border-color: var(--color-primary); }
 .modal-field textarea { resize: vertical; min-height: 80px; }
-.modal-error { grid-column: 1 / -1; background: rgba(201,107,92,0.1); border: 1px solid rgba(201,107,92,0.3); padding: 10px 14px; border-radius: 8px; color: var(--color-error); font-size: 13px; }
-.modal-footer { padding: 0 28px 22px; display: flex; gap: 12px; justify-content: flex-end; }
-.modal-btn-cancel { background: var(--color-bg); border: 1px solid var(--color-border); color: var(--color-text); padding: 9px 20px; border-radius: 9px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.modal-error { grid-column: 1 / -1; background: rgba(201,107,92,0.1); border: 1px solid rgba(201,107,92,0.3); padding: 8px 10px; border-radius: 7px; color: var(--color-error); font-size: var(--font-size-xs); }
+.modal-footer { padding: 0 18px 16px; display: flex; gap: 8px; justify-content: flex-end; }
+.modal-btn-cancel { background: var(--color-bg); border: 1px solid var(--color-border); color: var(--color-text); padding: 7px 14px; border-radius: 8px; font-size: var(--font-size-sm); font-weight: 600; cursor: pointer; }
 .modal-btn-cancel:hover { background: var(--color-hover); }
-.modal-btn-submit { background: var(--color-cta); color: white; border: none; padding: 9px 20px; border-radius: 9px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.modal-btn-submit { background: var(--color-cta); color: white; border: none; padding: 7px 14px; border-radius: 8px; font-size: var(--font-size-sm); font-weight: 600; cursor: pointer; }
 .modal-btn-submit:hover:not(:disabled) { opacity: 0.9; }
 .modal-btn-submit:disabled { opacity: 0.5; cursor: default; }
 

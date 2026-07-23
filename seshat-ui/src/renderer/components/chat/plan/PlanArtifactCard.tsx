@@ -9,7 +9,7 @@ const CSS = `
   align-items: stretch;
   gap: 0;
   border: 1px solid var(--color-border-subtle);
-  border-radius: 12px;
+  border-radius: 9px;
   overflow: hidden;
   background: var(--color-surface);
   cursor: pointer;
@@ -28,7 +28,7 @@ const CSS = `
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 14px 14px;
+  padding: 10px 10px;
   background: rgba(239, 124, 47, 0.07);
   border-right: 1px solid var(--color-border-subtle);
   color: var(--color-accent);
@@ -36,22 +36,22 @@ const CSS = `
 }
 
 .pac-body {
-  padding: 12px 14px;
+  padding: 8px 10px;
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .pac-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .pac-title {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--color-text);
   white-space: nowrap;
@@ -64,8 +64,8 @@ const CSS = `
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  padding: 2px 7px;
-  border-radius: 999px;
+  padding: 2px 5px;
+  border-radius: 779px;
   flex-shrink: 0;
 }
 
@@ -75,17 +75,17 @@ const CSS = `
 }
 
 .pac-badge--validated {
-  background: rgba(52, 211, 153, 0.12);
-  color: #34d399;
+  background: rgba(var(--color-success-rgb), 0.12);
+  color: var(--color-success);
 }
 
 .pac-badge--rejected {
-  background: rgba(239, 68, 68, 0.1);
-  color: #f87171;
+  background: rgba(var(--color-error-rgb), 0.1);
+  color: var(--color-error);
 }
 
 .pac-meta {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--color-text-muted);
 }
 
@@ -94,33 +94,33 @@ const CSS = `
   align-items: center;
   justify-content: space-between;
   border-top: 1px solid var(--color-border-subtle);
-  padding: 8px 14px;
+  padding: 6px 10px;
   flex-shrink: 0;
 }
 
 .pac-hint {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--color-text-muted);
 }
 
 .pac-proceed {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px 12px;
-  border-radius: 8px;
-  font-size: 12px;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 10px;
   font-weight: 600;
   cursor: pointer;
-  background: rgba(52, 211, 153, 0.12);
-  border: 1px solid rgba(52, 211, 153, 0.3);
-  color: #34d399;
+  background: rgba(var(--color-success-rgb), 0.12);
+  border: 1px solid rgba(var(--color-success-rgb), 0.3);
+  color: var(--color-success);
   transition: all 0.15s;
 }
 
 .pac-proceed:hover {
-  background: rgba(52, 211, 153, 0.22);
-  border-color: rgba(52, 211, 153, 0.5);
+  background: rgba(var(--color-success-rgb), 0.22);
+  border-color: rgba(var(--color-success-rgb), 0.5);
 }
 
 .pac-wrapper {
@@ -147,7 +147,6 @@ export const PlanArtifactCard = memo(function PlanArtifactCard({ plan, sessionId
       title: plan.slug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
       sessionId,
       planId: plan.id,
-      width: 520,
     })
   }
 
@@ -167,7 +166,7 @@ export const PlanArtifactCard = memo(function PlanArtifactCard({ plan, sessionId
       <style>{CSS}</style>
       <div className="pac-root" onClick={openPanel} role="button" tabIndex={0}>
         <div className="pac-left">
-          <DocDetail size={20} />
+          <DocDetail size={16} />
         </div>
         <div className="pac-body">
           <div className="pac-header">
@@ -183,7 +182,7 @@ export const PlanArtifactCard = memo(function PlanArtifactCard({ plan, sessionId
         <div className="pac-footer" style={{ borderTop: 'none', paddingTop: 6 }}>
           <span className="pac-hint">Review and approve to continue execution</span>
           <button className="pac-proceed" type="button" onClick={handleProceed}>
-            <CheckOne size={12} />
+            <CheckOne size={10} />
             Proceed
           </button>
         </div>

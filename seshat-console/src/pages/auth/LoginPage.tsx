@@ -1,6 +1,6 @@
 import { Button, Form, Input, message, Typography } from 'antd'
 import { MailOutlined, LockOutlined } from '@ant-design/icons'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { useLogin } from '@/api/auth'
 import { useAuthStore } from '@/store/auth'
 import { getErrorMessage } from '@/api/errors'
@@ -17,13 +17,17 @@ export function LoginPage() {
   const token = useAuthStore((s) => s.token)
   const login = useLogin()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  // Carries the caller through to e.g. /accept-invitation?token=... after
+  // auth - set by AcceptInvitationPage when the invitee isn't logged in yet.
+  const next = searchParams.get('next')
 
-  if (token) return <Navigate to="/" replace />
+  if (token) return <Navigate to={next || '/'} replace />
 
   const onFinish = (values: LoginFormValues) => {
     login.mutate(values, {
       onSuccess: (data) => {
-        if (data.user) navigate(resolveLandingPath(data.user, data.organizations ?? []), { replace: true })
+        if (data.user) navigate(next || resolveLandingPath(data.user, data.organizations ?? []), { replace: true })
       },
       onError: (error) => message.error(getErrorMessage(error)),
     })
@@ -50,19 +54,34 @@ export function LoginPage() {
             size="large"
           />
         </Form.Item>
-        <Form.Item name="password" label="Password" rules={[{ required: true, message: 'Enter your password' }]}>
+        <Form.Item
+          name="password"
+          label="Password"
+          rules={[{ required: true, message: 'Enter your password' }]}
+          extra={
+            <Link to="/forgot-password" style={{ fontSize: 12 }}>
+              Forgot password?
+            </Link>
+          }
+        >
           <Input.Password
             prefix={<LockOutlined style={{ color: palette.inkTertiary }} />}
             autoComplete="current-password"
             size="large"
           />
         </Form.Item>
-        <Form.Item style={{ marginBottom: 0 }}>
+        <Form.Item style={{ marginBottom: 16 }}>
           <Button type="primary" htmlType="submit" block size="large" loading={login.isPending}>
             Log in
           </Button>
         </Form.Item>
       </Form>
+      <Typography.Text type="secondary" style={{ display: 'block' }}>
+        No account yet? <Link to={next ? `/register?next=${encodeURIComponent(next)}` : '/register'}>Sign up</Link>
+      </Typography.Text>
+      <Typography.Text type="secondary">
+        Starting a new company? <Link to="/create-organization">Create an organization</Link>
+      </Typography.Text>
     </AuthLayout>
   )
 }

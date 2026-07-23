@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { CheckOne, CloseOne, Send, Edit, DocDetail } from '@icon-park/react'
+import { CheckOne, CloseOne, Edit, DocDetail } from '@icon-park/react'
 import { MarkdownView } from '@/components/MarkdownView'
 import { api } from '@/api/client'
 import { useSessionStore } from '@/stores/session'
-import { useUIStore } from '@/stores/ui'
+import { useUIStore, buildRightPanelId } from '@/stores/ui'
 import type { PlanDocument } from '@/api/types'
 
 const CSS = `
@@ -15,18 +15,18 @@ const CSS = `
 }
 
 .pep-header {
-  padding: 14px 16px;
+  padding: 10px 11px;
   border-bottom: 1px solid var(--color-border-subtle);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
 }
 
 .pep-header-top {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .pep-icon {
@@ -35,7 +35,7 @@ const CSS = `
 }
 
 .pep-name {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--color-text);
   flex: 1;
@@ -50,8 +50,8 @@ const CSS = `
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  padding: 2px 8px;
-  border-radius: 999px;
+  padding: 2px 6px;
+  border-radius: 779px;
 }
 
 .pep-badge--pending {
@@ -60,36 +60,36 @@ const CSS = `
 }
 
 .pep-badge--validated {
-  background: rgba(52, 211, 153, 0.12);
-  color: #34d399;
+  background: rgba(var(--color-success-rgb), 0.12);
+  color: var(--color-success);
 }
 
 .pep-badge--rejected {
-  background: rgba(239, 68, 68, 0.1);
-  color: #f87171;
+  background: rgba(var(--color-error-rgb), 0.1);
+  color: var(--color-error);
 }
 
 .pep-meta {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--color-text-muted);
 }
 
 .pep-toolbar {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .pep-tool-btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px 10px;
-  border-radius: 7px;
+  gap: 4px;
+  padding: 4px 7px;
+  border-radius: 5px;
   border: 1px solid var(--color-border-subtle);
   background: transparent;
   color: var(--color-text-muted);
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
@@ -117,11 +117,11 @@ const CSS = `
 .pep-body::-webkit-scrollbar { width: 4px; }
 .pep-body::-webkit-scrollbar-thumb {
   background: var(--color-border-subtle);
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 .pep-markdown {
-  padding: 16px 18px;
+  padding: 11px 13px;
   flex: 1;
   position: relative;
   user-select: text;
@@ -131,13 +131,13 @@ const CSS = `
   width: 100%;
   flex: 1;
   min-height: 300px;
-  padding: 16px 18px;
+  padding: 11px 13px;
   background: transparent;
   border: none;
   outline: none;
   color: var(--color-text);
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 13px;
+  font-size: 11px;
   line-height: 1.6;
   resize: none;
   box-sizing: border-box;
@@ -156,12 +156,12 @@ const CSS = `
 }
 
 .pep-float-btn {
-  padding: 5px 12px;
-  border-radius: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
   background: var(--color-accent);
   border: none;
   color: #fff;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
@@ -175,19 +175,19 @@ const CSS = `
 .pep-float-form {
   background: rgba(38, 36, 44, 0.98);
   border: 1px solid var(--color-border-subtle);
-  border-radius: 10px;
-  padding: 10px;
+  border-radius: 8px;
+  padding: 7px;
   width: 280px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .pep-float-quote {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--color-text-muted);
   border-left: 2px solid var(--color-accent);
-  padding-left: 8px;
+  padding-left: 6px;
   font-style: italic;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -198,11 +198,11 @@ const CSS = `
   width: 100%;
   background: rgba(255,255,255,0.04);
   border: 1px solid var(--color-border-subtle);
-  border-radius: 6px;
+  border-radius: 5px;
   color: var(--color-text);
-  font-size: 12px;
+  font-size: 10px;
   font-family: inherit;
-  padding: 7px 9px;
+  padding: 5px 6px;
   resize: none;
   outline: none;
   box-sizing: border-box;
@@ -215,17 +215,17 @@ const CSS = `
 
 .pep-float-actions {
   display: flex;
-  gap: 6px;
+  gap: 5px;
   justify-content: flex-end;
 }
 
 .pep-float-cancel {
-  padding: 4px 10px;
-  border-radius: 6px;
+  padding: 3px 7px;
+  border-radius: 5px;
   border: 1px solid var(--color-border-subtle);
   background: transparent;
   color: var(--color-text-muted);
-  font-size: 12px;
+  font-size: 10px;
   cursor: pointer;
 }
 
@@ -235,12 +235,12 @@ const CSS = `
 }
 
 .pep-float-add {
-  padding: 4px 10px;
-  border-radius: 6px;
+  padding: 3px 7px;
+  border-radius: 5px;
   border: none;
   background: var(--color-accent);
   color: #fff;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 600;
   cursor: pointer;
   transition: opacity 0.12s;
@@ -253,20 +253,20 @@ const CSS = `
 
 /* ── Annotation list ── */
 .pep-annotations {
-  padding: 0 14px;
+  padding: 0 10px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
   flex-shrink: 0;
 }
 
 .pep-annotations-label {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  padding-top: 12px;
+  padding-top: 8px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -286,17 +286,17 @@ const CSS = `
 }
 
 .pep-annotations-clear:hover {
-  color: #f87171;
+  color: var(--color-error);
 }
 
 .pep-annotation-row {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 6px;
   background: rgba(239, 124, 47, 0.05);
   border: 1px solid rgba(239, 124, 47, 0.15);
-  border-radius: 8px;
-  padding: 8px 10px;
+  border-radius: 6px;
+  padding: 6px 7px;
 }
 
 .pep-annotation-body {
@@ -304,22 +304,22 @@ const CSS = `
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .pep-annotation-quote {
-  font-size: 11px;
+  font-size: 10px;
   font-style: italic;
   color: var(--color-text-muted);
   border-left: 2px solid var(--color-accent);
-  padding-left: 7px;
+  padding-left: 5px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .pep-annotation-comment {
-  font-size: 12px;
+  font-size: 10px;
   color: var(--color-text);
   line-height: 1.45;
 }
@@ -339,35 +339,35 @@ const CSS = `
 
 .pep-annotation-remove:hover {
   opacity: 1;
-  color: #f87171;
+  color: var(--color-error);
 }
 
 /* ── Comments ── */
 .pep-comments {
-  padding: 0 14px 0;
+  padding: 0 10px 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
   flex-shrink: 0;
 }
 
 .pep-comments-label {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  padding-top: 12px;
+  padding-top: 8px;
 }
 
 .pep-comment-input {
   width: 100%;
-  padding: 10px 12px;
+  padding: 7px 8px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
+  border-radius: 6px;
   color: var(--color-text);
-  font-size: 13px;
+  font-size: 11px;
   font-family: inherit;
   resize: vertical;
   min-height: 72px;
@@ -390,32 +390,32 @@ const CSS = `
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 10px 14px;
+  gap: 9px;
+  padding: 7px 10px;
   border-top: 1px solid var(--color-border-subtle);
   flex-shrink: 0;
   background: rgba(0, 0, 0, 0.08);
 }
 
 .pep-hint {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--color-text-muted);
   flex: 1;
 }
 
 .pep-actions {
   display: flex;
-  gap: 6px;
+  gap: 5px;
   flex-shrink: 0;
 }
 
 .pep-btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 7px 14px;
-  border-radius: 8px;
-  font-size: 12px;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 10px;
   font-weight: 600;
   cursor: pointer;
   border: 1px solid transparent;
@@ -427,27 +427,27 @@ const CSS = `
   cursor: not-allowed;
 }
 
-.pep-btn--send {
+.pep-btn--deny {
   background: transparent;
   border-color: var(--color-border-subtle);
   color: var(--color-text-muted);
 }
 
-.pep-btn--send:hover:not(:disabled) {
-  background: rgba(239, 124, 47, 0.08);
-  border-color: rgba(239, 124, 47, 0.3);
-  color: var(--color-accent);
+.pep-btn--deny:hover:not(:disabled) {
+  background: rgba(var(--color-error-rgb), 0.08);
+  border-color: rgba(var(--color-error-rgb), 0.3);
+  color: var(--color-error);
 }
 
 .pep-btn--proceed {
-  background: rgba(52, 211, 153, 0.12);
-  border-color: rgba(52, 211, 153, 0.3);
-  color: #34d399;
+  background: rgba(var(--color-success-rgb), 0.12);
+  border-color: rgba(var(--color-success-rgb), 0.3);
+  color: var(--color-success);
 }
 
 .pep-btn--proceed:hover:not(:disabled) {
-  background: rgba(52, 211, 153, 0.22);
-  border-color: rgba(52, 211, 153, 0.5);
+  background: rgba(var(--color-success-rgb), 0.22);
+  border-color: rgba(var(--color-success-rgb), 0.5);
 }
 
 .pep-empty {
@@ -456,10 +456,10 @@ const CSS = `
   align-items: center;
   justify-content: center;
   flex: 1;
-  gap: 8px;
+  gap: 6px;
   color: var(--color-text-muted);
-  padding: 32px;
-  font-size: 13px;
+  padding: 22px;
+  font-size: 11px;
 }
 `
 
@@ -470,15 +470,23 @@ type Annotation = {
 }
 
 type Props = {
-  planId: string
+  // planId is set when the agent submitted a structured plan document via
+  // submit_plan; content is fetched/persisted through /plans/:id. When
+  // absent, rawContent carries the plain-text plan from exit_plan_mode's
+  // toolInput.plan instead: same review experience (markdown, annotations,
+  // comments), just nothing to persist server-side, so editing is disabled.
+  planId?: string
   sessionId: string
   pendingPermission?: { toolUseId: string } | null
+  rawContent?: string
 }
 
-export function PlanEditorPanel({ planId, sessionId, pendingPermission }: Props) {
-  const plan = useSessionStore((s) => s.getPlan(sessionId, planId))
+export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawContent }: Props) {
+  const isDocumentBacked = !!planId
+  const plan = useSessionStore((s) => (planId ? s.getPlan(sessionId, planId) : undefined))
   const upsertPlan = useSessionStore((s) => s.upsertPlan)
   const openRightPanel = useUIStore((s) => s.openRightPanel)
+  const closeRightPanel = useUIStore((s) => s.closeRightPanel)
 
   const [editMode, setEditMode] = useState(false)
   const [editedContent, setEditedContent] = useState('')
@@ -497,7 +505,7 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission }: Props)
   }, [plan?.id, plan?.content])
 
   const loadFull = useCallback(async () => {
-    if (!plan || plan.content) return
+    if (!planId || !plan || plan.content) return
     try {
       const full = await api.get<PlanDocument>(`/plans/${planId}`)
       upsertPlan(sessionId, full)
@@ -519,7 +527,7 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission }: Props)
   }, [floatStyle])
 
   function handleMarkdownMouseUp() {
-    if (editMode || plan?.status !== 'pending') return
+    if (editMode || (plan?.status ?? 'pending') !== 'pending') return
     const sel = window.getSelection()
     const text = sel?.toString().trim()
     if (!text || text.length < 3 || !sel || sel.rangeCount === 0) return
@@ -561,14 +569,15 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission }: Props)
       )
     }
     if (comment.trim()) parts.push(comment.trim())
-    if (editMode && editedContent !== plan?.content) {
+    if (isDocumentBacked && editMode && editedContent !== plan?.content) {
       parts.push("I've also updated the plan content directly.")
     }
-    if (parts.length === 0) parts.push('Please review the updated plan.')
     return parts.join('\n\n')
   }
 
-  if (!plan) {
+  const content = plan?.content ?? rawContent ?? ''
+
+  if (isDocumentBacked && !plan) {
     return (
       <div className="pep-root">
         <style>{CSS}</style>
@@ -577,46 +586,42 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission }: Props)
     )
   }
 
-  const isReadonly = plan.status !== 'pending'
-  const contentToShow = editMode ? editedContent : (plan.content || editedContent)
-  const humanSlug = plan.slug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+  if (!content) {
+    return (
+      <div className="pep-root">
+        <style>{CSS}</style>
+        <div className="pep-empty">No plan content yet.</div>
+      </div>
+    )
+  }
 
-  const badgeClass = plan.status === 'validated'
+  const status = plan?.status ?? 'pending'
+  const isReadonly = status !== 'pending'
+  const contentToShow = editMode ? editedContent : (content || editedContent)
+  const humanSlug = plan
+    ? plan.slug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+    : 'Implementation Plan'
+
+  const badgeClass = status === 'validated'
     ? 'pep-badge pep-badge--validated'
-    : plan.status === 'rejected'
+    : status === 'rejected'
       ? 'pep-badge pep-badge--rejected'
       : 'pep-badge pep-badge--pending'
 
-  const hasFeedback = annotations.length > 0 || !!comment.trim() || (editMode && editedContent !== plan.content)
-
-  async function handleSend() {
-    if (sending) return
-    setSending(true)
-    try {
-      if (editMode && editedContent !== plan!.content) {
-        const updated = await api.patch<PlanDocument>(`/plans/${planId}`, { content: editedContent })
-        upsertPlan(sessionId, updated)
-      }
-      useSessionStore.getState().updateSession(sessionId, { draftPrompt: buildFeedback() })
-      setComment('')
-      setAnnotations([])
-      setEditMode(false)
-    } finally {
-      setSending(false)
-    }
-  }
+  const hasFeedback = annotations.length > 0 || !!comment.trim() || (isDocumentBacked && editMode && editedContent !== content)
 
   async function handleProceed() {
     if (sending || !pendingPermission) return
     setSending(true)
     try {
-      if (editMode && editedContent !== plan!.content) {
+      if (isDocumentBacked && editMode && editedContent !== plan!.content) {
         const updated = await api.patch<PlanDocument>(`/plans/${planId}`, { content: editedContent })
         upsertPlan(sessionId, updated)
       }
-
-      await api.patch<PlanDocument>(`/plans/${planId}`, { status: 'validated' })
-      upsertPlan(sessionId, { ...plan!, status: 'validated' })
+      if (isDocumentBacked) {
+        await api.patch<PlanDocument>(`/plans/${planId}`, { status: 'validated' })
+        upsertPlan(sessionId, { ...plan!, status: 'validated' })
+      }
 
       await api.post(`/permissions/${pendingPermission.toolUseId}`, {
         approved: true,
@@ -624,29 +629,39 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission }: Props)
       })
 
       useSessionStore.getState().updateAgentState(sessionId, { pendingPermission: null })
-
-      if (hasFeedback) {
-        useSessionStore.getState().updateSession(sessionId, { draftPrompt: buildFeedback() })
-      }
-
-      openRightPanel({ kind: 'agent', title: 'Agent Monitor', sessionId, width: 380 })
+      // The stack no longer replaces a different kind on open (it dedups by
+      // identity) — close this plan panel explicitly before Agent Monitor
+      // reclaims a stack slot, or it'd sit alongside it unclosed.
+      closeRightPanel(buildRightPanelId({ kind: 'plan', sessionId, planId }))
+      openRightPanel({ kind: 'agent', title: 'Agent Monitor', sessionId })
     } catch { /* silent */ } finally {
       setSending(false)
     }
   }
 
-  async function handleReject() {
+  // Reject and "send feedback" are the same action: deny exit_plan_mode and
+  // attach whatever feedback was collected as the deny reason, so the model
+  // sees it as the tool's rejection text and revises within the same turn,
+  // no new user message/turn required. An empty reason is just a plain no.
+  async function handleDeny() {
     if (sending || !pendingPermission) return
     setSending(true)
     try {
       await api.post(`/permissions/${pendingPermission.toolUseId}`, {
         approved: false,
         session_id: sessionId,
+        reason: hasFeedback ? buildFeedback() : '',
       })
-      await api.patch<PlanDocument>(`/plans/${planId}`, { status: 'rejected' })
-      upsertPlan(sessionId, { ...plan!, status: 'rejected' })
+      if (isDocumentBacked) {
+        await api.patch<PlanDocument>(`/plans/${planId}`, { status: 'rejected' })
+        upsertPlan(sessionId, { ...plan!, status: 'rejected' })
+      }
       useSessionStore.getState().updateAgentState(sessionId, { pendingPermission: null })
-      openRightPanel({ kind: 'agent', title: 'Agent Monitor', sessionId, width: 380 })
+      setComment('')
+      setAnnotations([])
+      setEditMode(false)
+      closeRightPanel(buildRightPanelId({ kind: 'plan', sessionId, planId }))
+      openRightPanel({ kind: 'agent', title: 'Agent Monitor', sessionId })
     } catch { /* silent */ } finally {
       setSending(false)
     }
@@ -658,19 +673,19 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission }: Props)
 
       <div className="pep-header">
         <div className="pep-header-top">
-          <DocDetail size={16} className="pep-icon" />
+          <DocDetail size={13} className="pep-icon" />
           <span className="pep-name">{humanSlug}</span>
-          <span className={badgeClass}>{plan.status}</span>
+          <span className={badgeClass}>{status}</span>
         </div>
-        <div className="pep-meta">{plan.filename} · v{plan.version}</div>
-        {!isReadonly && (
+        {plan && <div className="pep-meta">{plan.filename} · v{plan.version}</div>}
+        {isDocumentBacked && !isReadonly && (
           <div className="pep-toolbar">
             <button
               className={`pep-tool-btn${editMode ? ' pep-tool-btn--active' : ''}`}
               type="button"
               onClick={() => setEditMode((v) => !v)}
             >
-              <Edit size={12} />
+              <Edit size={10} />
               {editMode ? 'Preview' : 'Edit'}
             </button>
           </div>
@@ -720,7 +735,7 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission }: Props)
                 onClick={() => removeAnnotation(a.id)}
                 title="Remove"
               >
-                <CloseOne size={12} />
+                <CloseOne size={10} />
               </button>
             </div>
           ))}
@@ -749,18 +764,18 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission }: Props)
         <div className="pep-footer">
           <span className="pep-hint">
             {hasFeedback
-              ? 'Send feedback or proceed directly'
-              : 'Select text to annotate · approve to execute'}
+              ? 'Sends your feedback to the agent, which revises the plan right away'
+              : 'Select text to annotate, or leave a comment below'}
           </span>
           <div className="pep-actions">
             <button
-              className="pep-btn pep-btn--send"
+              className="pep-btn pep-btn--deny"
               type="button"
-              onClick={() => void handleSend()}
-              disabled={sending || !hasFeedback}
+              onClick={() => void handleDeny()}
+              disabled={sending}
             >
-              <Send size={12} />
-              Send
+              <CloseOne size={10} />
+              {hasFeedback ? 'Send Feedback' : 'Reject'}
             </button>
             <button
               className="pep-btn pep-btn--proceed"
@@ -768,17 +783,8 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission }: Props)
               onClick={() => void handleProceed()}
               disabled={sending}
             >
-              <CheckOne size={12} />
+              <CheckOne size={10} />
               Proceed
-            </button>
-            <button
-              className="pep-btn"
-              type="button"
-              onClick={() => void handleReject()}
-              disabled={sending}
-              style={{ borderColor: 'transparent', color: 'var(--color-text-muted)' }}
-            >
-              <CloseOne size={12} />
             </button>
           </div>
         </div>

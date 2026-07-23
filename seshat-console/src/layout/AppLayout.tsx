@@ -33,6 +33,14 @@ export function AppLayout() {
 
   const organizations = organizationsData?.organizations ?? EMPTY_ORGANIZATIONS
   const routeOrganizationId = matchPath('/orgs/:organizationId/*', location.pathname)?.params.organizationId ?? null
+  // The generic "Organization" scope tag alone doesn't say WHICH one when
+  // there's more than one on the platform (a platform admin browsing
+  // several orgs in a row has no other always-visible indicator beyond the
+  // sidebar dropdown's current value) - so every org-scoped page's header
+  // names it explicitly, not just the Overview page.
+  const routeOrganizationName = routeOrganizationId
+    ? (organizations.find((organization) => organization.id === routeOrganizationId)?.name ?? null)
+    : null
   const fallbackOrganizationId = organizations[0]?.id ?? null
   const selectedOrganizationExists = selectedOrganizationId
     ? organizations.some((organization) => organization.id === selectedOrganizationId)
@@ -120,13 +128,11 @@ export function AppLayout() {
   }
 
   return (
-    <Layout className="console-shell" style={{ minHeight: '100vh', background: palette.canvas }}>
+    <Layout className="console-shell" style={{ height: '100vh', overflow: 'hidden', background: palette.canvas }}>
       <Sider
         theme="dark"
         width={272}
         style={{
-          position: 'sticky',
-          top: 0,
           height: '100vh',
           overflowX: 'hidden',
           overflowY: 'auto',
@@ -199,7 +205,7 @@ export function AppLayout() {
         />
       </Sider>
 
-      <Layout style={{ minWidth: 0 }}>
+      <Layout style={{ minWidth: 0, height: '100vh' }}>
         <Header
           style={{
             background: palette.surface,
@@ -210,6 +216,7 @@ export function AppLayout() {
             borderBottom: `1px solid ${palette.border}`,
             minHeight: 56,
             height: 56,
+            flexShrink: 0,
             lineHeight: 'normal',
             gap: 12,
           }}
@@ -222,7 +229,7 @@ export function AppLayout() {
                 </Button>
               )}
               <Tag color="orange" style={{ margin: 0, flexShrink: 0 }}>
-                {getScopeTagLabel(location.pathname)}
+                {routeOrganizationName ? `Organization: ${routeOrganizationName}` : getScopeTagLabel(location.pathname)}
               </Tag>
               <Typography.Text strong style={{ fontSize: 16, color: palette.ink }} ellipsis>
                 {activePrimary?.label ?? 'Console'}
@@ -265,6 +272,7 @@ export function AppLayout() {
               padding: '0 24px',
               background: palette.surface,
               borderBottom: `1px solid ${palette.borderSubtle}`,
+              flexShrink: 0,
             }}
           >
             <Menu
@@ -280,7 +288,10 @@ export function AppLayout() {
           </div>
         )}
 
-        <Content className="console-content" style={{ padding: 28, width: '100%', minWidth: 0 }}>
+        <Content
+          className="console-content"
+          style={{ padding: 28, width: '100%', minWidth: 0, flex: '1 1 auto', minHeight: 0, overflowY: 'auto' }}
+        >
           <Outlet />
         </Content>
       </Layout>

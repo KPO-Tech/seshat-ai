@@ -77,6 +77,13 @@ export function OrganizationFormDrawer({
         <Form.Item name="support_email" label="Support email" rules={[{ type: 'email' }]}>
           <Input placeholder="support@example.com" />
         </Form.Item>
+        <Form.Item
+          name="domain"
+          label="Email domain"
+          extra="Optional. Anyone signing up with an email on this domain auto-joins as a pending member (see Team & Access)."
+        >
+          <Input placeholder="acmecorp.com" />
+        </Form.Item>
       </Form>
     </Drawer>
   )

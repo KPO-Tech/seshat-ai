@@ -5,6 +5,7 @@ interface Window {
     showFile: (p: string) => Promise<void>
     openExternal: (url: string) => Promise<void>
     selectFile: (opts?: Electron.OpenDialogOptions) => Promise<Electron.OpenDialogReturnValue>
+    saveFile: (defaultName: string, content: string) => Promise<{ canceled: boolean; filePath?: string }>
     dialog: {
       openDirectory: () => Promise<Electron.OpenDialogReturnValue>
     }
@@ -34,9 +35,20 @@ interface Window {
         fields?: Array<{ name: string; value: string }>
         files?: Array<{ name: string; filename: string; mimeType?: string; data: ArrayBuffer }>
       }) => Promise<{ ok: boolean; status: number; data?: unknown; text?: string }>
-      startStream: (payload: { path: string; method?: string; body?: unknown }) => Promise<{ streamId: string }>
+      startStream: (payload: { path: string; method?: string; body?: unknown }) => Promise<{ streamId: string } | { error: string; retryable: boolean }>
       cancelStream: (streamId: string) => Promise<void>
       onStreamEvent: (streamId: string, listener: (event: { name: string; data: Record<string, unknown> }) => void) => () => void
+    }
+    whisper?: {
+      status: () => Promise<{ supported: boolean; running: boolean; port?: number; activeModelId: string; downloadedModelIds: string[] }>
+      models: () => Promise<Array<{ id: string; filename: string; label: string; approxSizeBytes: number; description: string }>>
+      downloadDefaults: () => Promise<{ supported: boolean; running: boolean; port?: number; activeModelId: string; downloadedModelIds: string[] }>
+      downloadModel: (modelId: string) => Promise<{ supported: boolean; running: boolean; port?: number; activeModelId: string; downloadedModelIds: string[] }>
+      activateModel: (modelId: string) => Promise<{ supported: boolean; running: boolean; port?: number; activeModelId: string; downloadedModelIds: string[] }>
+      deleteModel: (modelId: string) => Promise<{ supported: boolean; running: boolean; port?: number; activeModelId: string; downloadedModelIds: string[] }>
+      enable: () => Promise<{ supported: boolean; running: boolean; port?: number; activeModelId: string; downloadedModelIds: string[] }>
+      disable: () => Promise<{ supported: boolean; running: boolean; port?: number; activeModelId: string; downloadedModelIds: string[] }>
+      onProgress: (listener: (progress: { phase: 'binary' | 'model'; modelId?: string; receivedBytes: number; totalBytes: number }) => void) => () => void
     }
     updates?: {
       checkNow: () => Promise<{ ok: boolean; error?: string }>

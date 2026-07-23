@@ -3,8 +3,9 @@ package api
 import (
 	"net/http"
 
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
-	"github.com/EngineerProjects/seshat/pkg/storage"
+	"github.com/KPO-Tech/seshat/pkg/storage"
 )
 
 type storageConfigResponse struct {
@@ -53,11 +54,11 @@ func storageConfigToResponse(cfg *db.StorageConfig) storageConfigResponse {
 func (a *App) handleStorageConfig(w http.ResponseWriter, r *http.Request) {
 	principal, _ := authPrincipalFromContext(r.Context())
 	if principal == nil {
-		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
+		writeBackendError(w, bkerr.Unauthorized("unauthorized", nil))
 		return
 	}
 	if a.storageConfigStore == nil {
-		writeJSONError(w, http.StatusServiceUnavailable, "storage config store not available")
+		writeBackendError(w, bkerr.Unavailable("storage config store not available", nil))
 		return
 	}
 
@@ -101,7 +102,7 @@ func (a *App) handleStorageConfig(w http.ResponseWriter, r *http.Request) {
 			S3KeyPrefix: body.S3KeyPrefix,
 		})
 		if err != nil {
-			writeJSONError(w, http.StatusInternalServerError, "failed to save storage config: "+err.Error())
+			writeBackendError(w, bkerr.Internal("failed to save storage config: "+err.Error(), err))
 			return
 		}
 		cfgResp := storageConfigToResponse(saved)

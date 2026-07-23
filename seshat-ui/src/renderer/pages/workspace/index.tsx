@@ -119,7 +119,7 @@ function Avatar({ agent, size = 40 }: { agent: Agent; size?: number }) {
 
 export function WorkspacePage() {
   const navigate = useNavigate()
-  const closeRightPanel = useUIStore(s => s.closeRightPanel)
+  const closeAllRightPanels = useUIStore(s => s.closeAllRightPanels)
 
   const [tab, setTab]               = useState<WorkspaceTab>('agents')
   const [agents, setAgents]         = useState<Agent[]>([])
@@ -131,7 +131,7 @@ export function WorkspacePage() {
   const [detailTab, setDetailTab]   = useState<DetailTab>('edit')
   const [isNewAgent, setIsNewAgent] = useState(false)
 
-  useEffect(() => { closeRightPanel() }, [closeRightPanel])
+  useEffect(() => { closeAllRightPanels() }, [closeAllRightPanels])
 
   const showToast = useCallback((text: string, kind: 'ok' | 'err' = 'ok') => {
     setToast({ text, kind })
@@ -185,7 +185,7 @@ export function WorkspacePage() {
 
       {toast && (
         <div className={`wk-toast ${toast.kind}`}>
-          {toast.kind === 'ok' ? <CheckOne size={13} /> : <Caution size={13} />}
+          {toast.kind === 'ok' ? <CheckOne size={11} /> : <Caution size={11} />}
           {toast.text}
         </div>
       )}
@@ -195,7 +195,7 @@ export function WorkspacePage() {
         <div className="wk-topbar-left">
           {view === 'detail' ? (
             <>
-              <button className="wk-back-chip" onClick={backToGrid}><Left size={14} /> Agents</button>
+              <button className="wk-back-chip" onClick={backToGrid}><Left size={11} /> Agents</button>
               <span className="wk-topbar-sep">/</span>
               <span className="wk-topbar-title">
                 {selected ? (selected.name || selected.slug) : 'New Agent'}
@@ -211,17 +211,17 @@ export function WorkspacePage() {
             <div className="wk-detail-tabs">
               <button className={`wk-detail-tab ${detailTab === 'edit' ? 'active' : ''}`}
                 onClick={() => setDetailTab('edit')}>
-                <Edit size={13} /> Edit
+                <Edit size={11} /> Edit
               </button>
               <button className={`wk-detail-tab ${detailTab === 'test' ? 'active' : ''}`}
                 onClick={() => setDetailTab('test')}
                 disabled={!selected || selected.source !== 'user'}>
-                <Lightning size={13} /> Test
+                <Lightning size={11} /> Test
               </button>
             </div>
           )}
           <div className="wk-logo-wrap">
-            <NexusLogo size={24} />
+            <NexusLogo size={20} />
           </div>
         </div>
       </header>
@@ -236,21 +236,21 @@ export function WorkspacePage() {
               className={`wk-sidenav-item ${tab === 'agents' ? 'active' : ''}`}
               onClick={() => { setTab('agents'); setView('grid') }}
             >
-              <Robot size={18} theme="outline" />
+              <Robot size={15} theme="outline" />
               <span>Agents</span>
             </button>
             <button
               className={`wk-sidenav-item ${tab === 'knowledge' ? 'active' : ''}`}
               onClick={() => { setTab('knowledge'); setView('grid') }}
             >
-              <Brain size={18} theme="outline" />
+              <Brain size={15} theme="outline" />
               <span>Knowledge</span>
             </button>
           </div>
 
           <div className="wk-sidenav-footer">
             <button className="wk-sidenav-back" onClick={() => navigate(-1)}>
-              <Left size={14} /> Home
+              <Left size={11} /> Home
             </button>
           </div>
         </nav>
@@ -287,8 +287,8 @@ function AgentGrid({ userAgents, builtinAgents, loading, error, onSelect, onNew,
   loading: boolean; error: string | null
   onSelect: (a: Agent) => void; onNew: () => void; onRefresh: () => void
 }) {
-  if (loading) return <div className="wk-center"><LoadingOne size={28} className="spin" /></div>
-  if (error)   return <div className="wk-center"><Caution size={22} /><p>{error}</p></div>
+  if (loading) return <div className="wk-center"><LoadingOne size={23} className="spin" /></div>
+  if (error)   return <div className="wk-center"><Caution size={18} /><p>{error}</p></div>
 
   return (
     <div className="wk-grid-root">
@@ -301,18 +301,18 @@ function AgentGrid({ userAgents, builtinAgents, loading, error, onSelect, onNew,
         </div>
         <div className="wk-grid-bar-actions">
           <button className="wk-icon-btn" onClick={onRefresh} title="Refresh">
-            <Sync size={15} />
+            <Sync size={12} />
           </button>
-          <button className="wk-new-btn" onClick={onNew}><Plus size={14} /> New Agent</button>
+          <button className="wk-new-btn" onClick={onNew}><Plus size={11} /> New Agent</button>
         </div>
       </div>
 
       {userAgents.length + builtinAgents.length === 0 ? (
         <div className="wk-center">
-          <Robot size={48} theme="outline" />
+          <Robot size={39} theme="outline" />
           <h2>No agents yet</h2>
           <p>Create a custom agent with its own system prompt, tools, and personality.</p>
-          <button className="wk-new-btn lg" onClick={onNew}><Plus size={15} /> Create your first agent</button>
+          <button className="wk-new-btn lg" onClick={onNew}><Plus size={12} /> Create your first agent</button>
         </div>
       ) : (
         <div className="wk-grid-scroll">
@@ -321,7 +321,7 @@ function AgentGrid({ userAgents, builtinAgents, loading, error, onSelect, onNew,
               <div className="wk-grid-section-title">My Agents</div>
               <div className="wk-card-grid">
                 {userAgents.map(a => <AgentCard key={a.slug} agent={a} onClick={() => onSelect(a)} />)}
-                <button className="wk-card-new" onClick={onNew}><Plus size={26} /><span>New Agent</span></button>
+                <button className="wk-card-new" onClick={onNew}><Plus size={21} /><span>New Agent</span></button>
               </div>
             </section>
           )}
@@ -343,7 +343,7 @@ function AgentCard({ agent, onClick }: { agent: Agent; onClick: () => void }) {
   return (
     <button className={`wk-card ${!agent.enabled ? 'disabled' : ''}`} onClick={onClick}>
       <div className="wk-card-top">
-        <Avatar agent={agent} size={44} />
+        <Avatar agent={agent} size={36} />
         <div className="wk-card-badges">
           {agent.source !== 'user' && <span className="wk-badge builtin">built-in</span>}
           {!agent.enabled && <span className="wk-badge off">off</span>}
@@ -368,7 +368,7 @@ function AgentDetail({ agent, isNew, detailTab, onSaved, onDelete, onDiscard }: 
   return (
     <div className="wk-detail">
       {isBuiltin && (
-        <div className="wk-readonly-banner"><Caution size={13} /> Built-in agents are read-only.</div>
+        <div className="wk-readonly-banner"><Caution size={11} /> Built-in agents are read-only.</div>
       )}
       <div className="wk-detail-body">
         {detailTab === 'edit' && (
@@ -478,7 +478,7 @@ function AgentFormPanel({ agent, isNew, isBuiltin, onSaved, onDelete, onDiscard 
   return (
     <form className="wk-form" onSubmit={handleSubmit}>
       <div className="wk-form-inner">
-        {err && <div className="wk-form-error"><Caution size={13} />{err}</div>}
+        {err && <div className="wk-form-error"><Caution size={11} />{err}</div>}
 
         <div className="wk-form-header">
           {/* Static avatar preview — picker is in the Identity section below */}
@@ -493,7 +493,7 @@ function AgentFormPanel({ agent, isNew, isBuiltin, onSaved, onDelete, onDiscard 
             {!isNew && agent && <div className="wk-form-agent-slug">/{agent.slug}</div>}
           </div>
           {!isNew && agent && !isBuiltin && (
-            <button type="button" className="wk-icon-btn danger" onClick={() => onDelete(agent)}><Delete size={15} /></button>
+            <button type="button" className="wk-icon-btn danger" onClick={() => onDelete(agent)}><Delete size={12} /></button>
           )}
         </div>
 
@@ -529,7 +529,7 @@ function AgentFormPanel({ agent, isNew, isBuiltin, onSaved, onDelete, onDiscard 
                 disabled={isBuiltin}
                 color={previewColor}
                 fallback={fallbackLetter}
-                size={80}
+                size={66}
               />
             </div>
           </div>
@@ -616,7 +616,7 @@ function AgentFormPanel({ agent, isNew, isBuiltin, onSaved, onDelete, onDiscard 
         <div className="wk-form-footer">
           <button type="button" className="wk-btn ghost" onClick={onDiscard} disabled={saving}>Discard</button>
           <button type="submit" className="wk-btn primary" disabled={saving}>
-            {saving ? <><LoadingOne size={13} className="spin" /> Saving…</> : isNew ? 'Create agent' : 'Save changes'}
+            {saving ? <><LoadingOne size={11} className="spin" /> Saving…</> : isNew ? 'Create agent' : 'Save changes'}
           </button>
         </div>
       )}
@@ -662,8 +662,8 @@ function TestChat({ agent }: { agent: Agent }) {
     }
   }, [sessionId])
 
-  if (initErr)   return <div className="wk-center"><Caution size={20} /><p>{initErr}</p></div>
-  if (!sessionId) return <div className="wk-center"><LoadingOne size={24} className="spin" /><p>Starting test session…</p></div>
+  if (initErr)   return <div className="wk-center"><Caution size={16} /><p>{initErr}</p></div>
+  if (!sessionId) return <div className="wk-center"><LoadingOne size={20} className="spin" /><p>Starting test session…</p></div>
 
   return <TestChatInner sessionId={sessionId} agent={agent} messagesRef={messagesRef} input={input} setInput={setInput} />
 }
@@ -698,7 +698,7 @@ function TestChatInner({ sessionId, agent, messagesRef, input, setInput }: {
   return (
     <div className="wk-test-chat">
       <div className="wk-test-header">
-        <Avatar agent={agent} size={28} />
+        <Avatar agent={agent} size={23} />
         <span className="wk-test-agent-name">{agent.name || agent.slug}</span>
         <span className="wk-test-badge">ephemeral · deleted on close</span>
       </div>
@@ -706,7 +706,7 @@ function TestChatInner({ sessionId, agent, messagesRef, input, setInput }: {
       <div className="wk-test-messages" ref={messagesRef}>
         {messages.length === 0 && !isStreaming && (
           <div className="wk-test-empty">
-            <Robot size={36} theme="outline" />
+            <Robot size={30} theme="outline" />
             <p>Send a message to test <strong>{agent.name || agent.slug}</strong></p>
           </div>
         )}
@@ -744,8 +744,8 @@ function TestChatInner({ sessionId, agent, messagesRef, input, setInput }: {
           disabled={isStreaming}
         />
         {isStreaming
-          ? <button className="wk-send-btn stop" onClick={stopMessage}><Close size={14} /></button>
-          : <button className="wk-send-btn" onClick={() => void handleSend()} disabled={!input.trim()}><Send size={14} /></button>
+          ? <button className="wk-send-btn stop" onClick={stopMessage}><Close size={11} /></button>
+          : <button className="wk-send-btn" onClick={() => void handleSend()} disabled={!input.trim()}><Send size={11} /></button>
         }
       </div>
     </div>
@@ -864,7 +864,7 @@ function KnowledgeTab() {
         <div className="wk-grid-bar">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button className="wk-icon-btn" onClick={() => setSelected(null)} title="Back">
-              <Left size={16} />
+              <Left size={13} />
             </button>
             <span className="wk-grid-bar-title">{selected.name}</span>
             {selected.description && (
@@ -881,8 +881,8 @@ function KnowledgeTab() {
               disabled={actionLoading === 'upload'}
             >
               {actionLoading === 'upload'
-                ? <><LoadingOne size={14} className="spin" /> Uploading…</>
-                : <><Plus size={14} /> Add file</>}
+                ? <><LoadingOne size={11} className="spin" /> Uploading…</>
+                : <><Plus size={11} /> Add file</>}
             </button>
           </div>
         </div>
@@ -890,15 +890,15 @@ function KnowledgeTab() {
         <div className="wk-kn-detail-body">
           {detailLoading ? (
             <div className="wk-center">
-              <LoadingOne size={28} className="spin" />
+              <LoadingOne size={23} className="spin" />
             </div>
           ) : corpusFiles.length === 0 ? (
             <div className="wk-center">
-              <Brain size={36} style={{ opacity: 0.3 }} />
+              <Brain size={30} style={{ opacity: 0.3 }} />
               <h2>No files yet</h2>
               <p>Upload documents to build this knowledge base. PDFs, Markdown, and text files are supported.</p>
               <button className="wk-new-btn lg" onClick={() => fileInputRef.current?.click()}>
-                <Plus size={15} /> Add your first file
+                <Plus size={12} /> Add your first file
               </button>
             </div>
           ) : (
@@ -919,7 +919,7 @@ function KnowledgeTab() {
                     </div>
                     <div className="wk-kn-file-actions">
                       <span className="wk-kn-status" style={{ color: statusColor(latestJob?.status ?? f.status) }}>
-                        {isRunning && <LoadingOne size={12} className="spin" />}
+                        {isRunning && <LoadingOne size={10} className="spin" />}
                         {latestJob?.status ?? f.status}
                       </span>
                       {latestJob?.status === 'failed' && (
@@ -929,12 +929,12 @@ function KnowledgeTab() {
                           disabled={actionLoading === latestJob.id}
                           onClick={() => retryJob(latestJob.id)}
                         >
-                          {actionLoading === latestJob.id ? <LoadingOne size={14} className="spin" /> : <Sync size={14} />}
+                          {actionLoading === latestJob.id ? <LoadingOne size={11} className="spin" /> : <Sync size={11} />}
                         </button>
                       )}
                       {latestJob?.last_error && (
                         <span className="wk-kn-error" title={latestJob.last_error}>
-                          <Caution size={13} />
+                          <Caution size={11} />
                         </span>
                       )}
                     </div>
@@ -958,7 +958,7 @@ function KnowledgeTab() {
         <div className="wk-grid-bar-title">Knowledge bases</div>
         <div className="wk-grid-bar-actions">
           <button className="wk-new-btn" onClick={() => setShowCreate(true)}>
-            <Plus size={14} /> New Knowledge Base
+            <Plus size={11} /> New Knowledge Base
           </button>
         </div>
       </div>
@@ -966,15 +966,15 @@ function KnowledgeTab() {
       <div className="wk-grid-scroll">
         {loading ? (
           <div className="wk-center">
-            <LoadingOne size={28} className="spin" />
+            <LoadingOne size={23} className="spin" />
           </div>
         ) : corpora.length === 0 ? (
           <div className="wk-center">
-            <Brain size={36} style={{ opacity: 0.3 }} />
+            <Brain size={30} style={{ opacity: 0.3 }} />
             <h2>No knowledge bases yet</h2>
             <p>Create a knowledge base and upload documents. Your agents can search and reason over indexed content using RAG.</p>
             <button className="wk-new-btn lg" onClick={() => setShowCreate(true)}>
-              <Plus size={15} /> Create your first knowledge base
+              <Plus size={12} /> Create your first knowledge base
             </button>
           </div>
         ) : (
@@ -983,10 +983,10 @@ function KnowledgeTab() {
               <button key={corpus.id} className="wk-card" onClick={() => loadDetail(corpus)}>
                 <div className="wk-card-top">
                   <div className="wk-kn-corpus-icon">
-                    <Brain size={18} />
+                    <Brain size={15} />
                   </div>
                   <button className="wk-icon-btn danger" onClick={(e) => deleteCorpus(corpus.id, e)} title="Delete">
-                    <Delete size={14} />
+                    <Delete size={11} />
                   </button>
                 </div>
                 <div className="wk-card-name">{corpus.name}</div>
@@ -997,7 +997,7 @@ function KnowledgeTab() {
               </button>
             ))}
             <button className="wk-card-new" onClick={() => setShowCreate(true)}>
-              <Plus size={20} />
+              <Plus size={16} />
               New knowledge base
             </button>
           </div>
@@ -1010,7 +1010,7 @@ function KnowledgeTab() {
           <div className="wk-modal" onClick={e => e.stopPropagation()}>
             <div className="wk-modal-header">
               <span className="wk-modal-title">New Knowledge Base</span>
-              <button className="wk-icon-btn" onClick={() => setShowCreate(false)}><Close size={16} /></button>
+              <button className="wk-icon-btn" onClick={() => setShowCreate(false)}><Close size={13} /></button>
             </div>
             <div className="wk-modal-body">
               <label className="wk-field">
@@ -1037,7 +1037,7 @@ function KnowledgeTab() {
             <div className="wk-modal-footer">
               <button className="wk-btn ghost" onClick={() => setShowCreate(false)}>Cancel</button>
               <button className="wk-btn primary" onClick={createCorpus} disabled={!newName.trim() || saving}>
-                {saving ? <><LoadingOne size={13} className="spin" /> Creating…</> : 'Create'}
+                {saving ? <><LoadingOne size={11} className="spin" /> Creating…</> : 'Create'}
               </button>
             </div>
           </div>
@@ -1064,9 +1064,9 @@ const CSS = `
 /* Toast */
 .wk-toast {
   position: fixed; bottom: 24px; right: 24px; z-index: 999;
-  display: flex; align-items: center; gap: 7px;
-  padding: 9px 16px; border-radius: 10px;
-  font-size: 13px; font-weight: 600;
+  display: flex; align-items: center; gap: 5px;
+  padding: 6px 11px; border-radius: 8px;
+  font-size: 11px; font-weight: 600;
   box-shadow: 0 8px 32px rgba(0,0,0,0.25);
   animation: wk-slide 0.18s ease;
 }
@@ -1077,16 +1077,16 @@ const CSS = `
 /* Top bar */
 .wk-topbar {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0 20px; height: 52px; flex-shrink: 0;
+  padding: 0 14px; height: 52px; flex-shrink: 0;
   background: var(--color-bg);
   border-bottom: 1px solid var(--color-border-subtle);
-  gap: 12px;
+  gap: 9px;
 }
-.wk-topbar-left  { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
-.wk-topbar-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.wk-topbar-left  { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1; }
+.wk-topbar-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .wk-logo-wrap {
   display: flex; align-items: center; justify-content: center;
-  width: 30px; height: 30px; border-radius: 8px;
+  width: 30px; height: 30px; border-radius: 6px;
   opacity: 0.65; transition: opacity 0.15s;
 }
 .wk-logo-wrap:hover { opacity: 1; }
@@ -1100,15 +1100,15 @@ const CSS = `
   display: flex; flex-direction: column;
   background: var(--color-bg);
   border-right: 1px solid var(--color-border-subtle);
-  padding: 12px 0 16px;
+  padding: 8px 0 11px;
 }
-.wk-sidenav-items { flex: 1; display: flex; flex-direction: column; gap: 2px; padding: 0 10px; }
+.wk-sidenav-items { flex: 1; display: flex; flex-direction: column; gap: 2px; padding: 0 7px; }
 .wk-sidenav-item {
-  display: flex; align-items: center; gap: 10px;
-  width: 100%; padding: 9px 12px; border-radius: 10px;
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 6px 8px; border-radius: 8px;
   border: none; background: transparent;
   color: var(--color-text-secondary);
-  font-size: 13px; font-weight: 600; cursor: pointer;
+  font-size: 11px; font-weight: 600; cursor: pointer;
   transition: all 0.1s; text-align: left;
 }
 .wk-sidenav-item:hover { background: var(--color-hover); color: var(--color-text); }
@@ -1116,38 +1116,38 @@ const CSS = `
   background: color-mix(in srgb, var(--color-primary) 12%, transparent);
   color: var(--color-primary);
 }
-.wk-sidenav-footer { padding: 12px 10px 0; border-top: 1px solid var(--color-border-subtle); margin-top: 8px; }
+.wk-sidenav-footer { padding: 8px 7px 0; border-top: 1px solid var(--color-border-subtle); margin-top: 8px; }
 .wk-sidenav-back {
-  display: flex; align-items: center; gap: 6px;
-  width: 100%; padding: 8px 12px; border-radius: 9px;
+  display: flex; align-items: center; gap: 5px;
+  width: 100%; padding: 6px 8px; border-radius: 7px;
   border: none; background: none;
-  color: var(--color-text-muted); font-size: 12px; font-weight: 600;
+  color: var(--color-text-muted); font-size: 10px; font-weight: 600;
   cursor: pointer; transition: background 0.1s, color 0.1s;
 }
 .wk-sidenav-back:hover { background: var(--color-hover); color: var(--color-text); }
 
 .wk-back-chip {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 5px 10px; border-radius: 7px; border: none;
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 7px; border-radius: 5px; border: none;
   background: var(--color-hover); color: var(--color-text-secondary);
-  font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  font-size: 10px; font-weight: 600; cursor: pointer; white-space: nowrap;
   transition: background 0.1s, color 0.1s; flex-shrink: 0;
 }
 .wk-back-chip:hover { background: var(--color-border); color: var(--color-text); }
-.wk-topbar-sep   { color: var(--color-text-muted); font-size: 14px; user-select: none; flex-shrink: 0; }
-.wk-topbar-title { font-size: 15px; font-weight: 700; color: var(--color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wk-topbar-sep   { color: var(--color-text-muted); font-size: 12px; user-select: none; flex-shrink: 0; }
+.wk-topbar-title { font-size: 13px; font-weight: 700; color: var(--color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* Detail tabs */
 .wk-detail-tabs {
-  display: flex; gap: 4px;
-  background: var(--color-surface); border-radius: 8px; padding: 3px;
+  display: flex; gap: 3px;
+  background: var(--color-surface); border-radius: 6px; padding: 2px;
   border: 1px solid var(--color-border-subtle);
 }
 .wk-detail-tab {
-  display: flex; align-items: center; gap: 5px;
-  padding: 5px 12px; border-radius: 6px; border: none;
+  display: flex; align-items: center; gap: 4px;
+  padding: 4px 8px; border-radius: 5px; border: none;
   background: transparent; cursor: pointer;
-  font-size: 12px; font-weight: 600; color: var(--color-text-secondary);
+  font-size: 10px; font-weight: 600; color: var(--color-text-secondary);
   transition: all 0.1s;
 }
 .wk-detail-tab:hover:not(:disabled) { background: var(--color-hover); color: var(--color-text); }
@@ -1160,25 +1160,25 @@ const CSS = `
 /* Center util */
 .wk-center {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 16px; padding: 60px 40px; text-align: center; color: var(--color-text-muted);
+  gap: 12px; padding: 42px 28px; text-align: center; color: var(--color-text-muted);
 }
-.wk-center h2 { margin: 0; font-size: 22px; color: var(--color-text); }
-.wk-center p  { margin: 0; font-size: 14px; max-width: 380px; line-height: 1.6; }
+.wk-center h2 { margin: 0; font-size: 19px; color: var(--color-text); }
+.wk-center p  { margin: 0; font-size: 12px; max-width: 380px; line-height: 1.6; }
 
 /* Buttons */
 .wk-new-btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 8px 16px; border-radius: 9px; border: none;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 11px; border-radius: 7px; border: none;
   background: var(--color-cta); color: #fff;
-  font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.1s; white-space: nowrap;
+  font-size: 11px; font-weight: 600; cursor: pointer; transition: opacity 0.1s; white-space: nowrap;
 }
 .wk-new-btn:hover:not(:disabled) { opacity: 0.88; }
 .wk-new-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.wk-new-btn.lg { padding: 10px 20px; font-size: 14px; }
+.wk-new-btn.lg { padding: 7px 14px; font-size: 12px; }
 
 .wk-icon-btn {
   display: flex; align-items: center; justify-content: center;
-  width: 30px; height: 30px; border-radius: 8px; border: none;
+  width: 30px; height: 30px; border-radius: 6px; border: none;
   background: none; cursor: pointer; color: var(--color-text-muted);
   transition: background 0.1s, color 0.1s;
 }
@@ -1187,8 +1187,8 @@ const CSS = `
 .wk-icon-btn:disabled { opacity: 0.4; cursor: default; }
 
 .wk-btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 8px 18px; border-radius: 9px; font-size: 13px; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 13px; border-radius: 7px; font-size: 11px; font-weight: 600;
   border: none; cursor: pointer; transition: opacity 0.1s; white-space: nowrap;
 }
 .wk-btn:disabled { opacity: 0.5; cursor: default; }
@@ -1207,28 +1207,28 @@ const CSS = `
 .wk-grid-root { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 .wk-grid-bar {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 40px; border-bottom: 1px solid var(--color-border-subtle);
+  padding: 10px 28px; border-bottom: 1px solid var(--color-border-subtle);
   background: var(--color-bg); flex-shrink: 0;
 }
-.wk-grid-bar-title { font-size: 13px; font-weight: 600; color: var(--color-text-muted); }
-.wk-grid-bar-actions { display: flex; align-items: center; gap: 8px; }
+.wk-grid-bar-title { font-size: 11px; font-weight: 600; color: var(--color-text-muted); }
+.wk-grid-bar-actions { display: flex; align-items: center; gap: 6px; }
 
 /* Card grid */
-.wk-grid-scroll { flex: 1; overflow-y: auto; padding: 32px 40px; display: flex; flex-direction: column; gap: 32px; }
-.wk-grid-section { display: flex; flex-direction: column; gap: 12px; }
+.wk-grid-scroll { flex: 1; overflow-y: auto; padding: 22px 28px; display: flex; flex-direction: column; gap: 24px; }
+.wk-grid-section { display: flex; flex-direction: column; gap: 9px; }
 .wk-grid-section-title {
-  font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
   text-transform: uppercase; color: var(--color-text-muted);
 }
 .wk-card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 12px;
+  gap: 9px;
 }
 .wk-card {
   background: var(--color-bg); border: 1px solid var(--color-border);
-  border-radius: 16px; padding: 18px;
-  display: flex; flex-direction: column; gap: 8px;
+  border-radius: 12px; padding: 13px;
+  display: flex; flex-direction: column; gap: 6px;
   text-align: left; cursor: pointer;
   transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
 }
@@ -1238,25 +1238,25 @@ const CSS = `
 }
 .wk-card.disabled { opacity: 0.5; }
 .wk-card-top { display: flex; align-items: flex-start; justify-content: space-between; }
-.wk-card-badges { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+.wk-card-badges { display: flex; flex-direction: column; gap: 3px; align-items: flex-end; }
 .wk-badge {
-  display: inline-block; padding: 2px 6px; border-radius: 5px;
+  display: inline-block; padding: 2px 4px; border-radius: 4px;
   font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
 }
 .wk-badge.builtin { background: rgba(107,57,203,0.1); color: #8b6fd6; border: 1px solid rgba(107,57,203,0.2); }
 .wk-badge.off     { background: rgba(120,120,120,0.1); color: var(--color-text-muted); border: 1px solid var(--color-border); }
-.wk-card-name { font-size: 14px; font-weight: 700; color: var(--color-text); }
+.wk-card-name { font-size: 12px; font-weight: 700; color: var(--color-text); }
 .wk-card-desc {
-  font-size: 12px; color: var(--color-text-muted); line-height: 1.5;
+  font-size: 10px; color: var(--color-text-muted); line-height: 1.5;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.wk-card-meta { font-size: 11px; color: var(--color-text-muted); font-family: monospace; margin-top: 4px; }
+.wk-card-meta { font-size: 10px; color: var(--color-text-muted); font-family: monospace; margin-top: 4px; }
 .wk-card-new {
   background: transparent; border: 1.5px dashed var(--color-border);
-  border-radius: 16px; padding: 18px;
+  border-radius: 12px; padding: 13px;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 8px; color: var(--color-text-muted); cursor: pointer;
-  font-size: 13px; font-weight: 600; min-height: 120px;
+  gap: 6px; color: var(--color-text-muted); cursor: pointer;
+  font-size: 11px; font-weight: 600; min-height: 120px;
   transition: border-color 0.15s, color 0.15s;
 }
 .wk-card-new:hover { border-color: var(--color-primary); color: var(--color-primary); }
@@ -1264,8 +1264,8 @@ const CSS = `
 /* Detail */
 .wk-detail { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 .wk-readonly-banner {
-  display: flex; align-items: center; gap: 8px;
-  padding: 10px 24px; font-size: 13px;
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 17px; font-size: 11px;
   background: rgba(239,124,47,0.06); border-bottom: 1px solid rgba(239,124,47,0.18);
   color: var(--color-primary); flex-shrink: 0;
 }
@@ -1275,91 +1275,91 @@ const CSS = `
 .wk-form { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 .wk-form-inner { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
 .wk-form-header {
-  display: flex; align-items: center; gap: 16px;
-  padding: 24px 40px 20px; border-bottom: 1px solid var(--color-border-subtle);
+  display: flex; align-items: center; gap: 12px;
+  padding: 17px 28px 14px; border-bottom: 1px solid var(--color-border-subtle);
   background: var(--color-bg); flex-shrink: 0;
 }
-.wk-form-agent-name { font-size: 18px; font-weight: 700; color: var(--color-text); }
-.wk-form-agent-slug { font-size: 12px; color: var(--color-text-muted); font-family: monospace; margin-top: 3px; }
-.wk-emoji-label { font-size: 11px; color: var(--color-text-muted); margin-top: 4px; }
+.wk-form-agent-name { font-size: 15px; font-weight: 700; color: var(--color-text); }
+.wk-form-agent-slug { font-size: 10px; color: var(--color-text-muted); font-family: monospace; margin-top: 3px; }
+.wk-emoji-label { font-size: 10px; color: var(--color-text-muted); margin-top: 4px; }
 
 /* Emoji picker */
 .wk-emoji-wrap { position: relative; flex-shrink: 0; }
 .wk-emoji-trigger {
-  width: 64px; height: 64px; border-radius: 18px; border: none;
+  width: 64px; height: 64px; border-radius: 14px; border: none;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; position: relative; transition: filter 0.15s;
   overflow: hidden;
 }
 .wk-emoji-trigger:hover:not(:disabled) { filter: brightness(1.1); }
 .wk-emoji-trigger:disabled { cursor: default; }
-.wk-emoji-display { font-size: 30px; line-height: 1; }
+.wk-emoji-display { font-size: 26px; line-height: 1; }
 .wk-emoji-hint {
   position: absolute; bottom: 3px; right: 4px;
-  font-size: 11px; opacity: 0; background: rgba(0,0,0,0.5);
-  border-radius: 4px; padding: 1px 3px; color: #fff;
+  font-size: 10px; opacity: 0; background: rgba(0,0,0,0.5);
+  border-radius: 3px; padding: 2px 2px; color: #fff;
   transition: opacity 0.15s; pointer-events: none;
 }
 .wk-emoji-trigger:hover .wk-emoji-hint { opacity: 1; }
 .wk-emoji-popover {
   position: absolute; top: calc(100% + 8px); right: 0; z-index: 300;
-  border-radius: 14px; overflow: hidden;
+  border-radius: 11px; overflow: hidden;
   box-shadow: 0 16px 48px rgba(0,0,0,0.35);
   border: 1px solid var(--color-border-subtle);
 }
-em-emoji-picker { --border-radius: 14px; }
+em-emoji-picker { --border-radius: 11px; }
 .wk-section {
-  padding: 20px 40px; border-bottom: 1px solid var(--color-border-subtle);
-  display: flex; flex-direction: column; gap: 14px;
+  padding: 14px 28px; border-bottom: 1px solid var(--color-border-subtle);
+  display: flex; flex-direction: column; gap: 11px;
 }
 .wk-section-title {
-  font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
   text-transform: uppercase; color: var(--color-text-muted);
 }
-.wk-field { display: flex; flex-direction: column; gap: 5px; }
+.wk-field { display: flex; flex-direction: column; gap: 4px; }
 .wk-field.flex1 { flex: 1; }
-.wk-field label { font-size: 12px; font-weight: 600; color: var(--color-text-secondary); }
+.wk-field label { font-size: 10px; font-weight: 600; color: var(--color-text-secondary); }
 .wk-field input, .wk-field select, .wk-field textarea {
   background: var(--color-surface); border: 1px solid var(--color-border);
-  border-radius: 8px; padding: 9px 12px;
-  color: var(--color-text); font-size: 13px; font-family: inherit;
+  border-radius: 6px; padding: 6px 8px;
+  color: var(--color-text); font-size: 11px; font-family: inherit;
   outline: none; width: 100%; box-sizing: border-box; resize: vertical;
 }
 .wk-field input:focus, .wk-field select:focus, .wk-field textarea:focus { border-color: var(--color-primary); }
 .wk-field input:disabled, .wk-field select:disabled, .wk-field textarea:disabled { opacity: 0.5; cursor: not-allowed; }
-.wk-mono-area { font-family: monospace; font-size: 12.5px; line-height: 1.6; min-height: 220px; }
-.wk-hint { font-size: 11px; color: var(--color-text-muted); }
+.wk-mono-area { font-family: monospace; font-size: 11px; line-height: 1.6; min-height: 220px; }
+.wk-hint { font-size: 10px; color: var(--color-text-muted); }
 .wk-required { color: var(--color-error); font-weight: 700; }
 .wk-opt { font-weight: 400; color: var(--color-text-muted); }
-.wk-row { display: flex; gap: 12px; align-items: flex-start; }
+.wk-row { display: flex; gap: 9px; align-items: flex-start; }
 .wk-row.align-center { align-items: center; }
 .wk-row.align-end { align-items: flex-end; }
 
 /* Identity row: stacked fields on left, square icon on right */
-.wk-identity-row { display: flex; gap: 16px; align-items: center; }
-.wk-identity-fields { flex: 1; display: flex; flex-direction: column; gap: 14px; }
+.wk-identity-row { display: flex; gap: 12px; align-items: center; }
+.wk-identity-fields { flex: 1; display: flex; flex-direction: column; gap: 11px; }
 
-.wk-field-icon { display: flex; flex-direction: column; gap: 5px; flex-shrink: 0; }
-.wk-field-icon label { font-size: 12px; font-weight: 600; color: var(--color-text-secondary); }
+.wk-field-icon { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+.wk-field-icon label { font-size: 10px; font-weight: 600; color: var(--color-text-secondary); }
 
 /* Icon column aligned to center alongside the stacked fields */
-.wk-field-icon-tall { display: flex; flex-direction: column; align-items: center; gap: 6px; flex-shrink: 0; }
-.wk-field-icon-tall label { font-size: 12px; font-weight: 600; color: var(--color-text-secondary); align-self: flex-start; }
-.wk-field-inline { display: flex; align-items: center; gap: 10px; padding-top: 20px; }
-.wk-field-inline label { font-size: 12px; font-weight: 600; color: var(--color-text-secondary); white-space: nowrap; }
+.wk-field-icon-tall { display: flex; flex-direction: column; align-items: center; gap: 5px; flex-shrink: 0; }
+.wk-field-icon-tall label { font-size: 10px; font-weight: 600; color: var(--color-text-secondary); align-self: flex-start; }
+.wk-field-inline { display: flex; align-items: center; gap: 8px; padding-top: 14px; }
+.wk-field-inline label { font-size: 10px; font-weight: 600; color: var(--color-text-secondary); white-space: nowrap; }
 .wk-slug-wrap {
   display: flex; align-items: center;
   background: var(--color-surface); border: 1px solid var(--color-border);
-  border-radius: 8px; overflow: hidden;
+  border-radius: 6px; overflow: hidden;
 }
-.wk-slug-prefix { padding: 9px 2px 9px 12px; font-size: 13px; color: var(--color-text-muted); font-family: monospace; user-select: none; }
+.wk-slug-prefix { padding: 6px 2px 6px 8px; font-size: 11px; color: var(--color-text-muted); font-family: monospace; user-select: none; }
 .wk-slug-input { border: none !important; border-radius: 0 !important; padding-left: 2px !important; background: transparent !important; font-family: monospace !important; }
 .wk-slug-input:focus { box-shadow: none !important; }
-.wk-pills { display: flex; gap: 6px; }
+.wk-pills { display: flex; gap: 5px; }
 .wk-pill {
-  padding: 5px 14px; border-radius: 7px; border: 1px solid var(--color-border);
+  padding: 4px 10px; border-radius: 5px; border: 1px solid var(--color-border);
   background: transparent; cursor: pointer;
-  font-size: 12px; font-weight: 600; color: var(--color-text-muted); transition: all 0.1s;
+  font-size: 10px; font-weight: 600; color: var(--color-text-muted); transition: all 0.1s;
 }
 .wk-pill:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-text); }
 .wk-pill.active { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 10%, transparent); color: var(--color-primary); }
@@ -1367,7 +1367,7 @@ em-emoji-picker { --border-radius: 14px; }
 
 /* Toggle — knob centré verticalement */
 .wk-toggle {
-  position: relative; width: 40px; height: 22px; border-radius: 11px;
+  position: relative; width: 40px; height: 22px; border-radius: 9px;
   border: none; padding: 0; cursor: pointer; transition: background 0.2s; flex-shrink: 0;
 }
 .wk-toggle.on  { background: var(--color-primary); }
@@ -1385,42 +1385,42 @@ em-emoji-picker { --border-radius: 14px; }
 .wk-toggle.off .wk-toggle-knob { left: 3px; }
 
 .wk-form-footer {
-  display: flex; align-items: center; justify-content: flex-end; gap: 10px;
-  padding: 14px 40px; border-top: 1px solid var(--color-border-subtle);
+  display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+  padding: 10px 28px; border-top: 1px solid var(--color-border-subtle);
   background: var(--color-bg); flex-shrink: 0;
 }
 .wk-form-error {
-  display: flex; align-items: center; gap: 7px;
-  margin: 16px 40px 0; padding: 9px 12px; border-radius: 8px;
+  display: flex; align-items: center; gap: 5px;
+  margin: 16px 40px 0; padding: 6px 8px; border-radius: 6px;
   background: rgba(201,107,92,0.08); border: 1px solid rgba(201,107,92,0.25);
-  font-size: 13px; color: var(--color-error);
+  font-size: 11px; color: var(--color-error);
 }
 
 /* Test chat */
 .wk-test-chat { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--color-surface); }
 .wk-test-header {
-  display: flex; align-items: center; gap: 10px;
-  padding: 14px 32px; border-bottom: 1px solid var(--color-border-subtle);
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 22px; border-bottom: 1px solid var(--color-border-subtle);
   background: var(--color-bg); flex-shrink: 0;
 }
-.wk-test-agent-name { font-size: 14px; font-weight: 700; color: var(--color-text); }
+.wk-test-agent-name { font-size: 12px; font-weight: 700; color: var(--color-text); }
 .wk-test-badge {
-  font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 5px;
+  font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px;
   background: rgba(239,124,47,0.08); border: 1px solid rgba(239,124,47,0.2); color: var(--color-primary);
 }
-.wk-test-messages { flex: 1; overflow-y: auto; padding: 24px 32px; display: flex; flex-direction: column; gap: 20px; }
+.wk-test-messages { flex: 1; overflow-y: auto; padding: 17px 22px; display: flex; flex-direction: column; gap: 15px; }
 .wk-test-empty {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 12px; color: var(--color-text-muted); text-align: center;
+  gap: 9px; color: var(--color-text-muted); text-align: center;
 }
-.wk-test-empty p { margin: 0; font-size: 14px; }
-.wk-msg { display: flex; flex-direction: column; gap: 4px; max-width: 780px; }
+.wk-test-empty p { margin: 0; font-size: 12px; }
+.wk-msg { display: flex; flex-direction: column; gap: 3px; max-width: 780px; }
 .wk-msg.user { align-self: flex-end; align-items: flex-end; }
 .wk-msg.assistant { align-self: flex-start; }
-.wk-msg-role { font-size: 11px; font-weight: 700; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.04em; padding: 0 4px; }
+.wk-msg-role { font-size: 10px; font-weight: 700; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.04em; padding: 0 3px; }
 .wk-msg-body {
-  padding: 10px 14px; border-radius: 12px;
-  font-size: 14px; line-height: 1.6; white-space: pre-wrap; word-break: break-word;
+  padding: 7px 10px; border-radius: 9px;
+  font-size: 12px; line-height: 1.6; white-space: pre-wrap; word-break: break-word;
 }
 .wk-msg.user .wk-msg-body { background: var(--color-primary); color: #fff; border-bottom-right-radius: 4px; }
 .wk-msg.assistant .wk-msg-body { background: var(--color-bg); border: 1px solid var(--color-border-subtle); border-bottom-left-radius: 4px; color: var(--color-text); }
@@ -1431,20 +1431,20 @@ em-emoji-picker { --border-radius: 14px; }
 }
 @keyframes blink { 0%, 100% { opacity:1 } 50% { opacity:0 } }
 .wk-test-input-bar {
-  display: flex; align-items: flex-end; gap: 8px;
-  padding: 16px 32px; border-top: 1px solid var(--color-border-subtle);
+  display: flex; align-items: flex-end; gap: 6px;
+  padding: 11px 22px; border-top: 1px solid var(--color-border-subtle);
   background: var(--color-bg); flex-shrink: 0;
 }
 .wk-test-input {
   flex: 1; background: var(--color-surface); border: 1px solid var(--color-border);
-  border-radius: 10px; padding: 10px 14px;
-  color: var(--color-text); font-size: 14px; font-family: inherit;
+  border-radius: 8px; padding: 7px 10px;
+  color: var(--color-text); font-size: 12px; font-family: inherit;
   outline: none; resize: none; line-height: 1.5; max-height: 180px;
 }
 .wk-test-input:focus { border-color: var(--color-primary); }
 .wk-test-input:disabled { opacity: 0.5; }
 .wk-send-btn {
-  width: 36px; height: 36px; border-radius: 10px; border: none;
+  width: 36px; height: 36px; border-radius: 8px; border: none;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; flex-shrink: 0; transition: opacity 0.1s;
 }
@@ -1454,29 +1454,29 @@ em-emoji-picker { --border-radius: 14px; }
 
 /* Knowledge */
 .wk-knowledge { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-.wk-kn-detail-body { flex: 1; overflow-y: auto; padding: 32px 40px; display: flex; flex-direction: column; gap: 12px; }
+.wk-kn-detail-body { flex: 1; overflow-y: auto; padding: 22px 28px; display: flex; flex-direction: column; gap: 9px; }
 
 .wk-kn-corpus-icon {
-  width: 38px; height: 38px; border-radius: 12px; flex-shrink: 0;
+  width: 38px; height: 38px; border-radius: 9px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   background: color-mix(in srgb, var(--color-primary) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
   color: var(--color-primary);
 }
 
-.wk-kn-file-list { display: flex; flex-direction: column; gap: 4px; }
+.wk-kn-file-list { display: flex; flex-direction: column; gap: 3px; }
 .wk-kn-file-row {
-  display: flex; align-items: center; justify-content: space-between; gap: 16px;
-  padding: 10px 14px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 7px 10px; border-radius: 8px;
   background: var(--color-bg); border: 1px solid var(--color-border-subtle);
   transition: border-color 0.12s;
 }
 .wk-kn-file-row:hover { border-color: var(--color-border); }
 .wk-kn-file-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
-.wk-kn-file-name { font-size: 13px; font-weight: 600; color: var(--color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.wk-kn-file-meta { font-size: 11px; color: var(--color-text-muted); }
-.wk-kn-file-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.wk-kn-status { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.wk-kn-file-name { font-size: 11px; font-weight: 600; color: var(--color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wk-kn-file-meta { font-size: 10px; color: var(--color-text-muted); }
+.wk-kn-file-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.wk-kn-status { display: flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
 .wk-kn-error { color: var(--color-error); display: flex; cursor: help; }
 
 /* Modal */
@@ -1489,19 +1489,19 @@ em-emoji-picker { --border-radius: 14px; }
 @keyframes wk-fade { from { opacity: 0; } to { opacity: 1; } }
 .wk-modal {
   background: var(--color-surface); border: 1px solid var(--color-border);
-  border-radius: 16px; width: 420px; max-width: calc(100vw - 48px);
+  border-radius: 12px; width: 420px; max-width: calc(100vw - 48px);
   box-shadow: 0 24px 64px rgba(0,0,0,0.35);
   animation: wk-modal-in 0.18s ease;
 }
 @keyframes wk-modal-in { from { opacity: 0; transform: scale(0.95) translateY(8px); } to { opacity: 1; transform: none; } }
-.wk-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 0; }
-.wk-modal-title { font-size: 15px; font-weight: 700; }
-.wk-modal-body { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
-.wk-modal-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 0 20px 18px; }
-.wk-field { display: flex; flex-direction: column; gap: 6px; }
-.wk-field-label { font-size: 12px; font-weight: 600; color: var(--color-text-muted); }
+.wk-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 13px 14px 0; }
+.wk-modal-title { font-size: 13px; font-weight: 700; }
+.wk-modal-body { padding: 14px; display: flex; flex-direction: column; gap: 11px; }
+.wk-modal-footer { display: flex; justify-content: flex-end; gap: 6px; padding: 0 14px 13px; }
+.wk-field { display: flex; flex-direction: column; gap: 5px; }
+.wk-field-label { font-size: 10px; font-weight: 600; color: var(--color-text-muted); }
 .wk-input {
-  padding: 9px 12px; border-radius: 9px; font-size: 13px;
+  padding: 6px 8px; border-radius: 7px; font-size: 11px;
   background: var(--color-bg); border: 1px solid var(--color-border);
   color: var(--color-text); outline: none; transition: border-color 0.12s;
 }

@@ -127,7 +127,19 @@ export function InvitationsPage() { const organizationId = useScopedOrganization
         onSubmit={(values) => { if (!organizationId) return
           createInvitation.mutate(
             { ...values, organization_id: organizationId },
-            { onSuccess: () => setCreating(false),
+            { onSuccess: (invitation) => { setCreating(false)
+                // token is only ever present in this one create response
+                // (see backend toInvitation) - copy the accept link as a
+                // fallback in case SMTP isn't configured or the email
+                // doesn't land, without making the admin dig through
+                // network responses for it.
+                if (invitation?.token) {
+                  const link = `${window.location.origin}/accept-invitation?token=${invitation.token}`
+                  navigator.clipboard?.writeText(link).catch(() => {})
+                  message.success(`Invitation sent to ${values.email} — accept link also copied to your clipboard`)
+                } else {
+                  message.success(`Invitation sent to ${values.email}`)
+                } },
               onError: (error) => message.error(getErrorMessage(error)), },
           ) }}
         submitting={createInvitation.isPending}

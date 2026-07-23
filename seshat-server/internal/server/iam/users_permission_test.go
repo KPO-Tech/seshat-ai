@@ -34,3 +34,37 @@ func TestGetUserIsRestrictedToAdminOrSelf(t *testing.T) {
 		t.Fatal("expected a non-admin to be denied viewing another user")
 	}
 }
+
+func TestChangePasswordRequiresCorrectCurrentPassword(t *testing.T) {
+	service, _, memberPrincipal, _ := bootstrapWithMember(t, "member")
+
+	if err := service.ChangePassword(context.Background(), memberPrincipal, ChangePasswordParams{
+		CurrentPassword: "wrong-password",
+		NewPassword:     "newpassword123",
+	}); err == nil {
+		t.Fatal("expected changing the password with the wrong current password to fail")
+	}
+
+	// The password must be unchanged: logging in with the original still works.
+	if _, err := service.Login(context.Background(), memberPrincipal.User.Email, "password123"); err != nil {
+		t.Fatalf("expected the original password to still work after a rejected attempt: %v", err)
+	}
+}
+
+func TestChangePasswordUpdatesHash(t *testing.T) {
+	service, _, memberPrincipal, _ := bootstrapWithMember(t, "member")
+
+	if err := service.ChangePassword(context.Background(), memberPrincipal, ChangePasswordParams{
+		CurrentPassword: "password123",
+		NewPassword:     "newpassword123",
+	}); err != nil {
+		t.Fatalf("change password: %v", err)
+	}
+
+	if _, err := service.Login(context.Background(), memberPrincipal.User.Email, "password123"); err == nil {
+		t.Fatal("expected the old password to no longer work")
+	}
+	if _, err := service.Login(context.Background(), memberPrincipal.User.Email, "newpassword123"); err != nil {
+		t.Fatalf("expected login with the new password to succeed: %v", err)
+	}
+}

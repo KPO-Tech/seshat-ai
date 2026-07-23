@@ -48,32 +48,32 @@ const EB_CSS = `
   align-items: center;
   justify-content: center;
   background: var(--color-bg);
-  padding: 32px;
+  padding: 22px;
 }
 
 .eb-box {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   max-width: 480px;
   text-align: center;
 }
 
 .eb-title {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--color-text);
   margin: 0;
 }
 
 .eb-message {
-  font-size: 12px;
+  font-size: 10px;
   color: var(--color-text-muted);
   background: var(--color-surface);
   border: 1px solid var(--color-border-subtle);
-  border-radius: 6px;
-  padding: 12px 16px;
+  border-radius: 5px;
+  padding: 8px 11px;
   white-space: pre-wrap;
   word-break: break-word;
   margin: 0;
@@ -81,12 +81,12 @@ const EB_CSS = `
 }
 
 .eb-btn {
-  padding: 8px 20px;
-  border-radius: 6px;
+  padding: 6px 14px;
+  border-radius: 5px;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
-  font-size: 13px;
+  font-size: 11px;
   cursor: pointer;
   transition: background 0.15s;
 }

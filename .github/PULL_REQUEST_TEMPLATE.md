@@ -14,8 +14,8 @@ Fixes #
 
 ## Backend checklist
 
-- [ ] `go build ./seshat-backend/... ./seshat-server/... ./seshat/...` passes
-- [ ] `go test -race ./seshat-backend/... ./seshat-server/... ./seshat/...` passes
+- [ ] `go build ./seshat-backend/... ./seshat-server/...` passes
+- [ ] `go test -race ./seshat-backend/... ./seshat-server/...` passes
 - [ ] `golangci-lint run ./seshat-backend/... ./seshat-server/...` passes (or pre-existing failures are noted below)
 - [ ] `gofmt -w .` run
 - [ ] New behavior is covered by tests

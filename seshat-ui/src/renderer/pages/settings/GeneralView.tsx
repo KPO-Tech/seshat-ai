@@ -97,11 +97,11 @@ export function GeneralView() {
         </div>
         {dirty && (
           <button className="gv-save-btn" onClick={save} disabled={saving}>
-            {saving ? 'Saving…' : <><Check size={16} /> Save changes</>}
+            {saving ? 'Saving…' : <><Check size={13} /> Save changes</>}
           </button>
         )}
         {success && !dirty && (
-          <div className="gv-saved-badge"><Check size={14} /> Saved</div>
+          <div className="gv-saved-badge"><Check size={12} /> Saved</div>
         )}
       </header>
 
@@ -111,7 +111,7 @@ export function GeneralView() {
       <div className="gv-card">
         <div className="gv-card-head">
           <div className="sv-card-brand">
-            <div className="sv-brand-icon"><User size={20} /></div>
+            <div className="sv-brand-icon"><User size={16} /></div>
             <div>
               <div className="sv-brand-name">Identity</div>
               <div className="sv-brand-sub">How SeshatOS refers to and understands you</div>
@@ -156,11 +156,11 @@ export function GeneralView() {
         </div>
       </div>
 
-      <div className="gv-section-title" style={{ marginTop: 32 }}>Working preferences</div>
+      <div className="gv-section-title" style={{ marginTop: 20 }}>Working preferences</div>
       <div className="gv-card">
         <div className="gv-card-head">
           <div className="sv-card-brand">
-            <div className="sv-brand-icon"><Edit size={20} /></div>
+            <div className="sv-brand-icon"><Edit size={16} /></div>
             <div>
               <div className="sv-brand-name">Style &amp; context</div>
               <div className="sv-brand-sub">Injected into the system prompt on every conversation</div>
@@ -202,15 +202,15 @@ export function GeneralView() {
       </div>
 
       <div className="gv-hint">
-        <Info size={14} />
+        <Info size={12} />
         <span>These preferences are appended to the system prompt on every conversation turn. Leave fields empty to exclude them.</span>
       </div>
 
-      <div className="gv-section-title" style={{ marginTop: 32 }}>Execution defaults</div>
+      <div className="gv-section-title" style={{ marginTop: 20 }}>Execution defaults</div>
       <div className="gv-card">
         <div className="gv-card-head">
           <div className="sv-card-brand">
-            <div className="sv-brand-icon"><Lightning size={20} /></div>
+            <div className="sv-brand-icon"><Lightning size={16} /></div>
             <div>
               <div className="sv-brand-name">Tool approval policy</div>
               <div className="sv-brand-sub">Default permission mode for new conversations and scheduled runs</div>
@@ -256,7 +256,7 @@ export function GeneralView() {
       {dirty && (
         <div className="gv-bottom-bar">
           <button className="gv-save-btn" onClick={save} disabled={saving}>
-            {saving ? 'Saving…' : <><Check size={16} /> Save changes</>}
+            {saving ? 'Saving…' : <><Check size={13} /> Save changes</>}
           </button>
           <button className="gv-cancel-btn" onClick={() => setForm(saved)}>
             Cancel
@@ -280,12 +280,12 @@ const GENERAL_CSS = `
 }
 
 .gv-section-title {
-  font-size: 13px;
+  font-size: var(--font-size-xs);
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-text-muted);
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .gv-card {
@@ -315,19 +315,19 @@ const GENERAL_CSS = `
 .gv-row-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: 12px;
 }
 
 .gv-textarea {
   width: 100%;
   background: var(--color-surface);
   border: 1.5px solid var(--color-border);
-  border-radius: 10px;
-  padding: 12px 16px;
+  border-radius: 8px;
+  padding: 9px 12px;
   color: var(--color-text);
-  font-size: 14px;
+  font-size: var(--font-size-sm);
   font-family: inherit;
-  line-height: 1.6;
+  line-height: 1.5;
   resize: vertical;
   outline: none;
   box-sizing: border-box;
@@ -342,33 +342,33 @@ const GENERAL_CSS = `
 .gv-hint {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 6px;
   color: var(--color-text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-2xs);
   line-height: 1.5;
-  padding: 16px 0 8px;
+  padding: 10px 0 6px;
 }
 
 .gv-error {
-  background: rgba(239,68,68,0.08);
-  border: 1px solid rgba(239,68,68,0.25);
-  color: #ef4444;
-  border-radius: 10px;
-  padding: 12px 16px;
-  font-size: 13px;
-  margin-bottom: 24px;
+  background: rgba(var(--color-error-rgb),0.08);
+  border: 1px solid rgba(var(--color-error-rgb),0.25);
+  color: var(--color-error);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: var(--font-size-sm);
+  margin-bottom: 16px;
 }
 
 .gv-save-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background: var(--color-cta);
   color: white;
   border: none;
-  padding: 10px 20px;
-  border-radius: 10px;
-  font-size: 14px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: var(--font-size-sm);
   font-weight: 700;
   cursor: pointer;
 }
@@ -380,19 +380,19 @@ const GENERAL_CSS = `
 .gv-saved-badge {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
+  gap: 5px;
+  font-size: var(--font-size-sm);
   font-weight: 600;
-  color: var(--color-success, #22c55e);
+  color: var(--color-success);
 }
 
 .gv-cancel-btn {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   color: var(--color-text);
-  padding: 10px 20px;
-  border-radius: 10px;
-  font-size: 14px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: var(--font-size-sm);
   font-weight: 600;
   cursor: pointer;
 }
@@ -400,28 +400,28 @@ const GENERAL_CSS = `
 .gv-bottom-bar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding-top: 32px;
+  gap: 8px;
+  padding-top: 20px;
 }
 
 .gv-mode-group {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
 .gv-mode-btn {
   flex: 1;
-  min-width: 120px;
+  min-width: 110px;
   background: var(--color-surface);
   border: 1.5px solid var(--color-border);
-  border-radius: 10px;
-  padding: 12px 16px;
+  border-radius: 8px;
+  padding: 9px 12px;
   cursor: pointer;
   text-align: left;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
   transition: border-color 0.15s, background 0.15s;
 }
 .gv-mode-btn:hover {
@@ -433,13 +433,13 @@ const GENERAL_CSS = `
 }
 
 .gv-mode-label {
-  font-size: 13px;
+  font-size: var(--font-size-xs);
   font-weight: 700;
   color: var(--color-text);
 }
 
 .gv-mode-desc {
-  font-size: 12px;
+  font-size: var(--font-size-2xs);
   color: var(--color-text-muted);
   line-height: 1.4;
 }

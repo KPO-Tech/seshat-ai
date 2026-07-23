@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	publicskills "github.com/EngineerProjects/seshat/pkg/skills"
-	skillsloader "github.com/EngineerProjects/seshat/pkg/skills"
+	publicskills "github.com/KPO-Tech/seshat/pkg/skills"
+	skillsloader "github.com/KPO-Tech/seshat/pkg/skills"
 )
 
 const skillAgentSystemPromptTemplate = `You are SkillAgent, the assistant integrated in the Skills Creator of SeshatOS. Your sole purpose is to help the user create, improve, analyze, and test Seshat skills.

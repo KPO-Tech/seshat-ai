@@ -22,10 +22,10 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/settings"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/skills"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/websearch"
-	"github.com/EngineerProjects/seshat/pkg/docling"
-	longterm "github.com/EngineerProjects/seshat/pkg/memory/longterm"
-	"github.com/EngineerProjects/seshat/pkg/rag"
-	"github.com/EngineerProjects/seshat/pkg/storage"
+	"github.com/KPO-Tech/seshat/pkg/docling"
+	longterm "github.com/KPO-Tech/seshat/pkg/memory/longterm"
+	"github.com/KPO-Tech/seshat/pkg/rag"
+	"github.com/KPO-Tech/seshat/pkg/storage"
 )
 
 // Dependencies holds the external dependencies wired by the transport layer.
@@ -57,19 +57,20 @@ type Dependencies struct {
 	WebSearchLogs            *db.WebSearchLogStore
 	WebSearchProviderConfigs *db.SearchProviderConfigStore
 	WebSearchRunner          websearch.Runner
-	// WebSearchCloudClient/WebSearchOrganizationID enrich the local
-	// provider-resolution chain and domain policy with a connected
-	// seshat-server's org/platform web-search config — nil/empty in
-	// standalone mode, set only by bootstrap.go when SESHAT_SERVER_URL is
-	// configured. See internal/cloudwebsearch's package doc.
-	WebSearchCloudClient    *cloudwebsearch.Client
-	WebSearchOrganizationID string
-	EmbedderConfigStore     *db.EmbedderConfigStore
-	AuditLogStore           *db.AuditLogStore     // nil = audit logging disabled
-	UsageCounterStore       *db.UsageCounterStore // nil = quota tracking disabled
-	ArtifactStore           storage.ArtifactStore // nil = blob storage disabled
-	RAGService              *rag.Service          // nil = embedder not configured
-	Monitoring              metrics.Snapshotter
+	// WebSearchCloudClient enriches the local provider-resolution chain and
+	// domain policy with a connected seshat-server's org/platform web-search
+	// config — nil in standalone mode, set only by bootstrap.go when
+	// SESHAT_SERVER_URL is configured. The organization itself is resolved
+	// fresh per call from the caller's own principal (see
+	// auth.Principal.OrganizationID), not configured here. See
+	// internal/cloudwebsearch's package doc.
+	WebSearchCloudClient *cloudwebsearch.Client
+	EmbedderConfigStore  *db.EmbedderConfigStore
+	AuditLogStore        *db.AuditLogStore     // nil = audit logging disabled
+	UsageCounterStore    *db.UsageCounterStore // nil = quota tracking disabled
+	ArtifactStore        storage.ArtifactStore // nil = blob storage disabled
+	RAGService           *rag.Service          // nil = embedder not configured
+	Monitoring           metrics.Snapshotter
 	// ResolveDoclingClient returns the docling client to use for a given
 	// call, re-evaluated on every invocation (not cached) — nil = no
 	// auto-conversion. Set by bootstrap.go to check the user's persisted
@@ -89,23 +90,24 @@ type Dependencies struct {
 	PlanDocumentStore   *db.PlanDocumentStore
 	MCPServerStore      *db.MCPServerStore
 	MCPRuntime          mcp.RuntimeReloader // nil = reload/status not available
-	// MCPCloudClient/MCPOrganizationID/MCPOrgServerApprovals enrich the
-	// local MCP runtime with a connected seshat-server's shared server
-	// catalog, once the user has explicitly approved each one — nil/empty
-	// in standalone mode, set only by bootstrap.go when SESHAT_SERVER_URL
-	// is configured. See internal/cloudmcp's package doc.
+	// MCPCloudClient/MCPOrgServerApprovals enrich the local MCP runtime with
+	// a connected seshat-server's shared server catalog, once the user has
+	// explicitly approved each one — nil in standalone mode, set only by
+	// bootstrap.go when SESHAT_SERVER_URL is configured. The organization
+	// itself is resolved fresh per request (see api.requestOrganizationID),
+	// not configured here. See internal/cloudmcp's package doc.
 	MCPCloudClient        *cloudmcp.Client
-	MCPOrganizationID     string
 	MCPOrgServerApprovals *db.MCPOrgServerApprovalStore
 	UserPreferencesStore  *db.UserPreferencesStore
 	AgentDefinitionStore  *db.AgentDefinitionStore
-	// AgentsCloudClient/AgentsOrganizationID enrich local agent resolution
-	// with a connected seshat-server's shared preset catalog, once a caller
-	// has an authenticated principal — nil/empty in standalone mode, set
-	// only by bootstrap.go when SESHAT_SERVER_URL is configured. Purely
-	// additive, see internal/agents.Service's own doc comment.
-	AgentsCloudClient    *cloudagents.Client
-	AgentsOrganizationID string
+	// AgentsCloudClient enriches local agent resolution with a connected
+	// seshat-server's shared preset catalog, once a caller has an
+	// authenticated principal — nil in standalone mode, set only by
+	// bootstrap.go when SESHAT_SERVER_URL is configured. The organization
+	// itself is resolved fresh per call from the caller's own principal (see
+	// auth.Principal.OrganizationID). Purely additive, see
+	// internal/agents.Service's own doc comment.
+	AgentsCloudClient *cloudagents.Client
 	// PreferencesProvider selects standalone vs connected preferences storage.
 	// nil = preferences.NewLocalProvider(UserPreferencesStore), i.e. today's
 	// local-only behavior — set only by bootstrap.go when SESHAT_SERVER_URL
@@ -154,7 +156,7 @@ func NewApp(deps Dependencies) *App {
 		settingsProvider = localSettingsProvider
 	}
 	settingsService := settings.NewService(settingsProvider, localSettingsProvider)
-	webSearchService := websearch.NewService(deps.WebSearchSettings, deps.WebSearchLogs, deps.WebSearchProviderConfigs, settingsService, deps.WebSearchRunner, deps.WebSearchCloudClient, deps.WebSearchOrganizationID)
+	webSearchService := websearch.NewService(deps.WebSearchSettings, deps.WebSearchLogs, deps.WebSearchProviderConfigs, settingsService, deps.WebSearchRunner, deps.WebSearchCloudClient)
 	memoriesProvider := deps.MemoriesProvider
 	if memoriesProvider == nil {
 		memoriesProvider = memories.NewLocalProvider(deps.UserMemoryStore)
@@ -168,7 +170,7 @@ func NewApp(deps Dependencies) *App {
 	filesService := files.NewService(deps.FileStore, deps.ArtifactStore).WithDocling(deps.ResolveDoclingClient)
 	knowledgeService := knowledge.NewService(deps.CorpusStore, deps.FileStore, deps.IngestionJobStore, deps.ArtifactStore, deps.RAGService).WithDocling(deps.ResolveDoclingClient)
 	skillsService := skills.NewService()
-	agentsService := agents.NewService(deps.AgentDefinitionStore, deps.AgentsCloudClient, deps.AgentsOrganizationID)
+	agentsService := agents.NewService(deps.AgentDefinitionStore, deps.AgentsCloudClient)
 	quotaProvider := deps.QuotaProvider
 	if quotaProvider == nil {
 		quotaProvider = quotas.NewLocalProvider(deps.UsageCounterStore)
@@ -198,11 +200,10 @@ func NewApp(deps Dependencies) *App {
 		Memories:  memoriesService,
 		Plans:     plans.NewService(deps.PlanDocumentStore),
 		MCP: mcp.NewService(mcp.ServiceConfig{
-			Store:          deps.MCPServerStore,
-			Runtime:        deps.MCPRuntime,
-			CloudClient:    deps.MCPCloudClient,
-			OrganizationID: deps.MCPOrganizationID,
-			Approvals:      deps.MCPOrgServerApprovals,
+			Store:       deps.MCPServerStore,
+			Runtime:     deps.MCPRuntime,
+			CloudClient: deps.MCPCloudClient,
+			Approvals:   deps.MCPOrgServerApprovals,
 		}),
 		Preferences: preferencesService,
 		Skills:      skillsService,

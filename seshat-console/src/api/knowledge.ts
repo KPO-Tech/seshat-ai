@@ -4,6 +4,7 @@ import type { components } from '@/api/schema'
 
 export type Corpus = components['schemas']['Corpus']
 export type CorpusInput = components['schemas']['CorpusInput']
+export type CorpusUpdateInput = components['schemas']['CorpusUpdateInput']
 export type CorpusFile = components['schemas']['CorpusFile']
 export type IngestionJob = components['schemas']['IngestionJob']
 export type SearchResponse = components['schemas']['SearchResponse']
@@ -58,6 +59,24 @@ export function useCreateCorpus() {
       return data
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [CORPORA_KEY] }),
+  })
+}
+
+export function useUpdateCorpus() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, body }: { id: string; body: CorpusUpdateInput }) => {
+      const { data, error } = await api.PUT('/api/v1/knowledge/corpora/{corpusID}', {
+        params: { path: { corpusID: id } },
+        body,
+      })
+      if (error) throw error
+      return data
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: [CORPORA_KEY] })
+      queryClient.invalidateQueries({ queryKey: [CORPORA_KEY, 'detail', variables.id] })
+    },
   })
 }
 

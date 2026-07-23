@@ -13,8 +13,8 @@ import (
 
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/api"
 	seshatconfig "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/config"
-	appconfig "github.com/EngineerProjects/seshat/pkg/config"
-	"github.com/EngineerProjects/seshat/pkg/python"
+	appconfig "github.com/KPO-Tech/seshat/pkg/config"
+	"github.com/KPO-Tech/seshat/pkg/python"
 )
 
 // version is stamped at build time via -ldflags "-X main.version=vX.Y.Z"

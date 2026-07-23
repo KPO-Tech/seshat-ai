@@ -1,6 +1,8 @@
 import { memo, useRef, useEffect, useState } from 'react'
+import { CloseOne } from '@icon-park/react'
 import { useSessionStore } from '@/stores/session'
 import { MarkdownView } from '@/components/MarkdownView'
+import { api } from '@/api/client'
 import { ToolBlock } from '../ToolBlock'
 import type { StreamingBlock } from '@/stores/session'
 
@@ -14,7 +16,7 @@ const SUBAGENT_PANEL_CSS = `
 
 /* ── Header ── */
 .sap-header {
-  padding: 14px 16px 0;
+  padding: 10px 11px 0;
   border-bottom: 1px solid var(--color-border-subtle);
   display: flex;
   flex-direction: column;
@@ -25,7 +27,7 @@ const SUBAGENT_PANEL_CSS = `
 .sap-header-top {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   margin-bottom: 6px;
 }
 
@@ -37,8 +39,8 @@ const SUBAGENT_PANEL_CSS = `
 }
 
 .sap-status--running .sap-status-dot { background: var(--color-accent); animation: sap-pulse 1.4s ease-in-out infinite; }
-.sap-status--completed .sap-status-dot { background: #34d399; }
-.sap-status--failed .sap-status-dot { background: #f87171; }
+.sap-status--completed .sap-status-dot { background: var(--color-success); }
+.sap-status--failed .sap-status-dot { background: var(--color-error); }
 
 @keyframes sap-pulse {
   0%, 100% { opacity: 1; }
@@ -46,18 +48,52 @@ const SUBAGENT_PANEL_CSS = `
 }
 
 .sap-type-badge {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.07em;
   text-transform: uppercase;
 }
 
 .sap-status--running .sap-type-badge { color: var(--color-accent); }
-.sap-status--completed .sap-type-badge { color: #34d399; }
-.sap-status--failed .sap-type-badge { color: #f87171; }
+.sap-status--completed .sap-type-badge { color: var(--color-success); }
+.sap-status--failed .sap-type-badge { color: var(--color-error); }
+
+.sap-cancel-btn {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  padding: 3px 8px 3px 7px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.sap-cancel-btn:hover:not(:disabled) {
+  color: var(--color-error);
+  border-color: var(--color-error);
+  background: rgba(var(--color-error-rgb), 0.08);
+}
+
+.sap-cancel-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.sap-cancel-error {
+  font-size: 10.5px;
+  color: var(--color-error);
+  margin-bottom: 6px;
+}
 
 .sap-task {
-  font-size: 13px;
+  font-size: 11px;
   line-height: 1.5;
   color: var(--color-text);
   margin-bottom: 8px;
@@ -66,10 +102,10 @@ const SUBAGENT_PANEL_CSS = `
 .sap-stats {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 11px;
+  gap: 8px;
+  font-size: 10px;
   color: var(--color-text-muted);
-  padding-bottom: 10px;
+  padding-bottom: 7px;
   flex-wrap: wrap;
 }
 
@@ -87,8 +123,8 @@ const SUBAGENT_PANEL_CSS = `
 
 .sap-tab {
   flex: 1;
-  padding: 8px 0;
-  font-size: 12px;
+  padding: 6px 0;
+  font-size: 10px;
   font-weight: 600;
   color: var(--color-text-muted);
   background: transparent;
@@ -99,7 +135,7 @@ const SUBAGENT_PANEL_CSS = `
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 4px;
 }
 
 .sap-tab--active {
@@ -120,7 +156,7 @@ const SUBAGENT_PANEL_CSS = `
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #34d399;
+  background: var(--color-success);
   animation: sap-pulse 1.2s ease-in-out infinite;
   flex-shrink: 0;
 }
@@ -137,28 +173,28 @@ const SUBAGENT_PANEL_CSS = `
 .sap-body::-webkit-scrollbar { width: 4px; }
 .sap-body::-webkit-scrollbar-thumb {
   background: var(--color-border-subtle);
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 /* ── Activity tab (full stream) ── */
 .sap-activity {
-  padding: 14px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   flex: 1;
 }
 
 .sap-block-text {
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1.6;
   color: var(--color-text);
 }
 
 .sap-block-thinking {
   border-left: 2px solid rgba(239, 124, 47, 0.22);
-  padding-left: 12px;
-  font-size: 13px;
+  padding-left: 8px;
+  font-size: 11px;
   line-height: 1.55;
   color: var(--color-text-muted);
   font-style: italic;
@@ -168,12 +204,12 @@ const SUBAGENT_PANEL_CSS = `
 .sap-active-tool {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 8px;
+  gap: 6px;
+  padding: 6px 7px;
+  border-radius: 6px;
   border: 1px solid rgba(239, 124, 47, 0.25);
   background: rgba(239, 124, 47, 0.06);
-  font-size: 12px;
+  font-size: 10px;
   color: var(--color-accent);
 }
 
@@ -193,15 +229,15 @@ const SUBAGENT_PANEL_CSS = `
 
 /* ── Output tab ── */
 .sap-output {
-  padding: 14px;
+  padding: 10px;
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .sap-output-content {
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1.6;
   color: var(--color-text);
 }
@@ -212,11 +248,11 @@ const SUBAGENT_PANEL_CSS = `
   align-items: center;
   justify-content: center;
   flex: 1;
-  gap: 8px;
+  gap: 6px;
   color: var(--color-text-muted);
-  padding: 32px;
+  padding: 22px;
   text-align: center;
-  font-size: 13px;
+  font-size: 11px;
 }
 
 /* ── Empty / loading ── */
@@ -226,12 +262,12 @@ const SUBAGENT_PANEL_CSS = `
   align-items: center;
   justify-content: center;
   flex: 1;
-  gap: 8px;
+  gap: 6px;
   color: var(--color-text-muted);
-  padding: 32px;
+  padding: 22px;
 }
 
-.sap-empty-label { font-size: 13px; }
+.sap-empty-label { font-size: 11px; }
 
 .sap-spinner {
   width: 18px;
@@ -256,9 +292,30 @@ export const SubagentPanel = memo(function SubagentPanel({ sessionId, toolUseId 
   const bottomRef = useRef<HTMLDivElement>(null)
   const prevResultRef = useRef<string | undefined>(undefined)
   const [outputReady, setOutputReady] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
+  const [cancelError, setCancelError] = useState<string | null>(null)
 
   const streaming = subagent?.streaming ?? []
   const result = subagent?.result
+
+  // No optimistic local status update here — CloseAgent on the backend cancels
+  // the agent's context, which makes its own completion notifier fire the
+  // usual tool.progress(failed) event over SSE (see spawn_agent.go), so the
+  // status transition arrives the same way a natural failure would. This
+  // button just triggers that and surfaces a request-level error if the POST
+  // itself fails (e.g. already finished, or a network drop).
+  const handleCancel = async () => {
+    if (!subagent?.agentId || cancelling) return
+    setCancelling(true)
+    setCancelError(null)
+    try {
+      await api.post(`/subagents/${subagent.agentId}/cancel`, { session_id: sessionId })
+    } catch (err) {
+      setCancelError(err instanceof Error ? err.message : 'Failed to cancel agent')
+    } finally {
+      setCancelling(false)
+    }
+  }
 
   // Auto-scroll activity tab as new blocks arrive
   useEffect(() => {
@@ -308,7 +365,21 @@ export const SubagentPanel = memo(function SubagentPanel({ sessionId, toolUseId 
           <span className="sap-type-badge">
             {subagent.agentType.replace(/_/g, ' ').replace(/-/g, ' ')}
           </span>
+          {subagent.status === 'running' && subagent.agentId && (
+            <button
+              type="button"
+              className="sap-cancel-btn"
+              disabled={cancelling}
+              onClick={handleCancel}
+              title="Cancel this sub-agent"
+            >
+              <CloseOne size={12} />
+              {cancelling ? 'Cancelling…' : 'Cancel'}
+            </button>
+          )}
         </div>
+
+        {cancelError && <div className="sap-cancel-error">{cancelError}</div>}
 
         {subagent.task && <div className="sap-task">{subagent.task}</div>}
 

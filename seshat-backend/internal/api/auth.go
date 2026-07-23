@@ -418,8 +418,14 @@ func writeBackendError(w http.ResponseWriter, err error) {
 		writeJSONError(w, http.StatusForbidden, bkerr.Message(err))
 	case bkerr.ErrorKindNotFound:
 		writeJSONError(w, http.StatusNotFound, bkerr.Message(err))
+	case bkerr.ErrorKindConflict:
+		writeJSONError(w, http.StatusConflict, bkerr.Message(err))
+	case bkerr.ErrorKindTooLarge:
+		writeJSONError(w, http.StatusRequestEntityTooLarge, bkerr.Message(err))
 	case bkerr.ErrorKindRateLimit:
 		writeJSONError(w, http.StatusTooManyRequests, bkerr.Message(err))
+	case bkerr.ErrorKindBadGateway:
+		writeJSONError(w, http.StatusBadGateway, bkerr.Message(err))
 	case bkerr.ErrorKindUnavailable:
 		writeJSONError(w, http.StatusServiceUnavailable, bkerr.Message(err))
 	default:

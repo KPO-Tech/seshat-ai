@@ -14,6 +14,7 @@ type createOrganizationRequest struct {
 	Description  string `json:"description"`
 	WebsiteURL   string `json:"website_url"`
 	SupportEmail string `json:"support_email"`
+	Domain       string `json:"domain"`
 }
 
 type updateOrganizationRequest struct {
@@ -22,6 +23,7 @@ type updateOrganizationRequest struct {
 	Description  string `json:"description"`
 	WebsiteURL   string `json:"website_url"`
 	SupportEmail string `json:"support_email"`
+	Domain       string `json:"domain"`
 }
 
 func (app *App) handleOrganizations(w http.ResponseWriter, r *http.Request) {
@@ -61,6 +63,7 @@ func (app *App) handleOrganizations(w http.ResponseWriter, r *http.Request) {
 			Description:  req.Description,
 			WebsiteURL:   req.WebsiteURL,
 			SupportEmail: req.SupportEmail,
+			Domain:       req.Domain,
 		})
 		if err != nil {
 			writeIAMError(w, err)
@@ -107,6 +110,7 @@ func (app *App) handleOrganizationByID(w http.ResponseWriter, r *http.Request) {
 			Description:  req.Description,
 			WebsiteURL:   req.WebsiteURL,
 			SupportEmail: req.SupportEmail,
+			Domain:       req.Domain,
 		})
 		if err != nil {
 			writeIAMError(w, err)

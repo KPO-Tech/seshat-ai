@@ -19,6 +19,7 @@ type UpdateOrganizationParams struct {
 	Description  string `json:"description"`
 	WebsiteURL   string `json:"website_url"`
 	SupportEmail string `json:"support_email"`
+	Domain       string `json:"domain"`
 }
 
 // GetOrganization returns one organization if the caller belongs to it or is a platform admin.
@@ -61,6 +62,7 @@ func (s *Service) UpdateOrganization(ctx context.Context, principal *Principal, 
 	description := strings.TrimSpace(params.Description)
 	websiteURL := strings.TrimSpace(params.WebsiteURL)
 	supportEmail := normalizeEmail(params.SupportEmail)
+	domain := normalizeDomain(params.Domain)
 	if organizationID == "" || name == "" || slug == "" {
 		return nil, ErrInvalidInput("organization_id, name and slug are required")
 	}
@@ -85,16 +87,26 @@ func (s *Service) UpdateOrganization(ctx context.Context, principal *Principal, 
 		if conflicting > 0 {
 			return ErrConflict("organization slug already exists")
 		}
+		if domain != nil {
+			var conflictingDomain int64
+			if err := tx.Model(&sdb.Organization{}).Where("domain = ? AND id <> ?", *domain, record.ID).Count(&conflictingDomain).Error; err != nil {
+				return err
+			}
+			if conflictingDomain > 0 {
+				return ErrConflict("an organization with this email domain already exists")
+			}
+		}
 
 		record.Name = name
 		record.Slug = slug
 		record.Description = description
 		record.WebsiteURL = websiteURL
 		record.SupportEmail = supportEmail
+		record.Domain = domain
 		record.UpdatedAt = time.Now().UTC()
 		if err := tx.Save(&record).Error; err != nil {
 			if isUniqueConstraintError(err) {
-				return ErrConflict("organization slug already exists")
+				return ErrConflict("organization slug or email domain already exists")
 			}
 			return err
 		}

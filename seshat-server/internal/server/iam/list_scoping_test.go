@@ -109,20 +109,25 @@ func TestUnscopedTenantListsAreScopedToAuthorizedOrganizations(t *testing.T) {
 		t.Fatalf("create group A: %v", err)
 	}
 	// A platform admin creating an organization no longer auto-joins it (see
-	// CreateOrganization) — join explicitly to be a valid group member here,
-	// same as any other user would.
-	if _, err := service.CreateMembership(context.Background(), adminPrincipal, CreateMembershipParams{
+	// CreateOrganization), and a user account now belongs to at most one
+	// organization ever (adminPrincipal already has one from Bootstrap) — so
+	// group B's member has to be a dedicated user scoped to org B, same as
+	// orgAdminUser is scoped to org A above.
+	orgBAdminUser, err := service.CreateUser(context.Background(), adminPrincipal, CreateUserParams{
+		Email:          "org-b-admin@example.com",
+		Password:       "password123",
+		DisplayName:    "Org B Admin",
 		OrganizationID: orgB.ID,
-		UserID:         adminPrincipal.User.ID,
-		Role:           "owner",
-	}); err != nil {
-		t.Fatalf("join org B as admin: %v", err)
+		Role:           "admin",
+	})
+	if err != nil {
+		t.Fatalf("create org B admin user: %v", err)
 	}
 	groupB, err := service.CreateGroup(context.Background(), adminPrincipal, CreateGroupParams{
 		OrganizationID: orgB.ID,
 		Name:           "Group B",
 		Slug:           "group-b",
-		MemberUserIDs:  []string{adminPrincipal.User.ID},
+		MemberUserIDs:  []string{orgBAdminUser.ID},
 	})
 	if err != nil {
 		t.Fatalf("create group B: %v", err)

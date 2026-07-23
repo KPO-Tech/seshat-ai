@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CheckCorrect, FileTextOne, Browser, LightMember } from '@icon-park/react'
 import { ChatTopBar, CHAT_TOP_BAR_CSS } from '@/components/chat/ChatTopBar'
-import { ChatInput, CHAT_INPUT_CSS } from '@/components/chat/ChatInput'
+import { ChatInput, CHAT_INPUT_CSS, type ChatAttachment } from '@/components/chat/ChatInput'
 import { api, ApiError } from '@/api/client'
 import type { ProviderModel } from '@/api/types'
 import { useProviders, fetchProviderModels } from '@/hooks/useProviders'
@@ -26,6 +26,14 @@ export function Home() {
   const [loadingModelsFor, setLoadingModelsFor] = useState<string | null>(null)
   const [isCreatingSession, setIsCreatingSession] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [projectPath, setProjectPath] = useState('')
+  // A session has to exist for /sessions/:id/files to accept an upload, but
+  // Home never sends a message until the user hits Send. So attaching a file
+  // lazily creates the session early (reused by handleSend when it fires) -
+  // see ensureSessionCreated.
+  const [pendingSessionId, setPendingSessionId] = useState<string | null>(null)
+  const [attachments, setAttachments] = useState<ChatAttachment[]>([])
+  const [isUploadingAttachments, setIsUploadingAttachments] = useState(false)
 
   const selectedProvider = providers.find((provider) => provider.id === selectedProviderId) ?? null
   // Use useMemo so the empty-array fallback is a stable reference across renders.
@@ -96,34 +104,107 @@ export function Home() {
     }
   }, [hasLoadedSelectedProviderModels, selectedModelId, selectedModels])
 
+  // Creates the backend session on first use and reuses it afterward, so
+  // attaching a file and then sending don't create two sessions.
+  async function ensureSessionCreated(): Promise<string | null> {
+    if (pendingSessionId) return pendingSessionId
+
+    if (!hasConfiguredProviders) {
+      setErrorMessage('Configure a provider in Settings before starting a chat.')
+      return null
+    }
+    if (!selectedProvider) {
+      setErrorMessage('Select a provider for this conversation.')
+      return null
+    }
+    if (!selectedModel) {
+      setErrorMessage('Select a model for this conversation.')
+      return null
+    }
+
+    setErrorMessage(null)
+    const response = await api.post<{ session_id: string }>('/sessions', {
+      provider_setting_id: selectedProvider.id,
+      model_id: selectedModel.model_id,
+      permission_mode: permissionMode,
+    })
+    setPendingSessionId(response.session_id)
+    return response.session_id
+  }
+
+  const handleAttachFiles = async (files: FileList) => {
+    if (!files.length) return
+    setIsUploadingAttachments(true)
+    try {
+      const id = await ensureSessionCreated()
+      if (!id) return
+      const uploaded: ChatAttachment[] = []
+      for (const file of Array.from(files)) {
+        const form = new FormData()
+        form.append('file', file)
+        const item = await api.upload<{
+          id: string
+          filename: string
+          content_type?: string
+          size?: number
+          category?: 'images' | 'documents' | 'other'
+          local_path?: string
+        }>(`/sessions/${id}/files`, form)
+        uploaded.push({
+          id: item.id,
+          filename: item.filename,
+          content_type: item.content_type,
+          size: item.size,
+          category: item.category,
+          local_path: item.local_path,
+        })
+      }
+      if (uploaded.length > 0) {
+        setAttachments((current) => [...current, ...uploaded])
+      }
+    } catch (err) {
+      setErrorMessage(err instanceof ApiError ? err.message : 'Failed to attach files.')
+    } finally {
+      setIsUploadingAttachments(false)
+    }
+  }
+
+  function handleRemoveAttachment(fileId: string) {
+    setAttachments((current) => current.filter((file) => file.id !== fileId))
+  }
+
   async function handleSend() {
     const prompt = inputValue.trim()
     if (!prompt) return
 
-    if (!hasConfiguredProviders) {
-      setErrorMessage('Configure a provider in Settings before starting a chat.')
-      return
-    }
-    if (!selectedProvider) {
-      setErrorMessage('Select a provider for this conversation.')
-      return
-    }
-    if (!selectedModel) {
-      setErrorMessage('Select a model for this conversation.')
-      return
-    }
-
-    setErrorMessage(null)
     setIsCreatingSession(true)
     try {
-      const response = await api.post<{ session_id: string }>('/sessions', {
-        provider_setting_id: selectedProvider.id,
-        model_id: selectedModel.model_id,
-        permission_mode: permissionMode,
-      })
+      const wasAlreadyCreated = !!pendingSessionId
+      const sessionId = await ensureSessionCreated()
+      if (!sessionId || !selectedProvider || !selectedModel) return
 
+      // If the session was created earlier (e.g. by attaching a file before
+      // typing anything), the provider/model the user ends up sending with
+      // may have changed since - sync it now rather than silently keeping
+      // whatever was selected at attach time.
+      if (wasAlreadyCreated) {
+        await api.patch(`/sessions/${sessionId}`, {
+          provider_setting_id: selectedProvider.id,
+          model_id: selectedModel.model_id,
+        }).catch(() => {})
+      }
+
+      // Persist the chosen working folder before the conversation mounts and
+      // fires its first turn. Creation itself doesn't take project_path, so
+      // this has to land before navigate() or the first message could run
+      // against the default per-session workspace instead.
+      if (projectPath) {
+        await api.patch(`/sessions/${sessionId}`, { project_path: projectPath }).catch(() => {})
+      }
+
+      const fileIds = attachments.map((file) => file.id)
       addSession({
-        id: response.session_id,
+        id: sessionId,
         title: UNTITLED_SESSION_TITLE,
         messages: [],
         createdAt: new Date().toISOString(),
@@ -133,9 +214,14 @@ export function Home() {
         modelId: selectedModel.model_id,
         modelLabel: selectedModel.display_name || selectedModel.model_id,
         draftPrompt: prompt,
+        draftFileIds: fileIds.length > 0 ? fileIds : undefined,
+        projectPath: projectPath || undefined,
       })
       setInputValue('')
-      navigate(`/conversation/${response.session_id}`)
+      setProjectPath('')
+      setAttachments([])
+      setPendingSessionId(null)
+      navigate(`/conversation/${sessionId}`)
     } catch (error) {
       setErrorMessage(
         error instanceof ApiError ? error.message : 'Unable to create the conversation.'
@@ -152,38 +238,6 @@ export function Home() {
       {/* ── Top Bar ── */}
       <div className="home-top-bar">
         <ChatTopBar
-          providerLabel={selectedProvider?.name ?? 'Provider'}
-          modelLabel={selectedModel?.display_name || selectedModel?.model_id || 'Model'}
-          providerOptions={providers.map((provider) => ({
-            id: provider.id,
-            label: provider.name,
-          }))}
-          modelOptions={
-            selectedProviderId && hasLoadedSelectedProviderModels
-              ? selectedModels.map((model) => ({
-                  id: model.model_id,
-                  label: model.display_name || model.model_id,
-                }))
-              : undefined
-          }
-          selectedProviderId={selectedProviderId}
-          selectedModelId={selectedModelId}
-          onProviderSelect={(providerId) => {
-            setSelectedProviderId(providerId)
-            setSelectedModelId(null)
-            setErrorMessage(null)
-          }}
-          onModelSelect={(modelId) => {
-            setSelectedModelId(modelId)
-            setErrorMessage(null)
-          }}
-          providerDisabled={!hasConfiguredProviders || providersLoading || isCreatingSession}
-          modelDisabled={
-            !selectedProviderId ||
-            isCreatingSession ||
-            loadingModelsFor === selectedProviderId ||
-            selectedModels.length === 0
-          }
           permissionMode={permissionMode}
           onTogglePermission={togglePermissionMode}
           onPermissionModeSelect={setPermissionMode}
@@ -201,6 +255,44 @@ export function Home() {
             onSend={handleSend}
             placeholder="Send a message, upload files, open a folder, or create a scheduled task..."
             maxHeight={200}
+            projectPath={projectPath}
+            onProjectChange={setProjectPath}
+            attachments={attachments}
+            onAttachFiles={handleAttachFiles}
+            onRemoveAttachment={handleRemoveAttachment}
+            isUploadingAttachments={isUploadingAttachments}
+            providerLabel={selectedProvider?.name ?? 'Provider'}
+            modelLabel={selectedModel?.display_name || selectedModel?.model_id || 'Model'}
+            providerOptions={providers.map((provider) => ({
+              id: provider.id,
+              label: provider.name,
+            }))}
+            modelOptions={
+              selectedProviderId && hasLoadedSelectedProviderModels
+                ? selectedModels.map((model) => ({
+                    id: model.model_id,
+                    label: model.display_name || model.model_id,
+                  }))
+                : undefined
+            }
+            selectedProviderId={selectedProviderId}
+            selectedModelId={selectedModelId}
+            onProviderSelect={(providerId: string) => {
+              setSelectedProviderId(providerId)
+              setSelectedModelId(null)
+              setErrorMessage(null)
+            }}
+            onModelSelect={(modelId: string) => {
+              setSelectedModelId(modelId)
+              setErrorMessage(null)
+            }}
+            providerDisabled={!hasConfiguredProviders || providersLoading || isCreatingSession}
+            modelDisabled={
+              !selectedProviderId ||
+              isCreatingSession ||
+              loadingModelsFor === selectedProviderId ||
+              selectedModels.length === 0
+            }
           />
           <div className="home-input-hint">
             Press Enter to send, Shift + Enter for new line
@@ -223,19 +315,19 @@ export function Home() {
         </div>
 
         <div className="home-quick-actions">
-          <QuickAction icon={<CheckCorrect />} label="Create a task" />
-          <QuickAction icon={<FileTextOne />} label="Summarize a file" />
-          <QuickAction icon={<Browser />} label="Search the web" />
-          <QuickAction icon={<LightMember />} label="Brainstorm ideas" />
+          <QuickAction icon={<CheckCorrect size={14} />} label="Create a task" onClick={() => setInputValue('Create a task to ')} />
+          <QuickAction icon={<FileTextOne size={14} />} label="Summarize a file" onClick={() => setInputValue('Summarize the file at ')} />
+          <QuickAction icon={<Browser size={14} />} label="Search the web" onClick={() => setInputValue('Search the web for ')} />
+          <QuickAction icon={<LightMember size={14} />} label="Brainstorm ideas" onClick={() => setInputValue('Help me brainstorm ideas for ')} />
         </div>
       </div>
     </div>
   )
 }
 
-function QuickAction({ icon, label }: { icon: ReactNode; label: string }) {
+function QuickAction({ icon, label, onClick }: { icon: ReactNode; label: string; onClick: () => void }) {
   return (
-    <button className="qa-btn">
+    <button className="qa-btn" type="button" onClick={onClick}>
       <span className="qa-icon">{icon}</span>
       <span className="qa-label">{label}</span>
     </button>
@@ -255,7 +347,7 @@ ${CHAT_INPUT_CSS}
 }
 
 .home-top-bar {
-  padding: 16px 24px;
+  padding: 12px 18px;
 }
 
 .home-center {
@@ -264,7 +356,7 @@ ${CHAT_INPUT_CSS}
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px 100px;
+  padding: 28px 18px 60px;
   max-width: 900px;
   margin: 0 auto;
   width: 100%;
@@ -272,31 +364,31 @@ ${CHAT_INPUT_CSS}
 
 .home-greeting {
   font-family: serif;
-  font-size: 32px;
+  font-size: 22px;
   font-weight: 500;
   color: var(--color-text);
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   letter-spacing: -0.01em;
 }
 
 .home-input-container {
   width: 100%;
   max-width: 760px;
-  margin-bottom: 32px;
+  margin-bottom: 20px;
 }
 
 .home-input-hint {
   text-align: center;
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   color: var(--color-text-muted);
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
 .home-input-status {
   text-align: center;
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   color: var(--color-text-muted);
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .home-input-status.error {
@@ -307,17 +399,17 @@ ${CHAT_INPUT_CSS}
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .qa-btn {
   background: var(--color-surface);
   border: 1px solid var(--color-border-subtle);
-  border-radius: 14px;
-  padding: 10px 16px;
+  border-radius: 10px;
+  padding: 7px 12px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   cursor: pointer;
   transition: all 0.15s;
 }
@@ -336,7 +428,7 @@ ${CHAT_INPUT_CSS}
 }
 
 .qa-label {
-  font-size: 13px;
+  font-size: var(--font-size-sm);
   font-weight: 500;
   color: var(--color-text);
 }

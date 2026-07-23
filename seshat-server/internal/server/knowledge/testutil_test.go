@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	sdkdocling "github.com/EngineerProjects/seshat/pkg/docling"
-	sdkstorage "github.com/EngineerProjects/seshat/pkg/storage"
-	sdkvector "github.com/EngineerProjects/seshat/pkg/vector"
+	sdkdocling "github.com/KPO-Tech/seshat/pkg/docling"
+	sdkstorage "github.com/KPO-Tech/seshat/pkg/storage"
+	sdkvector "github.com/KPO-Tech/seshat/pkg/vector"
 
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"

@@ -195,7 +195,7 @@ func effectivePermissionsForPrincipal(tx *gorm.DB, principal *Principal, organiz
 	}
 
 	var memberships []sdb.Membership
-	if err := tx.Where("user_id = ? AND organization_id = ?", principal.User.ID, organizationID).Find(&memberships).Error; err != nil {
+	if err := tx.Where("user_id = ? AND organization_id = ? AND status <> ?", principal.User.ID, organizationID, "blocked").Find(&memberships).Error; err != nil {
 		return nil, err
 	}
 	if len(memberships) == 0 {
@@ -247,6 +247,17 @@ func effectivePermissionsForPrincipal(tx *gorm.DB, principal *Principal, organiz
 		}
 	}
 	return permissions, nil
+}
+
+// sortedPermissionCodes turns a permission set into a deterministic slice
+// for JSON responses (map iteration order is otherwise random).
+func sortedPermissionCodes(permissions map[string]struct{}) []string {
+	codes := make([]string, 0, len(permissions))
+	for code := range permissions {
+		codes = append(codes, code)
+	}
+	sort.Strings(codes)
+	return codes
 }
 
 func bindingMatchesPrincipal(binding sdb.PolicyBinding, roleCodes, groupIDs map[string]struct{}, userID string) bool {
@@ -323,7 +334,7 @@ func canAccessOrganization(tx *gorm.DB, principal *Principal, organizationID str
 		return count > 0, nil
 	}
 	var count int64
-	if err := tx.Model(&sdb.Membership{}).Where("user_id = ? AND organization_id = ?", principal.User.ID, organizationID).Count(&count).Error; err != nil {
+	if err := tx.Model(&sdb.Membership{}).Where("user_id = ? AND organization_id = ? AND status <> ?", principal.User.ID, organizationID, "blocked").Count(&count).Error; err != nil {
 		return false, err
 	}
 	return count > 0, nil

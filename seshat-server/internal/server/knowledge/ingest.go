@@ -10,7 +10,7 @@ import (
 
 	"gorm.io/gorm"
 
-	sdkrag "github.com/EngineerProjects/seshat/pkg/rag"
+	sdkrag "github.com/KPO-Tech/seshat/pkg/rag"
 
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"

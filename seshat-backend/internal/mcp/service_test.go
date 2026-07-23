@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
-	enginemcp "github.com/EngineerProjects/seshat/pkg/mcp"
-	"github.com/EngineerProjects/seshat/pkg/sdk"
+	enginemcp "github.com/KPO-Tech/seshat/pkg/mcp"
+	"github.com/KPO-Tech/seshat/pkg/sdk"
 )
 
 // mockRuntime satisfies RuntimeReloader without a real SDK client.
@@ -65,7 +65,7 @@ func TestNilStoreReturnsUnavailable(t *testing.T) {
 
 func TestReloadNilRuntimeReturnsUnavailable(t *testing.T) {
 	svc := NewService(ServiceConfig{})
-	_, err := svc.Reload(context.Background(), "")
+	_, err := svc.Reload(context.Background(), "", "")
 	if bkerr.KindOf(err) != bkerr.ErrorKindUnavailable {
 		t.Fatalf("expected unavailable, got %v", err)
 	}

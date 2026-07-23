@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
+import { LoadingOne } from '@icon-park/react'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 
@@ -48,7 +49,19 @@ export function AuthGuard({ children }: { children: ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  if (status === 'checking') return null
+  if (status === 'checking') {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100vh',
+        color: 'var(--color-text-muted)',
+      }}>
+        <LoadingOne size={23} className="spin" />
+      </div>
+    )
+  }
   if (status === 'invalid') return <Navigate to="/login" replace />
   return <>{children}</>
 }

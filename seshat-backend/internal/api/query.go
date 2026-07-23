@@ -13,9 +13,9 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/query"
 	backendquotas "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/quotas"
-	"github.com/EngineerProjects/seshat/pkg/contract"
-	"github.com/EngineerProjects/seshat/pkg/sdk"
-	"github.com/EngineerProjects/seshat/pkg/types"
+	"github.com/KPO-Tech/seshat/pkg/contract"
+	"github.com/KPO-Tech/seshat/pkg/sdk"
+	"github.com/KPO-Tech/seshat/pkg/types"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -58,6 +58,10 @@ type updateSessionRequest struct {
 	ModelID           *string `json:"model_id,omitempty"`
 	WorkspacePath     *string `json:"workspace_path,omitempty"`
 	ProjectPath       *string `json:"project_path,omitempty"`
+	// ExecutionMode force-sets ("plan"/"execute") or clears ("") the host
+	// override applied to the SDK session ahead of its next turn — see
+	// Session.ForcePlanMode()/ClearPlanMode() in seshat-backend/internal/query/runtime.go.
+	ExecutionMode *string `json:"execution_mode,omitempty"`
 }
 
 type queryResponse struct {
@@ -224,9 +228,21 @@ func (app *App) handleQueryStream(w http.ResponseWriter, r *http.Request) {
 	flusher.Flush()
 
 	var writeMu sync.Mutex
+	// streamClosed is flipped once handleQueryStream returns (see defer below).
+	// Some tools (e.g. spawn_agent) capture the RuntimeEventEmitterKey closure
+	// and call it from a detached goroutine that can outlive this request —
+	// notably when the model never calls wait_agent/close_agent before its turn
+	// ends. Without this guard, that late call would write directly to a
+	// ResponseWriter/connection the net/http server may have already recycled
+	// for another request, which is undefined behavior per the http.Handler
+	// contract. Once closed, late events are dropped rather than delivered late.
+	streamClosed := false
 	writeSSE := func(event string, payload []byte) {
 		writeMu.Lock()
 		defer writeMu.Unlock()
+		if streamClosed {
+			return
+		}
 		if event != "" {
 			fmt.Fprintf(w, "event: %s\n", event)
 		}
@@ -236,9 +252,17 @@ func (app *App) handleQueryStream(w http.ResponseWriter, r *http.Request) {
 	writeSSEComment := func(comment string) {
 		writeMu.Lock()
 		defer writeMu.Unlock()
+		if streamClosed {
+			return
+		}
 		fmt.Fprintf(w, ": %s\n\n", comment)
 		flusher.Flush()
 	}
+	defer func() {
+		writeMu.Lock()
+		streamClosed = true
+		writeMu.Unlock()
+	}()
 
 	keepAliveDone := make(chan struct{})
 	defer close(keepAliveDone)
@@ -340,8 +364,12 @@ func (app *App) handleQueryStream(w http.ResponseWriter, r *http.Request) {
 		defer app.permBroker.Cancel(toolUseID)
 
 		select {
-		case approved := <-ch:
-			return types.PromptResponse{Value: approved}, nil
+		case decision := <-ch:
+			response := types.PromptResponse{Value: decision.Approved}
+			if !decision.Approved && decision.Reason != "" {
+				response.Metadata = map[string]any{"reason": decision.Reason}
+			}
+			return response, nil
 		case <-ctx.Done():
 			return types.PromptResponse{Cancelled: true}, nil
 		}

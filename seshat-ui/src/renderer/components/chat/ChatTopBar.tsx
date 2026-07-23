@@ -1,147 +1,106 @@
 import { useEffect, useRef, useState } from 'react'
-import { Browser, CheckCorrect, Shield, More, Robot } from '@icon-park/react'
-import { SelectorPill, SELECTOR_PILL_CSS } from '@/components/ui/SelectorPill'
+import { More, FileTextOne, Share, Folder, Delete, Shield, Robot } from '@icon-park/react'
+import { SelectorMenu, SELECTOR_PILL_CSS, type SelectorOption } from '@/components/ui/SelectorPill'
 import { IconButton, ICON_BUTTON_CSS } from '@/components/ui/IconButton'
 import type { UIPermissionMode } from '@/stores/ui'
 import type { AgentState } from '@/stores/session'
 
-export type ChatTopBarOption = {
-  id: string
-  label: string
-  disabled?: boolean
-}
+type UIExecutionMode = 'execute' | 'plan'
 
 type Props = {
-  providerLabel?: string
-  modelLabel?: string
-  onProviderClick?: () => void
-  onModelClick?: () => void
-  providerOptions?: ChatTopBarOption[]
-  modelOptions?: ChatTopBarOption[]
-  selectedProviderId?: string | null
-  selectedModelId?: string | null
-  onProviderSelect?: (id: string) => void
-  onModelSelect?: (id: string) => void
-  providerDisabled?: boolean
-  modelDisabled?: boolean
+  executionMode?: AgentState['executionMode']
+  onExecutionModeChange?: (mode: UIExecutionMode) => void
   monitorOpen?: boolean
   onToggleMonitor?: () => void
   permissionMode?: UIPermissionMode
   onTogglePermission?: () => void
   onPermissionModeSelect?: (mode: UIPermissionMode) => void
-  executionMode?: AgentState['executionMode']
+  onExport?: () => void
+  onShare?: () => void
+  onDelete?: () => void
 }
 
+const EXECUTION_CYCLE: UIExecutionMode[] = ['execute', 'plan']
+const EXECUTION_LABEL: Record<UIExecutionMode, string> = { execute: 'Execute', plan: 'Plan' }
+
+function permissionModeTitle(mode: UIPermissionMode): string {
+  return { onRequest: 'Ask First', auto: 'Smart', bypass: 'Auto' }[mode]
+}
+
+function permissionModeColor(mode: UIPermissionMode): 'green' | 'orange' | 'red' {
+  if (mode === 'onRequest') return 'green'
+  if (mode === 'auto') return 'orange'
+  return 'red'
+}
+
+// All the session-level controls (mode, permission, agent monitor, the
+// "•••" conversation menu) live here in the top-right, per the user's
+// explicit layout call — Provider/Model are the only things that moved down
+// into ChatInput, next to where the user actually types.
 export function ChatTopBar({
-  providerLabel = 'Provider',
-  modelLabel = 'Model',
-  onProviderClick,
-  onModelClick,
-  providerOptions,
-  modelOptions,
-  selectedProviderId,
-  selectedModelId,
-  onProviderSelect,
-  onModelSelect,
-  providerDisabled = false,
-  modelDisabled = false,
+  executionMode = 'execute',
+  onExecutionModeChange,
   monitorOpen = false,
   onToggleMonitor,
-  permissionMode = 'onRequest',
+  permissionMode = 'auto',
   onTogglePermission,
   onPermissionModeSelect,
-  executionMode = 'execute',
+  onExport,
+  onShare,
+  onDelete,
 }: Props) {
-  const [openMenu, setOpenMenu] = useState<'provider' | 'model' | 'permission' | null>(null)
+  const [openSelector, setOpenSelector] = useState<'permission' | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [shareLabel, setShareLabel] = useState('Share conversation')
   const rootRef = useRef<HTMLDivElement>(null)
-  const hasProviderMenu = !!providerOptions?.length && !!onProviderSelect
-  const hasModelMenu = !!modelOptions?.length && !!onModelSelect
-  const permissionOptions: Array<{ id: UIPermissionMode; label: string; description: string }> = [
-    { id: 'onRequest', label: 'Ask First', description: 'Request approval for non-automatic actions.' },
-    { id: 'auto', label: 'Auto', description: 'Auto-approve safe actions and ask only when needed.' },
-    { id: 'bypass', label: 'Bypass', description: 'Skip permission checks entirely.' },
+  const hasMenu = !!onExport || !!onShare || !!onDelete
+  // "Ask First" is retired — only Smart (honors configured deny/ask rules)
+  // and Auto (runs everything except explicit deny rules) remain.
+  const permissionOptions: SelectorOption[] = [
+    { id: 'auto', label: 'Smart' },
+    { id: 'bypass', label: 'Auto' },
   ]
 
   useEffect(() => {
-    if (!openMenu) return
-
+    if (!openSelector && !menuOpen) return
     function handlePointerDown(event: MouseEvent) {
       if (!rootRef.current?.contains(event.target as Node)) {
-        setOpenMenu(null)
+        setOpenSelector(null)
+        setMenuOpen(false)
       }
     }
-
     document.addEventListener('mousedown', handlePointerDown)
     return () => document.removeEventListener('mousedown', handlePointerDown)
-  }, [openMenu])
-
-  function handleProviderTrigger() {
-    if (providerDisabled) return
-    if (hasProviderMenu) {
-      setOpenMenu((current) => (current === 'provider' ? null : 'provider'))
-      return
-    }
-    onProviderClick?.()
-  }
-
-  function handleModelTrigger() {
-    if (modelDisabled) return
-    if (hasModelMenu) {
-      setOpenMenu((current) => (current === 'model' ? null : 'model'))
-      return
-    }
-    onModelClick?.()
-  }
+  }, [openSelector, menuOpen])
 
   function handlePermissionTrigger() {
     if (onPermissionModeSelect) {
-      setOpenMenu((current) => (current === 'permission' ? null : 'permission'))
+      setOpenSelector((current) => (current === 'permission' ? null : 'permission'))
       return
     }
     onTogglePermission?.()
   }
 
+  function handleExportClick() {
+    onExport?.()
+    setMenuOpen(false)
+  }
+
+  function handleShareClick() {
+    onShare?.()
+    setShareLabel('Copied')
+    setTimeout(() => setShareLabel('Share conversation'), 1200)
+    setMenuOpen(false)
+  }
+
+  function handleDeleteClick() {
+    setMenuOpen(false)
+    onDelete?.()
+  }
+
   return (
     <div className="chat-top-bar" ref={rootRef}>
       <div className="chat-top-left">
-        <div className="chat-top-selectors">
-          <div className="chat-top-selector">
-            <SelectorPill
-              label={providerLabel}
-              icon={<Browser size={14} />}
-              onClick={handleProviderTrigger}
-              disabled={providerDisabled}
-            />
-            {openMenu === 'provider' && providerOptions && onProviderSelect && (
-              <SelectorMenu
-                options={providerOptions}
-                selectedId={selectedProviderId}
-                onSelect={(id) => {
-                  setOpenMenu(null)
-                  onProviderSelect(id)
-                }}
-              />
-            )}
-          </div>
-          <div className="chat-top-selector">
-            <SelectorPill
-              label={modelLabel}
-              icon={<CheckCorrect size={14} />}
-              onClick={handleModelTrigger}
-              disabled={modelDisabled}
-            />
-            {openMenu === 'model' && modelOptions && onModelSelect && (
-              <SelectorMenu
-                options={modelOptions}
-                selectedId={selectedModelId}
-                onSelect={(id) => {
-                  setOpenMenu(null)
-                  onModelSelect(id)
-                }}
-              />
-            )}
-          </div>
-        </div>
         {executionMode !== 'execute' && (
           <div className={`chat-mode-badge chat-mode-badge--${executionMode}`}>
             {executionMode === 'plan' ? 'Plan Mode' : 'Pair Programming'}
@@ -149,89 +108,97 @@ export function ChatTopBar({
         )}
       </div>
       <div className="chat-top-actions">
-        <IconButton
-          icon={<Shield size={18} />}
-          variant="bordered"
-          size={34}
-          title={permissionModeTitle(permissionMode)}
-          active
-          activeColor={permissionModeColor(permissionMode)}
-          onClick={handlePermissionTrigger}
-        />
-        {openMenu === 'permission' && onPermissionModeSelect && (
-          <SelectorMenu
-            align="right"
-            options={permissionOptions.map((option) => ({
-              id: option.id,
-              label: option.label,
-              description: option.description,
-            }))}
-            selectedId={permissionMode}
-            onSelect={(id) => {
-              setOpenMenu(null)
-              onPermissionModeSelect(id as UIPermissionMode)
+        {onExecutionModeChange && (
+          <button
+            className="chat-auto-btn"
+            onClick={() => {
+              const current = (executionMode === 'plan' ? 'plan' : 'execute') as UIExecutionMode
+              const currentIndex = EXECUTION_CYCLE.indexOf(current)
+              const next = EXECUTION_CYCLE[(currentIndex + 1) % EXECUTION_CYCLE.length]
+              onExecutionModeChange(next)
             }}
-          />
+            title={`Mode: ${EXECUTION_LABEL[executionMode === 'plan' ? 'plan' : 'execute']} (click to toggle)`}
+            data-mode={executionMode === 'plan' ? 'plan' : 'execute'}
+          >
+            <span className="chat-auto-dot" />
+            <span>{EXECUTION_LABEL[executionMode === 'plan' ? 'plan' : 'execute']}</span>
+          </button>
         )}
         {onToggleMonitor && (
           <IconButton
-            icon={<Robot size={18} />}
+            icon={<Robot size={15} />}
             variant="bordered"
-            size={34}
+            size={28}
             title="Agent Monitor"
             active={monitorOpen}
             onClick={onToggleMonitor}
           />
         )}
-        <IconButton icon={<More size={18} />} variant="bordered" size={34} title="More options" />
+        {(onTogglePermission || onPermissionModeSelect) && (
+          <div className="chat-top-selector">
+            <IconButton
+              icon={<Shield size={15} />}
+              variant="bordered"
+              size={28}
+              title={permissionModeTitle(permissionMode)}
+              active
+              activeColor={permissionModeColor(permissionMode)}
+              onClick={handlePermissionTrigger}
+            />
+            {openSelector === 'permission' && onPermissionModeSelect && (
+              <SelectorMenu
+                align="right"
+                options={permissionOptions}
+                selectedId={permissionMode}
+                onSelect={(id) => {
+                  setOpenSelector(null)
+                  onPermissionModeSelect(id as UIPermissionMode)
+                }}
+              />
+            )}
+          </div>
+        )}
+        {hasMenu && (
+          <div className="chat-top-selector">
+            <button
+              className="conv-menu-trigger"
+              type="button"
+              title="More"
+              onClick={() => setMenuOpen((v) => !v)}
+            >
+              <More size={15} />
+            </button>
+            {menuOpen && (
+              <div className="conv-menu">
+                {onExport && (
+                  <button type="button" onClick={handleExportClick}>
+                    <FileTextOne size={13} />
+                    <span>Export as Markdown</span>
+                  </button>
+                )}
+                {onShare && (
+                  <button type="button" onClick={handleShareClick}>
+                    <Share size={13} />
+                    <span>{shareLabel}</span>
+                  </button>
+                )}
+                <button type="button" disabled title="Coming soon">
+                  <Folder size={13} />
+                  <span>Move to a project</span>
+                </button>
+                {onDelete && (
+                  <button type="button" className="danger" onClick={handleDeleteClick}>
+                    <Delete size={13} />
+                    <span>Delete conversation</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
-}
-
-type SelectorMenuProps = {
-  options: Array<ChatTopBarOption & { description?: string }>
-  selectedId?: string | null
-  onSelect: (id: string) => void
-  align?: 'left' | 'right'
-}
-
-function SelectorMenu({ options, selectedId, onSelect, align = 'left' }: SelectorMenuProps) {
-  return (
-    <div className={`chat-top-menu chat-top-menu--${align}`}>
-      {options.map((option) => (
-        <button
-          key={option.id}
-          className={`chat-top-menu-item${option.id === selectedId ? ' active' : ''}`}
-          disabled={option.disabled}
-          onClick={() => !option.disabled && onSelect(option.id)}
-          type="button"
-        >
-          <span className="chat-top-menu-copy">
-            <span>{option.label}</span>
-            {option.description && (
-              <span className="chat-top-menu-description">{option.description}</span>
-            )}
-          </span>
-          {option.id === selectedId && <CheckCorrect size={14} />}
-        </button>
-      ))}
-    </div>
-  )
-}
-
-function permissionModeTitle(mode: UIPermissionMode): string {
-  return {
-    onRequest: 'Ask First mode',
-    auto: 'Auto mode',
-    bypass: 'Bypass mode',
-  }[mode]
-}
-
-function permissionModeColor(mode: UIPermissionMode): 'green' | 'orange' | 'red' {
-  if (mode === 'onRequest') return 'green'
-  if (mode === 'auto') return 'orange'
-  return 'red'
 }
 
 export const CHAT_TOP_BAR_CSS = `
@@ -242,16 +209,12 @@ ${ICON_BUTTON_CSS}
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-height: 28px;
 }
 
 .chat-top-left {
   display: flex;
   align-items: center;
-  gap: 10px;
-}
-
-.chat-top-selectors {
-  display: flex;
   gap: 8px;
 }
 
@@ -262,12 +225,12 @@ ${ICON_BUTTON_CSS}
 .chat-mode-badge {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  font-size: 11px;
+  gap: 4px;
+  font-size: var(--font-size-2xs);
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  padding: 3px 10px;
+  padding: 2px 8px;
   border-radius: 999px;
   animation: mode-badge-in 0.2s ease;
 }
@@ -312,77 +275,118 @@ ${ICON_BUTTON_CSS}
   50%       { opacity: 0.35; }
 }
 
-.chat-top-menu {
+.chat-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+
+.chat-auto-btn {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  color: var(--color-text-secondary);
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-size: var(--font-size-xs);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.chat-auto-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.chat-auto-btn[data-mode="execute"] {
+  border-color: color-mix(in srgb, var(--color-primary) 32%, transparent);
+  color: var(--color-primary);
+}
+
+.chat-auto-btn[data-mode="execute"] .chat-auto-dot {
+  background: var(--color-primary);
+}
+
+.chat-auto-btn[data-mode="plan"] {
+  border-color: color-mix(in srgb, #60a5fa 32%, transparent);
+  color: #60a5fa;
+}
+
+.chat-auto-btn[data-mode="plan"] .chat-auto-dot {
+  background: #60a5fa;
+}
+
+.conv-menu-trigger {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.conv-menu-trigger:hover {
+  background: var(--color-hover);
+  color: var(--color-text);
+}
+
+.conv-menu {
   position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  min-width: 220px;
-  padding: 8px;
-  border-radius: 14px;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 190px;
+  padding: 6px;
+  border-radius: 12px;
   border: 1px solid var(--color-border-subtle);
   background: rgba(44, 42, 49, 0.98);
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.22);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   z-index: 30;
 }
 
-.chat-top-menu--right {
-  left: auto;
-  right: 0;
-}
-
-.chat-top-menu-item {
+.conv-menu button {
   width: 100%;
   border: none;
   background: transparent;
   color: var(--color-text);
+  border-radius: 8px;
+  padding: 7px 10px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  font-size: 13px;
-  text-align: left;
+  gap: 8px;
+  font-size: var(--font-size-sm);
   cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
 }
 
-.chat-top-menu-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.chat-top-menu-description {
-  font-size: 11px;
-  line-height: 1.35;
-  color: var(--color-text-muted);
-  font-weight: 400;
-}
-
-.chat-top-menu-item:hover {
+.conv-menu button:hover {
   background: var(--color-hover);
 }
 
-.chat-top-menu-item.active {
-  background: rgba(239, 124, 47, 0.12);
-  color: var(--color-accent);
+.conv-menu button.danger {
+  color: #fda4af;
 }
 
-.chat-top-menu-item:disabled {
-  opacity: 0.6;
+.conv-menu button:disabled {
+  opacity: 0.5;
   cursor: default;
 }
 
-.chat-top-menu-item:disabled:hover {
+.conv-menu button:disabled:hover {
   background: transparent;
-}
-
-.chat-top-actions {
-  display: flex;
-  gap: 6px;
-  position: relative;
 }
 `

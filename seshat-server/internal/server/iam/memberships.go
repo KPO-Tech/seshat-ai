@@ -181,12 +181,12 @@ func (s *Service) CreateMembership(ctx context.Context, principal *Principal, pa
 		if orgCount == 0 {
 			return ErrNotFound("organization not found")
 		}
-		var userCount int64
-		if err := tx.Model(&sdb.User{}).Where("id = ?", userID).Count(&userCount).Error; err != nil {
+		var targetUser sdb.User
+		if err := tx.First(&targetUser, "id = ?", userID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrNotFound("user not found")
+			}
 			return err
-		}
-		if userCount == 0 {
-			return ErrNotFound("user not found")
 		}
 		if err := requireOrganizationPermission(tx, principal, organizationID, "members.manage", "organization.manage"); err != nil {
 			return err
@@ -201,6 +201,11 @@ func (s *Service) CreateMembership(ctx context.Context, principal *Principal, pa
 		}
 		if exists {
 			return ErrConflict("membership already exists")
+		}
+		if hasAny, err := userHasAnyMembership(tx, userID); err != nil {
+			return err
+		} else if hasAny {
+			return ErrConflict("user already belongs to an organization")
 		}
 
 		now := time.Now().UTC()
@@ -217,7 +222,7 @@ func (s *Service) CreateMembership(ctx context.Context, principal *Principal, pa
 		}
 		if err := tx.Create(&record).Error; err != nil {
 			if isUniqueConstraintError(err) {
-				return ErrConflict("membership already exists")
+				return ErrConflict("user already belongs to an organization")
 			}
 			return err
 		}
@@ -273,6 +278,50 @@ func (s *Service) UpdateMembership(ctx context.Context, principal *Principal, me
 		}
 		if err := appendAuditEvent(tx, principal, record.OrganizationID, "membership.updated", "membership", record.ID, map[string]string{"role": record.Role, "user_id": record.UserID}); err != nil {
 			return err
+		}
+		converted := toMembership(record)
+		membership = &converted
+		return nil
+	})
+	return membership, err
+}
+
+// ConfirmMembership lets an org admin finalize a self-registered "pending"
+// membership (see Register) before BlockExpiredPendingMemberships would
+// otherwise block it unconfirmed. A no-op (not an error) on a membership
+// that's already active - confirming twice, or confirming a membership that
+// was never pending, is harmless.
+func (s *Service) ConfirmMembership(ctx context.Context, principal *Principal, membershipID string) (*Membership, error) {
+	if principal == nil {
+		return nil, ErrUnauthorized("authentication required")
+	}
+	membershipID = strings.TrimSpace(membershipID)
+	if membershipID == "" {
+		return nil, ErrInvalidInput("membership_id is required")
+	}
+
+	var membership *Membership
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		tx = tx.WithContext(ctx)
+		var record sdb.Membership
+		if err := tx.First(&record, "id = ?", membershipID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrNotFound("membership not found")
+			}
+			return err
+		}
+		if err := requireOrganizationPermission(tx, principal, record.OrganizationID, "members.manage", "organization.manage"); err != nil {
+			return err
+		}
+		if record.Status != "active" {
+			record.Status = "active"
+			record.PendingSince = nil
+			if err := tx.Save(&record).Error; err != nil {
+				return err
+			}
+			if err := appendAuditEvent(tx, principal, record.OrganizationID, "membership.confirmed", "membership", record.ID, map[string]string{"user_id": record.UserID}); err != nil {
+				return err
+			}
 		}
 		converted := toMembership(record)
 		membership = &converted

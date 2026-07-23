@@ -8,7 +8,7 @@ import (
 
 	backendaudit "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/audit"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
-	"github.com/EngineerProjects/seshat/pkg/providers"
+	"github.com/KPO-Tech/seshat/pkg/providers"
 )
 
 // ─── Response type ────────────────────────────────────────────────────────────

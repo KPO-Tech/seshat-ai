@@ -1,27 +1,28 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Button, Card, Drawer, Empty, Form, Input, Popconfirm, Segmented, Space, Tag, Typography, message } from 'antd'
 import type { TableProps } from 'antd'
-import { ClusterOutlined, CrownOutlined, DeleteOutlined, EditOutlined, MailOutlined, PlusOutlined, SafetyOutlined, TeamOutlined } from '@ant-design/icons'
+import { CheckOutlined, ClusterOutlined, CrownOutlined, DeleteOutlined, EditOutlined, MailOutlined, PlusOutlined, SafetyOutlined, TeamOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import {
   useMembershipsList,
   useCreateMembership,
+  useCreateOrganizationMember,
   useUpdateMembership,
+  useConfirmMembership,
   useDeleteMembership,
   type Membership,
 } from '@/api/memberships'
 import { useInvitationsList } from '@/api/invitations'
 import { useRolesList } from '@/api/roles'
-import { useCreateUser, useUpdateUser } from '@/api/users'
 import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
 import { ConsoleTable } from '@/components/ConsoleTable'
 import { StatTile } from '@/components/StatTile'
 import { useTeamsList } from '@/api/groups'
 import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
-import { useAuthStore } from '@/store/auth'
 import { UserSelect } from '@/components/UserSelect'
 import { RoleSelect } from '@/components/RoleSelect'
+import { GroupMultiSelect } from '@/components/GroupMultiSelect'
 import { presentDateTime, presentText } from '@/lib/present'
 import { ROLE_COLORS, formatRoleLabel } from '@/lib/roles'
 import { monoStack, palette } from '@/theme/tokens'
@@ -31,7 +32,6 @@ const PAGE_SIZE = 20
 export function MembershipsPage() {
   const navigate = useNavigate()
   const organizationId = useScopedOrganizationId()
-  const isPlatformAdmin = useAuthStore((s) => s.user?.is_admin)
   const [page, setPage] = useState(1)
   const [editing, setEditing] = useState<Membership | 'new' | null>(null)
 
@@ -51,10 +51,10 @@ export function MembershipsPage() {
   const teams = useTeamsList(organizationId ?? undefined, { sort: 'name', order: 'asc', limit: 1, offset: 0 })
 
   const createMembership = useCreateMembership()
+  const createOrganizationMember = useCreateOrganizationMember()
   const updateMembership = useUpdateMembership()
+  const confirmMembership = useConfirmMembership()
   const deleteMembership = useDeleteMembership()
-  const createUser = useCreateUser()
-  const updateUser = useUpdateUser()
 
   const roleByCode = useMemo(
     () => new Map((roles.data?.roles ?? []).map((role) => [role.code ?? '', role])),
@@ -63,21 +63,6 @@ export function MembershipsPage() {
 
   const totalRoles = roles.data?.roles?.length ?? 0
   const pendingInvitations = invitations.data?.total ?? 0
-
-  function togglePlatformAdmin(record: Membership) {
-    if (!record.user_id || !record.user_email || !record.user_display_name) return
-    updateUser.mutate(
-      {
-        id: record.user_id,
-        body: {
-          email: record.user_email,
-          display_name: record.user_display_name,
-          is_admin: !record.user_is_admin,
-        },
-      },
-      { onError: (error) => message.error(getErrorMessage(error)) },
-    )
-  }
 
   const columns: TableProps<Membership>['columns'] = [
     {
@@ -94,6 +79,11 @@ export function MembershipsPage() {
               {record.user_is_admin && (
                 <Tag color="gold" icon={<CrownOutlined />} style={{ margin: 0 }}>
                   Platform Admin
+                </Tag>
+              )}
+              {record.status === 'pending' && (
+                <Tag color="blue" style={{ margin: 0 }}>
+                  New
                 </Tag>
               )}
             </Space>
@@ -144,25 +134,20 @@ export function MembershipsPage() {
     {
       title: '',
       key: 'actions',
-      width: 140,
+      width: 180,
       render: (_, record) => (
         <Space>
-          {isPlatformAdmin && (
-            <Popconfirm
-              title={record.user_is_admin ? 'Revoke platform admin?' : 'Grant platform admin?'}
-              description={
-                record.user_is_admin
-                  ? 'This user loses full access to every organization on the platform.'
-                  : 'This user gains full access to every organization on the platform, not just this one.'
+          {record.status === 'pending' && (
+            <Button
+              size="small"
+              icon={<CheckOutlined />}
+              onClick={() =>
+                confirmMembership.mutate(record.id!, {
+                  onError: (error) => message.error(getErrorMessage(error)),
+                })
               }
-              onConfirm={() => togglePlatformAdmin(record)}
-            >
-              <Button
-                size="small"
-                icon={<CrownOutlined />}
-                aria-label={record.user_is_admin ? 'Revoke platform admin' : 'Grant platform admin'}
-              />
-            </Popconfirm>
+              aria-label="Confirm member"
+            />
           )}
           <Button size="small" icon={<EditOutlined />} onClick={() => setEditing(record)} aria-label="Edit member role" />
           <Popconfirm
@@ -287,28 +272,24 @@ export function MembershipsPage() {
         }}
         onSubmitNewUser={(values) => {
           if (!organizationId) return
-          // Created without organization_id/role attached in the same call
-          // (that path only supports system roles server-side) - attach as
-          // a separate membership straight after so any custom role, same
-          // as the "existing user" flow, works here too.
-          createUser.mutate(
-            { email: values.email, password: values.password, display_name: values.display_name },
+          createOrganizationMember.mutate(
             {
-              onSuccess: (user) => {
-                if (!user?.id) return
-                createMembership.mutate(
-                  { organization_id: organizationId, user_id: user.id, role: values.role },
-                  {
-                    onSuccess: () => setEditing(null),
-                    onError: (error) => message.error(getErrorMessage(error)),
-                  },
-                )
+              organization_id: organizationId,
+              email: values.email,
+              display_name: values.display_name,
+              role: values.role,
+              group_ids: values.group_ids,
+            },
+            {
+              onSuccess: () => {
+                setEditing(null)
+                message.success(`${values.display_name} was created — they'll get an email to set their password.`)
               },
               onError: (error) => message.error(getErrorMessage(error)),
             },
           )
         }}
-        submitting={createMembership.isPending || updateMembership.isPending || createUser.isPending}
+        submitting={createMembership.isPending || updateMembership.isPending || createOrganizationMember.isPending}
       />
     </div>
   )
@@ -328,12 +309,12 @@ function MembershipFormDrawer({
   open: boolean
   onClose: () => void
   onSubmitExisting: (values: { user_id?: string; role?: string }) => void
-  onSubmitNewUser: (values: { email: string; password: string; display_name: string; role: string }) => void
+  onSubmitNewUser: (values: { email: string; display_name: string; role: string; group_ids?: string[] }) => void
   submitting: boolean
 }) {
   const [mode, setMode] = useState<'existing' | 'new'>('existing')
   const [existingForm] = Form.useForm<{ user_id: string; role: string }>()
-  const [newUserForm] = Form.useForm<{ email: string; password: string; display_name: string; role: string }>()
+  const [newUserForm] = Form.useForm<{ email: string; display_name: string; role: string; group_ids?: string[] }>()
 
   useEffect(() => {
     if (!open) return
@@ -401,7 +382,8 @@ function MembershipFormDrawer({
         ) : (
           <>
             <Typography.Text style={{ color: palette.inkSecondary }}>
-              Creates a brand-new platform account and adds it to this organization in one step.
+              Creates a brand-new platform account and adds it to this organization in one step. They'll get an
+              email with a link to set their own password — nobody here ever sees or sets it for them.
             </Typography.Text>
 
             <Form key="new-user" form={newUserForm} layout="vertical" onFinish={onSubmitNewUser} initialValues={{ role: 'member' }}>
@@ -416,19 +398,15 @@ function MembershipFormDrawer({
                 <Input />
               </Form.Item>
               <Form.Item
-                name="password"
-                label="Password"
-                rules={[{ required: true, min: 8, message: 'At least 8 characters' }]}
-              >
-                <Input.Password />
-              </Form.Item>
-              <Form.Item
                 name="role"
                 label="Role"
                 extra="Use built-in roles for broad access and custom roles when a team needs narrower permissions."
                 rules={[{ required: true, message: 'Required' }]}
               >
                 <RoleSelect organizationId={organizationId ?? undefined} />
+              </Form.Item>
+              <Form.Item name="group_ids" label="Teams" extra="Optional — add this member to one or more teams right away.">
+                <GroupMultiSelect organizationId={organizationId ?? undefined} />
               </Form.Item>
             </Form>
           </>

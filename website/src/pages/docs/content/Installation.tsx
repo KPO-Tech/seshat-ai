@@ -2,8 +2,8 @@ import { Link, useLocation } from 'react-router-dom'
 import DocCodeBlock from './DocCodeBlock'
 import styles from './DocArticle.module.css'
 
-const INSTALL_SCRIPT = 'curl -fsSL https://raw.githubusercontent.com/EngineerProjects/seshat/main/scripts/install.sh | bash'
-const GO_INSTALL = 'go install github.com/EngineerProjects/seshat/cmd/cli@latest'
+const INSTALL_SCRIPT = 'curl -fsSL https://raw.githubusercontent.com/KPO-Tech/seshat/main/scripts/install.sh | bash'
+const GO_INSTALL = 'go install github.com/KPO-Tech/seshat/cmd/cli@latest'
 const VERIFY_CMD = 'seshat --version'
 
 export default function Installation() {
@@ -60,7 +60,7 @@ export default function Installation() {
           If you prefer manual installation, download the pre-built binary for your platform directly from GitHub Releases.
         </p>
         <a
-          href="https://github.com/EngineerProjects/seshat/releases"
+          href="https://github.com/KPO-Tech/seshat/releases"
           target="_blank"
           rel="noreferrer"
           className={styles.secondaryLink}

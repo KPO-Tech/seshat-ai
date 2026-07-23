@@ -14,20 +14,21 @@ export interface ListParams {
 
 // Inline request bodies in openapi.yaml (not named schemas) - create attaches
 // an organization+role in the same call (system roles only, see
-// canonicalRoleCode server-side), update is platform-fields only.
+// canonicalRoleCode server-side). Neither accepts is_admin - platform-admin
+// status is granted exactly once, by seeding from env vars at server boot,
+// and never through any API/console action afterwards, by anyone (see
+// createUser's description in openapi.yaml).
 export interface UserCreateInput {
   email: string
   password: string
   display_name: string
   organization_id?: string
   role?: 'owner' | 'admin' | 'member' | 'viewer'
-  is_admin?: boolean
 }
 
 export interface UserUpdateInput {
   email: string
   display_name: string
-  is_admin?: boolean
 }
 
 const LIST_KEY = 'users'
@@ -73,8 +74,8 @@ export function useUpdateUser() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [LIST_KEY] })
-      // Membership rows embed user_is_admin (see enrichMembershipsWithUsers
-      // server-side), so an is_admin change must also invalidate that list.
+      // Membership rows embed the user's email/display name, which this
+      // can change - keep that list in sync too.
       queryClient.invalidateQueries({ queryKey: ['memberships'] })
     },
   })

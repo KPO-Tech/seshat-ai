@@ -4,8 +4,9 @@ import { useAuthStore } from '@/stores/auth'
 import { streamingToContentBlocks, useSessionStore } from '@/stores/session'
 import { useUIStore } from '@/stores/ui'
 import { findLatestToolUseByName, normalizeSessionMessages, statusFromResult, toolResultFromDone } from '@/lib/chat'
+import { permissionSignature } from '@/lib/permissionSignature'
 import { generateSessionTitleFromPrompt, isUntitledSessionTitle } from '@/lib/sessionTitle'
-import type { Message, RAGSearchResult, StreamEvent, ToolApproval, ToolPromptRequest, ToolStatus } from '@/api/types'
+import type { Message, RAGSearchResult, StreamEvent, TokenUsage, ToolApproval, ToolPromptRequest, ToolStatus } from '@/api/types'
 import type { StreamingBlock, ToolActivity } from '@/stores/session'
 
 type RuntimeEventPayload = {
@@ -46,6 +47,18 @@ type RuntimeEventPayload = {
     status: string
     version: number
   }
+  // Carried by agent.spawn.begin/end, agent.wait.*, agent.interaction.*, and
+  // agent.close.* — see AgentRuntimeEvent in the engine. agent_id is the
+  // stable identifier returned by spawn_agent, distinct from the tool_use_id
+  // used as the sub-agent's key everywhere else in this file; it is needed to
+  // call the cancel endpoint (POST /subagents/{agent_id}/cancel).
+  agent_event?: {
+    call_id: string
+    agent_id: string
+    agent_nickname?: string
+    agent_role?: string
+    status?: string
+  }
   error?: string
 }
 
@@ -53,6 +66,14 @@ type DonePayload = {
   messages?: Message[]
   tool_results?: Array<{ id: string; content: string; is_error?: boolean; duration_ms?: number; metadata?: Record<string, unknown> }>
   rag_results?: RAGSearchResult[]
+  // Present on the backend's queryResponse (see seshat-backend/internal/api/query.go)
+  // but previously parsed off the wire and discarded — the Agent Monitor's stat
+  // display only ever reflected the last turn.completed event, which can be
+  // stale for multi-turn responses since `done` carries the authoritative final
+  // snapshot for the whole exchange. See commitDonePayload.
+  stop_reason?: string
+  turn_number?: number
+  usage?: TokenUsage
 }
 
 const MAX_RETRIES = 3
@@ -60,8 +81,14 @@ const RETRY_BASE_MS = 1000
 
 export function useChat(sessionId: string) {
   const isStreaming = useSessionStore((s) => Boolean(s.isStreamingBySession[sessionId]))
-  const activeControllerRef = useRef<AbortController | null>(null)
-  const stopRequestedRef = useRef(false)
+  // Keyed by sessionId, not a bare value: this hook's ref identity is tied to
+  // the calling component instance, not to any one session. React Router does
+  // not remount Conversation on a session switch (no `key` on the route), so
+  // a single unkeyed AbortController/flag would get silently overwritten by
+  // whichever session's sendMessage ran most recently — a later Stop click for
+  // session A would then abort session B's still-running stream instead.
+  const activeControllersRef = useRef<Map<string, AbortController>>(new Map())
+  const stopRequestedRef = useRef<Set<string>>(new Set())
   // Tracks a pending requestAnimationFrame for batching assistant-message syncs.
   // Without batching, every SSE token triggers a full store.updateMessage call.
   const syncRafRef = useRef<number | null>(null)
@@ -91,8 +118,8 @@ export function useChat(sessionId: string) {
     store.clearStreaming(sessionId)
     store.updateAgentState(sessionId, { isThinking: true, activeTool: null })
     const abortController = new AbortController()
-    activeControllerRef.current = abortController
-    stopRequestedRef.current = false
+    activeControllersRef.current.set(sessionId, abortController)
+    stopRequestedRef.current.delete(sessionId)
 
     // Cancel any stale RAF from a prior message (defensive).
     if (syncRafRef.current !== null) {
@@ -129,6 +156,14 @@ export function useChat(sessionId: string) {
 
       while (true) {
         let streamError: unknown = null
+        // Set as soon as this attempt observes any real activity from the backend
+        // (a runtime event or a content chunk) — proof the agent turn is actually
+        // running server-side, and possibly already executing tools with side
+        // effects (bash, file writes, external API calls). Once true, a dropped
+        // connection must NOT be silently retried by resubmitting the same prompt,
+        // since that would start a second, duplicate agent turn on top of the
+        // first one instead of resuming it (the backend has no idempotency key).
+        let receivedServerActivity = false
 
         try {
           const body = {
@@ -150,11 +185,13 @@ export function useChat(sessionId: string) {
                 flushSync()
               },
               (runtimeEvent) => {
+                receivedServerActivity = true
                 handleRuntimeEvent(sessionId, runtimeEvent, store, (tool) => {
                   pendingTool = tool
                 }, () => pendingTool, scheduleSync)
               },
               (streamEvent) => {
+                receivedServerActivity = true
                 handleStreamChunk(sessionId, streamEvent, store, scheduleSync)
               },
             )
@@ -230,6 +267,8 @@ export function useChat(sessionId: string) {
                     break outer
                   }
 
+                  receivedServerActivity = true
+
                   if (eventName === 'runtime') {
                     handleRuntimeEvent(sessionId, parsed as RuntimeEventPayload, store, (tool) => {
                       pendingTool = tool
@@ -256,13 +295,27 @@ export function useChat(sessionId: string) {
         if (streamError === null) break // clean exit
 
         const isAbort =
-          stopRequestedRef.current ||
+          stopRequestedRef.current.has(sessionId) ||
           (streamError instanceof DOMException && (streamError as DOMException).name === 'AbortError')
 
         if (isAbort || committed) throw streamError
 
-        // TypeError = "Failed to fetch" / network drop — retryable. All other errors propagate.
-        if (retryAttempt < MAX_RETRIES && streamError instanceof TypeError) {
+        // TypeError = "Failed to fetch" / network drop — retryable, but only when the
+        // backend never got the chance to start the turn (no chunk/runtime event was
+        // observed yet). If it did, the backend has no idempotency key to tell a retry
+        // apart from a brand-new turn, so resubmitting here could duplicate tool calls
+        // that already ran (bash commands, file writes, external API calls). In that
+        // case we fall through to surfacing a connection error instead, preserving
+        // whatever partial content already streamed.
+        //
+        // Two ways a network drop surfaces here: `instanceof TypeError` on the
+        // browser-fetch fallback path (a real TypeError, same as any web app),
+        // or an explicit `.retryable` tag on the Electron path, where the
+        // underlying error and its type live in the main process and don't
+        // survive the IPC boundary — see makeRetryableError above.
+        const isRetryableNetworkDrop =
+          streamError instanceof TypeError || (streamError as RetryableError | undefined)?.retryable === true
+        if (retryAttempt < MAX_RETRIES && isRetryableNetworkDrop && !receivedServerActivity) {
           retryAttempt++
           const delay = RETRY_BASE_MS * (2 ** (retryAttempt - 1)) // 1s, 2s, 4s
           store.updateMessage(sessionId, assistantMessageId, (msg) => ({
@@ -270,7 +323,7 @@ export function useChat(sessionId: string) {
             content: [{ type: 'text' as const, text: `> Connection lost. Reconnecting (attempt ${retryAttempt}/${MAX_RETRIES})…` }],
           }))
           await new Promise<void>((resolve) => setTimeout(resolve, delay))
-          if (stopRequestedRef.current) break
+          if (stopRequestedRef.current.has(sessionId)) break
           store.clearStreaming(sessionId)
           continue
         }
@@ -289,7 +342,7 @@ export function useChat(sessionId: string) {
       }
     } catch (error) {
       if (committed) return
-      if (stopRequestedRef.current || (error instanceof DOMException && error.name === 'AbortError')) {
+      if (stopRequestedRef.current.has(sessionId) || (error instanceof DOMException && error.name === 'AbortError')) {
         flushSync()
         const partial = streamingToContentBlocks(useSessionStore.getState().getStreaming(sessionId))
         store.updateMessage(sessionId, assistantMessageId, (message) => ({
@@ -309,8 +362,8 @@ export function useChat(sessionId: string) {
         cancelAnimationFrame(syncRafRef.current)
         syncRafRef.current = null
       }
-      activeControllerRef.current = null
-      stopRequestedRef.current = false
+      activeControllersRef.current.delete(sessionId)
+      stopRequestedRef.current.delete(sessionId)
       store.setIsStreaming(sessionId, false)
       store.updateAgentState(sessionId, { isThinking: false, activeTool: null, pendingPermission: null })
     }
@@ -320,17 +373,31 @@ export function useChat(sessionId: string) {
     const store = useSessionStore.getState()
     if (!sessionId || !store.isSessionStreaming(sessionId)) return
 
-    stopRequestedRef.current = true
+    stopRequestedRef.current.add(sessionId)
     try {
       await api.post(`/sessions/${sessionId}/interrupt`)
     } catch {
       // Best effort — local abort below still stops the UI stream immediately.
     } finally {
-      activeControllerRef.current?.abort()
+      activeControllersRef.current.get(sessionId)?.abort()
     }
   }, [sessionId])
 
   return { isStreaming, sendMessage, stopMessage }
+}
+
+// An Error tagged with whether useChat's retry loop may safely resubmit the
+// prompt for it — see isRetryableNetworkError in main/ipc/backend.ts for why
+// this can't just be `instanceof TypeError` on the Electron path: the real
+// error (and its type) lives in the main process, and Electron's IPC only
+// carries a message string across to here, so the main process tags
+// retryability explicitly instead.
+type RetryableError = Error & { retryable?: boolean }
+
+function makeRetryableError(message: string, retryable: boolean): RetryableError {
+  const error: RetryableError = new Error(message)
+  error.retryable = retryable
+  return error
 }
 
 async function consumeElectronStream(
@@ -344,11 +411,15 @@ async function consumeElectronStream(
     throw new Error('Electron HTTP bridge is unavailable')
   }
 
-  const { streamId } = await window.nexus.http.startStream({
+  const startResult = await window.nexus.http.startStream({
     path: '/query/stream',
     method: 'POST',
     body,
   })
+  if ('error' in startResult) {
+    throw makeRetryableError(startResult.error, startResult.retryable)
+  }
+  const { streamId } = startResult
 
   await new Promise<void>((resolve, reject) => {
     let settled = false
@@ -358,7 +429,7 @@ async function consumeElectronStream(
         settled = true
         unsubscribe()
         cleanupAbort()
-        reject(new Error((data.error as string) || 'Streaming error'))
+        reject(makeRetryableError((data.error as string) || 'Streaming error', data.retryable === true))
         return
       }
       if (name === 'done') {
@@ -517,6 +588,17 @@ function handleRuntimeEvent(
   }
 
   switch (event.type) {
+    // Authoritative plan/execute mode signal, emitted the instant
+    // enter_plan_mode/exit_plan_mode complete — previously the UI only ever
+    // inferred the mode indirectly from a tool_name heuristic on the next
+    // tool.progress(completed) event (see the 'tool.progress' case below),
+    // which happened to work for the same reason but was guessing rather
+    // than reading the engine's own signal for this.
+    case 'execution_mode.changed': {
+      store.updateAgentState(sessionId, { executionMode: normaliseMode(event.execution_mode) })
+      break
+    }
+
     case 'turn.started': {
       store.updateAgentState(sessionId, {
         executionMode: normaliseMode(event.execution_mode),
@@ -555,6 +637,19 @@ function handleRuntimeEvent(
         toolName: request.tool_name,
         toolInput: request.tool_input ?? {},
         description: request.description,
+      }
+
+      // "Always allow" from a previous PermissionCard — auto-resolve via the
+      // same API the card's own buttons use, without ever surfacing it again.
+      const signature = permissionSignature(request.tool_name, request.tool_input ?? {})
+      if (useUIStore.getState().rememberedApprovals[signature]) {
+        void api.post(`/permissions/${request.tool_use_id}`, { approved: true, session_id: sessionId }).catch(() => {})
+        updateStreamingTool(sessionId, store, request.tool_use_id, {
+          _status: 'running',
+          input: request.tool_input ?? {},
+        })
+        syncAssistantMessage()
+        break
       }
 
       store.updateAgentState(sessionId, { pendingPermission: approval })
@@ -673,7 +768,23 @@ function handleRuntimeEvent(
         setPendingTool(null)
 
         // When the agent tool itself completes/fails, propagate status to sub-agent state.
-        if (progress.tool_name === 'agent' && progress.tool_use_id) {
+        //
+        // For the synchronous `agent` tool, the outer tool call blocks until the
+        // sub-agent is done, so this event IS the real completion signal.
+        //
+        // For `spawn_agent`, the outer tool call returns almost immediately (it
+        // only starts a background agent), so the engine's generic tool-execution
+        // pipeline emits a `tool.progress` "completed" event for `spawn_agent`
+        // well before the underlying agent has actually finished. The real
+        // completion is a *second*, later `tool.progress` event with the same
+        // tool_use_id, emitted explicitly once the background agent's own
+        // ag.Wait() unblocks (see spawn_agent.go) — it carries
+        // metadata.subagent_finished=true to distinguish it from the spurious
+        // first one. Without checking that marker, the sub-agent card would flip
+        // to "Completed" within milliseconds while the agent keeps running, and
+        // the real completion would never arrive to unstick it.
+        const isSpawnAgentFinished = progress.tool_name === 'spawn_agent' && progress.metadata?.subagent_finished === true
+        if ((progress.tool_name === 'agent' || isSpawnAgentFinished) && progress.tool_use_id) {
           const agentResultText = progress.stage === 'completed'
             ? (typeof progress.metadata?.content === 'string'
                 ? progress.metadata.content
@@ -760,6 +871,17 @@ function handleSubagentEvent(
   }
 
   switch (event.type) {
+    case 'agent.spawn.end': {
+      // Carries the stable agent_id returned by spawn_agent — needed to call
+      // the cancel endpoint. agent.spawn.begin has no agent_id yet (the agent
+      // hasn't been assigned one when that event fires) so it's not handled here.
+      const agentId = event.agent_event?.agent_id
+      if (agentId) {
+        store.upsertSubagent(sessionId, toolUseId, { agentId })
+      }
+      break
+    }
+
     case 'turn.started': {
       store.upsertSubagent(sessionId, toolUseId, {
         turnNumber: event.turn_number ?? 0,
@@ -934,6 +1056,19 @@ function commitDonePayload(
   payload: DonePayload,
   store: ReturnType<typeof useSessionStore.getState>,
 ) {
+  // done carries the authoritative final turn_number/usage for the whole
+  // exchange — refresh the Agent Monitor's stats with it rather than leaving
+  // whatever the last turn.completed event happened to report, which can be
+  // stale for multi-turn responses (each turn.completed only reflects that
+  // one turn, not the aggregate).
+  if (payload.turn_number != null || payload.usage) {
+    store.updateAgentState(sessionId, {
+      ...(payload.turn_number != null ? { turnNumber: payload.turn_number } : {}),
+      ...(payload.usage?.input_tokens != null ? { inputTokens: payload.usage.input_tokens } : {}),
+      ...(payload.usage?.output_tokens != null ? { outputTokens: payload.usage.output_tokens } : {}),
+    })
+  }
+
   if (Array.isArray(payload.messages)) {
     const normalized = normalizeSessionMessages(payload.messages)
     attachDoneResults(normalized, payload.tool_results ?? [])
@@ -1131,7 +1266,6 @@ function openKnowledgePanel(sessionId: string, ragResults?: RAGSearchResult[]) {
     kind: 'knowledge',
     title: 'Knowledge Context',
     sessionId,
-    width: 420,
     sourceLabel: `${ragResults.length} retrieved excerpt${ragResults.length > 1 ? 's' : ''}`,
     knowledgeResults: ragResults,
   })

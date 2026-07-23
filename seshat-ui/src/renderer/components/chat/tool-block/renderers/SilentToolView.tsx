@@ -12,9 +12,9 @@ const CSS = `
 .tb-sl-line {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   padding: 2px 0;
-  font-size: 12px;
+  font-size: 10px;
   color: var(--color-text-muted);
   cursor: default;
   user-select: none;
@@ -57,7 +57,7 @@ const CSS = `
 
 .tb-sl-snippet {
   font-family: monospace;
-  font-size: 11px;
+  font-size: 10px;
   opacity: 0.55;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -66,7 +66,7 @@ const CSS = `
 }
 
 .tb-sl-error-text {
-  color: #f87171;
+  color: var(--color-error);
 }
 
 .tb-sl-arrow {
@@ -82,9 +82,9 @@ const CSS = `
 
 .tb-sl-error-body {
   margin-top: 4px;
-  padding-left: 20px;
-  font-size: 12px;
-  color: #f87171;
+  padding-left: 14px;
+  font-size: 10px;
+  color: var(--color-error);
   font-family: monospace;
   white-space: pre-wrap;
   word-break: break-all;
@@ -138,7 +138,7 @@ export function SilentToolView({ tool, result, status, snippet }: Props) {
       >
         <span className="tb-sl-icon">
           {isRunning && <span className="tb-sl-spinner" />}
-          {!isRunning && !isError && <span style={{ color: '#34d399', lineHeight: 1 }}>✓</span>}
+          {!isRunning && !isError && <span style={{ color: 'var(--color-success)', lineHeight: 1 }}>✓</span>}
           {!isRunning && isError && <span style={{ lineHeight: 1 }}>✗</span>}
         </span>
         <span className="tb-sl-name">{label}</span>

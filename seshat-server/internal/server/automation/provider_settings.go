@@ -276,7 +276,7 @@ func (s *Service) ResolveProviderSetting(ctx context.Context, principal *iam.Pri
 		}, nil
 	}
 
-	defaultOrgID, found, err := s.iam.DefaultOrganizationID(tx)
+	defaultOrgID, found, err := s.iam.DefaultOrganizationIDForDomain(tx, iam.SharedDomainProviderSettings)
 	if err != nil {
 		return nil, err
 	}

@@ -323,12 +323,12 @@ function SkillsPanel() {
             {loading ? '…' : `${enabledCount}/${filtered.length} active`}
           </span>
           <button className="caps-icon-btn" title="Refresh" onClick={load}>
-            <Sync size={16} />
+            <Sync size={13} />
           </button>
         </div>
         <div className="caps-header-right">
           <div className="caps-search-box">
-            <Search size={14} />
+            <Search size={11} />
             <input
               type="text"
               placeholder="Search skills…"
@@ -338,7 +338,7 @@ function SkillsPanel() {
           </div>
           {repoManagementAvailable && (
             <button className="caps-add-mcp-btn" onClick={() => setShowInstaller(true)}>
-              <Plus size={14} /> Install Skills
+              <Plus size={11} /> Install Skills
             </button>
           )}
         </div>
@@ -426,7 +426,7 @@ function SkillGroup({ collection, skills, onToggle, onDelete }: {
   return (
     <div className="caps-skill-group">
       <button className="caps-group-header" onClick={() => setOpen(o => !o)}>
-        <Down size={12} style={{ transform: open ? 'none' : 'rotate(-90deg)', transition: 'transform 0.15s', flexShrink: 0 }} />
+        <Down size={10} style={{ transform: open ? 'none' : 'rotate(-90deg)', transition: 'transform 0.15s', flexShrink: 0 }} />
         <span className="caps-group-name">{label}</span>
         {isRepo && <span className="caps-repo-pill">repo</span>}
         <span className="caps-group-count">{skills.length}</span>
@@ -522,7 +522,7 @@ function SkillItem({ skill, onToggle, onDelete }: {
         onClick={handleIconClick}
         title="Change icon"
       >
-        <IconComp size={20} />
+        <IconComp size={16} />
       </button>
 
       <div className="caps-skill-info">
@@ -534,7 +534,7 @@ function SkillItem({ skill, onToggle, onDelete }: {
         </div>
         {skill.description ? (
           <button className="caps-skill-expand-btn" onClick={() => setExpanded(e => !e)}>
-            <Down size={11} style={{ transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s', flexShrink: 0 }} />
+            <Down size={10} style={{ transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s', flexShrink: 0 }} />
             {expanded ? 'Hide' : 'Description'}
           </button>
         ) : null}
@@ -552,7 +552,7 @@ function SkillItem({ skill, onToggle, onDelete }: {
         )}
         {isUserSkill(skill) && (
           <button className="caps-mini-btn danger" title="Delete" onClick={onDelete}>
-            <Close size={13} />
+            <Close size={11} />
           </button>
         )}
       </div>
@@ -590,7 +590,7 @@ function SkillIconPicker({ pos, currentIcon, onSelect, onClose }: {
                   onClick={() => onSelect(name)}
                   title={name}
                 >
-                  <Icon size={18} />
+                  <Icon size={15} />
                 </button>
               ))}
             </div>
@@ -658,7 +658,7 @@ function RepoManagerModal({ catalog, installed, onClose, onChanged }: {
       <div className="modal-shell repo-modal-shell">
         <div className="modal-header">
           <h2>Install Skills</h2>
-          <button className="modal-close-btn" onClick={onChanged}><Close size={20} /></button>
+          <button className="modal-close-btn" onClick={onChanged}><Close size={16} /></button>
         </div>
         <div className="modal-content" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {err && <div className="caps-error">{err}</div>}
@@ -680,7 +680,7 @@ function RepoManagerModal({ catalog, installed, onClose, onChanged }: {
                 disabled={!url.trim() || !!installing}
                 onClick={() => installRepo(url.trim())}
               >
-                {installing && installing === url.trim() ? <Sync size={12} /> : <Upload size={12} />}
+                {installing && installing === url.trim() ? <Sync size={10} /> : <Upload size={10} />}
                 {installing && installing === url.trim() ? 'Installing…' : 'Install'}
               </button>
             </div>
@@ -711,7 +711,7 @@ function RepoManagerModal({ catalog, installed, onClose, onChanged }: {
                           onClick={() => uninstallRepo(entry.name)}
                           disabled={isUninstalling}
                         >
-                          <Close size={11} />
+                          <Close size={10} />
                           {isUninstalling ? 'Removing…' : 'Uninstall'}
                         </button>
                       ) : (
@@ -720,7 +720,7 @@ function RepoManagerModal({ catalog, installed, onClose, onChanged }: {
                           onClick={() => installRepo(entry.url)}
                           disabled={!!installing}
                         >
-                          {isInstalling ? <Sync size={11} /> : <Upload size={11} />}
+                          {isInstalling ? <Sync size={10} /> : <Upload size={10} />}
                           {isInstalling ? 'Installing…' : 'Install'}
                         </button>
                       )}
@@ -746,7 +746,7 @@ function RepoManagerModal({ catalog, installed, onClose, onChanged }: {
                       onClick={() => uninstallRepo(repo.name)}
                       disabled={uninstalling === repo.name}
                     >
-                      <Close size={11} />
+                      <Close size={10} />
                       {uninstalling === repo.name ? 'Removing…' : 'Uninstall'}
                     </button>
                   </div>
@@ -872,24 +872,24 @@ function McpPanel() {
             <div className="caps-mcp-actions-bar">
               {pendingReload && (
                 <span className="caps-reload-badge">
-                  <Attention size={12} /> Reload required
+                  <Attention size={10} /> Reload required
                 </span>
               )}
               <button className="caps-icon-btn" title="Refresh list" onClick={load}>
-                <Sync size={16} />
+                <Sync size={13} />
               </button>
               <button className="caps-import-json-btn" onClick={handleImportJSON} title="Import from mcp.json">
-                <Upload size={14} /> Load JSON
+                <Upload size={11} /> Load JSON
               </button>
               <button
                 className={`caps-reload-btn ${reloading ? 'loading' : ''}`}
                 onClick={handleReload}
                 disabled={reloading}
               >
-                <Sync size={14} /> {reloading ? 'Reloading…' : 'Apply & Reload'}
+                <Sync size={11} /> {reloading ? 'Reloading…' : 'Apply & Reload'}
               </button>
               <button className="caps-add-mcp-btn" onClick={() => setModal({ mode: 'add' })}>
-                <Plus size={14} /> Add server
+                <Plus size={11} /> Add server
               </button>
             </div>
           </div>
@@ -902,7 +902,7 @@ function McpPanel() {
             <div className="caps-reload-result">
               {reloadStatuses.map(s => (
                 <div key={s.name} className={`caps-reload-row ${s.ok ? 'ok' : 'err'}`}>
-                  {s.ok ? <Check size={13} /> : <Attention size={13} />}
+                  {s.ok ? <Check size={11} /> : <Attention size={11} />}
                   <span>{s.name}</span>
                   {s.ok && <span className="caps-reload-tools">{s.tools} tools</span>}
                   {s.error && <span className="caps-reload-error">{s.error}</span>}
@@ -1033,7 +1033,7 @@ function McpOrgCatalogSection({ onApprovalChanged }: { onApprovalChanged: () => 
                       <div className="caps-mcp-title">
                         <span className="caps-mcp-name">{entry.display_name || entry.name}</span>
                         <span className="caps-mcp-type-badge">
-                          {isStdio ? <Terminal size={11} /> : <Globe size={11} />}
+                          {isStdio ? <Terminal size={10} /> : <Globe size={10} />}
                           {entry.server_type}
                         </span>
                         <span className="caps-mcp-source-badge">from organization</span>
@@ -1054,7 +1054,7 @@ function McpOrgCatalogSection({ onApprovalChanged }: { onApprovalChanged: () => 
                         disabled={busyId === entry.id}
                         title="Stop running this server locally"
                       >
-                        <CheckOne size={13} /> {busyId === entry.id ? 'Working…' : 'Active'}
+                        <CheckOne size={11} /> {busyId === entry.id ? 'Working…' : 'Active'}
                       </button>
                     ) : (
                       <button
@@ -1063,7 +1063,7 @@ function McpOrgCatalogSection({ onApprovalChanged }: { onApprovalChanged: () => 
                         disabled={busyId === entry.id}
                         title={isStdio ? 'This will run a command on your machine' : 'Enable this server locally'}
                       >
-                        <Lock size={13} /> {busyId === entry.id ? 'Working…' : 'Activer'}
+                        <Lock size={11} /> {busyId === entry.id ? 'Working…' : 'Activer'}
                       </button>
                     )}
                   </div>
@@ -1099,7 +1099,7 @@ function McpServerCard({
             <div className="caps-mcp-title">
               <span className="caps-mcp-name">{server.display_name || server.name}</span>
               <span className="caps-mcp-type-badge">
-                {isStdio ? <Terminal size={11} /> : <Globe size={11} />}
+                {isStdio ? <Terminal size={10} /> : <Globe size={10} />}
                 {server.server_type}
               </span>
               {server.source === 'file' && (
@@ -1111,7 +1111,7 @@ function McpServerCard({
                   onClick={() => setExpanded(v => !v)}
                   title={expanded ? 'Hide tools' : 'Show tools'}
                 >
-                  <Api size={11} />
+                  <Api size={10} />
                   {tools.length} tool{tools.length !== 1 ? 's' : ''}
                   <Down size={10} style={{ transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
                 </button>
@@ -1138,10 +1138,10 @@ function McpServerCard({
             <span className="caps-toggle-track" />
           </label>
           <button className="caps-mini-btn" title="Edit" onClick={onEdit}>
-            <Edit size={13} />
+            <Edit size={11} />
           </button>
           <button className="caps-mini-btn danger" title="Delete" onClick={onDelete}>
-            <Close size={13} />
+            <Close size={11} />
           </button>
         </div>
       </div>
@@ -1231,7 +1231,7 @@ function McpServerModal({
       <div className="modal-shell mcp-modal-shell">
         <div className="modal-header">
           <h2>{mode === 'add' ? 'Add MCP Server' : 'Edit MCP Server'}</h2>
-          <button className="modal-close-btn" onClick={onClose}><Close size={20} /></button>
+          <button className="modal-close-btn" onClick={onClose}><Close size={16} /></button>
         </div>
         <div className="modal-content" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {err && <div className="caps-error">{err}</div>}
@@ -1387,43 +1387,275 @@ function MultimodalPanel() {
               <div className="sv-setting-label">Image Model</div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: 13 }}>
-              No available image models, configure a provider first. <Attention size={14} />
+              No available image models, configure a provider first. <Attention size={11} />
             </div>
           </div>
         </div>
       </div>
 
-      <div className="sv-card">
-        <div className="sv-card-head">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div className="sv-card-brand">
-              <div>
-                <div className="sv-brand-name">Speech to Text</div>
-                <div className="sv-brand-sub">Voice input provider for chat on desktop and WebUI</div>
-              </div>
-            </div>
-            <input type="checkbox" defaultChecked />
-          </div>
-        </div>
-        <div className="sv-card-body">
-          <div className="sv-field">
-            <label>Provider</label>
-            <div className="sv-select-static">
-              <div className="sv-select-box">
-                <span>OpenAI Whisper</span>
-                <Down size={16} />
-              </div>
-            </div>
-          </div>
-          <div className="sv-field">
-            <label>API Key</label>
-            <div className="sv-input-box">
-              <input type="password" placeholder="••••••••" />
-            </div>
+      <SpeechToTextCard />
+    </>
+  )
+}
+
+type WhisperStatus = {
+  supported: boolean
+  running: boolean
+  port?: number
+  activeModelId: string
+  downloadedModelIds: string[]
+}
+type WhisperModelInfo = { id: string; filename: string; label: string; approxSizeBytes: number; description: string }
+type WhisperProgress = { phase: 'binary' | 'model'; modelId?: string; receivedBytes: number; totalBytes: number }
+
+function formatBytes(bytes: number): string {
+  if (bytes >= 1_000_000_000) return `${(bytes / 1_000_000_000).toFixed(1)} GB`
+  return `${Math.round(bytes / 1_000_000)} MB`
+}
+
+function SpeechToTextCard() {
+  const [status, setStatus] = useState<WhisperStatus | null>(null)
+  const [models, setModels] = useState<WhisperModelInfo[]>([])
+  const [addModelId, setAddModelId] = useState<string>('')
+  const [busyModelId, setBusyModelId] = useState<string | null>(null)
+  const [settingUp, setSettingUp] = useState(false)
+  const [progress, setProgress] = useState<WhisperProgress | null>(null)
+  const [serverBusy, setServerBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const refreshStatus = useCallback(async () => {
+    try {
+      setStatus((await window.nexus?.whisper?.status()) ?? null)
+    } catch {
+      setStatus(null)
+    }
+  }, [])
+
+  useEffect(() => {
+    void refreshStatus()
+    window.nexus?.whisper?.models().then(setModels).catch(() => {})
+  }, [refreshStatus])
+
+  useEffect(() => {
+    return window.nexus?.whisper?.onProgress?.(setProgress)
+  }, [])
+
+  const downloadedModels = models.filter((m) => status?.downloadedModelIds.includes(m.id))
+  const availableModels = models.filter((m) => !status?.downloadedModelIds.includes(m.id))
+
+  useEffect(() => {
+    if (!addModelId && availableModels.length > 0) setAddModelId(availableModels[0].id)
+  }, [availableModels, addModelId])
+
+  async function handleInitialSetup() {
+    setError(null)
+    setSettingUp(true)
+    setProgress(null)
+    try {
+      await window.nexus?.whisper?.downloadDefaults()
+      await refreshStatus()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to set up local transcription.')
+    } finally {
+      setSettingUp(false)
+      setProgress(null)
+    }
+  }
+
+  async function handleAddModel() {
+    if (!addModelId) return
+    setError(null)
+    setBusyModelId(addModelId)
+    setProgress(null)
+    try {
+      await window.nexus?.whisper?.downloadModel(addModelId)
+      await refreshStatus()
+      setAddModelId('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to download this model.')
+    } finally {
+      setBusyModelId(null)
+      setProgress(null)
+    }
+  }
+
+  async function handleActivate(modelId: string) {
+    setError(null)
+    setBusyModelId(modelId)
+    try {
+      await window.nexus?.whisper?.activateModel(modelId)
+      await refreshStatus()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to switch models.')
+    } finally {
+      setBusyModelId(null)
+    }
+  }
+
+  async function handleDeleteModel(modelId: string) {
+    setError(null)
+    setBusyModelId(modelId)
+    try {
+      await window.nexus?.whisper?.deleteModel(modelId)
+      await refreshStatus()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete this model.')
+    } finally {
+      setBusyModelId(null)
+    }
+  }
+
+  async function handleEnable() {
+    setError(null)
+    setServerBusy(true)
+    try {
+      await window.nexus?.whisper?.enable()
+      await refreshStatus()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start local transcription.')
+    } finally {
+      setServerBusy(false)
+    }
+  }
+
+  async function handleDisable() {
+    setError(null)
+    setServerBusy(true)
+    try {
+      await window.nexus?.whisper?.disable()
+      await refreshStatus()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to stop local transcription.')
+    } finally {
+      setServerBusy(false)
+    }
+  }
+
+  const progressPercent = progress && progress.totalBytes > 0
+    ? Math.round((progress.receivedBytes / progress.totalBytes) * 100)
+    : null
+  const hasModels = (status?.downloadedModelIds.length ?? 0) > 0
+  const busy = settingUp || busyModelId !== null
+
+  return (
+    <div className="sv-card">
+      <div className="sv-card-head">
+        <div className="sv-card-brand">
+          <div>
+            <div className="sv-brand-name">Speech to Text</div>
+            <div className="sv-brand-sub">Voice input transcription for the mic button in chat</div>
           </div>
         </div>
       </div>
-    </>
+      <div className="sv-card-body">
+        <div className="sv-toggle-row">
+          <div>
+            <div className="sv-setting-label">Local (whisper.cpp)</div>
+            <div className="sv-setting-desc">
+              {status?.supported === false
+                ? "Not available on macOS yet: whisper.cpp doesn't publish a prebuilt server binary for it."
+                : 'Runs on this machine, no API key needed. Falls back to your configured OpenAI provider when off.'}
+            </div>
+          </div>
+          {status && status.supported !== false && hasModels && (
+            status.running ? (
+              <button className="sv-danger-btn" onClick={() => void handleDisable()} disabled={serverBusy}>
+                {serverBusy ? 'Stopping…' : 'Disable'}
+              </button>
+            ) : (
+              <button className="modal-btn-submit" onClick={() => void handleEnable()} disabled={serverBusy || busy}>
+                {serverBusy ? 'Starting…' : 'Enable'}
+              </button>
+            )
+          )}
+        </div>
+
+        {status?.supported !== false && !hasModels && (
+          <button
+            className="modal-btn-submit"
+            style={{ marginTop: 12 }}
+            onClick={() => void handleInitialSetup()}
+            disabled={settingUp}
+          >
+            {settingUp ? 'Downloading…' : 'Download & Enable (Tiny + Small)'}
+          </button>
+        )}
+
+        {status?.supported !== false && hasModels && (
+          <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)' }}>Downloaded models</label>
+            {downloadedModels.map((m) => {
+              const isActive = status?.activeModelId === m.id
+              const isBusy = busyModelId === m.id
+              return (
+                <div key={m.id} className="sv-toggle-row" style={{ padding: '8px 0' }}>
+                  <div>
+                    <div className="sv-setting-label">
+                      {m.label} <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>({formatBytes(m.approxSizeBytes)})</span>
+                      {isActive && <span style={{ marginLeft: 8, color: 'var(--color-success)', fontSize: 12 }}><CheckOne size={10} /> Active</span>}
+                    </div>
+                    <div className="sv-setting-desc">{m.description}</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {!isActive && (
+                      <button className="caps-mini-btn" onClick={() => void handleActivate(m.id)} disabled={isBusy}>
+                        {isBusy ? 'Switching…' : 'Use this model'}
+                      </button>
+                    )}
+                    {!isActive && (
+                      <button className="caps-mini-btn danger" title="Delete" onClick={() => void handleDeleteModel(m.id)} disabled={isBusy}>
+                        <Close size={11} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+
+            {availableModels.length > 0 && (
+              <div className="sv-field" style={{ marginTop: 8 }}>
+                <label>Add another model</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <div className="sv-select-static" style={{ flex: 1 }}>
+                    <select
+                      value={addModelId}
+                      onChange={(e) => setAddModelId(e.target.value)}
+                      disabled={busy}
+                      style={{ width: '100%', background: 'transparent', border: 'none', color: 'inherit', font: 'inherit' }}
+                    >
+                      {availableModels.map((m) => (
+                        <option key={m.id} value={m.id}>{m.label} ({formatBytes(m.approxSizeBytes)})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <button className="caps-mini-btn" onClick={() => void handleAddModel()} disabled={busy || !addModelId}>
+                    {busyModelId === addModelId ? 'Downloading…' : 'Download'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {(settingUp || busyModelId) && (
+          <div className="sv-setting-desc" style={{ marginTop: 8 }}>
+            {progress
+              ? `${progress.phase === 'binary' ? 'Downloading whisper.cpp' : `Downloading ${models.find((m) => m.id === progress.modelId)?.label ?? 'model'}`}${progressPercent !== null ? `: ${progressPercent}%` : '…'}`
+              : 'Working…'}
+          </div>
+        )}
+        {status?.running && !settingUp && !busyModelId && (
+          <div className="sv-setting-desc" style={{ marginTop: 8, color: 'var(--color-success)' }}>
+            <CheckOne size={11} /> Running locally on port {status.port}.
+          </div>
+        )}
+        {error && (
+          <div className="sv-setting-desc" style={{ marginTop: 8, color: 'var(--color-error)' }}>
+            {error}
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -1436,8 +1668,8 @@ export const CAPABILITIES_CSS = `
   gap: 2px;
   background: var(--color-bg);
   border: 1px solid var(--color-border);
-  border-radius: 10px;
-  padding: 4px;
+  border-radius: 8px;
+  padding: 3px;
   width: fit-content;
   margin-bottom: 28px;
 }
@@ -1445,9 +1677,9 @@ export const CAPABILITIES_CSS = `
 .caps-tab-btn {
   background: transparent;
   border: none;
-  padding: 7px 18px;
-  border-radius: 7px;
-  font-size: 13px;
+  padding: 5px 13px;
+  border-radius: 5px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--color-text-secondary);
   cursor: pointer;
@@ -1476,11 +1708,11 @@ export const CAPABILITIES_CSS = `
   margin-bottom: 24px;
 }
 
-.caps-header-left { display: flex; align-items: center; gap: 10px; }
-.caps-header-right { display: flex; align-items: center; gap: 12px; }
+.caps-header-left { display: flex; align-items: center; gap: 8px; }
+.caps-header-right { display: flex; align-items: center; gap: 9px; }
 
 .caps-count-badge {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--color-text-muted);
 }
@@ -1488,41 +1720,41 @@ export const CAPABILITIES_CSS = `
 .caps-icon-btn {
   background: transparent; border: none;
   color: var(--color-text-secondary); cursor: pointer;
-  padding: 6px; display: flex; border-radius: 6px;
+  padding: 4px; display: flex; border-radius: 5px;
 }
 .caps-icon-btn:hover { background: var(--color-hover); }
 
 .caps-search-box {
   background: var(--color-bg); border: 1px solid var(--color-border);
-  border-radius: 8px; padding: 6px 12px;
-  display: flex; align-items: center; gap: 8px;
+  border-radius: 6px; padding: 4px 8px;
+  display: flex; align-items: center; gap: 6px;
   width: 240px; color: var(--color-text-muted);
 }
 .caps-search-box input {
   background: none; border: none; color: var(--color-text);
-  font-size: 13px; outline: none; width: 100%; font-family: inherit;
+  font-size: 11px; outline: none; width: 100%; font-family: inherit;
 }
 
 .caps-import-btn {
   background: var(--color-bg); border: 1px solid var(--color-border);
-  color: var(--color-text); padding: 6px 14px; border-radius: 8px;
-  font-size: 13px; font-weight: 600;
-  display: flex; align-items: center; gap: 8px; cursor: pointer;
+  color: var(--color-text); padding: 4px 10px; border-radius: 6px;
+  font-size: 11px; font-weight: 600;
+  display: flex; align-items: center; gap: 6px; cursor: pointer;
 }
 
 /* ── Skills grid (2 columns) ── */
 .caps-skills-list {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 6px;
 }
 
 .caps-skill-item {
   background: var(--color-surface, var(--color-bg));
   border: 1px solid var(--color-border);
-  border-radius: 12px;
-  padding: 14px 14px;
-  display: flex; gap: 12px; align-items: center;
+  border-radius: 9px;
+  padding: 10px 10px;
+  display: flex; gap: 9px; align-items: center;
   transition: opacity 0.2s, border-color 0.15s;
 }
 .caps-skill-item:hover { border-color: var(--color-border-subtle, var(--color-border)); }
@@ -1530,7 +1762,7 @@ export const CAPABILITIES_CSS = `
 
 /* ── Skill icon button ── */
 .caps-skill-icon-btn {
-  width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
+  width: 38px; height: 38px; border-radius: 8px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   color: white; border: none; cursor: pointer; padding: 0;
   transition: transform 0.15s, filter 0.15s;
@@ -1538,38 +1770,38 @@ export const CAPABILITIES_CSS = `
 .caps-skill-icon-btn:hover { transform: scale(1.1); filter: brightness(1.15); }
 
 .caps-skill-info { flex: 1; min-width: 0; }
-.caps-skill-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.caps-skill-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 
 .caps-skill-name {
-  font-size: 13px; font-weight: 700; margin-bottom: 0;
-  display: flex; align-items: center; gap: 6px; color: var(--color-text);
+  font-size: 11px; font-weight: 700; margin-bottom: 0;
+  display: flex; align-items: center; gap: 5px; color: var(--color-text);
   flex-wrap: wrap;
 }
 
 .caps-skill-tag {
   font-size: 10px; color: var(--color-cta);
   background: var(--color-primary-subtle);
-  padding: 1px 5px; border-radius: 4px; font-weight: 600;
+  padding: 2px 4px; border-radius: 3px; font-weight: 600;
 }
 .caps-skill-version { font-size: 10px; color: var(--color-text-muted); font-weight: 500; }
 .caps-skill-slash {
   font-size: 10px; font-weight: 600; color: var(--color-cta);
   background: var(--color-primary-subtle);
-  padding: 1px 5px; border-radius: 4px;
+  padding: 2px 4px; border-radius: 3px;
   font-family: var(--font-mono, monospace);
 }
 
 .caps-skill-expand-btn {
-  display: inline-flex; align-items: center; gap: 4px;
+  display: inline-flex; align-items: center; gap: 3px;
   background: none; border: none; cursor: pointer;
-  font-size: 11px; color: var(--color-text-muted);
-  padding: 2px 5px; border-radius: 4px; margin-top: 4px;
+  font-size: 10px; color: var(--color-text-muted);
+  padding: 2px 4px; border-radius: 3px; margin-top: 4px;
   font-family: inherit; transition: color 0.1s, background 0.1s;
 }
 .caps-skill-expand-btn:hover { color: var(--color-text); background: var(--color-hover); }
 
 .caps-skill-desc {
-  font-size: 12px; color: var(--color-text-secondary); line-height: 1.55; margin: 6px 0 0;
+  font-size: 10px; color: var(--color-text-secondary); line-height: 1.55; margin: 6px 0 0;
 }
 
 /* ── Skill toggle ── */
@@ -1577,7 +1809,7 @@ export const CAPABILITIES_CSS = `
 .caps-skill-toggle-lbl input { opacity: 0; width: 0; height: 0; position: absolute; }
 .caps-skill-toggle-track {
   width: 34px; height: 19px; background: var(--color-border);
-  border-radius: 10px; transition: background 0.2s; display: block;
+  border-radius: 8px; transition: background 0.2s; display: block;
 }
 .caps-skill-toggle-lbl input:checked ~ .caps-skill-toggle-track { background: var(--color-cta); }
 .caps-skill-toggle-track::after {
@@ -1592,14 +1824,14 @@ export const CAPABILITIES_CSS = `
   position: fixed; z-index: 9999;
   background: var(--color-bg);
   border: 1px solid var(--color-border);
-  border-radius: 12px; padding: 10px 12px;
+  border-radius: 9px; padding: 7px 8px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.12);
   width: 292px;
 }
 .sip-group { margin-bottom: 8px; }
 .sip-group:last-child { margin-bottom: 0; }
 .sip-group-label {
-  font-size: 9px; font-weight: 700; text-transform: uppercase;
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.07em; color: var(--color-text-muted);
   margin-bottom: 3px; padding: 0 2px;
 }
@@ -1607,7 +1839,7 @@ export const CAPABILITIES_CSS = `
 .sip-icon-btn {
   width: 30px; height: 30px; padding: 0;
   display: flex; align-items: center; justify-content: center;
-  background: none; border: none; cursor: pointer; border-radius: 6px;
+  background: none; border: none; cursor: pointer; border-radius: 5px;
   color: var(--color-text-secondary); transition: background 0.1s, color 0.1s;
 }
 .sip-icon-btn:hover { background: var(--color-hover); color: var(--color-text); }
@@ -1617,37 +1849,37 @@ export const CAPABILITIES_CSS = `
 .caps-skills-groups {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 9px;
 }
 
 .caps-skill-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .caps-group-header {
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; gap: 6px;
   background: none; border: none; cursor: pointer;
-  padding: 4px 6px; border-radius: 6px;
-  font-size: 12px; font-weight: 700;
+  padding: 3px 4px; border-radius: 5px;
+  font-size: 10px; font-weight: 700;
   color: var(--color-text-secondary);
   text-align: left; width: 100%;
   transition: color 0.1s, background 0.1s;
 }
 .caps-group-header:hover { color: var(--color-text); background: var(--color-hover); }
 
-.caps-group-name { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+.caps-group-name { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
 
 .caps-repo-pill {
-  font-size: 9px; font-weight: 700; text-transform: uppercase;
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.06em; color: var(--color-cta);
   background: var(--color-primary-subtle);
-  padding: 1px 5px; border-radius: 4px;
+  padding: 2px 4px; border-radius: 3px;
 }
 
 .caps-group-count {
-  font-size: 11px; font-weight: 600;
+  font-size: 10px; font-weight: 600;
   color: var(--color-text-muted);
   margin-left: auto;
 }
@@ -1656,34 +1888,34 @@ export const CAPABILITIES_CSS = `
 .repo-modal-shell { max-width: 520px; }
 
 .repo-url-row {
-  display: flex; gap: 10px; align-items: stretch;
+  display: flex; gap: 8px; align-items: stretch;
 }
 
 .repo-section-title {
-  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.07em; color: var(--color-text-muted);
   margin-bottom: 10px;
 }
 
 .repo-catalog-list {
-  display: flex; flex-direction: column; gap: 8px;
+  display: flex; flex-direction: column; gap: 6px;
 }
 
 .repo-catalog-entry {
-  display: flex; align-items: center; gap: 12px;
+  display: flex; align-items: center; gap: 9px;
   background: var(--color-surface); border: 1px solid var(--color-border);
-  border-radius: 10px; padding: 12px 14px;
+  border-radius: 8px; padding: 8px 10px;
 }
 
 .repo-entry-info { flex: 1; min-width: 0; }
-.repo-entry-name { font-size: 13px; font-weight: 700; color: var(--color-text); }
-.repo-entry-desc { font-size: 12px; color: var(--color-text-muted); margin-top: 2px; }
+.repo-entry-name { font-size: 11px; font-weight: 700; color: var(--color-text); }
+.repo-entry-desc { font-size: 10px; color: var(--color-text-muted); margin-top: 2px; }
 
 .repo-install-btn {
-  display: flex; align-items: center; gap: 5px;
+  display: flex; align-items: center; gap: 4px;
   background: var(--color-cta); color: white;
-  border: none; padding: 6px 12px; border-radius: 8px;
-  font-size: 12px; font-weight: 700; cursor: pointer;
+  border: none; padding: 4px 8px; border-radius: 6px;
+  font-size: 10px; font-weight: 700; cursor: pointer;
   white-space: nowrap; flex-shrink: 0;
   transition: opacity 0.15s;
 }
@@ -1691,14 +1923,14 @@ export const CAPABILITIES_CSS = `
 .repo-install-btn:hover:not(:disabled) { opacity: 0.9; }
 
 .repo-uninstall-btn {
-  display: flex; align-items: center; gap: 5px;
+  display: flex; align-items: center; gap: 4px;
   background: var(--color-hover); color: var(--color-text-muted);
-  border: 1px solid var(--color-border); padding: 6px 12px; border-radius: 8px;
-  font-size: 12px; font-weight: 600; cursor: pointer;
+  border: 1px solid var(--color-border); padding: 4px 8px; border-radius: 6px;
+  font-size: 10px; font-weight: 600; cursor: pointer;
   white-space: nowrap; flex-shrink: 0;
   transition: color 0.15s, background 0.15s;
 }
-.repo-uninstall-btn:hover:not(:disabled) { color: var(--color-error); border-color: var(--color-error); background: rgba(239,68,68,0.06); }
+.repo-uninstall-btn:hover:not(:disabled) { color: var(--color-error); border-color: var(--color-error); background: rgba(var(--color-error-rgb),0.06); }
 .repo-uninstall-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .skill-modal-shell { max-width: 600px; }
@@ -1710,65 +1942,65 @@ export const CAPABILITIES_CSS = `
 /* ── MCP header + action bar ── */
 .caps-mcp-header {
   display: flex; align-items: flex-start; justify-content: space-between;
-  gap: 16px; flex-wrap: wrap;
+  gap: 12px; flex-wrap: wrap;
 }
 .caps-mcp-actions-bar {
-  display: flex; gap: 8px; align-items: center;
+  display: flex; gap: 6px; align-items: center;
   flex-wrap: wrap; justify-content: flex-end;
 }
 
 /* ── MCP ── */
 .caps-add-mcp-btn {
   background: var(--color-surface); border: 1px solid var(--color-border);
-  color: var(--color-text); padding: 6px 12px; border-radius: 16px;
-  font-size: 12px; font-weight: 600;
-  display: flex; align-items: center; gap: 6px; cursor: pointer;
+  color: var(--color-text); padding: 4px 8px; border-radius: 12px;
+  font-size: 10px; font-weight: 600;
+  display: flex; align-items: center; gap: 5px; cursor: pointer;
 }
 .caps-add-mcp-btn:hover { background: var(--color-hover); }
 
 .caps-import-json-btn {
   background: var(--color-surface); border: 1px solid var(--color-border);
-  color: var(--color-text); padding: 6px 12px; border-radius: 8px;
-  font-size: 12px; font-weight: 600;
-  display: flex; align-items: center; gap: 6px; cursor: pointer;
+  color: var(--color-text); padding: 4px 8px; border-radius: 6px;
+  font-size: 10px; font-weight: 600;
+  display: flex; align-items: center; gap: 5px; cursor: pointer;
 }
 .caps-import-json-btn:hover { background: var(--color-hover); }
 
 .caps-reload-btn {
   background: var(--color-cta); color: white;
-  border: none; padding: 6px 14px; border-radius: 8px;
-  font-size: 12px; font-weight: 700;
-  display: flex; align-items: center; gap: 6px; cursor: pointer;
+  border: none; padding: 4px 10px; border-radius: 6px;
+  font-size: 10px; font-weight: 700;
+  display: flex; align-items: center; gap: 5px; cursor: pointer;
 }
 .caps-reload-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .caps-reload-badge {
-  display: flex; align-items: center; gap: 4px;
-  font-size: 11px; font-weight: 600;
+  display: flex; align-items: center; gap: 3px;
+  font-size: 10px; font-weight: 600;
   color: #f59e0b; background: rgba(245,158,11,0.1);
-  padding: 3px 8px; border-radius: 6px;
+  padding: 2px 6px; border-radius: 5px;
   border: 1px solid rgba(245,158,11,0.25);
 }
 
 .caps-reload-result {
-  display: flex; flex-direction: column; gap: 4px;
+  display: flex; flex-direction: column; gap: 3px;
   background: var(--color-surface); border: 1px solid var(--color-border);
-  border-radius: 10px; padding: 12px 16px;
+  border-radius: 8px; padding: 8px 11px;
 }
 .caps-reload-row {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 13px;
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px;
 }
-.caps-reload-row.ok { color: var(--color-success, #22c55e); }
-.caps-reload-row.err { color: var(--color-error, #ef4444); }
-.caps-reload-tools { color: var(--color-text-muted); font-size: 12px; }
-.caps-reload-error { color: var(--color-error, #ef4444); font-size: 12px; }
+.caps-reload-row.ok { color: var(--color-success); }
+.caps-reload-row.err { color: var(--color-error); }
+.caps-reload-tools { color: var(--color-text-muted); font-size: 10px; }
+.caps-reload-error { color: var(--color-error); font-size: 10px; }
 
-.caps-mcp-list { display: flex; flex-direction: column; gap: 8px; }
+.caps-mcp-list { display: flex; flex-direction: column; gap: 6px; }
 
 .caps-mcp-card {
   background: var(--color-surface); border: 1px solid var(--color-border);
-  border-radius: 12px; overflow: hidden;
+  border-radius: 9px; overflow: hidden;
   transition: opacity 0.15s;
 }
 .caps-mcp-card.disabled { opacity: 0.55; }
@@ -1776,17 +2008,17 @@ export const CAPABILITIES_CSS = `
 
 .caps-mcp-card-main {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 18px;
+  padding: 10px 13px;
 }
 
-.caps-mcp-card-left { display: flex; align-items: center; gap: 14px; flex: 1; min-width: 0; }
+.caps-mcp-card-left { display: flex; align-items: center; gap: 11px; flex: 1; min-width: 0; }
 
 .caps-tools-toggle {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-size: 11px; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 10px; font-weight: 600;
   background: var(--color-hover); color: var(--color-text-secondary);
-  border: 1px solid var(--color-border); border-radius: 5px;
-  padding: 2px 7px; cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s;
+  border: 1px solid var(--color-border); border-radius: 4px;
+  padding: 2px 5px; cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 .caps-tools-toggle:hover,
 .caps-tools-toggle.active {
@@ -1800,81 +2032,81 @@ export const CAPABILITIES_CSS = `
 
 .caps-tools-list {
   border-top: 1px solid var(--color-border);
-  padding: 10px 18px 14px;
-  display: flex; flex-direction: column; gap: 6px;
+  padding: 7px 13px 10px;
+  display: flex; flex-direction: column; gap: 5px;
   background: var(--color-bg);
 }
 .caps-tool-row {
-  display: flex; align-items: baseline; gap: 10px;
-  padding: 5px 0;
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 4px 0;
   border-bottom: 1px solid var(--color-border-subtle, rgba(255,255,255,0.05));
 }
 .caps-tool-row:last-child { border-bottom: none; }
 .caps-tool-name {
-  font-size: 12px; font-family: var(--font-mono, monospace);
+  font-size: 10px; font-family: var(--font-mono, monospace);
   color: var(--color-cta); white-space: nowrap; flex-shrink: 0;
-  background: var(--color-primary-subtle); padding: 1px 6px; border-radius: 4px;
+  background: var(--color-primary-subtle); padding: 2px 4px; border-radius: 3px;
 }
 .caps-tool-desc {
-  font-size: 12px; color: var(--color-text-muted);
+  font-size: 10px; color: var(--color-text-muted);
   line-height: 1.4; flex: 1; min-width: 0;
 }
 
-.caps-mcp-icon { font-size: 24px; line-height: 1; flex-shrink: 0; width: 36px; text-align: center; }
+.caps-mcp-icon { font-size: 21px; line-height: 1; flex-shrink: 0; width: 36px; text-align: center; }
 
 .caps-mcp-info { flex: 1; min-width: 0; }
-.caps-mcp-title { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
-.caps-mcp-name { font-weight: 700; font-size: 14px; color: var(--color-text); }
+.caps-mcp-title { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; flex-wrap: wrap; }
+.caps-mcp-name { font-weight: 700; font-size: 12px; color: var(--color-text); }
 
 .caps-mcp-type-badge {
-  display: flex; align-items: center; gap: 4px;
-  font-size: 11px; font-weight: 600;
+  display: flex; align-items: center; gap: 3px;
+  font-size: 10px; font-weight: 600;
   background: var(--color-primary-subtle); color: var(--color-cta);
-  padding: 2px 7px; border-radius: 5px;
+  padding: 2px 5px; border-radius: 4px;
 }
 .caps-mcp-source-badge {
   font-size: 10px; font-weight: 600; color: var(--color-text-muted);
-  background: var(--color-hover); padding: 2px 6px; border-radius: 4px;
+  background: var(--color-hover); padding: 2px 4px; border-radius: 3px;
 }
 
 .caps-org-mcp-approve-btn {
   background: var(--color-cta); color: white;
-  border: none; padding: 6px 14px; border-radius: 8px;
-  font-size: 12px; font-weight: 700;
-  display: flex; align-items: center; gap: 6px; cursor: pointer;
+  border: none; padding: 4px 10px; border-radius: 6px;
+  font-size: 10px; font-weight: 700;
+  display: flex; align-items: center; gap: 5px; cursor: pointer;
 }
 .caps-org-mcp-approve-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .caps-org-mcp-revoke-btn {
-  background: var(--color-surface); border: 1px solid var(--color-success, #22c55e);
-  color: var(--color-success, #22c55e); padding: 6px 14px; border-radius: 8px;
-  font-size: 12px; font-weight: 600;
-  display: flex; align-items: center; gap: 6px; cursor: pointer;
+  background: var(--color-surface); border: 1px solid var(--color-success);
+  color: var(--color-success); padding: 4px 10px; border-radius: 6px;
+  font-size: 10px; font-weight: 600;
+  display: flex; align-items: center; gap: 5px; cursor: pointer;
 }
 .caps-org-mcp-revoke-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .repo-origin-badge {
   font-size: 10px; font-weight: 600; color: var(--color-text-muted);
-  background: var(--color-hover); padding: 2px 6px; border-radius: 4px;
+  background: var(--color-hover); padding: 2px 4px; border-radius: 3px;
   margin-left: 8px; vertical-align: middle;
 }
 
 .caps-mcp-detail code {
-  font-size: 12px; color: var(--color-text-muted);
+  font-size: 10px; color: var(--color-text-muted);
   font-family: var(--font-mono, monospace);
-  background: var(--color-hover); padding: 2px 6px; border-radius: 4px;
+  background: var(--color-hover); padding: 2px 4px; border-radius: 3px;
   display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   max-width: 400px;
 }
 
-.caps-mcp-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.caps-mcp-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 
 /* toggle switch */
 .caps-mcp-toggle { position: relative; display: inline-flex; cursor: pointer; }
 .caps-mcp-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
 .caps-toggle-track {
   width: 36px; height: 20px; background: var(--color-border);
-  border-radius: 10px; transition: background 0.2s; display: block;
+  border-radius: 8px; transition: background 0.2s; display: block;
 }
 .caps-mcp-toggle input:checked ~ .caps-toggle-track { background: var(--color-cta); }
 .caps-toggle-track::after {
@@ -1884,38 +2116,38 @@ export const CAPABILITIES_CSS = `
 }
 .caps-mcp-toggle input:checked ~ .caps-toggle-track::after { transform: translateX(16px); }
 
-.mcp-form-row-2 { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: end; }
+.mcp-form-row-2 { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: end; }
 .mcp-env-textarea {
   width: 100%; background: var(--color-surface);
-  border: 1.5px solid var(--color-border); border-radius: 10px;
-  padding: 10px 14px; color: var(--color-text); font-family: var(--font-mono, monospace);
-  font-size: 13px; line-height: 1.5; resize: vertical; outline: none; box-sizing: border-box;
+  border: 1.5px solid var(--color-border); border-radius: 8px;
+  padding: 7px 10px; color: var(--color-text); font-family: var(--font-mono, monospace);
+  font-size: 11px; line-height: 1.5; resize: vertical; outline: none; box-sizing: border-box;
 }
 .mcp-env-textarea:focus { border-color: var(--color-primary); }
 
-.caps-mini-btn.danger:hover { color: var(--color-error, #ef4444); background: rgba(239,68,68,0.08); }
+.caps-mini-btn.danger:hover { color: var(--color-error); background: rgba(var(--color-error-rgb),0.08); }
 
 .caps-mcp-item {
-  background: var(--color-surface); border-radius: 12px;
-  padding: 12px 16px; display: flex; align-items: center; justify-content: space-between;
+  background: var(--color-surface); border-radius: 9px;
+  padding: 8px 11px; display: flex; align-items: center; justify-content: space-between;
 }
 
-.caps-item-left { display: flex; align-items: center; gap: 10px; color: var(--color-text-secondary); }
-.caps-mcp-name { font-weight: 600; font-size: 14px; color: var(--color-text); }
+.caps-item-left { display: flex; align-items: center; gap: 8px; color: var(--color-text-secondary); }
+.caps-mcp-name { font-weight: 600; font-size: 12px; color: var(--color-text); }
 
 .caps-mcp-meta {
-  font-size: 11px; color: var(--color-text-muted);
+  font-size: 10px; color: var(--color-text-muted);
   background: var(--color-surface); border: 1px solid var(--color-border);
-  padding: 1px 6px; border-radius: 4px;
+  padding: 2px 4px; border-radius: 3px;
 }
 
 .caps-mcp-tools {
-  font-size: 11px; color: var(--color-text-muted); font-weight: 500;
+  font-size: 10px; color: var(--color-text-muted); font-weight: 500;
 }
 
 .caps-mcp-error {
-  display: flex; align-items: center; gap: 4px;
-  font-size: 11px; color: var(--color-error);
+  display: flex; align-items: center; gap: 3px;
+  font-size: 10px; color: var(--color-error);
 }
 
 .caps-mcp-dot {
@@ -1925,18 +2157,18 @@ export const CAPABILITIES_CSS = `
 .caps-mcp-dot.failed    { background: var(--color-error); }
 .caps-mcp-dot.pending   { background: var(--color-text-muted); }
 
-.caps-mini-btn { background: none; border: none; color: var(--color-text-muted); cursor: pointer; display: flex; padding: 4px; border-radius: 4px; }
+.caps-mini-btn { background: none; border: none; color: var(--color-text-muted); cursor: pointer; display: flex; padding: 3px; border-radius: 3px; }
 .caps-mini-btn:hover { color: var(--color-text); background: var(--color-hover); }
 
 /* ── States ── */
 .caps-loading, .caps-empty {
-  font-size: 14px; color: var(--color-text-muted);
-  padding: 48px 0; text-align: center;
+  font-size: 12px; color: var(--color-text-muted);
+  padding: 34px 0; text-align: center;
 }
 
 .caps-error {
-  font-size: 13px; color: var(--color-error);
-  padding: 12px 16px; border-radius: 8px;
+  font-size: 11px; color: var(--color-error);
+  padding: 8px 11px; border-radius: 6px;
   background: rgba(var(--color-error-rgb, 255,77,79), 0.08);
   margin-bottom: 16px;
 }

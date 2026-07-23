@@ -1,7 +1,9 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
-import { Plus, FolderClose, AtSign, Voice, Send, CheckCorrect, LoadingOne, CloseSmall, Close } from '@icon-park/react'
-import { api } from '@/api/client'
+import { Plus, FolderClose, AtSign, Voice, Send, CheckCorrect, LoadingOne, CloseSmall, Close, Browser } from '@icon-park/react'
+import { api, ApiError } from '@/api/client'
 import type { Corpus } from '@/api/types'
+import { startWavRecording, type WavRecording } from '@/lib/wavRecorder'
+import { SelectorPill, SelectorMenu, SELECTOR_PILL_CSS, type SelectorOption } from '@/components/ui/SelectorPill'
 
 type SkillOption = { Name: string; DisplayName: string; Description: string; Source: string; UserInvocable?: boolean; IsHidden?: boolean }
 export type ChatAttachment = {
@@ -13,8 +15,6 @@ export type ChatAttachment = {
   local_path?: string
 }
 
-type UIPermissionMode = 'onRequest' | 'auto' | 'bypass'
-
 type Props = {
   value: string
   onChange: (v: string) => void
@@ -22,23 +22,32 @@ type Props = {
   onStop?: () => void
   placeholder?: string
   maxHeight?: number
-  showAutoButton?: boolean
   isStreaming?: boolean
   statusText?: string
   selectedCorpusId?: string | null
   onCorpusChange?: (id: string | null) => void
-  permissionMode?: UIPermissionMode
-  onPermissionModeChange?: (mode: UIPermissionMode) => void
   projectPath?: string
   onProjectChange?: (path: string) => void
   attachments?: ChatAttachment[]
   onAttachFiles?: (files: FileList) => void | Promise<void>
   onRemoveAttachment?: (id: string) => void
   isUploadingAttachments?: boolean
+  // Relocated here from ChatTopBar — Provider/Model live next to where the
+  // user actually types. Everything else (mode, permission, agent monitor)
+  // stays in ChatTopBar's top-right cluster.
+  providerLabel?: string
+  modelLabel?: string
+  onProviderClick?: () => void
+  onModelClick?: () => void
+  providerOptions?: SelectorOption[]
+  modelOptions?: SelectorOption[]
+  selectedProviderId?: string | null
+  selectedModelId?: string | null
+  onProviderSelect?: (id: string) => void
+  onModelSelect?: (id: string) => void
+  providerDisabled?: boolean
+  modelDisabled?: boolean
 }
-
-const PERMISSION_CYCLE: UIPermissionMode[] = ['onRequest', 'auto', 'bypass']
-const PERMISSION_LABEL: Record<UIPermissionMode, string> = { onRequest: 'Ask First', auto: 'Auto', bypass: 'Bypass' }
 
 export function ChatInput({
   value,
@@ -47,21 +56,34 @@ export function ChatInput({
   onStop,
   placeholder = 'Send a message...',
   maxHeight = 160,
-  showAutoButton = false,
   isStreaming = false,
   statusText,
   selectedCorpusId,
   onCorpusChange,
-  permissionMode,
-  onPermissionModeChange,
   projectPath,
   onProjectChange,
   attachments = [],
   onAttachFiles,
   onRemoveAttachment,
   isUploadingAttachments = false,
+  providerLabel = 'Provider',
+  modelLabel = 'Model',
+  onProviderClick,
+  onModelClick,
+  providerOptions,
+  modelOptions,
+  selectedProviderId,
+  selectedModelId,
+  onProviderSelect,
+  onModelSelect,
+  providerDisabled = false,
+  modelDisabled = false,
 }: Props) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const selectorsRef = useRef<HTMLDivElement>(null)
+  const [openSelector, setOpenSelector] = useState<'provider' | 'model' | null>(null)
+  const hasProviderMenu = !!providerOptions?.length && !!onProviderSelect
+  const hasModelMenu = !!modelOptions?.length && !!onModelSelect
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [skills, setSkills] = useState<SkillOption[]>([])
   const [slashIdx, setSlashIdx] = useState(0)
@@ -69,6 +91,10 @@ export function ChatInput({
   const [corpora, setCorpora] = useState<Corpus[]>([])
   const [corpusDropdownOpen, setCorpusDropdownOpen] = useState(false)
   const corpusDropdownRef = useRef<HTMLDivElement>(null)
+  const [recordingState, setRecordingState] = useState<'idle' | 'recording' | 'transcribing'>('idle')
+  const [recordError, setRecordError] = useState<string | null>(null)
+  const wavRecordingRef = useRef<WavRecording | null>(null)
+  const micStreamRef = useRef<MediaStream | null>(null)
 
   useEffect(() => {
     api.get<{ skills: SkillOption[] }>('/skills')
@@ -79,6 +105,54 @@ export function ChatInput({
       .catch(() => {})
   }, [])
 
+  // Release the mic if the component unmounts mid-recording.
+  useEffect(() => {
+    return () => {
+      micStreamRef.current?.getTracks().forEach((track) => track.stop())
+    }
+  }, [])
+
+  async function handleMicClick() {
+    if (recordingState === 'transcribing') return
+
+    if (recordingState === 'recording') {
+      setRecordingState('transcribing')
+      const blob = await wavRecordingRef.current?.stop()
+      wavRecordingRef.current = null
+      micStreamRef.current?.getTracks().forEach((track) => track.stop())
+      micStreamRef.current = null
+
+      if (!blob || blob.size <= 44) {
+        // Nothing but the WAV header was captured.
+        setRecordingState('idle')
+        return
+      }
+      try {
+        const form = new FormData()
+        form.append('audio', blob, 'recording.wav')
+        const result = await api.upload<{ text: string }>('/transcribe', form)
+        if (result.text) {
+          onChange(value.trim() ? `${value.trim()} ${result.text}` : result.text)
+        }
+      } catch (err) {
+        setRecordError(err instanceof ApiError ? err.message : 'Transcription failed.')
+      } finally {
+        setRecordingState('idle')
+      }
+      return
+    }
+
+    setRecordError(null)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      micStreamRef.current = stream
+      wavRecordingRef.current = startWavRecording(stream)
+      setRecordingState('recording')
+    } catch {
+      setRecordError('Microphone access was denied.')
+    }
+  }
+
   // Close corpus dropdown on outside click
   useEffect(() => {
     if (!corpusDropdownOpen) return
@@ -88,6 +162,34 @@ export function ChatInput({
     document.addEventListener('mousedown', onDown)
     return () => document.removeEventListener('mousedown', onDown)
   }, [corpusDropdownOpen])
+
+  // Close provider/model dropdown on outside click
+  useEffect(() => {
+    if (!openSelector) return
+    function onDown(e: MouseEvent) {
+      if (!selectorsRef.current?.contains(e.target as Node)) setOpenSelector(null)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [openSelector])
+
+  function handleProviderTrigger() {
+    if (providerDisabled) return
+    if (hasProviderMenu) {
+      setOpenSelector((current) => (current === 'provider' ? null : 'provider'))
+      return
+    }
+    onProviderClick?.()
+  }
+
+  function handleModelTrigger() {
+    if (modelDisabled) return
+    if (hasModelMenu) {
+      setOpenSelector((current) => (current === 'model' ? null : 'model'))
+      return
+    }
+    onModelClick?.()
+  }
 
   const selectedCorpus = corpora.find(c => c.id === selectedCorpusId) ?? null
   const projectLabel = projectPath ? projectPath.split(/[\\/]/).filter(Boolean).pop() ?? projectPath : null
@@ -216,7 +318,7 @@ export function ChatInput({
             disabled={isUploadingAttachments}
             onClick={() => fileInputRef.current?.click()}
           >
-            <Plus size={18} />
+            <Plus size={13} />
           </button>
           <input
             ref={fileInputRef}
@@ -240,7 +342,7 @@ export function ChatInput({
                 }
               }}
             >
-              <FolderClose size={18} />
+              <FolderClose size={13} />
             </button>
             {projectLabel && (
               <>
@@ -261,7 +363,7 @@ export function ChatInput({
               title="Attach knowledge base"
               onClick={() => setCorpusDropdownOpen(v => !v)}
             >
-              <AtSign size={18} />
+              <AtSign size={13} />
             </button>
             {corpusDropdownOpen && (
               <div className="chat-corpus-dropdown">
@@ -285,7 +387,24 @@ export function ChatInput({
               </div>
             )}
           </div>
-          <button className="chat-tool-icon"><Voice size={18} /></button>
+          <button
+            className={`chat-tool-icon${recordingState === 'recording' ? ' chat-tool-icon-recording' : ''}`}
+            type="button"
+            title={
+              recordingState === 'recording'
+                ? 'Stop recording'
+                : recordingState === 'transcribing'
+                  ? 'Transcribing…'
+                  : 'Record a voice message'
+            }
+            disabled={recordingState === 'transcribing'}
+            onClick={() => void handleMicClick()}
+          >
+            {recordingState === 'transcribing'
+              ? <LoadingOne size={13} className="chat-status-spin" />
+              : <Voice size={13} />}
+          </button>
+          {recordError && <span className="chat-record-error">{recordError}</span>}
           {isStreaming && (
             <div className="chat-status-inline" aria-live="polite">
               <LoadingOne size={14} className="chat-status-spin" />
@@ -294,26 +413,48 @@ export function ChatInput({
           )}
         </div>
 
-        <div className="chat-input-tools-right">
-          {showAutoButton && (
-            <button
-              className="chat-auto-btn"
-              onClick={() => {
-                if (!onPermissionModeChange) return
-                const current = permissionMode ?? 'onRequest'
-                const next = PERMISSION_CYCLE[(PERMISSION_CYCLE.indexOf(current) + 1) % PERMISSION_CYCLE.length]
-                onPermissionModeChange(next)
-              }}
-              title={`Permission: ${PERMISSION_LABEL[permissionMode ?? 'onRequest']} — click to cycle`}
-              data-mode={permissionMode ?? 'onRequest'}
-            >
-              <span className="chat-auto-dot" />
-              <span>{PERMISSION_LABEL[permissionMode ?? 'onRequest']}</span>
-            </button>
-          )}
+        <div className="chat-input-tools-right" ref={selectorsRef}>
+          <div className="chat-selector-wrap">
+            <SelectorPill
+              label={providerLabel}
+              icon={<Browser size={12} />}
+              onClick={handleProviderTrigger}
+              disabled={providerDisabled}
+            />
+            {openSelector === 'provider' && providerOptions && onProviderSelect && (
+              <SelectorMenu
+                placement="up"
+                options={providerOptions}
+                selectedId={selectedProviderId}
+                onSelect={(id) => {
+                  setOpenSelector(null)
+                  onProviderSelect(id)
+                }}
+              />
+            )}
+          </div>
+          <div className="chat-selector-wrap">
+            <SelectorPill
+              label={modelLabel}
+              icon={<CheckCorrect size={12} />}
+              onClick={handleModelTrigger}
+              disabled={modelDisabled}
+            />
+            {openSelector === 'model' && modelOptions && onModelSelect && (
+              <SelectorMenu
+                placement="up"
+                options={modelOptions}
+                selectedId={selectedModelId}
+                onSelect={(id) => {
+                  setOpenSelector(null)
+                  onModelSelect(id)
+                }}
+              />
+            )}
+          </div>
           {isStreaming ? (
             <button className="chat-stop-btn" onClick={onStop} type="button" title="Stop">
-              <CloseSmall size={18} />
+              <CloseSmall size={14} />
             </button>
           ) : (
             <button
@@ -321,7 +462,7 @@ export function ChatInput({
               onClick={() => value.trim() && onSend()}
               type="button"
             >
-              <Send size={18} theme={value.trim() ? 'filled' : 'outline'} />
+              <Send size={14} theme={value.trim() ? 'filled' : 'outline'} />
             </button>
           )}
         </div>
@@ -331,6 +472,12 @@ export function ChatInput({
 }
 
 export const CHAT_INPUT_CSS = `
+${SELECTOR_PILL_CSS}
+
+.chat-selector-wrap {
+  position: relative;
+}
+
 /* ── Slash-command dropdown ── */
 .chat-slash-dropdown {
   position: absolute;
@@ -367,8 +514,8 @@ export const CHAT_INPUT_CSS = `
 
 .chat-input-wrapper {
   background: var(--color-bg);
-  border-radius: 20px;
-  padding: 16px;
+  border-radius: 14px;
+  padding: 10px 12px;
   position: relative; /* anchors slash dropdown */
   border: 1.5px solid transparent;
   background-image: linear-gradient(var(--color-bg), var(--color-bg)),
@@ -381,12 +528,12 @@ export const CHAT_INPUT_CSS = `
   background: transparent;
   border: none;
   color: var(--color-text);
-  font-size: 15px;
-  line-height: 1.6;
+  font-size: var(--font-size-base);
+  line-height: 1.5;
   outline: none;
   resize: none;
   width: 100%;
-  min-height: 24px;
+  min-height: 20px;
   font-family: inherit;
 }
 
@@ -457,28 +604,28 @@ export const CHAT_INPUT_CSS = `
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
 .chat-input-tools-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   min-width: 0;
 }
 
 .chat-input-tools-right {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
 }
 
 .chat-tool-circle {
   background: var(--color-surface);
   border: 1px solid var(--color-border-subtle);
   color: var(--color-text);
-  width: 36px;
-  height: 36px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -508,6 +655,30 @@ export const CHAT_INPUT_CSS = `
   transition: color 0.15s;
 }
 
+.chat-tool-icon:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.chat-tool-icon-recording {
+  color: var(--color-error) !important;
+  animation: chat-mic-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes chat-mic-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+.chat-record-error {
+  font-size: var(--font-size-2xs);
+  color: var(--color-error);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
 .chat-tool-icon:hover {
   color: var(--color-text-secondary);
 }
@@ -522,7 +693,7 @@ export const CHAT_INPUT_CSS = `
 
 .chat-workspace-label {
   color: var(--color-text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -545,8 +716,8 @@ export const CHAT_INPUT_CSS = `
 .chat-send-btn {
   background: var(--color-surface);
   color: var(--color-text-muted);
-  width: 40px;
-  height: 40px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   border: none;
   display: flex;
@@ -565,8 +736,8 @@ export const CHAT_INPUT_CSS = `
 .chat-stop-btn {
   background: var(--color-primary-subtle);
   color: var(--color-primary);
-  width: 40px;
-  height: 40px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   border: 1px solid var(--color-primary-hover);
   display: flex;
@@ -578,55 +749,6 @@ export const CHAT_INPUT_CSS = `
 
 .chat-stop-btn:hover {
   background: var(--color-primary-hover);
-}
-
-.chat-auto-btn {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-subtle);
-  color: var(--color-text-secondary);
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 12px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
-}
-
-.chat-auto-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  transition: background 0.15s;
-}
-
-.chat-auto-btn[data-mode="onRequest"] {
-  border-color: color-mix(in srgb, var(--color-success) 32%, transparent);
-  color: var(--color-success);
-}
-
-.chat-auto-btn[data-mode="onRequest"] .chat-auto-dot {
-  background: var(--color-success);
-}
-
-.chat-auto-btn[data-mode="auto"] {
-  border-color: color-mix(in srgb, var(--color-primary) 32%, transparent);
-  color: var(--color-primary);
-}
-
-.chat-auto-btn[data-mode="auto"] .chat-auto-dot {
-  background: var(--color-primary);
-}
-
-.chat-auto-btn[data-mode="bypass"] {
-  border-color: color-mix(in srgb, var(--color-error) 32%, transparent);
-  color: var(--color-error);
-}
-
-.chat-auto-btn[data-mode="bypass"] .chat-auto-dot {
-  background: var(--color-error);
 }
 
 .chat-status-inline {

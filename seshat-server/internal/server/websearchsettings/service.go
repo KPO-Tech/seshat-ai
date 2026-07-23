@@ -115,8 +115,16 @@ func (s *Service) CreateProviderSetting(ctx context.Context, principal *iam.Prin
 	organizationID := strings.TrimSpace(params.OrganizationID)
 	provider := strings.ToLower(strings.TrimSpace(params.Provider))
 	apiKey := strings.TrimSpace(params.APIKey)
-	if organizationID == "" || provider == "" || apiKey == "" {
-		return nil, iam.ErrInvalidInput("organization_id, provider and api_key are required")
+	if organizationID == "" || provider == "" {
+		return nil, iam.ErrInvalidInput("organization_id and provider are required")
+	}
+	// searxng is self-hosted and commonly run with no HTTP basic auth at
+	// all (see the console's matching optional-password treatment) -
+	// api_key doubles as that auth password for this provider, unlike
+	// every other provider here, which is a real hosted-API credential
+	// with no working "no key" mode.
+	if provider != "searxng" && apiKey == "" {
+		return nil, iam.ErrInvalidInput("api_key is required")
 	}
 
 	var record sdb.WebSearchProviderSetting
@@ -253,7 +261,7 @@ func (s *Service) ResolveProviderSetting(ctx context.Context, principal *iam.Pri
 		return nil, err
 	}
 
-	defaultOrgID, found, err := s.iam.DefaultOrganizationID(tx)
+	defaultOrgID, found, err := s.iam.DefaultOrganizationIDForDomain(tx, iam.SharedDomainWebSearchSettings)
 	if err != nil {
 		return nil, err
 	}
@@ -275,6 +283,32 @@ func (s *Service) ResolveProviderSetting(ctx context.Context, principal *iam.Pri
 		}
 	}
 	return nil, iam.ErrNotFound("no web search provider setting configured for " + provider + " (checked this organization and the platform default)")
+}
+
+// keyBasedProviders lists the web-search providers the SDK's web_search tool
+// accepts a flat API key for (see seshat/internal/tools/web/search.
+// NewRunnerFromKeys) - searxng (needs a base_url, not just a key) and ddg
+// (needs no key at all) aren't part of this map-based mechanism.
+var keyBasedProviders = []string{"tavily", "exa", "jina", "langsearch"}
+
+// ResolveAllProviderKeys resolves every key-based web-search provider this
+// organization can use (its own setting, else the platform default) into a
+// flat map ready for sdk.ClientConfig.WebSearchKeys. Providers with nothing
+// configured (org or platform) are simply omitted, not an error - the
+// web_search tool degrades to whichever providers do resolve.
+func (s *Service) ResolveAllProviderKeys(ctx context.Context, principal *iam.Principal, organizationID string) (map[string]string, error) {
+	keys := make(map[string]string, len(keyBasedProviders))
+	for _, provider := range keyBasedProviders {
+		resolved, err := s.ResolveProviderSetting(ctx, principal, organizationID, provider)
+		if err != nil {
+			if errors.Is(err, iam.ErrNotFound("")) {
+				continue
+			}
+			return nil, err
+		}
+		keys[provider] = resolved.APIKey
+	}
+	return keys, nil
 }
 
 // ─── Org domain policy ──────────────────────────────────────────────────────────

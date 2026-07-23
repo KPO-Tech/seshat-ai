@@ -18,6 +18,43 @@ type updateMembershipRequest struct {
 	Role string `json:"role"`
 }
 
+type createOrganizationMemberRequest struct {
+	OrganizationID string   `json:"organization_id"`
+	Email          string   `json:"email"`
+	DisplayName    string   `json:"display_name"`
+	Role           string   `json:"role"`
+	GroupIDs       []string `json:"group_ids"`
+}
+
+// handleCreateOrganizationMember — POST /api/v1/memberships/direct. Sibling
+// action to POST /api/v1/memberships (which only attaches an EXISTING
+// user) - this creates the account too, see
+// iam.Service.CreateOrganizationMember's doc comment for why there's no
+// password field.
+func (app *App) handleCreateOrganizationMember(w http.ResponseWriter, r *http.Request) {
+	principal, ok := authPrincipalFromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "missing principal")
+		return
+	}
+	var req createOrganizationMemberRequest
+	if !decodeJSONBody(w, r, &req) {
+		return
+	}
+	membership, err := app.backend.IAM.CreateOrganizationMember(r.Context(), principal, iam.CreateOrganizationMemberParams{
+		OrganizationID: req.OrganizationID,
+		Email:          req.Email,
+		DisplayName:    req.DisplayName,
+		Role:           req.Role,
+		GroupIDs:       req.GroupIDs,
+	})
+	if err != nil {
+		writeIAMError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, membership)
+}
+
 func (app *App) handleMemberships(w http.ResponseWriter, r *http.Request) {
 	principal, ok := authPrincipalFromContext(r.Context())
 	if !ok {
@@ -114,4 +151,26 @@ func (app *App) handleMembershipByID(w http.ResponseWriter, r *http.Request) {
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
+}
+
+// handleMembershipConfirm — POST /api/v1/memberships/{membershipID}/confirm.
+// Finalizes a self-registered "pending" membership (see iam.Service.Register)
+// before it would otherwise be auto-blocked by BlockExpiredPendingMemberships.
+func (app *App) handleMembershipConfirm(w http.ResponseWriter, r *http.Request) {
+	principal, ok := authPrincipalFromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "missing principal")
+		return
+	}
+	membershipID := strings.TrimSpace(r.PathValue("membershipID"))
+	if membershipID == "" {
+		writeJSONError(w, http.StatusBadRequest, "missing membership id")
+		return
+	}
+	membership, err := app.backend.IAM.ConfirmMembership(r.Context(), principal, membershipID)
+	if err != nil {
+		writeIAMError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, membership)
 }

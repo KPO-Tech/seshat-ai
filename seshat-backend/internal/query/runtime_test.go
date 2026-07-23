@@ -3,7 +3,7 @@ package query
 import (
 	"testing"
 
-	"github.com/EngineerProjects/seshat/pkg/sdk"
+	"github.com/KPO-Tech/seshat/pkg/sdk"
 )
 
 func newTestSDKRuntime(t *testing.T) *SDKRuntime {

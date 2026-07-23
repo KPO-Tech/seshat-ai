@@ -6,13 +6,13 @@ const CSS = `
 .tb-audio-wrap {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .tb-audio-player {
   width: 100%;
   height: 36px;
-  border-radius: 8px;
+  border-radius: 6px;
   outline: none;
   accent-color: var(--color-accent);
 }
@@ -24,15 +24,15 @@ const CSS = `
 .tb-audio-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 11px;
+  gap: 6px;
+  font-size: 10px;
   color: var(--color-text-muted);
   flex-wrap: wrap;
 }
 
 .tb-audio-chip {
-  padding: 2px 7px;
-  border-radius: 4px;
+  padding: 2px 5px;
+  border-radius: 3px;
   background: rgba(255,255,255,0.05);
   border: 1px solid var(--color-border-subtle);
   font-family: monospace;

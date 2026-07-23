@@ -9,14 +9,15 @@ import (
 
 	"gorm.io/gorm"
 
-	sdkautomation "github.com/EngineerProjects/seshat/pkg/automation"
-	sdkconfig "github.com/EngineerProjects/seshat/pkg/config"
-	sdkproviders "github.com/EngineerProjects/seshat/pkg/providers"
-	sdkrag "github.com/EngineerProjects/seshat/pkg/rag"
-	"github.com/EngineerProjects/seshat/pkg/sdk"
-	sdktypes "github.com/EngineerProjects/seshat/pkg/types"
+	sdkautomation "github.com/KPO-Tech/seshat/pkg/automation"
+	sdkconfig "github.com/KPO-Tech/seshat/pkg/config"
+	sdkproviders "github.com/KPO-Tech/seshat/pkg/providers"
+	sdkrag "github.com/KPO-Tech/seshat/pkg/rag"
+	"github.com/KPO-Tech/seshat/pkg/sdk"
+	sdktypes "github.com/KPO-Tech/seshat/pkg/types"
 
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
 )
 
 // cloudMaxTokens caps a single cloud job's response. Not yet exposed as a
@@ -189,7 +190,7 @@ func (s *Service) resolveProviderCredentials(ctx context.Context, organizationID
 	}
 
 	tx := s.db.Gorm().WithContext(ctx)
-	defaultOrgID, found, err := s.iam.DefaultOrganizationID(tx)
+	defaultOrgID, found, err := s.iam.DefaultOrganizationIDForDomain(tx, iam.SharedDomainProviderSettings)
 	if err != nil {
 		return "", "", false, err
 	}

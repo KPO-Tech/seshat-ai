@@ -16,17 +16,17 @@ import (
 	bksettings "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/settings"
 	backendskills "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/skills"
 	backendwebsearch "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/websearch"
-	"github.com/EngineerProjects/seshat/pkg/monitoring"
-	"github.com/EngineerProjects/seshat/pkg/providers"
-	"github.com/EngineerProjects/seshat/pkg/rag"
-	"github.com/EngineerProjects/seshat/pkg/runtimepath"
-	"github.com/EngineerProjects/seshat/pkg/sdk"
-	publicskills "github.com/EngineerProjects/seshat/pkg/skills"
-	skillsloader "github.com/EngineerProjects/seshat/pkg/skills"
-	"github.com/EngineerProjects/seshat/pkg/storage"
-	"github.com/EngineerProjects/seshat/pkg/types"
-	"github.com/EngineerProjects/seshat/pkg/vector"
-	webcore "github.com/EngineerProjects/seshat/pkg/web"
+	"github.com/KPO-Tech/seshat/pkg/monitoring"
+	"github.com/KPO-Tech/seshat/pkg/providers"
+	"github.com/KPO-Tech/seshat/pkg/rag"
+	"github.com/KPO-Tech/seshat/pkg/runtimepath"
+	"github.com/KPO-Tech/seshat/pkg/sdk"
+	publicskills "github.com/KPO-Tech/seshat/pkg/skills"
+	skillsloader "github.com/KPO-Tech/seshat/pkg/skills"
+	"github.com/KPO-Tech/seshat/pkg/storage"
+	"github.com/KPO-Tech/seshat/pkg/types"
+	"github.com/KPO-Tech/seshat/pkg/vector"
+	webcore "github.com/KPO-Tech/seshat/pkg/web"
 	"io"
 	"mime/multipart"
 	"net"
@@ -3903,9 +3903,37 @@ func TestPermissionDecisionRejectsDifferentUserOrSession(t *testing.T) {
 	}
 
 	select {
-	case approved := <-ch:
-		if !approved {
+	case decision := <-ch:
+		if !decision.Approved {
 			t.Fatal("expected permission approval to resolve true")
+		}
+	default:
+		t.Fatal("expected permission broker resolution")
+	}
+}
+
+func TestPermissionDecisionCarriesDenyReason(t *testing.T) {
+	fx := newSecurityTestFixture(t)
+	ch := fx.app.permBroker.Await("tool-2", fx.adminID, "session-a")
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/permissions/tool-2", bytes.NewReader(
+		[]byte(`{"approved":false,"session_id":"session-a","reason":"please use a read-only approach instead"}`),
+	))
+	req.Header.Set("Authorization", "Bearer "+fx.adminToken)
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+	fx.router.ServeHTTP(resp, req)
+	if resp.Code != http.StatusNoContent {
+		t.Fatalf("expected denial 204, got %d: %s", resp.Code, resp.Body.String())
+	}
+
+	select {
+	case decision := <-ch:
+		if decision.Approved {
+			t.Fatal("expected permission denial to resolve false")
+		}
+		if decision.Reason != "please use a read-only approach instead" {
+			t.Fatalf("expected deny reason to flow through, got %q", decision.Reason)
 		}
 	default:
 		t.Fatal("expected permission broker resolution")

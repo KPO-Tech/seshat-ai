@@ -78,7 +78,7 @@ export function KnowledgeView() {
           <p>Manage document corpora for Retrieval-Augmented Generation (RAG).</p>
         </div>
         <button className="kv-add-btn" onClick={() => setShowNewCorpus(true)}>
-          <Plus size={16} />
+          <Plus size={13} />
           <span>New Corpus</span>
         </button>
       </header>
@@ -101,7 +101,7 @@ export function KnowledgeView() {
         <div className="kv-loading">Loading corpora…</div>
       ) : corpora.length === 0 ? (
         <div className="kv-empty">
-          <FolderClose size={40} />
+          <FolderClose size={33} />
           <p>No corpora yet. Create one to start ingesting documents.</p>
         </div>
       ) : (
@@ -300,7 +300,7 @@ function EmbedderConfigCard({
       <div className="kv-emb-header">
         <div className="kv-emb-title-row">
           <div className="kv-emb-icon">
-            <LinkCloud size={18} />
+            <LinkCloud size={15} />
           </div>
           <div>
             <div className="kv-emb-title">Embedding Model</div>
@@ -310,7 +310,7 @@ function EmbedderConfigCard({
         <div className="kv-emb-status-row">
           {isConfigured ? (
             <span className="kv-emb-badge kv-emb-badge-ok">
-              <CheckOne size={12} /> Configured
+              <CheckOne size={10} /> Configured
             </span>
           ) : (
             <span className="kv-emb-badge kv-emb-badge-warn">
@@ -374,7 +374,7 @@ function EmbedderConfigCard({
                 onClick={() => setShowKey(v => !v)}
                 tabIndex={-1}
               >
-                {showKey ? <PreviewClose size={15} /> : <PreviewOpen size={15} />}
+                {showKey ? <PreviewClose size={12} /> : <PreviewOpen size={12} />}
               </button>
             </div>
           </div>
@@ -401,7 +401,7 @@ function EmbedderConfigCard({
                   disabled={detecting || !form.base_url}
                   title="Auto-detect embedding models from Ollama"
                 >
-                  {detecting ? <Sync size={13} className="kv-spin" /> : <Sync size={13} />}
+                  {detecting ? <Sync size={11} className="kv-spin" /> : <Sync size={11} />}
                 </button>
               )}
             </div>
@@ -423,7 +423,7 @@ function EmbedderConfigCard({
 
         {testState === 'ok' && testLatency !== null && (
           <div className="kv-emb-ok">
-            <CheckOne size={14} /> Connected — {testLatency}ms
+            <CheckOne size={11} /> Connected — {testLatency}ms
           </div>
         )}
       </div>
@@ -436,13 +436,13 @@ function EmbedderConfigCard({
           type="button"
         >
           {testState === 'running' ? (
-            <><Sync size={14} className="kv-spin" /> Testing…</>
+            <><Sync size={11} className="kv-spin" /> Testing…</>
           ) : testState === 'ok' ? (
-            <><CheckOne size={14} /> OK</>
+            <><CheckOne size={11} /> OK</>
           ) : testState === 'error' ? (
-            <><CloseOne size={14} /> Failed</>
+            <><CloseOne size={11} /> Failed</>
           ) : (
-            <><Setting size={14} /> Test Connection</>
+            <><Setting size={11} /> Test Connection</>
           )}
         </button>
         {dirty && (
@@ -535,7 +535,7 @@ function DoclingConfigCard({
       <div className="kv-emb-header">
         <div className="kv-emb-title-row">
           <div className="kv-emb-icon">
-            <LinkCloud size={18} />
+            <LinkCloud size={15} />
           </div>
           <div>
             <div className="kv-emb-title">Document Conversion (Docling)</div>
@@ -573,7 +573,7 @@ function DoclingConfigCard({
 
         {testState === 'ok' && testLatency !== null && (
           <div className="kv-emb-ok">
-            <CheckOne size={14} /> Reachable — {testLatency}ms
+            <CheckOne size={11} /> Reachable — {testLatency}ms
           </div>
         )}
       </div>
@@ -586,13 +586,13 @@ function DoclingConfigCard({
           type="button"
         >
           {testState === 'running' ? (
-            <><Sync size={14} className="kv-spin" /> Testing…</>
+            <><Sync size={11} className="kv-spin" /> Testing…</>
           ) : testState === 'ok' ? (
-            <><CheckOne size={14} /> OK</>
+            <><CheckOne size={11} /> OK</>
           ) : testState === 'error' ? (
-            <><CloseOne size={14} /> Failed</>
+            <><CloseOne size={11} /> Failed</>
           ) : (
-            <><Setting size={14} /> Test Connection</>
+            <><Setting size={11} /> Test Connection</>
           )}
         </button>
         {dirty && (
@@ -731,7 +731,7 @@ function CorpusCard({
       <div className="kv-card-header" onClick={onToggle}>
         <div className="kv-card-brand">
           <div className="kv-corpus-icon">
-            <Book size={20} />
+            <Book size={16} />
           </div>
           <div className="kv-corpus-meta">
             <div className="kv-corpus-name">{corpus.name}</div>
@@ -749,7 +749,7 @@ function CorpusCard({
             disabled={deleting}
             title="Delete corpus"
           >
-            <Delete size={16} />
+            <Delete size={13} />
           </button>
         </div>
       </div>
@@ -768,7 +768,7 @@ function CorpusCard({
                   disabled={loadingFiles}
                   title="Refresh"
                 >
-                  <Sync size={14} className={loadingFiles ? 'kv-spin' : ''} />
+                  <Sync size={11} className={loadingFiles ? 'kv-spin' : ''} />
                   Refresh
                 </button>
                 <button
@@ -776,7 +776,7 @@ function CorpusCard({
                   onClick={() => fileRef.current?.click()}
                   disabled={uploading}
                 >
-                  <Upload size={14} />
+                  <Upload size={11} />
                   {uploading ? 'Uploading…' : 'Upload & Attach'}
                 </button>
                 <input
@@ -804,10 +804,10 @@ function CorpusCard({
                     </div>
                     <div className="kv-file-status">
                       {(f.status === 'ingested' || f.status === 'completed') && (
-                        <CheckOne size={14} className="kv-status-icon-green" />
+                        <CheckOne size={11} className="kv-status-icon-green" />
                       )}
                       {f.status === 'failed' && (
-                        <CloseOne size={14} className="kv-status-icon-red" />
+                        <CloseOne size={11} className="kv-status-icon-red" />
                       )}
                       <StatusBadge status={f.status} />
                     </div>
@@ -834,13 +834,13 @@ function CorpusCard({
                     </div>
                     <div className="kv-file-status">
                       {(job.status === 'running' || job.status === 'pending') && (
-                        <Sync size={14} className="kv-spin kv-status-icon-grey" />
+                        <Sync size={11} className="kv-spin kv-status-icon-grey" />
                       )}
                       {(job.status === 'completed') && (
-                        <CheckOne size={14} className="kv-status-icon-green" />
+                        <CheckOne size={11} className="kv-status-icon-green" />
                       )}
                       {job.status === 'failed' && (
-                        <CloseOne size={14} className="kv-status-icon-red" />
+                        <CloseOne size={11} className="kv-status-icon-red" />
                       )}
                       <StatusBadge status={job.status} />
                     </div>
@@ -896,7 +896,7 @@ function NewCorpusModal({
         <header className="modal-header">
           <h2>New Corpus</h2>
           <button className="modal-close-btn" onClick={onClose}>
-            <CloseOne size={20} />
+            <CloseOne size={16} />
           </button>
         </header>
         <div className="modal-content">
@@ -946,13 +946,13 @@ const KNOWLEDGE_CSS = `
   background: var(--color-primary);
   color: white;
   border: none;
-  padding: 9px 18px;
-  border-radius: 9px;
+  padding: 6px 13px;
+  border-radius: 7px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 12px;
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -962,39 +962,39 @@ const KNOWLEDGE_CSS = `
   background: rgba(201,107,92,0.1);
   border: 1px solid rgba(201,107,92,0.3);
   color: var(--color-error);
-  padding: 12px 16px;
-  border-radius: 10px;
-  font-size: 13px;
+  padding: 8px 11px;
+  border-radius: 8px;
+  font-size: 11px;
   margin-bottom: 20px;
 }
 
 .kv-loading {
   color: var(--color-text-muted);
-  font-size: 14px;
-  padding: 40px 0;
+  font-size: 12px;
+  padding: 28px 0;
 }
 
 .kv-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-  padding: 80px 20px;
+  gap: 12px;
+  padding: 56px 14px;
   color: var(--color-text-muted);
   text-align: center;
 }
-.kv-empty p { margin: 0; font-size: 14px; }
+.kv-empty p { margin: 0; font-size: 12px; }
 
 .kv-corpus-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 9px;
 }
 
 .kv-card {
   background: var(--color-bg);
   border: 1.5px solid var(--color-border);
-  border-radius: 14px;
+  border-radius: 11px;
   overflow: hidden;
   transition: border-color 0.15s;
 }
@@ -1004,19 +1004,19 @@ const KNOWLEDGE_CSS = `
 }
 
 .kv-card-header {
-  padding: 18px 24px;
+  padding: 13px 17px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   cursor: pointer;
-  gap: 16px;
+  gap: 12px;
 }
 .kv-card-header:hover { background: var(--color-hover); }
 
 .kv-card-brand {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   flex: 1;
   min-width: 0;
 }
@@ -1026,7 +1026,7 @@ const KNOWLEDGE_CSS = `
   height: 40px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 10px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1037,14 +1037,14 @@ const KNOWLEDGE_CSS = `
 .kv-corpus-meta { min-width: 0; }
 .kv-corpus-name {
   font-weight: 700;
-  font-size: 15px;
+  font-size: 13px;
   color: var(--color-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .kv-corpus-desc {
-  font-size: 12px;
+  font-size: 10px;
   color: var(--color-text-muted);
   margin-top: 2px;
   white-space: nowrap;
@@ -1055,22 +1055,22 @@ const KNOWLEDGE_CSS = `
 .kv-card-controls {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 11px;
   flex-shrink: 0;
 }
 
 .kv-chunk-count {
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 700;
   color: var(--color-text-muted);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  padding: 3px 9px;
-  border-radius: 7px;
+  padding: 2px 6px;
+  border-radius: 5px;
 }
 
 .kv-date {
-  font-size: 12px;
+  font-size: 10px;
   color: var(--color-text-muted);
 }
 
@@ -1079,9 +1079,9 @@ const KNOWLEDGE_CSS = `
   border: none;
   color: var(--color-text-muted);
   cursor: pointer;
-  padding: 6px;
+  padding: 4px;
   display: flex;
-  border-radius: 6px;
+  border-radius: 5px;
   transition: background 0.1s, color 0.1s;
 }
 .kv-icon-btn:hover { background: var(--color-hover); color: var(--color-error); }
@@ -1090,13 +1090,13 @@ const KNOWLEDGE_CSS = `
 /* Expanded body */
 .kv-card-body {
   border-top: 1px solid var(--color-border);
-  padding: 24px;
+  padding: 17px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 18px;
 }
 
-.kv-section { display: flex; flex-direction: column; gap: 12px; }
+.kv-section { display: flex; flex-direction: column; gap: 9px; }
 
 .kv-section-header {
   display: flex;
@@ -1105,7 +1105,7 @@ const KNOWLEDGE_CSS = `
 }
 
 .kv-section-title {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.06em;
   color: var(--color-text-muted);
@@ -1114,21 +1114,21 @@ const KNOWLEDGE_CSS = `
 .kv-section-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .kv-ghost-btn {
   background: none;
   border: 1px solid var(--color-border);
   color: var(--color-text-secondary);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   cursor: pointer;
-  padding: 5px 12px;
-  border-radius: 7px;
+  padding: 4px 8px;
+  border-radius: 5px;
   transition: background 0.1s;
   font-family: inherit;
 }
@@ -1143,27 +1143,27 @@ const KNOWLEDGE_CSS = `
 .kv-upload-btn:hover { background: rgba(239,124,47,0.18); }
 
 .kv-list-empty {
-  font-size: 13px;
+  font-size: 11px;
   color: var(--color-text-muted);
-  padding: 16px;
+  padding: 11px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 10px;
+  border-radius: 8px;
 }
 
 .kv-file-list {
   border: 1px solid var(--color-border);
-  border-radius: 12px;
+  border-radius: 9px;
   background: var(--color-bg);
   overflow: hidden;
 }
 
 .kv-file-row {
-  padding: 11px 16px;
+  padding: 8px 11px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 9px;
   border-bottom: 1px solid var(--color-border-subtle, var(--color-border));
   flex-wrap: wrap;
 }
@@ -1172,13 +1172,13 @@ const KNOWLEDGE_CSS = `
 .kv-file-info {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex: 1;
   min-width: 0;
 }
 
 .kv-file-name {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--color-text);
   white-space: nowrap;
@@ -1187,7 +1187,7 @@ const KNOWLEDGE_CSS = `
 }
 
 .kv-file-chunks {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--color-text-muted);
   flex-shrink: 0;
 }
@@ -1195,23 +1195,23 @@ const KNOWLEDGE_CSS = `
 .kv-file-status {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   flex-shrink: 0;
 }
 
 .kv-job-error {
   width: 100%;
-  font-size: 11px;
+  font-size: 10px;
   color: var(--color-error);
-  padding: 4px 0 0;
+  padding: 3px 0 0;
 }
 
 /* Status badges */
 .kv-badge {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 6px;
+  padding: 2px 6px;
+  border-radius: 5px;
 }
 .kv-badge-green {
   color: var(--color-success);
@@ -1244,27 +1244,27 @@ const KNOWLEDGE_CSS = `
   margin-top: 12px;
   background: rgba(201,107,92,0.1);
   border: 1px solid rgba(201,107,92,0.3);
-  padding: 10px 14px;
-  border-radius: 8px;
+  padding: 7px 10px;
+  border-radius: 6px;
   color: var(--color-error);
-  font-size: 13px;
+  font-size: 11px;
 }
 
 /* ── Embedder config card ── */
 .kv-emb-card {
   background: var(--color-bg);
   border: 1.5px solid var(--color-border);
-  border-radius: 14px;
+  border-radius: 11px;
   margin-bottom: 24px;
   overflow: hidden;
 }
 
 .kv-emb-header {
-  padding: 18px 24px 14px;
+  padding: 13px 17px 10px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   flex-wrap: wrap;
   border-bottom: 1px solid var(--color-border);
 }
@@ -1272,7 +1272,7 @@ const KNOWLEDGE_CSS = `
 .kv-emb-title-row {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 11px;
 }
 
 .kv-emb-icon {
@@ -1280,7 +1280,7 @@ const KNOWLEDGE_CSS = `
   height: 38px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 10px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1290,11 +1290,11 @@ const KNOWLEDGE_CSS = `
 
 .kv-emb-title {
   font-weight: 700;
-  font-size: 15px;
+  font-size: 13px;
   color: var(--color-text);
 }
 .kv-emb-subtitle {
-  font-size: 12px;
+  font-size: 10px;
   color: var(--color-text-muted);
   margin-top: 2px;
 }
@@ -1302,17 +1302,17 @@ const KNOWLEDGE_CSS = `
 .kv-emb-status-row {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 11px;
 }
 
 .kv-emb-badge {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
-  padding: 3px 10px;
-  border-radius: 7px;
+  padding: 2px 7px;
+  border-radius: 5px;
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
 }
 .kv-emb-badge-ok {
   background: rgba(111,175,123,0.14);
@@ -1327,9 +1327,9 @@ const KNOWLEDGE_CSS = `
 .kv-emb-toggle {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 5px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 11px;
   color: var(--color-text-secondary);
   user-select: none;
 }
@@ -1337,26 +1337,26 @@ const KNOWLEDGE_CSS = `
 .kv-emb-toggle-label { font-weight: 600; }
 
 .kv-emb-body {
-  padding: 20px 24px;
+  padding: 14px 17px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .kv-emb-row {
   display: flex;
-  gap: 14px;
+  gap: 11px;
   flex-wrap: wrap;
 }
 
 .kv-emb-field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
   min-width: 0;
 }
 .kv-emb-field label {
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 700;
   color: var(--color-text-secondary);
   letter-spacing: 0.02em;
@@ -1369,9 +1369,9 @@ const KNOWLEDGE_CSS = `
 .kv-emb-field select {
   background: var(--color-surface);
   border: 1.5px solid var(--color-border);
-  border-radius: 9px;
-  padding: 9px 13px;
-  font-size: 13px;
+  border-radius: 7px;
+  padding: 6px 9px;
+  font-size: 11px;
   font-family: inherit;
   color: var(--color-text);
   outline: none;
@@ -1389,7 +1389,7 @@ const KNOWLEDGE_CSS = `
 .kv-emb-key-wrap {
   position: relative;
 }
-.kv-emb-key-wrap input { padding-right: 38px; }
+.kv-emb-key-wrap input { padding-right: 27px; }
 .kv-emb-eye {
   position: absolute;
   right: 10px;
@@ -1409,38 +1409,38 @@ const KNOWLEDGE_CSS = `
   background: rgba(201,107,92,0.1);
   border: 1px solid rgba(201,107,92,0.3);
   color: var(--color-error);
-  padding: 9px 14px;
-  border-radius: 8px;
-  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
 }
 .kv-emb-ok {
   background: rgba(111,175,123,0.1);
   border: 1px solid rgba(111,175,123,0.3);
   color: var(--color-success);
-  padding: 9px 14px;
-  border-radius: 8px;
-  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .kv-emb-footer {
-  padding: 14px 24px;
+  padding: 10px 17px;
   border-top: 1px solid var(--color-border);
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .kv-emb-test-btn,
 .kv-emb-save-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 13px;
+  gap: 5px;
+  padding: 6px 11px;
+  border-radius: 6px;
+  font-size: 11px;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
@@ -1476,7 +1476,7 @@ const KNOWLEDGE_CSS = `
 
 .kv-emb-model-row {
   display: flex;
-  gap: 6px;
+  gap: 5px;
   align-items: center;
 }
 .kv-emb-model-row input { flex: 1; }
@@ -1487,7 +1487,7 @@ const KNOWLEDGE_CSS = `
   height: 34px;
   border: 1.5px solid var(--color-border);
   background: var(--color-surface);
-  border-radius: 8px;
+  border-radius: 6px;
   color: var(--color-text-muted);
   cursor: pointer;
   display: flex;

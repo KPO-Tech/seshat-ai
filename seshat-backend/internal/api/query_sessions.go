@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/EngineerProjects/seshat/pkg/types"
+	"github.com/KPO-Tech/seshat/pkg/types"
 )
 
 // handleSessions handles GET /api/v1/sessions (list) and POST /api/v1/sessions (create).
@@ -189,7 +189,12 @@ func (app *App) handleSessionByID(w http.ResponseWriter, r *http.Request) {
 			v := strings.TrimSpace(*req.ProjectPath)
 			projectPath = &v
 		}
-		if err := app.backend.Query.UpdateSessionMetadata(r.Context(), principal, sessionID, req.Title, permissionMode, executionOrigin, providerSettingID, modelID, workspacePath, projectPath); err != nil {
+		var executionMode *string
+		if req.ExecutionMode != nil {
+			v := strings.TrimSpace(*req.ExecutionMode)
+			executionMode = &v
+		}
+		if err := app.backend.Query.UpdateSessionMetadata(r.Context(), principal, sessionID, req.Title, permissionMode, executionOrigin, providerSettingID, modelID, workspacePath, projectPath, executionMode); err != nil {
 			writeBackendError(w, err)
 			return
 		}

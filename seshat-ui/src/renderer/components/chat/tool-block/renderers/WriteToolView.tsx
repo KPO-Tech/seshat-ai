@@ -1,28 +1,15 @@
-import { Section, CodeBox } from '../common'
+import { Section } from '../common'
+import { DiffView, resolveDiffRows } from '../DiffView'
 import type { ToolViewProps } from '../types'
-
-function basename(fp: string) {
-  return fp.split('/').filter(Boolean).pop() ?? fp
-}
 
 export function WriteToolView({ tool, result }: ToolViewProps) {
   const filePath = (tool.input.file_path as string) ?? ''
-  const content = (tool.input.content as string) ?? ''
-  const lineCount = content ? content.split('\n').length : 0
+  const diff = resolveDiffRows(tool)
 
   return (
     <>
-      {filePath && (
-        <div className="tb-edit-path-row">
-          <span className="tb-filepath" title={filePath}>{basename(filePath)}</span>
-          <span className="tb-filepath-full">{filePath}</span>
-        </div>
-      )}
-
-      {content && (
-        <Section label={`Content — ${lineCount} line${lineCount !== 1 ? 's' : ''}`}>
-          <CodeBox content={content} copyable />
-        </Section>
+      {diff && diff.rows.length > 0 && (
+        <DiffView filePath={filePath} rows={diff.rows} addCount={diff.addCount} delCount={diff.delCount} />
       )}
 
       {result?.isError && result.content && (

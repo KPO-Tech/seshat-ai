@@ -10,9 +10,12 @@ This document describes the current repository layout and the package boundaries
 seshat-ai/
 ├── seshat-backend/   ← local backend / desktop HTTP API
 ├── seshat-server/    ← cloud server bootstrap (auth, orgs, jobs, sync)
-├── seshat-ui/        ← Electron desktop client
-└── seshat/           ← open-source Go runtime submodule
+└── seshat-ui/        ← Electron desktop client
 ```
+
+`seshat` — the open-source Go runtime — is not part of this repository. It is consumed as an
+external module, `github.com/KPO-Tech/seshat`, declared directly in `seshat-backend/go.mod`
+and `seshat-server/go.mod`.
 
 The dependency direction is intentionally one-way:
 
@@ -24,11 +27,10 @@ seshat           → seshat-backend   (never)
 seshat           → seshat-server    (never)
 ```
 
-`go.work` at the repository root ties the three Go modules together during local development:
+`go.work` at the repository root ties the two local Go modules together during local development:
 
 ```go
 use (
-    ./seshat
     ./seshat-backend
     ./seshat-server
 )
@@ -148,11 +150,11 @@ Allowed examples:
 
 ```go
 import (
-    "github.com/EngineerProjects/seshat/pkg/config"
-    "github.com/EngineerProjects/seshat/pkg/rag"
-    "github.com/EngineerProjects/seshat/pkg/sdk"
-    "github.com/EngineerProjects/seshat/pkg/storage"
-    "github.com/EngineerProjects/seshat/pkg/types"
+    "github.com/KPO-Tech/seshat/pkg/config"
+    "github.com/KPO-Tech/seshat/pkg/rag"
+    "github.com/KPO-Tech/seshat/pkg/sdk"
+    "github.com/KPO-Tech/seshat/pkg/storage"
+    "github.com/KPO-Tech/seshat/pkg/types"
 )
 ```
 
@@ -193,8 +195,8 @@ POST /api/v1/query/stream
 From the repository root:
 
 ```bash
-go build ./seshat-backend/... ./seshat-server/... ./seshat/...
-go test ./seshat-backend/... ./seshat-server/... ./seshat/...
+go build ./seshat-backend/... ./seshat-server/...
+go test ./seshat-backend/... ./seshat-server/...
 ```
 
 Run the local backend:

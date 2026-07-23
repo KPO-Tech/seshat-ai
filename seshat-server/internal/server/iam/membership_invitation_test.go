@@ -172,3 +172,32 @@ func TestInvitationAcceptAndRevokeFlow(t *testing.T) {
 		t.Fatalf("expected two invitations, got %d", len(invitations))
 	}
 }
+
+// TestAcceptInvitationRejectsUserAlreadyInAnotherOrganization locks in the
+// one-org-per-user invariant on the invitation-accept path: a user already
+// belonging to one organization cannot accept an invitation into a second.
+func TestAcceptInvitationRejectsUserAlreadyInAnotherOrganization(t *testing.T) {
+	service, adminPrincipal, memberPrincipal, _ := bootstrapWithMember(t, "member")
+
+	otherOrg, err := service.CreateOrganization(context.Background(), adminPrincipal, CreateOrganizationParams{
+		Name: "Other Co",
+		Slug: "other-co",
+	})
+	if err != nil {
+		t.Fatalf("create other organization: %v", err)
+	}
+
+	invitation, err := service.CreateInvitation(context.Background(), adminPrincipal, CreateInvitationParams{
+		OrganizationID: otherOrg.ID,
+		Email:          memberPrincipal.User.Email,
+		Role:           "viewer",
+		ExpiresInDays:  14,
+	})
+	if err != nil {
+		t.Fatalf("create invitation: %v", err)
+	}
+
+	if _, err := service.AcceptInvitation(context.Background(), memberPrincipal, AcceptInvitationParams{Token: invitation.Token}); err == nil {
+		t.Fatal("expected accepting an invitation to fail for a user already in another organization")
+	}
+}

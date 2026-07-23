@@ -182,6 +182,35 @@ func TestResolveProviderSettingFallsBackToPlatformDefault(t *testing.T) {
 	}
 }
 
+func TestResolveProviderSettingHonorsShareProviderSettingsOptOut(t *testing.T) {
+	t.Setenv(testEncryptionEnvVar, testEncryptionKey)
+	env := newTestEnv(t)
+	memberPrincipal := env.addMember(t, "member")
+
+	defaultOrg, err := env.iam.CreateOrganization(context.Background(), env.adminPrincipal, iam.CreateOrganizationParams{
+		Name: "Default Org", Slug: "default-org",
+	})
+	if err != nil {
+		t.Fatalf("create default org: %v", err)
+	}
+	if _, err := env.iam.SetOrganizationDefault(context.Background(), env.adminPrincipal, defaultOrg.ID, true); err != nil {
+		t.Fatalf("set organization default: %v", err)
+	}
+	if _, err := env.automation.CreateProviderSetting(context.Background(), env.adminPrincipal, CreateProviderSettingParams{
+		OrganizationID: defaultOrg.ID, Provider: "mistral", DefaultModel: "mistral-small-latest", APIKey: "sk-mistral-platform",
+	}); err != nil {
+		t.Fatalf("create provider setting on the default org: %v", err)
+	}
+	shareProviderSettings := false
+	if _, err := env.iam.SetOrganizationSharedDomains(context.Background(), env.adminPrincipal, defaultOrg.ID, &shareProviderSettings, nil, nil, nil, nil, nil); err != nil {
+		t.Fatalf("opt out of sharing provider settings: %v", err)
+	}
+
+	if _, err := env.automation.ResolveProviderSetting(context.Background(), memberPrincipal, env.orgID, "mistral"); err == nil {
+		t.Fatal("expected the fallback to be skipped once the default org opted out of sharing provider settings")
+	}
+}
+
 func TestResolveProviderSettingRejectsNonMember(t *testing.T) {
 	t.Setenv(testEncryptionEnvVar, testEncryptionKey)
 	env := newTestEnv(t)

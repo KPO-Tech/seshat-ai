@@ -1,11 +1,36 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
+type WhisperStatus = {
+  supported: boolean
+  running: boolean
+  port?: number
+  activeModelId: string
+  downloadedModelIds: string[]
+}
+
+type WhisperModelInfo = {
+  id: string
+  filename: string
+  label: string
+  approxSizeBytes: number
+  description: string
+}
+
+type WhisperProgress = {
+  phase: 'binary' | 'model'
+  modelId?: string
+  receivedBytes: number
+  totalBytes: number
+}
+
 const nexusBridge = {
   getVersion: () => ipcRenderer.invoke('app:version'),
   openPath: (p: string) => ipcRenderer.invoke('system:open-path', p),
   showFile: (p: string) => ipcRenderer.invoke('system:show-file', p),
   openExternal: (url: string) => ipcRenderer.invoke('system:open-external', url),
   selectFile: (opts?: Electron.OpenDialogOptions) => ipcRenderer.invoke('system:select-file', opts),
+  saveFile: (defaultName: string, content: string): Promise<{ canceled: boolean; filePath?: string }> =>
+    ipcRenderer.invoke('system:save-file', defaultName, content),
   dialog: {
     openDirectory: (): Promise<Electron.OpenDialogReturnValue> => ipcRenderer.invoke('dialog:openDirectory'),
   },
@@ -44,6 +69,21 @@ const nexusBridge = {
       }
       ipcRenderer.on('http:stream:event', handler)
       return () => ipcRenderer.removeListener('http:stream:event', handler)
+    },
+  },
+  whisper: {
+    status: (): Promise<WhisperStatus> => ipcRenderer.invoke('whisper:status'),
+    models: (): Promise<WhisperModelInfo[]> => ipcRenderer.invoke('whisper:models'),
+    downloadDefaults: (): Promise<WhisperStatus> => ipcRenderer.invoke('whisper:download-defaults'),
+    downloadModel: (modelId: string): Promise<WhisperStatus> => ipcRenderer.invoke('whisper:download-model', modelId),
+    activateModel: (modelId: string): Promise<WhisperStatus> => ipcRenderer.invoke('whisper:activate-model', modelId),
+    deleteModel: (modelId: string): Promise<WhisperStatus> => ipcRenderer.invoke('whisper:delete-model', modelId),
+    enable: (): Promise<WhisperStatus> => ipcRenderer.invoke('whisper:enable'),
+    disable: (): Promise<WhisperStatus> => ipcRenderer.invoke('whisper:disable'),
+    onProgress: (listener: (progress: WhisperProgress) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, progress: WhisperProgress) => listener(progress)
+      ipcRenderer.on('whisper:progress', handler)
+      return () => ipcRenderer.removeListener('whisper:progress', handler)
     },
   },
   updates: {

@@ -210,6 +210,102 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
+  /api/v1/auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Self-service account creation
+      description: >
+        Unlike bootstrap (one-time, first account only) or admin-created
+        users, anyone can call this. If the email's domain matches an
+        organization's own `domain`, the new user is immediately auto-joined
+        to that organization as a "pending" member - full access already,
+        just flagged for admin attention (see Membership.status) until
+        confirmed (`POST /memberships/{id}/confirm`) or auto-blocked after
+        `SESHAT_SERVER_MEMBERSHIP_CONFIRMATION_WINDOW` (default ~2 months)
+        unconfirmed. No domain match just creates the account with no
+        memberships - use `POST /organizations` afterwards to found a new
+        one. Rate limited to 3 attempts/minute per client IP (burst 5).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RegisterInput" }
+      responses:
+        "201":
+          description: Account created (and, if the email domain matched an organization, auto-joined pending)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/auth/forgot-password:
+    post:
+      operationId: forgotPassword
+      tags: [auth]
+      summary: Request a password reset link by email
+      description: >
+        Always returns 200 with the same generic message regardless of
+        whether the email matches an account — a different response would
+        let an attacker enumerate accounts by email. If a match exists, a
+        1-hour-lived reset link is emailed (see /reset-password). Rate
+        limited to 3 attempts/minute per client IP (burst 3) — the
+        tightest limit of any endpoint, since this is both an
+        email-enumeration and inbox-spam vector.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        "200":
+          description: Request accepted (does not imply an email was actually sent)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/auth/reset-password:
+    post:
+      operationId: resetPassword
+      tags: [auth]
+      summary: Redeem a password-reset token
+      description: >
+        No authentication required — the token itself is the credential.
+        Deliberately generic on failure (401 regardless of whether the
+        token is unknown, already used, or expired) to avoid leaking
+        feedback useful for guessing tokens. On success, every existing
+        session for the account is revoked. Rate limited to 5
+        attempts/minute per client IP (burst 5).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, new_password]
+              properties:
+                token: { type: string }
+                new_password: { type: string, format: password }
+      responses:
+        "204": { description: Password reset, all sessions revoked }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
   /api/v1/auth/me:
     get:
       operationId: getCurrentPrincipal
@@ -409,6 +505,34 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/organizations/{organizationID}/shared-domains:
+    put:
+      operationId: setOrganizationSharedDomains
+      tags: [organizations]
+      summary: Choose which settings domains this organization shares while it's the platform default (platform admin only)
+      description: >
+        Only meaningful while this organization holds is_default. Lets a
+        platform admin share, say, this organization's MCP servers with
+        every other organization while keeping its LLM provider credentials
+        private to itself, instead of is_default sharing everything
+        unconditionally. Fields omitted from the body leave that domain's
+        flag unchanged.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OrganizationSharedDomainsInput" }
+      responses:
+        "200":
+          description: Updated organization
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Organization" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/platform/docling-status:
     get:
       operationId: getDoclingStatus
@@ -463,7 +587,11 @@ paths:
       summary: Create a user (platform admin only)
       description: >
         If `organization_id` is set, also creates a membership with `role`
-        (default `member`) in the same call.
+        (default `member`) in the same call. Always creates a regular
+        (non-platform-admin) account — there is no is_admin field here or
+        anywhere else in this API. Platform-admin status is granted exactly
+        once, by seeding from env vars at server boot, and never through
+        any API action afterwards, by anyone.
       requestBody:
         required: true
         content:
@@ -477,9 +605,6 @@ paths:
                 display_name: { type: string }
                 organization_id: { type: string }
                 role: { type: string, enum: [owner, admin, member, viewer] }
-                is_admin:
-                  type: boolean
-                  description: Grants platform-wide admin privileges.
       responses:
         "201":
           description: User created
@@ -510,7 +635,9 @@ paths:
       operationId: updateUser
       tags: [users]
       summary: Update a user (platform admin only)
-      description: Cannot demote the last platform admin.
+      description: >-
+        Email and display name only — no is_admin field, see createUser's
+        description for why.
       requestBody:
         required: true
         content:
@@ -521,7 +648,6 @@ paths:
               properties:
                 email: { type: string, format: email }
                 display_name: { type: string }
-                is_admin: { type: boolean }
       responses:
         "200":
           description: Updated user
@@ -755,6 +881,50 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
 
+  /api/v1/memberships/direct:
+    post:
+      operationId: createOrganizationMember
+      tags: [memberships]
+      summary: Create a new account and attach it to an organization in one step
+      description: >-
+        Sibling action to POST /memberships (which only attaches an
+        EXISTING user) — this creates the account too. Requires
+        members.manage or organization.manage (org-admin, unlike POST
+        /users which is platform-superadmin-only). No password field: one
+        is generated internally and never exposed — the new member sets
+        their own via an emailed welcome link that reuses the same
+        /reset-password flow as a forgotten-password reset. Optionally
+        attaches the new member to one or more existing groups in the same
+        step via group_ids.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [organization_id, email, display_name]
+              properties:
+                organization_id: { type: string }
+                email: { type: string, format: email }
+                display_name: { type: string }
+                role:
+                  type: string
+                  description: A system role code (owner/admin/member/viewer) or a custom role code defined for this organization. Defaults to "member".
+                group_ids:
+                  type: array
+                  items: { type: string }
+                  description: Existing groups (in the same organization) to attach the new member to immediately.
+      responses:
+        "201":
+          description: Account created and attached as a member
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Membership" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
   /api/v1/memberships/{membershipID}:
     parameters:
       - name: membershipID
@@ -813,6 +983,29 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/memberships/{membershipID}/confirm:
+    post:
+      operationId: confirmMembership
+      tags: [memberships]
+      summary: Finalize a self-registered pending membership
+      description: >
+        Requires `members.manage` or `organization.manage`. Sets status to
+        "active" and clears pending_since. A no-op (not an error) on a
+        membership that isn't pending.
+      parameters:
+        - name: membershipID
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Confirmed membership
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Membership" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /api/v1/invitations:
     get:
@@ -875,6 +1068,31 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/invitations/lookup:
+    get:
+      operationId: lookupInvitation
+      tags: [invitations]
+      summary: Preview an invitation by its raw token, unauthenticated
+      description: >-
+        No auth required — the invited person usually doesn't have an
+        account yet, so gating the preview behind login would be
+        backwards. Returns valid:false (still HTTP 200, not an error) for
+        an unknown, expired, or already-used token, so the console can
+        render "this invitation is no longer valid" instead of a raw
+        error. Never includes the invitation id, inviter, or raw token.
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Invitation preview
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InvitationPreview" }
+        "400": { $ref: "#/components/responses/BadRequest" }
 
   /api/v1/invitations/{invitationID}:
     get:
@@ -1225,6 +1443,31 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
+  /api/v1/users/me/password:
+    put:
+      operationId: changeMyPassword
+      tags: [users]
+      summary: Change my own password
+      description: >-
+        Self-service only — requires re-proving the current password, so a
+        stolen bearer token alone can't rotate credentials. Does not revoke
+        the current session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, new_password]
+              properties:
+                current_password: { type: string }
+                new_password: { type: string, minLength: 8 }
+      responses:
+        "204":
+          description: Password updated
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
   /api/v1/users/me/preferences:
     get:
       operationId: getMyPreferences
@@ -1477,6 +1720,63 @@ paths:
                   context: { type: string }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
+  /api/v1/users/me/workspace/chat/stream:
+    post:
+      operationId: streamWorkspaceChat
+      tags: [workspace-chat]
+      summary: Send a message to a personal Workspace Chat session and stream back the reply
+      description: >-
+        A personal, user-scoped playground for trying providers/models/tools
+        live against a real LLM (web_search, rag_search, read_document_url),
+        distinct from the async cloud job scheduler. The response body is
+        newline-delimited JSON (one WorkspaceChatEvent object per line), not
+        a JSON document — read it as a stream, not with a single JSON parse.
+        session_id is client-generated and identifies one conversation;
+        reusing it across calls continues the same in-memory SDK session
+        (recent history remembered) until it's evicted after 2 hours of
+        inactivity. Turns are also persisted to the database so a page
+        refresh can reload the conversation via GET
+        /users/me/workspace/chat/sessions/{sessionID}, but only for 48 hours -
+        this remains a transient test surface, not a durable chat history.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkspaceChatStreamInput" }
+      responses:
+        "200":
+          description: Newline-delimited stream of WorkspaceChatEvent objects
+          content:
+            application/x-ndjson:
+              schema: { $ref: "#/components/schemas/WorkspaceChatEvent" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/users/me/workspace/chat/sessions/{sessionID}:
+    get:
+      operationId: getWorkspaceChatSession
+      tags: [workspace-chat]
+      summary: Reload a persisted Workspace Chat conversation
+      description: >-
+        Scoped to the requesting user; a session created by another user is
+        indistinguishable from one that never existed. A session past the
+        48-hour retention window returns 404 rather than an empty/expired
+        marker, since the console treats both cases identically (start fresh).
+      parameters:
+        - name: sessionID
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: The persisted conversation, ordered oldest to newest
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkspaceChatSessionHistory" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/skill-repos:
     get:
       operationId: listSkillRepos
@@ -1486,6 +1786,11 @@ paths:
         Open to any member of the organization, not gated behind a specific
         permission — these are public repo URLs, nothing secret to protect.
         A caller who isn't a member of the organization at all is rejected.
+        Falls back to whichever organization is flagged as the platform
+        default when this org has none of its own (see each row's `source`)
+        - unlike provider-settings/embedder-settings/MCP servers, this
+        fallback lives directly in this list rather than a separate resolve
+        endpoint, since there's no secret data here to keep out of it.
       parameters:
         - $ref: "#/components/parameters/organizationIDQuery"
       responses:
@@ -2050,6 +2355,32 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/provider-settings/detect-models:
+    post:
+      operationId: detectProviderModels
+      tags: [provider-settings]
+      summary: Probe a live Ollama instance for its installed LLM models
+      description: >-
+        Only does anything for provider "ollama" — every other provider has
+        a static model catalog in the console already, since a hosted
+        provider's model list doesn't vary per install. A self-hosted
+        Ollama's installed models do, so this calls its /api/tags endpoint
+        live. Embedding models are already filtered out of the result.
+        Returns an empty list (never an error status) if the target Ollama
+        is unreachable, so the console can fall back to manual model entry.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DetectModelsInput" }
+      responses:
+        "200":
+          description: Detected models (possibly empty)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DetectedProviderModels" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
   /api/v1/web-search-provider-settings:
     get:
       operationId: listWebSearchProviderSettings
@@ -2277,9 +2608,11 @@ paths:
         explicitly approved each one (stdio servers spawn an arbitrary
         command locally). Authorization is deliberately looser than
         mcp_registry.manage: any member of the organization can resolve
-        "what has my org shared". Unlike web search's provider-by-provider
-        resolve, there's no org→platform fallback here — just every server
-        the organization has defined.
+        "what has my org shared". Falls back to whichever organization is
+        flagged as the platform default when this org has none of its own
+        (same hybrid model as provider-settings/embedder-settings) - an org
+        with even one server of its own never sees the default org's
+        servers mixed in.
       parameters:
         - $ref: "#/components/parameters/organizationIDQuery"
       responses:
@@ -2406,6 +2739,25 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Corpus" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      operationId: updateCorpus
+      tags: [knowledge]
+      summary: Rename/redescribe a corpus, or move it in or out of a folder
+      description: Requires knowledge.manage or organization.manage.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CorpusUpdateInput" }
+      responses:
+        "200":
+          description: Updated corpus
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Corpus" }
+        "400": { $ref: "#/components/responses/BadRequest" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
     delete:
@@ -2657,6 +3009,98 @@ paths:
         Requires knowledge.manage or organization.manage. The organization
         falls back to the platform default (if any) for subsequent
         ingest/search calls; existing corpora are not re-embedded.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "204": { description: Deleted }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/embedder-settings/detect-models:
+    post:
+      operationId: detectEmbedderModels
+      tags: [knowledge]
+      summary: Detect embedding-capable models for a provider
+      description: >-
+        For OpenAI-compatible providers this returns a static curated list
+        (their model catalogs don't vary per install). For "ollama" it
+        probes the target instance's /api/tags live and classifies each
+        installed model as embedding-capable by name/family heuristics,
+        since a self-hosted Ollama's installed models are unknowable ahead
+        of time. Returns an empty list (never an error status) if the
+        target Ollama is unreachable, so the console can fall back to
+        manual model entry.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DetectModelsInput" }
+      responses:
+        "200":
+          description: Detected embedding models (possibly empty)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DetectedEmbedderModels" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/organization-preferences:
+    get:
+      operationId: getOrganizationPreferences
+      tags: [preferences]
+      summary: Get an organization's preference defaults
+      description: >-
+        A singleton per organization — this organization's OWN values only,
+        no platform-default fallback (an admin editing their org's
+        preferences needs to see exactly what's set for THIS org). Requires
+        organization.manage. 404 if none is configured. A member's
+        effective preferences (personal value, else this, else the
+        platform-default organization's) are visible via
+        GET /api/v1/users/me/preferences instead, not here.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: Organization preferences
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationPreferences" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      operationId: setOrganizationPreferences
+      tags: [preferences]
+      summary: Create or update an organization's preference defaults
+      description: >-
+        Requires organization.manage. Upsert — creates the organization's
+        preferences if none exist yet, otherwise updates them in place.
+        Only fields that also exist at the personal level are supported
+        here (working_style, response_style, extra_context, the two
+        permission modes, max_sub_agent_depth) — preferred_name/profession/
+        about only make sense per-person and have no organization
+        equivalent.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OrganizationPreferencesInput" }
+      responses:
+        "200":
+          description: Organization preferences created or updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationPreferences" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    delete:
+      operationId: deleteOrganizationPreferences
+      tags: [preferences]
+      summary: Delete an organization's preference defaults
+      description: >-
+        Requires organization.manage. Members of this organization fall
+        back to the platform-default organization's preferences (if any and
+        shared) for subsequent GET /api/v1/users/me/preferences calls.
       parameters:
         - $ref: "#/components/parameters/organizationIDQuery"
       responses:
@@ -3329,10 +3773,31 @@ components:
         support_email: { type: string, format: email }
         is_default:
           type: boolean
-          description: Whether this organization's own ProviderSetting/EmbedderSetting rows are used as the platform-wide fallback for organizations with no config of their own. At most one organization holds this at a time.
+          description: Whether this organization's own ProviderSetting/EmbedderSetting/WebSearchProviderSetting/MCPServerConfig rows are used as the platform-wide fallback for organizations with no config of their own. At most one organization holds this at a time.
         is_active:
           type: boolean
           description: Administrative/visual flag only - not enforced on any request path yet.
+        share_provider_settings:
+          type: boolean
+          description: Only meaningful while is_default is true - whether this organization's LLM provider credentials are actually shared as the platform-wide fallback. Lets an admin keep IsDefault for some domains while excluding others.
+        share_embedder_settings:
+          type: boolean
+          description: Only meaningful while is_default is true - whether this organization's embedder configuration is shared as the platform-wide fallback.
+        share_web_search_settings:
+          type: boolean
+          description: Only meaningful while is_default is true - whether this organization's web-search provider credentials are shared as the platform-wide fallback.
+        share_mcp_servers:
+          type: boolean
+          description: Only meaningful while is_default is true - whether this organization's MCP server configs are shared as the platform-wide fallback.
+        share_skill_repos:
+          type: boolean
+          description: Only meaningful while is_default is true - whether this organization's skill repos are shared as the platform-wide fallback.
+        share_organization_preferences:
+          type: boolean
+          description: Only meaningful while is_default is true - whether this organization's preference defaults are shared as the platform-wide fallback.
+        domain:
+          type: string
+          description: This organization's own email domain (e.g. "acmecorp.com"), if set. Self-service registration (POST /auth/register) auto-joins a new user to this organization as a pending member when their email matches. At most one organization holds a given domain.
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
 
@@ -3345,6 +3810,18 @@ components:
         description: { type: string }
         website_url: { type: string }
         support_email: { type: string, format: email }
+        domain: { type: string }
+
+    # All fields optional - omit one to leave that domain's flag unchanged.
+    OrganizationSharedDomainsInput:
+      type: object
+      properties:
+        share_provider_settings: { type: boolean }
+        share_embedder_settings: { type: boolean }
+        share_web_search_settings: { type: boolean }
+        share_mcp_servers: { type: boolean }
+        share_skill_repos: { type: boolean }
+        share_organization_preferences: { type: boolean }
 
     Membership:
       type: object
@@ -3355,7 +3832,32 @@ components:
         role:
           type: string
           description: A system role code (owner/admin/member/viewer) or a custom role code defined for this organization.
+        status:
+          type: string
+          enum: [active, pending, blocked]
+          description: >-
+            "active" (default) has full access. "pending" (self-registered
+            via a matched organization email domain) also has full access,
+            just flagged for admin attention - see pending_since and
+            POST /memberships/{id}/confirm. "blocked" (past the
+            confirmation window unconfirmed) has no access at all, as if
+            the membership didn't exist.
+        pending_since:
+          type: string
+          format: date-time
+          description: Set when status is "pending" - when the confirmation window (SESHAT_SERVER_MEMBERSHIP_CONFIRMATION_WINDOW) started counting down.
         created_at: { type: string, format: date-time }
+        permissions:
+          type: array
+          items: { type: string }
+          description: >-
+            The resolved effective permission set (role + custom role +
+            policy bindings + group membership) for this membership's role,
+            in this organization, at fetch time. Only populated on the
+            session-bootstrap paths (bootstrap/register/login/auth-me) —
+            clients should check for e.g. "organization.manage" here rather
+            than hardcoding role names, since custom roles can grant the
+            same permission under any name.
         user_email:
           type: string
           description: Denormalized for display - resolving a teammate's identity from a membership shouldn't require a separate admin-only user lookup.
@@ -3456,6 +3958,15 @@ components:
         expires_at: { type: string, format: date-time }
         accepted_at: { type: string, format: date-time, nullable: true }
         revoked_at: { type: string, format: date-time, nullable: true }
+
+    InvitationPreview:
+      type: object
+      properties:
+        organization_name: { type: string }
+        email: { type: string, format: email }
+        role: { type: string }
+        expires_at: { type: string, format: date-time }
+        valid: { type: boolean }
 
     Group:
       type: object
@@ -3677,6 +4188,15 @@ components:
         name: { type: string, example: seshat-skills }
         url: { type: string, example: "https://github.com/EngineerProjects/seshat-skills" }
         description: { type: string }
+        source:
+          type: string
+          enum: [organization, platform]
+          description: >-
+            "organization" is this org's own row, editable/deletable by this
+            org's admins. "platform" means this org has none of its own and
+            this was inherited from whichever organization is flagged
+            is_default (see Organization.share_skill_repos) - read-only from
+            here, since it doesn't actually belong to this organization.
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
 
@@ -4055,6 +4575,14 @@ components:
           type: array
           items: { $ref: "#/components/schemas/Membership" }
 
+    RegisterInput:
+      type: object
+      required: [email, password, display_name]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, format: password }
+        display_name: { type: string }
+
     ProviderSetting:
       type: object
       description: Never includes the API key — it's a caller-supplied secret, redacted in every response including create.
@@ -4111,6 +4639,29 @@ components:
         api_key:
           type: string
           description: Omit/empty to keep the existing stored key unchanged.
+
+    # Shared by detectProviderModels and detectEmbedderModels — both only
+    # probe live for provider "ollama", every other provider already has a
+    # static catalog client-side.
+    DetectModelsInput:
+      type: object
+      required: [provider]
+      properties:
+        provider: { type: string, example: ollama }
+        base_url:
+          type: string
+          description: Defaults to http://localhost:11434 (Ollama's own default) if omitted.
+
+    DetectedProviderModels:
+      type: object
+      properties:
+        models:
+          type: array
+          items: { type: string }
+          description: Empty for non-Ollama providers, or if the target Ollama was unreachable.
+        error:
+          type: string
+          description: Set only if the probe failed (models is still present, just empty).
 
     WebSearchProviderSetting:
       type: object
@@ -4188,6 +4739,91 @@ components:
         allowed_domains: { type: array, items: { type: string } }
         blocked_domains: { type: array, items: { type: string } }
 
+    WorkspaceChatStreamInput:
+      type: object
+      required: [session_id, organization_id, provider, model, message]
+      properties:
+        session_id:
+          type: string
+          description: Client-generated - identifies one conversation across calls.
+        organization_id: { type: string }
+        provider: { type: string, example: anthropic }
+        model: { type: string, example: claude-sonnet-5 }
+        corpus_id:
+          type: string
+          description: Optional - enables rag_search/rag_ingest scoped to this organization's embedder when set.
+        message:
+          type: string
+          description: The user's new message. Prior turns are remembered server-side via session_id, not resent here.
+
+    WorkspaceChatEvent:
+      type: object
+      description: One line of the newline-delimited response stream.
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [text_delta, thinking_delta, tool_progress, done, error]
+        delta:
+          type: string
+          description: Present for text_delta/thinking_delta - an incremental text fragment to append.
+        tool:
+          $ref: "#/components/schemas/WorkspaceChatToolProgress"
+        message:
+          type: string
+          description: Present for the error event.
+
+    WorkspaceChatToolProgress:
+      type: object
+      description: Present on tool_progress events. Emitted once per stage as the tool call happens (pending/running/completed/failed); web_search calls get a second "completed" event once the turn finishes, with the fully structured web_search field replacing the plain-text summary.
+      properties:
+        name: { type: string, example: web_search }
+        tool_use_id: { type: string }
+        stage: { type: string, enum: [pending, running, completed, failed] }
+        summary:
+          type: string
+          description: Human-readable progress text (or a truncated result summary on completion).
+        query:
+          type: string
+          description: The tool's input query, when it has one (e.g. web_search).
+        web_search:
+          $ref: "#/components/schemas/WorkspaceChatWebSearchTrace"
+
+    WorkspaceChatWebSearchTrace:
+      type: object
+      properties:
+        query: { type: string }
+        count: { type: integer }
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              title: { type: string }
+              url: { type: string }
+              description: { type: string }
+              source: { type: string }
+
+    WorkspaceChatSessionHistory:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        messages:
+          type: array
+          items: { $ref: "#/components/schemas/WorkspaceChatHistoryMessage" }
+
+    WorkspaceChatHistoryMessage:
+      type: object
+      properties:
+        role: { type: string, enum: [user, assistant] }
+        content: { type: string }
+        created_at: { type: string, format: date-time }
+        events:
+          type: array
+          description: Present for assistant messages only - the ordered event log of that turn, replayable through the same client-side reducer used for live streaming to reconstruct identical content/trace.
+          items: { $ref: "#/components/schemas/WorkspaceChatEvent" }
+
     MCPServerConfig:
       type: object
       description: Never includes env/headers values — they're a caller-supplied secret, redacted in every response including create.
@@ -4197,7 +4833,7 @@ components:
         created_by_user_id: { type: string }
         name: { type: string, example: internal-jira }
         display_name: { type: string }
-        server_type: { type: string, enum: [stdio, http, sse, websocket, sdk], example: stdio }
+        server_type: { type: string, enum: [stdio, http, sse, websocket], example: stdio }
         command: { type: string, description: Only meaningful for server_type=stdio. }
         args: { type: array, items: { type: string } }
         url: { type: string, description: Only meaningful for server_type=http/sse/websocket. }
@@ -4213,7 +4849,7 @@ components:
         id: { type: string }
         name: { type: string }
         display_name: { type: string }
-        server_type: { type: string, enum: [stdio, http, sse, websocket, sdk] }
+        server_type: { type: string, enum: [stdio, http, sse, websocket] }
         command: { type: string }
         args: { type: array, items: { type: string } }
         env: { type: object, additionalProperties: { type: string } }
@@ -4229,7 +4865,7 @@ components:
         organization_id: { type: string }
         name: { type: string, example: internal-jira }
         display_name: { type: string }
-        server_type: { type: string, enum: [stdio, http, sse, websocket, sdk], default: stdio }
+        server_type: { type: string, enum: [stdio, http, sse, websocket], default: stdio }
         command: { type: string }
         args: { type: array, items: { type: string } }
         env:
@@ -4252,7 +4888,7 @@ components:
       type: object
       properties:
         display_name: { type: string }
-        server_type: { type: string, enum: [stdio, http, sse, websocket, sdk] }
+        server_type: { type: string, enum: [stdio, http, sse, websocket] }
         command: { type: string }
         args: { type: array, items: { type: string } }
         env:
@@ -4286,6 +4922,14 @@ components:
         name: { type: string }
         description: { type: string }
       required: [organization_id, name]
+
+    # Distinct from CorpusInput: organization_id is immutable after creation.
+    CorpusUpdateInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        description: { type: string }
 
     CorpusFile:
       type: object
@@ -4352,6 +4996,49 @@ components:
           type: string
           description: Optional (e.g. a local Ollama needs none). Empty on update keeps the existing key unchanged.
       required: [provider, model, base_url]
+
+    OrganizationPreferences:
+      type: object
+      description: >-
+        Default values for the subset of UserPreferences fields that make
+        sense at an organization scope — deliberately excludes
+        preferred_name/profession/about, which only make sense per-person.
+      properties:
+        organization_id: { type: string }
+        working_style: { type: string }
+        response_style: { type: string }
+        extra_context: { type: string }
+        interactive_permission_mode: { type: string }
+        automation_permission_mode: { type: string }
+        max_sub_agent_depth: { type: integer, minimum: 0, maximum: 5 }
+        updated_at: { type: string, format: date-time }
+
+    OrganizationPreferencesInput:
+      type: object
+      properties:
+        organization_id: { type: string }
+        working_style: { type: string }
+        response_style: { type: string }
+        extra_context: { type: string }
+        interactive_permission_mode: { type: string }
+        automation_permission_mode: { type: string }
+        max_sub_agent_depth: { type: integer, minimum: 0, maximum: 5 }
+      required: [organization_id]
+
+    DetectedEmbedderModels:
+      type: object
+      properties:
+        embedding_models:
+          type: array
+          items: { type: string }
+          description: >-
+            A static curated list for non-Ollama providers, or the subset of
+            a live Ollama instance's installed models classified as
+            embedding-capable by name/family. Empty if the target Ollama was
+            unreachable.
+        error:
+          type: string
+          description: Set only if a live Ollama probe failed (embedding_models is still present, just empty).
 
     Device:
       type: object

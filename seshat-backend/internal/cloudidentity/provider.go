@@ -13,25 +13,27 @@ import (
 var _ auth.Provider = (*Provider)(nil)
 
 // Provider implements auth.Provider against a remote seshat-server — the
-// "connected mode" identity backend. Exactly one organization per connected
-// backend instance (organizationID), configured at pairing time; see
-// helps/seshat-architecture-target.md §2/§4.
+// "connected mode" identity backend. Unlike an earlier version of this
+// type, the organization is NOT configured at pairing time: seshat-server
+// enforces at most one organization per user account, so principalFromMe
+// resolves it fresh from each login/me response instead — see
+// auth.Principal.OrganizationID's doc comment for why that's both simpler
+// and more correct than a fixed value (a fixed org ID silently produced the
+// wrong role for anyone whose actual membership didn't match it).
 type Provider struct {
-	client         *Client
-	cache          *Cache
-	organizationID string
+	client *Client
+	cache  *Cache
 	// identity lists LOCAL workspaces only, to mirror the server-resolved org
 	// role uniformly across them (workspaces have no seshat-server equivalent
 	// — see auth.Workspace doc comment). Never used for anything else here.
 	identity *db.IdentityStore
 }
 
-func NewProvider(serverURL, organizationID string, cache *Cache, identity *db.IdentityStore) *Provider {
+func NewProvider(serverURL string, cache *Cache, identity *db.IdentityStore) *Provider {
 	return &Provider{
-		client:         NewClient(serverURL),
-		cache:          cache,
-		organizationID: organizationID,
-		identity:       identity,
+		client:   NewClient(serverURL),
+		cache:    cache,
+		identity: identity,
 	}
 }
 
@@ -112,14 +114,21 @@ func (p *Provider) ResolvePrincipal(ctx context.Context, token string) (*auth.Pr
 // token is stashed in AuthSession.ID (there is no separate local session
 // concept in connected mode — see Logout). WorkspaceMemberships are
 // synthesized from LOCAL workspaces (never from the server) with the
-// server-resolved org role applied uniformly — see auth.Workspace doc comment.
+// server-resolved org and role applied uniformly — see auth.Workspace doc
+// comment.
+//
+// Organization and role both come straight from the caller's own single
+// membership (me.Memberships[0]) - seshat-server enforces at most one per
+// user account, so there is never a "which one" ambiguity to resolve.
+// Falls back to role "member" / no organization only when the account
+// genuinely has zero memberships (e.g. the platform super-admin itself,
+// who holds none by design).
 func (p *Provider) principalFromMe(ctx context.Context, me *meResponse, token string) *auth.Principal {
 	role := "member"
-	for _, m := range me.Memberships {
-		if m.OrganizationID == p.organizationID {
-			role = m.Role
-			break
-		}
+	organizationID := ""
+	if len(me.Memberships) > 0 {
+		role = me.Memberships[0].Role
+		organizationID = me.Memberships[0].OrganizationID
 	}
 	roles := []string{role}
 	if me.User.IsAdmin {
@@ -133,8 +142,9 @@ func (p *Provider) principalFromMe(ctx context.Context, me *meResponse, token st
 			DisplayName: me.User.DisplayName,
 			Status:      "active",
 		},
-		AuthSession: auth.AuthSession{ID: token, ExpiresAt: me.Session.ExpiresAt},
-		Roles:       roles,
+		AuthSession:            auth.AuthSession{ID: token, ExpiresAt: me.Session.ExpiresAt},
+		Roles:                  roles,
+		ResolvedOrganizationID: organizationID,
 	}
 
 	if p.identity != nil {
@@ -143,7 +153,7 @@ func (p *Provider) principalFromMe(ctx context.Context, me *meResponse, token st
 				principal.WorkspaceMemberships = append(principal.WorkspaceMemberships, auth.WorkspaceMembership{
 					WorkspaceID:      ws.ID,
 					WorkspaceSlug:    ws.Slug,
-					OrganizationID:   p.organizationID,
+					OrganizationID:   organizationID,
 					OrganizationSlug: "",
 					Role:             role,
 				})
@@ -219,7 +229,7 @@ func (p *Provider) CreateUser(ctx context.Context, principal *auth.Principal, pa
 	if len(params.Roles) > 0 {
 		role = params.Roles[0]
 	}
-	user, err := p.client.CreateUser(ctx, principal.AuthSession.ID, p.organizationID, role, params.Email, params.Password, params.DisplayName)
+	user, err := p.client.CreateUser(ctx, principal.AuthSession.ID, principal.OrganizationID(), role, params.Email, params.Password, params.DisplayName)
 	if err != nil {
 		return nil, cloudhttp.Translate(err)
 	}

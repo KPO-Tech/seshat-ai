@@ -30,18 +30,54 @@ type Organization struct {
 	// IsActive is administrative/visual only for now - no request path
 	// checks it. Lets a platform admin flag an organization as retired
 	// without deleting it.
-	IsActive  bool `gorm:"not null;default:true"`
+	IsActive bool `gorm:"not null;default:true"`
+	// The four Share* flags only matter while this organization holds
+	// IsDefault - they let a platform admin share, say, this org's MCP
+	// servers with every other organization while keeping its own LLM
+	// provider credentials private to itself, instead of the all-or-nothing
+	// behavior of IsDefault alone. Default true so flipping IsDefault on
+	// keeps today's existing all-shared behavior until an admin opts a
+	// domain out (see iam.Service.DefaultOrganizationIDForDomain).
+	ShareProviderSettings        bool `gorm:"not null;default:true"`
+	ShareEmbedderSettings        bool `gorm:"not null;default:true"`
+	ShareWebSearchSettings       bool `gorm:"not null;default:true"`
+	ShareMCPServers              bool `gorm:"not null;default:true"`
+	ShareSkillRepos              bool `gorm:"not null;default:true"`
+	ShareOrganizationPreferences bool `gorm:"not null;default:true"`
+	// Domain is the organization's own email domain (e.g. "acmecorp.com"),
+	// used by self-service registration to auto-join a new user to this org
+	// as a pending member. A *string (not string) so an org without a
+	// domain stores NULL, not "" - a unique index allows any number of NULLs
+	// but would reject a second org ever setting an empty string.
+	Domain    *string `gorm:"uniqueIndex;size:255"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
 // Membership binds one user to one organization with a role.
 type Membership struct {
-	ID             string `gorm:"primaryKey;size:32"`
-	UserID         string `gorm:"size:32;not null;uniqueIndex:idx_membership_user_org;index:idx_membership_user"`
+	ID string `gorm:"primaryKey;size:32"`
+	// UserID is also uniquely indexed on its own (idx_membership_user), not
+	// just the (UserID, OrganizationID) pair below - this is the DB-level
+	// enforcement that a user account belongs to at most one organization,
+	// ever. The application layer checks this first (see
+	// iam.userHasAnyMembership, called from every membership-creating path
+	// that targets an existing user) so callers get a clean ErrConflict
+	// instead of a raw constraint error on the happy path; this index is the
+	// last-resort guard against a race between that check and the INSERT.
+	UserID         string `gorm:"size:32;not null;uniqueIndex:idx_membership_user_org;uniqueIndex:idx_membership_user"`
 	OrganizationID string `gorm:"size:32;not null;uniqueIndex:idx_membership_user_org;index:idx_membership_org"`
 	Role           string `gorm:"size:64;not null"`
-	CreatedAt      time.Time
+	// Status is "active" (default - every pre-existing membership-creation
+	// path is unaffected, see the Go zero-value/gorm-default-tag omission
+	// behavior), "pending" (self-registered via a matched org email domain -
+	// full access already, just flagged for admin attention), or "blocked"
+	// (excluded from every authorization check in access.go, as if the
+	// membership didn't exist - set by BlockExpiredPendingMemberships once
+	// a pending membership ages past the confirmation window unconfirmed).
+	Status       string `gorm:"size:16;not null;default:'active'"`
+	PendingSince *time.Time
+	CreatedAt    time.Time
 }
 
 // Session is an active bearer-token login. Token stores the SHA-256 hash
@@ -53,6 +89,21 @@ type Session struct {
 	UserID    string `gorm:"size:32;not null;index"`
 	CreatedAt time.Time
 	ExpiresAt time.Time `gorm:"index"`
+}
+
+// PasswordResetToken is a short-lived, single-use opaque token for the
+// "forgot password" flow - mirrors Invitation.Token's exact shape (SHA-256
+// hash via sdb.HashOpaqueToken, the raw value only ever exists in the
+// email sent to the user). Deliberately separate from Session (a valid
+// login) and Invitation (an org join grant): this token proves nothing
+// except "the holder controls this email inbox," for one single action.
+type PasswordResetToken struct {
+	ID        string `gorm:"primaryKey;size:32"`
+	UserID    string `gorm:"size:32;not null;index"`
+	Token     string `gorm:"uniqueIndex;size:64;not null"`
+	CreatedAt time.Time
+	ExpiresAt time.Time
+	UsedAt    *time.Time
 }
 
 // Application is an OAuth/OIDC client application managed by the control plane.
@@ -382,11 +433,41 @@ type UserPreference struct {
 	UpdatedAt                 time.Time
 }
 
+// OrganizationPreference is a singleton per organization providing default
+// values for a subset of UserPreference's fields (working style, response
+// style, extra context, permission modes, max sub-agent depth — deliberately
+// NOT preferred_name/profession/about, which only make sense per-person).
+// Resolution happens transparently inside preferences.Service.GetMyPreferences:
+// a member's own UserPreference field wins whenever it's non-zero, otherwise
+// this organization's value is used, falling back further to the
+// platform-default organization's OrganizationPreference (see
+// iam.SharedDomainOrganizationPreferences / DefaultOrganizationIDForDomain) —
+// the same org→platform hierarchy already used by ProviderSetting/
+// EmbedderSetting/etc.
+type OrganizationPreference struct {
+	ID                        string `gorm:"primaryKey;size:32"`
+	OrganizationID            string `gorm:"size:32;not null;uniqueIndex"`
+	CreatedByUserID           string `gorm:"size:32;not null"`
+	WorkingStyle              string `gorm:"type:text"`
+	ResponseStyle             string `gorm:"type:text"`
+	ExtraContext              string `gorm:"type:text"`
+	InteractivePermissionMode string `gorm:"size:32"`
+	AutomationPermissionMode  string `gorm:"size:32"`
+	MaxSubAgentDepth          int
+	CreatedAt                 time.Time
+	UpdatedAt                 time.Time
+}
+
 // SkillRepo is one entry in an organization's curated skills registry — just
 // a bookmarked git repo URL, nothing secret, so unlike ProviderSetting there
-// is no encryption and no org/platform tiering: reading the list only
-// requires org membership (see skillregistry.Service), only mutating it is
-// permission-gated. seshat-backend fetches these to enrich its own local
+// is no encryption. Reading the list only requires org membership (see
+// skillregistry.Service), only mutating it is permission-gated. Unlike
+// ProviderSetting/EmbedderSetting/MCPServerConfig there's no separate
+// resolve endpoint for the org/platform-default fallback either - since
+// there's nothing secret to keep out of the admin-facing list, the
+// fallback (see Organization.ShareSkillRepos) lives directly in
+// ListSkillRepos, with each row's Source saying which org it actually came
+// from. seshat-backend fetches this same list to enrich its own local
 // skill-repo catalog; installing (git clone) always happens locally.
 type SkillRepo struct {
 	ID              string `gorm:"primaryKey;size:32"`
@@ -545,4 +626,37 @@ type MemoryRelation struct {
 	ToName       string `gorm:"size:256;not null"`
 	RelationType string `gorm:"size:128;not null"`
 	CreatedAt    time.Time
+}
+
+// WorkspaceChatSession is one persisted personal chat conversation (see
+// internal/server/workspacechat) - a transient test surface, not a durable
+// record: rows past workspacechat's 48h retention window are purged by its
+// periodic cleanup and treated as "doesn't exist" by reads even before that
+// sweep runs.
+// ID is client-generated by the console (session.ID from
+// features/workspaceChat/storage.ts, e.g. "wchat_" + a UUID), unlike every
+// other ID in this file which comes from db.NewID's short prefix+12-hex
+// format - it needs far more than the usual size:32.
+type WorkspaceChatSession struct {
+	ID             string `gorm:"primaryKey;size:64"`
+	UserID         string `gorm:"size:32;not null;index:idx_workspace_chat_session_user"`
+	OrganizationID string `gorm:"size:32;not null"`
+	Title          string `gorm:"size:255"`
+	CreatedAt      time.Time
+	UpdatedAt      time.Time `gorm:"index"`
+}
+
+// WorkspaceChatMessageRecord is one persisted message in a
+// WorkspaceChatSession. EventsJSON is empty for user messages; for
+// assistant messages it's the ordered list of workspacechat.Event the turn
+// streamed, so the console can replay them through the exact same reducer
+// used live and end up with an identical rendered message (content + trace)
+// after a reload, instead of duplicating that reconstruction logic in Go.
+type WorkspaceChatMessageRecord struct {
+	ID         string `gorm:"primaryKey;size:32"`
+	SessionID  string `gorm:"size:64;not null;index:idx_workspace_chat_message_session"`
+	Role       string `gorm:"size:16;not null"`
+	Content    string `gorm:"type:text"`
+	EventsJSON string `gorm:"type:text"`
+	CreatedAt  time.Time
 }

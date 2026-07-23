@@ -144,6 +144,31 @@ func TestSearXNGAuthUsernameRoundTrips(t *testing.T) {
 	}
 }
 
+// TestSearXNGDoesNotRequireAPIKey covers the common case, a self-hosted
+// SearXNG instance with no HTTP basic auth at all - unlike every other
+// provider here (a real hosted-API credential with no working "no key"
+// mode), api_key must be optional for searxng.
+func TestSearXNGDoesNotRequireAPIKey(t *testing.T) {
+	t.Setenv(testEncryptionEnvVar, testEncryptionKey)
+	env := newTestEnv(t)
+
+	setting, err := env.svc.CreateProviderSetting(context.Background(), env.adminPrincipal, CreateProviderSettingParams{
+		OrganizationID: env.orgID, Provider: "searxng", BaseURL: "http://localhost:8080",
+	})
+	if err != nil {
+		t.Fatalf("expected searxng to be creatable without an api_key: %v", err)
+	}
+	if setting.BaseURL != "http://localhost:8080" {
+		t.Fatalf("unexpected setting: %+v", setting)
+	}
+
+	if _, err := env.svc.CreateProviderSetting(context.Background(), env.adminPrincipal, CreateProviderSettingParams{
+		OrganizationID: env.orgID, Provider: "tavily",
+	}); err == nil {
+		t.Fatal("expected a real hosted-API provider (tavily) to still require an api_key")
+	}
+}
+
 func TestResolveProviderSettingMemberWithoutManagePermissionSucceeds(t *testing.T) {
 	t.Setenv(testEncryptionEnvVar, testEncryptionKey)
 	env := newTestEnv(t)
@@ -190,6 +215,35 @@ func TestResolveProviderSettingFallsBackToPlatformDefault(t *testing.T) {
 	}
 	if resolved.APIKey != "sk-tavily-platform" || resolved.Source != "platform" {
 		t.Fatalf("unexpected resolved setting: %+v", resolved)
+	}
+}
+
+func TestResolveProviderSettingHonorsShareWebSearchSettingsOptOut(t *testing.T) {
+	t.Setenv(testEncryptionEnvVar, testEncryptionKey)
+	env := newTestEnv(t)
+	member := env.addMember(t, "member")
+
+	defaultOrg, err := env.iam.CreateOrganization(context.Background(), env.adminPrincipal, iam.CreateOrganizationParams{
+		Name: "Default Org", Slug: "default-org",
+	})
+	if err != nil {
+		t.Fatalf("create default org: %v", err)
+	}
+	if _, err := env.iam.SetOrganizationDefault(context.Background(), env.adminPrincipal, defaultOrg.ID, true); err != nil {
+		t.Fatalf("flag default org: %v", err)
+	}
+	if _, err := env.svc.CreateProviderSetting(context.Background(), env.adminPrincipal, CreateProviderSettingParams{
+		OrganizationID: defaultOrg.ID, Provider: "tavily", APIKey: "sk-tavily-platform",
+	}); err != nil {
+		t.Fatalf("create default org's setting: %v", err)
+	}
+	shareWebSearchSettings := false
+	if _, err := env.iam.SetOrganizationSharedDomains(context.Background(), env.adminPrincipal, defaultOrg.ID, nil, nil, &shareWebSearchSettings, nil, nil, nil); err != nil {
+		t.Fatalf("opt out of sharing web search settings: %v", err)
+	}
+
+	if _, err := env.svc.ResolveProviderSetting(context.Background(), member, env.orgID, "tavily"); err == nil {
+		t.Fatal("expected the fallback to be skipped once the default org opted out of sharing web search settings")
 	}
 }
 

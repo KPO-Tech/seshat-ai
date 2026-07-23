@@ -45,6 +45,69 @@ func TestSetEmbedderSettingEncryptsTheAPIKeyAtRest(t *testing.T) {
 	}
 }
 
+func TestHasUsableEmbedderSetting(t *testing.T) {
+	t.Setenv(testEncryptionEnvVar, testEncryptionKey)
+	env := newTestEnv(t)
+
+	usable, err := env.knowledge.HasUsableEmbedderSetting(context.Background(), env.orgID)
+	if err != nil {
+		t.Fatalf("check with none configured: %v", err)
+	}
+	if usable {
+		t.Fatal("expected no embedder setting to be unusable")
+	}
+
+	// A keyless openai-wire setting - the exact shape of the real bug
+	// (console form let this save with no api_key at all) - must never
+	// count as usable, since it can never authenticate against a hosted
+	// API.
+	if _, err := env.knowledge.SetEmbedderSetting(context.Background(), env.adminPrincipal, env.orgID, SetEmbedderSettingParams{
+		Provider: "openai", Model: "mistral-embed", BaseURL: "https://api.mistral.ai/v1",
+	}); err != nil {
+		t.Fatalf("set keyless embedder: %v", err)
+	}
+	usable, err = env.knowledge.HasUsableEmbedderSetting(context.Background(), env.orgID)
+	if err != nil {
+		t.Fatalf("check keyless openai: %v", err)
+	}
+	if usable {
+		t.Fatal("expected a keyless openai-wire embedder setting to be unusable")
+	}
+
+	// Fixing it up with a real key (mirroring cross-settings credential
+	// propagation) must flip it to usable.
+	if _, err := env.knowledge.SetEmbedderSetting(context.Background(), env.adminPrincipal, env.orgID, SetEmbedderSettingParams{
+		Provider: "openai", Model: "mistral-embed", BaseURL: "https://api.mistral.ai/v1", APIKey: "sk-mistral-real-key",
+	}); err != nil {
+		t.Fatalf("fix up embedder with a real key: %v", err)
+	}
+	usable, err = env.knowledge.HasUsableEmbedderSetting(context.Background(), env.orgID)
+	if err != nil {
+		t.Fatalf("check keyed openai: %v", err)
+	}
+	if !usable {
+		t.Fatal("expected an openai-wire embedder setting with a key to be usable")
+	}
+}
+
+func TestHasUsableEmbedderSettingTreatsOllamaAsUsableWithoutAKey(t *testing.T) {
+	t.Setenv(testEncryptionEnvVar, testEncryptionKey)
+	env := newTestEnv(t)
+
+	if _, err := env.knowledge.SetEmbedderSetting(context.Background(), env.adminPrincipal, env.orgID, SetEmbedderSettingParams{
+		Provider: "ollama", Model: "nomic-embed-text", BaseURL: "http://localhost:11434",
+	}); err != nil {
+		t.Fatalf("set ollama embedder: %v", err)
+	}
+	usable, err := env.knowledge.HasUsableEmbedderSetting(context.Background(), env.orgID)
+	if err != nil {
+		t.Fatalf("check ollama: %v", err)
+	}
+	if !usable {
+		t.Fatal("expected a keyless ollama embedder setting to be usable - a local instance legitimately needs no key")
+	}
+}
+
 func TestSetEmbedderSettingIsUpsertNotDuplicate(t *testing.T) {
 	t.Setenv(testEncryptionEnvVar, testEncryptionKey)
 	env := newTestEnv(t)
@@ -136,5 +199,36 @@ func TestResolveEmbedderConfigPrefersOrgOverPlatformDefault(t *testing.T) {
 	}
 	if !ok {
 		t.Fatal("expected a different organization with no embedder of its own to still resolve the platform default")
+	}
+}
+
+func TestResolveEmbedderConfigHonorsShareEmbedderSettingsOptOut(t *testing.T) {
+	env := newTestEnv(t)
+
+	defaultOrg, err := env.iam.CreateOrganization(context.Background(), env.adminPrincipal, iam.CreateOrganizationParams{
+		Name: "Default Org", Slug: "default-org",
+	})
+	if err != nil {
+		t.Fatalf("create default org: %v", err)
+	}
+	if _, err := env.iam.SetOrganizationDefault(context.Background(), env.adminPrincipal, defaultOrg.ID, true); err != nil {
+		t.Fatalf("set organization default: %v", err)
+	}
+	if _, err := env.knowledge.SetEmbedderSetting(context.Background(), env.adminPrincipal, defaultOrg.ID, SetEmbedderSettingParams{
+		Provider: "openai", Model: "platform-default-model", BaseURL: "https://platform.example.com",
+	}); err != nil {
+		t.Fatalf("set embedder on the default org: %v", err)
+	}
+	shareEmbedderSettings := false
+	if _, err := env.iam.SetOrganizationSharedDomains(context.Background(), env.adminPrincipal, defaultOrg.ID, nil, &shareEmbedderSettings, nil, nil, nil, nil); err != nil {
+		t.Fatalf("opt out of sharing embedder settings: %v", err)
+	}
+
+	_, ok, err := env.knowledge.resolveEmbedderConfig(context.Background(), env.orgID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if ok {
+		t.Fatal("expected the fallback to be skipped once the default org opted out of sharing embedder settings")
 	}
 }

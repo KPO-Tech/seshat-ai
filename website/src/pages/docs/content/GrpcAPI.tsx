@@ -349,9 +349,9 @@ const GO_PROTOC = `PATH="$HOME/.local/bin:$(go env GOPATH)/bin:$PATH" \
 protoc \
   --proto_path=pkg/grpc/proto \
   --go_out=. \
-  --go_opt=module=github.com/EngineerProjects/seshat \
+  --go_opt=module=github.com/KPO-Tech/seshat \
   --go-grpc_out=. \
-  --go-grpc_opt=module=github.com/EngineerProjects/seshat \
+  --go-grpc_opt=module=github.com/KPO-Tech/seshat \
   pkg/grpc/proto/seshat.proto`
 
 const REGISTER_EXTRA_SERVICE = `type FileServer struct {

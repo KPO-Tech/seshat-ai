@@ -53,6 +53,7 @@ func (app *App) handleProviderSettings(w http.ResponseWriter, r *http.Request) {
 			writeAutomationError(w, err)
 			return
 		}
+		app.autoConfigureEmbedderFromProvider(r.Context(), principal, req.OrganizationID, req.Provider, req.BaseURL, req.APIKey)
 		writeJSON(w, http.StatusCreated, setting)
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -113,6 +114,9 @@ func (app *App) handleProviderSettingByID(w http.ResponseWriter, r *http.Request
 		if err != nil {
 			writeAutomationError(w, err)
 			return
+		}
+		if req.APIKey != "" {
+			app.autoConfigureEmbedderFromProvider(r.Context(), principal, setting.OrganizationID, setting.Provider, setting.BaseURL, req.APIKey)
 		}
 		writeJSON(w, http.StatusOK, setting)
 	case http.MethodDelete:

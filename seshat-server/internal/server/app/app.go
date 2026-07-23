@@ -3,10 +3,11 @@ package app
 import (
 	"context"
 	"fmt"
+	"time"
 
-	sdkdocling "github.com/EngineerProjects/seshat/pkg/docling"
-	sdkstorage "github.com/EngineerProjects/seshat/pkg/storage"
-	sdkvector "github.com/EngineerProjects/seshat/pkg/vector"
+	sdkdocling "github.com/KPO-Tech/seshat/pkg/docling"
+	sdkstorage "github.com/KPO-Tech/seshat/pkg/storage"
+	sdkvector "github.com/KPO-Tech/seshat/pkg/vector"
 
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/agentregistry"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/automation"
@@ -15,29 +16,34 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/knowledge"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/longtermmemory"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/mailer"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/mcpregistry"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/memories"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/preferences"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/quotas"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/skillregistry"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/websearchsettings"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/workspacechat"
 )
 
 type App struct {
-	DB                *sdb.DB
-	IAM               *iam.Service
-	Automation        *automation.Service
-	Scheduler         *automation.Scheduler
-	Knowledge         *knowledge.Service
-	IngestionRunner   *knowledge.Runner
-	Preferences       *preferences.Service
-	SkillRegistry     *skillregistry.Service
-	WebSearchSettings *websearchsettings.Service
-	MCPRegistry       *mcpregistry.Service
-	Memories          *memories.Service
-	LongTermMemory    *longtermmemory.Service
-	AgentRegistry     *agentregistry.Service
-	Quotas            *quotas.Service
+	DB                   *sdb.DB
+	IAM                  *iam.Service
+	Automation           *automation.Service
+	Scheduler            *automation.Scheduler
+	Knowledge            *knowledge.Service
+	IngestionRunner      *knowledge.Runner
+	Preferences          *preferences.Service
+	SkillRegistry        *skillregistry.Service
+	WebSearchSettings    *websearchsettings.Service
+	MCPRegistry          *mcpregistry.Service
+	Memories             *memories.Service
+	LongTermMemory       *longtermmemory.Service
+	AgentRegistry        *agentregistry.Service
+	Quotas               *quotas.Service
+	WorkspaceChat        *workspacechat.Service
+	WorkspaceChatCleanup *workspacechat.Cleanup
+	MembershipExpiry     *iam.MembershipExpiry
 }
 
 func New(cfg serverconfig.Config) (*App, error) {
@@ -50,6 +56,18 @@ func New(cfg serverconfig.Config) (*App, error) {
 	}
 
 	iamService := iam.New(database, cfg.SessionTTL)
+	if err := iamService.EnsureSuperAdmin(context.Background(), cfg.BootstrapAdminEmail, cfg.BootstrapAdminPassword); err != nil {
+		return nil, fmt.Errorf("ensure super admin: %w", err)
+	}
+	if cfg.SMTPHost != "" {
+		iamService.SetMailer(mailer.NewSMTPSender(mailer.Config{
+			Host:     cfg.SMTPHost,
+			Port:     cfg.SMTPPort,
+			Username: cfg.SMTPUsername,
+			Password: cfg.SMTPPassword,
+			From:     cfg.SMTPFrom,
+		}), cfg.PublicAppURL)
+	}
 	automationService := automation.New(database, iamService)
 
 	artifactStore, err := sdkstorage.NewArtifactStoreFromConfig(cfg.Storage)
@@ -79,20 +97,26 @@ func New(cfg serverconfig.Config) (*App, error) {
 	// not per-tenant, since docling-serve isn't a secret or credential.
 	automationService.SetDoclingURL(cfg.DoclingURL)
 
+	webSearchService := websearchsettings.New(database, iamService)
+	workspaceChatService := workspacechat.New(database, iamService, automationService, webSearchService, knowledgeService, cfg.DoclingURL)
+
 	return &App{
-		DB:                database,
-		IAM:               iamService,
-		Automation:        automationService,
-		Scheduler:         automation.NewScheduler(automationService, cfg.SchedulerInterval).WithStaleRunTimeout(cfg.StaleRunTimeout),
-		Knowledge:         knowledgeService,
-		IngestionRunner:   knowledge.NewRunner(knowledgeService, knowledge.RunnerConfig{PollInterval: cfg.IngestionPollInterval, MaxPollInterval: cfg.IngestionMaxPollInterval}),
-		Preferences:       preferences.New(database),
-		SkillRegistry:     skillregistry.New(database, iamService),
-		WebSearchSettings: websearchsettings.New(database, iamService),
-		MCPRegistry:       mcpregistry.New(database, iamService),
-		Memories:          memories.New(database),
-		LongTermMemory:    longtermmemory.New(database),
-		AgentRegistry:     agentregistry.New(database, iamService),
-		Quotas:            quotas.New(database),
+		DB:                   database,
+		IAM:                  iamService,
+		Automation:           automationService,
+		Scheduler:            automation.NewScheduler(automationService, cfg.SchedulerInterval).WithStaleRunTimeout(cfg.StaleRunTimeout),
+		Knowledge:            knowledgeService,
+		IngestionRunner:      knowledge.NewRunner(knowledgeService, knowledge.RunnerConfig{PollInterval: cfg.IngestionPollInterval, MaxPollInterval: cfg.IngestionMaxPollInterval}),
+		Preferences:          preferences.New(database, iamService),
+		SkillRegistry:        skillregistry.New(database, iamService),
+		WebSearchSettings:    webSearchService,
+		MCPRegistry:          mcpregistry.New(database, iamService),
+		Memories:             memories.New(database),
+		LongTermMemory:       longtermmemory.New(database),
+		AgentRegistry:        agentregistry.New(database, iamService),
+		Quotas:               quotas.New(database),
+		WorkspaceChat:        workspaceChatService,
+		WorkspaceChatCleanup: workspacechat.NewCleanup(workspaceChatService, time.Hour),
+		MembershipExpiry:     iam.NewMembershipExpiry(iamService, cfg.MembershipConfirmationWindow, time.Hour),
 	}, nil
 }

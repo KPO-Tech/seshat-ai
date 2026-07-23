@@ -40,7 +40,7 @@ Security issues we want to know about:
 Out of scope:
 
 - Vulnerabilities in the underlying LLM providers (report to Anthropic, OpenAI, etc.).
-- Issues in `seshat` — report those in the [seshat repository](https://github.com/EngineerProjects/seshat/security/advisories).
+- Issues in `seshat` — report those in the [seshat repository](https://github.com/KPO-Tech/seshat/security/advisories).
 - Denial-of-service on single-user local deployments.
 - Social engineering or phishing.
 

@@ -78,6 +78,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Self-service account creation
+         * @description Unlike bootstrap (one-time, first account only) or admin-created users, anyone can call this. If the email's domain matches an organization's own `domain`, the new user is immediately auto-joined to that organization as a "pending" member - full access already, just flagged for admin attention (see Membership.status) until confirmed (`POST /memberships/{id}/confirm`) or auto-blocked after `SESHAT_SERVER_MEMBERSHIP_CONFIRMATION_WINDOW` (default ~2 months) unconfirmed. No domain match just creates the account with no memberships - use `POST /organizations` afterwards to found a new one. Rate limited to 3 attempts/minute per client IP (burst 5).
+         */
+        post: operations["register"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/forgot-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request a password reset link by email
+         * @description Always returns 200 with the same generic message regardless of whether the email matches an account — a different response would let an attacker enumerate accounts by email. If a match exists, a 1-hour-lived reset link is emailed (see /reset-password). Rate limited to 3 attempts/minute per client IP (burst 3) — the tightest limit of any endpoint, since this is both an email-enumeration and inbox-spam vector.
+         */
+        post: operations["forgotPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Redeem a password-reset token
+         * @description No authentication required — the token itself is the credential. Deliberately generic on failure (401 regardless of whether the token is unknown, already used, or expired) to avoid leaking feedback useful for guessing tokens. On success, every existing session for the account is revoked. Rate limited to 5 attempts/minute per client IP (burst 5).
+         */
+        post: operations["resetPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/me": {
         parameters: {
             query?: never;
@@ -237,6 +297,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organizationID}/shared-domains": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Choose which settings domains this organization shares while it's the platform default (platform admin only)
+         * @description Only meaningful while this organization holds is_default. Lets a platform admin share, say, this organization's MCP servers with every other organization while keeping its LLM provider credentials private to itself, instead of is_default sharing everything unconditionally. Fields omitted from the body leave that domain's flag unchanged.
+         */
+        put: operations["setOrganizationSharedDomains"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/docling-status": {
         parameters: {
             query?: never;
@@ -269,7 +349,7 @@ export interface paths {
         put?: never;
         /**
          * Create a user (platform admin only)
-         * @description If `organization_id` is set, also creates a membership with `role` (default `member`) in the same call.
+         * @description If `organization_id` is set, also creates a membership with `role` (default `member`) in the same call. Always creates a regular (non-platform-admin) account — there is no is_admin field here or anywhere else in this API. Platform-admin status is granted exactly once, by seeding from env vars at server boot, and never through any API action afterwards, by anyone.
          */
         post: operations["createUser"];
         delete?: never;
@@ -294,7 +374,7 @@ export interface paths {
         get: operations["getUser"];
         /**
          * Update a user (platform admin only)
-         * @description Cannot demote the last platform admin.
+         * @description Email and display name only — no is_admin field, see createUser's description for why.
          */
         put: operations["updateUser"];
         post?: never;
@@ -420,6 +500,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/memberships/direct": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a new account and attach it to an organization in one step
+         * @description Sibling action to POST /memberships (which only attaches an EXISTING user) — this creates the account too. Requires members.manage or organization.manage (org-admin, unlike POST /users which is platform-superadmin-only). No password field: one is generated internally and never exposed — the new member sets their own via an emailed welcome link that reuses the same /reset-password flow as a forgotten-password reset. Optionally attaches the new member to one or more existing groups in the same step via group_ids.
+         */
+        post: operations["createOrganizationMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/memberships/{membershipID}": {
         parameters: {
             query?: never;
@@ -450,6 +550,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/memberships/{membershipID}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Finalize a self-registered pending membership
+         * @description Requires `members.manage` or `organization.manage`. Sets status to "active" and clears pending_since. A no-op (not an error) on a membership that isn't pending.
+         */
+        post: operations["confirmMembership"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/invitations": {
         parameters: {
             query?: never;
@@ -465,6 +585,26 @@ export interface paths {
          * @description Requires `invitations.manage`, `members.manage` or `organization.manage`. Rejects a duplicate pending invite or an email already belonging to a member.
          */
         post: operations["createInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/invitations/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview an invitation by its raw token, unauthenticated
+         * @description No auth required — the invited person usually doesn't have an account yet, so gating the preview behind login would be backwards. Returns valid:false (still HTTP 200, not an error) for an unknown, expired, or already-used token, so the console can render "this invitation is no longer valid" instead of a raw error. Never includes the invitation id, inviter, or raw token.
+         */
+        get: operations["lookupInvitation"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -687,6 +827,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/users/me/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Change my own password
+         * @description Self-service only — requires re-proving the current password, so a stolen bearer token alone can't rotate credentials. Does not revoke the current session.
+         */
+        put: operations["changeMyPassword"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/me/preferences": {
         parameters: {
             query?: never;
@@ -847,6 +1007,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/users/me/workspace/chat/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a message to a personal Workspace Chat session and stream back the reply
+         * @description A personal, user-scoped playground for trying providers/models/tools live against a real LLM (web_search, rag_search, read_document_url), distinct from the async cloud job scheduler. The response body is newline-delimited JSON (one WorkspaceChatEvent object per line), not a JSON document — read it as a stream, not with a single JSON parse. session_id is client-generated and identifies one conversation; reusing it across calls continues the same in-memory SDK session (recent history remembered) until it's evicted after 2 hours of inactivity. Turns are also persisted to the database so a page refresh can reload the conversation via GET /users/me/workspace/chat/sessions/{sessionID}, but only for 48 hours - this remains a transient test surface, not a durable chat history.
+         */
+        post: operations["streamWorkspaceChat"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/me/workspace/chat/sessions/{sessionID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Reload a persisted Workspace Chat conversation
+         * @description Scoped to the requesting user; a session created by another user is indistinguishable from one that never existed. A session past the 48-hour retention window returns 404 rather than an empty/expired marker, since the console treats both cases identically (start fresh).
+         */
+        get: operations["getWorkspaceChatSession"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/skill-repos": {
         parameters: {
             query?: never;
@@ -856,7 +1056,7 @@ export interface paths {
         };
         /**
          * List an organization's curated skill repos
-         * @description Open to any member of the organization, not gated behind a specific permission — these are public repo URLs, nothing secret to protect. A caller who isn't a member of the organization at all is rejected.
+         * @description Open to any member of the organization, not gated behind a specific permission — these are public repo URLs, nothing secret to protect. A caller who isn't a member of the organization at all is rejected. Falls back to whichever organization is flagged as the platform default when this org has none of its own (see each row's `source`) - unlike provider-settings/embedder-settings/MCP servers, this fallback lives directly in this list rather than a separate resolve endpoint, since there's no secret data here to keep out of it.
          */
         get: operations["listSkillRepos"];
         put?: never;
@@ -1194,6 +1394,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/provider-settings/detect-models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Probe a live Ollama instance for its installed LLM models
+         * @description Only does anything for provider "ollama" — every other provider has a static model catalog in the console already, since a hosted provider's model list doesn't vary per install. A self-hosted Ollama's installed models do, so this calls its /api/tags endpoint live. Embedding models are already filtered out of the result. Returns an empty list (never an error status) if the target Ollama is unreachable, so the console can fall back to manual model entry.
+         */
+        post: operations["detectProviderModels"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/web-search-provider-settings": {
         parameters: {
             query?: never;
@@ -1321,7 +1541,7 @@ export interface paths {
         };
         /**
          * Resolve every MCP server config an organization has shared
-         * @description Unlike the list endpoint, this INCLUDES decrypted env/headers values — the point is for a connected seshat-backend to actually load these servers into its local MCP runtime, once the user has explicitly approved each one (stdio servers spawn an arbitrary command locally). Authorization is deliberately looser than mcp_registry.manage: any member of the organization can resolve "what has my org shared". Unlike web search's provider-by-provider resolve, there's no org→platform fallback here — just every server the organization has defined.
+         * @description Unlike the list endpoint, this INCLUDES decrypted env/headers values — the point is for a connected seshat-backend to actually load these servers into its local MCP runtime, once the user has explicitly approved each one (stdio servers spawn an arbitrary command locally). Authorization is deliberately looser than mcp_registry.manage: any member of the organization can resolve "what has my org shared". Falls back to whichever organization is flagged as the platform default when this org has none of its own (same hybrid model as provider-settings/embedder-settings) - an org with even one server of its own never sees the default org's servers mixed in.
          */
         get: operations["resolveMCPServerConfigs"];
         put?: never;
@@ -1393,7 +1613,11 @@ export interface paths {
         };
         /** Get a corpus */
         get: operations["getCorpus"];
-        put?: never;
+        /**
+         * Rename/redescribe a corpus, or move it in or out of a folder
+         * @description Requires knowledge.manage or organization.manage.
+         */
+        put: operations["updateCorpus"];
         post?: never;
         /**
          * Delete a corpus
@@ -1558,6 +1782,54 @@ export interface paths {
          * @description Requires knowledge.manage or organization.manage. The organization falls back to the platform default (if any) for subsequent ingest/search calls; existing corpora are not re-embedded.
          */
         delete: operations["deleteEmbedderSetting"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/embedder-settings/detect-models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Detect embedding-capable models for a provider
+         * @description For OpenAI-compatible providers this returns a static curated list (their model catalogs don't vary per install). For "ollama" it probes the target instance's /api/tags live and classifies each installed model as embedding-capable by name/family heuristics, since a self-hosted Ollama's installed models are unknowable ahead of time. Returns an empty list (never an error status) if the target Ollama is unreachable, so the console can fall back to manual model entry.
+         */
+        post: operations["detectEmbedderModels"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organization-preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get an organization's preference defaults
+         * @description A singleton per organization — this organization's OWN values only, no platform-default fallback (an admin editing their org's preferences needs to see exactly what's set for THIS org). Requires organization.manage. 404 if none is configured. A member's effective preferences (personal value, else this, else the platform-default organization's) are visible via GET /api/v1/users/me/preferences instead, not here.
+         */
+        get: operations["getOrganizationPreferences"];
+        /**
+         * Create or update an organization's preference defaults
+         * @description Requires organization.manage. Upsert — creates the organization's preferences if none exist yet, otherwise updates them in place. Only fields that also exist at the personal level are supported here (working_style, response_style, extra_context, the two permission modes, max_sub_agent_depth) — preferred_name/profession/ about only make sense per-person and have no organization equivalent.
+         */
+        put: operations["setOrganizationPreferences"];
+        post?: never;
+        /**
+         * Delete an organization's preference defaults
+         * @description Requires organization.manage. Members of this organization fall back to the platform-default organization's preferences (if any and shared) for subsequent GET /api/v1/users/me/preferences calls.
+         */
+        delete: operations["deleteOrganizationPreferences"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1963,10 +2235,24 @@ export interface components {
             website_url?: string;
             /** Format: email */
             support_email?: string;
-            /** @description Whether this organization's own ProviderSetting/EmbedderSetting rows are used as the platform-wide fallback for organizations with no config of their own. At most one organization holds this at a time. */
+            /** @description Whether this organization's own ProviderSetting/EmbedderSetting/WebSearchProviderSetting/MCPServerConfig rows are used as the platform-wide fallback for organizations with no config of their own. At most one organization holds this at a time. */
             is_default?: boolean;
             /** @description Administrative/visual flag only - not enforced on any request path yet. */
             is_active?: boolean;
+            /** @description Only meaningful while is_default is true - whether this organization's LLM provider credentials are actually shared as the platform-wide fallback. Lets an admin keep IsDefault for some domains while excluding others. */
+            share_provider_settings?: boolean;
+            /** @description Only meaningful while is_default is true - whether this organization's embedder configuration is shared as the platform-wide fallback. */
+            share_embedder_settings?: boolean;
+            /** @description Only meaningful while is_default is true - whether this organization's web-search provider credentials are shared as the platform-wide fallback. */
+            share_web_search_settings?: boolean;
+            /** @description Only meaningful while is_default is true - whether this organization's MCP server configs are shared as the platform-wide fallback. */
+            share_mcp_servers?: boolean;
+            /** @description Only meaningful while is_default is true - whether this organization's skill repos are shared as the platform-wide fallback. */
+            share_skill_repos?: boolean;
+            /** @description Only meaningful while is_default is true - whether this organization's preference defaults are shared as the platform-wide fallback. */
+            share_organization_preferences?: boolean;
+            /** @description This organization's own email domain (e.g. "acmecorp.com"), if set. Self-service registration (POST /auth/register) auto-joins a new user to this organization as a pending member when their email matches. At most one organization holds a given domain. */
+            domain?: string;
             /** Format: date-time */
             created_at?: string;
             /** Format: date-time */
@@ -1979,6 +2265,15 @@ export interface components {
             website_url?: string;
             /** Format: email */
             support_email?: string;
+            domain?: string;
+        };
+        OrganizationSharedDomainsInput: {
+            share_provider_settings?: boolean;
+            share_embedder_settings?: boolean;
+            share_web_search_settings?: boolean;
+            share_mcp_servers?: boolean;
+            share_skill_repos?: boolean;
+            share_organization_preferences?: boolean;
         };
         Membership: {
             id?: string;
@@ -1986,8 +2281,20 @@ export interface components {
             organization_id?: string;
             /** @description A system role code (owner/admin/member/viewer) or a custom role code defined for this organization. */
             role?: string;
+            /**
+             * @description "active" (default) has full access. "pending" (self-registered via a matched organization email domain) also has full access, just flagged for admin attention - see pending_since and POST /memberships/{id}/confirm. "blocked" (past the confirmation window unconfirmed) has no access at all, as if the membership didn't exist.
+             * @enum {string}
+             */
+            status?: "active" | "pending" | "blocked";
+            /**
+             * Format: date-time
+             * @description Set when status is "pending" - when the confirmation window (SESHAT_SERVER_MEMBERSHIP_CONFIRMATION_WINDOW) started counting down.
+             */
+            pending_since?: string;
             /** Format: date-time */
             created_at?: string;
+            /** @description The resolved effective permission set (role + custom role + policy bindings + group membership) for this membership's role, in this organization, at fetch time. Only populated on the session-bootstrap paths (bootstrap/register/login/auth-me) — clients should check for e.g. "organization.manage" here rather than hardcoding role names, since custom roles can grant the same permission under any name. */
+            permissions?: string[];
             /** @description Denormalized for display - resolving a teammate's identity from a membership shouldn't require a separate admin-only user lookup. */
             user_email?: string;
             user_display_name?: string;
@@ -2067,6 +2374,15 @@ export interface components {
             accepted_at?: string | null;
             /** Format: date-time */
             revoked_at?: string | null;
+        };
+        InvitationPreview: {
+            organization_name?: string;
+            /** Format: email */
+            email?: string;
+            role?: string;
+            /** Format: date-time */
+            expires_at?: string;
+            valid?: boolean;
         };
         Group: {
             id?: string;
@@ -2249,6 +2565,11 @@ export interface components {
             /** @example https://github.com/EngineerProjects/seshat-skills */
             url?: string;
             description?: string;
+            /**
+             * @description "organization" is this org's own row, editable/deletable by this org's admins. "platform" means this org has none of its own and this was inherited from whichever organization is flagged is_default (see Organization.share_skill_repos) - read-only from here, since it doesn't actually belong to this organization.
+             * @enum {string}
+             */
+            source?: "organization" | "platform";
             /** Format: date-time */
             created_at?: string;
             /** Format: date-time */
@@ -2560,6 +2881,13 @@ export interface components {
             organizations?: components["schemas"]["Organization"][];
             memberships?: components["schemas"]["Membership"][];
         };
+        RegisterInput: {
+            /** Format: email */
+            email: string;
+            /** Format: password */
+            password: string;
+            display_name: string;
+        };
         /** @description Never includes the API key — it's a caller-supplied secret, redacted in every response including create. */
         ProviderSetting: {
             id?: string;
@@ -2603,6 +2931,18 @@ export interface components {
             base_url?: string;
             /** @description Omit/empty to keep the existing stored key unchanged. */
             api_key?: string;
+        };
+        DetectModelsInput: {
+            /** @example ollama */
+            provider: string;
+            /** @description Defaults to http://localhost:11434 (Ollama's own default) if omitted. */
+            base_url?: string;
+        };
+        DetectedProviderModels: {
+            /** @description Empty for non-Ollama providers, or if the target Ollama was unreachable. */
+            models?: string[];
+            /** @description Set only if the probe failed (models is still present, just empty). */
+            error?: string;
         };
         /** @description Never includes the API key — it's a caller-supplied secret, redacted in every response including create. No default_model field, unlike ProviderSetting — a web-search provider has no such concept. */
         WebSearchProviderSetting: {
@@ -2656,6 +2996,66 @@ export interface components {
             allowed_domains?: string[];
             blocked_domains?: string[];
         };
+        WorkspaceChatStreamInput: {
+            /** @description Client-generated - identifies one conversation across calls. */
+            session_id: string;
+            organization_id: string;
+            /** @example anthropic */
+            provider: string;
+            /** @example claude-sonnet-5 */
+            model: string;
+            /** @description Optional - enables rag_search/rag_ingest scoped to this organization's embedder when set. */
+            corpus_id?: string;
+            /** @description The user's new message. Prior turns are remembered server-side via session_id, not resent here. */
+            message: string;
+        };
+        /** @description One line of the newline-delimited response stream. */
+        WorkspaceChatEvent: {
+            /** @enum {string} */
+            type: "text_delta" | "thinking_delta" | "tool_progress" | "done" | "error";
+            /** @description Present for text_delta/thinking_delta - an incremental text fragment to append. */
+            delta?: string;
+            tool?: components["schemas"]["WorkspaceChatToolProgress"];
+            /** @description Present for the error event. */
+            message?: string;
+        };
+        /** @description Present on tool_progress events. Emitted once per stage as the tool call happens (pending/running/completed/failed); web_search calls get a second "completed" event once the turn finishes, with the fully structured web_search field replacing the plain-text summary. */
+        WorkspaceChatToolProgress: {
+            /** @example web_search */
+            name?: string;
+            tool_use_id?: string;
+            /** @enum {string} */
+            stage?: "pending" | "running" | "completed" | "failed";
+            /** @description Human-readable progress text (or a truncated result summary on completion). */
+            summary?: string;
+            /** @description The tool's input query, when it has one (e.g. web_search). */
+            query?: string;
+            web_search?: components["schemas"]["WorkspaceChatWebSearchTrace"];
+        };
+        WorkspaceChatWebSearchTrace: {
+            query?: string;
+            count?: number;
+            results?: {
+                title?: string;
+                url?: string;
+                description?: string;
+                source?: string;
+            }[];
+        };
+        WorkspaceChatSessionHistory: {
+            id?: string;
+            title?: string;
+            messages?: components["schemas"]["WorkspaceChatHistoryMessage"][];
+        };
+        WorkspaceChatHistoryMessage: {
+            /** @enum {string} */
+            role?: "user" | "assistant";
+            content?: string;
+            /** Format: date-time */
+            created_at?: string;
+            /** @description Present for assistant messages only - the ordered event log of that turn, replayable through the same client-side reducer used for live streaming to reconstruct identical content/trace. */
+            events?: components["schemas"]["WorkspaceChatEvent"][];
+        };
         /** @description Never includes env/headers values — they're a caller-supplied secret, redacted in every response including create. */
         MCPServerConfig: {
             id?: string;
@@ -2668,7 +3068,7 @@ export interface components {
              * @example stdio
              * @enum {string}
              */
-            server_type?: "stdio" | "http" | "sse" | "websocket" | "sdk";
+            server_type?: "stdio" | "http" | "sse" | "websocket";
             /** @description Only meaningful for server_type=stdio. */
             command?: string;
             args?: string[];
@@ -2683,7 +3083,7 @@ export interface components {
             name?: string;
             display_name?: string;
             /** @enum {string} */
-            server_type?: "stdio" | "http" | "sse" | "websocket" | "sdk";
+            server_type?: "stdio" | "http" | "sse" | "websocket";
             command?: string;
             args?: string[];
             env?: {
@@ -2705,7 +3105,7 @@ export interface components {
              * @default stdio
              * @enum {string}
              */
-            server_type: "stdio" | "http" | "sse" | "websocket" | "sdk";
+            server_type: "stdio" | "http" | "sse" | "websocket";
             command?: string;
             args?: string[];
             /** @description Encrypted at rest. Optional on create. */
@@ -2724,7 +3124,7 @@ export interface components {
         MCPServerConfigUpdateInput: {
             display_name?: string;
             /** @enum {string} */
-            server_type?: "stdio" | "http" | "sse" | "websocket" | "sdk";
+            server_type?: "stdio" | "http" | "sse" | "websocket";
             command?: string;
             args?: string[];
             /** @description Omit to keep the existing stored env unchanged. */
@@ -2753,6 +3153,10 @@ export interface components {
         };
         CorpusInput: {
             organization_id: string;
+            name: string;
+            description?: string;
+        };
+        CorpusUpdateInput: {
             name: string;
             description?: string;
         };
@@ -2822,6 +3226,33 @@ export interface components {
             base_url: string;
             /** @description Optional (e.g. a local Ollama needs none). Empty on update keeps the existing key unchanged. */
             api_key?: string;
+        };
+        /** @description Default values for the subset of UserPreferences fields that make sense at an organization scope — deliberately excludes preferred_name/profession/about, which only make sense per-person. */
+        OrganizationPreferences: {
+            organization_id?: string;
+            working_style?: string;
+            response_style?: string;
+            extra_context?: string;
+            interactive_permission_mode?: string;
+            automation_permission_mode?: string;
+            max_sub_agent_depth?: number;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        OrganizationPreferencesInput: {
+            organization_id: string;
+            working_style?: string;
+            response_style?: string;
+            extra_context?: string;
+            interactive_permission_mode?: string;
+            automation_permission_mode?: string;
+            max_sub_agent_depth?: number;
+        };
+        DetectedEmbedderModels: {
+            /** @description A static curated list for non-Ollama providers, or the subset of a live Ollama instance's installed models classified as embedding-capable by name/family. Empty if the target Ollama was unreachable. */
+            embedding_models?: string[];
+            /** @description Set only if a live Ollama probe failed (embedding_models is still present, just empty). */
+            error?: string;
         };
         /** @description The device's bearer token is never part of this view — see RegisterDeviceResult for the one-time reveal. */
         Device: {
@@ -3145,6 +3576,93 @@ export interface operations {
             429: components["responses"]["TooManyRequests"];
         };
     };
+    register: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterInput"];
+            };
+        };
+        responses: {
+            /** @description Account created (and, if the email domain matched an organization, auto-joined pending) */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            409: components["responses"]["Conflict"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    forgotPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: email */
+                    email: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Request accepted (does not imply an email was actually sent) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message?: string;
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    resetPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    token: string;
+                    /** Format: password */
+                    new_password: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Password reset */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
     getCurrentPrincipal: {
         parameters: {
             query?: never;
@@ -3423,6 +3941,34 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    setOrganizationSharedDomains: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationID: components["parameters"]["organizationIDPath"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrganizationSharedDomainsInput"];
+            };
+        };
+        responses: {
+            /** @description Updated organization */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Organization"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
     getDoclingStatus: {
         parameters: {
             query?: never;
@@ -3498,8 +4044,6 @@ export interface operations {
                     organization_id?: string;
                     /** @enum {string} */
                     role?: "owner" | "admin" | "member" | "viewer";
-                    /** @description Grants platform-wide admin privileges. */
-                    is_admin?: boolean;
                 };
             };
         };
@@ -3557,7 +4101,6 @@ export interface operations {
                     /** Format: email */
                     email: string;
                     display_name: string;
-                    is_admin?: boolean;
                 };
             };
         };
@@ -3852,6 +4395,43 @@ export interface operations {
             409: components["responses"]["Conflict"];
         };
     };
+    createOrganizationMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    organization_id: string;
+                    /** Format: email */
+                    email: string;
+                    display_name: string;
+                    /** @description A system role code (owner/admin/member/viewer) or a custom role code defined for this organization. Defaults to "member". */
+                    role?: string;
+                    /** @description Existing groups (in the same organization) to attach the new member to immediately. */
+                    group_ids?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Account created and attached as a member */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Membership"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
     getMembership: {
         parameters: {
             query?: never;
@@ -3931,6 +4511,30 @@ export interface operations {
             409: components["responses"]["Conflict"];
         };
     };
+    confirmMembership: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                membershipID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Confirmed membership */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Membership"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
     listInvitations: {
         parameters: {
             query?: {
@@ -3999,6 +4603,29 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    lookupInvitation: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Invitation preview */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationPreview"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
         };
     };
     getInvitation: {
@@ -4445,6 +5072,33 @@ export interface operations {
             403: components["responses"]["Forbidden"];
         };
     };
+    changeMyPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    current_password: string;
+                    new_password: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Password updated */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
     getMyPreferences: {
         parameters: {
             query?: never;
@@ -4750,6 +5404,57 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+        };
+    };
+    streamWorkspaceChat: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkspaceChatStreamInput"];
+            };
+        };
+        responses: {
+            /** @description Newline-delimited stream of WorkspaceChatEvent objects */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/x-ndjson": components["schemas"]["WorkspaceChatEvent"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getWorkspaceChatSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sessionID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The persisted conversation, ordered oldest to newest */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceChatSessionHistory"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
         };
     };
     listSkillRepos: {
@@ -5485,6 +6190,31 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    detectProviderModels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DetectModelsInput"];
+            };
+        };
+        responses: {
+            /** @description Detected models (possibly empty) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DetectedProviderModels"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
     listWebSearchProviderSettings: {
         parameters: {
             query?: {
@@ -5885,6 +6615,35 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    updateCorpus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                corpusID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorpusUpdateInput"];
+            };
+        };
+        responses: {
+            /** @description Updated corpus */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Corpus"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
     deleteCorpus: {
         parameters: {
             query?: never;
@@ -6152,6 +6911,105 @@ export interface operations {
         };
     };
     deleteEmbedderSetting: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    detectEmbedderModels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DetectModelsInput"];
+            };
+        };
+        responses: {
+            /** @description Detected embedding models (possibly empty) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DetectedEmbedderModels"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    getOrganizationPreferences: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Organization preferences */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationPreferences"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    setOrganizationPreferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrganizationPreferencesInput"];
+            };
+        };
+        responses: {
+            /** @description Organization preferences created or updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationPreferences"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    deleteOrganizationPreferences: {
         parameters: {
             query?: {
                 organization_id?: components["parameters"]["organizationIDQuery"];

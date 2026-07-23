@@ -3,8 +3,8 @@ package mcp
 import (
 	"time"
 
-	enginemcp "github.com/EngineerProjects/seshat/pkg/mcp"
-	"github.com/EngineerProjects/seshat/pkg/sdk"
+	enginemcp "github.com/KPO-Tech/seshat/pkg/mcp"
+	"github.com/KPO-Tech/seshat/pkg/sdk"
 )
 
 type Server struct {

@@ -250,6 +250,20 @@ func backendMigrations() []schemaMigration {
 				return db.gormDB.WithContext(ctx).AutoMigrate(&gDoclingConfig{})
 			},
 		},
+		{
+			ID:    "20260722_033_forced_execution_mode",
+			Scope: migrationScopeBackend,
+			Run: func(ctx context.Context, db *DB) error {
+				return db.gormDB.WithContext(ctx).AutoMigrate(&gSessionOwnership{})
+			},
+		},
+		{
+			ID:    "20260722_034_local_stt_config",
+			Scope: migrationScopeBackend,
+			Run: func(ctx context.Context, db *DB) error {
+				return db.gormDB.WithContext(ctx).AutoMigrate(&gLocalSTTConfig{})
+			},
+		},
 	}
 }
 

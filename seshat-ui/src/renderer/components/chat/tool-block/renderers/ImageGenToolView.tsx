@@ -3,7 +3,7 @@ import type { ToolViewProps } from '../types'
 
 const CSS = `
 .tb-img-wrap {
-  border-radius: 8px;
+  border-radius: 6px;
   overflow: hidden;
   border: 1px solid var(--color-border-subtle);
   background: rgba(0,0,0,0.12);
@@ -24,22 +24,22 @@ const CSS = `
 .tb-img-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
-  font-size: 11px;
+  font-size: 10px;
   color: var(--color-text-muted);
 }
 
 .tb-img-meta-chip {
-  padding: 2px 7px;
-  border-radius: 4px;
+  padding: 2px 5px;
+  border-radius: 3px;
   background: rgba(255,255,255,0.05);
   border: 1px solid var(--color-border-subtle);
   font-family: monospace;
 }
 
 .tb-img-revised {
-  font-size: 12px;
+  font-size: 10px;
   color: var(--color-text-muted);
   font-style: italic;
   line-height: 1.5;

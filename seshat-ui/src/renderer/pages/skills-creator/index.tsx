@@ -99,10 +99,10 @@ function isMarkdownPath(path: string): boolean {
 
 export function SkillsCreatorPage() {
   const navigate = useNavigate()
-  const closeRightPanel = useUIStore((s) => s.closeRightPanel)
+  const closeAllRightPanels = useUIStore((s) => s.closeAllRightPanels)
 
   // Close Agent Monitor and any right panel when entering this page
-  useEffect(() => { closeRightPanel() }, [closeRightPanel])
+  useEffect(() => { closeAllRightPanels() }, [closeAllRightPanels])
 
   const [chatOpen, setChatOpen] = useState(() => {
     try { return localStorage.getItem('sc-agent-open') === 'true' } catch { return false }
@@ -268,7 +268,7 @@ export function SkillsCreatorPage() {
       <aside className="sc-sidebar">
         <div className="sc-sidebar-header">
           <button className="sc-back-btn" onClick={() => navigate(-1)} title="Back to Chat">
-            <Left size={15} />
+            <Left size={12} />
           </button>
           <span className="sc-sidebar-title">Skills</span>
           <div className="sc-sidebar-actions">
@@ -278,24 +278,24 @@ export function SkillsCreatorPage() {
               title="SkillAgent"
               style={chatOpen ? { color: 'var(--color-accent, #f97316)' } : undefined}
             >
-              <Robot size={15} />
+              <Robot size={12} />
             </button>
             <button
               className={`sc-icon-btn${showSearch ? ' active' : ''}`}
               onClick={() => { setShowSearch(v => !v); setTimeout(() => searchRef.current?.focus(), 50) }}
               title="Search"
             >
-              <Search size={15} />
+              <Search size={12} />
             </button>
             <button className="sc-icon-btn" onClick={() => { setCreating(true); setSelectedSkill(null) }} title="New skill">
-              <Plus size={15} />
+              <Plus size={12} />
             </button>
           </div>
         </div>
 
         {showSearch && (
           <div className="sc-search-wrap">
-            <Search size={13} />
+            <Search size={11} />
             <input
               ref={searchRef}
               className="sc-search-input"
@@ -304,14 +304,14 @@ export function SkillsCreatorPage() {
               onChange={e => setSearchQuery(e.target.value)}
             />
             {searchQuery && (
-              <button className="sc-icon-btn" onClick={() => setSearchQuery('')}><Close size={12} /></button>
+              <button className="sc-icon-btn" onClick={() => setSearchQuery('')}><Close size={10} /></button>
             )}
           </div>
         )}
 
         <div className="sc-sidebar-body">
           {loading ? (
-            <div className="sc-sidebar-empty"><Sync size={14} className="sc-spin" /> Loading…</div>
+            <div className="sc-sidebar-empty"><Sync size={11} className="sc-spin" /> Loading…</div>
           ) : (
             sidebarGroups.map(group => (
               <SkillSection
@@ -433,7 +433,7 @@ function SkillSection({
     <div className="sc-section">
       <button className="sc-section-header" onClick={() => setSectionOpen(v => !v)}>
         <span className="sc-section-label">{label}</span>
-        {sectionOpen ? <Down size={12} /> : <Right size={12} />}
+        {sectionOpen ? <Down size={10} /> : <Right size={10} />}
       </button>
       {sectionOpen && (
         <div className="sc-section-body">
@@ -499,10 +499,10 @@ function SkillTreeItem({
       <div className={`sc-tree-folder${isSelected ? ' selected' : ''}`}>
         <button className="sc-tree-folder-btn" onClick={onToggle}>
           <span className="sc-tree-chevron">
-            {isExpanded ? <Down size={11} /> : <Right size={11} />}
+            {isExpanded ? <Down size={10} /> : <Right size={10} />}
           </span>
           <span className="sc-tree-folder-icon">
-            {isExpanded ? <FolderOpen size={15} /> : <FolderClose size={15} />}
+            {isExpanded ? <FolderOpen size={12} /> : <FolderClose size={12} />}
           </span>
           <span className="sc-tree-name">{displayName}</span>
         </button>
@@ -512,12 +512,12 @@ function SkillTreeItem({
               className={`sc-tree-menu-btn${menuOpen ? ' open' : ''}`}
               onClick={e => { e.stopPropagation(); setMenuOpen(v => !v) }}
             >
-              <MoreOne size={13} />
+              <MoreOne size={11} />
             </button>
             {menuOpen && (
               <div className="sc-tree-menu">
                 <button onClick={() => { setMenuOpen(false); onDelete() }} className="danger">
-                  <Close size={12} /> Delete skill
+                  <Close size={10} /> Delete skill
                 </button>
               </div>
             )}
@@ -529,14 +529,14 @@ function SkillTreeItem({
       {isExpanded && (
         <div className="sc-tree-children">
           {fileTreeLoading ? (
-            <div className="sc-tree-loading"><Sync size={11} className="sc-spin" /></div>
+            <div className="sc-tree-loading"><Sync size={10} className="sc-spin" /></div>
           ) : fileTree.length === 0 ? (
             // Fallback: skill.md always exists even if tree failed
             <button
               className={`sc-tree-file${selectedFilePath === 'skill.md' ? ' active-file' : ''}`}
               onClick={() => { onSelect(); onSelectFile('skill.md') }}
             >
-              <span className="sc-tree-file-icon"><FileCode size={13} /></span>
+              <span className="sc-tree-file-icon"><FileCode size={11} /></span>
               <span className="sc-tree-file-name sc-skill-md">skill.md</span>
             </button>
           ) : (
@@ -599,7 +599,7 @@ function FileTreeNode({
         >
           <span className="sc-tree-chevron">{open ? <Down size={10} /> : <Right size={10} />}</span>
           <span className="sc-tree-folder-icon">
-            {open ? <FolderOpen size={13} /> : <FolderClose size={13} />}
+            {open ? <FolderOpen size={11} /> : <FolderClose size={11} />}
           </span>
           <span className="sc-tree-file-name">{node.name}</span>
         </button>
@@ -622,7 +622,7 @@ function FileTreeNode({
       style={{ paddingLeft: indent + 4 }}
       onClick={() => onSelectFile(node.path)}
     >
-      <span className="sc-tree-file-icon"><FileCode size={13} /></span>
+      <span className="sc-tree-file-icon"><FileCode size={11} /></span>
       <span className={`sc-tree-file-name${isSkillMd ? ' sc-skill-md' : ''}`}>{node.name}</span>
     </button>
   )
@@ -693,17 +693,17 @@ function SkillEditorPanel({
                 onClick={() => setMenuOpen(v => !v)}
                 title="More options"
               >
-                <MoreOne size={18} />
+                <MoreOne size={15} />
               </button>
               {menuOpen && (
                 <div className="sc-editor-menu">
                   {isEditable && (
                     <button onClick={() => { setMenuOpen(false); onToggleEdit() }}>
-                      <Edit size={13} /> {editMode ? 'Cancel editing' : 'Edit skill'}
+                      <Edit size={11} /> {editMode ? 'Cancel editing' : 'Edit skill'}
                     </button>
                   )}
                   <button className="danger" onClick={() => { setMenuOpen(false); onDelete() }}>
-                    <Close size={13} /> Delete skill
+                    <Close size={11} /> Delete skill
                   </button>
                 </div>
               )}
@@ -745,7 +745,7 @@ function SkillEditorPanel({
       <div className="sc-content-area">
         <div className="sc-content-toolbar">
           <span className="sc-content-filename">
-            <FileCode size={13} />
+            <FileCode size={11} />
             {selectedFilePath}
           </span>
           <div className="sc-content-toolbar-right">
@@ -759,15 +759,15 @@ function SkillEditorPanel({
             ) : isEditable ? (
               <>
                 <button className="sc-view-btn active" title="Preview">
-                  <PreviewOpen size={15} />
+                  <PreviewOpen size={12} />
                 </button>
                 <button className="sc-view-btn" onClick={onToggleEdit} title="Edit raw markdown">
-                  <Edit size={15} />
+                  <Edit size={12} />
                 </button>
               </>
             ) : isMd ? (
               <button className="sc-view-btn active" title="Preview">
-                <PreviewOpen size={15} />
+                <PreviewOpen size={12} />
               </button>
             ) : (
               <span className="sc-lang-tag">{lang}</span>
@@ -777,7 +777,7 @@ function SkillEditorPanel({
 
         <div className="sc-content-body">
           {loading ? (
-            <div className="sc-content-loading"><Sync size={16} className="sc-spin" /> Loading…</div>
+            <div className="sc-content-loading"><Sync size={13} className="sc-spin" /> Loading…</div>
           ) : editMode ? (
             <textarea
               className="sc-editor-textarea"
@@ -830,12 +830,12 @@ function EmptyState({ onNew }: { onNew: () => void }) {
   return (
     <div className="sc-empty-state">
       <div className="sc-empty-icon">
-        <FileCode size={40} />
+        <FileCode size={33} />
       </div>
       <h2>No skill selected</h2>
       <p>Select a skill from the sidebar, or create a new one.</p>
       <button className="sc-empty-btn" onClick={onNew}>
-        <Plus size={14} /> New Skill
+        <Plus size={11} /> New Skill
       </button>
     </div>
   )
@@ -892,7 +892,7 @@ function CreateSkillPanel({
       {/* ── Top bar ── */}
       <div className="csp-topbar">
         <button className="csp-back-btn" onClick={onCancel}>
-          <ArrowLeft size={16} />
+          <ArrowLeft size={13} />
           <span>Back</span>
         </button>
         <div className="csp-topbar-center">
@@ -902,7 +902,7 @@ function CreateSkillPanel({
           <button className="csp-cancel-btn" onClick={onCancel}>Cancel</button>
           <button className="csp-create-btn" onClick={handleCreate} disabled={!canSubmit}>
             {saving ? (
-              <><Sync size={13} className="sc-spin" /> Creating…</>
+              <><Sync size={11} className="sc-spin" /> Creating…</>
             ) : (
               <>Create skill</>
             )}
@@ -1126,17 +1126,17 @@ function SkillAgentPanel({
       {/* Header */}
       <div className="sca-header">
         <div className="sca-header-left">
-          <NexusLogo size={20} className="sca-logo-img" />
+          <NexusLogo size={16} className="sca-logo-img" />
           <span className="sca-title">SkillAgent</span>
         </div>
         <div className="sca-header-right">
           {messages.length > 0 && (
             <button className="sca-icon-btn" title="Clear conversation" onClick={clearConversation}>
-              <Sync size={13} />
+              <Sync size={11} />
             </button>
           )}
           <button className="sca-icon-btn" title="Close SkillAgent" onClick={onClose}>
-            <Close size={13} />
+            <Close size={11} />
           </button>
         </div>
       </div>
@@ -1219,7 +1219,7 @@ function SkillAgentPanel({
             disabled={!input.trim() || loading}
             title="Send (Enter)"
           >
-            <Send size={15} />
+            <Send size={12} />
           </button>
         </div>
       </div>
@@ -1307,7 +1307,7 @@ function AgentCodeBlock({
         <span className="sca-code-lang">{displayLang}</span>
         <div className="sca-code-actions">
           <button className="sca-code-btn" onClick={copy} title="Copy">
-            {copied ? <CheckOne size={12} /> : <Copy size={12} />}
+            {copied ? <CheckOne size={10} /> : <Copy size={10} />}
           </button>
           {onApply && (
             <button className="sca-code-btn sca-apply-btn" onClick={() => onApply(content)} title="Apply to skill.md">
@@ -1375,9 +1375,9 @@ const SKILLS_CREATOR_CSS = `
 .sc-sidebar-header {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   justify-content: space-between;
-  padding: 10px 12px 8px;
+  padding: 7px 8px 6px;
   flex-shrink: 0;
 }
 
@@ -1387,7 +1387,7 @@ const SKILLS_CREATOR_CSS = `
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 7px;
+  border-radius: 5px;
   background: transparent;
   border: none;
   color: var(--color-text-muted);
@@ -1401,7 +1401,7 @@ const SKILLS_CREATOR_CSS = `
 }
 
 .sc-sidebar-title {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--color-text);
   letter-spacing: 0.01em;
@@ -1409,14 +1409,14 @@ const SKILLS_CREATOR_CSS = `
 
 .sc-sidebar-actions {
   display: flex;
-  gap: 4px;
+  gap: 3px;
 }
 
 .sc-search-wrap {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 10px 8px;
+  gap: 6px;
+  padding: 3px 7px 6px;
   color: var(--color-text-muted);
 }
 
@@ -1425,7 +1425,7 @@ const SKILLS_CREATOR_CSS = `
   background: none;
   border: none;
   color: var(--color-text);
-  font-size: 12px;
+  font-size: 10px;
   outline: none;
   font-family: inherit;
 }
@@ -1433,16 +1433,16 @@ const SKILLS_CREATOR_CSS = `
 .sc-sidebar-body {
   flex: 1;
   overflow-y: auto;
-  padding-bottom: 24px;
+  padding-bottom: 17px;
 }
 
 .sc-sidebar-empty {
-  padding: 12px 16px;
-  font-size: 12px;
+  padding: 8px 11px;
+  font-size: 10px;
   color: var(--color-text-muted);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 /* ── Sidebar sections ── */
@@ -1453,11 +1453,11 @@ const SKILLS_CREATOR_CSS = `
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 14px;
+  padding: 4px 10px;
   background: none;
   border: none;
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1465,7 +1465,7 @@ const SKILLS_CREATOR_CSS = `
 }
 
 .sc-section-header:hover { color: var(--color-text-secondary); }
-.sc-section-body { padding: 0 4px; }
+.sc-section-body { padding: 0 3px; }
 
 /* ── Tree items ── */
 .sc-tree-item-wrap { margin-bottom: 1px; }
@@ -1473,7 +1473,7 @@ const SKILLS_CREATOR_CSS = `
 .sc-tree-folder {
   display: flex;
   align-items: center;
-  border-radius: 8px;
+  border-radius: 6px;
   transition: background 0.1s;
 }
 
@@ -1484,12 +1484,12 @@ const SKILLS_CREATOR_CSS = `
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 8px;
+  gap: 5px;
+  padding: 4px 6px;
   background: none;
   border: none;
   color: var(--color-text-secondary);
-  font-size: 13px;
+  font-size: 11px;
   text-align: left;
   cursor: pointer;
   min-width: 0;
@@ -1518,7 +1518,7 @@ const SKILLS_CREATOR_CSS = `
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 11px;
 }
 
 .sc-tree-menu-wrap { position: relative; flex-shrink: 0; }
@@ -1527,7 +1527,7 @@ const SKILLS_CREATOR_CSS = `
   width: 26px; height: 26px;
   background: none; border: none;
   color: var(--color-text-muted);
-  border-radius: 6px;
+  border-radius: 5px;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer;
   opacity: 0;
@@ -1544,8 +1544,8 @@ const SKILLS_CREATOR_CSS = `
   right: 0; top: calc(100% + 4px);
   background: var(--color-surface-elevated);
   border: 1px solid var(--color-border);
-  border-radius: 10px;
-  padding: 6px;
+  border-radius: 8px;
+  padding: 4px;
   min-width: 148px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.2);
   z-index: 50;
@@ -1557,25 +1557,25 @@ const SKILLS_CREATOR_CSS = `
 .sc-tree-menu button {
   width: 100%; background: none; border: none;
   color: var(--color-text);
-  font-size: 12px; border-radius: 6px;
-  padding: 7px 10px;
-  display: flex; align-items: center; gap: 7px;
+  font-size: 10px; border-radius: 5px;
+  padding: 5px 7px;
+  display: flex; align-items: center; gap: 5px;
   cursor: pointer; text-align: left;
 }
 
 .sc-tree-menu button:hover { background: var(--color-hover); }
-.sc-tree-menu button.danger { color: var(--color-error, #ef4444); }
+.sc-tree-menu button.danger { color: var(--color-error); }
 
-.sc-tree-children { padding-left: 24px; }
+.sc-tree-children { padding-left: 17px; }
 
 .sc-tree-file {
-  display: flex; align-items: center; gap: 7px;
+  display: flex; align-items: center; gap: 5px;
   width: 100%;
-  padding: 5px 8px;
+  padding: 4px 6px;
   background: none; border: none;
   color: var(--color-text-secondary);
-  font-size: 12px;
-  border-radius: 6px;
+  font-size: 10px;
+  border-radius: 5px;
   cursor: pointer;
   text-align: left;
 }
@@ -1599,11 +1599,11 @@ const SKILLS_CREATOR_CSS = `
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 10px 16px;
-  background: rgba(239, 68, 68, 0.12);
-  border-bottom: 1px solid rgba(239, 68, 68, 0.28);
-  font-size: 13px;
+  gap: 9px;
+  padding: 7px 11px;
+  background: rgba(var(--color-error-rgb), 0.12);
+  border-bottom: 1px solid rgba(var(--color-error-rgb), 0.28);
+  font-size: 11px;
   color: #fca5a5;
   flex-shrink: 0;
 }
@@ -1612,7 +1612,7 @@ const SKILLS_CREATOR_CSS = `
   background: none;
   border: none;
   color: #fca5a5;
-  font-size: 18px;
+  font-size: 15px;
   line-height: 1;
   cursor: pointer;
   padding: 0 2px;
@@ -1632,14 +1632,14 @@ const SKILLS_CREATOR_CSS = `
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 28px 12px;
+  padding: 11px 20px 8px;
   border-bottom: 1px solid var(--color-border-subtle);
   flex-shrink: 0;
   position: relative;
 }
 
 .sc-editor-title {
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--color-text);
   margin: 0;
@@ -1648,7 +1648,7 @@ const SKILLS_CREATOR_CSS = `
 .sc-editor-topbar-right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 9px;
 }
 
 .sc-editor-menu {
@@ -1656,8 +1656,8 @@ const SKILLS_CREATOR_CSS = `
   right: 28px; top: calc(100% + 4px);
   background: var(--color-surface-elevated);
   border: 1px solid var(--color-border);
-  border-radius: 12px;
-  padding: 6px;
+  border-radius: 9px;
+  padding: 4px;
   min-width: 160px;
   box-shadow: 0 10px 28px rgba(0,0,0,0.2);
   z-index: 50;
@@ -1666,20 +1666,20 @@ const SKILLS_CREATOR_CSS = `
 
 .sc-editor-menu button {
   width: 100%; background: none; border: none;
-  color: var(--color-text); font-size: 13px;
-  border-radius: 8px; padding: 8px 12px;
-  display: flex; align-items: center; gap: 8px;
+  color: var(--color-text); font-size: 11px;
+  border-radius: 6px; padding: 6px 8px;
+  display: flex; align-items: center; gap: 6px;
   cursor: pointer; text-align: left;
 }
 
 .sc-editor-menu button:hover { background: var(--color-hover); }
-.sc-editor-menu button.danger { color: var(--color-error, #ef4444); }
+.sc-editor-menu button.danger { color: var(--color-error); }
 
 /* ── Toggle ── */
 .sc-toggle-wrap {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   cursor: pointer;
 }
 
@@ -1688,7 +1688,7 @@ const SKILLS_CREATOR_CSS = `
 .sc-toggle-track {
   width: 36px; height: 20px;
   background: var(--color-border);
-  border-radius: 10px;
+  border-radius: 8px;
   transition: background 0.2s;
   display: block;
   position: relative;
@@ -1708,7 +1708,7 @@ const SKILLS_CREATOR_CSS = `
 .sc-toggle-wrap input:checked ~ .sc-toggle-track::after { transform: translateX(16px); }
 
 .sc-toggle-label {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--color-text-secondary);
 }
@@ -1716,8 +1716,8 @@ const SKILLS_CREATOR_CSS = `
 /* ── Metadata bar ── */
 .sc-metadata-bar {
   display: flex;
-  gap: 32px;
-  padding: 12px 28px;
+  gap: 24px;
+  padding: 8px 20px;
   border-bottom: 1px solid var(--color-border-subtle);
   flex-shrink: 0;
   flex-wrap: wrap;
@@ -1726,11 +1726,11 @@ const SKILLS_CREATOR_CSS = `
 .sc-meta-item {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
 }
 
 .sc-meta-label {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   color: var(--color-text-muted);
   text-transform: uppercase;
@@ -1738,38 +1738,38 @@ const SKILLS_CREATOR_CSS = `
 }
 
 .sc-meta-value {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--color-text);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .sc-meta-slash {
   font-family: var(--font-mono, monospace);
-  font-size: 13px;
+  font-size: 11px;
   color: var(--color-cta);
   background: var(--color-primary-subtle);
-  padding: 1px 7px;
-  border-radius: 5px;
+  padding: 2px 5px;
+  border-radius: 4px;
 }
 
 .sc-meta-hint {
-  font-size: 12px;
+  font-size: 10px;
   color: var(--color-text-muted);
   font-family: var(--font-mono, monospace);
 }
 
 /* ── Description bar ── */
 .sc-description-bar {
-  padding: 12px 28px;
+  padding: 8px 20px;
   border-bottom: 1px solid var(--color-border-subtle);
   flex-shrink: 0;
 }
 
 .sc-desc-label {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   color: var(--color-text-muted);
   text-transform: uppercase;
@@ -1779,7 +1779,7 @@ const SKILLS_CREATOR_CSS = `
 }
 
 .sc-desc-text {
-  font-size: 13px;
+  font-size: 11px;
   color: var(--color-text-secondary);
   line-height: 1.55;
   margin: 0;
@@ -1794,14 +1794,14 @@ const SKILLS_CREATOR_CSS = `
   margin: 20px 24px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 16px;
+  border-radius: 12px;
 }
 
 .sc-content-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
+  padding: 7px 11px;
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
 }
@@ -1809,8 +1809,8 @@ const SKILLS_CREATOR_CSS = `
 .sc-content-filename {
   display: flex;
   align-items: center;
-  gap: 7px;
-  font-size: 12px;
+  gap: 5px;
+  font-size: 10px;
   font-weight: 600;
   color: var(--color-text-muted);
   font-family: var(--font-mono, monospace);
@@ -1819,14 +1819,14 @@ const SKILLS_CREATOR_CSS = `
 .sc-content-toolbar-right {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .sc-view-btn {
   width: 30px; height: 30px;
   background: none; border: 1px solid transparent;
   color: var(--color-text-muted);
-  border-radius: 8px;
+  border-radius: 6px;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer;
   transition: all 0.15s;
@@ -1836,9 +1836,9 @@ const SKILLS_CREATOR_CSS = `
 .sc-view-btn.active { color: var(--color-cta); background: var(--color-primary-subtle); border-color: var(--color-primary-subtle); }
 
 .sc-toolbar-btn {
-  padding: 5px 14px;
-  border-radius: 8px;
-  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 10px;
   font-weight: 700;
   cursor: pointer;
   border: none;
@@ -1851,30 +1851,30 @@ const SKILLS_CREATOR_CSS = `
 .sc-content-body {
   flex: 1;
   overflow-y: auto;
-  padding: 24px 28px;
+  padding: 17px 20px;
 }
 
 .sc-content-loading {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   color: var(--color-text-muted);
-  font-size: 13px;
-  padding: 48px 0;
+  font-size: 11px;
+  padding: 34px 0;
   justify-content: center;
 }
 
 .sc-content-empty {
   color: var(--color-text-muted);
-  font-size: 14px;
-  padding: 48px 0;
+  font-size: 12px;
+  padding: 34px 0;
   text-align: center;
 }
 
 .sc-inline-link {
   background: none; border: none;
   color: var(--color-cta);
-  font-size: 14px;
+  font-size: 12px;
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -1887,14 +1887,14 @@ const SKILLS_CREATOR_CSS = `
   border: none;
   color: var(--color-text);
   font-family: var(--font-mono, monospace);
-  font-size: 13px;
+  font-size: 11px;
   line-height: 1.7;
   resize: none;
   outline: none;
 }
 
 .sc-markdown-wrap {
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1.75;
   color: var(--color-text);
 }
@@ -1906,20 +1906,20 @@ const SKILLS_CREATOR_CSS = `
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 9px;
   color: var(--color-text-muted);
-  padding: 48px;
+  padding: 34px;
 }
 
 .sc-empty-icon { opacity: 0.25; }
-.sc-empty-state h2 { font-size: 18px; font-weight: 700; color: var(--color-text-secondary); margin: 0; }
-.sc-empty-state p { font-size: 14px; margin: 0; color: var(--color-text-muted); text-align: center; }
+.sc-empty-state h2 { font-size: 15px; font-weight: 700; color: var(--color-text-secondary); margin: 0; }
+.sc-empty-state p { font-size: 12px; margin: 0; color: var(--color-text-muted); text-align: center; }
 
 .sc-empty-btn {
-  display: flex; align-items: center; gap: 7px;
+  display: flex; align-items: center; gap: 5px;
   background: var(--color-cta); color: white;
-  border: none; padding: 9px 20px; border-radius: 10px;
-  font-size: 13px; font-weight: 700; cursor: pointer;
+  border: none; padding: 6px 14px; border-radius: 8px;
+  font-size: 11px; font-weight: 700; cursor: pointer;
   margin-top: 8px;
 }
 
@@ -1931,7 +1931,7 @@ const SKILLS_CREATOR_CSS = `
   color: var(--color-text-muted);
   width: 28px; height: 28px;
   display: flex; align-items: center; justify-content: center;
-  border-radius: 7px; cursor: pointer;
+  border-radius: 5px; cursor: pointer;
 }
 .sc-icon-btn:hover, .sc-icon-btn.active { background: var(--color-hover); color: var(--color-text); }
 
@@ -1949,24 +1949,24 @@ const SKILLS_CREATOR_CSS = `
 .csp-topbar {
   display: flex;
   align-items: center;
-  padding: 12px 20px;
+  padding: 8px 14px;
   border-bottom: 1px solid var(--color-border-subtle);
   flex-shrink: 0;
-  gap: 16px;
+  gap: 12px;
 }
 
 .csp-back-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   background: none;
   border: none;
   color: var(--color-text-muted);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
-  padding: 6px 10px;
-  border-radius: 8px;
+  padding: 4px 7px;
+  border-radius: 6px;
   transition: background 0.15s, color 0.15s;
 }
 
@@ -1982,7 +1982,7 @@ const SKILLS_CREATOR_CSS = `
 }
 
 .csp-topbar-title {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--color-text);
 }
@@ -1990,17 +1990,17 @@ const SKILLS_CREATOR_CSS = `
 .csp-topbar-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .csp-cancel-btn {
-  padding: 6px 14px;
+  padding: 4px 10px;
   background: none;
   border: 1px solid var(--color-border);
   color: var(--color-text-secondary);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
   transition: background 0.15s;
 }
@@ -2010,14 +2010,14 @@ const SKILLS_CREATOR_CSS = `
 .csp-create-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 16px;
+  gap: 5px;
+  padding: 4px 11px;
   background: var(--color-cta);
   color: white;
   border: none;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 700;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
   transition: opacity 0.15s;
 }
@@ -2037,10 +2037,10 @@ const SKILLS_CREATOR_CSS = `
   flex-shrink: 0;
   border-right: 1px solid var(--color-border-subtle);
   overflow-y: auto;
-  padding: 24px 20px;
+  padding: 17px 14px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 15px;
 }
 
 .csp-col-content {
@@ -2049,40 +2049,40 @@ const SKILLS_CREATOR_CSS = `
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: 24px;
+  padding: 17px;
 }
 
 /* ── Form fields ── */
 .csp-field-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
 }
 
 .csp-field-label {
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 700;
   color: var(--color-text-secondary);
   letter-spacing: 0.02em;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .csp-field-hint {
-  font-size: 12px;
+  font-size: 10px;
   color: var(--color-text-muted);
   line-height: 1.45;
   margin-top: -2px;
 }
 
 .csp-optional {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
   color: var(--color-text-muted);
   background: var(--color-surface-elevated);
-  padding: 1px 6px;
-  border-radius: 4px;
+  padding: 2px 4px;
+  border-radius: 3px;
   border: 1px solid var(--color-border);
 }
 
@@ -2092,7 +2092,7 @@ const SKILLS_CREATOR_CSS = `
   align-items: center;
   background: var(--color-surface-elevated);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: 6px;
   overflow: hidden;
   transition: border-color 0.15s;
 }
@@ -2100,8 +2100,8 @@ const SKILLS_CREATOR_CSS = `
 .csp-name-input-wrap:focus-within { border-color: var(--color-cta); }
 
 .csp-name-slash {
-  padding: 8px 2px 8px 12px;
-  font-size: 15px;
+  padding: 6px 2px 6px 8px;
+  font-size: 13px;
   font-weight: 700;
   font-family: var(--font-mono, monospace);
   color: var(--color-cta);
@@ -2115,10 +2115,10 @@ const SKILLS_CREATOR_CSS = `
   border: none;
   outline: none;
   color: var(--color-text);
-  font-size: 14px;
+  font-size: 12px;
   font-family: var(--font-mono, monospace);
   font-weight: 600;
-  padding: 8px 12px 8px 4px;
+  padding: 6px 8px 6px 3px;
 }
 
 .csp-name-input::placeholder { color: var(--color-text-muted); font-weight: 400; }
@@ -2127,11 +2127,11 @@ const SKILLS_CREATOR_CSS = `
 .csp-input {
   background: var(--color-surface-elevated);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: 6px;
   color: var(--color-text);
-  font-size: 13px;
+  font-size: 11px;
   font-family: inherit;
-  padding: 8px 12px;
+  padding: 6px 8px;
   outline: none;
   transition: border-color 0.15s;
   width: 100%;
@@ -2144,11 +2144,11 @@ const SKILLS_CREATOR_CSS = `
 .csp-textarea {
   background: var(--color-surface-elevated);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: 6px;
   color: var(--color-text);
-  font-size: 13px;
+  font-size: 11px;
   font-family: inherit;
-  padding: 8px 12px;
+  padding: 6px 8px;
   outline: none;
   resize: none;
   transition: border-color 0.15s;
@@ -2160,75 +2160,75 @@ const SKILLS_CREATOR_CSS = `
 .csp-textarea:focus { border-color: var(--color-cta); }
 .csp-textarea::placeholder { color: var(--color-text-muted); }
 .csp-desc-textarea { min-height: 72px; }
-.csp-mono { font-family: var(--font-mono, monospace); font-size: 12px; }
+.csp-mono { font-family: var(--font-mono, monospace); font-size: 10px; }
 
 /* ── Live preview card ── */
 .csp-preview-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .csp-preview-card {
   background: var(--color-surface-elevated);
   border: 1px solid var(--color-border);
-  border-radius: 12px;
-  padding: 14px 16px;
+  border-radius: 9px;
+  padding: 10px 11px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
 }
 
 .csp-preview-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
 .csp-preview-slash {
   font-family: var(--font-mono, monospace);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--color-cta);
   background: var(--color-primary-subtle);
-  padding: 2px 8px;
-  border-radius: 5px;
+  padding: 2px 6px;
+  border-radius: 4px;
 }
 
 .csp-preview-args {
   font-family: var(--font-mono, monospace);
-  font-size: 12px;
+  font-size: 10px;
   color: var(--color-text-muted);
 }
 
 .csp-preview-name {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--color-text);
 }
 
 .csp-preview-desc {
-  font-size: 12px;
+  font-size: 10px;
   color: var(--color-text-muted);
   line-height: 1.45;
 }
 
 /* ── Error ── */
 .csp-error {
-  font-size: 12px;
-  color: var(--color-error, #ef4444);
-  background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.25);
-  border-radius: 8px;
-  padding: 8px 12px;
+  font-size: 10px;
+  color: var(--color-error);
+  background: rgba(var(--color-error-rgb), 0.08);
+  border: 1px solid rgba(var(--color-error-rgb), 0.25);
+  border-radius: 6px;
+  padding: 6px 8px;
 }
 
 /* ── Right column: prompt editor ── */
 .csp-content-header {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
   margin-bottom: 12px;
   flex-shrink: 0;
 }
@@ -2240,7 +2240,7 @@ const SKILLS_CREATOR_CSS = `
   flex-direction: column;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 12px;
+  border-radius: 9px;
   overflow: hidden;
 }
 
@@ -2248,13 +2248,13 @@ const SKILLS_CREATOR_CSS = `
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 14px;
+  padding: 6px 10px;
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
 }
 
 .csp-editor-lang {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   color: var(--color-text-muted);
   text-transform: uppercase;
@@ -2263,7 +2263,7 @@ const SKILLS_CREATOR_CSS = `
 }
 
 .csp-char-count {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--color-text-muted);
   font-family: var(--font-mono, monospace);
 }
@@ -2277,9 +2277,9 @@ const SKILLS_CREATOR_CSS = `
   outline: none;
   color: var(--color-text);
   font-family: var(--font-mono, monospace);
-  font-size: 13px;
+  font-size: 11px;
   line-height: 1.7;
-  padding: 16px 18px;
+  padding: 11px 13px;
   resize: none;
   box-sizing: border-box;
 }
@@ -2289,9 +2289,9 @@ const SKILLS_CREATOR_CSS = `
 .sc-readonly-badge {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -2304,16 +2304,16 @@ const SKILLS_CREATOR_CSS = `
 .sc-tree-dir {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   width: 100%;
   background: transparent;
   border: none;
   color: var(--color-text-muted);
   cursor: pointer;
   text-align: left;
-  padding: 3px 8px;
-  font-size: 12px;
-  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 10px;
+  border-radius: 3px;
   transition: background 0.1s, color 0.1s;
 }
 .sc-tree-dir:hover {
@@ -2330,22 +2330,22 @@ const SKILLS_CREATOR_CSS = `
 .sc-tree-loading {
   display: flex;
   align-items: center;
-  padding: 4px 20px;
+  padding: 3px 14px;
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: 10px;
   opacity: 0.6;
 }
 
 /* ── Lang tag in toolbar ── */
 .sc-lang-tag {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   font-family: var(--font-mono, monospace);
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: 2px 4px;
+  border-radius: 3px;
   background: color-mix(in srgb, var(--color-text-muted) 10%, transparent);
 }
 
@@ -2394,21 +2394,21 @@ const SKILLS_CREATOR_CSS = `
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px 10px 16px;
+  padding: 7px 10px 7px 11px;
   border-bottom: 1px solid var(--color-border-subtle);
   flex-shrink: 0;
 }
 .sca-header-left {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 5px;
 }
 .sca-logo-img {
   opacity: 0.92;
   flex-shrink: 0;
 }
 .sca-title {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--color-text);
   letter-spacing: 0.01em;
@@ -2424,7 +2424,7 @@ const SKILLS_CREATOR_CSS = `
   justify-content: center;
   width: 26px;
   height: 26px;
-  border-radius: 6px;
+  border-radius: 5px;
   background: transparent;
   border: none;
   color: var(--color-text-muted);
@@ -2438,39 +2438,39 @@ const SKILLS_CREATOR_CSS = `
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 16px 14px;
+  padding: 11px 10px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 9px;
 }
 
 /* Welcome state */
 .sca-welcome {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 11px;
 }
 .sca-welcome-card {
   background: color-mix(in srgb, var(--color-text) 5%, transparent);
-  border-radius: 10px;
-  padding: 14px 16px;
+  border-radius: 8px;
+  padding: 10px 11px;
   border: 1px solid var(--color-border-subtle);
 }
 .sca-welcome-greeting {
-  font-size: 13.5px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--color-text);
   margin: 0 0 6px;
 }
 .sca-welcome-sub {
-  font-size: 12.5px;
+  font-size: 11px;
   color: var(--color-text-muted);
   margin: 0;
   line-height: 1.5;
 }
 
 .sca-section-label {
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 600;
   color: var(--color-text-muted);
   letter-spacing: 0.03em;
@@ -2481,16 +2481,16 @@ const SKILLS_CREATOR_CSS = `
 .sca-actions {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
 }
 .sca-action-card {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 8px;
   background: color-mix(in srgb, var(--color-text) 4%, transparent);
   border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
-  padding: 10px 12px;
+  border-radius: 6px;
+  padding: 7px 8px;
   cursor: pointer;
   text-align: left;
   transition: background 0.13s, border-color 0.13s;
@@ -2501,7 +2501,7 @@ const SKILLS_CREATOR_CSS = `
   border-color: color-mix(in srgb, var(--color-accent, #f97316) 30%, transparent);
 }
 .sca-action-icon {
-  font-size: 15px;
+  font-size: 13px;
   line-height: 1.3;
   color: var(--color-accent, #f97316);
   flex-shrink: 0;
@@ -2513,13 +2513,13 @@ const SKILLS_CREATOR_CSS = `
   gap: 2px;
 }
 .sca-action-label {
-  font-size: 12.5px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--color-text);
   display: block;
 }
 .sca-action-desc {
-  font-size: 11.5px;
+  font-size: 10px;
   color: var(--color-text-muted);
   display: block;
   line-height: 1.4;
@@ -2533,9 +2533,9 @@ const SKILLS_CREATOR_CSS = `
 .sca-bubble-user {
   background: var(--color-accent, #f97316);
   color: #fff;
-  padding: 8px 12px;
-  border-radius: 12px 12px 3px 12px;
-  font-size: 13px;
+  padding: 6px 8px;
+  border-radius: 9px 9px 3px 9px;
+  font-size: 11px;
   line-height: 1.5;
   max-width: 88%;
   white-space: pre-wrap;
@@ -2545,16 +2545,16 @@ const SKILLS_CREATOR_CSS = `
   width: 100%;
 }
 .sca-text-part { padding: 0 2px; }
-.sca-text-part .markdown-body { font-size: 13px; }
+.sca-text-part .markdown-body { font-size: 11px; }
 
 /* Typing indicator */
 .sca-typing {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 10px 12px;
+  gap: 3px;
+  padding: 7px 8px;
   background: color-mix(in srgb, var(--color-text) 5%, transparent);
-  border-radius: 10px;
+  border-radius: 8px;
   border: 1px solid var(--color-border-subtle);
 }
 .sca-dot {
@@ -2573,7 +2573,7 @@ const SKILLS_CREATOR_CSS = `
 /* Code block inside message */
 .sca-code-block {
   margin: 6px 0;
-  border-radius: 8px;
+  border-radius: 6px;
   overflow: hidden;
   border: 1px solid var(--color-border-subtle);
   background: #1e1e1e;
@@ -2582,7 +2582,7 @@ const SKILLS_CREATOR_CSS = `
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 10px;
+  padding: 3px 7px;
   background: rgba(255,255,255,0.04);
   border-bottom: 1px solid rgba(255,255,255,0.06);
 }
@@ -2592,13 +2592,13 @@ const SKILLS_CREATOR_CSS = `
   color: rgba(255,255,255,0.4);
   font-family: var(--font-mono, monospace);
 }
-.sca-code-actions { display: flex; align-items: center; gap: 4px; }
+.sca-code-actions { display: flex; align-items: center; gap: 3px; }
 .sca-code-btn {
-  display: flex; align-items: center; gap: 4px;
+  display: flex; align-items: center; gap: 3px;
   background: transparent; border: none;
   color: rgba(255,255,255,0.4);
-  cursor: pointer; padding: 2px 6px;
-  border-radius: 4px; font-size: 11px;
+  cursor: pointer; padding: 2px 4px;
+  border-radius: 3px; font-size: 10px;
   transition: background 0.1s, color 0.1s;
 }
 .sca-code-btn:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.8); }
@@ -2614,21 +2614,21 @@ const SKILLS_CREATOR_CSS = `
 /* Input area */
 .sca-input-wrap {
   flex-shrink: 0;
-  padding: 10px 12px 12px;
+  padding: 7px 8px 8px;
   border-top: 1px solid var(--color-border-subtle);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 .sca-input {
   width: 100%;
   background: color-mix(in srgb, var(--color-text) 4%, transparent);
   border: 1px solid var(--color-border);
-  border-radius: 10px;
+  border-radius: 8px;
   color: var(--color-text);
-  font-size: 13px;
+  font-size: 11px;
   line-height: 1.55;
-  padding: 10px 12px;
+  padding: 7px 8px;
   resize: none;
   outline: none;
   font-family: inherit;
@@ -2642,11 +2642,11 @@ const SKILLS_CREATOR_CSS = `
   align-items: center;
   justify-content: space-between;
 }
-.sca-input-extras { display: flex; align-items: center; gap: 4px; }
+.sca-input-extras { display: flex; align-items: center; gap: 3px; }
 .sca-extra-btn {
   display: flex; align-items: center; justify-content: center;
   width: 30px; height: 30px;
-  border-radius: 7px;
+  border-radius: 5px;
   background: transparent;
   border: none;
   color: var(--color-text-muted);
@@ -2658,7 +2658,7 @@ const SKILLS_CREATOR_CSS = `
 .sca-send-btn {
   display: flex; align-items: center; justify-content: center;
   width: 36px; height: 36px;
-  border-radius: 9px;
+  border-radius: 7px;
   border: none;
   background: var(--color-accent, #f97316);
   color: #fff;

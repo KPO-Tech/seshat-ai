@@ -44,6 +44,7 @@ function ProviderCard({ provider, onSaved }: {
   const [saving, setSaving] = useState(false)
   const [testState, setTestState] = useState<ProviderTestState>('idle')
   const [testError, setTestError] = useState('')
+  const [saveError, setSaveError] = useState('')
   const [dirty, setDirty] = useState(false)
 
   useEffect(() => {
@@ -58,11 +59,13 @@ function ProviderCard({ provider, onSaved }: {
   function markDirty() {
     setDirty(true)
     setTestState('idle')
+    setSaveError('')
   }
 
   async function handleSave() {
     if (saving) return
     setSaving(true)
+    setSaveError('')
     try {
       const payload: Record<string, unknown> = { enabled }
       if (edit.apiKeyChanged) payload.api_key = edit.apiKey
@@ -77,8 +80,9 @@ function ProviderCard({ provider, onSaved }: {
       setDirty(false)
       setEdit((prev) => ({ ...prev, apiKey: '', apiKeyChanged: false, authPassword: '', authChanged: false }))
       onSaved(updated)
-    } catch { /* surfaced via test */ }
-    finally { setSaving(false) }
+    } catch (e: unknown) {
+      setSaveError((e as { message?: string })?.message ?? 'Failed to save')
+    } finally { setSaving(false) }
   }
 
   async function handleTest() {
@@ -201,14 +205,17 @@ function ProviderCard({ provider, onSaved }: {
           onClick={handleTest}
           disabled={testState === 'running' || saving}
         >
-          {testState === 'running' ? <LoadingFour size={14} className="spin" />
-            : testState === 'ok' ? <CheckOne size={14} />
-            : testState === 'error' ? <CloseOne size={14} />
-            : <Experiment size={14} />}
+          {testState === 'running' ? <LoadingFour size={11} className="spin" />
+            : testState === 'ok' ? <CheckOne size={11} />
+            : testState === 'error' ? <CloseOne size={11} />
+            : <Experiment size={11} />}
           <span>{testState === 'running' ? 'Testing…' : testState === 'ok' ? 'Connected' : testState === 'error' ? 'Failed' : 'Test'}</span>
         </button>
         {testState === 'error' && testError && (
           <span className="wsp-test-error" title={testError}>{testError}</span>
+        )}
+        {saveError && (
+          <span className="wsp-test-error" title={saveError}>{saveError}</span>
         )}
         {dirty && (
           <button className="wsp-save-btn" onClick={handleSave} disabled={saving}>
@@ -286,7 +293,7 @@ function DomainCatalog({
       {/* Header */}
       <div className="dc-header">
         <div className="dc-header-left">
-          <div className="dc-header-icon"><Earth size={20} /></div>
+          <div className="dc-header-icon"><Earth size={16} /></div>
           <div>
             <div className="dc-header-title">Domain Catalog</div>
             <div className="dc-header-sub">Choose which domains SeshatOS can use when searching the web.</div>
@@ -302,7 +309,7 @@ function DomainCatalog({
           onClick={onSave}
           disabled={saving}
         >
-          {saving ? 'Saving…' : saved ? <><CheckOne size={14} /> Saved</> : 'Save Changes'}
+          {saving ? 'Saving…' : saved ? <><CheckOne size={11} /> Saved</> : 'Save Changes'}
         </button>
       </div>
 
@@ -317,7 +324,7 @@ function DomainCatalog({
             <div key={cat.id} className={`dc-cat ${open ? 'dc-cat-open' : ''}`}>
               <button className="dc-cat-head" onClick={() => toggleCat(cat.id)}>
                 <span className="dc-cat-chevron">
-                  {open ? <Down size={14} /> : <Right size={14} />}
+                  {open ? <Down size={11} /> : <Right size={11} />}
                 </span>
                 <span className="dc-cat-name">{cat.label}</span>
                 <span className="dc-cat-count">
@@ -325,7 +332,7 @@ function DomainCatalog({
                   <span className="dc-count-sep"> / {total} active</span>
                 </span>
                 <span className="dc-cat-end-chevron">
-                  {open ? <Down size={14} /> : <Right size={14} />}
+                  {open ? <Down size={11} /> : <Right size={11} />}
                 </span>
               </button>
 
@@ -535,7 +542,7 @@ export function WebSearchView() {
           <div className="sv-card">
             <div className="sv-card-head">
               <div className="sv-card-brand">
-                <div className="sv-brand-icon"><Earth size={20} /></div>
+                <div className="sv-brand-icon"><Earth size={16} /></div>
                 <div>
                   <div className="sv-brand-name">Web Search</div>
                   <div className="sv-brand-sub">Global web search settings</div>
@@ -545,7 +552,7 @@ export function WebSearchView() {
             <div className="sv-card-body">
               <div className="sv-toggle-row">
                 <div className="sv-toggle-info">
-                  <Search size={18} />
+                  <Search size={15} />
                   <div>
                     <div className="sv-setting-label">Enable Web Search</div>
                     <div className="sv-setting-desc">Allow AI agents to search the web during sessions</div>
@@ -558,7 +565,7 @@ export function WebSearchView() {
               </div>
               <div className="sv-toggle-row">
                 <div className="sv-toggle-info">
-                  <Shield size={18} />
+                  <Shield size={15} />
                   <div>
                     <div className="sv-setting-label">Allow ENV Fallback</div>
                     <div className="sv-setting-desc">Use environment-level API keys if no provider is configured</div>
@@ -576,7 +583,7 @@ export function WebSearchView() {
           <div className="sv-card">
             <div className="sv-card-head">
               <div className="sv-card-brand">
-                <div className="sv-brand-icon"><Config size={20} /></div>
+                <div className="sv-brand-icon"><Config size={16} /></div>
                 <div>
                   <div className="sv-brand-name">Rate Limiting</div>
                   <div className="sv-brand-sub">Control how many searches are allowed per day</div>
@@ -604,7 +611,7 @@ export function WebSearchView() {
           <div className="sv-card ws-full-card">
             <div className="sv-card-head">
               <div className="sv-card-brand">
-                <div className="sv-brand-icon"><Search size={20} /></div>
+                <div className="sv-brand-icon"><Search size={16} /></div>
                 <div>
                   <div className="sv-brand-name">Providers</div>
                   <div className="sv-brand-sub">Enable providers and add your API keys</div>
@@ -645,7 +652,7 @@ const WEB_SEARCH_CSS = `
 .ws-layout {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  gap: 15px;
 }
 @media (max-width: 860px) { .ws-layout { grid-template-columns: 1fr; } }
 .ws-full-card { grid-column: 1 / -1; }
@@ -654,17 +661,17 @@ const WEB_SEARCH_CSS = `
 .wsp-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 14px;
-  padding-top: 4px;
+  gap: 11px;
+  padding-top: 3px;
 }
 
 .wsp-card {
   border: 1px solid var(--color-border-subtle);
-  border-radius: 12px;
-  padding: 14px 16px;
+  border-radius: 9px;
+  padding: 10px 11px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 9px;
   background: var(--color-surface);
   transition: border-color 0.15s;
 }
@@ -674,37 +681,37 @@ const WEB_SEARCH_CSS = `
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
 }
 
-.wsp-provider-info { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.wsp-provider-info { display: flex; align-items: center; gap: 8px; min-width: 0; }
 
 .wsp-provider-avatar {
   width: 34px; height: 34px;
-  border-radius: 9px;
+  border-radius: 7px;
   background: rgba(239,124,47,0.14);
   color: var(--color-primary);
-  font-size: 15px; font-weight: 800;
+  font-size: 13px; font-weight: 800;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0; text-transform: uppercase;
 }
-.wsp-provider-name { font-size: 14px; font-weight: 700; color: var(--color-text); }
-.wsp-provider-name .pv-origin-badge { display: inline-flex; align-items: center; font-size: 10px; color: var(--color-text-muted); background: var(--color-surface); border: 1px solid var(--color-border); padding: 1px 7px; border-radius: 5px; font-weight: 600; margin-left: 8px; vertical-align: middle; }
+.wsp-provider-name { font-size: 12px; font-weight: 700; color: var(--color-text); }
+.wsp-provider-name .pv-origin-badge { display: inline-flex; align-items: center; font-size: 10px; color: var(--color-text-muted); background: var(--color-surface); border: 1px solid var(--color-border); padding: 2px 5px; border-radius: 4px; font-weight: 600; margin-left: 8px; vertical-align: middle; }
 .wsp-provider-desc {
-  font-size: 12px; color: var(--color-text-muted);
+  font-size: 10px; color: var(--color-text-muted);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-.wsp-card-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.wsp-card-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 
 .wsp-status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 .wsp-status-dot.ready { background: var(--color-success, #6faf7b); }
 .wsp-status-dot.warn  { background: #f59e0b; }
 
-.wsp-fields { display: flex; flex-direction: column; gap: 8px; }
-.wsp-field  { display: flex; flex-direction: column; gap: 4px; }
+.wsp-fields { display: flex; flex-direction: column; gap: 6px; }
+.wsp-field  { display: flex; flex-direction: column; gap: 3px; }
 .wsp-field label {
-  font-size: 11px; font-weight: 700; color: var(--color-text-muted);
+  font-size: 10px; font-weight: 700; color: var(--color-text-muted);
   text-transform: uppercase; letter-spacing: 0.04em;
 }
 .wsp-field input {
@@ -712,9 +719,9 @@ const WEB_SEARCH_CSS = `
   background: var(--color-bg);
   border: 1.5px solid var(--color-border);
   color: var(--color-text);
-  border-radius: 8px;
-  padding: 7px 10px;
-  font-size: 13px;
+  border-radius: 6px;
+  padding: 5px 7px;
+  font-size: 11px;
   outline: none;
   transition: border-color 0.15s;
   box-sizing: border-box;
@@ -724,27 +731,27 @@ const WEB_SEARCH_CSS = `
 .wsp-input-wrap { position: relative; }
 .wsp-missing-key {
   position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
-  font-size: 11px; font-weight: 700; color: #f59e0b; pointer-events: none;
+  font-size: 10px; font-weight: 700; color: #f59e0b; pointer-events: none;
 }
 
 .wsp-basic-auth-label {
-  font-size: 11px; font-weight: 700; color: var(--color-text-muted);
+  font-size: 10px; font-weight: 700; color: var(--color-text-muted);
   text-transform: uppercase; letter-spacing: 0.04em;
   padding-bottom: 2px; border-bottom: 1px solid var(--color-border-subtle);
   margin-bottom: 2px;
 }
 .wsp-optional { font-weight: 400; text-transform: none; letter-spacing: 0; font-style: italic; }
 
-.wsp-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.wsp-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 
 .wsp-test-btn {
-  display: flex; align-items: center; gap: 5px;
+  display: flex; align-items: center; gap: 4px;
   border: 1px solid var(--color-border-subtle);
   background: transparent;
   color: var(--color-text-secondary);
-  border-radius: 7px;
-  padding: 5px 10px;
-  font-size: 12px; font-weight: 600;
+  border-radius: 5px;
+  padding: 4px 7px;
+  font-size: 10px; font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
 }
@@ -753,15 +760,15 @@ const WEB_SEARCH_CSS = `
 
 .wsp-save-btn {
   background: var(--color-primary); color: white;
-  border: none; border-radius: 7px; padding: 5px 12px;
-  font-size: 12px; font-weight: 700; cursor: pointer;
+  border: none; border-radius: 5px; padding: 4px 8px;
+  font-size: 10px; font-weight: 700; cursor: pointer;
   margin-left: auto; transition: opacity 0.15s;
 }
 .wsp-save-btn:hover:not(:disabled) { opacity: 0.88; }
 .wsp-save-btn:disabled { opacity: 0.5; cursor: default; }
 
 .wsp-test-error {
-  font-size: 12px; color: var(--color-error, #c96b5c);
+  font-size: 10px; color: var(--color-error, #c96b5c);
   max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
@@ -769,30 +776,30 @@ const WEB_SEARCH_CSS = `
 .spin { animation: spin 0.8s linear infinite; }
 
 /* ── Global controls ── */
-.ws-header-actions { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.ws-header-actions { display: flex; align-items: center; gap: 9px; flex-shrink: 0; }
 
 .ws-save-btn {
   background: var(--color-primary); color: white; border: none;
-  padding: 9px 22px; border-radius: 9px;
-  font-weight: 600; font-size: 14px; cursor: pointer; transition: opacity 0.15s;
+  padding: 6px 15px; border-radius: 7px;
+  font-weight: 600; font-size: 12px; cursor: pointer; transition: opacity 0.15s;
 }
 .ws-save-btn:hover:not(:disabled) { opacity: 0.88; }
 .ws-save-btn:disabled { opacity: 0.5; cursor: default; }
 
 .ws-saved-badge {
-  font-size: 13px; font-weight: 600; color: var(--color-success);
-  background: rgba(111,175,123,0.12); padding: 5px 12px; border-radius: 7px;
+  font-size: 11px; font-weight: 600; color: var(--color-success);
+  background: rgba(111,175,123,0.12); padding: 4px 8px; border-radius: 5px;
 }
 
 .ws-error-inline {
-  font-size: 13px; color: var(--color-error);
+  font-size: 11px; color: var(--color-error);
   background: rgba(201,107,92,0.1); border: 1px solid rgba(201,107,92,0.3);
-  padding: 5px 12px; border-radius: 7px;
+  padding: 4px 8px; border-radius: 5px;
   max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-.ws-loading { color: var(--color-text-muted); font-size: 14px; padding: 40px 0; }
-.ws-field-hint { font-size: 12px; color: var(--color-text-muted); margin-top: 4px; }
+.ws-loading { color: var(--color-text-muted); font-size: 12px; padding: 28px 0; }
+.ws-field-hint { font-size: 10px; color: var(--color-text-muted); margin-top: 4px; }
 
 .ws-toggle {
   position: relative; display: inline-flex; align-items: center;
@@ -801,7 +808,7 @@ const WEB_SEARCH_CSS = `
 .ws-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
 .ws-toggle-slider {
   display: block; width: 44px; height: 24px;
-  background: var(--color-border); border-radius: 12px;
+  background: var(--color-border); border-radius: 9px;
   transition: background 0.2s; position: relative;
 }
 .ws-toggle-slider::after {
@@ -816,7 +823,7 @@ const WEB_SEARCH_CSS = `
 .dc-root {
   background: var(--color-bg);
   border: 1.5px solid var(--color-border);
-  border-radius: 14px;
+  border-radius: 11px;
   overflow: hidden;
 }
 
@@ -824,46 +831,46 @@ const WEB_SEARCH_CSS = `
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 24px;
+  padding: 13px 17px;
   border-bottom: 1px solid var(--color-border);
-  gap: 16px;
+  gap: 12px;
 }
 
 .dc-header-left {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 11px;
 }
 
 .dc-header-icon {
   width: 40px; height: 40px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 10px;
+  border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
   color: var(--color-primary);
   flex-shrink: 0;
 }
 
 .dc-header-title {
-  font-size: 16px; font-weight: 700; color: var(--color-text);
+  font-size: 14px; font-weight: 700; color: var(--color-text);
 }
 .dc-header-sub {
-  font-size: 13px; color: var(--color-text-muted); margin-top: 2px;
+  font-size: 11px; color: var(--color-text-muted); margin-top: 2px;
 }
 .dc-org-policy-note {
-  font-size: 12px; color: var(--color-text-muted); margin-top: 6px;
-  display: flex; align-items: center; gap: 5px;
+  font-size: 10px; color: var(--color-text-muted); margin-top: 6px;
+  display: flex; align-items: center; gap: 4px;
 }
 
 .dc-save-btn {
-  display: flex; align-items: center; gap: 6px;
+  display: flex; align-items: center; gap: 5px;
   background: var(--color-surface);
   border: 1.5px solid var(--color-border);
   color: var(--color-text-secondary);
-  border-radius: 9px;
-  padding: 8px 18px;
-  font-size: 13px; font-weight: 600;
+  border-radius: 7px;
+  padding: 6px 13px;
+  font-size: 11px; font-weight: 600;
   cursor: pointer;
   font-family: inherit;
   transition: border-color 0.15s, background 0.15s;
@@ -886,12 +893,12 @@ const WEB_SEARCH_CSS = `
   width: 100%;
   display: flex;
   align-items: center;
-  padding: 14px 24px;
+  padding: 10px 17px;
   background: none;
   border: none;
   cursor: pointer;
   color: var(--color-text);
-  gap: 10px;
+  gap: 8px;
   transition: background 0.12s;
   text-align: left;
 }
@@ -902,13 +909,13 @@ const WEB_SEARCH_CSS = `
 
 .dc-cat-name {
   flex: 1;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--color-text);
 }
 
 .dc-cat-count {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   flex-shrink: 0;
 }
@@ -919,8 +926,8 @@ const WEB_SEARCH_CSS = `
 .dc-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  padding: 14px 24px 20px;
+  gap: 8px;
+  padding: 10px 17px 14px;
   background: var(--color-surface);
   border-top: 1px solid var(--color-border);
 }
@@ -930,11 +937,11 @@ const WEB_SEARCH_CSS = `
 .dc-card {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 11px 13px;
+  gap: 8px;
+  padding: 8px 9px;
   background: var(--color-bg);
   border: 1px solid var(--color-border-subtle, var(--color-border));
-  border-radius: 11px;
+  border-radius: 9px;
   cursor: pointer;
   transition: border-color 0.13s, background 0.13s;
   min-width: 0;
@@ -944,7 +951,7 @@ const WEB_SEARCH_CSS = `
 
 .dc-favicon {
   width: 22px; height: 22px;
-  border-radius: 5px;
+  border-radius: 4px;
   object-fit: contain;
   flex-shrink: 0;
   background: var(--color-surface);
@@ -952,17 +959,17 @@ const WEB_SEARCH_CSS = `
 
 .dc-favicon-fallback {
   width: 22px; height: 22px;
-  border-radius: 5px;
+  border-radius: 4px;
   background: rgba(239,124,47,0.14);
   color: var(--color-primary);
-  font-size: 11px; font-weight: 800;
+  font-size: 10px; font-weight: 800;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
 
 .dc-card-name {
   flex: 1;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 500;
   color: var(--color-text);
   white-space: nowrap;

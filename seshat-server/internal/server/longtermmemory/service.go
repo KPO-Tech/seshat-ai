@@ -1,7 +1,7 @@
 // Package longtermmemory is the server-hosted implementation of the same
 // entities/observations/relations knowledge graph seshat-backend already
 // keeps locally (internal/db/memories.go on that repo, behind the SDK's
-// longterm.Store interface — github.com/EngineerProjects/seshat/pkg/memory/longterm).
+// longterm.Store interface — github.com/KPO-Tech/seshat/pkg/memory/longterm).
 //
 // This is deliberately NOT a new relevance/retrieval design: the local
 // implementation's "search" is a full per-user table scan doing a

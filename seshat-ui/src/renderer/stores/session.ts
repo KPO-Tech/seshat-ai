@@ -16,6 +16,11 @@ export type ChatSession = {
   workspacePath?: string
   projectPath?: string
   draftPrompt?: string
+  // File IDs already uploaded (via /sessions/:id/files) before this session's
+  // first message was sent - attached from the Home screen, where a session
+  // has to exist for the upload but the real send is deferred to
+  // Conversation.tsx's draftPrompt auto-send effect. See Home.tsx.
+  draftFileIds?: string[]
   planArtifact?: string
   // Active plan documents keyed by plan_id
   plans?: Record<string, PlanDocument>
@@ -54,6 +59,12 @@ export type PendingPermission = ToolApproval
 // State for a single sub-agent instance identified by tool use ID
 export type SubagentState = {
   toolUseId: string
+  // Stable agent_id returned by spawn_agent (distinct from toolUseId, the key
+  // this state is stored under). Only set for agents spawned via spawn_agent —
+  // undefined for the synchronous `agent` tool, which has no cancel endpoint
+  // since it never outlives its own tool call. Required to call
+  // POST /subagents/{agentId}/cancel.
+  agentId?: string
   agentType: string
   task: string
   status: 'running' | 'completed' | 'failed'

@@ -28,8 +28,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - uses: actions/setup-go@v5
         with:
@@ -37,7 +35,6 @@ jobs:
           cache-dependency-path: |
             go.work.sum
             seshat-backend/go.sum
-            seshat/go.sum
 
       - name: Build seshat-backend
         working-directory: seshat-backend

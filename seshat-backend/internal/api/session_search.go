@@ -3,7 +3,7 @@ package api
 import (
 	"strings"
 
-	"github.com/EngineerProjects/seshat/pkg/types"
+	"github.com/KPO-Tech/seshat/pkg/types"
 )
 
 func extractSessionSearchContent(messages []types.Message) string {

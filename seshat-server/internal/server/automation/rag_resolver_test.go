@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	sdkrag "github.com/EngineerProjects/seshat/pkg/rag"
+	sdkrag "github.com/KPO-Tech/seshat/pkg/rag"
 )
 
 // fakeRAGResolver lets tests observe how executeCloudRun consults the

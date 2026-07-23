@@ -66,3 +66,44 @@ func (app *App) setOrganizationActive(w http.ResponseWriter, r *http.Request, is
 	}
 	writeJSON(w, http.StatusOK, organization)
 }
+
+type organizationSharedDomainsRequest struct {
+	ShareProviderSettings        *bool `json:"share_provider_settings"`
+	ShareEmbedderSettings        *bool `json:"share_embedder_settings"`
+	ShareWebSearchSettings       *bool `json:"share_web_search_settings"`
+	ShareMCPServers              *bool `json:"share_mcp_servers"`
+	ShareSkillRepos              *bool `json:"share_skill_repos"`
+	ShareOrganizationPreferences *bool `json:"share_organization_preferences"`
+}
+
+// handleOrganizationSharedDomains lets a superadmin choose which settings
+// domains this organization shares with every other organization while it
+// holds IsDefault - independently per domain, instead of IsDefault sharing
+// everything unconditionally. Any field omitted from the body leaves that
+// domain's flag unchanged. Superadmin-only.
+func (app *App) handleOrganizationSharedDomains(w http.ResponseWriter, r *http.Request) {
+	principal, ok := authPrincipalFromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "missing principal")
+		return
+	}
+	organizationID := strings.TrimSpace(r.PathValue("organizationID"))
+	if organizationID == "" {
+		writeJSONError(w, http.StatusBadRequest, "missing organization id")
+		return
+	}
+	var req organizationSharedDomainsRequest
+	if !decodeJSONBody(w, r, &req) {
+		return
+	}
+	organization, err := app.backend.IAM.SetOrganizationSharedDomains(
+		r.Context(), principal, organizationID,
+		req.ShareProviderSettings, req.ShareEmbedderSettings, req.ShareWebSearchSettings, req.ShareMCPServers, req.ShareSkillRepos,
+		req.ShareOrganizationPreferences,
+	)
+	if err != nil {
+		writeIAMError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, organization)
+}

@@ -10,7 +10,7 @@ import { Login } from '@/pages/Login'
 import { Register } from '@/pages/Register'
 import { WorkspacePage } from '@/pages/workspace'
 import { TeamPage } from '@/pages/team'
-import { AgentsPage } from '@/pages/agents'
+import { SchedulingPage } from '@/pages/scheduling'
 
 export const router = createHashRouter([
   {
@@ -37,15 +37,18 @@ export const router = createHashRouter([
       { path: 'teams', element: <TeamPage /> },
       { path: 'skills-creator', element: <SkillsCreatorPage /> },
       { path: 'workspace', element: <WorkspacePage /> },
-      { path: 'agents', element: <AgentsPage /> },
+      // Agents used to have its own separate page; that's now covered by
+      // Workspace's Agents tab (the fuller, better-maintained UI) - redirect
+      // rather than 404 for anyone with an old link/shortcut.
+      { path: 'agents', element: <Navigate to="/workspace" replace /> },
       { path: 'knowledge', element: <Navigate to="/" replace /> },
       { path: 'memories', element: <Navigate to="/" replace /> },
-      // Scheduled Tasks / Automations were two overlapping local scheduling
-      // systems, both retired — automation now runs exclusively through
-      // Seshat Server (see helps/seshat-architecture-target.md). This
-      // machine's role is pairing + execution, managed from Settings.
-      { path: 'scheduled-tasks', element: <Navigate to="/settings?tab=cloud-automation" replace /> },
-      { path: 'automation', element: <Navigate to="/settings?tab=cloud-automation" replace /> },
+      { path: 'scheduling', element: <SchedulingPage /> },
+      // Scheduled Tasks / Automations were the old local-scheduler routes,
+      // retired when automation moved to Seshat Server; kept as redirects
+      // for anyone with an old link/shortcut.
+      { path: 'scheduled-tasks', element: <Navigate to="/scheduling" replace /> },
+      { path: 'automation', element: <Navigate to="/scheduling" replace /> },
     ],
   },
   { path: '*', element: <Navigate to="/" replace /> },

@@ -12,6 +12,7 @@ import (
 
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/apperr"
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/mailer"
 )
 
 // Principal is the authenticated server-side identity resolved from a session.
@@ -31,27 +32,44 @@ type User struct {
 }
 
 type Organization struct {
-	ID           string    `json:"id"`
-	Name         string    `json:"name"`
-	Slug         string    `json:"slug"`
-	Description  string    `json:"description"`
-	WebsiteURL   string    `json:"website_url"`
-	SupportEmail string    `json:"support_email"`
-	IsDefault    bool      `json:"is_default"`
-	IsActive     bool      `json:"is_active"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID                           string    `json:"id"`
+	Name                         string    `json:"name"`
+	Slug                         string    `json:"slug"`
+	Description                  string    `json:"description"`
+	WebsiteURL                   string    `json:"website_url"`
+	SupportEmail                 string    `json:"support_email"`
+	IsDefault                    bool      `json:"is_default"`
+	IsActive                     bool      `json:"is_active"`
+	ShareProviderSettings        bool      `json:"share_provider_settings"`
+	ShareEmbedderSettings        bool      `json:"share_embedder_settings"`
+	ShareWebSearchSettings       bool      `json:"share_web_search_settings"`
+	ShareMCPServers              bool      `json:"share_mcp_servers"`
+	ShareSkillRepos              bool      `json:"share_skill_repos"`
+	ShareOrganizationPreferences bool      `json:"share_organization_preferences"`
+	Domain                       *string   `json:"domain,omitempty"`
+	CreatedAt                    time.Time `json:"created_at"`
+	UpdatedAt                    time.Time `json:"updated_at"`
 }
 
 type Membership struct {
-	ID              string    `json:"id"`
-	UserID          string    `json:"user_id"`
-	OrganizationID  string    `json:"organization_id"`
-	Role            string    `json:"role"`
-	CreatedAt       time.Time `json:"created_at"`
-	UserEmail       string    `json:"user_email,omitempty"`
-	UserDisplayName string    `json:"user_display_name,omitempty"`
-	UserIsAdmin     bool      `json:"user_is_admin,omitempty"`
+	ID             string     `json:"id"`
+	UserID         string     `json:"user_id"`
+	OrganizationID string     `json:"organization_id"`
+	Role           string     `json:"role"`
+	Status         string     `json:"status"`
+	PendingSince   *time.Time `json:"pending_since,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
+	// Permissions is the resolved effective permission set (role + custom
+	// role + policy bindings + group membership - see
+	// effectivePermissionsForPrincipal) for this specific membership's role
+	// in this organization, at the time it was fetched. Populated wherever a
+	// Membership reaches a client (login/register/bootstrap/auth-me) so the
+	// frontend can gate UI on real permissions instead of hardcoding role
+	// names, which would silently miss custom roles.
+	Permissions     []string `json:"permissions"`
+	UserEmail       string   `json:"user_email,omitempty"`
+	UserDisplayName string   `json:"user_display_name,omitempty"`
+	UserIsAdmin     bool     `json:"user_is_admin,omitempty"`
 }
 
 type Session struct {
@@ -141,15 +159,18 @@ type CreateOrganizationParams struct {
 	Description  string `json:"description"`
 	WebsiteURL   string `json:"website_url"`
 	SupportEmail string `json:"support_email"`
+	Domain       string `json:"domain"`
 }
 
+// CreateUserParams deliberately has no IsAdmin field - see UpdateUserParams'
+// doc comment. Every user created through this path is a regular
+// (non-platform-admin) account, full stop.
 type CreateUserParams struct {
 	Email          string `json:"email"`
 	Password       string `json:"password"`
 	DisplayName    string `json:"display_name"`
 	OrganizationID string `json:"organization_id"`
 	Role           string `json:"role"`
-	IsAdmin        bool   `json:"is_admin"`
 }
 
 type CreateApplicationParams struct {
@@ -219,10 +240,28 @@ type AuthResult struct {
 type Service struct {
 	db         *sdb.DB
 	sessionTTL time.Duration
+	// mailer/publicAppURL are set post-construction via SetMailer, not
+	// through New() - see SetMailer's doc comment for why.
+	mailer       mailer.Sender
+	publicAppURL string
 }
 
 func New(database *sdb.DB, sessionTTL time.Duration) *Service {
 	return &Service{db: database, sessionTTL: sessionTTL}
+}
+
+// SetMailer wires up outbound email (invitation accept links, password
+// reset links). Deliberately not a New() parameter: iam.New is called from
+// 11 places across the repo, nearly all of them unrelated test-env
+// helpers in other packages that have no reason to care about email -
+// changing New's signature would ripple everywhere for a dependency most
+// callers don't need. A nil sender (the zero value, i.e. never calling
+// SetMailer) is a fully supported, permanent state: every flow that sends
+// mail treats it as best-effort and still succeeds without it (see
+// CreateInvitation, ForgotPassword).
+func (s *Service) SetMailer(sender mailer.Sender, publicAppURL string) {
+	s.mailer = sender
+	s.publicAppURL = strings.TrimRight(publicAppURL, "/")
 }
 
 func (s *Service) BootstrapStatus(ctx context.Context) (bool, error) {
@@ -309,11 +348,125 @@ func (s *Service) Bootstrap(ctx context.Context, params BootstrapParams) (*AuthR
 			return err
 		}
 
+		bootstrapMembership, err := toMembershipWithPermissions(tx, user.ID, membership)
+		if err != nil {
+			return err
+		}
 		result = &AuthResult{
 			Token:         rawToken,
 			User:          toUser(user),
 			Organizations: []Organization{toOrganization(org)},
-			Memberships:   []Membership{toMembership(membership)},
+			Memberships:   []Membership{bootstrapMembership},
+		}
+		return nil
+	})
+	return result, err
+}
+
+type RegisterParams struct {
+	Email       string `json:"email"`
+	Password    string `json:"password"`
+	DisplayName string `json:"display_name"`
+}
+
+// Register is the platform's self-service account creation path - unlike
+// Bootstrap (single-shot, first account only) or CreateUser (admin-only),
+// anyone can call this. If the email's domain matches an organization's own
+// Domain, the new user is immediately auto-joined to that organization as a
+// "pending" member: full access already (see the membership Status
+// enforcement in access.go), just flagged for admin attention until
+// confirmed or until BlockExpiredPendingMemberships blocks it unconfirmed.
+// No domain match just creates the account with no memberships -
+// CreateOrganization (already self-serve) covers "I'm the first person
+// from a brand-new company."
+func (s *Service) Register(ctx context.Context, params RegisterParams) (*AuthResult, error) {
+	email := normalizeEmail(params.Email)
+	password := strings.TrimSpace(params.Password)
+	displayName := strings.TrimSpace(params.DisplayName)
+	if email == "" || password == "" {
+		return nil, ErrInvalidInput("email and password are required")
+	}
+	if displayName == "" {
+		return nil, ErrInvalidInput("display_name is required")
+	}
+
+	var result *AuthResult
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		tx = tx.WithContext(ctx)
+		var existing int64
+		if err := tx.Model(&sdb.User{}).Where("email = ?", email).Count(&existing).Error; err != nil {
+			return err
+		}
+		if existing > 0 {
+			return ErrConflict("an account with this email already exists")
+		}
+
+		now := time.Now().UTC()
+		passwordHash, err := hashPassword(password)
+		if err != nil {
+			return fmt.Errorf("hash password: %w", err)
+		}
+		userID, err := newID("usr")
+		if err != nil {
+			return err
+		}
+		user := sdb.User{
+			ID: userID, Email: email, DisplayName: displayName, PasswordHash: passwordHash,
+			CreatedAt: now, UpdatedAt: now,
+		}
+		if err := tx.Create(&user).Error; err != nil {
+			if isUniqueConstraintError(err) {
+				return ErrConflict("an account with this email already exists")
+			}
+			return err
+		}
+
+		organizations := []Organization{}
+		memberships := []Membership{}
+		if domain := emailDomain(email); domain != "" {
+			var org sdb.Organization
+			err := tx.Where("domain = ?", domain).First(&org).Error
+			switch {
+			case err == nil:
+				membershipID, err := newID("mem")
+				if err != nil {
+					return err
+				}
+				membership := sdb.Membership{
+					ID: membershipID, UserID: user.ID, OrganizationID: org.ID, Role: "member",
+					Status: "pending", PendingSince: &now, CreatedAt: now,
+				}
+				if err := tx.Create(&membership).Error; err != nil {
+					return err
+				}
+				if err := appendAuditEvent(tx, nil, org.ID, "membership.self_registered", "membership", membership.ID, map[string]string{"user_id": user.ID, "email": email}); err != nil {
+					return err
+				}
+				registeredMembership, err := toMembershipWithPermissions(tx, user.ID, membership)
+				if err != nil {
+					return err
+				}
+				organizations = append(organizations, toOrganization(org))
+				memberships = append(memberships, registeredMembership)
+			case errors.Is(err, gorm.ErrRecordNotFound):
+				// No organization claims this email domain - the account is
+				// still created, just with no memberships yet.
+			default:
+				return err
+			}
+		}
+
+		session, rawToken, err := s.newSession(user.ID, now)
+		if err != nil {
+			return err
+		}
+		if err := tx.Create(&session).Error; err != nil {
+			return err
+		}
+
+		result = &AuthResult{
+			Token: rawToken, User: toUser(user),
+			Organizations: organizations, Memberships: memberships,
 		}
 		return nil
 	})
@@ -537,6 +690,7 @@ func (s *Service) CreateOrganization(ctx context.Context, principal *Principal, 
 	description := strings.TrimSpace(params.Description)
 	websiteURL := strings.TrimSpace(params.WebsiteURL)
 	supportEmail := normalizeEmail(params.SupportEmail)
+	domain := normalizeDomain(params.Domain)
 	if name == "" || slug == "" {
 		return nil, ErrInvalidInput("name and slug are required")
 	}
@@ -551,16 +705,28 @@ func (s *Service) CreateOrganization(ctx context.Context, principal *Principal, 
 		if existing > 0 {
 			return ErrConflict("organization slug already exists")
 		}
+		if domain != nil {
+			var conflictingDomain int64
+			if err := tx.Model(&sdb.Organization{}).Where("domain = ?", *domain).Count(&conflictingDomain).Error; err != nil {
+				return err
+			}
+			if conflictingDomain > 0 {
+				return ErrConflict("an organization with this email domain already exists")
+			}
+		}
 
 		now := time.Now().UTC()
 		organizationIDValue, err := newID("org")
 		if err != nil {
 			return err
 		}
-		record := sdb.Organization{ID: organizationIDValue, Name: name, Slug: slug, Description: description, WebsiteURL: websiteURL, SupportEmail: supportEmail, CreatedAt: now, UpdatedAt: now}
+		record := sdb.Organization{
+			ID: organizationIDValue, Name: name, Slug: slug, Description: description,
+			WebsiteURL: websiteURL, SupportEmail: supportEmail, Domain: domain, CreatedAt: now, UpdatedAt: now,
+		}
 		if err := tx.Create(&record).Error; err != nil {
 			if isUniqueConstraintError(err) {
-				return ErrConflict("organization slug already exists")
+				return ErrConflict("organization slug or email domain already exists")
 			}
 			return err
 		}
@@ -569,12 +735,20 @@ func (s *Service) CreateOrganization(ctx context.Context, principal *Principal, 
 		}
 
 		if !principal.User.IsAdmin {
+			if hasAny, err := userHasAnyMembership(tx, principal.User.ID); err != nil {
+				return err
+			} else if hasAny {
+				return ErrConflict("user already belongs to an organization")
+			}
 			membershipID, err := newID("mem")
 			if err != nil {
 				return err
 			}
 			membership := sdb.Membership{ID: membershipID, UserID: principal.User.ID, OrganizationID: record.ID, Role: "owner", CreatedAt: now}
 			if err := tx.Create(&membership).Error; err != nil {
+				if isUniqueConstraintError(err) {
+					return ErrConflict("user already belongs to an organization")
+				}
 				return err
 			}
 			if err := appendAuditEvent(tx, principal, record.ID, "membership.created", "membership", membership.ID, map[string]string{"role": membership.Role, "user_id": membership.UserID}); err != nil {
@@ -684,7 +858,6 @@ func (s *Service) CreateUser(ctx context.Context, principal *Principal, params C
 			Email:        email,
 			DisplayName:  displayName,
 			PasswordHash: passwordHash,
-			IsAdmin:      params.IsAdmin,
 			CreatedAt:    now,
 			UpdatedAt:    now,
 		}
@@ -769,16 +942,40 @@ func requireAdmin(principal *Principal) error {
 
 // membershipsByUser loads every membership for one user, ordered the same
 // way the old in-memory scan did (oldest first).
+// membershipsByUser is used only for session/auth resolution (Login,
+// ResolvePrincipal) - excludes "blocked" memberships so a blocked org
+// disappears from a user's session context entirely, same as never having
+// been a member. Admin-facing membership listings (ListMemberships et al.)
+// are unaffected - a "blocked" row still exists and should stay visible so
+// an admin can un-block it.
 func membershipsByUser(tx *gorm.DB, userID string) ([]Membership, error) {
 	var records []sdb.Membership
-	if err := tx.Where("user_id = ?", userID).Order("created_at asc").Find(&records).Error; err != nil {
+	if err := tx.Where("user_id = ? AND status <> ?", userID, "blocked").Order("created_at asc").Find(&records).Error; err != nil {
 		return nil, err
 	}
 	memberships := make([]Membership, 0, len(records))
 	for _, record := range records {
-		memberships = append(memberships, toMembership(record))
+		membership, err := toMembershipWithPermissions(tx, userID, record)
+		if err != nil {
+			return nil, err
+		}
+		memberships = append(memberships, membership)
 	}
 	return memberships, nil
+}
+
+// toMembershipWithPermissions attaches the resolved effective permission set
+// for one membership's role, in its organization - a minimal *Principal is
+// enough since effectivePermissionsForPrincipal re-queries memberships/groups/
+// policy bindings from tx itself, it never reads back the passed-in struct.
+func toMembershipWithPermissions(tx *gorm.DB, userID string, record sdb.Membership) (Membership, error) {
+	m := toMembership(record)
+	permissions, err := effectivePermissionsForPrincipal(tx, &Principal{User: User{ID: userID}}, record.OrganizationID)
+	if err != nil {
+		return Membership{}, err
+	}
+	m.Permissions = sortedPermissionCodes(permissions)
+	return m, nil
 }
 
 func organizationsForMemberships(tx *gorm.DB, memberships []Membership) ([]Organization, error) {
@@ -817,6 +1014,20 @@ func findUserByEmail(tx *gorm.DB, email string) (sdb.User, bool, error) {
 	return user, true, nil
 }
 
+// userHasAnyMembership reports whether userID already belongs to any
+// organization - the application-level check backing the one-org-per-user
+// invariant, checked before every membership-creating INSERT that targets an
+// *existing* user (not one just created in the same transaction, which can't
+// have a prior membership by construction) so callers get a clean ErrConflict
+// instead of a raw DB constraint error on the happy path. The DB-level
+// uniqueIndex on Membership.UserID (see db/models.go) is the enforcement of
+// last resort for races between this check and the INSERT.
+func userHasAnyMembership(tx *gorm.DB, userID string) (bool, error) {
+	var count int64
+	err := tx.Model(&sdb.Membership{}).Where("user_id = ?", userID).Count(&count).Error
+	return count > 0, err
+}
+
 // primaryOrganizationIDForUser picks one organization to attribute an audit
 // event to when the event isn't itself organization-scoped (e.g. logins).
 func primaryOrganizationIDForUser(tx *gorm.DB, userID string) (string, error) {
@@ -837,21 +1048,31 @@ func toUser(record sdb.User) User {
 
 func toOrganization(record sdb.Organization) Organization {
 	return Organization{
-		ID:           record.ID,
-		Name:         record.Name,
-		Slug:         record.Slug,
-		Description:  record.Description,
-		WebsiteURL:   record.WebsiteURL,
-		SupportEmail: record.SupportEmail,
-		IsDefault:    record.IsDefault,
-		IsActive:     record.IsActive,
-		CreatedAt:    record.CreatedAt,
-		UpdatedAt:    record.UpdatedAt,
+		ID:                           record.ID,
+		Name:                         record.Name,
+		Slug:                         record.Slug,
+		Description:                  record.Description,
+		WebsiteURL:                   record.WebsiteURL,
+		SupportEmail:                 record.SupportEmail,
+		IsDefault:                    record.IsDefault,
+		IsActive:                     record.IsActive,
+		ShareProviderSettings:        record.ShareProviderSettings,
+		ShareEmbedderSettings:        record.ShareEmbedderSettings,
+		ShareWebSearchSettings:       record.ShareWebSearchSettings,
+		ShareMCPServers:              record.ShareMCPServers,
+		ShareSkillRepos:              record.ShareSkillRepos,
+		ShareOrganizationPreferences: record.ShareOrganizationPreferences,
+		Domain:                       record.Domain,
+		CreatedAt:                    record.CreatedAt,
+		UpdatedAt:                    record.UpdatedAt,
 	}
 }
 
 func toMembership(record sdb.Membership) Membership {
-	return Membership{ID: record.ID, UserID: record.UserID, OrganizationID: record.OrganizationID, Role: record.Role, CreatedAt: record.CreatedAt}
+	return Membership{
+		ID: record.ID, UserID: record.UserID, OrganizationID: record.OrganizationID, Role: record.Role,
+		Status: record.Status, PendingSince: record.PendingSince, CreatedAt: record.CreatedAt,
+	}
 }
 
 func toSession(record sdb.Session) Session {
@@ -941,6 +1162,28 @@ func normalizeSlug(slug string) string {
 	slug = strings.ToLower(strings.TrimSpace(slug))
 	slug = strings.ReplaceAll(slug, " ", "-")
 	return slug
+}
+
+// normalizeDomain returns nil for an empty domain rather than a pointer to
+// "" - a *string so the DB column stores NULL (a unique index allows any
+// number of NULLs, but would reject two organizations both storing "").
+func normalizeDomain(domain string) *string {
+	domain = strings.ToLower(strings.TrimSpace(domain))
+	domain = strings.TrimPrefix(domain, "@")
+	if domain == "" {
+		return nil
+	}
+	return &domain
+}
+
+// emailDomain returns the lowercased part of an email after "@", or "" if
+// the email has no "@" (already validated non-empty by the caller).
+func emailDomain(email string) string {
+	_, domain, found := strings.Cut(normalizeEmail(email), "@")
+	if !found {
+		return ""
+	}
+	return domain
 }
 
 func maskedStoredSecret(secret string) string {

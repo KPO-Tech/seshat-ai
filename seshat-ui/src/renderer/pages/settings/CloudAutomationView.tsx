@@ -17,6 +17,8 @@ type AutomationRun = {
   status: string
 }
 
+type SystemStatus = { mode: 'standalone' | 'connected'; server_url?: string }
+
 const RUN_STATUS_LABEL: Record<string, string> = {
   queued: 'Queued',
   claimed: 'Claimed',
@@ -28,11 +30,14 @@ const RUN_STATUS_LABEL: Record<string, string> = {
 
 export function CloudAutomationView() {
   const [status, setStatus] = useState<AutomationStatus | null>(null)
+  const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null)
   const [runs, setRuns] = useState<AutomationRun[]>([])
   const [loading, setLoading] = useState(true)
   const [serverURL, setServerURL] = useState('')
   const [deviceToken, setDeviceToken] = useState('')
   const [connecting, setConnecting] = useState(false)
+  const [registering, setRegistering] = useState(false)
+  const [showManualForm, setShowManualForm] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   async function loadStatus() {
@@ -52,7 +57,24 @@ export function CloudAutomationView() {
 
   useEffect(() => {
     void loadStatus()
+    api.get<SystemStatus>('/system/status').then(setSystemStatus).catch(() => setSystemStatus(null))
   }, [])
+
+  // This machine is already logged into its organization's Seshat Server,
+  // so one click registers it as a device using that existing session, no
+  // manual server_url/device_token copy-paste required.
+  async function handleRegisterDevice() {
+    setRegistering(true)
+    setError(null)
+    try {
+      await api.post('/automation/register-device', {})
+      await loadStatus()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to register this device.')
+    } finally {
+      setRegistering(false)
+    }
+  }
 
   async function handleConnect(e: React.FormEvent) {
     e.preventDefault()
@@ -106,7 +128,7 @@ export function CloudAutomationView() {
           <div className="sv-card">
             <div className="sv-card-head">
               <div className="sv-card-brand">
-                <div className="sv-brand-icon"><CloudStorage theme="outline" size={20} /></div>
+                <div className="sv-brand-icon"><CloudStorage theme="outline" size={16} /></div>
                 <div>
                   <div className="sv-brand-name">{status.device_name || 'This device'}</div>
                   <div className="sv-brand-sub">{status.server_url}</div>
@@ -139,11 +161,11 @@ export function CloudAutomationView() {
                 rel="noreferrer"
                 style={{ justifyContent: 'center', textDecoration: 'none' }}
               >
-                <LinkCloud theme="outline" size={16} />
+                <LinkCloud theme="outline" size={13} />
                 Open Seshat Console
               </a>
               <button className="sv-danger-btn" onClick={() => void handleDisconnect()}>
-                <Unlink theme="outline" size={16} />
+                <Unlink theme="outline" size={13} />
                 Disconnect
               </button>
             </div>
@@ -152,7 +174,7 @@ export function CloudAutomationView() {
           <div className="sv-card">
             <div className="sv-card-head">
               <div className="sv-card-brand">
-                <div className="sv-brand-icon"><Refresh theme="outline" size={20} /></div>
+                <div className="sv-brand-icon"><Refresh theme="outline" size={16} /></div>
                 <div>
                   <div className="sv-brand-name">Recent runs on this device</div>
                   <div className="sv-brand-sub">Read-only — manage jobs in Seshat Console</div>
@@ -179,49 +201,90 @@ export function CloudAutomationView() {
         </div>
       ) : (
         <div className="sv-grid">
-          <div className="sv-card">
-            <div className="sv-card-head">
-              <div className="sv-card-brand">
-                <div className="sv-brand-icon"><CloudStorage theme="outline" size={20} /></div>
-                <div>
-                  <div className="sv-brand-name">Connect to Seshat Server</div>
-                  <div className="sv-brand-sub">Pair this machine to run device-targeted jobs</div>
+          {systemStatus?.mode === 'connected' && !showManualForm ? (
+            <div className="sv-card">
+              <div className="sv-card-head">
+                <div className="sv-card-brand">
+                  <div className="sv-brand-icon"><CloudStorage theme="outline" size={16} /></div>
+                  <div>
+                    <div className="sv-brand-name">Register this device</div>
+                    <div className="sv-brand-sub">{systemStatus.server_url}</div>
+                  </div>
                 </div>
+              </div>
+              <div className="sv-card-body">
+                <div className="sv-setting-desc">
+                  You're already signed in to your organization's Seshat Server. One click enrolls this
+                  machine so it can run jobs assigned to it. No separate token to copy.
+                </div>
+                <button className="modal-btn-submit" onClick={() => void handleRegisterDevice()} disabled={registering}>
+                  {registering ? 'Registering…' : 'Register this device'}
+                </button>
+                <button
+                  type="button"
+                  className="snav-footer-btn"
+                  style={{ justifyContent: 'center' }}
+                  onClick={() => setShowManualForm(true)}
+                >
+                  Connect to a different server instead
+                </button>
               </div>
             </div>
-            <form className="sv-card-body" onSubmit={(e) => void handleConnect(e)}>
-              <div className="sv-field">
-                <label>Server URL</label>
-                <div className="sv-input-box">
-                  <input
-                    type="url"
-                    placeholder="https://cloud.example.com"
-                    value={serverURL}
-                    onChange={(e) => setServerURL(e.target.value)}
-                    required
-                  />
+          ) : (
+            <div className="sv-card">
+              <div className="sv-card-head">
+                <div className="sv-card-brand">
+                  <div className="sv-brand-icon"><CloudStorage theme="outline" size={16} /></div>
+                  <div>
+                    <div className="sv-brand-name">Connect to Seshat Server</div>
+                    <div className="sv-brand-sub">Pair this machine to run device-targeted jobs</div>
+                  </div>
                 </div>
               </div>
-              <div className="sv-field">
-                <label>Device token</label>
-                <div className="sv-input-box">
-                  <input
-                    type="password"
-                    placeholder="Paste the one-time token shown once"
-                    value={deviceToken}
-                    onChange={(e) => setDeviceToken(e.target.value)}
-                    required
-                  />
+              <form className="sv-card-body" onSubmit={(e) => void handleConnect(e)}>
+                <div className="sv-field">
+                  <label>Server URL</label>
+                  <div className="sv-input-box">
+                    <input
+                      type="url"
+                      placeholder="https://cloud.example.com"
+                      value={serverURL}
+                      onChange={(e) => setServerURL(e.target.value)}
+                      required
+                    />
+                  </div>
                 </div>
-                <div className="sv-setting-desc">
-                  Create a device in Seshat Console → Devices → Register device, then paste its token here.
+                <div className="sv-field">
+                  <label>Device token</label>
+                  <div className="sv-input-box">
+                    <input
+                      type="password"
+                      placeholder="Paste the one-time token shown once"
+                      value={deviceToken}
+                      onChange={(e) => setDeviceToken(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="sv-setting-desc">
+                    Create a device in Seshat Console → Devices → Register device, then paste its token here.
+                  </div>
                 </div>
-              </div>
-              <button className="modal-btn-submit" type="submit" disabled={connecting}>
-                {connecting ? 'Connecting…' : 'Connect'}
-              </button>
-            </form>
-          </div>
+                <button className="modal-btn-submit" type="submit" disabled={connecting}>
+                  {connecting ? 'Connecting…' : 'Connect'}
+                </button>
+                {systemStatus?.mode === 'connected' && (
+                  <button
+                    type="button"
+                    className="snav-footer-btn"
+                    style={{ justifyContent: 'center' }}
+                    onClick={() => setShowManualForm(false)}
+                  >
+                    Back to one-click registration
+                  </button>
+                )}
+              </form>
+            </div>
+          )}
         </div>
       )}
     </div>

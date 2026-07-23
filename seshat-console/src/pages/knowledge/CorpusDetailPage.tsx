@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Alert, Button, Card, Empty, Input, message, Popconfirm, Space, Tag, Typography, Upload } from 'antd'
+import { Button, Card, Empty, message, Popconfirm, Space, Tag, Upload } from 'antd'
 import type { TableProps, UploadProps } from 'antd'
-import { ArrowLeftOutlined, DeleteOutlined, ReloadOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, DeleteOutlined, EditOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons'
 import {
   useCorpus,
   useCorpusFiles,
+  useUpdateCorpus,
+  useDeleteCorpus,
   useUploadCorpusFile,
   useDetachCorpusFile,
   useIngestionJobs,
@@ -13,12 +15,12 @@ import {
   useSearchCorpus,
   type CorpusFile,
   type IngestionJob,
-  type SearchResponse,
 } from '@/api/knowledge'
 import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
 import { ConsoleTable } from '@/components/ConsoleTable'
-import { palette, monoStack } from '@/theme/tokens'
+import { CorpusFormDrawer } from '@/components/knowledge/CorpusFormDrawer'
+import { SearchTestCard } from '@/components/knowledge/SearchTestCard'
 
 const STATUS_COLOR: Record<string, string> = {
   pending: 'default',
@@ -32,12 +34,16 @@ const STATUS_COLOR: Record<string, string> = {
 export function CorpusDetailPage() {
   const { organizationId, corpusId } = useParams<{ organizationId: string; corpusId: string }>()
   const navigate = useNavigate()
+  const [editing, setEditing] = useState(false)
   const { data: corpus } = useCorpus(corpusId)
   const { data: files, isLoading: filesLoading } = useCorpusFiles(corpusId)
   const { data: jobs } = useIngestionJobs(corpusId)
   const uploadFile = useUploadCorpusFile(corpusId ?? '')
   const detachFile = useDetachCorpusFile(corpusId ?? '')
   const retryJob = useRetryIngestionJob(corpusId ?? '')
+  const updateCorpus = useUpdateCorpus()
+  const deleteCorpus = useDeleteCorpus()
+  const searchCorpus = useSearchCorpus(corpusId ?? '')
 
   const canonicalOrganizationId = corpus?.organization_id ?? organizationId
   const corporaPath = canonicalOrganizationId ? `/orgs/${canonicalOrganizationId}/knowledge/corpora` : null
@@ -144,6 +150,23 @@ export function CorpusDetailPage() {
             <Button icon={<ArrowLeftOutlined />} onClick={() => corporaPath && navigate(corporaPath)} disabled={!corporaPath}>
               Back to corpora
             </Button>
+            <Button icon={<EditOutlined />} onClick={() => setEditing(true)} disabled={!corpus}>
+              Edit
+            </Button>
+            <Popconfirm
+              title={`Delete ${corpus?.name ?? 'this corpus'}?`}
+              description="Deletes its files, ingestion jobs, and entire vector namespace."
+              onConfirm={() =>
+                deleteCorpus.mutate(corpusId, {
+                  onSuccess: () => corporaPath && navigate(corporaPath),
+                  onError: (error) => message.error(getErrorMessage(error)),
+                })
+              }
+            >
+              <Button danger icon={<DeleteOutlined />} disabled={!corpus}>
+                Delete
+              </Button>
+            </Popconfirm>
             <Upload {...uploadProps}>
               <Button type="primary" icon={<UploadOutlined />} loading={uploadFile.isPending}>
                 Upload file
@@ -178,68 +201,27 @@ export function CorpusDetailPage() {
           </Card>
         )}
 
-        <SearchTestCard corpusId={corpusId} />
+        <SearchTestCard placeholder="Ask something this corpus should be able to answer" search={searchCorpus} />
       </Space>
-    </div>
-  )
-}
 
-function SearchTestCard({ corpusId }: { corpusId: string }) {
-  const [query, setQuery] = useState('')
-  const [result, setResult] = useState<SearchResponse | null>(null)
-  const search = useSearchCorpus(corpusId)
-
-  const runSearch = () => {
-    if (!query.trim()) return
-    search.mutate(
-      { query },
-      {
-        onSuccess: (data) => setResult(data ?? null),
-        onError: (error) => message.error(getErrorMessage(error)),
-      },
-    )
-  }
-
-  return (
-    <Card title="Try a search" size="small">
-      <Space.Compact style={{ width: '100%', marginBottom: 12 }}>
-        <Input
-          placeholder="Ask something this corpus should be able to answer"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          onPressEnter={runSearch}
+      {corpus && (
+        <CorpusFormDrawer
+          corpus={corpus}
+          open={editing}
+          onClose={() => setEditing(false)}
+          onSubmit={(values) => {
+            updateCorpus.mutate(
+              { id: corpus.id!, body: values },
+              {
+                onSuccess: () => setEditing(false),
+                onError: (error) => message.error(getErrorMessage(error)),
+              },
+            )
+          }}
+          submitting={updateCorpus.isPending}
         />
-        <Button type="primary" icon={<SearchOutlined />} loading={search.isPending} onClick={runSearch}>
-          Search
-        </Button>
-      </Space.Compact>
-
-      {search.isError && <Alert type="warning" showIcon title="Search failed" description={getErrorMessage(search.error)} />}
-
-      {result && (result.results?.length ?? 0) === 0 && (
-        <Empty description="No matching chunks found" image={Empty.PRESENTED_IMAGE_SIMPLE} />
       )}
-
-      {result && (result.results?.length ?? 0) > 0 && (
-        <Space direction="vertical" size={12} style={{ width: '100%' }}>
-          {result.results!.map((item, index) => (
-            <div key={index} style={{ paddingBottom: 12, borderBottom: `1px solid ${palette.border}` }}>
-              <Space style={{ marginBottom: 4 }}>
-                <Tag style={{ fontFamily: monoStack, margin: 0 }}>score {item.score?.toFixed(3)}</Tag>
-                {item.metadata?.filename && (
-                  <Typography.Text style={{ fontSize: 12, color: palette.inkTertiary }}>
-                    {item.metadata.filename}
-                  </Typography.Text>
-                )}
-              </Space>
-              <Typography.Paragraph style={{ margin: 0, fontSize: 13 }} ellipsis={{ rows: 3, expandable: true }}>
-                {item.text}
-              </Typography.Paragraph>
-            </div>
-          ))}
-        </Space>
-      )}
-    </Card>
+    </div>
   )
 }
 

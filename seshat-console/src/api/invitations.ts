@@ -3,6 +3,7 @@ import { api } from '@/api/client'
 import type { components } from '@/api/schema'
 
 export type Invitation = components['schemas']['Invitation']
+export type InvitationPreview = components['schemas']['InvitationPreview']
 export type InvitationStatus = 'pending' | 'accepted' | 'revoked' | 'expired'
 
 export interface ListParams {
@@ -50,6 +51,33 @@ export function useCreateInvitation() {
       return data
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [LIST_KEY] }),
+  })
+}
+
+// Unauthenticated - see the backend's LookupInvitationByToken doc comment.
+// Used by AcceptInvitationPage, reachable while logged out.
+export function useLookupInvitation(token: string | undefined) {
+  return useQuery({
+    queryKey: ['invitation-lookup', token],
+    enabled: Boolean(token),
+    retry: false,
+    queryFn: async () => {
+      const { data, error } = await api.GET('/api/v1/invitations/lookup', {
+        params: { query: { token: token! } },
+      })
+      if (error) throw error
+      return data
+    },
+  })
+}
+
+export function useAcceptInvitation() {
+  return useMutation({
+    mutationFn: async (token: string) => {
+      const { data, error } = await api.POST('/api/v1/invitations/accept', { body: { token } })
+      if (error) throw error
+      return data
+    },
   })
 }
 

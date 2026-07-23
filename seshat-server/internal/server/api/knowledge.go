@@ -21,6 +21,11 @@ type createCorpusRequest struct {
 	Description    string `json:"description"`
 }
 
+type updateCorpusRequest struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
 type searchCorpusRequest struct {
 	Query string `json:"query"`
 	TopK  int    `json:"top_k"`
@@ -88,6 +93,20 @@ func (app *App) handleCorpusByID(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		corpus, err := app.backend.Knowledge.GetCorpus(r.Context(), principal, corpusID)
+		if err != nil {
+			writeKnowledgeError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, corpus)
+	case http.MethodPut:
+		var req updateCorpusRequest
+		if !decodeJSONBody(w, r, &req) {
+			return
+		}
+		corpus, err := app.backend.Knowledge.UpdateCorpus(r.Context(), principal, corpusID, knowledge.UpdateCorpusParams{
+			Name:        req.Name,
+			Description: req.Description,
+		})
 		if err != nil {
 			writeKnowledgeError(w, err)
 			return

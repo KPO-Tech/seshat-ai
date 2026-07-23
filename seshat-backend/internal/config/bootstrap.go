@@ -34,23 +34,35 @@ import (
 	backendquery "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/query"
 	backendquotas "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/quotas"
 	backendsettings "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/settings"
-	appconfig "github.com/EngineerProjects/seshat/pkg/config"
-	"github.com/EngineerProjects/seshat/pkg/docling"
-	"github.com/EngineerProjects/seshat/pkg/mcp"
-	longterm "github.com/EngineerProjects/seshat/pkg/memory/longterm"
-	"github.com/EngineerProjects/seshat/pkg/monitoring"
-	"github.com/EngineerProjects/seshat/pkg/providers"
-	"github.com/EngineerProjects/seshat/pkg/rag"
-	ragembedder "github.com/EngineerProjects/seshat/pkg/rag/embedder"
-	"github.com/EngineerProjects/seshat/pkg/rag/reranker"
-	"github.com/EngineerProjects/seshat/pkg/sdk"
-	skillsloader "github.com/EngineerProjects/seshat/pkg/skills"
-	managedskills "github.com/EngineerProjects/seshat/pkg/skills/managed"
-	"github.com/EngineerProjects/seshat/pkg/skills/skillrepos"
-	"github.com/EngineerProjects/seshat/pkg/storage"
-	enginetypes "github.com/EngineerProjects/seshat/pkg/types"
-	"github.com/EngineerProjects/seshat/pkg/vector"
+	appconfig "github.com/KPO-Tech/seshat/pkg/config"
+	"github.com/KPO-Tech/seshat/pkg/docling"
+	"github.com/KPO-Tech/seshat/pkg/mcp"
+	longterm "github.com/KPO-Tech/seshat/pkg/memory/longterm"
+	"github.com/KPO-Tech/seshat/pkg/monitoring"
+	"github.com/KPO-Tech/seshat/pkg/providers"
+	"github.com/KPO-Tech/seshat/pkg/rag"
+	ragembedder "github.com/KPO-Tech/seshat/pkg/rag/embedder"
+	"github.com/KPO-Tech/seshat/pkg/rag/reranker"
+	"github.com/KPO-Tech/seshat/pkg/sdk"
+	skillsloader "github.com/KPO-Tech/seshat/pkg/skills"
+	managedskills "github.com/KPO-Tech/seshat/pkg/skills/managed"
+	"github.com/KPO-Tech/seshat/pkg/skills/skillrepos"
+	"github.com/KPO-Tech/seshat/pkg/storage"
+	enginetypes "github.com/KPO-Tech/seshat/pkg/types"
+	"github.com/KPO-Tech/seshat/pkg/vector"
 )
+
+// defaultServerURL is this build's baked-in seshat-server URL, used only
+// when SESHAT_SERVER_URL isn't set in the environment - empty in ordinary
+// dev builds (today's exact standalone-by-default behavior, unchanged), set
+// via `-ldflags "-X .../internal/config.defaultServerURL=https://..."` for
+// a packaged release build that should always connect to one specific,
+// operator-controlled seshat-server without the end user configuring
+// anything (mirrors main.version's existing ldflags stamping, see
+// cmd/api/main.go and .github/workflows/release-desktop.yml). Not yet wired
+// into that release workflow — there is no deployed production
+// seshat-server to point it at yet; this only lands the mechanism.
+var defaultServerURL = ""
 
 // BuildApp wires all infrastructure (DB, stores, query runtime, RAG, MCP, skills)
 // and returns a ready-to-serve *api.App, a cleanup function, and an error.
@@ -181,27 +193,29 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	var settingsProvider backendsettings.Provider
 	var preferencesProvider backendpreferences.Provider
 	var webSearchCloudClient *cloudwebsearch.Client
-	var webSearchOrganizationID string
 	var mcpCloudClient *cloudmcp.Client
-	var mcpOrganizationID string
 	var memoriesProvider backendmemories.Provider
 	var agentsCloudClient *cloudagents.Client
-	var agentsOrganizationID string
 	var quotaProvider backendquotas.Provider
 	serverURL := strings.TrimSpace(os.Getenv("SESHAT_SERVER_URL"))
+	if serverURL == "" {
+		serverURL = defaultServerURL
+	}
 	if serverURL != "" {
-		organizationID := strings.TrimSpace(os.Getenv("SESHAT_SERVER_ORGANIZATION_ID"))
-		authProvider = cloudidentity.NewProvider(serverURL, organizationID, cloudidentity.NewCache(database), identityStore)
+		// No organization id configured here - seshat-server enforces at
+		// most one organization per user account, so it's resolved fresh
+		// per login/request from the caller's own principal instead (see
+		// auth.Principal.OrganizationID). A fixed, deployment-time org id
+		// used to be required here; it silently produced the wrong role for
+		// anyone whose actual membership didn't match it.
+		authProvider = cloudidentity.NewProvider(serverURL, cloudidentity.NewCache(database), identityStore)
 		localSettingsProvider := backendsettings.NewLocalProvider(settingStore, oauthStore, nil)
-		settingsProvider = cloudsettings.NewProvider(serverURL, organizationID, localSettingsProvider)
+		settingsProvider = cloudsettings.NewProvider(serverURL, localSettingsProvider)
 		preferencesProvider = cloudpreferences.NewProvider(serverURL)
 		webSearchCloudClient = cloudwebsearch.NewClient(serverURL)
-		webSearchOrganizationID = organizationID
 		mcpCloudClient = cloudmcp.NewClient(serverURL)
-		mcpOrganizationID = organizationID
 		memoriesProvider = cloudmemories.NewProvider(serverURL)
 		agentsCloudClient = cloudagents.NewClient(serverURL)
-		agentsOrganizationID = organizationID
 		quotaProvider = cloudquotas.NewProvider(serverURL)
 		fmt.Printf("[API] Identité en mode connected (seshat-server: %s)\n", serverURL)
 	}
@@ -269,6 +283,12 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	if err != nil {
 		_ = cleanup()
 		return nil, nil, fmt.Errorf("init docling config store: %w", err)
+	}
+
+	localSTTConfigStore, err := db.NewLocalSTTConfigStore(database)
+	if err != nil {
+		_ = cleanup()
+		return nil, nil, fmt.Errorf("init local stt config store: %w", err)
 	}
 
 	userMemoryStore, err := db.NewUserMemoryStore(database)
@@ -458,6 +478,9 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		DoclingURL:              strings.TrimSpace(config.DoclingURL),
 		AutomationServiceURL:    strings.TrimSpace(config.AutomationServiceURL),
 		AutomationAPIKey:        strings.TrimSpace(os.Getenv("AUTOMATION_API_KEY")),
+		ImageGeneration:         defaultImageGenerationConfig(),
+		TextToSpeech:            defaultTextToSpeechConfig(),
+		SpeechToText:            defaultSpeechToTextConfig(),
 	}
 	queryClient, err := sdk.NewClient(queryClientConfig)
 	if err != nil {
@@ -571,6 +594,11 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	}
 
 	runtime := backendquery.NewSDKRuntime(queryClient, queryClientConfig)
+	// Shared with api.NewApp below (via AppConfig.TerminalRelay) - the WS
+	// handler there registers a session's Electron relay connection into the
+	// same instance runtime.applyRemoteExecutor reads from per turn.
+	terminalRelay := backendquery.NewTerminalRelay()
+	runtime.SetTerminalRelay(terminalRelay)
 
 	// resolveDocling lets Settings > Knowledge override, at runtime, which
 	// docling-serve instance to use (self-hosted, on the local network, or
@@ -593,16 +621,15 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	}
 
 	backendApp := seshat.NewApp(seshat.Dependencies{
-		Identity:             identityStore,
-		APIKeyStore:          apiKeyStore,
-		GroupStore:           groupStore,
-		AuthProvider:         authProvider,
-		SettingsProvider:     settingsProvider,
-		PreferencesProvider:  preferencesProvider,
-		MemoriesProvider:     memoriesProvider,
-		AgentsCloudClient:    agentsCloudClient,
-		AgentsOrganizationID: agentsOrganizationID,
-		QuotaProvider:        quotaProvider,
+		Identity:            identityStore,
+		APIKeyStore:         apiKeyStore,
+		GroupStore:          groupStore,
+		AuthProvider:        authProvider,
+		SettingsProvider:    settingsProvider,
+		PreferencesProvider: preferencesProvider,
+		MemoriesProvider:    memoriesProvider,
+		AgentsCloudClient:   agentsCloudClient,
+		QuotaProvider:       quotaProvider,
 		AuthConfig: backendauth.ServiceConfig{
 			EnableSignup:    config.EnableSignup,
 			DefaultUserRole: config.DefaultUserRole,
@@ -620,7 +647,6 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		WebSearchLogs:            webSearchLogStore,
 		WebSearchProviderConfigs: searchProviderConfigStore,
 		WebSearchCloudClient:     webSearchCloudClient,
-		WebSearchOrganizationID:  webSearchOrganizationID,
 		AuditLogStore:            auditLogStore,
 		UsageCounterStore:        usageCounterStore,
 		ArtifactStore:            artifactStore,
@@ -634,7 +660,6 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		MCPServerStore:           mcpServerStore,
 		MCPRuntime:               runtime,
 		MCPCloudClient:           mcpCloudClient,
-		MCPOrganizationID:        mcpOrganizationID,
 		MCPOrgServerApprovals:    mcpOrgServerApprovalStore,
 		UserPreferencesStore:     userPreferencesStore,
 		AgentDefinitionStore:     agentDefinitionStore,
@@ -672,24 +697,25 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	fmt.Printf("[API] Cloud automation worker démarré\n")
 
 	app := api.NewApp(api.AppConfig{
-		Backend:                 backendApp,
-		DB:                      database,
-		ModelStore:              modelStore,
-		GroupStore:              groupStore,
-		EmbedderStore:           embedderConfigStore,
-		DoclingStore:            doclingConfigStore,
-		StorageConfigStore:      storageConfigStore,
-		LongTermExtractor:       longTermExtractor,
-		CloudAutomation:         cloudAutomationService,
-		RateLimiter:             api.NewRateLimiter(config.RateLimitPerMinute, time.Minute),
-		LoginRateLimiter:        api.NewRateLimiter(10, 15*time.Minute),
-		EnableSignup:            config.EnableSignup,
-		EnableAPIKeys:           config.EnableAPIKeys,
-		FeaturedRepos:           featuredRepos,
-		TrustedProxyCIDRs:       api.ParseTrustedProxies(config.TrustedProxies),
-		AllowedSkillRepoHosts:   api.ParseSkillRepoHosts(config.SkillRepoHosts),
-		ConnectedServerURL:      serverURL,
-		ConnectedOrganizationID: strings.TrimSpace(os.Getenv("SESHAT_SERVER_ORGANIZATION_ID")),
+		Backend:               backendApp,
+		DB:                    database,
+		ModelStore:            modelStore,
+		GroupStore:            groupStore,
+		EmbedderStore:         embedderConfigStore,
+		DoclingStore:          doclingConfigStore,
+		LocalSTTStore:         localSTTConfigStore,
+		StorageConfigStore:    storageConfigStore,
+		LongTermExtractor:     longTermExtractor,
+		CloudAutomation:       cloudAutomationService,
+		RateLimiter:           api.NewRateLimiter(config.RateLimitPerMinute, time.Minute),
+		LoginRateLimiter:      api.NewRateLimiter(10, 15*time.Minute),
+		EnableSignup:          config.EnableSignup,
+		EnableAPIKeys:         config.EnableAPIKeys,
+		FeaturedRepos:         featuredRepos,
+		TrustedProxyCIDRs:     api.ParseTrustedProxies(config.TrustedProxies),
+		AllowedSkillRepoHosts: api.ParseSkillRepoHosts(config.SkillRepoHosts),
+		ConnectedServerURL:    serverURL,
+		TerminalRelay:         terminalRelay,
 	})
 
 	knowledgeRunner := backendknowledge.NewRunner(backendApp.Knowledge, backendknowledge.RunnerConfig{
@@ -832,6 +858,39 @@ func splitCommaList(raw string) []string {
 		}
 	}
 	return result
+}
+
+// defaultImageGenerationConfig, defaultTextToSpeechConfig and
+// defaultSpeechToTextConfig enable the engine's generate_image/text_to_speech/
+// speech_to_text built-in tools whenever the operator already has the
+// corresponding provider key set — same env vars the chat model itself
+// resolves against (see pkg/config/provider_catalog.go), so a working
+// OPENAI_API_KEY/GOOGLE_API_KEY makes these tools visible to the LLM with no
+// extra configuration. Without this, ClientConfig.ImageGeneration/
+// .TextToSpeech/.SpeechToText stay nil and the tools are never initialized,
+// regardless of which API keys are configured.
+func defaultImageGenerationConfig() *sdk.ImageGenerationConfig {
+	if key := strings.TrimSpace(os.Getenv("OPENAI_API_KEY")); key != "" {
+		return &sdk.ImageGenerationConfig{Provider: "openai", APIKey: key}
+	}
+	if key := strings.TrimSpace(os.Getenv("GOOGLE_API_KEY")); key != "" {
+		return &sdk.ImageGenerationConfig{Provider: "gemini", APIKey: key}
+	}
+	return nil
+}
+
+func defaultTextToSpeechConfig() *sdk.TextToSpeechConfig {
+	if key := strings.TrimSpace(os.Getenv("OPENAI_API_KEY")); key != "" {
+		return &sdk.TextToSpeechConfig{Provider: "openai", APIKey: key}
+	}
+	return nil
+}
+
+func defaultSpeechToTextConfig() *sdk.SpeechToTextConfig {
+	if key := strings.TrimSpace(os.Getenv("OPENAI_API_KEY")); key != "" {
+		return &sdk.SpeechToTextConfig{Provider: "openai", APIKey: key}
+	}
+	return nil
 }
 
 // resolveCloudJobModel maps a cloud job's model_override ("provider:model",

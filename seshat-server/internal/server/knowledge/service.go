@@ -18,11 +18,11 @@ import (
 
 	"gorm.io/gorm"
 
-	sdkdocling "github.com/EngineerProjects/seshat/pkg/docling"
-	sdkrag "github.com/EngineerProjects/seshat/pkg/rag"
-	sdkembedder "github.com/EngineerProjects/seshat/pkg/rag/embedder"
-	sdkstorage "github.com/EngineerProjects/seshat/pkg/storage"
-	sdkvector "github.com/EngineerProjects/seshat/pkg/vector"
+	sdkdocling "github.com/KPO-Tech/seshat/pkg/docling"
+	sdkrag "github.com/KPO-Tech/seshat/pkg/rag"
+	sdkembedder "github.com/KPO-Tech/seshat/pkg/rag/embedder"
+	sdkstorage "github.com/KPO-Tech/seshat/pkg/storage"
+	sdkvector "github.com/KPO-Tech/seshat/pkg/vector"
 
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/apperr"
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
@@ -124,6 +124,13 @@ type CreateCorpusParams struct {
 	OrganizationID string
 	Name           string
 	Description    string
+}
+
+// UpdateCorpusParams edits a corpus's own fields - name/description. There
+// was no way to do this before (Corpus had no Update method at all).
+type UpdateCorpusParams struct {
+	Name        string
+	Description string
 }
 
 // CorpusFile is one uploaded document and its ingestion status.
@@ -252,6 +259,46 @@ func (s *Service) CreateCorpus(ctx context.Context, principal *iam.Principal, pa
 			return err
 		}
 		return s.iam.AppendAuditEvent(tx, principal, organizationID, "corpus.created", "corpus", corpus.ID, map[string]string{"name": corpus.Name})
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := toCorpus(corpus)
+	return &result, nil
+}
+
+// UpdateCorpus edits name/description. Requires knowledge.manage or
+// organization.manage.
+func (s *Service) UpdateCorpus(ctx context.Context, principal *iam.Principal, corpusID string, params UpdateCorpusParams) (*Corpus, error) {
+	if principal == nil {
+		return nil, ErrUnauthorized("authentication required")
+	}
+	corpusID = strings.TrimSpace(corpusID)
+	name := strings.TrimSpace(params.Name)
+	if corpusID == "" || name == "" {
+		return nil, ErrInvalidInput("corpus_id and name are required")
+	}
+
+	var corpus sdb.Corpus
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		tx = tx.WithContext(ctx)
+		if err := tx.First(&corpus, "id = ?", corpusID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrNotFound("corpus not found")
+			}
+			return err
+		}
+		if !principal.User.IsAdmin {
+			if err := s.iam.CheckOrganizationPermission(tx, principal, corpus.OrganizationID, "knowledge.manage", "organization.manage"); err != nil {
+				return err
+			}
+		}
+		corpus.Name = name
+		corpus.Description = strings.TrimSpace(params.Description)
+		if err := tx.Save(&corpus).Error; err != nil {
+			return err
+		}
+		return s.iam.AppendAuditEvent(tx, principal, corpus.OrganizationID, "corpus.updated", "corpus", corpus.ID, map[string]string{"name": corpus.Name})
 	})
 	if err != nil {
 		return nil, err

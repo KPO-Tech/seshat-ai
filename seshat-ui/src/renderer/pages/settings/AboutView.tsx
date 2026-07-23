@@ -54,7 +54,7 @@ export function AboutView() {
         </div>
       </header>
       <div className="sv-about-hero">
-        <NexusLogo size={100} />
+        <NexusLogo size={82} />
         <h2>SeshatOS</h2>
         <p>Version {version || '…'} • Desktop Orchestration Runtime</p>
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button, Drawer, Empty, Form, Input, message, Popconfirm, Space, Typography } from 'antd'
+import { Button, Drawer, Empty, Form, Input, message, Popconfirm, Space, Tag, Typography } from 'antd'
 import type { TableProps } from 'antd'
 import { BookOutlined, DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
 import {
@@ -29,8 +29,13 @@ export function SkillReposPage() {
       key: 'name',
       render: (_, record) => (
         <div>
-          <div style={{ fontWeight: 500 }}>{record.name}</div>
-          <Typography.Text style={{ fontSize: 12, color: palette.inkTertiary }}>{record.url}</Typography.Text>
+          <Space size={8} align="center">
+            <span style={{ fontWeight: 500 }}>{record.name}</span>
+            {record.source === 'platform' && <Tag color="gold">Platform default</Tag>}
+          </Space>
+          <div>
+            <Typography.Text style={{ fontSize: 12, color: palette.inkTertiary }}>{record.url}</Typography.Text>
+          </div>
         </div>
       ),
     },
@@ -44,21 +49,26 @@ export function SkillReposPage() {
       title: '',
       key: 'actions',
       width: 100,
-      render: (_, record) => (
-        <Space>
-          <Button size="small" icon={<EditOutlined />} onClick={() => setEditing(record)} aria-label={`Edit ${record.name}`} />
-          <Popconfirm
-            title={`Delete ${record.name}?`}
-            onConfirm={() =>
-              deleteRepo.mutate(record.id!, {
-                onError: (error) => message.error(getErrorMessage(error)),
-              })
-            }
-          >
-            <Button size="small" danger icon={<DeleteOutlined />} aria-label={`Delete ${record.name}`} />
-          </Popconfirm>
-        </Space>
-      ),
+      render: (_, record) =>
+        record.source === 'platform' ? (
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            Inherited
+          </Typography.Text>
+        ) : (
+          <Space>
+            <Button size="small" icon={<EditOutlined />} onClick={() => setEditing(record)} aria-label={`Edit ${record.name}`} />
+            <Popconfirm
+              title={`Delete ${record.name}?`}
+              onConfirm={() =>
+                deleteRepo.mutate(record.id!, {
+                  onError: (error) => message.error(getErrorMessage(error)),
+                })
+              }
+            >
+              <Button size="small" danger icon={<DeleteOutlined />} aria-label={`Delete ${record.name}`} />
+            </Popconfirm>
+          </Space>
+        ),
     },
   ]
 
@@ -66,7 +76,7 @@ export function SkillReposPage() {
     <div>
       <PageHeader
         title="Skill Repos"
-        description="Organization-curated skill repository URLs that connected backends can merge into their local catalog."
+        description="Organization-curated skill repository URLs that connected backends can merge into their local catalog. Falls back to this platform's default organization's repos when this organization has none of its own."
         actions={
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing('new')} disabled={!organizationId}>
             Add skill repo

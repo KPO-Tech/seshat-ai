@@ -4,6 +4,7 @@ import type { components } from '@/api/schema'
 
 type Organization = components['schemas']['Organization']
 type OrganizationInput = components['schemas']['OrganizationInput']
+type OrganizationSharedDomainsInput = components['schemas']['OrganizationSharedDomainsInput']
 
 export interface ListParams {
   q?: string
@@ -97,4 +98,23 @@ export function useSetOrganizationActive() {
   })
 }
 
-export type { Organization, OrganizationInput }
+// Superadmin-only, same reasoning as useSetOrganizationDefault/Active above
+// - only meaningful while the organization holds is_default, but editable
+// independently of that toggle so an admin can prepare the sharing
+// selection before (or after) actually flipping is_default on.
+export function useSetOrganizationSharedDomains() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, body }: { id: string; body: OrganizationSharedDomainsInput }) => {
+      const { data, error } = await api.PUT('/api/v1/organizations/{organizationID}/shared-domains', {
+        params: { path: { organizationID: id } },
+        body,
+      })
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [LIST_KEY] }),
+  })
+}
+
+export type { Organization, OrganizationInput, OrganizationSharedDomainsInput }

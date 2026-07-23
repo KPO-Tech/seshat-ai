@@ -12,7 +12,7 @@ export type PlanItem = {
 }
 
 export type PlanSnapshot = {
-  source: 'todo_write' | 'task' | null
+  source: 'task' | null
   items: PlanItem[]
   completedCount: number
   activeCount: number
@@ -20,8 +20,6 @@ export type PlanSnapshot = {
 
 export function derivePlanSnapshot(messages: Message[], streaming: StreamingBlock[] = []): PlanSnapshot {
   const toolBlocks = collectToolBlocks(messages, streaming)
-  const todoSnapshot = deriveTodoSnapshot(toolBlocks)
-  if (todoSnapshot.items.length > 0) return todoSnapshot
   return deriveTaskSnapshot(toolBlocks)
 }
 
@@ -39,30 +37,6 @@ function collectToolBlocks(messages: Message[], streaming: StreamingBlock[]): To
   }
 
   return blocks
-}
-
-function deriveTodoSnapshot(toolBlocks: ToolUseBlock[]): PlanSnapshot {
-  let latestItems: PlanItem[] = []
-
-  for (const block of toolBlocks) {
-    if (block.name !== 'todo_write') continue
-    if (block._status === 'failed') continue
-
-    const todos = Array.isArray(block.input?.todos) ? block.input.todos : []
-    latestItems = todos.flatMap((todo, index) => {
-      if (!isRecord(todo)) return []
-      const title = asString(todo.content)
-      if (!title) return []
-      return [{
-        id: `todo-${index}-${title}`,
-        title,
-        detail: asString(todo.activeForm) || undefined,
-        status: mapTodoStatus(asString(todo.status)),
-      }]
-    })
-  }
-
-  return summarizePlan('todo_write', latestItems)
 }
 
 function deriveTaskSnapshot(toolBlocks: ToolUseBlock[]): PlanSnapshot {
@@ -135,12 +109,6 @@ function summarizePlan(source: PlanSnapshot['source'], items: PlanItem[]): PlanS
   }
 }
 
-function mapTodoStatus(status: string): PlanItemStatus {
-  if (status === 'completed') return 'completed'
-  if (status === 'in_progress') return 'in_progress'
-  return 'pending'
-}
-
 function mapTaskStatus(status: string, toolStatus?: ToolStatus): PlanItemStatus {
   if (status === 'completed') return 'completed'
   if (status === 'in_progress') return 'in_progress'
@@ -152,10 +120,6 @@ function parseCreatedTaskID(block: ToolUseBlock): string {
   const content = block._result?.content ?? ''
   const match = content.match(/Task #(\d+) created successfully/)
   return match?.[1] ?? ''
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 function asString(value: unknown): string {

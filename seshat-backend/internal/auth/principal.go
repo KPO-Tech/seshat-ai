@@ -40,6 +40,34 @@ type Principal struct {
 	AuthSession          AuthSession           `json:"auth_session"`
 	Roles                []string              `json:"roles"`
 	WorkspaceMemberships []WorkspaceMembership `json:"workspace_memberships"`
+	// ResolvedOrganizationID is the caller's organization in connected mode,
+	// set directly by cloudidentity.principalFromMe from the seshat-server
+	// login/me response. Deliberately independent of WorkspaceMemberships:
+	// those list LOCAL workspaces only, and a freshly connected desktop
+	// account starts with zero of them, so deriving the org solely from
+	// WorkspaceMemberships[0] silently resolved to "" for every brand-new
+	// account (before the user ever created a local workspace) - breaking
+	// org-scoped provider/web-search/MCP/agents resolution from the very
+	// first login. See OrganizationID().
+	ResolvedOrganizationID string `json:"resolved_organization_id,omitempty"`
+}
+
+// OrganizationID returns the caller's organization: ResolvedOrganizationID
+// if set (always the case in connected mode), else falls back to the first
+// workspace membership's org for any caller constructed without going
+// through principalFromMe. Returns "" if the caller has no organization at
+// all (e.g. a platform super-admin, who never has one by design).
+func (p *Principal) OrganizationID() string {
+	if p == nil {
+		return ""
+	}
+	if p.ResolvedOrganizationID != "" {
+		return p.ResolvedOrganizationID
+	}
+	if len(p.WorkspaceMemberships) == 0 {
+		return ""
+	}
+	return p.WorkspaceMemberships[0].OrganizationID
 }
 
 func (p *Principal) HasRole(roleName string) bool {

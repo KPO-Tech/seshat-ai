@@ -45,7 +45,6 @@ func TestGetUpdateDeleteUserFlow(t *testing.T) {
 	updatedUser, err := service.UpdateUser(context.Background(), principal, user.ID, UpdateUserParams{
 		Email:       "updated@example.com",
 		DisplayName: "Updated User",
-		IsAdmin:     false,
 	})
 	if err != nil {
 		t.Fatalf("update user: %v", err)
@@ -59,6 +58,68 @@ func TestGetUpdateDeleteUserFlow(t *testing.T) {
 	}
 	if _, err := service.GetUser(context.Background(), principal, user.ID); err == nil {
 		t.Fatal("expected deleted user to be missing")
+	}
+}
+
+// TestPlatformAdminCanOnlyBeGrantedByEnvSeeding is a security-regression
+// test: there must be exactly one sanctioned path to platform-admin status
+// (EnsureSuperAdmin, seeded from env vars at boot) - CreateUser and
+// UpdateUser must never be able to mint or promote one, not even when
+// called by an existing platform admin. A prior version of this codebase
+// let any platform admin grant is_admin to an arbitrary user via the
+// console's Memberships page; that capability was removed entirely.
+func TestPlatformAdminCanOnlyBeGrantedByEnvSeeding(t *testing.T) {
+	service := newTestService(t)
+	boot, err := service.Bootstrap(context.Background(), BootstrapParams{
+		Email: "admin@example.com", Password: "password123", DisplayName: "Admin",
+		OrganizationName: "Seshat", OrganizationSlug: "seshat",
+	})
+	if err != nil {
+		t.Fatalf("bootstrap: %v", err)
+	}
+	adminPrincipal, err := service.ResolvePrincipal(context.Background(), boot.Token)
+	if err != nil {
+		t.Fatalf("resolve principal: %v", err)
+	}
+
+	// CreateUser, called by an existing platform admin, must never produce
+	// another platform admin - CreateUserParams has no IsAdmin field at all
+	// (compile-time guarantee), and the created user's IsAdmin must be false.
+	created, err := service.CreateUser(context.Background(), adminPrincipal, CreateUserParams{
+		Email: "regular@example.com", Password: "password123", DisplayName: "Regular User",
+	})
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	if created.IsAdmin {
+		t.Fatal("expected a user created via CreateUser to never be a platform admin")
+	}
+
+	// UpdateUser, called by an existing platform admin, must never be able
+	// to promote an existing user either - UpdateUserParams has no IsAdmin
+	// field at all (compile-time guarantee); confirm the target's IsAdmin
+	// stays false after an update.
+	updated, err := service.UpdateUser(context.Background(), adminPrincipal, created.ID, UpdateUserParams{
+		Email: "regular@example.com", DisplayName: "Still Regular",
+	})
+	if err != nil {
+		t.Fatalf("update user: %v", err)
+	}
+	if updated.IsAdmin {
+		t.Fatal("expected UpdateUser to never grant platform admin")
+	}
+
+	// The only sanctioned path: EnsureSuperAdmin at a distinct, specific
+	// seeded email. It must never touch the already-created regular user.
+	if err := service.EnsureSuperAdmin(context.Background(), "regular@example.com", "differentpassword123"); err != nil {
+		t.Fatalf("ensure super admin: %v", err)
+	}
+	stillRegular, err := service.GetUser(context.Background(), adminPrincipal, created.ID)
+	if err != nil {
+		t.Fatalf("get user: %v", err)
+	}
+	if stillRegular.IsAdmin {
+		t.Fatal("expected EnsureSuperAdmin to no-op (not promote) an existing user found by email")
 	}
 }
 
@@ -155,16 +216,16 @@ func TestDeleteUserRejectsDeletingTheLastOrganizationOwner(t *testing.T) {
 	}
 	orgID := boot.Organizations[0].ID
 
-	secondAdmin, err := service.CreateUser(context.Background(), ownerPrincipal, CreateUserParams{
-		Email:       "admin2@example.com",
-		Password:    "password123",
-		DisplayName: "Second Admin",
-		IsAdmin:     true,
-	})
-	if err != nil {
-		t.Fatalf("create second admin: %v", err)
+	// A second platform-admin principal is needed here only as a vehicle
+	// capable of calling DeleteUser (requireAdmin-gated) - platform-admin
+	// status can no longer be granted via CreateUser (see
+	// UpdateUserParams' doc comment), so EnsureSuperAdmin (a second,
+	// distinct seeded email) is the only sanctioned way to get one in a
+	// test now, matching production reality.
+	if err := service.EnsureSuperAdmin(context.Background(), "admin2@example.com", "password123"); err != nil {
+		t.Fatalf("seed second admin: %v", err)
 	}
-	secondAdminLogin, err := service.Login(context.Background(), secondAdmin.Email, "password123")
+	secondAdminLogin, err := service.Login(context.Background(), "admin2@example.com", "password123")
 	if err != nil {
 		t.Fatalf("login second admin: %v", err)
 	}
@@ -177,12 +238,13 @@ func TestDeleteUserRejectsDeletingTheLastOrganizationOwner(t *testing.T) {
 		t.Fatal("expected deleting the last organization owner to be rejected")
 	}
 
-	if _, err := service.CreateMembership(context.Background(), secondAdminPrincipal, CreateMembershipParams{
-		OrganizationID: orgID,
-		UserID:         secondAdmin.ID,
-		Role:           "owner",
+	// A second, distinct organization owner - deliberately NOT the platform
+	// admin itself, which holds zero memberships by design (see
+	// EnsureSuperAdmin's doc comment).
+	if _, err := service.CreateOrganizationMember(context.Background(), secondAdminPrincipal, CreateOrganizationMemberParams{
+		OrganizationID: orgID, Email: "second-owner@example.com", DisplayName: "Second Owner", Role: "owner",
 	}); err != nil {
-		t.Fatalf("create second owner membership: %v", err)
+		t.Fatalf("create second owner: %v", err)
 	}
 	if err := service.DeleteUser(context.Background(), secondAdminPrincipal, ownerPrincipal.User.ID); err != nil {
 		t.Fatalf("expected deleting the user to succeed once another owner exists: %v", err)
