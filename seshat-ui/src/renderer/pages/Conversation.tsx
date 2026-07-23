@@ -273,16 +273,11 @@ export function Conversation() {
     }
   }, [id, sessionHasData, upsertSession])
 
-  if (!session) {
-    return (
-      <div className="conv-empty">
-        <p>Conversation not found</p>
-        <button onClick={() => navigate('/')}>Return Home</button>
-      </div>
-    )
-  }
-
-  const visibleMessages = session.messages.filter(isRenderableMessage)
+  // session can go away mid-render (e.g. deleting the currently-open
+  // conversation re-renders this component before navigate('/') takes
+  // effect) - every hook below must still run the same way regardless, so
+  // the "session not found" return sits after all of them, not before.
+  const visibleMessages = session ? session.messages.filter(isRenderableMessage) : []
 
   // Stable callbacks — identity won't change between renders so React.memo on
   // MessageItem can actually skip re-renders.
@@ -392,6 +387,15 @@ export function Conversation() {
     if (!isAtBottomRef.current || visibleMessages.length === 0) return
     rowVirtualizer.scrollToIndex(visibleMessages.length - 1, { align: 'end', behavior: 'auto' })
   }, [visibleMessages.length, streaming]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!session) {
+    return (
+      <div className="conv-empty">
+        <p>Conversation not found</p>
+        <button onClick={() => navigate('/')}>Return Home</button>
+      </div>
+    )
+  }
 
   return (
     <div className="conv-root">
