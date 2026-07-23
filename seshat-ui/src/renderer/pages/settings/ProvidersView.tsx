@@ -609,7 +609,6 @@ function AddProviderModal({ onClose, onSuccess }: { onClose: () => void; onSucce
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
-  const supportsOAuth = selected?.id === 'openai' || selected?.id === 'codex'
   const isOAuthOnly = selected ? OAUTH_ONLY_PROVIDERS.has(selected.id) : false
   const effectiveAuthKind = selected?.id === 'ollama' ? 'none' : isOAuthOnly ? 'oauth' : authKind
 
@@ -618,10 +617,9 @@ function AddProviderModal({ onClose, onSuccess }: { onClose: () => void; onSucce
     setSubmitting(true)
     setError('')
     try {
-      const oauthName = selected.id === 'codex' ? 'Codex (OAuth)' : 'OpenAI OAuth'
       await addProviderSetting({
         provider: selected.id,
-        name: effectiveAuthKind === 'oauth' ? oauthName : selected.name,
+        name: effectiveAuthKind === 'oauth' ? 'Codex (OAuth)' : selected.name,
         auth_kind: effectiveAuthKind,
         api_key: effectiveAuthKind === 'api_key' ? apiKey || undefined : undefined,
         base_url: baseUrl || undefined,
@@ -679,30 +677,6 @@ function AddProviderModal({ onClose, onSuccess }: { onClose: () => void; onSucce
             </div>
           </div>
 
-          {supportsOAuth && !isOAuthOnly && (
-            <div className="modal-field" style={{ marginBottom: 20 }}>
-              <label>Connection method</label>
-              <div className="pv-auth-mode-row">
-                <button
-                  type="button"
-                  className={`pv-auth-mode-btn ${authKind === 'api_key' ? 'active' : ''}`}
-                  onClick={() => setAuthKind('api_key')}
-                >
-                  API Key
-                </button>
-                <button
-                  type="button"
-                  className={`pv-auth-mode-btn ${authKind === 'oauth' ? 'active' : ''}`}
-                  onClick={() => setAuthKind('oauth')}
-                >
-                  OAuth
-                </button>
-              </div>
-              <div className="pv-auth-mode-help">
-                OAuth links your OpenAI account and enables Codex models without a separate API key.
-              </div>
-            </div>
-          )}
           {isOAuthOnly && (
             <div className="modal-field" style={{ marginBottom: 20 }}>
               <div className="pv-auth-mode-help">
