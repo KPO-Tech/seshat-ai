@@ -77,6 +77,19 @@ services:
       mc mb --ignore-existing local/${SESHAT_SERVER_S3_BUCKET:-seshat-corpora}
       "
 
+  # Fake SMTP server + web UI for local/test email flows (verification
+  # codes, invitations, password resets) — every message sent to it is
+  # caught and viewable at http://localhost:8025 instead of actually being
+  # delivered, so no real mailbox or SMTP credentials are needed yet. Swap
+  # SESHAT_SERVER_SMTP_* in .env to point at a real provider once one of
+  # these flows is ready to send real email.
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_WEB_PORT:-8025}:8025"
+
   seshat-server:
     build:
       context: ..
@@ -86,6 +99,8 @@ services:
       postgres:
         condition: service_healthy
       docling:
+        condition: service_healthy
+      mailpit:
         condition: service_healthy
     environment:
       SESHAT_SERVER_PORT: "8081"
@@ -114,6 +129,26 @@ services:
       SESHAT_SERVER_S3_SECRET_ACCESS_KEY: ${SESHAT_SERVER_S3_SECRET_ACCESS_KEY:-}
       SESHAT_SERVER_S3_REGION: ${SESHAT_SERVER_S3_REGION:-}
       SESHAT_SERVER_S3_KEY_PREFIX: ${SESHAT_SERVER_S3_KEY_PREFIX:-}
+      # Seeds a platform super-admin at boot if no user exists yet at this
+      # email — see config.go's doc comment. Leave both empty to skip.
+      SESHAT_SERVER_BOOTSTRAP_ADMIN_EMAIL: ${SESHAT_SERVER_BOOTSTRAP_ADMIN_EMAIL:-}
+      SESHAT_SERVER_BOOTSTRAP_ADMIN_PASSWORD: ${SESHAT_SERVER_BOOTSTRAP_ADMIN_PASSWORD:-}
+      # Points at the mailpit service above by default - every email sent
+      # (invitation accept links, password reset links) lands there instead
+      # of a real inbox, viewable at http://localhost:8025. Swap these to a
+      # real provider's SMTP relay once one of those flows is ready to send
+      # real email; empty SESHAT_SERVER_SMTP_HOST disables sending entirely
+      # (both flows still work without it, just without email delivery).
+      SESHAT_SERVER_SMTP_HOST: ${SESHAT_SERVER_SMTP_HOST:-mailpit}
+      SESHAT_SERVER_SMTP_PORT: ${SESHAT_SERVER_SMTP_PORT:-1025}
+      SESHAT_SERVER_SMTP_USERNAME: ${SESHAT_SERVER_SMTP_USERNAME:-}
+      SESHAT_SERVER_SMTP_PASSWORD: ${SESHAT_SERVER_SMTP_PASSWORD:-}
+      SESHAT_SERVER_SMTP_FROM: ${SESHAT_SERVER_SMTP_FROM:-Seshat <noreply@seshat.local>}
+      # This deployment's own console URL, used to build the links embedded
+      # in emails (e.g. https://app.example.com/accept-invitation?token=...).
+      # Defaults assume the default SESHAT_CONSOLE_PORT=3000 - set this
+      # explicitly in .env if you changed that port.
+      SESHAT_SERVER_PUBLIC_APP_URL: ${SESHAT_SERVER_PUBLIC_APP_URL:-http://localhost:3000}
     # Lets this container reach services running directly on the host (e.g.
     # a local Ollama for LLM/embedder settings) via http://host.docker.internal:<port>
     # instead of localhost, which inside a container means the container
@@ -141,6 +176,15 @@ services:
     volumes:
       - searxng-redis-data:/data
 
+  # No HTTP auth in front of this by default - fine for local-only use
+  # (only reachable at localhost:${SEARXNG_PORT}), but SearXNG has no
+  # built-in auth of its own; if this stack is ever exposed beyond
+  # localhost, put a reverse proxy (nginx/Caddy) with HTTP basic auth in
+  # front of it first (SearXNG's own docs recommend this for any public
+  # instance, to avoid it being abused as an open anonymous search proxy).
+  # The seshat-server web-search provider settings already support an
+  # auth_username/auth_password pair for exactly this case - see
+  # WebSearchSettingsPage.tsx's SearXNG config drawer.
   searxng:
     image: docker.io/searxng/searxng:latest
     restart: unless-stopped

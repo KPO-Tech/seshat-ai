@@ -140,7 +140,7 @@ SeshatOS ships with `seshat-ui`, an Electron + React desktop application that wr
 - 📈 **Quotas** - per-user usage counters (daily / monthly)
 - 🤖 **Anthropic compat** - drop-in `/v1/messages` endpoint for any Anthropic SDK client
 - 📉 **Observability** - Prometheus `/metrics`, structured log output
-- 🌍 **Multi-provider** - Anthropic, OpenAI, Mistral, Google, xAI, OpenRouter, Ollama
+- 🌍 **Multi-provider** - Anthropic, OpenAI, Codex (ChatGPT Pro OAuth), Mistral, Google Gemini, Z.ai, MiniMax, OpenRouter, Ollama
 - 🔄 **Auto-update** - the desktop app checks, downloads, and installs updates in the background (never mid-session, always user-confirmed)
 - ☁️ **Optional cloud mode** - connect to a `seshat-server` deployment for centrally-managed identity, provider settings, and org policy, administered via `seshat-console`
 

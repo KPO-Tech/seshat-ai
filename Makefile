@@ -94,16 +94,26 @@ help: ## Show available targets
 
 # ─── Dev lifecycle ────────────────────────────────────────────────────────────
 
-dev: ui-install ## Start local backend + Electron UI
+dev: stop ui-install ## Start local backend + Electron UI
 	@printf "\033[32m[nexus]\033[0m starting local backend…\n"
 	@cd $(BACKEND_DIR) && go run $(BACKEND_CMD) &
 	@printf "\033[32m[nexus]\033[0m starting Electron UI…\n"
 	@cd $(UI_DIR) && $(UI_PKG_MGR) run start
 
+# `go run` executes a temp binary named after the last path segment of the
+# package (./cmd/api -> "api", ./cmd/server -> "server", .../automation-server
+# -> "automation-server") — NOT "go" and NOT the seshat-api/seshat-server
+# names those only apply to `make build`'s actual output binaries. Matching
+# only the old names silently no-ops on every `go run`-started dev process,
+# which is how port 8090 ends up squatted by an orphaned backend from a
+# previous run (see helps/ dev-mode footgun notes). Match both.
 stop: ## Stop backend, server, automation, and UI processes
 	@if command -v pkill >/dev/null 2>&1; then \
 	  pkill -f "go run.*cmd/api" 2>/dev/null || true; \
 	  pkill -f "go run.*cmd/server" 2>/dev/null || true; \
+	  pkill -f "automation-server" 2>/dev/null || true; \
+	  pkill -x api 2>/dev/null || true; \
+	  pkill -x server 2>/dev/null || true; \
 	  pkill -x $(BACKEND_BIN) 2>/dev/null || true; \
 	  pkill -x $(SERVER_BIN) 2>/dev/null || true; \
 	  pkill -f "electron-vite" 2>/dev/null || true; \
@@ -111,12 +121,12 @@ stop: ## Stop backend, server, automation, and UI processes
 	  pkill -x $(DAEMON_BIN) 2>/dev/null || true; \
 	elif command -v powershell.exe >/dev/null 2>&1; then \
 	  powershell.exe -NoProfile -Command \
-	    "Get-CimInstance Win32_Process | Where-Object { \$$_.Name -match '^(go|seshat-api|seshat-server|seshat-automation|electron|node)(\.exe)?\$$' -and \$$_.CommandLine -match 'cmd.(api|server)|electron-vite|seshat-(api|server|automation)' } | ForEach-Object { Stop-Process -Id \$$_.ProcessId -Force -ErrorAction SilentlyContinue }" \
+	    "Get-CimInstance Win32_Process | Where-Object { \$$_.Name -match '^(api|server|automation-server|go|seshat-api|seshat-server|seshat-automation)(\.exe)?\$$' -or (\$$_.Name -match '^(electron|node)(\.exe)?\$$' -and \$$_.CommandLine -match 'electron-vite|seshat-ui') } | ForEach-Object { Stop-Process -Id \$$_.ProcessId -Force -ErrorAction SilentlyContinue }" \
 	    2>/dev/null || true; \
 	fi
 	@printf "\033[32m[nexus]\033[0m stopped.\n"
 
-dev-full: ui-install ## Start local backend + automation daemon + Electron UI
+dev-full: stop ui-install ## Start local backend + automation daemon + Electron UI
 	@printf "\033[32m[nexus]\033[0m starting local backend…\n"
 	@cd $(BACKEND_DIR) && go run $(BACKEND_CMD) &
 	@printf "\033[32m[nexus]\033[0m starting automation daemon…\n"
@@ -154,19 +164,19 @@ build-automation: ## Compile the automation daemon binary → bin/seshat-automat
 run-automation: ## Run the automation daemon only (reads env / .env)
 	@go run $(DAEMON_PKG)@$(SESHAT_VERSION)
 
-# ─── Deploy stack (seshat-server + seshat-console + Postgres + SearXNG) ──────
+# ─── Deploy stack (seshat-server + seshat-console + Postgres + SearXNG + Mailpit) ──
 # See deploy/README.md. First run: cp deploy/.env.example deploy/.env and
 # fill in POSTGRES_PASSWORD + SESHAT_SERVER_ENCRYPTION_KEY.
 
-deploy-up: ## Build and start the deploy stack (Postgres + seshat-server + seshat-console + SearXNG)
+deploy-up: ## Build and start the deploy stack (Postgres + seshat-server + seshat-console + SearXNG + Mailpit)
 	@if [ ! -f $(DEPLOY_DIR)/.env ]; then \
 	  printf "\033[33m[deploy]\033[0m no deploy/.env — copying deploy/.env.example, edit it then re-run.\n"; \
 	  cp $(DEPLOY_DIR)/.env.example $(DEPLOY_DIR)/.env; \
 	  exit 1; \
 	fi
 	@cd $(DEPLOY_DIR) && docker compose up --build -d
-	@printf "\033[32m[deploy]\033[0m console: http://localhost:%s  api: http://localhost:%s  searxng: http://localhost:%s  minio: http://localhost:%s\n" \
-	  "$${SESHAT_CONSOLE_PORT:-3000}" "$${SESHAT_SERVER_PORT:-8081}" "$${SEARXNG_PORT:-8080}" "$${MINIO_CONSOLE_PORT:-9001}"
+	@printf "\033[32m[deploy]\033[0m console: http://localhost:%s  api: http://localhost:%s  searxng: http://localhost:%s  minio: http://localhost:%s  mailpit: http://localhost:%s\n" \
+	  "$${SESHAT_CONSOLE_PORT:-3000}" "$${SESHAT_SERVER_PORT:-8081}" "$${SEARXNG_PORT:-8080}" "$${MINIO_CONSOLE_PORT:-9001}" "$${MAILPIT_WEB_PORT:-8025}"
 
 deploy-down: ## Stop the deploy stack (add ARGS=-v to also wipe the Postgres volume)
 	@cd $(DEPLOY_DIR) && docker compose down $(ARGS)
