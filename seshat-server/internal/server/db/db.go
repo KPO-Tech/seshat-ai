@@ -125,7 +125,6 @@ func (d *DB) Migrate() error {
 		&UserPreference{},
 		&SkillRepo{},
 		&WebSearchProviderSetting{},
-		&PlatformWebSearchProviderSetting{},
 		&WebSearchOrgPolicy{},
 		&MCPServerConfig{},
 		&UserMemory{},

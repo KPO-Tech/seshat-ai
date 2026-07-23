@@ -123,6 +123,12 @@ export function getSecondaryNavItems(pathname: string, organizationId: string | 
         path: '/platform/security/audit',
         matchPrefix: '/platform/security/audit',
       },
+      {
+        key: 'platform-security-system',
+        label: 'System',
+        path: '/platform/security/system',
+        matchPrefix: '/platform/security/system',
+      },
     ]
   }
 
@@ -176,6 +182,12 @@ export function getSecondaryNavItems(pathname: string, organizationId: string | 
         label: 'Embedder',
         path: `/orgs/${organizationId}/ai/embedder`,
         matchPrefix: `/orgs/${organizationId}/ai/embedder`,
+      },
+      {
+        key: 'org-ai-web-search',
+        label: 'Web Search',
+        path: `/orgs/${organizationId}/ai/web-search`,
+        matchPrefix: `/orgs/${organizationId}/ai/web-search`,
       },
     ]
   }

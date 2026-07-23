@@ -237,6 +237,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/docling-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Whether this server has a docling-serve instance configured (platform admin only)
+         * @description docling-serve is a shared, server-wide setting (SESHAT_SERVER_DOCLING_URL), not something any organization configures for itself - there's no per-organization equivalent. The URL isn't a secret (shared infrastructure, not a credential).
+         */
+        get: operations["getDoclingStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users": {
         parameters: {
             query?: never;
@@ -1239,56 +1259,6 @@ export interface paths {
          * @description Local resolution falls back to the platform default (or fails) at next use; nothing else is touched.
          */
         delete: operations["deleteWebSearchProviderSetting"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/web-search-provider-settings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List the platform-wide default web-search credentials
-         * @description Superadmin-only (platform admin, User.is_admin). A non-admin caller gets 403, not an empty list. The API key is never included, in this or any other response.
-         */
-        get: operations["listPlatformWebSearchProviderSettings"];
-        put?: never;
-        /**
-         * Store the platform-wide default credentials for one web-search provider
-         * @description Superadmin-only. One row per provider, globally — creating a second setting for the same provider is rejected; use update instead. The api_key is AES-256-GCM encrypted at rest and never echoed back, not even in this response.
-         */
-        post: operations["createPlatformWebSearchProviderSetting"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/web-search-provider-settings/{platformWebSearchProviderSettingID}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                platformWebSearchProviderSettingID: string;
-            };
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * Update a platform web-search provider setting
-         * @description Superadmin-only. An empty/omitted api_key leaves the stored credential unchanged. Unlike creation, provider is not part of this body — an existing setting's provider is fixed.
-         */
-        put: operations["updatePlatformWebSearchProviderSetting"];
-        post?: never;
-        /**
-         * Delete a platform web-search provider setting
-         * @description Superadmin-only. Any organization relying on this as its fallback (no org-level web-search-provider-settings of its own) starts failing at next resolution with a clear reason.
-         */
-        delete: operations["deletePlatformWebSearchProviderSetting"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2645,14 +2615,17 @@ export interface components {
             /** @description Only meaningful for searxng (HTTP basic auth username). */
             auth_username?: string;
         };
-        /** @description Unlike WebSearchProviderSetting/PlatformWebSearchProviderSetting, this includes the decrypted api_key — see the resolveWebSearchProviderSetting operation. */
+        /** @description Unlike WebSearchProviderSetting, this includes the decrypted api_key — see the resolveWebSearchProviderSetting operation. */
         ResolvedWebSearchProviderSetting: {
             /** @example tavily */
             provider?: string;
             base_url?: string;
             auth_username?: string;
             api_key?: string;
-            /** @enum {string} */
+            /**
+             * @description "organization" if the requesting org had its own setting; "platform" if it fell back to the organization currently flagged as the platform default.
+             * @enum {string}
+             */
             source?: "organization" | "platform";
         };
         WebSearchProviderSettingInput: {
@@ -2665,29 +2638,6 @@ export interface components {
             api_key?: string;
         };
         WebSearchProviderSettingUpdateInput: {
-            base_url?: string;
-            auth_username?: string;
-            /** @description Omit/empty to keep the existing stored key unchanged. */
-            api_key?: string;
-        };
-        /** @description The platform-wide default credential for one web-search provider — not scoped to any organization. Never includes the API key. */
-        PlatformWebSearchProviderSetting: {
-            id?: string;
-            created_by_user_id?: string;
-            /** @example tavily */
-            provider?: string;
-            base_url?: string;
-            auth_username?: string;
-        };
-        PlatformWebSearchProviderSettingInput: {
-            /** @example tavily */
-            provider: string;
-            base_url?: string;
-            auth_username?: string;
-            /** @description Required on create. */
-            api_key?: string;
-        };
-        PlatformWebSearchProviderSettingUpdateInput: {
             base_url?: string;
             auth_username?: string;
             /** @description Omit/empty to keep the existing stored key unchanged. */
@@ -3471,6 +3421,31 @@ export interface operations {
             };
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    getDoclingStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Docling status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        configured?: boolean;
+                        url?: string;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
     listUsers: {
@@ -5626,109 +5601,6 @@ export interface operations {
             header?: never;
             path: {
                 webSearchProviderSettingID: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Deleted */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-        };
-    };
-    listPlatformWebSearchProviderSettings: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Platform web-search provider setting list */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        platform_web_search_provider_settings?: components["schemas"]["PlatformWebSearchProviderSetting"][];
-                        count?: number;
-                    };
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-        };
-    };
-    createPlatformWebSearchProviderSetting: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PlatformWebSearchProviderSettingInput"];
-            };
-        };
-        responses: {
-            /** @description Platform web-search provider setting created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PlatformWebSearchProviderSetting"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            403: components["responses"]["Forbidden"];
-            409: components["responses"]["Conflict"];
-        };
-    };
-    updatePlatformWebSearchProviderSetting: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                platformWebSearchProviderSettingID: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PlatformWebSearchProviderSettingUpdateInput"];
-            };
-        };
-        responses: {
-            /** @description Updated platform web-search provider setting */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PlatformWebSearchProviderSetting"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-        };
-    };
-    deletePlatformWebSearchProviderSetting: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                platformWebSearchProviderSettingID: string;
             };
             cookie?: never;
         };

@@ -409,6 +409,29 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/platform/docling-status:
+    get:
+      operationId: getDoclingStatus
+      tags: [platform]
+      summary: Whether this server has a docling-serve instance configured (platform admin only)
+      description: >-
+        docling-serve is a shared, server-wide setting (SESHAT_SERVER_DOCLING_URL),
+        not something any organization configures for itself - there's no
+        per-organization equivalent. The URL isn't a secret (shared
+        infrastructure, not a credential).
+      responses:
+        "200":
+          description: Docling status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  configured: { type: boolean }
+                  url: { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
   /api/v1/users:
     get:
       operationId: listUsers
@@ -2143,94 +2166,6 @@ paths:
       tags: [web-search-provider-settings]
       summary: Delete a web-search provider setting
       description: Local resolution falls back to the platform default (or fails) at next use; nothing else is touched.
-      responses:
-        "204": { description: Deleted }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
-
-  /api/v1/platform/web-search-provider-settings:
-    get:
-      operationId: listPlatformWebSearchProviderSettings
-      tags: [web-search-provider-settings]
-      summary: List the platform-wide default web-search credentials
-      description: >-
-        Superadmin-only (platform admin, User.is_admin). A non-admin caller
-        gets 403, not an empty list. The API key is never included, in this
-        or any other response.
-      responses:
-        "200":
-          description: Platform web-search provider setting list
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  platform_web_search_provider_settings:
-                    type: array
-                    items: { $ref: "#/components/schemas/PlatformWebSearchProviderSetting" }
-                  count: { type: integer }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-    post:
-      operationId: createPlatformWebSearchProviderSetting
-      tags: [web-search-provider-settings]
-      summary: Store the platform-wide default credentials for one web-search provider
-      description: >-
-        Superadmin-only. One row per provider, globally — creating a
-        second setting for the same provider is rejected; use update
-        instead. The api_key is AES-256-GCM encrypted at rest and never
-        echoed back, not even in this response.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/PlatformWebSearchProviderSettingInput" }
-      responses:
-        "201":
-          description: Platform web-search provider setting created
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/PlatformWebSearchProviderSetting" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "409": { $ref: "#/components/responses/Conflict" }
-
-  /api/v1/platform/web-search-provider-settings/{platformWebSearchProviderSettingID}:
-    parameters:
-      - name: platformWebSearchProviderSettingID
-        in: path
-        required: true
-        schema: { type: string }
-    put:
-      operationId: updatePlatformWebSearchProviderSetting
-      tags: [web-search-provider-settings]
-      summary: Update a platform web-search provider setting
-      description: >
-        Superadmin-only. An empty/omitted api_key leaves the stored
-        credential unchanged. Unlike creation, provider is not part of this
-        body — an existing setting's provider is fixed.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/PlatformWebSearchProviderSettingUpdateInput" }
-      responses:
-        "200":
-          description: Updated platform web-search provider setting
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/PlatformWebSearchProviderSetting" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
-    delete:
-      operationId: deletePlatformWebSearchProviderSetting
-      tags: [web-search-provider-settings]
-      summary: Delete a platform web-search provider setting
-      description: >-
-        Superadmin-only. Any organization relying on this as its fallback
-        (no org-level web-search-provider-settings of its own) starts
-        failing at next resolution with a clear reason.
       responses:
         "204": { description: Deleted }
         "403": { $ref: "#/components/responses/Forbidden" }
@@ -4196,15 +4131,20 @@ components:
     ResolvedWebSearchProviderSetting:
       type: object
       description: >-
-        Unlike WebSearchProviderSetting/PlatformWebSearchProviderSetting,
-        this includes the decrypted api_key — see the
-        resolveWebSearchProviderSetting operation.
+        Unlike WebSearchProviderSetting, this includes the decrypted
+        api_key — see the resolveWebSearchProviderSetting operation.
       properties:
         provider: { type: string, example: tavily }
         base_url: { type: string }
         auth_username: { type: string }
         api_key: { type: string }
-        source: { type: string, enum: [organization, platform] }
+        source:
+          type: string
+          enum: [organization, platform]
+          description: >-
+            "organization" if the requesting org had its own setting;
+            "platform" if it fell back to the organization currently
+            flagged as the platform default.
 
     WebSearchProviderSettingInput:
       type: object
@@ -4223,38 +4163,6 @@ components:
     # setting's org and provider are fixed), same reasoning as every other
     # *UpdateInput in this spec.
     WebSearchProviderSettingUpdateInput:
-      type: object
-      properties:
-        base_url: { type: string }
-        auth_username: { type: string }
-        api_key:
-          type: string
-          description: Omit/empty to keep the existing stored key unchanged.
-
-    PlatformWebSearchProviderSetting:
-      type: object
-      description: >-
-        The platform-wide default credential for one web-search provider —
-        not scoped to any organization. Never includes the API key.
-      properties:
-        id: { type: string }
-        created_by_user_id: { type: string }
-        provider: { type: string, example: tavily }
-        base_url: { type: string }
-        auth_username: { type: string }
-
-    PlatformWebSearchProviderSettingInput:
-      type: object
-      required: [provider]
-      properties:
-        provider: { type: string, example: tavily }
-        base_url: { type: string }
-        auth_username: { type: string }
-        api_key:
-          type: string
-          description: Required on create.
-
-    PlatformWebSearchProviderSettingUpdateInput:
       type: object
       properties:
         base_url: { type: string }

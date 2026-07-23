@@ -56,6 +56,21 @@ func (s *Service) SetDoclingURL(url string) {
 	s.doclingURL = url
 }
 
+// DoclingStatus reports whether this server has a docling-serve instance
+// configured. Platform admin only, read-only - there's no per-organization
+// setting to manage (see SetDoclingURL's doc comment for why). The URL
+// itself isn't a secret (it's shared infrastructure, not a credential), so
+// it's fine to return as-is.
+func (s *Service) DoclingStatus(principal *iam.Principal) (configured bool, url string, err error) {
+	if principal == nil {
+		return false, "", ErrUnauthorized("authentication required")
+	}
+	if !principal.User.IsAdmin {
+		return false, "", ErrForbidden("platform admin required")
+	}
+	return s.doclingURL != "", s.doclingURL, nil
+}
+
 func newID(prefix string) (string, error) { return sdb.NewID(prefix) }
 
 func newToken() (string, error) { return sdb.NewToken() }

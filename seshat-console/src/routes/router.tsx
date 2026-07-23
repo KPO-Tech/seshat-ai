@@ -29,6 +29,8 @@ const AuditEventsPage = lazyPage(() => import('@/pages/auditEvents/AuditEventsPa
 const CorporaPage = lazyPage(() => import('@/pages/knowledge/CorporaPage').then((module) => ({ default: module.CorporaPage })))
 const CorpusDetailPage = lazyPage(() => import('@/pages/knowledge/CorpusDetailPage').then((module) => ({ default: module.CorpusDetailPage })))
 const EmbedderSettingsPage = lazyPage(() => import('@/pages/knowledge/EmbedderSettingsPage').then((module) => ({ default: module.EmbedderSettingsPage })))
+const WebSearchSettingsPage = lazyPage(() => import('@/pages/webSearch/WebSearchSettingsPage').then((module) => ({ default: module.WebSearchSettingsPage })))
+const SystemStatusPage = lazyPage(() => import('@/pages/system/SystemStatusPage').then((module) => ({ default: module.SystemStatusPage })))
 const NotFoundPage = lazyPage(() => import('@/pages/errors/NotFoundPage').then((module) => ({ default: module.NotFoundPage })))
 const NoAccessPage = lazyPage(() => import('@/pages/errors/NoAccessPage').then((module) => ({ default: module.NoAccessPage })))
 
@@ -56,6 +58,7 @@ export const router = createBrowserRouter([
                   { path: '/platform/organizations', element: renderLazyPage(OrganizationsPage) },
                   { path: '/platform/security/sessions', element: renderLazyPage(SessionsPage) },
                   { path: '/platform/security/audit', element: renderLazyPage(AuditEventsPage) },
+                  { path: '/platform/security/system', element: renderLazyPage(SystemStatusPage) },
                 ],
               },
               {
@@ -70,6 +73,7 @@ export const router = createBrowserRouter([
                   { path: 'team/policies', element: renderLazyPage(PolicyBindingsPage) },
                   { path: 'ai/provider-settings', element: renderLazyPage(ProviderSettingsPage) },
                   { path: 'ai/embedder', element: renderLazyPage(EmbedderSettingsPage) },
+                  { path: 'ai/web-search', element: renderLazyPage(WebSearchSettingsPage) },
                   { path: 'automation/devices', element: renderLazyPage(DevicesPage) },
                   { path: 'automation/jobs', element: renderLazyPage(JobsPage) },
                   { path: 'automation/runs', element: renderLazyPage(RunsPage) },
