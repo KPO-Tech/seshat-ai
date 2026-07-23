@@ -1,0 +1,13 @@
+# Minimal SearXNG config for the local Seshat deploy stack.
+# Based on the official searxng-docker example:
+# https://github.com/searxng/searxng-docker
+use_default_settings: true
+
+server:
+  # base_url is injected by the container environment in docker-compose.yml
+  secret_key: "change-this-local-searxng-key"
+  limiter: false
+  image_proxy: true
+
+redis:
+  url: redis://searxng-redis:6379/0

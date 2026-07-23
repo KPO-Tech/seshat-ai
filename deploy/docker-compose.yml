@@ -75,5 +75,29 @@ services:
     ports:
       - "${SESHAT_CONSOLE_PORT:-3000}:80"
 
+  # Self-hosted meta-search instance for testing the SearXNG web-search
+  # provider end-to-end from the control-plane stack.
+  searxng-redis:
+    image: valkey/valkey:8-alpine
+    command: valkey-server --save 30 1 --loglevel warning
+    restart: unless-stopped
+    volumes:
+      - searxng-redis-data:/data
+
+  searxng:
+    image: docker.io/searxng/searxng:latest
+    restart: unless-stopped
+    depends_on:
+      - searxng-redis
+    environment:
+      SEARXNG_BASE_URL: ${SEARXNG_BASE_URL:-http://localhost:${SEARXNG_PORT:-8080}/}
+    ports:
+      - "${SEARXNG_PORT:-8080}:8080"
+    volumes:
+      - ./searxng:/etc/searxng:rw
+      - searxng-data:/var/cache/searxng
+
 volumes:
   postgres-data:
+  searxng-redis-data:
+  searxng-data:

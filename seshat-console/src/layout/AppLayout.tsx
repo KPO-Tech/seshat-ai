@@ -6,12 +6,14 @@ import { useOrganizationsList } from '@/api/organizations'
 import { useLogout } from '@/api/auth'
 import { OrganizationSelect } from '@/components/OrganizationSelect'
 import {
+  accountNavItems,
   getActivePrimaryNavItem,
   getActiveSecondaryNavItem,
   getOrganizationNavItems,
   getScopeTagLabel,
   getSecondaryNavItems,
   platformNavItems,
+  workspaceNavItems,
 } from '@/layout/nav'
 import { useAuthStore } from '@/store/auth'
 import { useWorkspaceOrganizationStore } from '@/store/workspaceOrganization'
@@ -23,10 +25,10 @@ const EMPTY_ORGANIZATIONS: Array<{ id: string; name: string }> = []
 export function AppLayout() {
   const location = useLocation()
   const navigate = useNavigate()
-  const user = useAuthStore((s) => s.user)
+  const user = useAuthStore((state) => state.user)
   const logout = useLogout()
-  const selectedOrganizationId = useWorkspaceOrganizationStore((s) => s.organizationId)
-  const setSelectedOrganizationId = useWorkspaceOrganizationStore((s) => s.setOrganizationId)
+  const selectedOrganizationId = useWorkspaceOrganizationStore((state) => state.organizationId)
+  const setSelectedOrganizationId = useWorkspaceOrganizationStore((state) => state.setOrganizationId)
   const { data: organizationsData } = useOrganizationsList({ sort: 'name', order: 'asc', limit: 200 })
 
   const organizations = organizationsData?.organizations ?? EMPTY_ORGANIZATIONS
@@ -50,10 +52,10 @@ export function AppLayout() {
       setSelectedOrganizationId(fallbackOrganizationId)
     }
   }, [
-    routeOrganizationId,
-    selectedOrganizationId,
-    selectedOrganizationExists,
     fallbackOrganizationId,
+    routeOrganizationId,
+    selectedOrganizationExists,
+    selectedOrganizationId,
     setSelectedOrganizationId,
   ])
 
@@ -62,7 +64,6 @@ export function AppLayout() {
   const activePrimary = getActivePrimaryNavItem(location.pathname, workspaceOrganizationId)
   const secondaryNavItems = getSecondaryNavItems(location.pathname, workspaceOrganizationId)
   const activeSecondary = getActiveSecondaryNavItem(location.pathname, secondaryNavItems)
-
   const isAdmin = Boolean(user?.is_admin)
 
   const menuItems = [
@@ -76,6 +77,16 @@ export function AppLayout() {
           },
         ]
       : []),
+    {
+      key: 'personal-group',
+      type: 'group' as const,
+      label: 'Personal',
+      children: [...workspaceNavItems, ...accountNavItems].map((item) => ({
+        key: item.key,
+        label: item.label,
+        icon: item.icon,
+      })),
+    },
     ...(organizationNavItems.length > 0
       ? [
           {
@@ -88,7 +99,12 @@ export function AppLayout() {
       : []),
   ]
 
-  const primaryItems = [...(isAdmin ? platformNavItems : []), ...organizationNavItems]
+  const primaryItems = [
+    ...(isAdmin ? platformNavItems : []),
+    ...workspaceNavItems,
+    ...accountNavItems,
+    ...organizationNavItems,
+  ]
 
   const navigateToOrganization = (nextOrganizationId: string | undefined) => {
     if (!nextOrganizationId) return
@@ -190,32 +206,27 @@ export function AppLayout() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            padding: '16px 24px',
+            padding: '0 24px',
             borderBottom: `1px solid ${palette.border}`,
-            minHeight: 72,
-            height: 'auto',
-            gap: 16,
+            minHeight: 56,
+            height: 56,
+            lineHeight: 'normal',
+            gap: 12,
           }}
         >
-          <div style={{ minWidth: 0, flex: '1 1 320px' }}>
-            <Space size={10} align="center" wrap>
+          <div style={{ minWidth: 0, flex: '1 1 auto', overflow: 'hidden' }}>
+            <Space size={8} align="center" wrap={false} style={{ maxWidth: '100%' }}>
               {isAdmin && routeOrganizationId && (
-                <Button
-                  size="small"
-                  type="text"
-                  icon={<ArrowLeftOutlined />}
-                  onClick={() => navigate('/platform/overview')}
-                >
+                <Button size="small" type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate('/platform/overview')}>
                   Back to platform
                 </Button>
               )}
-              <Tag color="orange" style={{ margin: 0 }}>
+              <Tag color="orange" style={{ margin: 0, flexShrink: 0 }}>
                 {getScopeTagLabel(location.pathname)}
               </Tag>
-              <Typography.Title level={5} style={{ margin: 0, color: palette.ink }}>
+              <Typography.Text strong style={{ fontSize: 16, color: palette.ink }} ellipsis>
                 {activePrimary?.label ?? 'Console'}
-              </Typography.Title>
+              </Typography.Text>
             </Space>
           </div>
 
@@ -226,8 +237,8 @@ export function AppLayout() {
                 {
                   key: 'profile',
                   icon: <UserOutlined />,
-                  label: 'My Profile',
-                  onClick: () => navigate('/profile'),
+                  label: 'My Account',
+                  onClick: () => navigate('/me/profile'),
                 },
                 {
                   key: 'logout',
@@ -238,7 +249,7 @@ export function AppLayout() {
               ],
             }}
           >
-            <Space style={{ cursor: 'pointer', flexShrink: 0, maxWidth: '100%' }}>
+            <Space size={10} style={{ cursor: 'pointer', flexShrink: 0, maxWidth: '100%' }}>
               <Avatar size="small" style={{ background: palette.accentSoft, color: palette.accent }} icon={<UserOutlined />} />
               <Typography.Text className="console-user-label" style={{ fontSize: 13 }}>
                 {user?.display_name ?? user?.email}
