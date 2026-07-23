@@ -36,6 +36,31 @@ type Config struct {
 	// membership (see iam.Service.Register) stays fully usable before
 	// iam.Service.BlockExpiredPendingMemberships blocks it unconfirmed.
 	MembershipConfirmationWindow time.Duration
+	// BootstrapAdminEmail/BootstrapAdminPassword seed a platform super-admin
+	// at startup (see iam.Service.EnsureSuperAdmin) so there's always a way
+	// in without the one-shot POST /auth/bootstrap wizard. Empty means
+	// seeding is skipped, not an error - safe to leave set across restarts,
+	// idempotent by email (an existing account at that email is never
+	// touched, including its password).
+	BootstrapAdminEmail    string
+	BootstrapAdminPassword string
+	// SMTP* configure outbound transactional email (invitation accept
+	// links, password reset links - see iam.Service.SetMailer). Empty
+	// SMTPHost means "don't send," not an error - every flow that would
+	// send mail already works without it (a manually copy-pasted
+	// invitation token, an admin-driven password reset), so this is
+	// opt-in, same convention as BootstrapAdminEmail above.
+	SMTPHost     string
+	SMTPPort     int
+	SMTPUsername string
+	SMTPPassword string
+	// SMTPFrom is the full From header value, e.g.
+	// "Seshat <noreply@seshat.local>".
+	SMTPFrom string
+	// PublicAppURL is this deployment's own console URL (e.g.
+	// http://localhost:3000), used to build the links embedded in emails.
+	// Nothing else needs the server to know its own public URL today.
+	PublicAppURL string
 }
 
 func LoadFromEnv() Config {
@@ -55,6 +80,14 @@ func LoadFromEnv() Config {
 		Vector:                       vectorConfigFromEnv(),
 		DoclingURL:                   strings.TrimSpace(os.Getenv("SESHAT_SERVER_DOCLING_URL")),
 		MembershipConfirmationWindow: envDuration("SESHAT_SERVER_MEMBERSHIP_CONFIRMATION_WINDOW", 60*24*time.Hour),
+		BootstrapAdminEmail:          strings.TrimSpace(os.Getenv("SESHAT_SERVER_BOOTSTRAP_ADMIN_EMAIL")),
+		BootstrapAdminPassword:       strings.TrimSpace(os.Getenv("SESHAT_SERVER_BOOTSTRAP_ADMIN_PASSWORD")),
+		SMTPHost:                     strings.TrimSpace(os.Getenv("SESHAT_SERVER_SMTP_HOST")),
+		SMTPPort:                     envInt("SESHAT_SERVER_SMTP_PORT", 1025),
+		SMTPUsername:                 strings.TrimSpace(os.Getenv("SESHAT_SERVER_SMTP_USERNAME")),
+		SMTPPassword:                 strings.TrimSpace(os.Getenv("SESHAT_SERVER_SMTP_PASSWORD")),
+		SMTPFrom:                     strings.TrimSpace(os.Getenv("SESHAT_SERVER_SMTP_FROM")),
+		PublicAppURL:                 strings.TrimRight(strings.TrimSpace(os.Getenv("SESHAT_SERVER_PUBLIC_APP_URL")), "/"),
 	}
 }
 

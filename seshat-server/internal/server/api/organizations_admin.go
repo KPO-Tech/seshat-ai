@@ -68,11 +68,12 @@ func (app *App) setOrganizationActive(w http.ResponseWriter, r *http.Request, is
 }
 
 type organizationSharedDomainsRequest struct {
-	ShareProviderSettings  *bool `json:"share_provider_settings"`
-	ShareEmbedderSettings  *bool `json:"share_embedder_settings"`
-	ShareWebSearchSettings *bool `json:"share_web_search_settings"`
-	ShareMCPServers        *bool `json:"share_mcp_servers"`
-	ShareSkillRepos        *bool `json:"share_skill_repos"`
+	ShareProviderSettings        *bool `json:"share_provider_settings"`
+	ShareEmbedderSettings        *bool `json:"share_embedder_settings"`
+	ShareWebSearchSettings       *bool `json:"share_web_search_settings"`
+	ShareMCPServers              *bool `json:"share_mcp_servers"`
+	ShareSkillRepos              *bool `json:"share_skill_repos"`
+	ShareOrganizationPreferences *bool `json:"share_organization_preferences"`
 }
 
 // handleOrganizationSharedDomains lets a superadmin choose which settings
@@ -98,6 +99,7 @@ func (app *App) handleOrganizationSharedDomains(w http.ResponseWriter, r *http.R
 	organization, err := app.backend.IAM.SetOrganizationSharedDomains(
 		r.Context(), principal, organizationID,
 		req.ShareProviderSettings, req.ShareEmbedderSettings, req.ShareWebSearchSettings, req.ShareMCPServers, req.ShareSkillRepos,
+		req.ShareOrganizationPreferences,
 	)
 	if err != nil {
 		writeIAMError(w, err)

@@ -144,6 +144,31 @@ func TestSearXNGAuthUsernameRoundTrips(t *testing.T) {
 	}
 }
 
+// TestSearXNGDoesNotRequireAPIKey covers the common case, a self-hosted
+// SearXNG instance with no HTTP basic auth at all - unlike every other
+// provider here (a real hosted-API credential with no working "no key"
+// mode), api_key must be optional for searxng.
+func TestSearXNGDoesNotRequireAPIKey(t *testing.T) {
+	t.Setenv(testEncryptionEnvVar, testEncryptionKey)
+	env := newTestEnv(t)
+
+	setting, err := env.svc.CreateProviderSetting(context.Background(), env.adminPrincipal, CreateProviderSettingParams{
+		OrganizationID: env.orgID, Provider: "searxng", BaseURL: "http://localhost:8080",
+	})
+	if err != nil {
+		t.Fatalf("expected searxng to be creatable without an api_key: %v", err)
+	}
+	if setting.BaseURL != "http://localhost:8080" {
+		t.Fatalf("unexpected setting: %+v", setting)
+	}
+
+	if _, err := env.svc.CreateProviderSetting(context.Background(), env.adminPrincipal, CreateProviderSettingParams{
+		OrganizationID: env.orgID, Provider: "tavily",
+	}); err == nil {
+		t.Fatal("expected a real hosted-API provider (tavily) to still require an api_key")
+	}
+}
+
 func TestResolveProviderSettingMemberWithoutManagePermissionSucceeds(t *testing.T) {
 	t.Setenv(testEncryptionEnvVar, testEncryptionKey)
 	env := newTestEnv(t)
@@ -213,7 +238,7 @@ func TestResolveProviderSettingHonorsShareWebSearchSettingsOptOut(t *testing.T) 
 		t.Fatalf("create default org's setting: %v", err)
 	}
 	shareWebSearchSettings := false
-	if _, err := env.iam.SetOrganizationSharedDomains(context.Background(), env.adminPrincipal, defaultOrg.ID, nil, nil, &shareWebSearchSettings, nil, nil); err != nil {
+	if _, err := env.iam.SetOrganizationSharedDomains(context.Background(), env.adminPrincipal, defaultOrg.ID, nil, nil, &shareWebSearchSettings, nil, nil, nil); err != nil {
 		t.Fatalf("opt out of sharing web search settings: %v", err)
 	}
 

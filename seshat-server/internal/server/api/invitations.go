@@ -70,6 +70,22 @@ func (app *App) handleInvitations(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleInvitationLookup is deliberately NOT behind authMiddleware - see
+// iam.Service.LookupInvitationByToken's doc comment for why.
+func (app *App) handleInvitationLookup(w http.ResponseWriter, r *http.Request) {
+	token := strings.TrimSpace(r.URL.Query().Get("token"))
+	if token == "" {
+		writeJSONError(w, http.StatusBadRequest, "token is required")
+		return
+	}
+	preview, err := app.backend.IAM.LookupInvitationByToken(r.Context(), token)
+	if err != nil {
+		writeIAMError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, preview)
+}
+
 func (app *App) handleInvitationByID(w http.ResponseWriter, r *http.Request) {
 	principal, ok := authPrincipalFromContext(r.Context())
 	if !ok {

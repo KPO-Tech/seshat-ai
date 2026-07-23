@@ -38,11 +38,12 @@ type Organization struct {
 	// behavior of IsDefault alone. Default true so flipping IsDefault on
 	// keeps today's existing all-shared behavior until an admin opts a
 	// domain out (see iam.Service.DefaultOrganizationIDForDomain).
-	ShareProviderSettings  bool `gorm:"not null;default:true"`
-	ShareEmbedderSettings  bool `gorm:"not null;default:true"`
-	ShareWebSearchSettings bool `gorm:"not null;default:true"`
-	ShareMCPServers        bool `gorm:"not null;default:true"`
-	ShareSkillRepos        bool `gorm:"not null;default:true"`
+	ShareProviderSettings        bool `gorm:"not null;default:true"`
+	ShareEmbedderSettings        bool `gorm:"not null;default:true"`
+	ShareWebSearchSettings       bool `gorm:"not null;default:true"`
+	ShareMCPServers              bool `gorm:"not null;default:true"`
+	ShareSkillRepos              bool `gorm:"not null;default:true"`
+	ShareOrganizationPreferences bool `gorm:"not null;default:true"`
 	// Domain is the organization's own email domain (e.g. "acmecorp.com"),
 	// used by self-service registration to auto-join a new user to this org
 	// as a pending member. A *string (not string) so an org without a
@@ -55,8 +56,16 @@ type Organization struct {
 
 // Membership binds one user to one organization with a role.
 type Membership struct {
-	ID             string `gorm:"primaryKey;size:32"`
-	UserID         string `gorm:"size:32;not null;uniqueIndex:idx_membership_user_org;index:idx_membership_user"`
+	ID string `gorm:"primaryKey;size:32"`
+	// UserID is also uniquely indexed on its own (idx_membership_user), not
+	// just the (UserID, OrganizationID) pair below - this is the DB-level
+	// enforcement that a user account belongs to at most one organization,
+	// ever. The application layer checks this first (see
+	// iam.userHasAnyMembership, called from every membership-creating path
+	// that targets an existing user) so callers get a clean ErrConflict
+	// instead of a raw constraint error on the happy path; this index is the
+	// last-resort guard against a race between that check and the INSERT.
+	UserID         string `gorm:"size:32;not null;uniqueIndex:idx_membership_user_org;uniqueIndex:idx_membership_user"`
 	OrganizationID string `gorm:"size:32;not null;uniqueIndex:idx_membership_user_org;index:idx_membership_org"`
 	Role           string `gorm:"size:64;not null"`
 	// Status is "active" (default - every pre-existing membership-creation
@@ -80,6 +89,21 @@ type Session struct {
 	UserID    string `gorm:"size:32;not null;index"`
 	CreatedAt time.Time
 	ExpiresAt time.Time `gorm:"index"`
+}
+
+// PasswordResetToken is a short-lived, single-use opaque token for the
+// "forgot password" flow - mirrors Invitation.Token's exact shape (SHA-256
+// hash via sdb.HashOpaqueToken, the raw value only ever exists in the
+// email sent to the user). Deliberately separate from Session (a valid
+// login) and Invitation (an org join grant): this token proves nothing
+// except "the holder controls this email inbox," for one single action.
+type PasswordResetToken struct {
+	ID        string `gorm:"primaryKey;size:32"`
+	UserID    string `gorm:"size:32;not null;index"`
+	Token     string `gorm:"uniqueIndex;size:64;not null"`
+	CreatedAt time.Time
+	ExpiresAt time.Time
+	UsedAt    *time.Time
 }
 
 // Application is an OAuth/OIDC client application managed by the control plane.
@@ -406,6 +430,31 @@ type UserPreference struct {
 	InteractivePermissionMode string `gorm:"size:32"`
 	AutomationPermissionMode  string `gorm:"size:32"`
 	MaxSubAgentDepth          int
+	UpdatedAt                 time.Time
+}
+
+// OrganizationPreference is a singleton per organization providing default
+// values for a subset of UserPreference's fields (working style, response
+// style, extra context, permission modes, max sub-agent depth — deliberately
+// NOT preferred_name/profession/about, which only make sense per-person).
+// Resolution happens transparently inside preferences.Service.GetMyPreferences:
+// a member's own UserPreference field wins whenever it's non-zero, otherwise
+// this organization's value is used, falling back further to the
+// platform-default organization's OrganizationPreference (see
+// iam.SharedDomainOrganizationPreferences / DefaultOrganizationIDForDomain) —
+// the same org→platform hierarchy already used by ProviderSetting/
+// EmbedderSetting/etc.
+type OrganizationPreference struct {
+	ID                        string `gorm:"primaryKey;size:32"`
+	OrganizationID            string `gorm:"size:32;not null;uniqueIndex"`
+	CreatedByUserID           string `gorm:"size:32;not null"`
+	WorkingStyle              string `gorm:"type:text"`
+	ResponseStyle             string `gorm:"type:text"`
+	ExtraContext              string `gorm:"type:text"`
+	InteractivePermissionMode string `gorm:"size:32"`
+	AutomationPermissionMode  string `gorm:"size:32"`
+	MaxSubAgentDepth          int
+	CreatedAt                 time.Time
 	UpdatedAt                 time.Time
 }
 

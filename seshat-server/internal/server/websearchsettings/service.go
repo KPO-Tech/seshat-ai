@@ -115,8 +115,16 @@ func (s *Service) CreateProviderSetting(ctx context.Context, principal *iam.Prin
 	organizationID := strings.TrimSpace(params.OrganizationID)
 	provider := strings.ToLower(strings.TrimSpace(params.Provider))
 	apiKey := strings.TrimSpace(params.APIKey)
-	if organizationID == "" || provider == "" || apiKey == "" {
-		return nil, iam.ErrInvalidInput("organization_id, provider and api_key are required")
+	if organizationID == "" || provider == "" {
+		return nil, iam.ErrInvalidInput("organization_id and provider are required")
+	}
+	// searxng is self-hosted and commonly run with no HTTP basic auth at
+	// all (see the console's matching optional-password treatment) -
+	// api_key doubles as that auth password for this provider, unlike
+	// every other provider here, which is a real hosted-API credential
+	// with no working "no key" mode.
+	if provider != "searxng" && apiKey == "" {
+		return nil, iam.ErrInvalidInput("api_key is required")
 	}
 
 	var record sdb.WebSearchProviderSetting

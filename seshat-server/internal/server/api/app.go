@@ -11,10 +11,12 @@ import (
 )
 
 type App struct {
-	backend         *serverapp.App
-	config          Config
-	loginLimiter    *ipRateLimiter
-	registerLimiter *ipRateLimiter
+	backend               *serverapp.App
+	config                Config
+	loginLimiter          *ipRateLimiter
+	registerLimiter       *ipRateLimiter
+	forgotPasswordLimiter *ipRateLimiter
+	resetPasswordLimiter  *ipRateLimiter
 }
 
 type contextKey string
@@ -32,6 +34,10 @@ func CreateRouter(cfg Config, backend *serverapp.App) http.Handler {
 		// needed) but also legitimately rarer per IP than login - a tighter
 		// steady rate than login, same burst.
 		registerLimiter: newIPRateLimiter(rate.Limit(3.0/60.0), 5),
+		// Forgot-password is the tightest of all: unauthenticated, and both
+		// an email-enumeration vector and a spam-the-victim's-inbox vector.
+		forgotPasswordLimiter: newIPRateLimiter(rate.Limit(3.0/60.0), 3),
+		resetPasswordLimiter:  newIPRateLimiter(rate.Limit(5.0/60.0), 5),
 	}
 	return app.corsMiddleware(app.routes())
 }

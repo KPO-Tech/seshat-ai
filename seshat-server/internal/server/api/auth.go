@@ -26,6 +26,15 @@ type registerRequest struct {
 	DisplayName string `json:"display_name"`
 }
 
+type forgotPasswordRequest struct {
+	Email string `json:"email"`
+}
+
+type resetPasswordRequest struct {
+	Token       string `json:"token"`
+	NewPassword string `json:"new_password"`
+}
+
 func (app *App) handleBootstrapStatus(w http.ResponseWriter, r *http.Request) {
 	initialized, err := app.backend.IAM.BootstrapStatus(r.Context())
 	if err != nil {
@@ -85,6 +94,36 @@ func (app *App) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, result)
+}
+
+// handleForgotPassword — POST /api/v1/auth/forgot-password (public,
+// rate-limited). Always returns 200 with the same generic body regardless
+// of whether the email matches an account - see iam.Service.ForgotPassword.
+func (app *App) handleForgotPassword(w http.ResponseWriter, r *http.Request) {
+	var req forgotPasswordRequest
+	if !decodeJSONBody(w, r, &req) {
+		return
+	}
+	if err := app.backend.IAM.ForgotPassword(r.Context(), req.Email); err != nil {
+		writeIAMError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"message": "If that email is registered, a reset link has been sent."})
+}
+
+// handleResetPassword — POST /api/v1/auth/reset-password (public,
+// rate-limited). No authentication required - the token itself is the
+// credential.
+func (app *App) handleResetPassword(w http.ResponseWriter, r *http.Request) {
+	var req resetPasswordRequest
+	if !decodeJSONBody(w, r, &req) {
+		return
+	}
+	if err := app.backend.IAM.ResetPassword(r.Context(), req.Token, req.NewPassword); err != nil {
+		writeIAMError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (app *App) handleLogout(w http.ResponseWriter, r *http.Request) {

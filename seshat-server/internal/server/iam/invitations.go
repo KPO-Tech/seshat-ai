@@ -3,13 +3,28 @@ package iam
 import (
 	"context"
 	"errors"
+	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
 	"gorm.io/gorm"
 
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/mailer"
 )
+
+// InvitationPreview is what an anonymous, not-yet-authenticated invitee
+// sees before logging in or registering - deliberately a small subset of
+// Invitation (no id, no inviter, never the raw token) since
+// LookupInvitationByToken has no auth check at all.
+type InvitationPreview struct {
+	OrganizationName string    `json:"organization_name"`
+	Email            string    `json:"email"`
+	Role             string    `json:"role"`
+	ExpiresAt        time.Time `json:"expires_at"`
+	Valid            bool      `json:"valid"`
+}
 
 // Invitation is the tenant-scoped invite model exposed by the API.
 type Invitation struct {
@@ -156,15 +171,17 @@ func (s *Service) CreateInvitation(ctx context.Context, principal *Principal, pa
 	}
 
 	var invitation *Invitation
+	var organizationName string
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		tx = tx.WithContext(ctx)
-		var orgCount int64
-		if err := tx.Model(&sdb.Organization{}).Where("id = ?", organizationID).Count(&orgCount).Error; err != nil {
+		var org sdb.Organization
+		if err := tx.First(&org, "id = ?", organizationID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrNotFound("organization not found")
+			}
 			return err
 		}
-		if orgCount == 0 {
-			return ErrNotFound("organization not found")
-		}
+		organizationName = org.Name
 		if err := requireOrganizationPermission(tx, principal, organizationID, "invitations.manage", "members.manage", "organization.manage"); err != nil {
 			return err
 		}
@@ -228,7 +245,36 @@ func (s *Service) CreateInvitation(ctx context.Context, principal *Principal, pa
 		invitation = &converted
 		return nil
 	})
-	return invitation, err
+	if err != nil {
+		return nil, err
+	}
+	s.sendInvitationEmail(ctx, invitation.Email, organizationName, invitation.Token)
+	return invitation, nil
+}
+
+// sendInvitationEmail is best-effort and never returns an error to the
+// caller - the invitation itself is already created and valid (the token
+// can still be copy-pasted manually, see the console's fallback) whether
+// or not delivery succeeds. Sent after the transaction commits, not inside
+// it, so a slow/failing SMTP round-trip never holds a DB transaction open
+// or rolls back an otherwise-successful invitation.
+func (s *Service) sendInvitationEmail(ctx context.Context, toEmail, organizationName, rawToken string) {
+	if s.mailer == nil || rawToken == "" {
+		return
+	}
+	link := fmt.Sprintf("%s/accept-invitation?token=%s", s.publicAppURL, rawToken)
+	body := fmt.Sprintf(
+		"You've been invited to join %s on Seshat.\n\nAccept your invitation:\n%s\n\nThis link expires in a few days.",
+		organizationName, link,
+	)
+	err := s.mailer.Send(ctx, mailer.Message{
+		To:       toEmail,
+		Subject:  fmt.Sprintf("You've been invited to join %s on Seshat", organizationName),
+		TextBody: body,
+	})
+	if err != nil {
+		slog.Warn("iam: failed to send invitation email", "email", toEmail, "error", err)
+	}
 }
 
 // AcceptInvitation redeems a pending invitation for the authenticated user.
@@ -271,6 +317,11 @@ func (s *Service) AcceptInvitation(ctx context.Context, principal *Principal, pa
 		if exists {
 			return ErrConflict("membership already exists")
 		}
+		if hasAny, err := userHasAnyMembership(tx, principal.User.ID); err != nil {
+			return err
+		} else if hasAny {
+			return ErrConflict("user already belongs to an organization")
+		}
 
 		role, err := validateRoleCodeForOrganization(tx, record.OrganizationID, record.Role)
 		if err != nil {
@@ -291,7 +342,7 @@ func (s *Service) AcceptInvitation(ctx context.Context, principal *Principal, pa
 		}
 		if err := tx.Create(&membershipRecord).Error; err != nil {
 			if isUniqueConstraintError(err) {
-				return ErrConflict("membership already exists")
+				return ErrConflict("user already belongs to an organization")
 			}
 			return err
 		}
@@ -311,6 +362,40 @@ func (s *Service) AcceptInvitation(ctx context.Context, principal *Principal, pa
 		return nil
 	})
 	return membership, err
+}
+
+// LookupInvitationByToken is deliberately unauthenticated - the invited
+// person usually doesn't have an account yet, so gating the preview behind
+// login would be backwards. Returns Valid=false (not an error) for an
+// unknown or no-longer-pending token, so the console can render "this
+// invitation is no longer valid" instead of a raw error.
+func (s *Service) LookupInvitationByToken(ctx context.Context, token string) (*InvitationPreview, error) {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return nil, ErrInvalidInput("token is required")
+	}
+	tx := s.db.Gorm().WithContext(ctx)
+	record, ok, err := findInvitationByToken(tx, token)
+	if err != nil {
+		return nil, err
+	}
+	if !ok || effectiveInvitationStatus(record) != "pending" {
+		return &InvitationPreview{Valid: false}, nil
+	}
+	var org sdb.Organization
+	if err := tx.First(&org, "id = ?", record.OrganizationID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return &InvitationPreview{Valid: false}, nil
+		}
+		return nil, err
+	}
+	return &InvitationPreview{
+		OrganizationName: org.Name,
+		Email:            record.Email,
+		Role:             record.Role,
+		ExpiresAt:        record.ExpiresAt,
+		Valid:            true,
+	}, nil
 }
 
 // RevokeInvitation invalidates a pending invitation without granting access.

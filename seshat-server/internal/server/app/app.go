@@ -16,6 +16,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/knowledge"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/longtermmemory"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/mailer"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/mcpregistry"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/memories"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/preferences"
@@ -55,6 +56,18 @@ func New(cfg serverconfig.Config) (*App, error) {
 	}
 
 	iamService := iam.New(database, cfg.SessionTTL)
+	if err := iamService.EnsureSuperAdmin(context.Background(), cfg.BootstrapAdminEmail, cfg.BootstrapAdminPassword); err != nil {
+		return nil, fmt.Errorf("ensure super admin: %w", err)
+	}
+	if cfg.SMTPHost != "" {
+		iamService.SetMailer(mailer.NewSMTPSender(mailer.Config{
+			Host:     cfg.SMTPHost,
+			Port:     cfg.SMTPPort,
+			Username: cfg.SMTPUsername,
+			Password: cfg.SMTPPassword,
+			From:     cfg.SMTPFrom,
+		}), cfg.PublicAppURL)
+	}
 	automationService := automation.New(database, iamService)
 
 	artifactStore, err := sdkstorage.NewArtifactStoreFromConfig(cfg.Storage)
@@ -94,7 +107,7 @@ func New(cfg serverconfig.Config) (*App, error) {
 		Scheduler:            automation.NewScheduler(automationService, cfg.SchedulerInterval).WithStaleRunTimeout(cfg.StaleRunTimeout),
 		Knowledge:            knowledgeService,
 		IngestionRunner:      knowledge.NewRunner(knowledgeService, knowledge.RunnerConfig{PollInterval: cfg.IngestionPollInterval, MaxPollInterval: cfg.IngestionMaxPollInterval}),
-		Preferences:          preferences.New(database),
+		Preferences:          preferences.New(database, iamService),
 		SkillRegistry:        skillregistry.New(database, iamService),
 		WebSearchSettings:    webSearchService,
 		MCPRegistry:          mcpregistry.New(database, iamService),

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -131,5 +132,59 @@ func TestAuthMeDoesNotExposeSessionToken(t *testing.T) {
 	}
 	if token, ok := session["token"]; ok && token != "" {
 		t.Fatalf("expected auth/me session token to be omitted, got %#v", token)
+	}
+}
+
+func TestChangePasswordEndpoint(t *testing.T) {
+	handler, _, adminToken, _, _ := newTestServerRouter(t)
+
+	wrongBody, _ := json.Marshal(map[string]any{
+		"current_password": "wrong-password",
+		"new_password":     "newpassword123",
+	})
+	wrongRequest := httptest.NewRequest(http.MethodPut, "/api/v1/users/me/password", bytes.NewReader(wrongBody))
+	wrongRequest.Header.Set("Authorization", "Bearer "+adminToken)
+	wrongRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(wrongRecorder, wrongRequest)
+	if wrongRecorder.Code != http.StatusUnauthorized {
+		t.Fatalf("expected wrong current password to be rejected, got %d: %s", wrongRecorder.Code, wrongRecorder.Body.String())
+	}
+
+	correctBody, _ := json.Marshal(map[string]any{
+		"current_password": "password123",
+		"new_password":     "newpassword123",
+	})
+	correctRequest := httptest.NewRequest(http.MethodPut, "/api/v1/users/me/password", bytes.NewReader(correctBody))
+	correctRequest.Header.Set("Authorization", "Bearer "+adminToken)
+	correctRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(correctRecorder, correctRequest)
+	if correctRecorder.Code != http.StatusNoContent {
+		t.Fatalf("expected password change success, got %d: %s", correctRecorder.Code, correctRecorder.Body.String())
+	}
+
+	// The old token must still work (password change doesn't revoke the
+	// current session).
+	meRequest := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
+	meRequest.Header.Set("Authorization", "Bearer "+adminToken)
+	meRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(meRecorder, meRequest)
+	if meRecorder.Code != http.StatusOK {
+		t.Fatalf("expected the existing session to remain valid after a password change, got %d", meRecorder.Code)
+	}
+
+	oldLoginBody, _ := json.Marshal(map[string]any{"email": "admin@example.com", "password": "password123"})
+	oldLoginRequest := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewReader(oldLoginBody))
+	oldLoginRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(oldLoginRecorder, oldLoginRequest)
+	if oldLoginRecorder.Code == http.StatusOK {
+		t.Fatal("expected logging in with the old password to fail after it was changed")
+	}
+
+	newLoginBody, _ := json.Marshal(map[string]any{"email": "admin@example.com", "password": "newpassword123"})
+	newLoginRequest := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewReader(newLoginBody))
+	newLoginRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(newLoginRecorder, newLoginRequest)
+	if newLoginRecorder.Code != http.StatusOK {
+		t.Fatalf("expected logging in with the new password to succeed, got %d: %s", newLoginRecorder.Code, newLoginRecorder.Body.String())
 	}
 }

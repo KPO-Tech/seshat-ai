@@ -9,6 +9,8 @@ func (app *App) routes() http.Handler {
 	mux.HandleFunc("POST /api/v1/auth/bootstrap", app.handleBootstrap)
 	mux.HandleFunc("POST /api/v1/auth/login", rateLimited(app.loginLimiter, app.handleLogin))
 	mux.HandleFunc("POST /api/v1/auth/register", rateLimited(app.registerLimiter, app.handleRegister))
+	mux.HandleFunc("POST /api/v1/auth/forgot-password", rateLimited(app.forgotPasswordLimiter, app.handleForgotPassword))
+	mux.HandleFunc("POST /api/v1/auth/reset-password", rateLimited(app.resetPasswordLimiter, app.handleResetPassword))
 	mux.Handle("GET /api/v1/auth/me", app.authMiddleware(http.HandlerFunc(app.handleMe)))
 	mux.Handle("POST /api/v1/auth/logout", app.authMiddleware(http.HandlerFunc(app.handleLogout)))
 	mux.Handle("GET /api/v1/organizations", app.authMiddleware(http.HandlerFunc(app.handleOrganizations)))
@@ -36,12 +38,20 @@ func (app *App) routes() http.Handler {
 	mux.Handle("GET /api/v1/permissions", app.authMiddleware(http.HandlerFunc(app.handlePermissions)))
 	mux.Handle("GET /api/v1/memberships", app.authMiddleware(http.HandlerFunc(app.handleMemberships)))
 	mux.Handle("POST /api/v1/memberships", app.authMiddleware(http.HandlerFunc(app.handleMemberships)))
+	// Literal "direct" segment takes precedence over the {membershipID}
+	// wildcard below (Go's ServeMux prefers the more specific pattern), same
+	// as the /invitations/lookup vs /invitations/{invitationID} pattern.
+	mux.Handle("POST /api/v1/memberships/direct", app.authMiddleware(http.HandlerFunc(app.handleCreateOrganizationMember)))
 	mux.Handle("GET /api/v1/memberships/{membershipID}", app.authMiddleware(http.HandlerFunc(app.handleMembershipByID)))
 	mux.Handle("PUT /api/v1/memberships/{membershipID}", app.authMiddleware(http.HandlerFunc(app.handleMembershipByID)))
 	mux.Handle("DELETE /api/v1/memberships/{membershipID}", app.authMiddleware(http.HandlerFunc(app.handleMembershipByID)))
 	mux.Handle("POST /api/v1/memberships/{membershipID}/confirm", app.authMiddleware(http.HandlerFunc(app.handleMembershipConfirm)))
 	mux.Handle("GET /api/v1/invitations", app.authMiddleware(http.HandlerFunc(app.handleInvitations)))
 	mux.Handle("POST /api/v1/invitations", app.authMiddleware(http.HandlerFunc(app.handleInvitations)))
+	// Public - no auth - the invited person usually doesn't have an account
+	// yet. Go's ServeMux prefers this literal "lookup" segment over the
+	// {invitationID} wildcard below, so no route ordering is required.
+	mux.HandleFunc("GET /api/v1/invitations/lookup", app.handleInvitationLookup)
 	mux.Handle("GET /api/v1/invitations/{invitationID}", app.authMiddleware(http.HandlerFunc(app.handleInvitationByID)))
 	mux.Handle("POST /api/v1/invitations/{invitationID}/revoke", app.authMiddleware(http.HandlerFunc(app.handleInvitationRevoke)))
 	mux.Handle("POST /api/v1/invitations/accept", app.authMiddleware(http.HandlerFunc(app.handleInvitationAccept)))
@@ -59,6 +69,7 @@ func (app *App) routes() http.Handler {
 	mux.Handle("DELETE /api/v1/sessions/{sessionID}", app.authMiddleware(http.HandlerFunc(app.handleSessionByID)))
 	mux.Handle("GET /api/v1/audit-events", app.authMiddleware(http.HandlerFunc(app.handleAuditEvents)))
 
+	mux.Handle("PUT /api/v1/users/me/password", app.authMiddleware(http.HandlerFunc(app.handleChangePassword)))
 	mux.Handle("GET /api/v1/users/me/preferences", app.authMiddleware(http.HandlerFunc(app.handleUserPreferences)))
 	mux.Handle("PUT /api/v1/users/me/preferences", app.authMiddleware(http.HandlerFunc(app.handleUserPreferences)))
 	mux.Handle("GET /api/v1/users/me/memories", app.authMiddleware(http.HandlerFunc(app.handleUserMemories)))
@@ -147,6 +158,10 @@ func (app *App) routes() http.Handler {
 	mux.Handle("PUT /api/v1/embedder-settings", app.authMiddleware(http.HandlerFunc(app.handleEmbedderSettings)))
 	mux.Handle("DELETE /api/v1/embedder-settings", app.authMiddleware(http.HandlerFunc(app.handleEmbedderSettings)))
 	mux.Handle("POST /api/v1/embedder-settings/detect-models", app.authMiddleware(http.HandlerFunc(app.handleEmbedderSettingsDetectModels)))
+
+	mux.Handle("GET /api/v1/organization-preferences", app.authMiddleware(http.HandlerFunc(app.handleOrganizationPreferences)))
+	mux.Handle("PUT /api/v1/organization-preferences", app.authMiddleware(http.HandlerFunc(app.handleOrganizationPreferences)))
+	mux.Handle("DELETE /api/v1/organization-preferences", app.authMiddleware(http.HandlerFunc(app.handleOrganizationPreferences)))
 
 	// Devices — admin surface is user-authenticated (register/list/revoke);
 	// the /device/* protocol below is device-token-authenticated instead.

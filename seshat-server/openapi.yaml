@@ -242,6 +242,70 @@ paths:
         "409": { $ref: "#/components/responses/Conflict" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
+  /api/v1/auth/forgot-password:
+    post:
+      operationId: forgotPassword
+      tags: [auth]
+      summary: Request a password reset link by email
+      description: >
+        Always returns 200 with the same generic message regardless of
+        whether the email matches an account — a different response would
+        let an attacker enumerate accounts by email. If a match exists, a
+        1-hour-lived reset link is emailed (see /reset-password). Rate
+        limited to 3 attempts/minute per client IP (burst 3) — the
+        tightest limit of any endpoint, since this is both an
+        email-enumeration and inbox-spam vector.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        "200":
+          description: Request accepted (does not imply an email was actually sent)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/auth/reset-password:
+    post:
+      operationId: resetPassword
+      tags: [auth]
+      summary: Redeem a password-reset token
+      description: >
+        No authentication required — the token itself is the credential.
+        Deliberately generic on failure (401 regardless of whether the
+        token is unknown, already used, or expired) to avoid leaking
+        feedback useful for guessing tokens. On success, every existing
+        session for the account is revoked. Rate limited to 5
+        attempts/minute per client IP (burst 5).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, new_password]
+              properties:
+                token: { type: string }
+                new_password: { type: string, format: password }
+      responses:
+        "204": { description: Password reset, all sessions revoked }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
   /api/v1/auth/me:
     get:
       operationId: getCurrentPrincipal
@@ -523,7 +587,11 @@ paths:
       summary: Create a user (platform admin only)
       description: >
         If `organization_id` is set, also creates a membership with `role`
-        (default `member`) in the same call.
+        (default `member`) in the same call. Always creates a regular
+        (non-platform-admin) account — there is no is_admin field here or
+        anywhere else in this API. Platform-admin status is granted exactly
+        once, by seeding from env vars at server boot, and never through
+        any API action afterwards, by anyone.
       requestBody:
         required: true
         content:
@@ -537,9 +605,6 @@ paths:
                 display_name: { type: string }
                 organization_id: { type: string }
                 role: { type: string, enum: [owner, admin, member, viewer] }
-                is_admin:
-                  type: boolean
-                  description: Grants platform-wide admin privileges.
       responses:
         "201":
           description: User created
@@ -570,7 +635,9 @@ paths:
       operationId: updateUser
       tags: [users]
       summary: Update a user (platform admin only)
-      description: Cannot demote the last platform admin.
+      description: >-
+        Email and display name only — no is_admin field, see createUser's
+        description for why.
       requestBody:
         required: true
         content:
@@ -581,7 +648,6 @@ paths:
               properties:
                 email: { type: string, format: email }
                 display_name: { type: string }
-                is_admin: { type: boolean }
       responses:
         "200":
           description: Updated user
@@ -815,6 +881,50 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
 
+  /api/v1/memberships/direct:
+    post:
+      operationId: createOrganizationMember
+      tags: [memberships]
+      summary: Create a new account and attach it to an organization in one step
+      description: >-
+        Sibling action to POST /memberships (which only attaches an
+        EXISTING user) — this creates the account too. Requires
+        members.manage or organization.manage (org-admin, unlike POST
+        /users which is platform-superadmin-only). No password field: one
+        is generated internally and never exposed — the new member sets
+        their own via an emailed welcome link that reuses the same
+        /reset-password flow as a forgotten-password reset. Optionally
+        attaches the new member to one or more existing groups in the same
+        step via group_ids.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [organization_id, email, display_name]
+              properties:
+                organization_id: { type: string }
+                email: { type: string, format: email }
+                display_name: { type: string }
+                role:
+                  type: string
+                  description: A system role code (owner/admin/member/viewer) or a custom role code defined for this organization. Defaults to "member".
+                group_ids:
+                  type: array
+                  items: { type: string }
+                  description: Existing groups (in the same organization) to attach the new member to immediately.
+      responses:
+        "201":
+          description: Account created and attached as a member
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Membership" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
   /api/v1/memberships/{membershipID}:
     parameters:
       - name: membershipID
@@ -958,6 +1068,31 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/invitations/lookup:
+    get:
+      operationId: lookupInvitation
+      tags: [invitations]
+      summary: Preview an invitation by its raw token, unauthenticated
+      description: >-
+        No auth required — the invited person usually doesn't have an
+        account yet, so gating the preview behind login would be
+        backwards. Returns valid:false (still HTTP 200, not an error) for
+        an unknown, expired, or already-used token, so the console can
+        render "this invitation is no longer valid" instead of a raw
+        error. Never includes the invitation id, inviter, or raw token.
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Invitation preview
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InvitationPreview" }
+        "400": { $ref: "#/components/responses/BadRequest" }
 
   /api/v1/invitations/{invitationID}:
     get:
@@ -1307,6 +1442,31 @@ paths:
                         items: { $ref: "#/components/schemas/AuditEvent" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/users/me/password:
+    put:
+      operationId: changeMyPassword
+      tags: [users]
+      summary: Change my own password
+      description: >-
+        Self-service only — requires re-proving the current password, so a
+        stolen bearer token alone can't rotate credentials. Does not revoke
+        the current session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, new_password]
+              properties:
+                current_password: { type: string }
+                new_password: { type: string, minLength: 8 }
+      responses:
+        "204":
+          description: Password updated
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
 
   /api/v1/users/me/preferences:
     get:
@@ -2884,6 +3044,71 @@ paths:
               schema: { $ref: "#/components/schemas/DetectedEmbedderModels" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
+  /api/v1/organization-preferences:
+    get:
+      operationId: getOrganizationPreferences
+      tags: [preferences]
+      summary: Get an organization's preference defaults
+      description: >-
+        A singleton per organization — this organization's OWN values only,
+        no platform-default fallback (an admin editing their org's
+        preferences needs to see exactly what's set for THIS org). Requires
+        organization.manage. 404 if none is configured. A member's
+        effective preferences (personal value, else this, else the
+        platform-default organization's) are visible via
+        GET /api/v1/users/me/preferences instead, not here.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: Organization preferences
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationPreferences" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      operationId: setOrganizationPreferences
+      tags: [preferences]
+      summary: Create or update an organization's preference defaults
+      description: >-
+        Requires organization.manage. Upsert — creates the organization's
+        preferences if none exist yet, otherwise updates them in place.
+        Only fields that also exist at the personal level are supported
+        here (working_style, response_style, extra_context, the two
+        permission modes, max_sub_agent_depth) — preferred_name/profession/
+        about only make sense per-person and have no organization
+        equivalent.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OrganizationPreferencesInput" }
+      responses:
+        "200":
+          description: Organization preferences created or updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationPreferences" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    delete:
+      operationId: deleteOrganizationPreferences
+      tags: [preferences]
+      summary: Delete an organization's preference defaults
+      description: >-
+        Requires organization.manage. Members of this organization fall
+        back to the platform-default organization's preferences (if any and
+        shared) for subsequent GET /api/v1/users/me/preferences calls.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "204": { description: Deleted }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/devices:
     get:
       operationId: listDevices
@@ -3567,6 +3792,9 @@ components:
         share_skill_repos:
           type: boolean
           description: Only meaningful while is_default is true - whether this organization's skill repos are shared as the platform-wide fallback.
+        share_organization_preferences:
+          type: boolean
+          description: Only meaningful while is_default is true - whether this organization's preference defaults are shared as the platform-wide fallback.
         domain:
           type: string
           description: This organization's own email domain (e.g. "acmecorp.com"), if set. Self-service registration (POST /auth/register) auto-joins a new user to this organization as a pending member when their email matches. At most one organization holds a given domain.
@@ -3593,6 +3821,7 @@ components:
         share_web_search_settings: { type: boolean }
         share_mcp_servers: { type: boolean }
         share_skill_repos: { type: boolean }
+        share_organization_preferences: { type: boolean }
 
     Membership:
       type: object
@@ -3618,6 +3847,17 @@ components:
           format: date-time
           description: Set when status is "pending" - when the confirmation window (SESHAT_SERVER_MEMBERSHIP_CONFIRMATION_WINDOW) started counting down.
         created_at: { type: string, format: date-time }
+        permissions:
+          type: array
+          items: { type: string }
+          description: >-
+            The resolved effective permission set (role + custom role +
+            policy bindings + group membership) for this membership's role,
+            in this organization, at fetch time. Only populated on the
+            session-bootstrap paths (bootstrap/register/login/auth-me) —
+            clients should check for e.g. "organization.manage" here rather
+            than hardcoding role names, since custom roles can grant the
+            same permission under any name.
         user_email:
           type: string
           description: Denormalized for display - resolving a teammate's identity from a membership shouldn't require a separate admin-only user lookup.
@@ -3718,6 +3958,15 @@ components:
         expires_at: { type: string, format: date-time }
         accepted_at: { type: string, format: date-time, nullable: true }
         revoked_at: { type: string, format: date-time, nullable: true }
+
+    InvitationPreview:
+      type: object
+      properties:
+        organization_name: { type: string }
+        email: { type: string, format: email }
+        role: { type: string }
+        expires_at: { type: string, format: date-time }
+        valid: { type: boolean }
 
     Group:
       type: object
@@ -4747,6 +4996,34 @@ components:
           type: string
           description: Optional (e.g. a local Ollama needs none). Empty on update keeps the existing key unchanged.
       required: [provider, model, base_url]
+
+    OrganizationPreferences:
+      type: object
+      description: >-
+        Default values for the subset of UserPreferences fields that make
+        sense at an organization scope — deliberately excludes
+        preferred_name/profession/about, which only make sense per-person.
+      properties:
+        organization_id: { type: string }
+        working_style: { type: string }
+        response_style: { type: string }
+        extra_context: { type: string }
+        interactive_permission_mode: { type: string }
+        automation_permission_mode: { type: string }
+        max_sub_agent_depth: { type: integer, minimum: 0, maximum: 5 }
+        updated_at: { type: string, format: date-time }
+
+    OrganizationPreferencesInput:
+      type: object
+      properties:
+        organization_id: { type: string }
+        working_style: { type: string }
+        response_style: { type: string }
+        extra_context: { type: string }
+        interactive_permission_mode: { type: string }
+        automation_permission_mode: { type: string }
+        max_sub_agent_depth: { type: integer, minimum: 0, maximum: 5 }
+      required: [organization_id]
 
     DetectedEmbedderModels:
       type: object

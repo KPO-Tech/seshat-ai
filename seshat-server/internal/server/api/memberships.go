@@ -18,6 +18,43 @@ type updateMembershipRequest struct {
 	Role string `json:"role"`
 }
 
+type createOrganizationMemberRequest struct {
+	OrganizationID string   `json:"organization_id"`
+	Email          string   `json:"email"`
+	DisplayName    string   `json:"display_name"`
+	Role           string   `json:"role"`
+	GroupIDs       []string `json:"group_ids"`
+}
+
+// handleCreateOrganizationMember — POST /api/v1/memberships/direct. Sibling
+// action to POST /api/v1/memberships (which only attaches an EXISTING
+// user) - this creates the account too, see
+// iam.Service.CreateOrganizationMember's doc comment for why there's no
+// password field.
+func (app *App) handleCreateOrganizationMember(w http.ResponseWriter, r *http.Request) {
+	principal, ok := authPrincipalFromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "missing principal")
+		return
+	}
+	var req createOrganizationMemberRequest
+	if !decodeJSONBody(w, r, &req) {
+		return
+	}
+	membership, err := app.backend.IAM.CreateOrganizationMember(r.Context(), principal, iam.CreateOrganizationMemberParams{
+		OrganizationID: req.OrganizationID,
+		Email:          req.Email,
+		DisplayName:    req.DisplayName,
+		Role:           req.Role,
+		GroupIDs:       req.GroupIDs,
+	})
+	if err != nil {
+		writeIAMError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, membership)
+}
+
 func (app *App) handleMemberships(w http.ResponseWriter, r *http.Request) {
 	principal, ok := authPrincipalFromContext(r.Context())
 	if !ok {

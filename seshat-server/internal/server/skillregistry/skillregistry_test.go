@@ -211,7 +211,7 @@ func TestListSkillReposHonorsShareSkillReposOptOut(t *testing.T) {
 		t.Fatalf("create repo on the default org: %v", err)
 	}
 	shareSkillRepos := false
-	if _, err := env.iam.SetOrganizationSharedDomains(context.Background(), env.adminPrincipal, defaultOrg.ID, nil, nil, nil, nil, &shareSkillRepos); err != nil {
+	if _, err := env.iam.SetOrganizationSharedDomains(context.Background(), env.adminPrincipal, defaultOrg.ID, nil, nil, nil, nil, &shareSkillRepos, nil); err != nil {
 		t.Fatalf("opt out of sharing skill repos: %v", err)
 	}
 

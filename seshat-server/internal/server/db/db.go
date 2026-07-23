@@ -123,6 +123,7 @@ func (d *DB) Migrate() error {
 		&KnowledgeIngestionJob{},
 		&EmbedderSetting{},
 		&UserPreference{},
+		&OrganizationPreference{},
 		&SkillRepo{},
 		&WebSearchProviderSetting{},
 		&WebSearchOrgPolicy{},
@@ -135,6 +136,7 @@ func (d *DB) Migrate() error {
 		&UsageCounter{},
 		&WorkspaceChatSession{},
 		&WorkspaceChatMessageRecord{},
+		&PasswordResetToken{},
 	)
 }
 

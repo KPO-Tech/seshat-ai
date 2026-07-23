@@ -12,6 +12,7 @@ import (
 
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/apperr"
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/mailer"
 )
 
 // Principal is the authenticated server-side identity resolved from a session.
@@ -31,35 +32,44 @@ type User struct {
 }
 
 type Organization struct {
-	ID                     string    `json:"id"`
-	Name                   string    `json:"name"`
-	Slug                   string    `json:"slug"`
-	Description            string    `json:"description"`
-	WebsiteURL             string    `json:"website_url"`
-	SupportEmail           string    `json:"support_email"`
-	IsDefault              bool      `json:"is_default"`
-	IsActive               bool      `json:"is_active"`
-	ShareProviderSettings  bool      `json:"share_provider_settings"`
-	ShareEmbedderSettings  bool      `json:"share_embedder_settings"`
-	ShareWebSearchSettings bool      `json:"share_web_search_settings"`
-	ShareMCPServers        bool      `json:"share_mcp_servers"`
-	ShareSkillRepos        bool      `json:"share_skill_repos"`
-	Domain                 *string   `json:"domain,omitempty"`
-	CreatedAt              time.Time `json:"created_at"`
-	UpdatedAt              time.Time `json:"updated_at"`
+	ID                           string    `json:"id"`
+	Name                         string    `json:"name"`
+	Slug                         string    `json:"slug"`
+	Description                  string    `json:"description"`
+	WebsiteURL                   string    `json:"website_url"`
+	SupportEmail                 string    `json:"support_email"`
+	IsDefault                    bool      `json:"is_default"`
+	IsActive                     bool      `json:"is_active"`
+	ShareProviderSettings        bool      `json:"share_provider_settings"`
+	ShareEmbedderSettings        bool      `json:"share_embedder_settings"`
+	ShareWebSearchSettings       bool      `json:"share_web_search_settings"`
+	ShareMCPServers              bool      `json:"share_mcp_servers"`
+	ShareSkillRepos              bool      `json:"share_skill_repos"`
+	ShareOrganizationPreferences bool      `json:"share_organization_preferences"`
+	Domain                       *string   `json:"domain,omitempty"`
+	CreatedAt                    time.Time `json:"created_at"`
+	UpdatedAt                    time.Time `json:"updated_at"`
 }
 
 type Membership struct {
-	ID              string     `json:"id"`
-	UserID          string     `json:"user_id"`
-	OrganizationID  string     `json:"organization_id"`
-	Role            string     `json:"role"`
-	Status          string     `json:"status"`
-	PendingSince    *time.Time `json:"pending_since,omitempty"`
-	CreatedAt       time.Time  `json:"created_at"`
-	UserEmail       string     `json:"user_email,omitempty"`
-	UserDisplayName string     `json:"user_display_name,omitempty"`
-	UserIsAdmin     bool       `json:"user_is_admin,omitempty"`
+	ID             string     `json:"id"`
+	UserID         string     `json:"user_id"`
+	OrganizationID string     `json:"organization_id"`
+	Role           string     `json:"role"`
+	Status         string     `json:"status"`
+	PendingSince   *time.Time `json:"pending_since,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
+	// Permissions is the resolved effective permission set (role + custom
+	// role + policy bindings + group membership - see
+	// effectivePermissionsForPrincipal) for this specific membership's role
+	// in this organization, at the time it was fetched. Populated wherever a
+	// Membership reaches a client (login/register/bootstrap/auth-me) so the
+	// frontend can gate UI on real permissions instead of hardcoding role
+	// names, which would silently miss custom roles.
+	Permissions     []string `json:"permissions"`
+	UserEmail       string   `json:"user_email,omitempty"`
+	UserDisplayName string   `json:"user_display_name,omitempty"`
+	UserIsAdmin     bool     `json:"user_is_admin,omitempty"`
 }
 
 type Session struct {
@@ -152,13 +162,15 @@ type CreateOrganizationParams struct {
 	Domain       string `json:"domain"`
 }
 
+// CreateUserParams deliberately has no IsAdmin field - see UpdateUserParams'
+// doc comment. Every user created through this path is a regular
+// (non-platform-admin) account, full stop.
 type CreateUserParams struct {
 	Email          string `json:"email"`
 	Password       string `json:"password"`
 	DisplayName    string `json:"display_name"`
 	OrganizationID string `json:"organization_id"`
 	Role           string `json:"role"`
-	IsAdmin        bool   `json:"is_admin"`
 }
 
 type CreateApplicationParams struct {
@@ -228,10 +240,28 @@ type AuthResult struct {
 type Service struct {
 	db         *sdb.DB
 	sessionTTL time.Duration
+	// mailer/publicAppURL are set post-construction via SetMailer, not
+	// through New() - see SetMailer's doc comment for why.
+	mailer       mailer.Sender
+	publicAppURL string
 }
 
 func New(database *sdb.DB, sessionTTL time.Duration) *Service {
 	return &Service{db: database, sessionTTL: sessionTTL}
+}
+
+// SetMailer wires up outbound email (invitation accept links, password
+// reset links). Deliberately not a New() parameter: iam.New is called from
+// 11 places across the repo, nearly all of them unrelated test-env
+// helpers in other packages that have no reason to care about email -
+// changing New's signature would ripple everywhere for a dependency most
+// callers don't need. A nil sender (the zero value, i.e. never calling
+// SetMailer) is a fully supported, permanent state: every flow that sends
+// mail treats it as best-effort and still succeeds without it (see
+// CreateInvitation, ForgotPassword).
+func (s *Service) SetMailer(sender mailer.Sender, publicAppURL string) {
+	s.mailer = sender
+	s.publicAppURL = strings.TrimRight(publicAppURL, "/")
 }
 
 func (s *Service) BootstrapStatus(ctx context.Context) (bool, error) {
@@ -318,11 +348,15 @@ func (s *Service) Bootstrap(ctx context.Context, params BootstrapParams) (*AuthR
 			return err
 		}
 
+		bootstrapMembership, err := toMembershipWithPermissions(tx, user.ID, membership)
+		if err != nil {
+			return err
+		}
 		result = &AuthResult{
 			Token:         rawToken,
 			User:          toUser(user),
 			Organizations: []Organization{toOrganization(org)},
-			Memberships:   []Membership{toMembership(membership)},
+			Memberships:   []Membership{bootstrapMembership},
 		}
 		return nil
 	})
@@ -408,8 +442,12 @@ func (s *Service) Register(ctx context.Context, params RegisterParams) (*AuthRes
 				if err := appendAuditEvent(tx, nil, org.ID, "membership.self_registered", "membership", membership.ID, map[string]string{"user_id": user.ID, "email": email}); err != nil {
 					return err
 				}
+				registeredMembership, err := toMembershipWithPermissions(tx, user.ID, membership)
+				if err != nil {
+					return err
+				}
 				organizations = append(organizations, toOrganization(org))
-				memberships = append(memberships, toMembership(membership))
+				memberships = append(memberships, registeredMembership)
 			case errors.Is(err, gorm.ErrRecordNotFound):
 				// No organization claims this email domain - the account is
 				// still created, just with no memberships yet.
@@ -697,12 +735,20 @@ func (s *Service) CreateOrganization(ctx context.Context, principal *Principal, 
 		}
 
 		if !principal.User.IsAdmin {
+			if hasAny, err := userHasAnyMembership(tx, principal.User.ID); err != nil {
+				return err
+			} else if hasAny {
+				return ErrConflict("user already belongs to an organization")
+			}
 			membershipID, err := newID("mem")
 			if err != nil {
 				return err
 			}
 			membership := sdb.Membership{ID: membershipID, UserID: principal.User.ID, OrganizationID: record.ID, Role: "owner", CreatedAt: now}
 			if err := tx.Create(&membership).Error; err != nil {
+				if isUniqueConstraintError(err) {
+					return ErrConflict("user already belongs to an organization")
+				}
 				return err
 			}
 			if err := appendAuditEvent(tx, principal, record.ID, "membership.created", "membership", membership.ID, map[string]string{"role": membership.Role, "user_id": membership.UserID}); err != nil {
@@ -812,7 +858,6 @@ func (s *Service) CreateUser(ctx context.Context, principal *Principal, params C
 			Email:        email,
 			DisplayName:  displayName,
 			PasswordHash: passwordHash,
-			IsAdmin:      params.IsAdmin,
 			CreatedAt:    now,
 			UpdatedAt:    now,
 		}
@@ -910,9 +955,27 @@ func membershipsByUser(tx *gorm.DB, userID string) ([]Membership, error) {
 	}
 	memberships := make([]Membership, 0, len(records))
 	for _, record := range records {
-		memberships = append(memberships, toMembership(record))
+		membership, err := toMembershipWithPermissions(tx, userID, record)
+		if err != nil {
+			return nil, err
+		}
+		memberships = append(memberships, membership)
 	}
 	return memberships, nil
+}
+
+// toMembershipWithPermissions attaches the resolved effective permission set
+// for one membership's role, in its organization - a minimal *Principal is
+// enough since effectivePermissionsForPrincipal re-queries memberships/groups/
+// policy bindings from tx itself, it never reads back the passed-in struct.
+func toMembershipWithPermissions(tx *gorm.DB, userID string, record sdb.Membership) (Membership, error) {
+	m := toMembership(record)
+	permissions, err := effectivePermissionsForPrincipal(tx, &Principal{User: User{ID: userID}}, record.OrganizationID)
+	if err != nil {
+		return Membership{}, err
+	}
+	m.Permissions = sortedPermissionCodes(permissions)
+	return m, nil
 }
 
 func organizationsForMemberships(tx *gorm.DB, memberships []Membership) ([]Organization, error) {
@@ -951,6 +1014,20 @@ func findUserByEmail(tx *gorm.DB, email string) (sdb.User, bool, error) {
 	return user, true, nil
 }
 
+// userHasAnyMembership reports whether userID already belongs to any
+// organization - the application-level check backing the one-org-per-user
+// invariant, checked before every membership-creating INSERT that targets an
+// *existing* user (not one just created in the same transaction, which can't
+// have a prior membership by construction) so callers get a clean ErrConflict
+// instead of a raw DB constraint error on the happy path. The DB-level
+// uniqueIndex on Membership.UserID (see db/models.go) is the enforcement of
+// last resort for races between this check and the INSERT.
+func userHasAnyMembership(tx *gorm.DB, userID string) (bool, error) {
+	var count int64
+	err := tx.Model(&sdb.Membership{}).Where("user_id = ?", userID).Count(&count).Error
+	return count > 0, err
+}
+
 // primaryOrganizationIDForUser picks one organization to attribute an audit
 // event to when the event isn't itself organization-scoped (e.g. logins).
 func primaryOrganizationIDForUser(tx *gorm.DB, userID string) (string, error) {
@@ -971,22 +1048,23 @@ func toUser(record sdb.User) User {
 
 func toOrganization(record sdb.Organization) Organization {
 	return Organization{
-		ID:                     record.ID,
-		Name:                   record.Name,
-		Slug:                   record.Slug,
-		Description:            record.Description,
-		WebsiteURL:             record.WebsiteURL,
-		SupportEmail:           record.SupportEmail,
-		IsDefault:              record.IsDefault,
-		IsActive:               record.IsActive,
-		ShareProviderSettings:  record.ShareProviderSettings,
-		ShareEmbedderSettings:  record.ShareEmbedderSettings,
-		ShareWebSearchSettings: record.ShareWebSearchSettings,
-		ShareMCPServers:        record.ShareMCPServers,
-		ShareSkillRepos:        record.ShareSkillRepos,
-		Domain:                 record.Domain,
-		CreatedAt:              record.CreatedAt,
-		UpdatedAt:              record.UpdatedAt,
+		ID:                           record.ID,
+		Name:                         record.Name,
+		Slug:                         record.Slug,
+		Description:                  record.Description,
+		WebsiteURL:                   record.WebsiteURL,
+		SupportEmail:                 record.SupportEmail,
+		IsDefault:                    record.IsDefault,
+		IsActive:                     record.IsActive,
+		ShareProviderSettings:        record.ShareProviderSettings,
+		ShareEmbedderSettings:        record.ShareEmbedderSettings,
+		ShareWebSearchSettings:       record.ShareWebSearchSettings,
+		ShareMCPServers:              record.ShareMCPServers,
+		ShareSkillRepos:              record.ShareSkillRepos,
+		ShareOrganizationPreferences: record.ShareOrganizationPreferences,
+		Domain:                       record.Domain,
+		CreatedAt:                    record.CreatedAt,
+		UpdatedAt:                    record.UpdatedAt,
 	}
 }
 

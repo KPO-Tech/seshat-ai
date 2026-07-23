@@ -8,19 +8,49 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
 )
 
+// Neither request struct accepts is_admin - see iam.UpdateUserParams' doc
+// comment for why platform-admin status can never be granted through this
+// or any other API/console action.
 type createUserRequest struct {
 	Email          string `json:"email"`
 	Password       string `json:"password"`
 	DisplayName    string `json:"display_name"`
 	OrganizationID string `json:"organization_id"`
 	Role           string `json:"role"`
-	IsAdmin        bool   `json:"is_admin"`
 }
 
 type updateUserRequest struct {
 	Email       string `json:"email"`
 	DisplayName string `json:"display_name"`
-	IsAdmin     bool   `json:"is_admin"`
+}
+
+type changePasswordRequest struct {
+	CurrentPassword string `json:"current_password"`
+	NewPassword     string `json:"new_password"`
+}
+
+func (app *App) handleChangePassword(w http.ResponseWriter, r *http.Request) {
+	principal, ok := authPrincipalFromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "missing principal")
+		return
+	}
+	if r.Method != http.MethodPut {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var req changePasswordRequest
+	if !decodeJSONBody(w, r, &req) {
+		return
+	}
+	if err := app.backend.IAM.ChangePassword(r.Context(), principal, iam.ChangePasswordParams{
+		CurrentPassword: req.CurrentPassword,
+		NewPassword:     req.NewPassword,
+	}); err != nil {
+		writeIAMError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (app *App) handleUsers(w http.ResponseWriter, r *http.Request) {
@@ -60,7 +90,6 @@ func (app *App) handleUsers(w http.ResponseWriter, r *http.Request) {
 			DisplayName:    req.DisplayName,
 			OrganizationID: req.OrganizationID,
 			Role:           req.Role,
-			IsAdmin:        req.IsAdmin,
 		})
 		if err != nil {
 			writeIAMError(w, err)
@@ -101,7 +130,6 @@ func (app *App) handleUserByID(w http.ResponseWriter, r *http.Request) {
 		user, err := app.backend.IAM.UpdateUser(r.Context(), principal, userID, iam.UpdateUserParams{
 			Email:       req.Email,
 			DisplayName: req.DisplayName,
-			IsAdmin:     req.IsAdmin,
 		})
 		if err != nil {
 			writeIAMError(w, err)

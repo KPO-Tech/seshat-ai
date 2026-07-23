@@ -174,3 +174,68 @@ func TestPlatformAdminCreatingOrganizationDoesNotBecomeAMember(t *testing.T) {
 		t.Fatalf("expected only the customer to hold a membership, got %+v", memberships)
 	}
 }
+
+// TestCreateOrganizationRejectsUserAlreadyInAnotherOrganization locks in the
+// one-org-per-user invariant: a user account belongs to at most one
+// organization ever, so someone who already owns one organization cannot
+// self-serve a second by calling CreateOrganization again.
+func TestCreateOrganizationRejectsUserAlreadyInAnotherOrganization(t *testing.T) {
+	service := newTestService(t)
+
+	boot, err := service.Bootstrap(context.Background(), BootstrapParams{
+		Email:            "admin@example.com",
+		Password:         "password123",
+		DisplayName:      "Admin",
+		OrganizationName: "Seshat",
+		OrganizationSlug: "seshat",
+	})
+	if err != nil {
+		t.Fatalf("bootstrap: %v", err)
+	}
+	adminPrincipal, err := service.ResolvePrincipal(context.Background(), boot.Token)
+	if err != nil {
+		t.Fatalf("resolve admin principal: %v", err)
+	}
+
+	if _, err := service.CreateUser(context.Background(), adminPrincipal, CreateUserParams{
+		Email:       "founder@example.com",
+		Password:    "password123",
+		DisplayName: "Founder",
+	}); err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	login, err := service.Login(context.Background(), "founder@example.com", "password123")
+	if err != nil {
+		t.Fatalf("login: %v", err)
+	}
+	founderPrincipal, err := service.ResolvePrincipal(context.Background(), login.Token)
+	if err != nil {
+		t.Fatalf("resolve founder principal: %v", err)
+	}
+
+	if _, err := service.CreateOrganization(context.Background(), founderPrincipal, CreateOrganizationParams{
+		Name: "First Co",
+		Slug: "first-co",
+	}); err != nil {
+		t.Fatalf("create first organization: %v", err)
+	}
+
+	if _, err := service.CreateOrganization(context.Background(), founderPrincipal, CreateOrganizationParams{
+		Name: "Second Co",
+		Slug: "second-co",
+	}); err == nil {
+		t.Fatal("expected creating a second organization to fail for a user already in one")
+	}
+
+	// The rejected second organization must not have been left behind
+	// (the whole transaction, including the org record itself, rolls back).
+	orgs, _, err := service.ListOrganizations(context.Background(), adminPrincipal, sdb.ListParams{Sort: "name", Order: "asc", Limit: 50})
+	if err != nil {
+		t.Fatalf("list organizations: %v", err)
+	}
+	for _, o := range orgs {
+		if o.Slug == "second-co" {
+			t.Fatalf("expected the rejected second organization to not exist, found %+v", o)
+		}
+	}
+}

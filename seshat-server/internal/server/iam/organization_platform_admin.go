@@ -122,11 +122,12 @@ func (s *Service) SetOrganizationActive(ctx context.Context, principal *Principa
 type SharedDomain string
 
 const (
-	SharedDomainProviderSettings  SharedDomain = "provider_settings"
-	SharedDomainEmbedderSettings  SharedDomain = "embedder_settings"
-	SharedDomainWebSearchSettings SharedDomain = "web_search_settings"
-	SharedDomainMCPServers        SharedDomain = "mcp_servers"
-	SharedDomainSkillRepos        SharedDomain = "skill_repos"
+	SharedDomainProviderSettings        SharedDomain = "provider_settings"
+	SharedDomainEmbedderSettings        SharedDomain = "embedder_settings"
+	SharedDomainWebSearchSettings       SharedDomain = "web_search_settings"
+	SharedDomainMCPServers              SharedDomain = "mcp_servers"
+	SharedDomainSkillRepos              SharedDomain = "skill_repos"
+	SharedDomainOrganizationPreferences SharedDomain = "organization_preferences"
 )
 
 // DefaultOrganizationIDForDomain returns the id of the organization
@@ -157,6 +158,8 @@ func (s *Service) DefaultOrganizationIDForDomain(tx *gorm.DB, domain SharedDomai
 		shared = org.ShareMCPServers
 	case SharedDomainSkillRepos:
 		shared = org.ShareSkillRepos
+	case SharedDomainOrganizationPreferences:
+		shared = org.ShareOrganizationPreferences
 	}
 	if !shared {
 		return "", false, nil
@@ -171,7 +174,7 @@ func (s *Service) DefaultOrganizationIDForDomain(tx *gorm.DB, domain SharedDomai
 // of another organization's credentials, not something an org's own admin
 // should decide unilaterally. A nil pointer leaves that domain's flag
 // unchanged.
-func (s *Service) SetOrganizationSharedDomains(ctx context.Context, principal *Principal, organizationID string, shareProviderSettings, shareEmbedderSettings, shareWebSearchSettings, shareMCPServers, shareSkillRepos *bool) (*Organization, error) {
+func (s *Service) SetOrganizationSharedDomains(ctx context.Context, principal *Principal, organizationID string, shareProviderSettings, shareEmbedderSettings, shareWebSearchSettings, shareMCPServers, shareSkillRepos, shareOrganizationPreferences *bool) (*Organization, error) {
 	if err := requireAdmin(principal); err != nil {
 		return nil, err
 	}
@@ -206,17 +209,21 @@ func (s *Service) SetOrganizationSharedDomains(ctx context.Context, principal *P
 		if shareSkillRepos != nil {
 			record.ShareSkillRepos = *shareSkillRepos
 		}
+		if shareOrganizationPreferences != nil {
+			record.ShareOrganizationPreferences = *shareOrganizationPreferences
+		}
 		record.UpdatedAt = time.Now().UTC()
 		if err := tx.Save(&record).Error; err != nil {
 			return err
 		}
 
 		if err := appendAuditEvent(tx, principal, record.ID, "organization.shared_domains_updated", "organization", record.ID, map[string]string{
-			"share_provider_settings":   boolString(record.ShareProviderSettings),
-			"share_embedder_settings":   boolString(record.ShareEmbedderSettings),
-			"share_web_search_settings": boolString(record.ShareWebSearchSettings),
-			"share_mcp_servers":         boolString(record.ShareMCPServers),
-			"share_skill_repos":         boolString(record.ShareSkillRepos),
+			"share_provider_settings":        boolString(record.ShareProviderSettings),
+			"share_embedder_settings":        boolString(record.ShareEmbedderSettings),
+			"share_web_search_settings":      boolString(record.ShareWebSearchSettings),
+			"share_mcp_servers":              boolString(record.ShareMCPServers),
+			"share_skill_repos":              boolString(record.ShareSkillRepos),
+			"share_organization_preferences": boolString(record.ShareOrganizationPreferences),
 		}); err != nil {
 			return err
 		}

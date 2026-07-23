@@ -181,12 +181,12 @@ func (s *Service) CreateMembership(ctx context.Context, principal *Principal, pa
 		if orgCount == 0 {
 			return ErrNotFound("organization not found")
 		}
-		var userCount int64
-		if err := tx.Model(&sdb.User{}).Where("id = ?", userID).Count(&userCount).Error; err != nil {
+		var targetUser sdb.User
+		if err := tx.First(&targetUser, "id = ?", userID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrNotFound("user not found")
+			}
 			return err
-		}
-		if userCount == 0 {
-			return ErrNotFound("user not found")
 		}
 		if err := requireOrganizationPermission(tx, principal, organizationID, "members.manage", "organization.manage"); err != nil {
 			return err
@@ -201,6 +201,11 @@ func (s *Service) CreateMembership(ctx context.Context, principal *Principal, pa
 		}
 		if exists {
 			return ErrConflict("membership already exists")
+		}
+		if hasAny, err := userHasAnyMembership(tx, userID); err != nil {
+			return err
+		} else if hasAny {
+			return ErrConflict("user already belongs to an organization")
 		}
 
 		now := time.Now().UTC()
@@ -217,7 +222,7 @@ func (s *Service) CreateMembership(ctx context.Context, principal *Principal, pa
 		}
 		if err := tx.Create(&record).Error; err != nil {
 			if isUniqueConstraintError(err) {
-				return ErrConflict("membership already exists")
+				return ErrConflict("user already belongs to an organization")
 			}
 			return err
 		}
