@@ -287,7 +287,14 @@ export function ProvidersView() {
                         <label><Shield size={12} /> Authentication</label>
                         <div className="pv-auth-method">
                           {setting.auth_kind === 'oauth'
-                            ? setting.provider === 'codex' ? 'ChatGPT Pro OAuth' : 'OpenAI OAuth'
+                            ? setting.provider === 'codex'
+                              ? 'ChatGPT Pro OAuth'
+                              // Only reachable for a connection created before this
+                              // combination was removed from Add Provider — it never
+                              // worked (routes through the plain API, which an OAuth
+                              // token can't bill against). Named to make that obvious
+                              // instead of looking like a normal, working option.
+                              : 'OpenAI + OAuth (unsupported — delete and reconnect via Codex)'
                             : setting.provider === 'ollama'
                               ? 'Local runtime'
                               : 'API key'}
