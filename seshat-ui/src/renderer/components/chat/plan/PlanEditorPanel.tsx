@@ -501,7 +501,6 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
   const isDocumentBacked = !!planId
   const plan = useSessionStore((s) => (planId ? s.getPlan(sessionId, planId) : undefined))
   const upsertPlan = useSessionStore((s) => s.upsertPlan)
-  const openRightPanel = useUIStore((s) => s.openRightPanel)
   const closeRightPanel = useUIStore((s) => s.closeRightPanel)
 
   const [editMode, setEditMode] = useState(false)
@@ -659,11 +658,10 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
       if (isDocumentBacked) upsertPlan(sessionId, { ...plan!, status: 'validated' })
 
       useSessionStore.getState().updateAgentState(sessionId, { pendingPermission: null })
-      // The stack no longer replaces a different kind on open (it dedups by
-      // identity) — close this plan panel explicitly before Agent Monitor
-      // reclaims a stack slot, or it'd sit alongside it unclosed.
+      // Agent Monitor is opt-in only - approving just closes this panel and
+      // lets the agent resume; it doesn't open Agent Monitor on the user's
+      // behalf (see Conversation.tsx's toggleMonitor for the explicit path).
       closeRightPanel(buildRightPanelId({ kind: 'plan', sessionId, planId }))
-      openRightPanel({ kind: 'agent', title: 'Agent Monitor', sessionId })
     } catch (err) {
       setActionError(`Couldn't approve the plan: ${errorMessage(err)}. Nothing was sent — try again.`)
     } finally {
@@ -693,7 +691,6 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
       setAnnotations([])
       setEditMode(false)
       closeRightPanel(buildRightPanelId({ kind: 'plan', sessionId, planId }))
-      openRightPanel({ kind: 'agent', title: 'Agent Monitor', sessionId })
     } catch (err) {
       setActionError(`Couldn't send your feedback: ${errorMessage(err)}. The agent was not notified — try again.`)
     } finally {

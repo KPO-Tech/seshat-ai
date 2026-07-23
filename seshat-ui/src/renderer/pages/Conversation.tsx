@@ -198,13 +198,9 @@ export function Conversation() {
     setAttachments(current => current.filter(file => file.id !== fileId))
   }, [])
 
-  // Auto-open Agent Monitor panel when entering a conversation. openRightPanel
-  // dedups by identity (kind+sessionId) internally, so no manual guard is
-  // needed here — re-running this effect for the same session is a no-op.
-  useEffect(() => {
-    if (!id) return
-    openRightPanel({ kind: 'agent', title: 'Agent Monitor', sessionId: id })
-  }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Agent Monitor is opt-in only: the user opens it explicitly via
+  // toggleMonitor (the sidebar button), it never opens itself just because
+  // a conversation was entered or a plan was resolved.
 
   // Auto-open the plan review panel when the agent calls exit_plan_mode
   // without a structured PlanDocument (no submit_plan): PlanEditorPanel
