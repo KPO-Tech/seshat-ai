@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 
+	backendplans "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/plans"
 	backendquery "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/query"
 	"github.com/KPO-Tech/seshat/pkg/types"
 )
@@ -27,6 +28,10 @@ func (app *App) handlePermissionDecision(w http.ResponseWriter, r *http.Request)
 		Approved  bool   `json:"approved"`
 		SessionID string `json:"session_id"`
 		Reason    string `json:"reason"`
+		// PlanID, when set, is a plan-review decision (approving/denying
+		// exit_plan_mode) rather than a generic tool permission - see the
+		// status-sync comment below.
+		PlanID string `json:"plan_id"`
 	}
 	if !decodeJSONBody(w, r, &body) {
 		return
@@ -42,6 +47,25 @@ func (app *App) handlePermissionDecision(w http.ResponseWriter, r *http.Request)
 	}
 	switch app.permBroker.Resolve(toolUseID, principal.User.ID, sessionID, body.Approved, strings.TrimSpace(body.Reason)) {
 	case backendquery.BrokerResolveResolved:
+		// Sync the persisted plan_documents.status in the same request that
+		// actually unblocks the agent, instead of the caller making two
+		// separate calls (permission decision + PATCH /plans/:id) that can
+		// diverge if the second one fails - the client used to close the
+		// panel and move on believing both succeeded even when the status
+		// write never landed. This runs after Resolve has already
+		// succeeded, so a failure here can never leave the agent hung
+		// waiting on a decision that was in fact made; it only means the
+		// document's own status column is out of date, which is why it's
+		// logged rather than turned into an error response.
+		if planID := strings.TrimSpace(body.PlanID); planID != "" && app.backend != nil && app.backend.Plans != nil {
+			status := "rejected"
+			if body.Approved {
+				status = "validated"
+			}
+			if _, err := app.backend.Plans.Patch(r.Context(), principal, planID, backendplans.PatchParams{Status: &status}); err != nil {
+				logError(r, "sync plan %s status to %s after permission decision: %v", planID, status, err)
+			}
+		}
 		w.WriteHeader(http.StatusNoContent)
 	case backendquery.BrokerResolveForbidden:
 		writeJSONError(w, http.StatusForbidden, "pending permission belongs to another user or session")

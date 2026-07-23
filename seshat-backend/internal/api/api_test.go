@@ -12,6 +12,7 @@ import (
 	seshat "github.com/EngineerProjects/seshat-ai/seshat-backend/internal"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	backendknowledge "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge"
+	backendplans "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/plans"
 	backendquery "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/query"
 	bksettings "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/settings"
 	backendskills "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/skills"
@@ -3794,6 +3795,7 @@ func TestHandleQueryStream_RuntimeEvents(t *testing.T) {
 type securityTestFixture struct {
 	app         *App
 	router      http.Handler
+	database    *db.DB
 	mcpStore    *db.MCPServerStore
 	adminID     string
 	adminToken  string
@@ -3864,6 +3866,7 @@ func newSecurityTestFixture(t *testing.T) *securityTestFixture {
 	return &securityTestFixture{
 		app:         app,
 		router:      router,
+		database:    database,
 		mcpStore:    mcpStore,
 		adminID:     bootstrap.AdminUser.ID,
 		adminToken:  loginForToken(t, router, "admin@example.com", "secret-password"),
@@ -3910,6 +3913,97 @@ func TestPermissionDecisionRejectsDifferentUserOrSession(t *testing.T) {
 	default:
 		t.Fatal("expected permission broker resolution")
 	}
+}
+
+// TestPermissionDecisionSyncsPlanStatus covers the plan_id field added to
+// POST /permissions/:id: resolving an exit_plan_mode permission with a
+// plan_id must also flip the plan document's persisted status, in the same
+// request - previously the frontend made a second, independent PATCH
+// /plans/:id call for this, which could diverge from the permission
+// decision if it failed (see permissions.go's handler comment).
+func TestPermissionDecisionSyncsPlanStatus(t *testing.T) {
+	fx := newSecurityTestFixture(t)
+	planStore, err := db.NewPlanDocumentStore(fx.database)
+	if err != nil {
+		t.Fatalf("NewPlanDocumentStore failed: %v", err)
+	}
+	fx.app.backend.Plans = backendplans.NewService(planStore)
+
+	mustCreatePlan := func(id string) {
+		t.Helper()
+		if _, err := planStore.Create(context.Background(), db.CreatePlanParams{
+			ID:        id,
+			SessionID: "session-a",
+			UserID:    fx.adminID,
+			Slug:      "test-plan",
+			Filename:  "test-plan.md",
+			Content:   "1. Do the thing",
+		}); err != nil {
+			t.Fatalf("create plan %s: %v", id, err)
+		}
+	}
+
+	postDecision := func(toolUseID, sessionID, body string) *httptest.ResponseRecorder {
+		t.Helper()
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/permissions/"+toolUseID, bytes.NewReader([]byte(body)))
+		req.Header.Set("Authorization", "Bearer "+fx.adminToken)
+		req.Header.Set("Content-Type", "application/json")
+		resp := httptest.NewRecorder()
+		fx.router.ServeHTTP(resp, req)
+		return resp
+	}
+
+	t.Run("approve validates the plan", func(t *testing.T) {
+		mustCreatePlan("plan-approve")
+		fx.app.permBroker.Await("tool-approve", fx.adminID, "session-a")
+
+		resp := postDecision("tool-approve", "session-a", `{"approved":true,"session_id":"session-a","plan_id":"plan-approve"}`)
+		if resp.Code != http.StatusNoContent {
+			t.Fatalf("expected 204, got %d: %s", resp.Code, resp.Body.String())
+		}
+
+		doc, err := planStore.Get(context.Background(), "plan-approve")
+		if err != nil || doc == nil {
+			t.Fatalf("Get plan-approve: %v", err)
+		}
+		if doc.Status != "validated" {
+			t.Fatalf("expected plan status validated, got %q", doc.Status)
+		}
+	})
+
+	t.Run("deny rejects the plan", func(t *testing.T) {
+		mustCreatePlan("plan-deny")
+		fx.app.permBroker.Await("tool-deny", fx.adminID, "session-a")
+
+		resp := postDecision("tool-deny", "session-a", `{"approved":false,"session_id":"session-a","plan_id":"plan-deny","reason":"please revise step 1"}`)
+		if resp.Code != http.StatusNoContent {
+			t.Fatalf("expected 204, got %d: %s", resp.Code, resp.Body.String())
+		}
+
+		doc, err := planStore.Get(context.Background(), "plan-deny")
+		if err != nil || doc == nil {
+			t.Fatalf("Get plan-deny: %v", err)
+		}
+		if doc.Status != "rejected" {
+			t.Fatalf("expected plan status rejected, got %q", doc.Status)
+		}
+	})
+
+	t.Run("missing plan_id leaves generic permission decisions unaffected", func(t *testing.T) {
+		ch := fx.app.permBroker.Await("tool-no-plan", fx.adminID, "session-a")
+		resp := postDecision("tool-no-plan", "session-a", `{"approved":true,"session_id":"session-a"}`)
+		if resp.Code != http.StatusNoContent {
+			t.Fatalf("expected 204, got %d: %s", resp.Code, resp.Body.String())
+		}
+		select {
+		case decision := <-ch:
+			if !decision.Approved {
+				t.Fatal("expected approval to resolve true")
+			}
+		default:
+			t.Fatal("expected permission broker resolution")
+		}
+	})
 }
 
 func TestPermissionDecisionCarriesDenyReason(t *testing.T) {

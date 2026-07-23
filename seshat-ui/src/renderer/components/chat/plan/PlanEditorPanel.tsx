@@ -403,6 +403,18 @@ const CSS = `
   flex: 1;
 }
 
+.pep-error-banner {
+  margin: 0 11px 8px;
+  padding: 7px 9px;
+  border-radius: 6px;
+  background: rgba(var(--color-error-rgb), 0.08);
+  border: 1px solid rgba(var(--color-error-rgb), 0.3);
+  color: var(--color-error);
+  font-size: 10.5px;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
 .pep-actions {
   display: flex;
   gap: 5px;
@@ -469,6 +481,10 @@ type Annotation = {
   comment: string
 }
 
+function errorMessage(err: unknown): string {
+  return (err as { message?: string })?.message ?? 'unknown error'
+}
+
 type Props = {
   // planId is set when the agent submitted a structured plan document via
   // submit_plan; content is fetched/persisted through /plans/:id. When
@@ -492,6 +508,7 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
   const [editedContent, setEditedContent] = useState('')
   const [comment, setComment] = useState('')
   const [sending, setSending] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   const [annotations, setAnnotations] = useState<Annotation[]>([])
   const [pendingQuote, setPendingQuote] = useState<string | null>(null)
@@ -510,7 +527,11 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
       const full = await api.get<PlanDocument>(`/plans/${planId}`)
       upsertPlan(sessionId, full)
       setEditedContent(full.content)
-    } catch { /* silent */ }
+    } catch (err) {
+      // Otherwise this silently leaves the panel stuck on "No plan content
+      // yet." forever with no indication anything went wrong.
+      setActionError(`Couldn't load the plan content: ${errorMessage(err)}. Reopen the panel to retry.`)
+    }
   }, [plan, planId, sessionId, upsertPlan])
 
   useEffect(() => { void loadFull() }, [loadFull])
@@ -613,20 +634,29 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
   async function handleProceed() {
     if (sending || !pendingPermission) return
     setSending(true)
+    setActionError(null)
     try {
       if (isDocumentBacked && editMode && editedContent !== plan!.content) {
-        const updated = await api.patch<PlanDocument>(`/plans/${planId}`, { content: editedContent })
-        upsertPlan(sessionId, updated)
-      }
-      if (isDocumentBacked) {
-        await api.patch<PlanDocument>(`/plans/${planId}`, { status: 'validated' })
-        upsertPlan(sessionId, { ...plan!, status: 'validated' })
+        try {
+          const updated = await api.patch<PlanDocument>(`/plans/${planId}`, { content: editedContent })
+          upsertPlan(sessionId, updated)
+        } catch (err) {
+          // Don't approve on the model's behalf with edits it never saw -
+          // stop here rather than silently proceeding without them.
+          setActionError(`Couldn't save your edits: ${errorMessage(err)}. Not approved yet — try again.`)
+          return
+        }
       }
 
+      // The plan_id tells the backend to sync plan_documents.status in the
+      // same request as the actual approval, instead of a second PATCH the
+      // client used to send afterwards - see permissions.go's handler.
       await api.post(`/permissions/${pendingPermission.toolUseId}`, {
         approved: true,
         session_id: sessionId,
+        plan_id: planId,
       })
+      if (isDocumentBacked) upsertPlan(sessionId, { ...plan!, status: 'validated' })
 
       useSessionStore.getState().updateAgentState(sessionId, { pendingPermission: null })
       // The stack no longer replaces a different kind on open (it dedups by
@@ -634,7 +664,9 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
       // reclaims a stack slot, or it'd sit alongside it unclosed.
       closeRightPanel(buildRightPanelId({ kind: 'plan', sessionId, planId }))
       openRightPanel({ kind: 'agent', title: 'Agent Monitor', sessionId })
-    } catch { /* silent */ } finally {
+    } catch (err) {
+      setActionError(`Couldn't approve the plan: ${errorMessage(err)}. Nothing was sent — try again.`)
+    } finally {
       setSending(false)
     }
   }
@@ -646,23 +678,25 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
   async function handleDeny() {
     if (sending || !pendingPermission) return
     setSending(true)
+    setActionError(null)
     try {
+      // Same plan_id-carrying request as handleProceed - see its comment.
       await api.post(`/permissions/${pendingPermission.toolUseId}`, {
         approved: false,
         session_id: sessionId,
         reason: hasFeedback ? buildFeedback() : '',
+        plan_id: planId,
       })
-      if (isDocumentBacked) {
-        await api.patch<PlanDocument>(`/plans/${planId}`, { status: 'rejected' })
-        upsertPlan(sessionId, { ...plan!, status: 'rejected' })
-      }
+      if (isDocumentBacked) upsertPlan(sessionId, { ...plan!, status: 'rejected' })
       useSessionStore.getState().updateAgentState(sessionId, { pendingPermission: null })
       setComment('')
       setAnnotations([])
       setEditMode(false)
       closeRightPanel(buildRightPanelId({ kind: 'plan', sessionId, planId }))
       openRightPanel({ kind: 'agent', title: 'Agent Monitor', sessionId })
-    } catch { /* silent */ } finally {
+    } catch (err) {
+      setActionError(`Couldn't send your feedback: ${errorMessage(err)}. The agent was not notified — try again.`)
+    } finally {
       setSending(false)
     }
   }
@@ -759,6 +793,8 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
           />
         </div>
       )}
+
+      {actionError && <div className="pep-error-banner">{actionError}</div>}
 
       {!isReadonly && pendingPermission && (
         <div className="pep-footer">
