@@ -2,13 +2,11 @@ package api
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/knowledge"
 )
 
@@ -66,42 +64,5 @@ func TestEmbedderSettingCRUDOverHTTPNeverExposesTheAPIKey(t *testing.T) {
 	handler.ServeHTTP(getAfterDeleteRecorder, getAfterDeleteRequest)
 	if getAfterDeleteRecorder.Code != http.StatusNotFound {
 		t.Fatalf("expected the deleted setting to 404, got %d", getAfterDeleteRecorder.Code)
-	}
-}
-
-func TestPlatformEmbedderSettingRequiresPlatformAdminOverHTTP(t *testing.T) {
-	handler, backend, token, orgID, principal := newTestServerRouter(t)
-
-	setBody, _ := json.Marshal(map[string]any{
-		"provider": "openai", "model": "text-embedding-3-small", "base_url": "https://api.openai.com/v1",
-	})
-	setRequest := httptest.NewRequest(http.MethodPut, "/api/v1/platform/embedder-settings", bytes.NewReader(setBody))
-	setRequest.Header.Set("Authorization", "Bearer "+token)
-	setRecorder := httptest.NewRecorder()
-	handler.ServeHTTP(setRecorder, setRequest)
-	if setRecorder.Code != http.StatusOK {
-		t.Fatalf("expected the platform admin to set the platform embedder, got %d: %s", setRecorder.Code, setRecorder.Body.String())
-	}
-
-	member, err := backend.IAM.CreateUser(context.Background(), principal, iam.CreateUserParams{
-		Email:          "member@example.com",
-		Password:       "password123",
-		DisplayName:    "Member",
-		OrganizationID: orgID,
-		Role:           "member",
-	})
-	if err != nil {
-		t.Fatalf("create member: %v", err)
-	}
-	memberLogin, err := backend.IAM.Login(context.Background(), member.Email, "password123")
-	if err != nil {
-		t.Fatalf("login member: %v", err)
-	}
-	getRequest := httptest.NewRequest(http.MethodGet, "/api/v1/platform/embedder-settings", nil)
-	getRequest.Header.Set("Authorization", "Bearer "+memberLogin.Token)
-	getRecorder := httptest.NewRecorder()
-	handler.ServeHTTP(getRecorder, getRequest)
-	if getRecorder.Code != http.StatusForbidden {
-		t.Fatalf("expected a non-admin member to be denied reading the platform embedder setting, got %d", getRecorder.Code)
 	}
 }

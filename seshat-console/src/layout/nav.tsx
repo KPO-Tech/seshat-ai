@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 import {
-  ApiOutlined,
   ApartmentOutlined,
   AppstoreOutlined,
   DashboardOutlined,
@@ -10,7 +9,6 @@ import {
   ScheduleOutlined,
   SettingOutlined,
   TeamOutlined,
-  UserOutlined,
 } from '@ant-design/icons'
 
 export interface NavItem {
@@ -46,20 +44,6 @@ export const platformNavItems: NavItem[] = [
     path: '/platform/organizations',
     matchPrefix: '/platform/organizations',
     icon: <ApartmentOutlined />,
-  },
-  {
-    key: 'platform-users',
-    label: 'Users',
-    path: '/platform/users',
-    matchPrefix: '/platform/users',
-    icon: <UserOutlined />,
-  },
-  {
-    key: 'platform-ai-defaults',
-    label: 'AI Defaults',
-    path: '/platform/ai-defaults/providers',
-    matchPrefix: '/platform/ai-defaults/',
-    icon: <ApiOutlined />,
   },
   {
     key: 'platform-security',
@@ -125,23 +109,6 @@ export function getOrganizationNavItems(organizationId: string): NavItem[] {
 }
 
 export function getSecondaryNavItems(pathname: string, organizationId: string | null): SecondaryNavItem[] {
-  if (pathname.startsWith('/platform/ai-defaults/')) {
-    return [
-      {
-        key: 'platform-ai-defaults-providers',
-        label: 'Providers',
-        path: '/platform/ai-defaults/providers',
-        matchPrefix: '/platform/ai-defaults/providers',
-      },
-      {
-        key: 'platform-ai-defaults-embedder',
-        label: 'Embedder',
-        path: '/platform/ai-defaults/embedder',
-        matchPrefix: '/platform/ai-defaults/embedder',
-      },
-    ]
-  }
-
   if (pathname.startsWith('/platform/security/')) {
     return [
       {
@@ -170,16 +137,16 @@ export function getSecondaryNavItems(pathname: string, organizationId: string | 
         matchPrefix: `/orgs/${organizationId}/team/memberships`,
       },
       {
+        key: 'org-team-teams',
+        label: 'Teams',
+        path: `/orgs/${organizationId}/team/teams`,
+        matchPrefix: `/orgs/${organizationId}/team/teams`,
+      },
+      {
         key: 'org-team-invitations',
         label: 'Invitations',
         path: `/orgs/${organizationId}/team/invitations`,
         matchPrefix: `/orgs/${organizationId}/team/invitations`,
-      },
-      {
-        key: 'org-team-groups',
-        label: 'Groups',
-        path: `/orgs/${organizationId}/team/groups`,
-        matchPrefix: `/orgs/${organizationId}/team/groups`,
       },
       {
         key: 'org-team-roles',

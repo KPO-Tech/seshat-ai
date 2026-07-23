@@ -67,4 +67,34 @@ export function useDeleteOrganization() {
   })
 }
 
+// Superadmin-only actions, deliberately separate from useUpdateOrganization
+// (which any org admin can call to edit their own org's profile fields) -
+// these two flags are platform-wide administrative concerns, not part of
+// that self-service form.
+export function useSetOrganizationDefault() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, isDefault }: { id: string; isDefault: boolean }) => {
+      const path = isDefault ? '/api/v1/organizations/{organizationID}/set-default' : '/api/v1/organizations/{organizationID}/unset-default'
+      const { data, error } = await api.POST(path, { params: { path: { organizationID: id } } })
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [LIST_KEY] }),
+  })
+}
+
+export function useSetOrganizationActive() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
+      const path = isActive ? '/api/v1/organizations/{organizationID}/activate' : '/api/v1/organizations/{organizationID}/deactivate'
+      const { data, error } = await api.POST(path, { params: { path: { organizationID: id } } })
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [LIST_KEY] }),
+  })
+}
+
 export type { Organization, OrganizationInput }

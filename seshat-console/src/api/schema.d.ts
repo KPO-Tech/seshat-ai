@@ -160,6 +160,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organizationID}/set-default": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Flag this organization as the platform default (platform admin only)
+         * @description Its own ProviderSetting/EmbedderSetting rows become the fallback used by every other organization with no config of its own. Clears the flag from whichever organization currently holds it.
+         */
+        post: operations["setOrganizationDefault"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationID}/unset-default": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Clear the platform-default flag from this organization (platform admin only) */
+        post: operations["unsetOrganizationDefault"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationID}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark this organization active (platform admin only)
+         * @description Administrative/visual only for now - not enforced on any request path.
+         */
+        post: operations["activateOrganization"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{organizationID}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark this organization inactive (platform admin only)
+         * @description Administrative/visual only for now - not enforced on any request path.
+         */
+        post: operations["deactivateOrganization"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users": {
         parameters: {
             query?: never;
@@ -1060,60 +1137,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/platform/provider-settings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List the platform-wide default LLM credentials
-         * @description Superadmin-only (platform admin, User.is_admin). Unlike every org-scoped list endpoint, a non-admin caller gets 403, not an empty list — there is no organization to scope visibility to. The API key is never included, in this or any other response.
-         */
-        get: operations["listPlatformProviderSettings"];
-        put?: never;
-        /**
-         * Store the platform-wide default credentials for one LLM provider
-         * @description Superadmin-only. One row per provider, globally (not scoped to any organization) — creating a second setting for the same provider is rejected; use update instead. A cloud-targeted job falls back to this when its own organization has no provider-settings configured for the requested provider (the hybrid BYOK/managed model — an org can bring its own key, or use Seshat's default without configuring anything). The api_key is AES-256-GCM encrypted at rest and never echoed back, not even in this response.
-         */
-        post: operations["createPlatformProviderSetting"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/provider-settings/{platformProviderSettingID}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                platformProviderSettingID: string;
-            };
-            cookie?: never;
-        };
-        /**
-         * Get a platform provider setting
-         * @description Superadmin-only.
-         */
-        get: operations["getPlatformProviderSetting"];
-        /**
-         * Update a platform provider setting
-         * @description Superadmin-only. An empty/omitted api_key leaves the stored credential unchanged. Unlike creation, `provider` is not part of this body — an existing setting's provider is fixed.
-         */
-        put: operations["updatePlatformProviderSetting"];
-        post?: never;
-        /**
-         * Delete a platform provider setting
-         * @description Superadmin-only. Any cloud job that was relying on this as its fallback (no org-level provider-settings of its own) starts failing at execution time with a clear reason; existing jobs are not touched or deleted.
-         */
-        delete: operations["deletePlatformProviderSetting"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/web-search-provider-settings": {
         parameters: {
             query?: never;
@@ -1533,34 +1556,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/platform/embedder-settings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get the platform-wide default embedder configuration
-         * @description Superadmin-only. A singleton — at most one platform default embedder exists. 404 if none is configured.
-         */
-        get: operations["getPlatformEmbedderSetting"];
-        /**
-         * Create or update the platform-wide default embedder configuration
-         * @description Superadmin-only. Upsert, same semantics as the organization-scoped embedder setting.
-         */
-        put: operations["setPlatformEmbedderSetting"];
-        post?: never;
-        /**
-         * Delete the platform-wide default embedder configuration
-         * @description Superadmin-only. Any organization relying on this as its fallback (no embedder of its own) starts failing ingest/search calls with a clear reason.
-         */
-        delete: operations["deletePlatformEmbedderSetting"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/devices": {
         parameters: {
             query?: never;
@@ -1961,6 +1956,10 @@ export interface components {
             website_url?: string;
             /** Format: email */
             support_email?: string;
+            /** @description Whether this organization's own ProviderSetting/EmbedderSetting rows are used as the platform-wide fallback for organizations with no config of their own. At most one organization holds this at a time. */
+            is_default?: boolean;
+            /** @description Administrative/visual flag only - not enforced on any request path yet. */
+            is_active?: boolean;
             /** Format: date-time */
             created_at?: string;
             /** Format: date-time */
@@ -1985,6 +1984,8 @@ export interface components {
             /** @description Denormalized for display - resolving a teammate's identity from a membership shouldn't require a separate admin-only user lookup. */
             user_email?: string;
             user_display_name?: string;
+            /** @description Whether this member also holds platform-admin privileges (User.is_admin), denormalized for display. */
+            user_is_admin?: boolean;
         };
         Session: {
             id?: string;
@@ -2563,7 +2564,7 @@ export interface components {
             default_model?: string;
             base_url?: string;
         };
-        /** @description Unlike ProviderSetting/PlatformProviderSetting, this includes the decrypted api_key — see the resolveProviderSetting operation. */
+        /** @description Unlike ProviderSetting, this includes the decrypted api_key — see the resolveProviderSetting operation. */
         ResolvedProviderSetting: {
             /** @example mistral */
             provider?: string;
@@ -2571,7 +2572,10 @@ export interface components {
             default_model?: string;
             base_url?: string;
             api_key?: string;
-            /** @enum {string} */
+            /**
+             * @description "organization" if the requesting org had its own setting; "platform" if it fell back to the organization currently flagged as the platform default.
+             * @enum {string}
+             */
             source?: "organization" | "platform";
         };
         ProviderSettingInput: {
@@ -2585,32 +2589,6 @@ export interface components {
             api_key?: string;
         };
         ProviderSettingUpdateInput: {
-            /** @example claude-sonnet-5 */
-            default_model?: string;
-            base_url?: string;
-            /** @description Omit/empty to keep the existing stored key unchanged. */
-            api_key?: string;
-        };
-        /** @description The platform-wide default credential for one LLM provider — not scoped to any organization. Never includes the API key. */
-        PlatformProviderSetting: {
-            id?: string;
-            created_by_user_id?: string;
-            /** @example anthropic */
-            provider?: string;
-            /** @example claude-sonnet-5 */
-            default_model?: string;
-            base_url?: string;
-        };
-        PlatformProviderSettingInput: {
-            /** @example anthropic */
-            provider: string;
-            /** @example claude-sonnet-5 */
-            default_model?: string;
-            base_url?: string;
-            /** @description Required on create. */
-            api_key?: string;
-        };
-        PlatformProviderSettingUpdateInput: {
             /** @example claude-sonnet-5 */
             default_model?: string;
             base_url?: string;
@@ -2847,7 +2825,6 @@ export interface components {
             base_url?: string;
         };
         EmbedderSettingInput: {
-            /** @description Required for the organization-scoped endpoint; ignored for the platform one. */
             organization_id?: string;
             /** @enum {string} */
             provider: "openai" | "ollama";
@@ -2856,15 +2833,6 @@ export interface components {
             base_url: string;
             /** @description Optional (e.g. a local Ollama needs none). Empty on update keeps the existing key unchanged. */
             api_key?: string;
-        };
-        /** @description The platform-wide default embedder — not scoped to any organization. Never includes the API key. */
-        PlatformEmbedderSetting: {
-            id?: string;
-            /** @enum {string} */
-            provider?: "openai" | "ollama";
-            /** @example text-embedding-3-small */
-            model?: string;
-            base_url?: string;
         };
         /** @description The device's bearer token is never part of this view — see RegisterDeviceResult for the one-time reveal. */
         Device: {
@@ -3365,6 +3333,102 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    setOrganizationDefault: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationID: components["parameters"]["organizationIDPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Updated organization */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Organization"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    unsetOrganizationDefault: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationID: components["parameters"]["organizationIDPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Updated organization */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Organization"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    activateOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationID: components["parameters"]["organizationIDPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Updated organization */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Organization"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deactivateOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationID: components["parameters"]["organizationIDPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Updated organization */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Organization"];
+                };
             };
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -5359,133 +5423,6 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
-    listPlatformProviderSettings: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Platform provider setting list */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        platform_provider_settings?: components["schemas"]["PlatformProviderSetting"][];
-                        count?: number;
-                    };
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-        };
-    };
-    createPlatformProviderSetting: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PlatformProviderSettingInput"];
-            };
-        };
-        responses: {
-            /** @description Platform provider setting created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PlatformProviderSetting"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            403: components["responses"]["Forbidden"];
-            409: components["responses"]["Conflict"];
-        };
-    };
-    getPlatformProviderSetting: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                platformProviderSettingID: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Platform provider setting */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PlatformProviderSetting"];
-                };
-            };
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-        };
-    };
-    updatePlatformProviderSetting: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                platformProviderSettingID: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PlatformProviderSettingUpdateInput"];
-            };
-        };
-        responses: {
-            /** @description Updated platform provider setting */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PlatformProviderSetting"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-        };
-    };
-    deletePlatformProviderSetting: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                platformProviderSettingID: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Deleted */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-        };
-    };
     listWebSearchProviderSettings: {
         parameters: {
             query?: {
@@ -6274,74 +6211,6 @@ export interface operations {
                 content?: never;
             };
             400: components["responses"]["BadRequest"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-        };
-    };
-    getPlatformEmbedderSetting: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Platform embedder setting */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PlatformEmbedderSetting"];
-                };
-            };
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-        };
-    };
-    setPlatformEmbedderSetting: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["EmbedderSettingInput"];
-            };
-        };
-        responses: {
-            /** @description Platform embedder setting created or updated */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PlatformEmbedderSetting"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            403: components["responses"]["Forbidden"];
-        };
-    };
-    deletePlatformEmbedderSetting: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Deleted */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
         };

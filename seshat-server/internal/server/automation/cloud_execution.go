@@ -175,9 +175,10 @@ func (s *Service) markCloudRunFailed(ctx context.Context, runID, reason string) 
 
 // resolveProviderCredentials implements the hybrid BYOK/managed model: an
 // organization's own ProviderSetting always wins when it has one; otherwise
-// this falls back to the platform-wide PlatformProviderSetting default (the
+// this falls back to the ProviderSetting of whichever organization is
+// currently flagged IsDefault (see iam.Service.DefaultOrganizationID) - the
 // credentials a paying-subscription org would run on without ever
-// configuring its own key). Returns ok=false if neither exists.
+// configuring its own key. Returns ok=false if neither exists.
 func (s *Service) resolveProviderCredentials(ctx context.Context, organizationID, provider string) (encryptedAPIKey, baseURL string, ok bool, err error) {
 	orgSetting, found, err := s.findProviderSetting(ctx, organizationID, provider)
 	if err != nil {
@@ -186,12 +187,21 @@ func (s *Service) resolveProviderCredentials(ctx context.Context, organizationID
 	if found {
 		return orgSetting.EncryptedAPIKey, orgSetting.BaseURL, true, nil
 	}
-	platformSetting, found, err := s.findPlatformProviderSetting(ctx, provider)
+
+	tx := s.db.Gorm().WithContext(ctx)
+	defaultOrgID, found, err := s.iam.DefaultOrganizationID(tx)
+	if err != nil {
+		return "", "", false, err
+	}
+	if !found || defaultOrgID == organizationID {
+		return "", "", false, nil
+	}
+	defaultSetting, found, err := s.findProviderSetting(ctx, defaultOrgID, provider)
 	if err != nil {
 		return "", "", false, err
 	}
 	if found {
-		return platformSetting.EncryptedAPIKey, platformSetting.BaseURL, true, nil
+		return defaultSetting.EncryptedAPIKey, defaultSetting.BaseURL, true, nil
 	}
 	return "", "", false, nil
 }

@@ -3,10 +3,11 @@ import { Avatar, Button, Card, Empty, Input, message, Popconfirm, Space, Tag, Ty
 import type { TableProps } from 'antd'
 import {
   ApartmentOutlined,
+  CrownOutlined,
   DeleteOutlined,
   EditOutlined,
-  GlobalOutlined,
-  MailOutlined,
+  PauseCircleOutlined,
+  PlayCircleOutlined,
   PlusOutlined,
   RightOutlined,
   WarningOutlined,
@@ -17,6 +18,8 @@ import {
   useCreateOrganization,
   useUpdateOrganization,
   useDeleteOrganization,
+  useSetOrganizationDefault,
+  useSetOrganizationActive,
   type Organization,
 } from '@/api/organizations'
 import { getErrorMessage } from '@/api/errors'
@@ -25,7 +28,7 @@ import { ConsoleTable } from '@/components/ConsoleTable'
 import { StatTile } from '@/components/StatTile'
 import { OrganizationFormDrawer } from '@/components/OrganizationFormDrawer'
 import { presentDateTime, presentText } from '@/lib/present'
-import { hasValue, getOrganizationChecklist } from '@/lib/organizationProfile'
+import { getOrganizationChecklist } from '@/lib/organizationProfile'
 import { palette } from '@/theme/tokens'
 
 const PAGE_SIZE = 20
@@ -50,10 +53,12 @@ export function OrganizationsPage() {
   const createOrg = useCreateOrganization()
   const updateOrg = useUpdateOrganization()
   const deleteOrg = useDeleteOrganization()
+  const setDefault = useSetOrganizationDefault()
+  const setActive = useSetOrganizationActive()
 
   const organizations = data?.organizations ?? []
-  const organizationsWithWebsite = organizations.filter((org) => hasValue(org.website_url)).length
-  const organizationsWithSupport = organizations.filter((org) => hasValue(org.support_email)).length
+  const defaultOrg = organizations.find((org) => org.is_default)
+  const inactiveCount = organizations.filter((org) => org.is_active === false).length
   const organizationsNeedingAttention = organizations.filter((org) => !getOrganizationChecklist(org).isReady).length
 
   const handleTableChange: TableProps<Organization>['onChange'] = (_pagination, _filters, sorter) => {
@@ -93,6 +98,16 @@ export function OrganizationsPage() {
                 <Tag color={profile.isReady ? 'green' : 'orange'} style={{ margin: 0 }}>
                   {profile.isReady ? 'Ready' : `${profile.completionCount}/3 complete`}
                 </Tag>
+                {record.is_default && (
+                  <Tag color="gold" icon={<CrownOutlined />} style={{ margin: 0 }}>
+                    Default
+                  </Tag>
+                )}
+                {record.is_active === false && (
+                  <Tag color="red" style={{ margin: 0 }}>
+                    Inactive
+                  </Tag>
+                )}
               </div>
             </div>
           </Space>
@@ -130,12 +145,44 @@ export function OrganizationsPage() {
     {
       title: '',
       key: 'actions',
-      width: 156,
+      width: 260,
       render: (_, record) => (
         <Space>
           <Button size="small" onClick={() => navigate(`/orgs/${record.id}/overview`)} icon={<RightOutlined />}>
             Open
           </Button>
+          {!record.is_default && (
+            <Popconfirm
+              title={`Set ${record.name} as the platform default?`}
+              description="This replaces the current default organization (if any). AI provider/embedder resolution for every org with no config of its own will use this org's settings."
+              onConfirm={(event) => {
+                event?.stopPropagation()
+                setDefault.mutate(
+                  { id: record.id!, isDefault: true },
+                  { onError: (error) => message.error(getErrorMessage(error)) },
+                )
+              }}
+            >
+              <Button
+                size="small"
+                icon={<CrownOutlined />}
+                onClick={(event) => event.stopPropagation()}
+                aria-label={`Set ${record.name} as default`}
+              />
+            </Popconfirm>
+          )}
+          <Button
+            size="small"
+            icon={record.is_active === false ? <PlayCircleOutlined /> : <PauseCircleOutlined />}
+            onClick={(event) => {
+              event.stopPropagation()
+              setActive.mutate(
+                { id: record.id!, isActive: record.is_active === false },
+                { onError: (error) => message.error(getErrorMessage(error)) },
+              )
+            }}
+            aria-label={record.is_active === false ? `Activate ${record.name}` : `Deactivate ${record.name}`}
+          />
           <Button
             size="small"
             icon={<EditOutlined />}
@@ -200,8 +247,8 @@ export function OrganizationsPage() {
         }}
       >
         <StatTile label="Organizations" value={data?.total} loading={isLoading} icon={<ApartmentOutlined />} />
-        <StatTile label="With website" value={organizationsWithWebsite} loading={isLoading} icon={<GlobalOutlined />} />
-        <StatTile label="With support" value={organizationsWithSupport} loading={isLoading} icon={<MailOutlined />} />
+        <StatTile label="Default org" value={defaultOrg?.name ?? 'None set'} loading={isLoading} icon={<CrownOutlined />} />
+        <StatTile label="Inactive" value={inactiveCount} loading={isLoading} icon={<PauseCircleOutlined />} />
         <StatTile
           label="Need details"
           value={organizationsNeedingAttention}

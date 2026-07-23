@@ -135,11 +135,23 @@ func startFakeEmbeddingServer(t *testing.T) *httptest.Server {
 
 // configurePlatformEmbedder sets the platform-wide default embedder to
 // point at a fresh fake embedding server, so Ingest/Search/ProcessNextIngestionJob
-// work end-to-end without any real embedding API.
+// work end-to-end without any real embedding API. "Platform-wide default"
+// today means: a second organization, flagged IsDefault, with its own
+// EmbedderSetting - env.orgID itself is left with none of its own so it
+// exercises the fallback path.
 func (env testEnv) configurePlatformEmbedder(t *testing.T) {
 	t.Helper()
 	server := startFakeEmbeddingServer(t)
-	if _, err := env.knowledge.SetPlatformEmbedderSetting(context.Background(), env.adminPrincipal, SetEmbedderSettingParams{
+	defaultOrg, err := env.iam.CreateOrganization(context.Background(), env.adminPrincipal, iam.CreateOrganizationParams{
+		Name: "Platform Default Org", Slug: "platform-default-org-" + env.orgID,
+	})
+	if err != nil {
+		t.Fatalf("create default org: %v", err)
+	}
+	if _, err := env.iam.SetOrganizationDefault(context.Background(), env.adminPrincipal, defaultOrg.ID, true); err != nil {
+		t.Fatalf("set organization default: %v", err)
+	}
+	if _, err := env.knowledge.SetEmbedderSetting(context.Background(), env.adminPrincipal, defaultOrg.ID, SetEmbedderSettingParams{
 		Provider: "openai",
 		Model:    "fake-embed",
 		BaseURL:  server.URL,

@@ -21,8 +21,18 @@ type Organization struct {
 	Description  string `gorm:"type:text"`
 	WebsiteURL   string `gorm:"size:500"`
 	SupportEmail string `gorm:"size:255"`
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	// IsDefault marks the single organization whose own ProviderSetting/
+	// EmbedderSetting rows are used as the platform-wide fallback when a
+	// requesting organization has none of its own. At most one organization
+	// holds this at a time (enforced in Go, see SetOrganizationDefault - see
+	// db.go's AutoMigrate doc comment for why this isn't a DB constraint).
+	IsDefault bool `gorm:"not null;default:false;index"`
+	// IsActive is administrative/visual only for now - no request path
+	// checks it. Lets a platform admin flag an organization as retired
+	// without deleting it.
+	IsActive  bool `gorm:"not null;default:true"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 // Membership binds one user to one organization with a role.
@@ -273,26 +283,6 @@ type ProviderSetting struct {
 	UpdatedAt       time.Time
 }
 
-// PlatformProviderSetting is the platform-wide default credential set for
-// one LLM provider — not scoped to any organization. Cloud-targeted runs use
-// it when the run's own organization has no ProviderSetting configured for
-// the requested provider (see automation.Service.resolveProviderCredentials):
-// an org can bring its own key (ProviderSetting), or fall back to Seshat's
-// own default, the same shape a paid-subscription org would use without
-// ever configuring its own credentials. Superadmin-only (User.IsAdmin), not
-// gated by any organization permission — there is no organization to check
-// one against.
-type PlatformProviderSetting struct {
-	ID              string `gorm:"primaryKey;size:32"`
-	CreatedByUserID string `gorm:"size:32;not null"`
-	Provider        string `gorm:"size:32;not null;uniqueIndex"`
-	DefaultModel    string `gorm:"size:128;not null"`
-	BaseURL         string `gorm:"size:500"`
-	EncryptedAPIKey string `gorm:"type:text;not null"`
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
-}
-
 // Corpus is an organization-scoped RAG document collection. Its ID doubles
 // as the vector-store namespace (seshat/pkg/rag.SearchRequest.CorpusID), so
 // no separate namespace field is needed.
@@ -363,21 +353,6 @@ type EmbedderSetting struct {
 	Model           string `gorm:"size:128;not null"`
 	BaseURL         string `gorm:"size:500;not null"`
 	EncryptedAPIKey string `gorm:"type:text"` // optional — e.g. a local Ollama needs none
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
-}
-
-// PlatformEmbedderSetting is the platform-wide default embedder, used by
-// any organization that hasn't configured its own — the same hybrid
-// BYOK/managed model as PlatformProviderSetting. Also a singleton, enforced
-// in code (there is no organization column to key a unique index on).
-type PlatformEmbedderSetting struct {
-	ID              string `gorm:"primaryKey;size:32"`
-	CreatedByUserID string `gorm:"size:32;not null"`
-	Provider        string `gorm:"size:32;not null"`
-	Model           string `gorm:"size:128;not null"`
-	BaseURL         string `gorm:"size:500;not null"`
-	EncryptedAPIKey string `gorm:"type:text"`
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 }
@@ -482,8 +457,10 @@ type WebSearchProviderSetting struct {
 	UpdatedAt       time.Time
 }
 
-// PlatformWebSearchProviderSetting is the platform-wide default, same
-// fallback role as PlatformProviderSetting.
+// PlatformWebSearchProviderSetting is the platform-wide default web-search
+// provider setting. Unlike ProviderSetting/EmbedderSetting, this domain has
+// not been migrated to the "flagged default organization" fallback model
+// yet - it remains its own global singleton table.
 type PlatformWebSearchProviderSetting struct {
 	ID              string `gorm:"primaryKey;size:32"`
 	CreatedByUserID string `gorm:"size:32;not null"`

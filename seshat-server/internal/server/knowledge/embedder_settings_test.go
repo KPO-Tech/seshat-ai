@@ -3,6 +3,8 @@ package knowledge
 import (
 	"context"
 	"testing"
+
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
 )
 
 const (
@@ -89,44 +91,30 @@ func TestEmbedderSettingRequiresKnowledgeManage(t *testing.T) {
 	}
 }
 
-func TestPlatformEmbedderSettingRequiresPlatformAdmin(t *testing.T) {
-	env := newTestEnv(t)
-	ownerPrincipal := env.addMember(t, "owner")
-
-	if _, err := env.knowledge.SetPlatformEmbedderSetting(context.Background(), ownerPrincipal, SetEmbedderSettingParams{
-		Provider: "openai", Model: "text-embedding-3-small", BaseURL: "https://api.openai.com/v1",
-	}); err == nil {
-		t.Fatal("expected an organization owner (not a platform admin) to be denied setting the platform embedder")
-	}
-
-	if _, err := env.knowledge.SetPlatformEmbedderSetting(context.Background(), env.adminPrincipal, SetEmbedderSettingParams{
-		Provider: "openai", Model: "text-embedding-3-small", BaseURL: "https://api.openai.com/v1",
-	}); err != nil {
-		t.Fatalf("set as platform admin: %v", err)
-	}
-	if _, err := env.knowledge.GetPlatformEmbedderSetting(context.Background(), ownerPrincipal); err == nil {
-		t.Fatal("expected an organization owner to be denied reading the platform embedder setting")
-	}
-	if err := env.knowledge.DeletePlatformEmbedderSetting(context.Background(), ownerPrincipal); err == nil {
-		t.Fatal("expected an organization owner to be denied deleting the platform embedder setting")
-	}
-}
-
 func TestResolveEmbedderConfigPrefersOrgOverPlatformDefault(t *testing.T) {
 	env := newTestEnv(t)
 
-	if _, err := env.knowledge.SetPlatformEmbedderSetting(context.Background(), env.adminPrincipal, SetEmbedderSettingParams{
+	defaultOrg, err := env.iam.CreateOrganization(context.Background(), env.adminPrincipal, iam.CreateOrganizationParams{
+		Name: "Default Org", Slug: "default-org",
+	})
+	if err != nil {
+		t.Fatalf("create default org: %v", err)
+	}
+	if _, err := env.iam.SetOrganizationDefault(context.Background(), env.adminPrincipal, defaultOrg.ID, true); err != nil {
+		t.Fatalf("set organization default: %v", err)
+	}
+	if _, err := env.knowledge.SetEmbedderSetting(context.Background(), env.adminPrincipal, defaultOrg.ID, SetEmbedderSettingParams{
 		Provider: "openai", Model: "platform-default-model", BaseURL: "https://platform.example.com",
 	}); err != nil {
-		t.Fatalf("set platform embedder: %v", err)
+		t.Fatalf("set embedder on the default org: %v", err)
 	}
 
 	cfg, ok, err := env.knowledge.resolveEmbedderConfig(context.Background(), env.orgID)
 	if err != nil || !ok {
-		t.Fatalf("expected fallback to platform default: ok=%v err=%v", ok, err)
+		t.Fatalf("expected fallback to the default organization: ok=%v err=%v", ok, err)
 	}
 	if cfg.Model != "platform-default-model" {
-		t.Fatalf("expected the platform default model, got %q", cfg.Model)
+		t.Fatalf("expected the default org's model, got %q", cfg.Model)
 	}
 
 	if _, err := env.knowledge.SetEmbedderSetting(context.Background(), env.adminPrincipal, env.orgID, SetEmbedderSettingParams{

@@ -71,7 +71,12 @@ export function useUpdateUser() {
       if (error) throw error
       return data
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: [LIST_KEY] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [LIST_KEY] })
+      // Membership rows embed user_is_admin (see enrichMembershipsWithUsers
+      // server-side), so an is_admin change must also invalidate that list.
+      queryClient.invalidateQueries({ queryKey: ['memberships'] })
+    },
   })
 }
 

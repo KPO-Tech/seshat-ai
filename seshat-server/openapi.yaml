@@ -339,6 +339,76 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/organizations/{organizationID}/set-default:
+    post:
+      operationId: setOrganizationDefault
+      tags: [organizations]
+      summary: Flag this organization as the platform default (platform admin only)
+      description: >
+        Its own ProviderSetting/EmbedderSetting rows become the fallback
+        used by every other organization with no config of its own. Clears
+        the flag from whichever organization currently holds it.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDPath"
+      responses:
+        "200":
+          description: Updated organization
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Organization" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationID}/unset-default:
+    post:
+      operationId: unsetOrganizationDefault
+      tags: [organizations]
+      summary: Clear the platform-default flag from this organization (platform admin only)
+      parameters:
+        - $ref: "#/components/parameters/organizationIDPath"
+      responses:
+        "200":
+          description: Updated organization
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Organization" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationID}/activate:
+    post:
+      operationId: activateOrganization
+      tags: [organizations]
+      summary: Mark this organization active (platform admin only)
+      description: Administrative/visual only for now - not enforced on any request path.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDPath"
+      responses:
+        "200":
+          description: Updated organization
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Organization" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationID}/deactivate:
+    post:
+      operationId: deactivateOrganization
+      tags: [organizations]
+      summary: Mark this organization inactive (platform admin only)
+      description: Administrative/visual only for now - not enforced on any request path.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDPath"
+      responses:
+        "200":
+          description: Updated organization
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Organization" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/users:
     get:
       operationId: listUsers
@@ -1918,113 +1988,6 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
-  /api/v1/platform/provider-settings:
-    get:
-      operationId: listPlatformProviderSettings
-      tags: [platform-provider-settings]
-      summary: List the platform-wide default LLM credentials
-      description: >-
-        Superadmin-only (platform admin, User.is_admin). Unlike every
-        org-scoped list endpoint, a non-admin caller gets 403, not an empty
-        list — there is no organization to scope visibility to. The API key
-        is never included, in this or any other response.
-      responses:
-        "200":
-          description: Platform provider setting list
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  platform_provider_settings:
-                    type: array
-                    items: { $ref: "#/components/schemas/PlatformProviderSetting" }
-                  count: { type: integer }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-    post:
-      operationId: createPlatformProviderSetting
-      tags: [platform-provider-settings]
-      summary: Store the platform-wide default credentials for one LLM provider
-      description: >-
-        Superadmin-only. One row per provider, globally (not scoped to any
-        organization) — creating a second setting for the same provider is
-        rejected; use update instead. A cloud-targeted job falls back to
-        this when its own organization has no provider-settings configured
-        for the requested provider (the hybrid BYOK/managed model — an org
-        can bring its own key, or use Seshat's default without configuring
-        anything). The api_key is AES-256-GCM encrypted at rest and never
-        echoed back, not even in this response.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/PlatformProviderSettingInput" }
-      responses:
-        "201":
-          description: Platform provider setting created
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/PlatformProviderSetting" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "409": { $ref: "#/components/responses/Conflict" }
-
-  /api/v1/platform/provider-settings/{platformProviderSettingID}:
-    parameters:
-      - name: platformProviderSettingID
-        in: path
-        required: true
-        schema: { type: string }
-    get:
-      operationId: getPlatformProviderSetting
-      tags: [platform-provider-settings]
-      summary: Get a platform provider setting
-      description: Superadmin-only.
-      responses:
-        "200":
-          description: Platform provider setting
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/PlatformProviderSetting" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
-    put:
-      operationId: updatePlatformProviderSetting
-      tags: [platform-provider-settings]
-      summary: Update a platform provider setting
-      description: >
-        Superadmin-only. An empty/omitted api_key leaves the stored
-        credential unchanged. Unlike creation, `provider` is not part of
-        this body — an existing setting's provider is fixed.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/PlatformProviderSettingUpdateInput" }
-      responses:
-        "200":
-          description: Updated platform provider setting
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/PlatformProviderSetting" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
-    delete:
-      operationId: deletePlatformProviderSetting
-      tags: [platform-provider-settings]
-      summary: Delete a platform provider setting
-      description: >-
-        Superadmin-only. Any cloud job that was relying on this as its
-        fallback (no org-level provider-settings of its own) starts failing
-        at execution time with a clear reason; existing jobs are not
-        touched or deleted.
-      responses:
-        "204": { description: Deleted }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
-
   /api/v1/web-search-provider-settings:
     get:
       operationId: listWebSearchProviderSettings
@@ -2728,51 +2691,6 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
-  /api/v1/platform/embedder-settings:
-    get:
-      operationId: getPlatformEmbedderSetting
-      tags: [knowledge]
-      summary: Get the platform-wide default embedder configuration
-      description: Superadmin-only. A singleton — at most one platform default embedder exists. 404 if none is configured.
-      responses:
-        "200":
-          description: Platform embedder setting
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/PlatformEmbedderSetting" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
-    put:
-      operationId: setPlatformEmbedderSetting
-      tags: [knowledge]
-      summary: Create or update the platform-wide default embedder configuration
-      description: Superadmin-only. Upsert, same semantics as the organization-scoped embedder setting.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/EmbedderSettingInput" }
-      responses:
-        "200":
-          description: Platform embedder setting created or updated
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/PlatformEmbedderSetting" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-    delete:
-      operationId: deletePlatformEmbedderSetting
-      tags: [knowledge]
-      summary: Delete the platform-wide default embedder configuration
-      description: >-
-        Superadmin-only. Any organization relying on this as its fallback
-        (no embedder of its own) starts failing ingest/search calls with a
-        clear reason.
-      responses:
-        "204": { description: Deleted }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
-
   /api/v1/devices:
     get:
       operationId: listDevices
@@ -3435,6 +3353,12 @@ components:
         description: { type: string }
         website_url: { type: string }
         support_email: { type: string, format: email }
+        is_default:
+          type: boolean
+          description: Whether this organization's own ProviderSetting/EmbedderSetting rows are used as the platform-wide fallback for organizations with no config of their own. At most one organization holds this at a time.
+        is_active:
+          type: boolean
+          description: Administrative/visual flag only - not enforced on any request path yet.
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
 
@@ -3462,6 +3386,9 @@ components:
           type: string
           description: Denormalized for display - resolving a teammate's identity from a membership shouldn't require a separate admin-only user lookup.
         user_display_name: { type: string }
+        user_is_admin:
+          type: boolean
+          description: Whether this member also holds platform-admin privileges (User.is_admin), denormalized for display.
 
     Session:
       type: object
@@ -4168,14 +4095,20 @@ components:
     ResolvedProviderSetting:
       type: object
       description: >-
-        Unlike ProviderSetting/PlatformProviderSetting, this includes the
-        decrypted api_key — see the resolveProviderSetting operation.
+        Unlike ProviderSetting, this includes the decrypted api_key — see
+        the resolveProviderSetting operation.
       properties:
         provider: { type: string, example: mistral }
         default_model: { type: string, example: mistral-small-latest }
         base_url: { type: string }
         api_key: { type: string }
-        source: { type: string, enum: [organization, platform] }
+        source:
+          type: string
+          enum: [organization, platform]
+          description: >-
+            "organization" if the requesting org had its own setting;
+            "platform" if it fell back to the organization currently
+            flagged as the platform default.
 
     ProviderSettingInput:
       type: object
@@ -4194,41 +4127,6 @@ components:
     # provider are fixed; DisallowUnknownFields rejects them if sent), same
     # reasoning as every other *UpdateInput in this spec.
     ProviderSettingUpdateInput:
-      type: object
-      properties:
-        default_model: { type: string, example: claude-sonnet-5 }
-        base_url: { type: string }
-        api_key:
-          type: string
-          description: Omit/empty to keep the existing stored key unchanged.
-
-    PlatformProviderSetting:
-      type: object
-      description: >-
-        The platform-wide default credential for one LLM provider — not
-        scoped to any organization. Never includes the API key.
-      properties:
-        id: { type: string }
-        created_by_user_id: { type: string }
-        provider: { type: string, example: anthropic }
-        default_model: { type: string, example: claude-sonnet-5 }
-        base_url: { type: string }
-
-    PlatformProviderSettingInput:
-      type: object
-      required: [provider]
-      properties:
-        provider: { type: string, example: anthropic }
-        default_model: { type: string, example: claude-sonnet-5 }
-        base_url: { type: string }
-        api_key:
-          type: string
-          description: Required on create.
-
-    # Distinct from PlatformProviderSettingInput: the update handler's
-    # request struct has no provider field (a setting's provider is fixed
-    # once created), same reasoning as ProviderSettingUpdateInput above.
-    PlatformProviderSettingUpdateInput:
       type: object
       properties:
         default_model: { type: string, example: claude-sonnet-5 }
@@ -4496,7 +4394,7 @@ components:
     EmbedderSettingInput:
       type: object
       properties:
-        organization_id: { type: string, description: "Required for the organization-scoped endpoint; ignored for the platform one." }
+        organization_id: { type: string }
         provider: { type: string, enum: [openai, ollama] }
         model: { type: string, example: text-embedding-3-small }
         base_url: { type: string }
@@ -4504,15 +4402,6 @@ components:
           type: string
           description: Optional (e.g. a local Ollama needs none). Empty on update keeps the existing key unchanged.
       required: [provider, model, base_url]
-
-    PlatformEmbedderSetting:
-      type: object
-      description: The platform-wide default embedder — not scoped to any organization. Never includes the API key.
-      properties:
-        id: { type: string }
-        provider: { type: string, enum: [openai, ollama] }
-        model: { type: string, example: text-embedding-3-small }
-        base_url: { type: string }
 
     Device:
       type: object

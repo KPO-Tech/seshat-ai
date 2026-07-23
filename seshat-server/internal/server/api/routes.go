@@ -15,6 +15,10 @@ func (app *App) routes() http.Handler {
 	mux.Handle("GET /api/v1/organizations/{organizationID}", app.authMiddleware(http.HandlerFunc(app.handleOrganizationByID)))
 	mux.Handle("PUT /api/v1/organizations/{organizationID}", app.authMiddleware(http.HandlerFunc(app.handleOrganizationByID)))
 	mux.Handle("DELETE /api/v1/organizations/{organizationID}", app.authMiddleware(http.HandlerFunc(app.handleOrganizationByID)))
+	mux.Handle("POST /api/v1/organizations/{organizationID}/set-default", app.authMiddleware(http.HandlerFunc(app.handleOrganizationSetDefault)))
+	mux.Handle("POST /api/v1/organizations/{organizationID}/unset-default", app.authMiddleware(http.HandlerFunc(app.handleOrganizationUnsetDefault)))
+	mux.Handle("POST /api/v1/organizations/{organizationID}/activate", app.authMiddleware(http.HandlerFunc(app.handleOrganizationActivate)))
+	mux.Handle("POST /api/v1/organizations/{organizationID}/deactivate", app.authMiddleware(http.HandlerFunc(app.handleOrganizationDeactivate)))
 	mux.Handle("GET /api/v1/users", app.authMiddleware(http.HandlerFunc(app.handleUsers)))
 	mux.Handle("POST /api/v1/users", app.authMiddleware(http.HandlerFunc(app.handleUsers)))
 	mux.Handle("GET /api/v1/users/{userID}", app.authMiddleware(http.HandlerFunc(app.handleUserByID)))
@@ -112,16 +116,6 @@ func (app *App) routes() http.Handler {
 	mux.Handle("PUT /api/v1/provider-settings/{providerSettingID}", app.authMiddleware(http.HandlerFunc(app.handleProviderSettingByID)))
 	mux.Handle("DELETE /api/v1/provider-settings/{providerSettingID}", app.authMiddleware(http.HandlerFunc(app.handleProviderSettingByID)))
 
-	// Platform provider settings — the platform-wide default LLM credential
-	// per provider, superadmin-only. A cloud-targeted job falls back to
-	// these when its own organization has no provider-settings configured
-	// (see automation.Service.resolveProviderCredentials).
-	mux.Handle("GET /api/v1/platform/provider-settings", app.authMiddleware(http.HandlerFunc(app.handlePlatformProviderSettings)))
-	mux.Handle("POST /api/v1/platform/provider-settings", app.authMiddleware(http.HandlerFunc(app.handlePlatformProviderSettings)))
-	mux.Handle("GET /api/v1/platform/provider-settings/{platformProviderSettingID}", app.authMiddleware(http.HandlerFunc(app.handlePlatformProviderSettingByID)))
-	mux.Handle("PUT /api/v1/platform/provider-settings/{platformProviderSettingID}", app.authMiddleware(http.HandlerFunc(app.handlePlatformProviderSettingByID)))
-	mux.Handle("DELETE /api/v1/platform/provider-settings/{platformProviderSettingID}", app.authMiddleware(http.HandlerFunc(app.handlePlatformProviderSettingByID)))
-
 	// Knowledge base — organization-scoped RAG corpora, file upload and
 	// ingestion. Search/ingestion return a clear "not configured" error
 	// until an embedder is wired in (see ROADMAP.md); corpus/file
@@ -145,9 +139,6 @@ func (app *App) routes() http.Handler {
 	mux.Handle("GET /api/v1/embedder-settings", app.authMiddleware(http.HandlerFunc(app.handleEmbedderSettings)))
 	mux.Handle("PUT /api/v1/embedder-settings", app.authMiddleware(http.HandlerFunc(app.handleEmbedderSettings)))
 	mux.Handle("DELETE /api/v1/embedder-settings", app.authMiddleware(http.HandlerFunc(app.handleEmbedderSettings)))
-	mux.Handle("GET /api/v1/platform/embedder-settings", app.authMiddleware(http.HandlerFunc(app.handlePlatformEmbedderSettings)))
-	mux.Handle("PUT /api/v1/platform/embedder-settings", app.authMiddleware(http.HandlerFunc(app.handlePlatformEmbedderSettings)))
-	mux.Handle("DELETE /api/v1/platform/embedder-settings", app.authMiddleware(http.HandlerFunc(app.handlePlatformEmbedderSettings)))
 
 	// Devices — admin surface is user-authenticated (register/list/revoke);
 	// the /device/* protocol below is device-token-authenticated instead.
