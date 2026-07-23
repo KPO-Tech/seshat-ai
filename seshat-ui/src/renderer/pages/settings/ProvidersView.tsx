@@ -287,7 +287,14 @@ export function ProvidersView() {
                         <label><Shield size={12} /> Authentication</label>
                         <div className="pv-auth-method">
                           {setting.auth_kind === 'oauth'
-                            ? setting.provider === 'codex' ? 'ChatGPT Pro OAuth' : 'OpenAI OAuth'
+                            ? setting.provider === 'codex'
+                              ? 'ChatGPT Pro OAuth'
+                              // Only reachable for a connection created before this
+                              // combination was removed from Add Provider — it never
+                              // worked (routes through the plain API, which an OAuth
+                              // token can't bill against). Named to make that obvious
+                              // instead of looking like a normal, working option.
+                              : 'OpenAI + OAuth (unsupported — delete and reconnect via Codex)'
                             : setting.provider === 'ollama'
                               ? 'Local runtime'
                               : 'API key'}
@@ -609,7 +616,6 @@ function AddProviderModal({ onClose, onSuccess }: { onClose: () => void; onSucce
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
-  const supportsOAuth = selected?.id === 'openai' || selected?.id === 'codex'
   const isOAuthOnly = selected ? OAUTH_ONLY_PROVIDERS.has(selected.id) : false
   const effectiveAuthKind = selected?.id === 'ollama' ? 'none' : isOAuthOnly ? 'oauth' : authKind
 
@@ -618,10 +624,9 @@ function AddProviderModal({ onClose, onSuccess }: { onClose: () => void; onSucce
     setSubmitting(true)
     setError('')
     try {
-      const oauthName = selected.id === 'codex' ? 'Codex (OAuth)' : 'OpenAI OAuth'
       await addProviderSetting({
         provider: selected.id,
-        name: effectiveAuthKind === 'oauth' ? oauthName : selected.name,
+        name: effectiveAuthKind === 'oauth' ? 'Codex (OAuth)' : selected.name,
         auth_kind: effectiveAuthKind,
         api_key: effectiveAuthKind === 'api_key' ? apiKey || undefined : undefined,
         base_url: baseUrl || undefined,
@@ -679,30 +684,6 @@ function AddProviderModal({ onClose, onSuccess }: { onClose: () => void; onSucce
             </div>
           </div>
 
-          {supportsOAuth && !isOAuthOnly && (
-            <div className="modal-field" style={{ marginBottom: 20 }}>
-              <label>Connection method</label>
-              <div className="pv-auth-mode-row">
-                <button
-                  type="button"
-                  className={`pv-auth-mode-btn ${authKind === 'api_key' ? 'active' : ''}`}
-                  onClick={() => setAuthKind('api_key')}
-                >
-                  API Key
-                </button>
-                <button
-                  type="button"
-                  className={`pv-auth-mode-btn ${authKind === 'oauth' ? 'active' : ''}`}
-                  onClick={() => setAuthKind('oauth')}
-                >
-                  OAuth
-                </button>
-              </div>
-              <div className="pv-auth-mode-help">
-                OAuth links your OpenAI account and enables Codex models without a separate API key.
-              </div>
-            </div>
-          )}
           {isOAuthOnly && (
             <div className="modal-field" style={{ marginBottom: 20 }}>
               <div className="pv-auth-mode-help">
