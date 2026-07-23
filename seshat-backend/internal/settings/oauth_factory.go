@@ -14,12 +14,15 @@ type defaultOAuthClientFactory struct{}
 func (defaultOAuthClientFactory) NewClient(provider string) (OAuthClient, error) {
 	switch strings.ToLower(provider) {
 	case "openai", "codex":
-		clientID := os.Getenv("OPENAI_CLIENT_ID")
-		if clientID == "" {
-			return nil, fmt.Errorf("OPENAI_CLIENT_ID env var is required for OpenAI OAuth")
-		}
+		// oauth.DefaultOpenAIConfig already carries a working, public
+		// ClientID (the same one the real Codex CLI uses for its PKCE/device
+		// flow - not a secret, safe to ship). OPENAI_CLIENT_ID is only for
+		// an operator who has registered their own OpenAI OAuth app and
+		// wants requests to go through it instead - optional, not required.
 		config := oauth.DefaultOpenAIConfig()
-		config.ClientID = clientID
+		if clientID := os.Getenv("OPENAI_CLIENT_ID"); clientID != "" {
+			config.ClientID = clientID
+		}
 		return oauthClientAdapter{client: oauth.NewClient(config)}, nil
 	default:
 		return nil, fmt.Errorf("oauth not supported for provider %s", provider)
