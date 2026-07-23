@@ -23,6 +23,7 @@ type ProviderSetting struct {
 	Provider        string `json:"provider"`
 	DefaultModel    string `json:"default_model"`
 	BaseURL         string `json:"base_url,omitempty"`
+	IsDefault       bool   `json:"is_default"`
 }
 
 type CreateProviderSettingParams struct {
@@ -320,5 +321,54 @@ func toProviderSetting(record sdb.ProviderSetting) ProviderSetting {
 		Provider:        record.Provider,
 		DefaultModel:    record.DefaultModel,
 		BaseURL:         record.BaseURL,
+		IsDefault:       record.IsDefault,
 	}
+}
+
+// SetProviderSettingDefault marks (or unmarks) this provider setting as its
+// organization's "main" one. Administrative/UI only - see
+// sdb.ProviderSetting.IsDefault's doc comment. Requires
+// provider_settings.manage or organization.manage, same as every other
+// mutation on this resource.
+func (s *Service) SetProviderSettingDefault(ctx context.Context, principal *iam.Principal, id string, isDefault bool) (*ProviderSetting, error) {
+	if principal == nil {
+		return nil, ErrUnauthorized("authentication required")
+	}
+	var setting sdb.ProviderSetting
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		tx = tx.WithContext(ctx)
+		if err := tx.First(&setting, "id = ?", id).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrNotFound("provider setting not found")
+			}
+			return err
+		}
+		if err := s.iam.CheckOrganizationPermission(tx, principal, setting.OrganizationID, "provider_settings.manage", "organization.manage"); err != nil {
+			return err
+		}
+
+		if isDefault {
+			if err := tx.Model(&sdb.ProviderSetting{}).
+				Where("organization_id = ? AND is_default = ? AND id <> ?", setting.OrganizationID, true, id).
+				Update("is_default", false).Error; err != nil {
+				return err
+			}
+		}
+
+		setting.IsDefault = isDefault
+		if err := tx.Save(&setting).Error; err != nil {
+			return err
+		}
+
+		action := "provider_setting.default_unset"
+		if isDefault {
+			action = "provider_setting.default_set"
+		}
+		return s.iam.AppendAuditEvent(tx, principal, setting.OrganizationID, action, "provider_setting", setting.ID, map[string]string{"provider": setting.Provider})
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := toProviderSetting(setting)
+	return &result, nil
 }

@@ -1137,6 +1137,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/provider-settings/{providerSettingID}/set-default": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Flag this provider setting as its organization's "main" one
+         * @description Administrative/UI only - not consumed by job execution (jobs always name their provider explicitly). Clears the flag from whichever other provider setting in the same organization currently holds it.
+         */
+        post: operations["setProviderSettingDefault"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/provider-settings/{providerSettingID}/unset-default": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Clear the "main" flag from this provider setting */
+        post: operations["unsetProviderSettingDefault"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/web-search-provider-settings": {
         parameters: {
             query?: never;
@@ -2563,6 +2600,8 @@ export interface components {
             /** @example claude-sonnet-5 */
             default_model?: string;
             base_url?: string;
+            /** @description Administrative/UI marker for this organization's "main" provider setting - not consumed by job execution. */
+            is_default?: boolean;
         };
         /** @description Unlike ProviderSetting, this includes the decrypted api_key — see the resolveProviderSetting operation. */
         ResolvedProviderSetting: {
@@ -5418,6 +5457,54 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    setProviderSettingDefault: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerSettingID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Updated provider setting */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderSetting"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    unsetProviderSettingDefault: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerSettingID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Updated provider setting */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderSetting"];
+                };
             };
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];

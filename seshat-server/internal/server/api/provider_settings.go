@@ -125,3 +125,30 @@ func (app *App) handleProviderSettingByID(w http.ResponseWriter, r *http.Request
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
+
+func (app *App) handleProviderSettingSetDefault(w http.ResponseWriter, r *http.Request) {
+	app.setProviderSettingDefault(w, r, true)
+}
+
+func (app *App) handleProviderSettingUnsetDefault(w http.ResponseWriter, r *http.Request) {
+	app.setProviderSettingDefault(w, r, false)
+}
+
+func (app *App) setProviderSettingDefault(w http.ResponseWriter, r *http.Request, isDefault bool) {
+	principal, ok := authPrincipalFromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "missing principal")
+		return
+	}
+	id := strings.TrimSpace(r.PathValue("providerSettingID"))
+	if id == "" {
+		writeJSONError(w, http.StatusBadRequest, "missing provider setting id")
+		return
+	}
+	setting, err := app.backend.Automation.SetProviderSettingDefault(r.Context(), principal, id, isDefault)
+	if err != nil {
+		writeAutomationError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, setting)
+}

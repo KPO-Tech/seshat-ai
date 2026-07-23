@@ -279,8 +279,14 @@ type ProviderSetting struct {
 	DefaultModel    string `gorm:"size:128;not null"`
 	BaseURL         string `gorm:"size:500"`
 	EncryptedAPIKey string `gorm:"type:text;not null"`
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	// IsDefault is an administrative/UI marker for which of this
+	// organization's provider settings is its "main" one - not consumed by
+	// job execution (jobs always name their provider explicitly). At most
+	// one per organization, enforced in application code (same pattern as
+	// Organization.IsDefault) rather than a DB constraint.
+	IsDefault bool `gorm:"not null;default:false"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 // Corpus is an organization-scoped RAG document collection. Its ID doubles
