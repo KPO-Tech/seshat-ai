@@ -600,6 +600,27 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	terminalRelay := backendquery.NewTerminalRelay()
 	runtime.SetTerminalRelay(terminalRelay)
 
+	// Mirrors resolveDocling below: Settings > Capabilities can point the
+	// agent's own speech_to_text tool at a locally running whisper.cpp
+	// server (see api.handleLocalSTTConfig, set by the Electron main
+	// process) instead of the operator's OPENAI_API_KEY default, without a
+	// restart. The engine's current release still requires a non-empty
+	// APIKey even for a custom BaseURL (fixed upstream, not yet tagged) -
+	// "local-whisper-cpp" is a harmless placeholder: whisper-server doesn't
+	// check the Authorization header at all. Remove this placeholder once
+	// seshat-backend bumps to a release that includes that fix.
+	runtime.SetLocalSTTResolver(func(ctx context.Context) *sdk.SpeechToTextConfig {
+		cfg, err := localSTTConfigStore.Get(ctx)
+		if err != nil || cfg == nil || !cfg.Enabled || cfg.BaseURL == "" {
+			return nil
+		}
+		return &sdk.SpeechToTextConfig{
+			Provider: "openai",
+			APIKey:   "local-whisper-cpp",
+			BaseURL:  cfg.BaseURL,
+		}
+	})
+
 	// resolveDocling lets Settings > Knowledge override, at runtime, which
 	// docling-serve instance to use (self-hosted, on the local network, or
 	// an organization's own) — without needing an env var or a restart.

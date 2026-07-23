@@ -320,6 +320,11 @@ export async function enableLocalWhisper(): Promise<void> {
     '--model', modelPath(status.activeModelId),
     '--host', '127.0.0.1',
     '--port', String(port),
+    // whisper.cpp's server defaults to serving transcription at /inference.
+    // seshat's STT client (shared with the real OpenAI Whisper API) always
+    // posts to "{baseURL}/audio/transcriptions" - without this flag every
+    // request against a local server 404s, cloud fallback notwithstanding.
+    '--inference-path', '/audio/transcriptions',
   ], {
     stdio: ['ignore', 'pipe', 'pipe'],
     cwd: join(binaryPath, '..'),

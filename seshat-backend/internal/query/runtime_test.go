@@ -1,6 +1,7 @@
 package query
 
 import (
+	"context"
 	"testing"
 
 	"github.com/KPO-Tech/seshat/pkg/sdk"
@@ -25,13 +26,13 @@ func newTestSDKRuntime(t *testing.T) *SDKRuntime {
 func TestSDKRuntimeClientForInputReturnsFreshBaseClients(t *testing.T) {
 	runtime := newTestSDKRuntime(t)
 
-	clientA, releaseA, err := runtime.clientForInput(QueryInput{})
+	clientA, releaseA, err := runtime.clientForInput(context.Background(), QueryInput{})
 	if err != nil {
 		t.Fatalf("clientForInput failed: %v", err)
 	}
 	defer releaseA()
 
-	clientB, releaseB, err := runtime.clientForInput(QueryInput{})
+	clientB, releaseB, err := runtime.clientForInput(context.Background(), QueryInput{})
 	if err != nil {
 		t.Fatalf("second clientForInput failed: %v", err)
 	}
@@ -59,13 +60,13 @@ func TestSDKRuntimeClientForInputReturnsFreshProviderOverrideClients(t *testing.
 		Secret:   "test-secret",
 	}}
 
-	clientA, releaseA, err := runtime.clientForInput(input)
+	clientA, releaseA, err := runtime.clientForInput(context.Background(), input)
 	if err != nil {
 		t.Fatalf("provider clientForInput failed: %v", err)
 	}
 	defer releaseA()
 
-	clientB, releaseB, err := runtime.clientForInput(input)
+	clientB, releaseB, err := runtime.clientForInput(context.Background(), input)
 	if err != nil {
 		t.Fatalf("second provider clientForInput failed: %v", err)
 	}

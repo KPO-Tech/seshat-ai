@@ -41,10 +41,11 @@ type SessionInspector interface {
 
 // SDKRuntime adapts sdk.Client to QueryRuntime + StreamingQueryRuntime + SessionManager.
 type SDKRuntime struct {
-	client        *sdk.Client
-	baseConfig    *sdk.ClientConfig
-	terminalRelay *TerminalRelay
-	mu            sync.RWMutex
+	client          *sdk.Client
+	baseConfig      *sdk.ClientConfig
+	terminalRelay   *TerminalRelay
+	resolveLocalSTT func(ctx context.Context) *sdk.SpeechToTextConfig
+	mu              sync.RWMutex
 }
 
 func NewSDKRuntime(client *sdk.Client, baseConfig *sdk.ClientConfig) *SDKRuntime {
@@ -61,6 +62,20 @@ func NewSDKRuntime(client *sdk.Client, baseConfig *sdk.ClientConfig) *SDKRuntime
 // runtime_test.go, unchanged.
 func (r *SDKRuntime) SetTerminalRelay(relay *TerminalRelay) {
 	r.terminalRelay = relay
+}
+
+// SetLocalSTTResolver attaches a resolver for a locally running whisper.cpp
+// server (see api.handleLocalSTTConfig, set by the Electron main process
+// once it has spawned whisper-server) — when it returns non-nil, it takes
+// priority over the SpeechToText baked into baseConfig at bootstrap, so the
+// agent's own speech_to_text tool tracks whichever server the manual
+// dictation endpoint (POST /api/v1/transcribe) already prefers, without
+// needing a backend restart when the setting changes. A separate setter
+// (rather than a constructor param) keeps NewSDKRuntime's existing call
+// sites, including runtime_test.go, unchanged — same reasoning as
+// SetTerminalRelay above.
+func (r *SDKRuntime) SetLocalSTTResolver(resolve func(ctx context.Context) *sdk.SpeechToTextConfig) {
+	r.resolveLocalSTT = resolve
 }
 
 // applyRemoteExecutor registers a terminalRemoteExecutor for session when
@@ -80,7 +95,7 @@ func (r *SDKRuntime) applyRemoteExecutor(session *sdk.Session, sessionID string)
 }
 
 func (r *SDKRuntime) RunPrompt(ctx context.Context, input QueryInput) (*QueryResult, error) {
-	client, releaseClient, err := r.clientForInput(input)
+	client, releaseClient, err := r.clientForInput(ctx, input)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +133,7 @@ func (r *SDKRuntime) RunPrompt(ctx context.Context, input QueryInput) (*QueryRes
 }
 
 func (r *SDKRuntime) StreamPrompt(ctx context.Context, input QueryInput, onChunk func(sdk.ResponseChunk), onRuntimeEvent func(sdk.RuntimeEvent)) (*QueryResult, error) {
-	client, releaseClient, err := r.clientForInput(input)
+	client, releaseClient, err := r.clientForInput(ctx, input)
 	if err != nil {
 		return nil, err
 	}
@@ -332,14 +347,14 @@ func (r *SDKRuntime) loadOrCreateSession(ctx context.Context, client *sdk.Client
 	return session, nil
 }
 
-func (r *SDKRuntime) clientForInput(input QueryInput) (*sdk.Client, func(), error) {
+func (r *SDKRuntime) clientForInput(ctx context.Context, input QueryInput) (*sdk.Client, func(), error) {
 	if r == nil || r.client == nil {
 		return nil, nil, fmt.Errorf("query runtime not configured")
 	}
 
-	cfg := r.buildBaseClientConfig()
+	cfg := r.buildBaseClientConfig(ctx)
 	if input.RuntimeProvider != nil {
-		cfg = r.buildClientConfig(*input.RuntimeProvider)
+		cfg = r.buildClientConfig(ctx, *input.RuntimeProvider)
 	}
 
 	client, err := sdk.NewClient(cfg)
@@ -354,9 +369,10 @@ func (r *SDKRuntime) clientForInput(input QueryInput) (*sdk.Client, func(), erro
 	}, nil
 }
 
-func (r *SDKRuntime) buildBaseClientConfig() *sdk.ClientConfig {
+func (r *SDKRuntime) buildBaseClientConfig(ctx context.Context) *sdk.ClientConfig {
 	r.mu.RLock()
 	cfg := cloneClientConfig(r.baseConfig)
+	resolveLocalSTT := r.resolveLocalSTT
 	r.mu.RUnlock()
 	if cfg == nil {
 		cfg = sdk.DefaultClientConfig()
@@ -364,11 +380,16 @@ func (r *SDKRuntime) buildBaseClientConfig() *sdk.ClientConfig {
 	cfg.SessionStore = r.client.GetSessionStore()
 	cfg.ArtifactStore = r.client.GetArtifactStore()
 	cfg.Monitoring = r.client.GetMonitoring()
+	if resolveLocalSTT != nil {
+		if localSTT := resolveLocalSTT(ctx); localSTT != nil {
+			cfg.SpeechToText = localSTT
+		}
+	}
 	return cfg
 }
 
-func (r *SDKRuntime) buildClientConfig(providerCfg RuntimeProviderConfig) *sdk.ClientConfig {
-	cfg := r.buildBaseClientConfig()
+func (r *SDKRuntime) buildClientConfig(ctx context.Context, providerCfg RuntimeProviderConfig) *sdk.ClientConfig {
+	cfg := r.buildBaseClientConfig(ctx)
 
 	modelID := strings.TrimSpace(providerCfg.ModelID)
 	if modelID == "" {
