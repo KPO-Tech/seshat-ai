@@ -25,13 +25,12 @@ var _ settings.Provider = (*Provider)(nil)
 // operate on the local personal-key store (org/platform settings are managed
 // exclusively via Seshat Console).
 type Provider struct {
-	client         *Client
-	organizationID string
-	local          *settings.LocalProvider
+	client *Client
+	local  *settings.LocalProvider
 }
 
-func NewProvider(serverURL, organizationID string, local *settings.LocalProvider) *Provider {
-	return &Provider{client: NewClient(serverURL), organizationID: organizationID, local: local}
+func NewProvider(serverURL string, local *settings.LocalProvider) *Provider {
+	return &Provider{client: NewClient(serverURL), local: local}
 }
 
 // ─── List / Get (merges remote read-only entries with real local ones) ───────
@@ -67,7 +66,7 @@ func (p *Provider) List(ctx context.Context, principal *backendauth.Principal) (
 		wg.Add(1)
 		go func(i int, provider string) {
 			defer wg.Done()
-			resolved, err := p.client.ResolveProviderSetting(ctx, token, p.organizationID, provider)
+			resolved, err := p.client.ResolveProviderSetting(ctx, token, principal.OrganizationID(), provider)
 			if err != nil {
 				return // not configured at any tier for this provider — nothing to show
 			}
@@ -96,7 +95,7 @@ func (p *Provider) Get(ctx context.Context, principal *backendauth.Principal, id
 		if err := backendauth.EnsureAuthenticated(principal); err != nil {
 			return nil, err
 		}
-		resolved, err := p.client.ResolveProviderSetting(ctx, principal.AuthSession.ID, p.organizationID, provider)
+		resolved, err := p.client.ResolveProviderSetting(ctx, principal.AuthSession.ID, principal.OrganizationID(), provider)
 		if err != nil {
 			return nil, cloudhttp.Translate(err)
 		}
@@ -143,7 +142,7 @@ func (p *Provider) ResolveRuntimeConfig(ctx context.Context, principal *backenda
 		if err := backendauth.EnsureAuthenticated(principal); err != nil {
 			return nil, err
 		}
-		resolved, err := p.client.ResolveProviderSetting(ctx, principal.AuthSession.ID, p.organizationID, provider)
+		resolved, err := p.client.ResolveProviderSetting(ctx, principal.AuthSession.ID, principal.OrganizationID(), provider)
 		if err != nil {
 			return nil, cloudhttp.Translate(err)
 		}
@@ -158,15 +157,44 @@ func (p *Provider) ResolveRuntimeConfig(ctx context.Context, principal *backenda
 	return p.local.ResolveRuntimeConfig(ctx, principal, id)
 }
 
-// ResolveDefaultForUser intentionally stays local-only in this pass: unlike
-// ResolveRuntimeConfig (which resolves a specific, named provider), there is
-// no provider name to resolve against here — inventing a "pick one org
-// provider arbitrarily" heuristic risks silently choosing the wrong one. A
-// connected-mode user gets the org/platform tiers by explicitly selecting
-// them (their synthetic IDs appear in List); auto-defaulting to one without
-// ever configuring a personal key is a follow-up, not this pass's scope.
+// ResolveDefaultForUser prefers the user's own local default (an explicit
+// personal choice always wins). When they have none — the common case for a
+// freshly onboarded connected-mode account, which starts with zero personal
+// keys — falls back to the first org/platform provider configured in Seshat
+// Console, tried in knownProviders' order (same order List() displays them
+// in). This is what makes a new desktop account usable out of the box against
+// its organization's shared keys, without the user having to open Settings
+// and manually pick "org:<provider>" as their default first.
 func (p *Provider) ResolveDefaultForUser(ctx context.Context, principal *backendauth.Principal) (*settings.ResolvedProviderConfig, error) {
-	return p.local.ResolveDefaultForUser(ctx, principal)
+	if resolved, err := p.local.ResolveDefaultForUser(ctx, principal); err != nil {
+		return nil, err
+	} else if resolved != nil {
+		return resolved, nil
+	}
+
+	if err := backendauth.EnsureAuthenticated(principal); err != nil {
+		return nil, nil
+	}
+	organizationID := principal.OrganizationID()
+	if organizationID == "" {
+		return nil, nil
+	}
+	token := principal.AuthSession.ID
+	for _, provider := range knownProviders {
+		resolved, err := p.client.ResolveProviderSetting(ctx, token, organizationID, provider)
+		if err != nil {
+			continue
+		}
+		id := prefixOrg + resolved.Provider
+		if resolved.Source == "platform" {
+			id = prefixPlatform + resolved.Provider
+		}
+		return &settings.ResolvedProviderConfig{
+			SettingID: id, Provider: resolved.Provider, AuthKind: settings.AuthKindAPIKey,
+			BaseURL: resolved.BaseURL, ModelID: resolved.DefaultModel, Secret: resolved.APIKey,
+		}, nil
+	}
+	return nil, nil
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────────────

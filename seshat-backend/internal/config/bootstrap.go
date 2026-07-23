@@ -478,6 +478,9 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		DoclingURL:              strings.TrimSpace(config.DoclingURL),
 		AutomationServiceURL:    strings.TrimSpace(config.AutomationServiceURL),
 		AutomationAPIKey:        strings.TrimSpace(os.Getenv("AUTOMATION_API_KEY")),
+		ImageGeneration:         defaultImageGenerationConfig(),
+		TextToSpeech:            defaultTextToSpeechConfig(),
+		SpeechToText:            defaultSpeechToTextConfig(),
 	}
 	queryClient, err := sdk.NewClient(queryClientConfig)
 	if err != nil {
@@ -591,6 +594,11 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	}
 
 	runtime := backendquery.NewSDKRuntime(queryClient, queryClientConfig)
+	// Shared with api.NewApp below (via AppConfig.TerminalRelay) - the WS
+	// handler there registers a session's Electron relay connection into the
+	// same instance runtime.applyRemoteExecutor reads from per turn.
+	terminalRelay := backendquery.NewTerminalRelay()
+	runtime.SetTerminalRelay(terminalRelay)
 
 	// resolveDocling lets Settings > Knowledge override, at runtime, which
 	// docling-serve instance to use (self-hosted, on the local network, or
@@ -707,6 +715,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		TrustedProxyCIDRs:     api.ParseTrustedProxies(config.TrustedProxies),
 		AllowedSkillRepoHosts: api.ParseSkillRepoHosts(config.SkillRepoHosts),
 		ConnectedServerURL:    serverURL,
+		TerminalRelay:         terminalRelay,
 	})
 
 	knowledgeRunner := backendknowledge.NewRunner(backendApp.Knowledge, backendknowledge.RunnerConfig{
@@ -849,6 +858,39 @@ func splitCommaList(raw string) []string {
 		}
 	}
 	return result
+}
+
+// defaultImageGenerationConfig, defaultTextToSpeechConfig and
+// defaultSpeechToTextConfig enable the engine's generate_image/text_to_speech/
+// speech_to_text built-in tools whenever the operator already has the
+// corresponding provider key set — same env vars the chat model itself
+// resolves against (see pkg/config/provider_catalog.go), so a working
+// OPENAI_API_KEY/GOOGLE_API_KEY makes these tools visible to the LLM with no
+// extra configuration. Without this, ClientConfig.ImageGeneration/
+// .TextToSpeech/.SpeechToText stay nil and the tools are never initialized,
+// regardless of which API keys are configured.
+func defaultImageGenerationConfig() *sdk.ImageGenerationConfig {
+	if key := strings.TrimSpace(os.Getenv("OPENAI_API_KEY")); key != "" {
+		return &sdk.ImageGenerationConfig{Provider: "openai", APIKey: key}
+	}
+	if key := strings.TrimSpace(os.Getenv("GOOGLE_API_KEY")); key != "" {
+		return &sdk.ImageGenerationConfig{Provider: "gemini", APIKey: key}
+	}
+	return nil
+}
+
+func defaultTextToSpeechConfig() *sdk.TextToSpeechConfig {
+	if key := strings.TrimSpace(os.Getenv("OPENAI_API_KEY")); key != "" {
+		return &sdk.TextToSpeechConfig{Provider: "openai", APIKey: key}
+	}
+	return nil
+}
+
+func defaultSpeechToTextConfig() *sdk.SpeechToTextConfig {
+	if key := strings.TrimSpace(os.Getenv("OPENAI_API_KEY")); key != "" {
+		return &sdk.SpeechToTextConfig{Provider: "openai", APIKey: key}
+	}
+	return nil
 }
 
 // resolveCloudJobModel maps a cloud job's model_override ("provider:model",

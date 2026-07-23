@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
 	backendskills "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/skills"
 )
 
@@ -56,7 +57,7 @@ func (a *App) handleSkillsList(w http.ResponseWriter, r *http.Request) {
 	cwd, _ := os.Getwd()
 	allSkills, err := a.backend.Skills.List(cwd, principalUserID(r))
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, fmt.Sprintf("failed to list skills: %v", err))
+		writeBackendError(w, bkerr.Internal(fmt.Sprintf("failed to list skills: %v", err), err))
 		return
 	}
 	dtos := make([]skillDTO, 0, len(allSkills))
@@ -107,30 +108,30 @@ func (a *App) handleSkillCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	name := strings.ToLower(strings.TrimSpace(body.Name))
 	if name == "" {
-		writeJSONError(w, http.StatusBadRequest, "name is required")
+		writeBackendError(w, bkerr.InvalidInput("name is required", nil))
 		return
 	}
 	if err := a.backend.Skills.ValidateName(name); err != nil {
-		writeJSONError(w, http.StatusBadRequest, err.Error())
+		writeBackendError(w, bkerr.InvalidInput(err.Error(), err))
 		return
 	}
 	userDir := a.backend.Skills.UserDir(principalUserID(r))
 	if err := a.backend.Skills.CheckQuota(userDir); err != nil {
-		writeJSONError(w, http.StatusTooManyRequests, err.Error())
+		writeBackendError(w, bkerr.RateLimit(err.Error(), err))
 		return
 	}
 
 	skillDir := filepath.Join(userDir, name)
 	if _, err := os.Stat(skillDir); err == nil {
-		writeJSONError(w, http.StatusConflict, fmt.Sprintf("skill %q already exists", name))
+		writeBackendError(w, bkerr.Conflict(fmt.Sprintf("skill %q already exists", name), nil))
 		return
 	}
 	if err := os.MkdirAll(skillDir, 0o755); err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "failed to create skill directory")
+		writeBackendError(w, bkerr.Internal("failed to create skill directory", err))
 		return
 	}
 	if err := a.backend.Skills.WriteFile(skillDir, name, toWriteParams(body.skillWriteRequest)); err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "failed to write skill file")
+		writeBackendError(w, bkerr.Internal("failed to write skill file", err))
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]any{"name": name, "path": filepath.Join(skillDir, "skill.md")})
@@ -162,7 +163,7 @@ func (a *App) handleSkillsDispatch(w http.ResponseWriter, r *http.Request) {
 // handleSkillByName handles PUT and DELETE for /api/v1/skills/{name}.
 func (a *App) handleSkillByName(w http.ResponseWriter, r *http.Request, name string) {
 	if name == "" || name == "." || name == ".." {
-		writeJSONError(w, http.StatusBadRequest, "invalid skill name")
+		writeBackendError(w, bkerr.InvalidInput("invalid skill name", nil))
 		return
 	}
 	skillDir := filepath.Join(a.backend.Skills.UserDir(principalUserID(r)), name)
@@ -175,12 +176,12 @@ func (a *App) handleSkillByName(w http.ResponseWriter, r *http.Request, name str
 			return
 		}
 		if _, err := os.Stat(skillDir); os.IsNotExist(err) {
-			writeJSONError(w, http.StatusNotFound, fmt.Sprintf("skill %q not found", name))
+			writeBackendError(w, bkerr.NotFound(fmt.Sprintf("skill %q not found", name), err))
 			return
 		}
 		existing, err := a.backend.Skills.ReadFile(skillPath)
 		if err != nil {
-			writeJSONError(w, http.StatusInternalServerError, "failed to read existing skill file")
+			writeBackendError(w, bkerr.Internal("failed to read existing skill file", err))
 			return
 		}
 		if patch.DisplayName != nil {
@@ -200,18 +201,18 @@ func (a *App) handleSkillByName(w http.ResponseWriter, r *http.Request, name str
 			existing.Enabled = &enabled
 		}
 		if err := a.backend.Skills.WriteFile(skillDir, name, existing); err != nil {
-			writeJSONError(w, http.StatusInternalServerError, "failed to write skill file")
+			writeBackendError(w, bkerr.Internal("failed to write skill file", err))
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"name": name})
 
 	case http.MethodDelete:
 		if _, err := os.Stat(skillDir); os.IsNotExist(err) {
-			writeJSONError(w, http.StatusNotFound, fmt.Sprintf("skill %q not found", name))
+			writeBackendError(w, bkerr.NotFound(fmt.Sprintf("skill %q not found", name), err))
 			return
 		}
 		if err := os.RemoveAll(skillDir); err != nil {
-			writeJSONError(w, http.StatusInternalServerError, "failed to delete skill")
+			writeBackendError(w, bkerr.Internal("failed to delete skill", err))
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -230,10 +231,10 @@ func (a *App) handleSkillContent(w http.ResponseWriter, r *http.Request, name st
 	data, err := a.backend.Skills.GetContent(principalUserID(r), name)
 	if err != nil {
 		if os.IsNotExist(err) {
-			writeJSONError(w, http.StatusNotFound, fmt.Sprintf("skill %q not found", name))
+			writeBackendError(w, bkerr.NotFound(fmt.Sprintf("skill %q not found", name), err))
 			return
 		}
-		writeJSONError(w, http.StatusInternalServerError, "failed to read skill")
+		writeBackendError(w, bkerr.Internal("failed to read skill", err))
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"name": name, "content": string(data)})
@@ -249,18 +250,18 @@ func (a *App) handleSkillTree(w http.ResponseWriter, r *http.Request, name strin
 	principal, _ := authPrincipalFromContext(r.Context())
 	root, err := a.backend.Skills.RootFor(cwd, principalUserID(r), name)
 	if err != nil || root == "" {
-		writeJSONError(w, http.StatusNotFound, fmt.Sprintf("skill %q not found", name))
+		writeBackendError(w, bkerr.NotFound(fmt.Sprintf("skill %q not found", name), err))
 		return
 	}
 	if a.backend.Skills.IsRestrictedSource(root) {
 		if principal == nil || !principal.HasRole("admin") {
-			writeJSONError(w, http.StatusForbidden, "reading managed or builtin skill files requires admin role")
+			writeBackendError(w, bkerr.Forbidden("reading managed or builtin skill files requires admin role", nil))
 			return
 		}
 	}
 	tree, err := a.backend.Skills.BuildTree(root)
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "failed to read skill directory")
+		writeBackendError(w, bkerr.Internal("failed to read skill directory", err))
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"name": name, "root": filepath.Base(root), "tree": tree})
@@ -274,7 +275,7 @@ func (a *App) handleSkillFile(w http.ResponseWriter, r *http.Request, name strin
 	}
 	relPath := r.URL.Query().Get("path")
 	if relPath == "" {
-		writeJSONError(w, http.StatusBadRequest, "path query parameter is required")
+		writeBackendError(w, bkerr.InvalidInput("path query parameter is required", nil))
 		return
 	}
 
@@ -282,12 +283,12 @@ func (a *App) handleSkillFile(w http.ResponseWriter, r *http.Request, name strin
 	principal, _ := authPrincipalFromContext(r.Context())
 	root, err := a.backend.Skills.RootFor(cwd, principalUserID(r), name)
 	if err != nil || root == "" {
-		writeJSONError(w, http.StatusNotFound, fmt.Sprintf("skill %q not found", name))
+		writeBackendError(w, bkerr.NotFound(fmt.Sprintf("skill %q not found", name), err))
 		return
 	}
 	if a.backend.Skills.IsRestrictedSource(root) {
 		if principal == nil || !principal.HasRole("admin") {
-			writeJSONError(w, http.StatusForbidden, "reading managed or builtin skill files requires admin role")
+			writeBackendError(w, bkerr.Forbidden("reading managed or builtin skill files requires admin role", nil))
 			return
 		}
 	}
@@ -296,27 +297,27 @@ func (a *App) handleSkillFile(w http.ResponseWriter, r *http.Request, name strin
 	cleanRoot := filepath.Clean(root) + string(filepath.Separator)
 	if !strings.HasPrefix(filepath.Clean(absPath)+string(filepath.Separator), cleanRoot) &&
 		filepath.Clean(absPath) != filepath.Clean(root) {
-		writeJSONError(w, http.StatusBadRequest, "invalid path")
+		writeBackendError(w, bkerr.InvalidInput("invalid path", nil))
 		return
 	}
 
 	info, err := os.Stat(absPath)
 	if err != nil {
-		writeJSONError(w, http.StatusNotFound, "file not found")
+		writeBackendError(w, bkerr.NotFound("file not found", err))
 		return
 	}
 	if info.IsDir() {
-		writeJSONError(w, http.StatusBadRequest, "path is a directory")
+		writeBackendError(w, bkerr.InvalidInput("path is a directory", nil))
 		return
 	}
 	if info.Size() > 2*1024*1024 {
-		writeJSONError(w, http.StatusRequestEntityTooLarge, "file too large")
+		writeBackendError(w, bkerr.TooLarge("file too large", nil))
 		return
 	}
 
 	data, err := os.ReadFile(absPath)
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "failed to read file")
+		writeBackendError(w, bkerr.Internal("failed to read file", err))
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{

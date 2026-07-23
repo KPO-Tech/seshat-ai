@@ -1,7 +1,7 @@
 filippo.io/edwards25519 v1.1.0 h1:FNf4tywRC1HmFuKW5xopWpigGjJKiJSV0Cqo0cJWDaA=
 filippo.io/edwards25519 v1.1.0/go.mod h1:BxyFTGdWcka3PhytdK4V28tE5sGfRvvvRV7EaN4VDT4=
-github.com/KPO-Tech/seshat v0.2.2 h1:UJaLaIqYhu7/b3pJ3rXUmYVcIwS7du0a+JAV2Ch3sTU=
-github.com/KPO-Tech/seshat v0.2.2/go.mod h1:MPE0qXMs7Sn616EtPsuhB1t0fgKyO+d8szXIodQwLoo=
+github.com/KPO-Tech/seshat v0.2.3 h1:UmlhqexNMWD2apIwtDRwtlx55cPNHx7sR5/ce10udCw=
+github.com/KPO-Tech/seshat v0.2.3/go.mod h1:YjIJKJDQn/l6tnzmknhWqyEehJ+8QuvUfTVxvlG9uLU=
 github.com/Knetic/govaluate v3.0.0+incompatible h1:7o6+MAPhYTCF0+fdvoz1xDedhRb4f6s9Tn1Tt7/WTEg=
 github.com/Knetic/govaluate v3.0.0+incompatible/go.mod h1:r7JcOSlj0wfOMncg0iLm8Leh48TZaKVeNIfJntJ2wa0=
 github.com/PuerkitoBio/goquery v1.12.0 h1:pAcL4g3WRXekcB9AU/y1mbKez2dbY2AajVhtkO8RIBo=

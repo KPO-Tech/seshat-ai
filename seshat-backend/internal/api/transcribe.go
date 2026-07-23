@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
 )
 
 const maxTranscribeUploadSize = 26 << 20 // ~26 MB, headroom over OpenAI's 25 MB cap
@@ -24,36 +25,36 @@ func (a *App) handleTranscribe(w http.ResponseWriter, r *http.Request) {
 	}
 	principal, ok := authPrincipalFromContext(r.Context())
 	if !ok {
-		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
+		writeBackendError(w, bkerr.Unauthorized("unauthorized", nil))
 		return
 	}
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxTranscribeUploadSize)
 	if err := r.ParseMultipartForm(maxTranscribeUploadSize); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "failed to parse multipart form: "+err.Error())
+		writeBackendError(w, bkerr.InvalidInput("failed to parse multipart form: "+err.Error(), err))
 		return
 	}
 	mpFile, _, err := r.FormFile("audio")
 	if err != nil {
-		writeJSONError(w, http.StatusBadRequest, "missing 'audio' field in form")
+		writeBackendError(w, bkerr.InvalidInput("missing 'audio' field in form", err))
 		return
 	}
 	defer mpFile.Close()
 	audioData, err := io.ReadAll(mpFile)
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "failed to read uploaded audio")
+		writeBackendError(w, bkerr.Internal("failed to read uploaded audio", err))
 		return
 	}
 
 	apiKey, baseURL, err := a.resolveTranscriptionTarget(r, principal)
 	if err != nil {
-		writeJSONError(w, http.StatusBadRequest, err.Error())
+		writeBackendError(w, bkerr.InvalidInput(err.Error(), err))
 		return
 	}
 
 	result, err := a.transcribeAudio(r.Context(), apiKey, audioData, baseURL)
 	if err != nil {
-		writeJSONError(w, http.StatusBadGateway, "transcription failed: "+err.Error())
+		writeBackendError(w, bkerr.BadGateway("transcription failed: "+err.Error(), err))
 		return
 	}
 

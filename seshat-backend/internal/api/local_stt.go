@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 )
 
@@ -33,11 +34,11 @@ func localSTTConfigToResponse(cfg *db.LocalSTTConfig) localSTTConfigResponse {
 // provider (see transcribe.go). GET lets the renderer show current status.
 func (a *App) handleLocalSTTConfig(w http.ResponseWriter, r *http.Request) {
 	if _, ok := authPrincipalFromContext(r.Context()); !ok {
-		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
+		writeBackendError(w, bkerr.Unauthorized("unauthorized", nil))
 		return
 	}
 	if a.localSTTStore == nil {
-		writeJSONError(w, http.StatusServiceUnavailable, "local speech-to-text config store not available")
+		writeBackendError(w, bkerr.Unavailable("local speech-to-text config store not available", nil))
 		return
 	}
 
@@ -45,7 +46,7 @@ func (a *App) handleLocalSTTConfig(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		cfg, err := a.localSTTStore.Get(r.Context())
 		if err != nil {
-			writeJSONError(w, http.StatusInternalServerError, "failed to get local speech-to-text config")
+			writeBackendError(w, bkerr.Internal("failed to get local speech-to-text config", err))
 			return
 		}
 		writeJSON(w, http.StatusOK, localSTTConfigToResponse(cfg))
@@ -63,7 +64,7 @@ func (a *App) handleLocalSTTConfig(w http.ResponseWriter, r *http.Request) {
 			Enabled: body.Enabled,
 		})
 		if err != nil {
-			writeJSONError(w, http.StatusInternalServerError, "failed to save local speech-to-text config")
+			writeBackendError(w, bkerr.Internal("failed to save local speech-to-text config", err))
 			return
 		}
 		writeJSON(w, http.StatusOK, localSTTConfigToResponse(cfg))

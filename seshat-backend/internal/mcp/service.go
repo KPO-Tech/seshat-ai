@@ -24,23 +24,25 @@ type RuntimeReloader interface {
 type ServiceConfig struct {
 	Store   *db.MCPServerStore
 	Runtime RuntimeReloader // nil = reload/status not available
-	// CloudClient/OrganizationID/Approvals are nil/empty in standalone
-	// mode. When set (connected mode, see internal/config/bootstrap.go),
-	// the org's shared MCP catalog is fetched live and, for each server
-	// this installation has explicitly approved (Approvals), merged into
-	// the local runtime on Reload — see internal/cloudmcp's package doc
-	// for why approval is required rather than auto-loading.
-	CloudClient    *cloudmcp.Client
-	OrganizationID string
-	Approvals      *db.MCPOrgServerApprovalStore
+	// CloudClient/Approvals are nil in standalone mode. When set (connected
+	// mode, see internal/config/bootstrap.go), the org's shared MCP catalog
+	// is fetched live and, for each server this installation has explicitly
+	// approved (Approvals), merged into the local runtime on Reload — see
+	// internal/cloudmcp's package doc for why approval is required rather
+	// than auto-loading. The organization itself is resolved fresh per call
+	// from the caller's own principal (see api.requestOrganizationID /
+	// auth.Principal.OrganizationID), passed as an explicit organizationID
+	// parameter to every method below rather than stored here - see
+	// agents.Service's doc comment for why.
+	CloudClient *cloudmcp.Client
+	Approvals   *db.MCPOrgServerApprovalStore
 }
 
 type Service struct {
-	store          *db.MCPServerStore
-	runtime        RuntimeReloader
-	cloudClient    *cloudmcp.Client
-	organizationID string
-	approvals      *db.MCPOrgServerApprovalStore
+	store       *db.MCPServerStore
+	runtime     RuntimeReloader
+	cloudClient *cloudmcp.Client
+	approvals   *db.MCPOrgServerApprovalStore
 
 	// mu guards cachedOrgCatalog only — the last org catalog fetched by
 	// ListOrgCatalog/Reload, kept around so Status() can tag org-sourced
@@ -53,7 +55,7 @@ type Service struct {
 func NewService(cfg ServiceConfig) *Service {
 	return &Service{
 		store: cfg.Store, runtime: cfg.Runtime,
-		cloudClient: cfg.CloudClient, organizationID: cfg.OrganizationID, approvals: cfg.Approvals,
+		cloudClient: cfg.CloudClient, approvals: cfg.Approvals,
 	}
 }
 
@@ -72,12 +74,12 @@ var _ = (*Service)(nil)
 // itself, e.g. approve/revoke/reload, satisfies the same "resume approved
 // servers" guarantee directly and must not also go through this path, or
 // the reload would run twice).
-func (s *Service) NoteRequestToken(ctx context.Context, token string) {
-	if s == nil || token == "" || s.cloudClient == nil || s.organizationID == "" {
+func (s *Service) NoteRequestToken(ctx context.Context, token, organizationID string) {
+	if s == nil || token == "" || s.cloudClient == nil || organizationID == "" {
 		return
 	}
 	s.reloadOnce.Do(func() {
-		_, _ = s.Reload(ctx, token)
+		_, _ = s.Reload(ctx, token, organizationID)
 	})
 }
 
@@ -208,7 +210,7 @@ func (s *Service) ImportFromMcpJSON(ctx context.Context, cfg enginemcp.McpJsonCo
 // only, using the caller's own bearer token to resolve the org catalog),
 // pushes them all to the SDK runtime, and returns the per-server
 // connection status. token may be empty in standalone mode.
-func (s *Service) Reload(ctx context.Context, token string) ([]ServerStatus, error) {
+func (s *Service) Reload(ctx context.Context, token, organizationID string) ([]ServerStatus, error) {
 	if s == nil || s.runtime == nil {
 		return nil, bkerr.Unavailable("mcp runtime not available", nil)
 	}
@@ -221,7 +223,7 @@ func (s *Service) Reload(ctx context.Context, token string) ([]ServerStatus, err
 	for _, srv := range servers {
 		sdkConfigs = append(sdkConfigs, srv.ToSDKConfig())
 	}
-	for _, org := range s.approvedOrgServers(ctx, token) {
+	for _, org := range s.approvedOrgServers(ctx, token, organizationID) {
 		sdkConfigs = append(sdkConfigs, orgServerToSDKConfig(org))
 		orgNames[org.Name] = true
 	}
@@ -281,11 +283,11 @@ func (s *Service) status(orgNames map[string]bool) []ServerStatus {
 // cross-references it with this installation's local approvals. Returns an
 // empty list (not an error) in standalone mode or on any network failure —
 // this is enrichment, never a hard dependency.
-func (s *Service) ListOrgCatalog(ctx context.Context, token string) ([]OrgServerStatus, error) {
-	if s == nil || s.cloudClient == nil || s.organizationID == "" {
+func (s *Service) ListOrgCatalog(ctx context.Context, token, organizationID string) ([]OrgServerStatus, error) {
+	if s == nil || s.cloudClient == nil || organizationID == "" {
 		return []OrgServerStatus{}, nil
 	}
-	catalog, err := s.cloudClient.ResolveServerConfigs(ctx, token, s.organizationID)
+	catalog, err := s.cloudClient.ResolveServerConfigs(ctx, token, organizationID)
 	if err != nil {
 		return []OrgServerStatus{}, nil
 	}
@@ -311,7 +313,7 @@ func (s *Service) ListOrgCatalog(ctx context.Context, token string) ([]OrgServer
 
 // ApproveOrgServer records local approval for one org-catalog server and
 // immediately reloads so it takes effect without a separate manual reload.
-func (s *Service) ApproveOrgServer(ctx context.Context, orgServerID, token string) ([]ServerStatus, error) {
+func (s *Service) ApproveOrgServer(ctx context.Context, orgServerID, token, organizationID string) ([]ServerStatus, error) {
 	if s == nil || s.approvals == nil {
 		return nil, bkerr.Unavailable("mcp org server approvals not available", nil)
 	}
@@ -321,34 +323,34 @@ func (s *Service) ApproveOrgServer(ctx context.Context, orgServerID, token strin
 	if err := s.approvals.Approve(ctx, orgServerID); err != nil {
 		return nil, bkerr.Internal(err.Error(), err)
 	}
-	return s.Reload(ctx, token)
+	return s.Reload(ctx, token, organizationID)
 }
 
 // RevokeOrgServerApproval removes local approval for one org-catalog server
 // and immediately reloads so it stops running.
-func (s *Service) RevokeOrgServerApproval(ctx context.Context, orgServerID, token string) ([]ServerStatus, error) {
+func (s *Service) RevokeOrgServerApproval(ctx context.Context, orgServerID, token, organizationID string) ([]ServerStatus, error) {
 	if s == nil || s.approvals == nil {
 		return nil, bkerr.Unavailable("mcp org server approvals not available", nil)
 	}
 	if err := s.approvals.Revoke(ctx, orgServerID); err != nil {
 		return nil, bkerr.Internal(err.Error(), err)
 	}
-	return s.Reload(ctx, token)
+	return s.Reload(ctx, token, organizationID)
 }
 
 // approvedOrgServers fetches the org catalog live (using the caller's own
 // bearer token) and filters to approved entries. Any failure (offline,
 // standalone mode, no token, etc.) degrades silently to "no org servers
 // this reload" — never blocks a local reload.
-func (s *Service) approvedOrgServers(ctx context.Context, token string) []cloudmcp.ServerConfig {
-	if s == nil || s.cloudClient == nil || s.organizationID == "" || s.approvals == nil || token == "" {
+func (s *Service) approvedOrgServers(ctx context.Context, token, organizationID string) []cloudmcp.ServerConfig {
+	if s == nil || s.cloudClient == nil || organizationID == "" || s.approvals == nil || token == "" {
 		return nil
 	}
 	approved, err := s.approvals.ListApprovedIDs(ctx)
 	if err != nil || len(approved) == 0 {
 		return nil
 	}
-	catalog, err := s.cloudClient.ResolveServerConfigs(ctx, token, s.organizationID)
+	catalog, err := s.cloudClient.ResolveServerConfigs(ctx, token, organizationID)
 	if err != nil {
 		return nil
 	}

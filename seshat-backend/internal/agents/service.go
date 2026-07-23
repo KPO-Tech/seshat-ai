@@ -2,6 +2,7 @@ package agents
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
@@ -10,24 +11,28 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	pkgagent "github.com/KPO-Tech/seshat/pkg/agent"
 	"github.com/KPO-Tech/seshat/pkg/types"
+	"gorm.io/gorm"
 )
 
-// Service manages user-defined agent definitions. cloudClient/organizationID
-// are nil/"" in standalone mode; when set (connected mode), they add the
-// organization's shared preset catalog as one more source, resolved
-// alongside the local DB and the SDK's built-in registry — purely additive,
-// never a replacement (see helps/seshat-architecture-target.md §7). Same
-// pattern as internal/mcp.Service: the cloud client lives on the Service
-// itself rather than being built ad hoc in a handler, since GetDefinition is
-// called from deep inside internal/query, not just from an HTTP handler.
+// Service manages user-defined agent definitions. cloudClient is nil in
+// standalone mode; when set (connected mode), it adds the organization's
+// shared preset catalog as one more source, resolved alongside the local DB
+// and the SDK's built-in registry — purely additive, never a replacement
+// (see helps/seshat-architecture-target.md §7). The organization itself is
+// resolved fresh per call from the caller's own principal (see
+// auth.Principal.OrganizationID), not stored on the Service — seshat-server
+// enforces at most one organization per user account, so there's no
+// deployment-time value to configure here at all. Same pattern as
+// internal/mcp.Service: the cloud client lives on the Service itself rather
+// than being built ad hoc in a handler, since GetDefinition is called from
+// deep inside internal/query, not just from an HTTP handler.
 type Service struct {
-	store          *db.AgentDefinitionStore
-	cloudClient    *cloudagents.Client
-	organizationID string
+	store       *db.AgentDefinitionStore
+	cloudClient *cloudagents.Client
 }
 
-func NewService(store *db.AgentDefinitionStore, cloudClient *cloudagents.Client, organizationID string) *Service {
-	return &Service{store: store, cloudClient: cloudClient, organizationID: organizationID}
+func NewService(store *db.AgentDefinitionStore, cloudClient *cloudagents.Client) *Service {
+	return &Service{store: store, cloudClient: cloudClient}
 }
 
 func (s *Service) List(ctx context.Context) ([]Agent, error) {
@@ -51,7 +56,7 @@ func (s *Service) GetBySlug(ctx context.Context, slug string) (*Agent, error) {
 	}
 	row, err := s.store.GetBySlug(ctx, strings.TrimSpace(slug))
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "record not found") {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, bkerr.NotFound("agent not found", err)
 		}
 		return nil, bkerr.Internal(err.Error(), err)
@@ -66,7 +71,7 @@ func (s *Service) GetByID(ctx context.Context, id string) (*Agent, error) {
 	}
 	row, err := s.store.GetByID(ctx, strings.TrimSpace(id))
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "record not found") {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, bkerr.NotFound("agent not found", err)
 		}
 		return nil, bkerr.Internal(err.Error(), err)
@@ -138,7 +143,7 @@ func (s *Service) Update(ctx context.Context, id string, p UpdateParams) (*Agent
 		Enabled:         p.Enabled,
 	})
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "record not found") {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, bkerr.NotFound("agent not found", err)
 		}
 		return nil, bkerr.Internal(err.Error(), err)
@@ -152,7 +157,7 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 		return bkerr.Unavailable("agent store not available", nil)
 	}
 	if err := s.store.Delete(ctx, id); err != nil {
-		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "record not found") {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return bkerr.NotFound("agent not found", err)
 		}
 		return bkerr.Internal(err.Error(), err)
@@ -181,8 +186,8 @@ func (s *Service) GetDefinition(ctx context.Context, principal *backendauth.Prin
 	}
 
 	// Then the connected organization's shared catalog, if configured.
-	if s != nil && s.cloudClient != nil && s.organizationID != "" && principal != nil {
-		presets, err := s.cloudClient.ListPresets(ctx, principal.AuthSession.ID, s.organizationID)
+	if s != nil && s.cloudClient != nil && principal != nil && principal.OrganizationID() != "" {
+		presets, err := s.cloudClient.ListPresets(ctx, principal.AuthSession.ID, principal.OrganizationID())
 		if err == nil {
 			for _, p := range presets {
 				if p.Slug == slug && p.Enabled {
@@ -206,10 +211,10 @@ func (s *Service) GetDefinition(ctx context.Context, principal *backendauth.Prin
 // resolvable at query time via GetDefinition. Returns (nil, nil) when no
 // cloud client is configured (standalone mode) or principal is nil.
 func (s *Service) ListOrganizationPresets(ctx context.Context, principal *backendauth.Principal) ([]Agent, error) {
-	if s == nil || s.cloudClient == nil || s.organizationID == "" || principal == nil {
+	if s == nil || s.cloudClient == nil || principal == nil || principal.OrganizationID() == "" {
 		return nil, nil
 	}
-	presets, err := s.cloudClient.ListPresets(ctx, principal.AuthSession.ID, s.organizationID)
+	presets, err := s.cloudClient.ListPresets(ctx, principal.AuthSession.ID, principal.OrganizationID())
 	if err != nil {
 		return nil, err
 	}
@@ -223,13 +228,15 @@ func (s *Service) ListOrganizationPresets(ctx context.Context, principal *backen
 // ─── SDK conversion ───────────────────────────────────────────────────────────
 
 // toSDKDefinition converts a domain Agent to an SDK AgentDefinition that the
-// query runtime can use directly.
+// query runtime can use directly. a.Source ("user" for DB agents,
+// "organization" for org catalog presets converted via fromRemote) passes
+// straight through.
 func toSDKDefinition(a Agent) *pkgagent.AgentDefinition {
 	prompt := a.SystemPrompt
 	return &pkgagent.AgentDefinition{
 		AgentType:       a.Slug,
 		WhenToUse:       a.WhenToUse,
-		Source:          "user",
+		Source:          pkgagent.AgentSource(a.Source),
 		Model:           a.Model,
 		Tools:           a.Tools,
 		DisallowedTools: a.DisallowedTools,
@@ -242,23 +249,9 @@ func toSDKDefinition(a Agent) *pkgagent.AgentDefinition {
 }
 
 // toSDKDefinitionFromRemote converts an organization catalog preset to an
-// SDK AgentDefinition, same shape as toSDKDefinition but tagged as coming
-// from the organization rather than this user's own local DB.
+// SDK AgentDefinition, via the same conversion as toSDKDefinition.
 func toSDKDefinitionFromRemote(p cloudagents.AgentPreset) *pkgagent.AgentDefinition {
-	prompt := p.SystemPrompt
-	return &pkgagent.AgentDefinition{
-		AgentType:       p.Slug,
-		WhenToUse:       p.WhenToUse,
-		Source:          "organization",
-		Model:           p.Model,
-		Tools:           p.Tools,
-		DisallowedTools: p.DisallowedTools,
-		MaxTurns:        p.MaxTurns,
-		PermissionMode:  types.PermissionMode(p.PermissionMode),
-		Isolation:       p.Isolation,
-		McpServers:      p.McpServers,
-		GetSystemPrompt: func() string { return prompt },
-	}
+	return toSDKDefinition(fromRemote(p))
 }
 
 func fromRemote(p cloudagents.AgentPreset) Agent {

@@ -65,7 +65,7 @@ func TestNilStoreReturnsUnavailable(t *testing.T) {
 
 func TestReloadNilRuntimeReturnsUnavailable(t *testing.T) {
 	svc := NewService(ServiceConfig{})
-	_, err := svc.Reload(context.Background(), "")
+	_, err := svc.Reload(context.Background(), "", "")
 	if bkerr.KindOf(err) != bkerr.ErrorKindUnavailable {
 		t.Fatalf("expected unavailable, got %v", err)
 	}

@@ -40,6 +40,12 @@ type QueryInput struct {
 	ProjectPath string
 	// Images carries base64-encoded image attachments for this turn (multimodal).
 	Images []ImageAttachment
+	// ForcedExecutionMode is a host-set override ("plan"/"execute") read from
+	// the session's ownership record — applied to the SDK session right
+	// before this turn is submitted via Session.ForcePlanMode()/
+	// ClearPlanMode(), independent of whether the model itself would decide
+	// to call enter_plan_mode/exit_plan_mode. Empty means no override.
+	ForcedExecutionMode string
 }
 
 type QueryResult struct {

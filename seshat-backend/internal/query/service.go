@@ -547,7 +547,39 @@ func (s *Service) InterruptSession(ctx context.Context, principal *backendauth.P
 	return nil
 }
 
-func (s *Service) UpdateSessionMetadata(ctx context.Context, principal *backendauth.Principal, sessionID string, title *string, permissionMode *types.PermissionMode, executionOrigin *types.ExecutionOrigin, providerSettingID *string, modelID *string, workspacePath *string, projectPath *string) error {
+// CancelSubagent cancels a running background sub-agent — one spawned via the
+// spawn_agent tool from this session — freeing it up for close_agent/wait_agent
+// callers and, if still active, the breadth-limit slot it holds (see
+// agent.DefaultAsyncManager). Generated agent IDs are a predictable counter,
+// not a capability token, so ownership is enforced by requiring the caller to
+// name the session that spawned it: if the agent doesn't exist, already
+// finished, or was spawned by a different session, this returns the same
+// NotFound either way — deliberately indistinguishable, so this endpoint can't
+// be used to enumerate other sessions' sub-agent IDs or lifecycle state.
+func (s *Service) CancelSubagent(ctx context.Context, principal *backendauth.Principal, sessionID string, agentID string) error {
+	if strings.TrimSpace(sessionID) == "" {
+		return bkerr.InvalidInput("session_id is required", nil)
+	}
+	if strings.TrimSpace(agentID) == "" {
+		return bkerr.InvalidInput("agent_id is required", nil)
+	}
+	if err := s.checkSessionAccess(ctx, principal, sessionID); err != nil {
+		return err
+	}
+
+	manager := agent.DefaultAsyncManager()
+	asyncAgent, err := manager.GetAgent(agentID)
+	if err != nil || asyncAgent == nil || string(asyncAgent.ParentSessionID) != sessionID {
+		return bkerr.NotFound("no active sub-agent with that ID for this session", nil)
+	}
+
+	if err := manager.CloseAgent(agentID); err != nil {
+		return bkerr.Internal("cancel sub-agent: "+err.Error(), err)
+	}
+	return nil
+}
+
+func (s *Service) UpdateSessionMetadata(ctx context.Context, principal *backendauth.Principal, sessionID string, title *string, permissionMode *types.PermissionMode, executionOrigin *types.ExecutionOrigin, providerSettingID *string, modelID *string, workspacePath *string, projectPath *string, executionMode *string) error {
 	if s == nil {
 		return bkerr.Unavailable("query service not configured", nil)
 	}
@@ -557,7 +589,7 @@ func (s *Service) UpdateSessionMetadata(ctx context.Context, principal *backenda
 	if s.ownership == nil {
 		return bkerr.Unavailable("session metadata updates are not supported by this runtime", nil)
 	}
-	if title == nil && permissionMode == nil && executionOrigin == nil && providerSettingID == nil && workspacePath == nil && projectPath == nil {
+	if title == nil && permissionMode == nil && executionOrigin == nil && providerSettingID == nil && workspacePath == nil && projectPath == nil && executionMode == nil {
 		return bkerr.InvalidInput("at least one session field must be updated", nil)
 	}
 	if err := s.checkSessionAccess(ctx, principal, sessionID); err != nil {
@@ -628,6 +660,15 @@ func (s *Service) UpdateSessionMetadata(ctx context.Context, principal *backenda
 		}
 		if err := s.ownership.UpdateProjectPath(ctx, sessionID, pp); err != nil {
 			return bkerr.Internal("update project path: "+err.Error(), err)
+		}
+	}
+	if executionMode != nil {
+		trimmed := strings.TrimSpace(*executionMode)
+		if trimmed != "" && trimmed != "plan" && trimmed != "execute" {
+			return bkerr.InvalidInput("execution_mode must be \"plan\", \"execute\", or empty to clear", nil)
+		}
+		if err := s.ownership.UpdateForcedExecutionMode(ctx, sessionID, trimmed); err != nil {
+			return bkerr.Internal("update forced execution mode: "+err.Error(), err)
 		}
 	}
 	return nil
@@ -801,6 +842,7 @@ func (s *Service) prepareRuntimeInput(ctx context.Context, principal *backendaut
 	if err != nil {
 		return QueryInput{}, "", bkerr.NotFound("session not found", err)
 	}
+	runtimeInput.ForcedExecutionMode = ownership.ForcedExecutionMode
 
 	// Resolve session workspace: use stored value or create the default per-session sandbox.
 	if runtimeInput.WorkspacePath == "" {

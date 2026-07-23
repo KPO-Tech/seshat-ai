@@ -292,7 +292,7 @@ func (a *App) handleMCPReload(w http.ResponseWriter, r *http.Request) {
 			_, _ = a.backend.MCP.ImportFromMcpJSON(r.Context(), cfg)
 		}
 	}
-	statuses, err := a.backend.MCP.Reload(r.Context(), requestToken(r))
+	statuses, err := a.backend.MCP.Reload(r.Context(), requestToken(r), requestOrganizationID(r))
 	if err != nil {
 		writeBackendError(w, err)
 		return
@@ -343,6 +343,17 @@ func requestToken(r *http.Request) string {
 	return ""
 }
 
+// requestOrganizationID returns the calling principal's own organization
+// (see auth.Principal.OrganizationID), or "" if there is none - resolved
+// fresh per request rather than from any deployment-time configuration,
+// since seshat-server enforces at most one organization per user account.
+func requestOrganizationID(r *http.Request) string {
+	if principal, ok := authPrincipalFromContext(r.Context()); ok {
+		return principal.OrganizationID()
+	}
+	return ""
+}
+
 // mcpRoute wraps an admin-gated MCP handler and, for handlers that don't
 // already reload the runtime themselves, calls MCP.NoteRequestToken so the
 // first authenticated MCP request after a restart resumes any approved org
@@ -356,7 +367,7 @@ func requestToken(r *http.Request) string {
 func (a *App) mcpRoute(handler http.HandlerFunc, reloadsItself bool) http.Handler {
 	return a.requireRole("admin", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !reloadsItself {
-			a.backend.MCP.NoteRequestToken(r.Context(), requestToken(r))
+			a.backend.MCP.NoteRequestToken(r.Context(), requestToken(r), requestOrganizationID(r))
 		}
 		handler(w, r)
 	}))
@@ -395,7 +406,7 @@ func (a *App) handleMCPOrgCatalog(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	entries, err := a.backend.MCP.ListOrgCatalog(r.Context(), requestToken(r))
+	entries, err := a.backend.MCP.ListOrgCatalog(r.Context(), requestToken(r), requestOrganizationID(r))
 	if err != nil {
 		writeBackendError(w, err)
 		return
@@ -418,14 +429,14 @@ func (a *App) handleMCPOrgCatalogApprove(w http.ResponseWriter, r *http.Request)
 	}
 	switch r.Method {
 	case http.MethodPost:
-		statuses, err := a.backend.MCP.ApproveOrgServer(r.Context(), orgServerID, requestToken(r))
+		statuses, err := a.backend.MCP.ApproveOrgServer(r.Context(), orgServerID, requestToken(r), requestOrganizationID(r))
 		if err != nil {
 			writeBackendError(w, err)
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"servers": toMCPStatusResponse(statuses)})
 	case http.MethodDelete:
-		statuses, err := a.backend.MCP.RevokeOrgServerApproval(r.Context(), orgServerID, requestToken(r))
+		statuses, err := a.backend.MCP.RevokeOrgServerApproval(r.Context(), orgServerID, requestToken(r), requestOrganizationID(r))
 		if err != nil {
 			writeBackendError(w, err)
 			return

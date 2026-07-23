@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	ragembedder "github.com/KPO-Tech/seshat/pkg/rag/embedder"
 )
@@ -47,13 +48,13 @@ func embedderConfigToResponse(cfg *db.EmbedderConfig) embedderConfigResponse {
 func (a *App) handleEmbedderConfig(w http.ResponseWriter, r *http.Request) {
 	principal, _ := authPrincipalFromContext(r.Context())
 	if principal == nil {
-		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
+		writeBackendError(w, bkerr.Unauthorized("unauthorized", nil))
 		return
 	}
 
 	store := a.embedderStore
 	if store == nil {
-		writeJSONError(w, http.StatusServiceUnavailable, "embedder config store not available")
+		writeBackendError(w, bkerr.Unavailable("embedder config store not available", nil))
 		return
 	}
 
@@ -83,7 +84,7 @@ func (a *App) handleEmbedderConfig(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		cfg, err := store.Get(r.Context())
 		if err != nil {
-			writeJSONError(w, http.StatusInternalServerError, "failed to get embedder config")
+			writeBackendError(w, bkerr.Internal("failed to get embedder config", err))
 			return
 		}
 		writeJSON(w, http.StatusOK, embedderConfigToResponse(cfg))
@@ -107,7 +108,7 @@ func (a *App) handleEmbedderConfig(w http.ResponseWriter, r *http.Request) {
 			Enabled:  body.Enabled,
 		})
 		if err != nil {
-			writeJSONError(w, http.StatusInternalServerError, "failed to save embedder config: "+err.Error())
+			writeBackendError(w, bkerr.Internal("failed to save embedder config: "+err.Error(), err))
 			return
 		}
 		writeJSON(w, http.StatusOK, embedderConfigToResponse(cfg))
@@ -238,7 +239,7 @@ func (a *App) handleEmbedderDetectModels(w http.ResponseWriter, r *http.Request,
 	client := &http.Client{Timeout: 8 * time.Second}
 	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, baseURL+"/api/tags", nil)
 	if err != nil {
-		writeJSONError(w, http.StatusBadRequest, "invalid base_url")
+		writeBackendError(w, bkerr.InvalidInput("invalid base_url", err))
 		return
 	}
 	resp, err := client.Do(req)
@@ -254,7 +255,7 @@ func (a *App) handleEmbedderDetectModels(w http.ResponseWriter, r *http.Request,
 
 	data, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "failed to read ollama response")
+		writeBackendError(w, bkerr.Internal("failed to read ollama response", err))
 		return
 	}
 
@@ -268,7 +269,7 @@ func (a *App) handleEmbedderDetectModels(w http.ResponseWriter, r *http.Request,
 		} `json:"models"`
 	}
 	if err := json.Unmarshal(data, &result); err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "failed to parse ollama response")
+		writeBackendError(w, bkerr.Internal("failed to parse ollama response", err))
 		return
 	}
 

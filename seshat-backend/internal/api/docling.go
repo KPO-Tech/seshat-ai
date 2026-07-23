@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	"github.com/KPO-Tech/seshat/pkg/docling"
 )
@@ -37,13 +38,13 @@ func doclingConfigToResponse(cfg *db.DoclingConfig) doclingConfigResponse {
 func (a *App) handleDoclingConfig(w http.ResponseWriter, r *http.Request) {
 	principal, _ := authPrincipalFromContext(r.Context())
 	if principal == nil {
-		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
+		writeBackendError(w, bkerr.Unauthorized("unauthorized", nil))
 		return
 	}
 
 	store := a.doclingStore
 	if store == nil {
-		writeJSONError(w, http.StatusServiceUnavailable, "docling config store not available")
+		writeBackendError(w, bkerr.Unavailable("docling config store not available", nil))
 		return
 	}
 
@@ -63,7 +64,7 @@ func (a *App) handleDoclingConfig(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		cfg, err := store.Get(r.Context())
 		if err != nil {
-			writeJSONError(w, http.StatusInternalServerError, "failed to get docling config")
+			writeBackendError(w, bkerr.Internal("failed to get docling config", err))
 			return
 		}
 		writeJSON(w, http.StatusOK, doclingConfigToResponse(cfg))
@@ -81,7 +82,7 @@ func (a *App) handleDoclingConfig(w http.ResponseWriter, r *http.Request) {
 			Enabled: body.Enabled,
 		})
 		if err != nil {
-			writeJSONError(w, http.StatusInternalServerError, "failed to save docling config: "+err.Error())
+			writeBackendError(w, bkerr.Internal("failed to save docling config: "+err.Error(), err))
 			return
 		}
 		writeJSON(w, http.StatusOK, doclingConfigToResponse(cfg))

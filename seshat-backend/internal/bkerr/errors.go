@@ -9,7 +9,10 @@ const (
 	ErrorKindUnauthorized ErrorKind = "unauthorized"
 	ErrorKindForbidden    ErrorKind = "forbidden"
 	ErrorKindNotFound     ErrorKind = "not_found"
+	ErrorKindConflict     ErrorKind = "conflict"
+	ErrorKindTooLarge     ErrorKind = "too_large"
 	ErrorKindRateLimit    ErrorKind = "rate_limit"
+	ErrorKindBadGateway   ErrorKind = "bad_gateway"
 	ErrorKindUnavailable  ErrorKind = "unavailable"
 	ErrorKindInternal     ErrorKind = "internal"
 )
@@ -60,8 +63,23 @@ func NotFound(message string, err error) error {
 	return newError(ErrorKindNotFound, message, err)
 }
 
+func Conflict(message string, err error) error {
+	return newError(ErrorKindConflict, message, err)
+}
+
+func TooLarge(message string, err error) error {
+	return newError(ErrorKindTooLarge, message, err)
+}
+
 func RateLimit(message string, err error) error {
 	return newError(ErrorKindRateLimit, message, err)
+}
+
+// BadGateway reports a failure from an upstream service this backend depends
+// on (Docling, whisper-server, a cloud control-plane call, ...) — distinct
+// from Unavailable, which means this backend itself can't serve the request.
+func BadGateway(message string, err error) error {
+	return newError(ErrorKindBadGateway, message, err)
 }
 
 func Unavailable(message string, err error) error {

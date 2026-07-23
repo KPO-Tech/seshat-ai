@@ -3,6 +3,8 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
 )
 
 // These handlers cover pairing this device and read-only run visibility.
@@ -10,7 +12,7 @@ import (
 
 func (a *App) cloudAutomationAvailable(w http.ResponseWriter) bool {
 	if a.cloudAutomation == nil {
-		writeJSONError(w, http.StatusServiceUnavailable, "cloud automation is not available")
+		writeBackendError(w, bkerr.Unavailable("cloud automation is not available", nil))
 		return false
 	}
 	return true
@@ -23,7 +25,7 @@ func (a *App) handleAutomationStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	status, err := a.cloudAutomation.Status(r.Context())
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		writeBackendError(w, bkerr.Internal(err.Error(), err))
 		return
 	}
 	writeJSON(w, http.StatusOK, status)
@@ -41,17 +43,17 @@ func (a *App) handleAutomationConnect(w http.ResponseWriter, r *http.Request) {
 	}
 	principal, ok := authPrincipalFromContext(r.Context())
 	if !ok {
-		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
+		writeBackendError(w, bkerr.Unauthorized("unauthorized", nil))
 		return
 	}
 	var req connectAutomationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "invalid request body")
+		writeBackendError(w, bkerr.InvalidInput("invalid request body", err))
 		return
 	}
 	status, err := a.cloudAutomation.Connect(r.Context(), principal.User.ID, req.ServerURL, req.DeviceToken)
 	if err != nil {
-		writeJSONError(w, http.StatusBadRequest, err.Error())
+		writeBackendError(w, bkerr.InvalidInput(err.Error(), err))
 		return
 	}
 	writeJSON(w, http.StatusOK, status)
@@ -66,12 +68,12 @@ func (a *App) handleAutomationRegisterDevice(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	if a.connectedServerURL == "" {
-		writeJSONError(w, http.StatusBadRequest, "this device is not connected to an organization server")
+		writeBackendError(w, bkerr.InvalidInput("this device is not connected to an organization server", nil))
 		return
 	}
 	principal, ok := authPrincipalFromContext(r.Context())
 	if !ok {
-		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
+		writeBackendError(w, bkerr.Unauthorized("unauthorized", nil))
 		return
 	}
 	var req struct {
@@ -88,7 +90,7 @@ func (a *App) handleAutomationRegisterDevice(w http.ResponseWriter, r *http.Requ
 		req.Name,
 	)
 	if err != nil {
-		writeJSONError(w, http.StatusBadRequest, err.Error())
+		writeBackendError(w, bkerr.InvalidInput(err.Error(), err))
 		return
 	}
 	writeJSON(w, http.StatusOK, status)
@@ -100,11 +102,11 @@ func (a *App) handleAutomationDisconnect(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if _, ok := authPrincipalFromContext(r.Context()); !ok {
-		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
+		writeBackendError(w, bkerr.Unauthorized("unauthorized", nil))
 		return
 	}
 	if err := a.cloudAutomation.Disconnect(r.Context()); err != nil {
-		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		writeBackendError(w, bkerr.Internal(err.Error(), err))
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -117,12 +119,12 @@ func (a *App) handleAutomationRuns(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, ok := authPrincipalFromContext(r.Context()); !ok {
-		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
+		writeBackendError(w, bkerr.Unauthorized("unauthorized", nil))
 		return
 	}
 	runs, err := a.cloudAutomation.RecentRuns(r.Context())
 	if err != nil {
-		writeJSONError(w, http.StatusBadRequest, err.Error())
+		writeBackendError(w, bkerr.InvalidInput(err.Error(), err))
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"runs": runs, "count": len(runs)})

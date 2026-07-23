@@ -41,9 +41,10 @@ type SessionInspector interface {
 
 // SDKRuntime adapts sdk.Client to QueryRuntime + StreamingQueryRuntime + SessionManager.
 type SDKRuntime struct {
-	client     *sdk.Client
-	baseConfig *sdk.ClientConfig
-	mu         sync.RWMutex
+	client        *sdk.Client
+	baseConfig    *sdk.ClientConfig
+	terminalRelay *TerminalRelay
+	mu            sync.RWMutex
 }
 
 func NewSDKRuntime(client *sdk.Client, baseConfig *sdk.ClientConfig) *SDKRuntime {
@@ -51,6 +52,31 @@ func NewSDKRuntime(client *sdk.Client, baseConfig *sdk.ClientConfig) *SDKRuntime
 		client:     client,
 		baseConfig: cloneClientConfig(baseConfig),
 	}
+}
+
+// SetTerminalRelay attaches the shared TerminalRelay used to route a
+// session's bash-tool calls through Electron's real terminal when one is
+// connected — see applyRemoteExecutor. A separate setter (rather than a
+// constructor param) keeps NewSDKRuntime's existing call sites, including
+// runtime_test.go, unchanged.
+func (r *SDKRuntime) SetTerminalRelay(relay *TerminalRelay) {
+	r.terminalRelay = relay
+}
+
+// applyRemoteExecutor registers a terminalRemoteExecutor for session when
+// Electron's terminal relay has a live connection for it, so this turn's
+// bash-tool calls run in the user's real, visible shell. Sessions with no
+// terminal ever opened are unaffected — bash.Tool falls back to local
+// execution exactly as before.
+func (r *SDKRuntime) applyRemoteExecutor(session *sdk.Session, sessionID string) {
+	if r.terminalRelay == nil || sessionID == "" {
+		return
+	}
+	if !r.terminalRelay.Available(sessionID) {
+		session.ClearRemoteExecutor()
+		return
+	}
+	session.SetRemoteExecutor(&terminalRemoteExecutor{relay: r.terminalRelay, sessionID: sessionID})
 }
 
 func (r *SDKRuntime) RunPrompt(ctx context.Context, input QueryInput) (*QueryResult, error) {
@@ -63,6 +89,7 @@ func (r *SDKRuntime) RunPrompt(ctx context.Context, input QueryInput) (*QueryRes
 	if err != nil {
 		return nil, err
 	}
+	r.applyRemoteExecutor(session, session.GetID().String())
 
 	if input.WebSearchRunner != nil {
 		client.SetWebSearchRunner(input.WebSearchRunner)
@@ -71,6 +98,7 @@ func (r *SDKRuntime) RunPrompt(ctx context.Context, input QueryInput) (*QueryRes
 	if input.PermissionMode != "" {
 		session.SetPermissionMode(input.PermissionMode)
 	}
+	applyForcedExecutionMode(session, input.ForcedExecutionMode)
 	if cwd := effectiveCWD(input); cwd != "" {
 		session.SetWorkingDirectory(cwd)
 	}
@@ -99,6 +127,7 @@ func (r *SDKRuntime) StreamPrompt(ctx context.Context, input QueryInput, onChunk
 	if err != nil {
 		return nil, err
 	}
+	r.applyRemoteExecutor(session, session.GetID().String())
 
 	if input.PromptFn != nil {
 		client.SetPromptFn(input.PromptFn)
@@ -111,6 +140,7 @@ func (r *SDKRuntime) StreamPrompt(ctx context.Context, input QueryInput, onChunk
 	if input.PermissionMode != "" {
 		session.SetPermissionMode(input.PermissionMode)
 	}
+	applyForcedExecutionMode(session, input.ForcedExecutionMode)
 	if cwd := effectiveCWD(input); cwd != "" {
 		session.SetWorkingDirectory(cwd)
 	}
@@ -132,6 +162,23 @@ func (r *SDKRuntime) StreamPrompt(ctx context.Context, input QueryInput, onChunk
 		return nil, fmt.Errorf("submit message: %w", err)
 	}
 	return sessionResponseToResult(session, response), nil
+}
+
+// applyForcedExecutionMode pushes a session into (or out of) plan mode ahead
+// of a turn based on the host-set override read from the session's ownership
+// record — a no-op unless it actually needs to change anything, so calling it
+// unconditionally on every turn is cheap and idempotent.
+func applyForcedExecutionMode(session *sdk.Session, forced string) {
+	switch forced {
+	case "plan":
+		if session.GetExecutionMode() != sdk.ExecutionModePlan {
+			session.ForcePlanMode()
+		}
+	case "execute":
+		if session.GetExecutionMode() == sdk.ExecutionModePlan {
+			session.ClearPlanMode()
+		}
+	}
 }
 
 // submitQueryMessage calls SubmitMessageWithContent when image attachments are present,

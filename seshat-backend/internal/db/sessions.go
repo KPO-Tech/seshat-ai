@@ -24,10 +24,16 @@ type SessionOwnership struct {
 	Title             string
 	PermissionMode    string
 	ExecutionOrigin   string
-	WorkspacePath     string // session sandbox: ~/.config/seshat/workspaces/<session-id>/
-	ProjectPath       string // user-chosen project directory (optional)
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
+	// ForcedExecutionMode is a host-set override ("plan"/"execute") applied
+	// to the SDK session right before the next turn is submitted — see
+	// query.Service's use of Session.ForcePlanMode()/ClearPlanMode(). Empty
+	// means no override; the model's own enter_plan_mode/exit_plan_mode
+	// calls remain the default source of truth.
+	ForcedExecutionMode string
+	WorkspacePath       string // session sandbox: ~/.config/seshat/workspaces/<session-id>/
+	ProjectPath         string // user-chosen project directory (optional)
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
 }
 
 type CreateSessionOwnershipParams struct {
@@ -47,19 +53,20 @@ type CreateSessionOwnershipParams struct {
 // ─── GORM private model ───────────────────────────────────────────────────────
 
 type gSessionOwnership struct {
-	SessionID         string  `gorm:"primaryKey;size:64;column:session_id"`
-	UserID            string  `gorm:"column:user_id;size:64;not null;index"`
-	ProviderSettingID *string `gorm:"column:provider_setting_id;size:64;index"`
-	ModelID           *string `gorm:"column:model_id;size:255;index"`
-	WorkspaceID       *string `gorm:"column:workspace_id;size:64"`
-	OrganizationID    *string `gorm:"column:organization_id;size:64"`
-	Title             string  `gorm:"not null;default:''"`
-	PermissionMode    *string `gorm:"column:permission_mode;size:64;index"`
-	ExecutionOrigin   string  `gorm:"column:execution_origin;size:32;not null;default:'interactive'"`
-	WorkspacePath     *string `gorm:"column:workspace_path;size:1024"`
-	ProjectPath       *string `gorm:"column:project_path;size:1024"`
-	CreatedAtUnix     int64   `gorm:"column:created_at_unix;autoCreateTime:unix"`
-	UpdatedAtUnix     int64   `gorm:"column:updated_at_unix;autoUpdateTime:unix"`
+	SessionID           string  `gorm:"primaryKey;size:64;column:session_id"`
+	UserID              string  `gorm:"column:user_id;size:64;not null;index"`
+	ProviderSettingID   *string `gorm:"column:provider_setting_id;size:64;index"`
+	ModelID             *string `gorm:"column:model_id;size:255;index"`
+	WorkspaceID         *string `gorm:"column:workspace_id;size:64"`
+	OrganizationID      *string `gorm:"column:organization_id;size:64"`
+	Title               string  `gorm:"not null;default:''"`
+	PermissionMode      *string `gorm:"column:permission_mode;size:64;index"`
+	ExecutionOrigin     string  `gorm:"column:execution_origin;size:32;not null;default:'interactive'"`
+	ForcedExecutionMode *string `gorm:"column:forced_execution_mode;size:32"`
+	WorkspacePath       *string `gorm:"column:workspace_path;size:1024"`
+	ProjectPath         *string `gorm:"column:project_path;size:1024"`
+	CreatedAtUnix       int64   `gorm:"column:created_at_unix;autoCreateTime:unix"`
+	UpdatedAtUnix       int64   `gorm:"column:updated_at_unix;autoUpdateTime:unix"`
 }
 
 func (gSessionOwnership) TableName() string { return "session_ownership" }
@@ -93,6 +100,9 @@ func sessionOwnershipFromGorm(g gSessionOwnership) SessionOwnership {
 	}
 	if g.ProjectPath != nil {
 		o.ProjectPath = *g.ProjectPath
+	}
+	if g.ForcedExecutionMode != nil {
+		o.ForcedExecutionMode = *g.ForcedExecutionMode
 	}
 	return o
 }
@@ -273,6 +283,27 @@ func (s *SessionOwnershipStore) UpdateExecutionPolicy(ctx context.Context, sessi
 		Model(&gSessionOwnership{}).Where("session_id = ?", sessionID).
 		Updates(updates).Error; err != nil {
 		return fmt.Errorf("update session execution policy: %w", err)
+	}
+	return nil
+}
+
+// UpdateForcedExecutionMode sets or clears the host-forced execution-mode
+// override for a session. Pass "" to clear it (falls back to whatever the
+// model itself decides via enter_plan_mode/exit_plan_mode).
+func (s *SessionOwnershipStore) UpdateForcedExecutionMode(ctx context.Context, sessionID, mode string) error {
+	trimmed := strings.TrimSpace(mode)
+	updates := map[string]any{
+		"updated_at_unix": time.Now().UTC().Unix(),
+	}
+	if trimmed == "" {
+		updates["forced_execution_mode"] = nil
+	} else {
+		updates["forced_execution_mode"] = trimmed
+	}
+	if err := s.db.GormDB().WithContext(ctx).
+		Model(&gSessionOwnership{}).Where("session_id = ?", sessionID).
+		Updates(updates).Error; err != nil {
+		return fmt.Errorf("update forced execution mode: %w", err)
 	}
 	return nil
 }

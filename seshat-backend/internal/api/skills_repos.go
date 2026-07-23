@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudskillregistry"
 	skillsloader "github.com/KPO-Tech/seshat/pkg/skills"
 	"github.com/KPO-Tech/seshat/pkg/skills/skillrepos"
@@ -229,7 +230,7 @@ func (a *App) handleSkillReposList(w http.ResponseWriter, r *http.Request) {
 	if a.connectedServerURL != "" {
 		if principal, ok := authPrincipalFromContext(r.Context()); ok {
 			client := cloudskillregistry.NewClient(a.connectedServerURL)
-			orgRepos, err := client.ListSkillRepos(r.Context(), principal.AuthSession.ID, a.connectedOrganizationID)
+			orgRepos, err := client.ListSkillRepos(r.Context(), principal.AuthSession.ID, principal.OrganizationID())
 			if err == nil {
 				for _, or := range orgRepos {
 					if seen[or.Name] {
@@ -262,16 +263,16 @@ func (a *App) handleSkillRepoInstall(w http.ResponseWriter, r *http.Request) {
 		URL string `json:"url"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "invalid JSON body")
+		writeBackendError(w, bkerr.InvalidInput("invalid JSON body", err))
 		return
 	}
 	url := strings.TrimSpace(body.URL)
 	if url == "" {
-		writeJSONError(w, http.StatusBadRequest, "url is required")
+		writeBackendError(w, bkerr.InvalidInput("url is required", nil))
 		return
 	}
 	if err := validateSkillRepoURL(url, a.allowedSkillRepoHosts); err != nil {
-		writeJSONError(w, http.StatusBadRequest, err.Error())
+		writeBackendError(w, bkerr.InvalidInput(err.Error(), err))
 		return
 	}
 
@@ -281,13 +282,13 @@ func (a *App) handleSkillRepoInstall(w http.ResponseWriter, r *http.Request) {
 	// Check it's not already installed.
 	target := filepath.Join(reposDir, repo.Name)
 	if _, err := os.Stat(filepath.Join(target, ".git")); err == nil {
-		writeJSONError(w, http.StatusConflict, fmt.Sprintf("repo %q is already installed", repo.Name))
+		writeBackendError(w, bkerr.Conflict(fmt.Sprintf("repo %q is already installed", repo.Name), nil))
 		return
 	}
 
 	cloned := skillrepos.EnsureCloned(r.Context(), reposDir, []skillrepos.Repo{repo})
 	if len(cloned) == 0 {
-		writeJSONError(w, http.StatusInternalServerError, "failed to clone repository — check the URL and try again")
+		writeBackendError(w, bkerr.Internal("failed to clone repository — check the URL and try again", nil))
 		return
 	}
 
@@ -303,7 +304,7 @@ func (a *App) handleSkillRepoByNameDispatch(w http.ResponseWriter, r *http.Reque
 	trimmed := strings.TrimPrefix(r.URL.Path, "/skills/repos/")
 	name := filepath.Base(strings.Trim(trimmed, "/"))
 	if name == "" || name == "." || name == ".." {
-		writeJSONError(w, http.StatusBadRequest, "invalid repo name")
+		writeBackendError(w, bkerr.InvalidInput("invalid repo name", nil))
 		return
 	}
 	switch r.Method {
@@ -321,17 +322,17 @@ func (a *App) handleSkillRepoUninstall(w http.ResponseWriter, r *http.Request, n
 
 	// Prevent path traversal: the cleaned target must still be inside reposDir.
 	if !strings.HasPrefix(filepath.Clean(target)+string(filepath.Separator), filepath.Clean(reposDir)+string(filepath.Separator)) {
-		writeJSONError(w, http.StatusBadRequest, "invalid repo name")
+		writeBackendError(w, bkerr.InvalidInput("invalid repo name", nil))
 		return
 	}
 
 	if _, err := os.Stat(target); os.IsNotExist(err) {
-		writeJSONError(w, http.StatusNotFound, fmt.Sprintf("repo %q is not installed", name))
+		writeBackendError(w, bkerr.NotFound(fmt.Sprintf("repo %q is not installed", name), err))
 		return
 	}
 
 	if err := os.RemoveAll(target); err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "failed to remove repository")
+		writeBackendError(w, bkerr.Internal("failed to remove repository", err))
 		return
 	}
 
