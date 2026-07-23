@@ -238,38 +238,6 @@ export function Home() {
       {/* ── Top Bar ── */}
       <div className="home-top-bar">
         <ChatTopBar
-          providerLabel={selectedProvider?.name ?? 'Provider'}
-          modelLabel={selectedModel?.display_name || selectedModel?.model_id || 'Model'}
-          providerOptions={providers.map((provider) => ({
-            id: provider.id,
-            label: provider.name,
-          }))}
-          modelOptions={
-            selectedProviderId && hasLoadedSelectedProviderModels
-              ? selectedModels.map((model) => ({
-                  id: model.model_id,
-                  label: model.display_name || model.model_id,
-                }))
-              : undefined
-          }
-          selectedProviderId={selectedProviderId}
-          selectedModelId={selectedModelId}
-          onProviderSelect={(providerId) => {
-            setSelectedProviderId(providerId)
-            setSelectedModelId(null)
-            setErrorMessage(null)
-          }}
-          onModelSelect={(modelId) => {
-            setSelectedModelId(modelId)
-            setErrorMessage(null)
-          }}
-          providerDisabled={!hasConfiguredProviders || providersLoading || isCreatingSession}
-          modelDisabled={
-            !selectedProviderId ||
-            isCreatingSession ||
-            loadingModelsFor === selectedProviderId ||
-            selectedModels.length === 0
-          }
           permissionMode={permissionMode}
           onTogglePermission={togglePermissionMode}
           onPermissionModeSelect={setPermissionMode}
@@ -293,6 +261,38 @@ export function Home() {
             onAttachFiles={handleAttachFiles}
             onRemoveAttachment={handleRemoveAttachment}
             isUploadingAttachments={isUploadingAttachments}
+            providerLabel={selectedProvider?.name ?? 'Provider'}
+            modelLabel={selectedModel?.display_name || selectedModel?.model_id || 'Model'}
+            providerOptions={providers.map((provider) => ({
+              id: provider.id,
+              label: provider.name,
+            }))}
+            modelOptions={
+              selectedProviderId && hasLoadedSelectedProviderModels
+                ? selectedModels.map((model) => ({
+                    id: model.model_id,
+                    label: model.display_name || model.model_id,
+                  }))
+                : undefined
+            }
+            selectedProviderId={selectedProviderId}
+            selectedModelId={selectedModelId}
+            onProviderSelect={(providerId: string) => {
+              setSelectedProviderId(providerId)
+              setSelectedModelId(null)
+              setErrorMessage(null)
+            }}
+            onModelSelect={(modelId: string) => {
+              setSelectedModelId(modelId)
+              setErrorMessage(null)
+            }}
+            providerDisabled={!hasConfiguredProviders || providersLoading || isCreatingSession}
+            modelDisabled={
+              !selectedProviderId ||
+              isCreatingSession ||
+              loadingModelsFor === selectedProviderId ||
+              selectedModels.length === 0
+            }
           />
           <div className="home-input-hint">
             Press Enter to send, Shift + Enter for new line
@@ -315,19 +315,19 @@ export function Home() {
         </div>
 
         <div className="home-quick-actions">
-          <QuickAction icon={<CheckCorrect />} label="Create a task" />
-          <QuickAction icon={<FileTextOne />} label="Summarize a file" />
-          <QuickAction icon={<Browser />} label="Search the web" />
-          <QuickAction icon={<LightMember />} label="Brainstorm ideas" />
+          <QuickAction icon={<CheckCorrect size={14} />} label="Create a task" onClick={() => setInputValue('Create a task to ')} />
+          <QuickAction icon={<FileTextOne size={14} />} label="Summarize a file" onClick={() => setInputValue('Summarize the file at ')} />
+          <QuickAction icon={<Browser size={14} />} label="Search the web" onClick={() => setInputValue('Search the web for ')} />
+          <QuickAction icon={<LightMember size={14} />} label="Brainstorm ideas" onClick={() => setInputValue('Help me brainstorm ideas for ')} />
         </div>
       </div>
     </div>
   )
 }
 
-function QuickAction({ icon, label }: { icon: ReactNode; label: string }) {
+function QuickAction({ icon, label, onClick }: { icon: ReactNode; label: string; onClick: () => void }) {
   return (
-    <button className="qa-btn">
+    <button className="qa-btn" type="button" onClick={onClick}>
       <span className="qa-icon">{icon}</span>
       <span className="qa-label">{label}</span>
     </button>
@@ -347,7 +347,7 @@ ${CHAT_INPUT_CSS}
 }
 
 .home-top-bar {
-  padding: 16px 24px;
+  padding: 12px 18px;
 }
 
 .home-center {
@@ -356,7 +356,7 @@ ${CHAT_INPUT_CSS}
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px 100px;
+  padding: 28px 18px 60px;
   max-width: 900px;
   margin: 0 auto;
   width: 100%;
@@ -364,31 +364,31 @@ ${CHAT_INPUT_CSS}
 
 .home-greeting {
   font-family: serif;
-  font-size: 32px;
+  font-size: 22px;
   font-weight: 500;
   color: var(--color-text);
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   letter-spacing: -0.01em;
 }
 
 .home-input-container {
   width: 100%;
   max-width: 760px;
-  margin-bottom: 32px;
+  margin-bottom: 20px;
 }
 
 .home-input-hint {
   text-align: center;
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   color: var(--color-text-muted);
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
 .home-input-status {
   text-align: center;
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   color: var(--color-text-muted);
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .home-input-status.error {
@@ -399,17 +399,17 @@ ${CHAT_INPUT_CSS}
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .qa-btn {
   background: var(--color-surface);
   border: 1px solid var(--color-border-subtle);
-  border-radius: 14px;
-  padding: 10px 16px;
+  border-radius: 10px;
+  padding: 7px 12px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   cursor: pointer;
   transition: all 0.15s;
 }
@@ -428,7 +428,7 @@ ${CHAT_INPUT_CSS}
 }
 
 .qa-label {
-  font-size: 13px;
+  font-size: var(--font-size-sm);
   font-weight: 500;
   color: var(--color-text);
 }

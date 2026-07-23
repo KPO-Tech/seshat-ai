@@ -1,180 +1,169 @@
-import { Terminal, Globe, FileTextOne, Robot, Caution } from '@icon-park/react'
-import { api } from '@/api/client'
-import { useSessionStore } from '@/stores/session'
-import type { PendingPermission } from '@/stores/session'
+import { Caution } from '@icon-park/react'
+import type { ToolUseBlock } from '@/api/types'
+import { useUIStore } from '@/stores/ui'
+import { permissionSignature } from '@/lib/permissionSignature'
+import { fallbackApprovalDescription, toolIcon, toolLabel } from './tool-block/helpers'
 
 type Props = {
-  sessionId: string
-  permission: PendingPermission
+  tool: ToolUseBlock
+  onApprove?: (toolUseId: string) => void
+  onDeny?: (toolUseId: string) => void
 }
 
-export function PermissionCard({ sessionId, permission }: Props) {
-  const updateAgentState = useSessionStore((s) => s.updateAgentState)
+// Standalone card for a tool call awaiting user approval — rendered by
+// MessageItem in place of ToolBlock for the awaiting_approval status (not
+// embedded inside a tool's own expanded card). Calls the existing
+// onApprove/onDeny props threaded down from Conversation.tsx's
+// handlePermissionDecision (which POSTs to /permissions/{tool_use_id}) —
+// does not make its own API call, to avoid a second, divergent approval path.
+export function PermissionCard({ tool, onApprove, onDeny }: Props) {
+  const rememberApproval = useUIStore((s) => s.rememberApproval)
+  const description = tool._approval?.description || fallbackApprovalDescription(tool)
+  const snippet = commandSnippet(tool)
 
-  async function decide(approved: boolean) {
-    // Optimistically clear the card so the UI doesn't feel laggy
-    updateAgentState(sessionId, { pendingPermission: null })
-    try {
-      await api.post(`/permissions/${permission.toolUseId}`, { approved, session_id: sessionId })
-    } catch {
-      // If the request fails the engine will time out via ctx.Done() — nothing to do
-    }
+  function handleAlwaysAllow() {
+    rememberApproval(permissionSignature(tool.name, tool.input))
+    onApprove?.(tool.id)
   }
-
-  const snippet = extractSnippet(permission)
 
   return (
     <div className="perm-root">
       <style>{PERMISSION_CSS}</style>
 
-      <div className="perm-icon-wrap">
-        <Caution size={18} />
-      </div>
-
-      <div className="perm-body">
-        <div className="perm-header">
-          <span className="perm-tool-icon">{toolIcon(permission.toolName)}</span>
-          <span className="perm-tool-name">{toolLabel(permission.toolName)}</span>
-          <span className="perm-label">wants to run</span>
+      <div className="perm-top">
+        <div className="perm-icon-wrap">
+          <Caution size={13} />
         </div>
-
-        {snippet && (
-          <div className="perm-snippet">
-            <pre className="perm-pre">{snippet}</pre>
+        <div className="perm-copy">
+          <div className="perm-title">
+            Allow Claude to run <span className="perm-tool">{toolIcon(tool.name)}{toolLabel(tool.name)}</span>?
           </div>
-        )}
+          <div className="perm-desc">{description}</div>
+        </div>
       </div>
+
+      {snippet && (
+        <div className="perm-snippet">
+          <pre className="perm-pre">{snippet}</pre>
+        </div>
+      )}
 
       <div className="perm-actions">
-        <button
-          className="perm-btn perm-btn--deny"
-          type="button"
-          onClick={() => void decide(false)}
-        >
-          Deny
-        </button>
-        <button
-          className="perm-btn perm-btn--allow"
-          type="button"
-          onClick={() => void decide(true)}
-        >
-          Allow
-        </button>
+        {onDeny && (
+          <button className="perm-btn perm-btn--deny" type="button" onClick={() => onDeny(tool.id)}>
+            Deny
+          </button>
+        )}
+        {onApprove && (
+          <>
+            <button className="perm-btn perm-btn--allow-always" type="button" onClick={handleAlwaysAllow}>
+              Always allow
+            </button>
+            <button className="perm-btn perm-btn--allow" type="button" onClick={() => onApprove(tool.id)}>
+              Allow once
+            </button>
+          </>
+        )}
       </div>
     </div>
   )
 }
 
-function extractSnippet(p: PendingPermission): string {
-  if (p.description) return p.description
-  const first = Object.values(p.toolInput)[0]
-  if (typeof first !== 'string') return JSON.stringify(p.toolInput, null, 2).slice(0, 200)
-  return first.slice(0, 300)
-}
-
-function toolIcon(name: string) {
-  if (name === 'bash')                                 return <Terminal    size={14} />
-  if (name === 'web_search' || name === 'web_fetch')   return <Globe       size={14} />
-  if (name === 'agent')                                return <Robot       size={14} />
-  return <FileTextOne size={14} />
-}
-
-function toolLabel(name: string): string {
-  const labels: Record<string, string> = {
-    bash: 'Bash', web_search: 'Web Search', web_fetch: 'Web Fetch',
-    agent: 'Agent', read: 'Read', write: 'Write', edit: 'Edit',
-    glob: 'Glob', grep: 'Grep',
-  }
-  return labels[name] ?? name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+function commandSnippet(tool: ToolUseBlock): string {
+  if (typeof tool.input.command === 'string' && tool.input.command.trim()) return tool.input.command
+  const first = Object.values(tool.input)[0]
+  if (typeof first === 'string') return first.slice(0, 400)
+  if (Object.keys(tool.input).length === 0) return ''
+  return JSON.stringify(tool.input, null, 2).slice(0, 400)
 }
 
 export const PERMISSION_CSS = `
 .perm-root {
   display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  padding: 14px 16px;
+  flex-direction: column;
+  gap: 9px;
+  padding: 10px 11px;
   border: 1px solid rgba(251, 191, 36, 0.3);
-  border-radius: 14px;
+  border-radius: 11px;
   background: rgba(251, 191, 36, 0.05);
   width: 100%;
 }
 
+.perm-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+}
+
 .perm-icon-wrap {
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
   background: rgba(251, 191, 36, 0.12);
   color: #fbbf24;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  margin-top: 1px;
 }
 
-.perm-body {
+.perm-copy {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 3px;
 }
 
-.perm-header {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  flex-wrap: wrap;
-}
-
-.perm-tool-icon {
-  color: var(--color-text-muted);
-  display: flex;
-  align-items: center;
-}
-
-.perm-tool-name {
-  font-size: 13px;
+.perm-title {
+  font-size: 12px;
   font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.4;
+}
+
+.perm-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   color: var(--color-text);
 }
 
-.perm-label {
-  font-size: 13px;
+.perm-desc {
+  font-size: 11px;
+  line-height: 1.5;
   color: var(--color-text-muted);
 }
 
 .perm-snippet {
   background: rgba(0, 0, 0, 0.3);
-  border-radius: 8px;
+  border-radius: 6px;
   overflow: hidden;
 }
 
 .perm-pre {
   margin: 0;
-  padding: 8px 12px;
-  font-family: monospace;
-  font-size: 12px;
+  padding: 6px 8px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 10px;
   line-height: 1.5;
   color: var(--color-text-secondary);
   white-space: pre-wrap;
   word-break: break-all;
-  max-height: 120px;
+  max-height: 160px;
   overflow-y: auto;
 }
 
 .perm-actions {
   display: flex;
-  flex-direction: column;
+  justify-content: flex-end;
   gap: 6px;
-  flex-shrink: 0;
 }
 
 .perm-btn {
-  padding: 6px 16px;
-  border-radius: 8px;
-  font-size: 13px;
+  padding: 4px 11px;
+  border-radius: 6px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   border: 1px solid transparent;
@@ -183,14 +172,14 @@ export const PERMISSION_CSS = `
 }
 
 .perm-btn--allow {
-  background: rgba(52, 211, 153, 0.15);
-  border-color: rgba(52, 211, 153, 0.3);
-  color: #34d399;
+  background: rgba(var(--color-success-rgb), 0.15);
+  border-color: rgba(var(--color-success-rgb), 0.3);
+  color: var(--color-success);
 }
 
 .perm-btn--allow:hover {
-  background: rgba(52, 211, 153, 0.25);
-  border-color: rgba(52, 211, 153, 0.5);
+  background: rgba(var(--color-success-rgb), 0.25);
+  border-color: rgba(var(--color-success-rgb), 0.5);
 }
 
 .perm-btn--deny {
@@ -200,6 +189,17 @@ export const PERMISSION_CSS = `
 }
 
 .perm-btn--deny:hover {
+  background: var(--color-hover);
+  color: var(--color-text);
+}
+
+.perm-btn--allow-always {
+  background: transparent;
+  border-color: var(--color-border-subtle);
+  color: var(--color-text-muted);
+}
+
+.perm-btn--allow-always:hover {
   background: var(--color-hover);
   color: var(--color-text);
 }

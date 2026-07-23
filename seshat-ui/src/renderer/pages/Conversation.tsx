@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useParams, useNavigate } from 'react-router-dom'
 import { streamingToContentBlocks, useSessionStore, EMPTY_STREAMING, DEFAULT_AGENT_STATE } from '@/stores/session'
-import { useUIStore } from '@/stores/ui'
+import { useUIStore, buildRightPanelId } from '@/stores/ui'
 import { ChatTopBar, CHAT_TOP_BAR_CSS } from '@/components/chat/ChatTopBar'
 import { ChatInput, CHAT_INPUT_CSS, type ChatAttachment } from '@/components/chat/ChatInput'
 import { MessageItem, MESSAGE_ITEM_CSS, isRenderableMessage } from '@/components/chat/MessageItem'
@@ -13,6 +13,8 @@ import { useProvidersStore } from '@/stores/providers'
 import { api } from '@/api/client'
 import type { Session, ProviderModel } from '@/api/types'
 import { normalizeSessionMessages } from '@/lib/chat'
+import { deleteSession } from '@/lib/deleteSession'
+import { serializeConversationMarkdown, conversationFileName } from '@/lib/conversationExport'
 
 export function Conversation() {
   const { id } = useParams()
@@ -25,7 +27,9 @@ export function Conversation() {
   const session = sessions.find((s) => s.id === id)
   const openRightPanel = useUIStore((s) => s.openRightPanel)
   const closeRightPanel = useUIStore((s) => s.closeRightPanel)
-  const rightPanel = useUIStore((s) => s.rightPanel)
+  const monitorOpen = useUIStore((s) =>
+    s.rightColumns.some((c) => c.panels.some((p) => p.kind === 'agent' && p.sessionId === id))
+  )
   const permissionMode = useUIStore((s) => s.permissionMode)
   const togglePermissionMode = useUIStore((s) => s.togglePermissionMode)
   const setPermissionMode = useUIStore((s) => s.setPermissionMode)
@@ -131,14 +135,30 @@ export function Conversation() {
   const { sendMessage, stopMessage, isStreaming } = useChat(id || '')
   const isAtBottomRef = useRef(true)
 
-  const monitorOpen = rightPanel.open && rightPanel.kind === 'agent'
-
   function toggleMonitor() {
     if (monitorOpen) {
-      closeRightPanel()
+      closeRightPanel(buildRightPanelId({ kind: 'agent', sessionId: id }))
     } else {
-      openRightPanel({ kind: 'agent', title: 'Agent Monitor', sessionId: id, width: 380 })
+      openRightPanel({ kind: 'agent', title: 'Agent Monitor', sessionId: id })
     }
+  }
+
+  async function handleDelete() {
+    if (!id) return
+    await deleteSession(id).catch(() => {})
+    navigate('/')
+  }
+
+  async function handleExport() {
+    if (!session) return
+    const markdown = serializeConversationMarkdown(session)
+    await window.nexus?.saveFile?.(conversationFileName(session), markdown).catch(() => {})
+  }
+
+  async function handleShare() {
+    if (!session) return
+    const markdown = serializeConversationMarkdown(session)
+    await navigator.clipboard.writeText(markdown).catch(() => {})
   }
 
   const handleAttachFiles = useCallback(async (files: FileList) => {
@@ -178,11 +198,12 @@ export function Conversation() {
     setAttachments(current => current.filter(file => file.id !== fileId))
   }, [])
 
-  // Auto-open Agent Monitor panel when entering a conversation
+  // Auto-open Agent Monitor panel when entering a conversation. openRightPanel
+  // dedups by identity (kind+sessionId) internally, so no manual guard is
+  // needed here — re-running this effect for the same session is a no-op.
   useEffect(() => {
     if (!id) return
-    if (rightPanel.open && rightPanel.kind === 'agent' && rightPanel.sessionId === id) return
-    openRightPanel({ kind: 'agent', title: 'Agent Monitor', sessionId: id, width: 380 })
+    openRightPanel({ kind: 'agent', title: 'Agent Monitor', sessionId: id })
   }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-open the plan review panel when the agent calls exit_plan_mode
@@ -191,8 +212,7 @@ export function Conversation() {
   // inline PlanArtifactCard to click through first.
   useEffect(() => {
     if (!id || !isPlanPending || pendingPlan) return
-    if (rightPanel.open && rightPanel.kind === 'plan' && rightPanel.sessionId === id) return
-    openRightPanel({ kind: 'plan', title: 'Implementation Plan', sessionId: id, width: 520 })
+    openRightPanel({ kind: 'plan', title: 'Implementation Plan', sessionId: id })
   }, [id, isPlanPending, pendingPlan]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-scroll on new messages and on each streaming token
@@ -384,25 +404,16 @@ export function Conversation() {
       {/* ── Top Bar ── */}
       <div className="conv-top-bar">
         <ChatTopBar
-          providerLabel={providers.find((p) => p.id === selectedProviderId)?.name || session.providerLabel || 'Provider'}
-          modelLabel={selectedModels.find((m) => m.model_id === selectedModelId)?.display_name || session.modelLabel || 'Model'}
-          providerOptions={providers.map((p) => ({ id: p.id, label: p.name }))}
-          modelOptions={
-            selectedProviderId && Object.prototype.hasOwnProperty.call(modelsByProvider, selectedProviderId)
-              ? selectedModels.map((m) => ({ id: m.model_id, label: m.display_name || m.model_id }))
-              : undefined
-          }
-          selectedProviderId={selectedProviderId}
-          selectedModelId={selectedModelId}
-          onProviderSelect={handleProviderSelect}
-          onModelSelect={handleModelSelect}
-          modelDisabled={loadingModelsFor === selectedProviderId}
+          executionMode={agentState.executionMode}
+          onExecutionModeChange={handleExecutionModeSelect}
           monitorOpen={monitorOpen}
           onToggleMonitor={toggleMonitor}
           permissionMode={permissionMode}
           onTogglePermission={togglePermissionMode}
           onPermissionModeSelect={handlePermissionModeSelect}
-          executionMode={agentState.executionMode}
+          onExport={handleExport}
+          onShare={handleShare}
+          onDelete={handleDelete}
         />
       </div>
 
@@ -471,19 +482,29 @@ export function Conversation() {
             }}
             onStop={() => { void stopMessage() }}
             placeholder="Message SeshatOS..."
-            showAutoButton
             isStreaming={isStreaming}
             statusText={agentState.activeTool?.message || (isStreaming ? 'SeshatOS is running…' : undefined)}
             selectedCorpusId={selectedCorpusId}
             onCorpusChange={setSelectedCorpusId}
-            executionMode={agentState.executionMode === 'pair_programming' ? 'execute' : agentState.executionMode}
-            onExecutionModeChange={handleExecutionModeSelect}
             projectPath={session.projectPath}
             onProjectChange={handleProjectChange}
             attachments={attachments}
             onAttachFiles={handleAttachFiles}
             onRemoveAttachment={handleRemoveAttachment}
             isUploadingAttachments={uploadingAttachments}
+            providerLabel={providers.find((p) => p.id === selectedProviderId)?.name || session.providerLabel || 'Provider'}
+            modelLabel={selectedModels.find((m) => m.model_id === selectedModelId)?.display_name || session.modelLabel || 'Model'}
+            providerOptions={providers.map((p) => ({ id: p.id, label: p.name }))}
+            modelOptions={
+              selectedProviderId && Object.prototype.hasOwnProperty.call(modelsByProvider, selectedProviderId)
+                ? selectedModels.map((m) => ({ id: m.model_id, label: m.display_name || m.model_id }))
+                : undefined
+            }
+            selectedProviderId={selectedProviderId}
+            selectedModelId={selectedModelId}
+            onProviderSelect={handleProviderSelect}
+            onModelSelect={handleModelSelect}
+            modelDisabled={loadingModelsFor === selectedProviderId}
           />
         </div>
       </div>
@@ -506,14 +527,14 @@ ${MESSAGE_ITEM_CSS}
 }
 
 .conv-top-bar {
-  padding: 16px 24px;
+  padding: 11px 17px;
   flex-shrink: 0;
 }
 
 .conv-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 40px 0;
+  padding: 28px 0;
   transition: filter 0.25s ease;
 }
 
@@ -530,17 +551,17 @@ ${MESSAGE_ITEM_CSS}
 .conv-virtual-row {
   max-width: 860px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 17px;
   box-sizing: border-box;
 }
 
 .conv-ask-banner {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   margin: 0 24px 8px;
-  padding: 9px 14px;
-  border-radius: 10px;
+  padding: 6px 10px;
+  border-radius: 8px;
   background: rgba(239, 124, 47, 0.08);
   border: 1px solid rgba(239, 124, 47, 0.22);
   flex-shrink: 0;
@@ -561,7 +582,7 @@ ${MESSAGE_ITEM_CSS}
 }
 
 .conv-ask-text {
-  font-size: 13px;
+  font-size: 11px;
   color: var(--color-accent);
   font-weight: 500;
   white-space: nowrap;
@@ -570,7 +591,7 @@ ${MESSAGE_ITEM_CSS}
 }
 
 .conv-input-area {
-  padding: 0 24px 14px;
+  padding: 0 17px 10px;
   background: linear-gradient(to top, var(--color-bg) 70%, transparent);
   flex-shrink: 0;
 }

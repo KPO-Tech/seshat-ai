@@ -4,10 +4,10 @@ const CSS = `
 .tlw-root {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 10px 12px;
+  gap: 3px;
+  padding: 7px 8px;
   border: 1px solid var(--color-border-subtle);
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--color-surface);
   width: 100%;
 }
@@ -24,8 +24,8 @@ const CSS = `
 .tlw-item {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  padding: 3px 0;
+  gap: 6px;
+  padding: 2px 0;
 }
 
 .tlw-icon {
@@ -52,14 +52,14 @@ const CSS = `
 }
 
 .tlw-check {
-  font-size: 13px;
+  font-size: 11px;
   line-height: 1;
 }
 
 .tlw-check--pending { color: var(--color-text-muted); opacity: 0.5; }
 .tlw-check--in_progress { color: var(--color-accent); }
-.tlw-check--completed { color: #34d399; }
-.tlw-check--failed { color: #f87171; }
+.tlw-check--completed { color: var(--color-success); }
+.tlw-check--failed { color: var(--color-error); }
 .tlw-check--cancelled { color: var(--color-text-muted); opacity: 0.45; }
 
 .tlw-text {
@@ -67,11 +67,11 @@ const CSS = `
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
 }
 
 .tlw-subject {
-  font-size: 13px;
+  font-size: 11px;
   line-height: 1.45;
   color: var(--color-text);
 }
@@ -88,7 +88,7 @@ const CSS = `
 }
 
 .tlw-desc {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--color-text-muted);
   line-height: 1.4;
 }

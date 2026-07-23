@@ -1,8 +1,9 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
-import { Plus, FolderClose, AtSign, Voice, Send, CheckCorrect, LoadingOne, CloseSmall, Close } from '@icon-park/react'
+import { Plus, FolderClose, AtSign, Voice, Send, CheckCorrect, LoadingOne, CloseSmall, Close, Browser } from '@icon-park/react'
 import { api, ApiError } from '@/api/client'
 import type { Corpus } from '@/api/types'
 import { startWavRecording, type WavRecording } from '@/lib/wavRecorder'
+import { SelectorPill, SelectorMenu, SELECTOR_PILL_CSS, type SelectorOption } from '@/components/ui/SelectorPill'
 
 type SkillOption = { Name: string; DisplayName: string; Description: string; Source: string; UserInvocable?: boolean; IsHidden?: boolean }
 export type ChatAttachment = {
@@ -14,8 +15,6 @@ export type ChatAttachment = {
   local_path?: string
 }
 
-type UIExecutionMode = 'execute' | 'plan'
-
 type Props = {
   value: string
   onChange: (v: string) => void
@@ -23,29 +22,32 @@ type Props = {
   onStop?: () => void
   placeholder?: string
   maxHeight?: number
-  showAutoButton?: boolean
   isStreaming?: boolean
   statusText?: string
   selectedCorpusId?: string | null
   onCorpusChange?: (id: string | null) => void
-  executionMode?: UIExecutionMode
-  onExecutionModeChange?: (mode: UIExecutionMode) => void
   projectPath?: string
   onProjectChange?: (path: string) => void
   attachments?: ChatAttachment[]
   onAttachFiles?: (files: FileList) => void | Promise<void>
   onRemoveAttachment?: (id: string) => void
   isUploadingAttachments?: boolean
+  // Relocated here from ChatTopBar — Provider/Model live next to where the
+  // user actually types. Everything else (mode, permission, agent monitor)
+  // stays in ChatTopBar's top-right cluster.
+  providerLabel?: string
+  modelLabel?: string
+  onProviderClick?: () => void
+  onModelClick?: () => void
+  providerOptions?: SelectorOption[]
+  modelOptions?: SelectorOption[]
+  selectedProviderId?: string | null
+  selectedModelId?: string | null
+  onProviderSelect?: (id: string) => void
+  onModelSelect?: (id: string) => void
+  providerDisabled?: boolean
+  modelDisabled?: boolean
 }
-
-// This button used to hold the permission-mode (Smart/Auto) toggle; that
-// one stays put in the chat top bar's shield button (ChatTopBar.tsx),
-// untouched. This slot is now a host-triggered execution-mode control:
-// forces the session into Plan mode (or back to Execute) independent of
-// whether the model itself decides to call enter_plan_mode. See
-// seshat-backend's Session.ForcePlanMode()/ClearPlanMode().
-const EXECUTION_CYCLE: UIExecutionMode[] = ['execute', 'plan']
-const EXECUTION_LABEL: Record<UIExecutionMode, string> = { execute: 'Execute', plan: 'Plan' }
 
 export function ChatInput({
   value,
@@ -54,21 +56,34 @@ export function ChatInput({
   onStop,
   placeholder = 'Send a message...',
   maxHeight = 160,
-  showAutoButton = false,
   isStreaming = false,
   statusText,
   selectedCorpusId,
   onCorpusChange,
-  executionMode,
-  onExecutionModeChange,
   projectPath,
   onProjectChange,
   attachments = [],
   onAttachFiles,
   onRemoveAttachment,
   isUploadingAttachments = false,
+  providerLabel = 'Provider',
+  modelLabel = 'Model',
+  onProviderClick,
+  onModelClick,
+  providerOptions,
+  modelOptions,
+  selectedProviderId,
+  selectedModelId,
+  onProviderSelect,
+  onModelSelect,
+  providerDisabled = false,
+  modelDisabled = false,
 }: Props) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const selectorsRef = useRef<HTMLDivElement>(null)
+  const [openSelector, setOpenSelector] = useState<'provider' | 'model' | null>(null)
+  const hasProviderMenu = !!providerOptions?.length && !!onProviderSelect
+  const hasModelMenu = !!modelOptions?.length && !!onModelSelect
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [skills, setSkills] = useState<SkillOption[]>([])
   const [slashIdx, setSlashIdx] = useState(0)
@@ -147,6 +162,34 @@ export function ChatInput({
     document.addEventListener('mousedown', onDown)
     return () => document.removeEventListener('mousedown', onDown)
   }, [corpusDropdownOpen])
+
+  // Close provider/model dropdown on outside click
+  useEffect(() => {
+    if (!openSelector) return
+    function onDown(e: MouseEvent) {
+      if (!selectorsRef.current?.contains(e.target as Node)) setOpenSelector(null)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [openSelector])
+
+  function handleProviderTrigger() {
+    if (providerDisabled) return
+    if (hasProviderMenu) {
+      setOpenSelector((current) => (current === 'provider' ? null : 'provider'))
+      return
+    }
+    onProviderClick?.()
+  }
+
+  function handleModelTrigger() {
+    if (modelDisabled) return
+    if (hasModelMenu) {
+      setOpenSelector((current) => (current === 'model' ? null : 'model'))
+      return
+    }
+    onModelClick?.()
+  }
 
   const selectedCorpus = corpora.find(c => c.id === selectedCorpusId) ?? null
   const projectLabel = projectPath ? projectPath.split(/[\\/]/).filter(Boolean).pop() ?? projectPath : null
@@ -275,7 +318,7 @@ export function ChatInput({
             disabled={isUploadingAttachments}
             onClick={() => fileInputRef.current?.click()}
           >
-            <Plus size={15} />
+            <Plus size={13} />
           </button>
           <input
             ref={fileInputRef}
@@ -299,7 +342,7 @@ export function ChatInput({
                 }
               }}
             >
-              <FolderClose size={15} />
+              <FolderClose size={13} />
             </button>
             {projectLabel && (
               <>
@@ -320,7 +363,7 @@ export function ChatInput({
               title="Attach knowledge base"
               onClick={() => setCorpusDropdownOpen(v => !v)}
             >
-              <AtSign size={15} />
+              <AtSign size={13} />
             </button>
             {corpusDropdownOpen && (
               <div className="chat-corpus-dropdown">
@@ -358,8 +401,8 @@ export function ChatInput({
             onClick={() => void handleMicClick()}
           >
             {recordingState === 'transcribing'
-              ? <LoadingOne size={15} className="chat-status-spin" />
-              : <Voice size={15} />}
+              ? <LoadingOne size={13} className="chat-status-spin" />
+              : <Voice size={13} />}
           </button>
           {recordError && <span className="chat-record-error">{recordError}</span>}
           {isStreaming && (
@@ -370,27 +413,48 @@ export function ChatInput({
           )}
         </div>
 
-        <div className="chat-input-tools-right">
-          {showAutoButton && (
-            <button
-              className="chat-auto-btn"
-              onClick={() => {
-                if (!onExecutionModeChange) return
-                const current = executionMode ?? 'execute'
-                const currentIndex = EXECUTION_CYCLE.indexOf(current)
-                const next = EXECUTION_CYCLE[(currentIndex + 1) % EXECUTION_CYCLE.length]
-                onExecutionModeChange(next)
-              }}
-              title={`Mode: ${EXECUTION_LABEL[executionMode ?? 'execute']} (click to toggle)`}
-              data-mode={executionMode ?? 'execute'}
-            >
-              <span className="chat-auto-dot" />
-              <span>{EXECUTION_LABEL[executionMode ?? 'execute']}</span>
-            </button>
-          )}
+        <div className="chat-input-tools-right" ref={selectorsRef}>
+          <div className="chat-selector-wrap">
+            <SelectorPill
+              label={providerLabel}
+              icon={<Browser size={12} />}
+              onClick={handleProviderTrigger}
+              disabled={providerDisabled}
+            />
+            {openSelector === 'provider' && providerOptions && onProviderSelect && (
+              <SelectorMenu
+                placement="up"
+                options={providerOptions}
+                selectedId={selectedProviderId}
+                onSelect={(id) => {
+                  setOpenSelector(null)
+                  onProviderSelect(id)
+                }}
+              />
+            )}
+          </div>
+          <div className="chat-selector-wrap">
+            <SelectorPill
+              label={modelLabel}
+              icon={<CheckCorrect size={12} />}
+              onClick={handleModelTrigger}
+              disabled={modelDisabled}
+            />
+            {openSelector === 'model' && modelOptions && onModelSelect && (
+              <SelectorMenu
+                placement="up"
+                options={modelOptions}
+                selectedId={selectedModelId}
+                onSelect={(id) => {
+                  setOpenSelector(null)
+                  onModelSelect(id)
+                }}
+              />
+            )}
+          </div>
           {isStreaming ? (
             <button className="chat-stop-btn" onClick={onStop} type="button" title="Stop">
-              <CloseSmall size={16} />
+              <CloseSmall size={14} />
             </button>
           ) : (
             <button
@@ -398,7 +462,7 @@ export function ChatInput({
               onClick={() => value.trim() && onSend()}
               type="button"
             >
-              <Send size={16} theme={value.trim() ? 'filled' : 'outline'} />
+              <Send size={14} theme={value.trim() ? 'filled' : 'outline'} />
             </button>
           )}
         </div>
@@ -408,6 +472,12 @@ export function ChatInput({
 }
 
 export const CHAT_INPUT_CSS = `
+${SELECTOR_PILL_CSS}
+
+.chat-selector-wrap {
+  position: relative;
+}
+
 /* ── Slash-command dropdown ── */
 .chat-slash-dropdown {
   position: absolute;
@@ -444,8 +514,8 @@ export const CHAT_INPUT_CSS = `
 
 .chat-input-wrapper {
   background: var(--color-bg);
-  border-radius: 20px;
-  padding: 16px;
+  border-radius: 14px;
+  padding: 10px 12px;
   position: relative; /* anchors slash dropdown */
   border: 1.5px solid transparent;
   background-image: linear-gradient(var(--color-bg), var(--color-bg)),
@@ -458,12 +528,12 @@ export const CHAT_INPUT_CSS = `
   background: transparent;
   border: none;
   color: var(--color-text);
-  font-size: 15px;
-  line-height: 1.6;
+  font-size: var(--font-size-base);
+  line-height: 1.5;
   outline: none;
   resize: none;
   width: 100%;
-  min-height: 24px;
+  min-height: 20px;
   font-family: inherit;
 }
 
@@ -534,28 +604,28 @@ export const CHAT_INPUT_CSS = `
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
 .chat-input-tools-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   min-width: 0;
 }
 
 .chat-input-tools-right {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
 }
 
 .chat-tool-circle {
   background: var(--color-surface);
   border: 1px solid var(--color-border-subtle);
   color: var(--color-text);
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -591,7 +661,7 @@ export const CHAT_INPUT_CSS = `
 }
 
 .chat-tool-icon-recording {
-  color: #f87171 !important;
+  color: var(--color-error) !important;
   animation: chat-mic-pulse 1.2s ease-in-out infinite;
 }
 
@@ -601,8 +671,8 @@ export const CHAT_INPUT_CSS = `
 }
 
 .chat-record-error {
-  font-size: 11px;
-  color: #f87171;
+  font-size: var(--font-size-2xs);
+  color: var(--color-error);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -623,7 +693,7 @@ export const CHAT_INPUT_CSS = `
 
 .chat-workspace-label {
   color: var(--color-text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -646,8 +716,8 @@ export const CHAT_INPUT_CSS = `
 .chat-send-btn {
   background: var(--color-surface);
   color: var(--color-text-muted);
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   border: none;
   display: flex;
@@ -666,8 +736,8 @@ export const CHAT_INPUT_CSS = `
 .chat-stop-btn {
   background: var(--color-primary-subtle);
   color: var(--color-primary);
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   border: 1px solid var(--color-primary-hover);
   display: flex;
@@ -679,46 +749,6 @@ export const CHAT_INPUT_CSS = `
 
 .chat-stop-btn:hover {
   background: var(--color-primary-hover);
-}
-
-.chat-auto-btn {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-subtle);
-  color: var(--color-text-secondary);
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 12px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
-}
-
-.chat-auto-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  transition: background 0.15s;
-}
-
-.chat-auto-btn[data-mode="execute"] {
-  border-color: color-mix(in srgb, var(--color-primary) 32%, transparent);
-  color: var(--color-primary);
-}
-
-.chat-auto-btn[data-mode="execute"] .chat-auto-dot {
-  background: var(--color-primary);
-}
-
-.chat-auto-btn[data-mode="plan"] {
-  border-color: color-mix(in srgb, #60a5fa 32%, transparent);
-  color: #60a5fa;
-}
-
-.chat-auto-btn[data-mode="plan"] .chat-auto-dot {
-  background: #60a5fa;
 }
 
 .chat-status-inline {

@@ -59,6 +59,12 @@ export type PendingPermission = ToolApproval
 // State for a single sub-agent instance identified by tool use ID
 export type SubagentState = {
   toolUseId: string
+  // Stable agent_id returned by spawn_agent (distinct from toolUseId, the key
+  // this state is stored under). Only set for agents spawned via spawn_agent —
+  // undefined for the synchronous `agent` tool, which has no cancel endpoint
+  // since it never outlives its own tool call. Required to call
+  // POST /subagents/{agentId}/cancel.
+  agentId?: string
   agentType: string
   task: string
   status: 'running' | 'completed' | 'failed'
