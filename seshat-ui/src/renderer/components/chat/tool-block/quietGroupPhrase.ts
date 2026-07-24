@@ -126,6 +126,56 @@ function looksLikeSentence(message: string): boolean {
 
 const MAX_CLAUSES = 4
 
+function str(tool: ToolUseBlock, key: string): string {
+  return typeof tool.input[key] === 'string' ? (tool.input[key] as string) : ''
+}
+
+// Per-tool label for the solo case — "Read foo.py", "Bash — <what it did>",
+// "Web Search: <query>", etc. Returns null when the tool has no dedicated
+// format, falling through to the generic message/category handling below.
+// The query/pattern/command text is never truncated here - .qtg-item-label
+// already clips with a CSS ellipsis once it runs out of line width, so
+// there's no reason to cut it short in JS first.
+function specificSingleLabel(tool: ToolUseBlock): string | null {
+  const name = tool.name
+
+  if (isEditTool(name) || isWriteTool(name)) {
+    const filePath = str(tool, 'file_path')
+    const stats = editStats(tool)
+    const verb = isEditTool(name) ? 'Edited' : 'Wrote'
+    if (filePath && stats) return `${verb} ${basename(filePath)} +${stats.added} -${stats.removed}`
+    if (filePath) return `${verb} ${basename(filePath)}`
+    return null
+  }
+  if (name === 'read' || name === 'file_read' || name === 'read_file') {
+    const filePath = str(tool, 'file_path')
+    return filePath ? `Read ${basename(filePath)}` : null
+  }
+  if (name === 'glob') {
+    const pattern = str(tool, 'pattern')
+    return pattern ? `Glob: ${pattern}` : null
+  }
+  if (name === 'grep') {
+    const pattern = str(tool, 'pattern')
+    return pattern ? `Grep: ${pattern}` : null
+  }
+  if (name === 'bash') {
+    const command = str(tool, 'command')
+    if (tool._message && looksLikeSentence(tool._message)) return `Bash — ${tool._message}`
+    return command ? `Bash: ${command}` : null
+  }
+  if (name === 'web_search') {
+    const query = str(tool, 'query')
+    return query ? `Web Search: ${query}` : null
+  }
+  if (name === 'web_fetch' || name === 'read_document_url' || name === 'read_url') {
+    const url = str(tool, 'url')
+    if (!url) return null
+    try { return `Web Fetch: ${new URL(url).hostname}` } catch { return `Web Fetch: ${url}` }
+  }
+  return null
+}
+
 // Builds the collapsed group line's label from an ordered run of tool_use
 // blocks. Single-item and multi-item runs go through the same function —
 // a lone edit is just the length-1 case.
@@ -134,20 +184,13 @@ export function summarizeQuietGroup(tools: ToolUseBlock[]): string {
 
   if (tools.length === 1) {
     const tool = tools[0]
-    const category = categoryFor(tool.name)
-
-    if (category === 'edit' || category === 'write') {
-      const filePath = typeof tool.input.file_path === 'string' ? (tool.input.file_path as string) : ''
-      const stats = editStats(tool)
-      const verb = category === 'edit' ? 'Edited' : 'Wrote'
-      if (filePath && stats) return `${verb} ${basename(filePath)} +${stats.added} -${stats.removed}`
-      if (filePath) return `${verb} ${basename(filePath)}`
-      return clauseFor(category, 1)
-    }
+    const specific = specificSingleLabel(tool)
+    if (specific) return specific
 
     if (tool._message && looksLikeSentence(tool._message)) {
       return tool._message
     }
+    const category = categoryFor(tool.name)
     // "other" bucket covers every tool without a dedicated verb (rag_search,
     // apply_patch, MCP tools, ...) — its own name is more useful standalone
     // than a generic "Ran a tool".
