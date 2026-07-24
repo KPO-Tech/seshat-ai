@@ -356,6 +356,7 @@ func (r *SDKRuntime) clientForInput(ctx context.Context, input QueryInput) (*sdk
 	if input.RuntimeProvider != nil {
 		cfg = r.buildClientConfig(ctx, *input.RuntimeProvider)
 	}
+	cfg.UserID = input.UserID
 
 	client, err := sdk.NewClient(cfg)
 	if err != nil {

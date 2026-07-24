@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
 	"github.com/KPO-Tech/seshat/pkg/sdk"
 )
@@ -156,5 +157,37 @@ func TestCheckSessionAccessBlankIDAlwaysPasses(t *testing.T) {
 	svc := NewService(ServiceConfig{})
 	if err := svc.checkSessionAccess(context.Background(), nil, ""); err != nil {
 		t.Errorf("expected nil error for blank session ID, got %v", err)
+	}
+}
+
+// ─── prepareRuntimeInput ──────────────────────────────────────────────────────
+
+// Without this, submit_plan always persisted plan documents with an empty
+// UserID, which then failed the ownership check on every later read/patch
+// (see QueryInput.UserID's doc comment).
+func TestPrepareRuntimeInputCarriesPrincipalUserID(t *testing.T) {
+	svc := NewService(ServiceConfig{})
+	principal := &backendauth.Principal{User: backendauth.User{ID: "user-42"}}
+
+	runtimeInput, errMsg, err := svc.prepareRuntimeInput(context.Background(), principal, QueryInput{Prompt: "hi"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if errMsg != "" {
+		t.Fatalf("unexpected error message: %q", errMsg)
+	}
+	if runtimeInput.UserID != "user-42" {
+		t.Errorf("expected UserID %q to be carried through, got %q", "user-42", runtimeInput.UserID)
+	}
+}
+
+func TestPrepareRuntimeInputNilPrincipalLeavesUserIDEmpty(t *testing.T) {
+	svc := NewService(ServiceConfig{})
+	runtimeInput, _, err := svc.prepareRuntimeInput(context.Background(), nil, QueryInput{Prompt: "hi"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if runtimeInput.UserID != "" {
+		t.Errorf("expected empty UserID with nil principal, got %q", runtimeInput.UserID)
 	}
 }
