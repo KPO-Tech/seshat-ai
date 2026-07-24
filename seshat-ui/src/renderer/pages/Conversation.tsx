@@ -15,6 +15,45 @@ import type { Session, ProviderModel } from '@/api/types'
 import { normalizeSessionMessages } from '@/lib/chat'
 import { deleteSession } from '@/lib/deleteSession'
 import { serializeConversationMarkdown, conversationFileName } from '@/lib/conversationExport'
+import type { AgentState } from '@/stores/session'
+
+// Present-continuous fragments for "SeshatOS is ___" - a tool-aware status
+// line shown in the transcript itself while a turn is running, instead of
+// leaving the user staring at an empty message area with only a small
+// status string tucked into the input toolbar.
+const TOOL_ACTIVITY_PHRASES: Record<string, string> = {
+  write: 'writing a file', file_write: 'writing a file',
+  edit: 'editing a file', file_edit: 'editing a file',
+  bash: 'running a command',
+  read: 'reading a file', file_read: 'reading a file', read_file: 'reading a file',
+  glob: 'searching files', grep: 'searching code', list_directory: 'browsing files',
+  web_search: 'searching the web', web_fetch: 'fetching a page',
+  task_create: 'planning tasks', task_update: 'updating tasks',
+  submit_plan: 'writing the plan', exit_plan_mode: 'wrapping up the plan',
+  agent: 'delegating to a sub-agent', spawn_agent: 'delegating to a sub-agent',
+  generate_image: 'generating an image', tts: 'generating audio', stt: 'transcribing audio',
+}
+
+function agentActivityPhrase(state: AgentState): string {
+  if (state.activeTool) return TOOL_ACTIVITY_PHRASES[state.activeTool.toolName] ?? 'working'
+  if (state.isThinking) return 'thinking'
+  return 'working'
+}
+
+function AgentStatusIndicator({ state }: { state: AgentState }) {
+  const phrase = agentActivityPhrase(state)
+  const detail = state.activeTool?.message
+  return (
+    <div className="conv-status-row">
+      <span className="conv-status-dots">
+        <span /><span /><span />
+      </span>
+      <span className="conv-status-text" key={phrase}>
+        SeshatOS is {phrase}{detail ? ` — ${detail}` : '…'}
+      </span>
+    </div>
+  )
+}
 
 export function Conversation() {
   const { id } = useParams()
@@ -459,6 +498,13 @@ export function Conversation() {
         </div>
       </div>
 
+      {/* ── Live agent status — tool-aware, shown in the transcript while a turn is running ── */}
+      {isStreaming && (
+        <div style={{ padding: '0 16px 8px', display: 'flex', justifyContent: 'center' }}>
+          <AgentStatusIndicator state={agentState} />
+        </div>
+      )}
+
       {/* ── Plan artifact card — shown above input when a plan is pending ── */}
       {id && pendingPlan && (
         <div style={{ padding: '0 16px 8px', display: 'flex', justifyContent: 'center' }}>
@@ -598,6 +644,56 @@ ${MESSAGE_ITEM_CSS}
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.conv-status-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: 860px;
+  width: 100%;
+  padding: 8px 13px;
+  border-radius: 10px;
+  background: rgba(239, 124, 47, 0.06);
+  border: 1px solid rgba(239, 124, 47, 0.16);
+}
+
+.conv-status-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.conv-status-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  animation: conv-status-bounce 1s ease-in-out infinite;
+}
+
+.conv-status-dots span:nth-child(2) { animation-delay: 0.15s; }
+.conv-status-dots span:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes conv-status-bounce {
+  0%, 80%, 100% { opacity: 0.35; transform: scale(0.75); }
+  40%           { opacity: 1; transform: scale(1); }
+}
+
+.conv-status-text {
+  font-size: 12px;
+  color: var(--color-accent);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  animation: conv-status-fade 0.25s ease;
+}
+
+@keyframes conv-status-fade {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .conv-input-area {

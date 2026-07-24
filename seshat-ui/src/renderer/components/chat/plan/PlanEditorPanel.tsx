@@ -168,7 +168,6 @@ const CSS = `
 .pep-line-wrap {
   position: relative;
   padding-left: 20px;
-  margin-left: -20px;
   border-radius: 6px;
   transition: background 0.12s;
 }
@@ -180,27 +179,29 @@ const CSS = `
 .pep-line-plus {
   position: absolute;
   left: 0;
-  top: 3px;
-  width: 15px;
-  height: 15px;
+  top: 4px;
+  width: 17px;
+  height: 17px;
   border-radius: 50%;
   border: none;
   background: var(--color-accent);
   color: #fff;
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 700;
   line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  opacity: 0;
-  transform: scale(0.75);
+  opacity: 0.5;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
   transition: opacity 0.12s, transform 0.12s;
 }
 
-.pep-line-wrap:hover .pep-line-plus {
+.pep-line-wrap:hover .pep-line-plus,
+.pep-line-plus:hover {
   opacity: 1;
-  transform: scale(1);
+  transform: scale(1.1);
 }
 
 .pep-editor {
@@ -418,49 +419,6 @@ const CSS = `
   color: var(--color-error);
 }
 
-/* ── Comments ── */
-.pep-comments {
-  padding: 0 10px 0;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  flex-shrink: 0;
-}
-
-.pep-comments-label {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding-top: 8px;
-}
-
-.pep-comment-input {
-  width: 100%;
-  padding: 7px 8px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 6px;
-  color: var(--color-text);
-  font-size: 11px;
-  font-family: inherit;
-  resize: vertical;
-  min-height: 72px;
-  outline: none;
-  transition: border-color 0.15s;
-  box-sizing: border-box;
-}
-
-.pep-comment-input:focus {
-  border-color: rgba(239, 124, 47, 0.35);
-}
-
-.pep-comment-input::placeholder {
-  color: var(--color-text-muted);
-  opacity: 0.6;
-}
-
 /* ── Footer ── */
 .pep-footer {
   display: flex;
@@ -609,7 +567,6 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
 
   const [editMode, setEditMode] = useState(false)
   const [editedContent, setEditedContent] = useState('')
-  const [comment, setComment] = useState('')
   const [sending, setSending] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
@@ -619,6 +576,7 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
   const [floatStyle, setFloatStyle] = useState<{ top: number; left: number } | null>(null)
   const [showAnnotationForm, setShowAnnotationForm] = useState(false)
   const floatRef = useRef<HTMLDivElement>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (plan?.content) setEditedContent(plan.content)
@@ -650,6 +608,23 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
     return () => document.removeEventListener('mousedown', handleMouseDown)
   }, [floatStyle])
 
+  // The panel is a narrow right-docked column - centering the float form
+  // exactly on the click point (its old behavior) routinely pushed it past
+  // the panel's own right edge and off the window entirely. Clamping it to
+  // the panel's own bounding rect keeps it on-page even if that means
+  // covering part of the text underneath, which is fine - see this
+  // function's callers.
+  function clampFloatPosition(top: number, left: number): { top: number; left: number } {
+    const FORM_WIDTH = 280
+    const FORM_HEIGHT = 150
+    const rootRect = rootRef.current?.getBoundingClientRect()
+    const minLeft = (rootRect?.left ?? 8) + FORM_WIDTH / 2 + 8
+    const maxLeft = (rootRect?.right ?? window.innerWidth - 8) - FORM_WIDTH / 2 - 8
+    const clampedLeft = Math.min(Math.max(left, minLeft), Math.max(minLeft, maxLeft))
+    const clampedTop = Math.min(top, window.innerHeight - FORM_HEIGHT - 8)
+    return { top: clampedTop, left: clampedLeft }
+  }
+
   function handleMarkdownMouseUp() {
     if (editMode || (plan?.status ?? 'pending') !== 'pending') return
     const sel = window.getSelection()
@@ -660,7 +635,7 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
     setPendingQuote(text)
     setAnnotationInput('')
     setShowAnnotationForm(false)
-    setFloatStyle({ top: rect.bottom + 8, left: rect.left + rect.width / 2 })
+    setFloatStyle(clampFloatPosition(rect.bottom + 8, rect.left + rect.width / 2))
   }
 
   // Hovering a block (paragraph, heading, list group...) while not editing
@@ -675,7 +650,7 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
     setPendingQuote(quote)
     setAnnotationInput('')
     setShowAnnotationForm(true)
-    setFloatStyle({ top: rect.bottom + 6, left: rect.left + 60 })
+    setFloatStyle(clampFloatPosition(rect.bottom + 6, rect.left + 60))
   }
 
   function closeFloat() {
@@ -707,7 +682,6 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
         annotations.map((a) => `> "${a.quote}"\n${a.comment}`).join('\n\n')
       )
     }
-    if (comment.trim()) parts.push(comment.trim())
     if (isDocumentBacked && editMode && editedContent !== plan?.content) {
       parts.push("I've also updated the plan content directly.")
     }
@@ -781,7 +755,7 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
       ? 'pep-badge pep-badge--rejected'
       : 'pep-badge pep-badge--pending'
 
-  const hasFeedback = annotations.length > 0 || !!comment.trim() || (isDocumentBacked && editMode && editedContent !== content)
+  const hasFeedback = annotations.length > 0 || (isDocumentBacked && editMode && editedContent !== content)
 
   async function handleProceed() {
     if (sending || !(pendingPermission || isDocumentBacked)) return
@@ -866,7 +840,6 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
             : "I'd like changes before approving this plan. Please revise and resubmit it with submit_plan."
         )
       }
-      setComment('')
       setAnnotations([])
       setEditMode(false)
       closeRightPanel(buildRightPanelId({ kind: 'plan', sessionId, planId }))
@@ -878,7 +851,7 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
   }
 
   return (
-    <div className="pep-root">
+    <div className="pep-root" ref={rootRef}>
       <style>{CSS}</style>
 
       <div className="pep-header">
@@ -975,24 +948,6 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
         </div>
       )}
 
-      {!isReadonly && (
-        <div className="pep-comments">
-          <div className="pep-comments-label">
-            {annotations.length > 0 ? 'General comment' : 'Comments'}
-          </div>
-          <textarea
-            className="pep-comment-input"
-            placeholder={
-              annotations.length > 0
-                ? 'Add an overall comment (optional)…'
-                : 'Select text to annotate a section, or type a general comment…'
-            }
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-          />
-        </div>
-      )}
-
       {actionError && <div className="pep-error-banner">{actionError}</div>}
 
       {!isReadonly && (pendingPermission || isDocumentBacked) && (
@@ -1000,7 +955,7 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
           <span className="pep-hint">
             {hasFeedback
               ? 'Sends your feedback to the agent, which revises the plan right away'
-              : 'Select text to annotate, or leave a comment below'}
+              : 'Hover a section for + to comment, or select a range of lines'}
           </span>
           <div className="pep-actions">
             <button
