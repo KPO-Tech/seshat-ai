@@ -604,11 +604,9 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	// agent's own speech_to_text tool at a locally running whisper.cpp
 	// server (see api.handleLocalSTTConfig, set by the Electron main
 	// process) instead of the operator's OPENAI_API_KEY default, without a
-	// restart. The engine's current release still requires a non-empty
-	// APIKey even for a custom BaseURL (fixed upstream, not yet tagged) -
-	// "local-whisper-cpp" is a harmless placeholder: whisper-server doesn't
-	// check the Authorization header at all. Remove this placeholder once
-	// seshat-backend bumps to a release that includes that fix.
+	// restart. No API key needed - the engine no longer requires one when a
+	// custom BaseURL is set (KPO-Tech/seshat#101), and whisper-server
+	// doesn't check the Authorization header anyway.
 	runtime.SetLocalSTTResolver(func(ctx context.Context) *sdk.SpeechToTextConfig {
 		cfg, err := localSTTConfigStore.Get(ctx)
 		if err != nil || cfg == nil || !cfg.Enabled || cfg.BaseURL == "" {
@@ -616,7 +614,6 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		}
 		return &sdk.SpeechToTextConfig{
 			Provider: "openai",
-			APIKey:   "local-whisper-cpp",
 			BaseURL:  cfg.BaseURL,
 		}
 	})
