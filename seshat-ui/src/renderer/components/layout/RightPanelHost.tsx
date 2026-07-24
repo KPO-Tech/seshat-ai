@@ -131,6 +131,18 @@ function PanelFrame({
   onClose: () => void
   onToggleMaximize: () => void
 }) {
+  // The plan panel renders its own full header (title, Edit toggle, status
+  // badge, maximize, close) in one row - it owns state (edit mode, plan
+  // status) that this generic frame has no access to, and a second
+  // independent header here would just repeat the title underneath it.
+  if (panel.kind === 'plan') {
+    return (
+      <aside className="right-panel">
+        <PlanEditorPanelHost panel={panel} isMaximized={isMaximized} onClose={onClose} onToggleMaximize={onToggleMaximize} />
+      </aside>
+    )
+  }
+
   return (
     <aside className="right-panel">
       <div className="right-panel-header">
@@ -201,8 +213,6 @@ function renderPanelBody(panel: RightPanelInstance) {
       return <KnowledgePanel results={panel.knowledgeResults ?? []} />
     case 'subagent':
       return <SubagentPanel sessionId={panel.sessionId ?? ''} toolUseId={panel.subagentToolUseId ?? ''} />
-    case 'plan':
-      return <PlanEditorPanelHost panel={panel} />
     default:
       return (
         <EmptyState
@@ -221,7 +231,17 @@ function renderPanelBody(panel: RightPanelInstance) {
 // resolved elsewhere (e.g. via handlePermissionDecision in Conversation.tsx)
 // could then leave this panel showing a stale "Proceed" button after the
 // user had already approved or denied it.
-function PlanEditorPanelHost({ panel }: { panel: RightPanelInstance }) {
+function PlanEditorPanelHost({
+  panel,
+  isMaximized,
+  onClose,
+  onToggleMaximize,
+}: {
+  panel: RightPanelInstance
+  isMaximized: boolean
+  onClose: () => void
+  onToggleMaximize: () => void
+}) {
   const planSessionId = panel.sessionId ?? ''
   const pendingPermission = useSessionStore((s) =>
     planSessionId ? s.getAgentState(planSessionId).pendingPermission : null
@@ -243,6 +263,9 @@ function PlanEditorPanelHost({ panel }: { panel: RightPanelInstance }) {
       sessionId={planSessionId}
       pendingPermission={pendingPerm}
       rawContent={rawContent}
+      isMaximized={isMaximized}
+      onClose={onClose}
+      onToggleMaximize={onToggleMaximize}
     />
   )
 }

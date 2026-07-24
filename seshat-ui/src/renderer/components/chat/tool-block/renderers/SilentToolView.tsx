@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { ToolViewProps } from '../types'
 import type { ToolStatus } from '@/api/types'
+import { useUIStore } from '@/stores/ui'
 
 const CSS = `
 .tb-sl {
@@ -122,21 +123,55 @@ const LABELS: Record<string, string> = {
 
 type Props = ToolViewProps & { status: ToolStatus; snippet: string }
 
-export function SilentToolView({ tool, result, status, snippet }: Props) {
+function humanizeSlug(slug: string): string {
+  return slug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+// submit_plan's own tool call carries no interesting input/output to show -
+// what the user actually wants here is the plan's name, clickable straight
+// to the review panel, instead of a generic "Submit Plan" label (see
+// PlanArtifactCard, which already does this for the chat-level card; this
+// is the same affordance for the tool-call line itself).
+function submitPlanInfo(tool: Props['tool'], result: Props['result']): { name: string; planId: string } {
+  const slug = typeof tool.input.slug === 'string' ? (tool.input.slug as string) : ''
+  const additional = (result?.metadata as { additional?: Record<string, unknown> } | undefined)?.additional
+  const planId =
+    (typeof tool.input.plan_id === 'string' && tool.input.plan_id) ||
+    (typeof additional?.plan_id === 'string' ? (additional.plan_id as string) : '') ||
+    ''
+  return { name: slug ? humanizeSlug(slug) : 'Submit Plan', planId }
+}
+
+export function SilentToolView({ tool, result, status, snippet, sessionId }: Props) {
   const [open, setOpen] = useState(false)
   const isError = result?.isError === true || status === 'failed'
   const isRunning = status === 'running' || status === 'pending'
-  const label = LABELS[tool.name] ?? tool.name
+  const isSubmitPlan = tool.name === 'submit_plan'
+  const { name: planName, planId } = isSubmitPlan
+    ? submitPlanInfo(tool, result)
+    : { name: '', planId: '' }
+  const label = isSubmitPlan ? planName : (LABELS[tool.name] ?? tool.name)
+  const canOpenPlan = isSubmitPlan && !isError && !!planId && !!sessionId
+
+  function handleClick() {
+    if (canOpenPlan) {
+      useUIStore.getState().openRightPanel({ kind: 'plan', title: planName, sessionId: sessionId!, planId })
+      return
+    }
+    if (isError) setOpen((v) => !v)
+  }
+
+  const clickable = isError || canOpenPlan
 
   return (
     <div className="tb-sl">
       <style>{CSS}</style>
       <div
-        className={`tb-sl-line${isError ? ' tb-sl-line--clickable tb-sl-error-text' : ''}`}
-        role={isError ? 'button' : undefined}
-        tabIndex={isError ? 0 : undefined}
-        onClick={isError ? () => setOpen((v) => !v) : undefined}
-        onKeyDown={isError ? (e) => { if (e.key === 'Enter' || e.key === ' ') setOpen((v) => !v) } : undefined}
+        className={`tb-sl-line${isError ? ' tb-sl-error-text' : ''}${clickable ? ' tb-sl-line--clickable' : ''}`}
+        role={clickable ? 'button' : undefined}
+        tabIndex={clickable ? 0 : undefined}
+        onClick={clickable ? handleClick : undefined}
+        onKeyDown={clickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleClick() } : undefined}
       >
         <span className="tb-sl-icon">
           {isRunning && <span className="tb-sl-spinner" />}

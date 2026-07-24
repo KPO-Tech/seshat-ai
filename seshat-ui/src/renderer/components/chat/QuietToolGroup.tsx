@@ -10,10 +10,11 @@ import type { ToolBlockProps } from './tool-block/types'
 
 type Props = {
   tools: ToolUseBlock[]
+  sessionId?: string
   onSubmitPrompt?: ToolBlockProps['onSubmitPrompt']
 }
 
-export function QuietToolGroup({ tools, onSubmitPrompt }: Props) {
+export function QuietToolGroup({ tools, sessionId, onSubmitPrompt }: Props) {
   const groupId = tools[0]?.id ?? ''
   const expanded = useUIStore((s) => s.toolGroupExpansion[groupId] ?? false)
   const setToolGroupExpansion = useUIStore((s) => s.setToolGroupExpansion)
@@ -48,6 +49,7 @@ export function QuietToolGroup({ tools, onSubmitPrompt }: Props) {
             <QuietGroupItem
               key={tool.id}
               tool={tool}
+              sessionId={sessionId}
               onSubmitPrompt={onSubmitPrompt}
             />
           ))}
@@ -61,8 +63,9 @@ export function QuietToolGroup({ tools, onSubmitPrompt }: Props) {
 // quietGroupPhrase.ts stops the run before an awaiting_approval tool, so it
 // always renders standalone via ToolBlock/PermissionCard instead. No
 // onApprove/onDeny threading needed here.
-function QuietGroupItem({ tool, onSubmitPrompt }: {
+function QuietGroupItem({ tool, sessionId, onSubmitPrompt }: {
   tool: ToolUseBlock
+  sessionId?: string
   onSubmitPrompt?: ToolBlockProps['onSubmitPrompt']
 }) {
   const expanded = useUIStore((s) => s.toolExpansion[tool.id] ?? false)
@@ -78,7 +81,7 @@ function QuietGroupItem({ tool, onSubmitPrompt }: {
   // this component's own header/expand-toggle would just double up the
   // same information in two nested rows for no reason.
   if (isSilentTool(tool.name)) {
-    return <SilentToolView tool={tool} result={tool._result} status={status} snippet={inputSnippetForSilent(tool)} />
+    return <SilentToolView tool={tool} result={tool._result} status={status} snippet={inputSnippetForSilent(tool)} sessionId={sessionId} />
   }
 
   return (

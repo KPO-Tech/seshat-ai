@@ -69,12 +69,17 @@ app.whenReady().then(async () => {
   // Packaged Electron apps deny every permission request by default when no
   // handler is registered. The voice-input control needs the renderer's
   // navigator.mediaDevices.getUserMedia({ audio: true }) to actually reach
-  // the OS mic prompt instead of silently failing, so allow only 'media'
-  // (mic/camera) here; everything else stays denied.
+  // the OS mic prompt instead of silently failing, so allow 'media'
+  // (mic/camera) here. Every copy-to-clipboard button in the app (message
+  // copy, tool output copy, diff copy) uses navigator.clipboard.writeText,
+  // which Chromium gates behind 'clipboard-sanitized-write' (and
+  // 'clipboard-read' for paste) - without allowing those too, every one of
+  // those buttons silently no-ops. Everything else stays denied.
+  const ALLOWED_PERMISSIONS = new Set(['media', 'clipboard-read', 'clipboard-sanitized-write'])
   session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
-    callback(permission === 'media')
+    callback(ALLOWED_PERMISSIONS.has(permission))
   })
-  session.defaultSession.setPermissionCheckHandler((_webContents, permission) => permission === 'media')
+  session.defaultSession.setPermissionCheckHandler((_webContents, permission) => ALLOWED_PERMISSIONS.has(permission))
 
   try {
     await startBackendSidecar()
