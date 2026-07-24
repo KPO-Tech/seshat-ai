@@ -143,7 +143,6 @@ type SessionState = {
   getPlan: (sessionId: string, planId: string) => PlanDocument | undefined
   getSessionPlans: (sessionId: string) => PlanDocument[]
   getPendingPlan: (sessionId: string) => PlanDocument | undefined
-  getLatestPlan: (sessionId: string) => PlanDocument | undefined
 
   // Sub-agent state (keyed by sessionId → toolUseId → SubagentState)
   subagentsBySession: Record<string, Record<string, SubagentState>>
@@ -333,19 +332,6 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     const sess = get().sessions.find((s) => s.id === sessionId)
     if (!sess?.plans) return undefined
     return Object.values(sess.plans).find((p) => p.status === 'pending')
-  },
-
-  // Unlike getPendingPlan, this doesn't disappear once a plan is
-  // validated/rejected - used to keep a persistent, reopenable card above
-  // the input instead of the plan becoming unreachable (short of scrolling
-  // back through history to its submit_plan tool call) the moment it's no
-  // longer pending.
-  getLatestPlan: (sessionId) => {
-    const sess = get().sessions.find((s) => s.id === sessionId)
-    if (!sess?.plans) return undefined
-    const plans = Object.values(sess.plans)
-    if (plans.length === 0) return undefined
-    return plans.reduce((latest, p) => (p.updated_at > latest.updated_at ? p : latest))
   },
 
   // ── Sub-agent state ──────────────────────────────────────────────────────

@@ -1244,11 +1244,21 @@ function toolResultFromProgress(
     ? metadata.execution_duration_ms
     : undefined
 
+  // additional carries whatever a specific tool's own ResultMetadata put
+  // there (see internal/tools/contract's ResultMetadata.Additional in the
+  // engine repo) - e.g. submit_plan's plan_id/slug/filename/version/status,
+  // which has none of the bash-shaped fields below and no message text
+  // either at the 'completed' stage. Without checking for it too, this
+  // function returned undefined for exactly those tools, discarding the
+  // metadata entirely - which is what silently broke SilentToolView's
+  // submit_plan → PlanArtifactCard swap (no plan_id, so it could never look
+  // up the live plan document).
   const hasMetadataOutput =
     typeof metadata.stdout === 'string' ||
     typeof metadata.stderr === 'string' ||
     typeof metadata.exit_code === 'number' ||
-    typeof metadata.content === 'string'
+    typeof metadata.content === 'string' ||
+    (typeof metadata.additional === 'object' && metadata.additional !== null)
 
   if (!hasMetadataOutput && !content && durationMs == null) return undefined
 

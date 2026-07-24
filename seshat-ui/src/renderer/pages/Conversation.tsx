@@ -163,11 +163,6 @@ export function Conversation() {
   const pendingPermission = agentState.pendingPermission
   const isPlanPending = pendingPermission?.toolName === 'exit_plan_mode'
   const pendingPlan = useSessionStore((s) => (id ? s.getPendingPlan(id) : undefined))
-  // Unlike pendingPlan, doesn't disappear once validated/rejected - keeps the
-  // card above the input clickable to reopen the panel instead of the plan
-  // becoming unreachable (short of scrolling back to its submit_plan tool
-  // call) the moment it's resolved.
-  const latestPlan = useSessionStore((s) => (id ? s.getLatestPlan(id) : undefined))
   const pendingAskUser = streaming.find(
     (b) => b.type === 'tool_use' && b.name === 'ask_user_question' && b._prompt
   ) ?? null
@@ -510,19 +505,27 @@ export function Conversation() {
         </div>
       </div>
 
-      {/* ── Live agent status — tool-aware, shown in the transcript while a turn is running ── */}
-      {isStreaming && (
+      {/* ── Live agent status — tool-aware, shown in the transcript while a turn
+           is running. Hidden once a permission is pending: at that point the
+           agent isn't "thinking" anymore, it's blocked on the user's own
+           decision, which the PermissionCard elsewhere in the transcript
+           already surfaces - showing both left the status looking stuck
+           ("SeshatOS is thinking...") long after the real ball was in the
+           user's court ── */}
+      {isStreaming && !pendingPermission && (
         <div style={{ padding: '0 16px 8px', display: 'flex', justifyContent: 'center' }}>
           <AgentStatusIndicator state={agentState} />
         </div>
       )}
 
-      {/* ── Plan artifact card — stays above the input (Proceed/Reject only
-           while still pending) so the plan remains reachable even after
-           it's been validated or rejected ── */}
-      {id && latestPlan && (
+      {/* ── Plan artifact card — shown above input only while a plan is
+           pending review. Once it's validated/rejected, the tool call's own
+           inline rendering (SilentToolView swaps in PlanArtifactCard for
+           submit_plan) stays in the transcript as the permanent, reopenable
+           record - no need for a second copy here after the fact ── */}
+      {id && pendingPlan && (
         <div style={{ padding: '0 16px 8px', display: 'flex', justifyContent: 'center' }}>
-          <PlanArtifactCard plan={latestPlan} sessionId={id} onProceed={handlePlanProceed} />
+          <PlanArtifactCard plan={pendingPlan} sessionId={id} onProceed={handlePlanProceed} />
         </div>
       )}
 

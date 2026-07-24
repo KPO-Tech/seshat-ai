@@ -10,13 +10,23 @@ import { QuietToolGroup } from './QuietToolGroup'
 import { isGroupable, breaksGroup } from './tool-block/quietGroupPhrase'
 import type { Message, ToolUseBlock, ToolStatus } from '@/api/types'
 
-// Mode-switching system tools are handled silently by the Agent Monitor panel.
-// They never appear as chat tool blocks.
-const MODE_SYSTEM_TOOLS = new Set([
+// Tools that never appear as chat tool blocks - each has its own dedicated
+// surface elsewhere so an inline line here would just be a redundant second
+// copy of the same information:
+// - mode-switching tools: silent, handled by the Agent Monitor panel
+// - task_create/task_update/task_list: the live task list with per-item
+//   status already lives in the Agent Monitor panel (auto-opened on
+//   task_create - see Conversation.tsx), which is a far more useful view
+//   than a growing wall of "Create Task"/"Update Task" lines for every
+//   single item
+const HIDDEN_TOOLS = new Set([
   'enter_plan_mode',
   'exit_plan_mode',
   'enter_pair_programming_mode',
   'exit_pair_programming_mode',
+  'task_create',
+  'task_update',
+  'task_list',
 ])
 
 // Messages that contain only tool_result blocks are synthetic turn-separator
@@ -30,11 +40,7 @@ export function isRenderableMessage(message: Message): boolean {
   return message.content.some((block) => {
     if (block.type === 'text') return Boolean(block.text.trim())
     if (block.type === 'thinking') return Boolean(block.thinking.trim())
-    if (block.type === 'tool_use') {
-      if (MODE_SYSTEM_TOOLS.has(block.name)) return false
-      if (block.name === 'task_list') return false
-      return true
-    }
+    if (block.type === 'tool_use') return !HIDDEN_TOOLS.has(block.name)
     return false
   })
 }
@@ -147,7 +153,7 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, showA
   const visibleBlocks = message.content.filter((block) => {
     if (block.type === 'text') return Boolean(block.text.trim())
     if (block.type === 'thinking') return Boolean(block.thinking.trim())
-    if (block.type === 'tool_use') return !MODE_SYSTEM_TOOLS.has(block.name)
+    if (block.type === 'tool_use') return !HIDDEN_TOOLS.has(block.name)
     return false
   })
   if (visibleBlocks.length === 0) return null
