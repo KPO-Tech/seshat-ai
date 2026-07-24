@@ -59,31 +59,6 @@ export function toolLabel(name: string): string {
   return labels[name] ?? name.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
 }
 
-export function headerSummary(tool: ToolUseBlock, status: ToolStatus): string {
-  const commandLike = inputSnippet(tool)
-  if (tool.name === 'bash' && commandLike) {
-    return commandLike
-  }
-  if ((status === 'running' || status === 'awaiting_approval') && tool._message) {
-    return tool._message
-  }
-  if (tool.name === 'task_create') {
-    return typeof tool.input.subject === 'string' ? compact(tool.input.subject, 56) : ''
-  }
-  if (tool.name === 'task_update') {
-    const statusText = typeof tool.input.status === 'string' ? tool.input.status : ''
-    const subject = typeof tool.input.subject === 'string' ? tool.input.subject : ''
-    if (subject) return compact(subject, 56)
-    if (statusText) return `status → ${statusText}`
-  }
-  if (tool.name === 'task_list') {
-    const listType = typeof tool.input.listType === 'string' ? tool.input.listType : 'background'
-    const statusText = typeof tool.input.status === 'string' ? tool.input.status : 'running'
-    return `${listType} · ${statusText}`
-  }
-  return commandLike
-}
-
 export function fallbackApprovalDescription(tool: ToolUseBlock): string {
   if (tool.name === 'bash') {
     const command = typeof tool.input.command === 'string' ? tool.input.command : ''
@@ -258,47 +233,6 @@ export function inputSnippetForSilent(tool: ToolUseBlock): string {
     default:
       return ''
   }
-}
-
-function inputSnippet(tool: ToolUseBlock): string {
-  if (tool.name === 'ask_user_question') {
-    const questions = parseAskUserQuestions(tool.input)
-    const firstQuestion = questions[0]?.question ?? ''
-    const compact = firstQuestion.replace(/\n/g, ' ').trim()
-    return compact.length > 56 ? `${compact.slice(0, 56)}…` : compact
-  }
-  if (tool.name === 'web_search') {
-    const query = typeof tool.input.query === 'string' ? tool.input.query : ''
-    const compact = query.replace(/\n/g, ' ').trim()
-    return compact.length > 56 ? `${compact.slice(0, 56)}…` : compact
-  }
-  if (['edit', 'file_edit', 'write', 'file_write', 'read', 'file_read'].includes(tool.name)) {
-    const fp = typeof tool.input.file_path === 'string' ? tool.input.file_path : ''
-    return fp ? (fp.split('/').filter(Boolean).pop() ?? fp) : ''
-  }
-  if (tool.name === 'glob') {
-    return typeof tool.input.pattern === 'string' ? compact(tool.input.pattern, 48) : ''
-  }
-  if (tool.name === 'grep') {
-    return typeof tool.input.pattern === 'string' ? compact(tool.input.pattern, 48) : ''
-  }
-  if (tool.name === 'web_fetch') {
-    const url = typeof tool.input.url === 'string' ? tool.input.url : ''
-    try { return new URL(url).hostname } catch { return compact(url, 48) }
-  }
-  if (tool.name.startsWith('browser_')) {
-    const url = typeof tool.input.url === 'string' ? tool.input.url : ''
-    if (url) { try { return new URL(url).hostname } catch { return compact(url, 48) } }
-    const elementId = typeof tool.input.element_id === 'string' ? tool.input.element_id : ''
-    if (elementId) return elementId
-    const key = typeof tool.input.key === 'string' ? tool.input.key : ''
-    if (key) return key
-    const pageId = typeof tool.input.page_id === 'string' ? tool.input.page_id : ''
-    return pageId
-  }
-  const first = Object.values(tool.input)[0]
-  if (typeof first !== 'string') return ''
-  return compact(first, 42)
 }
 
 function compact(value: string, max: number): string {

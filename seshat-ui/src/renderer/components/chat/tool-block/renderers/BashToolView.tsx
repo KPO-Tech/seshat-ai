@@ -9,7 +9,7 @@ export function BashToolView({ tool, result }: ToolViewProps) {
   return (
     <>
       <Section label="Command">
-        <CodeBox content={command} />
+        <CodeBox content={command} language="bash" />
       </Section>
 
       {parsed?.stdout != null && (

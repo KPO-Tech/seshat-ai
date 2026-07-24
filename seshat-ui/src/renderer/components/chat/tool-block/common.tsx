@@ -1,7 +1,7 @@
-import { Copy, CheckOne, CloseOne, LoadingOne } from '@icon-park/react'
-import type { ReactNode } from 'react'
-import type { ToolStatus } from '@/api/types'
-import { fmtDuration, statusLabel } from './helpers'
+import { Copy } from '@icon-park/react'
+import type { CSSProperties, ReactNode } from 'react'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 
 export function Section({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -16,14 +16,25 @@ export function CodeBox({
   content,
   variant,
   copyable,
+  language,
 }: {
   content: string
   variant?: 'error'
   copyable?: boolean
+  // Renders with Prism syntax highlighting instead of plain monospace text
+  // - used for the bash command itself, which reads far better colored
+  // than as a flat grey block.
+  language?: string
 }) {
   return (
     <div className={`tb-code${variant ? ` tb-code--${variant}` : ''}`}>
-      <pre className="tb-pre">{content}</pre>
+      {language ? (
+        <SyntaxHighlighter language={language} style={vscDarkPlus as any} customStyle={CODE_HIGHLIGHT_STYLE}>
+          {content}
+        </SyntaxHighlighter>
+      ) : (
+        <pre className="tb-pre">{content}</pre>
+      )}
       {copyable && (
         <button
           className="tb-copy"
@@ -38,19 +49,12 @@ export function CodeBox({
   )
 }
 
-export function StatusBadge({ status, durationMs }: { status: ToolStatus; durationMs?: number }) {
-  return (
-    <div className={`tb-status tb-status--${status}`}>
-      <span className="tb-status-icon">
-        {status === 'completed' && <CheckOne size={10} />}
-        {status === 'failed' && <CloseOne size={10} />}
-        {status === 'running' && <LoadingOne size={10} className="tb-spin" />}
-        {(status === 'pending' || status === 'awaiting_approval') && <span className="tb-dot" />}
-      </span>
-      <span className="tb-status-label">{statusLabel(status)}</span>
-      {durationMs != null && status !== 'running' && status !== 'awaiting_approval' && (
-        <span className="tb-duration">{fmtDuration(durationMs)}</span>
-      )}
-    </div>
-  )
+const CODE_HIGHLIGHT_STYLE: CSSProperties = {
+  margin: 0,
+  padding: '10px 12px',
+  fontSize: '12.5px',
+  lineHeight: 1.55,
+  background: 'transparent',
+  maxHeight: 260,
+  overflowY: 'auto',
 }
