@@ -16,7 +16,7 @@ import type { ToolBlockProps } from './tool-block/types'
 // (including failed) reaches here whenever it has no adjacent tool_use
 // sibling — see MessageItem.groupBlocks(), which otherwise routes runs of
 // 2+ into QuietToolGroup instead.
-export const ToolBlock = memo(function ToolBlock({ tool, onSubmitPrompt }: ToolBlockProps) {
+export const ToolBlock = memo(function ToolBlock({ tool, sessionId, onSubmitPrompt }: ToolBlockProps) {
   const expanded = useUIStore((s) => s.toolExpansion[tool.id] ?? false)
   const setToolExpansion = useUIStore((s) => s.setToolExpansion)
   const result = tool._result
@@ -31,6 +31,7 @@ export const ToolBlock = memo(function ToolBlock({ tool, onSubmitPrompt }: ToolB
         result={result}
         status={status}
         snippet={inputSnippetForSilent(tool)}
+        sessionId={sessionId}
       />
     )
   }

@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { CheckOne, CloseOne, Edit, DocDetail } from '@icon-park/react'
+import { CheckOne, CloseOne, Edit, DocDetail, Square, Close } from '@icon-park/react'
 import { MarkdownView } from '@/components/MarkdownView'
 import { api } from '@/api/client'
+import { useChat } from '@/hooks/useChat'
 import { useSessionStore } from '@/stores/session'
 import { useUIStore, buildRightPanelId } from '@/stores/ui'
 import type { PlanDocument } from '@/api/types'
@@ -10,7 +11,8 @@ const CSS = `
 .pep-root {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -52,6 +54,7 @@ const CSS = `
   text-transform: uppercase;
   padding: 2px 6px;
   border-radius: 779px;
+  flex-shrink: 0;
 }
 
 .pep-badge--pending {
@@ -74,10 +77,48 @@ const CSS = `
   color: var(--color-text-muted);
 }
 
-.pep-toolbar {
-  display: flex;
+.pep-edit-btn {
+  display: inline-flex;
   align-items: center;
-  gap: 5px;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: 5px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.pep-edit-btn:hover {
+  background: var(--color-hover);
+  color: var(--color-text);
+}
+
+.pep-edit-btn--active {
+  background: rgba(239, 124, 47, 0.12);
+  color: var(--color-accent);
+}
+
+.pep-frame-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: 5px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.pep-frame-btn:hover {
+  background: var(--color-hover);
+  color: var(--color-text);
 }
 
 .pep-tool-btn {
@@ -100,21 +141,18 @@ const CSS = `
   color: var(--color-text);
 }
 
-.pep-tool-btn--active {
-  background: rgba(239, 124, 47, 0.1);
-  border-color: rgba(239, 124, 47, 0.3);
-  color: var(--color-accent);
-}
-
 .pep-body {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   scrollbar-width: thin;
+  scrollbar-color: var(--color-border-subtle) transparent;
 }
 
 .pep-body::-webkit-scrollbar { width: 4px; }
+.pep-body::-webkit-scrollbar-track { background: transparent; }
 .pep-body::-webkit-scrollbar-thumb {
   background: var(--color-border-subtle);
   border-radius: 3px;
@@ -125,6 +163,44 @@ const CSS = `
   flex: 1;
   position: relative;
   user-select: text;
+}
+
+.pep-line-wrap {
+  position: relative;
+  padding-left: 20px;
+  margin-left: -20px;
+  border-radius: 6px;
+  transition: background 0.12s;
+}
+
+.pep-line-wrap:hover {
+  background: rgba(239, 124, 47, 0.05);
+}
+
+.pep-line-plus {
+  position: absolute;
+  left: 0;
+  top: 3px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: none;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transform: scale(0.75);
+  transition: opacity 0.12s, transform 0.12s;
+}
+
+.pep-line-wrap:hover .pep-line-plus {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .pep-editor {
@@ -485,6 +561,30 @@ function errorMessage(err: unknown): string {
   return (err as { message?: string })?.message ?? 'unknown error'
 }
 
+// Splits markdown into top-level blocks (paragraphs, headings, list groups,
+// blockquotes...) on blank lines, so each can get its own hover "+" comment
+// affordance. A fenced code block is kept intact as a single block even if
+// it contains blank lines internally.
+function splitMarkdownBlocks(text: string): string[] {
+  const lines = text.split('\n')
+  const blocks: string[] = []
+  let current: string[] = []
+  let inFence = false
+  for (const line of lines) {
+    if (/^(`{3,}|~{3,})/.test(line.trim())) inFence = !inFence
+    if (!inFence && line.trim() === '') {
+      if (current.length > 0) {
+        blocks.push(current.join('\n'))
+        current = []
+      }
+      continue
+    }
+    current.push(line)
+  }
+  if (current.length > 0) blocks.push(current.join('\n'))
+  return blocks
+}
+
 type Props = {
   // planId is set when the agent submitted a structured plan document via
   // submit_plan; content is fetched/persisted through /plans/:id. When
@@ -495,13 +595,17 @@ type Props = {
   sessionId: string
   pendingPermission?: { toolUseId: string } | null
   rawContent?: string
+  isMaximized?: boolean
+  onClose?: () => void
+  onToggleMaximize?: () => void
 }
 
-export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawContent }: Props) {
+export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawContent, isMaximized, onClose, onToggleMaximize }: Props) {
   const isDocumentBacked = !!planId
   const plan = useSessionStore((s) => (planId ? s.getPlan(sessionId, planId) : undefined))
   const upsertPlan = useSessionStore((s) => s.upsertPlan)
   const closeRightPanel = useUIStore((s) => s.closeRightPanel)
+  const { sendMessage } = useChat(sessionId)
 
   const [editMode, setEditMode] = useState(false)
   const [editedContent, setEditedContent] = useState('')
@@ -559,6 +663,21 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
     setFloatStyle({ top: rect.bottom + 8, left: rect.left + rect.width / 2 })
   }
 
+  // Hovering a block (paragraph, heading, list group...) while not editing
+  // reveals a "+" in its gutter - clicking it opens the same annotation
+  // form used by text selection, seeded with that block's own text as the
+  // quote, so a single line/section can be commented on without first
+  // having to select it.
+  function openLineComment(e: React.MouseEvent<HTMLButtonElement>, block: string) {
+    e.stopPropagation()
+    const rect = e.currentTarget.getBoundingClientRect()
+    const quote = block.trim().split('\n')[0].slice(0, 120)
+    setPendingQuote(quote)
+    setAnnotationInput('')
+    setShowAnnotationForm(true)
+    setFloatStyle({ top: rect.bottom + 6, left: rect.left + 60 })
+  }
+
   function closeFloat() {
     setFloatStyle(null)
     setPendingQuote(null)
@@ -597,10 +716,34 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
 
   const content = plan?.content ?? rawContent ?? ''
 
+  // The header still needs to render here (not just once real content is
+  // ready) - otherwise a slow load or a load failure leaves the panel with
+  // no close/maximize control at all, since the generic RightPanelHost
+  // header no longer exists as a fallback for plan panels (see PanelFrame).
+  const minimalHeader = (
+    <div className="pep-header">
+      <div className="pep-header-top">
+        <DocDetail size={13} className="pep-icon" />
+        <span className="pep-name">Implementation Plan</span>
+        {onToggleMaximize && (
+          <button className="pep-frame-btn" type="button" onClick={onToggleMaximize} title={isMaximized ? 'Restore' : 'Maximize'}>
+            <Square size={10} theme={isMaximized ? 'filled' : 'outline'} />
+          </button>
+        )}
+        {onClose && (
+          <button className="pep-frame-btn" type="button" onClick={onClose} title="Close">
+            <Close size={11} />
+          </button>
+        )}
+      </div>
+    </div>
+  )
+
   if (isDocumentBacked && !plan) {
     return (
       <div className="pep-root">
         <style>{CSS}</style>
+        {minimalHeader}
         <div className="pep-empty">Loading plan…</div>
       </div>
     )
@@ -610,6 +753,7 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
     return (
       <div className="pep-root">
         <style>{CSS}</style>
+        {minimalHeader}
         <div className="pep-empty">
           <span style={actionError ? { color: 'var(--color-error)', textAlign: 'center' } : undefined}>
             {actionError ?? 'No plan content yet.'}
@@ -640,7 +784,7 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
   const hasFeedback = annotations.length > 0 || !!comment.trim() || (isDocumentBacked && editMode && editedContent !== content)
 
   async function handleProceed() {
-    if (sending || !pendingPermission) return
+    if (sending || !(pendingPermission || isDocumentBacked)) return
     setSending(true)
     setActionError(null)
     try {
@@ -656,17 +800,31 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
         }
       }
 
-      // The plan_id tells the backend to sync plan_documents.status in the
-      // same request as the actual approval, instead of a second PATCH the
-      // client used to send afterwards - see permissions.go's handler.
-      await api.post(`/permissions/${pendingPermission.toolUseId}`, {
-        approved: true,
-        session_id: sessionId,
-        plan_id: planId,
-      })
-      if (isDocumentBacked) upsertPlan(sessionId, { ...plan!, status: 'validated' })
+      if (pendingPermission) {
+        // Legacy path: the model already called exit_plan_mode itself and is
+        // blocked waiting on exactly this permission - resolving it in the
+        // same request unblocks that turn directly, no new message needed.
+        // The plan_id tells the backend to sync plan_documents.status in the
+        // same request as the approval - see permissions.go's handler.
+        await api.post(`/permissions/${pendingPermission.toolUseId}`, {
+          approved: true,
+          session_id: sessionId,
+          plan_id: planId,
+        })
+        if (isDocumentBacked) upsertPlan(sessionId, { ...plan!, status: 'validated' })
+        useSessionStore.getState().updateAgentState(sessionId, { pendingPermission: null })
+      } else {
+        // submit_plan doesn't block the turn (RequiresPermission: false) -
+        // by the time the plan reaches review, the model's turn has already
+        // ended and nothing is listening on a permission channel. The only
+        // way to tell it the plan is approved is a new turn - see
+        // submit_plan's own prompt ("you will receive a confirmation
+        // message - then call exit_plan_mode").
+        const updated = await api.patch<PlanDocument>(`/plans/${planId}`, { status: 'validated' })
+        upsertPlan(sessionId, updated)
+        await sendMessage('The plan has been approved. Proceed with implementation: call exit_plan_mode, then execute the plan.')
+      }
 
-      useSessionStore.getState().updateAgentState(sessionId, { pendingPermission: null })
       // Agent Monitor is opt-in only - approving just closes this panel and
       // lets the agent resume; it doesn't open Agent Monitor on the user's
       // behalf (see Conversation.tsx's toggleMonitor for the explicit path).
@@ -678,24 +836,36 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
     }
   }
 
-  // Reject and "send feedback" are the same action: deny exit_plan_mode and
-  // attach whatever feedback was collected as the deny reason, so the model
-  // sees it as the tool's rejection text and revises within the same turn,
-  // no new user message/turn required. An empty reason is just a plain no.
+  // Reject and "send feedback" are the same action. When exit_plan_mode is
+  // actually blocked (legacy path), denying it with the feedback as the deny
+  // reason lets the model see it as the tool's rejection text and revise
+  // within the same turn. Otherwise (the normal submit_plan path, no live
+  // permission to deny) the feedback is sent as a new turn instead - same
+  // reasoning as handleProceed's else branch.
   async function handleDeny() {
-    if (sending || !pendingPermission) return
+    if (sending || !(pendingPermission || isDocumentBacked)) return
     setSending(true)
     setActionError(null)
     try {
-      // Same plan_id-carrying request as handleProceed - see its comment.
-      await api.post(`/permissions/${pendingPermission.toolUseId}`, {
-        approved: false,
-        session_id: sessionId,
-        reason: hasFeedback ? buildFeedback() : '',
-        plan_id: planId,
-      })
-      if (isDocumentBacked) upsertPlan(sessionId, { ...plan!, status: 'rejected' })
-      useSessionStore.getState().updateAgentState(sessionId, { pendingPermission: null })
+      if (pendingPermission) {
+        // Same plan_id-carrying request as handleProceed - see its comment.
+        await api.post(`/permissions/${pendingPermission.toolUseId}`, {
+          approved: false,
+          session_id: sessionId,
+          reason: hasFeedback ? buildFeedback() : '',
+          plan_id: planId,
+        })
+        if (isDocumentBacked) upsertPlan(sessionId, { ...plan!, status: 'rejected' })
+        useSessionStore.getState().updateAgentState(sessionId, { pendingPermission: null })
+      } else {
+        const updated = await api.patch<PlanDocument>(`/plans/${planId}`, { status: 'rejected' })
+        upsertPlan(sessionId, updated)
+        await sendMessage(
+          hasFeedback
+            ? buildFeedback()
+            : "I'd like changes before approving this plan. Please revise and resubmit it with submit_plan."
+        )
+      }
       setComment('')
       setAnnotations([])
       setEditMode(false)
@@ -715,21 +885,29 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
         <div className="pep-header-top">
           <DocDetail size={13} className="pep-icon" />
           <span className="pep-name">{humanSlug}</span>
-          <span className={badgeClass}>{status}</span>
-        </div>
-        {plan && <div className="pep-meta">{plan.filename} · v{plan.version}</div>}
-        {isDocumentBacked && !isReadonly && (
-          <div className="pep-toolbar">
+          {isDocumentBacked && !isReadonly && (
             <button
-              className={`pep-tool-btn${editMode ? ' pep-tool-btn--active' : ''}`}
+              className={`pep-edit-btn${editMode ? ' pep-edit-btn--active' : ''}`}
               type="button"
               onClick={() => setEditMode((v) => !v)}
+              title={editMode ? 'Preview' : 'Edit'}
             >
-              <Edit size={10} />
-              {editMode ? 'Preview' : 'Edit'}
+              <Edit size={11} />
             </button>
-          </div>
-        )}
+          )}
+          <span className={badgeClass}>{status}</span>
+          {onToggleMaximize && (
+            <button className="pep-frame-btn" type="button" onClick={onToggleMaximize} title={isMaximized ? 'Restore' : 'Maximize'}>
+              <Square size={10} theme={isMaximized ? 'filled' : 'outline'} />
+            </button>
+          )}
+          {onClose && (
+            <button className="pep-frame-btn" type="button" onClick={onClose} title="Close">
+              <Close size={11} />
+            </button>
+          )}
+        </div>
+        {plan && <div className="pep-meta">{plan.filename} · v{plan.version}</div>}
       </div>
 
       <div className="pep-body">
@@ -743,10 +921,25 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
           />
         ) : (
           <div className="pep-markdown" onMouseUp={handleMarkdownMouseUp}>
-            {contentToShow
-              ? <MarkdownView>{contentToShow}</MarkdownView>
-              : <span style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Loading content…</span>
-            }
+            {!contentToShow ? (
+              <span style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Loading content…</span>
+            ) : isReadonly ? (
+              <MarkdownView>{contentToShow}</MarkdownView>
+            ) : (
+              splitMarkdownBlocks(contentToShow).map((block, i) => (
+                <div key={i} className="pep-line-wrap">
+                  <button
+                    type="button"
+                    className="pep-line-plus"
+                    title="Comment on this section"
+                    onClick={(e) => openLineComment(e, block)}
+                  >
+                    +
+                  </button>
+                  <MarkdownView>{block}</MarkdownView>
+                </div>
+              ))
+            )}
           </div>
         )}
       </div>
@@ -802,7 +995,7 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
 
       {actionError && <div className="pep-error-banner">{actionError}</div>}
 
-      {!isReadonly && pendingPermission && (
+      {!isReadonly && (pendingPermission || isDocumentBacked) && (
         <div className="pep-footer">
           <span className="pep-hint">
             {hasFeedback

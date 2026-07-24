@@ -214,6 +214,7 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, showA
               <QuietToolGroup
                 key={item.tools[0]?.id || `${message.id ?? 'msg'}-quiet-${i}`}
                 tools={item.tools}
+                sessionId={sessionId}
                 onSubmitPrompt={onSubmitToolPrompt}
               />
             )
@@ -247,6 +248,7 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, showA
               <ToolBlock
                 key={key}
                 tool={block}
+                sessionId={sessionId}
                 onSubmitPrompt={onSubmitToolPrompt}
               />
             )

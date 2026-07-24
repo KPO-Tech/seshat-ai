@@ -321,11 +321,21 @@ export function Conversation() {
         store.upsertPlan(id, updated)
       } catch { /* silent — engine will still unblock via permission approval */ }
     }
-    // Approve the exit_plan_mode permission gate if it's the pending one
     if (pendingPermission?.toolName === 'exit_plan_mode') {
+      // Legacy path: the model already called exit_plan_mode itself and is
+      // blocked waiting on exactly this permission - resolving it unblocks
+      // that turn directly.
       await handlePermissionDecision(pendingPermission.toolUseId, true)
+      return
     }
-  }, [id, pendingPermission, handlePermissionDecision])
+    // submit_plan doesn't block the turn (RequiresPermission: false) - by
+    // the time the plan reaches review, the model's turn has already ended
+    // and nothing is listening on a permission channel. The only way to
+    // tell it the plan is approved is a new turn - see submit_plan's own
+    // prompt ("you will receive a confirmation message - then call
+    // exit_plan_mode").
+    await sendMessage('The plan has been approved. Proceed with implementation: call exit_plan_mode, then execute the plan.')
+  }, [id, pendingPermission, handlePermissionDecision, sendMessage])
 
   const handlePromptSubmission = useCallback(async (promptId: string, value: unknown) => {
     if (!id) return
