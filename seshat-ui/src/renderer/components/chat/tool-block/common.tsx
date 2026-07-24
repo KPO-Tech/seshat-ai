@@ -29,7 +29,13 @@ export function CodeBox({
   return (
     <div className={`tb-code${variant ? ` tb-code--${variant}` : ''}`}>
       {language ? (
-        <SyntaxHighlighter language={language} style={vscDarkPlus as any} customStyle={CODE_HIGHLIGHT_STYLE}>
+        <SyntaxHighlighter
+          language={language}
+          style={vscDarkPlus as any}
+          customStyle={CODE_HIGHLIGHT_STYLE}
+          codeTagProps={{ style: CODE_HIGHLIGHT_CODE_STYLE }}
+          className="tb-code-highlight"
+        >
           {content}
         </SyntaxHighlighter>
       ) : (
@@ -57,4 +63,13 @@ const CODE_HIGHLIGHT_STYLE: CSSProperties = {
   background: 'transparent',
   maxHeight: 260,
   overflowY: 'auto',
+  overflowX: 'auto',
+}
+
+// Long lines wrap instead of scrolling horizontally out of view - the
+// scroll from customStyle above is a safety net for a single unbreakable
+// token, not the normal case.
+const CODE_HIGHLIGHT_CODE_STYLE: CSSProperties = {
+  whiteSpace: 'pre-wrap',
+  wordBreak: 'break-word',
 }

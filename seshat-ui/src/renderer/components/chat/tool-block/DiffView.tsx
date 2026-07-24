@@ -2,6 +2,7 @@ import { Copy } from '@icon-park/react'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import type { ToolUseBlock } from '@/api/types'
+import { languageForPath } from './helpers'
 
 // ─── Backend payload shapes ─────────────────────────────────────────────────
 // Mirrors github.com/KPO-Tech/seshat's edit_file/write_file tool output
@@ -183,25 +184,6 @@ function summarize(rows: DiffRow[]): ResolvedDiff {
   return { rows, addCount, delCount }
 }
 
-// ─── Syntax highlighting language mapping ───────────────────────────────────
-
-const EXT_LANGUAGE: Record<string, string> = {
-  go: 'go', ts: 'typescript', tsx: 'tsx', js: 'javascript', jsx: 'jsx', mjs: 'javascript',
-  py: 'python', rb: 'ruby', rs: 'rust', java: 'java', kt: 'kotlin', swift: 'swift',
-  c: 'c', h: 'c', cpp: 'cpp', cc: 'cpp', hpp: 'cpp', cs: 'csharp', php: 'php',
-  sql: 'sql', yaml: 'yaml', yml: 'yaml', json: 'json', md: 'markdown',
-  sh: 'bash', bash: 'bash', zsh: 'bash', html: 'markup', xml: 'markup',
-  css: 'css', scss: 'scss', less: 'less', toml: 'toml', dockerfile: 'docker',
-  graphql: 'graphql', proto: 'protobuf',
-}
-
-function languageForPath(filePath: string): string | undefined {
-  const base = filePath.split('/').pop() ?? filePath
-  if (base.toLowerCase() === 'dockerfile') return 'docker'
-  const ext = base.includes('.') ? base.split('.').pop()!.toLowerCase() : ''
-  return EXT_LANGUAGE[ext]
-}
-
 function basename(fp: string) {
   return fp.split('/').filter(Boolean).pop() ?? fp
 }
@@ -231,7 +213,6 @@ export function DiffView({
       {filePath && (
         <div className="tb-edit-path-row">
           <span className="tb-filepath" title={filePath}>{basename(filePath)}</span>
-          <span className="tb-filepath-full">{filePath}</span>
         </div>
       )}
       <div className="tb-difv-stats">
@@ -312,7 +293,7 @@ const DIFF_VIEW_CSS = `
 .tb-difv-code {
   flex: 1;
   min-width: 0;
-  white-space: pre;
+  white-space: pre-wrap;
   word-break: break-all;
   color: var(--color-text-secondary);
   padding-left: 3px;

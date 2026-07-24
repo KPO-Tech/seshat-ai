@@ -22,6 +22,18 @@ export const TOOL_BLOCK_CSS = `
 
 .tb-code--error { background: rgba(var(--color-error-rgb), 0.06); }
 
+.tb-code-highlight {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-subtle) transparent;
+}
+
+.tb-code-highlight::-webkit-scrollbar { width: 4px; height: 4px; }
+.tb-code-highlight::-webkit-scrollbar-track { background: transparent; }
+.tb-code-highlight::-webkit-scrollbar-thumb {
+  background: var(--color-border-subtle);
+  border-radius: 3px;
+}
+
 .tb-pre {
   margin: 0;
   padding: 10px 12px;
@@ -512,13 +524,15 @@ export const TOOL_BLOCK_CSS = `
   font-size: 12px;
   line-height: 1.55;
   border-radius: 8px;
-  overflow: hidden;
   max-height: 360px;
   overflow-y: auto;
+  overflow-x: auto;
   scrollbar-width: thin;
+  scrollbar-color: var(--color-border-subtle) transparent;
 }
 
-.tb-diff::-webkit-scrollbar { width: 4px; }
+.tb-diff::-webkit-scrollbar { width: 4px; height: 4px; }
+.tb-diff::-webkit-scrollbar-track { background: transparent; }
 .tb-diff::-webkit-scrollbar-thumb {
   background: var(--color-border-subtle);
   border-radius: 4px;

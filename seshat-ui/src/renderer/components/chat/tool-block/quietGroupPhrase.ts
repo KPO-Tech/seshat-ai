@@ -160,8 +160,15 @@ function specificSingleLabel(tool: ToolUseBlock): string | null {
     return pattern ? `Grep: ${pattern}` : null
   }
   if (name === 'bash') {
-    const command = str(tool, 'command')
+    // description is the tool call's own input (see internal/tools/bash in
+    // the engine repo, now a required field) - the authoritative,
+    // model-authored summary of intent. _message is a separate runtime
+    // progress string that isn't always present; the raw command is the
+    // last resort, since a long one reads poorly collapsed into one line.
+    const description = str(tool, 'description')
+    if (description) return `Bash — ${description}`
     if (tool._message && looksLikeSentence(tool._message)) return `Bash — ${tool._message}`
+    const command = str(tool, 'command')
     return command ? `Bash: ${command}` : null
   }
   if (name === 'web_search') {

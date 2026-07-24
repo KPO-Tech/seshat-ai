@@ -1,4 +1,5 @@
 import { Section, CodeBox } from '../common'
+import { languageForPath } from '../helpers'
 import type { ToolViewProps } from '../types'
 
 function basename(fp: string) {
@@ -24,13 +25,12 @@ export function ReadToolView({ tool, result }: ToolViewProps) {
         <div className="tb-edit-path-row">
           <span className="tb-filepath" title={filePath}>{basename(filePath)}</span>
           {range && <span className="tb-range-label">{range}</span>}
-          <span className="tb-filepath-full">{filePath}</span>
         </div>
       )}
 
       {result?.content && !result.isError && (
         <Section label="Content">
-          <CodeBox content={result.content} copyable />
+          <CodeBox content={result.content} copyable language={languageForPath(filePath)} />
         </Section>
       )}
 
