@@ -163,6 +163,11 @@ export function Conversation() {
   const pendingPermission = agentState.pendingPermission
   const isPlanPending = pendingPermission?.toolName === 'exit_plan_mode'
   const pendingPlan = useSessionStore((s) => (id ? s.getPendingPlan(id) : undefined))
+  // Unlike pendingPlan, doesn't disappear once validated/rejected - keeps the
+  // card above the input clickable to reopen the panel instead of the plan
+  // becoming unreachable (short of scrolling back to its submit_plan tool
+  // call) the moment it's resolved.
+  const latestPlan = useSessionStore((s) => (id ? s.getLatestPlan(id) : undefined))
   const pendingAskUser = streaming.find(
     (b) => b.type === 'tool_use' && b.name === 'ask_user_question' && b._prompt
   ) ?? null
@@ -505,10 +510,12 @@ export function Conversation() {
         </div>
       )}
 
-      {/* ── Plan artifact card — shown above input when a plan is pending ── */}
-      {id && pendingPlan && (
+      {/* ── Plan artifact card — stays above the input (Proceed/Reject only
+           while still pending) so the plan remains reachable even after
+           it's been validated or rejected ── */}
+      {id && latestPlan && (
         <div style={{ padding: '0 16px 8px', display: 'flex', justifyContent: 'center' }}>
-          <PlanArtifactCard plan={pendingPlan} sessionId={id} onProceed={handlePlanProceed} />
+          <PlanArtifactCard plan={latestPlan} sessionId={id} onProceed={handlePlanProceed} />
         </div>
       )}
 
