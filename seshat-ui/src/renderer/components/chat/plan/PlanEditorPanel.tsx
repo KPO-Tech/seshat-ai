@@ -610,7 +610,16 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
     return (
       <div className="pep-root">
         <style>{CSS}</style>
-        <div className="pep-empty">No plan content yet.</div>
+        <div className="pep-empty">
+          <span style={actionError ? { color: 'var(--color-error)', textAlign: 'center' } : undefined}>
+            {actionError ?? 'No plan content yet.'}
+          </span>
+          {isDocumentBacked && (
+            <button type="button" className="pep-tool-btn" onClick={() => void loadFull()}>
+              Retry
+            </button>
+          )}
+        </div>
       </div>
     )
   }
