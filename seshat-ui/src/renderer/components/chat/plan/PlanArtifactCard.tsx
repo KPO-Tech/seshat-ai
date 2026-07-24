@@ -135,9 +135,15 @@ type Props = {
   plan: PlanDocument
   sessionId: string
   onProceed?: (planId: string) => void
+  // Suppresses the Proceed footer regardless of plan.status - used when this
+  // card is rendered as the historical record of a submit_plan tool call
+  // (see SilentToolView), where the real action surface is the card shown
+  // above the input (or the panel itself); this instance is just a "reopen
+  // to view" affordance, not a second place to act from.
+  readOnly?: boolean
 }
 
-export const PlanArtifactCard = memo(function PlanArtifactCard({ plan, sessionId, onProceed }: Props) {
+export const PlanArtifactCard = memo(function PlanArtifactCard({ plan, sessionId, onProceed, readOnly }: Props) {
   const openRightPanel = useUIStore((s) => s.openRightPanel)
 
   function openPanel(e: React.MouseEvent) {
@@ -178,7 +184,7 @@ export const PlanArtifactCard = memo(function PlanArtifactCard({ plan, sessionId
           <div className="pac-meta">{plan.filename} · v{plan.version} · Click to review</div>
         </div>
       </div>
-      {plan.status === 'pending' && (
+      {!readOnly && plan.status === 'pending' && (
         <div className="pac-footer" style={{ borderTop: 'none', paddingTop: 6 }}>
           <span className="pac-hint">Review and approve to continue execution</span>
           <button className="pac-proceed" type="button" onClick={handleProceed}>

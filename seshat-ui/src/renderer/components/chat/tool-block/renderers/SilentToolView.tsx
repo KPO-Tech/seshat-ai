@@ -2,6 +2,8 @@ import { useState } from 'react'
 import type { ToolViewProps } from '../types'
 import type { ToolStatus } from '@/api/types'
 import { useUIStore } from '@/stores/ui'
+import { useSessionStore } from '@/stores/session'
+import { PlanArtifactCard } from '@/components/chat/plan/PlanArtifactCard'
 
 const CSS = `
 .tb-sl {
@@ -151,8 +153,18 @@ export function SilentToolView({ tool, result, status, snippet, sessionId }: Pro
   const { name: planName, planId } = isSubmitPlan
     ? submitPlanInfo(tool, result)
     : { name: '', planId: '' }
-  const label = isSubmitPlan ? planName : (LABELS[tool.name] ?? tool.name)
   const canOpenPlan = isSubmitPlan && !isError && !!planId && !!sessionId
+  // Once the plan document has synced into the store, submit_plan gets the
+  // exact same document-card look as the chat-level PlanArtifactCard
+  // (icon, name, live status badge) instead of a plain text line - clicking
+  // it always reopens the panel, read-only once no longer pending, so
+  // scrolling back to this tool call stays a way to reread the plan forever.
+  const livePlan = useSessionStore((s) => (canOpenPlan ? s.getPlan(sessionId!, planId) : undefined))
+  if (isSubmitPlan && livePlan && sessionId) {
+    return <PlanArtifactCard plan={livePlan} sessionId={sessionId} readOnly />
+  }
+
+  const label = isSubmitPlan ? planName : (LABELS[tool.name] ?? tool.name)
 
   function handleClick() {
     if (canOpenPlan) {
