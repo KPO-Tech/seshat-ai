@@ -97,6 +97,7 @@ const LABELS: Record<string, string> = {
   // file
   read: 'Read', file_read: 'Read', read_file: 'Read', glob: 'Glob', list_directory: 'List Directory',
   // task plumbing
+  task_create: 'Create Task', task_update: 'Update Task', task_list: 'List Tasks',
   task_get: 'Get Task', task_stop: 'Stop Task', task_output: 'Task Output',
   // internal
   tool_search: 'Tool Search', skill: 'Skill', config: 'Config', brief: 'Brief',

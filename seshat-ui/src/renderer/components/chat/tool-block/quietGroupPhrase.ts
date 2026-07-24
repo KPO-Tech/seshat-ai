@@ -6,9 +6,9 @@ import { toolLabel } from './helpers'
 // explicitly said need their own dedicated treatment later, not this pass:
 // interactive prompts, web search/fetch ("browser"), and rich-media
 // generators (an image/audio player doesn't fit a plain text line). agent/
-// spawn_agent and task_create/task_update/task_list are excluded too, but
-// structurally — MessageItem.groupBlocks() routes them to AgentCardsRow/
-// TaskListWidget BEFORE this check ever runs, so they don't need listing here.
+// spawn_agent is excluded too, but structurally — MessageItem.groupBlocks()
+// routes it to AgentCardsRow BEFORE this check ever runs, so it doesn't need
+// listing here.
 const NOT_GROUPABLE = new Set([
   'ask_user_question',
   'web_search', 'web_fetch', 'read_document_url', 'read_url',
@@ -26,7 +26,10 @@ export function isGroupable(name: string): boolean {
 export const SILENT_TOOLS = new Set([
   // file tools with no user-visible output
   'read', 'file_read', 'read_file', 'list_directory',
-  // task plumbing
+  // task plumbing — the actual task list with live status lives in the
+  // Agent Monitor panel (auto-opened on task_create - see Conversation.tsx),
+  // not inline in the chat
+  'task_create', 'task_update', 'task_list',
   'task_get', 'task_stop', 'task_output',
   // internal discovery & control
   'tool_search', 'skill', 'config', 'brief',

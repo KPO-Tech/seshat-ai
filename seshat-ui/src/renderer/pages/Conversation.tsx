@@ -242,9 +242,16 @@ export function Conversation() {
     setAttachments(current => current.filter(file => file.id !== fileId))
   }, [])
 
-  // Agent Monitor is opt-in only: the user opens it explicitly via
-  // toggleMonitor (the sidebar button), it never opens itself just because
-  // a conversation was entered or a plan was resolved.
+  // Agent Monitor is opt-in for entering a conversation or resolving a plan
+  // (the user opens it explicitly via toggleMonitor). task_create is the one
+  // deliberate exception: tasks render as a quiet, foldable line in the
+  // transcript (see SILENT_TOOLS), not their own card, so without this
+  // there'd be no visible feedback that a task list was even created, let
+  // alone a way to watch it progress.
+  useEffect(() => {
+    if (!id || agentState.activeTool?.toolName !== 'task_create' || monitorOpen) return
+    openRightPanel({ kind: 'agent', title: 'Agent Monitor', sessionId: id })
+  }, [id, agentState.activeTool?.toolName, monitorOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-open the plan review panel when the agent calls exit_plan_mode
   // without a structured PlanDocument (no submit_plan): PlanEditorPanel
