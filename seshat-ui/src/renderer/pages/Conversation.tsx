@@ -163,6 +163,11 @@ export function Conversation() {
   const pendingPermission = agentState.pendingPermission
   const isPlanPending = pendingPermission?.toolName === 'exit_plan_mode'
   const pendingPlan = useSessionStore((s) => (id ? s.getPendingPlan(id) : undefined))
+  // Unlike pendingPlan, doesn't disappear once validated/rejected - keeps the
+  // card above the input clickable to reopen the panel instead of the plan
+  // becoming unreachable (short of scrolling back to its submit_plan tool
+  // call) the moment it's resolved.
+  const latestPlan = useSessionStore((s) => (id ? s.getLatestPlan(id) : undefined))
   const pendingAskUser = streaming.find(
     (b) => b.type === 'tool_use' && b.name === 'ask_user_question' && b._prompt
   ) ?? null
@@ -237,9 +242,16 @@ export function Conversation() {
     setAttachments(current => current.filter(file => file.id !== fileId))
   }, [])
 
-  // Agent Monitor is opt-in only: the user opens it explicitly via
-  // toggleMonitor (the sidebar button), it never opens itself just because
-  // a conversation was entered or a plan was resolved.
+  // Agent Monitor is opt-in for entering a conversation or resolving a plan
+  // (the user opens it explicitly via toggleMonitor). task_create is the one
+  // deliberate exception: tasks render as a quiet, foldable line in the
+  // transcript (see SILENT_TOOLS), not their own card, so without this
+  // there'd be no visible feedback that a task list was even created, let
+  // alone a way to watch it progress.
+  useEffect(() => {
+    if (!id || agentState.activeTool?.toolName !== 'task_create' || monitorOpen) return
+    openRightPanel({ kind: 'agent', title: 'Agent Monitor', sessionId: id })
+  }, [id, agentState.activeTool?.toolName, monitorOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-open the plan review panel when the agent calls exit_plan_mode
   // without a structured PlanDocument (no submit_plan): PlanEditorPanel
@@ -505,10 +517,12 @@ export function Conversation() {
         </div>
       )}
 
-      {/* ── Plan artifact card — shown above input when a plan is pending ── */}
-      {id && pendingPlan && (
+      {/* ── Plan artifact card — stays above the input (Proceed/Reject only
+           while still pending) so the plan remains reachable even after
+           it's been validated or rejected ── */}
+      {id && latestPlan && (
         <div style={{ padding: '0 16px 8px', display: 'flex', justifyContent: 'center' }}>
-          <PlanArtifactCard plan={pendingPlan} sessionId={id} onProceed={handlePlanProceed} />
+          <PlanArtifactCard plan={latestPlan} sessionId={id} onProceed={handlePlanProceed} />
         </div>
       )}
 

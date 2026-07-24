@@ -6,7 +6,6 @@ import { useUIStore } from '@/stores/ui'
 import { ToolBlock } from './ToolBlock'
 import { PermissionCard } from './PermissionCard'
 import { AgentCardsRow } from './AgentToolView'
-import { TaskListWidget } from './TaskListWidget'
 import { QuietToolGroup } from './QuietToolGroup'
 import { isGroupable, breaksGroup } from './tool-block/quietGroupPhrase'
 import type { Message, ToolUseBlock, ToolStatus } from '@/api/types'
@@ -77,36 +76,18 @@ type Props = {
   onSubmitToolPrompt?: (promptId: string, value: unknown) => void
 }
 
-const TASK_TOOLS = new Set(['task_create', 'task_update', 'task_list'])
 const AGENT_TOOLS = new Set(['agent', 'spawn_agent'])
 
 type RenderItem =
   | { kind: 'block'; block: Message['content'][number]; index: number }
   | { kind: 'agent-group'; tools: ToolUseBlock[] }
-  | { kind: 'task-group'; tools: ToolUseBlock[] }
   | { kind: 'quiet-group'; tools: ToolUseBlock[] }
 
 function groupBlocks(blocks: Message['content']): RenderItem[] {
-  // Collect all task tools from the message for the widget
-  const taskTools = blocks.filter(
-    (b): b is ToolUseBlock => b.type === 'tool_use' && TASK_TOOLS.has(b.name)
-  )
-  let taskWidgetPlaced = false
-
   const items: RenderItem[] = []
   let i = 0
   while (i < blocks.length) {
     const block = blocks[i]
-
-    // Skip task tools — rendered collectively as task-group at first occurrence
-    if (block.type === 'tool_use' && TASK_TOOLS.has(block.name)) {
-      if (!taskWidgetPlaced && taskTools.length > 0) {
-        items.push({ kind: 'task-group', tools: taskTools })
-        taskWidgetPlaced = true
-      }
-      i++
-      continue
-    }
 
     if (block.type === 'tool_use' && AGENT_TOOLS.has(block.name)) {
       const group: ToolUseBlock[] = [block]
@@ -203,15 +184,6 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, showA
                   const status = tool._status
                   return (status ?? (tool._result ? (tool._result.isError ? 'failed' : 'completed') : 'running')) as ToolStatus
                 }}
-              />
-            )
-          }
-
-          if (item.kind === 'task-group') {
-            return (
-              <TaskListWidget
-                key={`${message.id ?? 'msg'}-tasks-${i}`}
-                tools={item.tools}
               />
             )
           }
