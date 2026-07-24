@@ -3,7 +3,7 @@ module github.com/EngineerProjects/seshat-ai/seshat-backend
 go 1.26.4
 
 require (
-	github.com/KPO-Tech/seshat v0.2.6
+	github.com/KPO-Tech/seshat v0.2.7
 	github.com/glebarez/sqlite v1.11.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/stretchr/testify v1.11.1
