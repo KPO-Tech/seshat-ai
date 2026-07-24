@@ -8,6 +8,8 @@ github.com/KPO-Tech/seshat v0.2.5 h1:ScPBeEUaz0wZ8jkOBlCvhU1jvRcaq4wfDoMa0CokjIE
 github.com/KPO-Tech/seshat v0.2.5/go.mod h1:YjIJKJDQn/l6tnzmknhWqyEehJ+8QuvUfTVxvlG9uLU=
 github.com/KPO-Tech/seshat v0.2.6 h1:YN2miYBfbk4+03uLKj+ORmIPYm0ddOMsrrijaHVPqxk=
 github.com/KPO-Tech/seshat v0.2.6/go.mod h1:YjIJKJDQn/l6tnzmknhWqyEehJ+8QuvUfTVxvlG9uLU=
+github.com/KPO-Tech/seshat v0.2.7 h1:/huuKFBlkHwoHxC9Qq+6T6nLDr4E20phIMAV0Z8Cw2g=
+github.com/KPO-Tech/seshat v0.2.7/go.mod h1:YjIJKJDQn/l6tnzmknhWqyEehJ+8QuvUfTVxvlG9uLU=
 github.com/Knetic/govaluate v3.0.0+incompatible h1:7o6+MAPhYTCF0+fdvoz1xDedhRb4f6s9Tn1Tt7/WTEg=
 github.com/Knetic/govaluate v3.0.0+incompatible/go.mod h1:r7JcOSlj0wfOMncg0iLm8Leh48TZaKVeNIfJntJ2wa0=
 github.com/PuerkitoBio/goquery v1.12.0 h1:pAcL4g3WRXekcB9AU/y1mbKez2dbY2AajVhtkO8RIBo=
