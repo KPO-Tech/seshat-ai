@@ -78,6 +78,24 @@ export const TOOL_BLOCK_CSS = `
   flex-shrink: 0;
 }
 
+.tb-header-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s, background 0.12s, color 0.12s;
+}
+
+.tb-header:hover .tb-header-copy { opacity: 1; }
+.tb-header-copy:hover { background: var(--color-hover); color: var(--color-text); }
+
 .tb-chevron {
   color: var(--color-text-muted);
   display: flex;

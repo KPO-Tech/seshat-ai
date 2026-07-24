@@ -140,9 +140,16 @@ function groupBlocks(blocks: Message['content']): RenderItem[] {
         group.push(blocks[j] as ToolUseBlock)
         j++
       }
-      items.push({ kind: 'quiet-group', tools: group })
-      i = j
-      continue
+      // A lone tool (nothing simultaneous next to it - just text before or
+      // after) gets the full standalone card via the normal 'block' path
+      // below, not the collapsed quiet-group summary line. Grouping is only
+      // useful once there are 2+ tools running back-to-back with no text
+      // separating them.
+      if (group.length > 1) {
+        items.push({ kind: 'quiet-group', tools: group })
+        i = j
+        continue
+      }
     }
 
     items.push({ kind: 'block', block, index: i })

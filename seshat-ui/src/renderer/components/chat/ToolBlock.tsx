@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { Down } from '@icon-park/react'
+import { Copy, Down } from '@icon-park/react'
 import type { ToolStatus } from '@/api/types'
 import { useUIStore } from '@/stores/ui'
 import { StatusBadge } from './tool-block/common'
@@ -37,15 +37,22 @@ export const ToolBlock = memo(function ToolBlock({ tool, sessionId, onSubmitProm
   }
 
   const showBody = expanded || Boolean(tool._prompt)
+  // Prefer the tool's own output (what a user actually wants pasted
+  // elsewhere); fall back to its input before the result is in yet.
+  const copyText = result?.content || JSON.stringify(tool.input, null, 2)
 
   return (
     <div className={`tb-root tb-root--${status}`}>
       <style>{TOOL_BLOCK_CSS}</style>
 
-      <button
+      {/* A real <button> for copy can't nest inside another <button>, so the
+          header itself is a div with button semantics instead. */}
+      <div
         className="tb-header"
-        type="button"
+        role="button"
+        tabIndex={0}
         onClick={() => setToolExpansion(tool.id, !expanded)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setToolExpansion(tool.id, !expanded) } }}
         aria-expanded={showBody}
       >
         <div className="tb-header-left">
@@ -56,12 +63,20 @@ export const ToolBlock = memo(function ToolBlock({ tool, sessionId, onSubmitProm
           </div>
         </div>
         <div className="tb-header-right">
+          <button
+            className="tb-header-copy"
+            type="button"
+            title="Copy"
+            onClick={(e) => { e.stopPropagation(); void navigator.clipboard.writeText(copyText) }}
+          >
+            <Copy size={11} />
+          </button>
           <StatusBadge status={status} durationMs={result?.durationMs} />
           <span className={`tb-chevron${showBody ? ' tb-chevron--open' : ''}`}>
             <Down size={11} />
           </span>
         </div>
-      </button>
+      </div>
 
       {showBody && (
         <div className="tb-body">
