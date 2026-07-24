@@ -767,6 +767,13 @@ func (s *Service) runtimeSessionMap() map[string]*sdk.SessionInfo {
 func (s *Service) prepareRuntimeInput(ctx context.Context, principal *backendauth.Principal, input QueryInput) (QueryInput, string, error) {
 	runtimeInput := input
 	runtimeInput.RuntimeProvider = nil
+	// Without this, every plan document submit_plan creates is persisted
+	// with an empty UserID (see QueryInput.UserID's doc comment) - it would
+	// then fail its own ownership check on every later read, no matter who
+	// asks.
+	if principal != nil {
+		runtimeInput.UserID = principal.User.ID
+	}
 
 	// Build a per-request web search runner that closes over the current principal
 	// so the tool enforces the user's quota and domain policy on every call.

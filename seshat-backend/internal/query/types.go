@@ -14,11 +14,17 @@ type ImageAttachment struct {
 }
 
 type QueryInput struct {
-	Prompt             string
-	SessionID          string
-	ProviderSettingID  string
-	ModelID            string
-	RuntimeProvider    *RuntimeProviderConfig
+	Prompt            string
+	SessionID         string
+	ProviderSettingID string
+	ModelID           string
+	RuntimeProvider   *RuntimeProviderConfig
+	// UserID identifies the caller for the SDK's PlanStore (submit_plan) -
+	// without it every plan document is persisted with an empty UserID,
+	// which then fails its own ownership check on every later read
+	// (Get/Patch compares against the real, non-empty principal.User.ID).
+	// Populated in prepareRuntimeInput from the request's principal.
+	UserID             string
 	PromptFn           types.PromptFn        // per-request permission bridge, optional
 	PermissionMode     types.PermissionMode  // effective tool approval mode for this turn/session
 	ExecutionOrigin    types.ExecutionOrigin // interactive vs automation provenance
