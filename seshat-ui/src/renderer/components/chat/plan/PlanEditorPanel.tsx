@@ -220,10 +220,14 @@ const CSS = `
   box-sizing: border-box;
 }
 
-/* ── Inline annotation float ── */
+/* ── Inline annotation float ──
+   Positioned absolute *within .pep-markdown* (top/left are set in JS as
+   offsets from that container, not the viewport) so it scrolls and stays
+   attached to the paragraph it's commenting on, and can never render
+   outside the panel - see clampFloatPosition's comment. */
 .pep-float {
-  position: fixed;
-  z-index: 200;
+  position: absolute;
+  z-index: 20;
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
@@ -576,7 +580,7 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
   const [floatStyle, setFloatStyle] = useState<{ top: number; left: number } | null>(null)
   const [showAnnotationForm, setShowAnnotationForm] = useState(false)
   const floatRef = useRef<HTMLDivElement>(null)
-  const rootRef = useRef<HTMLDivElement>(null)
+  const markdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (plan?.content) setEditedContent(plan.content)
@@ -608,34 +612,39 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
     return () => document.removeEventListener('mousedown', handleMouseDown)
   }, [floatStyle])
 
-  // The panel is a narrow right-docked column - centering the float form
-  // exactly on the click point (its old behavior) routinely pushed it past
-  // the panel's own right edge and off the window entirely. Clamping it to
-  // the panel's own bounding rect keeps it on-page even if that means
-  // covering part of the text underneath, which is fine - see this
-  // function's callers.
+  // The form is positioned absolute *within the markdown container itself*
+  // (which is position:relative), not fixed in viewport space - so its
+  // top/left are offsets from that container's own padding box, not screen
+  // coordinates. That's what keeps it glued to the paragraph it's
+  // commenting on, scrolling right along with it, and physically unable to
+  // render outside the panel/on a "separate column" the way viewport-fixed
+  // coordinates could. left is clamped to the container's own width so the
+  // (fixed-width) form never overflows it sideways; it's fine for it to
+  // overlap the text underneath.
   function clampFloatPosition(top: number, left: number): { top: number; left: number } {
     const FORM_WIDTH = 280
-    const FORM_HEIGHT = 150
-    const rootRect = rootRef.current?.getBoundingClientRect()
-    const minLeft = (rootRect?.left ?? 8) + FORM_WIDTH / 2 + 8
-    const maxLeft = (rootRect?.right ?? window.innerWidth - 8) - FORM_WIDTH / 2 - 8
-    const clampedLeft = Math.min(Math.max(left, minLeft), Math.max(minLeft, maxLeft))
-    const clampedTop = Math.min(top, window.innerHeight - FORM_HEIGHT - 8)
-    return { top: clampedTop, left: clampedLeft }
+    const containerWidth = markdownRef.current?.clientWidth ?? FORM_WIDTH
+    const half = FORM_WIDTH / 2
+    const minLeft = Math.min(half + 4, containerWidth / 2)
+    const maxLeft = Math.max(containerWidth - half - 4, minLeft)
+    return { top, left: Math.min(Math.max(left, minLeft), maxLeft) }
   }
 
   function handleMarkdownMouseUp() {
     if (editMode || (plan?.status ?? 'pending') !== 'pending') return
     const sel = window.getSelection()
     const text = sel?.toString().trim()
-    if (!text || text.length < 3 || !sel || sel.rangeCount === 0) return
+    if (!text || text.length < 3 || !sel || sel.rangeCount === 0 || !markdownRef.current) return
     const range = sel.getRangeAt(0)
     const rect = range.getBoundingClientRect()
+    const containerRect = markdownRef.current.getBoundingClientRect()
     setPendingQuote(text)
     setAnnotationInput('')
     setShowAnnotationForm(false)
-    setFloatStyle(clampFloatPosition(rect.bottom + 8, rect.left + rect.width / 2))
+    setFloatStyle(clampFloatPosition(
+      rect.bottom - containerRect.top + 8,
+      rect.left - containerRect.left + rect.width / 2,
+    ))
   }
 
   // Hovering a block (paragraph, heading, list group...) while not editing
@@ -645,12 +654,17 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
   // having to select it.
   function openLineComment(e: React.MouseEvent<HTMLButtonElement>, block: string) {
     e.stopPropagation()
+    if (!markdownRef.current) return
     const rect = e.currentTarget.getBoundingClientRect()
+    const containerRect = markdownRef.current.getBoundingClientRect()
     const quote = block.trim().split('\n')[0].slice(0, 120)
     setPendingQuote(quote)
     setAnnotationInput('')
     setShowAnnotationForm(true)
-    setFloatStyle(clampFloatPosition(rect.bottom + 6, rect.left + 60))
+    setFloatStyle(clampFloatPosition(
+      rect.bottom - containerRect.top + 6,
+      rect.left - containerRect.left + 60,
+    ))
   }
 
   function closeFloat() {
@@ -851,7 +865,7 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
   }
 
   return (
-    <div className="pep-root" ref={rootRef}>
+    <div className="pep-root">
       <style>{CSS}</style>
 
       <div className="pep-header">
@@ -893,7 +907,7 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
             autoFocus
           />
         ) : (
-          <div className="pep-markdown" onMouseUp={handleMarkdownMouseUp}>
+          <div className="pep-markdown" ref={markdownRef} onMouseUp={handleMarkdownMouseUp}>
             {!contentToShow ? (
               <span style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Loading content…</span>
             ) : isReadonly ? (
@@ -912,6 +926,52 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
                   <MarkdownView>{block}</MarkdownView>
                 </div>
               ))
+            )}
+
+            {floatStyle && pendingQuote && (
+              <div
+                ref={floatRef}
+                className="pep-float"
+                style={{ top: floatStyle.top, left: floatStyle.left }}
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                {showAnnotationForm ? (
+                  <div className="pep-float-form">
+                    <div className="pep-float-quote">"{pendingQuote}"</div>
+                    <textarea
+                      className="pep-float-textarea"
+                      autoFocus
+                      rows={3}
+                      placeholder="Your comment on this selection…"
+                      value={annotationInput}
+                      onChange={(e) => setAnnotationInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addAnnotation() }
+                        if (e.key === 'Escape') closeFloat()
+                      }}
+                    />
+                    <div className="pep-float-actions">
+                      <button type="button" className="pep-float-cancel" onClick={closeFloat}>Cancel</button>
+                      <button
+                        type="button"
+                        className="pep-float-add"
+                        onClick={addAnnotation}
+                        disabled={!annotationInput.trim()}
+                      >
+                        Add
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="pep-float-btn"
+                    onClick={() => setShowAnnotationForm(true)}
+                  >
+                    ✎ Comment
+                  </button>
+                )}
+              </div>
             )}
           </div>
         )}
@@ -977,52 +1037,6 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
               Proceed
             </button>
           </div>
-        </div>
-      )}
-
-      {floatStyle && pendingQuote && (
-        <div
-          ref={floatRef}
-          className="pep-float"
-          style={{ top: floatStyle.top, left: floatStyle.left }}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          {showAnnotationForm ? (
-            <div className="pep-float-form">
-              <div className="pep-float-quote">"{pendingQuote}"</div>
-              <textarea
-                className="pep-float-textarea"
-                autoFocus
-                rows={3}
-                placeholder="Your comment on this selection…"
-                value={annotationInput}
-                onChange={(e) => setAnnotationInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addAnnotation() }
-                  if (e.key === 'Escape') closeFloat()
-                }}
-              />
-              <div className="pep-float-actions">
-                <button type="button" className="pep-float-cancel" onClick={closeFloat}>Cancel</button>
-                <button
-                  type="button"
-                  className="pep-float-add"
-                  onClick={addAnnotation}
-                  disabled={!annotationInput.trim()}
-                >
-                  Add
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              type="button"
-              className="pep-float-btn"
-              onClick={() => setShowAnnotationForm(true)}
-            >
-              ✎ Comment
-            </button>
-          )}
         </div>
       )}
     </div>
