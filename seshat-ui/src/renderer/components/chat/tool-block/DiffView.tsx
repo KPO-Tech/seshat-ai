@@ -2,7 +2,7 @@ import { Copy } from '@icon-park/react'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import type { ToolUseBlock } from '@/api/types'
-import { languageForPath } from './helpers'
+import { languageForPath, basename } from './helpers'
 
 // ─── Backend payload shapes ─────────────────────────────────────────────────
 // Mirrors github.com/KPO-Tech/seshat's edit_file/write_file tool output
@@ -182,10 +182,6 @@ function summarize(rows: DiffRow[]): ResolvedDiff {
     else if (row.type === 'del') delCount++
   }
   return { rows, addCount, delCount }
-}
-
-function basename(fp: string) {
-  return fp.split('/').filter(Boolean).pop() ?? fp
 }
 
 // ─── Component ────────────────────────────────────────────────────────────

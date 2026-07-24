@@ -5,6 +5,15 @@ import {
 import type { ToolStatus, ToolUseBlock } from '@/api/types'
 import type { AskUserOption, AskUserQuestion, WebSearchHit } from './types'
 
+// Splits on both / and \ - the tool calls' file_path values can be genuine
+// Windows paths (backend runs on Windows too), and splitting only on '/'
+// left the entire absolute path as the "basename" whenever a backslash
+// path came through, defeating every "show just the filename" spot in
+// this file, DiffView, and ReadToolView.
+export function basename(fp: string): string {
+  return fp.split(/[/\\]/).filter(Boolean).pop() ?? fp
+}
+
 // Maps a file's extension to a Prism language identifier, so file-content
 // views (ReadToolView, DiffView) can syntax-highlight instead of showing
 // flat monospace text.
@@ -19,7 +28,7 @@ const EXT_LANGUAGE: Record<string, string> = {
 }
 
 export function languageForPath(filePath: string): string | undefined {
-  const base = filePath.split('/').pop() ?? filePath
+  const base = basename(filePath)
   if (base.toLowerCase() === 'dockerfile') return 'docker'
   const ext = base.includes('.') ? base.split('.').pop()!.toLowerCase() : ''
   return EXT_LANGUAGE[ext]
@@ -208,14 +217,13 @@ export function parseWebSearchHits(content?: string): WebSearchHit[] {
 export function inputSnippetForSilent(tool: ToolUseBlock): string {
   const inp = tool.input
   const str = (k: string) => (typeof inp[k] === 'string' ? (inp[k] as string) : '')
-  const basename = (fp: string) => fp ? (fp.split('/').filter(Boolean).pop() ?? fp) : ''
 
   switch (tool.name) {
     case 'read': case 'file_read': case 'read_file':
-      return basename(str('file_path'))
+      return str('file_path') ? basename(str('file_path')) : ''
     case 'glob': {
       const pattern = str('pattern')
-      const path = basename(str('path'))
+      const path = str('path') ? basename(str('path')) : ''
       return [pattern, path].filter(Boolean).join(' in ') || ''
     }
     case 'task_get': case 'task_stop': case 'task_output':

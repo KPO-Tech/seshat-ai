@@ -1,10 +1,6 @@
 import { Section, CodeBox } from '../common'
-import { languageForPath } from '../helpers'
+import { languageForPath, basename } from '../helpers'
 import type { ToolViewProps } from '../types'
-
-function basename(fp: string) {
-  return fp.split('/').filter(Boolean).pop() ?? fp
-}
 
 function rangeLabel(offset?: number, limit?: number): string {
   if (offset != null && limit != null) return `lines ${offset + 1}–${offset + limit}`

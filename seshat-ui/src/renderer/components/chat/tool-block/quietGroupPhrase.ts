@@ -1,5 +1,5 @@
 import type { ToolStatus, ToolUseBlock } from '@/api/types'
-import { toolLabel } from './helpers'
+import { toolLabel, basename } from './helpers'
 
 // Tools deliberately kept OUT of the light single-line/quiet-group treatment
 // — everything else gets it by default. These are the families the user
@@ -101,10 +101,6 @@ function clauseFor(category: Category, count: number): string {
     case 'bash': return count === 1 ? 'Ran a command' : `Ran ${count} commands`
     case 'other': return count === 1 ? 'Ran a tool' : `Ran ${count} tools`
   }
-}
-
-function basename(fp: string): string {
-  return fp.split('/').filter(Boolean).pop() ?? fp
 }
 
 function editStats(tool: ToolUseBlock): { added: number; removed: number } | null {
