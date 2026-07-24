@@ -94,7 +94,7 @@ const CSS = `
 
 const LABELS: Record<string, string> = {
   // file
-  read: 'Read', file_read: 'Read', read_file: 'Read', glob: 'Glob',
+  read: 'Read', file_read: 'Read', read_file: 'Read', glob: 'Glob', list_directory: 'List Directory',
   // task plumbing
   task_get: 'Get Task', task_stop: 'Stop Task', task_output: 'Task Output',
   // internal
@@ -116,6 +116,8 @@ const LABELS: Record<string, string> = {
   docx: 'Docx',
   // messaging
   mailbox_send: 'Send', mailbox_broadcast: 'Broadcast', send_agent_message: 'Message',
+  // plan mode
+  submit_plan: 'Submit Plan',
 }
 
 type Props = ToolViewProps & { status: ToolStatus; snippet: string }
