@@ -1310,6 +1310,8 @@ async function fetchPlanContent(
     const plan = await api.get<import('@/api/types').PlanDocument>(`/plans/${planId}`)
     store.upsertPlan(sessionId, plan)
   } catch {
-    // content will remain empty until user opens the panel
+    // Best-effort prefetch - content stays empty; PlanEditorPanel's own
+    // loadFull() retries this same request when the user opens the panel,
+    // and surfaces a visible error with a Retry button if that also fails.
   }
 }

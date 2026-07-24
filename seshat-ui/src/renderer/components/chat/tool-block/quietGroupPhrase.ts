@@ -19,15 +19,55 @@ export function isGroupable(name: string): boolean {
   return !NOT_GROUPABLE.has(name)
 }
 
+// Tools with no user-visible input/output worth showing — rendered as a
+// terse status line (SilentToolView) instead of a full body, whether they
+// end up solo (ToolBlock) or inside a run (QuietGroupItem). Kept as one
+// shared set so both call sites can never disagree on which tools qualify.
+export const SILENT_TOOLS = new Set([
+  // file tools with no user-visible output
+  'read', 'file_read', 'read_file', 'list_directory',
+  // task plumbing
+  'task_get', 'task_stop', 'task_output',
+  // internal discovery & control
+  'tool_search', 'skill', 'config', 'brief',
+  // LSP / code assist
+  'lsp', 'code_complete',
+  // RAG ingest (search has its own view)
+  'rag_ingest',
+  // MCP
+  'mcp_list_resources', 'mcp_read_resource',
+  // background task / agent management
+  'monitor', 'wait_agent', 'list_agents', 'close_agent', 'resume_agent',
+  // worktree lifecycle
+  'enter_worktree', 'exit_worktree',
+  // goal tracking
+  'create_goal', 'get_goal', 'update_goal',
+  // doc generation (no preview needed)
+  'docx',
+  // messaging
+  'mailbox_send', 'mailbox_broadcast', 'send_agent_message',
+  // plan mode — the resulting document has its own dedicated review UI
+  // (PlanArtifactCard/PlanEditorPanel), so the tool call itself needs no
+  // input/output shown here
+  'submit_plan',
+])
+
+export function isSilentTool(name: string): boolean {
+  return SILENT_TOOLS.has(name)
+}
+
 export function toolStatus(tool: ToolUseBlock): ToolStatus {
   return tool._status ?? (tool._result ? (tool._result.isError ? 'failed' : 'completed') : 'running')
 }
 
-// A run breaks on a failed or awaiting-approval tool — both need to stay
-// individually visible rather than hide inside a collapsed summary.
+// A run only breaks on an awaiting-approval tool — that one needs its own
+// PermissionCard, which can't live inside a collapsed group. A failed tool
+// stays IN the run: it's still shown adjacent to its neighbors in one
+// shared foldable block, same as a successful one — QuietGroupItem's own
+// per-item line already surfaces the failure (a red ✗, expandable to the
+// error text) without needing to break out into a separate top-level card.
 export function breaksGroup(tool: ToolUseBlock): boolean {
-  const status = toolStatus(tool)
-  return status === 'failed' || status === 'awaiting_approval'
+  return toolStatus(tool) === 'awaiting_approval'
 }
 
 type Category = 'read' | 'search' | 'edit' | 'write' | 'bash' | 'other'

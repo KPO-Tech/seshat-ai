@@ -4,45 +4,18 @@ import type { ToolStatus } from '@/api/types'
 import { useUIStore } from '@/stores/ui'
 import { StatusBadge } from './tool-block/common'
 import { headerSummary, toolIcon, toolLabel, inputSnippetForSilent } from './tool-block/helpers'
+import { isSilentTool } from './tool-block/quietGroupPhrase'
 import { renderBody } from './tool-block/renderBody'
 import { SilentToolView } from './tool-block/renderers/SilentToolView'
 import { TOOL_BLOCK_CSS } from './tool-block/styles'
 import type { ToolBlockProps } from './tool-block/types'
 
-// Tools rendered as a terse single line instead of a full bordered card.
-// Note: since MessageItem.groupBlocks() now wraps any GROUPABLE_TOOLS run
-// (a superset of this set, see tool-block/quietGroupPhrase.ts) in a
-// quiet-group before ToolBlock ever sees it, this branch is effectively a
-// safety net for silent tools that end up here some other way (e.g. a lone
-// block adjacent to a non-tool_use block that breaks grouping upstream).
-const SILENT_TOOLS = new Set([
-  // file tools with no user-visible output
-  'read', 'file_read', 'read_file',
-  // task plumbing
-  'task_get', 'task_stop', 'task_output',
-  // internal discovery & control
-  'tool_search', 'skill', 'config', 'brief',
-  // LSP / code assist
-  'lsp', 'code_complete',
-  // RAG ingest (search has its own view)
-  'rag_ingest',
-  // MCP
-  'mcp_list_resources', 'mcp_read_resource',
-  // background task / agent management
-  'monitor', 'wait_agent', 'list_agents', 'close_agent', 'resume_agent',
-  // worktree lifecycle
-  'enter_worktree', 'exit_worktree',
-  // goal tracking
-  'create_goal', 'get_goal', 'update_goal',
-  // doc generation (no preview needed)
-  'docx',
-  // messaging
-  'mailbox_send', 'mailbox_broadcast', 'send_agent_message',
-])
-
 // Note: awaiting_approval tool_use blocks never reach ToolBlock — MessageItem
 // renders PermissionCard standalone for that status instead (see
-// MessageItem.tsx's tool_use branch).
+// MessageItem.tsx's tool_use branch). A lone tool of any other status
+// (including failed) reaches here whenever it has no adjacent tool_use
+// sibling — see MessageItem.groupBlocks(), which otherwise routes runs of
+// 2+ into QuietToolGroup instead.
 export const ToolBlock = memo(function ToolBlock({ tool, onSubmitPrompt }: ToolBlockProps) {
   const expanded = useUIStore((s) => s.toolExpansion[tool.id] ?? false)
   const setToolExpansion = useUIStore((s) => s.setToolExpansion)
@@ -51,7 +24,7 @@ export const ToolBlock = memo(function ToolBlock({ tool, onSubmitPrompt }: ToolB
     ?? (result ? (result.isError ? 'failed' : 'completed') : 'running')
   const snippet = headerSummary(tool, status)
 
-  if (SILENT_TOOLS.has(tool.name)) {
+  if (isSilentTool(tool.name)) {
     return (
       <SilentToolView
         tool={tool}
