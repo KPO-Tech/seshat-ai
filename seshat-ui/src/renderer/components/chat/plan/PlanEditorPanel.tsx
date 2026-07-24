@@ -193,14 +193,22 @@ const CSS = `
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  opacity: 0.5;
+  opacity: 0;
+  transform: scale(0.8);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
   transition: opacity 0.12s, transform 0.12s;
 }
 
-.pep-line-wrap:hover .pep-line-plus,
-.pep-line-plus:hover {
+/* Only the block the mouse is actually over reveals its "+" - showing
+   every block's button at once (even dimly) made every paragraph look
+   annotatable simultaneously instead of pointing at the one under the
+   cursor. */
+.pep-line-wrap:hover .pep-line-plus {
   opacity: 1;
+  transform: scale(1);
+}
+
+.pep-line-plus:hover {
   transform: scale(1.1);
 }
 
