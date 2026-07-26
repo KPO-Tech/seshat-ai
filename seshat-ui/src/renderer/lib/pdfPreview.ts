@@ -32,9 +32,3 @@ export async function renderPDFPagePreviews(file: File, maxPages = 10): Promise<
   await pdfDocument.cleanup()
   return previews
 }
-
-export async function dataURLToFile(dataURL: string, filename: string): Promise<File> {
-  const response = await fetch(dataURL)
-  const blob = await response.blob()
-  return new File([blob], filename, { type: blob.type || 'image/jpeg' })
-}

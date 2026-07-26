@@ -15,7 +15,6 @@ export type ChatAttachment = {
   local_path?: string
   preview_url?: string
   page_preview_urls?: string[]
-  derived_file_ids?: string[]
   upload_status?: 'uploading' | 'uploaded' | 'failed'
   error?: string
 }

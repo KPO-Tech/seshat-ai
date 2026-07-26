@@ -183,8 +183,8 @@ func buildAttachmentContext(ctx context.Context, principal *backendauth.Principa
 		}
 
 		// If docling already converted this file at upload time, read the markdown
-		// directly from the workspace filesystem — avoids blob download entirely and
-		// works for any format (PDF, DOCX, audio transcripts, etc.).
+		// directly from the workspace filesystem. This avoids blob download entirely
+		// and works for any format (PDF, DOCX, audio transcripts, etc.).
 		var (
 			text         string
 			originalSize int64
@@ -204,7 +204,10 @@ func buildAttachmentContext(ctx context.Context, principal *backendauth.Principa
 			if !isPromptReadableAttachment(meta.Filename, meta.ContentType) {
 				note := fmt.Sprintf("%s (%s)", meta.Filename, strings.TrimSpace(meta.ContentType))
 				if meta.LocalPath != "" {
-					note += fmt.Sprintf(" — available in workspace at: %s", meta.LocalPath)
+					note += fmt.Sprintf(" - available in workspace at: %s", meta.LocalPath)
+				}
+				if isDoclingCandidate(meta.Filename, meta.ContentType) {
+					note += " - no docling markdown was available for this upload"
 				}
 				unsupported = append(unsupported, note)
 				continue
@@ -272,12 +275,31 @@ func buildAttachmentContext(ctx context.Context, principal *backendauth.Principa
 		}
 		sb.WriteString("The following attachments were uploaded but could not be text-extracted for this turn: ")
 		sb.WriteString(strings.Join(unsupported, ", "))
-		sb.WriteString(". Ask the user for a text version or use a document extraction workflow if their contents are required.\n")
+		sb.WriteString(". If their contents are required, use read_file on the workspace path or another document extraction workflow before answering. Do not claim to have read these files until extraction succeeds.\n")
 	}
 
 	return strings.TrimSpace(sb.String())
 }
 
+func isDoclingCandidate(filename, contentType string) bool {
+	ct := strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0]))
+	switch ct {
+	case "application/pdf",
+		"application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+		"application/vnd.openxmlformats-officedocument.presentationml.presentation",
+		"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+		"application/msword",
+		"application/vnd.ms-powerpoint",
+		"application/vnd.ms-excel":
+		return true
+	}
+	switch strings.ToLower(filepath.Ext(filename)) {
+	case ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx":
+		return true
+	default:
+		return false
+	}
+}
 func isPromptReadableAttachment(filename, contentType string) bool {
 	ct := strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0]))
 	if strings.HasPrefix(ct, "text/") {

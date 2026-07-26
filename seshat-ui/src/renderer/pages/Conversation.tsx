@@ -17,7 +17,7 @@ import { normalizeSessionMessages } from '@/lib/chat'
 import { deleteSession } from '@/lib/deleteSession'
 import { serializeConversationMarkdown, conversationFileName } from '@/lib/conversationExport'
 import { UNTITLED_SESSION_TITLE } from '@/lib/sessionTitle'
-import { dataURLToFile, renderPDFPagePreviews } from '@/lib/pdfPreview'
+import { renderPDFPagePreviews } from '@/lib/pdfPreview'
 import type { AgentState } from '@/stores/session'
 
 function attachmentCategory(file: File): ChatAttachment['category'] {
@@ -47,7 +47,6 @@ function sentAttachment(file: ChatAttachment) {
     local_path: file.local_path,
     preview_url: file.preview_url,
     page_preview_urls: file.page_preview_urls,
-    derived_file_ids: file.derived_file_ids,
   }
 }
 
@@ -304,14 +303,6 @@ export function Conversation() {
           category?: 'images' | 'documents' | 'other'
           local_path?: string
         }>(`/sessions/${id}/files`, form)
-        const derivedFileIds: string[] = []
-        for (const [pageIndex, dataURL] of pagePreviews.entries()) {
-          const pageFile = await dataURLToFile(dataURL, `${file.name.replace(/\.pdf$/i, '')}-page-${pageIndex + 1}.jpg`)
-          const pageForm = new FormData()
-          pageForm.append('file', pageFile)
-          const pageItem = await api.upload<{ id: string }>(`/sessions/${id}/files`, pageForm)
-          derivedFileIds.push(pageItem.id)
-        }
         setAttachments(current => current.map(attachment => (
           attachment.id === pendingId
             ? {
@@ -324,7 +315,6 @@ export function Conversation() {
                 local_path: item.local_path,
                 page_preview_urls: pagePreviews.length > 0 ? pagePreviews : attachment.page_preview_urls,
                 preview_url: pagePreviews[0] ?? attachment.preview_url,
-                derived_file_ids: derivedFileIds,
                 upload_status: 'uploaded',
               }
             : attachment
@@ -658,7 +648,7 @@ export function Conversation() {
               if (!prompt) return
               const fileIds = attachments
                 .filter(file => file.upload_status !== 'failed' && !file.id.startsWith('local-'))
-                .flatMap(file => [file.id, ...(file.derived_file_ids ?? [])])
+                .map(file => file.id)
               const sentAttachments = attachments
                 .filter(file => file.upload_status !== 'failed' && !file.id.startsWith('local-'))
                 .map(sentAttachment)
