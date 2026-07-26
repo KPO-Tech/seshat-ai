@@ -22,7 +22,7 @@ export type RightPanelFields = {
   planId?: string
 }
 
-// `width` is not a per-panel property — it belongs to the column a panel
+// `width` is not a per-panel property - it belongs to the column a panel
 // lives in. It's kept here only as an optional hint, used solely when this
 // panel ends up creating a brand-new column.
 export type RightPanelPayload = Partial<RightPanelFields> & { kind: RightPanelKind; title: string; width?: number }
@@ -36,7 +36,7 @@ export function buildRightPanelId(panel: { kind: RightPanelKind; sessionId?: str
   return `${panel.kind}:${panel.sessionId ?? ''}:${panel.planId ?? panel.subagentToolUseId ?? ''}`
 }
 
-// A column of 1-2 vertically-stacked panels. Never stored empty — a column
+// A column of 1-2 vertically-stacked panels. Never stored empty - a column
 // is dropped from the array the instant its last panel closes, which is
 // what makes an emptied column disappear rather than leave a gap.
 export type RightPanelColumn = {
@@ -58,7 +58,7 @@ function isRightPanelPinned(p: RightPanelInstance): boolean {
 }
 
 const RIGHT_PANEL_STACK_LIMIT = 2
-const RIGHT_PANEL_COLUMN_LIMIT = 2
+const RIGHT_PANEL_WIDE_COLUMN_LIMIT = 2
 // A lone open column can go up to 720px; once a 2nd column opens, both
 // clamp into this tighter range so the chat pane never gets crushed. This
 // static range alone is only safe on a wide-enough window, though - see
@@ -67,16 +67,24 @@ const RIGHT_PANEL_COLUMN_LIMIT = 2
 const RIGHT_PANEL_WIDTH_SOLO = { min: 320, max: 720 }
 const RIGHT_PANEL_WIDTH_SHARED = { min: 280, max: 480 }
 // A newly-opened column's default width is this fraction of the window,
-// not a flat pixel value — so a panel opened on a small laptop window
+// not a flat pixel value - so a panel opened on a small laptop window
 // doesn't start out crushing the chat pane, and one opened on an ultrawide
 // doesn't start out looking lost. Existing columns are rescaled by the same
 // idea (proportionally, not to this exact ratio) whenever the window
 // itself resizes, see setWindowWidth.
 const RIGHT_PANEL_WIDTH_RATIO = 0.28
-// Below this window width, only 1 column (max 2 panels) is allowed — the
+// Below this window width, only 1 column (max 2 panels) is allowed. The
 // 2-column grid is reserved for genuinely large/desktop monitors so the
 // chat pane is never squeezed on a smaller laptop screen.
 const RIGHT_PANEL_COLUMN_BREAKPOINT = 1600
+
+function rightPanelColumnLimit(windowWidth: number): number {
+  return windowWidth >= RIGHT_PANEL_COLUMN_BREAKPOINT ? RIGHT_PANEL_WIDE_COLUMN_LIMIT : 1
+}
+
+function rightPanelTotalLimit(windowWidth: number): number {
+  return rightPanelColumnLimit(windowWidth) * RIGHT_PANEL_STACK_LIMIT
+}
 
 // Matches tokens.css's --sidebar-width/--sidebar-collapsed-width - not read
 // from the DOM since this clamp runs inside a store action, not a component.
@@ -106,7 +114,7 @@ const MIN_CHAT_PANE_WIDTH = 460
 // there is unchanged (this was already tuned and correct) - it only bites
 // on a small window, which is exactly the case that was breaking.
 function clampRightPanelWidth(width: number, windowWidth: number, sidebarCollapsed: boolean, columnCount: number): number {
-  const range = columnCount >= RIGHT_PANEL_COLUMN_LIMIT ? RIGHT_PANEL_WIDTH_SHARED : RIGHT_PANEL_WIDTH_SOLO
+  const range = columnCount >= RIGHT_PANEL_WIDE_COLUMN_LIMIT ? RIGHT_PANEL_WIDTH_SHARED : RIGHT_PANEL_WIDTH_SOLO
   const sidebarWidth = sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH
   const dynamicMax = Math.max(240, windowWidth - sidebarWidth - MIN_CHAT_PANE_WIDTH)
   const effectiveMax = Math.min(range.max, dynamicMax)
@@ -132,7 +140,7 @@ type UIState = {
   // persist - answers are per tool_use_id, never reused across calls.
   askUserAnswers: Record<string, string>
   // Signatures (see lib/permissionSignature.ts) the user has marked "always
-  // allow" from a PermissionCard — future matching tool.permission_required
+  // allow" from a PermissionCard - future matching tool.permission_required
   // events are auto-approved without ever showing the card again. Persisted
   // (not session-scoped) since "always" is what the user asked for.
   rememberedApprovals: Record<string, boolean>
@@ -166,7 +174,7 @@ export const useUIStore = create<UIState>()(
       rightColumns: [],
       maximizedPanelId: null,
       windowWidth: typeof window !== 'undefined' ? window.innerWidth : RIGHT_PANEL_COLUMN_BREAKPOINT,
-      // "onRequest" ("Ask First") is retired from the UI toggle — default to
+      // "onRequest" ("Ask First") is retired from the UI toggle - default to
       // "auto" ("Smart"). See ChatInput.tsx's PERMISSION_CYCLE comment.
       permissionMode: 'auto',
       toolExpansion: {},
@@ -182,7 +190,7 @@ export const useUIStore = create<UIState>()(
           // Keeps each open column at roughly the same proportion of the
           // window it already had, instead of a fixed pixel width that
           // would start crushing the chat pane as the window shrinks (or
-          // look lost as it grows) — re-clamped to whichever range applies
+          // look lost as it grows) - re-clamped to whichever range applies
           // for the current column count either way.
           const ratio = width / s.windowWidth
           const rescale = (columns: RightPanelColumn[]) => {
@@ -193,16 +201,16 @@ export const useUIStore = create<UIState>()(
             }))
           }
 
-          if (width >= RIGHT_PANEL_COLUMN_BREAKPOINT || s.rightColumns.length <= 1) {
+          if (rightPanelColumnLimit(width) >= RIGHT_PANEL_WIDE_COLUMN_LIMIT || s.rightColumns.length <= 1) {
             return { windowWidth: width, rightColumns: rescale(s.rightColumns) }
           }
-          // Window dropped below the breakpoint with 2 columns open — merge
+          // Window dropped below the breakpoint with 2 columns open - merge
           // everything into a single column, evicting down to 2 panels with
           // the same pin-aware rule used everywhere else, so the user always
           // lands in a valid single-column state automatically.
           const pool = flattenRightPanels(s.rightColumns).sort((a, b) => a.openedAt - b.openedAt)
           const isPinned = isRightPanelPinned
-          while (pool.length > RIGHT_PANEL_STACK_LIMIT) {
+          while (pool.length > rightPanelTotalLimit(width)) {
             const victimIndex = pool.findIndex((p) => !isPinned(p))
             pool.splice(victimIndex === -1 ? 0 : victimIndex, 1)
           }
@@ -225,7 +233,7 @@ export const useUIStore = create<UIState>()(
           const id = buildRightPanelId(panel)
 
           // Auto-opened Agent Monitor tracks "the conversation you're
-          // currently viewing" — without this, navigating between
+          // currently viewing" - without this, navigating between
           // conversations silently accumulates monitor panels (each
           // conversation's mount effect opens its own, nothing ever closes
           // the previous one) that all look identical since none show which
@@ -244,7 +252,7 @@ export const useUIStore = create<UIState>()(
               .filter((c) => c.panels.length > 0)
           }
 
-          // Dedup — identity match updates in place wherever it currently
+          // Dedup - identity match updates in place wherever it currently
           // lives, without moving it or touching its column's width/split.
           for (let ci = 0; ci < rightColumns.length; ci++) {
             const pi = rightColumns[ci].panels.findIndex((p) => p.id === id)
@@ -266,10 +274,10 @@ export const useUIStore = create<UIState>()(
             return { rightColumns: nextColumns }
           }
 
-          // No column has room — open a new one, if under the column cap.
+          // No column has room - open a new one, if under the column cap.
           // The cap itself is only 2 on wide-enough windows; smaller windows
           // stay single-column so the chat pane is never squeezed.
-          const columnLimit = s.windowWidth >= RIGHT_PANEL_COLUMN_BREAKPOINT ? RIGHT_PANEL_COLUMN_LIMIT : 1
+          const columnLimit = rightPanelColumnLimit(s.windowWidth)
           if (rightColumns.length < columnLimit) {
             const defaultWidth = Math.round(
               Math.max(RIGHT_PANEL_WIDTH_SOLO.min, Math.min(s.windowWidth * RIGHT_PANEL_WIDTH_RATIO, RIGHT_PANEL_WIDTH_SOLO.max))
@@ -280,8 +288,8 @@ export const useUIStore = create<UIState>()(
               width: panel.width ?? defaultWidth,
               split: 0.5,
             }
-            const opensSecondColumn = rightColumns.length + 1 >= RIGHT_PANEL_COLUMN_LIMIT
-            // A 2nd column just opened — re-clamp every column into the
+            const opensSecondColumn = rightColumns.length + 1 >= RIGHT_PANEL_WIDE_COLUMN_LIMIT
+            // A 2nd column just opened - re-clamp every column into the
             // tighter shared range so two columns can never crush the chat.
             const nextColumns = opensSecondColumn
               ? [...rightColumns, column].map((c) => ({
@@ -292,12 +300,12 @@ export const useUIStore = create<UIState>()(
             return { rightColumns: nextColumns }
           }
 
-          // All slots (2 columns x 2 panels) are full — evict from the
+          // All slots (2 columns x 2 panels) are full - evict from the
           // whole pool, not a specific column: every column is equally full
           // at this point, so any freed slot anywhere is valid room.
           // Evict the oldest panel that isn't a pinned Agent Monitor (its
           // session actively streaming a turn); if all of them are pinned,
-          // the oldest yields anyway — same tie-break spirit as the
+          // the oldest yields anyway - same tie-break spirit as the
           // 2-panel case, generalized to the full pool.
           const isPinned = isRightPanelPinned
           const pool: { ci: number; pi: number; panel: RightPanelInstance }[] = []
@@ -363,7 +371,7 @@ export const useUIStore = create<UIState>()(
 
       toggleTheme: () => get().setTheme(get().theme === 'dark' ? 'light' : 'dark'),
 
-      // Two-mode cycle only — "onRequest" ("Ask First") is retired, see
+      // Two-mode cycle only - "onRequest" ("Ask First") is retired, see
       // ChatInput.tsx's PERMISSION_CYCLE comment.
       togglePermissionMode: () =>
         set((s) => ({
