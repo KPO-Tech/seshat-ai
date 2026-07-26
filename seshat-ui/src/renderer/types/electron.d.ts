@@ -3,6 +3,7 @@ interface Window {
     getVersion: () => Promise<string>
     openPath: (p: string) => Promise<void>
     showFile: (p: string) => Promise<void>
+    readFileDataURL: (p: string) => Promise<string>
     openExternal: (url: string) => Promise<void>
     selectFile: (opts?: Electron.OpenDialogOptions) => Promise<Electron.OpenDialogReturnValue>
     saveFile: (defaultName: string, content: string) => Promise<{ canceled: boolean; filePath?: string }>

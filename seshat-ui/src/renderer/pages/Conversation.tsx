@@ -569,7 +569,7 @@ export function Conversation() {
             value={inputValue}
             onChange={setInputValue}
             onSend={() => {
-              const prompt = inputValue.trim()
+              const prompt = inputValue.trim() || (attachments.length > 0 ? 'Please analyze the attached file(s).' : '')
               if (!prompt) return
               const fileIds = attachments.map(file => file.id)
               setInputValue('')

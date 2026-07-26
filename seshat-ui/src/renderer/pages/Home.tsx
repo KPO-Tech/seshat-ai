@@ -181,7 +181,7 @@ export function Home() {
   }
 
   async function handleSend() {
-    const prompt = inputValue.trim()
+    const prompt = inputValue.trim() || (attachments.length > 0 ? 'Please analyze the attached file(s).' : '')
     if (!prompt) return
 
     setIsCreatingSession(true)

@@ -27,6 +27,7 @@ const nexusBridge = {
   getVersion: () => ipcRenderer.invoke('app:version'),
   openPath: (p: string) => ipcRenderer.invoke('system:open-path', p),
   showFile: (p: string) => ipcRenderer.invoke('system:show-file', p),
+  readFileDataURL: (p: string): Promise<string> => ipcRenderer.invoke('system:read-file-data-url', p),
   openExternal: (url: string) => ipcRenderer.invoke('system:open-external', url),
   selectFile: (opts?: Electron.OpenDialogOptions) => ipcRenderer.invoke('system:select-file', opts),
   saveFile: (defaultName: string, content: string): Promise<{ canceled: boolean; filePath?: string }> =>

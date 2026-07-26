@@ -1,6 +1,18 @@
 import type { IpcMain } from 'electron'
 import { app, dialog, shell, BrowserWindow } from 'electron'
-import { writeFile } from 'fs/promises'
+import { readFile, writeFile } from 'fs/promises'
+import { extname } from 'path'
+
+const IMAGE_MIME_BY_EXT: Record<string, string> = {
+  '.apng': 'image/apng',
+  '.avif': 'image/avif',
+  '.gif': 'image/gif',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.svg': 'image/svg+xml',
+  '.webp': 'image/webp',
+}
 
 export function registerSystemHandlers(ipcMain: IpcMain) {
   ipcMain.handle('app:version', () => app.getVersion())
@@ -9,6 +21,13 @@ export function registerSystemHandlers(ipcMain: IpcMain) {
 
   ipcMain.handle('system:show-file', (_, filePath: string) => {
     shell.showItemInFolder(filePath)
+  })
+
+  ipcMain.handle('system:read-file-data-url', async (_, filePath: string) => {
+    const mimeType = IMAGE_MIME_BY_EXT[extname(filePath).toLowerCase()]
+    if (!mimeType) throw new Error('Unsupported preview file type')
+    const buffer = await readFile(filePath)
+    return `data:${mimeType};base64,${buffer.toString('base64')}`
   })
 
   ipcMain.handle('system:open-external', (_, url: string) => shell.openExternal(url))
