@@ -82,6 +82,8 @@ export function Conversation() {
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null)
   const [modelsByProvider, setModelsByProvider] = useState<Record<string, ProviderModel[]>>({})
   const [loadingModelsFor, setLoadingModelsFor] = useState<string | null>(null)
+  const [modelLoadError, setModelLoadError] = useState<string | null>(null)
+  const [modelRetryNonce, setModelRetryNonce] = useState(0)
 
   // Init from session once it's available (handles direct URL navigation)
   useEffect(() => {
@@ -92,15 +94,23 @@ export function Conversation() {
 
   // Load models when provider changes
   useEffect(() => {
-    if (!selectedProviderId || modelsByProvider[selectedProviderId] !== undefined) return
+    if (!selectedProviderId || (modelsByProvider[selectedProviderId] !== undefined && !modelLoadError)) return
     let cancelled = false
     setLoadingModelsFor(selectedProviderId)
+    setModelLoadError(null)
     fetchProviderModels(selectedProviderId)
-      .then((models) => { if (!cancelled) setModelsByProvider((c) => ({ ...c, [selectedProviderId]: models })) })
-      .catch(() => { if (!cancelled) setModelsByProvider((c) => ({ ...c, [selectedProviderId]: [] })) })
+      .then((models) => {
+        if (cancelled) return
+        setModelsByProvider((c) => ({ ...c, [selectedProviderId]: models }))
+      })
+      .catch(() => {
+        if (cancelled) return
+        setModelsByProvider((c) => ({ ...c, [selectedProviderId]: [] }))
+        setModelLoadError('Models unavailable for this provider. Check the provider settings and try again.')
+      })
       .finally(() => { if (!cancelled) setLoadingModelsFor((c) => (c === selectedProviderId ? null : c)) })
     return () => { cancelled = true }
-  }, [selectedProviderId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedProviderId, modelRetryNonce]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectedModels = useMemo(
     () => (selectedProviderId ? (modelsByProvider[selectedProviderId] ?? []) : []),
@@ -119,6 +129,7 @@ export function Conversation() {
   const handleProviderSelect = useCallback((providerId: string) => {
     setSelectedProviderId(providerId)
     setSelectedModelId(null)
+    setModelLoadError(null)
     const label = providers.find((p) => p.id === providerId)?.name
     if (id) {
       void api.patch(`/sessions/${id}`, { provider_setting_id: providerId }).catch(() => {})
@@ -128,6 +139,7 @@ export function Conversation() {
 
   const handleModelSelect = useCallback((modelId: string) => {
     setSelectedModelId(modelId)
+    setModelLoadError(null)
     const models = selectedProviderId ? (modelsByProvider[selectedProviderId] ?? []) : []
     const label = models.find((m) => m.model_id === modelId)?.display_name || modelId
     if (id && selectedProviderId) {
@@ -135,6 +147,17 @@ export function Conversation() {
       updateSession(id, { modelId, modelLabel: label })
     }
   }, [id, selectedProviderId, modelsByProvider, updateSession])
+
+  const handleModelRetry = useCallback(() => {
+    if (!selectedProviderId) return
+    setModelLoadError(null)
+    setModelsByProvider((current) => {
+      const next = { ...current }
+      delete next[selectedProviderId]
+      return next
+    })
+    setModelRetryNonce((current) => current + 1)
+  }, [selectedProviderId])
 
   const handlePermissionModeSelect = useCallback((mode: import('@/stores/ui').UIPermissionMode) => {
     setPermissionMode(mode)
@@ -172,6 +195,7 @@ export function Conversation() {
   const [selectedCorpusId, setSelectedCorpusId] = useState<string | null>(null)
   const [attachments, setAttachments] = useState<ChatAttachment[]>([])
   const [uploadingAttachments, setUploadingAttachments] = useState(false)
+  const [attachmentError, setAttachmentError] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const { sendMessage, stopMessage, isStreaming } = useChat(id || '')
   const isAtBottomRef = useRef(true)
@@ -205,6 +229,7 @@ export function Conversation() {
   const handleAttachFiles = useCallback(async (files: FileList) => {
     if (!files.length || !id) return
     setUploadingAttachments(true)
+    setAttachmentError(null)
     try {
       const uploaded: ChatAttachment[] = []
       for (const file of Array.from(files)) {
@@ -230,6 +255,11 @@ export function Conversation() {
       if (uploaded.length > 0) {
         setAttachments(current => [...current, ...uploaded])
       }
+    } catch (error) {
+      const message = error instanceof Error && error.message
+        ? error.message
+        : 'Attachment upload failed.'
+      setAttachmentError(`Attachment upload failed: ${message}`)
     } finally {
       setUploadingAttachments(false)
     }
@@ -237,6 +267,7 @@ export function Conversation() {
 
   const handleRemoveAttachment = useCallback((fileId: string) => {
     setAttachments(current => current.filter(file => file.id !== fileId))
+    setAttachmentError(null)
   }, [])
 
   // Agent Monitor is opt-in for entering a conversation or resolving a plan
@@ -557,11 +588,16 @@ export function Conversation() {
             onAttachFiles={handleAttachFiles}
             onRemoveAttachment={handleRemoveAttachment}
             isUploadingAttachments={uploadingAttachments}
+            attachmentError={attachmentError}
             providerLabel={providers.find((p) => p.id === selectedProviderId)?.name || session.providerLabel || 'Provider'}
-            modelLabel={selectedModels.find((m) => m.model_id === selectedModelId)?.display_name || session.modelLabel || 'Model'}
+            modelLabel={
+              modelLoadError
+                ? 'Models unavailable'
+                : selectedModels.find((m) => m.model_id === selectedModelId)?.display_name || session.modelLabel || 'Model'
+            }
             providerOptions={providers.map((p) => ({ id: p.id, label: p.name }))}
             modelOptions={
-              selectedProviderId && Object.prototype.hasOwnProperty.call(modelsByProvider, selectedProviderId)
+              !modelLoadError && selectedProviderId && Object.prototype.hasOwnProperty.call(modelsByProvider, selectedProviderId)
                 ? selectedModels.map((m) => ({ id: m.model_id, label: m.display_name || m.model_id }))
                 : undefined
             }
@@ -570,6 +606,8 @@ export function Conversation() {
             onProviderSelect={handleProviderSelect}
             onModelSelect={handleModelSelect}
             modelDisabled={loadingModelsFor === selectedProviderId}
+            modelError={modelLoadError}
+            onModelRetry={handleModelRetry}
           />
         </div>
       </div>

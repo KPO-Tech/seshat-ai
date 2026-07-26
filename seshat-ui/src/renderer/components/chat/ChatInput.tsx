@@ -32,7 +32,8 @@ type Props = {
   onAttachFiles?: (files: FileList) => void | Promise<void>
   onRemoveAttachment?: (id: string) => void
   isUploadingAttachments?: boolean
-  // Relocated here from ChatTopBar — Provider/Model live next to where the
+  attachmentError?: string | null
+  // Relocated here from ChatTopBar - Provider/Model live next to where the
   // user actually types. Everything else (mode, permission, agent monitor)
   // stays in ChatTopBar's top-right cluster.
   providerLabel?: string
@@ -47,6 +48,8 @@ type Props = {
   onModelSelect?: (id: string) => void
   providerDisabled?: boolean
   modelDisabled?: boolean
+  modelError?: string | null
+  onModelRetry?: () => void
 }
 
 export function ChatInput({
@@ -66,6 +69,7 @@ export function ChatInput({
   onAttachFiles,
   onRemoveAttachment,
   isUploadingAttachments = false,
+  attachmentError,
   providerLabel = 'Provider',
   modelLabel = 'Model',
   onProviderClick,
@@ -78,6 +82,8 @@ export function ChatInput({
   onModelSelect,
   providerDisabled = false,
   modelDisabled = false,
+  modelError,
+  onModelRetry,
 }: Props) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const selectorsRef = useRef<HTMLDivElement>(null)
@@ -266,7 +272,7 @@ export function ChatInput({
       {/* Corpus chip */}
       {selectedCorpus && onCorpusChange && (
         <div className="chat-corpus-chip">
-          <span className="chat-corpus-chip-icon">📚</span>
+          <span className="chat-corpus-chip-icon">@</span>
           <span className="chat-corpus-chip-name">{selectedCorpus.name}</span>
           <button
             className="chat-corpus-chip-remove"
@@ -283,7 +289,7 @@ export function ChatInput({
           {attachments.map(file => (
             <div key={file.id} className={`chat-attachment-chip chat-attachment-chip--${file.category ?? 'other'}`} title={file.local_path ?? file.filename}>
               <span className="chat-attachment-icon" aria-hidden>
-                {file.category === 'images' ? '🖼' : file.category === 'documents' ? '📄' : '📎'}
+                {file.category === 'images' ? 'IMG' : file.category === 'documents' ? 'DOC' : 'FILE'}
               </span>
               <span className="chat-attachment-name">{file.filename}</span>
               <button
@@ -295,6 +301,22 @@ export function ChatInput({
               </button>
             </div>
           ))}
+        </div>
+      )}
+
+      {(attachmentError || modelError) && (
+        <div className="chat-input-notices" aria-live="polite">
+          {attachmentError && <div className="chat-input-notice">{attachmentError}</div>}
+          {modelError && (
+            <div className="chat-input-notice">
+              <span>{modelError}</span>
+              {onModelRetry && (
+                <button type="button" className="chat-input-notice-action" onClick={onModelRetry}>
+                  Retry
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -394,7 +416,7 @@ export function ChatInput({
               recordingState === 'recording'
                 ? 'Stop recording'
                 : recordingState === 'transcribing'
-                  ? 'Transcribing…'
+                  ? 'Transcribing...'
                   : 'Record a voice message'
             }
             disabled={recordingState === 'transcribing'}
@@ -408,7 +430,7 @@ export function ChatInput({
           {isStreaming && (
             <div className="chat-status-inline" aria-live="polite">
               <LoadingOne size={14} className="chat-status-spin" />
-              <span>{statusText || 'Running…'}</span>
+              <span>{statusText || 'Running...'}</span>
             </div>
           )}
         </div>
@@ -478,7 +500,7 @@ ${SELECTOR_PILL_CSS}
   position: relative;
 }
 
-/* ── Slash-command dropdown ── */
+/* Slash-command dropdown */
 .chat-slash-dropdown {
   position: absolute;
   bottom: calc(100% + 8px);
@@ -594,6 +616,43 @@ ${SELECTOR_PILL_CSS}
 
 .chat-attachment-remove:hover {
   color: var(--color-text-secondary);
+}
+
+.chat-input-notices {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.chat-input-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--color-error);
+  font-size: 11px;
+  line-height: 1.4;
+  background: rgba(var(--color-error-rgb), 0.08);
+  border: 1px solid rgba(var(--color-error-rgb), 0.16);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+.chat-input-notice-action {
+  flex-shrink: 0;
+  border: 1px solid rgba(var(--color-error-rgb), 0.2);
+  background: transparent;
+  color: var(--color-error);
+  border-radius: 6px;
+  padding: 2px 7px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.chat-input-notice-action:hover {
+  background: rgba(var(--color-error-rgb), 0.08);
 }
 
 .chat-file-input {
@@ -777,7 +836,7 @@ ${SELECTOR_PILL_CSS}
   to { transform: rotate(360deg); }
 }
 
-/* ── Corpus chip ── */
+/* Corpus chip */
 .chat-corpus-chip {
   display: inline-flex; align-items: center; gap: 5px;
   background: rgba(239,124,47,0.1); border: 1px solid rgba(239,124,47,0.3);
@@ -794,7 +853,7 @@ ${SELECTOR_PILL_CSS}
 }
 .chat-corpus-chip-remove:hover { opacity: 1; }
 
-/* ── Corpus dropdown ── */
+/* Corpus dropdown */
 .chat-corpus-wrap { position: relative; }
 .chat-tool-icon-active { color: var(--color-primary) !important; }
 .chat-corpus-dropdown {
