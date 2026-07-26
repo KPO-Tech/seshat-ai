@@ -540,6 +540,45 @@ func (s *Service) CreateSession(ctx context.Context, principal *backendauth.Prin
 	return sessionID, nil
 }
 
+// EnsureSessionWorkspace resolves and creates the per-session workspace before
+// the first query turn runs. This matters for Home-screen uploads: files can be
+// attached immediately after session creation, before prepareRuntimeInput has a
+// chance to lazily create the workspace for execution.
+func (s *Service) EnsureSessionWorkspace(ctx context.Context, principal *backendauth.Principal, sessionID string) (string, error) {
+	sessionID = strings.TrimSpace(sessionID)
+	if sessionID == "" {
+		return "", bkerr.InvalidInput("session_id is required", nil)
+	}
+	if s == nil || s.ownership == nil {
+		return "", nil
+	}
+	if err := s.checkSessionAccess(ctx, principal, sessionID); err != nil {
+		return "", err
+	}
+	ownership, err := s.ownership.GetBySessionID(ctx, sessionID)
+	if err != nil {
+		return "", bkerr.NotFound("session not found", err)
+	}
+	wsPath := strings.TrimSpace(ownership.WorkspacePath)
+	if wsPath == "" {
+		defaultPath, defErr := workspace.DefaultPath(sessionID)
+		if defErr != nil {
+			return "", bkerr.Internal("resolve session workspace: "+defErr.Error(), defErr)
+		}
+		wsPath = defaultPath
+		if err := s.ownership.UpdateWorkspacePath(ctx, sessionID, wsPath); err != nil {
+			return "", bkerr.Internal("track session workspace: "+err.Error(), err)
+		}
+	}
+	if err := workspace.EnsureDir(wsPath); err != nil {
+		return "", bkerr.Internal("create session workspace: "+err.Error(), err)
+	}
+	if ws, err := workspace.New(wsPath); err == nil {
+		_ = ws.EnsureSubdirs()
+	}
+	return wsPath, nil
+}
+
 // DeleteSession deletes a session, enforcing ownership when configured.
 func (s *Service) DeleteSession(ctx context.Context, principal *backendauth.Principal, sessionID string) error {
 	if s == nil || s.sessions == nil {
