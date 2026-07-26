@@ -9,6 +9,8 @@ export type MessageAttachment = {
   category?: 'images' | 'documents' | 'other'
   local_path?: string
   preview_url?: string
+  page_preview_urls?: string[]
+  derived_file_ids?: string[]
 }
 
 export type ChatSession = {

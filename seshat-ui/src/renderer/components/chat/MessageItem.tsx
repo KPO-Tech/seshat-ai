@@ -239,17 +239,19 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
           <div className="msg-attachments">
             {attachments.map((file) => {
               const isImage = file.category === 'images' || file.content_type?.startsWith('image/')
+              const previewURL = file.page_preview_urls?.[0] ?? file.preview_url
               const sizeLabel = formatAttachmentSize(file.size)
               return (
                 <div key={file.id} className={`msg-attachment msg-attachment--${isImage ? 'image' : file.category ?? 'other'}`}>
-                  {isImage && file.preview_url ? (
+                  {previewURL ? (
                     <button
                       className="msg-attachment-thumb"
                       type="button"
                       onClick={() => setPreviewAttachment(file)}
-                      title="Preview image"
+                      title={isImage ? 'Preview image' : 'Preview document'}
                     >
-                      <img src={file.preview_url} alt={file.filename} />
+                      <img src={previewURL} alt={file.filename} />
+                      {!isImage && <span className="msg-attachment-thumb-badge">PDF</span>}
                     </button>
                   ) : (
                     <button
@@ -274,7 +276,7 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
           </div>
         )}
 
-        {previewAttachment?.preview_url && (
+        {previewAttachment && (previewAttachment.preview_url || previewAttachment.page_preview_urls?.length) && (
           <div
             className="msg-attachment-preview"
             role="dialog"
@@ -288,7 +290,15 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
                   <Close size={14} />
                 </button>
               </div>
-              <img src={previewAttachment.preview_url} alt={previewAttachment.filename} />
+              {previewAttachment.page_preview_urls?.length ? (
+                <div className="msg-attachment-preview-pages">
+                  {previewAttachment.page_preview_urls.map((url, index) => (
+                    <img key={`${previewAttachment.id}-page-${index}`} src={url} alt={`${previewAttachment.filename} page ${index + 1}`} />
+                  ))}
+                </div>
+              ) : (
+                <img src={previewAttachment.preview_url} alt={previewAttachment.filename} />
+              )}
             </div>
           </div>
         )}
@@ -481,6 +491,22 @@ export const MESSAGE_ITEM_CSS = `
   display: block;
 }
 
+.msg-attachment-thumb {
+  position: relative;
+}
+
+.msg-attachment-thumb-badge {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  background: rgba(0, 0, 0, 0.72);
+  color: white;
+  border-radius: 4px;
+  padding: 1px 4px;
+  font-size: 8px;
+  font-weight: 800;
+}
+
 .msg-attachment-file {
   display: flex;
   align-items: center;
@@ -567,6 +593,23 @@ export const MESSAGE_ITEM_CSS = `
   max-width: 100%;
   max-height: calc(88vh - 48px);
   object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.36);
+}
+
+.msg-attachment-preview-pages {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  max-height: calc(88vh - 48px);
+  padding-right: 4px;
+}
+
+.msg-attachment-preview-pages img {
+  max-width: min(78vw, 760px);
+  width: 100%;
+  height: auto;
   border-radius: 8px;
   box-shadow: 0 18px 60px rgba(0, 0, 0, 0.36);
 }

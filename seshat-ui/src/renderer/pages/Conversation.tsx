@@ -17,6 +17,7 @@ import { normalizeSessionMessages } from '@/lib/chat'
 import { deleteSession } from '@/lib/deleteSession'
 import { serializeConversationMarkdown, conversationFileName } from '@/lib/conversationExport'
 import { UNTITLED_SESSION_TITLE } from '@/lib/sessionTitle'
+import { dataURLToFile, renderPDFPagePreviews } from '@/lib/pdfPreview'
 import type { AgentState } from '@/stores/session'
 
 function attachmentCategory(file: File): ChatAttachment['category'] {
@@ -32,6 +33,10 @@ function attachmentCategory(file: File): ChatAttachment['category'] {
   return 'other'
 }
 
+function isPDFFile(file: File): boolean {
+  return file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
+}
+
 function sentAttachment(file: ChatAttachment) {
   return {
     id: file.id,
@@ -41,6 +46,8 @@ function sentAttachment(file: ChatAttachment) {
     category: file.category,
     local_path: file.local_path,
     preview_url: file.preview_url,
+    page_preview_urls: file.page_preview_urls,
+    derived_file_ids: file.derived_file_ids,
   }
 }
 
@@ -264,11 +271,29 @@ export function Conversation() {
       upload_status: 'uploading',
     }))
     setAttachments(current => [...current, ...pending])
+    for (const [index, file] of selectedFiles.entries()) {
+      if (!isPDFFile(file)) continue
+      const pendingId = pending[index]?.id
+      void renderPDFPagePreviews(file, 10)
+        .then((previews) => {
+          const urls = previews.map((preview) => preview.dataURL)
+          setAttachments(current => current.map(attachment => (
+            attachment.id === pendingId
+              ? { ...attachment, preview_url: urls[0], page_preview_urls: urls }
+              : attachment
+          )))
+        })
+        .catch(() => {})
+    }
     setUploadingAttachments(true)
     setAttachmentError(null)
     try {
       for (const [index, file] of selectedFiles.entries()) {
         const pendingId = pending[index]?.id
+        let pagePreviews: string[] = []
+        if (isPDFFile(file)) {
+          pagePreviews = (await renderPDFPagePreviews(file, 10).catch(() => [])).map(preview => preview.dataURL)
+        }
         const form = new FormData()
         form.append('file', file)
         const item = await api.upload<{
@@ -279,6 +304,14 @@ export function Conversation() {
           category?: 'images' | 'documents' | 'other'
           local_path?: string
         }>(`/sessions/${id}/files`, form)
+        const derivedFileIds: string[] = []
+        for (const [pageIndex, dataURL] of pagePreviews.entries()) {
+          const pageFile = await dataURLToFile(dataURL, `${file.name.replace(/\.pdf$/i, '')}-page-${pageIndex + 1}.jpg`)
+          const pageForm = new FormData()
+          pageForm.append('file', pageFile)
+          const pageItem = await api.upload<{ id: string }>(`/sessions/${id}/files`, pageForm)
+          derivedFileIds.push(pageItem.id)
+        }
         setAttachments(current => current.map(attachment => (
           attachment.id === pendingId
             ? {
@@ -289,6 +322,9 @@ export function Conversation() {
                 size: item.size,
                 category: item.category,
                 local_path: item.local_path,
+                page_preview_urls: pagePreviews.length > 0 ? pagePreviews : attachment.page_preview_urls,
+                preview_url: pagePreviews[0] ?? attachment.preview_url,
+                derived_file_ids: derivedFileIds,
                 upload_status: 'uploaded',
               }
             : attachment
@@ -622,7 +658,7 @@ export function Conversation() {
               if (!prompt) return
               const fileIds = attachments
                 .filter(file => file.upload_status !== 'failed' && !file.id.startsWith('local-'))
-                .map(file => file.id)
+                .flatMap(file => [file.id, ...(file.derived_file_ids ?? [])])
               const sentAttachments = attachments
                 .filter(file => file.upload_status !== 'failed' && !file.id.startsWith('local-'))
                 .map(sentAttachment)

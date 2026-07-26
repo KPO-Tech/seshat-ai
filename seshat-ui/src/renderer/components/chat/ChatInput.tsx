@@ -14,6 +14,8 @@ export type ChatAttachment = {
   category?: 'images' | 'documents' | 'other'
   local_path?: string
   preview_url?: string
+  page_preview_urls?: string[]
+  derived_file_ids?: string[]
   upload_status?: 'uploading' | 'uploaded' | 'failed'
   error?: string
 }
@@ -338,7 +340,8 @@ export function ChatInput({
         <div className="chat-attachment-row">
           {attachments.map(file => {
             const isImage = file.category === 'images' || file.content_type?.startsWith('image/')
-            const previewURL = file.preview_url ?? attachmentPreviewURLs[file.id] ?? filePathToURL(file.local_path)
+            const pagePreviewURL = file.page_preview_urls?.[0]
+            const previewURL = pagePreviewURL ?? file.preview_url ?? attachmentPreviewURLs[file.id] ?? filePathToURL(file.local_path)
             const sizeLabel = formatAttachmentSize(file.size)
             return (
               <div
@@ -350,14 +353,15 @@ export function ChatInput({
                 ].filter(Boolean).join(' ')}
                 title={file.local_path ?? file.filename}
               >
-                {isImage && previewURL ? (
+                {previewURL ? (
                   <button
                     type="button"
                     className="chat-attachment-thumb"
                     onClick={() => setPreviewAttachment(file)}
-                    title="Preview image"
+                    title={isImage ? 'Preview image' : 'Preview document'}
                   >
                     <img src={previewURL} alt={file.filename} />
+                    {!isImage && <span className="chat-attachment-thumb-badge">PDF</span>}
                   </button>
                 ) : (
                   <button
@@ -407,11 +411,19 @@ export function ChatInput({
                 <Close size={14} />
               </button>
             </div>
-            {(previewAttachment.preview_url ?? attachmentPreviewURLs[previewAttachment.id] ?? filePathToURL(previewAttachment.local_path)) && (
-              <img
-                src={previewAttachment.preview_url ?? attachmentPreviewURLs[previewAttachment.id] ?? filePathToURL(previewAttachment.local_path) ?? undefined}
-                alt={previewAttachment.filename}
-              />
+            {previewAttachment.page_preview_urls?.length ? (
+              <div className="chat-attachment-preview-pages">
+                {previewAttachment.page_preview_urls.map((url, index) => (
+                  <img key={`${previewAttachment.id}-page-${index}`} src={url} alt={`${previewAttachment.filename} page ${index + 1}`} />
+                ))}
+              </div>
+            ) : (
+              (previewAttachment.preview_url ?? attachmentPreviewURLs[previewAttachment.id] ?? filePathToURL(previewAttachment.local_path)) && (
+                <img
+                  src={previewAttachment.preview_url ?? attachmentPreviewURLs[previewAttachment.id] ?? filePathToURL(previewAttachment.local_path) ?? undefined}
+                  alt={previewAttachment.filename}
+                />
+              )
             )}
           </div>
         </div>
@@ -742,6 +754,22 @@ ${SELECTOR_PILL_CSS}
   display: block;
 }
 
+.chat-attachment-thumb {
+  position: relative;
+}
+
+.chat-attachment-thumb-badge {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  background: rgba(0, 0, 0, 0.72);
+  color: white;
+  border-radius: 4px;
+  padding: 1px 4px;
+  font-size: 8px;
+  font-weight: 800;
+}
+
 .chat-attachment-file-icon {
   display: flex;
   align-items: center;
@@ -845,6 +873,23 @@ ${SELECTOR_PILL_CSS}
   max-width: 100%;
   max-height: calc(88vh - 48px);
   object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.36);
+}
+
+.chat-attachment-preview-pages {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  max-height: calc(88vh - 48px);
+  padding-right: 4px;
+}
+
+.chat-attachment-preview-pages img {
+  max-width: min(78vw, 760px);
+  width: 100%;
+  height: auto;
   border-radius: 8px;
   box-shadow: 0 18px 60px rgba(0, 0, 0, 0.36);
 }
