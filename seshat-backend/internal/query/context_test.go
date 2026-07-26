@@ -1,34 +1,72 @@
 package query
 
 import (
+	"context"
 	"strings"
 	"testing"
 
+	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
+	backendfiles "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/files"
 	backendmemories "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/memories"
 )
 
-// ─── isPromptReadableAttachment ───────────────────────────────────────────────
+// ─── buildAttachmentContext ───────────────────────────────────────────────────
 
-func TestIsPromptReadableAttachment(t *testing.T) {
-	cases := []struct {
-		name        string
-		filename    string
-		contentType string
-		want        bool
-	}{
-		{name: "text mime", filename: "notes.bin", contentType: "text/plain", want: true},
-		{name: "markdown extension", filename: "brief.md", contentType: "application/octet-stream", want: true},
-		{name: "json mime", filename: "payload.bin", contentType: "application/json", want: true},
-		{name: "image unsupported", filename: "photo.png", contentType: "image/png", want: false},
-		{name: "pdf unsupported", filename: "paper.pdf", contentType: "application/pdf", want: false},
+type fakeFilesProvider struct {
+	files map[string]*backendfiles.File
+	data  map[string][]byte
+}
+
+func (f fakeFilesProvider) GetFile(ctx context.Context, principal *backendauth.Principal, fileID string) (*backendfiles.File, error) {
+	return f.files[fileID], nil
+}
+
+func (f fakeFilesProvider) DownloadFile(ctx context.Context, principal *backendauth.Principal, fileID string) ([]byte, *backendfiles.File, error) {
+	return f.data[fileID], f.files[fileID], nil
+}
+
+func TestBuildAttachmentContext_ListsFilesWithoutInliningContent(t *testing.T) {
+	provider := fakeFilesProvider{
+		files: map[string]*backendfiles.File{
+			"txt-1": {
+				ID:          "txt-1",
+				Filename:    "notes.txt",
+				ContentType: "text/plain",
+				Size:        28,
+				LocalPath:   "uploads/documents/notes.txt",
+			},
+			"pdf-1": {
+				ID:           "pdf-1",
+				Filename:     "brief.pdf",
+				ContentType:  "application/pdf",
+				Size:         2048,
+				LocalPath:    "uploads/documents/brief.pdf",
+				MarkdownPath: "uploads/documents/brief.pdf.md",
+			},
+		},
+		data: map[string][]byte{
+			"txt-1": []byte("secret text from the attachment"),
+		},
 	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := isPromptReadableAttachment(tc.filename, tc.contentType); got != tc.want {
-				t.Fatalf("expected %v, got %v", tc.want, got)
-			}
-		})
+
+	got := buildAttachmentContext(context.Background(), nil, provider, []string{"txt-1", "pdf-1"}, "workspace")
+	for _, want := range []string{
+		"## Attached Documents",
+		"<attached_file",
+		`filename="notes.txt"`,
+		`workspace_path="uploads/documents/notes.txt"`,
+		`filename="brief.pdf"`,
+		`markdown_path="uploads/documents/brief.pdf.md"`,
+		`docling_status="converted"`,
+		"Use read_file on the workspace path",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected %q in block, got:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "secret text from the attachment") {
+		t.Fatalf("did not expect attachment contents to be inlined, got:\n%s", got)
 	}
 }
 

@@ -1260,7 +1260,7 @@ func (s *Service) BuildContextInput(ctx context.Context, p ContextBuildParams) (
 
 	// Per-turn attachments: split by category.
 	// - Images  → base64-encode and inject as multimodal content blocks.
-	// - Others  → text-extract and inject as <attached_document> blocks.
+	// - Others  → list as attached files and let read_file/Docling extract on demand.
 	if len(p.FileIDs) > 0 && s.files != nil {
 		var imageIDs, textIDs []string
 		for _, fid := range p.FileIDs {
