@@ -122,7 +122,7 @@ export function Sidebar() {
         style={{ width }}
       >
 
-        {/* ── Header ── */}
+        {/* Header */}
         <div className="sb-header">
           <div className="sb-logo-wrap">
             <NexusLogo size={collapsed ? 26 : 22} />
@@ -130,12 +130,11 @@ export function Sidebar() {
           </div>
         </div>
 
-        {/* ── Primary Actions (OS Apps) ── */}
+        {/* Primary Actions */}
         <div className="sb-section">
           <SidebarItem
             icon={<Plus theme="outline" size={16} />}
             label="New Chat"
-            shortcut="⌘K"
             collapsed={collapsed}
             active={pathname === '/' && !activeId}
             onClick={startNewChat}
@@ -143,7 +142,7 @@ export function Sidebar() {
           <SidebarItem
             icon={<Search theme="outline" size={16} />}
             label="Search"
-            shortcut="⌘K"
+            shortcut="Ctrl K"
             collapsed={collapsed}
             onClick={() => setSearchOpen(true)}
           />
@@ -179,7 +178,7 @@ export function Sidebar() {
           />
         </div>
 
-        {/* ── History Sections ── */}
+        {/* History Sections */}
         <div className="sb-scroll">
           
           {/* Recents */}
@@ -242,7 +241,7 @@ export function Sidebar() {
                                 setMenuSessionId((current) => current === s.id ? null : s.id)
                               }}
                             >
-                              <span className="sb-recent-menu-icon" aria-hidden="true">⋮</span>
+                              <span className="sb-recent-menu-icon" aria-hidden="true">...</span>
                             </button>
                             {menuSessionId === s.id && (
                               <div className="sb-recent-menu">
@@ -270,7 +269,7 @@ export function Sidebar() {
           )}
         </div>
 
-        {/* ── Footer ── */}
+        {/* Footer */}
         <div className="sb-footer">
           <div className={`sb-footer-items ${collapsed ? 'collapsed' : ''}`}>
             <button
@@ -302,7 +301,7 @@ export function Sidebar() {
   )
 }
 
-// ─── SidebarItem ─────────────────────────────────────────────────────────────
+// SidebarItem
 
 type ItemProps = {
   icon: React.ReactNode
@@ -332,7 +331,7 @@ function SidebarItem({ icon, label, shortcut, collapsed, active, accent, onClick
   )
 }
 
-// ─── Styles ──────────────────────────────────────────────────────────────────
+// Styles
 
 const SIDEBAR_CSS = `
 .sb-root {
