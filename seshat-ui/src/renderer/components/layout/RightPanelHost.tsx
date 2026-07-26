@@ -11,7 +11,7 @@ import type { RightPanelInstance, RightPanelKind, RightPanelColumn } from '@/sto
 import type { AgentState } from '@/stores/session'
 import type { Message } from '@/api/types'
 
-// Stable empty reference — must be module-level so the Zustand selector returns
+// Stable empty reference - must be module-level so the Zustand selector returns
 // the same reference every render when no session is found. An inline []
 // would return a new reference each call, triggering an infinite re-render loop.
 const EMPTY_MESSAGES: Message[] = []
@@ -216,7 +216,7 @@ function renderPanelBody(panel: RightPanelInstance) {
 
 // Subscribes reactively to the plan session's pendingPermission, unlike a
 // plain getState() snapshot (the previous implementation) which reads the
-// store once and never updates again — since renderPanelBody is an ordinary
+// store once and never updates again - since renderPanelBody is an ordinary
 // function, not a component, that snapshot would only ever refresh if some
 // unrelated state change happened to re-render RightPanelHost. A permission
 // resolved elsewhere (e.g. via handlePermissionDecision in Conversation.tsx)
@@ -309,7 +309,7 @@ function BrowserPanel({ url }: { url?: string }) {
   )
 }
 
-// ── Agent Monitor ─────────────────────────────────────────────────────────────
+// Agent Monitor
 
 function AgentMonitorPanel({ sessionId }: { sessionId: string }) {
   const agentState = useSessionStore((s) => s.getAgentState(sessionId))
@@ -338,7 +338,7 @@ function AgentMonitorPanel({ sessionId }: { sessionId: string }) {
 }
 
 // Aggregated view of every sub-agent spawned from this session (via the `agent`
-// or `spawn_agent` tools) — previously the Agent Monitor only ever showed the
+// or `spawn_agent` tools) - previously the Agent Monitor only ever showed the
 // main agent's own state, with no way to see how many sub-agents were active,
 // completed, or failed without scrolling back through the transcript to find
 // their individual cards. Renders nothing once no sub-agent has been spawned.
@@ -361,9 +361,9 @@ function SubagentsSection({ sessionId }: { sessionId: string }) {
       <div className="am-section-head">
         <span className="am-section-label">Sub-agents</span>
         <span className="am-plan-meta">
-          {runningCount > 0 ? `${runningCount} running · ` : ''}
+          {runningCount > 0 ? `${runningCount} running / ` : ''}
           {entries.length} total
-          {failedCount > 0 ? ` · ${failedCount} failed` : ''}
+          {failedCount > 0 ? ` / ${failedCount} failed` : ''}
         </span>
       </div>
       <div className="am-subagent-list">
@@ -402,13 +402,13 @@ function TurnTokenStats({ state }: { state: AgentState }) {
     <div className="am-section">
       <span className="am-section-label">Stats</span>
       <div className="am-stat-grid">
-        <Stat label="Turn" value={state.turnNumber > 0 ? `#${state.turnNumber}` : '—'} />
-        <Stat label="Input tokens"  value={state.inputTokens  > 0 ? fmt(state.inputTokens)  : '—'} />
-        <Stat label="Output tokens" value={state.outputTokens > 0 ? fmt(state.outputTokens) : '—'} />
+        <Stat label="Turn" value={state.turnNumber > 0 ? `#${state.turnNumber}` : '-'} />
+        <Stat label="Input tokens"  value={state.inputTokens  > 0 ? fmt(state.inputTokens)  : '-'} />
+        <Stat label="Output tokens" value={state.outputTokens > 0 ? fmt(state.outputTokens) : '-'} />
         <Stat label="Total" value={
           state.inputTokens + state.outputTokens > 0
             ? fmt(state.inputTokens + state.outputTokens)
-            : '—'
+            : '-'
         } />
       </div>
     </div>
@@ -422,7 +422,7 @@ function PlanSection({ plan }: { plan: ReturnType<typeof derivePlanSnapshot> }) 
         <span className="am-section-label">Plan</span>
         {plan.items.length > 0 && (
           <span className="am-plan-meta">
-            {plan.completedCount}/{plan.items.length} done · Tasks
+            {plan.completedCount}/{plan.items.length} done / Tasks
           </span>
         )}
       </div>
@@ -581,7 +581,7 @@ const RIGHT_PANEL_CSS = `
 }
 
 /* position:absolute's containing block is the nearest positioned
-   ancestor's *padding* box, which includes the padding area itself — so
+   ancestor's *padding* box, which includes the padding area itself - so
    inset:0 alone would render behind .shell-main's padding-left (i.e.
    behind the sidebar, which only visually reserves that space via
    padding, not real layout width). Pin "left" to the same width .shell-main
@@ -869,7 +869,7 @@ const RIGHT_PANEL_CSS = `
   color: var(--color-accent);
 }
 
-/* ── Agent Monitor ─────────────────────────────────────────────────────────── */
+/* Agent Monitor */
 
 .am-root {
   display: flex;

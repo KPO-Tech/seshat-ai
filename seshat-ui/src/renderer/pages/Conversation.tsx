@@ -51,7 +51,7 @@ function AgentStatusIndicator({ state }: { state: AgentState }) {
         <span /><span /><span />
       </span>
       <span className="conv-status-text" key={phrase}>
-        SeshatOS is {phrase}{detail ? ` — ${detail}` : '…'}
+        SeshatOS is {phrase}{detail ? ` - ${detail}` : '...'}
       </span>
     </div>
   )
@@ -259,13 +259,6 @@ export function Conversation() {
     openRightPanel({ kind: 'plan', title: 'Implementation Plan', sessionId: id })
   }, [id, isPlanPending, pendingPlan]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-scroll on new messages and on each streaming token
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
-  }, [session?.messages, streaming])
-
   useEffect(() => {
     if (!session?.draftPrompt || !session.id) return
     const draft = session.draftPrompt
@@ -289,7 +282,7 @@ export function Conversation() {
       .then((detail) => {
         if (cancelled) return
         // Guard: the session may have been deleted while the fetch was in flight.
-        // Don't re-add it to the store — that would create a ghost session.
+        // Don't re-add it to the store - that would create a ghost session.
         const { sessions } = useSessionStore.getState()
         if (!sessions.find((s) => s.id === detail.session_id)) return
         upsertSession({
@@ -308,7 +301,7 @@ export function Conversation() {
         if (detail.permission_mode) {
           useUIStore.getState().setPermissionMode(detail.permission_mode as import('@/stores/ui').UIPermissionMode)
         }
-        // upsertSession no longer sets activeId — do it explicitly here so the
+        // upsertSession no longer sets activeId - do it explicitly here so the
         // sidebar highlights the correct session on direct-URL navigation.
         setActive(detail.session_id)
       })
@@ -327,7 +320,7 @@ export function Conversation() {
   // the "session not found" return sits after all of them, not before.
   const visibleMessages = session ? session.messages.filter(isRenderableMessage) : []
 
-  // Stable callbacks — identity won't change between renders so React.memo on
+  // Stable callbacks - identity won't change between renders so React.memo on
   // MessageItem can actually skip re-renders.
   const handlePermissionDecision = useCallback(async (toolUseId: string, approved: boolean, remember = false) => {
     if (!id) return
@@ -367,7 +360,7 @@ export function Conversation() {
       try {
         const updated = await api.patch<import('@/api/types').PlanDocument>(`/plans/${planId}`, { status: 'validated' })
         store.upsertPlan(id, updated)
-      } catch { /* silent — engine will still unblock via permission approval */ }
+      } catch { /* silent - engine will still unblock via permission approval */ }
     }
     if (pendingPermission?.toolName === 'exit_plan_mode') {
       // Legacy path: the model already called exit_plan_mode itself and is
@@ -395,7 +388,7 @@ export function Conversation() {
       return {
         ...block,
         _prompt: undefined,
-        _message: 'Waiting for the tool result…',
+        _message: 'Waiting for the tool result...',
       }
     })
     current.setStreaming(id, nextStreaming)
@@ -419,7 +412,7 @@ export function Conversation() {
   const onDenyTool = useCallback((toolUseId: string) => { void handlePermissionDecision(toolUseId, false) }, [handlePermissionDecision])
   const onSubmitToolPrompt = useCallback((promptId: string, value: unknown) => { void handlePromptSubmission(promptId, value) }, [handlePromptSubmission])
 
-  // Virtual list — renders only the rows visible in the viewport.
+  // Virtual list - renders only the rows visible in the viewport.
   const rowVirtualizer = useVirtualizer({
     count: visibleMessages.length,
     getScrollElement: () => scrollRef.current,
@@ -459,7 +452,7 @@ export function Conversation() {
     <div className="conv-root">
       <style>{CONV_CSS}</style>
 
-      {/* ── Top Bar ── */}
+      {/* Top Bar */}
       <div className="conv-top-bar">
         <ChatTopBar
           title={session.title || UNTITLED_SESSION_TITLE}
@@ -476,7 +469,7 @@ export function Conversation() {
         />
       </div>
 
-      {/* ── Messages (virtualised) ── */}
+      {/* Messages (virtualised) */}
       <div className={`conv-messages${isPlanPending ? ' conv-messages--blurred' : ''}`} ref={scrollRef}>
         <div
           className="conv-messages-inner"
@@ -507,38 +500,38 @@ export function Conversation() {
         </div>
       </div>
 
-      {/* ── Live agent status — tool-aware, shown in the transcript while a turn
+      {/* Live agent status - tool-aware, shown in the transcript while a turn
            is running. Hidden once a permission or ask_user_question is
            pending: at that point the agent isn't "thinking" anymore, it's
            blocked on the user's own decision - showing both left the status
            looking stuck ("SeshatOS is thinking...") long after the real ball
-           was in the user's court ── */}
+           was in the user's court. */}
       {isStreaming && !pendingPermission && !pendingAskUser && (
         <div style={{ padding: '0 16px 8px', display: 'flex', justifyContent: 'center' }}>
           <AgentStatusIndicator state={agentState} />
         </div>
       )}
 
-      {/* ── Plan artifact card — shown above input only while a plan is
+      {/* Plan artifact card - shown above input only while a plan is
            pending review. Once it's validated/rejected, the tool call's own
            inline rendering (SilentToolView swaps in PlanArtifactCard for
            submit_plan) stays in the transcript as the permanent, reopenable
-           record - no need for a second copy here after the fact ── */}
+           record - no need for a second copy here after the fact. */}
       {id && pendingPlan && (
         <div style={{ padding: '0 16px 8px', display: 'flex', justifyContent: 'center' }}>
           <PlanArtifactCard plan={pendingPlan} sessionId={id} onProceed={handlePlanProceed} />
         </div>
       )}
 
-      {/* ── AskUser panel — docked above the input, one question at a time,
+      {/* AskUser panel - docked above the input, one question at a time,
            instead of a banner pointing back into the transcript. The tool
            call's own inline rendering (AskUserToolView) steps aside to a
-           small placeholder while this is showing (see its own comment). ── */}
+           small placeholder while this is showing (see its own comment). */}
       {pendingAskUser && pendingAskUser.type === 'tool_use' && pendingAskUser._prompt && (
         <AskUserPanel tool={pendingAskUser} onSubmitPrompt={onSubmitToolPrompt} />
       )}
 
-      {/* ── Input ── */}
+      {/* Input */}
       <div className="conv-input-area">
         <div className="conv-input-inner">
           <ChatInput
@@ -555,7 +548,7 @@ export function Conversation() {
             onStop={() => { void stopMessage() }}
             placeholder="Message SeshatOS..."
             isStreaming={isStreaming}
-            statusText={agentState.activeTool?.message || (isStreaming ? 'SeshatOS is running…' : undefined)}
+            statusText={agentState.activeTool?.message || (isStreaming ? 'SeshatOS is running...' : undefined)}
             selectedCorpusId={selectedCorpusId}
             onCorpusChange={setSelectedCorpusId}
             projectPath={session.projectPath}

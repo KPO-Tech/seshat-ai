@@ -60,7 +60,7 @@ export type PendingPermission = ToolApproval
 export type SubagentState = {
   toolUseId: string
   // Stable agent_id returned by spawn_agent (distinct from toolUseId, the key
-  // this state is stored under). Only set for agents spawned via spawn_agent —
+  // this state is stored under). Only set for agents spawned via spawn_agent -
   // undefined for the synchronous `agent` tool, which has no cancel endpoint
   // since it never outlives its own tool call. Required to call
   // POST /subagents/{agentId}/cancel.
@@ -144,7 +144,7 @@ type SessionState = {
   getSessionPlans: (sessionId: string) => PlanDocument[]
   getPendingPlan: (sessionId: string) => PlanDocument | undefined
 
-  // Sub-agent state (keyed by sessionId → toolUseId → SubagentState)
+  // Sub-agent state (keyed by sessionId -> toolUseId -> SubagentState)
   subagentsBySession: Record<string, Record<string, SubagentState>>
   getSubagents: (sessionId: string) => SubagentState[]
   getSubagent: (sessionId: string, toolUseId: string) => SubagentState | undefined
@@ -172,7 +172,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     set((s) => {
       const existing = s.sessions.find((item) => item.id === session.id)
       if (!existing) {
-        // Insert without touching activeId — callers that want to activate the
+        // Insert without touching activeId - callers that want to activate the
         // session (e.g. direct-URL navigation) should call setActive separately.
         return { sessions: [session, ...s.sessions] }
       }
@@ -278,7 +278,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     return sessions.find((s) => s.id === activeId)
   },
 
-  // ── Agent state ──────────────────────────────────────────────────────────
+  // Agent state
 
   getAgentState: (sessionId) => {
     return get().agentStates[sessionId] ?? DEFAULT_AGENT_STATE
@@ -310,7 +310,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       agentStates: { ...s.agentStates, [sessionId]: defaultAgentState() },
     })),
 
-  // ── Plan documents ───────────────────────────────────────────────────────
+  // Plan documents
 
   upsertPlan: (sessionId, plan) =>
     set((s) => ({
@@ -337,7 +337,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     return Object.values(sess.plans).find((p) => p.status === 'pending')
   },
 
-  // ── Sub-agent state ──────────────────────────────────────────────────────
+  // Sub-agent state
 
   getSubagents: (sessionId) => {
     const byId = get().subagentsBySession[sessionId]
