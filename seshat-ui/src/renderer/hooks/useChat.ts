@@ -1,7 +1,7 @@
 import { useCallback, useRef } from 'react'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
-import { streamingToContentBlocks, useSessionStore } from '@/stores/session'
+import { streamingToContentBlocks, useSessionStore, type MessageAttachment } from '@/stores/session'
 import { useUIStore } from '@/stores/ui'
 import { findLatestToolUseByName, normalizeSessionMessages, statusFromResult, toolResultFromDone } from '@/lib/chat'
 import { permissionSignature } from '@/lib/permissionSignature'
@@ -93,7 +93,7 @@ export function useChat(sessionId: string) {
   // Without batching, every SSE token triggers a full store.updateMessage call.
   const syncRafRef = useRef<number | null>(null)
 
-  const sendMessage = useCallback(async (text: string, opts?: { corpusId?: string | null; fileIds?: string[] }) => {
+  const sendMessage = useCallback(async (text: string, opts?: { corpusId?: string | null; fileIds?: string[]; attachments?: MessageAttachment[] }) => {
     const store = useSessionStore.getState()
     if (store.isSessionStreaming(sessionId)) return
 
@@ -112,7 +112,11 @@ export function useChat(sessionId: string) {
     } else {
       store.updateSession(sessionId, { updatedAt: nowIso })
     }
-    store.addMessage(sessionId, { role: 'user', content: [{ type: 'text', text: prompt }] })
+    store.addMessage(sessionId, {
+      role: 'user',
+      content: [{ type: 'text', text: prompt }],
+      metadata: opts?.attachments?.length ? { attachments: opts.attachments } : undefined,
+    })
     store.addMessage(sessionId, { id: assistantMessageId, role: 'assistant', content: [] })
     store.setIsStreaming(sessionId, true)
     store.clearStreaming(sessionId)
@@ -1082,6 +1086,7 @@ function commitDonePayload(
 
   if (Array.isArray(payload.messages)) {
     const normalized = normalizeSessionMessages(payload.messages)
+    preserveLocalUserAttachments(sessionId, normalized, store)
     attachDoneResults(normalized, payload.tool_results ?? [])
     store.updateSession(sessionId, { messages: normalized })
     return
@@ -1089,6 +1094,43 @@ function commitDonePayload(
 
   const content = streamingToContentBlocks(store.getStreaming(sessionId))
   store.updateMessage(sessionId, assistantMessageId, (message) => ({ ...message, content }))
+}
+
+function preserveLocalUserAttachments(
+  sessionId: string,
+  messages: Message[],
+  store: ReturnType<typeof useSessionStore.getState>,
+) {
+  const existing = store.sessions.find((session) => session.id === sessionId)?.messages ?? []
+  const localUserMessages = existing.filter((message) =>
+    message.role === 'user' && Array.isArray(message.metadata?.attachments)
+  )
+  if (localUserMessages.length === 0) return
+
+  const used = new Set<number>()
+  for (const message of messages) {
+    if (message.role !== 'user' || message.metadata?.attachments) continue
+    const text = message.content
+      .filter((block) => block.type === 'text')
+      .map((block) => block.text)
+      .join('\n')
+      .trim()
+    const matchIndex = localUserMessages.findIndex((local, index) => {
+      if (used.has(index)) return false
+      const localText = local.content
+        .filter((block) => block.type === 'text')
+        .map((block) => block.text)
+        .join('\n')
+        .trim()
+      return localText === text
+    })
+    if (matchIndex < 0) continue
+    used.add(matchIndex)
+    message.metadata = {
+      ...message.metadata,
+      attachments: localUserMessages[matchIndex].metadata?.attachments,
+    }
+  }
 }
 
 function attachDoneResults(messages: Message[], results: NonNullable<DonePayload['tool_results']>) {

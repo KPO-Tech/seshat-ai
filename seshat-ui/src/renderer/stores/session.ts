@@ -1,6 +1,16 @@
 import { create } from 'zustand'
 import type { Message, ContentBlock, ToolApproval, ToolPromptRequest, PlanDocument } from '@/api/types'
 
+export type MessageAttachment = {
+  id: string
+  filename: string
+  content_type?: string
+  size?: number
+  category?: 'images' | 'documents' | 'other'
+  local_path?: string
+  preview_url?: string
+}
+
 export type ChatSession = {
   id: string
   title: string
@@ -21,6 +31,7 @@ export type ChatSession = {
   // has to exist for the upload but the real send is deferred to
   // Conversation.tsx's draftPrompt auto-send effect. See Home.tsx.
   draftFileIds?: string[]
+  draftAttachments?: MessageAttachment[]
   planArtifact?: string
   // Active plan documents keyed by plan_id
   plans?: Record<string, PlanDocument>

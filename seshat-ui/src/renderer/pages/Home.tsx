@@ -24,6 +24,18 @@ function attachmentCategory(file: File): ChatAttachment['category'] {
   return 'other'
 }
 
+function sentAttachment(file: ChatAttachment) {
+  return {
+    id: file.id,
+    filename: file.filename,
+    content_type: file.content_type,
+    size: file.size,
+    category: file.category,
+    local_path: file.local_path,
+    preview_url: file.preview_url,
+  }
+}
+
 export function Home() {
   const navigate = useNavigate()
   const { loading: providersLoading } = useProviders()
@@ -253,6 +265,9 @@ export function Home() {
       const fileIds = attachments
         .filter((file) => file.upload_status !== 'failed' && !file.id.startsWith('local-'))
         .map((file) => file.id)
+      const sentAttachments = attachments
+        .filter((file) => file.upload_status !== 'failed' && !file.id.startsWith('local-'))
+        .map(sentAttachment)
       addSession({
         id: sessionId,
         title: UNTITLED_SESSION_TITLE,
@@ -265,6 +280,7 @@ export function Home() {
         modelLabel: selectedModel.display_name || selectedModel.model_id,
         draftPrompt: prompt,
         draftFileIds: fileIds.length > 0 ? fileIds : undefined,
+        draftAttachments: sentAttachments.length > 0 ? sentAttachments : undefined,
         projectPath: projectPath || undefined,
       })
       setInputValue('')

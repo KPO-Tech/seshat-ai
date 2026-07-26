@@ -32,6 +32,18 @@ function attachmentCategory(file: File): ChatAttachment['category'] {
   return 'other'
 }
 
+function sentAttachment(file: ChatAttachment) {
+  return {
+    id: file.id,
+    filename: file.filename,
+    content_type: file.content_type,
+    size: file.size,
+    category: file.category,
+    local_path: file.local_path,
+    preview_url: file.preview_url,
+  }
+}
+
 // Present-continuous fragments for "SeshatOS is ___" - a tool-aware status
 // line shown in the transcript itself while a turn is running, instead of
 // leaving the user staring at an empty message area with only a small
@@ -326,13 +338,14 @@ export function Conversation() {
     if (!session?.draftPrompt || !session.id) return
     const draft = session.draftPrompt
     const draftFileIds = session.draftFileIds
-    updateSession(session.id, { draftPrompt: undefined, draftFileIds: undefined })
+    const draftAttachments = session.draftAttachments
+    updateSession(session.id, { draftPrompt: undefined, draftFileIds: undefined, draftAttachments: undefined })
     if (session.messages.length === 0) {
-      void sendMessage(draft, { fileIds: draftFileIds })
+      void sendMessage(draft, { fileIds: draftFileIds, attachments: draftAttachments })
       return
     }
     setInputValue(draft)
-  }, [sendMessage, session?.draftPrompt, session?.draftFileIds, session?.id, session?.messages.length, updateSession])
+  }, [sendMessage, session?.draftPrompt, session?.draftFileIds, session?.draftAttachments, session?.id, session?.messages.length, updateSession])
 
   const sessionHasData = Boolean(session && (session.messages.length > 0 || session.draftPrompt))
 
@@ -610,9 +623,12 @@ export function Conversation() {
               const fileIds = attachments
                 .filter(file => file.upload_status !== 'failed' && !file.id.startsWith('local-'))
                 .map(file => file.id)
+              const sentAttachments = attachments
+                .filter(file => file.upload_status !== 'failed' && !file.id.startsWith('local-'))
+                .map(sentAttachment)
               setInputValue('')
               setAttachments([])
-              void sendMessage(prompt, { corpusId: selectedCorpusId, fileIds })
+              void sendMessage(prompt, { corpusId: selectedCorpusId, fileIds, attachments: sentAttachments })
             }}
             onStop={() => { void stopMessage() }}
             placeholder="Message SeshatOS..."

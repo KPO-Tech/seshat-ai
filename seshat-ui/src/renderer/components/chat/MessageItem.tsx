@@ -1,5 +1,5 @@
-import { memo } from 'react'
-import { Copy, Down } from '@icon-park/react'
+import { memo, useState } from 'react'
+import { Copy, Down, Close } from '@icon-park/react'
 import { MarkdownView } from '@/components/MarkdownView'
 import { useUIStore } from '@/stores/ui'
 import { ToolBlock } from './ToolBlock'
@@ -9,7 +9,7 @@ import { QuietToolGroup } from './QuietToolGroup'
 import { breaksGroup } from './tool-block/quietGroupPhrase'
 import { isGroupable } from './tool-block/toolDisplay'
 import type { Message, ToolUseBlock, ToolStatus } from '@/api/types'
-import type { StreamingBlock } from '@/stores/session'
+import type { MessageAttachment, StreamingBlock } from '@/stores/session'
 
 // Tools that never appear as chat tool blocks - each has its own dedicated
 // surface elsewhere so an inline line here would just be a redundant second
@@ -36,8 +36,26 @@ function isToolResultOnly(msg: Message): boolean {
   return msg.role === 'user' && msg.content.length > 0 && msg.content.every(b => b.type === 'tool_result')
 }
 
+function messageAttachments(message: Message): MessageAttachment[] {
+  const value = message.metadata?.attachments
+  if (!Array.isArray(value)) return []
+  return value.filter((item): item is MessageAttachment => {
+    if (!item || typeof item !== 'object') return false
+    const candidate = item as Partial<MessageAttachment>
+    return typeof candidate.id === 'string' && typeof candidate.filename === 'string'
+  })
+}
+
+function formatAttachmentSize(size?: number): string | null {
+  if (!size || size <= 0) return null
+  if (size < 1024) return `${size} B`
+  if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`
+}
+
 export function isRenderableMessage(message: Message): boolean {
   if (isToolResultOnly(message)) return false
+  if (messageAttachments(message).length > 0) return true
   return message.content.some((block) => {
     if (block.type === 'text') return Boolean(block.text.trim())
     if (block.type === 'thinking') return Boolean(block.thinking.trim())
@@ -191,16 +209,17 @@ export function groupBlocks(blocks: GroupableBlock[], messageId: string): Render
 
 
 export const MessageItem = memo(function MessageItem({ message, sessionId, compact = false, onApproveTool, onDenyTool, onSubmitToolPrompt }: Props) {
-  if (isToolResultOnly(message)) return null
-
   const isUser = message.role === 'user'
+  const attachments = messageAttachments(message)
+  const [previewAttachment, setPreviewAttachment] = useState<MessageAttachment | null>(null)
+  if (isToolResultOnly(message)) return null
   const visibleBlocks = message.content.filter((block) => {
     if (block.type === 'text') return Boolean(block.text.trim())
     if (block.type === 'thinking') return Boolean(block.thinking.trim())
     if (block.type === 'tool_use') return !HIDDEN_TOOLS.has(block.name)
     return false
   })
-  if (visibleBlocks.length === 0) return null
+  if (visibleBlocks.length === 0 && attachments.length === 0) return null
 
   const copyText = message.content
     .map((block) => {
@@ -216,6 +235,64 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
   return (
     <div className={`msg-row ${isUser ? 'user' : 'assistant'}${compact ? ' compact' : ''}`}>
       <div className="msg-content">
+        {attachments.length > 0 && (
+          <div className="msg-attachments">
+            {attachments.map((file) => {
+              const isImage = file.category === 'images' || file.content_type?.startsWith('image/')
+              const sizeLabel = formatAttachmentSize(file.size)
+              return (
+                <div key={file.id} className={`msg-attachment msg-attachment--${isImage ? 'image' : file.category ?? 'other'}`}>
+                  {isImage && file.preview_url ? (
+                    <button
+                      className="msg-attachment-thumb"
+                      type="button"
+                      onClick={() => setPreviewAttachment(file)}
+                      title="Preview image"
+                    >
+                      <img src={file.preview_url} alt={file.filename} />
+                    </button>
+                  ) : (
+                    <button
+                      className="msg-attachment-file"
+                      type="button"
+                      onClick={() => file.local_path && void window.nexus?.openPath?.(file.local_path)}
+                      title={file.local_path ? 'Open file' : file.filename}
+                    >
+                      {file.category === 'documents' ? 'DOC' : 'FILE'}
+                    </button>
+                  )}
+                  <div className="msg-attachment-meta">
+                    <span className="msg-attachment-name">{file.filename}</span>
+                    <span className="msg-attachment-detail">
+                      {isImage ? 'Image' : file.category === 'documents' ? 'Document' : 'File'}
+                      {sizeLabel ? ` - ${sizeLabel}` : ''}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {previewAttachment?.preview_url && (
+          <div
+            className="msg-attachment-preview"
+            role="dialog"
+            aria-modal="true"
+            onMouseDown={() => setPreviewAttachment(null)}
+          >
+            <div className="msg-attachment-preview-shell" onMouseDown={(event) => event.stopPropagation()}>
+              <div className="msg-attachment-preview-header">
+                <span>{previewAttachment.filename}</span>
+                <button type="button" onClick={() => setPreviewAttachment(null)} title="Close preview">
+                  <Close size={14} />
+                </button>
+              </div>
+              <img src={previewAttachment.preview_url} alt={previewAttachment.filename} />
+            </div>
+          </div>
+        )}
+
         {renderItems.map((item, i) => {
           if (item.kind === 'agent-group') {
             return (
@@ -353,6 +430,145 @@ export const MESSAGE_ITEM_CSS = `
   padding: 7px 11px;
   border-radius: 14px 14px 3px 14px;
   border: 1px solid var(--color-border-subtle);
+}
+
+.msg-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.msg-attachment {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: min(260px, 100%);
+  min-height: 54px;
+  padding: 6px 7px;
+  border-radius: 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.msg-attachment--image {
+  border-color: color-mix(in srgb, var(--color-primary) 34%, transparent);
+}
+
+.msg-attachment--documents {
+  border-color: color-mix(in srgb, var(--color-success) 32%, transparent);
+}
+
+.msg-attachment-thumb,
+.msg-attachment-file {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  cursor: pointer;
+  padding: 0;
+}
+
+.msg-attachment-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.msg-attachment-file {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.msg-attachment-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.msg-attachment-name {
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.msg-attachment-detail {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.msg-attachment-preview {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.msg-attachment-preview-shell {
+  max-width: min(92vw, 980px);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.msg-attachment-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.msg-attachment-preview-header span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.msg-attachment-preview-header button {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.msg-attachment-preview-shell > img {
+  max-width: 100%;
+  max-height: calc(88vh - 48px);
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.36);
 }
 
 .msg-tool-result {
