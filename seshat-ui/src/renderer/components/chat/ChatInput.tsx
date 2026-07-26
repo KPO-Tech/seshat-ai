@@ -13,6 +13,9 @@ export type ChatAttachment = {
   size?: number
   category?: 'images' | 'documents' | 'other'
   local_path?: string
+  preview_url?: string
+  upload_status?: 'uploading' | 'uploaded' | 'failed'
+  error?: string
 }
 
 function filePathToURL(path?: string): string | null {
@@ -335,12 +338,16 @@ export function ChatInput({
         <div className="chat-attachment-row">
           {attachments.map(file => {
             const isImage = file.category === 'images' || file.content_type?.startsWith('image/')
-            const previewURL = attachmentPreviewURLs[file.id] ?? filePathToURL(file.local_path)
+            const previewURL = file.preview_url ?? attachmentPreviewURLs[file.id] ?? filePathToURL(file.local_path)
             const sizeLabel = formatAttachmentSize(file.size)
             return (
               <div
                 key={file.id}
-                className={`chat-attachment-card chat-attachment-card--${isImage ? 'image' : file.category ?? 'other'}`}
+                className={[
+                  'chat-attachment-card',
+                  `chat-attachment-card--${isImage ? 'image' : file.category ?? 'other'}`,
+                  file.upload_status ? `chat-attachment-card--${file.upload_status}` : '',
+                ].filter(Boolean).join(' ')}
                 title={file.local_path ?? file.filename}
               >
                 {isImage && previewURL ? (
@@ -365,8 +372,12 @@ export function ChatInput({
                 <div className="chat-attachment-meta">
                   <span className="chat-attachment-name">{file.filename}</span>
                   <span className="chat-attachment-detail">
-                    {isImage ? 'Image' : file.category === 'documents' ? 'Document' : 'File'}
-                    {sizeLabel ? ` - ${sizeLabel}` : ''}
+                    {file.upload_status === 'uploading'
+                      ? 'Uploading...'
+                      : file.upload_status === 'failed'
+                        ? file.error || 'Upload failed'
+                        : isImage ? 'Image' : file.category === 'documents' ? 'Document' : 'File'}
+                    {file.upload_status === 'uploading' || file.upload_status === 'failed' ? '' : sizeLabel ? ` - ${sizeLabel}` : ''}
                   </span>
                 </div>
                 <button
@@ -396,9 +407,9 @@ export function ChatInput({
                 <Close size={14} />
               </button>
             </div>
-            {(attachmentPreviewURLs[previewAttachment.id] ?? filePathToURL(previewAttachment.local_path)) && (
+            {(previewAttachment.preview_url ?? attachmentPreviewURLs[previewAttachment.id] ?? filePathToURL(previewAttachment.local_path)) && (
               <img
-                src={attachmentPreviewURLs[previewAttachment.id] ?? filePathToURL(previewAttachment.local_path) ?? undefined}
+                src={previewAttachment.preview_url ?? attachmentPreviewURLs[previewAttachment.id] ?? filePathToURL(previewAttachment.local_path) ?? undefined}
                 alt={previewAttachment.filename}
               />
             )}
@@ -691,6 +702,7 @@ ${SELECTOR_PILL_CSS}
   border-radius: 8px;
   padding: 6px 7px;
   font-size: 12px;
+  position: relative;
 }
 
 .chat-attachment-card--image {
@@ -699,6 +711,14 @@ ${SELECTOR_PILL_CSS}
 
 .chat-attachment-card--documents {
   border-color: color-mix(in srgb, var(--color-success) 34%, transparent);
+}
+
+.chat-attachment-card--uploading {
+  opacity: 0.78;
+}
+
+.chat-attachment-card--failed {
+  border-color: rgba(var(--color-error-rgb), 0.34);
 }
 
 .chat-attachment-thumb,
@@ -753,6 +773,10 @@ ${SELECTOR_PILL_CSS}
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.chat-attachment-card--failed .chat-attachment-detail {
+  color: var(--color-error);
 }
 
 .chat-attachment-remove {

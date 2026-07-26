@@ -19,6 +19,19 @@ import { serializeConversationMarkdown, conversationFileName } from '@/lib/conve
 import { UNTITLED_SESSION_TITLE } from '@/lib/sessionTitle'
 import type { AgentState } from '@/stores/session'
 
+function attachmentCategory(file: File): ChatAttachment['category'] {
+  if (file.type.startsWith('image/')) return 'images'
+  if (
+    file.type.includes('pdf') ||
+    file.type.includes('document') ||
+    file.type.includes('text') ||
+    /\.(pdf|doc|docx|txt|md|csv|xls|xlsx|ppt|pptx)$/i.test(file.name)
+  ) {
+    return 'documents'
+  }
+  return 'other'
+}
+
 // Present-continuous fragments for "SeshatOS is ___" - a tool-aware status
 // line shown in the transcript itself while a turn is running, instead of
 // leaving the user staring at an empty message area with only a small
@@ -228,11 +241,22 @@ export function Conversation() {
 
   const handleAttachFiles = useCallback(async (files: FileList) => {
     if (!files.length || !id) return
+    const selectedFiles = Array.from(files)
+    const pending = selectedFiles.map((file, index): ChatAttachment => ({
+      id: `local-${Date.now()}-${index}-${file.name}`,
+      filename: file.name,
+      content_type: file.type,
+      size: file.size,
+      category: attachmentCategory(file),
+      preview_url: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
+      upload_status: 'uploading',
+    }))
+    setAttachments(current => [...current, ...pending])
     setUploadingAttachments(true)
     setAttachmentError(null)
     try {
-      const uploaded: ChatAttachment[] = []
-      for (const file of Array.from(files)) {
+      for (const [index, file] of selectedFiles.entries()) {
+        const pendingId = pending[index]?.id
         const form = new FormData()
         form.append('file', file)
         const item = await api.upload<{
@@ -243,23 +267,31 @@ export function Conversation() {
           category?: 'images' | 'documents' | 'other'
           local_path?: string
         }>(`/sessions/${id}/files`, form)
-        uploaded.push({
-          id: item.id,
-          filename: item.filename,
-          content_type: item.content_type,
-          size: item.size,
-          category: item.category,
-          local_path: item.local_path,
-        })
-      }
-      if (uploaded.length > 0) {
-        setAttachments(current => [...current, ...uploaded])
+        setAttachments(current => current.map(attachment => (
+          attachment.id === pendingId
+            ? {
+                ...attachment,
+                id: item.id,
+                filename: item.filename,
+                content_type: item.content_type,
+                size: item.size,
+                category: item.category,
+                local_path: item.local_path,
+                upload_status: 'uploaded',
+              }
+            : attachment
+        )))
       }
     } catch (error) {
       const message = error instanceof Error && error.message
         ? error.message
         : 'Attachment upload failed.'
       setAttachmentError(`Attachment upload failed: ${message}`)
+      setAttachments(current => current.map(file => (
+        pending.some(item => item.id === file.id)
+          ? { ...file, upload_status: 'failed', error: message }
+          : file
+      )))
     } finally {
       setUploadingAttachments(false)
     }
@@ -569,9 +601,15 @@ export function Conversation() {
             value={inputValue}
             onChange={setInputValue}
             onSend={() => {
+              if (attachments.some(file => file.upload_status === 'uploading')) {
+                setAttachmentError('Wait for attachments to finish uploading before sending.')
+                return
+              }
               const prompt = inputValue.trim() || (attachments.length > 0 ? 'Please analyze the attached file(s).' : '')
               if (!prompt) return
-              const fileIds = attachments.map(file => file.id)
+              const fileIds = attachments
+                .filter(file => file.upload_status !== 'failed' && !file.id.startsWith('local-'))
+                .map(file => file.id)
               setInputValue('')
               setAttachments([])
               void sendMessage(prompt, { corpusId: selectedCorpusId, fileIds })
