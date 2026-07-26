@@ -5,6 +5,14 @@ import { streamingToContentBlocks, useSessionStore } from '@/stores/session'
 import { useUIStore } from '@/stores/ui'
 import { findLatestToolUseByName, normalizeSessionMessages, statusFromResult, toolResultFromDone } from '@/lib/chat'
 import { permissionSignature } from '@/lib/permissionSignature'
+import {
+  abortController as abortSharedController,
+  clearController as clearSharedController,
+  clearStopRequested,
+  isStopRequested,
+  markStopRequested,
+  registerController,
+} from './chatControllers'
 import { generateSessionTitleFromPrompt, isUntitledSessionTitle } from '@/lib/sessionTitle'
 import type { Message, RAGSearchResult, StreamEvent, TokenUsage, ToolApproval, ToolPromptRequest, ToolStatus } from '@/api/types'
 import type { StreamingBlock, ToolActivity } from '@/stores/session'
@@ -81,14 +89,6 @@ const RETRY_BASE_MS = 1000
 
 export function useChat(sessionId: string) {
   const isStreaming = useSessionStore((s) => Boolean(s.isStreamingBySession[sessionId]))
-  // Keyed by sessionId, not a bare value: this hook's ref identity is tied to
-  // the calling component instance, not to any one session. React Router does
-  // not remount Conversation on a session switch (no `key` on the route), so
-  // a single unkeyed AbortController/flag would get silently overwritten by
-  // whichever session's sendMessage ran most recently — a later Stop click for
-  // session A would then abort session B's still-running stream instead.
-  const activeControllersRef = useRef<Map<string, AbortController>>(new Map())
-  const stopRequestedRef = useRef<Set<string>>(new Set())
   // Tracks a pending requestAnimationFrame for batching assistant-message syncs.
   // Without batching, every SSE token triggers a full store.updateMessage call.
   const syncRafRef = useRef<number | null>(null)
@@ -118,8 +118,8 @@ export function useChat(sessionId: string) {
     store.clearStreaming(sessionId)
     store.updateAgentState(sessionId, { isThinking: true, activeTool: null })
     const abortController = new AbortController()
-    activeControllersRef.current.set(sessionId, abortController)
-    stopRequestedRef.current.delete(sessionId)
+    registerController(sessionId, abortController)
+    clearStopRequested(sessionId)
 
     // Cancel any stale RAF from a prior message (defensive).
     if (syncRafRef.current !== null) {
@@ -218,6 +218,12 @@ export function useChat(sessionId: string) {
               throw new Error(msg)
             }
 
+            const SSE_SUPPORTED_VERSION = '1'
+            const sseVersion = res.headers.get('X-SSE-Version')
+            if (sseVersion && sseVersion !== SSE_SUPPORTED_VERSION) {
+              throw new Error(`Unsupported SSE protocol version: expected ${SSE_SUPPORTED_VERSION}, got ${sseVersion}`)
+            }
+
             const reader = res.body?.getReader()
             if (!reader) throw new Error('No response body')
 
@@ -295,7 +301,7 @@ export function useChat(sessionId: string) {
         if (streamError === null) break // clean exit
 
         const isAbort =
-          stopRequestedRef.current.has(sessionId) ||
+          isStopRequested(sessionId) ||
           (streamError instanceof DOMException && (streamError as DOMException).name === 'AbortError')
 
         if (isAbort || committed) throw streamError
@@ -323,7 +329,7 @@ export function useChat(sessionId: string) {
             content: [{ type: 'text' as const, text: `> Connection lost. Reconnecting (attempt ${retryAttempt}/${MAX_RETRIES})…` }],
           }))
           await new Promise<void>((resolve) => setTimeout(resolve, delay))
-          if (stopRequestedRef.current.has(sessionId)) break
+          if (isStopRequested(sessionId)) break
           store.clearStreaming(sessionId)
           continue
         }
@@ -342,7 +348,7 @@ export function useChat(sessionId: string) {
       }
     } catch (error) {
       if (committed) return
-      if (stopRequestedRef.current.has(sessionId) || (error instanceof DOMException && error.name === 'AbortError')) {
+      if (isStopRequested(sessionId) || (error instanceof DOMException && error.name === 'AbortError')) {
         flushSync()
         const partial = streamingToContentBlocks(useSessionStore.getState().getStreaming(sessionId))
         store.updateMessage(sessionId, assistantMessageId, (message) => ({
@@ -362,8 +368,8 @@ export function useChat(sessionId: string) {
         cancelAnimationFrame(syncRafRef.current)
         syncRafRef.current = null
       }
-      activeControllersRef.current.delete(sessionId)
-      stopRequestedRef.current.delete(sessionId)
+      clearSharedController(sessionId)
+      clearStopRequested(sessionId)
       store.setIsStreaming(sessionId, false)
       store.updateAgentState(sessionId, { isThinking: false, activeTool: null, pendingPermission: null })
     }
@@ -373,13 +379,18 @@ export function useChat(sessionId: string) {
     const store = useSessionStore.getState()
     if (!sessionId || !store.isSessionStreaming(sessionId)) return
 
-    stopRequestedRef.current.add(sessionId)
+    // markStopRequested/abortSharedController operate on the shared registry
+    // (see chatControllers.ts), not a ref local to this hook instance — the
+    // turn may have been started by a different useChat(sessionId) caller
+    // (e.g. PlanEditorPanel's own hook after "Proceed"), and this needs to
+    // reach that instance's in-flight fetch/EventSource, not just this one's.
+    markStopRequested(sessionId)
     try {
       await api.post(`/sessions/${sessionId}/interrupt`)
     } catch {
       // Best effort — local abort below still stops the UI stream immediately.
     } finally {
-      activeControllersRef.current.get(sessionId)?.abort()
+      abortSharedController(sessionId)
     }
   }, [sessionId])
 
@@ -490,7 +501,7 @@ function handleStreamChunk(
           index: streaming.length,
           id: event.content_block.id,
           name: event.content_block.name,
-          input: { ...(event.content_block.input ?? {}) },
+          input: { ...event.content_block.input },
           metadata: event.content_block.metadata,
           _status: 'pending',
           _approval: undefined,
@@ -643,7 +654,7 @@ function handleRuntimeEvent(
       // same API the card's own buttons use, without ever surfacing it again.
       const signature = permissionSignature(request.tool_name, request.tool_input ?? {})
       if (useUIStore.getState().rememberedApprovals[signature]) {
-        void api.post(`/permissions/${request.tool_use_id}`, { approved: true, session_id: sessionId }).catch(() => {})
+        void api.post(`/permissions/${request.tool_use_id}`, { approved: true, remember: true, session_id: sessionId }).catch(() => {})
         updateStreamingTool(sessionId, store, request.tool_use_id, {
           _status: 'running',
           input: request.tool_input ?? {},
@@ -999,7 +1010,7 @@ function handleSubagentStreamChunk(
           index,
           id: chunk.content_block.id,
           name: chunk.content_block.name,
-          input: { ...(chunk.content_block.input ?? {}) },
+          input: { ...chunk.content_block.input },
           metadata: chunk.content_block.metadata,
           _status: 'pending',
           _partialInput: '',
@@ -1134,7 +1145,7 @@ function ensureStreamingTool(
     index: streaming.length,
     id: tool.toolUseId,
     name: tool.toolName,
-    input: { ...(tool.input ?? {}) },
+    input: { ...tool.input },
     _status: tool.status ?? 'pending',
     _approval: tool.approval,
     _prompt: tool.prompt,
@@ -1234,6 +1245,22 @@ function toolResultFromProgress(
   const metadata = progress.metadata
   if (!metadata) return undefined
 
+  // Only 'completed'/'failed' stage events carry an actual tool result -
+  // 'pending'/'running' progress only ever carries tool_name/tool_input (see
+  // progressMetadata in the engine's internal/execution/progress.go), so
+  // there's nothing to render yet.
+  //
+  // Each tool's own ResultMetadata.Additional (e.g. bash's stdout/stderr/
+  // exit_code, submit_plan's plan_id/slug/filename/version/status,
+  // web_search's provider/mode) is always flattened directly onto this same
+  // metadata object by the engine/backend before it reaches the wire (see
+  // toolResultMetadata/buildToolResultMessages/buildToolResultSSE) - there is
+  // no generic nested `metadata.additional` key to check for, and no set of
+  // field names common to every tool. The stage is what reliably tells us a
+  // real result exists, regardless of which tool-specific keys ended up
+  // flattened onto it.
+  if (progress.stage !== 'completed' && progress.stage !== 'failed') return undefined
+
   const content = typeof metadata.content === 'string'
     ? metadata.content
     : typeof progress.message === 'string'
@@ -1243,24 +1270,6 @@ function toolResultFromProgress(
   const durationMs = typeof metadata.execution_duration_ms === 'number'
     ? metadata.execution_duration_ms
     : undefined
-
-  // additional carries whatever a specific tool's own ResultMetadata put
-  // there (see internal/tools/contract's ResultMetadata.Additional in the
-  // engine repo) - e.g. submit_plan's plan_id/slug/filename/version/status,
-  // which has none of the bash-shaped fields below and no message text
-  // either at the 'completed' stage. Without checking for it too, this
-  // function returned undefined for exactly those tools, discarding the
-  // metadata entirely - which is what silently broke SilentToolView's
-  // submit_plan → PlanArtifactCard swap (no plan_id, so it could never look
-  // up the live plan document).
-  const hasMetadataOutput =
-    typeof metadata.stdout === 'string' ||
-    typeof metadata.stderr === 'string' ||
-    typeof metadata.exit_code === 'number' ||
-    typeof metadata.content === 'string' ||
-    (typeof metadata.additional === 'object' && metadata.additional !== null)
-
-  if (!hasMetadataOutput && !content && durationMs == null) return undefined
 
   return {
     content,

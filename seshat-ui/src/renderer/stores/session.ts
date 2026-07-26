@@ -268,6 +268,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       agentStates: Object.fromEntries(
         Object.entries(s.agentStates).filter(([sessionId]) => sessionId !== id)
       ) as Record<string, AgentState>,
+      subagentsBySession: Object.fromEntries(
+        Object.entries(s.subagentsBySession).filter(([sessionId]) => sessionId !== id)
+      ) as Record<string, Record<string, SubagentState>>,
     })),
 
   getActive: () => {

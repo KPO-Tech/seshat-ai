@@ -3,9 +3,84 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
+import { Copy, Check, Down } from '@icon-park/react'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import 'katex/dist/katex.min.css'
+
+// Short language tags read poorly as headers ("md", "js", "py") - a small
+// display-name map for the common ones, falling back to just capitalizing
+// whatever Prism's own language id is for anything not listed.
+const LANGUAGE_LABELS: Record<string, string> = {
+  md: 'Md', markdown: 'Md',
+  js: 'JS', jsx: 'JSX', ts: 'TS', tsx: 'TSX', javascript: 'JS', typescript: 'TS',
+  py: 'Python', python: 'Python',
+  sh: 'Bash', bash: 'Bash', shell: 'Bash', zsh: 'Bash',
+  json: 'JSON', yaml: 'YAML', yml: 'YAML', toml: 'TOML',
+  html: 'HTML', xml: 'XML', css: 'CSS', scss: 'SCSS', less: 'LESS',
+  sql: 'SQL', go: 'Go', rust: 'Rust', rs: 'Rust', java: 'Java', kotlin: 'Kotlin',
+  c: 'C', cpp: 'C++', cs: 'C#', php: 'PHP', ruby: 'Ruby', rb: 'Ruby', swift: 'Swift',
+  docker: 'Docker', dockerfile: 'Docker', graphql: 'GraphQL', proto: 'Protobuf',
+}
+
+function languageLabel(lang: string): string {
+  return LANGUAGE_LABELS[lang.toLowerCase()] ?? (lang.charAt(0).toUpperCase() + lang.slice(1))
+}
+
+// A fenced ```lang code block - header strip (language tag, collapse
+// toggle, copy button) over Prism-highlighted content, instead of a bare
+// syntax-highlighted block with no way to collapse or copy it.
+function CodeBlock({ language, code }: { language: string; code: string }) {
+  const [collapsed, setCollapsed] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  function copy() {
+    void navigator.clipboard.writeText(code)
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 1500)
+  }
+
+  return (
+    <div className="md-code">
+      <div className="md-code-header">
+        <button
+          type="button"
+          className="md-code-toggle"
+          onClick={() => setCollapsed((v) => !v)}
+          aria-expanded={!collapsed}
+        >
+          <span className={`md-code-chevron${collapsed ? '' : ' md-code-chevron--open'}`}>
+            <Down size={11} />
+          </span>
+          <span className="md-code-lang">{languageLabel(language)}</span>
+        </button>
+        <button type="button" className="md-code-copy" onClick={copy}>
+          {copied ? <Check size={12} /> : <Copy size={12} />}
+          <span>{copied ? 'Copied' : 'Copy'}</span>
+        </button>
+      </div>
+      {!collapsed && (
+        <SyntaxHighlighter
+          style={vscDarkPlus as any}
+          language={language}
+          PreTag="div"
+          customStyle={CODE_BLOCK_STYLE}
+        >
+          {code}
+        </SyntaxHighlighter>
+      )}
+    </div>
+  )
+}
+
+const CODE_BLOCK_STYLE = {
+  margin: 0,
+  padding: '12px 14px',
+  fontSize: '12.5px',
+  lineHeight: 1.6,
+  background: 'transparent',
+  borderRadius: 0,
+}
 
 // Renders a ```mermaid fenced block as an inline diagram. mermaid is loaded
 // lazily (it's a sizeable dependency) and only once a diagram actually
@@ -98,22 +173,14 @@ export function MarkdownView({ children, className, streaming = false }: Props) 
         remarkPlugins={streaming ? [remarkGfm] : [remarkGfm, remarkMath]}
         rehypePlugins={streaming ? [] : [rehypeKatex]}
         components={{
-          code({ node, inline, className, children, ...props }: any) {
+          code({ inline, className, children, ...props }: any) {
             const match = /language-(\w+)/.exec(className || '')
             if (!inline && match && !streaming) {
+              const code = String(children).replace(/\n$/, '')
               if (match[1] === 'mermaid') {
-                return <MermaidBlock code={String(children).replace(/\n$/, '')} />
+                return <MermaidBlock code={code} />
               }
-              return (
-                <SyntaxHighlighter
-                  style={vscDarkPlus as any}
-                  language={match[1]}
-                  PreTag="div"
-                  {...props}
-                >
-                  {String(children).replace(/\n$/, '')}
-                </SyntaxHighlighter>
-              )
+              return <CodeBlock language={match[1]} code={code} />
             }
             return (
               <code className={className} {...props}>
@@ -159,10 +226,91 @@ const MARKDOWN_CSS = `
   font-size: 0.9em;
 }
 
+/* react-syntax-highlighter wraps a fenced block's whole content in its own
+   <code class="language-*">, which inherits the inline-code chip styling
+   above. That <code> is still display:inline (never overridden) with
+   multi-line, white-space:pre content - the browser paints the inherited
+   background/padding as one rounded box per visual line-fragment instead of
+   one box around the whole block, reading as a chunk of pre-selected text
+   rather than free text. Reset it back to plain inside our own block
+   wrapper; CODE_BLOCK_STYLE already supplies the block's real
+   background/padding on the container around it. */
+.md-code code {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+}
+
 .markdown-body pre {
   margin: 16px 0;
   border-radius: 6px;
   overflow: hidden;
+}
+
+.md-code {
+  margin: 16px 0;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #1e1e1e;
+}
+
+.md-code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.md-code-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.md-code-toggle:hover { color: var(--color-text-secondary); }
+
+.md-code-chevron {
+  display: inline-flex;
+  align-items: center;
+  transition: transform 0.15s;
+  transform: rotate(-90deg);
+}
+
+.md-code-chevron--open { transform: rotate(0deg); }
+
+.md-code-lang {
+  letter-spacing: 0.02em;
+}
+
+.md-code-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 6px;
+  padding: 4px 9px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s, border-color 0.12s;
+}
+
+.md-code-copy:hover {
+  color: var(--color-text);
+  background: var(--color-hover);
+  border-color: var(--color-border);
 }
 
 .markdown-body table {

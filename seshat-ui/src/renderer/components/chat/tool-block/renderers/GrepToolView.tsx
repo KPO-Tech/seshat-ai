@@ -1,4 +1,4 @@
-import { Section, CodeBox } from '../common'
+import { CodeBox, HeaderCard, Section } from '../common'
 import type { ToolViewProps } from '../types'
 
 export function GrepToolView({ tool, result }: ToolViewProps) {
@@ -6,25 +6,27 @@ export function GrepToolView({ tool, result }: ToolViewProps) {
   const path = (tool.input.path as string) ?? ''
   const include = (tool.input.include as string) ?? ''
 
+  if (result?.isError && result.content) {
+    return (
+      <Section label="Error">
+        <pre className="tb-pre tb-pre--error">{result.content}</pre>
+      </Section>
+    )
+  }
+
+  if (!result?.content) return null
+
   return (
-    <>
-      <div className="tb-edit-path-row">
-        <span className="tb-grep-pattern">{pattern}</span>
-        {include && <span className="tb-range-label">{include}</span>}
-        {path && <span className="tb-filepath-full">{path}</span>}
-      </div>
-
-      {result?.content && !result.isError && (
-        <Section label="Matches">
-          <CodeBox content={result.content} copyable />
-        </Section>
-      )}
-
-      {result?.isError && result.content && (
-        <Section label="Error">
-          <pre className="tb-pre tb-pre--error">{result.content}</pre>
-        </Section>
-      )}
-    </>
+    <HeaderCard
+      header={
+        <>
+          <span>{pattern}</span>
+          {include && <span className="tb-hcard-header-path">{include}</span>}
+          {path && <span className="tb-hcard-header-path">{path}</span>}
+        </>
+      }
+    >
+      <CodeBox content={result.content} copyable bare />
+    </HeaderCard>
   )
 }

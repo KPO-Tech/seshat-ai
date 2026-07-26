@@ -4,7 +4,11 @@ import { useSessionStore } from '@/stores/session'
 import { MarkdownView } from '@/components/MarkdownView'
 import { api } from '@/api/client'
 import { ToolBlock } from '../ToolBlock'
-import type { StreamingBlock } from '@/stores/session'
+import { AgentCardsRow } from '../AgentToolView'
+import { QuietToolGroup } from '../QuietToolGroup'
+import { groupBlocks } from '../MessageItem'
+import type { ToolStatus } from '@/api/types'
+import type { ToolActivity } from '@/stores/session'
 
 const SUBAGENT_PANEL_CSS = `
 .sap-root {
@@ -223,6 +227,66 @@ const SUBAGENT_PANEL_CSS = `
   flex-shrink: 0;
 }
 
+.sap-tool-log {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sap-tool-log-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.sap-tool-log-row {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  gap: 7px;
+  align-items: start;
+  padding: 4px 0;
+}
+
+.sap-tool-log-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-top: 5px;
+  background: var(--color-border);
+}
+
+.sap-tool-log-row--completed .sap-tool-log-dot { background: var(--color-success); }
+.sap-tool-log-row--failed .sap-tool-log-dot { background: var(--color-error); }
+.sap-tool-log-row--running .sap-tool-log-dot,
+.sap-tool-log-row--pending .sap-tool-log-dot { background: var(--color-accent); }
+
+.sap-tool-log-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.sap-tool-log-name {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.sap-tool-log-message {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sap-tool-log-time {
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
 @keyframes sap-spin {
   to { transform: rotate(360deg); }
 }
@@ -253,6 +317,50 @@ const SUBAGENT_PANEL_CSS = `
   padding: 22px;
   text-align: center;
   font-size: 11px;
+}
+
+.sap-output-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sap-output-status {
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.sap-output-status--failed { color: var(--color-error); }
+
+.sap-final-output {
+  border-top: 1px solid var(--color-border-subtle);
+  padding-top: 9px;
+  margin-top: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sap-final-output-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.sap-final-output-content {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--color-text);
+}
+
+.sap-final-output-empty {
+  font-size: 11px;
+  color: var(--color-text-muted);
 }
 
 /* ── Empty / loading ── */
@@ -297,6 +405,8 @@ export const SubagentPanel = memo(function SubagentPanel({ sessionId, toolUseId 
 
   const streaming = subagent?.streaming ?? []
   const result = subagent?.result
+  const hasResult = Boolean(result?.trim())
+  const hasTerminalOutputState = hasResult || (subagent != null && subagent.status !== 'running')
 
   // No optimistic local status update here — CloseAgent on the backend cancels
   // the agent's context, which makes its own completion notifier fire the
@@ -326,13 +436,13 @@ export const SubagentPanel = memo(function SubagentPanel({ sessionId, toolUseId 
 
   // When result first appears, light up the Output tab dot
   useEffect(() => {
-    if (result && prevResultRef.current === undefined) {
+    if (hasResult && result && prevResultRef.current === undefined) {
       setOutputReady(true)
       const id = setTimeout(() => setOutputReady(false), 4000)
       prevResultRef.current = result
       return () => clearTimeout(id)
     }
-  }, [result])
+  }, [hasResult, result])
 
   const handleTabClick = (t: Tab) => {
     setTab(t)
@@ -414,8 +524,8 @@ export const SubagentPanel = memo(function SubagentPanel({ sessionId, toolUseId 
           <button
             className={`sap-tab${tab === 'output' ? ' sap-tab--active' : ''}`}
             type="button"
-            disabled={!result}
-            onClick={() => result && handleTabClick('output')}
+            disabled={!hasTerminalOutputState}
+            onClick={() => hasTerminalOutputState && handleTabClick('output')}
           >
             {outputReady && tab !== 'output' && <span className="sap-tab-dot" />}
             Output
@@ -432,9 +542,29 @@ export const SubagentPanel = memo(function SubagentPanel({ sessionId, toolUseId 
                 <span className="sap-empty-label">Agent is starting…</span>
               </div>
             )}
-            {streaming.map((block, i) => (
-              <StreamBlockView key={`${toolUseId}-block-${i}`} block={block} />
-            ))}
+            {groupBlocks(streaming, toolUseId).map((item, i) => {
+              if (item.kind === 'agent-group') {
+                return (
+                  <AgentCardsRow
+                    key={`${toolUseId}-agents-${i}`}
+                    tools={item.tools}
+                    sessionId={sessionId}
+                    getStatus={(t) => (t._status ?? (t._result ? (t._result.isError ? 'failed' : 'completed') : 'running')) as ToolStatus}
+                  />
+                )
+              }
+              if (item.kind === 'quiet-group') {
+                const firstToolId = item.items.find((it) => it.kind === 'tool')?.tool.id
+                return (
+                  <QuietToolGroup
+                    key={firstToolId || `${toolUseId}-quiet-${i}`}
+                    items={item.items}
+                    sessionId={sessionId}
+                  />
+                )
+              }
+              return <StreamBlockView key={`${toolUseId}-block-${i}`} block={item.block} />
+            })}
             {subagent.activeTool && (
               <div className="sap-active-tool">
                 <div className="sap-active-spinner" />
@@ -444,21 +574,42 @@ export const SubagentPanel = memo(function SubagentPanel({ sessionId, toolUseId 
                 </span>
               </div>
             )}
+            {subagent.activityLog.length > 0 && (
+              <div className="sap-tool-log">
+                <span className="sap-tool-log-title">Tool log</span>
+                {subagent.activityLog.slice(-10).reverse().map((entry, index) => (
+                  <div key={`${entry.toolName}-${entry.startedAt}-${index}`} className={`sap-tool-log-row sap-tool-log-row--${entry.stage}`}>
+                    <span className="sap-tool-log-dot" />
+                    <span className="sap-tool-log-copy">
+                      <span className="sap-tool-log-name">{entry.toolName.replace(/_/g, ' ')}</span>
+                      {entry.message && <span className="sap-tool-log-message">{entry.message}</span>}
+                    </span>
+                    <span className="sap-tool-log-time">{formatActivityDuration(entry)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {hasTerminalOutputState && (
+              <FinalOutputSummary status={subagent.status} result={result} />
+            )}
             <div ref={bottomRef} />
           </div>
         )}
 
         {tab === 'output' && (
           <div className="sap-output">
-            {result
+            {hasResult
               ? (
                 <div className="sap-output-content">
-                  <MarkdownView>{result}</MarkdownView>
+                  <MarkdownView>{result ?? ''}</MarkdownView>
                 </div>
               )
               : (
                 <div className="sap-output-empty">
-                  Output will appear here once the agent finishes.
+                  <span className="sap-output-state">
+                    {subagent.status === 'failed' && <span className="sap-output-status sap-output-status--failed">failed</span>}
+                    <span>{subagent.status === 'running' ? 'Output will appear here once the agent finishes.' : 'No final output was captured.'}</span>
+                  </span>
                 </div>
               )
             }
@@ -469,7 +620,31 @@ export const SubagentPanel = memo(function SubagentPanel({ sessionId, toolUseId 
   )
 })
 
-function StreamBlockView({ block }: { block: StreamingBlock }) {
+function FinalOutputSummary({ status, result }: { status: 'running' | 'completed' | 'failed'; result?: string }) {
+  const hasResult = Boolean(result?.trim())
+  return (
+    <div className="sap-final-output">
+      <div className="sap-final-output-title">
+        {status === 'failed' && <span className="sap-output-status sap-output-status--failed">failed</span>}
+        <span>Agent output</span>
+      </div>
+      {hasResult
+        ? (
+          <div className="sap-final-output-content">
+            <MarkdownView>{result ?? ''}</MarkdownView>
+          </div>
+        )
+        : (
+          <div className="sap-final-output-empty">No final output was captured.</div>
+        )
+      }
+    </div>
+  )
+}
+
+function StreamBlockView({ block }: { block: Parameters<typeof groupBlocks>[0][number] }) {
+  if (block.type === 'tool_result') return null
+
   if (block.type === 'text') {
     if (!block.text.trim()) return null
     return (
@@ -515,4 +690,9 @@ function formatMs(ms: number): string {
   const m = Math.floor(ms / 60_000)
   const s = Math.floor((ms % 60_000) / 1000)
   return `${m}m${s > 0 ? ` ${s}s` : ''}`
+}
+
+function formatActivityDuration(entry: ToolActivity): string {
+  if (!entry.endedAt) return 'now'
+  return formatMs(Math.max(0, entry.endedAt - entry.startedAt))
 }

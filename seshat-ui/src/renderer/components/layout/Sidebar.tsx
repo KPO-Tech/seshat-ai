@@ -12,6 +12,7 @@ import {
   EditTwo,
   Layers,
   Time,
+  History,
 } from '@icon-park/react'
 import { useUIStore } from '@/stores/ui'
 import { useAuthStore } from '@/stores/auth'
@@ -184,14 +185,24 @@ export function Sidebar() {
           {/* Recents */}
           {!collapsed && (
             <div className="sb-nav-group">
-              <button 
-                className="sb-nav-header interactive"
-                onClick={() => setRecentsOpen(!recentsOpen)}
-              >
-                <span>Recents</span>
-                {recentsOpen ? <Down size={12} /> : <Right size={12} />}
-              </button>
-              
+              <div className="sb-nav-header-row">
+                <button
+                  className="sb-nav-header interactive"
+                  onClick={() => setRecentsOpen(!recentsOpen)}
+                >
+                  <span>Recents</span>
+                  {recentsOpen ? <Down size={12} /> : <Right size={12} />}
+                </button>
+                <button
+                  className="sb-history-btn"
+                  type="button"
+                  title="Chat history"
+                  onClick={() => navigate('/history')}
+                >
+                  <History size={13} />
+                </button>
+              </div>
+
               {recentsOpen && (
                 <div className="sb-recents-list">
                   {recentSessions.map((s) => (
@@ -398,6 +409,12 @@ const SIDEBAR_CSS = `
   padding-right: 4px;
 }
 
+.sb-nav-header-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
 .sb-nav-header {
   display: flex;
   align-items: center;
@@ -408,10 +425,31 @@ const SIDEBAR_CSS = `
   color: var(--color-text-muted);
   background: none;
   border: none;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   text-align: left;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+}
+
+.sb-history-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sb-history-btn:hover {
+  background: var(--color-hover);
+  color: var(--color-text);
 }
 
 .sb-recent-row {

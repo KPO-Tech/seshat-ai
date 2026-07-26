@@ -7,6 +7,7 @@ import { ChatTopBar, CHAT_TOP_BAR_CSS } from '@/components/chat/ChatTopBar'
 import { ChatInput, CHAT_INPUT_CSS, type ChatAttachment } from '@/components/chat/ChatInput'
 import { MessageItem, MESSAGE_ITEM_CSS, isRenderableMessage } from '@/components/chat/MessageItem'
 import { PlanArtifactCard } from '@/components/chat/plan/PlanArtifactCard'
+import { AskUserPanel } from '@/components/chat/AskUserPanel'
 import { useChat } from '@/hooks/useChat'
 import { useProviders, fetchProviderModels } from '@/hooks/useProviders'
 import { useProvidersStore } from '@/stores/providers'
@@ -15,6 +16,7 @@ import type { Session, ProviderModel } from '@/api/types'
 import { normalizeSessionMessages } from '@/lib/chat'
 import { deleteSession } from '@/lib/deleteSession'
 import { serializeConversationMarkdown, conversationFileName } from '@/lib/conversationExport'
+import { UNTITLED_SESSION_TITLE } from '@/lib/sessionTitle'
 import type { AgentState } from '@/stores/session'
 
 // Present-continuous fragments for "SeshatOS is ___" - a tool-aware status
@@ -327,7 +329,7 @@ export function Conversation() {
 
   // Stable callbacks — identity won't change between renders so React.memo on
   // MessageItem can actually skip re-renders.
-  const handlePermissionDecision = useCallback(async (toolUseId: string, approved: boolean) => {
+  const handlePermissionDecision = useCallback(async (toolUseId: string, approved: boolean, remember = false) => {
     if (!id) return
     const current = useSessionStore.getState()
     const nextStreaming = current.getStreaming(id).map((block) => {
@@ -350,7 +352,7 @@ export function Conversation() {
     }
     current.updateAgentState(id, { pendingPermission: null })
     try {
-      await api.post(`/permissions/${toolUseId}`, { approved, session_id: id })
+      await api.post(`/permissions/${toolUseId}`, { approved, remember, session_id: id })
     } catch {
       // The stream handler will surface the terminal error if the approval bridge is gone.
     }
@@ -413,7 +415,7 @@ export function Conversation() {
     }
   }, [id])
 
-  const onApproveTool = useCallback((toolUseId: string) => { void handlePermissionDecision(toolUseId, true) }, [handlePermissionDecision])
+  const onApproveTool = useCallback((toolUseId: string, remember?: boolean) => { void handlePermissionDecision(toolUseId, true, remember) }, [handlePermissionDecision])
   const onDenyTool = useCallback((toolUseId: string) => { void handlePermissionDecision(toolUseId, false) }, [handlePermissionDecision])
   const onSubmitToolPrompt = useCallback((promptId: string, value: unknown) => { void handlePromptSubmission(promptId, value) }, [handlePromptSubmission])
 
@@ -460,6 +462,7 @@ export function Conversation() {
       {/* ── Top Bar ── */}
       <div className="conv-top-bar">
         <ChatTopBar
+          title={session.title || UNTITLED_SESSION_TITLE}
           executionMode={agentState.executionMode}
           onExecutionModeChange={handleExecutionModeSelect}
           monitorOpen={monitorOpen}
@@ -493,7 +496,6 @@ export function Conversation() {
                 <MessageItem
                   message={msg}
                   sessionId={id}
-                  showAvatar={msg.role === 'assistant' ? i === 0 || visibleMessages[i - 1]?.role !== 'assistant' : true}
                   compact={msg.role === 'assistant' && i > 0 && visibleMessages[i - 1]?.role === 'assistant'}
                   onApproveTool={onApproveTool}
                   onDenyTool={onDenyTool}
@@ -506,13 +508,12 @@ export function Conversation() {
       </div>
 
       {/* ── Live agent status — tool-aware, shown in the transcript while a turn
-           is running. Hidden once a permission is pending: at that point the
-           agent isn't "thinking" anymore, it's blocked on the user's own
-           decision, which the PermissionCard elsewhere in the transcript
-           already surfaces - showing both left the status looking stuck
-           ("SeshatOS is thinking...") long after the real ball was in the
-           user's court ── */}
-      {isStreaming && !pendingPermission && (
+           is running. Hidden once a permission or ask_user_question is
+           pending: at that point the agent isn't "thinking" anymore, it's
+           blocked on the user's own decision - showing both left the status
+           looking stuck ("SeshatOS is thinking...") long after the real ball
+           was in the user's court ── */}
+      {isStreaming && !pendingPermission && !pendingAskUser && (
         <div style={{ padding: '0 16px 8px', display: 'flex', justifyContent: 'center' }}>
           <AgentStatusIndicator state={agentState} />
         </div>
@@ -529,14 +530,12 @@ export function Conversation() {
         </div>
       )}
 
-      {/* ── AskUser pending banner ── */}
+      {/* ── AskUser panel — docked above the input, one question at a time,
+           instead of a banner pointing back into the transcript. The tool
+           call's own inline rendering (AskUserToolView) steps aside to a
+           small placeholder while this is showing (see its own comment). ── */}
       {pendingAskUser && pendingAskUser.type === 'tool_use' && pendingAskUser._prompt && (
-        <div className="conv-ask-banner">
-          <span className="conv-ask-dot" />
-          <span className="conv-ask-text">
-            {pendingAskUser._prompt.message || 'The agent is waiting for your answer — scroll up to respond.'}
-          </span>
-        </div>
+        <AskUserPanel tool={pendingAskUser} onSubmitPrompt={onSubmitToolPrompt} />
       )}
 
       {/* ── Input ── */}
@@ -626,41 +625,6 @@ ${MESSAGE_ITEM_CSS}
   margin: 0 auto;
   padding: 0 17px;
   box-sizing: border-box;
-}
-
-.conv-ask-banner {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0 24px 8px;
-  padding: 6px 10px;
-  border-radius: 8px;
-  background: rgba(239, 124, 47, 0.08);
-  border: 1px solid rgba(239, 124, 47, 0.22);
-  flex-shrink: 0;
-}
-
-.conv-ask-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--color-accent);
-  flex-shrink: 0;
-  animation: ask-pulse 1.4s ease-in-out infinite;
-}
-
-@keyframes ask-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%       { opacity: 0.4; transform: scale(0.75); }
-}
-
-.conv-ask-text {
-  font-size: 11px;
-  color: var(--color-accent);
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .conv-status-row {

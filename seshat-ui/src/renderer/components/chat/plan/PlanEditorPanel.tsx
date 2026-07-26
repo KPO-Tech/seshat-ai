@@ -816,9 +816,24 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
         // way to tell it the plan is approved is a new turn - see
         // submit_plan's own prompt ("you will receive a confirmation
         // message - then call exit_plan_mode").
+        //
+        // sendMessage() silently no-ops if a turn is already streaming on
+        // this session (see useChat.ts) - checked here, before the PATCH,
+        // so a plan never gets marked validated with no way to actually
+        // notify the model of it.
+        if (useSessionStore.getState().isSessionStreaming(sessionId)) {
+          setActionError("The agent is still running another turn on this session — wait for it to finish, then try again.")
+          return
+        }
         const updated = await api.patch<PlanDocument>(`/plans/${planId}`, { status: 'validated' })
         upsertPlan(sessionId, updated)
-        await sendMessage('The plan has been approved. Proceed with implementation: call exit_plan_mode, then execute the plan.')
+        // Fire-and-forget: sendMessage's promise only resolves once the
+        // model's entire follow-up turn finishes (every tool call it makes
+        // while implementing the plan), which can take minutes. Awaiting it
+        // here would leave this panel open with its buttons disabled for
+        // that whole time instead of closing immediately so the user can
+        // watch the execution in the main chat.
+        void sendMessage('The plan has been approved. Proceed with implementation: call exit_plan_mode, then execute the plan.')
       }
 
       // Agent Monitor is opt-in only - approving just closes this panel and
@@ -854,9 +869,15 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
         if (isDocumentBacked) upsertPlan(sessionId, { ...plan!, status: 'rejected' })
         useSessionStore.getState().updateAgentState(sessionId, { pendingPermission: null })
       } else {
+        // Same isSessionStreaming guard as handleProceed - see its comment.
+        if (useSessionStore.getState().isSessionStreaming(sessionId)) {
+          setActionError("The agent is still running another turn on this session — wait for it to finish, then try again.")
+          return
+        }
         const updated = await api.patch<PlanDocument>(`/plans/${planId}`, { status: 'rejected' })
         upsertPlan(sessionId, updated)
-        await sendMessage(
+        // Fire-and-forget - see handleProceed's comment on why this isn't awaited.
+        void sendMessage(
           hasFeedback
             ? buildFeedback()
             : "I'd like changes before approving this plan. Please revise and resubmit it with submit_plan."

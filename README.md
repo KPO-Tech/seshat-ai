@@ -154,7 +154,7 @@ SeshatOS ships with `seshat-ui`, an Electron + React desktop application that wr
 | Self-hosted | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Multi-provider | ✅ | ❌ | ✅ | ✅ | ✅ |
 | Real agent execution | ✅ | ✅ | ❌ | ❌ | Partial |
-| Sandboxed bash / tools | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Permission-gated local tools | ✅ | ✅ | ❌ | ❌ | ❌ |
 | MCP client | ✅ | ✅ | Partial | ❌ | ❌ |
 | Skills system | ✅ | ✅ | ❌ | ❌ | ❌ |
 | Knowledge base / RAG | ✅ | ❌ | ✅ | ✅ | ✅ |

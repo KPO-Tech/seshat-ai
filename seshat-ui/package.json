@@ -14,7 +14,11 @@
   "scripts": {
     "start": "electron-vite dev -- --no-sandbox",
     "build": "electron-vite build",
+    "build:backend:win": "node ../scripts/build-desktop-sidecar.mjs windows amd64",
+    "build:backend:linux": "node ../scripts/build-desktop-sidecar.mjs linux amd64",
     "package": "npm run build && electron-builder",
+    "package:win": "npm run build:backend:win && npm run build && electron-builder --win nsis",
+    "package:linux": "npm run build:backend:linux && npm run build && electron-builder --linux AppImage deb",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json --noEmit",
     "lint": "oxlint src"
   },
@@ -83,7 +87,8 @@
     "win": {
       "target": [
         "nsis"
-      ]
+      ],
+      "signAndEditExecutable": false
     },
     "publish": [
       {

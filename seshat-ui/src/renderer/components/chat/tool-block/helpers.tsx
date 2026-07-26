@@ -2,7 +2,7 @@ import {
   Terminal, Globe, FileTextOne, Robot, Browser, PlugOne,
   MindMapping, Notebook, Calculator, Comment, Calendar,
 } from '@icon-park/react'
-import type { ToolStatus, ToolUseBlock } from '@/api/types'
+import type { ToolPromptRequest, ToolStatus, ToolUseBlock } from '@/api/types'
 import type { AskUserOption, AskUserQuestion, WebSearchHit } from './types'
 
 // Splits on both / and \ - the tool calls' file_path values can be genuine
@@ -51,41 +51,6 @@ export function toolIcon(name: string) {
     return <FileTextOne size={11} />
   }
   return <Terminal size={11} />
-}
-
-export function toolLabel(name: string): string {
-  // Dynamic MCP tool names ("mcp__github__search_issues") mangle into "mcp
-  // github search issues" under the generic underscore→space fallback below —
-  // split server from tool explicitly so the label stays readable.
-  if (name.startsWith('mcp__')) {
-    const rest = name.slice('mcp__'.length)
-    const sepIndex = rest.indexOf('__')
-    const server = sepIndex >= 0 ? rest.slice(0, sepIndex) : ''
-    const toolPart = sepIndex >= 0 ? rest.slice(sepIndex + 2) : rest
-    const readableTool = toolPart.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
-    return server ? `${server}: ${readableTool}` : readableTool
-  }
-
-  const labels: Record<string, string> = {
-    bash: 'Bash',
-    ask_user_question: 'Ask User Question',
-    task_create: 'Task Create',
-    task_update: 'Task Update',
-    task_list: 'Task List',
-    web_search: 'Web Search',
-    web_fetch: 'Web Fetch',
-    mcp: 'MCP',
-    agent: 'Agent',
-    glob: 'Glob',
-    grep: 'Grep',
-    file_read: 'Read File',
-    file_write: 'Write File',
-    file_edit: 'Edit File',
-    read: 'Read',
-    write: 'Write',
-    edit: 'Edit',
-  }
-  return labels[name] ?? name.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
 }
 
 export function fallbackApprovalDescription(tool: ToolUseBlock): string {
@@ -173,6 +138,54 @@ export function parseAskUserQuestions(input: Record<string, unknown>): AskUserQu
   return questions
 }
 
+// The question list a tool call actually presents: its own structured
+// `questions` input when present, else a single question synthesized from a
+// bare prompt (text/confirm/choice with no parsed question list) - the
+// prompt is the only source of the question text and options in that case.
+// Shared by AskUserToolView (post-answer summary) and AskUserPanel (the
+// live above-input UI) so the two surfaces can never disagree about what
+// the question list for a given tool call actually is.
+export function resolveAskUserQuestions(
+  input: Record<string, unknown>,
+  prompt: ToolPromptRequest | undefined,
+): AskUserQuestion[] {
+  const parsedQuestions = parseAskUserQuestions(input)
+  if (parsedQuestions.length > 0) return parsedQuestions
+  if (!prompt || !prompt.message) return parsedQuestions
+
+  // A bare confirm prompt (no `questions` input, no `options` - just
+  // type='confirm') has no options to synthesize from; render it as a
+  // two-option Yes/No question instead, marked `kind: 'confirm'` so the
+  // submit side sends back the boolean the prompt actually expects, not the
+  // literal label text.
+  if (prompt.type === 'confirm') {
+    return [{
+      header: typeof prompt.metadata?.header === 'string' ? prompt.metadata.header : '',
+      question: prompt.message,
+      options: [{ label: 'Yes' }, { label: 'No' }],
+      multiSelect: false,
+      kind: 'confirm',
+    }]
+  }
+
+  const header = typeof prompt.metadata?.header === 'string' ? prompt.metadata.header : ''
+  const multiSelect = Boolean(prompt.metadata?.multiSelect)
+  const options = (prompt.options ?? [])
+    .filter((option) => String(option.value ?? option.label) !== '__other__')
+    .map((option) => ({
+      label: option.label,
+      description: option.description,
+    }))
+
+  // A bare text prompt (type='text', no options) - free-form input only,
+  // options stay empty so both renderers know to show just a textarea.
+  if (prompt.type === 'text' || options.length === 0) {
+    return [{ header, question: prompt.message, options: [], multiSelect: false }]
+  }
+
+  return [{ header, question: prompt.message, options, multiSelect }]
+}
+
 export function parseAskUserAnswers(content?: string): Map<string, string> {
   const answers = new Map<string, string>()
   if (!content) return answers
@@ -205,65 +218,20 @@ export function parseWebSearchHits(content?: string): WebSearchHit[] {
     const urlLine = lines[index + 1]?.trim()
     if (!titleMatch || !urlLine || !/^https?:\/\//i.test(urlLine)) continue
 
+    const snippetLines: string[] = []
+    for (let cursor = index + 2; cursor < lines.length; cursor += 1) {
+      const line = lines[cursor]?.trim()
+      if (!line) break
+      if (/^\d+\.\s+/.test(line)) break
+      snippetLines.push(line)
+    }
+
     hits.push({
       title: titleMatch[1].trim(),
       url: urlLine,
+      snippet: snippetLines.join(' '),
     })
   }
 
   return hits
-}
-
-export function inputSnippetForSilent(tool: ToolUseBlock): string {
-  const inp = tool.input
-  const str = (k: string) => (typeof inp[k] === 'string' ? (inp[k] as string) : '')
-
-  switch (tool.name) {
-    case 'read': case 'file_read': case 'read_file':
-      return str('file_path') ? basename(str('file_path')) : ''
-    case 'glob': {
-      const pattern = str('pattern')
-      const path = str('path') ? basename(str('path')) : ''
-      return [pattern, path].filter(Boolean).join(' in ') || ''
-    }
-    case 'task_get': case 'task_stop': case 'task_output':
-      return str('taskId') || str('task_id') || str('id')
-    case 'tool_search':
-      return compact(str('query'), 40)
-    case 'lsp':
-      return str('method')
-    case 'code_complete':
-      return basename(str('file_path'))
-    case 'rag_ingest':
-      return str('corpus_id')
-    case 'mcp_read_resource':
-      return compact(str('uri') || str('resource'), 40)
-    case 'skill':
-      return str('name') || str('skill_name')
-    case 'config':
-      return str('key')
-    case 'monitor':
-      return compact(str('command') || str('pid'), 40)
-    case 'wait_agent': case 'close_agent': case 'resume_agent': case 'send_agent_message':
-      return str('agent_id') || str('agentId')
-    case 'enter_worktree':
-      return str('directory') || str('branch')
-    case 'create_goal': case 'update_goal':
-      return compact(str('title'), 40)
-    case 'get_goal':
-      return str('goal_id')
-    case 'docx':
-      return basename(str('filename') || str('path'))
-    case 'mailbox_send':
-      return str('recipient') || str('to')
-    case 'mailbox_broadcast':
-      return str('topic')
-    default:
-      return ''
-  }
-}
-
-function compact(value: string, max: number): string {
-  const normalized = value.replace(/\n/g, ' ').trim()
-  return normalized.length > max ? `${normalized.slice(0, max)}…` : normalized
 }

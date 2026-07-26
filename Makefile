@@ -58,7 +58,7 @@ DAEMON_BIN        := seshat-automation
 DAEMON_BIN_DIR    := $(ROOT)/bin
 DAEMON_BIN_PATH   := $(DAEMON_BIN_DIR)/$(DAEMON_BIN)
 DAEMON_PKG        := github.com/KPO-Tech/seshat/cmd/automation-server
-SESHAT_VERSION    := v0.2.2
+SESHAT_VERSION    := v1.0.2
 DEPLOY_DIR        := $(ROOT)/deploy
 
 # UI package manager: prefer bun (faster, what CI/most contributors use), but

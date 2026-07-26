@@ -28,6 +28,11 @@ func (app *App) handlePermissionDecision(w http.ResponseWriter, r *http.Request)
 		Approved  bool   `json:"approved"`
 		SessionID string `json:"session_id"`
 		Reason    string `json:"reason"`
+		// Remember, when true alongside Approved, persists this approval for
+		// the rest of the session ("Always Allow" instead of "Allow once") -
+		// see broker.go's PermissionDecision doc comment for how this reaches
+		// the permission engine.
+		Remember bool `json:"remember"`
 		// PlanID, when set, is a plan-review decision (approving/denying
 		// exit_plan_mode) rather than a generic tool permission - see the
 		// status-sync comment below.
@@ -45,7 +50,7 @@ func (app *App) handlePermissionDecision(w http.ResponseWriter, r *http.Request)
 		writeJSONError(w, http.StatusBadRequest, "session_id is required")
 		return
 	}
-	switch app.permBroker.Resolve(toolUseID, principal.User.ID, sessionID, body.Approved, strings.TrimSpace(body.Reason)) {
+	switch app.permBroker.Resolve(toolUseID, principal.User.ID, sessionID, body.Approved, body.Remember, strings.TrimSpace(body.Reason)) {
 	case backendquery.BrokerResolveResolved:
 		// Sync the persisted plan_documents.status in the same request that
 		// actually unblocks the agent, instead of the caller making two

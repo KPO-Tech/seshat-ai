@@ -1,63 +1,5 @@
 import type { ToolStatus, ToolUseBlock } from '@/api/types'
-import { toolLabel, basename } from './helpers'
-
-// Tools deliberately kept OUT of the light single-line/quiet-group treatment
-// — everything else gets it by default. These are the families the user
-// explicitly said need their own dedicated treatment later, not this pass:
-// interactive prompts, web search/fetch ("browser"), and rich-media
-// generators (an image/audio player doesn't fit a plain text line). agent/
-// spawn_agent is excluded too, but structurally — MessageItem.groupBlocks()
-// routes it to AgentCardsRow BEFORE this check ever runs, so it doesn't need
-// listing here.
-const NOT_GROUPABLE = new Set([
-  'ask_user_question',
-  'web_search', 'web_fetch', 'read_document_url', 'read_url',
-  'generate_image', 'text_to_speech', 'speech_to_text',
-])
-
-export function isGroupable(name: string): boolean {
-  return !NOT_GROUPABLE.has(name)
-}
-
-// Tools with no user-visible input/output worth showing — rendered as a
-// terse status line (SilentToolView) instead of a full body, whether they
-// end up solo (ToolBlock) or inside a run (QuietGroupItem). Kept as one
-// shared set so both call sites can never disagree on which tools qualify.
-export const SILENT_TOOLS = new Set([
-  // file tools with no user-visible output
-  'read', 'file_read', 'read_file', 'list_directory',
-  // task plumbing — the actual task list with live status lives in the
-  // Agent Monitor panel (auto-opened on task_create - see Conversation.tsx),
-  // not inline in the chat
-  'task_create', 'task_update', 'task_list',
-  'task_get', 'task_stop', 'task_output',
-  // internal discovery & control
-  'tool_search', 'skill', 'config', 'brief',
-  // LSP / code assist
-  'lsp', 'code_complete',
-  // RAG ingest (search has its own view)
-  'rag_ingest',
-  // MCP
-  'mcp_list_resources', 'mcp_read_resource',
-  // background task / agent management
-  'monitor', 'wait_agent', 'list_agents', 'close_agent', 'resume_agent',
-  // worktree lifecycle
-  'enter_worktree', 'exit_worktree',
-  // goal tracking
-  'create_goal', 'get_goal', 'update_goal',
-  // doc generation (no preview needed)
-  'docx',
-  // messaging
-  'mailbox_send', 'mailbox_broadcast', 'send_agent_message',
-  // plan mode — the resulting document has its own dedicated review UI
-  // (PlanArtifactCard/PlanEditorPanel), so the tool call itself needs no
-  // input/output shown here
-  'submit_plan',
-])
-
-export function isSilentTool(name: string): boolean {
-  return SILENT_TOOLS.has(name)
-}
+import { toolCategory, toolLabel, toolSoloLabel, type ToolCategory } from './toolDisplay'
 
 export function toolStatus(tool: ToolUseBlock): ToolStatus {
   return tool._status ?? (tool._result ? (tool._result.isError ? 'failed' : 'completed') : 'running')
@@ -73,26 +15,7 @@ export function breaksGroup(tool: ToolUseBlock): boolean {
   return toolStatus(tool) === 'awaiting_approval'
 }
 
-type Category = 'read' | 'search' | 'edit' | 'write' | 'bash' | 'other'
-
-export function isEditTool(name: string): boolean {
-  return name === 'edit' || name === 'file_edit' || name === 'edit_file'
-}
-
-export function isWriteTool(name: string): boolean {
-  return name === 'write' || name === 'file_write' || name === 'write_file'
-}
-
-function categoryFor(name: string): Category {
-  if (name === 'read' || name === 'file_read' || name === 'read_file') return 'read'
-  if (name === 'glob' || name === 'grep') return 'search'
-  if (name === 'edit' || name === 'file_edit' || name === 'edit_file') return 'edit'
-  if (name === 'write' || name === 'file_write' || name === 'write_file') return 'write'
-  if (name === 'bash') return 'bash'
-  return 'other'
-}
-
-function clauseFor(category: Category, count: number): string {
+function clauseFor(category: ToolCategory, count: number): string {
   switch (category) {
     case 'read': return count === 1 ? 'Read a file' : `Read ${count} files`
     case 'search': return count === 1 ? 'Searched' : `Searched ${count} times`
@@ -103,81 +26,7 @@ function clauseFor(category: Category, count: number): string {
   }
 }
 
-function editStats(tool: ToolUseBlock): { added: number; removed: number } | null {
-  const meta = tool._result?.metadata
-  if (meta && typeof meta.lines_added === 'number' && typeof meta.lines_removed === 'number') {
-    return { added: meta.lines_added as number, removed: meta.lines_removed as number }
-  }
-  return null
-}
-
-// Heuristic for "does tool._message read like a real backend-authored
-// sentence" (e.g. "Found full AcceptInvitation implementation") vs. a bare
-// echoed value (a file path, a short pattern) that shouldn't stand in for
-// the templated label.
-function looksLikeSentence(message: string): boolean {
-  const trimmed = message.trim()
-  return trimmed.length >= 12 && trimmed.includes(' ')
-}
-
 const MAX_CLAUSES = 4
-
-function str(tool: ToolUseBlock, key: string): string {
-  return typeof tool.input[key] === 'string' ? (tool.input[key] as string) : ''
-}
-
-// Per-tool label for the solo case — "Read foo.py", "Bash — <what it did>",
-// "Web Search: <query>", etc. Returns null when the tool has no dedicated
-// format, falling through to the generic message/category handling below.
-// The query/pattern/command text is never truncated here - .qtg-item-label
-// already clips with a CSS ellipsis once it runs out of line width, so
-// there's no reason to cut it short in JS first.
-function specificSingleLabel(tool: ToolUseBlock): string | null {
-  const name = tool.name
-
-  if (isEditTool(name) || isWriteTool(name)) {
-    const filePath = str(tool, 'file_path')
-    const stats = editStats(tool)
-    const verb = isEditTool(name) ? 'Edited' : 'Wrote'
-    if (filePath && stats) return `${verb} ${basename(filePath)} +${stats.added} -${stats.removed}`
-    if (filePath) return `${verb} ${basename(filePath)}`
-    return null
-  }
-  if (name === 'read' || name === 'file_read' || name === 'read_file') {
-    const filePath = str(tool, 'file_path')
-    return filePath ? `Read ${basename(filePath)}` : null
-  }
-  if (name === 'glob') {
-    const pattern = str(tool, 'pattern')
-    return pattern ? `Glob: ${pattern}` : null
-  }
-  if (name === 'grep') {
-    const pattern = str(tool, 'pattern')
-    return pattern ? `Grep: ${pattern}` : null
-  }
-  if (name === 'bash') {
-    // description is the tool call's own input (see internal/tools/bash in
-    // the engine repo, now a required field) - the authoritative,
-    // model-authored summary of intent. _message is a separate runtime
-    // progress string that isn't always present; the raw command is the
-    // last resort, since a long one reads poorly collapsed into one line.
-    const description = str(tool, 'description')
-    if (description) return `Bash — ${description}`
-    if (tool._message && looksLikeSentence(tool._message)) return `Bash — ${tool._message}`
-    const command = str(tool, 'command')
-    return command ? `Bash: ${command}` : null
-  }
-  if (name === 'web_search') {
-    const query = str(tool, 'query')
-    return query ? `Web Search: ${query}` : null
-  }
-  if (name === 'web_fetch' || name === 'read_document_url' || name === 'read_url') {
-    const url = str(tool, 'url')
-    if (!url) return null
-    try { return `Web Fetch: ${new URL(url).hostname}` } catch { return `Web Fetch: ${url}` }
-  }
-  return null
-}
 
 // Builds the collapsed group line's label from an ordered run of tool_use
 // blocks. Single-item and multi-item runs go through the same function —
@@ -187,28 +36,43 @@ export function summarizeQuietGroup(tools: ToolUseBlock[]): string {
 
   if (tools.length === 1) {
     const tool = tools[0]
-    const specific = specificSingleLabel(tool)
+    const specific = toolSoloLabel(tool)
     if (specific) return specific
 
-    if (tool._message && looksLikeSentence(tool._message)) {
+    if (tool._message && tool._message.trim().length >= 12 && tool._message.includes(' ')) {
       return tool._message
     }
-    const category = categoryFor(tool.name)
+    const category = toolCategory(tool.name)
     // "other" bucket covers every tool without a dedicated verb (rag_search,
-    // apply_patch, MCP tools, ...) — its own name is more useful standalone
+    // apply_patch, MCP tools, ...) — its own label is more useful standalone
     // than a generic "Ran a tool".
     if (category === 'other') return toolLabel(tool.name)
     return clauseFor(category, 1)
   }
 
-  const order: Category[] = []
-  const counts = new Map<Category, number>()
+  const order: ToolCategory[] = []
+  const counts = new Map<ToolCategory, number>()
   for (const tool of tools) {
-    const category = categoryFor(tool.name)
+    const category = toolCategory(tool.name)
     if (!counts.has(category)) order.push(category)
     counts.set(category, (counts.get(category) ?? 0) + 1)
   }
   const clauses = order.slice(0, MAX_CLAUSES).map((c) => clauseFor(c, counts.get(c) ?? 0))
   const label = clauses.join(', ')
   return order.length > MAX_CLAUSES ? `${label}, …` : label
+}
+
+// A short, always-visible second line under a timeline row - "failed" for an
+// error, otherwise a line-count of the result so there's something to read
+// without having to click into every row. null while still running/pending
+// (nothing landed yet) or when the result has no readable content.
+export function toolResultSubtitle(tool: ToolUseBlock): string | null {
+  const status = toolStatus(tool)
+  if (status === 'failed') return 'failed'
+  if (status !== 'completed') return null
+  const content = tool._result?.content
+  if (!content) return null
+  const lines = content.split('\n').filter((l) => l.trim() !== '').length
+  if (lines === 0) return null
+  return `${lines} line${lines === 1 ? '' : 's'}`
 }

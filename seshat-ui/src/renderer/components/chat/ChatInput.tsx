@@ -318,7 +318,7 @@ export function ChatInput({
             disabled={isUploadingAttachments}
             onClick={() => fileInputRef.current?.click()}
           >
-            <Plus size={13} />
+            <Plus size={18} />
           </button>
           <input
             ref={fileInputRef}
@@ -621,17 +621,18 @@ ${SELECTOR_PILL_CSS}
 }
 
 .chat-tool-circle {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-subtle);
-  color: var(--color-text);
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.15s;
+  padding: 0;
+  transition: color 0.15s, transform 0.15s;
 }
 
 .chat-tool-circle:disabled {
@@ -640,8 +641,8 @@ ${SELECTOR_PILL_CSS}
 }
 
 .chat-tool-circle:hover:not(:disabled) {
-  background: var(--color-hover);
-  transform: scale(1.05);
+  color: var(--color-text-secondary);
+  transform: scale(1.06);
 }
 
 .chat-tool-icon {

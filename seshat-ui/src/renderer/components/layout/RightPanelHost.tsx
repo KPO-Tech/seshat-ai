@@ -199,16 +199,7 @@ function renderPanelBody(panel: RightPanelInstance) {
         />
       )
     case 'browser':
-      return (
-        <EmptyState
-          title="Browser"
-          description={
-            panel.browserUrl
-              ? `This panel is ready to host a browser view for ${panel.browserUrl}.`
-              : 'An embedded browser preview will open here.'
-          }
-        />
-      )
+      return <BrowserPanel url={panel.browserUrl} />
     case 'knowledge':
       return <KnowledgePanel results={panel.knowledgeResults ?? []} />
     case 'subagent':
@@ -297,6 +288,27 @@ function KnowledgePanel({ results }: { results: NonNullable<RightPanelInstance['
   )
 }
 
+function BrowserPanel({ url }: { url?: string }) {
+  return (
+    <div className="right-panel-browser">
+      <div className="right-panel-browser-icon">
+        <Browser size={18} />
+      </div>
+      <h3>Browser trace</h3>
+      {url ? (
+        <>
+          <a className="right-panel-browser-url" href={url} target="_blank" rel="noreferrer" title={url}>
+            {url}
+          </a>
+          <p>Open the browser tool result in the chat to inspect snapshots, screenshots, network output, and extracted content.</p>
+        </>
+      ) : (
+        <p>Browser tool output appears inline in the conversation as snapshots, screenshots, network output, and extracted content.</p>
+      )}
+    </div>
+  )
+}
+
 // ── Agent Monitor ─────────────────────────────────────────────────────────────
 
 function AgentMonitorPanel({ sessionId }: { sessionId: string }) {
@@ -320,6 +332,7 @@ function AgentMonitorPanel({ sessionId }: { sessionId: string }) {
       <SubagentsSection sessionId={sessionId} />
       {planArtifact && <PlanArtifactSection sessionId={sessionId} planArtifact={planArtifact} />}
       <PlanSection plan={plan} />
+      <ActivityTimelineSection state={agentState} />
     </div>
   )
 }
@@ -486,6 +499,38 @@ function PlanArtifactSection({ sessionId, planArtifact }: { sessionId: string; p
   )
 }
 
+function ActivityTimelineSection({ state }: { state: AgentState }) {
+  const entries = useMemo(() => [...state.activityLog].slice(-12).reverse(), [state.activityLog])
+
+  return (
+    <div className="am-section">
+      <div className="am-section-head">
+        <span className="am-section-label">Timeline</span>
+        {entries.length > 0 && <span className="am-plan-meta">{entries.length} recent</span>}
+      </div>
+      {entries.length === 0 ? (
+        <p className="am-empty-hint">Tool activity will appear here as the agent runs.</p>
+      ) : (
+        <div className="am-timeline">
+          {entries.map((entry, index) => (
+            <div key={`${entry.toolName}-${entry.startedAt}-${index}`} className={`am-timeline-row am-timeline-row--${entry.stage}`}>
+              <span className="am-timeline-dot" />
+              <span className="am-timeline-copy">
+                <span className="am-timeline-title">
+                  {toolDisplayName(entry.toolName)}
+                  <span className="am-timeline-stage">{entry.stage.replace('_', ' ')}</span>
+                </span>
+                {entry.message && <span className="am-timeline-message">{entry.message}</span>}
+              </span>
+              <span className="am-timeline-time">{formatActivityDuration(entry)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function toolDisplayName(name: string): string {
   const map: Record<string, string> = {
     bash: 'Bash', read: 'Read', write: 'Write', edit: 'Edit',
@@ -499,6 +544,13 @@ function toolDisplayName(name: string): string {
 
 function fmt(n: number) {
   return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
+}
+
+function formatActivityDuration(entry: AgentState['activityLog'][number]) {
+  if (!entry.endedAt) return 'now'
+  const ms = Math.max(0, entry.endedAt - entry.startedAt)
+  if (ms < 1000) return `${ms}ms`
+  return `${(ms / 1000).toFixed(1)}s`
 }
 
 function EmptyState({ title, description }: { title: string; description: string }) {
@@ -772,6 +824,49 @@ const RIGHT_PANEL_CSS = `
   line-height: 1.6;
   color: var(--color-text-secondary);
   white-space: pre-wrap;
+}
+
+.right-panel-browser {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 18px;
+  color: var(--color-text);
+}
+
+.right-panel-browser-icon {
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-accent);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.right-panel-browser h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.right-panel-browser p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.right-panel-browser-url {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: monospace;
+  font-size: 11px;
+  color: var(--color-accent);
 }
 
 /* ── Agent Monitor ─────────────────────────────────────────────────────────── */
@@ -1056,6 +1151,73 @@ const RIGHT_PANEL_CSS = `
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.am-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.am-timeline-row {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  gap: 7px;
+  align-items: start;
+  padding: 6px 0;
+}
+
+.am-timeline-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-top: 5px;
+  background: var(--color-border);
+}
+
+.am-timeline-row--completed .am-timeline-dot { background: var(--color-success); }
+.am-timeline-row--failed .am-timeline-dot { background: var(--color-error); }
+.am-timeline-row--running .am-timeline-dot,
+.am-timeline-row--pending .am-timeline-dot { background: var(--color-accent); }
+
+.am-timeline-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.am-timeline-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.am-timeline-stage {
+  flex-shrink: 0;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.am-timeline-message {
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.am-timeline-time {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  padding-top: 1px;
 }
 
 /* Plan artifact button */

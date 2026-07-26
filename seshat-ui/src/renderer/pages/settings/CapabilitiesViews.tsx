@@ -79,7 +79,7 @@ type MCPOrgCatalogEntry = {
   approved: boolean
 }
 
-const EMPTY_SERVER: Omit<MCPServer, 'id' | 'source' | 'created_at' | 'updated_at'> = {
+const _EMPTY_SERVER: Omit<MCPServer, 'id' | 'source' | 'created_at' | 'updated_at'> = {
   name: '', display_name: '', server_type: 'stdio',
   command: '', args: [], env: {}, url: '', headers: {},
   timeout_secs: 30, icon: '🔌', enabled: true,
@@ -368,7 +368,6 @@ function SkillsPanel() {
         <RepoManagerModal
           catalog={repoData.catalog}
           installed={repoData.installed}
-          onClose={() => setShowInstaller(false)}
           onChanged={() => { load(); setShowInstaller(false) }}
         />
       )}
@@ -455,8 +454,6 @@ const COLLECTION_COLORS: Record<string, string> = {
   project:  '#00B42A',
 }
 
-const KNOWN_COLLECTIONS = new Set(['builtin', 'managed', 'mcp', 'user', 'project'])
-
 function collectionColor(collection: string): string {
   return COLLECTION_COLORS[collection] ?? '#6366f1'
 }
@@ -492,7 +489,6 @@ function SkillItem({ skill, onToggle, onDelete }: {
   const enabled  = isSkillEnabled(skill)
   const color    = collectionColor(skill.collection)
   const tag      = collectionTag(skill.collection)
-  const isRepo   = skill.collection && !KNOWN_COLLECTIONS.has(skill.collection)
   const IconComp = SKILL_ICON_LOOKUP[iconName] ?? Code
 
   const handleIconClick = (e: React.MouseEvent) => {
@@ -607,10 +603,9 @@ function repoNameFromURL(url: string): string {
   return url.replace(/\.git$/, '').split('/').filter(Boolean).pop() ?? url
 }
 
-function RepoManagerModal({ catalog, installed, onClose, onChanged }: {
+function RepoManagerModal({ catalog, installed, onChanged }: {
   catalog: CatalogEntry[]
   installed: RepoInfo[]
-  onClose: () => void
   onChanged: () => void
 }) {
   const [url, setUrl] = useState('')

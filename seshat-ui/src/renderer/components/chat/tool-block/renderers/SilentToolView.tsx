@@ -4,6 +4,7 @@ import type { ToolStatus } from '@/api/types'
 import { useUIStore } from '@/stores/ui'
 import { useSessionStore } from '@/stores/session'
 import { PlanArtifactCard } from '@/components/chat/plan/PlanArtifactCard'
+import { categoryIcon, hasCustomRender, renderToolBody, toolLabel } from '../toolDisplay'
 
 const CSS = `
 .tb-sl {
@@ -21,6 +22,7 @@ const CSS = `
   color: var(--color-text-muted);
   cursor: default;
   user-select: none;
+  width: 100%;
 }
 
 .tb-sl-line--clickable {
@@ -40,24 +42,15 @@ const CSS = `
   flex-shrink: 0;
 }
 
-.tb-sl-spinner {
-  width: 9px;
-  height: 9px;
-  border: 1.5px solid rgba(239, 124, 47, 0.2);
-  border-top-color: var(--color-accent);
-  border-radius: 50%;
-  animation: tb-sl-spin 0.85s linear infinite;
-}
-
-@keyframes tb-sl-spin {
-  to { transform: rotate(360deg); }
-}
-
 .tb-sl-name {
   font-style: italic;
   color: inherit;
+  flex-shrink: 0;
 }
 
+/* Was a flat max-width:320px regardless of how much room the row actually
+   had - flex:1/min-width:0 lets it fill whatever space is left after the
+   label (and icon/arrow) instead of truncating early on a wide window. */
 .tb-sl-snippet {
   font-family: monospace;
   font-size: 10px;
@@ -65,11 +58,8 @@ const CSS = `
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 320px;
-}
-
-.tb-sl-error-text {
-  color: var(--color-error);
+  flex: 1;
+  min-width: 0;
 }
 
 .tb-sl-arrow {
@@ -77,52 +67,27 @@ const CSS = `
   font-size: 10px;
   transition: transform 0.15s;
   line-height: 1;
+  flex-shrink: 0;
 }
 
 .tb-sl-arrow--open {
   transform: rotate(180deg);
 }
 
-.tb-sl-error-body {
+.tb-sl-body {
   margin-top: 4px;
   padding-left: 14px;
-  font-size: 10px;
-  color: var(--color-error);
-  font-family: monospace;
-  white-space: pre-wrap;
-  word-break: break-all;
-  line-height: 1.5;
 }
-`
 
-const LABELS: Record<string, string> = {
-  // file
-  read: 'Read', file_read: 'Read', read_file: 'Read', glob: 'Glob', list_directory: 'List Directory',
-  // task plumbing
-  task_create: 'Create Task', task_update: 'Update Task', task_list: 'List Tasks',
-  task_get: 'Get Task', task_stop: 'Stop Task', task_output: 'Task Output',
-  // internal
-  tool_search: 'Tool Search', skill: 'Skill', config: 'Config', brief: 'Brief',
-  // LSP / code
-  lsp: 'LSP', code_complete: 'Complete',
-  // RAG
-  rag_ingest: 'Ingest',
-  // MCP
-  mcp_list_resources: 'MCP Resources', mcp_read_resource: 'MCP Read',
-  // agent management
-  monitor: 'Monitor', wait_agent: 'Wait', list_agents: 'List Agents',
-  close_agent: 'Close Agent', resume_agent: 'Resume Agent',
-  // worktree
-  enter_worktree: 'Worktree', exit_worktree: 'Exit Worktree',
-  // goals
-  create_goal: 'Goal', get_goal: 'Get Goal', update_goal: 'Update Goal',
-  // doc
-  docx: 'Docx',
-  // messaging
-  mailbox_send: 'Send', mailbox_broadcast: 'Broadcast', send_agent_message: 'Message',
-  // plan mode
-  submit_plan: 'Submit Plan',
+.tb-sl-status {
+  flex-shrink: 0;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
 }
+
+.tb-sl-status--failed { color: var(--color-error); }
+`
 
 type Props = ToolViewProps & { status: ToolStatus; snippet: string }
 
@@ -137,10 +102,15 @@ function humanizeSlug(slug: string): string {
 // is the same affordance for the tool-call line itself).
 function submitPlanInfo(tool: Props['tool'], result: Props['result']): { name: string; planId: string } {
   const slug = typeof tool.input.slug === 'string' ? (tool.input.slug as string) : ''
-  const additional = (result?.metadata as { additional?: Record<string, unknown> } | undefined)?.additional
+  // submit_plan's Go tool puts plan_id in ResultMetadata.Additional, but the
+  // engine/backend always flatten Additional's keys onto the metadata object
+  // it sends over the wire (see toolResultMetadata/buildToolResultMessages/
+  // buildToolResultSSE) - there is no nested `metadata.additional` on any
+  // event type. plan_id lives at metadata.plan_id directly.
+  const metadata = result?.metadata as Record<string, unknown> | undefined
   const planId =
     (typeof tool.input.plan_id === 'string' && tool.input.plan_id) ||
-    (typeof additional?.plan_id === 'string' ? (additional.plan_id as string) : '') ||
+    (typeof metadata?.plan_id === 'string' ? (metadata.plan_id as string) : '') ||
     ''
   return { name: slug ? humanizeSlug(slug) : 'Submit Plan', planId }
 }
@@ -164,41 +134,58 @@ export function SilentToolView({ tool, result, status, snippet, sessionId }: Pro
     return <PlanArtifactCard plan={livePlan} sessionId={sessionId} readOnly />
   }
 
-  const label = isSubmitPlan ? planName : (LABELS[tool.name] ?? tool.name)
+  const label = isSubmitPlan ? planName : toolLabel(tool.name)
+
+  // A silent tool with its own dedicated renderer (read, list_directory, …)
+  // stays worth opening even when it succeeded, not only on error - a
+  // pure-confirmation tool with no renderer (create_directory, …) still
+  // only opens on error, same as before, since GenericToolView's raw
+  // Input/Output split is the only thing there'd be to show either way.
+  const hasRender = hasCustomRender(tool.name)
+  const expandable = isError || hasRender
 
   function handleClick() {
     if (canOpenPlan) {
       useUIStore.getState().openRightPanel({ kind: 'plan', title: planName, sessionId: sessionId!, planId })
       return
     }
-    if (isError) setOpen((v) => !v)
+    if (expandable) setOpen((v) => !v)
   }
 
-  const clickable = isError || canOpenPlan
+  const clickable = expandable || canOpenPlan
 
   return (
     <div className="tb-sl">
       <style>{CSS}</style>
       <div
-        className={`tb-sl-line${isError ? ' tb-sl-error-text' : ''}${clickable ? ' tb-sl-line--clickable' : ''}`}
+        className={`tb-sl-line${clickable ? ' tb-sl-line--clickable' : ''}`}
         role={clickable ? 'button' : undefined}
         tabIndex={clickable ? 0 : undefined}
         onClick={clickable ? handleClick : undefined}
         onKeyDown={clickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleClick() } : undefined}
       >
         <span className="tb-sl-icon">
-          {isRunning && <span className="tb-sl-spinner" />}
-          {!isRunning && !isError && <span style={{ color: 'var(--color-success)', lineHeight: 1 }}>✓</span>}
-          {!isRunning && isError && <span style={{ lineHeight: 1 }}>✗</span>}
+          {isRunning && <span className="tl-spinner" />}
+          {!isRunning && (
+            <span className={`tl-icon${isError ? ' tl-icon--err' : ''}`}>
+              {categoryIcon(tool.name)}
+              {isError && <span className="tl-icon-badge" />}
+            </span>
+          )}
         </span>
         <span className="tb-sl-name">{label}</span>
+        {isError && <span className="tb-sl-status tb-sl-status--failed">failed</span>}
         {snippet && <span className="tb-sl-snippet">{snippet}</span>}
-        {isError && (
+        {expandable && (
           <span className={`tb-sl-arrow${open ? ' tb-sl-arrow--open' : ''}`}>▾</span>
         )}
       </div>
-      {isError && open && result?.content && (
-        <div className="tb-sl-error-body">{result.content}</div>
+      {/* Delegates to the tool's own dedicated renderer (or GenericToolView
+          if it doesn't have one) instead of dumping raw result.content -
+          same "every full-card renderer owns its own presentation" rule the
+          non-silent surfaces already follow, see DESIGN.md. */}
+      {open && expandable && (
+        <div className="tb-sl-body">{renderToolBody({ tool, result, status })}</div>
       )}
     </div>
   )

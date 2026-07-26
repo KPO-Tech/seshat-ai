@@ -2,11 +2,20 @@ import { Caution } from '@icon-park/react'
 import type { ToolUseBlock } from '@/api/types'
 import { useUIStore } from '@/stores/ui'
 import { permissionSignature } from '@/lib/permissionSignature'
-import { fallbackApprovalDescription, toolIcon, toolLabel } from './tool-block/helpers'
+import { fallbackApprovalDescription, toolIcon } from './tool-block/helpers'
+import { toolLabel } from './tool-block/toolDisplay'
 
 type Props = {
   tool: ToolUseBlock
-  onApprove?: (toolUseId: string) => void
+  // remember, when true, is "Always Allow" instead of "Allow once" - it
+  // rides the existing POST /permissions/{tool_use_id} call (as `remember`
+  // in the body) rather than opening a second approval path. The backend
+  // turns that into the classifier-recognized "always" signal, so this
+  // grants for the rest of the session at the permission-engine level, not
+  // just a local UI memory of "don't show this card again" (see
+  // seshat-backend's query.go promptFn closure and broker.go's
+  // PermissionDecision).
+  onApprove?: (toolUseId: string, remember?: boolean) => void
   onDeny?: (toolUseId: string) => void
 }
 
@@ -22,8 +31,12 @@ export function PermissionCard({ tool, onApprove, onDeny }: Props) {
   const snippet = commandSnippet(tool)
 
   function handleAlwaysAllow() {
+    // Local memory is still useful as an instant, zero-round-trip UI
+    // suppression for the exact-signature Ask case it already covered -
+    // the durable, engine-level grant now comes from onApprove's remember
+    // flag instead, which is what actually stops a Deny from recurring.
     rememberApproval(permissionSignature(tool.name, tool.input))
-    onApprove?.(tool.id)
+    onApprove?.(tool.id, true)
   }
 
   return (

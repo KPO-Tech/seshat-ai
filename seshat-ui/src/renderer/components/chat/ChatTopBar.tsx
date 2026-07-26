@@ -8,6 +8,7 @@ import type { AgentState } from '@/stores/session'
 type UIExecutionMode = 'execute' | 'plan'
 
 type Props = {
+  title?: string
   executionMode?: AgentState['executionMode']
   onExecutionModeChange?: (mode: UIExecutionMode) => void
   monitorOpen?: boolean
@@ -38,6 +39,7 @@ function permissionModeColor(mode: UIPermissionMode): 'green' | 'orange' | 'red'
 // explicit layout call — Provider/Model are the only things that moved down
 // into ChatInput, next to where the user actually types.
 export function ChatTopBar({
+  title,
   executionMode = 'execute',
   onExecutionModeChange,
   monitorOpen = false,
@@ -101,9 +103,14 @@ export function ChatTopBar({
   return (
     <div className="chat-top-bar" ref={rootRef}>
       <div className="chat-top-left">
-        {executionMode !== 'execute' && (
-          <div className={`chat-mode-badge chat-mode-badge--${executionMode}`}>
-            {executionMode === 'plan' ? 'Plan Mode' : 'Pair Programming'}
+        {/* No "Plan Mode" badge here anymore - the mode toggle on the right
+            (blue "Plan" pill) already says that; repeating it here was pure
+            duplication. Pair programming has no such indicator elsewhere
+            yet, so it keeps its badge until it does. */}
+        {title && <span className="chat-session-title" title={title}>{title}</span>}
+        {executionMode === 'pair_programming' && (
+          <div className="chat-mode-badge chat-mode-badge--pair_programming">
+            Pair Programming
           </div>
         )}
       </div>
@@ -212,14 +219,32 @@ ${ICON_BUTTON_CSS}
   min-height: 28px;
 }
 
+/* Shrinks (and the title inside it truncates, then disappears entirely)
+   before ever taking space away from .chat-top-actions on the right - the
+   action icons are the one thing that must never get squeezed off a narrow
+   window; the session title is the thing that gives way first. */
 .chat-top-left {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
 }
 
 .chat-top-selector {
   position: relative;
+}
+
+.chat-session-title {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 320px;
+  min-width: 0;
 }
 
 .chat-mode-badge {
@@ -238,21 +263,6 @@ ${ICON_BUTTON_CSS}
 @keyframes mode-badge-in {
   from { opacity: 0; transform: scale(0.88); }
   to   { opacity: 1; transform: scale(1); }
-}
-
-.chat-mode-badge--plan {
-  background: rgba(239, 124, 47, 0.13);
-  border: 1px solid rgba(239, 124, 47, 0.35);
-  color: var(--color-accent);
-}
-
-.chat-mode-badge--plan::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--color-accent);
-  animation: mode-dot-pulse 1.8s ease-in-out infinite;
 }
 
 .chat-mode-badge--pair_programming {
@@ -280,6 +290,7 @@ ${ICON_BUTTON_CSS}
   align-items: center;
   gap: 6px;
   position: relative;
+  flex-shrink: 0;
 }
 
 .chat-auto-btn {

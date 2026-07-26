@@ -1,26 +1,37 @@
-# Backend sidecar binary
+# Backend Sidecar Binary
 
 `electron-builder` bundles whatever is in this directory into the packaged
 app's resources (`extraResources` in `package.json`, `to: "backend"`),
 and `src/main/backend-process.ts` spawns it at startup as
 `<resourcesPath>/backend/seshat-backend[.exe]`.
 
-Before running `npm run package` for a given target platform, place the
-`seshat-backend` binary **cross-compiled for that target** here:
+Before packaging for a given target platform, place the `seshat-backend`
+binary compiled for that target here:
 
 - Linux: `seshat-backend`
 - Windows: `seshat-backend.exe`
 - macOS: `seshat-backend`
 
-e.g. from `seshat-backend/`:
+The UI package provides convenience commands that build the sidecar first:
 
 ```sh
-CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build -o ../seshat-ui/resources/backend/seshat-backend     ./cmd/api
-CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o ../seshat-ui/resources/backend/seshat-backend.exe ./cmd/api
-CGO_ENABLED=0 GOOS=darwin  GOARCH=arm64 go build -o ../seshat-ui/resources/backend/seshat-backend     ./cmd/api
+cd seshat-ui
+npm run package:win
+npm run package:linux
 ```
 
-This directory's actual binary is intentionally **not committed** (see
-`.gitignore`) — it's a per-target build artifact, not source. Automating
-"build the right one per target before each `electron-builder` invocation"
-is a separate, not-yet-built step (multi-platform packaging pipeline).
+The sidecar build step uses `scripts/build-desktop-sidecar.mjs`, which sets
+`GOOS`, `GOARCH`, and `CGO_ENABLED=0` explicitly so the output matches the
+requested target even when the command is launched from another OS.
+
+For a centrally managed build, set `SESHAT_DEFAULT_SERVER_URL` while packaging
+or launching the Electron app. The main process passes it to the sidecar as
+`SESHAT_SERVER_URL` only when `SESHAT_SERVER_URL` is not already set. Leaving it
+empty keeps the desktop app local-first/standalone.
+
+```sh
+SESHAT_DEFAULT_SERVER_URL=https://server.example.com npm run package:linux
+```
+
+This directory's actual binary is intentionally not committed because it is a
+per-target build artifact, not source.

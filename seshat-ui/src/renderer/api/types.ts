@@ -90,19 +90,28 @@ export type TokenUsage = {
 
 export type QueryRequest = {
   session_id?: string
-  model?: string
-  messages: Message[]
-  max_tokens?: number
-  temperature?: number
+  prompt: string
+  provider_setting_id?: string
+  model_id?: string
+  permission_mode?: string
+  execution_origin?: string
+  corpus_id?: string
+  file_ids?: string[]
+  append_system_prompt?: string
+  agent_slug?: string
 }
 
 export type QueryResponse = {
-  message_id: string
-  role: 'assistant'
-  content: ContentBlock[]
-  stop_reason: string
-  usage: TokenUsage
-  metadata: Record<string, unknown>
+  session_id: string
+  content: string
+  stop_reason?: string
+  turn_number?: number
+  is_complete: boolean
+  usage?: TokenUsage
+  tool_uses?: ToolUseBlock[]
+  tool_results?: ToolResultBlock[]
+  messages?: Message[]
+  rag_results?: RAGSearchResult[]
 }
 
 export type StreamEvent =

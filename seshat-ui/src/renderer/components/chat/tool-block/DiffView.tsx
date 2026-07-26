@@ -2,7 +2,7 @@ import { Copy } from '@icon-park/react'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import type { ToolUseBlock } from '@/api/types'
-import { languageForPath, basename } from './helpers'
+import { languageForPath } from './helpers'
 
 // ─── Backend payload shapes ─────────────────────────────────────────────────
 // Mirrors github.com/KPO-Tech/seshat's edit_file/write_file tool output
@@ -116,7 +116,7 @@ function computeLcsDiff(oldStr: string, newStr: string): DiffRow[] {
   const newLines = newStr.split('\n')
   const n = oldLines.length
   const m = newLines.length
-  const dp: number[][] = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0))
+  const dp: number[][] = Array.from({ length: n + 1 }, () => Array.from({ length: m + 1 }, () => 0))
   for (let i = n - 1; i >= 0; i--) {
     for (let j = m - 1; j >= 0; j--) {
       dp[i][j] = oldLines[i] === newLines[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1])
@@ -160,6 +160,13 @@ export function resolveDiffRows(tool: ToolUseBlock): ResolvedDiff | null {
     const rows = parseUnifiedDiffText(gitDiff.patch)
     if (rows.length > 0) return summarize(rows)
   }
+
+  // A landed, failed result has no structured_patch/git_diff (the tool never
+  // got far enough to produce one) - falling through to the input-based
+  // fallback below would render the model's *proposed* content as if it were
+  // a successful diff, with nothing but the small status icon to say
+  // otherwise. Bail out here so the caller shows the real error instead.
+  if (tool._result?.isError) return null
 
   // Fallback: compute client-side from raw input/original content. Covers
   // the brief window before tool._result has landed, and edit_file's
@@ -208,13 +215,13 @@ export function DiffView({
       <style>{DIFF_VIEW_CSS}</style>
       {filePath && (
         <div className="tb-edit-path-row">
-          <span className="tb-filepath" title={filePath}>{basename(filePath)}</span>
+          <span className="tb-filepath-full" title={filePath}>{filePath}</span>
+          <span className="tb-difv-stats">
+            <span className="tb-difv-add">+{addCount}</span>
+            <span className="tb-difv-del">−{delCount}</span>
+          </span>
         </div>
       )}
-      <div className="tb-difv-stats">
-        <span className="tb-difv-add">+{addCount}</span>
-        <span className="tb-difv-del">−{delCount}</span>
-      </div>
       <div className="tb-diff">
         <button className="tb-diff-copy" type="button" title="Copy diff" onClick={() => void navigator.clipboard.writeText(copyText)}>
           <Copy size={10} />
@@ -253,7 +260,15 @@ const DIFF_VIEW_CSS = `
 .tb-difv {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+}
+
+/* Fused directly to .tb-edit-path-row above (see styles.ts) - no border-top
+   or top radius of its own, so the path/stats strip and the diff body read
+   as one continuous bordered box instead of two stacked ones. */
+.tb-edit-path-row + .tb-diff {
+  border-top: none;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
 }
 
 .tb-difv-stats {

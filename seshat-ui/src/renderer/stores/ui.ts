@@ -60,7 +60,10 @@ function isRightPanelPinned(p: RightPanelInstance): boolean {
 const RIGHT_PANEL_STACK_LIMIT = 2
 const RIGHT_PANEL_COLUMN_LIMIT = 2
 // A lone open column can go up to 720px; once a 2nd column opens, both
-// clamp into this tighter range so the chat pane never gets crushed.
+// clamp into this tighter range so the chat pane never gets crushed. This
+// static range alone is only safe on a wide-enough window, though - see
+// clampRightPanelWidth below for the dynamic top-up that protects small
+// windows too.
 const RIGHT_PANEL_WIDTH_SOLO = { min: 320, max: 720 }
 const RIGHT_PANEL_WIDTH_SHARED = { min: 280, max: 480 }
 // A newly-opened column's default width is this fraction of the window,
@@ -75,6 +78,42 @@ const RIGHT_PANEL_WIDTH_RATIO = 0.28
 // chat pane is never squeezed on a smaller laptop screen.
 const RIGHT_PANEL_COLUMN_BREAKPOINT = 1600
 
+// Matches tokens.css's --sidebar-width/--sidebar-collapsed-width - not read
+// from the DOM since this clamp runs inside a store action, not a component.
+const SIDEBAR_WIDTH = 224
+const SIDEBAR_COLLAPSED_WIDTH = 56
+// ChatTopBar's session title shrinks away under pressure before the icon
+// cluster ever does (see its own CSS - .chat-top-left has min-width:0/
+// flex:1 so the title gives up its space first), so this floor doesn't
+// need to reserve room for it - but it still has to keep the chat pane
+// itself readable, not just wide enough for .chat-top-actions' icon
+// cluster (~185px). 460 is the width the chat pane actually renders at
+// once the right panel column hits its own static SOLO max (720px) on a
+// normal-sized window - i.e. the reduction a user already sees and finds
+// acceptable day-to-day. Without this floor, shrinking the window all the
+// way down to Electron's own minWidth (1100, see main/index.ts) let the
+// dynamic cap below keep growing the panel past that point, crushing the
+// chat pane down to as little as ~260px - narrower than the window ever
+// showed it at a normal size. This keeps the floor at exactly the pane
+// width already considered normal, all the way down to the smallest the
+// OS window can ever be.
+const MIN_CHAT_PANE_WIDTH = 460
+
+// The actual width a right-panel column is allowed to take: the static
+// SOLO/SHARED range, further capped by whatever the window can spare once
+// the sidebar and a usable chat pane are accounted for. On a large/maximized
+// window the dynamic cap is always well above the static max, so behavior
+// there is unchanged (this was already tuned and correct) - it only bites
+// on a small window, which is exactly the case that was breaking.
+function clampRightPanelWidth(width: number, windowWidth: number, sidebarCollapsed: boolean, columnCount: number): number {
+  const range = columnCount >= RIGHT_PANEL_COLUMN_LIMIT ? RIGHT_PANEL_WIDTH_SHARED : RIGHT_PANEL_WIDTH_SOLO
+  const sidebarWidth = sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH
+  const dynamicMax = Math.max(240, windowWidth - sidebarWidth - MIN_CHAT_PANE_WIDTH)
+  const effectiveMax = Math.min(range.max, dynamicMax)
+  const effectiveMin = Math.min(range.min, effectiveMax)
+  return Math.round(Math.max(effectiveMin, Math.min(width, effectiveMax)))
+}
+
 type UIState = {
   theme: Theme
   sidebarCollapsed: boolean
@@ -84,7 +123,14 @@ type UIState = {
   permissionMode: UIPermissionMode
   toolExpansion: Record<string, boolean>
   thinkingExpansion: Record<string, boolean>
-  toolGroupExpansion: Record<string, boolean>
+  // Answers already submitted within a still-open ask_user_question call,
+  // keyed by `${toolUseId}:${questionIndex}` - AskUserPanel's own local
+  // state doesn't survive it, since the panel unmounts and remounts between
+  // each question (Conversation.tsx's pendingAskUser goes briefly null the
+  // moment an answer is submitted, until the backend's next prompt for the
+  // same tool call arrives). Session-scoped in spirit but harmless to
+  // persist - answers are per tool_use_id, never reused across calls.
+  askUserAnswers: Record<string, string>
   // Signatures (see lib/permissionSignature.ts) the user has marked "always
   // allow" from a PermissionCard — future matching tool.permission_required
   // events are auto-approved without ever showing the card again. Persisted
@@ -107,7 +153,7 @@ type UIState = {
   setPermissionMode: (mode: UIPermissionMode) => void
   setToolExpansion: (toolUseId: string, expanded: boolean) => void
   setThinkingExpansion: (thinkingId: string, expanded: boolean) => void
-  setToolGroupExpansion: (groupId: string, expanded: boolean) => void
+  setAskUserAnswer: (key: string, value: string) => void
   rememberApproval: (signature: string) => void
   forgetApproval: (signature: string) => void
 }
@@ -125,7 +171,7 @@ export const useUIStore = create<UIState>()(
       permissionMode: 'auto',
       toolExpansion: {},
       thinkingExpansion: {},
-      toolGroupExpansion: {},
+      askUserAnswers: {},
       rememberedApprovals: {},
 
       toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
@@ -141,10 +187,9 @@ export const useUIStore = create<UIState>()(
           const ratio = width / s.windowWidth
           const rescale = (columns: RightPanelColumn[]) => {
             if (!Number.isFinite(ratio) || ratio === 1) return columns
-            const range = columns.length >= RIGHT_PANEL_COLUMN_LIMIT ? RIGHT_PANEL_WIDTH_SHARED : RIGHT_PANEL_WIDTH_SOLO
             return columns.map((c) => ({
               ...c,
-              width: Math.round(Math.max(range.min, Math.min(c.width * ratio, range.max))),
+              width: clampRightPanelWidth(c.width * ratio, width, s.sidebarCollapsed, columns.length),
             }))
           }
 
@@ -292,14 +337,13 @@ export const useUIStore = create<UIState>()(
         }),
 
       setRightPanelWidth: (columnId, width) =>
-        set((s) => {
-          const range = s.rightColumns.length >= RIGHT_PANEL_COLUMN_LIMIT ? RIGHT_PANEL_WIDTH_SHARED : RIGHT_PANEL_WIDTH_SOLO
-          return {
-            rightColumns: s.rightColumns.map((c) =>
-              c.id === columnId ? { ...c, width: Math.max(range.min, Math.min(width, range.max)) } : c
-            ),
-          }
-        }),
+        set((s) => ({
+          rightColumns: s.rightColumns.map((c) =>
+            c.id === columnId
+              ? { ...c, width: clampRightPanelWidth(width, s.windowWidth, s.sidebarCollapsed, s.rightColumns.length) }
+              : c
+          ),
+        })),
 
       setRightPanelSplit: (columnId, ratio) =>
         set((s) => ({
@@ -344,11 +388,11 @@ export const useUIStore = create<UIState>()(
           },
         })),
 
-      setToolGroupExpansion: (groupId, expanded) =>
+      setAskUserAnswer: (key, value) =>
         set((s) => ({
-          toolGroupExpansion: {
-            ...s.toolGroupExpansion,
-            [groupId]: expanded,
+          askUserAnswers: {
+            ...s.askUserAnswers,
+            [key]: value,
           },
         })),
 
@@ -378,7 +422,7 @@ export const useUIStore = create<UIState>()(
         permissionMode: s.permissionMode,
         toolExpansion: s.toolExpansion,
         thinkingExpansion: s.thinkingExpansion,
-        toolGroupExpansion: s.toolGroupExpansion,
+        askUserAnswers: s.askUserAnswers,
         rememberedApprovals: s.rememberedApprovals,
       }),
     }

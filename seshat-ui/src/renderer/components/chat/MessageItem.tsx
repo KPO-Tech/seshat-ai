@@ -1,14 +1,15 @@
 import { memo } from 'react'
 import { Copy, Down } from '@icon-park/react'
-import { NexusLogo } from '@/components/NexusLogo'
 import { MarkdownView } from '@/components/MarkdownView'
 import { useUIStore } from '@/stores/ui'
 import { ToolBlock } from './ToolBlock'
 import { PermissionCard } from './PermissionCard'
 import { AgentCardsRow } from './AgentToolView'
 import { QuietToolGroup } from './QuietToolGroup'
-import { isGroupable, breaksGroup } from './tool-block/quietGroupPhrase'
+import { breaksGroup } from './tool-block/quietGroupPhrase'
+import { isGroupable } from './tool-block/toolDisplay'
 import type { Message, ToolUseBlock, ToolStatus } from '@/api/types'
+import type { StreamingBlock } from '@/stores/session'
 
 // Tools that never appear as chat tool blocks - each has its own dedicated
 // surface elsewhere so an inline line here would just be a redundant second
@@ -65,7 +66,15 @@ function ThinkingBlock({ thinkingId, thinking }: { thinkingId: string; thinking:
       </button>
       {expanded && (
         <div className="msg-thinking-body">
-          <MarkdownView>{thinking}</MarkdownView>
+          {/* Reasoning-model summaries (Codex/gpt-5's own reasoning_summary
+              text) come back with the model's own markdown structure - a
+              bold lead-in line, sometimes a blockquote - which otherwise
+              renders at full heading/blockquote weight and blows up what's
+              supposed to be a small, muted, italic aside into something
+              that looks like its own card. tb-thinking-md neutralizes that
+              formatting back down to the same subdued style regardless of
+              what markdown the model used. */}
+          <MarkdownView className="tb-thinking-md">{thinking}</MarkdownView>
         </div>
       )}
     </div>
@@ -75,21 +84,36 @@ function ThinkingBlock({ thinkingId, thinking }: { thinkingId: string; thinking:
 type Props = {
   message: Message
   sessionId?: string
-  showAvatar?: boolean
   compact?: boolean
-  onApproveTool?: (toolUseId: string) => void
+  onApproveTool?: (toolUseId: string, remember?: boolean) => void
   onDenyTool?: (toolUseId: string) => void
   onSubmitToolPrompt?: (promptId: string, value: unknown) => void
 }
 
 const AGENT_TOOLS = new Set(['agent', 'spawn_agent'])
 
-type RenderItem =
-  | { kind: 'block'; block: Message['content'][number]; index: number }
-  | { kind: 'agent-group'; tools: ToolUseBlock[] }
-  | { kind: 'quiet-group'; tools: ToolUseBlock[] }
+export type QuietGroupItem =
+  | { kind: 'tool'; tool: ToolUseBlock }
+  | { kind: 'thinking'; thinkingId: string; thinking: string }
 
-function groupBlocks(blocks: Message['content']): RenderItem[] {
+export type RenderItem =
+  | { kind: 'block'; block: Message['content'][number] | StreamingBlock; index: number }
+  | { kind: 'agent-group'; tools: ToolUseBlock[] }
+  | { kind: 'quiet-group'; items: QuietGroupItem[] }
+
+// A tool_use block from either a persisted Message's content (ContentBlock)
+// or the live streaming state (StreamingBlock) - structurally identical
+// where it matters (id/name/input/_status/_result/...) so the same grouping
+// logic (and the same QuietToolGroup timeline) works for both a finished
+// message and a sub-agent's still-streaming activity feed (see
+// SubagentPanel.tsx, the other caller of groupBlocks).
+type GroupableBlock = Message['content'][number] | StreamingBlock
+
+// messageId is only used to build the same `${messageId}-thinking-${index}`
+// id a top-level ThinkingBlock would use for this position, so expansion
+// state stays keyed consistently whether a thinking block ends up folded
+// into a group or rendered standalone.
+export function groupBlocks(blocks: GroupableBlock[], messageId: string): RenderItem[] {
   const items: RenderItem[] = []
   let i = 0
   while (i < blocks.length) {
@@ -118,14 +142,26 @@ function groupBlocks(blocks: Message['content']): RenderItem[] {
     ) {
       const group: ToolUseBlock[] = [block]
       let j = i + 1
-      while (
-        j < blocks.length &&
-        blocks[j].type === 'tool_use' &&
-        isGroupable((blocks[j] as ToolUseBlock).name) &&
-        !breaksGroup(blocks[j] as ToolUseBlock)
-      ) {
-        group.push(blocks[j] as ToolUseBlock)
-        j++
+      while (true) {
+        // A `thinking` block sitting between two groupable tool calls is
+        // silent reasoning, not a message to the user - it doesn't end the
+        // run any more than the tool calls themselves do. Skip over a run
+        // of them (there can be more than one) to see if another groupable
+        // tool follows; if not, leave j where it was and let them render as
+        // normal standalone ThinkingBlocks after the group.
+        let k = j
+        while (k < blocks.length && blocks[k].type === 'thinking') k++
+        if (
+          k < blocks.length &&
+          blocks[k].type === 'tool_use' &&
+          isGroupable((blocks[k] as ToolUseBlock).name) &&
+          !breaksGroup(blocks[k] as ToolUseBlock)
+        ) {
+          group.push(blocks[k] as ToolUseBlock)
+          j = k + 1
+          continue
+        }
+        break
       }
       // A lone tool (nothing simultaneous next to it - just text before or
       // after) gets the full standalone card via the normal 'block' path
@@ -133,7 +169,15 @@ function groupBlocks(blocks: Message['content']): RenderItem[] {
       // useful once there are 2+ tools running back-to-back with no text
       // separating them.
       if (group.length > 1) {
-        items.push({ kind: 'quiet-group', tools: group })
+        const groupItems: QuietGroupItem[] = []
+        for (let idx = i; idx < j; idx++) {
+          const b = blocks[idx]
+          if (b.type === 'tool_use') groupItems.push({ kind: 'tool', tool: b })
+          else if (b.type === 'thinking') {
+            groupItems.push({ kind: 'thinking', thinkingId: `${messageId}-thinking-${idx}`, thinking: b.thinking })
+          }
+        }
+        items.push({ kind: 'quiet-group', items: groupItems })
         i = j
         continue
       }
@@ -146,7 +190,7 @@ function groupBlocks(blocks: Message['content']): RenderItem[] {
 }
 
 
-export const MessageItem = memo(function MessageItem({ message, sessionId, showAvatar = true, compact = false, onApproveTool, onDenyTool, onSubmitToolPrompt }: Props) {
+export const MessageItem = memo(function MessageItem({ message, sessionId, compact = false, onApproveTool, onDenyTool, onSubmitToolPrompt }: Props) {
   if (isToolResultOnly(message)) return null
 
   const isUser = message.role === 'user'
@@ -167,17 +211,10 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, showA
     .filter(Boolean)
     .join('\n\n')
 
-  const renderItems = groupBlocks(visibleBlocks)
+  const renderItems = groupBlocks(visibleBlocks, message.id ?? 'msg')
 
   return (
     <div className={`msg-row ${isUser ? 'user' : 'assistant'}${compact ? ' compact' : ''}`}>
-      {!isUser && showAvatar && (
-        <div className="msg-agent-icon">
-          <NexusLogo size={16} />
-        </div>
-      )}
-      {!isUser && !showAvatar && <div className="msg-agent-spacer" aria-hidden="true" />}
-
       <div className="msg-content">
         {renderItems.map((item, i) => {
           if (item.kind === 'agent-group') {
@@ -195,10 +232,11 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, showA
           }
 
           if (item.kind === 'quiet-group') {
+            const firstToolId = item.items.find((it) => it.kind === 'tool')?.tool.id
             return (
               <QuietToolGroup
-                key={item.tools[0]?.id || `${message.id ?? 'msg'}-quiet-${i}`}
-                tools={item.tools}
+                key={firstToolId || `${message.id ?? 'msg'}-quiet-${i}`}
+                items={item.items}
                 sessionId={sessionId}
                 onSubmitPrompt={onSubmitToolPrompt}
               />
@@ -284,23 +322,6 @@ export const MESSAGE_ITEM_CSS = `
   flex-direction: row-reverse;
 }
 
-.msg-agent-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--color-surface);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  margin-top: 4px;
-}
-
-.msg-agent-spacer {
-  width: 28px;
-  flex-shrink: 0;
-}
-
 .msg-content {
   display: flex;
   flex-direction: column;
@@ -311,7 +332,7 @@ export const MESSAGE_ITEM_CSS = `
 
 .msg-row.user .msg-content {
   align-items: flex-end;
-  max-width: 72%;
+  max-width: 85%;
 }
 
 .msg-bubble {
@@ -383,6 +404,31 @@ export const MESSAGE_ITEM_CSS = `
   color: var(--color-text-muted);
   line-height: 1.65;
 }
+
+/* Neutralizes the model's own markdown structure (bold lead-ins, headings,
+   blockquotes - reasoning-summary providers like Codex format their summary
+   this way) back down to the same small/muted/italic look as the rest of
+   the thinking body, instead of a nested heading/blockquote fighting for
+   attention with its own border and full-brightness text. */
+.tb-thinking-md h1, .tb-thinking-md h2, .tb-thinking-md h3 {
+  margin: 0 0 4px;
+  font-size: inherit;
+  font-weight: 600;
+  font-style: italic;
+  color: inherit;
+}
+
+.tb-thinking-md strong { font-weight: 600; }
+
+.tb-thinking-md blockquote {
+  margin: 4px 0;
+  padding-left: 8px;
+  border-left: 2px solid var(--color-border-subtle);
+  color: inherit;
+}
+
+.tb-thinking-md p { margin: 0 0 6px; }
+.tb-thinking-md p:last-child { margin-bottom: 0; }
 
 .msg-footer {
   display: flex;
