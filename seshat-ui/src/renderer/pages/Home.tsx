@@ -34,6 +34,7 @@ export function Home() {
   const [pendingSessionId, setPendingSessionId] = useState<string | null>(null)
   const [attachments, setAttachments] = useState<ChatAttachment[]>([])
   const [isUploadingAttachments, setIsUploadingAttachments] = useState(false)
+  const [attachmentError, setAttachmentError] = useState<string | null>(null)
 
   const selectedProvider = providers.find((provider) => provider.id === selectedProviderId) ?? null
   // Use useMemo so the empty-array fallback is a stable reference across renders.
@@ -135,9 +136,13 @@ export function Home() {
   const handleAttachFiles = async (files: FileList) => {
     if (!files.length) return
     setIsUploadingAttachments(true)
+    setAttachmentError(null)
     try {
       const id = await ensureSessionCreated()
-      if (!id) return
+      if (!id) {
+        setAttachmentError('Select a provider and model before attaching files.')
+        return
+      }
       const uploaded: ChatAttachment[] = []
       for (const file of Array.from(files)) {
         const form = new FormData()
@@ -163,7 +168,8 @@ export function Home() {
         setAttachments((current) => [...current, ...uploaded])
       }
     } catch (err) {
-      setErrorMessage(err instanceof ApiError ? err.message : 'Failed to attach files.')
+      const message = err instanceof ApiError ? err.message : 'Failed to attach files.'
+      setAttachmentError(`Attachment upload failed: ${message}`)
     } finally {
       setIsUploadingAttachments(false)
     }
@@ -171,6 +177,7 @@ export function Home() {
 
   function handleRemoveAttachment(fileId: string) {
     setAttachments((current) => current.filter((file) => file.id !== fileId))
+    setAttachmentError(null)
   }
 
   async function handleSend() {
@@ -220,6 +227,7 @@ export function Home() {
       setInputValue('')
       setProjectPath('')
       setAttachments([])
+      setAttachmentError(null)
       setPendingSessionId(null)
       navigate(`/conversation/${sessionId}`)
     } catch (error) {
@@ -235,7 +243,7 @@ export function Home() {
     <div className="home-root">
       <style>{HOME_CSS}</style>
 
-      {/* ── Top Bar ── */}
+      {/* Top Bar */}
       <div className="home-top-bar">
         <ChatTopBar
           permissionMode={permissionMode}
@@ -244,7 +252,7 @@ export function Home() {
         />
       </div>
 
-      {/* ── Main Content ── */}
+      {/* Main Content */}
       <div className="home-center">
         <h1 className="home-greeting">Hi, what's your plan for today?</h1>
 
@@ -261,6 +269,7 @@ export function Home() {
             onAttachFiles={handleAttachFiles}
             onRemoveAttachment={handleRemoveAttachment}
             isUploadingAttachments={isUploadingAttachments}
+            attachmentError={attachmentError}
             providerLabel={selectedProvider?.name ?? 'Provider'}
             modelLabel={selectedModel?.display_name || selectedModel?.model_id || 'Model'}
             providerOptions={providers.map((provider) => ({

@@ -304,8 +304,14 @@ export function ChatInput({
         </div>
       )}
 
-      {(attachmentError || modelError) && (
+      {(isUploadingAttachments || attachmentError || modelError) && (
         <div className="chat-input-notices" aria-live="polite">
+          {isUploadingAttachments && (
+            <div className="chat-input-notice chat-input-notice--muted">
+              <LoadingOne size={12} className="chat-status-spin" />
+              <span>Uploading files...</span>
+            </div>
+          )}
           {attachmentError && <div className="chat-input-notice">{attachmentError}</div>}
           {modelError && (
             <div className="chat-input-notice">
@@ -628,7 +634,7 @@ ${SELECTOR_PILL_CSS}
 .chat-input-notice {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 8px;
   color: var(--color-error);
   font-size: 11px;
@@ -639,7 +645,14 @@ ${SELECTOR_PILL_CSS}
   padding: 6px 8px;
 }
 
+.chat-input-notice--muted {
+  color: var(--color-text-secondary);
+  background: rgba(255, 255, 255, 0.035);
+  border-color: var(--color-border-subtle);
+}
+
 .chat-input-notice-action {
+  margin-left: auto;
   flex-shrink: 0;
   border: 1px solid rgba(var(--color-error-rgb), 0.2);
   background: transparent;
