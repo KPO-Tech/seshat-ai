@@ -1102,14 +1102,36 @@ function preserveLocalUserAttachments(
   store: ReturnType<typeof useSessionStore.getState>,
 ) {
   const existing = store.sessions.find((session) => session.id === sessionId)?.messages ?? []
-  const localUserMessages = existing.filter((message) =>
-    message.role === 'user' && Array.isArray(message.metadata?.attachments)
+  const localById = new Map(
+    existing
+      .filter((message) => message.id && message.role === 'user' && Array.isArray(message.metadata?.attachments))
+      .map((message) => [message.id as string, message]),
   )
-  if (localUserMessages.length === 0) return
+  const localUserMessages = existing.filter((message) => message.role === 'user' && Array.isArray(message.metadata?.attachments))
+  if (localUserMessages.length === 0 && localById.size === 0) return
 
   const used = new Set<number>()
-  for (const message of messages) {
+  let userOrdinal = 0
+  for (let messageIndex = 0; messageIndex < messages.length; messageIndex++) {
+    const message = messages[messageIndex]
+    if (message.role !== 'user') continue
+    const currentOrdinal = userOrdinal
+    userOrdinal++
     if (message.role !== 'user' || message.metadata?.attachments) continue
+
+    const byId = message.id ? localById.get(message.id) : undefined
+    if (byId?.metadata?.attachments) {
+      message.metadata = { ...message.metadata, attachments: byId.metadata.attachments }
+      continue
+    }
+
+    const byOrdinal = localUserMessages[currentOrdinal]
+    if (byOrdinal?.metadata?.attachments && !used.has(currentOrdinal)) {
+      used.add(currentOrdinal)
+      message.metadata = { ...message.metadata, attachments: byOrdinal.metadata.attachments }
+      continue
+    }
+
     const text = message.content
       .filter((block) => block.type === 'text')
       .map((block) => block.text)
