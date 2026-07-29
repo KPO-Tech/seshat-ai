@@ -28,6 +28,7 @@ jobs:
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       desktop: ${{ steps.filter.outputs.desktop }}
+      console: ${{ steps.filter.outputs.console }}
       website: ${{ steps.filter.outputs.website }}
     steps:
       - uses: actions/checkout@v4
@@ -45,6 +46,7 @@ jobs:
             echo "no usable base ref, running everything"
             echo "backend=true" >> "$GITHUB_OUTPUT"
             echo "desktop=true" >> "$GITHUB_OUTPUT"
+            echo "console=true" >> "$GITHUB_OUTPUT"
             echo "website=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -52,6 +54,7 @@ jobs:
           echo "$CHANGED"
           echo "backend=$(echo "$CHANGED" | grep -qE '^(seshat-backend/|seshat-server/|go\.work)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
           echo "desktop=$(echo "$CHANGED" | grep -q '^seshat-ui/' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "console=$(echo "$CHANGED" | grep -q '^seshat-console/' && echo true || echo false)" >> "$GITHUB_OUTPUT"
           echo "website=$(echo "$CHANGED" | grep -q '^website/' && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
   build:
@@ -134,6 +137,32 @@ jobs:
           install-mode: goinstall
           args: --timeout=5m ./seshat-backend/... ./seshat-server/...
 
+  security:
+    name: Security
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.work
+          cache-dependency-path: |
+            go.work.sum
+            seshat-backend/go.sum
+            seshat-server/go.sum
+
+      - name: gosec
+        uses: securego/gosec@master
+        with:
+          args: -exclude-generated ./seshat-backend/... ./seshat-server/...
+
+      - name: govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./seshat-backend/... ./seshat-server/...
+
   desktop:
     name: Desktop
     needs: changes
@@ -162,6 +191,32 @@ jobs:
 
       - name: Build
         working-directory: seshat-ui
+        run: npm run build
+
+  console:
+    name: Console
+    needs: changes
+    if: needs.changes.outputs.console == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: seshat-console/package-lock.json
+
+      - name: Install dependencies
+        working-directory: seshat-console
+        run: npm ci
+
+      - name: Lint
+        working-directory: seshat-console
+        run: npm run lint
+
+      - name: Build (includes typecheck)
+        working-directory: seshat-console
         run: npm run build
 
   website:
@@ -219,20 +274,22 @@ jobs:
   gate:
     name: Gate
     runs-on: ubuntu-latest
-    needs: [changes, build, test, lint, desktop, website, branch-policy]
+    needs: [changes, build, test, lint, security, desktop, console, website, branch-policy]
     if: always()
     steps:
       - name: All checks passed
         run: |
-          # build/test/lint/desktop/website are conditionally skipped by the
-          # changes job when the diff doesn't touch what they cover - treat
-          # "skipped" as passing, same as "success". changes and branch-policy
-          # always run and must succeed outright.
+          # build/test/lint/security/desktop/console/website are conditionally
+          # skipped by the changes job when the diff doesn't touch what they
+          # cover - treat "skipped" as passing, same as "success". changes and
+          # branch-policy always run and must succeed outright.
           ok() { [[ "$1" == "success" || "$1" == "skipped" ]]; }
           if ! ok "${{ needs.build.result }}" || \
              ! ok "${{ needs.test.result }}" || \
              ! ok "${{ needs.lint.result }}" || \
+             ! ok "${{ needs.security.result }}" || \
              ! ok "${{ needs.desktop.result }}" || \
+             ! ok "${{ needs.console.result }}" || \
              ! ok "${{ needs.website.result }}" || \
              [[ "${{ needs.changes.result }}" != "success" ]] || \
              [[ "${{ needs.branch-policy.result }}" != "success" ]]; then
@@ -241,7 +298,9 @@ jobs:
             echo "  build:         ${{ needs.build.result }}"
             echo "  test:          ${{ needs.test.result }}"
             echo "  lint:          ${{ needs.lint.result }}"
+            echo "  security:      ${{ needs.security.result }}"
             echo "  desktop:       ${{ needs.desktop.result }}"
+            echo "  console:       ${{ needs.console.result }}"
             echo "  website:       ${{ needs.website.result }}"
             echo "  branch-policy: ${{ needs.branch-policy.result }}"
             exit 1
