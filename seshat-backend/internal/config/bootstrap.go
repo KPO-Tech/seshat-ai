@@ -547,7 +547,10 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	if entries, err := os.ReadDir(skillsloader.GetSkillReposPath()); err == nil {
 		var installed []skillrepos.Repo
 		for _, e := range entries {
-			if e.IsDir() {
+			// skillrepos.EnsureCloned keeps its own bookkeeping in a
+			// ".pull-stamps" subdir of the same directory - skip dotfiles so
+			// it isn't re-listed here as a fake repo with no URL.
+			if e.IsDir() && !strings.HasPrefix(e.Name(), ".") {
 				installed = append(installed, skillrepos.Repo{Name: e.Name()})
 			}
 		}
