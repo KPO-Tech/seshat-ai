@@ -153,6 +153,16 @@ type SessionState = {
   updateSubagentStreamBlock: (sessionId: string, toolUseId: string, index: number, delta: Partial<StreamingBlock>) => void
   clearSubagentStreaming: (sessionId: string, toolUseId: string) => void
   pushSubagentToolActivity: (sessionId: string, toolUseId: string, activity: ToolActivity) => void
+
+  // Wipes every session, message, and per-session UI/streaming/agent/plan
+  // state. Called on logout and before loading a freshly authenticated
+  // account's data — this store holds no `persist` middleware (nothing
+  // survives an app restart), but it IS a module-level singleton that
+  // outlives component unmounts, so switching accounts within the same
+  // running app without this would leave the previous account's session
+  // list merged into the new one (Shell's session fetch upserts, it never
+  // replaces — see the bug this fixes).
+  resetAll: () => void
 }
 
 export const useSessionStore = create<SessionState>((set, get) => ({
@@ -435,6 +445,16 @@ export const useSessionStore = create<SessionState>((set, get) => ({
           [sessionId]: { ...byId, [toolUseId]: { ...existing, activityLog: log } },
         },
       }
+    }),
+
+  resetAll: () =>
+    set({
+      sessions: [],
+      activeId: null,
+      streamingBySession: {},
+      isStreamingBySession: {},
+      agentStates: {},
+      subagentsBySession: {},
     }),
 }))
 
