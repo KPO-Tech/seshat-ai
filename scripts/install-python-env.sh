@@ -98,9 +98,13 @@ else
 fi
 
 # ── 4. Install docling-serve ──────────────────────────────────────────────────
-PACKAGE="docling-serve"
+# Pinned >=1.28.0: 1.27.0's policy.py crashes at import time
+# (AttributeError: 'types.UnionType' object has no attribute 'model_fields')
+# because _source_kinds() can't handle BatchSourceRequestItem's nested
+# discriminated union. Fixed upstream in 1.28.0.
+PACKAGE="docling-serve>=1.28.0"
 if [ -n "$DOCLING_EXTRAS" ]; then
-    PACKAGE="docling-serve[$DOCLING_EXTRAS]"
+    PACKAGE="docling-serve[$DOCLING_EXTRAS]>=1.28.0"
 fi
 
 info "Installing $PACKAGE into $VENV_DIR ..."
