@@ -67,6 +67,8 @@ type knowledgeProvider interface {
 type filesProvider interface {
 	GetFile(ctx context.Context, principal *backendauth.Principal, fileID string) (*backendfiles.File, error)
 	DownloadFile(ctx context.Context, principal *backendauth.Principal, fileID string) ([]byte, *backendfiles.File, error)
+	AttachToMessage(ctx context.Context, fileIDs []string, sessionID string, messageIndex int) error
+	ListMessageAttachments(ctx context.Context, sessionID string) ([]backendfiles.File, error)
 }
 
 type skillsProvider interface {
@@ -1255,6 +1257,23 @@ func (s *Service) BuildContextInput(ctx context.Context, p ContextBuildParams) (
 		ragResults = results
 		if ragBlock != "" {
 			input.AppendSystemPrompt = appendBlock(input.AppendSystemPrompt, ragBlock)
+		}
+	}
+
+	// Record which sent user message these files belong to, so the transcript
+	// can still show them after the sender's in-memory optimistic attachment
+	// state is gone (reload, app restart) - see filesProvider.AttachToMessage.
+	// messageIndex is this turn's position: the count of user messages already
+	// in the transcript before it lands.
+	if len(p.FileIDs) > 0 && s.files != nil && p.SessionID != "" {
+		if existing, err := s.loadSessionMessages(ctx, p.SessionID); err == nil {
+			messageIndex := 0
+			for _, m := range existing {
+				if m.Role == types.RoleUser {
+					messageIndex++
+				}
+			}
+			_ = s.files.AttachToMessage(ctx, p.FileIDs, p.SessionID, messageIndex)
 		}
 	}
 

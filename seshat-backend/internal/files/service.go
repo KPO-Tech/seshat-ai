@@ -214,19 +214,20 @@ func (s *Service) checkAccess(principal *backendauth.Principal, record *db.File)
 
 func fileFromDB(r db.File) *File {
 	return &File{
-		ID:           r.ID,
-		UserID:       r.UserID,
-		WorkspaceID:  r.WorkspaceID,
-		SessionID:    r.SessionID,
-		Category:     r.Category,
-		LocalPath:    r.LocalPath,
-		MarkdownPath: r.MarkdownPath,
-		Filename:     r.Filename,
-		ContentType:  r.ContentType,
-		Size:         r.Size,
-		SHA256:       r.SHA256,
-		CreatedAt:    r.CreatedAt,
-		UpdatedAt:    r.UpdatedAt,
+		ID:               r.ID,
+		UserID:           r.UserID,
+		WorkspaceID:      r.WorkspaceID,
+		SessionID:        r.SessionID,
+		Category:         r.Category,
+		LocalPath:        r.LocalPath,
+		MarkdownPath:     r.MarkdownPath,
+		Filename:         r.Filename,
+		ContentType:      r.ContentType,
+		Size:             r.Size,
+		SHA256:           r.SHA256,
+		UserMessageIndex: r.UserMessageIndex,
+		CreatedAt:        r.CreatedAt,
+		UpdatedAt:        r.UpdatedAt,
 	}
 }
 
@@ -386,6 +387,36 @@ func (s *Service) ListSessionFiles(ctx context.Context, principal *backendauth.P
 	records, err := s.files.ListBySessionID(ctx, sessionID)
 	if err != nil {
 		return nil, bkerr.Internal("list session files: "+err.Error(), err)
+	}
+	result := make([]File, 0, len(records))
+	for _, r := range records {
+		result = append(result, *fileFromDB(r))
+	}
+	return result, nil
+}
+
+// AttachToMessage records that fileIDs belong to the user message at
+// messageIndex within sessionID, so the transcript can still show them once
+// the sender's in-memory optimistic attachment state is gone.
+func (s *Service) AttachToMessage(ctx context.Context, fileIDs []string, sessionID string, messageIndex int) error {
+	if s == nil || s.files == nil {
+		return bkerr.Unavailable("file store not configured", nil)
+	}
+	if err := s.files.AttachToMessage(ctx, fileIDs, sessionID, messageIndex); err != nil {
+		return bkerr.Internal("attach files to message: "+err.Error(), err)
+	}
+	return nil
+}
+
+// ListMessageAttachments returns every file in sessionID that's been
+// associated with a specific sent message via AttachToMessage.
+func (s *Service) ListMessageAttachments(ctx context.Context, sessionID string) ([]File, error) {
+	if s == nil || s.files == nil {
+		return nil, bkerr.Unavailable("file store not configured", nil)
+	}
+	records, err := s.files.ListMessageAttachments(ctx, sessionID)
+	if err != nil {
+		return nil, bkerr.Internal("list message attachments: "+err.Error(), err)
 	}
 	result := make([]File, 0, len(records))
 	for _, r := range records {

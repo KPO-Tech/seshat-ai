@@ -31,8 +31,15 @@ type File struct {
 	StorageKey   string // key in ArtifactStore
 	SHA256       string
 	Status       string
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	// UserMessageIndex, when set, is the 0-based position of this file's
+	// owning user message within its session's transcript at the moment it
+	// was attached to a turn. Nil until AttachToMessage records it. Callers
+	// group the result by UserMessageIndex to reassemble the "which files
+	// belong to which sent message" association the transcript needs to
+	// keep showing attachments after a reload — nothing else records it.
+	UserMessageIndex *int
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 type CreateFileParams struct {
@@ -52,21 +59,22 @@ type CreateFileParams struct {
 // ─── GORM private model ───────────────────────────────────────────────────────
 
 type gFile struct {
-	ID            string  `gorm:"primaryKey;size:64"`
-	UserID        string  `gorm:"column:user_id;size:64;not null;index"`
-	WorkspaceID   *string `gorm:"column:workspace_id;size:64;index"`
-	SessionID     *string `gorm:"column:session_id;size:64;index"`
-	Category      *string `gorm:"column:category;size:32"`
-	LocalPath     *string `gorm:"column:local_path;size:1024"`
-	MarkdownPath  *string `gorm:"column:markdown_path;size:1024"`
-	Filename      string  `gorm:"not null"`
-	ContentType   string  `gorm:"column:content_type;not null;default:''"`
-	Size          int64   `gorm:"not null;default:0"`
-	StorageKey    string  `gorm:"column:storage_key;not null"`
-	SHA256        string  `gorm:"column:sha256;not null;default:''"`
-	Status        string  `gorm:"not null;default:'active';index"`
-	CreatedAtUnix int64   `gorm:"column:created_at_unix;autoCreateTime:unix"`
-	UpdatedAtUnix int64   `gorm:"column:updated_at_unix;autoUpdateTime:unix"`
+	ID               string  `gorm:"primaryKey;size:64"`
+	UserID           string  `gorm:"column:user_id;size:64;not null;index"`
+	WorkspaceID      *string `gorm:"column:workspace_id;size:64;index"`
+	SessionID        *string `gorm:"column:session_id;size:64;index"`
+	Category         *string `gorm:"column:category;size:32"`
+	LocalPath        *string `gorm:"column:local_path;size:1024"`
+	MarkdownPath     *string `gorm:"column:markdown_path;size:1024"`
+	Filename         string  `gorm:"not null"`
+	ContentType      string  `gorm:"column:content_type;not null;default:''"`
+	Size             int64   `gorm:"not null;default:0"`
+	StorageKey       string  `gorm:"column:storage_key;not null"`
+	SHA256           string  `gorm:"column:sha256;not null;default:''"`
+	Status           string  `gorm:"not null;default:'active';index"`
+	UserMessageIndex *int    `gorm:"column:user_message_index;index"`
+	CreatedAtUnix    int64   `gorm:"column:created_at_unix;autoCreateTime:unix"`
+	UpdatedAtUnix    int64   `gorm:"column:updated_at_unix;autoUpdateTime:unix"`
 }
 
 func (gFile) TableName() string { return "files" }
@@ -99,6 +107,7 @@ func fileFromGorm(g gFile) File {
 	if g.MarkdownPath != nil {
 		f.MarkdownPath = *g.MarkdownPath
 	}
+	f.UserMessageIndex = g.UserMessageIndex
 	return f
 }
 
@@ -196,6 +205,42 @@ func (s *FileStore) ListBySessionID(ctx context.Context, sessionID string) ([]Fi
 		Order("created_at_unix DESC").
 		Find(&rows).Error; err != nil {
 		return nil, fmt.Errorf("list files by session: %w", err)
+	}
+	results := make([]File, 0, len(rows))
+	for _, r := range rows {
+		results = append(results, fileFromGorm(r))
+	}
+	return results, nil
+}
+
+// AttachToMessage records which sent user message a set of session-scoped
+// files belongs to, so the transcript can still show them after the
+// in-memory optimistic attachment metadata is gone (page reload, app
+// restart). messageIndex is the 0-based position of that user message
+// within the session's transcript.
+func (s *FileStore) AttachToMessage(ctx context.Context, fileIDs []string, sessionID string, messageIndex int) error {
+	if len(fileIDs) == 0 {
+		return nil
+	}
+	if err := s.db.GormDB().WithContext(ctx).
+		Model(&gFile{}).
+		Where("id IN ? AND session_id = ?", fileIDs, sessionID).
+		Update("user_message_index", messageIndex).Error; err != nil {
+		return fmt.Errorf("attach files to message: %w", err)
+	}
+	return nil
+}
+
+// ListMessageAttachments returns every file in a session that's been
+// associated with a specific sent message via AttachToMessage, ordered by
+// that association so callers can group by UserMessageIndex.
+func (s *FileStore) ListMessageAttachments(ctx context.Context, sessionID string) ([]File, error) {
+	var rows []gFile
+	if err := s.db.GormDB().WithContext(ctx).
+		Where("session_id = ? AND status = ? AND user_message_index IS NOT NULL", sessionID, FileStatusActive).
+		Order("user_message_index ASC").
+		Find(&rows).Error; err != nil {
+		return nil, fmt.Errorf("list message attachments: %w", err)
 	}
 	results := make([]File, 0, len(rows))
 	for _, r := range rows {

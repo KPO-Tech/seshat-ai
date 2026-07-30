@@ -73,7 +73,7 @@ type queryResponse struct {
 	Usage       *types.TokenUsage       `json:"usage,omitempty"`
 	ToolUses    []types.ToolUseContent  `json:"tool_uses,omitempty"`
 	ToolResults []toolResultSSE         `json:"tool_results,omitempty"`
-	Messages    []types.Message         `json:"messages,omitempty"`
+	Messages    []json.RawMessage       `json:"messages,omitempty"`
 	RAGResults  []query.RAGSearchResult `json:"rag_results,omitempty"`
 }
 
@@ -175,7 +175,7 @@ func (app *App) handleQuery(w http.ResponseWriter, r *http.Request) {
 		Usage:       result.Usage,
 		ToolUses:    result.ToolUses,
 		ToolResults: buildToolResultSSE(result.ToolUses, result.ToolResults),
-		Messages:    result.Messages,
+		Messages:    decorateMessagesWithAttachments(r.Context(), app.backend.Files, result.SessionID, result.Messages),
 		RAGResults:  ragResults,
 	})
 }
@@ -457,7 +457,7 @@ func (app *App) handleQueryStream(w http.ResponseWriter, r *http.Request) {
 		Usage:       result.Usage,
 		ToolUses:    result.ToolUses,
 		ToolResults: buildToolResultSSE(result.ToolUses, result.ToolResults),
-		Messages:    result.Messages,
+		Messages:    decorateMessagesWithAttachments(r.Context(), app.backend.Files, result.SessionID, result.Messages),
 		RAGResults:  ragResults,
 	})
 	if marshalErr != nil {

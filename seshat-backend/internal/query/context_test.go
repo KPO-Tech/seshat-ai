@@ -26,6 +26,14 @@ func (f fakeFilesProvider) DownloadFile(ctx context.Context, principal *backenda
 	return f.data[fileID], f.files[fileID], nil
 }
 
+func (f fakeFilesProvider) AttachToMessage(ctx context.Context, fileIDs []string, sessionID string, messageIndex int) error {
+	return nil
+}
+
+func (f fakeFilesProvider) ListMessageAttachments(ctx context.Context, sessionID string) ([]backendfiles.File, error) {
+	return nil, nil
+}
+
 func TestBuildAttachmentContext_ListsFilesWithoutInliningContent(t *testing.T) {
 	provider := fakeFilesProvider{
 		files: map[string]*backendfiles.File{

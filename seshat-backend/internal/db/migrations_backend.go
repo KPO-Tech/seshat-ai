@@ -264,6 +264,13 @@ func backendMigrations() []schemaMigration {
 				return db.gormDB.WithContext(ctx).AutoMigrate(&gLocalSTTConfig{})
 			},
 		},
+		{
+			ID:    "20260730_035_file_user_message_index",
+			Scope: migrationScopeBackend,
+			Run: func(ctx context.Context, db *DB) error {
+				return db.gormDB.WithContext(ctx).AutoMigrate(&gFile{})
+			},
+		},
 	}
 }
 
