@@ -9,6 +9,7 @@ import { startBackendSidecar, stopBackendSidecar } from './backend-process'
 import { stopWhisperServerProcess } from './whisper-manager'
 import { setupAutoUpdater } from './auto-update'
 import { isExternalOpenAllowed } from './url-safety'
+import { applyContentSecurityPolicy } from './content-security-policy'
 
 function configureRuntimePaths() {
   const runtimeRoot = resolveRuntimeRoot()
@@ -69,6 +70,7 @@ app.commandLine.appendSwitch('use-angle', 'gl')
 
 app.whenReady().then(async () => {
   Menu.setApplicationMenu(null)
+  applyContentSecurityPolicy()
   registerSystemHandlers(ipcMain)
   registerSecureStoreHandlers(ipcMain)
   registerBackendHandlers(ipcMain)
