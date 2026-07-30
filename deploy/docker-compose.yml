@@ -176,6 +176,25 @@ services:
     volumes:
       - searxng-redis-data:/data
 
+  # One-shot: replaces the placeholder secret_key checked into
+  # searxng/settings.yml with a random one before searxng ever reads the
+  # file. Idempotent (the grep guards the sed) so re-running compose is
+  # harmless once the key's been rotated the first time.
+  searxng-secret-key:
+    image: alpine:3.20
+    volumes:
+      - ./searxng:/etc/searxng:rw
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        if grep -q "change-this-local-searxng-key" /etc/searxng/settings.yml; then
+          key=$$(tr -dc 'a-f0-9' < /dev/urandom | head -c64)
+          sed -i "s/change-this-local-searxng-key/$$key/" /etc/searxng/settings.yml
+          echo "[searxng-secret-key] generated a random secret_key"
+        else
+          echo "[searxng-secret-key] secret_key already set, skipping"
+        fi
+
   # No HTTP auth in front of this by default - fine for local-only use
   # (only reachable at localhost:${SEARXNG_PORT}), but SearXNG has no
   # built-in auth of its own; if this stack is ever exposed beyond
@@ -189,7 +208,10 @@ services:
     image: docker.io/searxng/searxng:latest
     restart: unless-stopped
     depends_on:
-      - searxng-redis
+      searxng-redis:
+        condition: service_started
+      searxng-secret-key:
+        condition: service_completed_successfully
     environment:
       SEARXNG_BASE_URL: ${SEARXNG_BASE_URL:-http://localhost:${SEARXNG_PORT:-8080}/}
     ports:
