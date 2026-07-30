@@ -136,4 +136,33 @@ export const api = {
     if (res.status === 204) return undefined as T
     return res.json()
   },
+  // Fetches a binary resource (e.g. an uploaded file's original bytes) as a
+  // data: URL, for rehydrating attachment previews whose original blob:/data:
+  // URL (created client-side at attach time) no longer exists - e.g. after an
+  // app restart, when only the server-persisted file bytes survive.
+  getFileDataURL: async (path: string): Promise<string> => {
+    if (window.nexus?.http) {
+      const res = await window.nexus.http.fileContent(path)
+      if (!res.ok || !res.dataUrl) {
+        throw new ApiError(res.status, res.error || `HTTP ${res.status}`)
+      }
+      return res.dataUrl
+    }
+
+    const token = useAuthStore.getState().token
+    const res = await fetch(`${NEXUS_BASE}${path}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+    if (!res.ok) {
+      const text = await res.text().catch(() => res.statusText)
+      throw new ApiError(res.status, extractErrorMessage(text, res.status))
+    }
+    const blob = await res.blob()
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = () => reject(reader.error)
+      reader.readAsDataURL(blob)
+    })
+  },
 }

@@ -227,6 +227,29 @@ async function performUploadRequest(path: string, payload: UploadPayload, token?
   return parsed
 }
 
+// Fetches a binary resource (e.g. GET /files/{id}/content) and returns it as
+// a data: URL. Used to rehydrate attachment previews - the original bytes
+// live in the blob store, addressable by file ID, regardless of whether the
+// client-side blob:/data: URL generated at attach time is still valid (it
+// stops being valid the moment the renderer process that created it exits).
+async function performBinaryGetRequest(path: string, token?: string): Promise<{ ok: boolean; status: number; dataUrl?: string; error?: string }> {
+  await ensureBackendTrusted()
+  const headers: Record<string, string> = {}
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+  const res = await fetch(buildBackendURL(path), { method: 'GET', headers })
+  if (!res.ok) {
+    if (res.status === 401) {
+      await clearSession()
+    }
+    return { ok: false, status: res.status, error: await res.text().catch(() => res.statusText) }
+  }
+  const contentType = res.headers.get('content-type') || 'application/octet-stream'
+  const buffer = Buffer.from(await res.arrayBuffer())
+  return { ok: true, status: res.status, dataUrl: `data:${contentType};base64,${buffer.toString('base64')}` }
+}
+
 async function startStream(
   event: IpcMainInvokeEvent,
   payload: StreamStartPayload,
@@ -436,6 +459,12 @@ export function registerBackendHandlers(ipcMain: IpcMain): void {
     assertTrustedSender(event)
     const session = await loadSession()
     return performUploadRequest(payload.path, payload, session?.token)
+  })
+
+  ipcMain.handle('http:file-content', async (event, path: string) => {
+    assertTrustedSender(event)
+    const session = await loadSession()
+    return performBinaryGetRequest(path, session?.token)
   })
 
   ipcMain.handle('http:stream:start', async (event, payload: StreamStartPayload) => {

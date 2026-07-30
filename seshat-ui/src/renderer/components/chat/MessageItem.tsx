@@ -1,6 +1,7 @@
-import { memo, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { Copy, Down, Close } from '@icon-park/react'
 import { MarkdownView } from '@/components/MarkdownView'
+import { api } from '@/api/client'
 import { useUIStore } from '@/stores/ui'
 import { ToolBlock } from './ToolBlock'
 import { PermissionCard } from './PermissionCard'
@@ -212,6 +213,28 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
   const isUser = message.role === 'user'
   const attachments = messageAttachments(message)
   const [previewAttachment, setPreviewAttachment] = useState<MessageAttachment | null>(null)
+  // Image attachments carry a client-only blob:/data: URL created at attach
+  // time (see Conversation.tsx/Home.tsx's handleAttachFiles) - it stops
+  // resolving the moment that renderer process exits, so after a full app
+  // restart preview_url is undefined for every image in a reloaded
+  // conversation even though the original file bytes are still safely on the
+  // server. Rehydrate a fresh data: URL from the file-content endpoint in
+  // that case instead of falling back to the generic file icon.
+  const hydratingRef = useRef<Set<string>>(new Set())
+  const [hydratedPreviews, setHydratedPreviews] = useState<Record<string, string>>({})
+  useEffect(() => {
+    for (const file of attachments) {
+      const isImage = file.category === 'images' || file.content_type?.startsWith('image/')
+      const hasPreview = Boolean(file.page_preview_urls?.length || file.preview_url || hydratedPreviews[file.id])
+      if (!isImage || hasPreview || hydratingRef.current.has(file.id)) continue
+      hydratingRef.current.add(file.id)
+      void api.getFileDataURL(`/files/${file.id}/content`)
+        .then(dataUrl => setHydratedPreviews(prev => ({ ...prev, [file.id]: dataUrl })))
+        .catch(() => {
+          // Best-effort - leave the generic file-icon fallback in place.
+        })
+    }
+  })
   if (isToolResultOnly(message)) return null
   const visibleBlocks = message.content.filter((block) => {
     if (block.type === 'text') return Boolean(block.text.trim())
@@ -239,7 +262,7 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
           <div className="msg-attachments">
             {attachments.map((file) => {
               const isImage = file.category === 'images' || file.content_type?.startsWith('image/')
-              const previewURL = file.page_preview_urls?.[0] ?? file.preview_url
+              const previewURL = file.page_preview_urls?.[0] ?? file.preview_url ?? hydratedPreviews[file.id]
               const sizeLabel = formatAttachmentSize(file.size)
               return (
                 <div key={file.id} className={`msg-attachment msg-attachment--${isImage ? 'image' : file.category ?? 'other'}`}>
@@ -276,7 +299,7 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
           </div>
         )}
 
-        {previewAttachment && (previewAttachment.preview_url || previewAttachment.page_preview_urls?.length) && (
+        {previewAttachment && (previewAttachment.preview_url || previewAttachment.page_preview_urls?.length || hydratedPreviews[previewAttachment.id]) && (
           <div
             className="msg-attachment-preview"
             role="dialog"
@@ -297,7 +320,7 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
                   ))}
                 </div>
               ) : (
-                <img src={previewAttachment.preview_url} alt={previewAttachment.filename} />
+                <img src={previewAttachment.preview_url ?? hydratedPreviews[previewAttachment.id]} alt={previewAttachment.filename} />
               )}
             </div>
           </div>

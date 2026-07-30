@@ -31,6 +31,7 @@ interface Window {
     }
     http?: {
       request: (payload: { path: string; method?: string; body?: unknown }) => Promise<{ ok: boolean; status: number; data?: unknown; text?: string }>
+      fileContent: (path: string) => Promise<{ ok: boolean; status: number; dataUrl?: string; error?: string }>
       upload: (payload: {
         path: string
         fields?: Array<{ name: string; value: string }>
