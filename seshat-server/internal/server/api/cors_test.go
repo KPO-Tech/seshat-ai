@@ -34,6 +34,24 @@ func TestCORSAllowsConfiguredOriginAndRejectsOthers(t *testing.T) {
 	}
 }
 
+func TestCORSWildcardSendsLiteralWildcardNotEchoedOrigin(t *testing.T) {
+	backend, _, _ := newTestBackend(t)
+	handler := CreateRouter(Config{CORSAllowedOrigins: []string{"*"}}, backend)
+
+	request := httptest.NewRequest(http.MethodOptions, "/api/v1/organizations", nil)
+	request.Header.Set("Origin", "https://anything.example.com")
+	request.Header.Set("Access-Control-Request-Method", "GET")
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	if got := recorder.Header().Get("Access-Control-Allow-Origin"); got != "*" {
+		t.Fatalf("expected literal wildcard, got %q", got)
+	}
+	if got := recorder.Header().Get("Vary"); got != "" {
+		t.Fatalf("expected no Vary header for a wildcard response, got %q", got)
+	}
+}
+
 func TestNoCORSHeadersWhenNoOriginsConfigured(t *testing.T) {
 	backend, _, _ := newTestBackend(t)
 	handler := CreateRouter(Config{}, backend)

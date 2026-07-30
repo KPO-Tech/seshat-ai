@@ -14,8 +14,20 @@ func (app *App) corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 		if origin != "" && app.originAllowed(origin) {
-			w.Header().Set("Access-Control-Allow-Origin", origin)
-			w.Header().Set("Vary", "Origin")
+			if app.originWildcarded() {
+				// A literal "*" allow-list entry means the operator wants standard
+				// wildcard CORS - send the actual wildcard, not an echoed Origin.
+				// Reflecting the origin here instead would look identical for today's
+				// bearer-token auth, but silently becomes a credential-theft footgun
+				// the moment anything on this response path starts relying on cookies
+				// (Access-Control-Allow-Origin: * is also the one form browsers refuse
+				// to honor together with Access-Control-Allow-Credentials, so this is
+				// a stricter default even if that ever changes here).
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+			} else {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+				w.Header().Set("Vary", "Origin")
+			}
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
 			w.Header().Set("Access-Control-Max-Age", "600")
@@ -31,6 +43,15 @@ func (app *App) corsMiddleware(next http.Handler) http.Handler {
 func (app *App) originAllowed(origin string) bool {
 	for _, allowed := range app.config.CORSAllowedOrigins {
 		if allowed == "*" || strings.EqualFold(allowed, origin) {
+			return true
+		}
+	}
+	return false
+}
+
+func (app *App) originWildcarded() bool {
+	for _, allowed := range app.config.CORSAllowedOrigins {
+		if allowed == "*" {
 			return true
 		}
 	}
