@@ -1,7 +1,11 @@
 import * as pdfjs from 'pdfjs-dist'
-import pdfWorkerURL from 'pdfjs-dist/build/pdf.worker.mjs?url'
 
-pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerURL
+// Not pdfjs-dist's own worker file directly - see pdfWorkerEntry.ts for why.
+// Vite's `new Worker(new URL(...))` form is what actually bundles the file
+// (resolving its import of pdf.worker.mjs) rather than copying it as-is the
+// way a plain `?url` import of a .ts source does.
+const pdfWorker = new Worker(new URL('./pdfWorkerEntry.ts', import.meta.url), { type: 'module' })
+pdfjs.GlobalWorkerOptions.workerPort = pdfWorker
 
 export type PDFPagePreview = {
   page: number
