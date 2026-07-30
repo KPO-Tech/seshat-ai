@@ -8,6 +8,7 @@ import { resolveRuntimeRoot } from './runtime'
 import { startBackendSidecar, stopBackendSidecar } from './backend-process'
 import { stopWhisperServerProcess } from './whisper-manager'
 import { setupAutoUpdater } from './auto-update'
+import { isExternalOpenAllowed } from './url-safety'
 
 function configureRuntimePaths() {
   const runtimeRoot = resolveRuntimeRoot()
@@ -43,7 +44,14 @@ function createWindow() {
   })
 
   win.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url)
+    // Chat content (web search results, fetched pages) can put target="_blank" links
+    // in front of the user with an attacker-controlled href. shell.openExternal hands
+    // the URL to the OS, which resolves non-http(s) schemes via registered protocol
+    // handlers (e.g. Windows search-ms:) - a known Electron RCE-chain vector. Restrict
+    // to the schemes a browser link is actually supposed to open.
+    if (isExternalOpenAllowed(url)) {
+      shell.openExternal(url)
+    }
     return { action: 'deny' }
   })
 
