@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import {
   User, SettingTwo, LinkOne, Left, SunOne, Moon,
   Logout, Delete, Edit, Check, Close, Down,

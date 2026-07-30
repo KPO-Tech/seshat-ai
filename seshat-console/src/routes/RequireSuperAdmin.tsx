@@ -1,5 +1,5 @@
 import { Result, Button } from 'antd'
-import { Outlet, useNavigate } from 'react-router-dom'
+import { Outlet, useNavigate } from 'react-router'
 import { useAuthStore } from '@/store/auth'
 import { useLandingRoute } from '@/hooks/useLandingRoute'
 

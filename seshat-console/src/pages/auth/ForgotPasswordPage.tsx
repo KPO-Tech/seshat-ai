@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Button, Form, Input, Result, Typography } from 'antd'
 import { MailOutlined } from '@ant-design/icons'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { useForgotPassword } from '@/api/auth'
 import { AuthLayout } from '@/layout/AuthLayout'
 import { palette } from '@/theme/tokens'

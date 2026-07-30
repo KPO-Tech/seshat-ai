@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router'
 import { Button, Card, Empty, message, Popconfirm, Space, Tag, Upload } from 'antd'
 import type { TableProps, UploadProps } from 'antd'
 import { ArrowLeftOutlined, DeleteOutlined, EditOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons'

@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Avatar, Button, Dropdown, Layout, Menu, Space, Tag, Typography } from 'antd'
 import { ArrowLeftOutlined, LogoutOutlined, UserOutlined } from '@ant-design/icons'
-import { Outlet, matchPath, useLocation, useNavigate } from 'react-router-dom'
+import { Outlet, matchPath, useLocation, useNavigate } from 'react-router'
 import { useOrganizationsList } from '@/api/organizations'
 import { useLogout } from '@/api/auth'
 import { OrganizationSelect } from '@/components/OrganizationSelect'

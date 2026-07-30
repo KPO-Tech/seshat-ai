@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { Left, Search, Edit, Delete, History as HistoryIcon } from '@icon-park/react'
 import { useSessionStore } from '@/stores/session'
 import { api } from '@/api/client'

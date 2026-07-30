@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { CheckCorrect, FileTextOne, Browser, LightMember } from '@icon-park/react'
 import { ChatTopBar, CHAT_TOP_BAR_CSS } from '@/components/chat/ChatTopBar'
 import { ChatInput, CHAT_INPUT_CSS, type ChatAttachment } from '@/components/chat/ChatInput'

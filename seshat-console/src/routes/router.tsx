@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { createBrowserRouter, Navigate } from 'react-router'
 import { AppLayout } from '@/layout/AppLayout'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
 import { RequireSuperAdmin } from '@/routes/RequireSuperAdmin'

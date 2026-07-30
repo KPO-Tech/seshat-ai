@@ -13,7 +13,7 @@ import {
   ShareAltOutlined,
   WarningOutlined,
 } from '@ant-design/icons'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import {
   useOrganizationsList,
   useCreateOrganization,

@@ -1,6 +1,6 @@
 import { Button, Form, Input, message, Typography } from 'antd'
 import { MailOutlined, LockOutlined } from '@ant-design/icons'
-import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router'
 import { useLogin } from '@/api/auth'
 import { useAuthStore } from '@/store/auth'
 import { getErrorMessage } from '@/api/errors'

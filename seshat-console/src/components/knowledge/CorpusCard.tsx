@@ -1,5 +1,5 @@
 import { Card, Typography } from 'antd'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import type { Corpus } from '@/api/knowledge'
 import { CorpusIcon } from '@/components/knowledge/CorpusIcon'
 import { palette } from '@/theme/tokens'

@@ -1,4 +1,4 @@
-import { Navigate } from 'react-router-dom'
+import { Navigate } from 'react-router'
 import { useLandingRoute } from '@/hooks/useLandingRoute'
 
 /** Resolves where an already-authenticated user should land (e.g. `/` on a page refresh). */

@@ -1,4 +1,4 @@
-import { createHashRouter, Navigate } from 'react-router-dom'
+import { createHashRouter, Navigate } from 'react-router'
 import { Shell } from '@/components/layout/Shell'
 import { AuthGuard } from '@/components/auth/AuthGuard'
 import { Home } from '@/pages/Home'

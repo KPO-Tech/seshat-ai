@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Navigate, Outlet } from 'react-router-dom'
+import { Navigate, Outlet } from 'react-router'
 import { Spin } from 'antd'
 import { useAuthStore } from '@/store/auth'
 import { useCurrentPrincipal } from '@/api/auth'

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { Alert, Button, Drawer, Empty, Form, Input, message, Popconfirm, Space, Tag, Typography } from 'antd'
 import type { TableProps } from 'antd'
 import { PlusOutlined, DeleteOutlined, DesktopOutlined, CopyOutlined, ScheduleOutlined } from '@ant-design/icons'

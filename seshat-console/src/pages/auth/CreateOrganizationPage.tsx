@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Alert, Button, Form, Input, message, Typography } from 'antd'
 import { UserOutlined, MailOutlined, LockOutlined, ApartmentOutlined, LinkOutlined } from '@ant-design/icons'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router'
 import { api } from '@/api/client'
 import { useRegister } from '@/api/auth'
 import { useCreateOrganization } from '@/api/organizations'

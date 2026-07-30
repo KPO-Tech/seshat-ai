@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import {
   Left, Robot, Plus, Edit, Delete, Sync, Close, CheckOne,
   Caution, LoadingOne, Brain, Lightning, Send,

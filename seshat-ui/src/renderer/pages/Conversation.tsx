@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router'
 import { streamingToContentBlocks, useSessionStore, EMPTY_STREAMING, DEFAULT_AGENT_STATE } from '@/stores/session'
 import { useUIStore, buildRightPanelId } from '@/stores/ui'
 import { ChatTopBar, CHAT_TOP_BAR_CSS } from '@/components/chat/ChatTopBar'

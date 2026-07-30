@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Button, Card, Drawer, Empty, Form, Input, Popconfirm, Segmented, Space, Tag, Typography, message } from 'antd'
 import type { TableProps } from 'antd'
 import { CheckOutlined, ClusterOutlined, CrownOutlined, DeleteOutlined, EditOutlined, MailOutlined, PlusOutlined, SafetyOutlined, TeamOutlined } from '@ant-design/icons'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import {
   useMembershipsList,
   useCreateMembership,

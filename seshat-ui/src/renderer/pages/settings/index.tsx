@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router'
 import {
   Browser, Book, Brain, Flashlamp, Earth, Computer, Info,
   Left, SunOne, Moon, Setting, User, Peoples, BuildingTwo, Workbench, CloudStorage,

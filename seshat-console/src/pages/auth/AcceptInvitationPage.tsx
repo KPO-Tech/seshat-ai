@@ -1,5 +1,5 @@
 import { Button, Result, Spin, Typography, message } from 'antd'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router'
 import { useAcceptInvitation, useLookupInvitation } from '@/api/invitations'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/store/auth'

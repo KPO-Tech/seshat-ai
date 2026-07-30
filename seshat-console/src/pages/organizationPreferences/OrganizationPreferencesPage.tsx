@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams } from 'react-router'
 import { Button, Card, Form, Input, InputNumber, Popconfirm, Select, Space, Typography, message } from 'antd'
 import { DeleteOutlined, SaveOutlined } from '@ant-design/icons'
 import {

@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { Left, Lightning, Mail, FileText, Caution, Robot } from '@icon-park/react'
 import { useUIStore } from '@/stores/ui'
 import { useEffect } from 'react'

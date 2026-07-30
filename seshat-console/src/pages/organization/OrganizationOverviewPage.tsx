@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Alert, Button, Card, Empty, Skeleton, Space, Tag, Typography, message } from 'antd'
 import { DatabaseOutlined, DesktopOutlined, MailOutlined, ScheduleOutlined, TeamOutlined } from '@ant-design/icons'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { PageHeader } from '@/components/PageHeader'
 import { StatTile } from '@/components/StatTile'
 import { OrganizationFormDrawer } from '@/components/OrganizationFormDrawer'

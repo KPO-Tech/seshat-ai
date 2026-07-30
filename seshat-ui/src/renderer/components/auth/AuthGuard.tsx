@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate } from 'react-router'
 import { LoadingOne } from '@icon-park/react'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'

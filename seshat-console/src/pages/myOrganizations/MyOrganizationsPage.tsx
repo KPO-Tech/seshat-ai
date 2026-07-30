@@ -1,7 +1,7 @@
 import { Avatar, Card, Empty, Space, Tag, Typography } from 'antd'
 import type { TableProps } from 'antd'
 import { ApartmentOutlined, CrownOutlined, RightOutlined, TeamOutlined } from '@ant-design/icons'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import type { Organization } from '@/api/organizations'
 import { PageHeader } from '@/components/PageHeader'
 import { ConsoleTable } from '@/components/ConsoleTable'
