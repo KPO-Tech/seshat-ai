@@ -35,6 +35,7 @@ interface Window {
         fields?: Array<{ name: string; value: string }>
         files?: Array<{ name: string; filename: string; mimeType?: string; data: ArrayBuffer }>
       }) => Promise<{ ok: boolean; status: number; data?: unknown; text?: string }>
+      download: (payload: { path: string }) => Promise<{ ok: boolean; status: number; contentType?: string; dataBase64?: string; text?: string }>
       startStream: (payload: { path: string; method?: string; body?: unknown }) => Promise<{ streamId: string } | { error: string; retryable: boolean }>
       cancelStream: (streamId: string) => Promise<void>
       onStreamEvent: (streamId: string, listener: (event: { name: string; data: Record<string, unknown> }) => void) => () => void

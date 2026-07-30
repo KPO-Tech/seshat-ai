@@ -104,8 +104,38 @@ async function serializeFormData(formData: FormData) {
   return { fields, files }
 }
 
+// getBlob fetches a binary resource (an attachment's raw bytes) as a Blob,
+// authenticated the same way as every other call. A plain `<img src>` or
+// anchor href pointed straight at the API can't carry the Authorization
+// header the backend requires, so callers use this to build an object URL
+// instead (see lib/attachmentUrl.ts).
+async function getBlob(path: string): Promise<Blob> {
+  if (window.nexus?.http) {
+    const res = await window.nexus.http.download({ path })
+    if (!res.ok || !res.dataBase64) {
+      if (res.status === 401) useAuthStore.getState().logout()
+      throw new ApiError(res.status, res.text || `HTTP ${res.status}`)
+    }
+    const binary = atob(res.dataBase64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+    return new Blob([bytes], { type: res.contentType || 'application/octet-stream' })
+  }
+
+  const token = useAuthStore.getState().token
+  const res = await fetch(`${NEXUS_BASE}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+  if (!res.ok) {
+    if (res.status === 401) useAuthStore.getState().logout()
+    throw new ApiError(res.status, res.statusText)
+  }
+  return res.blob()
+}
+
 export const api = {
   get: <T>(path: string, signal?: AbortSignal) => request<T>(path, { signal }),
+  getBlob,
   post: <T>(path: string, body?: unknown) => request<T>(path, { method: 'POST', body }),
   put: <T>(path: string, body?: unknown) => request<T>(path, { method: 'PUT', body }),
   patch: <T>(path: string, body?: unknown) => request<T>(path, { method: 'PATCH', body }),

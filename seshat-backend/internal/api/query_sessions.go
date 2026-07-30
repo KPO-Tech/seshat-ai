@@ -143,7 +143,7 @@ func (app *App) handleSessionByID(w http.ResponseWriter, r *http.Request) {
 			writeBackendError(w, err)
 			return
 		}
-		writeJSON(w, http.StatusOK, detail)
+		writeJSON(w, http.StatusOK, withDecoratedMessages(r.Context(), app, principal, sessionID, detail))
 
 	case http.MethodPatch, http.MethodPut:
 		var req updateSessionRequest

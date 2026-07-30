@@ -67,6 +67,8 @@ type knowledgeProvider interface {
 type filesProvider interface {
 	GetFile(ctx context.Context, principal *backendauth.Principal, fileID string) (*backendfiles.File, error)
 	DownloadFile(ctx context.Context, principal *backendauth.Principal, fileID string) ([]byte, *backendfiles.File, error)
+	AttachToMessage(ctx context.Context, principal *backendauth.Principal, fileIDs []string, sessionID string, messageIndex int) error
+	ListMessageAttachments(ctx context.Context, principal *backendauth.Principal, sessionID string) (map[int][]backendfiles.File, error)
 }
 
 type skillsProvider interface {
@@ -1178,6 +1180,23 @@ func (s *Service) BuildContextInput(ctx context.Context, p ContextBuildParams) (
 	// - Images  → base64-encode and inject as multimodal content blocks.
 	// - Others  → text-extract and inject as <attached_document> blocks.
 	if len(p.FileIDs) > 0 && s.files != nil {
+		// Record which user message these files belong to (by 0-based position
+		// among the session's user messages so far), so the chat UI can render
+		// them as part of the transcript — including after a reload — even
+		// though the runtime's own Message type has no attachment field to
+		// carry this itself (see internal/files for the reasoning). Best
+		// effort: a failure here only means the attachment renders in this
+		// live session but not after a reload, never breaks the turn itself.
+		if existing, err := s.loadSessionMessages(ctx, p.SessionID); err == nil {
+			userMessageIndex := 0
+			for _, m := range existing {
+				if m.Role == types.RoleUser {
+					userMessageIndex++
+				}
+			}
+			_ = s.files.AttachToMessage(ctx, p.Principal, p.FileIDs, p.SessionID, userMessageIndex)
+		}
+
 		var imageIDs, textIDs []string
 		for _, fid := range p.FileIDs {
 			meta, err := s.files.GetFile(ctx, p.Principal, strings.TrimSpace(fid))

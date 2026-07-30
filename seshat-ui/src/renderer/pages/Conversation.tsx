@@ -6,6 +6,7 @@ import { useUIStore, buildRightPanelId } from '@/stores/ui'
 import { ChatTopBar, CHAT_TOP_BAR_CSS } from '@/components/chat/ChatTopBar'
 import { ChatInput, CHAT_INPUT_CSS, type ChatAttachment } from '@/components/chat/ChatInput'
 import { MessageItem, MESSAGE_ITEM_CSS, isRenderableMessage } from '@/components/chat/MessageItem'
+import { ATTACHMENT_STRIP_CSS } from '@/components/chat/AttachmentStrip'
 import { PlanArtifactCard } from '@/components/chat/plan/PlanArtifactCard'
 import { useChat } from '@/hooks/useChat'
 import { useProviders, fetchProviderModels } from '@/hooks/useProviders'
@@ -549,9 +550,10 @@ export function Conversation() {
               const prompt = inputValue.trim()
               if (!prompt) return
               const fileIds = attachments.map(file => file.id)
+              const sentAttachments = attachments
               setInputValue('')
               setAttachments([])
-              void sendMessage(prompt, { corpusId: selectedCorpusId, fileIds })
+              void sendMessage(prompt, { corpusId: selectedCorpusId, fileIds, attachments: sentAttachments })
             }}
             onStop={() => { void stopMessage() }}
             placeholder="Message SeshatOS..."
@@ -589,6 +591,7 @@ const CONV_CSS = `
 ${CHAT_TOP_BAR_CSS}
 ${CHAT_INPUT_CSS}
 ${MESSAGE_ITEM_CSS}
+${ATTACHMENT_STRIP_CSS}
 
 .conv-root {
   flex: 1;

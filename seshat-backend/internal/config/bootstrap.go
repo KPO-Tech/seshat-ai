@@ -481,6 +481,11 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		ImageGeneration:         defaultImageGenerationConfig(),
 		TextToSpeech:            defaultTextToSpeechConfig(),
 		SpeechToText:            defaultSpeechToTextConfig(),
+		OnSessionTitled: func(id sdk.SessionID, title string) {
+			if err := sessionOwnershipStore.UpdateTitle(context.Background(), string(id), title); err != nil {
+				fmt.Fprintf(os.Stderr, "[API] Avertissement: échec de la sauvegarde du titre auto-généré pour la session %s: %v\n", id, err)
+			}
+		},
 	}
 	queryClient, err := sdk.NewClient(queryClientConfig)
 	if err != nil {

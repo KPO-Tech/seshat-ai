@@ -6,7 +6,7 @@ import { useUIStore } from '@/stores/ui'
 import { findLatestToolUseByName, normalizeSessionMessages, statusFromResult, toolResultFromDone } from '@/lib/chat'
 import { permissionSignature } from '@/lib/permissionSignature'
 import { generateSessionTitleFromPrompt, isUntitledSessionTitle } from '@/lib/sessionTitle'
-import type { Message, RAGSearchResult, StreamEvent, TokenUsage, ToolApproval, ToolPromptRequest, ToolStatus } from '@/api/types'
+import type { Attachment, Message, RAGSearchResult, Session, StreamEvent, TokenUsage, ToolApproval, ToolPromptRequest, ToolStatus } from '@/api/types'
 import type { StreamingBlock, ToolActivity } from '@/stores/session'
 
 type RuntimeEventPayload = {
@@ -93,7 +93,8 @@ export function useChat(sessionId: string) {
   // Without batching, every SSE token triggers a full store.updateMessage call.
   const syncRafRef = useRef<number | null>(null)
 
-  const sendMessage = useCallback(async (text: string, opts?: { corpusId?: string | null; fileIds?: string[] }) => {
+  type SentAttachment = { id: string; filename: string; content_type?: string; size?: number; category?: string }
+  const sendMessage = useCallback(async (text: string, opts?: { corpusId?: string | null; fileIds?: string[]; attachments?: SentAttachment[] }) => {
     const store = useSessionStore.getState()
     if (store.isSessionStreaming(sessionId)) return
 
@@ -103,7 +104,14 @@ export function useChat(sessionId: string) {
 
     const assistantMessageId = crypto.randomUUID()
     const currentSession = store.sessions.find((session) => session.id === sessionId)
-    if (currentSession && currentSession.messages.length === 0 && isUntitledSessionTitle(currentSession.title)) {
+    const isFirstMessageOfSession = Boolean(
+      currentSession && currentSession.messages.length === 0 && isUntitledSessionTitle(currentSession.title),
+    )
+    if (isFirstMessageOfSession) {
+      // Optimistic placeholder only, for a title in the sidebar before the real
+      // one exists. The backend engine generates a short, LLM-authored title
+      // from this same prompt once the turn below completes (see
+      // scheduleTitleRefetch) and overwrites this truncation-based guess.
       const generatedTitle = generateSessionTitleFromPrompt(prompt)
       store.updateSession(sessionId, { title: generatedTitle, updatedAt: nowIso })
       void api.patch(`/sessions/${sessionId}`, { title: generatedTitle }).catch(() => {
@@ -112,7 +120,26 @@ export function useChat(sessionId: string) {
     } else {
       store.updateSession(sessionId, { updatedAt: nowIso })
     }
-    store.addMessage(sessionId, { role: 'user', content: [{ type: 'text', text: prompt }] })
+    // Optimistic rendering: the files were already uploaded (by the caller,
+    // before sendMessage runs) so their metadata is available synchronously
+    // here — no need to wait for the backend's echo just to show what was
+    // attached. commitDonePayload below replaces this with the backend's own
+    // (identical, since it reads back the same records) attachment list once
+    // the turn completes, so this never goes stale.
+    const optimisticAttachments: Attachment[] | undefined = opts?.attachments?.length
+      ? opts.attachments.map((a) => ({
+          file_id: a.id,
+          filename: a.filename,
+          content_type: a.content_type ?? 'application/octet-stream',
+          size: a.size ?? 0,
+          category: (a.category as Attachment['category']) ?? 'other',
+        }))
+      : undefined
+    store.addMessage(sessionId, {
+      role: 'user',
+      content: [{ type: 'text', text: prompt }],
+      ...(optimisticAttachments ? { attachments: optimisticAttachments } : {}),
+    })
     store.addMessage(sessionId, { id: assistantMessageId, role: 'assistant', content: [] })
     store.setIsStreaming(sessionId, true)
     store.clearStreaming(sessionId)
@@ -182,6 +209,7 @@ export function useChat(sessionId: string) {
                 openKnowledgePanel(sessionId, donePayload.rag_results)
                 store.clearStreaming(sessionId)
                 committed = true
+                if (isFirstMessageOfSession) scheduleTitleRefetch(sessionId)
                 flushSync()
               },
               (runtimeEvent) => {
@@ -263,6 +291,7 @@ export function useChat(sessionId: string) {
                     openKnowledgePanel(sessionId, donePayload.rag_results)
                     store.clearStreaming(sessionId)
                     committed = true
+                    if (isFirstMessageOfSession) scheduleTitleRefetch(sessionId)
                     flushSync()
                     break outer
                   }
@@ -1048,6 +1077,36 @@ function handleSubagentStreamChunk(
       return
     }
   }
+}
+
+// Polls a few times for the backend's LLM-generated session title, which is
+// produced asynchronously (a separate short completion, after the turn
+// above already finished) and so can't ride the same response stream. Stops
+// as soon as the title changes from what's currently in the store (the
+// optimistic truncation placeholder set by sendMessage), or after the last
+// attempt. Best effort — the placeholder title stands forever if this never
+// resolves (offline, request failure, etc.), never breaks the session.
+const TITLE_REFETCH_DELAYS_MS = [2000, 4000, 8000]
+
+function scheduleTitleRefetch(sessionId: string) {
+  const attempt = (index: number) => {
+    window.setTimeout(async () => {
+      try {
+        const before = useSessionStore.getState().sessions.find((s) => s.id === sessionId)
+        if (!before) return // session was deleted while we were waiting
+        const detail = await api.get<Session>(`/sessions/${sessionId}`)
+        const nextTitle = (detail.title || '').trim()
+        if (nextTitle && nextTitle !== before.title) {
+          useSessionStore.getState().updateSession(sessionId, { title: nextTitle })
+          return
+        }
+      } catch {
+        // Best effort — try again on the next scheduled attempt, if any.
+      }
+      if (index + 1 < TITLE_REFETCH_DELAYS_MS.length) attempt(index + 1)
+    }, TITLE_REFETCH_DELAYS_MS[index])
+  }
+  attempt(0)
 }
 
 function commitDonePayload(

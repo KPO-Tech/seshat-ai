@@ -73,10 +73,25 @@ export type ToolResultBlock = {
 
 export type ContentBlock = TextBlock | ThinkingBlock | ToolUseBlock | ToolResultBlock
 
+// A file sent alongside a user message (image, document, etc). Rides beside
+// `content` rather than inside it — the backend's underlying message content
+// blocks are a closed set it doesn't control, so attachments are a sibling
+// field instead of a content-block variant.
+export type AttachmentCategory = 'images' | 'documents' | 'audio' | 'other'
+
+export type Attachment = {
+  file_id: string
+  filename: string
+  content_type: string
+  category: AttachmentCategory
+  size: number
+}
+
 export type Message = {
   id?: string
   role: Role
   content: ContentBlock[]
+  attachments?: Attachment[]
   timestamp?: string
   metadata?: Record<string, unknown>
 }

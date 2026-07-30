@@ -34,6 +34,10 @@ type StreamStartPayload = {
   body?: unknown
 }
 
+type DownloadPayload = {
+  path: string
+}
+
 type StreamEventMessage = {
   streamId: string
   name: string
@@ -191,6 +195,29 @@ function extractErrorMessage(payload: { status: number; data?: any; text?: strin
 // instead (see startStream's return shape and the stream 'error' event).
 function isRetryableNetworkError(error: unknown): boolean {
   return error instanceof TypeError
+}
+
+// performBinaryDownload fetches a non-JSON resource (an uploaded attachment's
+// raw bytes) authenticated the same way as performJSONRequest. Unlike
+// parseResponse, it never reads the body as text — doing so on binary data
+// (an image, a PDF) corrupts it, since text decoding assumes a character
+// encoding binary content doesn't have. The renderer reassembles the base64
+// payload into a Blob for use as an <img src>/document viewer source.
+async function performBinaryDownload(path: string, token?: string) {
+  await ensureBackendTrusted()
+  const headers: Record<string, string> = {}
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+  const res = await fetch(buildBackendURL(path), { method: 'GET', headers })
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText)
+    if (res.status === 401) await clearSession()
+    return { ok: false, status: res.status, text }
+  }
+  const contentType = res.headers.get('content-type') || 'application/octet-stream'
+  const buffer = Buffer.from(await res.arrayBuffer())
+  return { ok: true, status: res.status, contentType, dataBase64: buffer.toString('base64') }
 }
 
 async function performJSONRequest(path: string, method: string, body: unknown, token?: string) {
@@ -446,6 +473,12 @@ export function registerBackendHandlers(ipcMain: IpcMain): void {
     const session = await loadSession()
     const parsed = await performJSONRequest(payload.path, payload.method || 'GET', payload.body, session?.token)
     return parsed
+  })
+
+  ipcMain.handle('http:download', async (event, payload: DownloadPayload) => {
+    assertTrustedSender(event)
+    const session = await loadSession()
+    return performBinaryDownload(payload.path, session?.token)
   })
 
   ipcMain.handle('http:upload', async (event, payload: UploadPayload) => {

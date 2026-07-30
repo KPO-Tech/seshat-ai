@@ -56,6 +56,8 @@ func (app *App) handleFileByID(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case subpath == "content" && r.Method == http.MethodGet:
 		app.handleFileDownload(w, r, principal, fileID)
+	case subpath == "markdown" && r.Method == http.MethodGet:
+		app.handleFileMarkdown(w, r, fileID)
 	case subpath == "":
 		switch r.Method {
 		case http.MethodGet:
@@ -149,6 +151,36 @@ func (app *App) handleFileDownload(w http.ResponseWriter, r *http.Request, _ any
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename=%q`, f.Filename))
 	w.WriteHeader(http.StatusOK)
 	_, _ = io.Copy(w, reader)
+}
+
+// handleFileMarkdown handles GET /api/v1/files/{id}/markdown — returns the
+// docling-converted plain-text/markdown rendering of a document attachment,
+// used by the chat UI's split-screen document viewer (PDF/DOCX/PPTX/etc. are
+// not rendered pixel-for-pixel; this reuses the same conversion the model
+// itself already sees, so what the user reads matches what the agent read).
+func (app *App) handleFileMarkdown(w http.ResponseWriter, r *http.Request, fileID string) {
+	principal, _ := authPrincipalFromContext(r.Context())
+	if app.backend.Files == nil {
+		writeJSONError(w, http.StatusServiceUnavailable, "file service not configured")
+		return
+	}
+	f, err := app.backend.Files.GetFile(r.Context(), principal, fileID)
+	if err != nil {
+		writeBackendError(w, err)
+		return
+	}
+	workspacePath := ""
+	if f.SessionID != "" && app.backend.Query != nil {
+		if detail, detailErr := app.backend.Query.GetSession(r.Context(), principal, f.SessionID); detailErr == nil {
+			workspacePath = detail.WorkspacePath
+		}
+	}
+	content, err := app.backend.Files.GetMarkdownContent(r.Context(), principal, fileID, workspacePath)
+	if err != nil {
+		writeBackendError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"filename": f.Filename, "markdown": content})
 }
 
 // handleSessionFiles handles:

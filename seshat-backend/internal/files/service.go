@@ -214,19 +214,20 @@ func (s *Service) checkAccess(principal *backendauth.Principal, record *db.File)
 
 func fileFromDB(r db.File) *File {
 	return &File{
-		ID:           r.ID,
-		UserID:       r.UserID,
-		WorkspaceID:  r.WorkspaceID,
-		SessionID:    r.SessionID,
-		Category:     r.Category,
-		LocalPath:    r.LocalPath,
-		MarkdownPath: r.MarkdownPath,
-		Filename:     r.Filename,
-		ContentType:  r.ContentType,
-		Size:         r.Size,
-		SHA256:       r.SHA256,
-		CreatedAt:    r.CreatedAt,
-		UpdatedAt:    r.UpdatedAt,
+		ID:               r.ID,
+		UserID:           r.UserID,
+		WorkspaceID:      r.WorkspaceID,
+		SessionID:        r.SessionID,
+		Category:         r.Category,
+		LocalPath:        r.LocalPath,
+		MarkdownPath:     r.MarkdownPath,
+		Filename:         r.Filename,
+		ContentType:      r.ContentType,
+		Size:             r.Size,
+		SHA256:           r.SHA256,
+		UserMessageIndex: r.UserMessageIndex,
+		CreatedAt:        r.CreatedAt,
+		UpdatedAt:        r.UpdatedAt,
 	}
 }
 
@@ -392,6 +393,76 @@ func (s *Service) ListSessionFiles(ctx context.Context, principal *backendauth.P
 		result = append(result, *fileFromDB(r))
 	}
 	return result, nil
+}
+
+// GetMarkdownContent returns the docling-converted markdown text for a file,
+// if a conversion exists (see UploadSessionFile's docling step). Returns
+// bkerr.NotFound if the file was never converted (unsupported format,
+// docling unavailable at upload time, or the file predates docling being
+// configured at all) — callers should fall back to a download link/raw
+// content in that case, not treat it as an error.
+func (s *Service) GetMarkdownContent(ctx context.Context, principal *backendauth.Principal, fileID, workspacePath string) (string, error) {
+	if s == nil || s.files == nil {
+		return "", bkerr.Unavailable("file store not configured", nil)
+	}
+	if principal == nil {
+		return "", bkerr.Unauthorized("authentication required", nil)
+	}
+	record, err := s.files.GetByID(ctx, fileID)
+	if err != nil {
+		return "", bkerr.NotFound("file not found", err)
+	}
+	if record.MarkdownPath == "" {
+		return "", bkerr.NotFound("no markdown conversion available for this file", nil)
+	}
+	if strings.TrimSpace(workspacePath) == "" {
+		return "", bkerr.NotFound("session workspace unavailable", nil)
+	}
+	data, err := os.ReadFile(filepath.Join(workspacePath, record.MarkdownPath))
+	if err != nil {
+		return "", bkerr.NotFound("markdown file not found on disk", err)
+	}
+	return string(data), nil
+}
+
+// AttachToMessage records which user message a batch of files was sent
+// with (see db.FileStore.AttachToMessage for why this exists instead of
+// living on the message itself).
+func (s *Service) AttachToMessage(ctx context.Context, principal *backendauth.Principal, fileIDs []string, sessionID string, messageIndex int) error {
+	if s == nil || s.files == nil {
+		return bkerr.Unavailable("file store not configured", nil)
+	}
+	if principal == nil {
+		return bkerr.Unauthorized("authentication required", nil)
+	}
+	if err := s.files.AttachToMessage(ctx, fileIDs, sessionID, messageIndex); err != nil {
+		return bkerr.Internal("attach files to message: "+err.Error(), err)
+	}
+	return nil
+}
+
+// ListMessageAttachments returns every attached file in the session, grouped
+// by the 0-based user-message index it was sent with.
+func (s *Service) ListMessageAttachments(ctx context.Context, principal *backendauth.Principal, sessionID string) (map[int][]File, error) {
+	if s == nil || s.files == nil {
+		return nil, bkerr.Unavailable("file store not configured", nil)
+	}
+	if principal == nil {
+		return nil, bkerr.Unauthorized("authentication required", nil)
+	}
+	records, err := s.files.ListMessageAttachments(ctx, sessionID)
+	if err != nil {
+		return nil, bkerr.Internal("list message attachments: "+err.Error(), err)
+	}
+	byIndex := make(map[int][]File)
+	for _, r := range records {
+		if r.UserMessageIndex == nil {
+			continue
+		}
+		f := fileFromDB(r)
+		byIndex[*r.UserMessageIndex] = append(byIndex[*r.UserMessageIndex], *f)
+	}
+	return byIndex, nil
 }
 
 // safeFilePath returns a collision-safe absolute path for filename inside dir.

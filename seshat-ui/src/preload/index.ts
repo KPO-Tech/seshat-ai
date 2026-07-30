@@ -60,6 +60,7 @@ const nexusBridge = {
       fields?: Array<{ name: string; value: string }>
       files?: Array<{ name: string; filename: string; mimeType?: string; data: ArrayBuffer }>
     }) => ipcRenderer.invoke('http:upload', payload),
+    download: (payload: { path: string }) => ipcRenderer.invoke('http:download', payload),
     startStream: (payload: { path: string; method?: string; body?: unknown }) => ipcRenderer.invoke('http:stream:start', payload),
     cancelStream: (streamId: string) => ipcRenderer.invoke('http:stream:cancel', streamId),
     onStreamEvent: (streamId: string, listener: (event: { name: string; data: Record<string, unknown> }) => void) => {

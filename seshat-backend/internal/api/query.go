@@ -65,16 +65,16 @@ type updateSessionRequest struct {
 }
 
 type queryResponse struct {
-	SessionID   string                  `json:"session_id"`
-	Content     string                  `json:"content"`
-	StopReason  string                  `json:"stop_reason"`
-	TurnNumber  int                     `json:"turn_number"`
-	IsComplete  bool                    `json:"is_complete"`
-	Usage       *types.TokenUsage       `json:"usage,omitempty"`
-	ToolUses    []types.ToolUseContent  `json:"tool_uses,omitempty"`
-	ToolResults []toolResultSSE         `json:"tool_results,omitempty"`
-	Messages    []types.Message         `json:"messages,omitempty"`
-	RAGResults  []query.RAGSearchResult `json:"rag_results,omitempty"`
+	SessionID   string                   `json:"session_id"`
+	Content     string                   `json:"content"`
+	StopReason  string                   `json:"stop_reason"`
+	TurnNumber  int                      `json:"turn_number"`
+	IsComplete  bool                     `json:"is_complete"`
+	Usage       *types.TokenUsage        `json:"usage,omitempty"`
+	ToolUses    []types.ToolUseContent   `json:"tool_uses,omitempty"`
+	ToolResults []toolResultSSE          `json:"tool_results,omitempty"`
+	Messages    []messageWithAttachments `json:"messages,omitempty"`
+	RAGResults  []query.RAGSearchResult  `json:"rag_results,omitempty"`
 }
 
 // toolResultSSE carries the result of one tool call in the SSE done event.
@@ -175,7 +175,7 @@ func (app *App) handleQuery(w http.ResponseWriter, r *http.Request) {
 		Usage:       result.Usage,
 		ToolUses:    result.ToolUses,
 		ToolResults: buildToolResultSSE(result.ToolUses, result.ToolResults),
-		Messages:    result.Messages,
+		Messages:    decorateMessagesWithAttachments(r.Context(), app.backend.Files, principal, result.SessionID, result.Messages),
 		RAGResults:  ragResults,
 	})
 }
@@ -447,7 +447,7 @@ func (app *App) handleQueryStream(w http.ResponseWriter, r *http.Request) {
 		Usage:       result.Usage,
 		ToolUses:    result.ToolUses,
 		ToolResults: buildToolResultSSE(result.ToolUses, result.ToolResults),
-		Messages:    result.Messages,
+		Messages:    decorateMessagesWithAttachments(r.Context(), app.backend.Files, principal, result.SessionID, result.Messages),
 		RAGResults:  ragResults,
 	})
 	if marshalErr != nil {

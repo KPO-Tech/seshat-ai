@@ -7,6 +7,7 @@ import { ToolBlock } from './ToolBlock'
 import { PermissionCard } from './PermissionCard'
 import { AgentCardsRow } from './AgentToolView'
 import { QuietToolGroup } from './QuietToolGroup'
+import { AttachmentStrip } from './AttachmentStrip'
 import { isGroupable, breaksGroup } from './tool-block/quietGroupPhrase'
 import type { Message, ToolUseBlock, ToolStatus } from '@/api/types'
 
@@ -37,6 +38,7 @@ function isToolResultOnly(msg: Message): boolean {
 
 export function isRenderableMessage(message: Message): boolean {
   if (isToolResultOnly(message)) return false
+  if (message.attachments?.length) return true
   return message.content.some((block) => {
     if (block.type === 'text') return Boolean(block.text.trim())
     if (block.type === 'thinking') return Boolean(block.thinking.trim())
@@ -156,7 +158,8 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, showA
     if (block.type === 'tool_use') return !HIDDEN_TOOLS.has(block.name)
     return false
   })
-  if (visibleBlocks.length === 0) return null
+  const hasAttachments = Boolean(message.attachments?.length)
+  if (visibleBlocks.length === 0 && !hasAttachments) return null
 
   const copyText = message.content
     .map((block) => {
@@ -179,6 +182,7 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, showA
       {!isUser && !showAvatar && <div className="msg-agent-spacer" aria-hidden="true" />}
 
       <div className="msg-content">
+        {hasAttachments && <AttachmentStrip attachments={message.attachments!} />}
         {renderItems.map((item, i) => {
           if (item.kind === 'agent-group') {
             return (
