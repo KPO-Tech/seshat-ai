@@ -2,6 +2,7 @@ import { randomUUID, randomBytes } from 'crypto'
 import type { IpcMain, IpcMainInvokeEvent } from 'electron'
 import { desktopBridgeProof, ensureDesktopBridgeSecret, resolveBackendOrigin } from '../runtime'
 import { deleteSecret, getSecret, setSecret } from './secure-store'
+import { assertTrustedSender } from './trusted-sender'
 
 type AuthUser = {
   id: string
@@ -42,26 +43,9 @@ type StreamEventMessage = {
 
 const AUTH_SESSION_KEY = 'auth-session'
 const STREAM_EVENT_CHANNEL = 'http:stream:event'
-const allowedRendererURL = process.env.ELECTRON_RENDERER_URL?.replace(/\/$/, '')
 const activeStreams = new Map<string, { controller: AbortController; webContentsId: number }>()
 let cachedSession: StoredSession | null = null
 let backendTrustPromise: Promise<void> | null = null
-
-function assertTrustedSender(event: IpcMainInvokeEvent) {
-  const senderURL = (event.senderFrame?.url ?? '').replace(/\/$/, '')
-  if (!senderURL) {
-    throw new Error('Missing IPC sender URL')
-  }
-  if (allowedRendererURL) {
-    if (senderURL === allowedRendererURL || senderURL.startsWith(`${allowedRendererURL}/`)) {
-      return
-    }
-    throw new Error(`Untrusted IPC sender: ${senderURL}`)
-  }
-  if (!senderURL.startsWith('file://')) {
-    throw new Error(`Untrusted IPC sender: ${senderURL}`)
-  }
-}
 
 function normalizePath(path: string) {
   if (!path.startsWith('/')) {

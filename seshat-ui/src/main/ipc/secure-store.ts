@@ -3,6 +3,7 @@ import { readFile, writeFile, mkdir } from 'fs/promises'
 import { existsSync } from 'fs'
 import { join } from 'path'
 import type { IpcMain } from 'electron'
+import { assertTrustedSender } from './trusted-sender'
 
 const volatileStore = new Map<string, string>()
 
@@ -69,15 +70,18 @@ export async function deleteSecret(key: string): Promise<void> {
 }
 
 export function registerSecureStoreHandlers(ipcMain: IpcMain): void {
-  ipcMain.handle('secure-store:set', async (_event, key: string, value: string) => {
+  ipcMain.handle('secure-store:set', async (event, key: string, value: string) => {
+    assertTrustedSender(event)
     await setSecret(key, value)
   })
 
-  ipcMain.handle('secure-store:get', async (_event, key: string): Promise<string | null> => {
+  ipcMain.handle('secure-store:get', async (event, key: string): Promise<string | null> => {
+    assertTrustedSender(event)
     return getSecret(key)
   })
 
-  ipcMain.handle('secure-store:delete', async (_event, key: string) => {
+  ipcMain.handle('secure-store:delete', async (event, key: string) => {
+    assertTrustedSender(event)
     await deleteSecret(key)
   })
 }
