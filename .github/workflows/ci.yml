@@ -2,16 +2,62 @@ name: CI
 
 on:
   push:
-    branches: ["main", "dev"]
+    branches: ["main"]
   pull_request:
     branches: ["main", "dev"]
+
+# Cancel superseded runs on the same PR/branch instead of letting each one burn
+# its full runner-minutes to completion - iterating with a few quick pushes in
+# a row used to bill for every intermediate run, not just the final one.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
+  # Runs first so build/test/lint/desktop/website can skip entirely (near-zero
+  # billable minutes) when the diff doesn't touch the part of the monorepo
+  # they cover, instead of every PR paying for backend + desktop + website
+  # regardless of what actually changed. Falls back to "run everything" if the
+  # diff can't be computed, so a missing base ref never silently skips checks.
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      desktop: ${{ steps.filter.outputs.desktop }}
+      website: ${{ steps.filter.outputs.website }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: filter
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+          fi
+          if [ -z "$BASE" ] || ! git cat-file -e "$BASE" 2>/dev/null; then
+            echo "no usable base ref, running everything"
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+            echo "desktop=true" >> "$GITHUB_OUTPUT"
+            echo "website=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          CHANGED=$(git diff --name-only "$BASE" "${{ github.sha }}")
+          echo "$CHANGED"
+          echo "backend=$(echo "$CHANGED" | grep -qE '^(seshat-backend/|seshat-server/|go\.work)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "desktop=$(echo "$CHANGED" | grep -q '^seshat-ui/' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "website=$(echo "$CHANGED" | grep -q '^website/' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
   build:
     name: Build
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,6 +75,8 @@ jobs:
 
   test:
     name: Test
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -53,6 +101,8 @@ jobs:
 
   lint:
     name: Lint
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -86,6 +136,8 @@ jobs:
 
   desktop:
     name: Desktop
+    needs: changes
+    if: needs.changes.outputs.desktop == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -93,6 +145,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: npm
+          cache-dependency-path: seshat-ui/package-lock.json
 
       - name: Install dependencies
         working-directory: seshat-ui
@@ -112,6 +166,8 @@ jobs:
 
   website:
     name: Website
+    needs: changes
+    if: needs.changes.outputs.website == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -119,6 +175,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: npm
+          cache-dependency-path: website/package-lock.json
 
       - name: Install dependencies
         working-directory: website
@@ -161,18 +219,25 @@ jobs:
   gate:
     name: Gate
     runs-on: ubuntu-latest
-    needs: [build, test, lint, desktop, website, branch-policy]
+    needs: [changes, build, test, lint, desktop, website, branch-policy]
     if: always()
     steps:
       - name: All checks passed
         run: |
-          if [[ "${{ needs.build.result }}"         != "success" || \
-                "${{ needs.test.result }}"           != "success" || \
-                "${{ needs.lint.result }}"           != "success" || \
-                "${{ needs.desktop.result }}"        != "success" || \
-                "${{ needs.website.result }}"        != "success" || \
-                "${{ needs.branch-policy.result }}"  != "success" ]]; then
+          # build/test/lint/desktop/website are conditionally skipped by the
+          # changes job when the diff doesn't touch what they cover - treat
+          # "skipped" as passing, same as "success". changes and branch-policy
+          # always run and must succeed outright.
+          ok() { [[ "$1" == "success" || "$1" == "skipped" ]]; }
+          if ! ok "${{ needs.build.result }}" || \
+             ! ok "${{ needs.test.result }}" || \
+             ! ok "${{ needs.lint.result }}" || \
+             ! ok "${{ needs.desktop.result }}" || \
+             ! ok "${{ needs.website.result }}" || \
+             [[ "${{ needs.changes.result }}" != "success" ]] || \
+             [[ "${{ needs.branch-policy.result }}" != "success" ]]; then
             echo "One or more required checks failed."
+            echo "  changes:       ${{ needs.changes.result }}"
             echo "  build:         ${{ needs.build.result }}"
             echo "  test:          ${{ needs.test.result }}"
             echo "  lint:          ${{ needs.lint.result }}"
