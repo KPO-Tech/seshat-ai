@@ -215,6 +215,7 @@ export function Home() {
         modelLabel: selectedModel.display_name || selectedModel.model_id,
         draftPrompt: prompt,
         draftFileIds: fileIds.length > 0 ? fileIds : undefined,
+        draftAttachments: attachments.length > 0 ? attachments : undefined,
         projectPath: projectPath || undefined,
       })
       setInputValue('')

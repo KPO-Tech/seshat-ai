@@ -269,13 +269,14 @@ export function Conversation() {
     if (!session?.draftPrompt || !session.id) return
     const draft = session.draftPrompt
     const draftFileIds = session.draftFileIds
-    updateSession(session.id, { draftPrompt: undefined, draftFileIds: undefined })
+    const draftAttachments = session.draftAttachments
+    updateSession(session.id, { draftPrompt: undefined, draftFileIds: undefined, draftAttachments: undefined })
     if (session.messages.length === 0) {
-      void sendMessage(draft, { fileIds: draftFileIds })
+      void sendMessage(draft, { fileIds: draftFileIds, attachments: draftAttachments })
       return
     }
     setInputValue(draft)
-  }, [sendMessage, session?.draftPrompt, session?.draftFileIds, session?.id, session?.messages.length, updateSession])
+  }, [sendMessage, session?.draftPrompt, session?.draftFileIds, session?.draftAttachments, session?.id, session?.messages.length, updateSession])
 
   const sessionHasData = Boolean(session && (session.messages.length > 0 || session.draftPrompt))
 
