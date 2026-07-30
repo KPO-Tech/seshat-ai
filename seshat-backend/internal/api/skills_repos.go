@@ -22,10 +22,14 @@ type FeaturedSkillRepo struct {
 	Description string `json:"description"`
 }
 
-// DefaultSeshatSkillsRepo is the official Seshat skills collection. It is cloned
-// in the background at first boot so skills are available without user action.
-// Operators can override with SESHAT_DEFAULT_SKILL_REPO or disable with "none".
-const DefaultSeshatSkillsRepo = "https://github.com/EngineerProjects/seshat-skills"
+// DefaultSeshatSkillsRepo is the official Seshat skills collection. Left empty
+// for now: some of its skills (e.g. pdf) shadow the SDK's own better-suited
+// built-in tools (docling-backed Read) for tasks the skill's description
+// claims too broadly, causing worse agent behavior than not having it at all.
+// Re-enable once the individual skill descriptions are scoped tightly enough
+// to stop competing with built-in tools. Operators can still opt in with
+// SESHAT_DEFAULT_SKILL_REPO.
+const DefaultSeshatSkillsRepo = ""
 
 // defaultAllowedSkillRepoHosts is the curated allowlist of git hosting services accepted
 // when installing a skill repo via the HTTP API. Operators may override with SESHAT_SKILL_REPO_HOSTS.
@@ -76,11 +80,7 @@ func ParseSkillRepoHosts(raw string) []string {
 // DefaultFeaturedRepos are always included in the catalog unless the operator
 // sets SESHAT_FEATURED_SKILL_REPOS to override them entirely.
 var DefaultFeaturedRepos = []FeaturedSkillRepo{
-	{
-		Name:        "seshat-skills",
-		URL:         DefaultSeshatSkillsRepo,
-		Description: "Official Seshat skills collection: brainstorming, writing-plans, subagent-driven-development, systematic-debugging, TDD, code-review, requesting-code-review, verification-before-completion, skill-creator.",
-	},
+	// seshat-skills temporarily pulled from the catalog — see DefaultSeshatSkillsRepo.
 	{
 		Name:        "gstack",
 		URL:         "https://github.com/garrytan/gstack",
