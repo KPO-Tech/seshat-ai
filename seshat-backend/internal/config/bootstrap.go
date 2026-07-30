@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -52,17 +53,36 @@ import (
 	"github.com/KPO-Tech/seshat/pkg/vector"
 )
 
-// defaultServerURL is this build's baked-in seshat-server URL, used only
-// when SESHAT_SERVER_URL isn't set in the environment - empty in ordinary
-// dev builds (today's exact standalone-by-default behavior, unchanged), set
-// via `-ldflags "-X .../internal/config.defaultServerURL=https://..."` for
-// a packaged release build that should always connect to one specific,
-// operator-controlled seshat-server without the end user configuring
-// anything (mirrors main.version's existing ldflags stamping, see
-// cmd/api/main.go and .github/workflows/release-desktop.yml). Not yet wired
-// into that release workflow — there is no deployed production
-// seshat-server to point it at yet; this only lands the mechanism.
-var defaultServerURL = ""
+// defaultServerURL is the seshat-server this build talks to when it's
+// reachable - a source-level constant, not an environment variable or user
+// setting. seshat-server access is Seshat's paid managed-service tier;
+// shipping a way to point the app at a different server (env var, Settings
+// field) would let anyone retarget it to their own free self-hosted
+// instance. TODO: replace with the real production URL once seshat-server
+// is actually deployed - localhost:8081 only matches the local Docker
+// compose stack under deploy/.
+const defaultServerURL = "http://localhost:8081"
+
+// serverReachable does a short, best-effort health check against
+// defaultServerURL, deciding at boot whether this run connects to
+// seshat-server or falls back to fully standalone/local mode. Checked once
+// per process start (see helps/seshat-architecture-target.md §1 on why this
+// is a boot-time decision, not a live toggle) - restart the app to pick up
+// a server that just came up, or drop out of connected mode if it's gone.
+func serverReachable(ctx context.Context, url string) bool {
+	reqCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, url+"/health", nil)
+	if err != nil {
+		return false
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+	return resp.StatusCode < 500
+}
 
 // BuildApp wires all infrastructure (DB, stores, query runtime, RAG, MCP, skills)
 // and returns a ready-to-serve *api.App, a cleanup function, and an error.
@@ -197,8 +217,8 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	var memoriesProvider backendmemories.Provider
 	var agentsCloudClient *cloudagents.Client
 	var quotaProvider backendquotas.Provider
-	serverURL := strings.TrimSpace(os.Getenv("SESHAT_SERVER_URL"))
-	if serverURL == "" {
+	serverURL := ""
+	if serverReachable(ctx, defaultServerURL) {
 		serverURL = defaultServerURL
 	}
 	if serverURL != "" {
