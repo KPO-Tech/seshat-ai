@@ -8,11 +8,15 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// bcryptCost matches the "cost 12 minimum" policy documented in SECURITY.md.
+// bcrypt.DefaultCost (10) is bcrypt's own library default, not this project's.
+const bcryptCost = 12
+
 func HashPassword(plaintext string) (string, error) {
 	if plaintext == "" {
 		return "", fmt.Errorf("password is required")
 	}
-	hash, err := bcrypt.GenerateFromPassword([]byte(plaintext), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword([]byte(plaintext), bcryptCost)
 	if err != nil {
 		return "", fmt.Errorf("hash password: %w", err)
 	}

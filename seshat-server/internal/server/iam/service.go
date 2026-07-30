@@ -1146,8 +1146,12 @@ func toProvider(record sdb.Provider) Provider {
 	}
 }
 
+// bcryptCost matches the "cost 12 minimum" policy documented in SECURITY.md.
+// bcrypt.DefaultCost (10) is bcrypt's own library default, not this project's.
+const bcryptCost = 12
+
 func hashPassword(password string) (string, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcryptCost)
 	if err != nil {
 		return "", err
 	}
