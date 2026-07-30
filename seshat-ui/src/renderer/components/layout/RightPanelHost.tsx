@@ -11,7 +11,7 @@ import type { RightPanelInstance, RightPanelKind, RightPanelColumn } from '@/sto
 import type { AgentState } from '@/stores/session'
 import type { Message } from '@/api/types'
 
-// Stable empty reference — must be module-level so the Zustand selector returns
+// Stable empty reference - must be module-level so the Zustand selector returns
 // the same reference every render when no session is found. An inline []
 // would return a new reference each call, triggering an infinite re-render loop.
 const EMPTY_MESSAGES: Message[] = []
@@ -199,16 +199,7 @@ function renderPanelBody(panel: RightPanelInstance) {
         />
       )
     case 'browser':
-      return (
-        <EmptyState
-          title="Browser"
-          description={
-            panel.browserUrl
-              ? `This panel is ready to host a browser view for ${panel.browserUrl}.`
-              : 'An embedded browser preview will open here.'
-          }
-        />
-      )
+      return <BrowserPanel url={panel.browserUrl} />
     case 'knowledge':
       return <KnowledgePanel results={panel.knowledgeResults ?? []} />
     case 'subagent':
@@ -225,7 +216,7 @@ function renderPanelBody(panel: RightPanelInstance) {
 
 // Subscribes reactively to the plan session's pendingPermission, unlike a
 // plain getState() snapshot (the previous implementation) which reads the
-// store once and never updates again — since renderPanelBody is an ordinary
+// store once and never updates again - since renderPanelBody is an ordinary
 // function, not a component, that snapshot would only ever refresh if some
 // unrelated state change happened to re-render RightPanelHost. A permission
 // resolved elsewhere (e.g. via handlePermissionDecision in Conversation.tsx)
@@ -297,7 +288,28 @@ function KnowledgePanel({ results }: { results: NonNullable<RightPanelInstance['
   )
 }
 
-// ── Agent Monitor ─────────────────────────────────────────────────────────────
+function BrowserPanel({ url }: { url?: string }) {
+  return (
+    <div className="right-panel-browser">
+      <div className="right-panel-browser-icon">
+        <Browser size={18} />
+      </div>
+      <h3>Browser trace</h3>
+      {url ? (
+        <>
+          <a className="right-panel-browser-url" href={url} target="_blank" rel="noreferrer" title={url}>
+            {url}
+          </a>
+          <p>Open the browser tool result in the chat to inspect snapshots, screenshots, network output, and extracted content.</p>
+        </>
+      ) : (
+        <p>Browser tool output appears inline in the conversation as snapshots, screenshots, network output, and extracted content.</p>
+      )}
+    </div>
+  )
+}
+
+// Agent Monitor
 
 function AgentMonitorPanel({ sessionId }: { sessionId: string }) {
   const agentState = useSessionStore((s) => s.getAgentState(sessionId))
@@ -320,12 +332,13 @@ function AgentMonitorPanel({ sessionId }: { sessionId: string }) {
       <SubagentsSection sessionId={sessionId} />
       {planArtifact && <PlanArtifactSection sessionId={sessionId} planArtifact={planArtifact} />}
       <PlanSection plan={plan} />
+      <ActivityTimelineSection state={agentState} />
     </div>
   )
 }
 
 // Aggregated view of every sub-agent spawned from this session (via the `agent`
-// or `spawn_agent` tools) — previously the Agent Monitor only ever showed the
+// or `spawn_agent` tools) - previously the Agent Monitor only ever showed the
 // main agent's own state, with no way to see how many sub-agents were active,
 // completed, or failed without scrolling back through the transcript to find
 // their individual cards. Renders nothing once no sub-agent has been spawned.
@@ -348,9 +361,9 @@ function SubagentsSection({ sessionId }: { sessionId: string }) {
       <div className="am-section-head">
         <span className="am-section-label">Sub-agents</span>
         <span className="am-plan-meta">
-          {runningCount > 0 ? `${runningCount} running · ` : ''}
+          {runningCount > 0 ? `${runningCount} running / ` : ''}
           {entries.length} total
-          {failedCount > 0 ? ` · ${failedCount} failed` : ''}
+          {failedCount > 0 ? ` / ${failedCount} failed` : ''}
         </span>
       </div>
       <div className="am-subagent-list">
@@ -389,13 +402,13 @@ function TurnTokenStats({ state }: { state: AgentState }) {
     <div className="am-section">
       <span className="am-section-label">Stats</span>
       <div className="am-stat-grid">
-        <Stat label="Turn" value={state.turnNumber > 0 ? `#${state.turnNumber}` : '—'} />
-        <Stat label="Input tokens"  value={state.inputTokens  > 0 ? fmt(state.inputTokens)  : '—'} />
-        <Stat label="Output tokens" value={state.outputTokens > 0 ? fmt(state.outputTokens) : '—'} />
+        <Stat label="Turn" value={state.turnNumber > 0 ? `#${state.turnNumber}` : '-'} />
+        <Stat label="Input tokens"  value={state.inputTokens  > 0 ? fmt(state.inputTokens)  : '-'} />
+        <Stat label="Output tokens" value={state.outputTokens > 0 ? fmt(state.outputTokens) : '-'} />
         <Stat label="Total" value={
           state.inputTokens + state.outputTokens > 0
             ? fmt(state.inputTokens + state.outputTokens)
-            : '—'
+            : '-'
         } />
       </div>
     </div>
@@ -409,7 +422,7 @@ function PlanSection({ plan }: { plan: ReturnType<typeof derivePlanSnapshot> }) 
         <span className="am-section-label">Plan</span>
         {plan.items.length > 0 && (
           <span className="am-plan-meta">
-            {plan.completedCount}/{plan.items.length} done · Tasks
+            {plan.completedCount}/{plan.items.length} done / Tasks
           </span>
         )}
       </div>
@@ -486,6 +499,38 @@ function PlanArtifactSection({ sessionId, planArtifact }: { sessionId: string; p
   )
 }
 
+function ActivityTimelineSection({ state }: { state: AgentState }) {
+  const entries = useMemo(() => [...state.activityLog].slice(-12).reverse(), [state.activityLog])
+
+  return (
+    <div className="am-section">
+      <div className="am-section-head">
+        <span className="am-section-label">Timeline</span>
+        {entries.length > 0 && <span className="am-plan-meta">{entries.length} recent</span>}
+      </div>
+      {entries.length === 0 ? (
+        <p className="am-empty-hint">Tool activity will appear here as the agent runs.</p>
+      ) : (
+        <div className="am-timeline">
+          {entries.map((entry, index) => (
+            <div key={`${entry.toolName}-${entry.startedAt}-${index}`} className={`am-timeline-row am-timeline-row--${entry.stage}`}>
+              <span className="am-timeline-dot" />
+              <span className="am-timeline-copy">
+                <span className="am-timeline-title">
+                  {toolDisplayName(entry.toolName)}
+                  <span className="am-timeline-stage">{entry.stage.replace('_', ' ')}</span>
+                </span>
+                {entry.message && <span className="am-timeline-message">{entry.message}</span>}
+              </span>
+              <span className="am-timeline-time">{formatActivityDuration(entry)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function toolDisplayName(name: string): string {
   const map: Record<string, string> = {
     bash: 'Bash', read: 'Read', write: 'Write', edit: 'Edit',
@@ -499,6 +544,13 @@ function toolDisplayName(name: string): string {
 
 function fmt(n: number) {
   return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
+}
+
+function formatActivityDuration(entry: AgentState['activityLog'][number]) {
+  if (!entry.endedAt) return 'now'
+  const ms = Math.max(0, entry.endedAt - entry.startedAt)
+  if (ms < 1000) return `${ms}ms`
+  return `${(ms / 1000).toFixed(1)}s`
 }
 
 function EmptyState({ title, description }: { title: string; description: string }) {
@@ -529,7 +581,7 @@ const RIGHT_PANEL_CSS = `
 }
 
 /* position:absolute's containing block is the nearest positioned
-   ancestor's *padding* box, which includes the padding area itself — so
+   ancestor's *padding* box, which includes the padding area itself - so
    inset:0 alone would render behind .shell-main's padding-left (i.e.
    behind the sidebar, which only visually reserves that space via
    padding, not real layout width). Pin "left" to the same width .shell-main
@@ -774,7 +826,50 @@ const RIGHT_PANEL_CSS = `
   white-space: pre-wrap;
 }
 
-/* ── Agent Monitor ─────────────────────────────────────────────────────────── */
+.right-panel-browser {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 18px;
+  color: var(--color-text);
+}
+
+.right-panel-browser-icon {
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-accent);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.right-panel-browser h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.right-panel-browser p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.right-panel-browser-url {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: monospace;
+  font-size: 11px;
+  color: var(--color-accent);
+}
+
+/* Agent Monitor */
 
 .am-root {
   display: flex;
@@ -1056,6 +1151,73 @@ const RIGHT_PANEL_CSS = `
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.am-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.am-timeline-row {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  gap: 7px;
+  align-items: start;
+  padding: 6px 0;
+}
+
+.am-timeline-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-top: 5px;
+  background: var(--color-border);
+}
+
+.am-timeline-row--completed .am-timeline-dot { background: var(--color-success); }
+.am-timeline-row--failed .am-timeline-dot { background: var(--color-error); }
+.am-timeline-row--running .am-timeline-dot,
+.am-timeline-row--pending .am-timeline-dot { background: var(--color-accent); }
+
+.am-timeline-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.am-timeline-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.am-timeline-stage {
+  flex-shrink: 0;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.am-timeline-message {
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.am-timeline-time {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  padding-top: 1px;
 }
 
 /* Plan artifact button */

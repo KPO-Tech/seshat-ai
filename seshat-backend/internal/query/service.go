@@ -326,20 +326,22 @@ func (s *Service) SearchSessionsByTitle(ctx context.Context, principal *backenda
 	return results, nil
 }
 
-// SearchSessionsByContent returns sessions (up to limit) whose title or
-// runtime metadata is visible to principal and whose stored messages contain
-// needle. The search is bounded: at most limit sessions are scanned in
-// memory to avoid unbounded N+1.
-//
-// NOTE: the state backends (SQLiteBackend, FilesystemBackend, MemoryBackend)
-// already implement Backend.SearchTranscriptsByContent for direct SQL/FS search.
-// Wiring it here requires extending SessionManager; tracked as future work.
+// SearchSessionsByContent returns visible sessions whose stored messages contain
+// needle. When the configured session manager exposes direct transcript search,
+// this uses that path; otherwise it falls back to the SessionInspector scan used
+// by older SDK runtimes.
 func (s *Service) SearchSessionsByContent(ctx context.Context, principal *backendauth.Principal, needle string, limit int) ([]SessionInfo, error) {
 	if s == nil {
 		return nil, bkerr.Unavailable("query service not configured", nil)
 	}
 	if s.sessions == nil || limit <= 0 {
 		return nil, nil
+	}
+	if searcher, ok := s.sessions.(TranscriptSearcher); ok {
+		ids, err := searcher.SearchTranscriptsByContent(needle, limit)
+		if err == nil {
+			return s.sessionInfosFromIDs(ctx, principal, ids, limit)
+		}
 	}
 	all, err := s.sessions.ListSessions()
 	if err != nil {
@@ -376,6 +378,49 @@ func (s *Service) SearchSessionsByContent(ctx context.Context, principal *backen
 			}
 		}
 	nextSession:
+	}
+	return results, nil
+}
+
+func (s *Service) sessionInfosFromIDs(ctx context.Context, principal *backendauth.Principal, ids []sdk.SessionID, limit int) ([]SessionInfo, error) {
+	if len(ids) == 0 || limit <= 0 {
+		return nil, nil
+	}
+	runtimeMap := s.runtimeSessionMap()
+	results := make([]SessionInfo, 0, min(len(ids), limit))
+	for _, id := range ids {
+		if len(results) >= limit {
+			break
+		}
+		sessionID := id.String()
+		info := SessionInfo{SessionID: sessionID}
+		if ri, ok := runtimeMap[sessionID]; ok {
+			info.CreatedAt = ri.CreatedAt
+			info.UpdatedAt = ri.UpdatedAt
+			info.Status = string(ri.Status)
+			info.TotalTurns = ri.TotalTurns
+			info.TotalTokens = ri.TotalTokens
+		}
+		if s.ownership != nil {
+			if principal == nil {
+				continue
+			}
+			owned, err := s.ownership.GetBySessionID(ctx, sessionID)
+			if err != nil || owned == nil {
+				continue
+			}
+			if !principal.HasRole("admin") && owned.UserID != principal.User.ID {
+				continue
+			}
+			info.UserID = owned.UserID
+			info.Title = owned.Title
+			info.ExecutionOrigin = owned.ExecutionOrigin
+			info.WorkspacePath = owned.WorkspacePath
+			info.ProjectPath = owned.ProjectPath
+			info.CreatedAt = owned.CreatedAt.Unix()
+			info.UpdatedAt = owned.UpdatedAt.Unix()
+		}
+		results = append(results, info)
 	}
 	return results, nil
 }
@@ -493,6 +538,45 @@ func (s *Service) CreateSession(ctx context.Context, principal *backendauth.Prin
 	}
 
 	return sessionID, nil
+}
+
+// EnsureSessionWorkspace resolves and creates the per-session workspace before
+// the first query turn runs. This matters for Home-screen uploads: files can be
+// attached immediately after session creation, before prepareRuntimeInput has a
+// chance to lazily create the workspace for execution.
+func (s *Service) EnsureSessionWorkspace(ctx context.Context, principal *backendauth.Principal, sessionID string) (string, error) {
+	sessionID = strings.TrimSpace(sessionID)
+	if sessionID == "" {
+		return "", bkerr.InvalidInput("session_id is required", nil)
+	}
+	if s == nil || s.ownership == nil {
+		return "", nil
+	}
+	if err := s.checkSessionAccess(ctx, principal, sessionID); err != nil {
+		return "", err
+	}
+	ownership, err := s.ownership.GetBySessionID(ctx, sessionID)
+	if err != nil {
+		return "", bkerr.NotFound("session not found", err)
+	}
+	wsPath := strings.TrimSpace(ownership.WorkspacePath)
+	if wsPath == "" {
+		defaultPath, defErr := workspace.DefaultPath(sessionID)
+		if defErr != nil {
+			return "", bkerr.Internal("resolve session workspace: "+defErr.Error(), defErr)
+		}
+		wsPath = defaultPath
+		if err := s.ownership.UpdateWorkspacePath(ctx, sessionID, wsPath); err != nil {
+			return "", bkerr.Internal("track session workspace: "+err.Error(), err)
+		}
+	}
+	if err := workspace.EnsureDir(wsPath); err != nil {
+		return "", bkerr.Internal("create session workspace: "+err.Error(), err)
+	}
+	if ws, err := workspace.New(wsPath); err == nil {
+		_ = ws.EnsureSubdirs()
+	}
+	return wsPath, nil
 }
 
 // DeleteSession deletes a session, enforcing ownership when configured.
@@ -1176,7 +1260,7 @@ func (s *Service) BuildContextInput(ctx context.Context, p ContextBuildParams) (
 
 	// Per-turn attachments: split by category.
 	// - Images  → base64-encode and inject as multimodal content blocks.
-	// - Others  → text-extract and inject as <attached_document> blocks.
+	// - Others  → list as attached files and let read_file/Docling extract on demand.
 	if len(p.FileIDs) > 0 && s.files != nil {
 		var imageIDs, textIDs []string
 		for _, fid := range p.FileIDs {

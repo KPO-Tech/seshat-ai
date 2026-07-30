@@ -31,6 +31,10 @@ type SessionManager interface {
 	DeleteSession(sessionID sdk.SessionID) error
 }
 
+type TranscriptSearcher interface {
+	SearchTranscriptsByContent(needle string, limit int) ([]sdk.SessionID, error)
+}
+
 type SessionInterrupter interface {
 	InterruptSession(ctx context.Context, sessionID string) error
 }
@@ -262,6 +266,13 @@ func (r *SDKRuntime) ListSessions() ([]*sdk.SessionInfo, error) {
 		return nil, fmt.Errorf("session store not available")
 	}
 	return r.client.ListSessions()
+}
+
+func (r *SDKRuntime) SearchTranscriptsByContent(needle string, limit int) ([]sdk.SessionID, error) {
+	if r == nil || r.client == nil {
+		return nil, fmt.Errorf("session store not available")
+	}
+	return r.client.SearchTranscriptsByContent(needle, limit)
 }
 
 func (r *SDKRuntime) CreateSession(ctx context.Context) (SessionHandle, error) {

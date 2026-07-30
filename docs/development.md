@@ -1,18 +1,19 @@
-# Développement local
+# Local Development
 
-## Structure du workspace
+## Workspace Structure
 
-`seshat-ai` utilise un workspace Go commité à la racine pour relier deux modules locaux :
+`seshat-ai` uses a committed Go workspace at the repository root to connect two
+local modules:
 
-```
+```text
 seshat-ai/
-  seshat-backend/   ← backend local / API desktop (module github.com/EngineerProjects/seshat-ai/seshat-backend)
-  seshat-server/    ← serveur cloud en cours d’extraction
-  seshat-ui/
-  go.work           ← commité : relie backend + server
+  seshat-backend/   local backend and desktop API
+  seshat-server/    cloud server
+  seshat-ui/        Electron desktop UI
+  go.work           connects backend and server
 ```
 
-`go.work` contient :
+`go.work` contains:
 
 ```go
 use (
@@ -21,53 +22,51 @@ use (
 )
 ```
 
-Le moteur `seshat` n'est plus un submodule ni un module local : c'est une dépendance externe publiée, `github.com/KPO-Tech/seshat` (voir https://github.com/KPO-Tech/seshat). Le module principal du backend le déclare dans `seshat-backend/go.mod` comme n'importe quelle autre dépendance :
+The `seshat` engine is not a submodule and should not be referenced through a
+local `replace`. It is consumed as the published external module
+`github.com/KPO-Tech/seshat`.
+
+Both Go modules currently consume:
 
 ```go
-module github.com/EngineerProjects/seshat-ai/seshat-backend
-
-require github.com/KPO-Tech/seshat v0.2.1
+require github.com/KPO-Tech/seshat v1.0.2
 ```
 
-Même chose dans `seshat-server/go.mod`. Aucun `replace` local — `go mod download` récupère le module directement depuis GitHub.
+## Common Workflow
 
-## Workflow courant
+From the repository root:
 
-```bash
-git clone <repo>
-cd seshat-ai
-```
-
-Travailler depuis la racine `seshat-ai` :
-
-```bash
-go build ./seshat-backend/... ./seshat-server/...
+```sh
 go test ./seshat-backend/... ./seshat-server/...
-go test ./seshat-backend/internal/api/...
 ```
 
-Travailler uniquement sur le backend local :
+Backend only:
 
-```bash
+```sh
 cd seshat-backend
 go build ./cmd/api
 go test ./...
 ```
 
-Travailler uniquement sur le serveur cloud :
+Server only:
 
-```bash
-cd ../seshat-server
+```sh
+cd seshat-server
 go build ./cmd/server
 go test ./...
 ```
 
-## Faire évoluer le moteur seshat
+## Updating The Seshat Engine
 
-Le code de `seshat` vit dans son propre repo (`github.com/KPO-Tech/seshat`), cloné et développé séparément. Pour consommer un changement depuis `seshat-ai` :
+The `seshat` code lives in its own repository:
+`github.com/KPO-Tech/seshat`.
 
-1. Merger et taguer une nouvelle version sur le repo seshat (`vX.Y.Z`).
-2. Depuis `seshat-backend/` et `seshat-server/` : `go get github.com/KPO-Tech/seshat@vX.Y.Z`.
-3. Committer les `go.mod`/`go.sum` mis à jour.
+To consume a new runtime change from `seshat-ai`:
 
-Ne jamais ajouter de `replace` pointant vers une copie locale de `seshat` dans un commit — c'est un dépôt indépendant, pas un sous-module de ce repo.
+1. Merge the runtime change in the `seshat` repo.
+2. Publish a new semver tag, for example `v1.0.2`.
+3. Run `go get github.com/KPO-Tech/seshat@vX.Y.Z` from both
+   `seshat-backend/` and `seshat-server/`.
+4. Commit the updated `go.mod` and `go.sum` files.
+
+Do not commit local `replace` directives for `github.com/KPO-Tech/seshat`.

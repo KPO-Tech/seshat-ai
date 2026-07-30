@@ -208,7 +208,11 @@ export function SkillsCreatorPage() {
   const toggleExpand = (name: string) => {
     setExpandedSkills(prev => {
       const next = new Set(prev)
-      next.has(name) ? next.delete(name) : next.add(name)
+      if (next.has(name)) {
+        next.delete(name)
+      } else {
+        next.add(name)
+      }
       return next
     })
     const skill = skills.find(s => s.name === name)

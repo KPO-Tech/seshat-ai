@@ -13,6 +13,27 @@ export type ChatAttachment = {
   size?: number
   category?: 'images' | 'documents' | 'other'
   local_path?: string
+  preview_url?: string
+  page_preview_urls?: string[]
+  upload_status?: 'uploading' | 'uploaded' | 'failed'
+  error?: string
+}
+
+function filePathToURL(path?: string): string | null {
+  if (!path) return null
+  if (/^(file|https?):\/\//i.test(path)) return path
+  const normalized = path.replace(/\\/g, '/')
+  const prefixed = normalized.startsWith('/') ? normalized : `/${normalized}`
+  return `file://${prefixed.split('/').map((part, index) => (
+    index === 0 || /^[A-Za-z]:$/.test(part) ? part : encodeURIComponent(part)
+  )).join('/')}`
+}
+
+function formatAttachmentSize(size?: number): string | null {
+  if (!size || size <= 0) return null
+  if (size < 1024) return `${size} B`
+  if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`
 }
 
 type Props = {
@@ -32,7 +53,8 @@ type Props = {
   onAttachFiles?: (files: FileList) => void | Promise<void>
   onRemoveAttachment?: (id: string) => void
   isUploadingAttachments?: boolean
-  // Relocated here from ChatTopBar — Provider/Model live next to where the
+  attachmentError?: string | null
+  // Relocated here from ChatTopBar - Provider/Model live next to where the
   // user actually types. Everything else (mode, permission, agent monitor)
   // stays in ChatTopBar's top-right cluster.
   providerLabel?: string
@@ -47,6 +69,8 @@ type Props = {
   onModelSelect?: (id: string) => void
   providerDisabled?: boolean
   modelDisabled?: boolean
+  modelError?: string | null
+  onModelRetry?: () => void
 }
 
 export function ChatInput({
@@ -66,6 +90,7 @@ export function ChatInput({
   onAttachFiles,
   onRemoveAttachment,
   isUploadingAttachments = false,
+  attachmentError,
   providerLabel = 'Provider',
   modelLabel = 'Model',
   onProviderClick,
@@ -78,6 +103,8 @@ export function ChatInput({
   onModelSelect,
   providerDisabled = false,
   modelDisabled = false,
+  modelError,
+  onModelRetry,
 }: Props) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const selectorsRef = useRef<HTMLDivElement>(null)
@@ -93,8 +120,38 @@ export function ChatInput({
   const corpusDropdownRef = useRef<HTMLDivElement>(null)
   const [recordingState, setRecordingState] = useState<'idle' | 'recording' | 'transcribing'>('idle')
   const [recordError, setRecordError] = useState<string | null>(null)
+  const [previewAttachment, setPreviewAttachment] = useState<ChatAttachment | null>(null)
+  const [attachmentPreviewURLs, setAttachmentPreviewURLs] = useState<Record<string, string>>({})
   const wavRecordingRef = useRef<WavRecording | null>(null)
   const micStreamRef = useRef<MediaStream | null>(null)
+  const canSend = value.trim().length > 0 || attachments.length > 0
+
+  useEffect(() => {
+    let cancelled = false
+    const imageAttachments = attachments.filter(file =>
+      (file.category === 'images' || file.content_type?.startsWith('image/')) &&
+      file.local_path &&
+      !attachmentPreviewURLs[file.id]
+    )
+    if (imageAttachments.length === 0) return
+
+    for (const file of imageAttachments) {
+      const fallbackURL = filePathToURL(file.local_path) ?? ''
+      if (!window.nexus?.readFileDataURL) {
+        setAttachmentPreviewURLs(current => ({ ...current, [file.id]: fallbackURL }))
+        continue
+      }
+      void window.nexus.readFileDataURL(file.local_path ?? '')
+        .then((url) => {
+          if (!cancelled) setAttachmentPreviewURLs(current => ({ ...current, [file.id]: url }))
+        })
+        .catch(() => {
+          if (!cancelled) setAttachmentPreviewURLs(current => ({ ...current, [file.id]: fallbackURL }))
+        })
+    }
+
+    return () => { cancelled = true }
+  }, [attachments, attachmentPreviewURLs])
 
   useEffect(() => {
     api.get<{ skills: SkillOption[] }>('/skills')
@@ -238,7 +295,7 @@ export function ChatInput({
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       if (isStreaming) return
-      if (value.trim()) onSend()
+      if (canSend) onSend()
     }
   }
 
@@ -266,7 +323,7 @@ export function ChatInput({
       {/* Corpus chip */}
       {selectedCorpus && onCorpusChange && (
         <div className="chat-corpus-chip">
-          <span className="chat-corpus-chip-icon">📚</span>
+          <span className="chat-corpus-chip-icon">@</span>
           <span className="chat-corpus-chip-name">{selectedCorpus.name}</span>
           <button
             className="chat-corpus-chip-remove"
@@ -280,21 +337,116 @@ export function ChatInput({
 
       {attachments.length > 0 && (
         <div className="chat-attachment-row">
-          {attachments.map(file => (
-            <div key={file.id} className={`chat-attachment-chip chat-attachment-chip--${file.category ?? 'other'}`} title={file.local_path ?? file.filename}>
-              <span className="chat-attachment-icon" aria-hidden>
-                {file.category === 'images' ? '🖼' : file.category === 'documents' ? '📄' : '📎'}
-              </span>
-              <span className="chat-attachment-name">{file.filename}</span>
-              <button
-                className="chat-attachment-remove"
-                onMouseDown={e => { e.preventDefault(); onRemoveAttachment?.(file.id) }}
-                title="Remove attachment"
+          {attachments.map(file => {
+            const isImage = file.category === 'images' || file.content_type?.startsWith('image/')
+            const pagePreviewURL = file.page_preview_urls?.[0]
+            const previewURL = pagePreviewURL ?? file.preview_url ?? attachmentPreviewURLs[file.id] ?? filePathToURL(file.local_path)
+            const sizeLabel = formatAttachmentSize(file.size)
+            return (
+              <div
+                key={file.id}
+                className={[
+                  'chat-attachment-card',
+                  `chat-attachment-card--${isImage ? 'image' : file.category ?? 'other'}`,
+                  file.upload_status ? `chat-attachment-card--${file.upload_status}` : '',
+                ].filter(Boolean).join(' ')}
+                title={file.local_path ?? file.filename}
               >
-                <Close size={10} />
+                {previewURL ? (
+                  <button
+                    type="button"
+                    className="chat-attachment-thumb"
+                    onClick={() => setPreviewAttachment(file)}
+                    title={isImage ? 'Preview image' : 'Preview document'}
+                  >
+                    <img src={previewURL} alt={file.filename} />
+                    {!isImage && <span className="chat-attachment-thumb-badge">PDF</span>}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="chat-attachment-file-icon"
+                    onClick={() => file.local_path && void window.nexus?.openPath?.(file.local_path)}
+                    title={file.local_path ? 'Open file' : file.filename}
+                  >
+                    {file.category === 'documents' ? 'DOC' : 'FILE'}
+                  </button>
+                )}
+                <div className="chat-attachment-meta">
+                  <span className="chat-attachment-name">{file.filename}</span>
+                  <span className="chat-attachment-detail">
+                    {file.upload_status === 'uploading'
+                      ? 'Uploading...'
+                      : file.upload_status === 'failed'
+                        ? file.error || 'Upload failed'
+                        : isImage ? 'Image' : file.category === 'documents' ? 'Document' : 'File'}
+                    {file.upload_status === 'uploading' || file.upload_status === 'failed' ? '' : sizeLabel ? ` - ${sizeLabel}` : ''}
+                  </span>
+                </div>
+                <button
+                  className="chat-attachment-remove"
+                  onMouseDown={e => { e.preventDefault(); onRemoveAttachment?.(file.id) }}
+                  title="Remove attachment"
+                >
+                  <Close size={10} />
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {previewAttachment && (
+        <div
+          className="chat-attachment-preview"
+          role="dialog"
+          aria-modal="true"
+          onMouseDown={() => setPreviewAttachment(null)}
+        >
+          <div className="chat-attachment-preview-shell" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="chat-attachment-preview-header">
+              <span>{previewAttachment.filename}</span>
+              <button type="button" onClick={() => setPreviewAttachment(null)} title="Close preview">
+                <Close size={14} />
               </button>
             </div>
-          ))}
+            {previewAttachment.page_preview_urls?.length ? (
+              <div className="chat-attachment-preview-pages">
+                {previewAttachment.page_preview_urls.map((url, index) => (
+                  <img key={`${previewAttachment.id}-page-${index}`} src={url} alt={`${previewAttachment.filename} page ${index + 1}`} />
+                ))}
+              </div>
+            ) : (
+              (previewAttachment.preview_url ?? attachmentPreviewURLs[previewAttachment.id] ?? filePathToURL(previewAttachment.local_path)) && (
+                <img
+                  src={previewAttachment.preview_url ?? attachmentPreviewURLs[previewAttachment.id] ?? filePathToURL(previewAttachment.local_path) ?? undefined}
+                  alt={previewAttachment.filename}
+                />
+              )
+            )}
+          </div>
+        </div>
+      )}
+
+      {(isUploadingAttachments || attachmentError || modelError) && (
+        <div className="chat-input-notices" aria-live="polite">
+          {isUploadingAttachments && (
+            <div className="chat-input-notice chat-input-notice--muted">
+              <LoadingOne size={12} className="chat-status-spin" />
+              <span>Uploading files...</span>
+            </div>
+          )}
+          {attachmentError && <div className="chat-input-notice">{attachmentError}</div>}
+          {modelError && (
+            <div className="chat-input-notice">
+              <span>{modelError}</span>
+              {onModelRetry && (
+                <button type="button" className="chat-input-notice-action" onClick={onModelRetry}>
+                  Retry
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -318,7 +470,7 @@ export function ChatInput({
             disabled={isUploadingAttachments}
             onClick={() => fileInputRef.current?.click()}
           >
-            <Plus size={13} />
+            <Plus size={18} />
           </button>
           <input
             ref={fileInputRef}
@@ -394,7 +546,7 @@ export function ChatInput({
               recordingState === 'recording'
                 ? 'Stop recording'
                 : recordingState === 'transcribing'
-                  ? 'Transcribing…'
+                  ? 'Transcribing...'
                   : 'Record a voice message'
             }
             disabled={recordingState === 'transcribing'}
@@ -408,7 +560,7 @@ export function ChatInput({
           {isStreaming && (
             <div className="chat-status-inline" aria-live="polite">
               <LoadingOne size={14} className="chat-status-spin" />
-              <span>{statusText || 'Running…'}</span>
+              <span>{statusText || 'Running...'}</span>
             </div>
           )}
         </div>
@@ -458,11 +610,11 @@ export function ChatInput({
             </button>
           ) : (
             <button
-              className={`chat-send-btn${value.trim() ? ' active' : ''}`}
-              onClick={() => value.trim() && onSend()}
+              className={`chat-send-btn${canSend ? ' active' : ''}`}
+              onClick={() => canSend && onSend()}
               type="button"
             >
-              <Send size={14} theme={value.trim() ? 'filled' : 'outline'} />
+              <Send size={14} theme={canSend ? 'filled' : 'outline'} />
             </button>
           )}
         </div>
@@ -478,7 +630,7 @@ ${SELECTOR_PILL_CSS}
   position: relative;
 }
 
-/* ── Slash-command dropdown ── */
+/* Slash-command dropdown */
 .chat-slash-dropdown {
   position: absolute;
   bottom: calc(100% + 8px);
@@ -549,37 +701,109 @@ ${SELECTOR_PILL_CSS}
   margin-bottom: 10px;
 }
 
-.chat-attachment-chip {
-  display: inline-flex;
+.chat-attachment-card {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  max-width: 220px;
-  background: var(--color-surface);
+  gap: 9px;
+  width: min(100%, 260px);
+  min-height: 54px;
+  background: rgba(255, 255, 255, 0.035);
   border: 1px solid var(--color-border-subtle);
   color: var(--color-text-secondary);
-  border-radius: 12px;
-  padding: 4px 7px 4px 8px;
+  border-radius: 8px;
+  padding: 6px 7px;
   font-size: 12px;
+  position: relative;
 }
 
-.chat-attachment-icon {
-  font-size: 13px;
-  line-height: 1;
+.chat-attachment-card--image {
+  border-color: color-mix(in srgb, var(--color-primary) 36%, transparent);
+}
+
+.chat-attachment-card--documents {
+  border-color: color-mix(in srgb, var(--color-success) 34%, transparent);
+}
+
+.chat-attachment-card--uploading {
+  opacity: 0.78;
+}
+
+.chat-attachment-card--failed {
+  border-color: rgba(var(--color-error-rgb), 0.34);
+}
+
+.chat-attachment-thumb,
+.chat-attachment-file-icon {
+  width: 42px;
+  height: 42px;
   flex-shrink: 0;
+  border-radius: 7px;
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  cursor: pointer;
+  padding: 0;
 }
 
-.chat-attachment-chip--images {
-  border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
+.chat-attachment-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
-.chat-attachment-chip--documents {
-  border-color: color-mix(in srgb, var(--color-success) 30%, transparent);
+.chat-attachment-thumb {
+  position: relative;
+}
+
+.chat-attachment-thumb-badge {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  background: rgba(0, 0, 0, 0.72);
+  color: white;
+  border-radius: 4px;
+  padding: 1px 4px;
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.chat-attachment-file-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.chat-attachment-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
 }
 
 .chat-attachment-name {
+  color: var(--color-text);
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.chat-attachment-detail {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-attachment-card--failed .chat-attachment-detail {
+  color: var(--color-error);
 }
 
 .chat-attachment-remove {
@@ -594,6 +818,123 @@ ${SELECTOR_PILL_CSS}
 
 .chat-attachment-remove:hover {
   color: var(--color-text-secondary);
+}
+
+.chat-attachment-preview {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.chat-attachment-preview-shell {
+  max-width: min(92vw, 980px);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chat-attachment-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.chat-attachment-preview-header span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-attachment-preview-header button {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-attachment-preview-shell > img {
+  max-width: 100%;
+  max-height: calc(88vh - 48px);
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.36);
+}
+
+.chat-attachment-preview-pages {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  max-height: calc(88vh - 48px);
+  padding-right: 4px;
+}
+
+.chat-attachment-preview-pages img {
+  max-width: min(78vw, 760px);
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.36);
+}
+
+.chat-input-notices {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.chat-input-notice {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  color: var(--color-error);
+  font-size: 11px;
+  line-height: 1.4;
+  background: rgba(var(--color-error-rgb), 0.08);
+  border: 1px solid rgba(var(--color-error-rgb), 0.16);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+.chat-input-notice--muted {
+  color: var(--color-text-secondary);
+  background: rgba(255, 255, 255, 0.035);
+  border-color: var(--color-border-subtle);
+}
+
+.chat-input-notice-action {
+  margin-left: auto;
+  flex-shrink: 0;
+  border: 1px solid rgba(var(--color-error-rgb), 0.2);
+  background: transparent;
+  color: var(--color-error);
+  border-radius: 6px;
+  padding: 2px 7px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.chat-input-notice-action:hover {
+  background: rgba(var(--color-error-rgb), 0.08);
 }
 
 .chat-file-input {
@@ -621,17 +962,18 @@ ${SELECTOR_PILL_CSS}
 }
 
 .chat-tool-circle {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-subtle);
-  color: var(--color-text);
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.15s;
+  padding: 0;
+  transition: color 0.15s, transform 0.15s;
 }
 
 .chat-tool-circle:disabled {
@@ -640,8 +982,8 @@ ${SELECTOR_PILL_CSS}
 }
 
 .chat-tool-circle:hover:not(:disabled) {
-  background: var(--color-hover);
-  transform: scale(1.05);
+  color: var(--color-text-secondary);
+  transform: scale(1.06);
 }
 
 .chat-tool-icon {
@@ -776,7 +1118,7 @@ ${SELECTOR_PILL_CSS}
   to { transform: rotate(360deg); }
 }
 
-/* ── Corpus chip ── */
+/* Corpus chip */
 .chat-corpus-chip {
   display: inline-flex; align-items: center; gap: 5px;
   background: rgba(239,124,47,0.1); border: 1px solid rgba(239,124,47,0.3);
@@ -793,7 +1135,7 @@ ${SELECTOR_PILL_CSS}
 }
 .chat-corpus-chip-remove:hover { opacity: 1; }
 
-/* ── Corpus dropdown ── */
+/* Corpus dropdown */
 .chat-corpus-wrap { position: relative; }
 .chat-tool-icon-active { color: var(--color-primary) !important; }
 .chat-corpus-dropdown {

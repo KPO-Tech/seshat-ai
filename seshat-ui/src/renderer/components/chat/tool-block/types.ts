@@ -26,9 +26,15 @@ export type AskUserQuestion = {
   question: string
   options: AskUserOption[]
   multiSelect: boolean
+  // Set for a synthetic question built from a raw confirm-type prompt (no
+  // structured `questions` input) - Yes/No render as normal options, but
+  // the submitted value must be the boolean the confirm prompt expects, not
+  // the literal label text.
+  kind?: 'confirm'
 }
 
 export type WebSearchHit = {
   title: string
   url: string
+  snippet?: string
 }

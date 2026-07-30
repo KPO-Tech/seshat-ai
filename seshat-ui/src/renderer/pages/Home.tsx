@@ -10,6 +10,37 @@ import { useProvidersStore } from '@/stores/providers'
 import { useSessionStore } from '@/stores/session'
 import { useUIStore } from '@/stores/ui'
 import { UNTITLED_SESSION_TITLE } from '@/lib/sessionTitle'
+import { renderPDFPagePreviews } from '@/lib/pdfPreview'
+
+function attachmentCategory(file: File): ChatAttachment['category'] {
+  if (file.type.startsWith('image/')) return 'images'
+  if (
+    file.type.includes('pdf') ||
+    file.type.includes('document') ||
+    file.type.includes('text') ||
+    /\.(pdf|doc|docx|txt|md|csv|xls|xlsx|ppt|pptx)$/i.test(file.name)
+  ) {
+    return 'documents'
+  }
+  return 'other'
+}
+
+function isPDFFile(file: File): boolean {
+  return file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
+}
+
+function sentAttachment(file: ChatAttachment) {
+  return {
+    id: file.id,
+    filename: file.filename,
+    content_type: file.content_type,
+    size: file.size,
+    category: file.category,
+    local_path: file.local_path,
+    preview_url: file.preview_url,
+    page_preview_urls: file.page_preview_urls,
+  }
+}
 
 export function Home() {
   const navigate = useNavigate()
@@ -34,6 +65,7 @@ export function Home() {
   const [pendingSessionId, setPendingSessionId] = useState<string | null>(null)
   const [attachments, setAttachments] = useState<ChatAttachment[]>([])
   const [isUploadingAttachments, setIsUploadingAttachments] = useState(false)
+  const [attachmentError, setAttachmentError] = useState<string | null>(null)
 
   const selectedProvider = providers.find((provider) => provider.id === selectedProviderId) ?? null
   // Use useMemo so the empty-array fallback is a stable reference across renders.
@@ -134,12 +166,50 @@ export function Home() {
 
   const handleAttachFiles = async (files: FileList) => {
     if (!files.length) return
+    const selectedFiles = Array.from(files)
+    const pending = selectedFiles.map((file, index): ChatAttachment => ({
+      id: `local-${Date.now()}-${index}-${file.name}`,
+      filename: file.name,
+      content_type: file.type,
+      size: file.size,
+      category: attachmentCategory(file),
+      preview_url: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
+      upload_status: 'uploading',
+    }))
+    setAttachments((current) => [...current, ...pending])
+    for (const [index, file] of selectedFiles.entries()) {
+      if (!isPDFFile(file)) continue
+      const pendingId = pending[index]?.id
+      void renderPDFPagePreviews(file, 10)
+        .then((previews) => {
+          const urls = previews.map((preview) => preview.dataURL)
+          setAttachments((current) => current.map((attachment) => (
+            attachment.id === pendingId
+              ? { ...attachment, preview_url: urls[0], page_preview_urls: urls }
+              : attachment
+          )))
+        })
+        .catch(() => {})
+    }
     setIsUploadingAttachments(true)
+    setAttachmentError(null)
     try {
       const id = await ensureSessionCreated()
-      if (!id) return
-      const uploaded: ChatAttachment[] = []
-      for (const file of Array.from(files)) {
+      if (!id) {
+        setAttachmentError('Select a provider and model before attaching files.')
+        setAttachments((current) => current.map((file) => (
+          pending.some((item) => item.id === file.id)
+            ? { ...file, upload_status: 'failed', error: 'Select a provider and model first.' }
+            : file
+        )))
+        return
+      }
+      for (const [index, file] of selectedFiles.entries()) {
+        const pendingId = pending[index]?.id
+        let pagePreviews: string[] = []
+        if (isPDFFile(file)) {
+          pagePreviews = (await renderPDFPagePreviews(file, 10).catch(() => [])).map((preview) => preview.dataURL)
+        }
         const form = new FormData()
         form.append('file', file)
         const item = await api.upload<{
@@ -150,20 +220,31 @@ export function Home() {
           category?: 'images' | 'documents' | 'other'
           local_path?: string
         }>(`/sessions/${id}/files`, form)
-        uploaded.push({
-          id: item.id,
-          filename: item.filename,
-          content_type: item.content_type,
-          size: item.size,
-          category: item.category,
-          local_path: item.local_path,
-        })
-      }
-      if (uploaded.length > 0) {
-        setAttachments((current) => [...current, ...uploaded])
+        setAttachments((current) => current.map((attachment) => (
+          attachment.id === pendingId
+            ? {
+                ...attachment,
+                id: item.id,
+                filename: item.filename,
+                content_type: item.content_type,
+                size: item.size,
+                category: item.category,
+                local_path: item.local_path,
+                page_preview_urls: pagePreviews.length > 0 ? pagePreviews : attachment.page_preview_urls,
+                preview_url: pagePreviews[0] ?? attachment.preview_url,
+                upload_status: 'uploaded',
+              }
+            : attachment
+        )))
       }
     } catch (err) {
-      setErrorMessage(err instanceof ApiError ? err.message : 'Failed to attach files.')
+      const message = err instanceof ApiError ? err.message : 'Failed to attach files.'
+      setAttachmentError(`Attachment upload failed: ${message}`)
+      setAttachments((current) => current.map((file) => (
+        pending.some((item) => item.id === file.id)
+          ? { ...file, upload_status: 'failed', error: message }
+          : file
+      )))
     } finally {
       setIsUploadingAttachments(false)
     }
@@ -171,10 +252,15 @@ export function Home() {
 
   function handleRemoveAttachment(fileId: string) {
     setAttachments((current) => current.filter((file) => file.id !== fileId))
+    setAttachmentError(null)
   }
 
   async function handleSend() {
-    const prompt = inputValue.trim()
+    if (attachments.some((file) => file.upload_status === 'uploading')) {
+      setAttachmentError('Wait for attachments to finish uploading before sending.')
+      return
+    }
+    const prompt = inputValue.trim() || (attachments.length > 0 ? 'Please analyze the attached file(s).' : '')
     if (!prompt) return
 
     setIsCreatingSession(true)
@@ -202,7 +288,12 @@ export function Home() {
         await api.patch(`/sessions/${sessionId}`, { project_path: projectPath }).catch(() => {})
       }
 
-      const fileIds = attachments.map((file) => file.id)
+      const fileIds = attachments
+        .filter((file) => file.upload_status !== 'failed' && !file.id.startsWith('local-'))
+        .map((file) => file.id)
+      const sentAttachments = attachments
+        .filter((file) => file.upload_status !== 'failed' && !file.id.startsWith('local-'))
+        .map(sentAttachment)
       addSession({
         id: sessionId,
         title: UNTITLED_SESSION_TITLE,
@@ -215,11 +306,13 @@ export function Home() {
         modelLabel: selectedModel.display_name || selectedModel.model_id,
         draftPrompt: prompt,
         draftFileIds: fileIds.length > 0 ? fileIds : undefined,
+        draftAttachments: sentAttachments.length > 0 ? sentAttachments : undefined,
         projectPath: projectPath || undefined,
       })
       setInputValue('')
       setProjectPath('')
       setAttachments([])
+      setAttachmentError(null)
       setPendingSessionId(null)
       navigate(`/conversation/${sessionId}`)
     } catch (error) {
@@ -235,7 +328,7 @@ export function Home() {
     <div className="home-root">
       <style>{HOME_CSS}</style>
 
-      {/* ── Top Bar ── */}
+      {/* Top Bar */}
       <div className="home-top-bar">
         <ChatTopBar
           permissionMode={permissionMode}
@@ -244,7 +337,7 @@ export function Home() {
         />
       </div>
 
-      {/* ── Main Content ── */}
+      {/* Main Content */}
       <div className="home-center">
         <h1 className="home-greeting">Hi, what's your plan for today?</h1>
 
@@ -261,6 +354,7 @@ export function Home() {
             onAttachFiles={handleAttachFiles}
             onRemoveAttachment={handleRemoveAttachment}
             isUploadingAttachments={isUploadingAttachments}
+            attachmentError={attachmentError}
             providerLabel={selectedProvider?.name ?? 'Provider'}
             modelLabel={selectedModel?.display_name || selectedModel?.model_id || 'Model'}
             providerOptions={providers.map((provider) => ({

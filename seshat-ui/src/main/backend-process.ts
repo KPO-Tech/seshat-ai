@@ -2,7 +2,7 @@ import { spawn, type ChildProcess } from 'child_process'
 import { createWriteStream } from 'fs'
 import { join } from 'path'
 import { app } from 'electron'
-import { setDynamicBackendOrigin } from './runtime'
+import { resolveDefaultServerURL, setDynamicBackendOrigin } from './runtime'
 
 const READY_LINE = /^SESHAT_BACKEND_READY port=(\d+)/
 const READY_TIMEOUT_MS = 15_000
@@ -35,10 +35,15 @@ export async function startBackendSidecar(): Promise<void> {
   const binaryPath = resolveBackendBinaryPath()
   const logPath = join(app.getPath('logs'), 'backend-sidecar.log')
   const logStream = createWriteStream(logPath, { flags: 'a' })
+  const env = { ...process.env }
+  const defaultServerURL = resolveDefaultServerURL()
+  if (!env.SESHAT_SERVER_URL && defaultServerURL) {
+    env.SESHAT_SERVER_URL = defaultServerURL
+  }
 
   const child = spawn(binaryPath, [], {
     stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env },
+    env,
   })
   backendProcess = child
 

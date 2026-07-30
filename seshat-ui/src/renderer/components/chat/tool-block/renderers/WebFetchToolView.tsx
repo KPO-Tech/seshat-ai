@@ -1,35 +1,39 @@
-import { Section, CodeBox } from '../common'
+import { HeaderCard, ProseBox, CodeBox, Section } from '../common'
 import type { ToolViewProps } from '../types'
 
 export function WebFetchToolView({ tool, result }: ToolViewProps) {
   const url = (tool.input.url as string) ?? ''
   const prompt = (tool.input.prompt as string) ?? ''
+  let hostname = url
+  try {
+    if (url) hostname = new URL(url).hostname
+  } catch {
+    // not a valid absolute URL - fall back to showing it verbatim
+  }
+
+  if (result?.isError) {
+    return (
+      <HeaderCard header={<span title={url}>{hostname || 'Web Fetch'}</span>}>
+        {result.content && <CodeBox content={result.content} variant="error" bare />}
+      </HeaderCard>
+    )
+  }
 
   return (
-    <>
-      {url && (
-        <div className="tb-edit-path-row">
-          <span className="tb-fetch-url">{url}</span>
-        </div>
-      )}
-
+    <HeaderCard
+      header={
+        <>
+          <span title={url}>{hostname || 'Web Fetch'}</span>
+          {url && url !== hostname && <span className="tb-hcard-header-path">{url}</span>}
+        </>
+      }
+    >
       {prompt && (
         <Section label="Prompt">
           <span className="tb-note">{prompt}</span>
         </Section>
       )}
-
-      {result?.content && !result.isError && (
-        <Section label="Response">
-          <CodeBox content={result.content} copyable />
-        </Section>
-      )}
-
-      {result?.isError && result.content && (
-        <Section label="Error">
-          <pre className="tb-pre tb-pre--error">{result.content}</pre>
-        </Section>
-      )}
-    </>
+      {result?.content && <ProseBox content={result.content} copyable bare />}
+    </HeaderCard>
   )
 }

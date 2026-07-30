@@ -14,7 +14,7 @@ func TestPermissionBrokerResolveApproved(t *testing.T) {
 	b := NewPermissionBroker()
 	ch := b.Await("req-1", "user-a", "sess-1")
 
-	result := b.Resolve("req-1", "user-a", "sess-1", true, "")
+	result := b.Resolve("req-1", "user-a", "sess-1", true, false, "")
 	if result != BrokerResolveResolved {
 		t.Fatalf("expected Resolved, got %v", result)
 	}
@@ -33,7 +33,7 @@ func TestPermissionBrokerResolveDenied(t *testing.T) {
 	b := NewPermissionBroker()
 	ch := b.Await("req-2", "user-a", "sess-1")
 
-	b.Resolve("req-2", "user-a", "sess-1", false, "please revise the approach")
+	b.Resolve("req-2", "user-a", "sess-1", false, false, "please revise the approach")
 
 	select {
 	case decision := <-ch:
@@ -50,7 +50,7 @@ func TestPermissionBrokerResolveDenied(t *testing.T) {
 
 func TestPermissionBrokerResolveNotFound(t *testing.T) {
 	b := NewPermissionBroker()
-	result := b.Resolve("does-not-exist", "user-a", "sess-1", true, "")
+	result := b.Resolve("does-not-exist", "user-a", "sess-1", true, false, "")
 	if result != BrokerResolveNotFound {
 		t.Errorf("expected NotFound, got %v", result)
 	}
@@ -60,7 +60,7 @@ func TestPermissionBrokerResolveForbiddenDifferentUser(t *testing.T) {
 	b := NewPermissionBroker()
 	b.Await("req-3", "user-a", "sess-1")
 
-	result := b.Resolve("req-3", "user-b", "sess-1", true, "")
+	result := b.Resolve("req-3", "user-b", "sess-1", true, false, "")
 	if result != BrokerResolveForbidden {
 		t.Errorf("expected Forbidden, got %v", result)
 	}
@@ -70,7 +70,7 @@ func TestPermissionBrokerResolveForbiddenDifferentSession(t *testing.T) {
 	b := NewPermissionBroker()
 	b.Await("req-4", "user-a", "sess-1")
 
-	result := b.Resolve("req-4", "user-a", "sess-other", true, "")
+	result := b.Resolve("req-4", "user-a", "sess-other", true, false, "")
 	if result != BrokerResolveForbidden {
 		t.Errorf("expected Forbidden, got %v", result)
 	}
@@ -81,7 +81,7 @@ func TestPermissionBrokerEmptyScopeMatchesAny(t *testing.T) {
 	// Empty userID + sessionID in the pending entry means any caller can resolve it.
 	b.Await("req-5", "", "")
 
-	result := b.Resolve("req-5", "user-anyone", "sess-anything", true, "")
+	result := b.Resolve("req-5", "user-anyone", "sess-anything", true, false, "")
 	if result != BrokerResolveResolved {
 		t.Errorf("expected Resolved for empty scope, got %v", result)
 	}
@@ -93,7 +93,7 @@ func TestPermissionBrokerCancel(t *testing.T) {
 	b.Cancel("req-6")
 
 	// After cancel, Resolve should return NotFound.
-	result := b.Resolve("req-6", "user-a", "sess-1", true, "")
+	result := b.Resolve("req-6", "user-a", "sess-1", true, false, "")
 	if result != BrokerResolveNotFound {
 		t.Errorf("expected NotFound after cancel, got %v", result)
 	}
@@ -115,7 +115,7 @@ func TestPermissionBrokerConcurrentResolve(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			resolved <- b.Resolve("req-c", "user-a", "", true, "")
+			resolved <- b.Resolve("req-c", "user-a", "", true, false, "")
 		}()
 	}
 	wg.Wait()

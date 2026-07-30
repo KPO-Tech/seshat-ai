@@ -194,8 +194,16 @@ func (app *App) handleSessionFiles(w http.ResponseWriter, r *http.Request, princ
 		// Resolve session workspace path.
 		workspacePath := ""
 		if app.backend.Query != nil {
-			if detail, detailErr := app.backend.Query.GetSession(r.Context(), p, sessionID); detailErr == nil {
-				workspacePath = detail.WorkspacePath
+			if ensured, ensureErr := app.backend.Query.EnsureSessionWorkspace(r.Context(), p, sessionID); ensureErr == nil {
+				workspacePath = ensured
+			} else {
+				writeBackendError(w, ensureErr)
+				return
+			}
+			if workspacePath == "" {
+				if detail, detailErr := app.backend.Query.GetSession(r.Context(), p, sessionID); detailErr == nil {
+					workspacePath = detail.WorkspacePath
+				}
 			}
 		}
 

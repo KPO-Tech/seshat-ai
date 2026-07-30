@@ -18,9 +18,14 @@ const (
 // PermissionDecision carries a human's approve/deny choice for a pending
 // tool-permission request, plus an optional explanation. Reason is only
 // meaningful when Approved is false: it flows back to the model as the
-// denied tool call's result text.
+// denied tool call's result text. Remember is only meaningful when Approved
+// is true ("Always Allow" instead of "Allow once") - see query.go's promptFn
+// closure, which turns it into the magic "always" PromptResponse.Value the
+// permission Integrator's ResolverWithContext recognizes to persist a
+// session-scoped approval (internal/permissions/integration.go).
 type PermissionDecision struct {
 	Approved bool
+	Remember bool
 	Reason   string
 }
 
@@ -54,7 +59,7 @@ func (b *PermissionBroker) Cancel(id string) {
 	b.mu.Unlock()
 }
 
-func (b *PermissionBroker) Resolve(id, userID, sessionID string, approved bool, reason string) BrokerResolveResult {
+func (b *PermissionBroker) Resolve(id, userID, sessionID string, approved bool, remember bool, reason string) BrokerResolveResult {
 	b.mu.Lock()
 	pending, ok := b.pending[id]
 	if !ok {
@@ -67,7 +72,7 @@ func (b *PermissionBroker) Resolve(id, userID, sessionID string, approved bool, 
 	}
 	delete(b.pending, id)
 	b.mu.Unlock()
-	pending.ch <- PermissionDecision{Approved: approved, Reason: reason}
+	pending.ch <- PermissionDecision{Approved: approved, Remember: remember, Reason: reason}
 	return BrokerResolveResolved
 }
 

@@ -1,7 +1,6 @@
 import { memo } from 'react'
 import type { ToolStatus } from '@/api/types'
-import { inputSnippetForSilent } from './tool-block/helpers'
-import { isSilentTool } from './tool-block/quietGroupPhrase'
+import { isSilentTool, toolSnippet } from './tool-block/toolDisplay'
 import { SilentToolView } from './tool-block/renderers/SilentToolView'
 import { ToolLineItem, TOOL_LINE_CSS } from './tool-block/ToolLineItem'
 import { TOOL_BLOCK_CSS } from './tool-block/styles'
@@ -27,11 +26,15 @@ export const ToolBlock = memo(function ToolBlock({ tool, sessionId, onSubmitProm
     return (
       <>
         <style>{TOOL_BLOCK_CSS}</style>
+        {/* SilentToolView's status dot uses the shared .tl-dot/.tl-spinner
+            classes defined in TOOL_LINE_CSS, same as ToolLineItem below and
+            QuietToolGroup's grouped run - one dot style everywhere. */}
+        <style>{TOOL_LINE_CSS}</style>
         <SilentToolView
           tool={tool}
           result={result}
           status={status}
-          snippet={inputSnippetForSilent(tool)}
+          snippet={toolSnippet(tool)}
           sessionId={sessionId}
         />
       </>

@@ -14,7 +14,11 @@
   "scripts": {
     "start": "electron-vite dev -- --no-sandbox",
     "build": "electron-vite build",
+    "build:backend:win": "node ../scripts/build-desktop-sidecar.mjs windows amd64",
+    "build:backend:linux": "node ../scripts/build-desktop-sidecar.mjs linux amd64",
     "package": "npm run build && electron-builder",
+    "package:win": "npm run build:backend:win && npm run build && electron-builder --win nsis",
+    "package:linux": "npm run build:backend:linux && npm run build && electron-builder --linux AppImage deb",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json --noEmit",
     "lint": "oxlint src"
   },
@@ -28,6 +32,7 @@
     "emoji-mart": "^5.6.0",
     "katex": "^0.16.22",
     "mermaid": "^11.13.0",
+    "pdfjs-dist": "^6.1.200",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-markdown": "^10.1.0",
@@ -83,7 +88,8 @@
     "win": {
       "target": [
         "nsis"
-      ]
+      ],
+      "signAndEditExecutable": false
     },
     "publish": [
       {

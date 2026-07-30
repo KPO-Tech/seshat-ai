@@ -365,7 +365,17 @@ func (app *App) handleQueryStream(w http.ResponseWriter, r *http.Request) {
 
 		select {
 		case decision := <-ch:
-			response := types.PromptResponse{Value: decision.Approved}
+			// The permission Integrator's ResolverWithContext only persists a
+			// session-scoped approval when Value is literally the string
+			// "always" (internal/permissions/integration.go) - a plain `true`
+			// only resolves this one pending call. Remember (from "Always
+			// Allow" in the UI, see broker.go's PermissionDecision) is what
+			// picks between them.
+			var value any = decision.Approved
+			if decision.Approved && decision.Remember {
+				value = "always"
+			}
+			response := types.PromptResponse{Value: value}
 			if !decision.Approved && decision.Reason != "" {
 				response.Metadata = map[string]any{"reason": decision.Reason}
 			}

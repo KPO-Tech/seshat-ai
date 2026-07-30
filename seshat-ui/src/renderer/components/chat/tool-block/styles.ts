@@ -16,11 +16,63 @@ export const TOOL_BLOCK_CSS = `
 .tb-code {
   position: relative;
   background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--color-border-subtle);
   border-radius: 8px;
   overflow: hidden;
 }
 
-.tb-code--error { background: rgba(var(--color-error-rgb), 0.06); }
+.tb-code--error {
+  background: rgba(var(--color-error-rgb), 0.06);
+  border-color: rgba(var(--color-error-rgb), 0.18);
+}
+
+.tb-code--bare {
+  border: none;
+  background: transparent;
+  border-radius: 0;
+}
+
+/* ── Header card: a bordered box with a compact "what is this" strip
+   directly attached to its body - see common.tsx's HeaderCard. ── */
+.tb-hcard {
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+.tb-hcard-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 10px;
+  font-size: 11.5px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: rgba(255, 255, 255, 0.03);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.tb-hcard-header-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-text-muted);
+}
+
+.tb-hcard-header-stat {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding-left: 8px;
+  font-family: inherit;
+  color: var(--color-text-disabled);
+  font-size: 10.5px;
+}
+
+.tb-hcard-body {
+  padding: 4px;
+}
 
 .tb-code-highlight {
   scrollbar-width: thin;
@@ -207,7 +259,8 @@ export const TOOL_BLOCK_CSS = `
   background: rgba(var(--color-success-rgb), 0.08);
 }
 
-.tb-ask-option:disabled {
+.tb-ask-option:disabled,
+.tb-ask-option--readonly {
   cursor: default;
 }
 
@@ -250,6 +303,16 @@ export const TOOL_BLOCK_CSS = `
 .tb-ask-note {
   font-size: 12px;
   line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.tb-ask-card--pending {
+  padding: 8px 12px;
+}
+
+.tb-ask-pending-note {
+  font-size: 12px;
+  font-style: italic;
   color: var(--color-text-muted);
 }
 
@@ -315,6 +378,20 @@ export const TOOL_BLOCK_CSS = `
   display: flex;
   flex-direction: column;
   gap: 8px;
+  /* Caps to roughly 8 result cards before scrolling - a search that turns up
+     20+ hits used to render every single one inline, making the tool card
+     dwarf the rest of the conversation just for link browsing. */
+  max-height: 500px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-subtle) transparent;
+}
+
+.tb-links::-webkit-scrollbar { width: 4px; }
+.tb-links::-webkit-scrollbar-track { background: transparent; }
+.tb-links::-webkit-scrollbar-thumb {
+  background: var(--color-border-subtle);
+  border-radius: 4px;
 }
 
 .tb-link-item {
@@ -361,6 +438,16 @@ export const TOOL_BLOCK_CSS = `
   color: var(--color-accent);
   line-height: 1.4;
   word-break: break-all;
+}
+
+.tb-link-snippet {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .tb-note {
@@ -430,37 +517,6 @@ export const TOOL_BLOCK_CSS = `
   color: var(--color-text-secondary);
 }
 
-.tb-task-card {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 10px;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.tb-task-title {
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.45;
-  color: var(--color-text);
-}
-
-.tb-task-detail {
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--color-text-secondary);
-}
-
-.tb-task-meta {
-  font-size: 11px;
-  line-height: 1.4;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
 /* ── File tool shared path row ── */
 .tb-edit-path-row {
   display: flex;
@@ -468,6 +524,20 @@ export const TOOL_BLOCK_CSS = `
   gap: 8px;
   padding: 10px 14px 0;
   flex-wrap: wrap;
+}
+
+/* Diff's own path row: a thin one-line strip fused directly to the top of
+   .tb-diff below it (no gap, matching border-radius split) instead of
+   floating as a separate, unstyled line above a separately-bordered box -
+   see .tb-difv's gap:0 and .tb-diff's border-top:none/flattened top
+   corners, which make the two read as one bordered unit. */
+.tb-difv .tb-edit-path-row {
+  border: 1px solid var(--color-border-subtle);
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 7px 10px;
+  justify-content: space-between;
 }
 
 .tb-filepath {
@@ -523,7 +593,9 @@ export const TOOL_BLOCK_CSS = `
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
   font-size: 12px;
   line-height: 1.55;
+  border: 1px solid var(--color-border-subtle);
   border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
   max-height: 360px;
   overflow-y: auto;
   overflow-x: auto;
@@ -597,12 +669,16 @@ export const TOOL_BLOCK_CSS = `
 .tb-diff-line--add .tb-diff-text { color: #6ee7b7; }
 
 /* ── File list (glob) ── */
+/* Border/background come from the enclosing HeaderCard (.tb-hcard) now -
+   Glob and List Directory are its only two users and both always render it
+   inside one. */
 .tb-file-list {
   display: flex;
   flex-direction: column;
   gap: 1px;
   max-height: 240px;
   overflow-y: auto;
+  overflow-x: hidden;
   scrollbar-width: thin;
 }
 
@@ -619,6 +695,56 @@ export const TOOL_BLOCK_CSS = `
 }
 
 .tb-file-item:hover { background: rgba(255, 255, 255, 0.04); }
+.tb-file-item-size { opacity: 0.55; }
+
+.tb-prose {
+  position: relative;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.tb-prose--bare {
+  border: none;
+  background: transparent;
+  border-radius: 0;
+}
+
+.tb-prose-text {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 10px 12px;
+}
+
+.tb-prose .tb-copy { top: 6px; right: 6px; }
+
+.tb-patch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 4px;
+}
+
+.tb-patch-line {
+  font-size: 12px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  padding: 3px 8px;
+  border-radius: 5px;
+  color: var(--color-text-secondary);
+}
+
+.tb-patch-line--add { color: #6ee7b7; }
+.tb-patch-line--del { color: #fca5a5; }
+.tb-patch-line--update { color: var(--color-accent); }
+.tb-patch-line--move { color: var(--color-text-muted); }
 
 /* ── pre error variant ── */
 .tb-pre--error {

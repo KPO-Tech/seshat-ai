@@ -1,4 +1,4 @@
-import { Section, CodeBox } from '../common'
+import { CodeBox, HeaderCard, Section } from '../common'
 import { languageForPath, basename } from '../helpers'
 import type { ToolViewProps } from '../types'
 
@@ -15,26 +15,33 @@ export function ReadToolView({ tool, result }: ToolViewProps) {
   const limit = tool.input.limit as number | undefined
   const range = rangeLabel(offset, limit)
 
+  if (result?.isError && result.content) {
+    return (
+      <Section label="Error">
+        <pre className="tb-pre tb-pre--error">{result.content}</pre>
+      </Section>
+    )
+  }
+
+  if (!result?.content) return null
+
   return (
-    <>
-      {filePath && (
-        <div className="tb-edit-path-row">
-          <span className="tb-filepath" title={filePath}>{basename(filePath)}</span>
-          {range && <span className="tb-range-label">{range}</span>}
-        </div>
-      )}
-
-      {result?.content && !result.isError && (
-        <Section label="Content">
-          <CodeBox content={result.content} copyable language={languageForPath(filePath)} />
-        </Section>
-      )}
-
-      {result?.isError && result.content && (
-        <Section label="Error">
-          <pre className="tb-pre tb-pre--error">{result.content}</pre>
-        </Section>
-      )}
-    </>
+    <HeaderCard
+      header={
+        <>
+          <span title={filePath}>{basename(filePath)}</span>
+          {range && <span className="tb-hcard-header-stat">{range}</span>}
+        </>
+      }
+    >
+      <CodeBox
+        content={result.content}
+        copyable
+        language={languageForPath(filePath)}
+        lineNumbers
+        startingLineNumber={offset != null ? offset + 1 : 1}
+        bare
+      />
+    </HeaderCard>
   )
 }

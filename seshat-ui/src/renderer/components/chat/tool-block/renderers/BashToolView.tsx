@@ -24,11 +24,22 @@ export function BashToolView({ tool, result }: ToolViewProps) {
         </Section>
       )}
 
-      {parsed != null && (
+      {parsed != null && parsed.exitCode != null && (
         <div className="tb-footer">
-          <span>Exit code: {parsed.exitCode ?? '?'}</span>
+          <span>Exit code: {parsed.exitCode}</span>
           {result?.durationMs != null && <span>Duration: {fmtDuration(result.durationMs)}</span>}
         </div>
+      )}
+
+      {/* Covers both a real failed execution (non-zero exit, stderr already
+          shown above) and a command blocked before it ever ran (denied
+          permission, sandbox rejection) - in that second case there's no
+          stdout/stderr/exit_code at all, just this message, and it's the
+          only place the reason for the failure is visible. */}
+      {result?.isError && result.content && (
+        <Section label="Error">
+          <pre className="tb-pre tb-pre--error">{result.content}</pre>
+        </Section>
       )}
     </>
   )

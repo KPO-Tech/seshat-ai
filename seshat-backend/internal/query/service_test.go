@@ -3,10 +3,12 @@ package query
 import (
 	"context"
 	"testing"
+	"time"
 
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
 	"github.com/KPO-Tech/seshat/pkg/sdk"
+	"github.com/KPO-Tech/seshat/pkg/types"
 )
 
 // ─── minimal runtime stubs ────────────────────────────────────────────────────
@@ -28,6 +30,62 @@ type stubStreamingRuntime struct {
 
 func (r *stubStreamingRuntime) StreamPrompt(_ context.Context, _ QueryInput, _ func(sdk.ResponseChunk), _ func(sdk.RuntimeEvent)) (*QueryResult, error) {
 	return r.streamResult, r.streamErr
+}
+
+type stubSessionHandle struct {
+	id sdk.SessionID
+}
+
+func (h stubSessionHandle) GetID() sdk.SessionID { return h.id }
+func (h stubSessionHandle) Close() error         { return nil }
+
+type stubSearchSessionManager struct {
+	sessions     []*sdk.SessionInfo
+	searchIDs    []sdk.SessionID
+	searchCalled bool
+}
+
+func (m *stubSearchSessionManager) ListSessions() ([]*sdk.SessionInfo, error) {
+	return m.sessions, nil
+}
+
+func (m *stubSearchSessionManager) CreateSession(context.Context) (SessionHandle, error) {
+	return stubSessionHandle{id: "created"}, nil
+}
+
+func (m *stubSearchSessionManager) DeleteSession(sdk.SessionID) error { return nil }
+
+func (m *stubSearchSessionManager) SearchTranscriptsByContent(_ string, _ int) ([]sdk.SessionID, error) {
+	m.searchCalled = true
+	return m.searchIDs, nil
+}
+
+type sessionManagerWithoutSearch struct {
+	inner *stubSearchSessionManager
+}
+
+func (m sessionManagerWithoutSearch) ListSessions() ([]*sdk.SessionInfo, error) {
+	return m.inner.ListSessions()
+}
+
+func (m sessionManagerWithoutSearch) CreateSession(ctx context.Context) (SessionHandle, error) {
+	return m.inner.CreateSession(ctx)
+}
+
+func (m sessionManagerWithoutSearch) DeleteSession(id sdk.SessionID) error {
+	return m.inner.DeleteSession(id)
+}
+
+type stubInspectorRuntime struct {
+	messages map[string][]types.Message
+}
+
+func (r *stubInspectorRuntime) RunPrompt(context.Context, QueryInput) (*QueryResult, error) {
+	return nil, nil
+}
+
+func (r *stubInspectorRuntime) LoadSessionMessages(_ context.Context, sessionID string) ([]types.Message, error) {
+	return r.messages[sessionID], nil
 }
 
 // ─── SupportsStreaming ────────────────────────────────────────────────────────
@@ -189,5 +247,63 @@ func TestPrepareRuntimeInputNilPrincipalLeavesUserIDEmpty(t *testing.T) {
 	}
 	if runtimeInput.UserID != "" {
 		t.Errorf("expected empty UserID with nil principal, got %q", runtimeInput.UserID)
+	}
+}
+
+func TestSearchSessionsByContentUsesDirectSearcher(t *testing.T) {
+	now := time.Now().Unix()
+	manager := &stubSearchSessionManager{
+		sessions: []*sdk.SessionInfo{
+			{ID: "session-a", CreatedAt: now - 10, UpdatedAt: now - 5},
+			{ID: "session-b", CreatedAt: now - 20, UpdatedAt: now - 1},
+		},
+		searchIDs: []sdk.SessionID{"session-b"},
+	}
+	svc := NewService(ServiceConfig{Sessions: manager})
+
+	results, err := svc.SearchSessionsByContent(context.Background(), nil, "needle", 10)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !manager.searchCalled {
+		t.Fatal("expected direct transcript search to be used")
+	}
+	if len(results) != 1 || results[0].SessionID != "session-b" {
+		t.Fatalf("expected session-b result, got %#v", results)
+	}
+}
+
+func TestSearchSessionsByContentFallsBackToInspector(t *testing.T) {
+	now := time.Now().Unix()
+	manager := &stubSearchSessionManager{
+		sessions: []*sdk.SessionInfo{
+			{ID: "session-a", CreatedAt: now - 10, UpdatedAt: now - 5},
+			{ID: "session-b", CreatedAt: now - 20, UpdatedAt: now - 1},
+		},
+	}
+	runtime := &stubInspectorRuntime{
+		messages: map[string][]types.Message{
+			"session-a": {
+				{Role: types.RoleUser, Content: []types.ContentBlock{types.TextContent{Text: "plain text"}}},
+			},
+			"session-b": {
+				{Role: types.RoleUser, Content: []types.ContentBlock{types.TextContent{Text: "contains needle here"}}},
+			},
+		},
+	}
+	svc := NewService(ServiceConfig{
+		Runtime:  runtime,
+		Sessions: sessionManagerWithoutSearch{inner: manager},
+	})
+
+	results, err := svc.SearchSessionsByContent(context.Background(), nil, "needle", 10)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if manager.searchCalled {
+		t.Fatal("direct search should not be available through the fallback wrapper")
+	}
+	if len(results) != 1 || results[0].SessionID != "session-b" {
+		t.Fatalf("expected fallback to find session-b, got %#v", results)
 	}
 }
