@@ -117,6 +117,62 @@ if [ ! -f "$DOCLING_BIN" ]; then
     exit 1
 fi
 
+# ── 6. Windows console-encoding fix ───────────────────────────────────────────
+# docling-serve's startup banner (rich/uvicorn) prints an emoji. On Windows,
+# DoclingManager redirects the subprocess's stdout/stderr to a log file, and
+# GetConsoleMode always fails on a redirected-to-file handle - so rich falls
+# back to a legacy byte-mode console writer that can't encode most Unicode,
+# crashing docling-serve before it ever binds its port. A sitecustomize.py
+# dropped into the venv's site-packages (the standard interpreter-startup
+# hook) forces rich to report a modern, VT-capable console and reconfigures
+# stdout/stderr to UTF-8, both before docling-serve's own code runs.
+# Same venv-layout probe as above: a Scripts/ dir means Windows.
+if [ -f "$VENV_DIR/Scripts/python.exe" ]; then
+    SITE_PACKAGES="$VENV_DIR/Lib/site-packages"
+    if [ -d "$SITE_PACKAGES" ]; then
+        info "Windows detected — installing console-encoding fix into venv..."
+        cat > "$SITE_PACKAGES/sitecustomize.py" <<'PYEOF'
+"""Seshat-managed venv startup hook.
+
+Fixes a Windows-only crash where docling-serve's startup banner (built on
+rich/uvicorn) dies with a UnicodeEncodeError while writing an emoji, whenever
+stdout/stderr are redirected to a file rather than a real console (see
+seshat/internal/python DoclingManager.Start, which redirects docling-serve's
+output to a log file):
+
+1. rich decides whether a stream is a "legacy Windows console" by querying
+   GetConsoleMode on it - which always fails for a redirected file, so rich
+   falls back to a legacy byte-mode console writer that can't encode most
+   Unicode. Patched here to report modern (VT-capable) console features.
+2. Even off that legacy path, Python's own stdout/stderr TextIOWrapper still
+   defaults to the OS ANSI codepage (cp1252) for a non-console stream, which
+   still can't encode the emoji. Reconfigured here to UTF-8.
+"""
+import sys
+
+if sys.platform == "win32":
+    try:
+        import rich.console
+        from rich._windows import WindowsConsoleFeatures
+
+        _features = WindowsConsoleFeatures(vt=True, truecolor=True)
+        rich.console.get_windows_console_features = lambda: _features
+    except ImportError:
+        pass
+
+    for _stream in (sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            try:
+                _stream.reconfigure(encoding="utf-8")
+            except Exception:
+                pass
+PYEOF
+        success "Console-encoding fix installed."
+    else
+        warn "Windows detected but $SITE_PACKAGES not found — skipping console-encoding fix."
+    fi
+fi
+
 success "Installation complete."
 echo ""
 echo "  Runtime root: $SESHAT_RUNTIME_ROOT"
