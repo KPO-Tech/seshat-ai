@@ -33,3 +33,4 @@ Defaults to Postgres here (the real multi-instance-capable option — `seshat-se
 
 - TLS termination — put a real reverse proxy / load balancer in front of this for anything beyond local testing; nginx here only proxies API calls internally, it doesn't terminate HTTPS.
 - The scheduler (`internal/server/automation/scheduler.go`) is single-instance only today — don't scale `seshat-server` to more than 1 replica yet, see the code comment there.
+- `/health` and `/metrics` on `seshat-server` are intentionally unauthenticated (standard Prometheus scrape convention — a scraper shouldn't need a credential to reach them). That's only safe as long as port 8081 stays on a private network. If this stack is ever exposed beyond localhost, put a reverse proxy in front that blocks external access to `/metrics` specifically (or restricts it to your monitoring network), same as the SearXNG note above about putting auth in front of anything made public.
