@@ -143,6 +143,9 @@ type SessionState = {
   setIsStreaming: (sessionId: string, v: boolean) => void
   removeSession: (id: string) => void
   getActive: () => ChatSession | undefined
+  // Wipes every session and derived state - called on logout / account switch
+  // so a different account's data never carries over. See stores/auth.ts.
+  resetAll: () => void
 
   // Agent state
   getAgentState: (sessionId: string) => AgentState
@@ -289,6 +292,16 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     const { sessions, activeId } = get()
     return sessions.find((s) => s.id === activeId)
   },
+
+  resetAll: () =>
+    set({
+      sessions: [],
+      activeId: null,
+      streamingBySession: {},
+      isStreamingBySession: {},
+      agentStates: {},
+      subagentsBySession: {},
+    }),
 
   // Agent state
 
