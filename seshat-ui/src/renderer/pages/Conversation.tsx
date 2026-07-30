@@ -201,12 +201,12 @@ export function Conversation() {
     await navigator.clipboard.writeText(markdown).catch(() => {})
   }
 
-  const handleAttachFiles = useCallback(async (files: FileList) => {
+  const handleAttachFiles = useCallback(async (files: File[]) => {
     if (!files.length || !id) return
     setUploadingAttachments(true)
     try {
       const uploaded: ChatAttachment[] = []
-      for (const file of Array.from(files)) {
+      for (const file of files) {
         const form = new FormData()
         form.append('file', file)
         const item = await api.upload<{

@@ -132,14 +132,14 @@ export function Home() {
     return response.session_id
   }
 
-  const handleAttachFiles = async (files: FileList) => {
+  const handleAttachFiles = async (files: File[]) => {
     if (!files.length) return
     setIsUploadingAttachments(true)
     try {
       const id = await ensureSessionCreated()
       if (!id) return
       const uploaded: ChatAttachment[] = []
-      for (const file of Array.from(files)) {
+      for (const file of files) {
         const form = new FormData()
         form.append('file', file)
         const item = await api.upload<{

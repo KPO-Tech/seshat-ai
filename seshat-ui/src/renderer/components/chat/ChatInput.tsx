@@ -29,7 +29,7 @@ type Props = {
   projectPath?: string
   onProjectChange?: (path: string) => void
   attachments?: ChatAttachment[]
-  onAttachFiles?: (files: FileList) => void | Promise<void>
+  onAttachFiles?: (files: File[]) => void | Promise<void>
   onRemoveAttachment?: (id: string) => void
   isUploadingAttachments?: boolean
   // Relocated here from ChatTopBar — Provider/Model live next to where the
@@ -326,8 +326,14 @@ export function ChatInput({
             type="file"
             multiple
             onChange={e => {
+              // FileList is live and bound to the input element - snapshotting it
+              // into a plain array here (not just holding the FileList reference)
+              // is required because the line below resets the input's value so the
+              // same file can be re-selected later, which clears that live FileList
+              // out from under any async handler still holding onto it.
               const files = e.currentTarget.files
-              if (files && files.length > 0) void onAttachFiles?.(files)
+              const snapshot = files ? Array.from(files) : []
+              if (snapshot.length > 0) void onAttachFiles?.(snapshot)
               e.currentTarget.value = ''
             }}
           />
