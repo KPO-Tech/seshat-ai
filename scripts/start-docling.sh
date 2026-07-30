@@ -28,7 +28,12 @@ _default_runtime_root() {
 
 SESHAT_RUNTIME_ROOT="${SESHAT_RUNTIME_ROOT:-$(_default_runtime_root)}"
 VENV_DIR="$SESHAT_RUNTIME_ROOT/.venv"
-DOCLING_BIN="$VENV_DIR/bin/docling-serve"
+# uv lays the venv out as Scripts/ (.exe binaries) on native Windows (this
+# script itself runs fine there under git-bash/MSYS), bin/ everywhere else.
+case "$(uname -s 2>/dev/null || echo Linux)" in
+    MINGW*|MSYS*|CYGWIN*) DOCLING_BIN="$VENV_DIR/Scripts/docling-serve.exe" ;;
+    *)                    DOCLING_BIN="$VENV_DIR/bin/docling-serve" ;;
+esac
 
 PORT="${DOCLING_PORT:-5001}"
 HOST="${DOCLING_HOST:-127.0.0.1}"

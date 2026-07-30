@@ -39,6 +39,13 @@ VENV_DIR="$SESHAT_RUNTIME_ROOT/.venv"
 PYTHON_VERSION="${PYTHON_VERSION:-3.11}"
 DOCLING_EXTRAS="${DOCLING_EXTRAS:-}"
 
+# uv lays the venv out as Scripts/ (.exe binaries) on native Windows (this
+# script itself runs fine there under git-bash/MSYS), bin/ everywhere else.
+case "$(uname -s 2>/dev/null || echo Linux)" in
+    MINGW*|MSYS*|CYGWIN*) VENV_BIN_DIR="$VENV_DIR/Scripts"; EXE=".exe" ;;
+    *)                    VENV_BIN_DIR="$VENV_DIR/bin"; EXE="" ;;
+esac
+
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 BLUE='\033[0;34m'; NC='\033[0m'
 
@@ -92,15 +99,72 @@ if [ -n "$DOCLING_EXTRAS" ]; then
 fi
 
 info "Installing $PACKAGE into $VENV_DIR ..."
-uv pip install --python "$VENV_DIR/bin/python" "$PACKAGE"
+uv pip install --python "$VENV_BIN_DIR/python$EXE" "$PACKAGE"
 success "docling-serve installed."
 
 # ── 5. Verify ─────────────────────────────────────────────────────────────────
-DOCLING_BIN="$VENV_DIR/bin/docling-serve"
+DOCLING_BIN="$VENV_BIN_DIR/docling-serve$EXE"
 if [ ! -x "$DOCLING_BIN" ]; then
     error "docling-serve binary not found at $DOCLING_BIN after installation."
     exit 1
 fi
+
+# ── 6. Windows console-encoding fix ───────────────────────────────────────────
+# docling-serve's startup banner (rich/uvicorn) prints an emoji. On Windows,
+# DoclingManager redirects the subprocess's stdout/stderr to a log file, and
+# GetConsoleMode always fails on a redirected-to-file handle - so rich falls
+# back to a legacy byte-mode console writer that can't encode most Unicode,
+# crashing docling-serve before it ever binds its port. A sitecustomize.py
+# dropped into the venv's site-packages (the standard interpreter-startup
+# hook) forces rich to report a modern, VT-capable console and reconfigures
+# stdout/stderr to UTF-8, both before docling-serve's own code runs.
+case "$(uname -s 2>/dev/null || echo Linux)" in
+    MINGW*|MSYS*|CYGWIN*)
+        SITE_PACKAGES="$VENV_DIR/Lib/site-packages"
+        if [ -d "$SITE_PACKAGES" ]; then
+            info "Windows detected — installing console-encoding fix into venv..."
+            cat > "$SITE_PACKAGES/sitecustomize.py" <<'PYEOF'
+"""Seshat-managed venv startup hook.
+
+Fixes a Windows-only crash where docling-serve's startup banner (built on
+rich/uvicorn) dies with a UnicodeEncodeError while writing an emoji, whenever
+stdout/stderr are redirected to a file rather than a real console (see
+seshat/internal/python DoclingManager.Start, which redirects docling-serve's
+output to a log file):
+
+1. rich decides whether a stream is a "legacy Windows console" by querying
+   GetConsoleMode on it - which always fails for a redirected file, so rich
+   falls back to a legacy byte-mode console writer that can't encode most
+   Unicode. Patched here to report modern (VT-capable) console features.
+2. Even off that legacy path, Python's own stdout/stderr TextIOWrapper still
+   defaults to the OS ANSI codepage (cp1252) for a non-console stream, which
+   still can't encode the emoji. Reconfigured here to UTF-8.
+"""
+import sys
+
+if sys.platform == "win32":
+    try:
+        import rich.console
+        from rich._windows import WindowsConsoleFeatures
+
+        _features = WindowsConsoleFeatures(vt=True, truecolor=True)
+        rich.console.get_windows_console_features = lambda: _features
+    except ImportError:
+        pass
+
+    for _stream in (sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            try:
+                _stream.reconfigure(encoding="utf-8")
+            except Exception:
+                pass
+PYEOF
+            success "Console-encoding fix installed."
+        else
+            warn "Windows detected but $SITE_PACKAGES not found — skipping console-encoding fix."
+        fi
+        ;;
+esac
 
 success "Installation complete."
 echo ""
