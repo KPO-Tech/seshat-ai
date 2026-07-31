@@ -20,21 +20,28 @@ services:
   # file is chunked+embedded. Optional: plain-text/markdown/JSON files
   # ingest fine without it, and seshat-server falls back gracefully if this
   # service is unreachable. CPU-only image — no GPU passthrough configured.
-  # This is a heavy image (PyTorch + layout/OCR models, several GB); comment
-  # this service and SESHAT_SERVER_DOCLING_URL below out if you don't need
-  # binary-document ingestion and want a lighter stack.
-  docling:
-    image: quay.io/docling-project/docling-serve-cpu:latest
-    restart: unless-stopped
-    healthcheck:
-      # Uses python3 rather than curl/wget — this image is Python-based
-      # (docling-serve itself), so the interpreter is guaranteed present
-      # even if a CLI HTTP client isn't.
-      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5001/health')"]
-      interval: 10s
-      timeout: 5s
-      retries: 15
-      start_period: 90s
+  # This is a heavy image (PyTorch + layout/OCR models, several GB).
+  #
+  # Disabled: the desktop app (seshat-backend) doesn't use this at all — it
+  # runs its own local docling-serve via a managed Python venv
+  # (~/.config/seshat/.venv, see cmd/api/main.go), which is what actually
+  # needs to be installed/working (`make install-python`). This container
+  # has no published host port, so it was only ever reachable by
+  # seshat-server inside this compose network anyway, not by the desktop
+  # app. Uncomment this service + SESHAT_SERVER_DOCLING_URL below (on
+  # seshat-server) if seshat-server's own corpus-ingestion path needs it.
+  # docling:
+  #   image: quay.io/docling-project/docling-serve-cpu:latest
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     # Uses python3 rather than curl/wget — this image is Python-based
+  #     # (docling-serve itself), so the interpreter is guaranteed present
+  #     # even if a CLI HTTP client isn't.
+  #     test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5001/health')"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 15
+  #     start_period: 90s
 
   # Optional S3-compatible object storage for knowledge-base corpus files,
   # as an alternative to the default local-disk storage. Not wired up by
@@ -98,8 +105,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      docling:
-        condition: service_healthy
       mailpit:
         condition: service_healthy
     environment:
@@ -116,9 +121,9 @@ services:
       # nginx reverse proxy (same-origin), not a cross-origin browser call —
       # only needed if something else calls the API directly from a browser.
       SESHAT_SERVER_CORS_ALLOWED_ORIGINS: ${SESHAT_SERVER_CORS_ALLOWED_ORIGINS:-}
-      # Points at the docling service above by its compose service name.
-      # Leave empty (or remove this line) if you commented docling out.
-      SESHAT_SERVER_DOCLING_URL: ${SESHAT_SERVER_DOCLING_URL:-http://docling:5001}
+      # Points at the docling service above by its compose service name -
+      # left unset since that service is commented out (see above).
+      SESHAT_SERVER_DOCLING_URL: ${SESHAT_SERVER_DOCLING_URL:-}
       # Corpus file storage. Empty/unset SESHAT_SERVER_STORAGE_PROVIDER
       # defaults to local disk (today's behavior, unchanged) — set it to
       # "s3" in .env to point at the minio service above instead.
