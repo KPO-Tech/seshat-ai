@@ -175,6 +175,47 @@ func (s *Service) OpenFileReader(ctx context.Context, principal *backendauth.Pri
 	return reader, fileFromDB(*record), nil
 }
 
+// ReadMarkdown returns the docling-converted markdown text for a file that
+// has one (MarkdownPath set at upload time), enforcing ownership. workspacePath
+// is the caller-resolved workspace root for the file's session - the same
+// value UploadSessionFile was given when it wrote the sidecar in the first
+// place, since MarkdownPath is stored workspace-relative.
+func (s *Service) ReadMarkdown(ctx context.Context, principal *backendauth.Principal, fileID, workspacePath string) (string, *File, error) {
+	if s == nil || s.files == nil {
+		return "", nil, bkerr.Unavailable("file store not configured", nil)
+	}
+	record, err := s.files.GetByID(ctx, fileID)
+	if err != nil {
+		return "", nil, bkerr.NotFound("file not found", err)
+	}
+	if err := s.checkAccess(principal, record); err != nil {
+		return "", nil, err
+	}
+	if record.MarkdownPath == "" {
+		return "", nil, bkerr.NotFound("no markdown conversion available for this file", nil)
+	}
+	if workspacePath == "" {
+		return "", nil, bkerr.NotFound("workspace unavailable", nil)
+	}
+
+	// MarkdownPath is always server-generated (never user input), but resolve
+	// defensively anyway: reject anything that would land outside workspacePath.
+	absWorkspace, err := filepath.Abs(workspacePath)
+	if err != nil {
+		return "", nil, bkerr.Internal("resolve workspace path: "+err.Error(), err)
+	}
+	mdPath, err := filepath.Abs(filepath.Join(absWorkspace, record.MarkdownPath))
+	if err != nil || (mdPath != absWorkspace && !strings.HasPrefix(mdPath, absWorkspace+string(filepath.Separator))) {
+		return "", nil, bkerr.Internal("markdown path escapes workspace", err)
+	}
+
+	data, err := os.ReadFile(mdPath)
+	if err != nil {
+		return "", nil, bkerr.NotFound("markdown file not found on disk", err)
+	}
+	return string(data), fileFromDB(*record), nil
+}
+
 // DeleteFile removes the blob and DB record, enforcing ownership.
 func (s *Service) DeleteFile(ctx context.Context, principal *backendauth.Principal, fileID string) error {
 	if s == nil || s.files == nil {

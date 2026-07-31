@@ -34,7 +34,8 @@ func (app *App) handleFiles(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleFileByID dispatches on /api/v1/files/{id} and /api/v1/files/{id}/content.
+// handleFileByID dispatches on /api/v1/files/{id}, /api/v1/files/{id}/content,
+// and /api/v1/files/{id}/markdown.
 func (app *App) handleFileByID(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/files/")
 	path = strings.Trim(path, "/")
@@ -56,6 +57,8 @@ func (app *App) handleFileByID(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case subpath == "content" && r.Method == http.MethodGet:
 		app.handleFileDownload(w, r, principal, fileID)
+	case subpath == "markdown" && r.Method == http.MethodGet:
+		app.handleFileMarkdown(w, r, principal, fileID)
 	case subpath == "":
 		switch r.Method {
 		case http.MethodGet:
@@ -149,6 +152,41 @@ func (app *App) handleFileDownload(w http.ResponseWriter, r *http.Request, _ any
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename=%q`, f.Filename))
 	w.WriteHeader(http.StatusOK)
 	_, _ = io.Copy(w, reader)
+}
+
+// handleFileMarkdown serves the docling-converted markdown text for a file
+// that has one - the same conversion the upload pipeline already paid for,
+// reused here (and by the agent's Read tool sidecar cache) instead of
+// reconverting. 404s if the file has no markdown conversion recorded.
+func (app *App) handleFileMarkdown(w http.ResponseWriter, r *http.Request, _ any, fileID string) {
+	principal, _ := authPrincipalFromContext(r.Context())
+
+	f, err := app.backend.Files.GetFile(r.Context(), principal, fileID)
+	if err != nil {
+		writeBackendError(w, err)
+		return
+	}
+	if f.MarkdownPath == "" {
+		writeJSONError(w, http.StatusNotFound, "no markdown conversion available for this file")
+		return
+	}
+
+	workspacePath := ""
+	if app.backend.Query != nil && f.SessionID != "" {
+		if resolved, wsErr := app.backend.Query.EnsureSessionWorkspace(r.Context(), principal, f.SessionID); wsErr == nil {
+			workspacePath = resolved
+		}
+	}
+
+	markdown, _, err := app.backend.Files.ReadMarkdown(r.Context(), principal, fileID, workspacePath)
+	if err != nil {
+		writeBackendError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(markdown))
 }
 
 // handleSessionFiles handles:
