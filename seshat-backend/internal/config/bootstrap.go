@@ -737,6 +737,45 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	cloudAutomationService := cloudautomation.NewService(cloudAutomationStore)
 	fmt.Printf("[API] Cloud automation worker démarré\n")
 
+	// Abandoned-session sweep: a session (plus any files attached to it) is
+	// created the instant a file is attached, before the user ever sends a
+	// message (see Home.tsx/Conversation.tsx) - if they change their mind or
+	// just close the app, nothing else ever cleans that up. Sweeping
+	// sessions with zero turns older than the grace window reclaims that
+	// dead weight without any risk of deleting a conversation someone is
+	// actively about to use (see query.Service.SweepAbandonedSessions).
+	const abandonedSessionGracePeriod = 24 * time.Hour
+	sweepCtx, stopSweep := context.WithCancel(context.Background())
+	go func() {
+		// Run once at startup too, not just on the hourly tick - this is a
+		// desktop app, so most sessions are shorter than an hour and would
+		// otherwise never live long enough to trigger the ticker even once.
+		// Startup is exactly when abandoned sessions from the *previous*
+		// run are most likely waiting to be cleaned up.
+		if n, err := backendApp.Query.SweepAbandonedSessions(sweepCtx, abandonedSessionGracePeriod); err != nil {
+			fmt.Fprintf(os.Stderr, "[API] abandoned-session sweep: %v\n", err)
+		} else if n > 0 {
+			fmt.Printf("[API] abandoned-session sweep: removed %d session(s)\n", n)
+		}
+
+		ticker := time.NewTicker(time.Hour)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-sweepCtx.Done():
+				return
+			case <-ticker.C:
+				n, err := backendApp.Query.SweepAbandonedSessions(sweepCtx, abandonedSessionGracePeriod)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "[API] abandoned-session sweep: %v\n", err)
+				} else if n > 0 {
+					fmt.Printf("[API] abandoned-session sweep: removed %d session(s)\n", n)
+				}
+			}
+		}
+	}()
+	cleanups = append(cleanups, func() error { stopSweep(); return nil })
+
 	app := api.NewApp(api.AppConfig{
 		Backend:               backendApp,
 		DB:                    database,

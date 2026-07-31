@@ -193,13 +193,18 @@ function renderPanelBody(panel: RightPanelInstance) {
     case 'agent':
       return <AgentMonitorPanel sessionId={panel.sessionId ?? ''} />
     case 'markdown':
-      return panel.markdown ? (
-        <MarkdownView>{panel.markdown}</MarkdownView>
+      if (!panel.markdown) {
+        return (
+          <EmptyState
+            title="Markdown preview"
+            description="Generated markdown content will render here when a note or document is opened."
+          />
+        )
+      }
+      return panel.plainText ? (
+        <pre className="right-panel-plaintext">{panel.markdown}</pre>
       ) : (
-        <EmptyState
-          title="Markdown preview"
-          description="Generated markdown content will render here when a note or document is opened."
-        />
+        <MarkdownView>{panel.markdown}</MarkdownView>
       )
     case 'browser':
       return <BrowserPanel url={panel.browserUrl} />
@@ -209,7 +214,7 @@ function renderPanelBody(panel: RightPanelInstance) {
       return <SubagentPanel sessionId={panel.sessionId ?? ''} toolUseId={panel.subagentToolUseId ?? ''} />
     case 'pdf':
       return panel.documentFileId ? (
-        <PDFViewerPanel fileId={panel.documentFileId} filename={panel.title} />
+        <PDFViewerPanel fileId={panel.documentFileId} filename={panel.title} fallbackMarkdown={panel.markdown} />
       ) : (
         <EmptyState title="PDF preview" description="This PDF couldn't be opened." />
       )
@@ -797,6 +802,17 @@ const RIGHT_PANEL_CSS = `
   font-size: 11px;
   line-height: 1.6;
   color: var(--color-text-secondary);
+}
+
+.right-panel-plaintext {
+  margin: 0;
+  padding: 14px 13px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--color-text);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .right-panel-list {

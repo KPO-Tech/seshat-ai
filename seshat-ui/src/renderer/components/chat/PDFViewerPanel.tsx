@@ -1,12 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
 import { Reduce, Add, Left, Right } from '@icon-park/react'
-import { api } from '@/api/client'
+import { api, ApiError } from '@/api/client'
 import { loadPdfViewerModule, pdfjsLib } from '@/lib/pdfInteractiveViewer'
+import { MarkdownView } from '@/components/MarkdownView'
 import 'pdfjs-dist/web/pdf_viewer.css'
 
 type Props = {
   fileId: string
   filename: string
+  // Docling text extraction, already fetched by the caller (see
+  // MessageItem.tsx) - rendered instead of a hard error when this document
+  // isn't an actual PDF and the backend's LibreOffice conversion is
+  // unavailable (503) or fails (the on-demand /pdf-preview endpoint, see
+  // officeconvert.Converter server-side). A real PDF (isSourcePDF) never
+  // needs this: /content always serves the original bytes directly.
+  fallbackMarkdown?: string
 }
 
 function base64ToBytes(dataUrl: string): Uint8Array {
@@ -21,7 +29,9 @@ function base64ToBytes(dataUrl: string): Uint8Array {
 // exactly this: embedding the viewer without pulling in its full generic
 // web app (toolbar chrome, l10n, etc.) - this component supplies its own
 // minimal toolbar instead.
-export function PDFViewerPanel({ fileId, filename }: Props) {
+export function PDFViewerPanel({ fileId, filename, fallbackMarkdown }: Props) {
+  const isSourcePDF = filename.toLowerCase().endsWith('.pdf')
+  const [showFallback, setShowFallback] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const viewerRef = useRef<HTMLDivElement>(null)
   const pdfViewerRef = useRef<InstanceType<Awaited<ReturnType<typeof loadPdfViewerModule>>['PDFViewer']> | null>(null)
@@ -66,7 +76,8 @@ export function PDFViewerPanel({ fileId, filename }: Props) {
           if (!cancelled) setPageNumber(e.pageNumber)
         })
 
-        const dataUrl = await api.getFileDataURL(`/files/${fileId}/content`)
+        const endpoint = isSourcePDF ? 'content' : 'pdf-preview'
+        const dataUrl = await api.getFileDataURL(`/files/${fileId}/${endpoint}`)
         if (cancelled) return
         const bytes = base64ToBytes(dataUrl)
         pdfDocument = await pdfjsLib.getDocument({ data: bytes }).promise
@@ -79,10 +90,18 @@ export function PDFViewerPanel({ fileId, filename }: Props) {
         setPageCount(pdfDocument.numPages)
         setStatus('ready')
       } catch (err) {
-        if (!cancelled) {
-          setErrorMessage(err instanceof Error ? err.message : 'Failed to load PDF')
-          setStatus('error')
+        if (cancelled) return
+        // No visual conversion available (LibreOffice missing, or this
+        // document type failed to convert) - degrade to the text extraction
+        // rather than showing a dead-end error, if the caller gave us one.
+        if (!isSourcePDF && fallbackMarkdown) {
+          setShowFallback(true)
+          return
         }
+        const message =
+          err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'Failed to load PDF'
+        setErrorMessage(message)
+        setStatus('error')
       }
     }
 
@@ -95,7 +114,7 @@ export function PDFViewerPanel({ fileId, filename }: Props) {
     // Re-open from scratch if the viewed file changes; loadPdfViewerModule/
     // pdfjsLib are stable module-level singletons, not real dependencies.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fileId])
+  }, [fileId, isSourcePDF, fallbackMarkdown])
 
   function zoomBy(factor: number) {
     const viewer = pdfViewerRef.current
@@ -107,6 +126,18 @@ export function PDFViewerPanel({ fileId, filename }: Props) {
     const viewer = pdfViewerRef.current
     if (!viewer) return
     viewer.currentPageNumber = Math.max(1, Math.min(viewer.currentPageNumber + delta, pageCount))
+  }
+
+  if (showFallback) {
+    return (
+      <div className="pdf-viewer-panel pdf-viewer-panel--fallback">
+        <style>{PDF_VIEWER_PANEL_CSS}</style>
+        <div className="pdf-viewer-fallback-notice">Visual preview unavailable - showing extracted text.</div>
+        <div className="pdf-viewer-fallback-body">
+          <MarkdownView>{fallbackMarkdown ?? ''}</MarkdownView>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -227,5 +258,25 @@ const PDF_VIEWER_PANEL_CSS = `
 
 .pdf-viewer-status--error {
   color: var(--color-error);
+}
+
+.pdf-viewer-panel--fallback {
+  overflow: hidden;
+}
+
+.pdf-viewer-fallback-notice {
+  flex-shrink: 0;
+  padding: 7px 13px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.pdf-viewer-fallback-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px 16px;
 }
 `

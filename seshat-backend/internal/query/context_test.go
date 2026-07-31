@@ -34,6 +34,10 @@ func (f fakeFilesProvider) ListMessageAttachments(ctx context.Context, sessionID
 	return nil, nil
 }
 
+func (f fakeFilesProvider) DeleteBySessionID(ctx context.Context, sessionID string) error {
+	return nil
+}
+
 func TestBuildAttachmentContext_ListsFilesWithoutInliningContent(t *testing.T) {
 	provider := fakeFilesProvider{
 		files: map[string]*backendfiles.File{

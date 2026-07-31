@@ -54,8 +54,13 @@ function formatAttachmentSize(size?: number): string | null {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`
 }
 
-// Files that are already plain text - preview their own bytes directly.
-const TEXT_PREVIEW_EXTENSIONS = new Set(['md', 'markdown', 'txt', 'csv', 'tsv', 'json', 'yaml', 'yml', 'log'])
+// Genuinely Markdown - safe to interpret headings/lists/etc.
+const MD_EXTENSIONS = new Set(['md', 'markdown'])
+// Plain text that happens to share the "preview raw bytes directly" fetch
+// path with Markdown files, but isn't Markdown - rendering these through
+// MarkdownView would misinterpret incidental "#"/"-" characters as syntax.
+const PLAIN_TEXT_EXTENSIONS = new Set(['txt', 'csv', 'tsv', 'json', 'yaml', 'yml', 'log'])
+const TEXT_PREVIEW_EXTENSIONS = new Set([...MD_EXTENSIONS, ...PLAIN_TEXT_EXTENSIONS])
 // Files the backend docling-converts to markdown at upload time (see
 // doclingExtensions in seshat-backend/internal/files/types.go) - preview that
 // conversion instead of the original (unreadable as raw bytes) binary.
@@ -66,6 +71,11 @@ function textPreviewKind(filename: string): 'direct' | 'markdown' | null {
   if (TEXT_PREVIEW_EXTENSIONS.has(ext)) return 'direct'
   if (MARKDOWN_PREVIEW_EXTENSIONS.has(ext)) return 'markdown'
   return null
+}
+
+function isPlainTextFilename(filename: string): boolean {
+  const ext = filename.split('.').pop()?.toLowerCase() ?? ''
+  return PLAIN_TEXT_EXTENSIONS.has(ext)
 }
 
 async function fetchTextPreview(fileId: string, kind: 'direct' | 'markdown'): Promise<string> {
@@ -237,6 +247,16 @@ function isPDFAttachment(file: MessageAttachment): boolean {
   return file.filename.toLowerCase().endsWith('.pdf') || file.content_type === 'application/pdf'
 }
 
+// DOCX/PPTX/XLSX/HTML/TEX get a real visual rendering (via the backend's
+// on-demand LibreOffice conversion, see PDFViewerPanel) instead of just the
+// docling-extracted text - a flat text dump loses layout, slides, and tables
+// that matter for these formats. MD/TXT/CSV/... (textPreviewKind === 'direct')
+// deliberately stay on the plain markdown/text panel: they have no "visual
+// layout" to lose, and MarkdownView already renders them properly.
+function isOfficePreviewAttachment(file: MessageAttachment): boolean {
+  return textPreviewKind(file.filename) === 'markdown'
+}
+
 export const MessageItem = memo(function MessageItem({ message, sessionId, compact = false, onApproveTool, onDenyTool, onSubmitToolPrompt }: Props) {
   const isUser = message.role === 'user'
   const attachments = messageAttachments(message)
@@ -314,13 +334,24 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
               const extLabel = file.filename.split('.').pop()?.toUpperCase() ?? ''
               const tooltip = [file.filename, sizeLabel].filter(Boolean).join(' - ')
               const isPDF = isPDFAttachment(file)
+              const isOfficePreview = isOfficePreviewAttachment(file)
               function onOpen() {
                 if (isImage && previewURL) {
                   openLightbox({ url: previewURL, filename: file.filename })
                 } else if (isPDF) {
                   openRightPanel({ kind: 'pdf', title: file.filename, documentFileId: file.id })
+                } else if (isOfficePreview) {
+                  // markdown here is the docling text fallback PDFViewerPanel
+                  // renders if the LibreOffice conversion 404s/503s.
+                  openRightPanel({ kind: 'pdf', title: file.filename, documentFileId: file.id, markdown: textPreview })
                 } else if (textPreview) {
-                  openRightPanel({ kind: 'markdown', title: file.filename, markdown: textPreview, documentFileId: file.id })
+                  openRightPanel({
+                    kind: 'markdown',
+                    title: file.filename,
+                    markdown: textPreview,
+                    documentFileId: file.id,
+                    plainText: isPlainTextFilename(file.filename),
+                  })
                 } else if (file.local_path) {
                   void window.nexus?.openPath?.(file.local_path)
                 }

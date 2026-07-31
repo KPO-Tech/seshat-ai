@@ -253,6 +253,12 @@ export function Home() {
   function handleRemoveAttachment(fileId: string) {
     setAttachments((current) => current.filter((file) => file.id !== fileId))
     setAttachmentError(null)
+    // See Conversation.tsx's handleRemoveAttachment - attachments upload
+    // immediately, before any message is sent, so removing one here without
+    // deleting it server-side would orphan it forever.
+    if (!fileId.startsWith('local-')) {
+      void api.delete(`/files/${fileId}`).catch(() => {})
+    }
   }
 
   async function handleSend() {

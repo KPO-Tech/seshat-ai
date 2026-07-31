@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"os"
 	"strings"
+	"time"
 
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
@@ -69,6 +71,9 @@ type filesProvider interface {
 	DownloadFile(ctx context.Context, principal *backendauth.Principal, fileID string) ([]byte, *backendfiles.File, error)
 	AttachToMessage(ctx context.Context, fileIDs []string, sessionID string, messageIndex int) error
 	ListMessageAttachments(ctx context.Context, sessionID string) ([]backendfiles.File, error)
+	// DeleteBySessionID removes every file record + blob for a session,
+	// sent-message-attached or not - see DeleteSession/SweepAbandonedSessions.
+	DeleteBySessionID(ctx context.Context, sessionID string) error
 }
 
 type skillsProvider interface {
@@ -590,6 +595,7 @@ func (s *Service) DeleteSession(ctx context.Context, principal *backendauth.Prin
 		return bkerr.InvalidInput("session_id is required", nil)
 	}
 
+	workspacePath := ""
 	if s.ownership != nil {
 		if principal == nil {
 			return bkerr.Unauthorized("authentication required", nil)
@@ -601,6 +607,7 @@ func (s *Service) DeleteSession(ctx context.Context, principal *backendauth.Prin
 		if !principal.HasRole("admin") && ownership.UserID != principal.User.ID {
 			return bkerr.Forbidden("session belongs to another user", nil)
 		}
+		workspacePath = ownership.WorkspacePath
 		if err := s.ownership.Delete(ctx, sessionID); err != nil {
 			return bkerr.Internal("delete session ownership: "+err.Error(), err)
 		}
@@ -609,7 +616,80 @@ func (s *Service) DeleteSession(ctx context.Context, principal *backendauth.Prin
 	if err := s.sessions.DeleteSession(sdk.SessionID(sessionID)); err != nil {
 		return bkerr.NotFound(err.Error(), err)
 	}
+	s.cleanupSessionArtifacts(ctx, sessionID, workspacePath)
 	return nil
+}
+
+// cleanupSessionArtifacts removes everything DeleteSession's own layers
+// leave behind: the backend's file records + blobs (the `files` table and
+// ArtifactStore - entirely separate from the SDK's own session/transcript
+// store) and the on-disk workspace directory (uploads/, artifacts/, plans/,
+// .previews/ - written directly by files.Service via os.WriteFile, never
+// tracked by the SDK's session store either). Without this, every deleted
+// conversation left 100% of its attachments on disk and in the files table
+// forever - see the Part 2 persistence audit.
+//
+// Best-effort and silent-on-error by design: the session record itself is
+// already gone by the time this runs (both branches above already
+// succeeded), so a partial cleanup failure here must never surface as a
+// failed delete - the user-visible "delete this conversation" contract is
+// already satisfied.
+func (s *Service) cleanupSessionArtifacts(ctx context.Context, sessionID, workspacePath string) {
+	if s.files != nil {
+		if err := s.files.DeleteBySessionID(ctx, sessionID); err != nil {
+			fmt.Fprintf(os.Stderr, "[query] cleanup session %s files: %v\n", sessionID, err)
+		}
+	}
+	if strings.TrimSpace(workspacePath) != "" {
+		if err := os.RemoveAll(workspacePath); err != nil {
+			fmt.Fprintf(os.Stderr, "[query] cleanup session %s workspace: %v\n", sessionID, err)
+		}
+	}
+}
+
+// SweepAbandonedSessions deletes sessions that were created but never
+// actually used - TotalTurns == 0 (the same "not yet started" signal
+// sessionCanBindProvider already relies on) and older than olderThan.
+//
+// Attaching a file creates a real session immediately, before any message
+// is ever sent (see Home.tsx's ensureSessionCreated and
+// Conversation.tsx's handleAttachFiles) - if the user then removes the
+// attachment, closes the app, or just never sends, that session and its
+// uploaded file(s) had nothing else to ever clean them up. A session
+// becomes "used" the instant its first turn starts, so olderThan just needs
+// to be long enough that this can never delete a conversation someone is
+// actively about to send their first message into.
+func (s *Service) SweepAbandonedSessions(ctx context.Context, olderThan time.Duration) (int, error) {
+	if s == nil || s.sessions == nil || s.ownership == nil {
+		return 0, nil
+	}
+	sessions, err := s.sessions.ListSessions()
+	if err != nil {
+		return 0, fmt.Errorf("list sessions: %w", err)
+	}
+	cutoff := time.Now().Add(-olderThan).Unix()
+	deleted := 0
+	for _, session := range sessions {
+		if session == nil || session.TotalTurns != 0 || session.CreatedAt > cutoff {
+			continue
+		}
+		sessionID := session.ID.String()
+		ownership, err := s.ownership.GetBySessionID(ctx, sessionID)
+		if err != nil {
+			continue // not ours to clean up (already gone, or unscoped mode)
+		}
+		if err := s.ownership.Delete(ctx, sessionID); err != nil {
+			fmt.Fprintf(os.Stderr, "[query] sweep: delete ownership for abandoned session %s: %v\n", sessionID, err)
+			continue
+		}
+		if err := s.sessions.DeleteSession(sdk.SessionID(sessionID)); err != nil {
+			fmt.Fprintf(os.Stderr, "[query] sweep: delete abandoned session %s: %v\n", sessionID, err)
+			continue
+		}
+		s.cleanupSessionArtifacts(ctx, sessionID, ownership.WorkspacePath)
+		deleted++
+	}
+	return deleted, nil
 }
 
 func (s *Service) InterruptSession(ctx context.Context, principal *backendauth.Principal, sessionID string) error {

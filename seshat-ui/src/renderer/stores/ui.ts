@@ -12,6 +12,12 @@ export type RightPanelFields = {
   title: string
   sourceLabel?: string
   markdown?: string
+  // When true, `markdown` is rendered as plain preformatted text instead of
+  // through MarkdownView - for genuinely plain-text attachments (.txt,
+  // .csv, .json, ...) whose content shouldn't have Markdown syntax
+  // (headings, lists, ...) interpreted just because it happens to look
+  // like it. Real .md files and plan/artifact markdown leave this unset.
+  plainText?: boolean
   documentPath?: string
   documentFileId?: string
   browserUrl?: string

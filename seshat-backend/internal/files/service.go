@@ -15,6 +15,7 @@ import (
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/officeconvert"
 	"github.com/KPO-Tech/seshat/pkg/docling"
 	"github.com/KPO-Tech/seshat/pkg/storage"
 	"github.com/KPO-Tech/seshat/pkg/workspace"
@@ -216,6 +217,96 @@ func (s *Service) ReadMarkdown(ctx context.Context, principal *backendauth.Princ
 	return string(data), fileFromDB(*record), nil
 }
 
+// GetOrCreatePDFPreview returns a LibreOffice-rendered PDF for a non-PDF
+// office document (DOCX/PPTX/XLSX/HTML/TEX/...), so it can go through the
+// same interactive PDF viewer real .pdf attachments use instead of a flat
+// text dump. Conversion happens lazily on first request and is cached via
+// PDFPreviewPath - most attachments are never opened, so paying the
+// LibreOffice cost only when someone actually views the document mirrors
+// the lazy-conversion fix already applied to docling (see the SDK's
+// sidecarMarkdown and this package's UploadSessionFile doc comment).
+// Callers should treat a bkerr.Unavailable error as "no preview possible,
+// fall back to the markdown text preview" rather than a hard failure.
+func (s *Service) GetOrCreatePDFPreview(ctx context.Context, principal *backendauth.Principal, fileID, workspacePath string) ([]byte, *File, error) {
+	if s == nil || s.files == nil {
+		return nil, nil, bkerr.Unavailable("file store not configured", nil)
+	}
+	record, err := s.files.GetByID(ctx, fileID)
+	if err != nil {
+		return nil, nil, bkerr.NotFound("file not found", err)
+	}
+	if err := s.checkAccess(principal, record); err != nil {
+		return nil, nil, err
+	}
+	if record.LocalPath == "" || workspacePath == "" {
+		return nil, nil, bkerr.NotFound("no local file available to convert", nil)
+	}
+
+	absWorkspace, err := filepath.Abs(workspacePath)
+	if err != nil {
+		return nil, nil, bkerr.Internal("resolve workspace path: "+err.Error(), err)
+	}
+
+	// Serve the cached conversion if it's still on disk.
+	if record.PDFPreviewPath != "" {
+		if previewPath, resolveErr := resolveWorkspacePath(absWorkspace, record.PDFPreviewPath); resolveErr == nil {
+			if data, readErr := os.ReadFile(previewPath); readErr == nil {
+				return data, fileFromDB(*record), nil
+			}
+		}
+		// Cached path is stale or missing on disk - fall through and reconvert.
+	}
+
+	if !officeconvert.Default.IsAvailable() {
+		return nil, nil, bkerr.Unavailable("document preview conversion is not available", nil)
+	}
+
+	srcPath, err := resolveWorkspacePath(absWorkspace, record.LocalPath)
+	if err != nil {
+		return nil, nil, bkerr.Internal("local file path escapes workspace", err)
+	}
+
+	// Convert into a directory keyed by file ID, not the shared uploads/
+	// directory the source lives in - LibreOffice names its output after the
+	// source's basename, and two unrelated uploads sharing a stem (e.g. a
+	// "report.docx" and an unrelated "report.pdf") would otherwise collide.
+	outDir := filepath.Join(filepath.Dir(srcPath), ".previews", fileID)
+	pdfPath, err := officeconvert.Default.ConvertToPDF(ctx, srcPath, outDir)
+	if err != nil {
+		return nil, nil, bkerr.Internal("convert document to pdf: "+err.Error(), err)
+	}
+
+	rel, err := filepath.Rel(absWorkspace, pdfPath)
+	if err != nil {
+		return nil, nil, bkerr.Internal("resolve preview path: "+err.Error(), err)
+	}
+	rel = filepath.ToSlash(rel)
+	if err := s.files.SetPDFPreviewPath(ctx, fileID, rel); err != nil {
+		return nil, nil, bkerr.Internal("record pdf preview path: "+err.Error(), err)
+	}
+
+	data, err := os.ReadFile(pdfPath)
+	if err != nil {
+		return nil, nil, bkerr.Internal("read converted pdf: "+err.Error(), err)
+	}
+	record.PDFPreviewPath = rel
+	return data, fileFromDB(*record), nil
+}
+
+// resolveWorkspacePath joins a workspace-relative path (always
+// server-generated, never user input) onto absWorkspace and rejects the
+// result if it would land outside absWorkspace.
+func resolveWorkspacePath(absWorkspace, rel string) (string, error) {
+	joined, err := filepath.Abs(filepath.Join(absWorkspace, rel))
+	if err != nil {
+		return "", err
+	}
+	if joined != absWorkspace && !strings.HasPrefix(joined, absWorkspace+string(filepath.Separator)) {
+		return "", fmt.Errorf("path escapes workspace")
+	}
+	return joined, nil
+}
+
 // DeleteFile removes the blob and DB record, enforcing ownership.
 func (s *Service) DeleteFile(ctx context.Context, principal *backendauth.Principal, fileID string) error {
 	if s == nil || s.files == nil {
@@ -238,6 +329,35 @@ func (s *Service) DeleteFile(ctx context.Context, principal *backendauth.Princip
 		return bkerr.Internal("delete file record: "+err.Error(), err)
 	}
 	return nil
+}
+
+// DeleteBySessionID removes every file record and blob attached to
+// sessionID, regardless of whether any of them were ever attached to a sent
+// message. Called when the session itself is deleted (see
+// query.Service.DeleteSession) - the workspace directory those files were
+// also written to is a separate, unrelated cleanup the caller handles
+// itself (os.RemoveAll on the workspace path), since this package only
+// owns the DB records and blob store, not the filesystem layout.
+// Best-effort per file: a failure on one record doesn't stop the rest from
+// being cleaned up, since the session is already gone either way.
+func (s *Service) DeleteBySessionID(ctx context.Context, sessionID string) error {
+	if s == nil || s.files == nil {
+		return nil
+	}
+	records, err := s.files.ListBySessionID(ctx, sessionID)
+	if err != nil {
+		return fmt.Errorf("list session files: %w", err)
+	}
+	var firstErr error
+	for _, record := range records {
+		if s.store != nil {
+			_ = s.store.Delete(ctx, record.StorageKey)
+		}
+		if err := s.files.Delete(ctx, record.ID); err != nil && firstErr == nil {
+			firstErr = fmt.Errorf("delete file %s: %w", record.ID, err)
+		}
+	}
+	return firstErr
 }
 
 func (s *Service) checkAccess(principal *backendauth.Principal, record *db.File) error {

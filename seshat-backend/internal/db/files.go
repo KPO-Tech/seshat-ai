@@ -25,12 +25,17 @@ type File struct {
 	Category     string // "images", "documents", "audio", "other" — set for session uploads
 	LocalPath    string // workspace-relative path (e.g. uploads/images/photo.jpg) — set for session uploads
 	MarkdownPath string // workspace-relative path to the docling-converted .md file (empty if not converted)
-	Filename     string
-	ContentType  string
-	Size         int64
-	StorageKey   string // key in ArtifactStore
-	SHA256       string
-	Status       string
+	// PDFPreviewPath is the workspace-relative path to a LibreOffice-rendered
+	// PDF of this file (empty until first requested - see
+	// officeconvert.Converter and handleFilePDFPreview). Only meaningful for
+	// non-PDF office formats (DOCX/PPTX/XLSX/...); PDFs are served as-is.
+	PDFPreviewPath string
+	Filename       string
+	ContentType    string
+	Size           int64
+	StorageKey     string // key in ArtifactStore
+	SHA256         string
+	Status         string
 	// UserMessageIndex, when set, is the 0-based position of this file's
 	// owning user message within its session's transcript at the moment it
 	// was attached to a turn. Nil until AttachToMessage records it. Callers
@@ -66,6 +71,7 @@ type gFile struct {
 	Category         *string `gorm:"column:category;size:32"`
 	LocalPath        *string `gorm:"column:local_path;size:1024"`
 	MarkdownPath     *string `gorm:"column:markdown_path;size:1024"`
+	PDFPreviewPath   *string `gorm:"column:pdf_preview_path;size:1024"`
 	Filename         string  `gorm:"not null"`
 	ContentType      string  `gorm:"column:content_type;not null;default:''"`
 	Size             int64   `gorm:"not null;default:0"`
@@ -106,6 +112,9 @@ func fileFromGorm(g gFile) File {
 	}
 	if g.MarkdownPath != nil {
 		f.MarkdownPath = *g.MarkdownPath
+	}
+	if g.PDFPreviewPath != nil {
+		f.PDFPreviewPath = *g.PDFPreviewPath
 	}
 	f.UserMessageIndex = g.UserMessageIndex
 	return f
@@ -277,6 +286,19 @@ func (s *FileStore) ListAll(ctx context.Context) ([]File, error) {
 		results = append(results, fileFromGorm(r))
 	}
 	return results, nil
+}
+
+// SetPDFPreviewPath records the workspace-relative path of a
+// LibreOffice-rendered PDF for a file, caching the conversion result so
+// repeat views don't reconvert (see officeconvert.Converter).
+func (s *FileStore) SetPDFPreviewPath(ctx context.Context, id, pdfPreviewPath string) error {
+	if err := s.db.GormDB().WithContext(ctx).
+		Model(&gFile{}).
+		Where("id = ?", id).
+		Update("pdf_preview_path", pdfPreviewPath).Error; err != nil {
+		return fmt.Errorf("set file pdf preview path: %w", err)
+	}
+	return nil
 }
 
 func (s *FileStore) Delete(ctx context.Context, id string) error {

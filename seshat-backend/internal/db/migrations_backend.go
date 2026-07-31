@@ -271,6 +271,13 @@ func backendMigrations() []schemaMigration {
 				return db.gormDB.WithContext(ctx).AutoMigrate(&gFile{})
 			},
 		},
+		{
+			ID:    "20260731_036_file_pdf_preview_path",
+			Scope: migrationScopeBackend,
+			Run: func(ctx context.Context, db *DB) error {
+				return db.gormDB.WithContext(ctx).AutoMigrate(&gFile{})
+			},
+		},
 	}
 }
 

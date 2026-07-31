@@ -87,11 +87,19 @@
         "deb"
       ]
     },
+    "deb": {
+      "recommends": [
+        "libreoffice"
+      ]
+    },
     "win": {
       "target": [
         "nsis"
       ],
       "signAndEditExecutable": false
+    },
+    "nsis": {
+      "include": "build/installer.nsh"
     },
     "publish": [
       {

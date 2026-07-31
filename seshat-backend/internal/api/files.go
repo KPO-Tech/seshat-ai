@@ -59,6 +59,8 @@ func (app *App) handleFileByID(w http.ResponseWriter, r *http.Request) {
 		app.handleFileDownload(w, r, principal, fileID)
 	case subpath == "markdown" && r.Method == http.MethodGet:
 		app.handleFileMarkdown(w, r, principal, fileID)
+	case subpath == "pdf-preview" && r.Method == http.MethodGet:
+		app.handleFilePDFPreview(w, r, principal, fileID)
 	case subpath == "":
 		switch r.Method {
 		case http.MethodGet:
@@ -187,6 +189,38 @@ func (app *App) handleFileMarkdown(w http.ResponseWriter, r *http.Request, _ any
 	w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(markdown))
+}
+
+// handleFilePDFPreview serves a LibreOffice-rendered PDF for a non-PDF
+// office document (DOCX/PPTX/XLSX/HTML/TEX/...), converting and caching it
+// on first request. 404s if the file has no local copy to convert;
+// 503s if LibreOffice isn't installed - callers (the right-panel PDF viewer)
+// should fall back to the markdown text preview in either case.
+func (app *App) handleFilePDFPreview(w http.ResponseWriter, r *http.Request, _ any, fileID string) {
+	principal, _ := authPrincipalFromContext(r.Context())
+
+	f, err := app.backend.Files.GetFile(r.Context(), principal, fileID)
+	if err != nil {
+		writeBackendError(w, err)
+		return
+	}
+
+	workspacePath := ""
+	if app.backend.Query != nil && f.SessionID != "" {
+		if resolved, wsErr := app.backend.Query.EnsureSessionWorkspace(r.Context(), principal, f.SessionID); wsErr == nil {
+			workspacePath = resolved
+		}
+	}
+
+	data, _, err := app.backend.Files.GetOrCreatePDFPreview(r.Context(), principal, fileID, workspacePath)
+	if err != nil {
+		writeBackendError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/pdf")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(data)
 }
 
 // handleSessionFiles handles:

@@ -338,6 +338,14 @@ export function Conversation() {
   const handleRemoveAttachment = useCallback((fileId: string) => {
     setAttachments(current => current.filter(file => file.id !== fileId))
     setAttachmentError(null)
+    // Attachments upload to the backend immediately on attach, before the
+    // message is ever sent (see handleAttachFiles) - removing one here
+    // without also deleting it server-side would leave the file (blob + DB
+    // record + workspace copy) orphaned forever, since it was never
+    // attached to a sent message for anything else to clean up.
+    if (!fileId.startsWith('local-')) {
+      void api.delete(`/files/${fileId}`).catch(() => {})
+    }
   }, [])
 
   // Agent Monitor is opt-in for entering a conversation or resolving a plan
