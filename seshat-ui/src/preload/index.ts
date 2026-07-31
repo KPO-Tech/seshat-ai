@@ -57,6 +57,7 @@ const nexusBridge = {
   http: {
     request: (payload: { path: string; method?: string; body?: unknown }) => ipcRenderer.invoke('http:request', payload),
     fileContent: (path: string) => ipcRenderer.invoke('http:file-content', path),
+    backendOrigin: () => ipcRenderer.invoke('http:backend-origin') as Promise<string>,
     upload: (payload: {
       path: string
       fields?: Array<{ name: string; value: string }>

@@ -138,6 +138,81 @@ function MermaidBlock({ code }: { code: string }) {
   return <div className="mermaid-block" dangerouslySetInnerHTML={{ __html: svg }} />
 }
 
+// Renders a ```chart fenced block (a JSON Chart.js config: {type, data,
+// options}) as an interactive chart - JSON.parse can't execute code, so
+// this is exactly as safe as mermaid's text-based diagram syntax: the model
+// supplies a declarative spec, never arbitrary script. Chart.js is loaded
+// lazily, same rationale as mermaid.
+function ChartBlock({ code }: { code: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    let chartInstance: { destroy: () => void } | null = null
+    setError(null)
+
+    let config: { type?: string; data?: unknown; options?: Record<string, unknown> }
+    try {
+      config = JSON.parse(code)
+    } catch {
+      setError('Invalid chart JSON')
+      return
+    }
+    if (!config.type || !config.data) {
+      setError('Chart config needs a "type" and "data" field')
+      return
+    }
+
+    import('chart.js/auto').then(({ default: Chart }) => {
+      if (cancelled || !canvasRef.current) return
+      const isLight = document.documentElement.getAttribute('data-theme') === 'light'
+      const tickColor = isLight ? '#44403c' : '#d6d3d1'
+      const gridColor = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)'
+      // The chart type/shape only exists at runtime (parsed from the
+      // model's JSON output) - Chart.js's constructor overloads need a
+      // statically-known `type` to pick the right config shape, which
+      // doesn't apply here by design, hence the escape hatch.
+      chartInstance = new Chart(canvasRef.current, {
+        type: config.type,
+        data: config.data,
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          color: tickColor,
+          plugins: { legend: { labels: { color: tickColor } } },
+          scales: config.type === 'pie' || config.type === 'doughnut' ? undefined : {
+            x: { ticks: { color: tickColor }, grid: { color: gridColor } },
+            y: { ticks: { color: tickColor }, grid: { color: gridColor } },
+          },
+          ...config.options,
+        },
+      } as unknown as ConstructorParameters<typeof Chart>[1])
+    }).catch((err) => {
+      if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to render chart')
+    })
+
+    return () => {
+      cancelled = true
+      chartInstance?.destroy()
+    }
+  }, [code])
+
+  if (error) {
+    return (
+      <div className="chart-block chart-block--error">
+        <div className="mermaid-error-label">Chart failed to render: {error}</div>
+        <pre className="mermaid-error-source">{code}</pre>
+      </div>
+    )
+  }
+  return (
+    <div className="chart-block">
+      <canvas ref={canvasRef} />
+    </div>
+  )
+}
+
 type Props = {
   children: string
   className?: string
@@ -179,6 +254,9 @@ export function MarkdownView({ children, className, streaming = false }: Props) 
               const code = String(children).replace(/\n$/, '')
               if (match[1] === 'mermaid') {
                 return <MermaidBlock code={code} />
+              }
+              if (match[1] === 'chart') {
+                return <ChartBlock code={code} />
               }
               return <CodeBlock language={match[1]} code={code} />
             }
@@ -387,5 +465,18 @@ const MARKDOWN_CSS = `
   background: var(--color-surface);
   font-size: 12px;
   overflow-x: auto;
+}
+
+.chart-block {
+  margin: 16px 0;
+  position: relative;
+  height: 320px;
+}
+
+.chart-block--error {
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 `

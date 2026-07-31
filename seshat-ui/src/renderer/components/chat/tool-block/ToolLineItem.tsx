@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { Copy, Down } from '@icon-park/react'
+import { api } from '@/api/client'
 import { useUIStore } from '@/stores/ui'
 import type { ToolUseBlock } from '@/api/types'
 import { DiffView, resolveDiffRows } from './DiffView'
@@ -95,16 +97,68 @@ export function ToolLineItem({ tool, onSubmitPrompt }: {
 function DiffContent({ tool }: { tool: ToolUseBlock }) {
   const diff = resolveDiffRows(tool)
   const filePath = typeof tool.input.file_path === 'string' ? (tool.input.file_path as string) : ''
-  if (diff && diff.rows.length > 0) {
-    return <DiffView filePath={filePath} rows={diff.rows} addCount={diff.addCount} delCount={diff.delCount} />
+  const body = (() => {
+    if (diff && diff.rows.length > 0) {
+      return <DiffView filePath={filePath} rows={diff.rows} addCount={diff.addCount} delCount={diff.delCount} />
+    }
+    // resolveDiffRows returns null for a landed, failed result (see its own
+    // comment) - show the real error instead of a silently empty body, same
+    // treatment WriteToolView/EditToolView give the non-grouped case.
+    if (tool._result?.isError && tool._result.content) {
+      return <pre className="tb-pre tb-pre--error">{tool._result.content}</pre>
+    }
+    return null
+  })()
+
+  return (
+    <>
+      {body}
+      <HTMLPreviewTrigger tool={tool} filePath={filePath} />
+    </>
+  )
+}
+
+// Self-contained HTML the agent just wrote (see the rendering-capabilities
+// system-prompt block in seshat-backend/internal/query/context.go) can be
+// opened as a live sandboxed preview - the full written content is already
+// right here in the tool result (write_file's own JSON output echoes back
+// what it wrote), no extra file read needed. edit_file results don't carry
+// the full post-edit content the same way, so this only fires for write_file.
+function HTMLPreviewTrigger({ tool, filePath }: { tool: ToolUseBlock; filePath: string }) {
+  const openRightPanel = useUIStore((s) => s.openRightPanel)
+  const [previewing, setPreviewing] = useState(false)
+  const [previewError, setPreviewError] = useState<string | null>(null)
+
+  const isHTMLFile = /\.html?$/i.test(filePath)
+  const content = typeof tool._result?.metadata?.content === 'string' ? tool._result.metadata.content : undefined
+  if (!isHTMLFile || !content || tool._result?.isError) return null
+
+  async function openPreview() {
+    if (!content || previewing) return
+    setPreviewing(true)
+    setPreviewError(null)
+    try {
+      const { id } = await api.post<{ id: string }>('/artifacts/preview', { html: content })
+      openRightPanel({
+        kind: 'artifact',
+        title: filePath.split(/[/\\]/).pop() || filePath,
+        artifactPreviewId: id,
+      })
+    } catch (err) {
+      setPreviewError(err instanceof Error ? err.message : 'Failed to open preview')
+    } finally {
+      setPreviewing(false)
+    }
   }
-  // resolveDiffRows returns null for a landed, failed result (see its own
-  // comment) - show the real error instead of a silently empty body, same
-  // treatment WriteToolView/EditToolView give the non-grouped case.
-  if (tool._result?.isError && tool._result.content) {
-    return <pre className="tb-pre tb-pre--error">{tool._result.content}</pre>
-  }
-  return null
+
+  return (
+    <div className="tb-write-preview">
+      <button type="button" className="tb-write-preview-btn" onClick={() => void openPreview()} disabled={previewing}>
+        {previewing ? 'Opening preview…' : 'Preview'}
+      </button>
+      {previewError && <span className="tb-write-preview-error">{previewError}</span>}
+    </div>
+  )
 }
 
 export const TOOL_LINE_CSS = `

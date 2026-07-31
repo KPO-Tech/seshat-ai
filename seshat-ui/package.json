@@ -28,6 +28,7 @@
     "@emoji-mart/react": "^1.1.1",
     "@icon-park/react": "^1.4.2",
     "@tanstack/react-virtual": "^3.13.25",
+    "chart.js": "^4.5.1",
     "electron-updater": "^6.6.2",
     "emoji-mart": "^5.6.0",
     "katex": "^0.16.22",

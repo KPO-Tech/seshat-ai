@@ -13,6 +13,15 @@ import (
 	backendmemories "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/memories"
 )
 
+// renderingCapabilitiesBlock tells the model about UI-only rendering
+// conventions it has no way to infer on its own (unlike ```mermaid, which
+// it can plausibly know about from general training data). Kept short -
+// this is appended to every single turn's system prompt unconditionally.
+const renderingCapabilitiesBlock = `## Rich rendering available in this UI
+
+- Interactive charts: a ` + "```chart" + ` fenced code block containing a JSON Chart.js config (` + "`{\"type\": \"bar\"|\"line\"|\"pie\"|\"doughnut\"|..., \"data\": {...}, \"options\": {...}}`" + `) renders as a live chart inline in your response. Use this instead of a text table when the data is genuinely better shown visually.
+- Live HTML/CSS/JS preview: writing a single self-contained HTML file (inline ` + "`<style>`" + ` and ` + "`<script>`" + `, no external resources) via write_file with a ` + "`.html`" + ` extension lets the user open it as a live, interactive preview alongside the conversation. Use this for demos, small interactive tools, or visualizations that need real script execution beyond what a chart block covers.`
+
 // buildRAGContext searches the given corpus for chunks relevant to the prompt
 // and formats them as a Markdown context block. Returns empty strings on any error.
 func buildRAGContext(ctx context.Context, principal *backendauth.Principal, knowledge knowledgeProvider, corpusID, prompt string) (string, []RAGSearchResult) {

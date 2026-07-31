@@ -1302,6 +1302,13 @@ func (s *Service) BuildContextInput(ctx context.Context, p ContextBuildParams) (
 		input.AppendSystemPrompt = p.AppendSystemPrompt
 	}
 
+	// Static rendering-capability note: the model has no way to discover
+	// UI-only conventions like ```chart on its own the way it might infer
+	// ```mermaid support from general training data, so it needs to be told
+	// explicitly. Unconditional (not gated on principal/session) since it
+	// costs a fixed handful of tokens and applies to every surface.
+	input.AppendSystemPrompt = appendBlock(input.AppendSystemPrompt, renderingCapabilitiesBlock)
+
 	// Layer user preference block on top (appended, never overwritten).
 	if p.Principal != nil && s.preferences != nil {
 		if block, _ := s.preferences.BuildSystemPromptBlock(ctx, p.Principal); block != "" {

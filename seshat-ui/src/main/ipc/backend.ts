@@ -467,6 +467,18 @@ export function registerBackendHandlers(ipcMain: IpcMain): void {
     return performBinaryGetRequest(path, session?.token)
   })
 
+  // The artifact-preview <iframe> (see ArtifactPreviewPanel.tsx) navigates
+  // directly - it can't go through the http:request IPC bridge like every
+  // other backend call, since an <iframe src=...> is a real browser
+  // navigation, not a fetch() this app controls. It still needs to know the
+  // resolved origin (dynamic in a packaged app - the sidecar's actual port
+  // isn't fixed) to build that URL, hence exposing it here instead of
+  // hardcoding a default in the renderer.
+  ipcMain.handle('http:backend-origin', (event) => {
+    assertTrustedSender(event)
+    return resolveBackendOrigin()
+  })
+
   ipcMain.handle('http:stream:start', async (event, payload: StreamStartPayload) => {
     assertTrustedSender(event)
     const session = await loadSession()

@@ -4,7 +4,7 @@ import type { RAGSearchResult } from '@/api/types'
 import { useSessionStore } from '@/stores/session'
 
 type Theme = 'light' | 'dark'
-export type RightPanelKind = 'markdown' | 'subagent' | 'browser' | 'agent' | 'knowledge' | 'plan' | 'pdf'
+export type RightPanelKind = 'markdown' | 'subagent' | 'browser' | 'agent' | 'knowledge' | 'plan' | 'pdf' | 'artifact'
 export type UIPermissionMode = 'onRequest' | 'auto' | 'bypass'
 
 export type RightPanelFields = {
@@ -20,6 +20,8 @@ export type RightPanelFields = {
   plainText?: boolean
   documentPath?: string
   documentFileId?: string
+  // Capability ID from POST /artifacts/preview - see ArtifactPreviewPanel.tsx.
+  artifactPreviewId?: string
   browserUrl?: string
   agentNames?: string[]
   knowledgeResults?: RAGSearchResult[]
@@ -39,8 +41,8 @@ export type RightPanelPayload = Partial<RightPanelFields> & { kind: RightPanelKi
 // already open) updates it in place instead of pushing a duplicate.
 export type RightPanelInstance = RightPanelFields & { id: string; openedAt: number }
 
-export function buildRightPanelId(panel: { kind: RightPanelKind; sessionId?: string; planId?: string; subagentToolUseId?: string; documentFileId?: string }): string {
-  return `${panel.kind}:${panel.sessionId ?? ''}:${panel.planId ?? panel.subagentToolUseId ?? panel.documentFileId ?? ''}`
+export function buildRightPanelId(panel: { kind: RightPanelKind; sessionId?: string; planId?: string; subagentToolUseId?: string; documentFileId?: string; artifactPreviewId?: string }): string {
+  return `${panel.kind}:${panel.sessionId ?? ''}:${panel.planId ?? panel.subagentToolUseId ?? panel.documentFileId ?? panel.artifactPreviewId ?? ''}`
 }
 
 // A column of 1-2 vertically-stacked panels. Never stored empty - a column

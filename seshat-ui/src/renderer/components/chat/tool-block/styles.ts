@@ -759,4 +759,33 @@ export const TOOL_BLOCK_CSS = `
   word-break: break-word;
   margin: 0;
 }
+
+/* ── write_file HTML preview trigger ── */
+.tb-write-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.tb-write-preview-btn {
+  border: 1px solid rgba(239, 124, 47, 0.3);
+  background: rgba(239, 124, 47, 0.1);
+  color: var(--color-accent);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tb-write-preview-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.tb-write-preview-error {
+  font-size: 11px;
+  color: var(--color-error);
+}
 `

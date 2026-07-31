@@ -3,8 +3,10 @@ package api
 import (
 	"context"
 	"net"
+	"time"
 
 	seshat "github.com/EngineerProjects/seshat-ai/seshat-backend/internal"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/artifactpreview"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudautomation"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	backendquery "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/query"
@@ -36,6 +38,7 @@ type App struct {
 	// terminal registered here is visible to bash-tool calls there.
 	terminalRelay         *backendquery.TerminalRelay
 	cloudAutomation       *cloudautomation.Service
+	artifactPreviews      *artifactpreview.Store
 	enableSignup          bool
 	enableAPIKeys         bool
 	featuredRepos         []FeaturedSkillRepo
@@ -88,6 +91,18 @@ func NewApp(cfg AppConfig) *App {
 	if terminalRelay == nil {
 		terminalRelay = backendquery.NewTerminalRelay()
 	}
+	artifactPreviews := artifactpreview.NewStore()
+	// Best-effort periodic cleanup of expired previews - Get() already
+	// self-evicts on access, this only matters for entries nobody ever
+	// re-requests. No explicit shutdown: this loops for the process's
+	// lifetime, same as the app's other daemon-style background work.
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			artifactPreviews.Sweep()
+		}
+	}()
 	return &App{
 		backend:               cfg.Backend,
 		db:                    cfg.DB,
@@ -104,6 +119,7 @@ func NewApp(cfg AppConfig) *App {
 		permBroker:            backendquery.NewPermissionBroker(),
 		promptBroker:          backendquery.NewPromptBroker(),
 		terminalRelay:         terminalRelay,
+		artifactPreviews:      artifactPreviews,
 		enableSignup:          cfg.EnableSignup,
 		enableAPIKeys:         cfg.EnableAPIKeys,
 		featuredRepos:         cfg.FeaturedRepos,

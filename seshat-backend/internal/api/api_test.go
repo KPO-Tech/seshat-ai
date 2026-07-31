@@ -3683,19 +3683,27 @@ func TestBuildQueryInput_AppendSystemPromptPassedThrough(t *testing.T) {
 	}
 }
 
-// TestBuildQueryInput_AppendSystemPromptEmptyNoInjection verifies that when no
-// memories, preferences, or explicit system prompt are configured, BuildContextInput
-// does not inject any extra content into AppendSystemPrompt.
-func TestBuildQueryInput_AppendSystemPromptEmptyNoInjection(t *testing.T) {
+// TestBuildQueryInput_AppendSystemPromptOnlyRenderingCapabilities verifies
+// that when no memories, preferences, or explicit system prompt are
+// configured, BuildContextInput injects nothing beyond the static
+// rendering-capabilities block (chart blocks / HTML preview) that's always
+// appended regardless of session state.
+func TestBuildQueryInput_AppendSystemPromptOnlyRenderingCapabilities(t *testing.T) {
 	app := newStreamApp(stubQueryRunner{})
 	empty := ""
 	input, _ := app.backend.Query.BuildContextInput(context.Background(), backendquery.ContextBuildParams{
 		Prompt:             "hello",
 		AppendSystemPrompt: &empty,
 	})
-	// Without memories or preferences configured, AppendSystemPrompt stays nil.
-	if input.AppendSystemPrompt != nil && strings.TrimSpace(*input.AppendSystemPrompt) != "" {
-		t.Errorf("expected no system prompt injection without memories/preferences, got %q", *input.AppendSystemPrompt)
+	if input.AppendSystemPrompt == nil {
+		t.Fatal("expected the static rendering-capabilities block to always be present")
+	}
+	got := strings.TrimSpace(*input.AppendSystemPrompt)
+	if !strings.Contains(got, "Rich rendering available in this UI") {
+		t.Errorf("expected the rendering-capabilities block, got %q", got)
+	}
+	if strings.Contains(got, "Knowledge Base Context") || strings.Contains(got, "user memories") {
+		t.Errorf("expected no memories/RAG injection without memories/preferences configured, got %q", got)
 	}
 }
 

@@ -99,6 +99,10 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	apiV1.Handle("/files", app.authMiddleware(http.HandlerFunc(app.handleFiles)))
 	apiV1.Handle("/files/", app.authMiddleware(http.HandlerFunc(app.handleFileByID)))
 
+	apiV1.Handle("/artifacts/preview", app.authMiddleware(http.HandlerFunc(app.handleArtifactPreviewCreate)))
+	// Deliberately unauthenticated - see handleArtifactPreviewGet's doc comment.
+	apiV1.HandleFunc("/artifacts/preview/", app.handleArtifactPreviewGet)
+
 	apiV1.Handle("/corpora", app.authMiddleware(http.HandlerFunc(app.handleCorpora)))
 	apiV1.Handle("/corpora/", app.authMiddleware(http.HandlerFunc(app.handleCorpusByID)))
 
