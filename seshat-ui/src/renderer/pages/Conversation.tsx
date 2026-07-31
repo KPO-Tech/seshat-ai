@@ -530,6 +530,20 @@ export function Conversation() {
     overscan: 8,
     measureElement: (el) => el.getBoundingClientRect().height,
   })
+  // react-virtual's own default behavior here is the actual source of the
+  // "violent" auto-scroll bug: whenever a row above the current scroll
+  // offset gets remeasured (e.g. the streaming assistant row growing well
+  // past its 120px estimate), it nudges scrollTop to compensate - gated by
+  // default only on "not currently scrolling backward", which covers just
+  // the instant of a scroll gesture, not "user scrolled up and is sitting
+  // still reading while the message below keeps growing". That left the
+  // view creeping back toward the bottom underneath the user even after
+  // they'd deliberately scrolled away. This isn't a useVirtualizer() option
+  // - it's a property set directly on the returned instance - and tying it
+  // to the same isAtBottomRef signal the follow-scroll effect below already
+  // uses makes both behaviors agree: only adjust for row growth while the
+  // user is actually following along.
+  rowVirtualizer.shouldAdjustScrollPositionOnItemSizeChange = () => isAtBottomRef.current
 
   // Track whether the user is at the bottom so we only auto-scroll when they are.
   useEffect(() => {
