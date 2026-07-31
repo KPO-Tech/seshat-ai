@@ -1,4 +1,5 @@
 import { Section } from '../common'
+import { useUIStore } from '@/stores/ui'
 import type { ToolViewProps } from '../types'
 
 const CSS = `
@@ -19,6 +20,7 @@ const CSS = `
   max-height: 480px;
   object-fit: contain;
   display: block;
+  cursor: zoom-in;
 }
 
 .tb-img-meta {
@@ -64,6 +66,7 @@ function parseImageResult(content: string): ImageResult | null {
 }
 
 export function ImageGenToolView({ tool, result }: ToolViewProps) {
+  const openLightbox = useUIStore((s) => s.openLightbox)
   const prompt = typeof tool.input.prompt === 'string' ? tool.input.prompt : ''
 
   if (!result || result.isError) {
@@ -106,7 +109,12 @@ export function ImageGenToolView({ tool, result }: ToolViewProps) {
       {src && (
         <Section label="Result">
           <div className="tb-img-wrap">
-            <img src={src} alt={revisedPrompt ?? prompt} loading="lazy" />
+            <img
+              src={src}
+              alt={revisedPrompt ?? prompt}
+              loading="lazy"
+              onClick={() => openLightbox({ url: src, filename: `${(revisedPrompt ?? prompt ?? 'generated-image').slice(0, 60)}.png` })}
+            />
           </div>
         </Section>
       )}

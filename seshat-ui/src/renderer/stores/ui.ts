@@ -4,7 +4,7 @@ import type { RAGSearchResult } from '@/api/types'
 import { useSessionStore } from '@/stores/session'
 
 type Theme = 'light' | 'dark'
-export type RightPanelKind = 'markdown' | 'subagent' | 'browser' | 'agent' | 'knowledge' | 'plan'
+export type RightPanelKind = 'markdown' | 'subagent' | 'browser' | 'agent' | 'knowledge' | 'plan' | 'pdf'
 export type UIPermissionMode = 'onRequest' | 'auto' | 'bypass'
 
 export type RightPanelFields = {
@@ -13,6 +13,7 @@ export type RightPanelFields = {
   sourceLabel?: string
   markdown?: string
   documentPath?: string
+  documentFileId?: string
   browserUrl?: string
   agentNames?: string[]
   knowledgeResults?: RAGSearchResult[]
@@ -32,8 +33,8 @@ export type RightPanelPayload = Partial<RightPanelFields> & { kind: RightPanelKi
 // already open) updates it in place instead of pushing a duplicate.
 export type RightPanelInstance = RightPanelFields & { id: string; openedAt: number }
 
-export function buildRightPanelId(panel: { kind: RightPanelKind; sessionId?: string; planId?: string; subagentToolUseId?: string }): string {
-  return `${panel.kind}:${panel.sessionId ?? ''}:${panel.planId ?? panel.subagentToolUseId ?? ''}`
+export function buildRightPanelId(panel: { kind: RightPanelKind; sessionId?: string; planId?: string; subagentToolUseId?: string; documentFileId?: string }): string {
+  return `${panel.kind}:${panel.sessionId ?? ''}:${panel.planId ?? panel.subagentToolUseId ?? panel.documentFileId ?? ''}`
 }
 
 // A column of 1-2 vertically-stacked panels. Never stored empty - a column
@@ -122,11 +123,14 @@ function clampRightPanelWidth(width: number, windowWidth: number, sidebarCollaps
   return Math.round(Math.max(effectiveMin, Math.min(width, effectiveMax)))
 }
 
+export type LightboxImage = { url: string; filename: string }
+
 type UIState = {
   theme: Theme
   sidebarCollapsed: boolean
   rightColumns: RightPanelColumn[]
   maximizedPanelId: string | null
+  lightboxImage: LightboxImage | null
   windowWidth: number
   permissionMode: UIPermissionMode
   toolExpansion: Record<string, boolean>
@@ -144,6 +148,8 @@ type UIState = {
   // events are auto-approved without ever showing the card again. Persisted
   // (not session-scoped) since "always" is what the user asked for.
   rememberedApprovals: Record<string, boolean>
+  openLightbox: (image: LightboxImage) => void
+  closeLightbox: () => void
   toggleSidebar: () => void
   setSidebarCollapsed: (v: boolean) => void
   setWindowWidth: (width: number) => void
@@ -173,6 +179,7 @@ export const useUIStore = create<UIState>()(
       sidebarCollapsed: false,
       rightColumns: [],
       maximizedPanelId: null,
+      lightboxImage: null,
       windowWidth: typeof window !== 'undefined' ? window.innerWidth : RIGHT_PANEL_COLUMN_BREAKPOINT,
       // "onRequest" ("Ask First") is retired from the UI toggle - default to
       // "auto" ("Smart"). See ChatInput.tsx's PERMISSION_CYCLE comment.
@@ -181,6 +188,9 @@ export const useUIStore = create<UIState>()(
       thinkingExpansion: {},
       askUserAnswers: {},
       rememberedApprovals: {},
+
+      openLightbox: (image) => set({ lightboxImage: image }),
+      closeLightbox: () => set({ lightboxImage: null }),
 
       toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
       setSidebarCollapsed: (v) => set({ sidebarCollapsed: v }),

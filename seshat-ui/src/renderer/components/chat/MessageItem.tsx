@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useState } from 'react'
-import { Copy, Down, Close } from '@icon-park/react'
+import { Copy, Down } from '@icon-park/react'
 import { MarkdownView } from '@/components/MarkdownView'
 import { api } from '@/api/client'
 import { useUIStore } from '@/stores/ui'
@@ -233,10 +233,15 @@ export function groupBlocks(blocks: GroupableBlock[], messageId: string): Render
 }
 
 
+function isPDFAttachment(file: MessageAttachment): boolean {
+  return file.filename.toLowerCase().endsWith('.pdf') || file.content_type === 'application/pdf'
+}
+
 export const MessageItem = memo(function MessageItem({ message, sessionId, compact = false, onApproveTool, onDenyTool, onSubmitToolPrompt }: Props) {
   const isUser = message.role === 'user'
   const attachments = messageAttachments(message)
-  const [previewAttachment, setPreviewAttachment] = useState<MessageAttachment | null>(null)
+  const openLightbox = useUIStore((s) => s.openLightbox)
+  const openRightPanel = useUIStore((s) => s.openRightPanel)
   // Image attachments carry a client-only blob:/data: URL created at attach
   // time (see Conversation.tsx/Home.tsx's handleAttachFiles) - it stops
   // resolving the moment that renderer process exits, so after a full app
@@ -308,67 +313,35 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
               const sizeLabel = formatAttachmentSize(file.size)
               const extLabel = file.filename.split('.').pop()?.toUpperCase() ?? ''
               const tooltip = [file.filename, sizeLabel].filter(Boolean).join(' - ')
+              const isPDF = isPDFAttachment(file)
+              function onOpen() {
+                if (isImage && previewURL) {
+                  openLightbox({ url: previewURL, filename: file.filename })
+                } else if (isPDF) {
+                  openRightPanel({ kind: 'pdf', title: file.filename, documentFileId: file.id })
+                } else if (textPreview) {
+                  openRightPanel({ kind: 'markdown', title: file.filename, markdown: textPreview, documentFileId: file.id })
+                } else if (file.local_path) {
+                  void window.nexus?.openPath?.(file.local_path)
+                }
+              }
               return (
                 <div key={file.id} className={`msg-attachment msg-attachment--${isImage ? 'image' : file.category ?? 'other'}`}>
                   {previewURL ? (
-                    <button
-                      className="msg-attachment-thumb"
-                      type="button"
-                      onClick={() => setPreviewAttachment(file)}
-                      title={tooltip}
-                    >
+                    <button className="msg-attachment-thumb" type="button" onClick={onOpen} title={tooltip}>
                       <img src={previewURL} alt={file.filename} />
                     </button>
                   ) : textPreview ? (
-                    <button
-                      className="msg-attachment-thumb msg-attachment-thumb--text"
-                      type="button"
-                      onClick={() => setPreviewAttachment(file)}
-                      title={tooltip}
-                    >
+                    <button className="msg-attachment-thumb msg-attachment-thumb--text" type="button" onClick={onOpen} title={tooltip}>
                       <span className="msg-attachment-text-preview">{textPreview}</span>
                     </button>
                   ) : (
-                    <button
-                      className="msg-attachment-file"
-                      type="button"
-                      onClick={() => file.local_path && void window.nexus?.openPath?.(file.local_path)}
-                      title={tooltip || file.filename}
-                    />
+                    <button className="msg-attachment-file" type="button" onClick={onOpen} title={tooltip || file.filename} />
                   )}
                   {extLabel && <span className="msg-attachment-thumb-badge">{extLabel}</span>}
                 </div>
               )
             })}
-          </div>
-        )}
-
-        {previewAttachment && (previewAttachment.preview_url || previewAttachment.page_preview_urls?.length || hydratedPreviews[previewAttachment.id] || textPreviews[previewAttachment.id]) && (
-          <div
-            className="msg-attachment-preview"
-            role="dialog"
-            aria-modal="true"
-            onMouseDown={() => setPreviewAttachment(null)}
-          >
-            <div className="msg-attachment-preview-shell" onMouseDown={(event) => event.stopPropagation()}>
-              <div className="msg-attachment-preview-header">
-                <span>{previewAttachment.filename}</span>
-                <button type="button" onClick={() => setPreviewAttachment(null)} title="Close preview">
-                  <Close size={14} />
-                </button>
-              </div>
-              {previewAttachment.page_preview_urls?.length ? (
-                <div className="msg-attachment-preview-pages">
-                  {previewAttachment.page_preview_urls.map((url, index) => (
-                    <img key={`${previewAttachment.id}-page-${index}`} src={url} alt={`${previewAttachment.filename} page ${index + 1}`} />
-                  ))}
-                </div>
-              ) : (previewAttachment.preview_url ?? hydratedPreviews[previewAttachment.id]) ? (
-                <img src={previewAttachment.preview_url ?? hydratedPreviews[previewAttachment.id]} alt={previewAttachment.filename} />
-              ) : (
-                <pre className="msg-attachment-preview-text">{textPreviews[previewAttachment.id]}</pre>
-              )}
-            </div>
           </div>
         )}
 
@@ -589,96 +562,6 @@ export const MESSAGE_ITEM_CSS = `
   font-weight: 800;
   letter-spacing: 0.02em;
   pointer-events: none;
-}
-
-.msg-attachment-preview {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 28px;
-  background: rgba(0, 0, 0, 0.72);
-}
-
-.msg-attachment-preview-shell {
-  max-width: min(92vw, 980px);
-  max-height: 88vh;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.msg-attachment-preview-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  color: white;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.msg-attachment-preview-header span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.msg-attachment-preview-header button {
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.msg-attachment-preview-shell > img {
-  max-width: 100%;
-  max-height: calc(88vh - 48px);
-  object-fit: contain;
-  border-radius: 8px;
-  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.36);
-}
-
-.msg-attachment-preview-pages {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  overflow-y: auto;
-  max-height: calc(88vh - 48px);
-  padding-right: 4px;
-}
-
-.msg-attachment-preview-pages img {
-  max-width: min(78vw, 760px);
-  width: 100%;
-  height: auto;
-  border-radius: 8px;
-  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.36);
-}
-
-.msg-attachment-preview-text {
-  width: min(78vw, 760px);
-  max-height: calc(88vh - 48px);
-  overflow-y: auto;
-  margin: 0;
-  padding: 16px 18px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
-  font-family: var(--font-mono, monospace);
-  font-size: 12px;
-  line-height: 1.55;
-  color: var(--color-text);
-  white-space: pre-wrap;
-  word-break: break-word;
 }
 
 .msg-tool-result {

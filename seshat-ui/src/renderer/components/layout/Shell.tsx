@@ -2,6 +2,7 @@ import { Outlet, useLocation } from 'react-router'
 import { useEffect } from 'react'
 import { Sidebar } from './Sidebar'
 import { RightPanelHost } from './RightPanelHost'
+import { ImageLightbox } from './ImageLightbox'
 import { ErrorBoundary } from './ErrorBoundary'
 import { Titlebar } from './Titlebar'
 import { useUIStore } from '@/stores/ui'
@@ -99,6 +100,7 @@ export function Shell() {
             </ErrorBoundary>
           </div>
           {isConversation && <RightPanelHost />}
+          <ImageLightbox />
         </main>
       </div>
     </div>

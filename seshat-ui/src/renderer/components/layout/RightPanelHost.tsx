@@ -1,11 +1,12 @@
 import { useMemo, useRef } from 'react'
-import { Book, Browser, CheckOne, Close, DocDetail, FileTextOne, Robot, LoadingOne, Square } from '@icon-park/react'
+import { Book, Browser, CheckOne, Close, DocDetail, FilePdf, FileTextOne, Robot, LoadingOne, Square } from '@icon-park/react'
 import { MarkdownView } from '@/components/MarkdownView'
 import { derivePlanSnapshot } from '@/lib/plan'
 import { useUIStore } from '@/stores/ui'
 import { useSessionStore } from '@/stores/session'
 import { SubagentPanel } from '@/components/chat/subagent/SubagentPanel'
 import { PlanEditorPanel } from '@/components/chat/plan/PlanEditorPanel'
+import { PDFViewerPanel } from '@/components/chat/PDFViewerPanel'
 import { flattenRightPanels } from '@/stores/ui'
 import type { RightPanelInstance, RightPanelKind, RightPanelColumn } from '@/stores/ui'
 import type { AgentState } from '@/stores/session'
@@ -180,6 +181,8 @@ function renderPanelIcon(kind: RightPanelKind) {
       return <Book size={11} />
     case 'plan':
       return <DocDetail size={11} />
+    case 'pdf':
+      return <FilePdf size={11} />
     default:
       return <FileTextOne size={11} />
   }
@@ -204,6 +207,12 @@ function renderPanelBody(panel: RightPanelInstance) {
       return <KnowledgePanel results={panel.knowledgeResults ?? []} />
     case 'subagent':
       return <SubagentPanel sessionId={panel.sessionId ?? ''} toolUseId={panel.subagentToolUseId ?? ''} />
+    case 'pdf':
+      return panel.documentFileId ? (
+        <PDFViewerPanel fileId={panel.documentFileId} filename={panel.title} />
+      ) : (
+        <EmptyState title="PDF preview" description="This PDF couldn't be opened." />
+      )
     default:
       return (
         <EmptyState

@@ -4,6 +4,7 @@ import { api, ApiError } from '@/api/client'
 import type { Corpus } from '@/api/types'
 import { startWavRecording, type WavRecording } from '@/lib/wavRecorder'
 import { SelectorPill, SelectorMenu, SELECTOR_PILL_CSS, type SelectorOption } from '@/components/ui/SelectorPill'
+import { useUIStore } from '@/stores/ui'
 
 type SkillOption = { Name: string; DisplayName: string; Description: string; Source: string; UserInvocable?: boolean; IsHidden?: boolean }
 export type ChatAttachment = {
@@ -146,6 +147,7 @@ export function ChatInput({
   const [recordError, setRecordError] = useState<string | null>(null)
   const [previewAttachment, setPreviewAttachment] = useState<ChatAttachment | null>(null)
   const [attachmentPreviewURLs, setAttachmentPreviewURLs] = useState<Record<string, string>>({})
+  const openLightbox = useUIStore((s) => s.openLightbox)
   const wavRecordingRef = useRef<WavRecording | null>(null)
   const micStreamRef = useRef<MediaStream | null>(null)
   const canSend = value.trim().length > 0 || attachments.length > 0
@@ -410,7 +412,7 @@ export function ChatInput({
                   <button
                     type="button"
                     className="chat-attachment-thumb"
-                    onClick={() => setPreviewAttachment(file)}
+                    onClick={() => (isImage ? openLightbox({ url: previewURL, filename: file.filename }) : setPreviewAttachment(file))}
                     title={tooltip}
                   >
                     <img src={previewURL} alt={file.filename} />
