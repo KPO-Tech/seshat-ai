@@ -13,8 +13,8 @@ import {
   markStopRequested,
   registerController,
 } from './chatControllers'
-import { generateSessionTitleFromPrompt, isUntitledSessionTitle } from '@/lib/sessionTitle'
-import type { Message, RAGSearchResult, StreamEvent, TokenUsage, ToolApproval, ToolPromptRequest, ToolStatus } from '@/api/types'
+import { isUntitledSessionTitle } from '@/lib/sessionTitle'
+import type { Message, RAGSearchResult, Session, StreamEvent, TokenUsage, ToolApproval, ToolPromptRequest, ToolStatus } from '@/api/types'
 import type { StreamingBlock, ToolActivity } from '@/stores/session'
 
 type RuntimeEventPayload = {
@@ -87,6 +87,31 @@ type DonePayload = {
 const MAX_RETRIES = 3
 const RETRY_BASE_MS = 1000
 
+// The backend's OnSessionTitled callback (see seshat-backend's bootstrap.go)
+// only fires once the SDK's own background title-generation LLM call
+// returns, up to ~30s after the first turn completes - there's no push
+// channel for a one-shot, non-urgent update like this, so a short poll
+// after the first message's turn finishes is the simplest way to pick it
+// up. Gives up silently after ~30s; the session just keeps showing
+// "Untitled conversation" if generation failed or took longer than that.
+const TITLE_POLL_INTERVAL_MS = 3000
+const TITLE_POLL_MAX_ATTEMPTS = 10
+
+async function pollForGeneratedTitle(sessionId: string) {
+  for (let attempt = 0; attempt < TITLE_POLL_MAX_ATTEMPTS; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, TITLE_POLL_INTERVAL_MS))
+    try {
+      const detail = await api.get<Session>(`/sessions/${sessionId}`)
+      if (!isUntitledSessionTitle(detail.title)) {
+        useSessionStore.getState().updateSession(sessionId, { title: detail.title })
+        return
+      }
+    } catch {
+      return // best effort - don't keep retrying against a failing backend
+    }
+  }
+}
+
 export function useChat(sessionId: string) {
   const isStreaming = useSessionStore((s) => Boolean(s.isStreamingBySession[sessionId]))
   // Tracks a pending requestAnimationFrame for batching assistant-message syncs.
@@ -103,15 +128,13 @@ export function useChat(sessionId: string) {
 
     const assistantMessageId = crypto.randomUUID()
     const currentSession = store.sessions.find((session) => session.id === sessionId)
-    if (currentSession && currentSession.messages.length === 0 && isUntitledSessionTitle(currentSession.title)) {
-      const generatedTitle = generateSessionTitleFromPrompt(prompt)
-      store.updateSession(sessionId, { title: generatedTitle, updatedAt: nowIso })
-      void api.patch(`/sessions/${sessionId}`, { title: generatedTitle }).catch(() => {
-        // Best effort — keep the local title even if persistence temporarily fails.
-      })
-    } else {
-      store.updateSession(sessionId, { updatedAt: nowIso })
-    }
+    // The title is left as "Untitled conversation" here rather than derived
+    // from the prompt - the SDK generates a real short AI title in the
+    // background once this turn completes (see pollForGeneratedTitle below
+    // and seshat-backend's OnSessionTitled wiring), so this is genuinely
+    // the session's very first message only when it's still untitled.
+    const isFirstMessage = Boolean(currentSession && currentSession.messages.length === 0 && isUntitledSessionTitle(currentSession.title))
+    store.updateSession(sessionId, { updatedAt: nowIso })
     store.addMessage(sessionId, {
       role: 'user',
       content: [{ type: 'text', text: prompt }],
@@ -376,6 +399,13 @@ export function useChat(sessionId: string) {
       clearStopRequested(sessionId)
       store.setIsStreaming(sessionId, false)
       store.updateAgentState(sessionId, { isThinking: false, activeTool: null, pendingPermission: null })
+      // Only the first turn triggers server-side title generation at all
+      // (see the engine's TotalTurns==1 check) - and only once it actually
+      // completed (committed), since an aborted/failed turn never reaches
+      // that point server-side either.
+      if (committed && isFirstMessage) {
+        void pollForGeneratedTitle(sessionId)
+      }
     }
   }, [sessionId])
 

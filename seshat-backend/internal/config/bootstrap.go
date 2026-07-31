@@ -501,6 +501,19 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		ImageGeneration:         defaultImageGenerationConfig(),
 		TextToSpeech:            defaultTextToSpeechConfig(),
 		SpeechToText:            defaultSpeechToTextConfig(),
+		// The SDK auto-generates a short AI title after a session's first
+		// turn completes (see its own generateTitleAsync) and was already
+		// running unconditionally - just silently discarded, since nothing
+		// here used to set this callback. This is the only thing that
+		// writes it into session_ownership.Title, the column the API and
+		// UI actually read (the SDK's own internal session store, which it
+		// updates on its own, is invisible to this backend). Client is nil
+		// during this call, so context.Background() is the only option.
+		OnSessionTitled: func(id sdk.SessionID, title string) {
+			if err := sessionOwnershipStore.UpdateTitle(context.Background(), id.String(), title); err != nil {
+				fmt.Fprintf(os.Stderr, "[API] session %s auto-title: %v\n", id, err)
+			}
+		},
 	}
 	queryClient, err := sdk.NewClient(queryClientConfig)
 	if err != nil {
