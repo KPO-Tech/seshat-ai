@@ -54,6 +54,30 @@ function formatAttachmentSize(size?: number): string | null {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`
 }
 
+// Files that are already plain text - preview their own bytes directly.
+const TEXT_PREVIEW_EXTENSIONS = new Set(['md', 'markdown', 'txt', 'csv', 'tsv', 'json', 'yaml', 'yml', 'log'])
+// Files the backend docling-converts to markdown at upload time (see
+// doclingExtensions in seshat-backend/internal/files/types.go) - preview that
+// conversion instead of the original (unreadable as raw bytes) binary.
+const MARKDOWN_PREVIEW_EXTENSIONS = new Set(['docx', 'pptx', 'xlsx', 'html', 'htm', 'tex'])
+
+function textPreviewKind(filename: string): 'direct' | 'markdown' | null {
+  const ext = filename.split('.').pop()?.toLowerCase() ?? ''
+  if (TEXT_PREVIEW_EXTENSIONS.has(ext)) return 'direct'
+  if (MARKDOWN_PREVIEW_EXTENSIONS.has(ext)) return 'markdown'
+  return null
+}
+
+async function fetchTextPreview(fileId: string, kind: 'direct' | 'markdown'): Promise<string> {
+  const dataUrl = await api.getFileDataURL(`/files/${fileId}/${kind === 'direct' ? 'content' : 'markdown'}`)
+  // Decode the base64 payload directly rather than fetch(dataUrl) - the
+  // renderer's CSP connect-src doesn't (and shouldn't need to) allow data:,
+  // and this avoids a pointless extra network-stack round-trip anyway.
+  const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1)
+  const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0))
+  return new TextDecoder('utf-8').decode(bytes)
+}
+
 export function isRenderableMessage(message: Message): boolean {
   if (isToolResultOnly(message)) return false
   if (messageAttachments(message).length > 0) return true
@@ -235,6 +259,23 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
         })
     }
   })
+
+  // Text preview for types with no image render (MD/TXT/CSV/... - their own
+  // content; DOCX/PPTX/XLSX/HTML/TEX - the docling markdown conversion the
+  // backend already generated at upload time). A 404 (no conversion
+  // available) just leaves the extension-badge fallback in place.
+  const textPreviewFetchedRef = useRef<Set<string>>(new Set())
+  const [textPreviews, setTextPreviews] = useState<Record<string, string>>({})
+  useEffect(() => {
+    for (const file of attachments) {
+      const kind = textPreviewKind(file.filename)
+      if (!kind || textPreviewFetchedRef.current.has(file.id)) continue
+      textPreviewFetchedRef.current.add(file.id)
+      void fetchTextPreview(file.id, kind)
+        .then(text => setTextPreviews(prev => ({ ...prev, [file.id]: text })))
+        .catch(() => {})
+    }
+  })
   if (isToolResultOnly(message)) return null
   const visibleBlocks = message.content.filter((block) => {
     if (block.type === 'text') return Boolean(block.text.trim())
@@ -263,6 +304,7 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
             {attachments.map((file) => {
               const isImage = file.category === 'images' || file.content_type?.startsWith('image/')
               const previewURL = file.page_preview_urls?.[0] ?? file.preview_url ?? hydratedPreviews[file.id]
+              const textPreview = !previewURL ? textPreviews[file.id] : undefined
               const sizeLabel = formatAttachmentSize(file.size)
               const extLabel = file.filename.split('.').pop()?.toUpperCase() ?? ''
               const tooltip = [file.filename, sizeLabel].filter(Boolean).join(' - ')
@@ -276,7 +318,15 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
                       title={tooltip}
                     >
                       <img src={previewURL} alt={file.filename} />
-                      {extLabel && <span className="msg-attachment-thumb-badge">{extLabel}</span>}
+                    </button>
+                  ) : textPreview ? (
+                    <button
+                      className="msg-attachment-thumb msg-attachment-thumb--text"
+                      type="button"
+                      onClick={() => setPreviewAttachment(file)}
+                      title={tooltip}
+                    >
+                      <span className="msg-attachment-text-preview">{textPreview}</span>
                     </button>
                   ) : (
                     <button
@@ -284,17 +334,16 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
                       type="button"
                       onClick={() => file.local_path && void window.nexus?.openPath?.(file.local_path)}
                       title={tooltip || file.filename}
-                    >
-                      {extLabel || (file.category === 'documents' ? 'DOC' : 'FILE')}
-                    </button>
+                    />
                   )}
+                  {extLabel && <span className="msg-attachment-thumb-badge">{extLabel}</span>}
                 </div>
               )
             })}
           </div>
         )}
 
-        {previewAttachment && (previewAttachment.preview_url || previewAttachment.page_preview_urls?.length || hydratedPreviews[previewAttachment.id]) && (
+        {previewAttachment && (previewAttachment.preview_url || previewAttachment.page_preview_urls?.length || hydratedPreviews[previewAttachment.id] || textPreviews[previewAttachment.id]) && (
           <div
             className="msg-attachment-preview"
             role="dialog"
@@ -314,8 +363,10 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
                     <img key={`${previewAttachment.id}-page-${index}`} src={url} alt={`${previewAttachment.filename} page ${index + 1}`} />
                   ))}
                 </div>
-              ) : (
+              ) : (previewAttachment.preview_url ?? hydratedPreviews[previewAttachment.id]) ? (
                 <img src={previewAttachment.preview_url ?? hydratedPreviews[previewAttachment.id]} alt={previewAttachment.filename} />
+              ) : (
+                <pre className="msg-attachment-preview-text">{textPreviews[previewAttachment.id]}</pre>
               )}
             </div>
           </div>
@@ -471,6 +522,7 @@ export const MESSAGE_ITEM_CSS = `
 }
 
 .msg-attachment {
+  position: relative;
   flex-shrink: 0;
   width: 64px;
   height: 64px;
@@ -507,8 +559,22 @@ export const MESSAGE_ITEM_CSS = `
   display: block;
 }
 
-.msg-attachment-thumb {
-  position: relative;
+.msg-attachment-thumb--text {
+  padding: 4px 5px;
+  text-align: left;
+}
+
+.msg-attachment-text-preview {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 7;
+  overflow: hidden;
+  font-family: var(--font-mono, monospace);
+  font-size: 6px;
+  line-height: 1.3;
+  color: var(--color-text-muted);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .msg-attachment-thumb-badge {
@@ -522,15 +588,7 @@ export const MESSAGE_ITEM_CSS = `
   font-size: 8px;
   font-weight: 800;
   letter-spacing: 0.02em;
-}
-
-.msg-attachment-file {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
+  pointer-events: none;
 }
 
 .msg-attachment-preview {
@@ -604,6 +662,23 @@ export const MESSAGE_ITEM_CSS = `
   height: auto;
   border-radius: 8px;
   box-shadow: 0 18px 60px rgba(0, 0, 0, 0.36);
+}
+
+.msg-attachment-preview-text {
+  width: min(78vw, 760px);
+  max-height: calc(88vh - 48px);
+  overflow-y: auto;
+  margin: 0;
+  padding: 16px 18px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--color-text);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .msg-tool-result {

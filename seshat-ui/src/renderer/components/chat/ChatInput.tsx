@@ -36,6 +36,30 @@ function formatAttachmentSize(size?: number): string | null {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`
 }
 
+// Files that are already plain text - preview their own bytes directly.
+const TEXT_PREVIEW_EXTENSIONS = new Set(['md', 'markdown', 'txt', 'csv', 'tsv', 'json', 'yaml', 'yml', 'log'])
+// Files the backend docling-converts to markdown at upload time (see
+// doclingExtensions in seshat-backend/internal/files/types.go) - preview that
+// conversion instead of the original (unreadable as raw bytes) binary.
+const MARKDOWN_PREVIEW_EXTENSIONS = new Set(['docx', 'pptx', 'xlsx', 'html', 'htm', 'tex'])
+
+function textPreviewKind(filename: string): 'direct' | 'markdown' | null {
+  const ext = filename.split('.').pop()?.toLowerCase() ?? ''
+  if (TEXT_PREVIEW_EXTENSIONS.has(ext)) return 'direct'
+  if (MARKDOWN_PREVIEW_EXTENSIONS.has(ext)) return 'markdown'
+  return null
+}
+
+async function fetchTextPreview(fileId: string, kind: 'direct' | 'markdown'): Promise<string> {
+  const dataUrl = await api.getFileDataURL(`/files/${fileId}/${kind === 'direct' ? 'content' : 'markdown'}`)
+  // Decode the base64 payload directly rather than fetch(dataUrl) - the
+  // renderer's CSP connect-src doesn't (and shouldn't need to) allow data:,
+  // and this avoids a pointless extra network-stack round-trip anyway.
+  const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1)
+  const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0))
+  return new TextDecoder('utf-8').decode(bytes)
+}
+
 type Props = {
   value: string
   onChange: (v: string) => void
@@ -152,6 +176,26 @@ export function ChatInput({
 
     return () => { cancelled = true }
   }, [attachments, attachmentPreviewURLs])
+
+  // Text preview for types with no client-side visual render (MD/TXT/CSV/... -
+  // their own content; DOCX/PPTX/XLSX/HTML/TEX - the docling markdown
+  // conversion the backend already generated at upload time). Only attempted
+  // once a file has a real server ID (upload_status 'uploaded'), and only once
+  // per file (textPreviewFetchedRef) - a 404 (no conversion available, e.g.
+  // docling not configured) just leaves the extension-badge fallback in place.
+  const textPreviewFetchedRef = useRef<Set<string>>(new Set())
+  const [textPreviews, setTextPreviews] = useState<Record<string, string>>({})
+  useEffect(() => {
+    for (const file of attachments) {
+      if (file.upload_status !== 'uploaded') continue
+      const kind = textPreviewKind(file.filename)
+      if (!kind || textPreviewFetchedRef.current.has(file.id)) continue
+      textPreviewFetchedRef.current.add(file.id)
+      void fetchTextPreview(file.id, kind)
+        .then(text => setTextPreviews(current => ({ ...current, [file.id]: text })))
+        .catch(() => {})
+    }
+  })
 
   useEffect(() => {
     api.get<{ skills: SkillOption[] }>('/skills')
@@ -344,6 +388,7 @@ export function ChatInput({
             // page-preview generation, see the useEffect above) it would otherwise
             // point <img> at a non-image file and render a broken-image glyph.
             const previewURL = pagePreviewURL ?? file.preview_url ?? attachmentPreviewURLs[file.id] ?? (isImage ? filePathToURL(file.local_path) : undefined)
+            const textPreview = !previewURL ? textPreviews[file.id] : undefined
             const sizeLabel = formatAttachmentSize(file.size)
             const extLabel = file.filename.split('.').pop()?.toUpperCase() ?? ''
             const statusLabel = file.upload_status === 'uploading'
@@ -369,7 +414,15 @@ export function ChatInput({
                     title={tooltip}
                   >
                     <img src={previewURL} alt={file.filename} />
-                    {extLabel && <span className="chat-attachment-thumb-badge">{extLabel}</span>}
+                  </button>
+                ) : textPreview ? (
+                  <button
+                    type="button"
+                    className="chat-attachment-thumb chat-attachment-thumb--text"
+                    onClick={() => setPreviewAttachment(file)}
+                    title={tooltip}
+                  >
+                    <span className="chat-attachment-text-preview">{textPreview}</span>
                   </button>
                 ) : (
                   <button
@@ -377,10 +430,9 @@ export function ChatInput({
                     className="chat-attachment-file-icon"
                     onClick={() => file.local_path && void window.nexus?.openPath?.(file.local_path)}
                     title={tooltip}
-                  >
-                    {extLabel || (file.category === 'documents' ? 'DOC' : 'FILE')}
-                  </button>
+                  />
                 )}
+                {extLabel && <span className="chat-attachment-thumb-badge">{extLabel}</span>}
                 {file.upload_status === 'uploading' && (
                   <span className="chat-attachment-spinner"><LoadingOne size={14} className="chat-status-spin" /></span>
                 )}
@@ -417,14 +469,14 @@ export function ChatInput({
                   <img key={`${previewAttachment.id}-page-${index}`} src={url} alt={`${previewAttachment.filename} page ${index + 1}`} />
                 ))}
               </div>
-            ) : (
-              (previewAttachment.preview_url ?? attachmentPreviewURLs[previewAttachment.id] ?? filePathToURL(previewAttachment.local_path)) && (
-                <img
-                  src={previewAttachment.preview_url ?? attachmentPreviewURLs[previewAttachment.id] ?? filePathToURL(previewAttachment.local_path) ?? undefined}
-                  alt={previewAttachment.filename}
-                />
-              )
-            )}
+            ) : (previewAttachment.preview_url ?? attachmentPreviewURLs[previewAttachment.id] ?? filePathToURL(previewAttachment.local_path)) ? (
+              <img
+                src={previewAttachment.preview_url ?? attachmentPreviewURLs[previewAttachment.id] ?? filePathToURL(previewAttachment.local_path) ?? undefined}
+                alt={previewAttachment.filename}
+              />
+            ) : textPreviews[previewAttachment.id] ? (
+              <pre className="chat-attachment-preview-text">{textPreviews[previewAttachment.id]}</pre>
+            ) : null}
           </div>
         </div>
       )}
@@ -752,8 +804,22 @@ ${SELECTOR_PILL_CSS}
   display: block;
 }
 
-.chat-attachment-thumb {
-  position: relative;
+.chat-attachment-thumb--text {
+  padding: 4px 5px;
+  text-align: left;
+}
+
+.chat-attachment-text-preview {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 7;
+  overflow: hidden;
+  font-family: var(--font-mono, monospace);
+  font-size: 6px;
+  line-height: 1.3;
+  color: var(--color-text-muted);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .chat-attachment-thumb-badge {
@@ -767,15 +833,7 @@ ${SELECTOR_PILL_CSS}
   font-size: 8px;
   font-weight: 800;
   letter-spacing: 0.02em;
-}
-
-.chat-attachment-file-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
+  pointer-events: none;
 }
 
 .chat-attachment-spinner {
@@ -882,6 +940,23 @@ ${SELECTOR_PILL_CSS}
   height: auto;
   border-radius: 8px;
   box-shadow: 0 18px 60px rgba(0, 0, 0, 0.36);
+}
+
+.chat-attachment-preview-text {
+  width: min(78vw, 760px);
+  max-height: calc(88vh - 48px);
+  overflow-y: auto;
+  margin: 0;
+  padding: 16px 18px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--color-text);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .chat-input-notices {
