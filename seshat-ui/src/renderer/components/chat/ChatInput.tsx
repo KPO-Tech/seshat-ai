@@ -340,8 +340,18 @@ export function ChatInput({
           {attachments.map(file => {
             const isImage = file.category === 'images' || file.content_type?.startsWith('image/')
             const pagePreviewURL = file.page_preview_urls?.[0]
-            const previewURL = pagePreviewURL ?? file.preview_url ?? attachmentPreviewURLs[file.id] ?? filePathToURL(file.local_path)
+            // filePathToURL is only a valid preview for images - for DOCX/PPTX/MD (no
+            // page-preview generation, see the useEffect above) it would otherwise
+            // point <img> at a non-image file and render a broken-image glyph.
+            const previewURL = pagePreviewURL ?? file.preview_url ?? attachmentPreviewURLs[file.id] ?? (isImage ? filePathToURL(file.local_path) : undefined)
             const sizeLabel = formatAttachmentSize(file.size)
+            const extLabel = file.filename.split('.').pop()?.toUpperCase() ?? ''
+            const statusLabel = file.upload_status === 'uploading'
+              ? 'Uploading...'
+              : file.upload_status === 'failed'
+                ? file.error || 'Upload failed'
+                : sizeLabel
+            const tooltip = [file.filename, statusLabel].filter(Boolean).join(' - ')
             return (
               <div
                 key={file.id}
@@ -350,39 +360,30 @@ export function ChatInput({
                   `chat-attachment-card--${isImage ? 'image' : file.category ?? 'other'}`,
                   file.upload_status ? `chat-attachment-card--${file.upload_status}` : '',
                 ].filter(Boolean).join(' ')}
-                title={file.local_path ?? file.filename}
               >
                 {previewURL ? (
                   <button
                     type="button"
                     className="chat-attachment-thumb"
                     onClick={() => setPreviewAttachment(file)}
-                    title={isImage ? 'Preview image' : 'Preview document'}
+                    title={tooltip}
                   >
                     <img src={previewURL} alt={file.filename} />
-                    {!isImage && <span className="chat-attachment-thumb-badge">PDF</span>}
+                    {extLabel && <span className="chat-attachment-thumb-badge">{extLabel}</span>}
                   </button>
                 ) : (
                   <button
                     type="button"
                     className="chat-attachment-file-icon"
                     onClick={() => file.local_path && void window.nexus?.openPath?.(file.local_path)}
-                    title={file.local_path ? 'Open file' : file.filename}
+                    title={tooltip}
                   >
-                    {file.category === 'documents' ? 'DOC' : 'FILE'}
+                    {extLabel || (file.category === 'documents' ? 'DOC' : 'FILE')}
                   </button>
                 )}
-                <div className="chat-attachment-meta">
-                  <span className="chat-attachment-name">{file.filename}</span>
-                  <span className="chat-attachment-detail">
-                    {file.upload_status === 'uploading'
-                      ? 'Uploading...'
-                      : file.upload_status === 'failed'
-                        ? file.error || 'Upload failed'
-                        : isImage ? 'Image' : file.category === 'documents' ? 'Document' : 'File'}
-                    {file.upload_status === 'uploading' || file.upload_status === 'failed' ? '' : sizeLabel ? ` - ${sizeLabel}` : ''}
-                  </span>
-                </div>
+                {file.upload_status === 'uploading' && (
+                  <span className="chat-attachment-spinner"><LoadingOne size={14} className="chat-status-spin" /></span>
+                )}
                 <button
                   className="chat-attachment-remove"
                   onMouseDown={e => { e.preventDefault(); onRemoveAttachment?.(file.id) }}
@@ -696,54 +697,52 @@ ${SELECTOR_PILL_CSS}
 
 .chat-attachment-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
   gap: 8px;
   margin-bottom: 10px;
+  padding: 5px 2px;
 }
 
 .chat-attachment-card {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  width: min(100%, 260px);
-  min-height: 54px;
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid var(--color-border-subtle);
-  color: var(--color-text-secondary);
-  border-radius: 8px;
-  padding: 6px 7px;
-  font-size: 12px;
   position: relative;
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
 }
 
-.chat-attachment-card--image {
-  border-color: color-mix(in srgb, var(--color-primary) 36%, transparent);
+.chat-attachment-card--uploading .chat-attachment-thumb,
+.chat-attachment-card--uploading .chat-attachment-file-icon {
+  opacity: 0.6;
 }
 
-.chat-attachment-card--documents {
-  border-color: color-mix(in srgb, var(--color-success) 34%, transparent);
-}
-
-.chat-attachment-card--uploading {
-  opacity: 0.78;
-}
-
-.chat-attachment-card--failed {
-  border-color: rgba(var(--color-error-rgb), 0.34);
+.chat-attachment-card--failed .chat-attachment-thumb,
+.chat-attachment-card--failed .chat-attachment-file-icon {
+  border-color: rgba(var(--color-error-rgb), 0.5);
 }
 
 .chat-attachment-thumb,
 .chat-attachment-file-icon {
-  width: 42px;
-  height: 42px;
-  flex-shrink: 0;
-  border-radius: 7px;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
   border: 1px solid var(--color-border-subtle);
   background: var(--color-surface);
   color: var(--color-text-secondary);
   overflow: hidden;
   cursor: pointer;
   padding: 0;
+}
+
+.chat-attachment-card--image .chat-attachment-thumb,
+.chat-attachment-card--image .chat-attachment-file-icon {
+  border-color: color-mix(in srgb, var(--color-primary) 36%, transparent);
+}
+
+.chat-attachment-card--documents .chat-attachment-thumb,
+.chat-attachment-card--documents .chat-attachment-file-icon {
+  border-color: color-mix(in srgb, var(--color-success) 34%, transparent);
 }
 
 .chat-attachment-thumb img {
@@ -759,65 +758,57 @@ ${SELECTOR_PILL_CSS}
 
 .chat-attachment-thumb-badge {
   position: absolute;
-  left: 4px;
-  bottom: 4px;
+  left: 3px;
+  bottom: 3px;
   background: rgba(0, 0, 0, 0.72);
   color: white;
   border-radius: 4px;
   padding: 1px 4px;
   font-size: 8px;
   font-weight: 800;
+  letter-spacing: 0.02em;
 }
 
 .chat-attachment-file-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.04em;
 }
 
-.chat-attachment-meta {
+.chat-attachment-spinner {
+  position: absolute;
+  inset: 0;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  flex: 1;
-}
-
-.chat-attachment-name {
-  color: var(--color-text);
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.chat-attachment-detail {
-  color: var(--color-text-muted);
-  font-size: 11px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.chat-attachment-card--failed .chat-attachment-detail {
-  color: var(--color-error);
+  align-items: center;
+  justify-content: center;
+  color: white;
+  pointer-events: none;
 }
 
 .chat-attachment-remove {
-  background: transparent;
-  border: none;
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  z-index: 2;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
   color: var(--color-text-muted);
   cursor: pointer;
   display: flex;
   align-items: center;
-  padding: 1px;
+  justify-content: center;
+  padding: 0;
 }
 
 .chat-attachment-remove:hover {
   color: var(--color-text-secondary);
+  background: var(--color-hover);
 }
 
 .chat-attachment-preview {

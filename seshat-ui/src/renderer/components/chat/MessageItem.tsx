@@ -264,6 +264,8 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
               const isImage = file.category === 'images' || file.content_type?.startsWith('image/')
               const previewURL = file.page_preview_urls?.[0] ?? file.preview_url ?? hydratedPreviews[file.id]
               const sizeLabel = formatAttachmentSize(file.size)
+              const extLabel = file.filename.split('.').pop()?.toUpperCase() ?? ''
+              const tooltip = [file.filename, sizeLabel].filter(Boolean).join(' - ')
               return (
                 <div key={file.id} className={`msg-attachment msg-attachment--${isImage ? 'image' : file.category ?? 'other'}`}>
                   {previewURL ? (
@@ -271,28 +273,21 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
                       className="msg-attachment-thumb"
                       type="button"
                       onClick={() => setPreviewAttachment(file)}
-                      title={isImage ? 'Preview image' : 'Preview document'}
+                      title={tooltip}
                     >
                       <img src={previewURL} alt={file.filename} />
-                      {!isImage && <span className="msg-attachment-thumb-badge">PDF</span>}
+                      {extLabel && <span className="msg-attachment-thumb-badge">{extLabel}</span>}
                     </button>
                   ) : (
                     <button
                       className="msg-attachment-file"
                       type="button"
                       onClick={() => file.local_path && void window.nexus?.openPath?.(file.local_path)}
-                      title={file.local_path ? 'Open file' : file.filename}
+                      title={tooltip || file.filename}
                     >
-                      {file.category === 'documents' ? 'DOC' : 'FILE'}
+                      {extLabel || (file.category === 'documents' ? 'DOC' : 'FILE')}
                     </button>
                   )}
-                  <div className="msg-attachment-meta">
-                    <span className="msg-attachment-name">{file.filename}</span>
-                    <span className="msg-attachment-detail">
-                      {isImage ? 'Image' : file.category === 'documents' ? 'Document' : 'File'}
-                      {sizeLabel ? ` - ${sizeLabel}` : ''}
-                    </span>
-                  </div>
                 </div>
               )
             })}
@@ -467,38 +462,36 @@ export const MESSAGE_ITEM_CSS = `
 
 .msg-attachments {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
   justify-content: flex-end;
   gap: 8px;
   max-width: 100%;
+  padding: 5px 2px;
 }
 
 .msg-attachment {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  width: min(260px, 100%);
-  min-height: 54px;
-  padding: 6px 7px;
-  border-radius: 8px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-subtle);
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
 }
 
-.msg-attachment--image {
+.msg-attachment--image .msg-attachment-thumb,
+.msg-attachment--image .msg-attachment-file {
   border-color: color-mix(in srgb, var(--color-primary) 34%, transparent);
 }
 
-.msg-attachment--documents {
+.msg-attachment--documents .msg-attachment-thumb,
+.msg-attachment--documents .msg-attachment-file {
   border-color: color-mix(in srgb, var(--color-success) 32%, transparent);
 }
 
 .msg-attachment-thumb,
 .msg-attachment-file {
-  width: 48px;
-  height: 48px;
-  flex-shrink: 0;
-  border-radius: 7px;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
   border: 1px solid var(--color-border-subtle);
   background: var(--color-bg);
   color: var(--color-text-secondary);
@@ -520,48 +513,24 @@ export const MESSAGE_ITEM_CSS = `
 
 .msg-attachment-thumb-badge {
   position: absolute;
-  left: 4px;
-  bottom: 4px;
+  left: 3px;
+  bottom: 3px;
   background: rgba(0, 0, 0, 0.72);
   color: white;
   border-radius: 4px;
   padding: 1px 4px;
   font-size: 8px;
   font-weight: 800;
+  letter-spacing: 0.02em;
 }
 
 .msg-attachment-file {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.04em;
-}
-
-.msg-attachment-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  flex: 1;
-}
-
-.msg-attachment-name {
-  color: var(--color-text);
-  font-size: 12px;
-  font-weight: 700;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.msg-attachment-detail {
-  color: var(--color-text-muted);
-  font-size: 11px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .msg-attachment-preview {
