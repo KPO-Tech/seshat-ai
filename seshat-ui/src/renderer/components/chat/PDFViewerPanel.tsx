@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Reduce, Add, Left, Right } from '@icon-park/react'
+import { Reduce, Add, Left, Right, LoadingOne } from '@icon-park/react'
 import { api, ApiError } from '@/api/client'
 import { loadPdfViewerModule, pdfjsLib } from '@/lib/pdfInteractiveViewer'
 import { MarkdownView } from '@/components/MarkdownView'
@@ -37,6 +37,13 @@ export function PDFViewerPanel({ fileId, filename, fallbackMarkdown }: Props) {
   const pdfViewerRef = useRef<InstanceType<Awaited<ReturnType<typeof loadPdfViewerModule>>['PDFViewer']> | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [errorMessage, setErrorMessage] = useState('')
+  // The /pdf-preview endpoint converts on demand via LibreOffice (see
+  // officeconvert.Converter server-side) and caches the result - a cold
+  // first view can take several seconds, a cached re-view is fast. There's
+  // no real progress signal from that single blocking HTTP call, so this is
+  // a time-based escalation rather than true progress: stay quiet for a
+  // normal-speed load, only explain the wait once it's actually slow.
+  const [slowConversion, setSlowConversion] = useState(false)
   const [scalePercent, setScalePercent] = useState(100)
   const [pageNumber, setPageNumber] = useState(1)
   const [pageCount, setPageCount] = useState(0)
@@ -77,7 +84,16 @@ export function PDFViewerPanel({ fileId, filename, fallbackMarkdown }: Props) {
         })
 
         const endpoint = isSourcePDF ? 'content' : 'pdf-preview'
-        const dataUrl = await api.getFileDataURL(`/files/${fileId}/${endpoint}`)
+        // Real PDFs (/content) are always a fast static fetch - only the
+        // conversion path (/pdf-preview) can be slow, and only on a cold
+        // (uncached) first view.
+        const slowTimer = isSourcePDF ? null : setTimeout(() => { if (!cancelled) setSlowConversion(true) }, 2500)
+        let dataUrl: string
+        try {
+          dataUrl = await api.getFileDataURL(`/files/${fileId}/${endpoint}`)
+        } finally {
+          if (slowTimer) clearTimeout(slowTimer)
+        }
         if (cancelled) return
         const bytes = base64ToBytes(dataUrl)
         pdfDocument = await pdfjsLib.getDocument({ data: bytes }).promise
@@ -164,7 +180,16 @@ export function PDFViewerPanel({ fileId, filename, fallbackMarkdown }: Props) {
         <div className="pdf-viewer-container" ref={containerRef}>
           <div className="pdfViewer" ref={viewerRef} />
         </div>
-        {status === 'loading' && <div className="pdf-viewer-status">Loading {filename}…</div>}
+        {status === 'loading' && (
+          <div className="pdf-viewer-status">
+            <LoadingOne size={20} className="pdf-viewer-status-spin" />
+            <span>
+              {slowConversion
+                ? `Converting ${filename}… first-time previews can take a few seconds`
+                : `Loading ${filename}…`}
+            </span>
+          </div>
+        )}
         {status === 'error' && <div className="pdf-viewer-status pdf-viewer-status--error">Couldn't load this PDF: {errorMessage}</div>}
       </div>
     </div>
@@ -247,13 +272,24 @@ const PDF_VIEWER_PANEL_CSS = `
   position: absolute;
   inset: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   color: rgba(255, 255, 255, 0.75);
   font-size: 12px;
   text-align: center;
   padding: 0 20px;
   pointer-events: none;
+}
+
+.pdf-viewer-status-spin {
+  animation: pdf-viewer-spin 1s linear infinite;
+}
+
+@keyframes pdf-viewer-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .pdf-viewer-status--error {
