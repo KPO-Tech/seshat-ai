@@ -4,7 +4,7 @@ import type { RAGSearchResult } from '@/api/types'
 import { useSessionStore } from '@/stores/session'
 
 type Theme = 'light' | 'dark'
-export type RightPanelKind = 'markdown' | 'subagent' | 'browser' | 'agent' | 'knowledge' | 'plan' | 'pdf' | 'artifact'
+export type RightPanelKind = 'markdown' | 'subagent' | 'browser' | 'agent' | 'knowledge' | 'plan' | 'pdf' | 'artifact' | 'docx' | 'xlsx'
 export type UIPermissionMode = 'onRequest' | 'auto' | 'bypass'
 
 export type RightPanelFields = {

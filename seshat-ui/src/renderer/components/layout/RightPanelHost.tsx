@@ -1,5 +1,5 @@
 import { useMemo, useRef } from 'react'
-import { Book, Browser, CheckOne, Close, Code, DocDetail, FilePdf, FileTextOne, Robot, LoadingOne, Square } from '@icon-park/react'
+import { Book, Browser, CheckOne, Close, Code, DocDetail, FilePdf, FileTextOne, Robot, LoadingOne, Square, FileWord, FileExcel } from '@icon-park/react'
 import { MarkdownView } from '@/components/MarkdownView'
 import { derivePlanSnapshot } from '@/lib/plan'
 import { useUIStore } from '@/stores/ui'
@@ -8,6 +8,8 @@ import { SubagentPanel } from '@/components/chat/subagent/SubagentPanel'
 import { PlanEditorPanel } from '@/components/chat/plan/PlanEditorPanel'
 import { PDFViewerPanel } from '@/components/chat/PDFViewerPanel'
 import { ArtifactPreviewPanel } from '@/components/chat/ArtifactPreviewPanel'
+import { DocxPreviewPanel } from '@/components/chat/DocxPreviewPanel'
+import { XlsxPreviewPanel } from '@/components/chat/XlsxPreviewPanel'
 import { flattenRightPanels } from '@/stores/ui'
 import type { RightPanelInstance, RightPanelKind, RightPanelColumn } from '@/stores/ui'
 import type { AgentState } from '@/stores/session'
@@ -184,6 +186,10 @@ function renderPanelIcon(kind: RightPanelKind) {
       return <DocDetail size={11} />
     case 'pdf':
       return <FilePdf size={11} />
+    case 'docx':
+      return <FileWord size={11} />
+    case 'xlsx':
+      return <FileExcel size={11} />
     case 'artifact':
       return <Code size={11} />
     default:
@@ -220,6 +226,18 @@ function renderPanelBody(panel: RightPanelInstance) {
         <PDFViewerPanel fileId={panel.documentFileId} filename={panel.title} fallbackMarkdown={panel.markdown} />
       ) : (
         <EmptyState title="PDF preview" description="This PDF couldn't be opened." />
+      )
+    case 'docx':
+      return panel.documentFileId ? (
+        <DocxPreviewPanel fileId={panel.documentFileId} filename={panel.title} />
+      ) : (
+        <EmptyState title="Document preview" description="This document couldn't be opened." />
+      )
+    case 'xlsx':
+      return panel.documentFileId ? (
+        <XlsxPreviewPanel fileId={panel.documentFileId} filename={panel.title} />
+      ) : (
+        <EmptyState title="Spreadsheet preview" description="This spreadsheet couldn't be opened." />
       )
     case 'artifact':
       return panel.artifactPreviewId ? (

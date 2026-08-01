@@ -247,14 +247,30 @@ function isPDFAttachment(file: MessageAttachment): boolean {
   return file.filename.toLowerCase().endsWith('.pdf') || file.content_type === 'application/pdf'
 }
 
-// DOCX/PPTX/XLSX/HTML/TEX get a real visual rendering (via the backend's
-// on-demand LibreOffice conversion, see PDFViewerPanel) instead of just the
-// docling-extracted text - a flat text dump loses layout, slides, and tables
-// that matter for these formats. MD/TXT/CSV/... (textPreviewKind === 'direct')
-// deliberately stay on the plain markdown/text panel: they have no "visual
-// layout" to lose, and MarkdownView already renders them properly.
+// PPTX/HTML/TEX get a real visual rendering via the backend's on-demand
+// LibreOffice conversion (see PDFViewerPanel) instead of just the
+// docling-extracted text - a flat text dump loses slides/layout that matter
+// for these formats. DOCX/XLSX are carved out of this path (see
+// isDocxAttachment/isXlsxAttachment below) since they render natively and
+// near-instantly client-side instead of paying for a LibreOffice round trip.
+// MD/TXT/CSV/... (textPreviewKind === 'direct') deliberately stay on the
+// plain markdown/text panel: they have no "visual layout" to lose, and
+// MarkdownView already renders them properly.
 function isOfficePreviewAttachment(file: MessageAttachment): boolean {
-  return textPreviewKind(file.filename) === 'markdown'
+  return textPreviewKind(file.filename) === 'markdown' && !isDocxAttachment(file) && !isXlsxAttachment(file)
+}
+
+// Rendered natively in-browser via docx-preview/exceljs (DocxPreviewPanel/
+// XlsxPreviewPanel) instead of the LibreOffice-conversion path every other
+// office format goes through - no server round trip, no headless-office
+// cold start, matching how Claude/Gemini-style document previews render
+// instantly rather than shelling out to a real office suite.
+function isDocxAttachment(file: MessageAttachment): boolean {
+  return file.filename.toLowerCase().endsWith('.docx')
+}
+
+function isXlsxAttachment(file: MessageAttachment): boolean {
+  return file.filename.toLowerCase().endsWith('.xlsx')
 }
 
 export const MessageItem = memo(function MessageItem({ message, sessionId, compact = false, onApproveTool, onDenyTool, onSubmitToolPrompt }: Props) {
@@ -334,12 +350,18 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
               const extLabel = file.filename.split('.').pop()?.toUpperCase() ?? ''
               const tooltip = [file.filename, sizeLabel].filter(Boolean).join(' - ')
               const isPDF = isPDFAttachment(file)
+              const isDocx = isDocxAttachment(file)
+              const isXlsx = isXlsxAttachment(file)
               const isOfficePreview = isOfficePreviewAttachment(file)
               function onOpen() {
                 if (isImage && previewURL) {
                   openLightbox({ url: previewURL, filename: file.filename })
                 } else if (isPDF) {
                   openRightPanel({ kind: 'pdf', title: file.filename, documentFileId: file.id })
+                } else if (isDocx) {
+                  openRightPanel({ kind: 'docx', title: file.filename, documentFileId: file.id })
+                } else if (isXlsx) {
+                  openRightPanel({ kind: 'xlsx', title: file.filename, documentFileId: file.id })
                 } else if (isOfficePreview) {
                   // markdown here is the docling text fallback PDFViewerPanel
                   // renders if the LibreOffice conversion 404s/503s.
