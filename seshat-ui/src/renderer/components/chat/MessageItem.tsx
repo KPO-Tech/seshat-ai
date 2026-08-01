@@ -1,7 +1,8 @@
 import { memo, useEffect, useRef, useState } from 'react'
-import { Copy, Down } from '@icon-park/react'
+import { Copy, Down, FileWord, FileExcel, FilePpt, FilePdfOne, FileTextOne as FileGeneric } from '@icon-park/react'
 import { MarkdownView } from '@/components/MarkdownView'
 import { api } from '@/api/client'
+import { extractOfficeThumbnail } from '@/lib/officeThumbnail'
 import { useUIStore } from '@/stores/ui'
 import { ToolBlock } from './ToolBlock'
 import { PermissionCard } from './PermissionCard'
@@ -273,6 +274,48 @@ function isXlsxAttachment(file: MessageAttachment): boolean {
   return file.filename.toLowerCase().endsWith('.xlsx')
 }
 
+// DOCX/PPTX/XLSX are all OOXML zip packages that may carry a real embedded
+// thumbnail (docProps/thumbnail.*) - see lib/officeThumbnail.ts. Attempting
+// extraction on files that don't have one (e.g. agent-generated documents)
+// just resolves to null and falls through to the icon fallback below.
+function isOfficeZipAttachment(file: MessageAttachment): boolean {
+  const ext = file.filename.split('.').pop()?.toLowerCase() ?? ''
+  return ext === 'docx' || ext === 'pptx' || ext === 'xlsx'
+}
+
+async function fetchOfficeThumbnail(fileId: string): Promise<string | null> {
+  const dataUrl = await api.getFileDataURL(`/files/${fileId}/content`)
+  const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1)
+  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
+  return extractOfficeThumbnail(bytes.buffer)
+}
+
+// Shown in place of a real thumbnail/text preview when neither is
+// available (no page image, no embedded OOXML thumbnail, no text
+// extraction) - previously this case rendered a completely empty button
+// (just its background color), which read as a broken/black tile rather
+// than a recognizable "this is a file" affordance.
+function AttachmentTypeIcon({ filename }: { filename: string }) {
+  const ext = filename.split('.').pop()?.toLowerCase() ?? ''
+  const size = 20
+  switch (ext) {
+    case 'docx':
+    case 'doc':
+      return <FileWord size={size} />
+    case 'xlsx':
+    case 'xls':
+    case 'csv':
+      return <FileExcel size={size} />
+    case 'pptx':
+    case 'ppt':
+      return <FilePpt size={size} />
+    case 'pdf':
+      return <FilePdfOne size={size} />
+    default:
+      return <FileGeneric size={size} />
+  }
+}
+
 export const MessageItem = memo(function MessageItem({ message, sessionId, compact = false, onApproveTool, onDenyTool, onSubmitToolPrompt }: Props) {
   const isUser = message.role === 'user'
   const attachments = messageAttachments(message)
@@ -297,6 +340,26 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
         .then(dataUrl => setHydratedPreviews(prev => ({ ...prev, [file.id]: dataUrl })))
         .catch(() => {
           // Best-effort - leave the generic file-icon fallback in place.
+        })
+    }
+  })
+
+  // DOCX/PPTX/XLSX often carry a real embedded thumbnail (see
+  // lib/officeThumbnail.ts) - try extracting one instead of settling for
+  // the icon fallback straight away. Written into the same hydratedPreviews
+  // map the image rehydration above uses (both are just "a displayable URL
+  // for this file id"), so the render logic below needs no extra branch.
+  useEffect(() => {
+    for (const file of attachments) {
+      const hasPreview = Boolean(file.page_preview_urls?.length || file.preview_url || hydratedPreviews[file.id])
+      if (!isOfficeZipAttachment(file) || hasPreview || hydratingRef.current.has(file.id)) continue
+      hydratingRef.current.add(file.id)
+      void fetchOfficeThumbnail(file.id)
+        .then(url => {
+          if (url) setHydratedPreviews(prev => ({ ...prev, [file.id]: url }))
+        })
+        .catch(() => {
+          // Best-effort - leave the icon fallback in place.
         })
     }
   })
@@ -389,7 +452,9 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
                       <span className="msg-attachment-text-preview">{textPreview}</span>
                     </button>
                   ) : (
-                    <button className="msg-attachment-file" type="button" onClick={onOpen} title={tooltip || file.filename} />
+                    <button className="msg-attachment-file" type="button" onClick={onOpen} title={tooltip || file.filename}>
+                      <AttachmentTypeIcon filename={file.filename} />
+                    </button>
                   )}
                   {extLabel && <span className="msg-attachment-thumb-badge">{extLabel}</span>}
                 </div>
@@ -550,8 +615,8 @@ export const MESSAGE_ITEM_CSS = `
 .msg-attachment {
   position: relative;
   flex-shrink: 0;
-  width: 64px;
-  height: 64px;
+  width: 52px;
+  height: 52px;
 }
 
 .msg-attachment--image .msg-attachment-thumb,
@@ -576,6 +641,12 @@ export const MESSAGE_ITEM_CSS = `
   overflow: hidden;
   cursor: pointer;
   padding: 0;
+}
+
+.msg-attachment-file {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .msg-attachment-thumb img {
