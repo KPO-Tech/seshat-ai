@@ -18,6 +18,7 @@ import { deleteSession } from '@/lib/deleteSession'
 import { serializeConversationMarkdown, conversationFileName } from '@/lib/conversationExport'
 import { UNTITLED_SESSION_TITLE } from '@/lib/sessionTitle'
 import { renderPDFPagePreviews } from '@/lib/pdfPreview'
+import { NexusLogo } from '@/components/NexusLogo'
 import type { AgentState } from '@/stores/session'
 
 function attachmentCategory(file: File): ChatAttachment['category'] {
@@ -67,22 +68,56 @@ const TOOL_ACTIVITY_PHRASES: Record<string, string> = {
   generate_image: 'generating an image', tts: 'generating audio', stt: 'transcribing audio',
 }
 
-function agentActivityPhrase(state: AgentState): string {
-  if (state.activeTool) return TOOL_ACTIVITY_PHRASES[state.activeTool.toolName] ?? 'working'
-  if (state.isThinking) return 'thinking'
-  return 'working'
+// Rotated through while the agent is reasoning with no specific tool active
+// (a plain "thinking" state has nothing more concrete to report) - purely
+// decorative vocabulary, swapped on a timer so a long pause between tool
+// calls doesn't just sit on one static word the whole time.
+const THINKING_WORDS = [
+  'Thinking', 'Reasoning', 'Considering', 'Synthesizing', 'Puzzling it out',
+  'Mulling it over', 'Weighing options', 'Piecing it together', 'Contemplating',
+  'Turning it over', 'Working it out', 'Sketching a plan',
+]
+
+function capitalize(text: string): string {
+  return text.length > 0 ? text.charAt(0).toUpperCase() + text.slice(1) : text
 }
 
+function useRotatingWord(words: string[], active: boolean, intervalMs = 1900): string {
+  const [index, setIndex] = useState(0)
+  useEffect(() => {
+    if (!active) {
+      setIndex(0)
+      return
+    }
+    const id = setInterval(() => setIndex((i) => (i + 1) % words.length), intervalMs)
+    return () => clearInterval(id)
+  }, [active, words, intervalMs])
+  return words[index] ?? words[0]
+}
+
+function agentActivityPhrase(state: AgentState, thinkingWord: string): string {
+  // An active tool is the most concrete, logical thing to report - always
+  // takes priority over the decorative rotation below.
+  if (state.activeTool) return capitalize(TOOL_ACTIVITY_PHRASES[state.activeTool.toolName] ?? 'working')
+  if (state.isThinking) return thinkingWord
+  return 'Working'
+}
+
+// Compact status line docked just above the input - not a banner: no
+// background/border/card, just a small pulsing mark and a line of text,
+// left-aligned with the input box itself. Lives outside the scrollable
+// transcript (see the call site) so it stays put at the bottom regardless
+// of scroll position, the same way it never moves horizontally here either.
 function AgentStatusIndicator({ state }: { state: AgentState }) {
-  const phrase = agentActivityPhrase(state)
+  const isPureThinking = state.isThinking && !state.activeTool
+  const thinkingWord = useRotatingWord(THINKING_WORDS, isPureThinking)
+  const phrase = agentActivityPhrase(state, thinkingWord)
   const detail = state.activeTool?.message
   return (
     <div className="conv-status-row">
-      <span className="conv-status-dots">
-        <span /><span /><span />
-      </span>
+      <NexusLogo size={16} className="conv-status-logo" />
       <span className="conv-status-text" key={phrase}>
-        SeshatOS is {phrase}{detail ? ` - ${detail}` : '...'}
+        {phrase}{detail ? ` - ${detail}` : '...'}
       </span>
     </div>
   )
@@ -631,8 +666,10 @@ export function Conversation() {
            looking stuck ("SeshatOS is thinking...") long after the real ball
            was in the user's court. */}
       {isStreaming && !pendingPermission && !pendingAskUser && (
-        <div style={{ padding: '0 16px 8px', display: 'flex', justifyContent: 'center' }}>
-          <AgentStatusIndicator state={agentState} />
+        <div className="conv-status-wrap">
+          <div className="conv-status-inner">
+            <AgentStatusIndicator state={agentState} />
+          </div>
         </div>
       )}
 
@@ -760,44 +797,38 @@ ${MESSAGE_ITEM_CSS}
   box-sizing: border-box;
 }
 
-.conv-status-row {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  max-width: 860px;
-  width: 100%;
-  padding: 8px 13px;
-  border-radius: 10px;
-  background: rgba(239, 124, 47, 0.06);
-  border: 1px solid rgba(239, 124, 47, 0.16);
-}
-
-.conv-status-dots {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+/* Docked above the input, outside the scrollable transcript - see the call
+   site's conv-status-wrap/conv-status-inner. Deliberately no background/
+   border/card here: a single slim line, not a banner. */
+.conv-status-wrap {
+  padding: 0 17px 6px;
   flex-shrink: 0;
 }
 
-.conv-status-dots span {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--color-accent);
-  animation: conv-status-bounce 1s ease-in-out infinite;
+.conv-status-inner {
+  max-width: 1100px;
+  margin: 0 auto;
 }
 
-.conv-status-dots span:nth-child(2) { animation-delay: 0.15s; }
-.conv-status-dots span:nth-child(3) { animation-delay: 0.3s; }
+.conv-status-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
 
-@keyframes conv-status-bounce {
-  0%, 80%, 100% { opacity: 0.35; transform: scale(0.75); }
-  40%           { opacity: 1; transform: scale(1); }
+.conv-status-logo {
+  flex-shrink: 0;
+  animation: conv-status-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes conv-status-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(0.88); }
+  50%      { opacity: 1;   transform: scale(1); }
 }
 
 .conv-status-text {
   font-size: 12px;
-  color: var(--color-accent);
+  color: var(--color-text-secondary);
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
