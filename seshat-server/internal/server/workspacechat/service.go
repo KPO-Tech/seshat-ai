@@ -390,6 +390,17 @@ func (s *Service) getOrCreateSession(ctx context.Context, principal *iam.Princip
 		WebSearchKeys:          webSearchKeys,
 		RAGService:             ragService,
 		DoclingURL:             s.doclingURL,
+		// This is a multi-tenant server: the bash tool is registered on every
+		// sdk.Client with no way to exclude it, and PermissionModeBypass means
+		// no human approves each call. Without this, an LLM-invoked shell
+		// command would run unconfined on this shared host (Landlock is
+		// Linux-only and not guaranteed inside this service's container, and
+		// SandboxKindDocker isn't wired up here - no docker.sock is mounted
+		// into the seshat-server container in deploy/docker-compose.yml).
+		// RequireSandbox makes the tool refuse instead of silently degrading;
+		// the LLM sees a normal tool-call error and can tell the user shell
+		// access isn't available here.
+		RequireSandbox: true,
 	})
 	if err != nil {
 		return nil, err
