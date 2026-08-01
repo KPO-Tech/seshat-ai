@@ -22,6 +22,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/settings"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/skills"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/websearch"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/workflows"
 	"github.com/KPO-Tech/seshat/pkg/docling"
 	longterm "github.com/KPO-Tech/seshat/pkg/memory/longterm"
 	"github.com/KPO-Tech/seshat/pkg/rag"
@@ -143,6 +144,7 @@ type App struct {
 	Preferences *preferences.Service
 	Skills      *skills.Service
 	Agents      *agents.Service
+	Workflows   *workflows.Service
 }
 
 func NewApp(deps Dependencies) *App {
@@ -208,5 +210,6 @@ func NewApp(deps Dependencies) *App {
 		Preferences: preferencesService,
 		Skills:      skillsService,
 		Agents:      agentsService,
+		Workflows:   workflows.New(settingsService),
 	}
 }

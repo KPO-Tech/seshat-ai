@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { Left, Plus, Delete, Copy, CheckOne, Caution, Robot, Lightning } from '@icon-park/react'
+import { Left, Plus, Delete, Copy, CheckOne, Caution, Robot, Lightning, PlayOne, Square, LoadingOne, CloseOne } from '@icon-park/react'
 import { NexusLogo } from '@/components/NexusLogo'
+import { runWorkflow, type WorkflowDoneEvent, type WorkflowNodeEvent } from '@/lib/workflowRun'
 
 type WorkflowNodeKind = 'agent' | 'verifier' | 'critic' | 'router'
 
@@ -152,9 +153,43 @@ export function WorkflowsPage() {
   const [selectedId, setSelectedId] = useState('collect')
   const [copied, setCopied] = useState(false)
 
+  const [isRunning, setIsRunning] = useState(false)
+  const [nodeResults, setNodeResults] = useState<Record<string, WorkflowNodeEvent>>({})
+  const [runResult, setRunResult] = useState<WorkflowDoneEvent | null>(null)
+  const [runError, setRunError] = useState<string | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
+
   const selected = nodes.find((node) => node.id === selectedId) ?? nodes[0]
   const yaml = useMemo(() => buildYaml(name, description, nodes), [name, description, nodes])
   const errors = useMemo(() => validateWorkflow(nodes), [nodes])
+
+  async function runYaml() {
+    if (errors.length > 0 || isRunning) return
+    setIsRunning(true)
+    setNodeResults({})
+    setRunResult(null)
+    setRunError(null)
+    const controller = new AbortController()
+    abortRef.current = controller
+    try {
+      await runWorkflow(
+        { definition: yaml },
+        {
+          onNode: (event) => setNodeResults((current) => ({ ...current, [event.id]: event })),
+          onDone: (event) => setRunResult(event),
+          onError: (message) => setRunError(message),
+        },
+        controller.signal,
+      )
+    } finally {
+      setIsRunning(false)
+      abortRef.current = null
+    }
+  }
+
+  function stopRun() {
+    abortRef.current?.abort()
+  }
 
   function updateNode(id: string, patch: Partial<WorkflowNode>) {
     setNodes((current) => current.map((node) => node.id === id ? { ...node, ...patch } : node))
@@ -292,10 +327,21 @@ export function WorkflowsPage() {
           <div className="wf-export">
             <div className="wf-export-header">
               <span>YAML</span>
-              <button className="wf-copy" type="button" onClick={() => { void copyYaml() }}>
-                {copied ? <CheckOne size={12} /> : <Copy size={12} />}
-                {copied ? 'Copied' : 'Copy'}
-              </button>
+              <div className="wf-export-actions">
+                {isRunning ? (
+                  <button className="wf-copy" type="button" onClick={stopRun}>
+                    <Square size={12} /> Stop
+                  </button>
+                ) : (
+                  <button className="wf-copy" type="button" onClick={() => { void runYaml() }} disabled={errors.length > 0}>
+                    <PlayOne size={12} /> Run
+                  </button>
+                )}
+                <button className="wf-copy" type="button" onClick={() => { void copyYaml() }}>
+                  {copied ? <CheckOne size={12} /> : <Copy size={12} />}
+                  {copied ? 'Copied' : 'Copy'}
+                </button>
+              </div>
             </div>
             {errors.length > 0 && (
               <div className="wf-errors">
@@ -303,10 +349,56 @@ export function WorkflowsPage() {
                 <div>{errors.map((error) => <div key={error}>{error}</div>)}</div>
               </div>
             )}
+            {(isRunning || runResult || runError || Object.keys(nodeResults).length > 0) && (
+              <WorkflowRunPanel nodes={nodes} isRunning={isRunning} nodeResults={nodeResults} runResult={runResult} runError={runError} />
+            )}
             <pre className="wf-yaml">{yaml}</pre>
           </div>
         </section>
       </main>
+    </div>
+  )
+}
+
+function WorkflowRunPanel({ nodes, isRunning, nodeResults, runResult, runError }: {
+  nodes: WorkflowNode[]
+  isRunning: boolean
+  nodeResults: Record<string, WorkflowNodeEvent>
+  runResult: WorkflowDoneEvent | null
+  runError: string | null
+}) {
+  return (
+    <div className="wf-run-panel">
+      {nodes.map((node) => {
+        const result = nodeResults[node.id]
+        const status = result ? (result.success ? 'success' : 'failed') : (isRunning ? 'pending' : 'idle')
+        return (
+          <div key={node.id} className={`wf-run-row wf-run-row-${status}`}>
+            {status === 'pending' && <LoadingOne size={13} className="wf-run-spin" />}
+            {status === 'success' && <CheckOne size={13} />}
+            {status === 'failed' && <CloseOne size={13} />}
+            {status === 'idle' && <span className="wf-run-dot-idle" />}
+            <div className="wf-run-row-main">
+              <span>{node.id}</span>
+              {result && (
+                <small>{result.error || result.output || 'No output'}</small>
+              )}
+            </div>
+            {result && <span className="wf-run-duration">{result.duration_ms}ms</span>}
+          </div>
+        )
+      })}
+      {runError && (
+        <div className="wf-errors">
+          <Caution size={13} />
+          <div>{runError}</div>
+        </div>
+      )}
+      {runResult && (
+        <div className={`wf-run-summary ${runResult.success ? 'success' : 'failed'}`}>
+          {runResult.success ? 'Workflow completed' : 'Workflow failed'} in {runResult.duration_ms}ms
+        </div>
+      )}
     </div>
   )
 }
@@ -656,6 +748,7 @@ const CSS = `
   font-weight: 800;
   color: var(--color-text-secondary);
 }
+.wf-export-actions { display: flex; align-items: center; gap: 6px; }
 .wf-copy {
   display: inline-flex;
   align-items: center;
@@ -664,6 +757,43 @@ const CSS = `
   font-size: 10px;
   font-weight: 700;
 }
+.wf-copy:disabled { opacity: 0.4; cursor: default; }
+.wf-run-panel {
+  margin: 0 14px 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface);
+}
+.wf-run-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 2px;
+  color: var(--color-text-muted);
+}
+.wf-run-row-success { color: #10a37f; }
+.wf-run-row-failed { color: var(--color-error); }
+.wf-run-row-pending { color: var(--color-text); }
+.wf-run-spin { animation: wf-spin 1s linear infinite; }
+@keyframes wf-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.wf-run-dot-idle { width: 13px; height: 13px; display: inline-block; }
+.wf-run-row-main { display: flex; flex-direction: column; min-width: 0; gap: 1px; flex: 1; }
+.wf-run-row-main span { font-size: 11px; font-weight: 700; color: var(--color-text); }
+.wf-run-row-main small { font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wf-run-duration { font-size: 9px; color: var(--color-text-muted); flex-shrink: 0; }
+.wf-run-summary {
+  margin-top: 4px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.wf-run-summary.success { background: rgba(16, 163, 127, 0.12); color: #10a37f; }
+.wf-run-summary.failed { background: rgba(201, 107, 92, 0.1); color: var(--color-error); }
 .wf-errors {
   margin: 0 14px 9px;
   display: flex;
