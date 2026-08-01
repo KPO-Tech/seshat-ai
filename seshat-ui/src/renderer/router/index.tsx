@@ -12,6 +12,7 @@ import { WorkspacePage } from '@/pages/workspace'
 import { TeamPage } from '@/pages/team'
 import { SchedulingPage } from '@/pages/scheduling'
 import { HistoryPage } from '@/pages/history'
+import { WorkflowsPage } from '@/pages/workflows'
 
 export const router = createHashRouter([
   {
@@ -38,6 +39,7 @@ export const router = createHashRouter([
       { path: 'teams', element: <TeamPage /> },
       { path: 'skills-creator', element: <SkillsCreatorPage /> },
       { path: 'workspace', element: <WorkspacePage /> },
+      { path: 'workflows', element: <WorkflowsPage /> },
       { path: 'history', element: <HistoryPage /> },
       // Agents used to have its own separate page; that's now covered by
       // Workspace's Agents tab (the fuller, better-maintained UI) - redirect

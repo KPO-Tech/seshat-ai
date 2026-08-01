@@ -13,6 +13,7 @@ import {
   Layers,
   Time,
   History,
+  Share,
 } from '@icon-park/react'
 import { useUIStore } from '@/stores/ui'
 import { useAuthStore } from '@/stores/auth'
@@ -175,6 +176,13 @@ export function Sidebar() {
             active={pathname === '/workspace'}
             onClick={() => navigate('/workspace')}
             accent
+          />
+          <SidebarItem
+            icon={<Share theme="outline" size={16} />}
+            label="Workflows"
+            collapsed={collapsed}
+            active={pathname === '/workflows'}
+            onClick={() => navigate('/workflows')}
           />
         </div>
 
