@@ -28,6 +28,7 @@ const SUPPORTED_PROVIDERS = [
   { id: 'minimax', name: 'MiniMax', desc: 'M2 series — agentic, long-context' },
   { id: 'openrouter', name: 'OpenRouter', desc: '300+ models through one API key' },
   { id: 'ollama', name: 'Ollama', desc: 'Run models locally on your machine' },
+  { id: 'kimi', name: 'Kimi (Moonshot AI)', desc: 'Kimi K3, K2.7 Code — long-context agentic coding' },
 ]
 
 const PROVIDER_DEFAULT_URLS: Record<string, string> = {
@@ -40,9 +41,10 @@ const PROVIDER_DEFAULT_URLS: Record<string, string> = {
   minimax: 'https://api.minimax.chat/v1',
   openrouter: 'https://openrouter.ai/api/v1',
   ollama: 'http://localhost:11434',
+  kimi: 'https://api.moonshot.ai/v1',
 }
 
-const PROVIDER_DISPLAY_ORDER = ['anthropic', 'openai', 'codex', 'mistral', 'gemini', 'z-ai', 'minimax', 'openrouter', 'ollama']
+const PROVIDER_DISPLAY_ORDER = ['anthropic', 'openai', 'codex', 'mistral', 'gemini', 'z-ai', 'minimax', 'openrouter', 'ollama', 'kimi']
 
 const OAUTH_ONLY_PROVIDERS = new Set(['codex'])
 
