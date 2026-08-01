@@ -15,6 +15,7 @@ import (
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/docconvert"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/officeconvert"
 	"github.com/KPO-Tech/seshat/pkg/docling"
 	"github.com/KPO-Tech/seshat/pkg/storage"
@@ -479,29 +480,28 @@ func (s *Service) UploadSessionFile(ctx context.Context, principal *backendauth.
 		}
 	}
 
-	// Docling auto-conversion: convert to markdown if format is supported.
-	var doclingClient *docling.Client
-	if destPath != "" && s.resolveDoclingClient != nil {
-		doclingClient = s.resolveDoclingClient(ctx)
-	}
-	if destPath != "" && doclingClient != nil {
-		ext := strings.ToLower(filepath.Ext(params.Filename))
-		if doclingExtensions[ext] && doclingClient.IsAvailable(ctx) {
-			if result, convErr := doclingClient.ConvertFile(ctx, destPath); convErr == nil && result.Markdown != "" {
-				mdPath := strings.TrimSuffix(destPath, filepath.Ext(destPath)) + ".md"
-				if writeErr := os.WriteFile(mdPath, []byte(result.Markdown), 0o600); writeErr == nil {
-					if rel, relErr := filepath.Rel(workspacePath, mdPath); relErr == nil {
-						markdownRelPath = rel
-					}
+	// Auto-conversion to markdown: native extraction first (DOCX/PPTX/XLSX,
+	// PDF with a text layer - no docling-serve needed), docling as the
+	// fallback for scans, audio, and images. See internal/docconvert.
+	if destPath != "" && docconvert.AllConvertibleExtensions[strings.ToLower(filepath.Ext(params.Filename))] {
+		var doclingClient *docling.Client
+		if s.resolveDoclingClient != nil {
+			doclingClient = s.resolveDoclingClient(ctx)
+		}
+		if result, ok, _ := docconvert.Convert(ctx, destPath, doclingClient); ok {
+			mdPath := strings.TrimSuffix(destPath, filepath.Ext(destPath)) + ".md"
+			if writeErr := os.WriteFile(mdPath, []byte(result.Markdown), 0o600); writeErr == nil {
+				if rel, relErr := filepath.Rel(workspacePath, mdPath); relErr == nil {
+					markdownRelPath = rel
 				}
-				// Also write extracted images next to the document.
-				for _, img := range result.Images {
-					imgDir := filepath.Dir(destPath)
-					imgPath := filepath.Join(imgDir, img.Filename)
-					imgData, decErr := base64.StdEncoding.DecodeString(img.Base64)
-					if decErr == nil {
-						_ = os.WriteFile(imgPath, imgData, 0o600)
-					}
+			}
+			// Also write extracted images next to the document (docling only).
+			for _, img := range result.Images {
+				imgDir := filepath.Dir(destPath)
+				imgPath := filepath.Join(imgDir, img.Filename)
+				imgData, decErr := base64.StdEncoding.DecodeString(img.Base64)
+				if decErr == nil {
+					_ = os.WriteFile(imgPath, imgData, 0o600)
 				}
 			}
 		}

@@ -194,7 +194,7 @@ func buildAttachmentContext(ctx context.Context, principal *backendauth.Principa
 		if meta.MarkdownPath != "" {
 			sb.WriteString(fmt.Sprintf(" markdown_path=%q", meta.MarkdownPath))
 		}
-		if isDoclingCandidate(meta.Filename, meta.ContentType) {
+		if isConvertibleDocumentCandidate(meta.Filename, meta.ContentType) {
 			if meta.MarkdownPath != "" {
 				sb.WriteString(" docling_status=\"converted\"")
 			} else {
@@ -207,7 +207,11 @@ func buildAttachmentContext(ctx context.Context, principal *backendauth.Principa
 	return strings.TrimSpace(sb.String())
 }
 
-func isDoclingCandidate(filename, contentType string) bool {
+// isConvertibleDocumentCandidate reports whether this attachment is a format
+// the upload pipeline would have attempted to convert to markdown (natively
+// or via docling - see internal/docconvert), for the docling_status prompt
+// annotation below.
+func isConvertibleDocumentCandidate(filename, contentType string) bool {
 	ct := strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0]))
 	switch ct {
 	case "application/pdf",

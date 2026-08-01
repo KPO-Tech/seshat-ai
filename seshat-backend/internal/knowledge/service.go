@@ -10,30 +10,11 @@ import (
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/docconvert"
 	"github.com/KPO-Tech/seshat/pkg/docling"
 	"github.com/KPO-Tech/seshat/pkg/rag"
 	"github.com/KPO-Tech/seshat/pkg/storage"
 )
-
-// doclingIngestExtensions lists file extensions whose binary content docling can
-// convert to plain-text markdown for RAG chunking. PDF, Office formats, audio
-// transcription, and images with OCR are all included.
-var doclingIngestExtensions = map[string]bool{
-	".pdf":  true,
-	".docx": true,
-	".pptx": true,
-	".xlsx": true,
-	".wav":  true,
-	".mp3":  true,
-	".html": true,
-	".htm":  true,
-	".tex":  true,
-	".png":  true,
-	".tiff": true,
-	".tif":  true,
-	".jpeg": true,
-	".jpg":  true,
-}
 
 type Service struct {
 	corpora              *db.CorpusStore
@@ -599,19 +580,21 @@ func (s *Service) checkFileAccess(principal *backendauth.Principal, fileRecord *
 	return nil
 }
 
-// extractTextWithDocling tries docling first for binary formats, then falls back
-// to plain-text extraction. Docling converts PDF, DOCX, PPTX, XLSX, audio, and
-// images to markdown, which the chunker can then split into vector records.
+// extractTextWithDocling tries native extraction (DOCX/PPTX/XLSX, PDF with a
+// text layer) then docling (scans, audio, images) for binary formats, then
+// falls back to plain-text extraction for everything else. See
+// internal/docconvert for the native/docling decision.
 func (s *Service) extractTextWithDocling(ctx context.Context, data []byte, contentType, filename string) string {
 	ext := strings.ToLower(filepath.Ext(filename))
-	if s.resolveDoclingClient != nil && doclingIngestExtensions[ext] {
-		if doclingClient := s.resolveDoclingClient(ctx); doclingClient != nil && doclingClient.IsAvailable(ctx) {
-			result, err := doclingClient.ConvertBytes(ctx, data, filename)
-			if err == nil && strings.TrimSpace(result.Markdown) != "" {
-				return result.Markdown
-			}
-			// Docling failed or returned empty — fall through to plain-text extraction.
+	if docconvert.AllConvertibleExtensions[ext] {
+		var doclingClient *docling.Client
+		if s.resolveDoclingClient != nil {
+			doclingClient = s.resolveDoclingClient(ctx)
 		}
+		if result, ok, _ := docconvert.ConvertBytes(ctx, data, filename, doclingClient); ok {
+			return result.Markdown
+		}
+		// Neither path produced text — fall through to plain-text extraction.
 	}
 	return extractText(data, contentType, filename)
 }

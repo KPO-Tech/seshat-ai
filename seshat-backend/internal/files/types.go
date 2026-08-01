@@ -37,20 +37,7 @@ const (
 	CategoryOther     = "other"
 )
 
-// doclingExtensions lists file extensions that docling-serve can convert to markdown.
-var doclingExtensions = map[string]bool{
-	".pdf":  true,
-	".docx": true,
-	".pptx": true,
-	".xlsx": true,
-	".html": true,
-	".htm":  true,
-	".tex":  true,
-	".wav":  true,
-	".mp3":  true,
-	".png":  true,
-	".tiff": true,
-	".tif":  true,
-	".jpeg": true,
-	".jpg":  true,
-}
+// Which extensions get an eagerly-converted markdown sidecar on upload is
+// now decided by internal/docconvert.AllConvertibleExtensions - it's the
+// single source of truth shared with knowledge.Service's RAG ingestion path,
+// instead of each maintaining its own near-duplicate list.
