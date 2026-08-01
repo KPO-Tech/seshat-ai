@@ -1308,6 +1308,7 @@ func (s *Service) BuildContextInput(ctx context.Context, p ContextBuildParams) (
 	// explicitly. Unconditional (not gated on principal/session) since it
 	// costs a fixed handful of tokens and applies to every surface.
 	input.AppendSystemPrompt = appendBlock(input.AppendSystemPrompt, renderingCapabilitiesBlock)
+	input.AppendSystemPrompt = appendBlock(input.AppendSystemPrompt, narrationGuidanceBlock)
 
 	// Layer user preference block on top (appended, never overwritten).
 	if p.Principal != nil && s.preferences != nil {

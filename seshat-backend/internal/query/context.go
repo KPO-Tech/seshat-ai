@@ -22,6 +22,20 @@ const renderingCapabilitiesBlock = `## Rich rendering available in this UI
 - Interactive charts: a ` + "```chart" + ` fenced code block containing a JSON Chart.js config (` + "`{\"type\": \"bar\"|\"line\"|\"pie\"|\"doughnut\"|..., \"data\": {...}, \"options\": {...}}`" + `) renders as a live chart inline in your response. Use this instead of a text table when the data is genuinely better shown visually.
 - Live HTML/CSS/JS preview: writing a single self-contained HTML file (inline ` + "`<style>`" + ` and ` + "`<script>`" + `, no external resources) via write_file with a ` + "`.html`" + ` extension lets the user open it as a live, interactive preview alongside the conversation. Use this for demos, small interactive tools, or visualizations that need real script execution beyond what a chart block covers.`
 
+// narrationGuidanceBlock asks the model to briefly narrate what it's about
+// to do before each tool call, instead of chaining tool calls silently and
+// only producing prose once everything is done. seshat-ui's chat renders
+// content blocks in the exact order the model produced them (see
+// MessageItem.tsx's groupBlocks), so without any narrating text between tool
+// calls there is nothing to interleave - a multi-tool turn reads as a wall
+// of tool cards followed by a disconnected final answer instead of a
+// narrated sequence of reasoning-then-action. Kept short - this is appended
+// to every single turn's system prompt unconditionally, same as
+// renderingCapabilitiesBlock above.
+const narrationGuidanceBlock = `## Narrate as you work
+
+Before calling a tool, say in one short sentence what you're about to do and why - not a description of the tool call itself, just enough for someone watching to follow along (e.g. "Let me check how the auth middleware handles this." before reading a file, not "I will now call read_file on internal/auth/middleware.go"). You can skip the sentence for a rapid run of the same kind of trivial read/search you already explained once. Narrate before the call, not as a caption on its result afterward.`
+
 // buildRAGContext searches the given corpus for chunks relevant to the prompt
 // and formats them as a Markdown context block. Returns empty strings on any error.
 func buildRAGContext(ctx context.Context, principal *backendauth.Principal, knowledge knowledgeProvider, corpusID, prompt string) (string, []RAGSearchResult) {
