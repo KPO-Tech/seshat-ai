@@ -91,16 +91,24 @@ const DOCX_PREVIEW_CSS = `
   height: 100%;
   overflow: auto;
   background: #525659;
-  padding: 12px 16px 24px;
+  padding: 10px;
 }
 
 .docx-preview-container .docx-preview-doc {
   background: white;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
-  margin: 0 auto 12px;
+  margin: 0 auto;
   width: 100%;
-  max-width: 820px;
   box-sizing: border-box;
+}
+
+/* The app-wide ::selection (globals.css) is tuned for the dark theme -
+   near-white text on a faint highlight - which is unreadable against this
+   panel's white page. Scoped override for legible dark-on-highlight
+   selection here specifically. */
+.docx-preview-scroll ::selection {
+  background: #b4d7ff;
+  color: #1a1a1a;
 }
 
 .docx-preview-status {

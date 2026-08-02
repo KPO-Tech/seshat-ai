@@ -66,6 +66,15 @@ function isRightPanelPinned(p: RightPanelInstance): boolean {
   return p.kind === 'agent' && !!p.sessionId && useSessionStore.getState().isSessionStreaming(p.sessionId)
 }
 
+// "Document" panels (readable content, as opposed to process/monitoring
+// panels like Agent Monitor, a sub-agent trace, or a browser trace) - see
+// openRightPanel: opening one of these replaces another already-open
+// document if there is one, in place, without touching any non-document
+// panel. Keeps a document's own space "yours" across however many you open
+// in a row, while something like an Agent Monitor a user deliberately kept
+// open stays put instead of being silently evicted to make room.
+const DOCUMENT_PANEL_KINDS: ReadonlySet<RightPanelKind> = new Set(['pdf', 'docx', 'xlsx', 'markdown', 'plan', 'artifact'])
+
 const RIGHT_PANEL_STACK_LIMIT = 2
 const RIGHT_PANEL_WIDE_COLUMN_LIMIT = 2
 // A lone open column can go up to 720px; once a 2nd column opens, both
@@ -115,6 +124,15 @@ const SIDEBAR_COLLAPSED_WIDTH = 56
 // width already considered normal, all the way down to the smallest the
 // OS window can ever be.
 const MIN_CHAT_PANE_WIDTH = 460
+// This is a *manual drag-resize* ceiling only - it never applies to a
+// panel's default width when it first opens (see RIGHT_PANEL_WIDTH_RATIO/
+// defaultWidth in openRightPanel, which is computed independently and
+// never routed through this clamp). Dragging a panel wider used to be able
+// to squeeze the chat pane down to roughly half the available width; this
+// keeps at least 3/4 of it for chat no matter how far a panel is dragged,
+// on top of (not instead of) the existing flat MIN_CHAT_PANE_WIDTH floor
+// below - whichever of the two protects more room wins.
+const CHAT_MIN_FRACTION = 0.75
 
 // The actual width a right-panel column is allowed to take: the static
 // SOLO/SHARED range, further capped by whatever the window can spare once
@@ -125,7 +143,9 @@ const MIN_CHAT_PANE_WIDTH = 460
 function clampRightPanelWidth(width: number, windowWidth: number, sidebarCollapsed: boolean, columnCount: number): number {
   const range = columnCount >= RIGHT_PANEL_WIDE_COLUMN_LIMIT ? RIGHT_PANEL_WIDTH_SHARED : RIGHT_PANEL_WIDTH_SOLO
   const sidebarWidth = sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH
-  const dynamicMax = Math.max(240, windowWidth - sidebarWidth - MIN_CHAT_PANE_WIDTH)
+  const available = windowWidth - sidebarWidth
+  const chatFloor = Math.max(MIN_CHAT_PANE_WIDTH, available * CHAT_MIN_FRACTION)
+  const dynamicMax = Math.max(240, available - chatFloor)
   const effectiveMax = Math.min(range.max, dynamicMax)
   const effectiveMin = Math.min(range.min, effectiveMax)
   return Math.round(Math.max(effectiveMin, Math.min(width, effectiveMax)))
@@ -283,6 +303,24 @@ export const useUIStore = create<UIState>()(
           }
 
           const instance: RightPanelInstance = { ...panel, id, openedAt: Date.now() }
+
+          // A new document replaces another already-open document in
+          // place (same column/slot), leaving every non-document panel
+          // (Agent Monitor, a sub-agent trace, a browser trace, ...)
+          // untouched - see DOCUMENT_PANEL_KINDS. Falls through to the
+          // normal room-finding/eviction logic below when no document is
+          // currently open.
+          if (DOCUMENT_PANEL_KINDS.has(panel.kind)) {
+            for (let ci = 0; ci < rightColumns.length; ci++) {
+              const pi = rightColumns[ci].panels.findIndex((p) => DOCUMENT_PANEL_KINDS.has(p.kind))
+              if (pi === -1) continue
+              const nextColumns = [...rightColumns]
+              const nextPanels = [...nextColumns[ci].panels]
+              nextPanels[pi] = instance
+              nextColumns[ci] = { ...nextColumns[ci], panels: nextPanels }
+              return { rightColumns: nextColumns }
+            }
+          }
 
           // First column, left-to-right, with room.
           const roomIndex = rightColumns.findIndex((c) => c.panels.length < RIGHT_PANEL_STACK_LIMIT)

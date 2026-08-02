@@ -190,6 +190,14 @@ const XLSX_PREVIEW_CSS = `
   background: white;
 }
 
+/* The app-wide ::selection (globals.css) is tuned for the dark theme and
+   unreadable against this panel's white background - see the identical
+   comment/fix in DocxPreviewPanel.tsx. */
+.xlsx-preview-scroll ::selection {
+  background: #b4d7ff;
+  color: #1a1a1a;
+}
+
 .xlsx-preview-table {
   border-collapse: collapse;
   font-size: 12px;
