@@ -39,7 +39,14 @@ export function DocxPreviewPanel({ fileId, filename }: Props) {
         containerRef.current.innerHTML = ''
         await renderAsync(buffer, containerRef.current, undefined, {
           inWrapper: true,
-          ignoreWidth: false,
+          // false (the default) renders the page at its real fixed
+          // pixel width (a Letter/A4 page comes out wider than most right-
+          // panel widths), so the panel either clipped the text at its own
+          // edge or forced an uncomfortable horizontal scroll just to read
+          // a line. true lets the page flow to the container's own width
+          // instead - CSS below still caps it at a comfortable reading
+          // max-width so it doesn't go edge-to-edge on a wide panel.
+          ignoreWidth: true,
           ignoreHeight: true,
           className: 'docx-preview-doc',
         })
@@ -84,13 +91,16 @@ const DOCX_PREVIEW_CSS = `
   height: 100%;
   overflow: auto;
   background: #525659;
-  padding: 12px 0 24px;
+  padding: 12px 16px 24px;
 }
 
 .docx-preview-container .docx-preview-doc {
   background: white;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
   margin: 0 auto 12px;
+  width: 100%;
+  max-width: 820px;
+  box-sizing: border-box;
 }
 
 .docx-preview-status {

@@ -825,7 +825,7 @@ ${MESSAGE_ITEM_CSS}
    site's conv-status-wrap/conv-status-inner. Deliberately no background/
    border/card here: a single slim line, not a banner. */
 .conv-status-wrap {
-  padding: 0 17px 6px;
+  padding: 0 17px 18px;
   flex-shrink: 0;
 }
 
