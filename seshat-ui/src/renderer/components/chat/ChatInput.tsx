@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { Plus, FolderClose, AtSign, Voice, Send, CheckCorrect, LoadingOne, CloseSmall, Close, Browser } from '@icon-park/react'
+import { AttachmentTypeIcon } from '@/components/AttachmentTypeIcon'
 import { api, ApiError } from '@/api/client'
 import type { Corpus } from '@/api/types'
 import { startWavRecording, type WavRecording } from '@/lib/wavRecorder'
@@ -42,7 +43,13 @@ const TEXT_PREVIEW_EXTENSIONS = new Set(['md', 'markdown', 'txt', 'csv', 'tsv', 
 // Files the backend docling-converts to markdown at upload time (see
 // doclingExtensions in seshat-backend/internal/files/types.go) - preview that
 // conversion instead of the original (unreadable as raw bytes) binary.
-const MARKDOWN_PREVIEW_EXTENSIONS = new Set(['docx', 'pptx', 'xlsx', 'html', 'htm', 'tex'])
+// DOCX/PPTX/XLSX are deliberately excluded here (unlike MessageItem.tsx's
+// own copy of this set for already-sent attachments): this card is small
+// enough that the tiny extracted-text preview reads as illegible noise
+// rather than a useful preview, and most files don't have the embedded
+// OOXML thumbnail lib/officeThumbnail.ts looks for first either - the file
+// type icon fallback is a clearer result than either for a card this size.
+const MARKDOWN_PREVIEW_EXTENSIONS = new Set(['html', 'htm', 'tex'])
 
 function textPreviewKind(filename: string): 'direct' | 'markdown' | null {
   const ext = filename.split('.').pop()?.toLowerCase() ?? ''
@@ -432,7 +439,9 @@ export function ChatInput({
                     className="chat-attachment-file-icon"
                     onClick={() => file.local_path && void window.nexus?.openPath?.(file.local_path)}
                     title={tooltip}
-                  />
+                  >
+                    <AttachmentTypeIcon filename={file.filename} size={18} />
+                  </button>
                 )}
                 {extLabel && <span className="chat-attachment-thumb-badge">{extLabel}</span>}
                 {file.upload_status === 'uploading' && (
@@ -781,6 +790,12 @@ ${SELECTOR_PILL_CSS}
   overflow: hidden;
   cursor: pointer;
   padding: 0;
+}
+
+.chat-attachment-file-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .chat-attachment-card--image .chat-attachment-thumb,
