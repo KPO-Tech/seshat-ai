@@ -39,27 +39,25 @@ function formatAttachmentSize(size?: number): string | null {
 }
 
 // Files that are already plain text - preview their own bytes directly.
-const TEXT_PREVIEW_EXTENSIONS = new Set(['md', 'markdown', 'txt', 'csv', 'tsv', 'json', 'yaml', 'yml', 'log'])
-// Files the backend docling-converts to markdown at upload time (see
-// doclingExtensions in seshat-backend/internal/files/types.go) - preview that
-// conversion instead of the original (unreadable as raw bytes) binary.
-// DOCX/PPTX/XLSX are deliberately excluded here (unlike MessageItem.tsx's
-// own copy of this set for already-sent attachments): this card is small
-// enough that the tiny extracted-text preview reads as illegible noise
-// rather than a useful preview, and most files don't have the embedded
-// OOXML thumbnail lib/officeThumbnail.ts looks for first either - the file
-// type icon fallback is a clearer result than either for a card this size.
-const MARKDOWN_PREVIEW_EXTENSIONS = new Set(['html', 'htm', 'tex'])
-
-function textPreviewKind(filename: string): 'direct' | 'markdown' | null {
+// PDF has its own real page-1 thumbnail pipeline (isPDFFile/
+// renderPDFPagePreviews, unrelated to this text-preview mechanism). Every
+// other type - CSV/TSV/JSON/YAML/LOG included - falls to the file type
+// icon (see AttachmentTypeIcon) at this card's small size instead: even a
+// legitimately-plain-text format like JSON reads as illegible noise
+// shrunk to 6px in a ~52px card, and it's a stronger, more consistent
+// signal than a wall of tiny characters no one can actually read here.
+const TEXT_PREVIEW_EXTENSIONS = new Set(['md', 'markdown', 'txt'])
+// The backend's docling-markdown conversion (used by MessageItem.tsx's own
+// copy of this preview, where there's more room) isn't used for this card
+// at all - DOCX/PPTX/XLSX/HTML/TEX all fall to the icon fallback here
+// instead, same reasoning as the comment on TEXT_PREVIEW_EXTENSIONS above.
+function isTextPreviewable(filename: string): boolean {
   const ext = filename.split('.').pop()?.toLowerCase() ?? ''
-  if (TEXT_PREVIEW_EXTENSIONS.has(ext)) return 'direct'
-  if (MARKDOWN_PREVIEW_EXTENSIONS.has(ext)) return 'markdown'
-  return null
+  return TEXT_PREVIEW_EXTENSIONS.has(ext)
 }
 
-async function fetchTextPreview(fileId: string, kind: 'direct' | 'markdown'): Promise<string> {
-  const dataUrl = await api.getFileDataURL(`/files/${fileId}/${kind === 'direct' ? 'content' : 'markdown'}`)
+async function fetchTextPreview(fileId: string): Promise<string> {
+  const dataUrl = await api.getFileDataURL(`/files/${fileId}/content`)
   // Decode the base64 payload directly rather than fetch(dataUrl) - the
   // renderer's CSP connect-src doesn't (and shouldn't need to) allow data:,
   // and this avoids a pointless extra network-stack round-trip anyway.
@@ -197,10 +195,9 @@ export function ChatInput({
   useEffect(() => {
     for (const file of attachments) {
       if (file.upload_status !== 'uploaded') continue
-      const kind = textPreviewKind(file.filename)
-      if (!kind || textPreviewFetchedRef.current.has(file.id)) continue
+      if (!isTextPreviewable(file.filename) || textPreviewFetchedRef.current.has(file.id)) continue
       textPreviewFetchedRef.current.add(file.id)
-      void fetchTextPreview(file.id, kind)
+      void fetchTextPreview(file.id)
         .then(text => setTextPreviews(current => ({ ...current, [file.id]: text })))
         .catch(() => {})
     }
