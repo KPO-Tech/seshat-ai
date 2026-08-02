@@ -11,6 +11,7 @@ import { useSessionStore } from '@/stores/session'
 import { useUIStore } from '@/stores/ui'
 import { UNTITLED_SESSION_TITLE } from '@/lib/sessionTitle'
 import { renderPDFPagePreviews } from '@/lib/pdfPreview'
+import { extractOfficeThumbnail } from '@/lib/officeThumbnail'
 
 function attachmentCategory(file: File): ChatAttachment['category'] {
   if (file.type.startsWith('image/')) return 'images'
@@ -27,6 +28,15 @@ function attachmentCategory(file: File): ChatAttachment['category'] {
 
 function isPDFFile(file: File): boolean {
   return file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
+}
+
+// DOCX/PPTX/XLSX may carry a real embedded thumbnail (docProps/thumbnail.*,
+// see lib/officeThumbnail.ts) - extracted straight from the raw File object
+// client-side, same as PDF page previews below, so the attach card doesn't
+// have to wait on the upload/server round trip to show something better
+// than the tiny raw-text fallback.
+function isOfficeZipFile(file: File): boolean {
+  return /\.(docx|pptx|xlsx)$/i.test(file.name)
 }
 
 function sentAttachment(file: ChatAttachment) {
@@ -178,18 +188,29 @@ export function Home() {
     }))
     setAttachments((current) => [...current, ...pending])
     for (const [index, file] of selectedFiles.entries()) {
-      if (!isPDFFile(file)) continue
       const pendingId = pending[index]?.id
-      void renderPDFPagePreviews(file, 10)
-        .then((previews) => {
-          const urls = previews.map((preview) => preview.dataURL)
-          setAttachments((current) => current.map((attachment) => (
-            attachment.id === pendingId
-              ? { ...attachment, preview_url: urls[0], page_preview_urls: urls }
-              : attachment
-          )))
-        })
-        .catch(() => {})
+      if (isPDFFile(file)) {
+        void renderPDFPagePreviews(file, 10)
+          .then((previews) => {
+            const urls = previews.map((preview) => preview.dataURL)
+            setAttachments((current) => current.map((attachment) => (
+              attachment.id === pendingId
+                ? { ...attachment, preview_url: urls[0], page_preview_urls: urls }
+                : attachment
+            )))
+          })
+          .catch(() => {})
+      } else if (isOfficeZipFile(file)) {
+        void file.arrayBuffer()
+          .then(extractOfficeThumbnail)
+          .then((url) => {
+            if (!url) return
+            setAttachments((current) => current.map((attachment) => (
+              attachment.id === pendingId ? { ...attachment, preview_url: url } : attachment
+            )))
+          })
+          .catch(() => {})
+      }
     }
     setIsUploadingAttachments(true)
     setAttachmentError(null)
@@ -207,8 +228,11 @@ export function Home() {
       for (const [index, file] of selectedFiles.entries()) {
         const pendingId = pending[index]?.id
         let pagePreviews: string[] = []
+        let officeThumbnail: string | null = null
         if (isPDFFile(file)) {
           pagePreviews = (await renderPDFPagePreviews(file, 10).catch(() => [])).map((preview) => preview.dataURL)
+        } else if (isOfficeZipFile(file)) {
+          officeThumbnail = await file.arrayBuffer().then(extractOfficeThumbnail).catch(() => null)
         }
         const form = new FormData()
         form.append('file', file)
@@ -231,7 +255,7 @@ export function Home() {
                 category: item.category,
                 local_path: item.local_path,
                 page_preview_urls: pagePreviews.length > 0 ? pagePreviews : attachment.page_preview_urls,
-                preview_url: pagePreviews[0] ?? attachment.preview_url,
+                preview_url: pagePreviews[0] ?? officeThumbnail ?? attachment.preview_url,
                 upload_status: 'uploaded',
               }
             : attachment
