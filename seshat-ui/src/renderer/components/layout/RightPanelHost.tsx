@@ -10,6 +10,7 @@ import { PDFViewerPanel } from '@/components/chat/PDFViewerPanel'
 import { ArtifactPreviewPanel } from '@/components/chat/ArtifactPreviewPanel'
 import { DocxPreviewPanel } from '@/components/chat/DocxPreviewPanel'
 import { XlsxPreviewPanel } from '@/components/chat/XlsxPreviewPanel'
+import { PptxPreviewPanel } from '@/components/chat/PptxPreviewPanel'
 import { flattenRightPanels } from '@/stores/ui'
 import type { RightPanelInstance, RightPanelKind, RightPanelColumn } from '@/stores/ui'
 import type { AgentState } from '@/stores/session'
@@ -190,6 +191,8 @@ function renderPanelIcon(kind: RightPanelKind) {
       return <FileWord size={11} />
     case 'xlsx':
       return <FileExcel size={11} />
+    case 'pptx':
+      return <DocDetail size={11} />
     case 'artifact':
       return <Code size={11} />
     default:
@@ -223,7 +226,7 @@ function renderPanelBody(panel: RightPanelInstance) {
       return <SubagentPanel sessionId={panel.sessionId ?? ''} toolUseId={panel.subagentToolUseId ?? ''} />
     case 'pdf':
       return panel.documentFileId ? (
-        <PDFViewerPanel fileId={panel.documentFileId} filename={panel.title} fallbackMarkdown={panel.markdown} />
+        <PDFViewerPanel fileId={panel.documentFileId} filename={panel.title} />
       ) : (
         <EmptyState title="PDF preview" description="This PDF couldn't be opened." />
       )
@@ -238,6 +241,12 @@ function renderPanelBody(panel: RightPanelInstance) {
         <XlsxPreviewPanel fileId={panel.documentFileId} filename={panel.title} />
       ) : (
         <EmptyState title="Spreadsheet preview" description="This spreadsheet couldn't be opened." />
+      )
+    case 'pptx':
+      return panel.documentFileId ? (
+        <PptxPreviewPanel fileId={panel.documentFileId} filename={panel.title} />
+      ) : (
+        <EmptyState title="Presentation preview" description="This presentation couldn't be opened." />
       )
     case 'artifact':
       return panel.artifactPreviewId ? (

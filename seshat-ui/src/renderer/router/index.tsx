@@ -4,7 +4,6 @@ import { AuthGuard } from '@/components/auth/AuthGuard'
 import { Home } from '@/pages/Home'
 import { Conversation } from '@/pages/Conversation'
 import { Settings } from '@/pages/settings'
-import { UserSettings } from '@/pages/user-settings'
 import { SkillsCreatorPage } from '@/pages/skills-creator'
 import { Login } from '@/pages/Login'
 import { Register } from '@/pages/Register'
@@ -13,6 +12,8 @@ import { TeamPage } from '@/pages/team'
 import { SchedulingPage } from '@/pages/scheduling'
 import { HistoryPage } from '@/pages/history'
 import { WorkflowsPage } from '@/pages/workflows'
+import { AppsPage } from '@/pages/apps'
+import { ProjectsPage } from '@/pages/projects'
 
 export const router = createHashRouter([
   {
@@ -34,11 +35,13 @@ export const router = createHashRouter([
       { index: true, element: <Home /> },
       { path: 'conversation/:id', element: <Conversation /> },
       { path: 'settings', element: <Settings /> },
-      { path: 'user-settings', element: <UserSettings /> },
+      { path: 'user-settings', element: <Navigate to="/settings?tab=account" replace /> },
       { path: 'capabilities', element: <Navigate to="/settings" replace /> },
       { path: 'teams', element: <TeamPage /> },
       { path: 'skills-creator', element: <SkillsCreatorPage /> },
       { path: 'workspace', element: <WorkspacePage /> },
+      { path: 'apps', element: <AppsPage /> },
+      { path: 'projects', element: <ProjectsPage /> },
       { path: 'workflows', element: <WorkflowsPage /> },
       { path: 'history', element: <HistoryPage /> },
       // Agents used to have its own separate page; that's now covered by

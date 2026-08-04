@@ -3,6 +3,7 @@ import type { IpcMain, IpcMainInvokeEvent } from 'electron'
 import { desktopBridgeProof, ensureDesktopBridgeSecret, resolveBackendOrigin } from '../runtime'
 import { deleteSecret, getSecret, setSecret } from './secure-store'
 import { assertTrustedSender } from './trusted-sender'
+import { assertUploadPayloadShape, normalizeAPIPath } from './validation'
 
 type AuthUser = {
   id: string
@@ -47,18 +48,8 @@ const activeStreams = new Map<string, { controller: AbortController; webContents
 let cachedSession: StoredSession | null = null
 let backendTrustPromise: Promise<void> | null = null
 
-function normalizePath(path: string) {
-  if (!path.startsWith('/')) {
-    throw new Error('API path must start with /')
-  }
-  if (path.startsWith('//')) {
-    throw new Error('API path must not be absolute')
-  }
-  return path
-}
-
 function buildBackendURL(path: string) {
-  const normalized = normalizePath(path)
+  const normalized = normalizeAPIPath(path)
   return `${resolveBackendOrigin()}/api/v1${normalized}`
 }
 
@@ -204,6 +195,7 @@ async function performJSONRequest(path: string, method: string, body: unknown, t
 
 async function performUploadRequest(path: string, payload: UploadPayload, token?: string) {
   await ensureBackendTrusted()
+  assertUploadPayloadShape(payload)
   const form = new FormData()
   for (const field of payload.fields ?? []) {
     form.append(field.name, field.value)

@@ -1,7 +1,7 @@
 # Build context is this directory (seshat-console/) — self-contained,
 # unlike seshat-server's image which needs the repo root.
 
-FROM node:22-alpine AS builder
+FROM node:22-bookworm-slim AS builder
 
 WORKDIR /build
 COPY package.json package-lock.json* .npmrc ./

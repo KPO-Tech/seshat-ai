@@ -16,7 +16,6 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/docconvert"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/officeconvert"
 	"github.com/KPO-Tech/seshat/pkg/docling"
 	"github.com/KPO-Tech/seshat/pkg/storage"
 	"github.com/KPO-Tech/seshat/pkg/workspace"
@@ -216,82 +215,6 @@ func (s *Service) ReadMarkdown(ctx context.Context, principal *backendauth.Princ
 		return "", nil, bkerr.NotFound("markdown file not found on disk", err)
 	}
 	return string(data), fileFromDB(*record), nil
-}
-
-// GetOrCreatePDFPreview returns a LibreOffice-rendered PDF for a non-PDF
-// office document (DOCX/PPTX/XLSX/HTML/TEX/...), so it can go through the
-// same interactive PDF viewer real .pdf attachments use instead of a flat
-// text dump. Conversion happens lazily on first request and is cached via
-// PDFPreviewPath - most attachments are never opened, so paying the
-// LibreOffice cost only when someone actually views the document mirrors
-// the lazy-conversion fix already applied to docling (see the SDK's
-// sidecarMarkdown and this package's UploadSessionFile doc comment).
-// Callers should treat a bkerr.Unavailable error as "no preview possible,
-// fall back to the markdown text preview" rather than a hard failure.
-func (s *Service) GetOrCreatePDFPreview(ctx context.Context, principal *backendauth.Principal, fileID, workspacePath string) ([]byte, *File, error) {
-	if s == nil || s.files == nil {
-		return nil, nil, bkerr.Unavailable("file store not configured", nil)
-	}
-	record, err := s.files.GetByID(ctx, fileID)
-	if err != nil {
-		return nil, nil, bkerr.NotFound("file not found", err)
-	}
-	if err := s.checkAccess(principal, record); err != nil {
-		return nil, nil, err
-	}
-	if record.LocalPath == "" || workspacePath == "" {
-		return nil, nil, bkerr.NotFound("no local file available to convert", nil)
-	}
-
-	absWorkspace, err := filepath.Abs(workspacePath)
-	if err != nil {
-		return nil, nil, bkerr.Internal("resolve workspace path: "+err.Error(), err)
-	}
-
-	// Serve the cached conversion if it's still on disk.
-	if record.PDFPreviewPath != "" {
-		if previewPath, resolveErr := resolveWorkspacePath(absWorkspace, record.PDFPreviewPath); resolveErr == nil {
-			if data, readErr := os.ReadFile(previewPath); readErr == nil {
-				return data, fileFromDB(*record), nil
-			}
-		}
-		// Cached path is stale or missing on disk - fall through and reconvert.
-	}
-
-	if !officeconvert.Default.IsAvailable() {
-		return nil, nil, bkerr.Unavailable("document preview conversion is not available", nil)
-	}
-
-	srcPath, err := resolveWorkspacePath(absWorkspace, record.LocalPath)
-	if err != nil {
-		return nil, nil, bkerr.Internal("local file path escapes workspace", err)
-	}
-
-	// Convert into a directory keyed by file ID, not the shared uploads/
-	// directory the source lives in - LibreOffice names its output after the
-	// source's basename, and two unrelated uploads sharing a stem (e.g. a
-	// "report.docx" and an unrelated "report.pdf") would otherwise collide.
-	outDir := filepath.Join(filepath.Dir(srcPath), ".previews", fileID)
-	pdfPath, err := officeconvert.Default.ConvertToPDF(ctx, srcPath, outDir)
-	if err != nil {
-		return nil, nil, bkerr.Internal("convert document to pdf: "+err.Error(), err)
-	}
-
-	rel, err := filepath.Rel(absWorkspace, pdfPath)
-	if err != nil {
-		return nil, nil, bkerr.Internal("resolve preview path: "+err.Error(), err)
-	}
-	rel = filepath.ToSlash(rel)
-	if err := s.files.SetPDFPreviewPath(ctx, fileID, rel); err != nil {
-		return nil, nil, bkerr.Internal("record pdf preview path: "+err.Error(), err)
-	}
-
-	data, err := os.ReadFile(pdfPath)
-	if err != nil {
-		return nil, nil, bkerr.Internal("read converted pdf: "+err.Error(), err)
-	}
-	record.PDFPreviewPath = rel
-	return data, fileFromDB(*record), nil
 }
 
 // resolveWorkspacePath joins a workspace-relative path (always

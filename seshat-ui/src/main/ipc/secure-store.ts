@@ -4,6 +4,7 @@ import { existsSync } from 'fs'
 import { join } from 'path'
 import type { IpcMain } from 'electron'
 import { assertTrustedSender } from './trusted-sender'
+import { normalizeSecretKey } from './validation'
 
 const volatileStore = new Map<string, string>()
 
@@ -32,24 +33,26 @@ async function savePersistentStore(data: Record<string, string>): Promise<void> 
 }
 
 export async function setSecret(key: string, value: string): Promise<void> {
+  const safeKey = normalizeSecretKey(key)
   if (!canPersistSecrets()) {
-    volatileStore.set(key, value)
+    volatileStore.set(safeKey, value)
     return
   }
   const store = await loadPersistentStore()
-  store[key] = safeStorage.encryptString(value).toString('base64')
+  store[safeKey] = safeStorage.encryptString(value).toString('base64')
   await savePersistentStore(store)
 }
 
 export async function getSecret(key: string): Promise<string | null> {
-  if (volatileStore.has(key)) {
-    return volatileStore.get(key) ?? null
+  const safeKey = normalizeSecretKey(key)
+  if (volatileStore.has(safeKey)) {
+    return volatileStore.get(safeKey) ?? null
   }
   if (!canPersistSecrets()) {
     return null
   }
   const store = await loadPersistentStore()
-  const val = store[key]
+  const val = store[safeKey]
   if (val == null) return null
   try {
     return safeStorage.decryptString(Buffer.from(val, 'base64'))
@@ -59,13 +62,14 @@ export async function getSecret(key: string): Promise<string | null> {
 }
 
 export async function deleteSecret(key: string): Promise<void> {
-  volatileStore.delete(key)
+  const safeKey = normalizeSecretKey(key)
+  volatileStore.delete(safeKey)
   if (!canPersistSecrets()) {
     return
   }
   const store = await loadPersistentStore()
-  if (!(key in store)) return
-  delete store[key]
+  if (!(safeKey in store)) return
+  delete store[safeKey]
   await savePersistentStore(store)
 }
 

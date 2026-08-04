@@ -1,14 +1,14 @@
-# scripts/setup.ps1
+﻿# scripts/setup.ps1
 # One-command setup for SeshatOS app on Windows.
 #
 # What it does:
-#   1. Verifies Go 1.21+ (seshat-backend, seshat-server)
+#   1. Verifies Go 1.26+ (seshat-backend, seshat-server)
 #   2. Installs ripgrep (winget / scoop / choco) - required at runtime by the
 #      engine's glob/grep tools, which shell out to `rg` directly
-#   3. Verifies Node.js 20+ and bun (or npm)
-#   4. Installs Node dependencies
-#   5. Installs uv and docling-serve (optional - skip with $env:SKIP_PYTHON = "1")
-#   6. Builds seshat-backend.exe, seshat-server.exe, and the Electron app
+#   4. Verifies Node.js 22+ and bun (or npm)
+#   5. Installs Node dependencies
+#   6. Installs uv and docling-serve (optional - skip with $env:SKIP_PYTHON = "1")
+#   7. Builds seshat-backend.exe, seshat-server.exe, and the Electron app
 #
 # Usage:
 #   powershell -ExecutionPolicy Bypass -File scripts\setup.ps1
@@ -31,30 +31,37 @@ if (-not $env:SESHAT_RUNTIME_ROOT) {
     $env:SESHAT_RUNTIME_ROOT = Join-Path $env:APPDATA "seshat"
 }
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function Write-Ok   { param($msg) Write-Host "  [OK]  $msg" -ForegroundColor Green }
 function Write-Info { param($msg) Write-Host "  [ ]  $msg" -ForegroundColor Cyan }
 function Write-Warn { param($msg) Write-Host "  [!]  $msg" -ForegroundColor Yellow }
 function Write-Fail { param($msg) Write-Host "  [X]  $msg" -ForegroundColor Red; exit 1 }
 function Write-Step { param($msg) Write-Host "`n$msg" -ForegroundColor White }
 
-# ── 1. Go ─────────────────────────────────────────────────────────────────────
+function Update-ProcessPath {
+    $machinePath = [System.Environment]::GetEnvironmentVariable("PATH", "Machine")
+    $userPath = [System.Environment]::GetEnvironmentVariable("PATH", "User")
+    $env:PATH = "$machinePath;$userPath"
+}
+
+
+# â”€â”€ 1. Go â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 Write-Step "Checking Go..."
 
 if (-not (Get-Command go -ErrorAction SilentlyContinue)) {
-    Write-Fail "Go not found. Install Go 1.21+ from: https://go.dev/dl/"
+    Write-Fail "Go not found. Install Go 1.26+ from: https://go.dev/dl/"
 }
 
 $goVer = (go version) -replace "go version go", "" -replace " .*", ""
 $parts = $goVer -split "\."
 $major = [int]$parts[0]
 $minor = [int]$parts[1]
-if ($major -lt 1 -or ($major -eq 1 -and $minor -lt 21)) {
-    Write-Fail "Go $goVer found but 1.21+ required. Update at: https://go.dev/dl/"
+if ($major -lt 1 -or ($major -eq 1 -and $minor -lt 26)) {
+    Write-Fail "Go $goVer found but 1.26+ required. Update at: https://go.dev/dl/"
 }
 Write-Ok "Go $goVer"
 
-# ── 2. ripgrep ────────────────────────────────────────────────────────────────
+# â”€â”€ 2. ripgrep â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 Write-Step "Checking ripgrep..."
 
 if (Get-Command rg -ErrorAction SilentlyContinue) {
@@ -93,20 +100,21 @@ if (Get-Command rg -ErrorAction SilentlyContinue) {
     }
 }
 
-# ── 3. Node.js ────────────────────────────────────────────────────────────────
+
+# â”€â”€ 4. Node.js â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 Write-Step "Checking Node.js..."
 
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
-    Write-Fail "Node.js not found. Install Node.js 20+ from: https://nodejs.org/"
+    Write-Fail "Node.js not found. Install Node.js 22+ from: https://nodejs.org/"
 }
 
 $nodeVer = [int]((node --version) -replace "v", "" -split "\.")[0]
-if ($nodeVer -lt 20) {
-    Write-Fail "Node.js v$nodeVer found but v20+ is required."
+if ($nodeVer -lt 22) {
+    Write-Fail "Node.js v$nodeVer found but v22+ is required."
 }
 Write-Ok "Node.js $(node --version)"
 
-# ── 4. Package manager ────────────────────────────────────────────────────────
+# â”€â”€ 4. Package manager â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 Write-Step "Checking package manager..."
 
 $pkgManager = $null
@@ -120,7 +128,7 @@ if (Get-Command bun -ErrorAction SilentlyContinue) {
     Write-Fail "Neither bun nor npm found."
 }
 
-# ── 5. Install Node dependencies ──────────────────────────────────────────────
+# â”€â”€ 5. Install Node dependencies â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 Write-Step "Installing Node dependencies..."
 
 Set-Location $UiDir
@@ -131,7 +139,7 @@ if ($pkgManager -eq "bun") {
 }
 Write-Ok "Node dependencies installed"
 
-# ── 6. Python venv + docling-serve (optional) ─────────────────────────────────
+# â”€â”€ 6. Python venv + docling-serve (optional) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 if ($env:SKIP_PYTHON -eq "1") {
     Write-Warn "Skipping Python/docling setup (SKIP_PYTHON=1)"
     Write-Warn "Run this script again later without SKIP_PYTHON to enable document conversion."
@@ -168,7 +176,7 @@ if ($env:SKIP_PYTHON -eq "1") {
     }
 }
 
-# ── 7. Build Go binaries ──────────────────────────────────────────────────────
+# â”€â”€ 7. Build Go binaries â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 Write-Step "Building seshat-backend and seshat-server..."
 
 Set-Location $BackendDir
@@ -193,7 +201,7 @@ if ((Test-Path $goWorkPath) -and (Select-String -Path $goWorkPath -Pattern "\.\.
     }
 }
 
-# ── 8. Build UI ────────────────────────────────────────────────────────────────
+# â”€â”€ 8. Build UI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 Write-Step "Building SeshatOS UI..."
 
 Set-Location $UiDir
@@ -204,7 +212,7 @@ if ($pkgManager -eq "bun") {
 }
 Write-Ok "Build complete -> seshat-ui\out\"
 
-# ── Done ──────────────────────────────────────────────────────────────────────
+# â”€â”€ Done â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 Write-Host ""
 Write-Host "  Setup complete!" -ForegroundColor Green
 Write-Host ""

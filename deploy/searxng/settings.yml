@@ -5,7 +5,7 @@ use_default_settings: true
 
 server:
   # base_url is injected by the container environment in docker-compose.yml
-  secret_key: "change-this-local-searxng-key"
+  secret_key: "fc369419405f3f1f3e5cfb0515854f95409fbe7526c2d78b3bc30178b80beb18"
   limiter: false
   image_proxy: true
 

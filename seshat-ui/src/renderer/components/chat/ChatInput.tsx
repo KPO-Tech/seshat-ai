@@ -437,6 +437,7 @@ export function ChatInput({
                     onClick={() => file.local_path && void window.nexus?.openPath?.(file.local_path)}
                     title={tooltip}
                   >
+                    <span className="chat-attachment-file-icon-name">{file.filename}</span>
                     <AttachmentTypeIcon filename={file.filename} size={18} />
                   </button>
                 )}
@@ -688,11 +689,11 @@ ${SELECTOR_PILL_CSS}
 /* Slash-command dropdown */
 .chat-slash-dropdown {
   position: absolute;
-  bottom: calc(100% + 8px);
+  bottom: calc(100% + var(--space-4));
   left: 0; right: 0;
   background: var(--color-bg);
   border: 1px solid var(--color-border);
-  border-radius: 14px;
+  border-radius: var(--radius-2xl);
   box-shadow: 0 8px 32px rgba(0,0,0,0.18);
   overflow: hidden;
   z-index: 200;
@@ -703,26 +704,26 @@ ${SELECTOR_PILL_CSS}
 .chat-slash-item {
   width: 100%; text-align: left;
   background: none; border: none; cursor: pointer;
-  padding: 10px 16px;
-  display: flex; align-items: baseline; gap: 10px;
+  padding: var(--space-5) var(--space-7);
+  display: flex; align-items: baseline; gap: var(--space-5);
   transition: background 0.1s;
 }
 .chat-slash-item:hover, .chat-slash-item.selected {
   background: var(--color-surface);
 }
 .chat-slash-name {
-  font-size: 13px; font-weight: 700; color: var(--color-cta);
+  font-size: var(--font-size-base); font-weight: 700; color: var(--color-cta);
   flex-shrink: 0; font-family: var(--font-mono, monospace);
 }
 .chat-slash-desc {
-  font-size: 12px; color: var(--color-text-muted);
+  font-size: var(--font-size-sm); color: var(--color-text-muted);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
 .chat-input-wrapper {
   background: var(--color-bg);
-  border-radius: 14px;
-  padding: 10px 12px;
+  border-radius: var(--radius-2xl);
+  padding: var(--space-5) var(--space-6);
   position: relative; /* anchors slash dropdown */
   border: 1.5px solid transparent;
   background-image: linear-gradient(var(--color-bg), var(--color-bg)),
@@ -753,8 +754,8 @@ ${SELECTOR_PILL_CSS}
   display: flex;
   flex-wrap: nowrap;
   overflow-x: auto;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
   padding: 5px 2px;
 }
 
@@ -780,7 +781,7 @@ ${SELECTOR_PILL_CSS}
   display: block;
   width: 100%;
   height: 100%;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--color-border-subtle);
   background: var(--color-surface);
   color: var(--color-text-secondary);
@@ -791,8 +792,22 @@ ${SELECTOR_PILL_CSS}
 
 .chat-attachment-file-icon {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 3px;
+  padding: 4px 4px 2px;
+}
+
+.chat-attachment-file-icon-name {
+  width: 100%;
+  font-size: 7px;
+  line-height: 1.15;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
 }
 
 .chat-attachment-card--image .chat-attachment-thumb,
@@ -836,8 +851,8 @@ ${SELECTOR_PILL_CSS}
   bottom: 3px;
   background: rgba(0, 0, 0, 0.72);
   color: white;
-  border-radius: 4px;
-  padding: 1px 4px;
+  border-radius: var(--radius-xs);
+  padding: 1px var(--space-2);
   font-size: 8px;
   font-weight: 800;
   letter-spacing: 0.02em;
@@ -893,7 +908,7 @@ ${SELECTOR_PILL_CSS}
   max-height: 88vh;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-5);
 }
 
 .chat-attachment-preview-header {
@@ -902,7 +917,7 @@ ${SELECTOR_PILL_CSS}
   justify-content: space-between;
   gap: 14px;
   color: white;
-  font-size: 13px;
+  font-size: var(--font-size-base);
   font-weight: 700;
 }
 
@@ -915,7 +930,7 @@ ${SELECTOR_PILL_CSS}
 .chat-attachment-preview-header button {
   width: 30px;
   height: 30px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   border: 1px solid rgba(255, 255, 255, 0.2);
   background: rgba(255, 255, 255, 0.1);
   color: white;
@@ -929,7 +944,7 @@ ${SELECTOR_PILL_CSS}
   max-width: 100%;
   max-height: calc(88vh - 48px);
   object-fit: contain;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   box-shadow: 0 18px 60px rgba(0, 0, 0, 0.36);
 }
 
@@ -946,7 +961,7 @@ ${SELECTOR_PILL_CSS}
   max-width: min(78vw, 760px);
   width: 100%;
   height: auto;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   box-shadow: 0 18px 60px rgba(0, 0, 0, 0.36);
 }
 
@@ -958,9 +973,9 @@ ${SELECTOR_PILL_CSS}
   padding: 16px 18px;
   background: var(--color-surface);
   border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   font-family: var(--font-mono, monospace);
-  font-size: 12px;
+  font-size: var(--font-size-sm);
   line-height: 1.55;
   color: var(--color-text);
   white-space: pre-wrap;
@@ -970,22 +985,22 @@ ${SELECTOR_PILL_CSS}
 .chat-input-notices {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-bottom: 8px;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
 }
 
 .chat-input-notice {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 8px;
+  gap: var(--space-4);
   color: var(--color-error);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   line-height: 1.4;
   background: rgba(var(--color-error-rgb), 0.08);
   border: 1px solid rgba(var(--color-error-rgb), 0.16);
-  border-radius: 8px;
-  padding: 6px 8px;
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
 }
 
 .chat-input-notice-action {
@@ -994,7 +1009,7 @@ ${SELECTOR_PILL_CSS}
   border: 1px solid rgba(var(--color-error-rgb), 0.2);
   background: transparent;
   color: var(--color-error);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 2px 7px;
   font: inherit;
   font-weight: 700;
@@ -1013,20 +1028,20 @@ ${SELECTOR_PILL_CSS}
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 8px;
+  margin-top: var(--space-4);
 }
 
 .chat-input-tools-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
   min-width: 0;
 }
 
 .chat-input-tools-right {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .chat-tool-circle {
@@ -1035,7 +1050,7 @@ ${SELECTOR_PILL_CSS}
   color: var(--color-text-muted);
   width: 24px;
   height: 24px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1059,7 +1074,7 @@ ${SELECTOR_PILL_CSS}
   border: none;
   color: var(--color-text-muted);
   cursor: pointer;
-  padding: 4px;
+  padding: var(--space-2);
   display: flex;
   align-items: center;
   transition: color 0.15s;
@@ -1096,7 +1111,7 @@ ${SELECTOR_PILL_CSS}
 .chat-workspace-control {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-3);
   min-width: 0;
   max-width: 180px;
 }
@@ -1116,7 +1131,7 @@ ${SELECTOR_PILL_CSS}
   cursor: pointer;
   display: flex;
   align-items: center;
-  padding: 2px;
+  padding: var(--space-1);
 }
 
 .chat-workspace-clear:hover {
@@ -1164,9 +1179,9 @@ ${SELECTOR_PILL_CSS}
 .chat-status-inline {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
   color: var(--color-text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-sm);
   min-width: 0;
   max-width: 320px;
 }
@@ -1190,11 +1205,11 @@ ${SELECTOR_PILL_CSS}
 .chat-corpus-chip {
   display: inline-flex; align-items: center; gap: 5px;
   background: rgba(239,124,47,0.1); border: 1px solid rgba(239,124,47,0.3);
-  border-radius: 6px; padding: 3px 8px 3px 6px;
-  margin-bottom: 8px; font-size: 12px; font-weight: 600;
+  border-radius: var(--radius-sm); padding: 3px 8px 3px 6px;
+  margin-bottom: 8px; font-size: var(--font-size-sm); font-weight: 600;
   color: var(--color-primary);
 }
-.chat-corpus-chip-icon { font-size: 13px; line-height: 1; }
+.chat-corpus-chip-icon { font-size: var(--font-size-base); line-height: 1; }
 .chat-corpus-chip-name { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chat-corpus-chip-remove {
   background: none; border: none; color: inherit; cursor: pointer;
@@ -1207,26 +1222,26 @@ ${SELECTOR_PILL_CSS}
 .chat-corpus-wrap { position: relative; }
 .chat-tool-icon-active { color: var(--color-primary) !important; }
 .chat-corpus-dropdown {
-  position: absolute; bottom: calc(100% + 8px); left: 0;
+  position: absolute; bottom: calc(100% + var(--space-4)); left: 0;
   min-width: 220px; max-width: 280px;
   background: var(--color-bg); border: 1px solid var(--color-border);
-  border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,0.18);
+  border-radius: var(--radius-xl); box-shadow: 0 8px 28px rgba(0,0,0,0.18);
   overflow: hidden; z-index: 200;
   display: flex; flex-direction: column;
 }
 .chat-corpus-dropdown-header {
-  padding: 8px 14px 6px; font-size: 11px; font-weight: 800;
+  padding: 8px 14px 6px; font-size: var(--font-size-xs); font-weight: 800;
   color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.06em;
   border-bottom: 1px solid var(--color-border-subtle);
 }
 .chat-corpus-item {
   width: 100%; text-align: left; background: none; border: none;
   padding: 9px 14px; cursor: pointer; display: flex;
-  align-items: center; justify-content: space-between; gap: 8px;
-  font-size: 13px; color: var(--color-text); transition: background 0.1s;
+  align-items: center; justify-content: space-between; gap: var(--space-4);
+  font-size: var(--font-size-base); color: var(--color-text); transition: background 0.1s;
 }
 .chat-corpus-item:hover, .chat-corpus-item.selected { background: var(--color-surface); }
 .chat-corpus-item.selected .chat-corpus-item-name { color: var(--color-primary); font-weight: 700; }
-.chat-corpus-item-count { font-size: 11px; color: var(--color-text-muted); white-space: nowrap; }
-.chat-corpus-empty { padding: 12px 14px; font-size: 13px; color: var(--color-text-muted); }
+.chat-corpus-item-count { font-size: var(--font-size-xs); color: var(--color-text-muted); white-space: nowrap; }
+.chat-corpus-empty { padding: var(--space-6) 14px; font-size: var(--font-size-base); color: var(--color-text-muted); }
 `

@@ -29,6 +29,8 @@ jobs:
       backend: ${{ steps.filter.outputs.backend }}
       desktop: ${{ steps.filter.outputs.desktop }}
       console: ${{ steps.filter.outputs.console }}
+      openapi: ${{ steps.filter.outputs.openapi }}
+      compose: ${{ steps.filter.outputs.compose }}
       website: ${{ steps.filter.outputs.website }}
     steps:
       - uses: actions/checkout@v4
@@ -47,6 +49,8 @@ jobs:
             echo "backend=true" >> "$GITHUB_OUTPUT"
             echo "desktop=true" >> "$GITHUB_OUTPUT"
             echo "console=true" >> "$GITHUB_OUTPUT"
+            echo "openapi=true" >> "$GITHUB_OUTPUT"
+            echo "compose=true" >> "$GITHUB_OUTPUT"
             echo "website=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -55,6 +59,8 @@ jobs:
           echo "backend=$(echo "$CHANGED" | grep -qE '^(seshat-backend/|seshat-server/|go\.work)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
           echo "desktop=$(echo "$CHANGED" | grep -q '^seshat-ui/' && echo true || echo false)" >> "$GITHUB_OUTPUT"
           echo "console=$(echo "$CHANGED" | grep -q '^seshat-console/' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "openapi=$(echo "$CHANGED" | grep -qE '^(seshat-server/openapi\.yaml|seshat-console/(package(-lock)?\.json|src/api/schema\.d\.ts))$' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "compose=$(echo "$CHANGED" | grep -qE '^(deploy/|scripts/smoke-compose-core\.sh|Makefile|seshat-server/Dockerfile|seshat-console/(Dockerfile|nginx\.conf|package(-lock)?\.json))' && echo true || echo false)" >> "$GITHUB_OUTPUT"
           echo "website=$(echo "$CHANGED" | grep -q '^website/' && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
   build:
@@ -189,6 +195,10 @@ jobs:
         working-directory: seshat-ui
         run: npm run lint
 
+      - name: IPC validation tests
+        working-directory: seshat-ui
+        run: npm run test:ipc
+
       - name: Build
         working-directory: seshat-ui
         run: npm run build
@@ -218,6 +228,40 @@ jobs:
       - name: Build (includes typecheck)
         working-directory: seshat-console
         run: npm run build
+
+  openapi_schema:
+    name: OpenAPI Schema
+    needs: changes
+    if: needs.changes.outputs.openapi == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: seshat-console/package-lock.json
+
+      - name: Install dependencies
+        working-directory: seshat-console
+        run: npm ci
+
+      - name: Check generated OpenAPI types
+        working-directory: seshat-console
+        run: npm run api:check
+
+  compose_core_smoke:
+    name: Compose Core Smoke
+    needs: changes
+    if: needs.changes.outputs.compose == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Smoke core compose stack
+        run: bash scripts/smoke-compose-core.sh
 
   website:
     name: Website
@@ -274,12 +318,12 @@ jobs:
   gate:
     name: Gate
     runs-on: ubuntu-latest
-    needs: [changes, build, test, lint, security, desktop, console, website, branch-policy]
+    needs: [changes, build, test, lint, security, desktop, console, openapi_schema, compose_core_smoke, website, branch-policy]
     if: always()
     steps:
       - name: All checks passed
         run: |
-          # build/test/lint/security/desktop/console/website are conditionally
+          # build/test/lint/security/desktop/console/openapi/compose/website are conditionally
           # skipped by the changes job when the diff doesn't touch what they
           # cover - treat "skipped" as passing, same as "success". changes and
           # branch-policy always run and must succeed outright.
@@ -290,6 +334,8 @@ jobs:
              ! ok "${{ needs.security.result }}" || \
              ! ok "${{ needs.desktop.result }}" || \
              ! ok "${{ needs.console.result }}" || \
+             ! ok "${{ needs.openapi_schema.result }}" || \
+             ! ok "${{ needs.compose_core_smoke.result }}" || \
              ! ok "${{ needs.website.result }}" || \
              [[ "${{ needs.changes.result }}" != "success" ]] || \
              [[ "${{ needs.branch-policy.result }}" != "success" ]]; then
@@ -301,6 +347,8 @@ jobs:
             echo "  security:      ${{ needs.security.result }}"
             echo "  desktop:       ${{ needs.desktop.result }}"
             echo "  console:       ${{ needs.console.result }}"
+            echo "  openapi-schema: ${{ needs.openapi_schema.result }}"
+            echo "  compose-smoke: ${{ needs.compose_core_smoke.result }}"
             echo "  website:       ${{ needs.website.result }}"
             echo "  branch-policy: ${{ needs.branch-policy.result }}"
             exit 1

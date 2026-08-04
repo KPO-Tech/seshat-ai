@@ -226,7 +226,7 @@ ${ICON_BUTTON_CSS}
 .chat-top-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
   min-width: 0;
   flex: 1 1 auto;
   overflow: hidden;
@@ -250,13 +250,13 @@ ${ICON_BUTTON_CSS}
 .chat-mode-badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-2);
   font-size: var(--font-size-2xs);
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  padding: 2px 8px;
-  border-radius: 999px;
+  padding: 2px var(--space-4);
+  border-radius: var(--radius-full);
   animation: mode-badge-in 0.2s ease;
 }
 
@@ -288,7 +288,7 @@ ${ICON_BUTTON_CSS}
 .chat-top-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-3);
   position: relative;
   flex-shrink: 0;
 }
@@ -297,8 +297,8 @@ ${ICON_BUTTON_CSS}
   background: var(--color-surface);
   border: 1px solid var(--color-border-subtle);
   color: var(--color-text-secondary);
-  padding: 3px 8px;
-  border-radius: 10px;
+  padding: 3px var(--space-4);
+  border-radius: var(--radius-lg);
   font-size: var(--font-size-xs);
   display: flex;
   align-items: center;
@@ -336,7 +336,7 @@ ${ICON_BUTTON_CSS}
 .conv-menu-trigger {
   width: 26px;
   height: 26px;
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
   border: none;
   background: transparent;
   color: var(--color-text-muted);
@@ -357,14 +357,14 @@ ${ICON_BUTTON_CSS}
   top: calc(100% + 6px);
   right: 0;
   min-width: 190px;
-  padding: 6px;
-  border-radius: 12px;
+  padding: var(--space-3);
+  border-radius: var(--radius-xl);
   border: 1px solid var(--color-border-subtle);
-  background: rgba(44, 42, 49, 0.98);
+  background: var(--color-menu-bg);
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.22);
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
   z-index: 30;
 }
 
@@ -373,11 +373,11 @@ ${ICON_BUTTON_CSS}
   border: none;
   background: transparent;
   color: var(--color-text);
-  border-radius: 8px;
-  padding: 7px 10px;
+  border-radius: var(--radius-md);
+  padding: 7px var(--space-5);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
   font-size: var(--font-size-sm);
   cursor: pointer;
   text-align: left;
@@ -389,7 +389,7 @@ ${ICON_BUTTON_CSS}
 }
 
 .conv-menu button.danger {
-  color: #fda4af;
+  color: var(--color-error);
 }
 
 .conv-menu button:disabled {

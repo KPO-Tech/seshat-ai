@@ -224,6 +224,28 @@ func TestHealthEndpointEnriched(t *testing.T) {
 	}
 }
 
+func TestSystemStatusIncludesHostCapabilities(t *testing.T) {
+	app, _ := newAuditTestApp(t)
+	router := CreateRouter(defaultAPIConfig, app)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/system/status", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("system status: got %d, body=%s", rec.Code, rec.Body.String())
+	}
+	var resp map[string]any
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if resp["mode"] != "standalone" {
+		t.Fatalf("expected standalone mode, got %v", resp["mode"])
+	}
+	if _, ok := resp["sandbox_confined"].(bool); !ok {
+		t.Fatalf("expected sandbox_confined bool, got %T", resp["sandbox_confined"])
+	}
+}
+
 func TestRateLimiter(t *testing.T) {
 	limiter := NewRateLimiter(3, time.Hour) // long window so it doesn't expire during the test
 	// Allow 3 requests
@@ -4360,7 +4382,7 @@ func TestSessionOwnership_UserScopedList(t *testing.T) {
 		t.Fatal("member must not see admin session")
 	}
 
-	// Admin lists sessions — sees all (2)
+	// Admin lists sessions - sees only their own.
 	adminListResp := doRequest(t, router, http.MethodGet, "/api/v1/sessions", nil, adminToken)
 	if adminListResp.Code != http.StatusOK {
 		t.Fatalf("admin list sessions: expected 200, got %d: %s", adminListResp.Code, adminListResp.Body.String())
@@ -4368,8 +4390,16 @@ func TestSessionOwnership_UserScopedList(t *testing.T) {
 	var adminList map[string]any
 	json.Unmarshal(adminListResp.Body.Bytes(), &adminList)
 	adminCount := int(adminList["count"].(float64))
-	if adminCount != 2 {
-		t.Fatalf("expected admin to see 2 sessions, got %d: %s", adminCount, adminListResp.Body.String())
+	if adminCount != 1 {
+		t.Fatalf("expected admin to see 1 session, got %d: %s", adminCount, adminListResp.Body.String())
+	}
+	adminSessions := adminList["sessions"].([]any)
+	adminSess := adminSessions[0].(map[string]any)
+	if adminSess["session_id"] != adminSessionID {
+		t.Fatalf("expected admin session_id %q, got %q", adminSessionID, adminSess["session_id"])
+	}
+	if adminSess["session_id"] == memberSessionID {
+		t.Fatal("admin must not see member session")
 	}
 }
 
@@ -4447,8 +4477,9 @@ func TestSessionOwnership_DeleteEnforcement(t *testing.T) {
 	}
 }
 
-// TestSessionOwnership_AdminOverride verifies admin can delete any user's session.
-func TestSessionOwnership_AdminOverride(t *testing.T) {
+// TestSessionOwnership_AdminCannotOverride verifies conversations remain
+// owner-scoped even when the caller has an admin role.
+func TestSessionOwnership_AdminCannotOverride(t *testing.T) {
 	database, err := db.Open(context.Background(), db.DefaultSQLiteConfig(filepath.Join(t.TempDir(), "sessions-admin.db")))
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -4488,10 +4519,10 @@ func TestSessionOwnership_AdminOverride(t *testing.T) {
 	json.Unmarshal(memberCreateResp.Body.Bytes(), &memberSession)
 	memberSessionID, _ := memberSession["session_id"].(string)
 
-	// Admin deletes the member's session — must succeed (admin override)
+	// Admin cannot delete the member's session.
 	adminDeleteResp := doRequest(t, router, http.MethodDelete, "/api/v1/sessions/"+memberSessionID, nil, adminToken)
-	if adminDeleteResp.Code != http.StatusNoContent {
-		t.Fatalf("expected admin to delete member session (204), got %d: %s", adminDeleteResp.Code, adminDeleteResp.Body.String())
+	if adminDeleteResp.Code != http.StatusForbidden {
+		t.Fatalf("expected admin delete of member session to be forbidden, got %d: %s", adminDeleteResp.Code, adminDeleteResp.Body.String())
 	}
 }
 

@@ -2,24 +2,37 @@ import { useEffect, useRef, useState } from 'react'
 import { Reduce, Add, Left, Right, LoadingOne } from '@icon-park/react'
 import { api, ApiError } from '@/api/client'
 import { loadPdfViewerModule, pdfjsLib } from '@/lib/pdfInteractiveViewer'
-import { MarkdownView } from '@/components/MarkdownView'
 import 'pdfjs-dist/web/pdf_viewer.css'
 
 type Props = {
   fileId: string
   filename: string
-  // Docling text extraction, already fetched by the caller (see
-  // MessageItem.tsx) - rendered instead of a hard error when this document
-  // isn't an actual PDF and the backend's LibreOffice conversion is
-  // unavailable (503) or fails (the on-demand /pdf-preview endpoint, see
-  // officeconvert.Converter server-side). A real PDF (isSourcePDF) never
-  // needs this: /content always serves the original bytes directly.
-  fallbackMarkdown?: string
 }
+
+type LayoutMode = 'pages' | 'width'
+type PdfViewerModule = Awaited<ReturnType<typeof loadPdfViewerModule>>
+type PdfViewerInstance = InstanceType<PdfViewerModule['PDFViewer']>
 
 function base64ToBytes(dataUrl: string): Uint8Array {
   const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1)
   return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
+}
+
+function applyPDFLayout(
+  viewer: PdfViewerInstance | null,
+  modes: Pick<PdfViewerModule, 'ScrollMode' | 'SpreadMode'> | null,
+  mode: LayoutMode,
+) {
+  if (!viewer || !modes) return
+  if (mode === 'pages') {
+    viewer.spreadMode = modes.SpreadMode.NONE
+    viewer.scrollMode = modes.ScrollMode.WRAPPED
+    viewer.currentScaleValue = 'page-fit'
+    return
+  }
+  viewer.spreadMode = modes.SpreadMode.NONE
+  viewer.scrollMode = modes.ScrollMode.VERTICAL
+  viewer.currentScaleValue = 'page-width'
 }
 
 // A real pdf.js viewer embed (scrollable, multi-page, selectable text/
@@ -29,24 +42,17 @@ function base64ToBytes(dataUrl: string): Uint8Array {
 // exactly this: embedding the viewer without pulling in its full generic
 // web app (toolbar chrome, l10n, etc.) - this component supplies its own
 // minimal toolbar instead.
-export function PDFViewerPanel({ fileId, filename, fallbackMarkdown }: Props) {
-  const isSourcePDF = filename.toLowerCase().endsWith('.pdf')
-  const [showFallback, setShowFallback] = useState(false)
+export function PDFViewerPanel({ fileId, filename }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewerRef = useRef<HTMLDivElement>(null)
-  const pdfViewerRef = useRef<InstanceType<Awaited<ReturnType<typeof loadPdfViewerModule>>['PDFViewer']> | null>(null)
+  const pdfViewerRef = useRef<PdfViewerInstance | null>(null)
+  const pdfModesRef = useRef<Pick<PdfViewerModule, 'ScrollMode' | 'SpreadMode'> | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [errorMessage, setErrorMessage] = useState('')
-  // The /pdf-preview endpoint converts on demand via LibreOffice (see
-  // officeconvert.Converter server-side) and caches the result - a cold
-  // first view can take several seconds, a cached re-view is fast. There's
-  // no real progress signal from that single blocking HTTP call, so this is
-  // a time-based escalation rather than true progress: stay quiet for a
-  // normal-speed load, only explain the wait once it's actually slow.
-  const [slowConversion, setSlowConversion] = useState(false)
   const [scalePercent, setScalePercent] = useState(100)
   const [pageNumber, setPageNumber] = useState(1)
   const [pageCount, setPageCount] = useState(0)
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>('pages')
 
   useEffect(() => {
     let cancelled = false
@@ -56,9 +62,10 @@ export function PDFViewerPanel({ fileId, filename, fallbackMarkdown }: Props) {
     async function open() {
       if (!containerRef.current || !viewerRef.current) return
       try {
-        const { PDFViewer, PDFLinkService, EventBus } = await loadPdfViewerModule()
+        const { PDFViewer, PDFLinkService, EventBus, ScrollMode, SpreadMode } = await loadPdfViewerModule()
         if (cancelled) return
 
+        pdfModesRef.current = { ScrollMode, SpreadMode }
         eventBus = new EventBus()
         const linkService = new PDFLinkService({ eventBus })
         const pdfViewer = new PDFViewer({
@@ -74,7 +81,7 @@ export function PDFViewerPanel({ fileId, filename, fallbackMarkdown }: Props) {
 
         eventBus.on('pagesinit', () => {
           if (cancelled) return
-          pdfViewer.currentScaleValue = 'page-width'
+          applyPDFLayout(pdfViewer, pdfModesRef.current, layoutMode)
         })
         eventBus.on('scalechanging', (e: { scale: number }) => {
           if (!cancelled) setScalePercent(Math.round(e.scale * 100))
@@ -83,17 +90,7 @@ export function PDFViewerPanel({ fileId, filename, fallbackMarkdown }: Props) {
           if (!cancelled) setPageNumber(e.pageNumber)
         })
 
-        const endpoint = isSourcePDF ? 'content' : 'pdf-preview'
-        // Real PDFs (/content) are always a fast static fetch - only the
-        // conversion path (/pdf-preview) can be slow, and only on a cold
-        // (uncached) first view.
-        const slowTimer = isSourcePDF ? null : setTimeout(() => { if (!cancelled) setSlowConversion(true) }, 2500)
-        let dataUrl: string
-        try {
-          dataUrl = await api.getFileDataURL(`/files/${fileId}/${endpoint}`)
-        } finally {
-          if (slowTimer) clearTimeout(slowTimer)
-        }
+        const dataUrl = await api.getFileDataURL(`/files/${fileId}/content`)
         if (cancelled) return
         const bytes = base64ToBytes(dataUrl)
         pdfDocument = await pdfjsLib.getDocument({ data: bytes }).promise
@@ -107,13 +104,6 @@ export function PDFViewerPanel({ fileId, filename, fallbackMarkdown }: Props) {
         setStatus('ready')
       } catch (err) {
         if (cancelled) return
-        // No visual conversion available (LibreOffice missing, or this
-        // document type failed to convert) - degrade to the text extraction
-        // rather than showing a dead-end error, if the caller gave us one.
-        if (!isSourcePDF && fallbackMarkdown) {
-          setShowFallback(true)
-          return
-        }
         const message =
           err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'Failed to load PDF'
         setErrorMessage(message)
@@ -125,12 +115,18 @@ export function PDFViewerPanel({ fileId, filename, fallbackMarkdown }: Props) {
     return () => {
       cancelled = true
       pdfViewerRef.current = null
+      pdfModesRef.current = null
       void pdfDocument?.destroy()
     }
     // Re-open from scratch if the viewed file changes; loadPdfViewerModule/
     // pdfjsLib are stable module-level singletons, not real dependencies.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fileId, isSourcePDF, fallbackMarkdown])
+  }, [fileId])
+
+  function setLayout(mode: LayoutMode) {
+    setLayoutMode(mode)
+    applyPDFLayout(pdfViewerRef.current, pdfModesRef.current, mode)
+  }
 
   function zoomBy(factor: number) {
     const viewer = pdfViewerRef.current
@@ -142,18 +138,6 @@ export function PDFViewerPanel({ fileId, filename, fallbackMarkdown }: Props) {
     const viewer = pdfViewerRef.current
     if (!viewer) return
     viewer.currentPageNumber = Math.max(1, Math.min(viewer.currentPageNumber + delta, pageCount))
-  }
-
-  if (showFallback) {
-    return (
-      <div className="pdf-viewer-panel pdf-viewer-panel--fallback">
-        <style>{PDF_VIEWER_PANEL_CSS}</style>
-        <div className="pdf-viewer-fallback-notice">Visual preview unavailable - showing extracted text.</div>
-        <div className="pdf-viewer-fallback-body">
-          <MarkdownView>{fallbackMarkdown ?? ''}</MarkdownView>
-        </div>
-      </div>
-    )
   }
 
   return (
@@ -168,6 +152,26 @@ export function PDFViewerPanel({ fileId, filename, fallbackMarkdown }: Props) {
           <Right size={12} />
         </button>
         <span className="pdf-viewer-toolbar-spacer" />
+        <div className="pdf-viewer-layout-toggle" aria-label="PDF layout">
+          <button
+            type="button"
+            className={layoutMode === 'pages' ? 'is-active' : ''}
+            onClick={() => setLayout('pages')}
+            disabled={status !== 'ready'}
+            title="Fit pages and use multiple columns when space allows"
+          >
+            Pages
+          </button>
+          <button
+            type="button"
+            className={layoutMode === 'width' ? 'is-active' : ''}
+            onClick={() => setLayout('width')}
+            disabled={status !== 'ready'}
+            title="Fit one page to the panel width"
+          >
+            Width
+          </button>
+        </div>
         <button type="button" onClick={() => zoomBy(1 / 1.15)} disabled={status !== 'ready'} title="Zoom out">
           <Reduce size={12} />
         </button>
@@ -183,11 +187,7 @@ export function PDFViewerPanel({ fileId, filename, fallbackMarkdown }: Props) {
         {status === 'loading' && (
           <div className="pdf-viewer-status">
             <LoadingOne size={20} className="pdf-viewer-status-spin" />
-            <span>
-              {slowConversion
-                ? `Converting ${filename}… first-time previews can take a few seconds`
-                : `Loading ${filename}…`}
-            </span>
+            <span>Loading {filename}...</span>
           </div>
         )}
         {status === 'error' && <div className="pdf-viewer-status pdf-viewer-status--error">Couldn't load this PDF: {errorMessage}</div>}
@@ -232,6 +232,12 @@ const PDF_VIEWER_PANEL_CSS = `
   color: var(--color-text);
 }
 
+.pdf-viewer-toolbar button.is-active {
+  background: rgba(255, 122, 24, 0.16);
+  border-color: rgba(255, 122, 24, 0.45);
+  color: var(--color-accent);
+}
+
 .pdf-viewer-toolbar button:disabled {
   opacity: 0.4;
   cursor: default;
@@ -249,6 +255,27 @@ const PDF_VIEWER_PANEL_CSS = `
   flex: 1;
 }
 
+.pdf-viewer-layout-toggle {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 7px;
+  background: var(--color-surface);
+}
+
+.pdf-viewer-layout-toggle button {
+  width: auto;
+  min-width: 48px;
+  height: 20px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  font-size: 11px;
+}
+
 .pdf-viewer-stage {
   position: relative;
   flex: 1;
@@ -263,9 +290,17 @@ const PDF_VIEWER_PANEL_CSS = `
 }
 
 .pdf-viewer-container .pdfViewer .page {
-  margin: 12px auto;
+  margin: 10px;
   border: none;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+}
+
+.pdf-viewer-container .pdfViewer:not(.scrollWrapped) .page {
+  margin: 12px auto;
+}
+
+.pdf-viewer-container .pdfViewer.scrollWrapped {
+  padding: 14px;
 }
 
 .pdf-viewer-status {
@@ -294,25 +329,5 @@ const PDF_VIEWER_PANEL_CSS = `
 
 .pdf-viewer-status--error {
   color: var(--color-error);
-}
-
-.pdf-viewer-panel--fallback {
-  overflow: hidden;
-}
-
-.pdf-viewer-fallback-notice {
-  flex-shrink: 0;
-  padding: 7px 13px;
-  font-size: 11px;
-  color: var(--color-text-muted);
-  border-bottom: 1px solid var(--color-border-subtle);
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.pdf-viewer-fallback-body {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 14px 16px;
 }
 `

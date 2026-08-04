@@ -4,6 +4,7 @@ import { readFile, writeFile } from 'fs/promises'
 import { extname } from 'path'
 import { assertTrustedSender } from './trusted-sender'
 import { isExternalOpenAllowed } from '../url-safety'
+import { assertLocalFilePath, sanitizeSaveFileInput } from './validation'
 
 const IMAGE_MIME_BY_EXT: Record<string, string> = {
   '.apng': 'image/apng',
@@ -24,19 +25,20 @@ export function registerSystemHandlers(ipcMain: IpcMain) {
 
   ipcMain.handle('system:open-path', (event, filePath: string) => {
     assertTrustedSender(event)
-    return shell.openPath(filePath)
+    return shell.openPath(assertLocalFilePath(filePath))
   })
 
   ipcMain.handle('system:show-file', (event, filePath: string) => {
     assertTrustedSender(event)
-    shell.showItemInFolder(filePath)
+    shell.showItemInFolder(assertLocalFilePath(filePath))
   })
 
   ipcMain.handle('system:read-file-data-url', async (event, filePath: string) => {
     assertTrustedSender(event)
-    const mimeType = IMAGE_MIME_BY_EXT[extname(filePath).toLowerCase()]
+    const safePath = assertLocalFilePath(filePath)
+    const mimeType = IMAGE_MIME_BY_EXT[extname(safePath).toLowerCase()]
     if (!mimeType) throw new Error('Unsupported preview file type')
-    const buffer = await readFile(filePath)
+    const buffer = await readFile(safePath)
     return `data:${mimeType};base64,${buffer.toString('base64')}`
   })
 
@@ -60,14 +62,15 @@ export function registerSystemHandlers(ipcMain: IpcMain) {
 
   ipcMain.handle('system:save-file', async (event, defaultName: string, content: string) => {
     assertTrustedSender(event)
+    const safe = sanitizeSaveFileInput(defaultName, content)
     const win = BrowserWindow.fromWebContents(event.sender) ?? undefined
     const result = win
-      ? await dialog.showSaveDialog(win, { defaultPath: defaultName })
-      : await dialog.showSaveDialog({ defaultPath: defaultName })
+      ? await dialog.showSaveDialog(win, { defaultPath: safe.defaultName })
+      : await dialog.showSaveDialog({ defaultPath: safe.defaultName })
     if (result.canceled || !result.filePath) {
       return { canceled: true as const }
     }
-    await writeFile(result.filePath, content, 'utf-8')
+    await writeFile(assertLocalFilePath(result.filePath), safe.content, 'utf-8')
     return { canceled: false as const, filePath: result.filePath }
   })
 

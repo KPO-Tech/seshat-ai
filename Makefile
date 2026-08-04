@@ -6,7 +6,7 @@
 #   make test           -> run all Go tests in the workspace
 #   make install-python -> install / update docling-serve
 #   make start-docling  -> start docling-serve manually
-#   make deploy-up      -> build + start seshat-server/seshat-console/Postgres/SearXNG
+#   make deploy-up      -> build + start the default deploy stack
 #   make deploy-down    -> stop that stack
 #
 # Windows: works from PowerShell, cmd, or Git Bash. Two separate things need
@@ -54,12 +54,16 @@ SERVER_BIN_DIR    := $(SERVER_DIR)/bin
 SERVER_BIN        := seshat-server
 SERVER_BIN_PATH   := $(SERVER_BIN_DIR)/$(SERVER_BIN)
 UI_DIR            := $(ROOT)/seshat-ui
+CONSOLE_DIR       := $(ROOT)/seshat-console
+WEBSITE_DIR       := $(ROOT)/website
 DAEMON_BIN        := seshat-automation
 DAEMON_BIN_DIR    := $(ROOT)/bin
 DAEMON_BIN_PATH   := $(DAEMON_BIN_DIR)/$(DAEMON_BIN)
 DAEMON_PKG        := github.com/KPO-Tech/seshat/cmd/automation-server
 SESHAT_VERSION    := v1.0.2
 DEPLOY_DIR        := $(ROOT)/deploy
+GO_BUILD_CACHE    := $(ROOT)/.cache/go-build
+GOLANGCI_CACHE    := $(ROOT)/.cache/golangci-lint
 
 # UI package manager: prefer bun (faster, what CI/most contributors use), but
 # fall back to npm when bun isn't installed - e.g. a fresh Windows machine.
@@ -70,16 +74,21 @@ DEPLOY_DIR        := $(ROOT)/deploy
 UI_PKG_MGR := $(shell $(SHELL) -c 'command -v bun >/dev/null 2>&1 && echo bun || echo npm')
 
 .PHONY: help \
-        setup \
+        setup setup-all setup-desktop setup-web setup-legacy \
         dev stop dev-full \
         build run build-server run-server \
         build-automation run-automation \
         test test-v test-race test-short test-pkg \
         fmt vet lint tidy hooks \
+        install-all build-all \
         ui-install ui-build ui-dev \
+        desktop-install desktop-build desktop-dev \
+        console-install console-build console-dev \
+        website-install website-build website-dev \
         install-python start-docling \
         logs logs-last logs-docling \
-        deploy-up deploy-down deploy-logs deploy-ps \
+        deploy-env deploy-up deploy-up-core deploy-up-docs deploy-up-search deploy-up-s3 deploy-up-full deploy-smoke-core \
+        deploy-build deploy-pull deploy-down deploy-logs deploy-ps \
         clean clean-all
 
 .DEFAULT_GOAL := help
@@ -164,19 +173,49 @@ build-automation: ## Compile the automation daemon binary -> bin/seshat-automati
 run-automation: ## Run the automation daemon only (reads env / .env)
 	@go run $(DAEMON_PKG)@$(SESHAT_VERSION)
 
-# Deploy stack (seshat-server + seshat-console + Postgres + SearXNG + Mailpit)
+# Deploy stack (default: Postgres + seshat-server + seshat-console + Mailpit + SearXNG)
 # See deploy/README.md. First run: cp deploy/.env.example deploy/.env and
 # fill in POSTGRES_PASSWORD + SESHAT_SERVER_ENCRYPTION_KEY.
 
-deploy-up: ## Build and start the deploy stack (Postgres + seshat-server + seshat-console + SearXNG + Mailpit)
+deploy-env:
 	@if [ ! -f $(DEPLOY_DIR)/.env ]; then \
 	  printf "\033[33m[deploy]\033[0m no deploy/.env - copying deploy/.env.example, edit it then re-run.\n"; \
 	  cp $(DEPLOY_DIR)/.env.example $(DEPLOY_DIR)/.env; \
 	  exit 1; \
 	fi
-	@cd $(DEPLOY_DIR) && docker compose up --build -d
-	@printf "\033[32m[deploy]\033[0m console: http://localhost:%s  api: http://localhost:%s  searxng: http://localhost:%s  minio: http://localhost:%s  mailpit: http://localhost:%s\n" \
-	  "$${SESHAT_CONSOLE_PORT:-3000}" "$${SESHAT_SERVER_PORT:-8081}" "$${SEARXNG_PORT:-8080}" "$${MINIO_CONSOLE_PORT:-9001}" "$${MAILPIT_WEB_PORT:-8025}"
+
+deploy-up: deploy-env ## Build and start the default deploy stack
+	@cd $(DEPLOY_DIR) && DEPLOY_DOCLING_URL= docker compose --profile search up --build -d
+	@printf "\033[32m[deploy]\033[0m ready: console http://localhost:%s  api http://localhost:%s  searxng http://localhost:%s  mailpit http://localhost:%s\n" \
+	  "$${SESHAT_CONSOLE_PORT:-3000}" "$${SESHAT_SERVER_PORT:-8081}" "$${SEARXNG_PORT:-8080}" "$${MAILPIT_WEB_PORT:-8025}"
+
+deploy-up-docs: deploy-env ## Build and start default stack + Docling document conversion
+	@cd $(DEPLOY_DIR) && DEPLOY_DOCLING_URL=http://docling:5001 docker compose --profile search --profile docs up --build -d
+	@printf "\033[32m[deploy]\033[0m docs stack ready: console http://localhost:%s  api http://localhost:%s  searxng http://localhost:%s  docling http://localhost:%s\n" \
+	  "$${SESHAT_CONSOLE_PORT:-3000}" "$${SESHAT_SERVER_PORT:-8081}" "$${SEARXNG_PORT:-8080}" "$${DOCLING_PORT:-5001}"
+
+deploy-up-search: deploy-up ## Alias for deploy-up
+
+deploy-up-core: deploy-env ## Build and start only Postgres + server + console + Mailpit
+	@cd $(DEPLOY_DIR) && DEPLOY_DOCLING_URL= docker compose up --build -d
+	@printf "\033[32m[deploy]\033[0m core ready: console http://localhost:%s  api http://localhost:%s  mailpit http://localhost:%s\n" \
+	  "$${SESHAT_CONSOLE_PORT:-3000}" "$${SESHAT_SERVER_PORT:-8081}" "$${MAILPIT_WEB_PORT:-8025}"
+
+deploy-up-s3: deploy-env ## Build and start default stack + MinIO S3 storage testing
+	@cd $(DEPLOY_DIR) && DEPLOY_DOCLING_URL= docker compose --profile search --profile s3 up --build -d
+	@printf "\033[32m[deploy]\033[0m s3 stack ready: console http://localhost:%s  api http://localhost:%s  searxng http://localhost:%s  minio http://localhost:%s\n" \
+	  "$${SESHAT_CONSOLE_PORT:-3000}" "$${SESHAT_SERVER_PORT:-8081}" "$${SEARXNG_PORT:-8080}" "$${MINIO_CONSOLE_PORT:-9001}"
+
+deploy-up-full: deploy-env ## Build and start every deploy service
+	@cd $(DEPLOY_DIR) && DEPLOY_DOCLING_URL=http://docling:5001 docker compose --profile full up --build -d
+	@printf "\033[32m[deploy]\033[0m full stack ready: console http://localhost:%s  api http://localhost:%s  docling http://localhost:%s  searxng http://localhost:%s  minio http://localhost:%s  mailpit http://localhost:%s\n" \
+	  "$${SESHAT_CONSOLE_PORT:-3000}" "$${SESHAT_SERVER_PORT:-8081}" "$${DOCLING_PORT:-5001}" "$${SEARXNG_PORT:-8080}" "$${MINIO_CONSOLE_PORT:-9001}" "$${MAILPIT_WEB_PORT:-8025}"
+
+deploy-build: deploy-env ## Build deploy images without starting containers
+	@cd $(DEPLOY_DIR) && docker compose --profile full build
+
+deploy-pull: deploy-env ## Pull deploy images, including optional profile services
+	@cd $(DEPLOY_DIR) && docker compose --profile full pull
 
 deploy-down: ## Stop the deploy stack (add ARGS=-v to also wipe the Postgres volume)
 	@cd $(DEPLOY_DIR) && docker compose down $(ARGS)
@@ -186,6 +225,9 @@ deploy-logs: ## Tail logs from every deploy stack container
 
 deploy-ps: ## Show deploy stack container status
 	@cd $(DEPLOY_DIR) && docker compose ps
+
+deploy-smoke-core: ## Start core compose stack, check API/console, then clean up
+	@bash scripts/smoke-compose-core.sh
 
 # Tests
 
@@ -210,12 +252,22 @@ fmt: ## Format all Go source files with gofmt
 	gofmt -w $(shell $(SHELL) -c 'find . -name "*.go" -not -path "./vendor/*"')
 
 vet: ## Run go vet across all Go modules in the workspace
-	go vet $(GO_PACKAGES)
+	@mkdir -p $(GO_BUILD_CACHE)
+	GOCACHE=$(GO_BUILD_CACHE) go vet $(GO_PACKAGES)
 
-lint: vet ## vet + staticcheck (install: go install honnef.co/go/tools/cmd/staticcheck@latest)
-	@command -v staticcheck >/dev/null 2>&1 \
-	  && staticcheck 1000 4 24 27 30 46 100 114 983 984 1000LINT_PACKAGES) \
-	  || printf "\033[33m[warn]\033[0m staticcheck not found - install with:\n       go install honnef.co/go/tools/cmd/staticcheck@latest\n"
+lint: vet ## vet + gofmt check + golangci-lint
+	@UNFORMATTED=$$(find . -name "*.go" -not -path "./vendor/*" | xargs gofmt -l); \
+	if [ -n "$$UNFORMATTED" ]; then \
+	  printf "\033[31m[lint]\033[0m Go files need formatting (run: make fmt):\n%s\n" "$$UNFORMATTED"; \
+	  exit 1; \
+	fi
+	@mkdir -p $(GO_BUILD_CACHE) $(GOLANGCI_CACHE)
+	@if command -v golangci-lint >/dev/null 2>&1; then \
+	  cd $(BACKEND_DIR) && GOCACHE=$(GO_BUILD_CACHE) GOLANGCI_LINT_CACHE=$(GOLANGCI_CACHE) golangci-lint run --timeout=5m ./...; \
+	  cd $(SERVER_DIR) && GOCACHE=$(GO_BUILD_CACHE) GOLANGCI_LINT_CACHE=$(GOLANGCI_CACHE) golangci-lint run --timeout=5m ./...; \
+	else \
+	  printf "\033[33m[warn]\033[0m golangci-lint not found - install with:\n       go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest\n"; \
+	fi
 
 tidy: ## go mod tidy + verify for backend and server modules
 	@cd $(BACKEND_DIR) && go mod tidy && go mod verify
@@ -226,25 +278,71 @@ hooks: ## Install git hooks from .githooks/
 	chmod +x .githooks/pre-commit
 	@printf "\033[32m[hooks]\033[0m pre-commit hook installed.\n"
 
-# UI
+# Frontend surfaces
 
-ui-install: ## Install UI dependencies via bun (falls back to npm if bun isn't installed)
+ui-install: desktop-install ## Alias for desktop-install
+
+ui-build: desktop-build ## Alias for desktop-build
+
+ui-dev: desktop-dev ## Alias for desktop-dev
+
+desktop-install: ## Install desktop Electron dependencies
 	@if [ ! -d "$(UI_DIR)/node_modules" ]; then \
-	  printf "\033[32m[ui]\033[0m installing dependencies with %s...\n" $(UI_PKG_MGR); \
+	  printf "\033[32m[desktop]\033[0m installing dependencies with %s...\n" $(UI_PKG_MGR); \
 	  cd $(UI_DIR) && $(UI_PKG_MGR) install; \
 	else \
-	  printf "\033[32m[ui]\033[0m node_modules present - skipping install\n"; \
+	  printf "\033[32m[desktop]\033[0m node_modules present - skipping install\n"; \
 	fi
 
-ui-build: ui-install ## Build UI for production (Electron package)
+desktop-build: desktop-install build ## Build desktop Electron app and local backend
 	cd $(UI_DIR) && $(UI_PKG_MGR) run build
 
-ui-dev: ui-install ## Start Vite dev server only (web preview, no Electron)
+desktop-dev: desktop-install ## Start desktop Vite dev server only (no Electron sidecar)
 	cd $(UI_DIR) && $(UI_PKG_MGR) run dev
+
+console-install: ## Install admin console dependencies
+	@if [ ! -d "$(CONSOLE_DIR)/node_modules" ]; then \
+	  printf "\033[32m[console]\033[0m installing dependencies with npm...\n"; \
+	  cd $(CONSOLE_DIR) && npm ci; \
+	else \
+	  printf "\033[32m[console]\033[0m node_modules present - skipping install\n"; \
+	fi
+
+console-build: console-install ## Build admin console
+	cd $(CONSOLE_DIR) && npm run build
+
+console-dev: console-install ## Start admin console dev server
+	cd $(CONSOLE_DIR) && npm run dev
+
+website-install: ## Install website dependencies
+	@if [ ! -d "$(WEBSITE_DIR)/node_modules" ]; then \
+	  printf "\033[32m[website]\033[0m installing dependencies with npm...\n"; \
+	  cd $(WEBSITE_DIR) && npm ci; \
+	else \
+	  printf "\033[32m[website]\033[0m node_modules present - skipping install\n"; \
+	fi
+
+website-build: website-install ## Build marketing/docs website
+	cd $(WEBSITE_DIR) && npm run build
+
+website-dev: website-install ## Start website dev server
+	cd $(WEBSITE_DIR) && npm run dev
+
+install-all: desktop-install console-install website-install ## Install dependencies for every frontend surface
+
+build-all: build build-server desktop-build console-build website-build ## Build backend, server, desktop, console, and website
 
 # Setup
 
-setup: ## First-time setup: Node deps + docling-serve + backend build
+setup: setup-all ## First-time setup for every local surface
+
+setup-desktop: setup-legacy ## Setup local desktop app surface (system deps + docling + desktop build)
+
+setup-web: console-build website-build ## Setup web surfaces (admin console + website)
+
+setup-all: setup-desktop setup-web ## Setup every local surface
+
+setup-legacy: ## Legacy setup script path (system deps + desktop-only build)
 	@bash scripts/setup.sh
 
 # Python / docling (optional feature)

@@ -28,7 +28,11 @@ const RUN_STATUS_LABEL: Record<string, string> = {
   cancelled: 'Cancelled',
 }
 
-export function CloudAutomationView() {
+type CloudAutomationViewProps = {
+  embedded?: boolean
+}
+
+export function CloudAutomationView({ embedded = false }: CloudAutomationViewProps) {
   const [status, setStatus] = useState<AutomationStatus | null>(null)
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null)
   const [runs, setRuns] = useState<AutomationRun[]>([])
@@ -103,7 +107,7 @@ export function CloudAutomationView() {
 
   return (
     <div className="sv-view">
-      <header className="sv-view-header">
+      {!embedded && <header className="sv-view-header">
         <div className="sv-header-info">
           <h1>Cloud Automation</h1>
           <p>
@@ -111,7 +115,7 @@ export function CloudAutomationView() {
             assigned — creating, editing and triggering jobs happens in Seshat Console.
           </p>
         </div>
-      </header>
+      </header>}
 
       {error && (
         <div className="sv-toggle-row" style={{ borderColor: 'var(--color-error)', marginBottom: 20 }}>

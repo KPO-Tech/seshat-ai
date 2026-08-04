@@ -1,36 +1,100 @@
 # Deploying seshat-server + seshat-console
 
-`docker-compose.yml` here brings up the whole cloud control-plane stack: Postgres, `seshat-server` (the API), `seshat-console` (the admin web frontend, served by nginx, which reverse-proxies `/api/*` to `seshat-server` — see `../seshat-console/nginx.conf`), a local `searxng` instance for self-hosted web-search testing, and a bundled MinIO for testing S3-backed corpus file storage. This is the only stack meant to run centrally; `seshat-backend`/`seshat-ui` are local/desktop and never deployed this way.
+`docker-compose.yml` runs the cloud control-plane stack. The default stack
+keeps the useful local services, while skipping the two heaviest optional
+pieces:
 
-## Run it
+- Postgres
+- `seshat-server`
+- `seshat-console`
+- Mailpit
+- SearXNG
+
+Heavy or optional services are behind Docker Compose profiles:
+
+- `docs`: Docling document conversion
+- `search`: SearXNG web search, included by `make deploy-up`
+- `s3`: MinIO S3-compatible storage testing
+- `full`: all optional services
+
+This is the only stack meant to run centrally. `seshat-backend` and
+`seshat-ui` are local/desktop and are never deployed this way.
+
+## Run It
+
+From the repo root:
 
 ```bash
-cd deploy
-cp .env.example .env
-# edit .env — at minimum set POSTGRES_PASSWORD;
-# generate SESHAT_SERVER_ENCRYPTION_KEY with: openssl rand -base64 32
-docker compose up --build
+make deploy-up         # default stack: no Docling, no MinIO
+make deploy-up-core    # smallest core: no Docling, no MinIO, no SearXNG
+make deploy-up-docs    # default + Docling
+make deploy-up-search  # alias for deploy-up
+make deploy-up-s3      # default + MinIO
+make deploy-up-full    # everything
 ```
 
-- Console: http://localhost:3000 (first load redirects to `/bootstrap` — creates the first platform admin + organization)
-- API directly: http://localhost:8081 (health check: `curl http://localhost:8081/health`)
-- SearXNG: http://localhost:8080
-- MinIO console: http://localhost:9001 (S3 API: http://localhost:9000) — login with `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD`
+On first run, the Make target copies `deploy/.env.example` to `deploy/.env`
+and asks you to edit it. At minimum set `POSTGRES_PASSWORD`. Generate
+`SESHAT_SERVER_ENCRYPTION_KEY` with:
 
-## What's in each image
+```bash
+openssl rand -base64 32
+```
 
-- `seshat-server/Dockerfile` — multi-stage Go build. Build context is the **repo root**, not `seshat-server/` (see `../.dockerignore`); `seshat-server/go.mod` depends directly on the published `github.com/KPO-Tech/seshat` module, fetched via `go mod download`. `GOWORK=off` keeps the build scoped to exactly `seshat-server/`, never `seshat-backend/`.
-- `seshat-console/Dockerfile` — Node build stage (`npm ci && npm run build`), then the static `dist/` served by `nginx:1.27-alpine`. Self-contained build context (just `seshat-console/`).
-- `docling` — the official `quay.io/docling-project/docling-serve-cpu` image. Converts PDF/DOCX/PPTX/XLSX/audio/images to markdown before a knowledge-base corpus file is chunked+embedded. Optional: `seshat-server` degrades gracefully without it (plain-text/markdown/JSON files still ingest fine; binary formats just get rejected as having no extractable text). It's a heavy image — several GB, bundles PyTorch and layout/OCR models — comment the service and `SESHAT_SERVER_DOCLING_URL` out in `.env` if you want a lighter/faster stack and don't need binary-document ingestion.
-- `searxng` + `searxng-redis` — a self-hosted SearXNG instance and its Valkey cache, exposed on port `8080` by default so the platform can test the `searxng` web-search provider locally. The mounted config lives in `deploy/searxng/settings.yml`.
-- `minio` + `minio-createbucket` — a self-hosted S3-compatible object store for testing corpus file storage over S3 instead of local disk. `minio-createbucket` is a one-shot init container that creates the bucket (`SESHAT_SERVER_S3_BUCKET`, default `seshat-corpora`) and exits; it doesn't stay running. `seshat-server` still defaults to local-disk storage (`SESHAT_SERVER_STORAGE_PROVIDER` is empty by default) — this MinIO is there to opt into, not a new default, so an existing deployment's files on local disk are never affected. See the commented block in `.env.example` for how to switch. Optional: comment `minio` and `minio-createbucket` out of `docker-compose.yml` (and drop `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD` from `.env`) if you don't need S3 storage testing.
+Direct Docker Compose usage from this directory still works:
+
+```bash
+cp .env.example .env
+docker compose up --build
+docker compose --profile search up --build
+DEPLOY_DOCLING_URL=http://docling:5001 docker compose --profile search --profile docs up --build
+DEPLOY_DOCLING_URL=http://docling:5001 docker compose --profile full up --build
+```
+
+## URLs
+
+- Console: http://localhost:3000
+- API directly: http://localhost:8081
+- Health: http://localhost:8081/health
+- Mailpit: http://localhost:8025
+- SearXNG: http://localhost:8080 with `make deploy-up`
+- Docling: http://localhost:5001 with `make deploy-up-docs` or `make deploy-up-full`
+- MinIO console: http://localhost:9001 with `make deploy-up-s3` or `make deploy-up-full`
+- MinIO S3 API: http://localhost:9000 with `make deploy-up-s3` or `make deploy-up-full`
+
+## What's In Each Image
+
+- `seshat-server/Dockerfile`: multi-stage Go build. Build context is the repo
+  root, not `seshat-server/` (see `../.dockerignore`). `GOWORK=off` keeps the
+  image build scoped to `seshat-server/`.
+- `seshat-console/Dockerfile`: Node build stage (`npm ci && npm run build`),
+  then static files served by `nginx:1.27-alpine`. The nginx config also
+  reverse-proxies `/api/*` to the `seshat-server` container.
+- `docling` (`docs`/`full` profile): official
+  `quay.io/docling-project/docling-serve-cpu` image. It converts binary
+  documents and media to markdown for knowledge ingestion. It is heavy
+  (PyTorch + layout/OCR models), so it no longer blocks default
+  `make deploy-up`.
+- `searxng` + `searxng-redis` (`search`/`full` profile): self-hosted search
+  and Valkey cache for testing the SearXNG web-search provider locally.
+- `minio` + `minio-createbucket` (`s3`/`full` profile): S3-compatible storage
+  for corpus-file testing. `seshat-server` still defaults to local disk until
+  `SESHAT_SERVER_STORAGE_PROVIDER=s3` is set.
+- `mailpit`: fake SMTP server and web UI for local email flows.
 
 ## Database
 
-Defaults to Postgres here (the real multi-instance-capable option — `seshat-server` also supports SQLite for a simpler single-instance/self-host setup, see `SESHAT_SERVER_DB_DRIVER` in `internal/server/config/config.go`, but Postgres is what an actual deployment should run).
+The deploy stack defaults to Postgres, which is the multi-instance-capable
+option. `seshat-server` also supports SQLite for simpler single-instance
+self-hosting, but Postgres is the recommended deployment path.
 
-## Not yet in this compose file
+## Production Notes
 
-- TLS termination — put a real reverse proxy / load balancer in front of this for anything beyond local testing; nginx here only proxies API calls internally, it doesn't terminate HTTPS.
-- The scheduler (`internal/server/automation/scheduler.go`) is single-instance only today — don't scale `seshat-server` to more than 1 replica yet, see the code comment there.
-- `/health` and `/metrics` on `seshat-server` are intentionally unauthenticated (standard Prometheus scrape convention — a scraper shouldn't need a credential to reach them). That's only safe as long as port 8081 stays on a private network. If this stack is ever exposed beyond localhost, put a reverse proxy in front that blocks external access to `/metrics` specifically (or restricts it to your monitoring network), same as the SearXNG note above about putting auth in front of anything made public.
+- Add real TLS termination with a reverse proxy or load balancer for anything
+  beyond local testing.
+- The scheduler is single-instance today; do not scale `seshat-server` above
+  one replica until it has a distributed lock.
+- `/health` and `/metrics` are unauthenticated. Keep port `8081` private or
+  restrict those paths at the reverse proxy.
+- If SearXNG is exposed beyond localhost, put HTTP auth or another access
+  control in front of it.

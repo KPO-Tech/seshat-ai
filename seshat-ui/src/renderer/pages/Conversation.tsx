@@ -39,13 +39,17 @@ function isPDFFile(file: File): boolean {
   return file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
 }
 
-// DOCX/PPTX/XLSX may carry a real embedded thumbnail (docProps/thumbnail.*,
-// see lib/officeThumbnail.ts) - extracted straight from the raw File object
+// DOCX/XLSX may carry a real embedded thumbnail (docProps/thumbnail.*, see
+// lib/officeThumbnail.ts) - extracted straight from the raw File object
 // client-side, same as PDF page previews below, so the attach card doesn't
 // have to wait on the upload/server round trip to show something better
-// than the tiny raw-text fallback.
+// than the tiny raw-text fallback. PPTX is deliberately excluded: a real
+// slide deck's embedded media makes JSZip's synchronous decompression slow
+// enough to freeze the UI for the better part of a minute, for a thumbnail
+// that's usually missing anyway on agent-generated files - the icon
+// fallback in ChatInput/MessageItem is instant and always available.
 function isOfficeZipFile(file: File): boolean {
-  return /\.(docx|pptx|xlsx)$/i.test(file.name)
+  return /\.(docx|xlsx)$/i.test(file.name)
 }
 
 function sentAttachment(file: ChatAttachment) {

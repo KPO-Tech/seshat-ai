@@ -201,8 +201,7 @@ func (s *Service) StreamPrompt(ctx context.Context, principal *backendauth.Princ
 
 // ListSessions returns sessions visible to the principal.
 //   - ownership nil: returns all runtime sessions (unscoped / headless mode)
-//   - admin principal: returns all owned sessions across all users
-//   - regular principal: returns only sessions owned by the principal
+//   - ownership configured: returns only sessions owned by the principal
 func (s *Service) ListSessions(ctx context.Context, principal *backendauth.Principal) ([]SessionInfo, error) {
 	if s == nil {
 		return nil, bkerr.Unavailable("query service not configured", nil)
@@ -217,13 +216,7 @@ func (s *Service) ListSessions(ctx context.Context, principal *backendauth.Princ
 		return nil, bkerr.Unauthorized("authentication required", nil)
 	}
 
-	var owned []db.SessionOwnership
-	var err error
-	if principal.HasRole("admin") {
-		owned, err = s.ownership.ListAll(ctx)
-	} else {
-		owned, err = s.ownership.ListByUserID(ctx, principal.User.ID)
-	}
+	owned, err := s.ownership.ListByUserID(ctx, principal.User.ID)
 	if err != nil {
 		return nil, bkerr.Internal("list sessions: "+err.Error(), err)
 	}
@@ -283,32 +276,7 @@ func (s *Service) SearchSessionsByTitle(ctx context.Context, principal *backenda
 	if principal == nil {
 		return nil, bkerr.Unauthorized("authentication required", nil)
 	}
-	userID := principal.User.ID
-	if principal.HasRole("admin") {
-		userID = "" // admin searches across all users — fall back to full list
-	}
-	var (
-		owned []db.SessionOwnership
-		err   error
-	)
-	if userID != "" {
-		owned, err = s.ownership.SearchByTitle(ctx, userID, needle, limit)
-	} else {
-		// Admin: list all, filter in memory (rare code path, acceptable).
-		all, listErr := s.ownership.ListAll(ctx)
-		if listErr != nil {
-			return nil, bkerr.Internal("search sessions (admin): "+listErr.Error(), listErr)
-		}
-		lowerNeedle := strings.ToLower(needle)
-		for _, o := range all {
-			if strings.Contains(strings.ToLower(o.Title), lowerNeedle) {
-				owned = append(owned, o)
-				if limit > 0 && len(owned) >= limit {
-					break
-				}
-			}
-		}
-	}
+	owned, err := s.ownership.SearchByTitle(ctx, principal.User.ID, needle, limit)
 	if err != nil {
 		return nil, bkerr.Internal("search sessions by title: "+err.Error(), err)
 	}
@@ -360,7 +328,10 @@ func (s *Service) SearchSessionsByContent(ctx context.Context, principal *backen
 		if len(results) >= limit {
 			break
 		}
-		if s.ownership != nil && principal != nil && !principal.HasRole("admin") {
+		if s.ownership != nil {
+			if principal == nil {
+				continue
+			}
 			owned, oErr := s.ownership.GetBySessionID(ctx, rs.ID.String())
 			if oErr != nil || owned == nil || owned.UserID != principal.User.ID {
 				continue
@@ -416,7 +387,7 @@ func (s *Service) sessionInfosFromIDs(ctx context.Context, principal *backendaut
 			if err != nil || owned == nil {
 				continue
 			}
-			if !principal.HasRole("admin") && owned.UserID != principal.User.ID {
+			if owned.UserID != principal.User.ID {
 				continue
 			}
 			info.UserID = owned.UserID
@@ -604,7 +575,7 @@ func (s *Service) DeleteSession(ctx context.Context, principal *backendauth.Prin
 		if err != nil {
 			return bkerr.NotFound("session not found", err)
 		}
-		if !principal.HasRole("admin") && ownership.UserID != principal.User.ID {
+		if ownership.UserID != principal.User.ID {
 			return bkerr.Forbidden("session belongs to another user", nil)
 		}
 		workspacePath = ownership.WorkspacePath
@@ -882,8 +853,8 @@ func (s *Service) checkSessionAccess(ctx context.Context, principal *backendauth
 	if err != nil {
 		return bkerr.NotFound("session not found", err)
 	}
-	// nil principal (headless/system call) bypasses ownership check
-	if principal != nil && !principal.HasRole("admin") && ownership.UserID != principal.User.ID {
+	// nil principal (headless/system call) bypasses ownership check.
+	if principal != nil && ownership.UserID != principal.User.ID {
 		return bkerr.Forbidden("session belongs to another user", nil)
 	}
 	return nil

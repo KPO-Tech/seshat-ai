@@ -48,7 +48,8 @@ main          production-ready, tagged releases only
 
 ### Requirements
 
-- Go 1.25+
+- Go 1.26+
+- Node.js 22+ (for desktop, console, and website builds)
 - `golangci-lint` for linting
 - SQLite3 (for local dev; PostgreSQL is optional)
 

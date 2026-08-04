@@ -17,9 +17,8 @@ export function Shell() {
   const { pathname } = useLocation()
   
   const isConversation = pathname.startsWith('/conversation/')
-  // Sidebar is visible on Home and all conversation pages, but not on
-  // full-screen pages like Settings, Login, Register, or workspace views.
-  const showSidebar = pathname === '/' || isConversation
+  const sidebarRoutes = ['/', '/workspace', '/apps', '/projects', '/scheduling', '/history']
+  const showSidebar = isConversation || sidebarRoutes.includes(pathname)
 
   // Keeps the right-panel column cap responsive to the actual window width
   // (see useUIStore's setWindowWidth) — rAF-throttled since 'resize' can

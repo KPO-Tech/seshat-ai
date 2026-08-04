@@ -30,13 +30,17 @@ function isPDFFile(file: File): boolean {
   return file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
 }
 
-// DOCX/PPTX/XLSX may carry a real embedded thumbnail (docProps/thumbnail.*,
-// see lib/officeThumbnail.ts) - extracted straight from the raw File object
+// DOCX/XLSX may carry a real embedded thumbnail (docProps/thumbnail.*, see
+// lib/officeThumbnail.ts) - extracted straight from the raw File object
 // client-side, same as PDF page previews below, so the attach card doesn't
 // have to wait on the upload/server round trip to show something better
-// than the tiny raw-text fallback.
+// than the tiny raw-text fallback. PPTX is deliberately excluded: a real
+// slide deck's embedded media makes JSZip's synchronous decompression slow
+// enough to freeze the UI for the better part of a minute, for a thumbnail
+// that's usually missing anyway on agent-generated files - the icon
+// fallback in ChatInput/MessageItem is instant and always available.
 function isOfficeZipFile(file: File): boolean {
-  return /\.(docx|pptx|xlsx)$/i.test(file.name)
+  return /\.(docx|xlsx)$/i.test(file.name)
 }
 
 function sentAttachment(file: ChatAttachment) {
@@ -471,7 +475,7 @@ ${CHAT_INPUT_CSS}
 }
 
 .home-top-bar {
-  padding: 12px 18px;
+  padding: var(--space-6) 18px;
 }
 
 .home-center {
@@ -488,52 +492,52 @@ ${CHAT_INPUT_CSS}
 
 .home-greeting {
   font-family: serif;
-  font-size: 22px;
+  font-size: var(--font-size-2xl);
   font-weight: 500;
   color: var(--color-text);
-  margin-bottom: 16px;
+  margin-bottom: var(--space-7);
   letter-spacing: -0.01em;
 }
 
 .home-input-container {
   width: 100%;
   max-width: 760px;
-  margin-bottom: 20px;
+  margin-bottom: var(--space-8);
 }
 
 .home-input-hint {
   text-align: center;
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
-  margin-top: 8px;
+  margin-top: var(--space-4);
 }
 
 .home-input-status {
   text-align: center;
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
-  margin-top: 8px;
+  margin-top: var(--space-4);
 }
 
 .home-input-status.error {
-  color: #e59c7b;
+  color: var(--color-error);
 }
 
 .home-quick-actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .qa-btn {
   background: var(--color-surface);
   border: 1px solid var(--color-border-subtle);
-  border-radius: 10px;
-  padding: 7px 12px;
+  border-radius: var(--radius-lg);
+  padding: 7px var(--space-6);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
   cursor: pointer;
   transition: all 0.15s;
 }
