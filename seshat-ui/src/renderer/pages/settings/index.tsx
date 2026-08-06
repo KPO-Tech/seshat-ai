@@ -12,7 +12,7 @@ import { ProvidersView, PROVIDERS_CSS } from './ProvidersView'
 import { KnowledgeView } from './KnowledgeView'
 import { MemoriesView } from './MemoriesView'
 import { AboutView } from './AboutView'
-import { CapabilitiesView, CAPABILITIES_CSS } from './CapabilitiesViews'
+import { MultimodalView, MULTIMODAL_CSS } from './CapabilitiesViews'
 import { WebSearchView } from './WebSearchView'
 import { GeneralView } from './GeneralView'
 import { CloudAutomationView } from './CloudAutomationView'
@@ -35,7 +35,7 @@ export function Settings() {
     if (requested === 'cloud-automation' || requested === 'system') {
       return 'runtime' as TabId
     }
-    if (requested === 'general' || requested === 'account' || requested === 'connections' || requested === 'memories' || requested === 'providers' || requested === 'knowledge' || requested === 'capabilities' || requested === 'remote' || requested === 'runtime' || requested === 'about' || requested === 'admin-users' || requested === 'admin-groups' || requested === 'admin-organizations' || requested === 'admin-workspaces' || requested === 'admin-audit' || requested === 'admin-quotas') {
+    if (requested === 'general' || requested === 'account' || requested === 'connections' || requested === 'memories' || requested === 'providers' || requested === 'knowledge' || requested === 'multimodal' || requested === 'remote' || requested === 'runtime' || requested === 'about' || requested === 'admin-users' || requested === 'admin-groups' || requested === 'admin-organizations' || requested === 'admin-workspaces' || requested === 'admin-audit' || requested === 'admin-quotas') {
       return requested as TabId
     }
     return 'general' as TabId
@@ -72,7 +72,7 @@ export function Settings() {
       items: [
         { id: 'providers' as TabId, label: 'Providers', icon: <Browser size={16} /> },
         { id: 'knowledge' as TabId, label: 'Knowledge', icon: <Book size={16} /> },
-        { id: 'capabilities' as TabId, label: 'Capabilities', icon: <Flashlamp size={16} /> },
+        { id: 'multimodal' as TabId, label: 'Multimodal', icon: <Flashlamp size={16} /> },
       ],
     },
     {
@@ -140,7 +140,7 @@ export function Settings() {
           {activeTab === 'providers' && <ProvidersView />}
           {activeTab === 'knowledge' && <KnowledgeView />}
           {activeTab === 'memories' && <MemoriesView />}
-          {activeTab === 'capabilities' && <CapabilitiesView />}
+          {activeTab === 'multimodal' && <MultimodalView />}
           {activeTab === 'remote' && <WebSearchView />}
           {activeTab === 'runtime' && <RuntimeView />}
           {activeTab === 'about' && <AboutView />}
@@ -263,7 +263,7 @@ function RuntimeView() {
 const SETTINGS_CSS = `
 ${SETTINGS_NAV_CSS}
 ${PROVIDERS_CSS}
-${CAPABILITIES_CSS}
+${MULTIMODAL_CSS}
 ${ADMIN_CSS}
 ${SETTINGS_SHARED_CSS}
 `

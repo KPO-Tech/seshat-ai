@@ -1,21 +1,23 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import {
   Left, Robot, Plus, Edit, Delete, Sync, Close, CheckOne,
   Caution, LoadingOne, Brain, Lightning, Send, Book, Tool, FileText,
-  More, Star,
+  More, Star, Attention, Down, Upload, Check, Terminal, Globe, Api, Lock, Search,
 } from '@icon-park/react'
-import Picker from '@emoji-mart/react'
-import data from '@emoji-mart/data'
+import { createAvatar } from '@dicebear/core'
+import { lorelei, adventurer } from '@dicebear/collection'
 import { api } from '@/api/client'
 import { useUIStore } from '@/stores/ui'
 import { useSessionStore, streamingToContentBlocks } from '@/stores/session'
 import { useChat } from '@/hooks/useChat'
 import { NexusLogo } from '@/components/NexusLogo'
+import { listToolCatalog, type ToolCatalogEntry, type ToolCategory } from '@/components/chat/tool-block/toolDisplay'
+import { SETTINGS_SHARED_CSS } from '../settings/SettingsNav'
 import type { Agent, Session, Corpus, CorpusFile, IngestionJob } from '@/api/types'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-type WorkspaceTab = 'agents' | 'knowledge' | 'skills' | 'tools' | 'templates'
+type WorkspaceTab = 'agents' | 'documents' | 'tools' | 'templates'
 type AgentsView   = 'grid' | 'detail'
 type DetailTab    = 'edit' | 'test'
 
@@ -43,9 +45,67 @@ function toSlug(name: string): string {
   return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 }
 
-function getInitial(name: string, slug: string): string {
-  const src = (name || slug || '?').trim()
-  return src[0].toUpperCase()
+// ─── Generated avatars ──────────────────────────────────────────────────────
+// Agents get an illustrated face generated locally (DiceBear), seeded
+// deterministically from their slug — same idea as agentColor() above, just for
+// the whole avatar instead of a background tint. The `icon` field stores
+// "style:seed" so the pick persists; an empty field falls back to the default
+// style, seeded from the slug. Older/built-in agents may still carry a literal
+// emoji in `icon` — those keep rendering as emoji rather than being
+// reinterpreted as a seed.
+
+const AVATAR_STYLES = {
+  lorelei: { style: lorelei, label: 'Lorelei' },
+  adventurer: { style: adventurer, label: 'Adventurer' },
+} as const
+
+type AvatarStyleId = keyof typeof AVATAR_STYLES
+
+const DEFAULT_AVATAR_STYLE: AvatarStyleId = 'lorelei'
+
+function isEmojiIcon(icon: string): boolean {
+  return /\p{Extended_Pictographic}/u.test(icon)
+}
+
+function isAvatarStyleId(id: string): id is AvatarStyleId {
+  return id in AVATAR_STYLES
+}
+
+function parseAvatarIcon(icon: string | undefined, slug: string): { styleId: AvatarStyleId; seed: string } {
+  const trimmed = icon?.trim()
+  if (trimmed && !isEmojiIcon(trimmed)) {
+    const sep = trimmed.indexOf(':')
+    if (sep > 0) {
+      const styleId = trimmed.slice(0, sep)
+      const seed = trimmed.slice(sep + 1)
+      if (isAvatarStyleId(styleId) && seed) return { styleId, seed }
+    }
+    return { styleId: DEFAULT_AVATAR_STYLE, seed: trimmed } // legacy value: no style prefix
+  }
+  return { styleId: DEFAULT_AVATAR_STYLE, seed: slug || 'new-agent' }
+}
+
+function encodeAvatarIcon(styleId: AvatarStyleId, seed: string): string {
+  return `${styleId}:${seed}`
+}
+
+function randomSeed(): string {
+  return Math.random().toString(36).slice(2, 10)
+}
+
+const avatarSvgCache = new Map<string, string>()
+
+function generatedAvatarSvg(styleId: AvatarStyleId, seed: string): string {
+  const key = `${styleId}:${seed}`
+  let svg = avatarSvgCache.get(key)
+  if (!svg) {
+    // Each DiceBear style has its own literal Options type (hair variants, etc.), so a
+    // registry mixing several styles can't type-check against createAvatar's generic
+    // signature — cast is safe since only `seed` is passed, which every style accepts.
+    svg = createAvatar(AVATAR_STYLES[styleId].style as Parameters<typeof createAvatar>[0], { seed }).toString()
+    avatarSvgCache.set(key, svg)
+  }
+  return svg
 }
 
 // ─── Form types ───────────────────────────────────────────────────────────────
@@ -99,19 +159,27 @@ function formToBody(f: AgentForm): Record<string, unknown> {
 // ─── Avatar ───────────────────────────────────────────────────────────────────
 
 function Avatar({ agent, size = 40 }: { agent: Agent; size?: number }) {
-  const icon = agent.icon?.trim()
-  const color = agentColor(agent.slug)
-  const isEmoji = icon ? (icon.length > 1 || (icon.codePointAt(0) ?? 0) > 127) : false
+  const icon = agent.icon?.trim() ?? ''
   const radius = Math.round(size * 0.28)
-  const label = icon ? (isEmoji ? icon : icon[0].toUpperCase()) : getInitial(agent.name, agent.slug)
 
+  if (icon && isEmojiIcon(icon)) {
+    return (
+      <div
+        className="wk-avatar"
+        style={{ width: size, height: size, borderRadius: radius, background: agentColor(agent.slug), fontSize: Math.round(size * 0.45) }}
+      >
+        {icon}
+      </div>
+    )
+  }
+
+  const { styleId, seed } = parseAvatarIcon(icon, agent.slug)
   return (
     <div
-      className="wk-avatar"
-      style={{ width: size, height: size, borderRadius: radius, background: (icon && isEmoji) ? undefined : color, fontSize: Math.round(size * 0.45) }}
-    >
-      {label}
-    </div>
+      className="wk-avatar wk-avatar-generated"
+      style={{ width: size, height: size, borderRadius: radius }}
+      dangerouslySetInnerHTML={{ __html: generatedAvatarSvg(styleId, seed) }}
+    />
   )
 }
 
@@ -181,6 +249,8 @@ export function WorkspacePage() {
   return (
     <div className="wk-root">
       <style>{CSS}</style>
+      {/* Reused for the MCP section's sv-card/modal-* primitives (Tools & MCP tab) */}
+      <style>{SETTINGS_SHARED_CSS}</style>
 
       {toast && (
         <div className={`wk-toast ${toast.kind}`}>
@@ -238,11 +308,11 @@ export function WorkspacePage() {
         {/* Left sidebar nav */}
         {/* Content */}
         <div className="wk-body">
-          {tab === 'knowledge' && <KnowledgeTab />}
+          {tab === 'documents' && <DocumentsTab />}
 
-          {(tab === 'skills' || tab === 'tools' || tab === 'templates') && view === 'grid' && (
-            <PlannedResourceTab tab={tab} />
-          )}
+          {tab === 'tools' && <ToolsTab />}
+
+          {tab === 'templates' && view === 'grid' && <PlannedResourceTab />}
 
           {tab === 'agents' && view === 'grid' && (
             <AgentGrid
@@ -269,9 +339,8 @@ export function WorkspacePage() {
 
 const RESOURCE_TABS: Array<{ id: WorkspaceTab; label: string; icon: React.ReactNode }> = [
   { id: 'agents', label: 'Agents', icon: <Robot size={15} theme="outline" /> },
-  { id: 'knowledge', label: 'Knowledge', icon: <Book size={15} theme="outline" /> },
-  { id: 'skills', label: 'Skills', icon: <Lightning size={15} theme="outline" /> },
-  { id: 'tools', label: 'Tools', icon: <Tool size={15} theme="outline" /> },
+  { id: 'documents', label: 'Documents', icon: <Book size={15} theme="outline" /> },
+  { id: 'tools', label: 'Tools & MCP', icon: <Tool size={15} theme="outline" /> },
   { id: 'templates', label: 'Templates', icon: <FileText size={15} theme="outline" /> },
 ]
 
@@ -280,7 +349,10 @@ function ResourceTabs({ tab, onTabChange }: {
   onTabChange: (tab: WorkspaceTab) => void
 }) {
   return (
-    <nav className="wk-resource-tabs" aria-label="Workspace sections">
+    <nav
+      className="wk-resource-tabs" aria-label="Workspace sections"
+      style={{ gridTemplateColumns: `repeat(${RESOURCE_TABS.length}, minmax(0, 1fr))` }}
+    >
       {RESOURCE_TABS.map((item) => (
         <button
           key={item.id}
@@ -295,22 +367,15 @@ function ResourceTabs({ tab, onTabChange }: {
   )
 }
 
-function PlannedResourceTab({ tab }: { tab: Exclude<WorkspaceTab, 'agents' | 'knowledge'> }) {
-  const labels = {
-    skills: ['Skills', 'Reusable capabilities and prompts that agents can invoke.'],
-    tools: ['Tools', 'Approved tool registries and connectors exposed to agents.'],
-    templates: ['Templates', 'Reusable project, document, workflow, and prompt templates.'],
-  } satisfies Record<Exclude<WorkspaceTab, 'agents' | 'knowledge'>, [string, string]>
-  const [title, description] = labels[tab]
-
+function PlannedResourceTab() {
   return (
     <div className="wk-planned">
       <div className="wk-planned-card">
         <div className="wk-planned-icon">
-          {tab === 'skills' ? <Lightning size={24} /> : tab === 'tools' ? <Tool size={24} /> : <FileText size={24} />}
+          <FileText size={24} />
         </div>
-        <h2>{title}</h2>
-        <p>{description}</p>
+        <h2>Templates</h2>
+        <p>Reusable project, document, workflow, and prompt templates.</p>
         <div className="wk-planned-note">This resource family is reserved in the Workspace console and will be connected when the backend model is ready.</div>
       </div>
     </div>
@@ -420,52 +485,87 @@ function AgentDetail({ agent, isNew, detailTab, onSaved, onDelete, onDiscard }: 
   )
 }
 
-// ─── Emoji picker button ──────────────────────────────────────────────────────
+// ─── Avatar picker ────────────────────────────────────────────────────────────
+// Clicking the face opens a popover with a curated grid of variants grouped by
+// style — pick one directly. The dice button next to it is a shortcut that skips
+// the popover and just draws a new random variant in the current style.
 
-function EmojiPickerButton({ value, onChange, disabled, color, fallback, size = 48 }: {
-  value: string; onChange: (emoji: string) => void
-  disabled?: boolean; color: string; fallback: string; size?: number
+const PICKER_VARIANTS_PER_STYLE = 8
+
+function pickerSeeds(baseSeed: string): string[] {
+  return Array.from({ length: PICKER_VARIANTS_PER_STYLE }, (_, i) => `${baseSeed}-${i}`)
+}
+
+function AvatarPicker({ styleId, seed, baseSeed, onPick, onReroll, disabled, size = 64 }: {
+  styleId: AvatarStyleId; seed: string; baseSeed: string
+  onPick: (styleId: AvatarStyleId, seed: string) => void
+  onReroll: () => void
+  disabled?: boolean; size?: number
 }) {
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
+  const radius = Math.round(size * 0.28)
+  const svg = useMemo(() => generatedAvatarSvg(styleId, seed), [styleId, seed])
 
   useEffect(() => {
     if (!open) return
     function onDown(e: MouseEvent) {
       if (!wrapRef.current?.contains(e.target as Node)) setOpen(false)
     }
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setOpen(false) }
     document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
   }, [open])
 
-  const display = value.trim() || fallback
-  const radius  = Math.round(size * 0.28)
-
   return (
-    <div className="wk-emoji-wrap" ref={wrapRef}>
-      <button
-        type="button"
-        className="wk-emoji-trigger"
-        style={{ width: size, height: size, borderRadius: radius, background: color, fontSize: Math.round(size * 0.46) }}
-        onClick={() => !disabled && setOpen(v => !v)}
-        title={disabled ? undefined : 'Choose icon'}
-        disabled={disabled}
-      >
-        {display}
-        {!disabled && <span className="wk-emoji-hint">✎</span>}
-      </button>
+    <div className="wk-avatar-picker" ref={wrapRef}>
+      <div className="wk-avatar-picker-row">
+        <button
+          type="button"
+          className="wk-avatar-picker-face"
+          style={{ width: size, height: size, borderRadius: radius }}
+          onClick={() => !disabled && setOpen(v => !v)}
+          disabled={disabled}
+          title={disabled ? undefined : 'Choose a face'}
+          dangerouslySetInnerHTML={{ __html: svg }}
+        />
+        {!disabled && (
+          <button
+            type="button"
+            className="wk-avatar-reroll"
+            onClick={onReroll}
+            title="Generate a new face"
+          >
+            <Sync size={12} />
+          </button>
+        )}
+      </div>
 
-      {open && (
-        <div className="wk-emoji-popover">
-          <Picker
-            data={data}
-            onEmojiSelect={(e: { native: string }) => { onChange(e.native); setOpen(false) }}
-            theme="dark"
-            previewPosition="none"
-            skinTonePosition="none"
-            maxFrequentRows={2}
-            perLine={8}
-          />
+      {open && !disabled && (
+        <div className="wk-avatar-popover">
+          {(Object.keys(AVATAR_STYLES) as AvatarStyleId[]).map(id => (
+            <div key={id} className="wk-avatar-popover-group">
+              <div className="wk-avatar-popover-title">{AVATAR_STYLES[id].label}</div>
+              <div className="wk-avatar-popover-grid">
+                {pickerSeeds(baseSeed).map(s => {
+                  const selected = id === styleId && s === seed
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      className={`wk-avatar-swatch ${selected ? 'selected' : ''}`}
+                      onClick={() => { onPick(id, s); setOpen(false) }}
+                      dangerouslySetInnerHTML={{ __html: generatedAvatarSvg(id, s) }}
+                    />
+                  )
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -511,42 +611,34 @@ function AgentFormPanel({ agent, isNew, isBuiltin, onSaved, onDelete, onDiscard 
     } finally { setSaving(false) }
   }
 
-  const previewColor   = agentColor(form.slug || 'new')
-  const fallbackLetter = form.name?.[0]?.toUpperCase() ?? '+'
+  const baseSeed = form.slug || 'new-agent'
+  const { styleId: avatarStyleId, seed: avatarSeed } = parseAvatarIcon(form.icon, baseSeed)
 
   return (
     <form className="wk-form" onSubmit={handleSubmit}>
-      <div className="wk-form-inner">
-        {err && <div className="wk-form-error"><Caution size={11} />{err}</div>}
+      {err && <div className="wk-form-error"><Caution size={11} />{err}</div>}
 
-        <div className="wk-form-header">
-          {/* Static avatar preview — picker is in the Identity section below */}
-          <div
-            className="wk-avatar"
-            style={{ width: 56, height: 56, borderRadius: 16, background: previewColor, fontSize: 24 }}
-          >
-            {form.icon.trim() || fallbackLetter}
-          </div>
-          <div style={{ flex: 1 }}>
-            <div className="wk-form-agent-name">{isNew ? 'New Agent' : (form.name || agent?.slug)}</div>
-            {!isNew && agent && <div className="wk-form-agent-slug">/{agent.slug}</div>}
-          </div>
-          {!isNew && agent && !isBuiltin && (
-            <button type="button" className="wk-icon-btn danger" onClick={() => onDelete(agent)}><Delete size={12} /></button>
-          )}
-        </div>
-
-        {/* Identity */}
-        <div className="wk-section">
+      <div className="wk-form-split">
+        {/* Left — identity & lifecycle */}
+        <aside className="wk-form-left">
           <div className="wk-section-title">Identity</div>
 
-          {/* Name + Slug (stacked) | Icon picker (square, centered) */}
-          <div className="wk-identity-row">
-            <div className="wk-identity-fields">
+          <div className="wk-identity-card">
+            <AvatarPicker
+              styleId={avatarStyleId}
+              seed={avatarSeed}
+              baseSeed={baseSeed}
+              onPick={(styleId, seed) => update('icon', encodeAvatarIcon(styleId, seed))}
+              onReroll={() => update('icon', encodeAvatarIcon(avatarStyleId, randomSeed()))}
+              disabled={isBuiltin}
+              size={64}
+            />
+            <div className="wk-identity-fields-v">
               <div className="wk-field">
                 <label>Display name</label>
                 <input ref={nameRef} type="text" placeholder="e.g. Research Assistant"
-                  value={form.name} onChange={e => update('name', e.target.value)} disabled={isBuiltin} />
+                  value={form.name} onChange={e => update('name', e.target.value)}
+                  disabled={isBuiltin} className="wk-name-input" />
               </div>
               <div className="wk-field">
                 <label>Slug {isNew && <span className="wk-required">*</span>}</label>
@@ -556,87 +648,19 @@ function AgentFormPanel({ agent, isNew, isBuiltin, onSaved, onDelete, onDiscard 
                     onChange={e => { setSlugManual(true); update('slug', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')) }}
                     disabled={isBuiltin || !isNew} className="wk-slug-input" />
                 </div>
-                <span className="wk-hint">Lowercase letters, digits and hyphens. Cannot be changed after creation.</span>
               </div>
             </div>
-
-            <div className="wk-field-icon-tall">
-              <label>Icon</label>
-              <EmojiPickerButton
-                value={form.icon}
-                onChange={emoji => update('icon', emoji)}
-                disabled={isBuiltin}
-                color={previewColor}
-                fallback={fallbackLetter}
-                size={66}
-              />
-            </div>
           </div>
+          {isNew && <span className="wk-hint">Lowercase letters, digits and hyphens. Cannot be changed after creation.</span>}
+
           <div className="wk-field">
             <label>When to use <span className="wk-opt">(shown to the model)</span></label>
-            <textarea rows={2} placeholder="e.g. Use this agent for deep research tasks requiring web search."
+            <textarea rows={5} placeholder="e.g. Use this agent for deep research tasks requiring web search."
               value={form.when_to_use} onChange={e => update('when_to_use', e.target.value)} disabled={isBuiltin} />
           </div>
-        </div>
 
-        {/* System prompt */}
-        <div className="wk-section">
-          <div className="wk-section-title">System Prompt</div>
-          <div className="wk-field">
-            <label>Instructions</label>
-            <textarea rows={12} placeholder={'You are a research assistant...\n\nYour role is to...\n\nAlways cite your sources.'}
-              value={form.system_prompt} onChange={e => update('system_prompt', e.target.value)}
-              disabled={isBuiltin} className="wk-mono-area" />
-          </div>
-        </div>
-
-        {/* Capabilities */}
-        <div className="wk-section">
-          <div className="wk-section-title">Capabilities</div>
-          <div className="wk-field">
-            <label>Tools</label>
-            <div className="wk-pills">
-              <button type="button" className={`wk-pill ${form.tools_mode === 'all' ? 'active' : ''}`}
-                onClick={() => update('tools_mode', 'all')} disabled={isBuiltin}>All tools</button>
-              <button type="button" className={`wk-pill ${form.tools_mode === 'custom' ? 'active' : ''}`}
-                onClick={() => update('tools_mode', 'custom')} disabled={isBuiltin}>Custom list</button>
-            </div>
-            {form.tools_mode === 'custom' && (
-              <input type="text" placeholder="Bash, Read, Write, WebSearch, ..."
-                value={form.tools_custom} onChange={e => update('tools_custom', e.target.value)}
-                disabled={isBuiltin} style={{ marginTop: 8 }} />
-            )}
-          </div>
-          <div className="wk-field">
-            <label>Disallowed tools <span className="wk-opt">(comma-separated)</span></label>
-            <input type="text" placeholder="e.g. Bash, Edit"
-              value={form.disallowed_tools} onChange={e => update('disallowed_tools', e.target.value)} disabled={isBuiltin} />
-          </div>
-        </div>
-
-        {/* Behaviour */}
-        <div className="wk-section">
-          <div className="wk-section-title">Behaviour</div>
-          <div className="wk-row">
-            <div className="wk-field flex1">
-              <label>Model override <span className="wk-opt">(optional)</span></label>
-              <input type="text" placeholder="claude-opus-4-8 (uses session default if empty)"
-                value={form.model} onChange={e => update('model', e.target.value)} disabled={isBuiltin} />
-            </div>
-            <div className="wk-field" style={{ width: 140 }}>
-              <label>Max turns</label>
-              <input type="number" min={1} max={500} value={form.max_turns}
-                onChange={e => update('max_turns', parseInt(e.target.value) || 50)} disabled={isBuiltin} />
-            </div>
-          </div>
-          <div className="wk-row align-center">
-            <div className="wk-field flex1">
-              <label>Permission mode</label>
-              <select value={form.permission_mode} onChange={e => update('permission_mode', e.target.value)} disabled={isBuiltin}>
-                {PERMISSION_MODE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </div>
-            <div className="wk-field-inline">
+          {!isNew && agent && (
+            <div className="wk-field-inline standalone">
               <label>Enabled</label>
               <button
                 type="button" role="switch" aria-checked={form.enabled}
@@ -647,8 +671,71 @@ function AgentFormPanel({ agent, isNew, isBuiltin, onSaved, onDelete, onDiscard 
                 <span className="wk-toggle-knob" />
               </button>
             </div>
+          )}
+
+          {!isNew && agent && !isBuiltin && (
+            <div className="wk-danger-zone">
+              <button type="button" className="wk-btn ghost danger full" onClick={() => onDelete(agent)}>
+                <Delete size={12} /> Delete agent
+              </button>
+            </div>
+          )}
+        </aside>
+
+        {/* Right — prompt & configuration */}
+        <main className="wk-form-right">
+          <div className="wk-field">
+            <label>System prompt</label>
+            <textarea rows={14} placeholder={'You are a research assistant...\n\nYour role is to...\n\nAlways cite your sources.'}
+              value={form.system_prompt} onChange={e => update('system_prompt', e.target.value)}
+              disabled={isBuiltin} className="wk-mono-area" />
           </div>
-        </div>
+
+          <div className="wk-panel-group">
+            <div className="wk-section-title">Capabilities</div>
+            <div className="wk-field">
+              <label>Tools</label>
+              <div className="wk-pills">
+                <button type="button" className={`wk-pill ${form.tools_mode === 'all' ? 'active' : ''}`}
+                  onClick={() => update('tools_mode', 'all')} disabled={isBuiltin}>All tools</button>
+                <button type="button" className={`wk-pill ${form.tools_mode === 'custom' ? 'active' : ''}`}
+                  onClick={() => update('tools_mode', 'custom')} disabled={isBuiltin}>Custom list</button>
+              </div>
+              {form.tools_mode === 'custom' && (
+                <input type="text" placeholder="Bash, Read, Write, WebSearch, ..."
+                  value={form.tools_custom} onChange={e => update('tools_custom', e.target.value)}
+                  disabled={isBuiltin} style={{ marginTop: 8 }} />
+              )}
+            </div>
+            <div className="wk-field">
+              <label>Disallowed tools <span className="wk-opt">(comma-separated)</span></label>
+              <input type="text" placeholder="e.g. Bash, Edit"
+                value={form.disallowed_tools} onChange={e => update('disallowed_tools', e.target.value)} disabled={isBuiltin} />
+            </div>
+          </div>
+
+          <div className="wk-panel-group">
+            <div className="wk-section-title">Behaviour</div>
+            <div className="wk-row">
+              <div className="wk-field flex1">
+                <label>Model override <span className="wk-opt">(optional)</span></label>
+                <input type="text" placeholder="claude-opus-4-8 (uses session default if empty)"
+                  value={form.model} onChange={e => update('model', e.target.value)} disabled={isBuiltin} />
+              </div>
+              <div className="wk-field" style={{ width: 140 }}>
+                <label>Max turns</label>
+                <input type="number" min={1} max={500} value={form.max_turns}
+                  onChange={e => update('max_turns', parseInt(e.target.value) || 50)} disabled={isBuiltin} />
+              </div>
+            </div>
+            <div className="wk-field">
+              <label>Permission mode</label>
+              <select value={form.permission_mode} onChange={e => update('permission_mode', e.target.value)} disabled={isBuiltin}>
+                {PERMISSION_MODE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+          </div>
+        </main>
       </div>
 
       {!isBuiltin && (
@@ -791,9 +878,753 @@ function TestChatInner({ sessionId, agent, messagesRef, input, setInput }: {
   )
 }
 
-// ─── Knowledge tab ────────────────────────────────────────────────────────────
+// ─── Tools & MCP tab ────────────────────────────────────────────────────────────
+// "Internal" is a read-only reference: those tool names come from
+// toolDisplay.tsx's TOOL_REGISTRY (the same catalog the chat UI uses to
+// render tool calls), so it can't drift out of sync with what agents can
+// actually invoke. "MCP" below it is the live, editable registry — servers
+// you add here are real config, reloaded into the running backend.
 
-function KnowledgeTab() {
+const TOOL_CATEGORY_LABELS: Record<ToolCategory, string> = {
+  bash: 'Bash', read: 'Read', write: 'Write', edit: 'Edit', search: 'Search', other: 'Other',
+}
+const TOOL_CATEGORY_ORDER: ToolCategory[] = ['bash', 'read', 'write', 'edit', 'search', 'other']
+
+type ToolsSubTab = 'mcp' | 'internal'
+
+function ToolsTab() {
+  const [sub, setSub] = useState<ToolsSubTab>('mcp')
+
+  return (
+    <div className="wk-tools-root">
+      <div className="wk-tools-subbar">
+        <div className="wk-detail-tabs">
+          <button className={`wk-detail-tab ${sub === 'mcp' ? 'active' : ''}`} onClick={() => setSub('mcp')}>
+            <Api size={11} /> MCP
+          </button>
+          <button className={`wk-detail-tab ${sub === 'internal' ? 'active' : ''}`} onClick={() => setSub('internal')}>
+            <Tool size={11} /> Internal
+          </button>
+        </div>
+      </div>
+      <div className="wk-tools-scroll">
+        {sub === 'mcp' ? <McpSection /> : <InternalToolsSection />}
+      </div>
+    </div>
+  )
+}
+
+function InternalToolsSection() {
+  const [query, setQuery] = useState('')
+
+  // Several internal aliases share the same display label (read/file_read/
+  // read_file are all "Read") — showing each alias as its own chip is just
+  // noise, so keep one chip per unique (category, label) pair.
+  const seen = new Set<string>()
+  const catalog = listToolCatalog().filter(t => {
+    if (t.name.startsWith('mcp')) return false
+    const key = `${t.category}:${t.label}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+
+  const q = query.trim().toLowerCase()
+  const filtered = q ? catalog.filter(t => t.label.toLowerCase().includes(q)) : catalog
+
+  const grouped = new Map<ToolCategory, ToolCatalogEntry[]>()
+  for (const entry of filtered) {
+    const list = grouped.get(entry.category) ?? []
+    list.push(entry)
+    grouped.set(entry.category, list)
+  }
+  for (const list of grouped.values()) list.sort((a, b) => a.label.localeCompare(b.label))
+  const visibleCategories = TOOL_CATEGORY_ORDER.filter(cat => grouped.has(cat))
+
+  return (
+    <div className="wk-tools-internal">
+      <div className="wk-tools-search">
+        <Search size={13} className="wk-tools-search-icon" />
+        <input
+          type="text" placeholder="Filter tools…"
+          value={query} onChange={e => setQuery(e.target.value)}
+        />
+      </div>
+
+      {visibleCategories.length === 0 ? (
+        <div className="wk-tools-empty">No tools match "{query}".</div>
+      ) : (
+        <div className="wk-tools-groups">
+          {visibleCategories.map(cat => (
+            <div key={cat} className="wk-tools-group">
+              <div className="wk-tools-group-head">
+                <span className="wk-tools-group-title">{TOOL_CATEGORY_LABELS[cat]}</span>
+                <span className="wk-tools-group-count">{grouped.get(cat)!.length}</span>
+              </div>
+              <div className="wk-tools-chip-row">
+                {grouped.get(cat)!.map(t => (
+                  <span key={t.name} className="wk-tools-chip" title={t.name}>{t.label}</span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function McpSection() {
+  return <McpPanel />
+}
+
+// ─── MCP types ────────────────────────────────────────────────────────────────
+
+type MCPServer = {
+  id: string
+  name: string
+  display_name: string
+  server_type: string   // stdio | http | sse | ws
+  command?: string
+  args?: string[]
+  env?: Record<string, string>
+  url?: string
+  headers?: Record<string, string>
+  timeout_secs: number
+  icon: string
+  enabled: boolean
+  source: string        // 'db' | 'file'
+  created_at: number
+  updated_at: number
+}
+
+type ReloadStatus = { name: string; ok: boolean; tools: number; error?: string }
+type McpToolEntry = { name: string; description?: string }
+
+// One MCP server shared by the connected organization — not a local
+// mcp_servers row (see internal/cloudmcp): stays inactive until explicitly
+// approved, since a stdio server spawns an arbitrary command locally.
+type MCPOrgCatalogEntry = {
+  id: string
+  name: string
+  display_name?: string
+  server_type: string
+  command?: string
+  args?: string[]
+  url?: string
+  icon?: string
+  approved: boolean
+}
+
+// ─── MCP panel ────────────────────────────────────────────────────────────────
+
+function McpPanel() {
+  const [servers, setServers] = useState<MCPServer[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [pendingReload, setPendingReload] = useState(false)
+  const [reloading, setReloading] = useState(false)
+  const [reloadStatuses, setReloadStatuses] = useState<ReloadStatus[] | null>(null)
+  const [toolsByServer, setToolsByServer] = useState<Record<string, McpToolEntry[]>>({})
+  const [modal, setModal] = useState<{ mode: 'add' | 'edit'; server?: MCPServer } | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const data = await api.get<{ servers: MCPServer[]; count: number }>('/mcp/config')
+      setServers(data.servers ?? [])
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to load MCP servers')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  const loadTools = useCallback(async () => {
+    try {
+      const data = await api.get<{ tools: Record<string, McpToolEntry[]> }>('/mcp/tools')
+      setToolsByServer(data.tools ?? {})
+    } catch {
+      // non-critical — tools panel stays empty until next reload
+    }
+  }, [])
+
+  useEffect(() => { load(); loadTools() }, [load, loadTools])
+
+  const handleToggle = async (id: string, enabled: boolean) => {
+    await api.put(`/mcp/config/${id}`, { enabled })
+    setServers(s => s.map(x => x.id === id ? { ...x, enabled } : x))
+    setPendingReload(true)
+  }
+
+  const handleDelete = async (id: string) => {
+    await api.delete(`/mcp/config/${id}`)
+    setServers(s => s.filter(x => x.id !== id))
+    setPendingReload(true)
+  }
+
+  const handleSave = async (data: Partial<MCPServer> & { id?: string }) => {
+    if (data.id) {
+      const updated = await api.put<MCPServer>(`/mcp/config/${data.id}`, data)
+      setServers(s => s.map(x => x.id === data.id ? updated : x))
+    } else {
+      const created = await api.post<MCPServer>('/mcp/config', { ...data, enabled: true })
+      setServers(s => [...s, created])
+    }
+    setPendingReload(true)
+    setModal(null)
+  }
+
+  const handleImportJSON = () => { fileInputRef.current?.click() }
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const text = await file.text()
+    let parsed: unknown
+    try { parsed = JSON.parse(text) } catch { setError('Invalid JSON file'); return }
+    const result = await api.post<{ imported: number; message: string }>('/mcp/config/import-json', parsed)
+    await load()
+    setPendingReload(true)
+    setError(null)
+    if (result.imported > 0) {
+      setReloadStatuses([{ name: 'import', ok: true, tools: result.imported, error: undefined }])
+      setTimeout(() => setReloadStatuses(null), 3000)
+    }
+    e.target.value = ''
+  }
+
+  const handleReload = async () => {
+    setReloading(true)
+    setReloadStatuses(null)
+    try {
+      const result = await api.post<{ reloaded: number; servers: ReloadStatus[] }>('/mcp/reload')
+      setReloadStatuses(result.servers ?? [])
+      setPendingReload(false)
+      await loadTools()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Reload failed')
+    } finally {
+      setReloading(false)
+    }
+  }
+
+  return (
+    <>
+      <div className="sv-card">
+        <div className="sv-card-head">
+          <div className="caps-mcp-header">
+            <div className="sv-card-brand">
+              <div>
+                <div className="sv-brand-name">MCP Servers</div>
+                <div className="sv-brand-sub">Tools exposed to agents via Model Context Protocol</div>
+              </div>
+            </div>
+            <div className="caps-mcp-actions-bar">
+              {pendingReload && (
+                <span className="caps-reload-badge">
+                  <Attention size={10} /> Reload required
+                </span>
+              )}
+              <button className="wk-icon-btn" title="Refresh list" onClick={load}>
+                <Sync size={13} />
+              </button>
+              <button className="caps-import-json-btn" onClick={handleImportJSON} title="Import from mcp.json">
+                <Upload size={11} /> Load JSON
+              </button>
+              <button
+                className={`caps-reload-btn ${reloading ? 'loading' : ''}`}
+                onClick={handleReload}
+                disabled={reloading}
+              >
+                <Sync size={11} /> {reloading ? 'Reloading…' : 'Apply & Reload'}
+              </button>
+              <button className="caps-add-mcp-btn" onClick={() => setModal({ mode: 'add' })}>
+                <Plus size={11} /> Add server
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="sv-card-body">
+          {error && <div className="caps-error">{error}</div>}
+
+          {reloadStatuses && (
+            <div className="caps-reload-result">
+              {reloadStatuses.map(s => (
+                <div key={s.name} className={`caps-reload-row ${s.ok ? 'ok' : 'err'}`}>
+                  {s.ok ? <Check size={11} /> : <Attention size={11} />}
+                  <span>{s.name}</span>
+                  {s.ok && <span className="caps-reload-tools">{s.tools} tools</span>}
+                  {s.error && <span className="caps-reload-error">{s.error}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {loading ? (
+            <div className="caps-loading">Loading servers…</div>
+          ) : servers.length === 0 ? (
+            <div className="caps-empty">
+              No MCP servers configured. Add one or load from mcp.json.
+            </div>
+          ) : (
+            <div className="caps-mcp-list">
+              {servers.map(srv => (
+                <McpServerCard
+                  key={srv.id}
+                  server={srv}
+                  tools={toolsByServer[srv.name]}
+                  onToggle={handleToggle}
+                  onEdit={() => setModal({ mode: 'edit', server: srv })}
+                  onDelete={() => handleDelete(srv.id)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <McpOrgCatalogSection onApprovalChanged={() => { setPendingReload(false); void load() }} />
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json"
+        style={{ display: 'none' }}
+        onChange={handleFileChange}
+      />
+
+      {modal && (
+        <McpServerModal
+          mode={modal.mode}
+          server={modal.server}
+          onSave={handleSave}
+          onClose={() => setModal(null)}
+        />
+      )}
+    </>
+  )
+}
+
+// ─── MCP organization catalog ─────────────────────────────────────────────────
+// Servers shared by a connected org — config only, never auto-loaded. Empty
+// list in standalone mode (the fetch itself degrades silently server-side).
+
+function McpOrgCatalogSection({ onApprovalChanged }: { onApprovalChanged: () => void }) {
+  const [entries, setEntries] = useState<MCPOrgCatalogEntry[]>([])
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    try {
+      const data = await api.get<{ mcp_org_catalog: MCPOrgCatalogEntry[]; count: number }>('/mcp/org-catalog')
+      setEntries(data.mcp_org_catalog ?? [])
+    } catch {
+      // standalone mode or connectivity issue — just show nothing
+      setEntries([])
+    }
+  }, [])
+
+  useEffect(() => { void load() }, [load])
+
+  if (entries.length === 0) return null
+
+  const handleApprove = async (entry: MCPOrgCatalogEntry) => {
+    setBusyId(entry.id)
+    setError(null)
+    try {
+      await api.post(`/mcp/org-catalog/${entry.id}/approve`, {})
+      setEntries(prev => prev.map(e => e.id === entry.id ? { ...e, approved: true } : e))
+      onApprovalChanged()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to approve server')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const handleRevoke = async (entry: MCPOrgCatalogEntry) => {
+    setBusyId(entry.id)
+    setError(null)
+    try {
+      await api.delete(`/mcp/org-catalog/${entry.id}/approve`)
+      setEntries(prev => prev.map(e => e.id === entry.id ? { ...e, approved: false } : e))
+      onApprovalChanged()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to revoke server')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  return (
+    <div className="sv-card">
+      <div className="sv-card-head">
+        <div className="caps-mcp-header">
+          <div className="sv-card-brand">
+            <div>
+              <div className="sv-brand-name">Organization catalog</div>
+              <div className="sv-brand-sub">Servers shared by your organization — approve one to run it here</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="sv-card-body">
+        {error && <div className="caps-error">{error}</div>}
+        <div className="caps-mcp-list">
+          {entries.map(entry => {
+            const isStdio = entry.server_type === 'stdio'
+            return (
+              <div key={entry.id} className={`caps-mcp-card ${entry.approved ? '' : 'disabled'}`}>
+                <div className="caps-mcp-card-main">
+                  <div className="caps-mcp-card-left">
+                    <div className="caps-mcp-icon">{entry.icon || '🔌'}</div>
+                    <div className="caps-mcp-info">
+                      <div className="caps-mcp-title">
+                        <span className="caps-mcp-name">{entry.display_name || entry.name}</span>
+                        <span className="caps-mcp-type-badge">
+                          {isStdio ? <Terminal size={10} /> : <Globe size={10} />}
+                          {entry.server_type}
+                        </span>
+                        <span className="caps-mcp-source-badge">from organization</span>
+                      </div>
+                      <div className="caps-mcp-detail">
+                        {isStdio
+                          ? <code>{entry.command}{entry.args?.length ? ' ' + entry.args.join(' ') : ''}</code>
+                          : <code>{entry.url}</code>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                  <div className="caps-mcp-actions">
+                    {entry.approved ? (
+                      <button
+                        className="caps-org-mcp-revoke-btn"
+                        onClick={() => handleRevoke(entry)}
+                        disabled={busyId === entry.id}
+                        title="Stop running this server locally"
+                      >
+                        <CheckOne size={11} /> {busyId === entry.id ? 'Working…' : 'Active'}
+                      </button>
+                    ) : (
+                      <button
+                        className="caps-org-mcp-approve-btn"
+                        onClick={() => handleApprove(entry)}
+                        disabled={busyId === entry.id}
+                        title={isStdio ? 'This will run a command on your machine' : 'Enable this server locally'}
+                      >
+                        <Lock size={11} /> {busyId === entry.id ? 'Working…' : 'Activer'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function McpServerCard({
+  server, tools, onToggle, onEdit, onDelete,
+}: {
+  server: MCPServer
+  tools?: McpToolEntry[]
+  onToggle: (id: string, enabled: boolean) => void
+  onEdit: () => void
+  onDelete: () => void
+}) {
+  const isStdio = server.server_type === 'stdio'
+  const [expanded, setExpanded] = useState(false)
+  const hasTools = tools && tools.length > 0
+
+  return (
+    <div className={`caps-mcp-card ${server.enabled ? '' : 'disabled'} ${expanded ? 'expanded' : ''}`}>
+      <div className="caps-mcp-card-main">
+        <div className="caps-mcp-card-left">
+          <div className="caps-mcp-icon">{server.icon || '🔌'}</div>
+          <div className="caps-mcp-info">
+            <div className="caps-mcp-title">
+              <span className="caps-mcp-name">{server.display_name || server.name}</span>
+              <span className="caps-mcp-type-badge">
+                {isStdio ? <Terminal size={10} /> : <Globe size={10} />}
+                {server.server_type}
+              </span>
+              {server.source === 'file' && (
+                <span className="caps-mcp-source-badge">from file</span>
+              )}
+              {hasTools && (
+                <button
+                  className={`caps-tools-toggle ${expanded ? 'active' : ''}`}
+                  onClick={() => setExpanded(v => !v)}
+                  title={expanded ? 'Hide tools' : 'Show tools'}
+                >
+                  <Api size={10} />
+                  {tools.length} tool{tools.length !== 1 ? 's' : ''}
+                  <Down size={10} style={{ transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+                </button>
+              )}
+              {!hasTools && server.enabled && (
+                <span className="caps-no-tools-badge">no tools loaded</span>
+              )}
+            </div>
+            <div className="caps-mcp-detail">
+              {isStdio
+                ? <code>{server.command}{server.args?.length ? ' ' + server.args.join(' ') : ''}</code>
+                : <code>{server.url}</code>
+              }
+            </div>
+          </div>
+        </div>
+        <div className="caps-mcp-actions">
+          <label className="caps-mcp-toggle" title={server.enabled ? 'Disable' : 'Enable'}>
+            <input
+              type="checkbox"
+              checked={server.enabled}
+              onChange={e => onToggle(server.id, e.target.checked)}
+            />
+            <span className="caps-toggle-track" />
+          </label>
+          <button className="caps-mini-btn" title="Edit" onClick={onEdit}>
+            <Edit size={11} />
+          </button>
+          <button className="caps-mini-btn danger" title="Delete" onClick={onDelete}>
+            <Close size={11} />
+          </button>
+        </div>
+      </div>
+
+      {expanded && hasTools && (
+        <div className="caps-tools-list">
+          {tools.map(t => (
+            <div key={t.name} className="caps-tool-row">
+              <code className="caps-tool-name">{t.name}</code>
+              {t.description && <span className="caps-tool-desc">{t.description}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── MCP Server add/edit modal ────────────────────────────────────────────────
+
+function McpServerModal({
+  mode, server, onSave, onClose,
+}: {
+  mode: 'add' | 'edit'
+  server?: MCPServer
+  onSave: (data: Partial<MCPServer> & { id?: string }) => Promise<void>
+  onClose: () => void
+}) {
+  const [form, setForm] = useState({
+    name:         server?.name         ?? '',
+    display_name: server?.display_name ?? '',
+    server_type:  server?.server_type  ?? 'stdio',
+    command:      server?.command      ?? '',
+    args_raw:     (server?.args ?? []).join(' '),
+    env_raw:      Object.entries(server?.env ?? {}).map(([k,v]) => `${k}=${v}`).join('\n'),
+    url:          server?.url          ?? '',
+    timeout_secs: server?.timeout_secs ?? 30,
+    icon:         server?.icon         ?? '🔌',
+  })
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+
+  const set = (k: keyof typeof form, v: string | number) =>
+    setForm(f => ({ ...f, [k]: v }))
+
+  const isStdio = form.server_type === 'stdio'
+
+  const parseArgs = (raw: string): string[] =>
+    raw.trim() ? raw.trim().split(/\s+/) : []
+
+  const parseEnv = (raw: string): Record<string, string> => {
+    const out: Record<string, string> = {}
+    raw.split('\n').forEach(line => {
+      const idx = line.indexOf('=')
+      if (idx > 0) out[line.slice(0, idx).trim()] = line.slice(idx + 1).trim()
+    })
+    return out
+  }
+
+  const handleSave = async () => {
+    if (!form.name.trim()) { setErr('Name is required'); return }
+    if (isStdio && !form.command.trim()) { setErr('Command is required for stdio servers'); return }
+    if (!isStdio && !form.url.trim()) { setErr('URL is required for http/sse servers'); return }
+    setSaving(true)
+    setErr(null)
+    try {
+      await onSave({
+        id:          server?.id,
+        name:        form.name.trim(),
+        display_name: form.display_name.trim(),
+        server_type: form.server_type,
+        command:     form.command.trim(),
+        args:        parseArgs(form.args_raw),
+        env:         parseEnv(form.env_raw),
+        url:         form.url.trim(),
+        timeout_secs: Number(form.timeout_secs),
+        icon:        form.icon.trim() || '🔌',
+      })
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : 'Failed to save')
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-shell mcp-modal-shell">
+        <div className="modal-header">
+          <h2>{mode === 'add' ? 'Add MCP Server' : 'Edit MCP Server'}</h2>
+          <button className="modal-close-btn" onClick={onClose}><Close size={16} /></button>
+        </div>
+        <div className="modal-content" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {err && <div className="caps-error">{err}</div>}
+
+          <div className="mcp-form-row-2">
+            <div className="sv-field">
+              <label>Icon (emoji)</label>
+              <div className="sv-input-box">
+                <input
+                  type="text"
+                  value={form.icon}
+                  onChange={e => set('icon', e.target.value)}
+                  placeholder="🔌"
+                  style={{ width: 60, textAlign: 'center', fontSize: 22 }}
+                />
+              </div>
+            </div>
+            <div className="sv-field" style={{ flex: 1 }}>
+              <label>Name (unique key)</label>
+              <div className="sv-input-box">
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={e => set('name', e.target.value)}
+                  placeholder="e.g. filesystem"
+                  disabled={mode === 'edit'}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="sv-field">
+            <label>Display name</label>
+            <div className="sv-input-box">
+              <input
+                type="text"
+                value={form.display_name}
+                onChange={e => set('display_name', e.target.value)}
+                placeholder="e.g. Filesystem Tools"
+              />
+            </div>
+          </div>
+
+          <div className="sv-field">
+            <label>Transport</label>
+            <div className="sv-input-box">
+              <select
+                value={form.server_type}
+                onChange={e => set('server_type', e.target.value)}
+              >
+                <option value="stdio">stdio (subprocess)</option>
+                <option value="http">HTTP</option>
+                <option value="sse">SSE</option>
+                <option value="ws">WebSocket</option>
+              </select>
+            </div>
+          </div>
+
+          {isStdio ? (
+            <>
+              <div className="sv-field">
+                <label>Command</label>
+                <div className="sv-input-box">
+                  <input
+                    type="text"
+                    value={form.command}
+                    onChange={e => set('command', e.target.value)}
+                    placeholder="e.g. npx or /usr/bin/python3"
+                  />
+                </div>
+              </div>
+              <div className="sv-field">
+                <label>Arguments (space-separated)</label>
+                <div className="sv-input-box">
+                  <input
+                    type="text"
+                    value={form.args_raw}
+                    onChange={e => set('args_raw', e.target.value)}
+                    placeholder="-y @modelcontextprotocol/server-filesystem /tmp"
+                  />
+                </div>
+              </div>
+              <div className="sv-field">
+                <label>Environment variables (KEY=VALUE, one per line)</label>
+                <textarea
+                  className="mcp-env-textarea"
+                  value={form.env_raw}
+                  onChange={e => set('env_raw', e.target.value)}
+                  placeholder={"PATH=/usr/local/bin\nNODE_ENV=production"}
+                  rows={3}
+                />
+              </div>
+            </>
+          ) : (
+            <div className="sv-field">
+              <label>URL</label>
+              <div className="sv-input-box">
+                <input
+                  type="text"
+                  value={form.url}
+                  onChange={e => set('url', e.target.value)}
+                  placeholder="http://localhost:3000/mcp"
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="sv-field">
+            <label>Timeout (seconds)</label>
+            <div className="sv-input-box">
+              <input
+                type="number"
+                value={form.timeout_secs}
+                onChange={e => set('timeout_secs', e.target.value)}
+                min={5}
+                max={300}
+                style={{ width: 100 }}
+              />
+            </div>
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="modal-btn-cancel" onClick={onClose}>Cancel</button>
+          <button className="modal-btn-submit" onClick={handleSave} disabled={saving}>
+            {saving ? 'Saving…' : mode === 'add' ? 'Add Server' : 'Save Changes'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Documents tab ────────────────────────────────────────────────────────────
+// Admin-only org document repository: collections created here are indexed
+// and become available to every user (see the future user-facing Knowledge
+// app, separate from this page). Purely a manager — creating/uploading/
+// ingesting — not a search/ask interface (that already happens in the
+// Companion chat, via a corpus-scoped rag_search call).
+
+function DocumentsTab() {
   const [corpora, setCorpora] = useState<Corpus[]>([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<Corpus | null>(null)
@@ -817,7 +1648,7 @@ function KnowledgeTab() {
     setLoading(true)
     api.get<{ corpora: Corpus[] }>('/corpora')
       .then(r => setCorpora(r.corpora ?? []))
-      .catch(() => showToast('err', 'Failed to load knowledge bases'))
+      .catch(() => showToast('err', 'Failed to load documents'))
       .finally(() => setLoading(false))
   }, [])
 
@@ -829,7 +1660,7 @@ function KnowledgeTab() {
       api.get<{ jobs: IngestionJob[] }>(`/corpora/${corpus.id}/ingest/jobs`),
     ])
       .then(([fr, jr]) => { setCorpusFiles(fr.files ?? []); setJobs(jr.jobs ?? []) })
-      .catch(() => showToast('err', 'Failed to load corpus details'))
+      .catch(() => showToast('err', 'Failed to load collection details'))
       .finally(() => setDetailLoading(false))
   }
 
@@ -840,14 +1671,14 @@ function KnowledgeTab() {
       const corpus = await api.post<Corpus>('/corpora', { name: newName.trim(), description: newDesc.trim() || undefined })
       setCorpora(c => [corpus, ...c])
       setShowCreate(false); setNewName(''); setNewDesc('')
-      showToast('ok', 'Knowledge base created')
-    } catch { showToast('err', 'Failed to create knowledge base') }
+      showToast('ok', 'Collection created')
+    } catch { showToast('err', 'Failed to create collection') }
     finally { setSaving(false) }
   }
 
   async function deleteCorpus(id: string, e: React.MouseEvent) {
     e.stopPropagation()
-    if (!window.confirm('Delete this knowledge base and all its indexed data?')) return
+    if (!window.confirm('Delete this collection and all its indexed data?')) return
     try {
       await api.delete(`/corpora/${id}`)
       setCorpora(c => c.filter(item => item.id !== id))
@@ -898,7 +1729,7 @@ function KnowledgeTab() {
   // ── Detail view ──────────────────────────────────────────────────────────────
   if (selected) {
     return (
-      <div className="wk-knowledge">
+      <div className="wk-documents">
         <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={handleFileInput} />
         <div className="wk-grid-bar">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -926,7 +1757,7 @@ function KnowledgeTab() {
           </div>
         </div>
 
-        <div className="wk-kn-detail-body">
+        <div className="wk-doc-detail-body">
           {detailLoading ? (
             <div className="wk-center">
               <LoadingOne size={23} className="spin" />
@@ -935,29 +1766,29 @@ function KnowledgeTab() {
             <div className="wk-center">
               <Brain size={30} style={{ opacity: 0.3 }} />
               <h2>No files yet</h2>
-              <p>Upload documents to build this knowledge base. PDFs, Markdown, and text files are supported.</p>
+              <p>Upload documents to build this collection. PDFs, Markdown, and text files are supported.</p>
               <button className="wk-new-btn lg" onClick={() => fileInputRef.current?.click()}>
                 <Plus size={12} /> Add your first file
               </button>
             </div>
           ) : (
-            <div className="wk-kn-file-list">
+            <div className="wk-doc-file-list">
               {corpusFiles.map(f => {
                 const latestJob = jobs.filter(j => j.file_id === f.file_id).sort((a, b) => b.created_at - a.created_at)[0]
                 const isRunning = latestJob?.status === 'running' || latestJob?.status === 'pending'
                 return (
-                  <div key={f.file_id} className="wk-kn-file-row">
-                    <div className="wk-kn-file-info">
-                      <span className="wk-kn-file-name">{f.filename}</span>
-                      <span className="wk-kn-file-meta">
+                  <div key={f.file_id} className="wk-doc-file-row">
+                    <div className="wk-doc-file-info">
+                      <span className="wk-doc-file-name">{f.filename}</span>
+                      <span className="wk-doc-file-meta">
                         {f.chunk_count > 0 && `${f.chunk_count} chunks · `}
                         {f.ingested_at
                           ? `Ingested ${new Date(f.ingested_at * 1000).toLocaleDateString()}`
                           : 'Not yet ingested'}
                       </span>
                     </div>
-                    <div className="wk-kn-file-actions">
-                      <span className="wk-kn-status" style={{ color: statusColor(latestJob?.status ?? f.status) }}>
+                    <div className="wk-doc-file-actions">
+                      <span className="wk-doc-status" style={{ color: statusColor(latestJob?.status ?? f.status) }}>
                         {isRunning && <LoadingOne size={10} className="spin" />}
                         {latestJob?.status ?? f.status}
                       </span>
@@ -972,7 +1803,7 @@ function KnowledgeTab() {
                         </button>
                       )}
                       {latestJob?.last_error && (
-                        <span className="wk-kn-error" title={latestJob.last_error}>
+                        <span className="wk-doc-error" title={latestJob.last_error}>
                           <Caution size={11} />
                         </span>
                       )}
@@ -990,14 +1821,14 @@ function KnowledgeTab() {
 
   // ── List view ────────────────────────────────────────────────────────────────
   return (
-    <div className="wk-knowledge">
+    <div className="wk-documents">
       <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={handleFileInput} />
 
       <div className="wk-grid-bar">
-        <div className="wk-grid-bar-title">Knowledge bases</div>
+        <div className="wk-grid-bar-title">Documents</div>
         <div className="wk-grid-bar-actions">
           <button className="wk-new-btn" onClick={() => setShowCreate(true)}>
-            <Plus size={11} /> New Knowledge Base
+            <Plus size={11} /> New Collection
           </button>
         </div>
       </div>
@@ -1010,10 +1841,10 @@ function KnowledgeTab() {
         ) : corpora.length === 0 ? (
           <div className="wk-center">
             <Brain size={30} style={{ opacity: 0.3 }} />
-            <h2>No knowledge bases yet</h2>
-            <p>Create a knowledge base and upload documents. Your agents can search and reason over indexed content using RAG.</p>
+            <h2>No collections yet</h2>
+            <p>Create a collection and upload documents. Your agents can search and reason over indexed content using RAG.</p>
             <button className="wk-new-btn lg" onClick={() => setShowCreate(true)}>
-              <Plus size={12} /> Create your first knowledge base
+              <Plus size={12} /> Create your first collection
             </button>
           </div>
         ) : (
@@ -1021,7 +1852,7 @@ function KnowledgeTab() {
             {corpora.map(corpus => (
               <button key={corpus.id} className="wk-card" onClick={() => loadDetail(corpus)}>
                 <div className="wk-card-top">
-                  <div className="wk-kn-corpus-icon">
+                  <div className="wk-doc-icon">
                     <Brain size={15} />
                   </div>
                   <button className="wk-icon-btn danger" onClick={(e) => deleteCorpus(corpus.id, e)} title="Delete">
@@ -1037,7 +1868,7 @@ function KnowledgeTab() {
             ))}
             <button className="wk-card-new" onClick={() => setShowCreate(true)}>
               <Plus size={16} />
-              New knowledge base
+              New collection
             </button>
           </div>
         )}
@@ -1048,7 +1879,7 @@ function KnowledgeTab() {
         <div className="wk-modal-overlay" onClick={() => setShowCreate(false)}>
           <div className="wk-modal" onClick={e => e.stopPropagation()}>
             <div className="wk-modal-header">
-              <span className="wk-modal-title">New Knowledge Base</span>
+              <span className="wk-modal-title">New Collection</span>
               <button className="wk-icon-btn" onClick={() => setShowCreate(false)}><Close size={13} /></button>
             </div>
             <div className="wk-modal-body">
@@ -1311,43 +2142,71 @@ const CSS = `
 }
 .wk-detail-body { flex: 1; overflow: hidden; display: flex; }
 
-/* Form */
+/* Form — split layout: identity/lifecycle on the left, prompt/config on the right */
 .wk-form { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-.wk-form-inner { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
-.wk-form-header {
-  display: flex; align-items: center; gap: var(--space-6);
-  padding: 17px 28px 14px; border-bottom: 1px solid var(--color-border-subtle);
-  background: var(--color-bg); flex-shrink: 0;
+.wk-form-split { flex: 1; display: flex; overflow: hidden; }
+.wk-form-left {
+  width: 320px; flex-shrink: 0; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 18px;
+  padding: 22px 22px 20px; background: var(--color-bg);
+  border-right: 1px solid var(--color-border-subtle);
 }
-.wk-form-agent-name { font-size: var(--font-size-lg); font-weight: 700; color: var(--color-text); }
-.wk-form-agent-slug { font-size: var(--font-size-2xs); color: var(--color-text-muted); font-family: monospace; margin-top: 3px; }
-.wk-emoji-label { font-size: var(--font-size-2xs); color: var(--color-text-muted); margin-top: var(--space-2); }
+.wk-form-right {
+  flex: 1; min-width: 0; overflow-y: auto;
+  display: flex; flex-direction: column;
+  padding: 22px 28px 28px;
+}
+.wk-form-right > *:not(:first-child) {
+  border-top: 1px solid var(--color-border-subtle);
+  margin-top: 24px; padding-top: 24px;
+}
+.wk-panel-group { display: flex; flex-direction: column; gap: 11px; }
 
-/* Emoji picker */
-.wk-emoji-wrap { position: relative; flex-shrink: 0; }
-.wk-emoji-trigger {
-  width: 64px; height: 64px; border-radius: var(--radius-2xl); border: none;
+/* Generated avatar (grid cards) */
+.wk-avatar-generated svg { width: 100%; height: 100%; display: block; }
+
+/* Avatar picker (identity card: face + reroll + popover) */
+.wk-avatar-picker { position: relative; display: flex; flex-direction: column; align-items: center; gap: var(--space-2); flex-shrink: 0; }
+.wk-avatar-picker-row { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); }
+.wk-avatar-picker-face {
+  overflow: hidden; flex-shrink: 0; padding: 0; margin: 0;
+  background: var(--color-surface); border: 1px solid var(--color-border-subtle);
+  cursor: pointer; transition: border-color 0.15s;
+}
+.wk-avatar-picker-face:hover:not(:disabled) { border-color: var(--color-primary); }
+.wk-avatar-picker-face:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.wk-avatar-picker-face:disabled { cursor: default; }
+.wk-avatar-picker-face svg { width: 100%; height: 100%; display: block; pointer-events: none; }
+.wk-avatar-reroll {
   display: flex; align-items: center; justify-content: center;
-  cursor: pointer; position: relative; transition: filter 0.15s;
-  overflow: hidden;
+  width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--color-border);
+  background: var(--color-surface); color: var(--color-text-muted); cursor: pointer;
+  transition: background 0.1s, color 0.1s, transform 0.15s;
 }
-.wk-emoji-trigger:hover:not(:disabled) { filter: brightness(1.1); }
-.wk-emoji-trigger:disabled { cursor: default; }
-.wk-emoji-display { font-size: 26px; line-height: 1; }
-.wk-emoji-hint {
-  position: absolute; bottom: 3px; right: var(--space-2);
-  font-size: var(--font-size-2xs); opacity: 0; background: rgba(0,0,0,0.5);
-  border-radius: 3px; padding: var(--space-1) var(--space-1); color: #fff;
-  transition: opacity 0.15s; pointer-events: none;
+.wk-avatar-reroll:hover { background: var(--color-hover); color: var(--color-text); }
+.wk-avatar-reroll:active { transform: rotate(120deg); }
+
+.wk-avatar-popover {
+  position: absolute; top: calc(100% + 10px); left: 0;
+  z-index: 300; width: 236px;
+  background: var(--color-bg); border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-large);
+  padding: 12px; display: flex; flex-direction: column; gap: 12px;
 }
-.wk-emoji-trigger:hover .wk-emoji-hint { opacity: 1; }
-.wk-emoji-popover {
-  position: absolute; top: calc(100% + 8px); right: 0; z-index: 300;
-  border-radius: 11px; overflow: hidden;
-  box-shadow: var(--shadow-large);
-  border: 1px solid var(--color-border-subtle);
+.wk-avatar-popover-group { display: flex; flex-direction: column; gap: 7px; }
+.wk-avatar-popover-title {
+  font-size: var(--font-size-2xs); font-weight: 700; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--color-text-muted);
 }
-em-emoji-picker { --border-radius: 11px; }
+.wk-avatar-popover-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.wk-avatar-swatch {
+  aspect-ratio: 1; border-radius: var(--radius-sm); overflow: hidden; padding: 0;
+  background: var(--color-surface); border: 1.5px solid transparent; cursor: pointer;
+  transition: border-color 0.12s, transform 0.1s;
+}
+.wk-avatar-swatch:hover { border-color: var(--color-border); transform: translateY(-1px); }
+.wk-avatar-swatch.selected { border-color: var(--color-primary); }
+.wk-avatar-swatch svg { width: 100%; height: 100%; display: block; pointer-events: none; }
 .wk-section {
   padding: 14px 28px; border-bottom: 1px solid var(--color-border-subtle);
   display: flex; flex-direction: column; gap: 11px;
@@ -1375,18 +2234,23 @@ em-emoji-picker { --border-radius: 11px; }
 .wk-row.align-center { align-items: center; }
 .wk-row.align-end { align-items: flex-end; }
 
-/* Identity row: stacked fields on left, square icon on right */
-.wk-identity-row { display: flex; gap: var(--space-6); align-items: center; }
-.wk-identity-fields { flex: 1; display: flex; flex-direction: column; gap: 11px; }
+/* Identity card: icon on the left, name + slug stacked on the right */
+.wk-identity-card { display: flex; gap: 14px; align-items: flex-start; }
+.wk-identity-fields-v { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 11px; }
+.wk-name-input { font-size: var(--font-size-sm); font-weight: 700; }
 
-.wk-field-icon { display: flex; flex-direction: column; gap: var(--space-2); flex-shrink: 0; }
-.wk-field-icon label { font-size: var(--font-size-2xs); font-weight: 600; color: var(--color-text-secondary); }
-
-/* Icon column aligned to center alongside the stacked fields */
-.wk-field-icon-tall { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); flex-shrink: 0; }
-.wk-field-icon-tall label { font-size: var(--font-size-2xs); font-weight: 600; color: var(--color-text-secondary); align-self: flex-start; }
-.wk-field-inline { display: flex; align-items: center; gap: var(--space-4); padding-top: 14px; }
+.wk-field-inline { display: flex; align-items: center; gap: var(--space-4); }
 .wk-field-inline label { font-size: var(--font-size-2xs); font-weight: 600; color: var(--color-text-secondary); white-space: nowrap; }
+.wk-field-inline.standalone {
+  justify-content: space-between; padding: 9px 12px;
+  border: 1px solid var(--color-border-subtle); border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.wk-danger-zone { margin-top: auto; padding-top: 16px; border-top: 1px solid var(--color-border-subtle); }
+.wk-btn.full { width: 100%; justify-content: center; }
+.wk-btn.danger { border-color: rgba(var(--color-error-rgb), 0.35); color: var(--color-error); }
+.wk-btn.danger:hover:not(:disabled) { background: rgba(var(--color-error-rgb), 0.08); }
 .wk-slug-wrap {
   display: flex; align-items: center;
   background: var(--color-surface); border: 1px solid var(--color-border);
@@ -1492,11 +2356,11 @@ em-emoji-picker { --border-radius: 11px; }
 .wk-send-btn:not(.stop):disabled { opacity: 0.4; cursor: default; }
 .wk-send-btn.stop { background: rgba(var(--color-error-rgb), 0.12); color: var(--color-error); border: 1px solid rgba(var(--color-error-rgb), 0.25); }
 
-/* Knowledge */
-.wk-knowledge { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-.wk-kn-detail-body { flex: 1; overflow-y: auto; padding: 22px 28px; display: flex; flex-direction: column; gap: 9px; }
+/* Documents */
+.wk-documents { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.wk-doc-detail-body { flex: 1; overflow-y: auto; padding: 22px 28px; display: flex; flex-direction: column; gap: 9px; }
 
-.wk-kn-corpus-icon {
+.wk-doc-icon {
   width: 38px; height: 38px; border-radius: 9px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   background: color-mix(in srgb, var(--color-primary) 12%, transparent);
@@ -1504,20 +2368,20 @@ em-emoji-picker { --border-radius: 11px; }
   color: var(--color-primary);
 }
 
-.wk-kn-file-list { display: flex; flex-direction: column; gap: 3px; }
-.wk-kn-file-row {
+.wk-doc-file-list { display: flex; flex-direction: column; gap: 3px; }
+.wk-doc-file-row {
   display: flex; align-items: center; justify-content: space-between; gap: var(--space-6);
   padding: 7px 10px; border-radius: var(--radius-md);
   background: var(--color-bg); border: 1px solid var(--color-border-subtle);
   transition: border-color 0.12s;
 }
-.wk-kn-file-row:hover { border-color: var(--color-border); }
-.wk-kn-file-info { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; flex: 1; }
-.wk-kn-file-name { font-size: var(--font-size-xs); font-weight: 600; color: var(--color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.wk-kn-file-meta { font-size: var(--font-size-2xs); color: var(--color-text-muted); }
-.wk-kn-file-actions { display: flex; align-items: center; gap: var(--space-3); flex-shrink: 0; }
-.wk-kn-status { display: flex; align-items: center; gap: var(--space-2); font-size: var(--font-size-2xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
-.wk-kn-error { color: var(--color-error); display: flex; cursor: help; }
+.wk-doc-file-row:hover { border-color: var(--color-border); }
+.wk-doc-file-info { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; flex: 1; }
+.wk-doc-file-name { font-size: var(--font-size-xs); font-weight: 600; color: var(--color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wk-doc-file-meta { font-size: var(--font-size-2xs); color: var(--color-text-muted); }
+.wk-doc-file-actions { display: flex; align-items: center; gap: var(--space-3); flex-shrink: 0; }
+.wk-doc-status { display: flex; align-items: center; gap: var(--space-2); font-size: var(--font-size-2xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.wk-doc-error { color: var(--color-error); display: flex; cursor: help; }
 
 /* Modal */
 .wk-modal-overlay {
@@ -1682,6 +2546,219 @@ em-emoji-picker { --border-radius: 11px; }
 .wk-planned-note {
   margin-top: 16px; padding: 10px; border-radius: var(--radius-sm); background: var(--color-surface);
   border: 1px solid var(--color-border-subtle); color: var(--color-text-muted); font-size: var(--font-size-xs);
+}
+
+/* Tools & MCP tab */
+.wk-tools-root { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+.wk-tools-subbar {
+  padding: 14px 28px; border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-bg); flex-shrink: 0;
+}
+.wk-tools-scroll {
+  flex: 1; overflow-y: auto; padding: 22px 28px 40px;
+  display: flex; flex-direction: column;
+}
+
+/* MCP's card/list UI stretches full width like the rest of Workspace; the
+   Internal reference below caps its own width — chip-and-text content reads
+   better narrower than the console is wide. */
+.wk-tools-internal { display: flex; flex-direction: column; gap: 20px; max-width: 780px; margin: 0 auto; width: 100%; }
+
+.wk-tools-search { position: relative; }
+.wk-tools-search-icon {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  color: var(--color-text-muted); pointer-events: none;
+}
+.wk-tools-search input {
+  width: 100%; box-sizing: border-box;
+  background: var(--color-bg); border: 1px solid var(--color-border);
+  border-radius: var(--radius-md); padding: 9px 12px 9px 34px;
+  color: var(--color-text); font-size: var(--font-size-sm); outline: none;
+  transition: border-color 0.12s;
+}
+.wk-tools-search input:focus { border-color: var(--color-primary); }
+.wk-tools-search input::placeholder { color: var(--color-text-muted); }
+
+.wk-tools-empty { padding: 48px 0; text-align: center; color: var(--color-text-muted); font-size: var(--font-size-sm); }
+
+.wk-tools-groups { display: flex; flex-direction: column; }
+.wk-tools-group { padding: 16px 0; border-bottom: 1px solid var(--color-border-subtle); }
+.wk-tools-group:last-child { border-bottom: none; padding-bottom: 0; }
+.wk-tools-group-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 11px; }
+.wk-tools-group-title {
+  font-size: var(--font-size-xs); font-weight: 700;
+  letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-text);
+}
+.wk-tools-group-count { font-size: var(--font-size-2xs); color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+.wk-tools-chip-row { display: flex; flex-wrap: wrap; gap: 7px; }
+.wk-tools-chip {
+  font-size: var(--font-size-2xs); font-weight: 600; color: var(--color-text-secondary);
+  background: var(--color-bg); border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm); padding: 4px 10px; transition: border-color 0.12s, color 0.12s;
+}
+.wk-tools-chip:hover { border-color: var(--color-border); color: var(--color-text); }
+
+/* MCP (moved from settings/CapabilitiesViews.tsx) */
+.caps-mcp-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+}
+.caps-mcp-actions-bar {
+  display: flex; gap: 6px; align-items: center;
+  flex-wrap: wrap; justify-content: flex-end;
+}
+.mcp-modal-shell { max-width: 560px; }
+.caps-add-mcp-btn {
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  color: var(--color-text); padding: 4px 8px; border-radius: 12px;
+  font-size: 10px; font-weight: 600;
+  display: flex; align-items: center; gap: 5px; cursor: pointer;
+}
+.caps-add-mcp-btn:hover { background: var(--color-hover); }
+.caps-import-json-btn {
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  color: var(--color-text); padding: 4px 8px; border-radius: 6px;
+  font-size: 10px; font-weight: 600;
+  display: flex; align-items: center; gap: 5px; cursor: pointer;
+}
+.caps-import-json-btn:hover { background: var(--color-hover); }
+.caps-reload-btn {
+  background: var(--color-cta); color: white;
+  border: none; padding: 4px 10px; border-radius: 6px;
+  font-size: 10px; font-weight: 700;
+  display: flex; align-items: center; gap: 5px; cursor: pointer;
+}
+.caps-reload-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.caps-reload-badge {
+  display: flex; align-items: center; gap: 3px;
+  font-size: 10px; font-weight: 600;
+  color: #f59e0b; background: rgba(245,158,11,0.1);
+  padding: 2px 6px; border-radius: 5px;
+  border: 1px solid rgba(245,158,11,0.25);
+}
+.caps-reload-result {
+  display: flex; flex-direction: column; gap: 3px;
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: 8px; padding: 8px 11px;
+}
+.caps-reload-row { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+.caps-reload-row.ok { color: var(--color-success); }
+.caps-reload-row.err { color: var(--color-error); }
+.caps-reload-tools { color: var(--color-text-muted); font-size: 10px; }
+.caps-reload-error { color: var(--color-error); font-size: 10px; }
+.caps-mcp-list { display: flex; flex-direction: column; gap: 6px; }
+.caps-mcp-card {
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: 9px; overflow: hidden;
+  transition: opacity 0.15s;
+}
+.caps-mcp-card.disabled { opacity: 0.55; }
+.caps-mcp-card.expanded { border-color: var(--color-primary); }
+.caps-mcp-card-main {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 13px;
+}
+.caps-mcp-card-left { display: flex; align-items: center; gap: 11px; flex: 1; min-width: 0; }
+.caps-tools-toggle {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 10px; font-weight: 600;
+  background: var(--color-hover); color: var(--color-text-secondary);
+  border: 1px solid var(--color-border); border-radius: 4px;
+  padding: 2px 5px; cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.caps-tools-toggle:hover,
+.caps-tools-toggle.active {
+  background: var(--color-primary-subtle); color: var(--color-cta);
+  border-color: var(--color-cta);
+}
+.caps-no-tools-badge { font-size: 10px; color: var(--color-text-muted); opacity: 0.6; }
+.caps-tools-list {
+  border-top: 1px solid var(--color-border);
+  padding: 7px 13px 10px;
+  display: flex; flex-direction: column; gap: 5px;
+  background: var(--color-bg);
+}
+.caps-tool-row {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--color-border-subtle, rgba(255,255,255,0.05));
+}
+.caps-tool-row:last-child { border-bottom: none; }
+.caps-tool-name {
+  font-size: 10px; font-family: var(--font-mono, monospace);
+  color: var(--color-cta); white-space: nowrap; flex-shrink: 0;
+  background: var(--color-primary-subtle); padding: 2px 4px; border-radius: 3px;
+}
+.caps-tool-desc { font-size: 10px; color: var(--color-text-muted); line-height: 1.4; flex: 1; min-width: 0; }
+.caps-mcp-icon { font-size: 21px; line-height: 1; flex-shrink: 0; width: 36px; text-align: center; }
+.caps-mcp-info { flex: 1; min-width: 0; }
+.caps-mcp-title { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; flex-wrap: wrap; }
+.caps-mcp-name { font-weight: 700; font-size: 12px; color: var(--color-text); }
+.caps-mcp-type-badge {
+  display: flex; align-items: center; gap: 3px;
+  font-size: 10px; font-weight: 600;
+  background: var(--color-primary-subtle); color: var(--color-cta);
+  padding: 2px 5px; border-radius: 4px;
+}
+.caps-mcp-source-badge {
+  font-size: 10px; font-weight: 600; color: var(--color-text-muted);
+  background: var(--color-hover); padding: 2px 4px; border-radius: 3px;
+}
+.caps-org-mcp-approve-btn {
+  background: var(--color-cta); color: white;
+  border: none; padding: 4px 10px; border-radius: 6px;
+  font-size: 10px; font-weight: 700;
+  display: flex; align-items: center; gap: 5px; cursor: pointer;
+}
+.caps-org-mcp-approve-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.caps-org-mcp-revoke-btn {
+  background: var(--color-surface); border: 1px solid var(--color-success);
+  color: var(--color-success); padding: 4px 10px; border-radius: 6px;
+  font-size: 10px; font-weight: 600;
+  display: flex; align-items: center; gap: 5px; cursor: pointer;
+}
+.caps-org-mcp-revoke-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.caps-mcp-detail code {
+  font-size: 10px; color: var(--color-text-muted);
+  font-family: var(--font-mono, monospace);
+  background: var(--color-hover); padding: 2px 4px; border-radius: 3px;
+  display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  max-width: 400px;
+}
+.caps-mcp-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.caps-mcp-toggle { position: relative; display: inline-flex; cursor: pointer; }
+.caps-mcp-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+.caps-toggle-track {
+  width: 36px; height: 20px; background: var(--color-border);
+  border-radius: 8px; transition: background 0.2s; display: block;
+}
+.caps-mcp-toggle input:checked ~ .caps-toggle-track { background: var(--color-cta); }
+.caps-toggle-track::after {
+  content: ''; position: absolute; top: 3px; left: 3px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: white; transition: transform 0.2s;
+}
+.caps-mcp-toggle input:checked ~ .caps-toggle-track::after { transform: translateX(16px); }
+.mcp-form-row-2 { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: end; }
+.mcp-env-textarea {
+  width: 100%; background: var(--color-surface);
+  border: 1.5px solid var(--color-border); border-radius: 8px;
+  padding: 7px 10px; color: var(--color-text); font-family: var(--font-mono, monospace);
+  font-size: 11px; line-height: 1.5; resize: vertical; outline: none; box-sizing: border-box;
+}
+.mcp-env-textarea:focus { border-color: var(--color-primary); }
+.caps-mini-btn { background: none; border: none; color: var(--color-text-muted); cursor: pointer; display: flex; padding: 3px; border-radius: 3px; }
+.caps-mini-btn:hover { color: var(--color-text); background: var(--color-hover); }
+.caps-mini-btn.danger:hover { color: var(--color-error); background: rgba(var(--color-error-rgb),0.08); }
+.caps-loading, .caps-empty {
+  font-size: 12px; color: var(--color-text-muted);
+  padding: 34px 0; text-align: center;
+}
+.caps-error {
+  font-size: 11px; color: var(--color-error);
+  padding: 8px 11px; border-radius: 6px;
+  background: rgba(var(--color-error-rgb, 255,77,79), 0.08);
+  margin-bottom: 16px;
 }
 
 @media (max-width: 1180px) {

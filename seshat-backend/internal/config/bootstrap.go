@@ -21,6 +21,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudagents"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudautomation"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudidentity"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudknowledge"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudlongterm"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudmcp"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudmemories"
@@ -378,6 +379,24 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		fmt.Printf("[API] Artifact store initialisé: %s\n", storage.GetProviderType())
 	}
 
+	// Documents (knowledge): standalone local knowledge.Service, or
+	// cloudknowledge.RemoteService proxying to a connected seshat-server's
+	// own org-wide corpora — both implement knowledge.Backend, and NewApp
+	// falls back to the local one when this is nil. See
+	// internal/cloudknowledge's package doc for why this is a clean swap
+	// rather than an additive merge like MCP.
+	//
+	// Declared as the knowledge.Backend interface (not *cloudknowledge.
+	// RemoteService) so that leaving it unset in standalone mode is a true
+	// nil interface — assigning a nil *RemoteService to an interface-typed
+	// Dependencies field would produce a non-nil interface holding a nil
+	// pointer, defeating NewApp's `if knowledgeService == nil` fallback
+	// check. Same reasoning as longTermMemStore above.
+	var knowledgeCloudBackend backendknowledge.Backend
+	if serverURL != "" {
+		knowledgeCloudBackend = cloudknowledge.NewRemoteService(serverURL, fileStore, artifactStore)
+	}
+
 	vectorDatabase := database
 	if vector.Backend(config.VectorBackend) == vector.BackendPgVector && strings.TrimSpace(config.PgVectorDSN) != "" {
 		vectorDB, err := db.Open(ctx, db.Config{
@@ -695,6 +714,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		FileStore:                fileStore,
 		CorpusStore:              corpusStore,
 		IngestionJobStore:        ingestionJobStore,
+		KnowledgeBackend:         knowledgeCloudBackend,
 		SettingStore:             settingStore,
 		OAuthStore:               oauthStore,
 		WebSearchSettings:        webSearchSettingStore,
@@ -811,11 +831,18 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		TerminalRelay:         terminalRelay,
 	})
 
-	knowledgeRunner := backendknowledge.NewRunner(backendApp.Knowledge, backendknowledge.RunnerConfig{
-		PollInterval: 500 * time.Millisecond,
-		MaxPerTick:   4,
-	})
-	knowledgeRunner.Start(ctx)
+	// Only the local knowledge.Service has a queue for this runner to drain —
+	// in connected mode backendApp.Knowledge is a *cloudknowledge.RemoteService
+	// instead, and a connected seshat-server already runs its own ingestion
+	// pipeline server-side (internal/server/knowledge.Runner), so there is
+	// nothing for a local runner to do.
+	if localKnowledge, ok := backendApp.Knowledge.(*backendknowledge.Service); ok {
+		knowledgeRunner := backendknowledge.NewRunner(localKnowledge, backendknowledge.RunnerConfig{
+			PollInterval: 500 * time.Millisecond,
+			MaxPerTick:   4,
+		})
+		knowledgeRunner.Start(ctx)
+	}
 
 	return app, cleanup, nil
 }

@@ -66,12 +66,21 @@ type Dependencies struct {
 	// auth.Principal.OrganizationID), not configured here. See
 	// internal/cloudwebsearch's package doc.
 	WebSearchCloudClient *cloudwebsearch.Client
-	EmbedderConfigStore  *db.EmbedderConfigStore
-	AuditLogStore        *db.AuditLogStore     // nil = audit logging disabled
-	UsageCounterStore    *db.UsageCounterStore // nil = quota tracking disabled
-	ArtifactStore        storage.ArtifactStore // nil = blob storage disabled
-	RAGService           *rag.Service          // nil = embedder not configured
-	Monitoring           metrics.Snapshotter
+	// KnowledgeBackend selects standalone vs connected Documents storage.
+	// nil = knowledge.NewService(CorpusStore, FileStore, IngestionJobStore,
+	// ArtifactStore, RAGService), i.e. today's local-only behavior — set only
+	// by bootstrap.go to a *cloudknowledge.RemoteService when SESHAT_SERVER_URL
+	// is configured. Unlike MCP/agents/web-search (which enrich the local
+	// behavior with an org catalog), this is a clean swap: in connected mode
+	// there is exactly one set of corpora, the organization's, not local
+	// corpora plus org corpora. See internal/cloudknowledge's package doc.
+	KnowledgeBackend    knowledge.Backend
+	EmbedderConfigStore *db.EmbedderConfigStore
+	AuditLogStore       *db.AuditLogStore     // nil = audit logging disabled
+	UsageCounterStore   *db.UsageCounterStore // nil = quota tracking disabled
+	ArtifactStore       storage.ArtifactStore // nil = blob storage disabled
+	RAGService          *rag.Service          // nil = embedder not configured
+	Monitoring          metrics.Snapshotter
 	// ResolveDoclingClient returns the docling client to use for a given
 	// call, re-evaluated on every invocation (not cached) — nil = no
 	// auto-conversion. Set by bootstrap.go to check the user's persisted
@@ -132,7 +141,7 @@ type App struct {
 	Auth        *auth.Service
 	Query       *query.Service
 	Files       *files.Service
-	Knowledge   *knowledge.Service
+	Knowledge   knowledge.Backend
 	Settings    *settings.Service
 	WebSearch   *websearch.Service
 	Audit       *audit.Service
@@ -170,7 +179,10 @@ func NewApp(deps Dependencies) *App {
 	}
 	preferencesService := preferences.NewService(preferencesProvider)
 	filesService := files.NewService(deps.FileStore, deps.ArtifactStore).WithDocling(deps.ResolveDoclingClient)
-	knowledgeService := knowledge.NewService(deps.CorpusStore, deps.FileStore, deps.IngestionJobStore, deps.ArtifactStore, deps.RAGService).WithDocling(deps.ResolveDoclingClient)
+	knowledgeService := deps.KnowledgeBackend
+	if knowledgeService == nil {
+		knowledgeService = knowledge.NewService(deps.CorpusStore, deps.FileStore, deps.IngestionJobStore, deps.ArtifactStore, deps.RAGService).WithDocling(deps.ResolveDoclingClient)
+	}
 	skillsService := skills.NewService()
 	agentsService := agents.NewService(deps.AgentDefinitionStore, deps.AgentsCloudClient)
 	quotaProvider := deps.QuotaProvider

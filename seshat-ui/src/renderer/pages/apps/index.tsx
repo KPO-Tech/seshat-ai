@@ -50,13 +50,12 @@ const APPS: AppEntry[] = [
   {
     id: 'knowledge',
     title: 'Knowledge',
-    description: 'Centralized document retrieval. Search, ask questions, and summarize company knowledge.',
-    route: '/workspace',
-    status: 'ready',
+    description: 'Search, ask questions, and summarize company and personal knowledge — public documents managed by admins plus your own.',
+    status: 'planned',
     category: 'core',
     icon: <Book size={32} />,
     tone: 'knowledge',
-    highlights: ['Semantic RAG', 'PDF & DOCX ingestion', 'Notebook summaries'],
+    highlights: ['Semantic RAG', 'Personal & shared docs', 'Cited answers'],
   },
   {
     id: 'skills-creator',

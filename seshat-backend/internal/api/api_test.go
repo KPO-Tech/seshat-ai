@@ -1809,7 +1809,11 @@ func newKnowledgeTestAppWithEmbedderAndVector(t *testing.T, embedder *stubEmbedd
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
-	runner := backendknowledge.NewRunner(app.backend.Knowledge, backendknowledge.RunnerConfig{
+	localKnowledge, ok := app.backend.Knowledge.(*backendknowledge.Service)
+	if !ok {
+		t.Fatalf("expected local *knowledge.Service, got %T", app.backend.Knowledge)
+	}
+	runner := backendknowledge.NewRunner(localKnowledge, backendknowledge.RunnerConfig{
 		PollInterval: 10 * time.Millisecond,
 		MaxPerTick:   4,
 	})
@@ -2366,7 +2370,11 @@ func TestCorpusDetachedPendingJobBecomesSkipped(t *testing.T) {
 		t.Fatalf("detach before processing: got %d, body=%s", rec.Code, rec.Body.String())
 	}
 
-	processed, err := app.backend.Knowledge.ProcessNextIngestionJob(context.Background())
+	localKnowledge, ok := app.backend.Knowledge.(*backendknowledge.Service)
+	if !ok {
+		t.Fatalf("expected local *knowledge.Service, got %T", app.backend.Knowledge)
+	}
+	processed, err := localKnowledge.ProcessNextIngestionJob(context.Background())
 	if err != nil {
 		t.Fatalf("ProcessNextIngestionJob: %v", err)
 	}
