@@ -1,16 +1,21 @@
-import { useState, useEffect, useCallback, useRef, KeyboardEvent } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router'
 import {
-  Search, Plus, Right, Down, FolderClose, FolderOpen,
-  FileCode, Close, Sync, MoreOne, Edit, PreviewOpen, ArrowLeft, Left,
-  Robot, Send, Copy, CheckOne,
+  Search, Right, Down, FolderClose, FolderOpen,
+  FileCode, Close, Sync, MoreOne, Edit, PreviewOpen, Left, Upload,
+  // Skill icon picker icons
+  Code, CodeBrackets, Bug, Experiment, TestTube, BranchOne, Merge, Terminal,
+  RocketOne, Play, Cycle, Refresh, Magic, MagicWand, Lightning, Robot,
+  FileText, Notebook, NotebookAndPen, BookOpen, Write, Log,
+  Filter, ChartGraph, Monitor, Target, Focus, ZoomIn, Tag,
+  Api, Server, DatabaseCode, Link, Connect, Share, SendEmail,
+  CheckOne, Star, Flag, Shield, Lock, Key, Info, Timer, Globe,
 } from '@icon-park/react'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { api } from '@/api/client'
 import { useUIStore } from '@/stores/ui'
 import { MarkdownView } from '@/components/MarkdownView'
-import { NexusLogo } from '@/components/NexusLogo'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -33,10 +38,141 @@ type TreeNode = {
   children?: TreeNode[]
 }
 
-type ChatMessage = {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
+type RepoInfo = {
+  name: string
+  url: string
+  skill_count: number
+}
+
+type CatalogEntry = {
+  name: string
+  url: string
+  description: string
+  installed: boolean
+  // Present only for entries pulled from a connected seshat-server's org
+  // registry — see internal/cloudskillregistry on the backend.
+  source?: 'organization'
+}
+
+// ─── Skill icon library (icon-park) — moved from settings/CapabilitiesViews.tsx
+// when the Settings → Capabilities → Skills tab merged into this page ─────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type IconComp = React.ComponentType<any>
+
+const SKILL_ICON_GROUPS: { label: string; icons: { name: string; Icon: IconComp }[] }[] = [
+  { label: 'Dev', icons: [
+    { name: 'Code',           Icon: Code },
+    { name: 'CodeBrackets',   Icon: CodeBrackets },
+    { name: 'Terminal',       Icon: Terminal },
+    { name: 'Bug',            Icon: Bug },
+    { name: 'Experiment',     Icon: Experiment },
+    { name: 'TestTube',       Icon: TestTube },
+    { name: 'BranchOne',      Icon: BranchOne },
+    { name: 'Merge',          Icon: Merge },
+  ]},
+  { label: 'Build', icons: [
+    { name: 'RocketOne',      Icon: RocketOne },
+    { name: 'Play',           Icon: Play },
+    { name: 'Cycle',          Icon: Cycle },
+    { name: 'Refresh',        Icon: Refresh },
+    { name: 'Magic',          Icon: Magic },
+    { name: 'MagicWand',      Icon: MagicWand },
+    { name: 'Lightning',      Icon: Lightning },
+    { name: 'Robot',          Icon: Robot },
+  ]},
+  { label: 'Files', icons: [
+    { name: 'FileText',       Icon: FileText },
+    { name: 'Notebook',       Icon: Notebook },
+    { name: 'NotebookAndPen', Icon: NotebookAndPen },
+    { name: 'BookOpen',       Icon: BookOpen },
+    { name: 'Write',          Icon: Write },
+    { name: 'Edit',           Icon: Edit },
+    { name: 'FolderOpen',     Icon: FolderOpen },
+    { name: 'Log',            Icon: Log },
+  ]},
+  { label: 'Search', icons: [
+    { name: 'Search',         Icon: Search },
+    { name: 'Filter',         Icon: Filter },
+    { name: 'ChartGraph',     Icon: ChartGraph },
+    { name: 'Monitor',        Icon: Monitor },
+    { name: 'Target',         Icon: Target },
+    { name: 'Focus',          Icon: Focus },
+    { name: 'ZoomIn',         Icon: ZoomIn },
+    { name: 'Tag',            Icon: Tag },
+  ]},
+  { label: 'Network', icons: [
+    { name: 'Api',            Icon: Api },
+    { name: 'Globe',          Icon: Globe },
+    { name: 'Server',         Icon: Server },
+    { name: 'DatabaseCode',   Icon: DatabaseCode },
+    { name: 'Link',           Icon: Link },
+    { name: 'Connect',        Icon: Connect },
+    { name: 'Share',          Icon: Share },
+    { name: 'SendEmail',      Icon: SendEmail },
+  ]},
+  { label: 'Status', icons: [
+    { name: 'CheckOne',       Icon: CheckOne },
+    { name: 'Star',           Icon: Star },
+    { name: 'Flag',           Icon: Flag },
+    { name: 'Shield',         Icon: Shield },
+    { name: 'Lock',           Icon: Lock },
+    { name: 'Key',            Icon: Key },
+    { name: 'Info',           Icon: Info },
+    { name: 'Timer',          Icon: Timer },
+  ]},
+]
+
+const SKILL_ICON_LOOKUP: Record<string, IconComp> = Object.fromEntries(
+  SKILL_ICON_GROUPS.flatMap(g => g.icons).map(({ name, Icon }) => [name, Icon])
+)
+
+const SKILL_ICON_DEFAULTS: [string, string][] = [
+  ['commit', 'BranchOne'], ['git', 'BranchOne'],   ['branch', 'BranchOne'],
+  ['review', 'Search'],    ['analyze', 'ChartGraph'], ['chart', 'ChartGraph'],
+  ['test', 'TestTube'],    ['spec', 'TestTube'],
+  ['deploy', 'RocketOne'], ['release', 'RocketOne'], ['launch', 'RocketOne'],
+  ['debug', 'Bug'],
+  ['doc', 'NotebookAndPen'], ['readme', 'NotebookAndPen'], ['write', 'Write'],
+  ['refactor', 'Cycle'],   ['clean', 'Cycle'],
+  ['merge', 'Merge'],      ['migrate', 'Merge'],
+  ['search', 'Search'],    ['find', 'Search'],
+  ['build', 'Code'],       ['compile', 'Code'],
+  ['lint', 'CheckOne'],    ['check', 'CheckOne'],   ['format', 'Edit'],
+  ['generate', 'Magic'],   ['magic', 'Magic'],
+  ['api', 'Api'],          ['server', 'Server'],    ['network', 'Connect'],
+  ['data', 'DatabaseCode'], ['db', 'DatabaseCode'],
+  ['file', 'FileText'],    ['folder', 'FolderOpen'],
+  ['log', 'Log'],          ['monitor', 'Monitor'],
+  ['security', 'Shield'],  ['auth', 'Lock'],        ['key', 'Key'],
+  ['share', 'Share'],      ['export', 'Share'],
+  ['robot', 'Robot'],      ['ai', 'Robot'],
+  ['star', 'Star'],        ['flag', 'Flag'],
+  ['time', 'Timer'],       ['link', 'Link'],
+  ['script', 'Terminal'],  ['bash', 'Terminal'],
+  ['target', 'Target'],    ['globe', 'Globe'],      ['translate', 'Globe'],
+  ['code', 'CodeBrackets'], ['experiment', 'Experiment'],
+]
+
+function getDefaultIconName(skillName: string): string {
+  const lower = skillName.toLowerCase()
+  for (const [kw, icon] of SKILL_ICON_DEFAULTS) {
+    if (lower.includes(kw)) return icon
+  }
+  return 'Code'
+}
+
+const SKILL_ICON_STORE_KEY = 'nexus:skill-icons'
+
+function loadSkillIcons(): Record<string, string> {
+  try { return JSON.parse(localStorage.getItem(SKILL_ICON_STORE_KEY) ?? '{}') }
+  catch { return {} }
+}
+
+function saveSkillIcon(skillName: string, iconName: string) {
+  const store = loadSkillIcons()
+  store[skillName] = iconName
+  localStorage.setItem(SKILL_ICON_STORE_KEY, JSON.stringify(store))
 }
 
 // ─── Collection grouping helpers ──────────────────────────────────────────────
@@ -104,22 +240,6 @@ export function SkillsCreatorPage() {
   // Close Agent Monitor and any right panel when entering this page
   useEffect(() => { closeAllRightPanels() }, [closeAllRightPanels])
 
-  const [chatOpen, setChatOpen] = useState(() => {
-    try { return localStorage.getItem('sc-agent-open') === 'true' } catch { return false }
-  })
-  const [agentWidth, setAgentWidth] = useState(() => {
-    try { return Number(localStorage.getItem('sc-agent-width')) || 360 } catch { return 360 }
-  })
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
-  const [chatSessionId, setChatSessionId] = useState<string | null>(null)
-
-  const toggleChat = () => {
-    setChatOpen(v => {
-      const next = !v
-      try { localStorage.setItem('sc-agent-open', String(next)) } catch {}
-      return next
-    })
-  }
   const [skills, setSkills] = useState<Skill[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null)
@@ -135,8 +255,10 @@ export function SkillsCreatorPage() {
   const [expandedSkills, setExpandedSkills] = useState<Set<string>>(new Set())
   const [searchQuery, setSearchQuery] = useState('')
   const [showSearch, setShowSearch] = useState(false)
-  const [creating, setCreating] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [repoData, setRepoData] = useState<{ installed: RepoInfo[]; catalog: CatalogEntry[] }>({ installed: [], catalog: [] })
+  const [repoManagementAvailable, setRepoManagementAvailable] = useState(true)
+  const [showInstaller, setShowInstaller] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
 
   const load = useCallback(async () => {
@@ -145,6 +267,15 @@ export function SkillsCreatorPage() {
       const data = await api.get<{ skills: Skill[] }>('/skills')
       const all = data.skills ?? []
       setSkills(all)
+      try {
+        const repoRes = await api.get<{ installed: RepoInfo[]; catalog: CatalogEntry[] }>('/skills/repos')
+        setRepoData(repoRes)
+        setRepoManagementAvailable(true)
+      } catch {
+        // Non-admins get a 403 here (repo management is admin-only) — hide
+        // the import affordance rather than surfacing an error for it.
+        setRepoManagementAvailable(false)
+      }
       return all
     } catch {
       return [] as Skill[]
@@ -152,6 +283,21 @@ export function SkillsCreatorPage() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  const handleToggleEnabled = useCallback(async (skill: Skill) => {
+    if (!isUserSkill(skill)) return
+    const nextEnabled = !(skill.user_invocable && !skill.is_hidden)
+    setActionError(null)
+    try {
+      await api.put(`/skills/${encodeURIComponent(skill.name)}`, { enabled: nextEnabled })
+      const patched = { ...skill, user_invocable: nextEnabled, is_hidden: false }
+      setSkills(current => current.map(item => item.name === skill.name ? patched : item))
+      // The existing selectedSkill effect recomputes `enabled` whenever this changes.
+      setSelectedSkill(current => current?.name === skill.name ? patched : current)
+    } catch (e: unknown) {
+      setActionError((e as { message?: string })?.message ?? 'Failed to update skill')
+    }
+  }, [])
 
   useEffect(() => {
     setEnabled(selectedSkill ? selectedSkill.user_invocable && !selectedSkill.is_hidden : true)
@@ -277,23 +423,17 @@ export function SkillsCreatorPage() {
           <span className="sc-sidebar-title">Skills</span>
           <div className="sc-sidebar-actions">
             <button
-              className="sc-icon-btn"
-              onClick={toggleChat}
-              title="SkillAgent"
-              style={chatOpen ? { color: 'var(--color-accent, #f97316)' } : undefined}
-            >
-              <Robot size={12} />
-            </button>
-            <button
               className={`sc-icon-btn${showSearch ? ' active' : ''}`}
               onClick={() => { setShowSearch(v => !v); setTimeout(() => searchRef.current?.focus(), 50) }}
               title="Search"
             >
               <Search size={12} />
             </button>
-            <button className="sc-icon-btn" onClick={() => { setCreating(true); setSelectedSkill(null) }} title="New skill">
-              <Plus size={12} />
-            </button>
+            {repoManagementAvailable && (
+              <button className="sc-icon-btn" onClick={() => setShowInstaller(true)} title="Import skills from a repository">
+                <Upload size={12} />
+              </button>
+            )}
           </div>
         </div>
 
@@ -331,6 +471,7 @@ export function SkillsCreatorPage() {
                 onSelectSkill={selectSkill}
                 onSelectFile={selectFile}
                 onDelete={handleDelete}
+                onToggleEnabled={handleToggleEnabled}
                 readOnly={group.readOnly}
                 emptyHint={group.collection === 'user' ? 'No personal skills yet' : ''}
               />
@@ -347,18 +488,7 @@ export function SkillsCreatorPage() {
             <button className="sc-action-error-close" onClick={() => setActionError(null)} aria-label="Dismiss">×</button>
           </div>
         )}
-        {creating ? (
-          <CreateSkillPanel
-            onCancel={() => setCreating(false)}
-            onCreated={(name) => {
-              setCreating(false)
-              load().then((all) => {
-                const skill = all.find((item) => item.name === name)
-                if (skill) selectSkill(skill)
-              })
-            }}
-          />
-        ) : selectedSkill ? (
+        {selectedSkill ? (
           <SkillEditorPanel
             skill={selectedSkill}
             selectedFilePath={selectedFilePath}
@@ -380,31 +510,15 @@ export function SkillsCreatorPage() {
             onDelete={() => handleDelete(selectedSkill)}
           />
         ) : (
-          <EmptyState onNew={() => { setCreating(true); setSelectedSkill(null) }} />
+          <EmptyState canImport={repoManagementAvailable} onImport={() => setShowInstaller(true)} />
         )}
       </div>
 
-      {/* ── SkillAgent panel — right side ── */}
-      {chatOpen && (
-        <SkillAgentPanel
-          selectedSkill={selectedSkill}
-          messages={chatMessages}
-          sessionId={chatSessionId}
-          width={agentWidth}
-          onWidthChange={(w) => {
-            setAgentWidth(w)
-            try { localStorage.setItem('sc-agent-width', String(w)) } catch {}
-          }}
-          onMessagesChange={setChatMessages}
-          onSessionIdChange={setChatSessionId}
-          onApply={(content) => {
-            if (!selectedSkill || !isUserSkill(selectedSkill)) return
-            setFileContent(content)
-            setEditValue(content)
-            setSelectedFilePath('skill.md')
-            setEditMode(false)
-          }}
-          onClose={toggleChat}
+      {showInstaller && (
+        <RepoManagerModal
+          catalog={repoData.catalog}
+          installed={repoData.installed}
+          onChanged={() => { load(); setShowInstaller(false) }}
         />
       )}
     </div>
@@ -415,7 +529,7 @@ export function SkillsCreatorPage() {
 
 function SkillSection({
   label, skills, expanded, selected, selectedFilePath, fileTree, fileTreeLoading,
-  onToggle, onSelectSkill, onSelectFile, onDelete, readOnly = false, emptyHint,
+  onToggle, onSelectSkill, onSelectFile, onDelete, onToggleEnabled, readOnly = false, emptyHint,
 }: {
   label: string
   skills: Skill[]
@@ -428,6 +542,7 @@ function SkillSection({
   onSelectSkill: (skill: Skill) => void
   onSelectFile: (relPath: string) => void
   onDelete: (skill: Skill) => void
+  onToggleEnabled: (skill: Skill) => void
   readOnly?: boolean
   emptyHint: string
 }) {
@@ -457,6 +572,7 @@ function SkillSection({
                 onSelect={() => onSelectSkill(skill)}
                 onSelectFile={onSelectFile}
                 onDelete={readOnly ? undefined : () => onDelete(skill)}
+                onToggleEnabled={readOnly ? undefined : () => onToggleEnabled(skill)}
               />
             ))
           )}
@@ -470,7 +586,7 @@ function SkillSection({
 
 function SkillTreeItem({
   skill, isExpanded, isSelected, selectedFilePath, fileTree, fileTreeLoading,
-  onToggle, onSelect, onSelectFile, onDelete,
+  onToggle, onSelect, onSelectFile, onDelete, onToggleEnabled,
 }: {
   skill: Skill
   isExpanded: boolean
@@ -482,9 +598,17 @@ function SkillTreeItem({
   onSelect: () => void
   onSelectFile: (relPath: string) => void
   onDelete?: () => void
+  onToggleEnabled?: () => void
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [pickerPos, setPickerPos] = useState({ top: 0, left: 0 })
+  const [iconName, setIconName] = useState<string>(() => {
+    const store = loadSkillIcons()
+    return store[skill.name] ?? getDefaultIconName(skill.name)
+  })
+  const iconBtnRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (!menuOpen) return
@@ -496,20 +620,55 @@ function SkillTreeItem({
   }, [menuOpen])
 
   const displayName = skill.display_name || skill.name
+  const isEnabled = skill.user_invocable && !skill.is_hidden
+  const IconComp = SKILL_ICON_LOOKUP[iconName] ?? Code
+
+  const handleIconClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (iconBtnRef.current) {
+      const r = iconBtnRef.current.getBoundingClientRect()
+      const pickerH = 280
+      const top = r.bottom + 6 + pickerH > window.innerHeight ? r.top - pickerH - 6 : r.bottom + 6
+      const left = Math.min(r.left, window.innerWidth - 300)
+      setPickerPos({ top, left })
+    }
+    setPickerOpen(p => !p)
+  }
+
+  const handleIconSelect = (name: string) => {
+    setIconName(name)
+    saveSkillIcon(skill.name, name)
+    setPickerOpen(false)
+  }
 
   return (
     <div className="sc-tree-item-wrap">
       {/* Skill folder row */}
-      <div className={`sc-tree-folder${isSelected ? ' selected' : ''}`}>
+      <div className={`sc-tree-folder${isSelected ? ' selected' : ''}${onToggleEnabled && !isEnabled ? ' skill-off' : ''}`}>
         <button className="sc-tree-folder-btn" onClick={onToggle}>
           <span className="sc-tree-chevron">
             {isExpanded ? <Down size={10} /> : <Right size={10} />}
           </span>
-          <span className="sc-tree-folder-icon">
-            {isExpanded ? <FolderOpen size={12} /> : <FolderClose size={12} />}
-          </span>
           <span className="sc-tree-name">{displayName}</span>
         </button>
+        <button
+          ref={iconBtnRef}
+          className="sc-tree-icon-btn"
+          onClick={handleIconClick}
+          title="Change icon"
+        >
+          <IconComp size={12} />
+        </button>
+        {onToggleEnabled && (
+          <label
+            className="caps-skill-toggle-lbl"
+            title={isEnabled ? 'Disable' : 'Enable'}
+            onClick={e => e.stopPropagation()}
+          >
+            <input type="checkbox" checked={isEnabled} onChange={onToggleEnabled} />
+            <span className="caps-skill-toggle-track" />
+          </label>
+        )}
         {onDelete && (
           <div className="sc-tree-menu-wrap" ref={menuRef}>
             <button
@@ -528,6 +687,14 @@ function SkillTreeItem({
           </div>
         )}
       </div>
+      {pickerOpen && (
+        <SkillIconPicker
+          pos={pickerPos}
+          currentIcon={iconName}
+          onSelect={handleIconSelect}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
 
       {/* Expanded file tree */}
       {isExpanded && (
@@ -830,519 +997,26 @@ function SkillEditorPanel({
 
 // ─── Empty state ──────────────────────────────────────────────────────────────
 
-function EmptyState({ onNew }: { onNew: () => void }) {
+function EmptyState({ canImport, onImport }: { canImport: boolean; onImport: () => void }) {
   return (
     <div className="sc-empty-state">
       <div className="sc-empty-icon">
         <FileCode size={33} />
       </div>
       <h2>No skill selected</h2>
-      <p>Select a skill from the sidebar, or create a new one.</p>
-      <button className="sc-empty-btn" onClick={onNew}>
-        <Plus size={11} /> New Skill
-      </button>
-    </div>
-  )
-}
-
-// ─── Create skill panel ───────────────────────────────────────────────────────
-
-function CreateSkillPanel({
-  onCancel, onCreated,
-}: {
-  onCancel: () => void
-  onCreated: (name: string) => void
-}) {
-  const [form, setForm] = useState({
-    name: '', display_name: '', description: '', argument_hint: '', content: '',
-  })
-  const [saving, setSaving] = useState(false)
-  const [err, setErr] = useState<string | null>(null)
-  const nameRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => { nameRef.current?.focus() }, [])
-
-  const set = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
-
-  // Auto-slugify name
-  const handleNameChange = (v: string) => {
-    const slug = v.toLowerCase().replace(/[^a-z0-9-_]/g, '-').replace(/-+/g, '-')
-    set('name', slug)
-  }
-
-  const slugPreview = form.name.trim() || 'skill-name'
-  const displayPreview = form.display_name.trim() || slugPreview
-  const descPreview = form.description.trim() || 'No description'
-
-  const handleCreate = async () => {
-    const name = form.name.trim()
-    if (!name) { setErr('Name is required'); nameRef.current?.focus(); return }
-    setSaving(true)
-    setErr(null)
-    try {
-      await api.post('/skills', { ...form, name })
-      onCreated(name)
-    } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : 'Failed to create skill')
-      setSaving(false)
-    }
-  }
-
-  const canSubmit = form.name.trim().length > 0 && !saving
-
-  return (
-    <div className="csp-root">
-
-      {/* ── Top bar ── */}
-      <div className="csp-topbar">
-        <button className="csp-back-btn" onClick={onCancel}>
-          <ArrowLeft size={13} />
-          <span>Back</span>
+      <p>
+        Select a skill from the sidebar{canImport ? ', or import one from a repository' : ''}.
+        {' '}Need a brand new skill, or a bigger rewrite? Ask the main assistant — it has
+        direct access to your skills folder on this machine.
+      </p>
+      {canImport && (
+        <button className="sc-empty-btn" onClick={onImport}>
+          <Upload size={11} /> Import skills
         </button>
-        <div className="csp-topbar-center">
-          <span className="csp-topbar-title">New skill</span>
-        </div>
-        <div className="csp-topbar-actions">
-          <button className="csp-cancel-btn" onClick={onCancel}>Cancel</button>
-          <button className="csp-create-btn" onClick={handleCreate} disabled={!canSubmit}>
-            {saving ? (
-              <><Sync size={11} className="sc-spin" /> Creating…</>
-            ) : (
-              <>Create skill</>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* ── Body ── */}
-      <div className="csp-body">
-
-        {/* ── Left column: identity + metadata ── */}
-        <div className="csp-col-meta">
-
-          {/* Command name */}
-          <div className="csp-field-group">
-            <div className="csp-field-label">Slash command</div>
-            <div className="csp-field-hint">Unique key used to invoke the skill in chat</div>
-            <div className="csp-name-input-wrap">
-              <span className="csp-name-slash">/</span>
-              <input
-                ref={nameRef}
-                className="csp-name-input"
-                type="text"
-                value={form.name}
-                onChange={e => handleNameChange(e.target.value)}
-                placeholder="skill-name"
-                spellCheck={false}
-                autoComplete="off"
-              />
-            </div>
-          </div>
-
-          {/* Display name */}
-          <div className="csp-field-group">
-            <div className="csp-field-label">Display name</div>
-            <input
-              className="csp-input"
-              type="text"
-              value={form.display_name}
-              onChange={e => set('display_name', e.target.value)}
-              placeholder="e.g. Review Pull Request"
-            />
-          </div>
-
-          {/* Description */}
-          <div className="csp-field-group">
-            <div className="csp-field-label">Description</div>
-            <div className="csp-field-hint">Shown in the / picker when the user types</div>
-            <textarea
-              className="csp-textarea csp-desc-textarea"
-              value={form.description}
-              onChange={e => set('description', e.target.value)}
-              placeholder="What does this skill do? When should it be used?"
-              rows={3}
-            />
-          </div>
-
-          {/* Argument hint */}
-          <div className="csp-field-group">
-            <div className="csp-field-label">Argument hint <span className="csp-optional">optional</span></div>
-            <input
-              className="csp-input csp-mono"
-              type="text"
-              value={form.argument_hint}
-              onChange={e => set('argument_hint', e.target.value)}
-              placeholder="[branch name]"
-            />
-          </div>
-
-          {/* Live preview card */}
-          <div className="csp-preview-section">
-            <div className="csp-field-label">Preview</div>
-            <div className="csp-preview-card">
-              <div className="csp-preview-row">
-                <span className="csp-preview-slash">/{slugPreview}</span>
-                {form.argument_hint && (
-                  <span className="csp-preview-args">{form.argument_hint}</span>
-                )}
-              </div>
-              <div className="csp-preview-name">{displayPreview}</div>
-              <div className="csp-preview-desc">{descPreview}</div>
-            </div>
-          </div>
-
-          {err && <div className="csp-error">{err}</div>}
-        </div>
-
-        {/* ── Right column: prompt content ── */}
-        <div className="csp-col-content">
-          <div className="csp-content-header">
-            <div className="csp-field-label">Prompt content</div>
-            <div className="csp-field-hint">The full instructions sent to the model when this skill is invoked</div>
-          </div>
-          <div className="csp-editor-wrap">
-            <div className="csp-editor-toolbar">
-              <span className="csp-editor-lang">markdown</span>
-              <span className="csp-char-count">{form.content.length} chars</span>
-            </div>
-            <textarea
-              className="csp-prompt-editor"
-              value={form.content}
-              onChange={e => set('content', e.target.value)}
-              placeholder={PROMPT_PLACEHOLDER}
-              spellCheck={false}
-            />
-          </div>
-        </div>
-
-      </div>
+      )}
     </div>
   )
 }
-
-// ─── SkillAgent panel ────────────────────────────────────────────────────────
-
-const AGENT_ACTIONS = [
-  { icon: '✦', label: 'Create a new skill',  desc: "I'll help you scaffold a new skill from scratch.", prompt: 'Help me create a new SeshatOS skill from scratch.' },
-  { icon: '◎', label: 'Explain a skill',     desc: "I'll explain how a skill works.",                 prompt: 'Explain how SeshatOS skills work and what skill.md should contain.' },
-  { icon: '✎', label: 'Improve a skill',     desc: "I'll help you optimize or refactor your skill.",  prompt: 'Help me improve and optimize my current skill.' },
-  { icon: '⬡', label: 'Test a skill',        desc: "I'll help you test and debug your skill.",        prompt: 'How can I test and debug my SeshatOS skill effectively?' },
-  { icon: '◈', label: 'Browse skills',       desc: 'See examples of existing skills.',                prompt: 'Show me examples of well-written SeshatOS skills.' },
-]
-
-function SkillAgentPanel({
-  selectedSkill, messages, sessionId, width, onWidthChange,
-  onMessagesChange, onSessionIdChange, onApply, onClose,
-}: {
-  selectedSkill: Skill | null
-  messages: ChatMessage[]
-  sessionId: string | null
-  width: number
-  onWidthChange: (w: number) => void
-  onMessagesChange: (msgs: ChatMessage[]) => void
-  onSessionIdChange: (id: string | null) => void
-  onApply: (content: string) => void
-  onClose: () => void
-}) {
-  const [input, setInput] = useState('')
-  const [loading, setLoading] = useState(false)
-  const bottomRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLTextAreaElement>(null)
-  const dragging = useRef(false)
-  const dragStartX = useRef(0)
-  const dragStartW = useRef(width)
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
-
-  // Resize drag handle
-  const onDragStart = (e: React.MouseEvent) => {
-    e.preventDefault()
-    dragging.current = true
-    dragStartX.current = e.clientX
-    dragStartW.current = width
-    const onMove = (ev: MouseEvent) => {
-      if (!dragging.current) return
-      const delta = dragStartX.current - ev.clientX
-      onWidthChange(Math.max(280, Math.min(600, dragStartW.current + delta)))
-    }
-    const onUp = () => {
-      dragging.current = false
-      document.removeEventListener('mousemove', onMove)
-      document.removeEventListener('mouseup', onUp)
-    }
-    document.addEventListener('mousemove', onMove)
-    document.addEventListener('mouseup', onUp)
-  }
-
-  const send = useCallback(async (text: string) => {
-    const t = text.trim()
-    if (!t || loading) return
-
-    const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', content: t }
-    const nextMsgs = [...messages, userMsg]
-    onMessagesChange(nextMsgs)
-    setInput('')
-    setLoading(true)
-
-    // Build context note for the selected skill (backend handles the full system prompt)
-    let skillContext: string | undefined
-    if (!sessionId && selectedSkill) {
-      skillContext = `Selected skill context:\n- Name: ${selectedSkill.name}\n- Display name: ${selectedSkill.display_name || selectedSkill.name}\n- Description: ${selectedSkill.description || '(none)'}\n- Collection: ${selectedSkill.collection}`
-    }
-
-    try {
-      const resp = await api.post<{ session_id: string; content: string }>('/query', {
-        prompt: t,
-        session_id: sessionId ?? undefined,
-        execution_origin: 'skill_agent',
-        append_system_prompt: skillContext,
-      })
-      if (!sessionId) onSessionIdChange(resp.session_id)
-      onMessagesChange([...nextMsgs, {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: resp.content,
-      }])
-    } catch (e: unknown) {
-      onMessagesChange([...nextMsgs, {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: `⚠ ${(e as { message?: string })?.message ?? 'Failed to reach SkillAgent'}`,
-      }])
-    } finally {
-      setLoading(false)
-    }
-  }, [loading, messages, sessionId, selectedSkill, onMessagesChange, onSessionIdChange])
-
-  const handleKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input) }
-  }
-
-  const clearConversation = () => { onMessagesChange([]); onSessionIdChange(null) }
-
-  return (
-    <div className="sca-panel" style={{ width }}>
-      {/* Resize handle on left edge */}
-      <div className="sca-resize-handle" onMouseDown={onDragStart} title="Drag to resize" />
-
-      {/* Header */}
-      <div className="sca-header">
-        <div className="sca-header-left">
-          <NexusLogo size={16} className="sca-logo-img" />
-          <span className="sca-title">SkillAgent</span>
-        </div>
-        <div className="sca-header-right">
-          {messages.length > 0 && (
-            <button className="sca-icon-btn" title="Clear conversation" onClick={clearConversation}>
-              <Sync size={11} />
-            </button>
-          )}
-          <button className="sca-icon-btn" title="Close SkillAgent" onClick={onClose}>
-            <Close size={11} />
-          </button>
-        </div>
-      </div>
-
-      {/* Messages / welcome */}
-      <div className="sca-messages">
-        {messages.length === 0 ? (
-          <div className="sca-welcome">
-            <div className="sca-welcome-card">
-              <p className="sca-welcome-greeting">👋 Hi! I'm <strong>SkillAgent</strong>.</p>
-              <p className="sca-welcome-sub">I'm here to help you create, improve,<br />and test skills.</p>
-              <p className="sca-welcome-sub">Ask me anything about skills!</p>
-            </div>
-
-            <p className="sca-section-label">How can I help you today?</p>
-
-            <div className="sca-actions">
-              {AGENT_ACTIONS.map(action => (
-                <button
-                  key={action.label}
-                  className="sca-action-card"
-                  onClick={() => send(action.prompt)}
-                >
-                  <span className="sca-action-icon">{action.icon}</span>
-                  <div className="sca-action-text">
-                    <span className="sca-action-label">{action.label}</span>
-                    <span className="sca-action-desc">{action.desc}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <>
-            {messages.map(msg => (
-              <AgentMessage key={msg.id} msg={msg} onApply={onApply} />
-            ))}
-            {loading && (
-              <div className="sca-msg sca-msg-assistant">
-                <div className="sca-typing">
-                  <span className="sca-dot" /><span className="sca-dot" /><span className="sca-dot" />
-                </div>
-              </div>
-            )}
-            <div ref={bottomRef} />
-          </>
-        )}
-      </div>
-
-      {/* Input area */}
-      <div className="sca-input-wrap">
-        <textarea
-          ref={inputRef}
-          className="sca-input"
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={handleKey}
-          placeholder="Ask SkillAgent…"
-          rows={3}
-          disabled={loading}
-        />
-        <div className="sca-input-footer">
-          <div className="sca-input-extras">
-            <button className="sca-extra-btn" title="Attach file (coming soon)" disabled>
-              <span style={{ fontSize: 16 }}>📎</span>
-            </button>
-            <button
-              className="sca-extra-btn"
-              title="Insert skill context"
-              onClick={() => {
-                if (selectedSkill) setInput(v => v + `\n\nCurrent skill: /${selectedSkill.name}`)
-              }}
-            >
-              <span style={{ fontSize: 14, fontFamily: 'monospace', fontWeight: 700 }}>{'{}'}</span>
-            </button>
-          </div>
-          <button
-            className={`sca-send-btn${!input.trim() || loading ? ' disabled' : ''}`}
-            onClick={() => send(input)}
-            disabled={!input.trim() || loading}
-            title="Send (Enter)"
-          >
-            <Send size={12} />
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── Agent message with Apply button on code blocks ───────────────────────────
-
-function AgentMessage({ msg, onApply }: { msg: ChatMessage; onApply: (content: string) => void }) {
-  if (msg.role === 'user') {
-    return (
-      <div className="sca-msg sca-msg-user">
-        <div className="sca-bubble-user">{msg.content}</div>
-      </div>
-    )
-  }
-
-  // Parse content: split on ```fenced blocks to identify code blocks
-  const parts = parseAgentContent(msg.content)
-
-  return (
-    <div className="sca-msg sca-msg-assistant">
-      <div className="sca-bubble-assistant">
-        {parts.map((part, i) =>
-          part.type === 'text' ? (
-            <div key={i} className="sca-text-part">
-              <MarkdownView>{part.content}</MarkdownView>
-            </div>
-          ) : (
-            <AgentCodeBlock
-              key={i}
-              lang={part.lang}
-              content={part.content}
-              onApply={part.lang === 'markdown' || part.lang === 'md' || part.lang === '' ? onApply : undefined}
-            />
-          )
-        )}
-      </div>
-    </div>
-  )
-}
-
-type ContentPart = { type: 'text'; content: string } | { type: 'code'; lang: string; content: string }
-
-function parseAgentContent(raw: string): ContentPart[] {
-  const parts: ContentPart[] = []
-  const regex = /```(\w*)\n?([\s\S]*?)```/g
-  let lastIndex = 0
-  let match: RegExpExecArray | null
-  while ((match = regex.exec(raw)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push({ type: 'text', content: raw.slice(lastIndex, match.index) })
-    }
-    parts.push({ type: 'code', lang: match[1] || '', content: match[2].trimEnd() })
-    lastIndex = match.index + match[0].length
-  }
-  if (lastIndex < raw.length) {
-    parts.push({ type: 'text', content: raw.slice(lastIndex) })
-  }
-  return parts
-}
-
-function AgentCodeBlock({
-  lang, content, onApply,
-}: {
-  lang: string
-  content: string
-  onApply?: (content: string) => void
-}) {
-  const [copied, setCopied] = useState(false)
-
-  const copy = () => {
-    navigator.clipboard.writeText(content).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    })
-  }
-
-  const displayLang = lang || 'text'
-
-  return (
-    <div className="sca-code-block">
-      <div className="sca-code-toolbar">
-        <span className="sca-code-lang">{displayLang}</span>
-        <div className="sca-code-actions">
-          <button className="sca-code-btn" onClick={copy} title="Copy">
-            {copied ? <CheckOne size={10} /> : <Copy size={10} />}
-          </button>
-          {onApply && (
-            <button className="sca-code-btn sca-apply-btn" onClick={() => onApply(content)} title="Apply to skill.md">
-              Apply to skill
-            </button>
-          )}
-        </div>
-      </div>
-      <SyntaxHighlighter
-        language={langForPath('.' + displayLang) === 'text' ? displayLang : langForPath('.' + displayLang)}
-        style={vscDarkPlus as any}
-        customStyle={{ margin: 0, padding: '10px 12px', fontSize: 12, lineHeight: 1.6, background: 'transparent' }}
-        wrapLongLines={false}
-      >
-        {content}
-      </SyntaxHighlighter>
-    </div>
-  )
-}
-
-const PROMPT_PLACEHOLDER = `You are a specialized assistant. When invoked with /${'skill-name'}:
-
-1. Understand the user's intent from the provided arguments
-2. Gather relevant context if needed
-3. Execute the task clearly and concisely
-
-## Guidelines
-- Be direct and actionable
-- Ask for clarification only when truly necessary
-- Format output for readability
-`
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -1351,6 +1025,201 @@ function parseSkillContent(raw: string): { frontmatter: string; body: string } {
   const parts = raw.split('---')
   if (parts.length < 3) return { frontmatter: '', body: raw }
   return { frontmatter: parts[1].trim(), body: parts.slice(2).join('---').trim() }
+}
+
+// ─── Skill icon picker ────────────────────────────────────────────────────────
+
+function SkillIconPicker({ pos, currentIcon, onSelect, onClose }: {
+  pos: { top: number; left: number }
+  currentIcon: string
+  onSelect: (name: string) => void
+  onClose: () => void
+}) {
+  return (
+    <>
+      <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={onClose} />
+      <div className="sip-panel" style={{ top: pos.top, left: pos.left }}>
+        {SKILL_ICON_GROUPS.map(group => (
+          <div key={group.label} className="sip-group">
+            <div className="sip-group-label">{group.label}</div>
+            <div className="sip-group-icons">
+              {group.icons.map(({ name, Icon }) => (
+                <button
+                  key={name}
+                  className={`sip-icon-btn ${name === currentIcon ? 'active' : ''}`}
+                  onClick={() => onSelect(name)}
+                  title={name}
+                >
+                  <Icon size={15} />
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
+// ─── Repo manager modal ───────────────────────────────────────────────────────
+
+function repoNameFromURL(url: string): string {
+  return url.replace(/\.git$/, '').split('/').filter(Boolean).pop() ?? url
+}
+
+function RepoManagerModal({ catalog, installed, onChanged }: {
+  catalog: CatalogEntry[]
+  installed: RepoInfo[]
+  onChanged: () => void
+}) {
+  const [url, setUrl] = useState('')
+  const [installing, setInstalling] = useState<string | null>(null)
+  const [uninstalling, setUninstalling] = useState<string | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+  const [localInstalled, setLocalInstalled] = useState<Set<string>>(
+    () => new Set([...catalog.filter(c => c.installed).map(c => c.name), ...installed.map(r => r.name)])
+  )
+
+  const installRepo = async (repoUrl: string) => {
+    const name = repoNameFromURL(repoUrl)
+    setInstalling(repoUrl)
+    setErr(null)
+    try {
+      await api.post('/skills/repos', { url: repoUrl })
+      setLocalInstalled(s => { const n = new Set(s); n.add(name); return n })
+      setUrl('')
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : 'Failed to install')
+    } finally {
+      setInstalling(null)
+    }
+  }
+
+  const uninstallRepo = async (name: string) => {
+    setUninstalling(name)
+    setErr(null)
+    try {
+      await api.delete(`/skills/repos/${encodeURIComponent(name)}`)
+      setLocalInstalled(s => { const n = new Set(s); n.delete(name); return n })
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : 'Failed to uninstall')
+    } finally {
+      setUninstalling(null)
+    }
+  }
+
+  // Repos installed but not in catalog
+  const installedNames = localInstalled
+  const uncataloged = installed.filter(r => !catalog.some(c => c.name === r.name) && installedNames.has(r.name))
+
+  return (
+    <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onChanged()}>
+      <div className="modal-shell repo-modal-shell">
+        <div className="modal-header">
+          <h2>Import skills</h2>
+          <button className="modal-close-btn" onClick={onChanged}><Close size={16} /></button>
+        </div>
+        <div className="modal-content" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {err && <div className="caps-error">{err}</div>}
+
+          <div className="sv-field">
+            <label>Install from GitHub</label>
+            <div className="repo-url-row">
+              <div className="sv-input-box" style={{ flex: 1 }}>
+                <input
+                  type="text"
+                  value={url}
+                  onChange={e => setUrl(e.target.value)}
+                  placeholder="https://github.com/user/skill-collection"
+                  onKeyDown={e => e.key === 'Enter' && url.trim() && installRepo(url.trim())}
+                />
+              </div>
+              <button
+                className="caps-reload-btn"
+                disabled={!url.trim() || !!installing}
+                onClick={() => installRepo(url.trim())}
+              >
+                {installing && installing === url.trim() ? <Sync size={10} /> : <Upload size={10} />}
+                {installing && installing === url.trim() ? 'Installing…' : 'Install'}
+              </button>
+            </div>
+          </div>
+
+          {catalog.length > 0 && (
+            <div>
+              <div className="repo-section-title">Featured collections</div>
+              <div className="repo-catalog-list">
+                {catalog.map(entry => {
+                  const isInstalled = installedNames.has(entry.name)
+                  const isUninstalling = uninstalling === entry.name
+                  const isInstalling = installing === entry.url
+                  return (
+                    <div key={entry.name} className="repo-catalog-entry">
+                      <div className="repo-entry-info">
+                        <div className="repo-entry-name">
+                          {entry.name}
+                          {entry.source === 'organization' && (
+                            <span className="repo-origin-badge">from your organization</span>
+                          )}
+                        </div>
+                        {entry.description && <div className="repo-entry-desc">{entry.description}</div>}
+                      </div>
+                      {isInstalled ? (
+                        <button
+                          className="repo-uninstall-btn"
+                          onClick={() => uninstallRepo(entry.name)}
+                          disabled={isUninstalling}
+                        >
+                          <Close size={10} />
+                          {isUninstalling ? 'Removing…' : 'Uninstall'}
+                        </button>
+                      ) : (
+                        <button
+                          className="repo-install-btn"
+                          onClick={() => installRepo(entry.url)}
+                          disabled={!!installing}
+                        >
+                          {isInstalling ? <Sync size={10} /> : <Upload size={10} />}
+                          {isInstalling ? 'Installing…' : 'Install'}
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {uncataloged.length > 0 && (
+            <div>
+              <div className="repo-section-title">Other installed</div>
+              <div className="repo-catalog-list">
+                {uncataloged.map(repo => (
+                  <div key={repo.name} className="repo-catalog-entry">
+                    <div className="repo-entry-info">
+                      <div className="repo-entry-name">{repo.name}</div>
+                      <div className="repo-entry-desc">{repo.skill_count} skill{repo.skill_count !== 1 ? 's' : ''}</div>
+                    </div>
+                    <button
+                      className="repo-uninstall-btn"
+                      onClick={() => uninstallRepo(repo.name)}
+                      disabled={uninstalling === repo.name}
+                    >
+                      <Close size={10} />
+                      {uninstalling === repo.name ? 'Removing…' : 'Uninstall'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="modal-footer">
+          <button className="modal-btn-submit" onClick={onChanged}>Done</button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // ─── CSS ──────────────────────────────────────────────────────────────────────
@@ -1942,368 +1811,6 @@ const SKILLS_CREATOR_CSS = `
 @keyframes sc-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .sc-spin { animation: sc-spin 0.9s linear infinite; display: inline-flex; }
 
-/* ── Create Skill Panel ── */
-.csp-root {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden;
-}
-
-.csp-topbar {
-  display: flex;
-  align-items: center;
-  padding: 8px 14px;
-  border-bottom: 1px solid var(--color-border-subtle);
-  flex-shrink: 0;
-  gap: 12px;
-}
-
-.csp-back-btn {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  background: none;
-  border: none;
-  color: var(--color-text-muted);
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 4px 7px;
-  border-radius: 6px;
-  transition: background 0.15s, color 0.15s;
-}
-
-.csp-back-btn:hover {
-  background: var(--color-hover);
-  color: var(--color-text);
-}
-
-.csp-topbar-center {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-}
-
-.csp-topbar-title {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--color-text);
-}
-
-.csp-topbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.csp-cancel-btn {
-  padding: 4px 10px;
-  background: none;
-  border: 1px solid var(--color-border);
-  color: var(--color-text-secondary);
-  font-size: 11px;
-  font-weight: 600;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.csp-cancel-btn:hover { background: var(--color-hover); }
-
-.csp-create-btn {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 11px;
-  background: var(--color-cta);
-  color: white;
-  border: none;
-  font-size: 11px;
-  font-weight: 700;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: opacity 0.15s;
-}
-
-.csp-create-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.csp-create-btn:not(:disabled):hover { opacity: 0.88; }
-
-/* ── Two-column body ── */
-.csp-body {
-  flex: 1;
-  display: flex;
-  overflow: hidden;
-}
-
-.csp-col-meta {
-  width: 320px;
-  flex-shrink: 0;
-  border-right: 1px solid var(--color-border-subtle);
-  overflow-y: auto;
-  padding: 17px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.csp-col-content {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  padding: 17px;
-}
-
-/* ── Form fields ── */
-.csp-field-group {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.csp-field-label {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--color-text-secondary);
-  letter-spacing: 0.02em;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.csp-field-hint {
-  font-size: 10px;
-  color: var(--color-text-muted);
-  line-height: 1.45;
-  margin-top: -2px;
-}
-
-.csp-optional {
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--color-text-muted);
-  background: var(--color-surface-elevated);
-  padding: 2px 4px;
-  border-radius: 3px;
-  border: 1px solid var(--color-border);
-}
-
-/* ── Slash command input ── */
-.csp-name-input-wrap {
-  display: flex;
-  align-items: center;
-  background: var(--color-surface-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  overflow: hidden;
-  transition: border-color 0.15s;
-}
-
-.csp-name-input-wrap:focus-within { border-color: var(--color-cta); }
-
-.csp-name-slash {
-  padding: 6px 2px 6px 8px;
-  font-size: 13px;
-  font-weight: 700;
-  font-family: var(--font-mono, monospace);
-  color: var(--color-cta);
-  user-select: none;
-  flex-shrink: 0;
-}
-
-.csp-name-input {
-  flex: 1;
-  background: none;
-  border: none;
-  outline: none;
-  color: var(--color-text);
-  font-size: 12px;
-  font-family: var(--font-mono, monospace);
-  font-weight: 600;
-  padding: 6px 8px 6px 3px;
-}
-
-.csp-name-input::placeholder { color: var(--color-text-muted); font-weight: 400; }
-
-/* ── Generic input & textarea ── */
-.csp-input {
-  background: var(--color-surface-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  color: var(--color-text);
-  font-size: 11px;
-  font-family: inherit;
-  padding: 6px 8px;
-  outline: none;
-  transition: border-color 0.15s;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.csp-input:focus { border-color: var(--color-cta); }
-.csp-input::placeholder { color: var(--color-text-muted); }
-
-.csp-textarea {
-  background: var(--color-surface-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  color: var(--color-text);
-  font-size: 11px;
-  font-family: inherit;
-  padding: 6px 8px;
-  outline: none;
-  resize: none;
-  transition: border-color 0.15s;
-  width: 100%;
-  box-sizing: border-box;
-  line-height: 1.55;
-}
-
-.csp-textarea:focus { border-color: var(--color-cta); }
-.csp-textarea::placeholder { color: var(--color-text-muted); }
-.csp-desc-textarea { min-height: 72px; }
-.csp-mono { font-family: var(--font-mono, monospace); font-size: 10px; }
-
-/* ── Live preview card ── */
-.csp-preview-section {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.csp-preview-card {
-  background: var(--color-surface-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: 9px;
-  padding: 10px 11px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.csp-preview-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.csp-preview-slash {
-  font-family: var(--font-mono, monospace);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--color-cta);
-  background: var(--color-primary-subtle);
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-.csp-preview-args {
-  font-family: var(--font-mono, monospace);
-  font-size: 10px;
-  color: var(--color-text-muted);
-}
-
-.csp-preview-name {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.csp-preview-desc {
-  font-size: 10px;
-  color: var(--color-text-muted);
-  line-height: 1.45;
-}
-
-/* ── Error ── */
-.csp-error {
-  font-size: 10px;
-  color: var(--color-error);
-  background: rgba(var(--color-error-rgb), 0.08);
-  border: 1px solid rgba(var(--color-error-rgb), 0.25);
-  border-radius: 6px;
-  padding: 6px 8px;
-}
-
-/* ── Right column: prompt editor ── */
-.csp-content-header {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  margin-bottom: 12px;
-  flex-shrink: 0;
-}
-
-.csp-editor-wrap {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 9px;
-  overflow: hidden;
-}
-
-.csp-editor-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--color-border);
-  flex-shrink: 0;
-}
-
-.csp-editor-lang {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-family: var(--font-mono, monospace);
-}
-
-.csp-char-count {
-  font-size: 10px;
-  color: var(--color-text-muted);
-  font-family: var(--font-mono, monospace);
-}
-
-.csp-prompt-editor {
-  flex: 1;
-  min-height: 0;
-  width: 100%;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: var(--color-text);
-  font-family: var(--font-mono, monospace);
-  font-size: 11px;
-  line-height: 1.7;
-  padding: 11px 13px;
-  resize: none;
-  box-sizing: border-box;
-}
-
-.csp-prompt-editor::placeholder { color: var(--color-text-muted); opacity: 0.6; }
-
-.sc-readonly-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  background: color-mix(in srgb, var(--color-text-muted) 12%, transparent);
-  color: var(--color-text-muted);
-  border: 1px solid color-mix(in srgb, var(--color-text-muted) 20%, transparent);
-}
-
 /* ── File tree nodes ── */
 .sc-tree-dir {
   display: flex;
@@ -2362,315 +1869,176 @@ const SKILLS_CREATOR_CSS = `
 }
 
 /* ══════════════════════════════════════════════════════════════
-   SkillAgent — right panel (VS Code Copilot style)
+   Skill icon + toggle + repo import — moved from
+   settings/CapabilitiesViews.tsx when its Skills tab merged here
 ══════════════════════════════════════════════════════════════ */
 
-.sca-panel {
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  border-left: 1px solid var(--color-border-subtle);
-  background: var(--color-bg);
-  overflow: hidden;
-  position: relative;
-  min-width: 280px;
-  max-width: 600px;
-}
-
-/* Resize handle — left edge */
-.sca-resize-handle {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  cursor: ew-resize;
-  z-index: 10;
-  transition: background 0.15s;
-}
-.sca-resize-handle:hover,
-.sca-resize-handle:active {
-  background: color-mix(in srgb, var(--color-accent, #f97316) 40%, transparent);
-}
-
-/* Header */
-.sca-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 7px 10px 7px 11px;
-  border-bottom: 1px solid var(--color-border-subtle);
-  flex-shrink: 0;
-}
-.sca-header-left {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-.sca-logo-img {
-  opacity: 0.92;
-  flex-shrink: 0;
-}
-.sca-title {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--color-text);
-  letter-spacing: 0.01em;
-}
-.sca-header-right {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-.sca-icon-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 5px;
-  background: transparent;
-  border: none;
+.sc-tree-icon-btn {
+  width: 20px; height: 20px; border-radius: 5px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: none; cursor: pointer;
   color: var(--color-text-muted);
-  cursor: pointer;
-  transition: background 0.13s, color 0.13s;
-}
-.sca-icon-btn:hover { background: var(--color-hover); color: var(--color-text); }
-
-/* Messages area */
-.sca-messages {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 11px 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-}
-
-/* Welcome state */
-.sca-welcome {
-  display: flex;
-  flex-direction: column;
-  gap: 11px;
-}
-.sca-welcome-card {
-  background: color-mix(in srgb, var(--color-text) 5%, transparent);
-  border-radius: 8px;
-  padding: 10px 11px;
-  border: 1px solid var(--color-border-subtle);
-}
-.sca-welcome-greeting {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--color-text);
-  margin: 0 0 6px;
-}
-.sca-welcome-sub {
-  font-size: 11px;
-  color: var(--color-text-muted);
-  margin: 0;
-  line-height: 1.5;
-}
-
-.sca-section-label {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  letter-spacing: 0.03em;
-  margin: 0;
-}
-
-/* Action cards */
-.sca-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-.sca-action-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  background: color-mix(in srgb, var(--color-text) 4%, transparent);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 6px;
-  padding: 7px 8px;
-  cursor: pointer;
-  text-align: left;
-  transition: background 0.13s, border-color 0.13s;
-  width: 100%;
-}
-.sca-action-card:hover {
-  background: color-mix(in srgb, var(--color-accent, #f97316) 8%, transparent);
-  border-color: color-mix(in srgb, var(--color-accent, #f97316) 30%, transparent);
-}
-.sca-action-icon {
-  font-size: 13px;
-  line-height: 1.3;
-  color: var(--color-accent, #f97316);
-  flex-shrink: 0;
-  margin-top: 1px;
-}
-.sca-action-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.sca-action-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--color-text);
-  display: block;
-}
-.sca-action-desc {
-  font-size: 10px;
-  color: var(--color-text-muted);
-  display: block;
-  line-height: 1.4;
-}
-
-/* Messages */
-.sca-msg { display: flex; flex-direction: column; }
-.sca-msg-user    { align-items: flex-end; }
-.sca-msg-assistant { align-items: flex-start; }
-
-.sca-bubble-user {
-  background: var(--color-accent, #f97316);
-  color: #fff;
-  padding: 6px 8px;
-  border-radius: 9px 9px 3px 9px;
-  font-size: 11px;
-  line-height: 1.5;
-  max-width: 88%;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-.sca-bubble-assistant {
-  width: 100%;
-}
-.sca-text-part { padding: 0 2px; }
-.sca-text-part .markdown-body { font-size: 11px; }
-
-/* Typing indicator */
-.sca-typing {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  padding: 7px 8px;
-  background: color-mix(in srgb, var(--color-text) 5%, transparent);
-  border-radius: 8px;
-  border: 1px solid var(--color-border-subtle);
-}
-.sca-dot {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: var(--color-text-muted);
-  animation: sca-bounce 1.2s ease-in-out infinite;
-}
-.sca-dot:nth-child(2) { animation-delay: 0.2s; }
-.sca-dot:nth-child(3) { animation-delay: 0.4s; }
-@keyframes sca-bounce {
-  0%, 80%, 100% { opacity: 0.3; transform: scale(0.85); }
-  40%           { opacity: 1;   transform: scale(1);    }
-}
-
-/* Code block inside message */
-.sca-code-block {
-  margin: 6px 0;
-  border-radius: 6px;
-  overflow: hidden;
-  border: 1px solid var(--color-border-subtle);
-  background: #1e1e1e;
-}
-.sca-code-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 3px 7px;
-  background: rgba(255,255,255,0.04);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-}
-.sca-code-lang {
-  font-size: 10px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: rgba(255,255,255,0.4);
-  font-family: var(--font-mono, monospace);
-}
-.sca-code-actions { display: flex; align-items: center; gap: 3px; }
-.sca-code-btn {
-  display: flex; align-items: center; gap: 3px;
-  background: transparent; border: none;
-  color: rgba(255,255,255,0.4);
-  cursor: pointer; padding: 2px 4px;
-  border-radius: 3px; font-size: 10px;
   transition: background 0.1s, color 0.1s;
 }
-.sca-code-btn:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.8); }
-.sca-apply-btn {
-  color: var(--color-accent, #f97316);
-  font-weight: 600;
-  border: 1px solid color-mix(in srgb, var(--color-accent, #f97316) 35%, transparent);
+.sc-tree-icon-btn:hover { background: var(--color-hover); color: var(--color-text); }
+
+.sc-tree-folder.skill-off { opacity: 0.5; }
+
+/* ── Skill toggle ── */
+.caps-skill-toggle-lbl { position: relative; display: inline-flex; cursor: pointer; flex-shrink: 0; }
+.caps-skill-toggle-lbl input { opacity: 0; width: 0; height: 0; position: absolute; }
+.caps-skill-toggle-track {
+  width: 28px; height: 16px; background: var(--color-border);
+  border-radius: 8px; transition: background 0.2s; display: block;
 }
-.sca-apply-btn:hover {
-  background: color-mix(in srgb, var(--color-accent, #f97316) 15%, transparent);
+.caps-skill-toggle-lbl input:checked ~ .caps-skill-toggle-track { background: var(--color-cta); }
+.caps-skill-toggle-track::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: white; transition: transform 0.2s;
+}
+.caps-skill-toggle-lbl input:checked ~ .caps-skill-toggle-track::after { transform: translateX(12px); }
+
+/* ── Icon picker panel ── */
+.sip-panel {
+  position: fixed; z-index: 9999;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 9px; padding: 7px 8px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.12);
+  width: 292px;
+}
+.sip-group { margin-bottom: 8px; }
+.sip-group:last-child { margin-bottom: 0; }
+.sip-group-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.07em; color: var(--color-text-muted);
+  margin-bottom: 3px; padding: 0 2px;
+}
+.sip-group-icons { display: flex; flex-wrap: wrap; gap: 2px; }
+.sip-icon-btn {
+  width: 30px; height: 30px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: none; cursor: pointer; border-radius: 5px;
+  color: var(--color-text-secondary); transition: background 0.1s, color 0.1s;
+}
+.sip-icon-btn:hover { background: var(--color-hover); color: var(--color-text); }
+.sip-icon-btn.active { background: var(--color-primary-subtle); color: var(--color-cta); }
+
+/* ── Repo import modal ── */
+.repo-modal-shell { max-width: 520px; }
+
+.repo-url-row {
+  display: flex; gap: 8px; align-items: stretch;
 }
 
-/* Input area */
-.sca-input-wrap {
-  flex-shrink: 0;
-  padding: 7px 8px 8px;
-  border-top: 1px solid var(--color-border-subtle);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.repo-section-title {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.07em; color: var(--color-text-muted);
+  margin-bottom: 10px;
 }
-.sca-input {
+
+.repo-catalog-list {
+  display: flex; flex-direction: column; gap: 6px;
+}
+
+.repo-catalog-entry {
+  display: flex; align-items: center; gap: 9px;
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: 8px; padding: 8px 10px;
+}
+
+.repo-entry-info { flex: 1; min-width: 0; }
+.repo-entry-name { font-size: 11px; font-weight: 700; color: var(--color-text); }
+.repo-entry-desc { font-size: 10px; color: var(--color-text-muted); margin-top: 2px; }
+.repo-origin-badge {
+  font-size: 10px; font-weight: 600; color: var(--color-text-muted);
+  background: var(--color-hover); padding: 2px 4px; border-radius: 3px;
+  margin-left: 8px; vertical-align: middle;
+}
+
+.repo-install-btn {
+  display: flex; align-items: center; gap: 4px;
+  background: var(--color-cta); color: white;
+  border: none; padding: 4px 8px; border-radius: 6px;
+  font-size: 10px; font-weight: 700; cursor: pointer;
+  white-space: nowrap; flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+.repo-install-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.repo-install-btn:hover:not(:disabled) { opacity: 0.9; }
+
+.repo-uninstall-btn {
+  display: flex; align-items: center; gap: 4px;
+  background: var(--color-hover); color: var(--color-text-muted);
+  border: 1px solid var(--color-border); padding: 4px 8px; border-radius: 6px;
+  font-size: 10px; font-weight: 600; cursor: pointer;
+  white-space: nowrap; flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
+}
+.repo-uninstall-btn:hover:not(:disabled) { color: var(--color-error); border-color: var(--color-error); background: rgba(var(--color-error-rgb),0.06); }
+.repo-uninstall-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.caps-reload-btn {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--color-cta); color: white; border: none;
+  padding: 7px 12px; border-radius: 8px;
+  font-size: 11px; font-weight: 700; cursor: pointer;
+  white-space: nowrap;
+}
+.caps-reload-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.caps-error {
+  font-size: 11px; color: var(--color-error);
+  padding: 8px 11px; border-radius: 6px;
+  background: rgba(var(--color-error-rgb, 255,77,79), 0.08);
+  margin-bottom: 16px;
+}
+
+/* ── Shared modal chrome (mirrors settings/SettingsNav.tsx's
+   SETTINGS_SHARED_CSS — duplicated here rather than imported, since this
+   page isn't nested under Settings) ── */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000; backdrop-filter: blur(2px);
+  padding: 24px; box-sizing: border-box;
+}
+.modal-shell {
+  background: var(--color-bg); width: 100%; max-width: 560px;
+  border-radius: 14px; box-shadow: 0 30px 80px rgba(0,0,0,0.2);
+  animation: slide-up 0.3s ease-out;
+  display: flex; flex-direction: column;
+  max-height: calc(100vh - 48px); overflow: hidden;
+}
+.modal-header {
+  padding: 14px 18px; display: flex; align-items: center;
+  justify-content: space-between; border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+.modal-header h2 { font-size: var(--font-size-lg); margin: 0; font-weight: 700; color: var(--color-text); }
+.modal-close-btn { background: none; border: none; color: var(--color-text-muted); cursor: pointer; display: flex; }
+.modal-content { padding: 16px 18px; overflow-y: auto; flex: 1; min-height: 0; }
+.modal-footer {
+  padding: 12px 18px; display: flex; justify-content: flex-end; gap: 8px;
+  border-top: 1px solid var(--color-border); flex-shrink: 0;
+}
+.modal-btn-submit { background: var(--color-cta); color: white; border: none; padding: 7px 16px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: var(--font-size-xs); }
+.modal-btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.sv-field { display: flex; flex-direction: column; gap: 6px; }
+.sv-field label { font-size: var(--font-size-xs); font-weight: 600; color: var(--color-text-secondary); }
+.sv-input-box input {
   width: 100%;
-  background: color-mix(in srgb, var(--color-text) 4%, transparent);
-  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  padding: 7px 10px;
   border-radius: 8px;
   color: var(--color-text);
-  font-size: 11px;
-  line-height: 1.55;
-  padding: 7px 8px;
-  resize: none;
+  font-size: var(--font-size-sm);
   outline: none;
   font-family: inherit;
-  box-sizing: border-box;
-  transition: border-color 0.15s;
 }
-.sca-input:focus { border-color: var(--color-accent, #f97316); }
-.sca-input::placeholder { color: var(--color-text-muted); opacity: 0.55; }
-.sca-input-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.sca-input-extras { display: flex; align-items: center; gap: 3px; }
-.sca-extra-btn {
-  display: flex; align-items: center; justify-content: center;
-  width: 30px; height: 30px;
-  border-radius: 5px;
-  background: transparent;
-  border: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  transition: background 0.13s, color 0.13s;
-}
-.sca-extra-btn:hover:not(:disabled) { background: var(--color-hover); color: var(--color-text); }
-.sca-extra-btn:disabled { opacity: 0.35; cursor: default; }
-.sca-send-btn {
-  display: flex; align-items: center; justify-content: center;
-  width: 36px; height: 36px;
-  border-radius: 7px;
-  border: none;
-  background: var(--color-accent, #f97316);
-  color: #fff;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: opacity 0.15s, transform 0.1s;
-}
-.sca-send-btn:not(.disabled):hover  { opacity: 0.88; transform: scale(1.04); }
-.sca-send-btn:not(.disabled):active { transform: scale(0.96); }
-.sca-send-btn.disabled { opacity: 0.35; cursor: default; }
+.sv-input-box input:focus { border-color: var(--color-primary); }
 `
+

@@ -61,13 +61,13 @@ const APPS: AppEntry[] = [
   {
     id: 'skills-creator',
     title: 'Skills Creator',
-    description: 'Define and refine reusable instructions and tools that agents can invoke.',
+    description: 'Browse, edit, enable/disable, and import skills from repositories.',
     route: '/skills-creator',
     status: 'ready',
     category: 'agentic',
     icon: <Workbench size={32} />,
     tone: 'skills',
-    highlights: ['YAML schema definition', 'Tool schemas', 'System prompts'],
+    highlights: ['Repository import', 'Custom icons', 'skill.md editing'],
   },
   {
     id: 'inbox',
