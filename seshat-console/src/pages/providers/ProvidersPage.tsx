@@ -33,7 +33,7 @@ export function ProvidersPage() { const organizationId = useScopedOrganizationId
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<Provider | 'new' | null>(null)
 
-  const { data, isLoading, isFetching } = useProvidersList(organizationId ?? undefined, { q: search || undefined,
+  const { data, isLoading, isFetching, error } = useProvidersList(organizationId ?? undefined, { q: search || undefined,
     sort: 'name',
     order: 'asc',
     limit: PAGE_SIZE,
@@ -116,6 +116,7 @@ export function ProvidersPage() { const organizationId = useScopedOrganizationId
           columns={columns}
           dataSource={data?.providers ?? []}
           loading={isLoading || isFetching}
+          queryError={error}
           locale={{ emptyText: (
               <Empty
                 image={<CloudServerOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}

@@ -438,6 +438,86 @@ func TestAdminEndpointRejectsNonAdminUser(t *testing.T) {
 	}
 }
 
+// TestAdminUpdateUser guards against a regression where PUT /api/v1/users/{id}
+// always failed with 400: the handler decoded the request body into
+// adminUpdateUserRequest, then delegated to a legacy handler that tried to
+// decode the same (already-consumed) r.Body again. It also verifies the Role
+// field — previously accepted by the request struct but never actually
+// wired to anything — now really changes the target user's role.
+func TestAdminUpdateUser(t *testing.T) {
+	database, err := db.Open(context.Background(), db.DefaultSQLiteConfig(filepath.Join(t.TempDir(), "api-admin-update-user.db")))
+	if err != nil {
+		t.Fatalf("db.Open failed: %v", err)
+	}
+	defer database.Close()
+
+	store, err := db.NewIdentityStore(database)
+	if err != nil {
+		t.Fatalf("NewIdentityStore failed: %v", err)
+	}
+	if _, err := store.EnsureBootstrap(context.Background(), db.BootstrapOptions{
+		AdminEmail:           "admin@update-user.test",
+		AdminPassword:        "adminpass",
+		AdminDisplayName:     "Admin",
+		DefaultOrgName:       "Acme",
+		DefaultOrgSlug:       "acme",
+		DefaultWorkspaceName: "Main",
+		DefaultWorkspaceSlug: "main",
+	}); err != nil {
+		t.Fatalf("EnsureBootstrap failed: %v", err)
+	}
+	memberHash, err := db.HashPassword("memberpass")
+	if err != nil {
+		t.Fatalf("HashPassword failed: %v", err)
+	}
+	member, err := store.CreateUser(context.Background(), db.CreateUserParams{
+		Email: "member@update-user.test", DisplayName: "Member", PasswordHash: memberHash,
+	})
+	if err != nil {
+		t.Fatalf("CreateUser failed: %v", err)
+	}
+	if err := store.AssignRoleToUser(context.Background(), member.ID, "member"); err != nil {
+		t.Fatalf("AssignRoleToUser failed: %v", err)
+	}
+
+	router := CreateRouter(APIConfig{}, newTestAPIApp(store, stubQueryRunner{}))
+	adminToken := loginForToken(t, router, "admin@update-user.test", "adminpass")
+
+	// A plain field update, with no role change, must succeed — this alone
+	// was broken before the fix (any non-empty PUT body 400'd).
+	body, _ := json.Marshal(map[string]any{"display_name": "Member Renamed"})
+	renameResp := doRequest(t, router, http.MethodPut, "/api/v1/users/"+member.ID, body, adminToken)
+	if renameResp.Code != http.StatusOK {
+		t.Fatalf("rename: expected 200, got %d: %s", renameResp.Code, renameResp.Body.String())
+	}
+	var renamed map[string]any
+	json.Unmarshal(renameResp.Body.Bytes(), &renamed)
+	if renamed["display_name"] != "Member Renamed" {
+		t.Fatalf("expected display_name updated, got: %s", renameResp.Body.String())
+	}
+
+	// Promoting to admin must actually take effect.
+	roleBody, _ := json.Marshal(map[string]any{"role": "admin"})
+	promoteResp := doRequest(t, router, http.MethodPut, "/api/v1/users/"+member.ID, roleBody, adminToken)
+	if promoteResp.Code != http.StatusOK {
+		t.Fatalf("promote: expected 200, got %d: %s", promoteResp.Code, promoteResp.Body.String())
+	}
+	var promoted map[string]any
+	json.Unmarshal(promoteResp.Body.Bytes(), &promoted)
+	roles, _ := promoted["roles"].([]any)
+	if len(roles) != 1 || roles[0] != "admin" {
+		t.Fatalf("expected roles [admin] after promotion, got: %s", promoteResp.Body.String())
+	}
+
+	dbRoles, err := store.ListUserRoles(context.Background(), member.ID)
+	if err != nil {
+		t.Fatalf("ListUserRoles: %v", err)
+	}
+	if len(dbRoles) != 1 || dbRoles[0].Name != "admin" {
+		t.Fatalf("expected member's stored roles to be exactly [admin], got: %+v", dbRoles)
+	}
+}
+
 // TestDeleteOwnAccountAsNonAdminMember guards against a regression where
 // self-service account deletion was routed through the admin-only
 // Provider.UpdateUser path and became unusable for any non-admin user.
@@ -4400,6 +4480,114 @@ func TestSessionOwnership_UserScopedList(t *testing.T) {
 	}
 	if adminSess["session_id"] == memberSessionID {
 		t.Fatal("admin must not see member session")
+	}
+}
+
+// TestSessionFilesCrossUserAccess verifies that GET /api/v1/sessions/{id}/files
+// enforces session ownership the same way the POST (upload) side already does —
+// regression test for the IDOR where the GET branch listed any session's files
+// for any authenticated caller, without checking who the session belongs to.
+func TestSessionFilesCrossUserAccess(t *testing.T) {
+	database, err := db.Open(context.Background(), db.DefaultSQLiteConfig(filepath.Join(t.TempDir(), "session-files.db")))
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	ownershipStore, err := db.NewSessionOwnershipStore(database)
+	if err != nil {
+		t.Fatalf("NewSessionOwnershipStore: %v", err)
+	}
+	identityStore, err := db.NewIdentityStore(database)
+	if err != nil {
+		t.Fatalf("NewIdentityStore: %v", err)
+	}
+	fileStore, err := db.NewFileStore(database)
+	if err != nil {
+		t.Fatalf("NewFileStore: %v", err)
+	}
+	if _, err := identityStore.EnsureBootstrap(context.Background(), db.BootstrapOptions{
+		AdminEmail:           "admin@sessionfiles.test",
+		AdminPassword:        "adminpass",
+		AdminDisplayName:     "Admin",
+		DefaultOrgName:       "Acme",
+		DefaultOrgSlug:       "acme",
+		DefaultWorkspaceName: "Main",
+		DefaultWorkspaceSlug: "main",
+	}); err != nil {
+		t.Fatalf("EnsureBootstrap: %v", err)
+	}
+	otherHash, err := db.HashPassword("otherpass")
+	if err != nil {
+		t.Fatalf("HashPassword: %v", err)
+	}
+	other, err := identityStore.CreateUser(context.Background(), db.CreateUserParams{
+		Email: "other@sessionfiles.test", DisplayName: "Other", PasswordHash: otherHash,
+	})
+	if err != nil {
+		t.Fatalf("CreateUser: %v", err)
+	}
+	if err := identityStore.AssignRoleToUser(context.Background(), other.ID, "member"); err != nil {
+		t.Fatalf("AssignRoleToUser: %v", err)
+	}
+
+	mgr := newStubSessionManager()
+	app := &App{
+		backend: seshat.NewApp(seshat.Dependencies{
+			Identity:         identityStore,
+			QueryRuntime:     stubQueryRunner{},
+			SessionManager:   mgr,
+			SessionOwnership: ownershipStore,
+			FileStore:        fileStore,
+			ArtifactStore:    newStubArtifactStore(),
+		}),
+	}
+	router := CreateRouter(APIConfig{}, app)
+
+	adminToken := loginForToken(t, router, "admin@sessionfiles.test", "adminpass")
+	otherToken := loginForToken(t, router, "other@sessionfiles.test", "otherpass")
+
+	// Admin creates a session.
+	createResp := doRequest(t, router, http.MethodPost, "/api/v1/sessions", nil, adminToken)
+	if createResp.Code != http.StatusCreated {
+		t.Fatalf("create session: expected 201, got %d: %s", createResp.Code, createResp.Body.String())
+	}
+	var created map[string]any
+	json.Unmarshal(createResp.Body.Bytes(), &created)
+	sessionID, _ := created["session_id"].(string)
+	if sessionID == "" {
+		t.Fatalf("expected session_id in response, got: %s", createResp.Body.String())
+	}
+
+	// Seed a file record on that session directly against the store, bypassing
+	// the multipart upload path (irrelevant to what's under test here).
+	if _, err := fileStore.Create(context.Background(), db.CreateFileParams{
+		UserID:      other.ID, // deliberately not the session owner; only SessionID gates this endpoint
+		SessionID:   sessionID,
+		Filename:    "secret.txt",
+		ContentType: "text/plain",
+		Size:        4,
+		StorageKey:  "sessionfiles-test-key",
+	}); err != nil {
+		t.Fatalf("seed file: %v", err)
+	}
+
+	// Owner lists their session's files — OK.
+	ownerResp := doRequest(t, router, http.MethodGet, "/api/v1/sessions/"+sessionID+"/files", nil, adminToken)
+	if ownerResp.Code != http.StatusOK {
+		t.Fatalf("owner list session files: expected 200, got %d: %s", ownerResp.Code, ownerResp.Body.String())
+	}
+	var ownerList map[string]any
+	json.Unmarshal(ownerResp.Body.Bytes(), &ownerList)
+	if count, _ := ownerList["count"].(float64); count != 1 {
+		t.Fatalf("expected owner to see 1 file, got %v: %s", ownerList["count"], ownerResp.Body.String())
+	}
+
+	// A different, non-admin user must not be able to list another user's
+	// session files — this is the IDOR the fix closes.
+	otherResp := doRequest(t, router, http.MethodGet, "/api/v1/sessions/"+sessionID+"/files", nil, otherToken)
+	if otherResp.Code != http.StatusForbidden {
+		t.Fatalf("cross-user session files list: expected 403, got %d: %s", otherResp.Code, otherResp.Body.String())
 	}
 }
 

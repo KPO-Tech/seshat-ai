@@ -189,6 +189,9 @@ func (s *Service) CreateInvitation(ctx context.Context, principal *Principal, pa
 		if err != nil {
 			return err
 		}
+		if err := requireGrantedRolePermissionsWithinCallerScope(tx, principal, organizationID, role); err != nil {
+			return err
+		}
 		user, ok, err := findUserByEmail(tx, email)
 		if err != nil {
 			return err

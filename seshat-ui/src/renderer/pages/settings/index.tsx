@@ -47,6 +47,16 @@ export function Settings() {
 
   const isAdmin = roles.includes('admin')
 
+  // Admin tabs are hidden from the sidebar for non-admins, but that alone is
+  // cosmetic — activeTab can also come straight from the URL (?tab=admin-users),
+  // which would otherwise render the admin view (and fire its API calls) for
+  // anyone. Bounce back to General if a non-admin ever lands on one.
+  useEffect(() => {
+    if (!isAdmin && activeTab.startsWith('admin-')) {
+      setActiveTab('general')
+    }
+  }, [isAdmin, activeTab])
+
   const navGroups = [
     {
       title: 'PERSONAL',
@@ -134,12 +144,12 @@ export function Settings() {
           {activeTab === 'remote' && <WebSearchView />}
           {activeTab === 'runtime' && <RuntimeView />}
           {activeTab === 'about' && <AboutView />}
-          {activeTab === 'admin-users' && <AdminUsersView />}
-          {activeTab === 'admin-groups' && <AdminGroupsView />}
-          {activeTab === 'admin-organizations' && <AdminOrganizationsView />}
-          {activeTab === 'admin-workspaces' && <AdminWorkspacesView />}
-          {activeTab === 'admin-audit' && <AdminAuditView />}
-          {activeTab === 'admin-quotas' && <AdminQuotasView />}
+          {isAdmin && activeTab === 'admin-users' && <AdminUsersView />}
+          {isAdmin && activeTab === 'admin-groups' && <AdminGroupsView />}
+          {isAdmin && activeTab === 'admin-organizations' && <AdminOrganizationsView />}
+          {isAdmin && activeTab === 'admin-workspaces' && <AdminWorkspacesView />}
+          {isAdmin && activeTab === 'admin-audit' && <AdminAuditView />}
+          {isAdmin && activeTab === 'admin-quotas' && <AdminQuotasView />}
         </div>
       </main>
     </div>

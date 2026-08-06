@@ -845,6 +845,13 @@ func (s *Service) ResolveExecutionPolicy(ctx context.Context, principal *backend
 
 // checkSessionAccess verifies that the principal can access the given session.
 // A blank sessionID means a new session will be created — no check needed.
+// checkSessionAccess deliberately does NOT grant an admin bypass, unlike
+// files.Service.checkAccess and settings' local_provider.go — an admin who
+// isn't the session owner still gets Forbidden here. This is intentional:
+// conversation content stays confidential even from admins, whereas file
+// metadata and provider settings are treated as operationally administrable.
+// Verified by TestSessionOwnership_AdminCannotOverride. If this ever needs to
+// change, change it here deliberately rather than "fixing an inconsistency".
 func (s *Service) checkSessionAccess(ctx context.Context, principal *backendauth.Principal, sessionID string) error {
 	if s.ownership == nil || strings.TrimSpace(sessionID) == "" {
 		return nil

@@ -1,7 +1,7 @@
 import { Button, Form, Input, message, Typography } from 'antd'
 import { MailOutlined, LockOutlined } from '@ant-design/icons'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router'
-import { useLogin } from '@/api/auth'
+import { useLogin, useBootstrapStatus } from '@/api/auth'
 import { useAuthStore } from '@/store/auth'
 import { getErrorMessage } from '@/api/errors'
 import { resolveLandingPath } from '@/lib/landingRoute'
@@ -21,8 +21,14 @@ export function LoginPage() {
   // Carries the caller through to e.g. /accept-invitation?token=... after
   // auth - set by AcceptInvitationPage when the invitee isn't logged in yet.
   const next = searchParams.get('next')
+  // A fresh seshat-server has no platform admin yet — send visitors to the
+  // one-time setup screen instead of a login form nobody can pass.
+  const bootstrapStatus = useBootstrapStatus()
 
   if (token) return <Navigate to={next || '/'} replace />
+  if (bootstrapStatus.isSuccess && bootstrapStatus.data?.initialized === false) {
+    return <Navigate to="/bootstrap" replace />
+  }
 
   const onFinish = (values: LoginFormValues) => {
     login.mutate(values, {

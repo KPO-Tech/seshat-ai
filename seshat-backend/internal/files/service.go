@@ -284,6 +284,9 @@ func (s *Service) DeleteBySessionID(ctx context.Context, sessionID string) error
 	return firstErr
 }
 
+// checkAccess grants an admin bypass — files are treated as operationally
+// administrable, unlike session/conversation content (see the no-bypass note
+// on query.Service.checkSessionAccess for why that one differs deliberately).
 func (s *Service) checkAccess(principal *backendauth.Principal, record *db.File) error {
 	if principal == nil {
 		return bkerr.Unauthorized("authentication required", nil)

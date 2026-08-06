@@ -23,7 +23,7 @@ export function TeamsPage() { const organizationId = useScopedOrganizationId()
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<Group | 'new' | null>(null)
 
-  const { data, isLoading, isFetching } = useGroupsList(organizationId ?? undefined, { q: search || undefined,
+  const { data, isLoading, isFetching, error } = useGroupsList(organizationId ?? undefined, { q: search || undefined,
     sort: 'name',
     order: 'asc',
     limit: PAGE_SIZE,
@@ -100,6 +100,7 @@ export function TeamsPage() { const organizationId = useScopedOrganizationId()
           columns={columns}
           dataSource={data?.groups ?? []}
           loading={isLoading || isFetching}
+          queryError={error}
           locale={{ emptyText: (
               <Empty
                 image={<ClusterOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}

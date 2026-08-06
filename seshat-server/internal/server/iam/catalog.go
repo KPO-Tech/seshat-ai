@@ -382,8 +382,9 @@ func (s *Service) UpdateProvider(ctx context.Context, principal *Principal, prov
 			return err
 		}
 
+		// See the matching comment in CreateProvider — never echo a
+		// caller-supplied secret back, toProvider's mask must stand.
 		converted := toProvider(record)
-		converted.ClientSecret = config.ClientSecret
 		provider = &converted
 		return nil
 	})

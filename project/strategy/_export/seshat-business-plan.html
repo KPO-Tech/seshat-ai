@@ -1,0 +1,2385 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>SeshatOS — Vision, Strategy &amp; Go-to-Market</title>
+<style>
+  @page { size: A4; margin: 22mm 18mm 20mm 18mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Georgia", "Cambria", "Times New Roman", serif;
+    color: #1c1c1e; line-height: 1.55; font-size: 10.6pt;
+  }
+  .cover {
+    height: 235mm; display: flex; flex-direction: column;
+    justify-content: center; align-items: flex-start; page-break-after: always;
+  }
+  .cover .kicker {
+    font-family: "Helvetica Neue", Arial, sans-serif; letter-spacing: 0.14em;
+    text-transform: uppercase; font-size: 10pt; color: #b5541e; font-weight: 700; margin-bottom: 18px;
+  }
+  .cover h1 {
+    font-family: "Helvetica Neue", Arial, sans-serif; font-size: 34pt; line-height: 1.15;
+    margin: 0 0 16px 0; color: #111;
+  }
+  .cover .sub { font-size: 13pt; color: #444; max-width: 120mm; margin-bottom: 40px; }
+  .cover .meta {
+    font-family: "Helvetica Neue", Arial, sans-serif; font-size: 9pt; color: #888;
+    border-top: 1px solid #ddd; padding-top: 14px; max-width: 130mm;
+  }
+  h1, h2, h3, h4 { font-family: "Helvetica Neue", Arial, sans-serif; color: #16151a; font-weight: 750; page-break-after: avoid; }
+  h1 { font-size: 20pt; border-bottom: 2.5px solid #ef7c2f; padding-bottom: 6px; margin-top: 30px; margin-bottom: 14px; }
+  h2 { font-size: 14.5pt; margin-top: 22px; margin-bottom: 8px; color: #b5541e; }
+  h3 { font-size: 12pt; margin-top: 16px; margin-bottom: 6px; }
+  h4 { font-size: 10.8pt; margin-top: 12px; margin-bottom: 4px; font-style: italic; }
+  p { margin: 8px 0; orphans: 3; widows: 3; }
+  ul, ol { margin: 8px 0; padding-left: 22px; }
+  li { margin: 3px 0; }
+  blockquote {
+    margin: 14px 0; padding: 8px 16px; border-left: 3px solid #ef7c2f;
+    background: #fdf6ef; font-style: italic; color: #444; page-break-inside: avoid;
+  }
+  code { font-family: "Consolas", "SFMono-Regular", Menlo, monospace; background: #f1f1f3; padding: 1px 4px; border-radius: 3px; font-size: 9pt; }
+  pre { background: #1e1e24; color: #e6e6e6; padding: 10px 12px; border-radius: 5px; overflow-x: auto; font-size: 8.5pt; line-height: 1.4; page-break-inside: avoid; }
+  pre code { background: none; padding: 0; color: inherit; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 9.3pt; page-break-inside: avoid; }
+  th, td { border: 1px solid #ddd; padding: 5px 8px; text-align: left; vertical-align: top; }
+  th { background: #2f2e34; color: #fff; font-family: "Helvetica Neue", Arial, sans-serif; font-size: 8.8pt; text-transform: uppercase; letter-spacing: 0.03em; }
+  tr:nth-child(even) td { background: #fafafa; }
+  hr { border: none; border-top: 1px solid #e2e2e2; margin: 20px 0; }
+  hr.file-break { border: none; border-top: 3px double #ccc; margin: 36px 0; page-break-after: always; }
+  strong { color: #111; }
+  a { color: #b5541e; text-decoration: none; }
+  .diagram {
+    margin: 18px 0; padding: 14px 16px 8px 16px; background: #fcfbf9;
+    border: 1px solid #dcdcdc; border-radius: 8px; page-break-inside: avoid;
+  }
+  .diagram-caption {
+    font-family: "Helvetica Neue", Arial, sans-serif; font-size: 8.3pt; color: #9a9a9a;
+    margin-top: 8px; font-style: italic; line-height: 1.4;
+  }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="kicker">Working document &middot; internal review</div>
+  <h1>SeshatOS<br/>Vision, Strategy &amp; Go-to-Market</h1>
+  <div class="sub">Compiled from the full strategy document set — vision, product, business strategy, MVP scope, Africa go-to-market cases, and the first financial model.</div>
+  <div class="meta">Draft compiled 2026-08-05 — working document, shared for feedback, not a finished publication.<br/>Compiled for review and feedback.</div>
+</div>
+
+<section class="file-section" id="0-plan-md">
+<h1>📘 Seshat Vision &amp; Product Strategy</h1>
+<p><strong>Part I — Vision</strong><br />
+1. Why Seshat Exists<br />
+2. The Future We Believe In<br />
+3. Our Principles</p>
+<p><strong>Part II — Understanding the Enterprise</strong><br />
+4. How We See an Enterprise<br />
+5. The Problems Modern Enterprises Face<br />
+6. Why Today's AI Is Not Enough</p>
+<p><strong>Part III — Introducing Seshat</strong><br />
+7. What is Seshat?<br />
+8. The Seshat Model</p>
+<p><strong>Part IV — Products</strong><br />
+9. Company Assistant<br />
+10. Knowledge<br />
+11. Documents<br />
+12. Skills<br />
+13. Agent Workflows (Inbox Agent, Accounting Agent, ...)<br />
+14. Scheduling<br />
+15. Private AI</p>
+<p><strong>Part V — Business Strategy</strong></p>
+<p><strong>Part VI — MVP</strong></p>
+<p><strong>Part VII — Roadmap</strong></p>
+<p><strong>Appendix</strong></p>
+</section>
+<hr class="file-break"/>
+<section class="file-section" id="1-vision-md">
+<h1>Part I — Vision</h1>
+<hr />
+<h1>1. Why Seshat Exists</h1>
+<h2>The AI Revolution Has Started — But Enterprises Are Still Left Behind</h2>
+<p>Artificial Intelligence has reached a level where it can write code, analyze documents, answer questions, generate reports, summarize meetings and assist people in their daily work.</p>
+<p>Yet, despite these extraordinary capabilities, most companies still struggle to integrate AI into their everyday operations.</p>
+<p>The problem is no longer the intelligence of the models. The problem is everything around them.</p>
+<p>Today's enterprises are filled with disconnected information, repetitive processes, fragmented software, and knowledge that exists only inside documents or in the minds of employees.</p>
+<p>Employees constantly switch between dozens of applications:</p>
+<ul>
+<li>Email</li>
+<li>Messaging platforms</li>
+<li>Shared drives</li>
+<li>ERP systems</li>
+<li>CRM systems</li>
+<li>Internal documentation</li>
+<li>Spreadsheets</li>
+<li>Databases</li>
+<li>APIs</li>
+<li>Meetings</li>
+</ul>
+<p>Every day they spend hours looking for information, copying data between systems, answering repetitive questions, validating documents and performing administrative tasks that add very little value.</p>
+<p>Artificial Intelligence should solve these problems. Instead, today's AI tools often become one more application among many.</p>
+<hr />
+<h2>AI Is Not the Problem</h2>
+<p>Large Language Models have become incredibly capable. Claude, ChatGPT, Gemini, Mistral, GLM, Kimi and many others can already reason, summarize, write, analyze and generate code.</p>
+<p>Their limitation is no longer intelligence. Their limitation is context.</p>
+<p>An AI cannot help a company if it does not understand:</p>
+<ul>
+<li>the company's documents,</li>
+<li>the company's business,</li>
+<li>its internal procedures,</li>
+<li>its employees,</li>
+<li>its tools,</li>
+<li>its permissions,</li>
+<li>its workflows,</li>
+<li>and the decisions that have already been made.</li>
+</ul>
+<p>Knowledge without context is useless. Intelligence without action creates little value.</p>
+<hr />
+<h2>Companies Do Not Need Another Chatbot</h2>
+<p>Most AI products today focus on conversations. Another chatbot. Another prompt interface. Another assistant.</p>
+<p>But enterprises are not looking for another chat window. They are looking for solutions that solve business problems.</p>
+<p>They need systems capable of:</p>
+<ul>
+<li>finding information instantly,</li>
+<li>understanding company knowledge,</li>
+<li>automating repetitive tasks,</li>
+<li>coordinating specialized assistants,</li>
+<li>integrating with existing software,</li>
+<li>respecting security and permissions,</li>
+<li>and acting safely inside business processes.</li>
+</ul>
+<p>The value of AI is not measured by the quality of a conversation. It is measured by the time, money and effort it saves.</p>
+<hr />
+<h2>Enterprise Knowledge Is Broken</h2>
+<p>Every company owns an enormous amount of knowledge. Unfortunately, that knowledge is scattered everywhere.</p>
+<pre><code class="language-text">             Company Knowledge
+
+     PDF        Word        Excel
+
+ Slack       Teams       Emails
+
+ SharePoint  SQL       CRM
+
+ ERP         APIs      Wikis
+
+ Videos      Images    Audio
+</code></pre>
+<p>Finding the right information often takes longer than doing the work itself. Knowledge becomes obsolete. Employees leave. Expertise disappears. New employees require months before becoming productive.</p>
+<p>This is not a documentation problem. It is a knowledge management problem.</p>
+<hr />
+<h2>Enterprise Work Is Fragmented</h2>
+<p>Knowledge alone is not enough. Companies also execute thousands of repetitive processes every day.</p>
+<p>Invoices. Purchase requests. Customer support. HR approvals. Recruitment. Legal reviews. Sales follow-ups. Financial analysis.</p>
+<p>Most of these processes require humans only because software cannot understand context. Artificial Intelligence changes this — but only if it can safely interact with company systems.</p>
+<hr />
+<h2>AI Must Become an Infrastructure</h2>
+<p>Electricity is no longer considered a feature. Internet is no longer considered a feature. Cloud computing is no longer considered a feature. Artificial Intelligence will follow the same path.</p>
+<p>Within the next decade, AI will become part of the infrastructure of every organization. Every employee will work alongside AI. Every department will rely on specialized assistants. Every workflow will become partially autonomous.</p>
+<p>The question is no longer whether companies will adopt AI. The question is how they will manage it.</p>
+<hr />
+<h2>Why Seshat Exists</h2>
+<p>Seshat exists to become the operating system that connects intelligence, knowledge, automation and enterprise software into a single coherent platform.</p>
+<p>Instead of providing another chatbot, Seshat provides an AI operating system capable of:</p>
+<ul>
+<li>understanding enterprise knowledge,</li>
+<li>coordinating specialized AI employees,</li>
+<li>automating business processes,</li>
+<li>connecting existing software,</li>
+<li>respecting security policies,</li>
+<li>and remaining fully adaptable to every organization.</li>
+</ul>
+<p>Its objective is simple: allow every employee to spend less time searching, copying, validating and repeating — and more time thinking, creating and making decisions.</p>
+<p>Seshat is not built to replace people. It is built to augment them.</p>
+<hr />
+<h2>Vision Statement</h2>
+<blockquote>
+<p>We believe Artificial Intelligence should become an invisible layer of every organization, empowering people rather than replacing them.</p>
+</blockquote>
+<p>Seshat exists to build that future.</p>
+<hr />
+<h1>Key Decisions</h1>
+<p>✅ Seshat is <strong>not</strong> a chatbot.</p>
+<p>✅ Seshat is an Enterprise AI Operating System.</p>
+<p>✅ AI is valuable only when connected to enterprise knowledge and workflows.</p>
+<p>✅ Business problems always come before AI technology.</p>
+<p>✅ Every capability must solve a measurable enterprise problem.</p>
+<hr />
+<h1>Rejected Ideas</h1>
+<p>❌ <strong>Building "another ChatGPT."</strong><br />
+Reason: Companies do not need another conversation interface. They need an intelligent operating system integrated with their business.</p>
+<p>❌ <strong>Building only a RAG platform.</strong><br />
+Reason: Knowledge without automation does not transform organizations.</p>
+<p>❌ <strong>Building only an automation platform.</strong><br />
+Reason: Automation without intelligence cannot adapt to complex business situations.</p>
+<hr />
+<h1>2. The Future We Believe In</h1>
+<hr />
+<h2>Looking Beyond Today's AI</h2>
+<p>Technology has always evolved in cycles. Computers transformed how people create. The Internet transformed how people communicate. Cloud computing transformed how companies build software. Artificial Intelligence will transform how people work.</p>
+<p>But AI is not simply another tool. It represents a new form of collaboration between humans and machines.</p>
+<p>The future is not one where humans compete against AI. The future is one where humans and AI work together as complementary teammates.</p>
+<hr />
+<h2>Every Employee Will Work Alongside AI</h2>
+<p>Today, employees use software. Tomorrow, employees will collaborate with intelligent systems.</p>
+<p>Every profession will gradually be augmented by specialized AI capable of understanding its domain, assisting daily work, and automating repetitive tasks.</p>
+<p>An accountant will not open ten different applications. They will ask their AI to prepare financial reports, verify invoices, detect anomalies, and summarize accounting activities.</p>
+<p>A recruiter will not manually screen hundreds of resumes. Their AI will identify relevant candidates, prepare interview summaries, and coordinate recruitment workflows.</p>
+<p>A project manager will not spend hours writing meeting reports. Their AI will automatically summarize discussions, extract action items, assign responsibilities, and follow project progress.</p>
+<p>The role of AI is not to replace expertise. Its role is to amplify it.</p>
+<hr />
+<h2>Every Company Will Have Its Own AI</h2>
+<p>Today, companies have:</p>
+<ul>
+<li>email servers,</li>
+<li>ERPs,</li>
+<li>CRMs,</li>
+<li>databases,</li>
+<li>cloud infrastructure.</li>
+</ul>
+<p>Tomorrow, every company will also have its own artificial intelligence. Not a public chatbot. Not a generic assistant.</p>
+<p>But an AI that understands:</p>
+<ul>
+<li>the company's knowledge,</li>
+<li>its culture,</li>
+<li>its vocabulary,</li>
+<li>its processes,</li>
+<li>its permissions,</li>
+<li>its customers,</li>
+<li>its products,</li>
+<li>and its way of working.</li>
+</ul>
+<p>This AI will become part of the organization's infrastructure, just like databases or cloud services are today.</p>
+<hr />
+<h2>Knowledge Will Become Living Knowledge</h2>
+<p>Today, knowledge is mostly static. It lives inside documents — PDFs, emails, slides, spreadsheets, wiki pages.</p>
+<p>Unfortunately, static knowledge slowly dies. Documents become outdated. Procedures change. Employees leave. Expertise disappears.</p>
+<p>Tomorrow, knowledge will become dynamic. Knowledge will answer questions. Knowledge will explain itself. Knowledge will recommend actions. Knowledge will evolve continuously. Knowledge will connect people, documents, conversations and decisions.</p>
+<p>The company will no longer search for information. The information will find the company.</p>
+<hr />
+<h2>Companies Will Think in Capabilities, Not Applications</h2>
+<p>For decades, enterprise software has shaped the way organizations think.</p>
+<p>When a company needs to improve communication, it buys a messaging platform. When it needs better knowledge management, it deploys a wiki. When it wants to automate finance, it purchases an ERP. The application becomes the solution.</p>
+<p>But applications have never been the real objective. Organizations do not exist to use software. They exist to achieve outcomes: to communicate, to remember, to understand, to decide, to collaborate, to plan, to automate.</p>
+<p>These are the true capabilities of an enterprise. Software is only one possible implementation.</p>
+<p>Artificial Intelligence fundamentally changes this model. Instead of asking employees to learn dozens of different applications, organizations can now expose capabilities directly.</p>
+<p>An employee should not have to wonder:</p>
+<blockquote>
+<p>"Should I open Outlook, SharePoint or SAP?"</p>
+</blockquote>
+<p>Instead, they should simply express an intention.</p>
+<blockquote>
+<p>"Prepare tomorrow's client meeting."</p>
+</blockquote>
+<p>The platform determines which enterprise capabilities are required.</p>
+<ul>
+<li>Remember</li>
+<li>Search</li>
+<li>Understand</li>
+<li>Analyze</li>
+<li>Communicate</li>
+<li>Plan</li>
+<li>Decide</li>
+<li>Act</li>
+</ul>
+<p>Applications become implementation details. Capabilities become the foundation of the enterprise.</p>
+<p>This shift — from application-centric thinking to capability-centric thinking — is one of the core ideas behind Seshat.</p>
+<hr />
+<h2>Software Will Become Invisible</h2>
+<p>Applications will not disappear. ERP systems will continue to exist. CRMs will continue to exist. Email platforms will continue to exist. Databases will continue to exist.</p>
+<p>But users should no longer need to think about them. The software layer becomes an implementation detail. The capability layer becomes the interface.</p>
+<p>Employees express intentions. The platform orchestrates capabilities. Capabilities orchestrate software.</p>
+<p>Technology fades into the background. Business outcomes move to the foreground.</p>
+<hr />
+<h2>Automation Will Become Collaborative</h2>
+<p>Automation has traditionally relied on predefined rules: if this happens, do that. While useful, these systems struggle whenever context changes.</p>
+<p>Artificial Intelligence introduces a new generation of automation. Instead of executing fixed instructions, intelligent systems can understand situations, reason about context, ask for clarification when necessary, and collaborate with humans.</p>
+<p>Automation is no longer about replacing people. It becomes a partnership between human judgment and machine execution.</p>
+<hr />
+<h2>AI Will Become a Team, Not a Tool</h2>
+<p>Most AI products are designed around a single assistant. We believe this model will quickly reach its limits.</p>
+<p>Companies are composed of specialists: finance specialists, HR specialists, legal specialists, support specialists, sales specialists.</p>
+<p>AI should evolve in the same direction. Instead of one assistant doing everything, organizations will rely on specialized AI employees collaborating together.</p>
+<p>Some will retrieve knowledge. Some will process documents. Some will monitor workflows. Some will generate reports. Some will interact with external systems. Some will coordinate the work of others.</p>
+<p>Just like human teams, every AI will have its own expertise while contributing to a common objective.</p>
+<hr />
+<h2>Trust Will Become More Important Than Intelligence</h2>
+<p>As AI becomes increasingly capable, intelligence alone will no longer differentiate platforms. Trust will.</p>
+<p>Organizations must know:</p>
+<ul>
+<li>why an AI made a decision,</li>
+<li>where information came from,</li>
+<li>what actions were executed,</li>
+<li>who approved them,</li>
+<li>what data was accessed.</li>
+</ul>
+<p>Explainability. Auditability. Security. Privacy. Permissions. These will become as important as reasoning itself.</p>
+<p>The future belongs to AI systems that organizations can trust.</p>
+<hr />
+<h2>AI Should Adapt to Companies</h2>
+<p>Many software solutions force companies to adapt to predefined workflows. We believe the opposite.</p>
+<p>Artificial Intelligence should learn how organizations operate, not force organizations to change.</p>
+<p>Every company has its own vocabulary, culture, validation processes, internal rules and business constraints.</p>
+<p>AI must adapt to these differences — not erase them.</p>
+<hr />
+<h2>The Enterprise Operating System</h2>
+<p>If AI becomes part of enterprise infrastructure... If knowledge becomes alive... If software becomes invisible... If specialized AI collaborate together...</p>
+<p>Then organizations will require something entirely new. Not another application. Not another chatbot. Not another workflow builder.</p>
+<p>They will require an operating system capable of coordinating intelligence across the entire organization — an operating system connecting people, knowledge, software, automation, memory, and decision-making.</p>
+<p>This is the future we believe in.</p>
+<hr />
+<h2>The Role of Seshat</h2>
+<p>Seshat is our answer to this future. Not because companies need more AI, but because companies need a coherent way to organize it.</p>
+<p>Our ambition is not to build the smartest model, nor the most powerful chatbot. Our ambition is to build the platform that allows every organization to safely adopt artificial intelligence as part of its daily operations.</p>
+<p>Seshat exists to become the foundation upon which the next generation of intelligent enterprises will be built.</p>
+<hr />
+<h2>Vision Statement</h2>
+<blockquote>
+<p>We believe that every organization will one day operate alongside a trusted team of specialized artificial intelligences, seamlessly connected to its knowledge, software and people.</p>
+</blockquote>
+<p>Seshat exists to build that future.</p>
+<hr />
+<h1>Key Decisions</h1>
+<p>✅ AI augments people instead of replacing them.</p>
+<p>✅ Every company will own its own enterprise AI.</p>
+<p>✅ Knowledge must become dynamic and actionable.</p>
+<p>✅ Software should disappear behind user intent.</p>
+<p>✅ Specialized AI are preferable to one general-purpose assistant.</p>
+<p>✅ Trust is more valuable than raw intelligence.</p>
+<p>✅ AI must adapt to companies — not the opposite.</p>
+<hr />
+<h1>Rejected Ideas</h1>
+<p>❌ <strong>AI replacing every employee.</strong><br />
+Reason: The objective is augmentation, collaboration and productivity — not removing human expertise.</p>
+<p>❌ <strong>One universal AI for everything.</strong><br />
+Reason: Complex organizations require specialized capabilities working together.</p>
+<p>❌ <strong>AI as a standalone application.</strong><br />
+Reason: Artificial Intelligence should become part of the company's infrastructure rather than another isolated tool.</p>
+<hr />
+<h1>3. The Seshat Principles</h1>
+<hr />
+<p>Technology evolves. Business needs evolve. Artificial Intelligence evolves. Seshat will also continue to evolve.</p>
+<p>New models will emerge. New interfaces will appear. New products will be created. Architectures will change.</p>
+<p>But some principles should remain constant. These principles define how we think, how we design products, and how we make decisions.</p>
+<p>Whenever a difficult choice must be made, these principles come first.</p>
+<hr />
+<h2>Business Before Technology</h2>
+<p>Technology is never the objective. Organizations do not invest in AI because they want artificial intelligence — they invest because they want to solve business problems.</p>
+<p>Every feature, every capability and every product must ultimately create measurable value for the organization.</p>
+<p>Technology is only the means. Business impact is the objective.</p>
+<hr />
+<h2>Humans Remain at the Center</h2>
+<p>Artificial Intelligence should augment people, not replace them.</p>
+<p>The role of AI is to remove repetitive work, make knowledge accessible, and support decision-making. Human creativity, judgment and responsibility remain essential.</p>
+<p>The best organizations will combine human expertise with artificial intelligence — not choose one over the other.</p>
+<hr />
+<h2>Intelligence Must Be Grounded</h2>
+<p>An intelligent system without context is unreliable.</p>
+<p>Every answer, recommendation and action should be grounded in enterprise knowledge, business rules and organizational context. The quality of intelligence depends on the quality of its understanding.</p>
+<hr />
+<h2>Trust Is Non-Negotiable</h2>
+<p>Organizations must be able to trust their AI.</p>
+<p>Every action should be explainable. Every decision should be traceable. Every permission should be respected.</p>
+<p>Security, privacy and governance are not optional features. They are fundamental requirements.</p>
+<hr />
+<h2>AI Should Adapt to Organizations</h2>
+<p>Every company has its own culture, its own vocabulary, its own processes, its own way of working.</p>
+<p>Seshat should adapt to these differences instead of forcing organizations to adopt predefined workflows.</p>
+<p>Technology should fit the organization — not the opposite.</p>
+<hr />
+<h2>Capabilities Before Applications</h2>
+<p>Organizations should think in terms of what they want to achieve, not which application they need to open.</p>
+<p>Remember. Understand. Communicate. Plan. Decide. Act.</p>
+<p>Applications are implementations. Capabilities are what create value.</p>
+<p>Seshat is designed around capabilities because they remain stable even as technologies evolve.</p>
+<hr />
+<h2>Simplicity Over Complexity</h2>
+<p>Enterprise software often becomes more complex as new features are added.</p>
+<p>We believe complexity should stay inside the platform — not in the user's experience. Users should express intentions. The platform should orchestrate the complexity.</p>
+<p>Powerful systems do not have to feel complicated.</p>
+<hr />
+<h2>Open by Design</h2>
+<p>Artificial Intelligence should never become another isolated ecosystem. Organizations already rely on existing software, data sources and business tools.</p>
+<p>Seshat is designed to integrate, orchestrate and extend existing systems rather than replace them.</p>
+<p>Openness enables flexibility. Interoperability enables longevity.</p>
+<hr />
+<h2>Long-Term Thinking</h2>
+<p>Many AI products optimize for short-term demonstrations. We optimize for long-term enterprise adoption.</p>
+<p>Every architectural decision should remain relevant years from now. Every capability should contribute to a coherent platform.</p>
+<p>Seshat is built to become lasting infrastructure — not a temporary trend.</p>
+<hr />
+<h2>Continuous Learning</h2>
+<p>Organizations evolve every day. Their knowledge changes. Their processes improve. Their priorities shift.</p>
+<p>Seshat should evolve alongside them.</p>
+<p>An intelligent platform is never finished. It continuously learns, adapts and improves while remaining aligned with the organization's goals.</p>
+<hr />
+<h2>Our Commitment</h2>
+<p>These principles are more than design guidelines. They define the identity of Seshat.</p>
+<p>Technologies will change. Models will change. Interfaces will change.</p>
+<p>But these principles will continue to guide every product, every capability and every decision we make.</p>
+<p>They are the foundation upon which Seshat will continue to grow.</p>
+</section>
+<hr class="file-break"/>
+<section class="file-section" id="2-enterprise-md">
+<h1>Part II — Understanding the Enterprise</h1>
+<h1>4. How We See an Enterprise</h1>
+<hr />
+<h2>Looking Beyond Organizations</h2>
+<p>Organizations are often described through their structure: Finance, Human Resources, Sales, Marketing, Operations, Legal, Information Technology. This perspective explains how people are organized.</p>
+<p>Others describe organizations through their technology: ERP systems, CRM platforms, email, databases, document repositories, business applications, cloud infrastructure. This perspective explains where information is stored and how software is deployed.</p>
+<p>Neither perspective explains how an enterprise truly operates. An enterprise is not simply a hierarchy of departments, nor is it a collection of applications. It is a living system where people, knowledge, technology and decisions continuously interact to achieve common objectives.</p>
+<p>Understanding an enterprise therefore requires looking beyond its organizational chart and beyond its software landscape. It requires understanding what the organization is fundamentally capable of doing.</p>
+<hr />
+<h2>Enterprises Are Defined by Their Capabilities</h2>
+<p>Every organization, regardless of its industry or size, performs a set of essential activities. It communicates. It remembers. It understands information. It makes decisions. It coordinates work. It plans. It executes actions.</p>
+<p>These abilities exist independently of any particular software solution. An organization may replace its ERP. It may migrate to a different CRM. It may adopt a new collaboration platform. It may modernize its infrastructure. Yet the enterprise must always retain the ability to communicate, remember, understand, plan and act.</p>
+<p>These enduring abilities are commonly referred to as <strong>Business Capabilities</strong> within Enterprise Architecture. Unlike applications or organizational structures, capabilities remain relatively stable over time because they describe <strong>what an organization does</strong>, rather than <strong>how it currently does it</strong>.</p>
+<p>Technology evolves. Business capabilities endure.</p>
+<hr />
+<h2>People, Processes and Technology</h2>
+<p>Every enterprise can be viewed as the interaction of four fundamental dimensions.</p>
+<h3>People</h3>
+<p>People create value. They make decisions. They collaborate. They innovate. Their knowledge and experience remain the organization's greatest asset.</p>
+<h3>Knowledge</h3>
+<p>Knowledge represents everything an organization knows: policies, procedures, documents, conversations, past decisions, customer information, operational experience. Without knowledge, organizations repeat mistakes instead of learning from them.</p>
+<h3>Processes</h3>
+<p>Processes coordinate work. They define how activities are performed, how decisions are validated and how value is delivered. Good processes improve consistency. Poor processes create unnecessary complexity.</p>
+<h3>Technology</h3>
+<p>Technology enables people and processes. It stores information, automates repetitive work, connects systems, and supports decision-making. Technology should empower organizations — not constrain them.</p>
+<p>Together, these four dimensions form the foundation of every enterprise. Artificial Intelligence does not replace any of them. It strengthens the relationships between them.</p>
+<hr />
+<h2>Beyond Business Capabilities</h2>
+<p>Business Capabilities are already a well-established concept within Enterprise Architecture. Traditionally, they are used to describe and model how an organization operates.</p>
+<p>We believe Artificial Intelligence allows these capabilities to become something more. Rather than existing only as architectural concepts, capabilities can become intelligent operational services.</p>
+<p>An employee should not need to decide whether the answer is located in SharePoint, an ERP, a CRM or a database. They should simply express their objective.</p>
+<p>The platform identifies the required capabilities. It retrieves the necessary knowledge, coordinates specialized AI, interacts with enterprise systems, executes business processes, and delivers the expected outcome.</p>
+<p>Artificial Intelligence transforms business capabilities from static descriptions into active participants in the daily life of an organization. This perspective is one of the fundamental ideas behind Seshat.</p>
+<hr />
+<h2>A Capability-Oriented Enterprise</h2>
+<p>We believe the next generation of enterprises will no longer be organized primarily around applications. They will increasingly operate through intelligent capabilities.</p>
+<p>Instead of navigating software, employees will express intentions. Instead of manually coordinating systems, intelligent platforms will orchestrate them.</p>
+<p>Applications will continue to exist. Databases will continue to exist. ERP systems will continue to exist. But they will gradually become implementation details behind higher-level capabilities.</p>
+<p>An employee will no longer think:</p>
+<blockquote>
+<p>"Which application should I open?"</p>
+</blockquote>
+<p>Instead, they will think:</p>
+<blockquote>
+<p>"What am I trying to accomplish?"</p>
+</blockquote>
+<p>The platform will determine how to achieve that objective. This represents a shift from application-centric work to capability-centric work.</p>
+<hr />
+<h2>Our Perspective</h2>
+<p>This philosophy influences every decision made within Seshat.</p>
+<p>We do not see enterprises as collections of applications. We do not even see them primarily as collections of processes. We see them as collections of capabilities.</p>
+<p>People perform these capabilities. Processes organize them. Technology supports them. Artificial Intelligence amplifies them.</p>
+<p>Because capabilities remain stable while technology continuously evolves, they provide the strongest foundation upon which to build the enterprise systems of tomorrow.</p>
+<hr />
+<h2>Vision Statement</h2>
+<blockquote>
+<p>We believe the future enterprise will be defined not by the software it owns, but by the capabilities it can orchestrate through people, knowledge and artificial intelligence.</p>
+</blockquote>
+<hr />
+<h1>Key Decisions</h1>
+<p>✅ An enterprise is a living system, not a collection of software.</p>
+<p>✅ Business Capabilities describe what an organization does — not how it is implemented.</p>
+<p>✅ People remain at the center of every capability.</p>
+<p>✅ Artificial Intelligence should amplify enterprise capabilities rather than replace them.</p>
+<p>✅ Applications are implementation details; capabilities represent lasting business value.</p>
+<hr />
+<h1>References</h1>
+<p>The concepts presented in this chapter are inspired by established Enterprise Architecture and Business Architecture practices, particularly the notion of <strong>Business Capabilities</strong>, which describe what an organization is able to do independently of its organizational structure or technology stack.</p>
+<p>Seshat extends these concepts by treating capabilities not only as architectural building blocks but also as intelligent operational services orchestrated by Artificial Intelligence.</p>
+<ol>
+<li>
+<p>The Open Group. <em>TOGAF® Standard (10th Edition).</em><br />
+   https://www.opengroup.org/togaf</p>
+</li>
+<li>
+<p>The Open Group. <em>TOGAF® Business Capability Guide.</em></p>
+</li>
+<li>
+<p>Business Architecture Guild. <em>A Guide to the Business Architecture Body of Knowledge (BIZBOK® Guide).</em></p>
+</li>
+<li>
+<p>LeanIX. <em>Business Capability Mapping.</em><br />
+   https://www.leanix.net/en/wiki/ea/business-capability</p>
+</li>
+<li>
+<p>Bizzdesign. <em>Business Capabilities: A Complete Guide.</em><br />
+   https://bizzdesign.com/blog/business-capabilities-a-complete-guide</p>
+</li>
+</ol>
+<hr />
+<h1>5. The Problems Modern Enterprises Face</h1>
+<hr />
+<h2>Organizations Have Never Had More Resources</h2>
+<p>Modern enterprises generate more information than at any other point in history: every email, every meeting, every contract, every customer interaction, every financial transaction, every project, every document, every discussion, every decision. All of this contributes to an ever-growing body of organizational knowledge.</p>
+<p>At the same time, companies have invested heavily in digital transformation: ERP systems, CRM platforms, cloud infrastructure, Business Intelligence, knowledge bases, collaboration platforms, document management systems, automation tools, Artificial Intelligence.</p>
+<p>On paper, organizations have never been better equipped. Yet many employees still struggle to accomplish simple everyday tasks.</p>
+<p>The challenge is no longer creating information. The challenge is making it usable.</p>
+<hr />
+<h2>Information Is Everywhere — And Nowhere</h2>
+<p>Knowledge rarely exists in one place. It is distributed across hundreds of systems: documents, emails, chat conversations, databases, shared drives, enterprise applications, internal portals, cloud storage, and even inside people's memories.</p>
+<p>Finding the right information often requires employees to know where to search before they can begin searching.</p>
+<p>When information cannot be found quickly, work slows down. Employees interrupt colleagues. Questions are answered repeatedly. Existing work is recreated. Knowledge becomes fragmented.</p>
+<p>Instead of accelerating organizations, information overload becomes a source of friction. Research consistently identifies fragmented enterprise knowledge as one of the primary barriers to productivity and effective AI adoption.</p>
+<hr />
+<h2>Software Has Become Fragmented</h2>
+<p>Digital transformation has brought tremendous value. It has also introduced unprecedented complexity.</p>
+<p>Every department has adopted specialized software. Finance uses one platform. Human Resources another. Sales another. Legal another. Operations another. Each application solves a local problem. Few solve the enterprise problem.</p>
+<p>Employees constantly switch between systems simply to complete a single task. What should be one workflow often becomes ten disconnected interactions.</p>
+<p>The organization becomes increasingly dependent on software while simultaneously becoming more difficult to navigate. The problem is no longer the lack of tools. It is the lack of orchestration.</p>
+<hr />
+<h2>Knowledge Disappears Faster Than It Is Created</h2>
+<p>One of the most valuable assets of any organization is experience. Unfortunately, experience is rarely documented completely. Much of it exists only inside conversations, inside meetings, inside habits, inside individual employees.</p>
+<p>When people change roles or leave the company, part of the organization's knowledge disappears with them. The enterprise continuously loses information it has already paid to acquire.</p>
+<p>New employees spend weeks — or even months — rebuilding knowledge that once existed. The organization learns slowly because it forgets constantly.</p>
+<hr />
+<h2>Repetitive Work Consumes Human Potential</h2>
+<p>A surprising amount of enterprise work does not require human creativity: searching for documents, copying information between systems, preparing reports, summarizing meetings, answering recurring questions, validating routine requests, updating spreadsheets, following approval processes.</p>
+<p>These activities are necessary. But they rarely create strategic value.</p>
+<p>Highly skilled professionals often spend a significant portion of their day coordinating work rather than performing the work they were hired to do. Artificial Intelligence offers an opportunity to automate much of this operational friction.</p>
+<hr />
+<h2>Decision-Making Lacks Context</h2>
+<p>Good decisions require good context. Unfortunately, context is often fragmented.</p>
+<p>Relevant information may exist in multiple systems. Historical decisions may not be documented. Important discussions may have occurred only in meetings or chat conversations.</p>
+<p>As a result, employees frequently make decisions using incomplete information. This does not necessarily produce poor decisions. It produces inconsistent decisions.</p>
+<p>Organizations become less predictable because knowledge is not shared consistently across teams.</p>
+<hr />
+<h2>AI Alone Does Not Solve These Problems</h2>
+<p>Large Language Models have dramatically improved the ability of computers to understand language. But intelligence alone does not eliminate organizational complexity.</p>
+<p>An AI model cannot understand information it cannot access. It cannot respect permissions it does not know. It cannot execute workflows it is not connected to. It cannot preserve organizational memory by itself.</p>
+<p>Without integration into the enterprise, AI simply becomes another application employees must learn to use.</p>
+<p>The challenge is no longer intelligence. The challenge is orchestration. This explains why many organizations successfully deploy AI for individual productivity while struggling to generate measurable enterprise-wide business impact.</p>
+<hr />
+<h2>The Real Problem</h2>
+<p>Looking at these challenges individually can be misleading: fragmented knowledge, disconnected software, manual processes, lost expertise, information overload, poor collaboration, slow decision-making.</p>
+<p>These are not independent problems. They are different symptoms of the same underlying issue.</p>
+<p>Modern enterprises have become increasingly digital. But they have not become proportionally more connected.</p>
+<p>Information exists. Knowledge exists. Processes exist. Artificial Intelligence exists. What is missing is a coherent way to orchestrate them together.</p>
+<p>This is the problem Seshat is designed to solve.</p>
+<hr />
+<h2>Vision Statement</h2>
+<blockquote>
+<p>The greatest challenge facing modern enterprises is no longer the lack of information or technology. It is the inability to transform both into coordinated organizational intelligence.</p>
+</blockquote>
+<hr />
+<h1>Key Decisions</h1>
+<p>✅ Enterprise problems are systemic rather than isolated.</p>
+<p>✅ Information overload is an orchestration problem, not a storage problem.</p>
+<p>✅ Knowledge must remain accessible beyond individuals.</p>
+<p>✅ AI should reduce operational friction, not introduce additional complexity.</p>
+<p>✅ Orchestration creates more value than adding more software.</p>
+<hr />
+<h1>References</h1>
+<p>The challenges described in this chapter are supported by recent research in Enterprise AI, Enterprise Search, Knowledge Management and Digital Workplace transformation.</p>
+<ol>
+<li>
+<p>McKinsey &amp; Company. <em>The State of AI 2025.</em></p>
+</li>
+<li>
+<p>Gartner. <em>Market Guide for Enterprise AI Search (2025).</em></p>
+</li>
+<li>
+<p>Glean. <em>What is Fragmented Knowledge and Why It Matters.</em></p>
+</li>
+<li>
+<p>OneReach.ai. <em>How AI Agents Are Transforming Enterprise Knowledge Management.</em></p>
+</li>
+<li>
+<p>McClure &amp; Gerdau. <em>Why AI Readiness Is an Organizational Learning Problem, Not a Technology Purchase.</em> (2026)</p>
+</li>
+</ol>
+<hr />
+<h1>6. Why Today's AI Is Not Enough</h1>
+<hr />
+<h2>Artificial Intelligence Has Never Been More Capable</h2>
+<p>Large Language Models have transformed what computers are capable of doing. They can write, analyze, summarize, reason, generate software, translate languages, understand documents, answer complex questions.</p>
+<p>Only a few years ago, many of these tasks seemed impossible. Today, they have become commonplace.</p>
+<p>Artificial Intelligence has reached an extraordinary level of capability. Yet despite these technological advances, many organizations still struggle to generate meaningful business value from AI.</p>
+<p>The problem is no longer intelligence. The problem is everything surrounding it.</p>
+<hr />
+<h2>Intelligence Alone Does Not Create Enterprise Value</h2>
+<p>A language model can answer questions. An enterprise must make decisions.</p>
+<p>A language model can summarize documents. An enterprise must coordinate hundreds of people.</p>
+<p>A language model can generate code. An enterprise must operate reliably every day.</p>
+<p>These are fundamentally different challenges. Organizations do not simply need intelligent models. They need intelligent systems — systems capable of understanding context, respecting governance, working alongside people, integrating with existing software, and executing business processes safely.</p>
+<p>Enterprise value is not created by intelligence alone. It is created when intelligence becomes operational.</p>
+<hr />
+<h2>AI Without Context Is Incomplete</h2>
+<p>Every answer depends on context. Who is asking? What department are they part of? What information are they allowed to access? What decisions have already been made? Which documents are authoritative? What is the company's vocabulary? Which business rules apply?</p>
+<p>Without this context, even the most advanced model can only provide generic intelligence.</p>
+<p>Enterprise intelligence requires enterprise context. Context transforms information into understanding.</p>
+<hr />
+<h2>AI Without Integration Creates More Complexity</h2>
+<p>Many organizations introduce AI as a separate application. Employees open another browser tab. Another assistant. Another interface. Another workflow.</p>
+<p>Instead of simplifying work, AI becomes one more tool that employees must learn to use.</p>
+<p>The challenge is not adding AI. The challenge is embedding AI into the daily life of the organization.</p>
+<p>Artificial Intelligence should work where people already work — inside their documents, inside their workflows, inside their communication tools, inside their business systems. Not outside them.</p>
+<hr />
+<h2>AI Without Memory Starts From Zero</h2>
+<p>Every interaction with a traditional AI assistant is largely independent. The conversation may remember a short history. The organization does not.</p>
+<p>Companies accumulate knowledge over years: projects, meetings, decisions, lessons learned, customer interactions, policies, procedures.</p>
+<p>This organizational memory should continuously enrich future work. An enterprise AI should learn from the organization — not start every conversation as if it had never existed before.</p>
+<hr />
+<h2>AI Without Orchestration Cannot Scale</h2>
+<p>Modern organizations rely on hundreds of interconnected activities: searching information, reviewing documents, approving requests, communicating with colleagues, updating systems, generating reports, monitoring operations.</p>
+<p>No single model can efficiently manage every responsibility.</p>
+<p>Enterprise AI requires orchestration — different capabilities, different specialists, different systems, working together toward a common objective.</p>
+<p>The future is not a single intelligent assistant. It is a coordinated ecosystem of intelligence.</p>
+<hr />
+<h2>AI Without Trust Cannot Be Adopted</h2>
+<p>Organizations cannot rely on systems they do not understand.</p>
+<p>Every recommendation should be explainable. Every action should be traceable. Every permission should be respected. Every decision should remain auditable.</p>
+<p>Trust is not created by larger models. Trust is created by transparency, governance and human oversight.</p>
+<p>Without trust, Artificial Intelligence remains an experiment rather than an enterprise capability. Research consistently identifies governance, trust, data quality and organizational readiness as the primary barriers to enterprise AI adoption rather than model performance itself.</p>
+<hr />
+<h2>AI Must Become Part of the Enterprise</h2>
+<p>Artificial Intelligence should not exist beside the enterprise. It should become part of it — part of its knowledge, part of its memory, part of its workflows, part of its governance, part of its decision-making.</p>
+<p>Only then can AI move beyond isolated productivity gains and become an organizational capability.</p>
+<p>Recent industry research shows that while AI adoption is widespread, most organizations have yet to embed it deeply into their operating model or redesign workflows around it, limiting enterprise-wide impact.</p>
+<hr />
+<h2>The Role of Seshat</h2>
+<p>This is where Seshat begins. Not by building a more intelligent model. Not by creating another chatbot. Not by replacing enterprise software.</p>
+<p>Seshat exists to transform Artificial Intelligence into enterprise infrastructure. It connects knowledge, coordinates capabilities, orchestrates specialized AI, integrates existing systems, preserves organizational memory, supports governance, and enables organizations to safely adopt Artificial Intelligence as part of their daily operations.</p>
+<p>Rather than asking:</p>
+<blockquote>
+<p>"How can we use AI?"</p>
+</blockquote>
+<p>Organizations can begin asking:</p>
+<blockquote>
+<p>"How can AI become part of the way we operate?"</p>
+</blockquote>
+<p>That is the question Seshat is designed to answer.</p>
+<hr />
+<h2>Vision Statement</h2>
+<blockquote>
+<p>We believe the future of Artificial Intelligence will not be defined by smarter models, but by the ability to transform intelligence into trusted, integrated and operational enterprise capabilities.</p>
+</blockquote>
+<hr />
+<h1>Key Decisions</h1>
+<p>✅ Intelligence alone is not sufficient.</p>
+<p>✅ Context is essential for enterprise intelligence.</p>
+<p>✅ AI must integrate with existing systems rather than compete with them.</p>
+<p>✅ Organizational memory is a strategic asset.</p>
+<p>✅ Trust and governance are prerequisites for adoption.</p>
+<p>✅ Orchestration creates enterprise value.</p>
+<hr />
+<h1>References</h1>
+<p>The ideas presented in this chapter are supported by recent research on Enterprise AI adoption, organizational readiness and AI maturity.</p>
+<ol>
+<li>
+<p>McKinsey &amp; Company. <em>The State of AI 2025: Agents, Innovation, and Transformation.</em></p>
+</li>
+<li>
+<p>Gartner. <em>How to Eliminate Barriers and Achieve Higher AI Maturity.</em></p>
+</li>
+<li>
+<p>Gartner. <em>AI Maturity Survey (2025).</em></p>
+</li>
+<li>
+<p>Gartner. <em>Address the Hidden Barriers to AI and GenAI Adoption.</em></p>
+</li>
+<li>
+<p>McClure &amp; Gerdau. <em>Why AI Readiness Is an Organizational Learning Problem, Not a Technology Purchase.</em></p>
+</li>
+<li>
+<p>Gartner. <em>AI-Powered Supply Chain Orchestration.</em></p>
+</li>
+</ol>
+</section>
+<hr class="file-break"/>
+<section class="file-section" id="3-seshat-md">
+<h1>Part III — Introducing Seshat</h1>
+<div class="diagram">
+<svg viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;">
+
+  <rect x="10" y="20" width="140" height="54" rx="8" fill="white" stroke="#2f2e34" stroke-width="1.5"/>
+  <text x="80" y="42" text-anchor="middle" font-size="12" font-weight="700" fill="#16151a">seshat-ui</text>
+  <text x="80" y="58" text-anchor="middle" font-size="9" fill="#9a9a9a">desktop app</text>
+
+  <rect x="10" y="170" width="140" height="54" rx="8" fill="white" stroke="#2f2e34" stroke-width="1.5"/>
+  <text x="80" y="192" text-anchor="middle" font-size="12" font-weight="700" fill="#16151a">seshat-console</text>
+  <text x="80" y="208" text-anchor="middle" font-size="9" fill="#9a9a9a">web admin</text>
+
+  <rect x="215" y="20" width="150" height="54" rx="8" fill="#f7f5f2" stroke="#ef7c2f" stroke-width="1.8"/>
+  <text x="290" y="42" text-anchor="middle" font-size="12" font-weight="700" fill="#16151a">seshat-backend</text>
+  <text x="290" y="58" text-anchor="middle" font-size="9" fill="#9a9a9a">local API, standalone</text>
+
+  <rect x="215" y="170" width="150" height="54" rx="8" fill="#f7f5f2" stroke="#ef7c2f" stroke-width="1.8"/>
+  <text x="290" y="192" text-anchor="middle" font-size="12" font-weight="700" fill="#16151a">seshat-server</text>
+  <text x="290" y="208" text-anchor="middle" font-size="9" fill="#9a9a9a">cloud control plane</text>
+
+  <rect x="440" y="95" width="180" height="80" rx="10" fill="#2f2e34"/>
+  <text x="530" y="128" text-anchor="middle" font-size="13" font-weight="700" fill="white">seshat</text>
+  <text x="530" y="145" text-anchor="middle" font-size="9" fill="#cfcfd4">engine — agents, tools,</text>
+  <text x="530" y="157" text-anchor="middle" font-size="9" fill="#cfcfd4">providers, MCP, RAG</text>
+
+  <line x1="150" y1="47" x2="212" y2="47" stroke="#2f2e34" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <line x1="150" y1="197" x2="212" y2="197" stroke="#2f2e34" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <line x1="365" y1="55" x2="437" y2="115" stroke="#ef7c2f" stroke-width="1.6" marker-end="url(#arrowo)"/>
+  <line x1="365" y1="190" x2="437" y2="150" stroke="#ef7c2f" stroke-width="1.6" marker-end="url(#arrowo)"/>
+
+  <line x1="290" y1="74" x2="290" y2="170" stroke="#9a9a9a" stroke-width="1.3" stroke-dasharray="4,4"/>
+  <text x="300" y="122" font-size="8.5" fill="#9a9a9a">optional</text>
+  <text x="300" y="133" font-size="8.5" fill="#9a9a9a">connected mode</text>
+
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#2f2e34"/></marker>
+    <marker id="arrowo" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#ef7c2f"/></marker>
+  </defs>
+    
+</svg>
+<div class="diagram-caption">Dependency is one-way: seshat-ai (backend/server) imports the seshat engine, never the reverse. seshat-ui only ever talks to seshat-backend.</div>
+</div>
+<h1>7. What is Seshat?</h1>
+<hr />
+<h2>More Than an AI Application</h2>
+<p>Artificial Intelligence has rapidly become a standard feature of modern software. Today, almost every product claims to be AI-powered. Some provide conversational assistants. Others generate documents. Some automate repetitive tasks. Others help users search information more efficiently.</p>
+<p>While these solutions create value, they all share a common characteristic: Artificial Intelligence remains attached to a single application. Each assistant understands only its own environment. Each automation solves only one category of problem. Each product operates within its own boundaries.</p>
+<p>Organizations, however, do not operate this way. Knowledge crosses departments. Processes span multiple systems. Decisions involve many people. Business capabilities rarely belong to a single application.</p>
+<p>The enterprise itself has become the platform. This is where Seshat begins.</p>
+<hr />
+<h2>Seshat Is an Enterprise Capability Platform</h2>
+<p>Seshat is an Enterprise Capability Platform. Its purpose is not to replace existing enterprise software. Its purpose is to connect it.</p>
+<p>Rather than introducing another application, Seshat creates an intelligent layer above the enterprise. This layer understands the organization — its knowledge, its capabilities, its processes, its governance, its people, its systems.</p>
+<p>Instead of interacting independently with dozens of applications, employees interact with the organization itself. Seshat determines which capabilities are required, retrieves the necessary knowledge, coordinates specialized intelligence, executes the appropriate workflows, and delivers meaningful business outcomes.</p>
+<hr />
+<h2>Intelligence That Belongs to the Organization</h2>
+<p>Most AI assistants belong to individual users: their conversations, their history, their preferences, their personal productivity.</p>
+<p>Seshat belongs to the enterprise. Its intelligence is organizational rather than personal.</p>
+<p>Knowledge becomes collective. Memory becomes persistent. Capabilities become reusable. Automation becomes collaborative.</p>
+<p>Every interaction contributes to the organization's ability to learn, improve and operate more effectively.</p>
+<hr />
+<h2>A Platform Rather Than a Product</h2>
+<p>Traditional enterprise software is built around applications. Seshat is built around capabilities.</p>
+<p>Applications continue to exist. ERP systems continue to exist. CRM platforms continue to exist. Business applications continue to exist. Seshat does not compete with them. It coordinates them.</p>
+<p>It provides a common layer where knowledge, intelligence, automation and enterprise systems can collaborate as a unified ecosystem.</p>
+<p>The result is not another isolated product. It is an intelligent operational platform for the entire organization.</p>
+<hr />
+<h2>A Foundation for Enterprise Intelligence</h2>
+<p>Artificial Intelligence will continue to evolve. New models will appear. New reasoning techniques will emerge. New technologies will replace existing ones.</p>
+<p>Seshat is designed to remain stable despite these changes, because its purpose is not to build the best model. Its purpose is to provide the infrastructure through which organizations can continuously adopt future intelligence.</p>
+<p>Just as operating systems abstract hardware complexity, Seshat abstracts the complexity of enterprise intelligence.</p>
+<p>Organizations invest once in the platform. They continue benefiting from future advances in Artificial Intelligence without redesigning how they work.</p>
+<hr />
+<h2>Vision Statement</h2>
+<blockquote>
+<p>Seshat is not another AI application.</p>
+<p>It is the intelligent operational layer through which organizations transform knowledge, capabilities and Artificial Intelligence into coordinated enterprise execution.</p>
+</blockquote>
+<hr />
+<h1>Key Characteristics</h1>
+<ul>
+<li>Enterprise Capability Platform</li>
+<li>Organizational Intelligence</li>
+<li>Shared Enterprise Memory</li>
+<li>Capability-Oriented Architecture</li>
+<li>AI Orchestration</li>
+<li>Human-Centered Collaboration</li>
+<li>Enterprise Governance</li>
+<li>Open and Extensible by Design</li>
+</ul>
+<hr />
+<h1>8. The Seshat Model</h1>
+<hr />
+<h2>From Intent to Execution</h2>
+<p>Traditional software requires users to understand the organization. They must know which application to open, which documents to consult, which people to contact, which processes to follow.</p>
+<p>Artificial Intelligence has simplified some of these interactions. Yet, in many cases, employees are still responsible for coordinating the organization themselves.</p>
+<p>Seshat proposes a different approach. Instead of asking users to navigate the enterprise, the enterprise should understand the user's intent.</p>
+<p>Every interaction begins with a simple objective — not with software, not with workflows, not with applications, but with intent.</p>
+<p>The role of Seshat is to transform that intent into coordinated enterprise execution.</p>
+<hr />
+<h2>The Seshat Execution Model</h2>
+<p>Every request follows the same conceptual lifecycle: Business Intent → Intent Understanding → Capability Discovery → Enterprise Knowledge → Reasoning &amp; Planning → Enterprise Orchestration → Execution → Observation &amp; Learning, which feeds back into future intent.</p>
+<div class="diagram">
+<svg viewBox="0 0 640 562" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;">
+<defs>
+    <marker id="arrow3" markerWidth="8" markerHeight="8" refX="4" refY="6" orient="auto"><path d="M0,0 L4,7 L8,0 Z" fill="#2f2e34"/></marker>
+    <marker id="arrow3o" markerWidth="8" markerHeight="8" refX="4" refY="6" orient="auto"><path d="M0,0 L4,7 L8,0 Z" fill="#ef7c2f"/></marker>
+  </defs>
+<rect x="120" y="20" width="280" height="46" rx="7" fill="#f7f5f2" stroke="#2f2e34" stroke-width="1.6"/>
+<text x="260" y="47.0" text-anchor="middle" font-size="11.5" font-weight="700" fill="#16151a">Business Intent</text>
+<line x1="260" y1="66" x2="260" y2="84" stroke="#2f2e34" stroke-width="1.6" marker-end="url(#arrow3)"/>
+<rect x="120" y="88" width="280" height="46" rx="7" fill="white" stroke="#2f2e34" stroke-width="1.6"/>
+<text x="260" y="115.0" text-anchor="middle" font-size="11.5" font-weight="700" fill="#16151a">Intent Understanding</text>
+<line x1="260" y1="134" x2="260" y2="152" stroke="#2f2e34" stroke-width="1.6" marker-end="url(#arrow3)"/>
+<rect x="120" y="156" width="280" height="46" rx="7" fill="white" stroke="#2f2e34" stroke-width="1.6"/>
+<text x="260" y="183.0" text-anchor="middle" font-size="11.5" font-weight="700" fill="#16151a">Capability Discovery</text>
+<line x1="260" y1="202" x2="260" y2="220" stroke="#2f2e34" stroke-width="1.6" marker-end="url(#arrow3)"/>
+<rect x="120" y="224" width="280" height="46" rx="7" fill="white" stroke="#ef7c2f" stroke-width="1.6"/>
+<text x="260" y="251.0" text-anchor="middle" font-size="11.5" font-weight="700" fill="#16151a">Enterprise Knowledge</text>
+<line x1="260" y1="270" x2="260" y2="288" stroke="#2f2e34" stroke-width="1.6" marker-end="url(#arrow3)"/>
+<rect x="120" y="292" width="280" height="46" rx="7" fill="white" stroke="#2f2e34" stroke-width="1.6"/>
+<text x="260" y="319.0" text-anchor="middle" font-size="11.5" font-weight="700" fill="#16151a">Reasoning & Planning</text>
+<line x1="260" y1="338" x2="260" y2="356" stroke="#2f2e34" stroke-width="1.6" marker-end="url(#arrow3)"/>
+<rect x="120" y="360" width="280" height="46" rx="7" fill="white" stroke="#2f2e34" stroke-width="1.6"/>
+<text x="260" y="387.0" text-anchor="middle" font-size="11.5" font-weight="700" fill="#16151a">Enterprise Orchestration</text>
+<line x1="260" y1="406" x2="260" y2="424" stroke="#2f2e34" stroke-width="1.6" marker-end="url(#arrow3)"/>
+<rect x="120" y="428" width="280" height="46" rx="7" fill="white" stroke="#2f2e34" stroke-width="1.6"/>
+<text x="260" y="455.0" text-anchor="middle" font-size="11.5" font-weight="700" fill="#16151a">Execution</text>
+<line x1="260" y1="474" x2="260" y2="492" stroke="#2f2e34" stroke-width="1.6" marker-end="url(#arrow3)"/>
+<rect x="120" y="496" width="280" height="46" rx="7" fill="white" stroke="#2f2e34" stroke-width="1.6"/>
+<text x="260" y="523.0" text-anchor="middle" font-size="11.5" font-weight="700" fill="#16151a">Observation & Learning</text>
+<path d="M 400 565.0 C 470 565.0, 470 43.0, 402 43.0" fill="none" stroke="#ef7c2f" stroke-width="1.4" stroke-dasharray="3,3" marker-end="url(#arrow3o)"/>
+<text x="475" y="304.0" font-size="8.5" fill="#ef7c2f" transform="rotate(90 475 304.0)" text-anchor="middle">enriches future requests</text>
+</svg>
+<div class="diagram-caption">Every request follows this lifecycle. Each stage is a responsibility, not a fixed technology — the model stays stable while what implements each stage evolves.</div>
+</div>
+<p>Each stage represents a responsibility rather than a specific technology. This allows the platform to evolve while preserving a stable conceptual model.</p>
+<hr />
+<h2>1. Intent Understanding</h2>
+<p>Everything begins with intention. Users should not need to describe systems. They should describe outcomes.</p>
+<p>Examples include:</p>
+<ul>
+<li>Prepare tomorrow's client meeting.</li>
+<li>Analyze last month's sales performance.</li>
+<li>Generate a compliance report.</li>
+<li>Find every contract related to Project Atlas.</li>
+<li>Onboard a new employee.</li>
+<li>Investigate why production failed yesterday.</li>
+</ul>
+<p>The objective is to understand what the organization is being asked to accomplish rather than how the task should be performed.</p>
+<hr />
+<h2>2. Capability Discovery</h2>
+<p>Once the intent has been understood, Seshat determines which enterprise capabilities are required.</p>
+<p>For example, preparing a client meeting may require the ability to:</p>
+<ul>
+<li>Remember previous interactions.</li>
+<li>Retrieve relevant documents.</li>
+<li>Analyze recent business activity.</li>
+<li>Communicate with team members.</li>
+<li>Generate summaries.</li>
+<li>Plan upcoming actions.</li>
+</ul>
+<p>Capabilities are independent from applications. They describe what the organization must do — not which software currently performs the work.</p>
+<hr />
+<h2>3. Enterprise Knowledge</h2>
+<p>Capabilities require context. Seshat gathers the knowledge necessary to accomplish the objective.</p>
+<p>This knowledge may originate from:</p>
+<ul>
+<li>Enterprise documents.</li>
+<li>Databases.</li>
+<li>Business applications.</li>
+<li>Internal policies.</li>
+<li>Emails.</li>
+<li>Conversations.</li>
+<li>Previous decisions.</li>
+<li>Organizational memory.</li>
+</ul>
+<p>Rather than searching isolated repositories, Seshat builds a unified understanding of the information relevant to the task. Knowledge becomes contextual rather than simply searchable.</p>
+<hr />
+<h2>4. Reasoning &amp; Planning</h2>
+<p>Once sufficient context has been collected, Seshat determines how the objective should be achieved.</p>
+<p>This stage may involve reasoning, decomposition, prioritization, validation, planning, risk assessment, and decision support.</p>
+<p>The result is not merely an answer. It is an execution strategy.</p>
+<hr />
+<h2>5. Enterprise Orchestration</h2>
+<p>Execution often requires multiple participants: human experts, specialized AI systems, business applications, automation workflows, external services.</p>
+<p>Seshat coordinates these participants as a single operational system. Rather than replacing enterprise software, it orchestrates their collaboration.</p>
+<p>This orchestration is dynamic. The participants involved depend entirely on the requested objective.</p>
+<hr />
+<h2>6. Execution</h2>
+<p>Once the plan has been validated, actions are performed.</p>
+<p>Depending on permissions and organizational policies, execution may include generating documents, updating enterprise systems, triggering workflows, communicating with stakeholders, producing reports, scheduling activities, and monitoring ongoing operations.</p>
+<p>Execution always remains aligned with enterprise governance and human oversight.</p>
+<hr />
+<h2>7. Observation &amp; Learning</h2>
+<p>Every execution produces new knowledge: new decisions, new documents, new outcomes, new experience.</p>
+<p>Seshat continuously enriches the organization's collective memory. Future requests therefore benefit from previous work.</p>
+<p>The enterprise becomes progressively more intelligent through experience rather than repetition. Learning belongs to the organization rather than to individual conversations.</p>
+<hr />
+<h2>A Model Independent of Technology</h2>
+<p>The Seshat Model is intentionally independent from implementation details. Future language models may evolve. Reasoning techniques may improve. New orchestration frameworks may emerge. Enterprise software will continue to change.</p>
+<p>None of these changes alter the model itself. The model describes how organizational intelligence operates. Technology simply provides different implementations.</p>
+<p>This separation allows Seshat to evolve continuously while preserving a stable conceptual foundation.</p>
+<hr />
+<h2>The Role of Artificial Intelligence</h2>
+<p>Artificial Intelligence is an essential component of the model. It is not the model.</p>
+<p>AI enables understanding, reasoning, planning, generation, automation. But enterprise intelligence also requires knowledge, governance, capabilities, orchestration, human collaboration, and organizational memory.</p>
+<p>Only the combination of these elements transforms Artificial Intelligence into enterprise intelligence.</p>
+<hr />
+<h2>Vision Statement</h2>
+<blockquote>
+<p>Seshat transforms business intent into coordinated enterprise execution by combining capabilities, knowledge, orchestration and Artificial Intelligence within a single operational model.</p>
+</blockquote>
+<hr />
+<h1>Core Concepts</h1>
+<ul>
+<li>Intent before Tasks</li>
+<li>Capabilities before Applications</li>
+<li>Knowledge before Answers</li>
+<li>Planning before Execution</li>
+<li>Orchestration before Automation</li>
+<li>Learning before Repetition</li>
+</ul>
+<hr />
+<h1>The Seshat Equation</h1>
+<p>Enterprise Intelligence is not produced by Artificial Intelligence alone. Instead:</p>
+<pre><code>Enterprise Intelligence =
+Intent
++ Capabilities
++ Knowledge
++ Reasoning
++ Orchestration
++ Execution
++ Organizational Learning
+</code></pre>
+<p>Artificial Intelligence amplifies every stage of this process. It does not replace the process itself.</p>
+<hr />
+<h1>Closing Thought</h1>
+<p>Seshat is not defined by its agents. Nor by its language models. Nor by its integrations.</p>
+<p>It is defined by the model through which organizations transform human intent into coordinated action. Everything else is an implementation.</p>
+</section>
+<hr class="file-break"/>
+<section class="file-section" id="4-product-md">
+<h1>Part IV — Products</h1>
+<p>Technology has value only when it becomes useful.</p>
+<p>The Seshat Model defines how enterprise intelligence operates. The Seshat products make that model accessible to every employee.</p>
+<p>The products split into two layers. Enterprise Knowledge, Intelligent Documents and Skills form the <strong>platform layer</strong> — the shared memory, document pipeline and reusable capabilities every agent draws on. Company Assistant and the growing family of Agent Workflows form the <strong>agent layer</strong> — what employees actually talk to and rely on to get work done.</p>
+<p>Individually, each product solves a specific business problem. Together, they form a unified Enterprise Capability Platform.</p>
+<div class="diagram">
+<svg viewBox="0 0 640 230" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;">
+
+  <rect x="60" y="25" width="230" height="72" rx="8" fill="white" stroke="#2f2e34" stroke-width="1.8"/>
+  <text x="175" y="55" text-anchor="middle" font-size="13" font-weight="700" fill="#16151a">Company Assistant</text>
+  <text x="175" y="72" text-anchor="middle" font-size="9" fill="#9a9a9a">generalist entry point</text>
+  <text x="175" y="86" text-anchor="middle" font-size="8.5" fill="#9a9a9a">(the Companion)</text>
+
+  <rect x="350" y="25" width="230" height="72" rx="8" fill="white" stroke="#ef7c2f" stroke-width="1.8"/>
+  <text x="465" y="55" text-anchor="middle" font-size="13" font-weight="700" fill="#16151a">Agent Workflows</text>
+  <text x="465" y="72" text-anchor="middle" font-size="9" fill="#9a9a9a">specialists, one job each</text>
+  <text x="465" y="86" text-anchor="middle" font-size="8.5" fill="#9a9a9a">Inbox Agent · Accounting Agent · ...</text>
+
+  <rect x="30" y="150" width="580" height="66" rx="8" fill="#2f2e34"/>
+  <text x="320" y="172" text-anchor="middle" font-size="11" font-weight="700" fill="white" letter-spacing="0.5">PLATFORM LAYER</text>
+  <line x1="222" y1="185" x2="222" y2="205" stroke="#55545c" stroke-width="1"/>
+  <line x1="418" y1="185" x2="418" y2="205" stroke="#55545c" stroke-width="1"/>
+  <text x="126" y="200" text-anchor="middle" font-size="9.5" fill="#e6e6e6">Enterprise Knowledge</text>
+  <text x="320" y="200" text-anchor="middle" font-size="9.5" fill="#e6e6e6">Intelligent Documents</text>
+  <text x="514" y="200" text-anchor="middle" font-size="9.5" fill="#e6e6e6">Skills</text>
+
+  <line x1="175" y1="150" x2="175" y2="99" stroke="#2f2e34" stroke-width="1.6" marker-end="url(#arrow2)"/>
+  <line x1="465" y1="150" x2="465" y2="99" stroke="#ef7c2f" stroke-width="1.6" marker-end="url(#arrow2o)"/>
+  <text x="320" y="128" text-anchor="middle" font-size="9" fill="#9a9a9a" font-style="italic">built on top of</text>
+
+  <defs>
+    <marker id="arrow2" markerWidth="8" markerHeight="8" refX="4" refY="6" orient="auto"><path d="M0,6 L4,0 L8,6 Z" fill="#2f2e34"/></marker>
+    <marker id="arrow2o" markerWidth="8" markerHeight="8" refX="4" refY="6" orient="auto"><path d="M0,6 L4,0 L8,6 Z" fill="#ef7c2f"/></marker>
+  </defs>
+    
+</svg>
+<div class="diagram-caption">Horizontal products (broad, general-purpose) vs. vertical agents (narrow, job-complete) — the axis that resolved the earlier product overlap.</div>
+</div>
+<p>This section introduces each product, the problem it solves, the principles that guide its design, and the role it plays within the broader Seshat ecosystem.</p>
+<p>Some of these products already exist and run in production today. Others describe direction, not code. Each chapter below states which — first checked against <code>seshat-ui</code>, <code>seshat-console</code>, <code>seshat-server</code> and <code>seshat-backend</code>, then corrected against the builder's own firsthand assessment, which overrides what the code's own status flags claim (2026-08-05: the code's self-reported <code>status: 'ready'</code> turned out to be optimistic for more than one of these — not a reliable signal on its own).</p>
+<table>
+<thead>
+<tr>
+<th>Product</th>
+<th>Status</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Company Assistant (Companion)</td>
+<td>🟢 Most complete</td>
+<td>Core chat loop, sessions, streaming, multi-provider — works today. The most finished piece of the platform.</td>
+</tr>
+<tr>
+<td>Enterprise Knowledge</td>
+<td>🟢 Backend solid / 🟡 UI gap</td>
+<td>The builder's earlier "not ready" was specifically about the desktop app. The RAG pipeline itself (<code>seshat</code>, <code>seshat-backend</code>, <code>seshat-server</code>) is largely done and has been verified end-to-end with a real model. What's missing is the desktop/console experience, not the retrieval capability.</td>
+</tr>
+<tr>
+<td>Workspace</td>
+<td>🟡 Partial</td>
+<td>Usable but missing pieces — exact gaps not yet itemized.</td>
+</tr>
+<tr>
+<td>Intelligent Documents</td>
+<td>🟢 Reading solid / 🔴 Enterprise org not built</td>
+<td>Document reading and parsing (Docling/PaddleOCR, config-dependent) already works and is tested — it's part of Company Assistant's existing read tools today. What's genuinely missing is organizing imported data at enterprise scale by department/team (HR, Legal, etc.) — that's the real gap behind this chapter's vision, not the ability to read a file.</td>
+</tr>
+<tr>
+<td>Skills</td>
+<td>🟡 Partial</td>
+<td>Core flow works; needs adjustments before it's actually done.</td>
+</tr>
+<tr>
+<td>Agent Workflows — Inbox Agent</td>
+<td>💭 Vision</td>
+<td>Not started. Direction only.</td>
+</tr>
+<tr>
+<td>Agent Workflows — Accounting Agent</td>
+<td>💭 Vision</td>
+<td>Not started. Direction only.</td>
+</tr>
+<tr>
+<td>Scheduling</td>
+<td>🟡 Implemented, untested</td>
+<td>Fully implemented per the builder, possibly needing minor adjustments — but not yet tested in practice, blocked on a hardware upgrade (current dev machine is too old to test comfortably). Different risk than "unbuilt": the gap is verification, not code.</td>
+</tr>
+<tr>
+<td>Private AI</td>
+<td>💭 Not yet written</td>
+<td>Self-hosted, no-data-leaves-your-infra deployment is architecturally true by default — reliability not evaluated here.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Testing gap (cross-cutting, applies to everything above):</strong> there is no meaningful automated test coverage across the platform yet. Every status in this table reflects manual/firsthand judgment, not test-proven reliability — treat that as a standing risk on top of whatever status is listed, including for the "most complete" pieces.</p>
+<p>A naming note: <code>6.mvp.md</code> used to call this chapter's product "Companion" — now corrected to "Company Assistant" for consistency with this chapter, though the live <code>seshat-ui</code> code itself still names the app "Companion" (<code>apps/index.tsx</code>). Which name is canonical is still open — see the discussion thread on this before treating either as final. Separately, <code>helps/seshat-openclaude-audit-and-workflows.md</code> describes an unrelated "Seshat Companion" — a CLI/TUI mascot/personality feature (à la OpenClaude's "buddy") for the open-source <code>seshat</code> engine's terminal tool, not an enterprise product. It belongs to that repo's own roadmap, not to this Products section.</p>
+<hr />
+<h1>9. Company Assistant</h1>
+<p><strong>Status:</strong> 🟢 Most complete piece of the platform, per the builder's own assessment — not aspirational. <code>seshat-ui</code>'s Home screen (chat, quick actions, provider and model selector), session management, streaming responses, and multi-provider support already deliver most of what this chapter describes. Still no automated test coverage (see the testing gap note at the start of this section) — and the gap beyond that is Agent Workflows to delegate to, not the assistant itself.</p>
+<hr />
+<h2>Purpose</h2>
+<p>The Company Assistant is the primary interface between employees and enterprise intelligence.</p>
+<p>Rather than asking users to navigate software, search across multiple systems or understand complex business processes, the Company Assistant allows them to interact with their organization through natural language. It understands intent, answers directly whenever it can, and hands off to a dedicated Agent Workflow whenever a request needs one.</p>
+<p>The assistant is not designed to replace people. It is designed to amplify their ability to work.</p>
+<hr />
+<h2>Vision</h2>
+<p>For decades, enterprise software has required employees to adapt to applications. Every new system introduces another interface, another workflow, another way of working.</p>
+<p>We believe this relationship should be reversed. Employees should interact naturally with their organization. The organization should adapt to them.</p>
+<p>The Company Assistant represents this new interaction model. Conversation becomes the universal interface to enterprise capabilities — and, when a task is specialized enough to deserve its own agent, the entry point to it.</p>
+<hr />
+<h2>The Problem</h2>
+<p>Modern employees spend a significant portion of their day navigating between applications: searching documents, reading emails, consulting procedures, switching between ERP systems, requesting information from colleagues, repeating the same questions.</p>
+<p>The work itself is often simpler than finding the information required to perform it. Knowledge exists. Systems exist. Processes exist. Accessing them remains unnecessarily difficult.</p>
+<hr />
+<h2>The Seshat Approach</h2>
+<p>The Company Assistant does not simply answer questions. It understands objectives.</p>
+<p>Every conversation begins with intent. For direct questions, the assistant retrieves contextual knowledge from Enterprise Knowledge and answers immediately. For specialized, recurring jobs — managing an inbox, closing the books — it routes the request to the right Agent Workflow and stays available to coordinate the outcome.</p>
+<p>The conversation becomes a single entry point into the entire enterprise, rather than a single application.</p>
+<hr />
+<h2>How It Works</h2>
+<p>Every interaction follows the same conceptual lifecycle: understand the request, decide whether it can be answered directly or needs a dedicated agent, gather organizational knowledge, coordinate the necessary systems or Agent Workflows, and return a result the employee can act on.</p>
+<p>The employee experiences a simple conversation. Behind the scenes, the enterprise collaborates with itself.</p>
+<hr />
+<h2>Key Capabilities</h2>
+<ul>
+<li>Intent understanding</li>
+<li>Conversational orchestration and routing</li>
+<li>Multi-agent coordination</li>
+<li>Context-aware conversation memory</li>
+<li>Direct knowledge retrieval for simple requests</li>
+<li>Delegation to specialized Agent Workflows for complex ones</li>
+</ul>
+<hr />
+<h2>Typical Use Cases</h2>
+<ul>
+<li>Answer company policy questions.</li>
+<li>Summarize projects and prepare meetings.</li>
+<li>Analyze operational performance.</li>
+<li>Investigate incidents.</li>
+<li>Hand off an invoice to the Accounting Agent.</li>
+<li>Ask the Inbox Agent for a status update on pending emails.</li>
+<li>Coordinate cross-functional work.</li>
+</ul>
+<hr />
+<h2>Enterprise Benefits</h2>
+<ul>
+<li>Faster access to knowledge.</li>
+<li>Reduced application switching.</li>
+<li>Better decision-making.</li>
+<li>Improved collaboration.</li>
+<li>Higher productivity.</li>
+<li>Consistent organizational knowledge.</li>
+<li>Lower onboarding time.</li>
+</ul>
+<hr />
+<h2>Design Principles</h2>
+<p>The assistant always serves the organization rather than replacing it. It answers directly when it can, and delegates when a job deserves a dedicated agent — it does not try to be every product at once. Knowledge remains grounded. Human oversight remains possible. Every action respects enterprise governance.</p>
+<hr />
+<h2>Future Evolution</h2>
+<p>Over time, the Company Assistant will evolve from a conversational interface into a true operational partner: proactively surfacing what needs attention, coordinating the growing family of Agent Workflows on the employee's behalf, and anticipating organizational needs while remaining aligned with enterprise governance.</p>
+<hr />
+<blockquote>
+<p><em>The Company Assistant is not another chatbot. It is the conversational interface through which employees collaborate with the intelligence of their organization — and reach every specialized agent behind it.</em></p>
+</blockquote>
+<hr />
+<h1>10. Enterprise Knowledge</h1>
+<p><strong>Status:</strong> 🟢 Backend solid, 🟡 UI gap. Hybrid BM25 + vector search over ingested corpora is real, both locally and as an organization-scoped domain in the cloud control plane, and has been verified end-to-end with a real model. The builder's earlier "not ready" call was about the desktop/console experience specifically, not the retrieval pipeline — that's what's left to finish.</p>
+<hr />
+<h2>Purpose</h2>
+<p>Enterprise Knowledge is the collective memory of the organization.</p>
+<p>Its purpose is not merely to store information. Its purpose is to make organizational knowledge continuously available, contextual and actionable. Where Intelligent Documents turns individual files into structured data, Enterprise Knowledge connects that data — together with every other source — into one retrievable memory.</p>
+<hr />
+<h2>Vision</h2>
+<p>Organizations do not suffer from a lack of information. They suffer from fragmented information.</p>
+<p>Knowledge is distributed across documents, databases, applications, conversations and individual experience. Enterprise Knowledge connects these sources into a unified organizational memory.</p>
+<p>Employees no longer search isolated repositories. They interact with organizational understanding.</p>
+<hr />
+<h2>The Problem</h2>
+<p>Every enterprise accumulates knowledge over many years: projects, meetings, policies, technical documentation, customer relationships, operational procedures, lessons learned.</p>
+<p>Unfortunately, this knowledge rarely exists in one place. Employees often spend more time searching for information than using it.</p>
+<p>Knowledge becomes duplicated, outdated, forgotten, or lost when employees leave the organization.</p>
+<hr />
+<h2>The Seshat Approach</h2>
+<p>Enterprise Knowledge treats every source of information as part of a single knowledge ecosystem.</p>
+<p>Documents become connected. Emails become contextual. Business applications contribute operational knowledge. Conversations become searchable organizational memory.</p>
+<p>Artificial Intelligence reasons across this unified context rather than isolated repositories. Knowledge is no longer passive. It actively supports enterprise execution.</p>
+<hr />
+<h2>How It Works</h2>
+<p>Knowledge continuously flows into the platform from documents, business systems, databases, communication platforms, external services, enterprise policies and historical decisions.</p>
+<p>Each source enriches the organizational memory. Artificial Intelligence retrieves only the context required for a specific objective.</p>
+<p>Employees receive answers supported by enterprise knowledge rather than generic language models.</p>
+<hr />
+<h2>Key Capabilities</h2>
+<ul>
+<li>Unified enterprise search</li>
+<li>Knowledge graph</li>
+<li>Semantic retrieval</li>
+<li>Organizational memory</li>
+<li>Continuous knowledge enrichment</li>
+<li>Permission-aware access</li>
+<li>Source attribution</li>
+<li>Version awareness</li>
+</ul>
+<hr />
+<h2>Typical Use Cases</h2>
+<ul>
+<li>Find historical project decisions.</li>
+<li>Retrieve technical procedures.</li>
+<li>Explore customer history.</li>
+<li>Understand internal policies.</li>
+<li>Discover organizational expertise.</li>
+<li>Answer compliance questions.</li>
+<li>Support onboarding.</li>
+<li>Accelerate research.</li>
+</ul>
+<hr />
+<h2>Enterprise Benefits</h2>
+<ul>
+<li>Organizational memory persists.</li>
+<li>Expertise becomes reusable.</li>
+<li>Information becomes discoverable.</li>
+<li>Decision-making improves.</li>
+<li>Knowledge silos disappear.</li>
+<li>AI responses become trustworthy.</li>
+</ul>
+<hr />
+<h2>Design Principles</h2>
+<p>Knowledge belongs to the organization. Every answer should remain grounded. Permissions must always be respected. Memory should improve continuously through everyday work. Knowledge is valuable only when it contributes to action.</p>
+<hr />
+<h2>Future Evolution</h2>
+<p>Enterprise Knowledge will progressively evolve toward a living organizational memory capable of understanding relationships between people, projects, documents, decisions and enterprise capabilities.</p>
+<hr />
+<blockquote>
+<p><em>Knowledge becomes valuable only when it is continuously available, trusted and connected to action.</em></p>
+</blockquote>
+<hr />
+<h1>11. Intelligent Documents</h1>
+<p><strong>Status:</strong> 🟢 Reading solid, 🔴 enterprise organization not built. Document reading and parsing (Docling or PaddleOCR, depending on configuration) already works and is tested — it's part of Company Assistant's read tools today, and enough for something like Inbox Agent to read an attachment without waiting on anything else. What's genuinely missing is importing and organizing data at enterprise scale, by department/team (HR, Legal, etc.) — that's the real gap this chapter describes, not the ability to read a file. Document Q&amp;A and workflows built specifically around that departmental organization remain direction, not implementation.</p>
+<hr />
+<h2>Purpose</h2>
+<p>Documents remain one of the primary ways organizations create, exchange and preserve knowledge.</p>
+<p>Intelligent Documents transform static files into structured, active knowledge objects. Once processed, everything it extracts flows into Enterprise Knowledge, where it becomes part of the organization's searchable memory.</p>
+<hr />
+<h2>Vision</h2>
+<p>Traditional documents are passive. Employees read them, interpret them, extract information manually, and repeat the same work.</p>
+<p>We believe documents should understand their own content, participate in enterprise workflows, answer questions, trigger business processes, and maintain their own context throughout their lifecycle.</p>
+<hr />
+<h2>The Problem</h2>
+<p>Organizations manage millions of documents: contracts, invoices, technical documentation, meeting notes, specifications, policies, reports.</p>
+<p>Most of these documents remain isolated from enterprise intelligence. Information becomes trapped inside files. Employees manually extract, summarize and redistribute the same knowledge repeatedly.</p>
+<hr />
+<h2>The Seshat Approach</h2>
+<p>Every document becomes an intelligent knowledge object. Artificial Intelligence understands its structure, its meaning, its relationships, its history, and its role within the organization.</p>
+<p>Documents are no longer simply stored. They participate in enterprise capabilities — and feed the Agent Workflows that need them, such as the Accounting Agent processing an invoice.</p>
+<hr />
+<h2>How It Works</h2>
+<p>When a document enters the platform, it becomes part of the enterprise knowledge ecosystem. Its content is analyzed, structured, linked to organizational knowledge, connected to workflows, and made available to enterprise reasoning.</p>
+<p>The document continues evolving throughout its lifecycle while preserving its context and governance.</p>
+<hr />
+<h2>Key Capabilities</h2>
+<ul>
+<li>Intelligent document ingestion</li>
+<li>OCR</li>
+<li>Metadata extraction</li>
+<li>Document Q&amp;A</li>
+<li>Structured data extraction</li>
+<li>Version intelligence</li>
+<li>Workflow participation</li>
+<li>Multi-format support</li>
+</ul>
+<hr />
+<h2>Typical Use Cases</h2>
+<ul>
+<li>Contract analysis.</li>
+<li>Invoice processing.</li>
+<li>Compliance verification.</li>
+<li>Policy management.</li>
+<li>Technical documentation.</li>
+<li>Customer onboarding.</li>
+<li>Knowledge extraction.</li>
+</ul>
+<hr />
+<h2>Enterprise Benefits</h2>
+<ul>
+<li>Faster document processing.</li>
+<li>Better information retrieval.</li>
+<li>Reduced manual work.</li>
+<li>Higher compliance.</li>
+<li>Better collaboration.</li>
+<li>Increased knowledge reuse.</li>
+<li>Improved AI reasoning.</li>
+</ul>
+<hr />
+<h2>Design Principles</h2>
+<p>Documents should participate in work rather than merely record it. Knowledge extracted from documents belongs to the organization. Automation should preserve human oversight. Every document should remain traceable and explainable.</p>
+<hr />
+<h2>Future Evolution</h2>
+<p>Intelligent Documents will progressively evolve into autonomous enterprise assets capable of participating directly in workflows, collaborating with AI agents and continuously enriching organizational knowledge.</p>
+<hr />
+<blockquote>
+<p><em>Documents should not merely store information. They should actively participate in the work they describe.</em></p>
+</blockquote>
+<hr />
+<h1>12. Skills</h1>
+<p><strong>Status:</strong> 🟡 Partial, per the builder's own assessment. Skills exist as a real registry (create, browse, edit), with a dedicated Skills Creator in <code>seshat-ui</code> (live preview, test chat) and skill repositories manageable by admins — the core flow works, but it needs adjustments before it's actually done.</p>
+<hr />
+<h2>Purpose</h2>
+<p>Skills extend the intelligence of Seshat.</p>
+<p>Each Skill represents a reusable enterprise capability that allows the platform to interact with business systems, perform specialized reasoning or execute domain-specific operations. Skills transform intelligence into practical action — and are the toolbox every Agent Workflow and the Company Assistant draw on, rather than each rebuilding the same integration.</p>
+<hr />
+<h2>Vision</h2>
+<p>Organizations should not rebuild intelligence for every project. Capabilities should be reusable, composable, governed, and shared across the enterprise.</p>
+<p>Skills provide this reusable layer. Once created, a capability becomes available throughout the platform.</p>
+<hr />
+<h2>The Problem</h2>
+<p>Enterprise knowledge is often duplicated. Teams repeatedly implement similar automations. Business logic becomes fragmented. Integrations are recreated multiple times. Artificial Intelligence remains disconnected from operational expertise.</p>
+<p>Organizations lose efficiency by rebuilding capabilities that already exist.</p>
+<hr />
+<h2>The Seshat Approach</h2>
+<p>Every business capability becomes a reusable Skill: searching enterprise knowledge, generating reports, accessing ERP systems, querying databases, performing compliance checks, executing business rules.</p>
+<p>Once developed, a Skill becomes available to every assistant, Agent Workflow and enterprise capability that needs it. Knowledge becomes reusable infrastructure.</p>
+<hr />
+<h2>How It Works</h2>
+<p>Skills expose standardized capabilities. Artificial Intelligence selects the appropriate Skills according to business intent. Multiple Skills may collaborate within a single Agent Workflow.</p>
+<p>Skills remain independent from the models that invoke them. This separation allows organizations to continuously evolve their intelligence without rewriting enterprise logic.</p>
+<hr />
+<h2>Key Capabilities</h2>
+<ul>
+<li>Enterprise integrations</li>
+<li>Business logic encapsulation</li>
+<li>AI tool execution</li>
+<li>External API connectivity</li>
+<li>Secure permissions</li>
+<li>Version management</li>
+<li>Reusable capabilities</li>
+</ul>
+<hr />
+<h2>Typical Use Cases</h2>
+<ul>
+<li>Retrieve ERP information.</li>
+<li>Query enterprise databases.</li>
+<li>Generate financial reports.</li>
+<li>Execute compliance checks.</li>
+<li>Send notifications.</li>
+<li>Process customer requests.</li>
+<li>Analyze operational metrics.</li>
+</ul>
+<hr />
+<h2>Enterprise Benefits</h2>
+<ul>
+<li>Reduced development effort.</li>
+<li>Consistent enterprise capabilities.</li>
+<li>Better governance.</li>
+<li>Easier maintenance.</li>
+<li>Faster AI deployment.</li>
+<li>Higher reuse across teams.</li>
+</ul>
+<hr />
+<h2>Design Principles</h2>
+<p>Capabilities should be reusable. Skills should remain independent from AI models. Every Skill must respect enterprise governance. Organizations should continuously expand their capability library.</p>
+<hr />
+<h2>Future Evolution</h2>
+<p>Skills will progressively evolve into an enterprise capability marketplace where organizations can securely create, share, govern and distribute reusable intelligence across departments and ecosystems.</p>
+<hr />
+<blockquote>
+<p><em>Enterprise intelligence grows stronger every time a capability becomes reusable.</em></p>
+</blockquote>
+<hr />
+<h1>13. Agent Workflows</h1>
+<p><strong>Status:</strong> 💭 Vision. Neither the Inbox Agent nor the Accounting Agent exist in code today — this chapter describes the pattern and the first two candidates, not a shipped product. What they will be built on (Enterprise Knowledge, Intelligent Documents, Skills, Scheduling) already exists.</p>
+<hr />
+<h2>Purpose</h2>
+<p>Agent Workflows are specialized agents, each built to handle one recurring, well-defined business job end-to-end.</p>
+<p>This is deliberately not a generic automation engine that customers configure themselves. It is a growing family of concrete agents, each built on top of Enterprise Knowledge, Intelligent Documents and Skills, each owning one real function of the business.</p>
+<hr />
+<h2>Vision</h2>
+<p>Rather than offering an abstract workflow builder and asking organizations to design their own automation, Seshat ships direct, ready-to-work agents for the jobs organizations already do every day.</p>
+<p>Each Agent Workflow is designed around one real business function, with the depth a generic orchestration engine cannot provide on its own.</p>
+<hr />
+<h2>The Problem</h2>
+<p>General-purpose orchestration platforms promise flexibility. But flexibility without a validated use case is just a blank page — it shifts the design work back onto the customer instead of removing it.</p>
+<p>What organizations actually need are dependable agents for the specific recurring functions they already run every day, built and refined against real use cases rather than assumed upfront.</p>
+<hr />
+<h2>The Seshat Approach</h2>
+<p>Every Agent Workflow shares the same foundation: it draws on Enterprise Knowledge for context, Intelligent Documents for processing, and Skills for integration with existing systems. What differs from one Agent Workflow to the next is the job it owns.</p>
+<p>The first two Agent Workflows are:</p>
+<ul>
+<li><strong>Inbox Agent</strong> — manages communication across email, WhatsApp, Slack and other channels.</li>
+<li><strong>Accounting Agent</strong> — manages the recurring work of accounting: invoices, reconciliation, reporting.</li>
+</ul>
+<p>Further Agent Workflows will be added deliberately, one validated use case at a time, rather than built speculatively ahead of demand.</p>
+<hr />
+<h2>13.1 Inbox Agent</h2>
+<p><strong>Purpose.</strong> The Inbox Agent manages the organization's communication load across every channel — email, WhatsApp, Slack, and other messaging platforms — as a single coordinated agent rather than a passive dashboard.</p>
+<p><strong>Vision.</strong> Modern organizations are overwhelmed by communication: emails, instant messaging, project management tools, approval systems, calendar invitations, notifications. We believe an inbox should not simply receive information. It should act on it.</p>
+<p><strong>The Problem.</strong> Employees spend an increasing amount of time sorting, prioritizing and responding to messages across disconnected channels. Important requests get buried. Approvals are forgotten. Critical incidents go unnoticed. Organizations lose productivity not because people fail to communicate, but because communication rarely becomes coordinated action.</p>
+<p><strong>The Seshat Approach.</strong> The Inbox Agent treats every message, on every channel, as a potential business event. It determines what requires attention, what can be handled automatically, what should be delegated, what can wait, and what must be escalated — and, when a message is really the start of another job, it hands it off. An invoice arriving by email can go straight to the Accounting Agent.</p>
+<p><strong>How It Works.</strong> Messages arrive from email, WhatsApp, Slack and other connected channels. The agent groups related activity, attaches relevant context from Enterprise Knowledge, drafts replies, highlights approvals, and routes anything outside its scope to the right person or the right Agent Workflow.</p>
+<p><strong>Key Capabilities</strong></p>
+<ul>
+<li>Multi-channel coverage (email, WhatsApp, Slack and more)</li>
+<li>Intelligent prioritization and triage</li>
+<li>Draft replies and suggested actions</li>
+<li>Cross-channel conversation summaries</li>
+<li>Delegation to other Agent Workflows</li>
+<li>Smart reminders and escalation</li>
+</ul>
+<p><strong>Typical Use Cases</strong></p>
+<ul>
+<li>Triage and prioritize a shared inbox.</li>
+<li>Draft responses to routine requests.</li>
+<li>Summarize a long WhatsApp or Slack thread.</li>
+<li>Escalate a customer complaint.</li>
+<li>Forward an invoice email to the Accounting Agent.</li>
+<li>Track pending approvals across channels.</li>
+</ul>
+<p><strong>Enterprise Benefits</strong></p>
+<ul>
+<li>Reduced notification overload.</li>
+<li>Faster response times.</li>
+<li>Fewer missed actions.</li>
+<li>One coordinated view instead of five open apps.</li>
+</ul>
+<p><strong>Design Principles.</strong> Communication should always lead toward action. Employees should receive context instead of noise. The agent should reduce interruptions rather than create new ones. Every action it takes must remain transparent and traceable.</p>
+<p><strong>Future Evolution.</strong> Channel coverage and autonomy will expand gradually, adding new channels and taking on more of the routine responses on its own as trust is established with real usage.</p>
+<blockquote>
+<p><em>The Inbox Agent doesn't just organize messages. It decides what to do with them.</em></p>
+</blockquote>
+<hr />
+<h2>13.2 Accounting Agent</h2>
+<p><strong>Purpose.</strong> The Accounting Agent handles the recurring, rules-heavy work of accounting: receiving invoices, extracting and validating data, reconciling entries, and preparing reports for review.</p>
+<p><strong>Vision.</strong> Accounting is one of the clearest examples of work that is necessary, repetitive, and already governed by well-defined rules — exactly the kind of job an agent can own end-to-end, while every judgment call still goes through a human.</p>
+<p><strong>The Problem.</strong> Accounting teams spend a disproportionate share of their time on manual entry, chasing missing invoices, reconciling numbers across systems, and preparing the same reports every period. This work is essential but rarely where an accountant's expertise adds the most value.</p>
+<p><strong>The Seshat Approach.</strong> The Accounting Agent combines Intelligent Documents (to read invoices and receipts), Enterprise Knowledge (policies, chart of accounts, prior entries) and Skills (to connect to the organization's accounting or ERP system) into a single agent that owns the workflow from intake to a reviewable entry — never posting anything without human validation.</p>
+<p><strong>How It Works.</strong> An invoice arrives, often forwarded directly by the Inbox Agent. The Accounting Agent extracts and validates the data, checks it against policy and historical entries, prepares the coded entry or reconciliation, and routes it to a human for approval before anything is posted to the accounting system.</p>
+<p><strong>Key Capabilities</strong></p>
+<ul>
+<li>Invoice and receipt extraction</li>
+<li>Reconciliation against existing records</li>
+<li>Classification against the chart of accounts</li>
+<li>Draft financial reports</li>
+<li>Compliance and policy checks</li>
+<li>Accounting/ERP system integration</li>
+<li>Human approval checkpoints and audit trail</li>
+</ul>
+<p><strong>Typical Use Cases</strong></p>
+<ul>
+<li>Invoice intake and coding.</li>
+<li>Expense reconciliation.</li>
+<li>Monthly close support.</li>
+<li>Draft financial reports.</li>
+<li>Vendor payment preparation.</li>
+<li>Compliance checks on entries.</li>
+</ul>
+<p><strong>Enterprise Benefits</strong></p>
+<ul>
+<li>Faster invoice-to-entry processing.</li>
+<li>Fewer manual entry errors.</li>
+<li>Faster month-end close.</li>
+<li>A full, auditable trail for every entry.</li>
+<li>More accountant time spent on judgment, not data entry.</li>
+</ul>
+<p><strong>Design Principles.</strong> Every entry stays reviewable before it is posted. Nothing reaches an external system without an audit trail. Accounting judgment stays with the accountant; the agent removes the mechanical work around it.</p>
+<p><strong>Future Evolution.</strong> Exact scope — which ERPs, which countries' compliance rules, which report formats — will be shaped by real customer engagements rather than assumed upfront. This chapter describes the pattern the agent follows; the details will be validated one deployment at a time.</p>
+<blockquote>
+<p><em>The Accounting Agent doesn't replace the accountant. It removes the busywork standing between the accountant and the close.</em></p>
+</blockquote>
+<hr />
+<h2>Beyond These Two</h2>
+<p>Inbox and Accounting were chosen because they are recurring, well-understood, high-friction jobs found inside almost every organization. Every future Agent Workflow will follow the same discipline: start from a real customer need, not a hypothetical capability, and only add a new agent once that need has been validated.</p>
+<hr />
+<blockquote>
+<p><em>Agent Workflows are not a platform for building automation. They are the agents that already know how to do the job.</em></p>
+</blockquote>
+<hr />
+<h1>14. Scheduling</h1>
+<p><strong>Status:</strong> 🟡 Implemented, untested. Cron-based scheduled jobs, with job history, are fully implemented — locally in <code>seshat-backend</code> (Scheduled Tasks, built-in TaskAgent) and as a multi-tenant automation domain in <code>seshat-server</code> (devices, jobs, runs, single-instance scheduler) — possibly needing minor adjustments, but not yet run through real testing. The blocker is hardware (the current dev machine needs an upgrade to test comfortably), not missing code.</p>
+<hr />
+<h2>Purpose</h2>
+<p>Scheduling turns any capability of the platform — a knowledge query, a document check, eventually an Agent Workflow — into a recurring job that runs unattended, on a schedule, instead of waiting for someone to ask.</p>
+<hr />
+<h2>Vision</h2>
+<p>Not every valuable piece of work starts with a question. Some of the most valuable work is the thing nobody remembers to trigger: the weekly reconciliation, the daily report, the recurring compliance check.</p>
+<p>Scheduling makes those happen without anyone having to remember to ask.</p>
+<hr />
+<h2>The Problem</h2>
+<p>Recurring operational tasks are exactly the kind of work that quietly falls through the cracks. Someone forgets to run the report. The weekly check gets skipped while its owner is on leave. The same request gets typed out manually every Monday morning.</p>
+<p>None of this requires judgment. It requires reliability.</p>
+<hr />
+<h2>The Seshat Approach</h2>
+<p>Any job the platform can do once, it can do on a schedule — a cron expression, an interval, or a specific run time. Each scheduled run executes with the same governance and permissions as if a person had asked for it directly, and its full history stays available: what ran, when, and what happened.</p>
+<hr />
+<h2>How It Works</h2>
+<p>A job is defined once — what to run, on what schedule, against which organization's data and agents — and the scheduler takes it from there: queued, claimed, executed, and logged, with results available the same way a manual request's results would be.</p>
+<hr />
+<h2>Key Capabilities</h2>
+<ul>
+<li>Cron and interval-based scheduling</li>
+<li>One-off scheduled runs</li>
+<li>Job history and run status</li>
+<li>Governed execution (same permissions as a manual request)</li>
+<li>Audit trail per run</li>
+</ul>
+<hr />
+<h2>Typical Use Cases</h2>
+<ul>
+<li>Weekly cash reconciliation.</li>
+<li>Daily compliance or policy check.</li>
+<li>Recurring report generation.</li>
+<li>Scheduled knowledge-base refresh.</li>
+<li>Periodic inbox or communication triage.</li>
+</ul>
+<hr />
+<h2>Enterprise Benefits</h2>
+<ul>
+<li>Nothing recurring depends on someone remembering to trigger it.</li>
+<li>Consistent execution under the same governance every time.</li>
+<li>A full, auditable history of what ran and when.</li>
+<li>The foundation Agent Workflows will run on for anything recurring.</li>
+</ul>
+<hr />
+<h2>Design Principles</h2>
+<p>Scheduled work follows the same governance as requested work — nothing runs with fewer checks just because a human didn't trigger it in the moment. Every run stays traceable after the fact.</p>
+<hr />
+<h2>Future Evolution</h2>
+<p>Scheduling is the substrate the Agent Workflows will run on once they exist. An Accounting Agent should not need to be asked to reconcile the week — it should already be scheduled to.</p>
+<hr />
+<blockquote>
+<p><em>The most valuable work is often the work nobody remembers to ask for. Scheduling makes sure it happens anyway.</em></p>
+</blockquote>
+<hr />
+<h2>Bringing Everything Together</h2>
+<p>Each Seshat product addresses a specific layer of enterprise intelligence.</p>
+<p>Enterprise Knowledge, Intelligent Documents and Skills form the platform layer: the memory, the document pipeline and the reusable capabilities that every agent draws on. Company Assistant is the generalist entry point, answering directly whenever a request doesn't need a dedicated agent. Scheduling turns any of this into recurring, unattended work. Agent Workflows are the specialists built on top of all of it — the Inbox Agent and the Accounting Agent as first candidates, with more to come as real use cases are validated.</p>
+<p>Private AI is named in this document set but not yet written as a full chapter — see the status table at the start of this section for what it already is (or isn't) today.</p>
+<p>Individually, each product solves a focused problem. Together, they form a single Enterprise Capability Platform — a layer of shared infrastructure beneath a growing family of agents built for the jobs organizations actually need done.</p>
+</section>
+<hr class="file-break"/>
+<section class="file-section" id="5-business-strategy-md">
+<h1>Part V — Business Strategy</h1>
+<p>Technology alone does not create business value.</p>
+<p>Organizations invest in solutions that solve measurable problems, improve operational performance and enable long-term transformation. Seshat was designed with this principle in mind.</p>
+<p>Rather than selling isolated Artificial Intelligence features, Seshat delivers an Enterprise Capability Platform that improves how organizations capture knowledge, coordinate work and execute business capabilities.</p>
+<p>This section explains how Seshat creates value, how it can be deployed, how its pricing philosophy aligns with customer success, and why organizations choose it as their long-term enterprise intelligence platform.</p>
+<hr />
+<h1>18. Delivering Enterprise Value</h1>
+<h2>Purpose</h2>
+<p>Seshat exists to improve the way organizations work.</p>
+<p>Its objective is not to introduce Artificial Intelligence for its own sake, but to generate measurable business outcomes. Every deployment should produce operational improvements that employees experience daily and executives can measure over time.</p>
+<p>Artificial Intelligence is only valuable when it creates tangible business impact.</p>
+<hr />
+<h2>The Business Challenge</h2>
+<p>Organizations are becoming increasingly complex. Information grows faster than people's ability to consume it. Business processes span multiple departments. Knowledge remains fragmented.</p>
+<p>Employees spend valuable time searching for information, coordinating work and repeating manual activities instead of creating value.</p>
+<p>The challenge facing modern organizations is no longer digital transformation. It is operational transformation. The organizations that succeed tomorrow will be those capable of learning faster, coordinating better and continuously improving how they work.</p>
+<hr />
+<h2>How Seshat Creates Value</h2>
+<p>Seshat creates value across four complementary dimensions.</p>
+<h3>Organizational Knowledge</h3>
+<p>Enterprise knowledge becomes searchable, contextual and continuously available. Employees spend less time searching and more time acting. Organizational expertise remains available even when people change roles or leave the company.</p>
+<p>Knowledge becomes a strategic asset rather than an operational burden.</p>
+<hr />
+<h3>Productivity</h3>
+<p>Artificial Intelligence automates repetitive work while preserving human expertise. Employees spend more time solving problems, collaborating and innovating.</p>
+<p>Operational efficiency improves without sacrificing quality or governance.</p>
+<hr />
+<h3>Coordination</h3>
+<p>People, Artificial Intelligence and enterprise systems collaborate through shared workflows, organizational memory and reusable capabilities.</p>
+<p>Departments become more connected. Processes become more consistent. Execution becomes more reliable.</p>
+<hr />
+<h3>Decision-Making</h3>
+<p>Executives and operational teams gain immediate access to trusted enterprise knowledge. Reports become contextual. Data becomes actionable.</p>
+<p>Decisions become faster, better informed and easier to explain.</p>
+<hr />
+<h2>Measuring Success</h2>
+<p>Success should be measured through business outcomes rather than AI adoption. Typical indicators include:</p>
+<ul>
+<li>Reduced document processing time</li>
+<li>Faster employee onboarding</li>
+<li>Lower operational costs</li>
+<li>Improved compliance</li>
+<li>Reduced manual effort</li>
+<li>Faster access to enterprise knowledge</li>
+<li>Higher employee productivity</li>
+<li>Better customer experience</li>
+<li>Increased process consistency</li>
+<li>Improved organizational agility</li>
+</ul>
+<p>Rather than measuring conversations with AI, Seshat measures organizational improvement.</p>
+<hr />
+<h2>Long-Term Value</h2>
+<p>Unlike traditional software, Seshat continuously becomes more valuable over time. Every workflow executed enriches enterprise knowledge. Every document improves organizational memory. Every Skill expands enterprise capabilities. Every interaction contributes to a more intelligent organization.</p>
+<p>Knowledge compounds. Capabilities expand. The platform continuously improves through everyday business activity.</p>
+<hr />
+<blockquote>
+<p><em>The true return on Artificial Intelligence is not better conversations. It is better organizations.</em></p>
+</blockquote>
+<hr />
+<h1>19. Deployment Models</h1>
+<h2>Purpose</h2>
+<p>Every organization operates under different technical, regulatory and operational constraints. Seshat is designed to adapt to these environments while preserving the same enterprise capabilities.</p>
+<p>Deployment flexibility is therefore a fundamental design principle rather than an optional feature. Organizations should decide where their intelligence runs — not whether they can use it.</p>
+<hr />
+<h2>Cloud</h2>
+<p>Organizations can deploy Seshat as a fully managed cloud platform. This deployment minimizes operational overhead while providing continuous updates, managed infrastructure and rapid scalability.</p>
+<p>It is ideal for organizations seeking fast adoption with minimal infrastructure management.</p>
+<hr />
+<h2>Private Cloud</h2>
+<p>Organizations requiring greater isolation or stricter governance can deploy Seshat within dedicated cloud infrastructure.</p>
+<p>Private Cloud combines the flexibility of cloud technologies with increased control over enterprise resources, security policies and operational environments.</p>
+<hr />
+<h2>On-Premises</h2>
+<p>Some industries operate under strict regulatory, security or sovereignty requirements. Seshat can be deployed entirely within the organization's infrastructure.</p>
+<p>Enterprise knowledge, AI models, business data and operational workflows remain under complete organizational control. No enterprise information needs to leave the customer's environment.</p>
+<hr />
+<h2>Hybrid</h2>
+<p>Many organizations already operate across multiple environments. Hybrid deployment allows Seshat to combine cloud services with existing on-premises infrastructure.</p>
+<p>Organizations can modernize progressively while preserving existing investments. Enterprise intelligence operates across systems regardless of where they are hosted.</p>
+<hr />
+<h2>Bring Your Own AI</h2>
+<p>Artificial Intelligence evolves rapidly. Organizations should remain free to choose the models that best satisfy their operational, regulatory and financial requirements.</p>
+<p>Seshat supports multiple commercial providers, open-source models and privately hosted LLMs. Changing AI providers should never require redesigning enterprise capabilities.</p>
+<p>Enterprise intelligence remains independent from model vendors. Practically, this also means an organization already committed to another AI vendor does not need to be sold a replacement — Seshat can be adopted as the orchestration and capability layer on top of an existing model relationship, not instead of it.</p>
+<hr />
+<h2>Deployment Philosophy</h2>
+<p>Infrastructure should adapt to organizations — not the opposite.</p>
+<p>Regardless of where Seshat is deployed, employees should experience the same enterprise capabilities, the same organizational intelligence and the same collaborative experience.</p>
+<p>The deployment model changes. The enterprise experience does not.</p>
+<hr />
+<blockquote>
+<p><em>Organizations should choose where intelligence runs, not whether they can use it.</em></p>
+</blockquote>
+<hr />
+<h1>20. Pricing Philosophy</h1>
+<h2>Purpose</h2>
+<p>Pricing should reflect the value delivered rather than the complexity of the technology.</p>
+<p>Organizations should clearly understand what they are paying for, how their investment evolves and how Seshat contributes to measurable business outcomes.</p>
+<p>Our commercial philosophy is based on long-term partnerships rather than software consumption.</p>
+<hr />
+<h2>Simplicity</h2>
+<p>Pricing should remain understandable. Organizations should not need specialized licensing experts to estimate costs.</p>
+<p>Clear pricing creates trust and simplifies adoption.</p>
+<hr />
+<h2>Scalability</h2>
+<p>Organizations should be able to start with a focused deployment and expand progressively. Growth should be driven by business needs rather than licensing limitations.</p>
+<p>As enterprise capabilities expand, Seshat grows alongside the organization.</p>
+<hr />
+<h2>Flexibility</h2>
+<p>Every organization has different priorities. Some focus on knowledge management. Others prioritize intelligent document processing, enterprise automation or private Artificial Intelligence.</p>
+<p>Pricing should adapt to organizational maturity instead of forcing unnecessary complexity.</p>
+<hr />
+<h2>Partnership</h2>
+<p>The success of Seshat depends on the success of its customers. Our objective is not to maximize software usage. It is to maximize organizational value.</p>
+<p>Long-term customer relationships create stronger platforms, better products and greater innovation.</p>
+<hr />
+<h2>Commercial Approach</h2>
+<p>Organizations may adopt Seshat through multiple commercial models depending on their operational requirements. Possible approaches include:</p>
+<ul>
+<li>Subscription-based licensing</li>
+<li>Enterprise licensing</li>
+<li>Dedicated deployments</li>
+<li>Managed services</li>
+<li>Professional services</li>
+<li>Integration support</li>
+<li>Strategic consulting</li>
+<li>Custom enterprise partnerships</li>
+</ul>
+<p>In practice, these collapse into two commercial shapes. When Seshat hosts the platform, the customer pays a recurring subscription and Seshat carries the infrastructure cost. When the customer hosts it themselves — the deployment shape at the center of the On-Premises and Bring Your Own AI models above — Seshat instead charges for setup and an ongoing maintenance relationship, and the customer's infrastructure cost is their own. Neither shape is a fallback; which one fits depends on the customer's own constraints, not on what's easier for Seshat to sell.</p>
+<p>The commercial model should always support the customer's transformation journey rather than restrict it.</p>
+<hr />
+<h2>Illustrative Numbers</h2>
+<p>Early estimates, not a published price list — first worked out to answer a direct question about what this actually costs to run and what margin is realistic. Full detail, assumptions, and open verification items live in <code>8.financial-model.md</code>; this is the shape of it.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Small deployment (5–20 users)</th>
+<th>Medium deployment (50–200 users)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Direct cost to Seshat, hosted</td>
+<td>≈ $90/month</td>
+<td>≈ $760/month</td>
+</tr>
+<tr>
+<td>Illustrative subscription price</td>
+<td>$150–250/month</td>
+<td>priced case by case</td>
+</tr>
+<tr>
+<td>AI model tier</td>
+<td>cost-optimized by default, premium available</td>
+<td>mixed, negotiated</td>
+</tr>
+</tbody>
+</table>
+<p>The default model tier matters more than it might appear. At comparable capability, some providers run several times cheaper per token than others — the platform is built to be model-independent specifically so this kind of choice can be made on cost and fit, per customer, rather than being locked into one vendor's pricing.</p>
+<p>These numbers are deliberately conservative to check, not to promise: usage assumptions behind them are still estimates, and the platform's own usage-quota capability is treated as a required guardrail for any fixed-price plan, not an afterthought.</p>
+<hr />
+<blockquote>
+<p><em>Technology becomes sustainable when pricing grows with customer success rather than software complexity.</em></p>
+</blockquote>
+<hr />
+<h1>21. Why Organizations Choose Seshat</h1>
+<p>Organizations rarely invest in technology simply because it is innovative. They invest because it solves important business problems.</p>
+<p>Seshat differentiates itself through a combination of architectural principles, enterprise capabilities and long-term vision.</p>
+<hr />
+<h2>Enterprise First</h2>
+<p>Seshat is designed around enterprise capabilities rather than isolated Artificial Intelligence features.</p>
+<p>Technology serves the organization. The organization never adapts to technology.</p>
+<hr />
+<h2>Model Independent</h2>
+<p>Artificial Intelligence providers will continue to evolve. Organizations should remain free to adopt the most appropriate technologies without redesigning their enterprise architecture.</p>
+<p>Seshat protects this freedom by remaining independent from any specific model vendor.</p>
+<hr />
+<h2>Knowledge-Centered</h2>
+<p>Enterprise knowledge remains the foundation of every interaction. Artificial Intelligence becomes trustworthy because every response can be grounded in organizational context rather than generic internet knowledge.</p>
+<p>Knowledge remains the organization's most valuable asset.</p>
+<hr />
+<h2>Human-Centered</h2>
+<p>Employees remain responsible for business decisions. Artificial Intelligence augments expertise. It never replaces accountability.</p>
+<p>Human judgment remains central to enterprise execution.</p>
+<hr />
+<h2>Open and Extensible</h2>
+<p>Organizations continuously evolve. Their enterprise platform should evolve with them.</p>
+<p>Seshat provides reusable Skills, enterprise integrations, workflows and capabilities that allow organizations to expand their intelligence without rebuilding existing systems. The platform grows alongside the business.</p>
+<hr />
+<h2>Built for the Long Term</h2>
+<p>Technology changes rapidly. Enterprise knowledge does not. Business capabilities evolve more slowly than software frameworks.</p>
+<p>Seshat is designed to preserve organizational intelligence regardless of future technological evolution. Organizations invest once in their enterprise capabilities while remaining free to adopt tomorrow's innovations.</p>
+<hr />
+<h2>More Than Artificial Intelligence</h2>
+<p>Ultimately, organizations do not choose Seshat because it provides Artificial Intelligence. They choose Seshat because it enables them to become more connected, more coordinated, more knowledgeable and more capable.</p>
+<p>Artificial Intelligence is only one component of that transformation. The real product is organizational intelligence.</p>
+<hr />
+<h2>A Platform That Grows With the Organization</h2>
+<p>Every new document enriches enterprise knowledge. Every new Skill expands organizational capabilities. Every workflow strengthens operational consistency. Every interaction improves enterprise memory.</p>
+<p>Seshat is designed to become increasingly valuable as organizations use it. The platform does not simply automate today's work. It continuously improves tomorrow's organization.</p>
+<hr />
+<blockquote>
+<p><em>Organizations do not need another AI platform. They need an enterprise that learns, coordinates and improves every day.</em></p>
+</blockquote>
+</section>
+<hr class="file-break"/>
+<section class="file-section" id="6-mvp-md">
+<h1>Part VI — MVP</h1>
+<p>A successful product is not defined by the number of features it includes. It is defined by its ability to solve a meaningful problem exceptionally well.</p>
+<p>Seshat has been designed as a long-term Enterprise Capability Platform. However, bringing such a platform to market requires focus, discipline and incremental execution.</p>
+<p>The objective of the MVP is therefore not to expose every capability envisioned for the platform. Its purpose is to validate the core principles of Seshat within real organizations, generate measurable business value and establish a solid foundation for future expansion.</p>
+<p>This chapter describes the MVP as it was actually decided — not as a top-down feature list, but by cross-checking what's genuinely real against the needs surfaced while working through concrete go-to-market cases (see <code>go-to-market-africa.md</code>). What gets built here is what's needed to negotiate and sell, not the other way around.</p>
+<hr />
+<h1>22. MVP Scope</h1>
+<h2>Design Philosophy</h2>
+<p>The MVP focuses on solving a limited number of high-value enterprise problems exceptionally well, using what's already solid rather than what sounds complete on paper. Rather than overwhelming users with numerous modules, Seshat provides a simple and unified experience centered around enterprise intelligence.</p>
+<p>This means the scope below is intentionally uneven: some pieces are ready end-to-end, some are solid underneath but still need an interface, and one is a genuinely new build. That unevenness is stated plainly rather than smoothed over, because it's what actually determines what can be sold today versus what's still being built.</p>
+<hr />
+<h2>What's In This MVP</h2>
+<div class="diagram">
+<svg viewBox="0 0 640 289" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;">
+<text x="20" y="25" font-size="10.5" font-weight="700" fill="#2e7d4f">Ready</text>
+<rect x="20" y="37" width="119" height="20" rx="10" fill="#2e7d4f" fill-opacity="0.12" stroke="#2e7d4f" stroke-width="1.2"/>
+<text x="79" y="51" text-anchor="middle" font-size="9" fill="#2e7d4f">Company Assistant</text>
+<rect x="146.9" y="37" width="113" height="20" rx="10" fill="#2e7d4f" fill-opacity="0.12" stroke="#2e7d4f" stroke-width="1.2"/>
+<text x="204" y="51" text-anchor="middle" font-size="9" fill="#2e7d4f">Document reading</text>
+<text x="20" y="87" font-size="10.5" font-weight="700" fill="#c98a1c">Solid backend / interface catching up</text>
+<rect x="20" y="99" width="125" height="20" rx="10" fill="#c98a1c" fill-opacity="0.12" stroke="#c98a1c" stroke-width="1.2"/>
+<text x="82" y="113" text-anchor="middle" font-size="9" fill="#c98a1c">Knowledge (RAG) UI</text>
+<rect x="152.60000000000002" y="99" width="142" height="20" rx="10" fill="#c98a1c" fill-opacity="0.12" stroke="#c98a1c" stroke-width="1.2"/>
+<text x="223" y="113" text-anchor="middle" font-size="9" fill="#c98a1c">Scheduling (untested)</text>
+<rect x="302.3" y="99" width="119" height="20" rx="10" fill="#c98a1c" fill-opacity="0.12" stroke="#c98a1c" stroke-width="1.2"/>
+<text x="362" y="113" text-anchor="middle" font-size="9" fill="#c98a1c">Skills (descoped)</text>
+<text x="20" y="149" font-size="10.5" font-weight="700" fill="#2f6fb5">Building now</text>
+<rect x="20" y="161" width="153" height="20" rx="10" fill="#2f6fb5" fill-opacity="0.12" stroke="#2f6fb5" stroke-width="1.2"/>
+<text x="97" y="175" text-anchor="middle" font-size="9" fill="#2f6fb5">Inbox Agent (~2 months)</text>
+<text x="20" y="211" font-size="10.5" font-weight="700" fill="#9a9a9a">Deferred</text>
+<rect x="20" y="223" width="147" height="20" rx="10" fill="#9a9a9a" fill-opacity="0.12" stroke="#9a9a9a" stroke-width="1.2"/>
+<text x="94" y="237" text-anchor="middle" font-size="9" fill="#9a9a9a">Documents (enterprise)</text>
+<rect x="175.4" y="223" width="113" height="20" rx="10" fill="#9a9a9a" fill-opacity="0.12" stroke="#9a9a9a" stroke-width="1.2"/>
+<text x="232" y="237" text-anchor="middle" font-size="9" fill="#9a9a9a">Accounting Agent</text>
+<rect x="296.6" y="223" width="119" height="20" rx="10" fill="#9a9a9a" fill-opacity="0.12" stroke="#9a9a9a" stroke-width="1.2"/>
+<text x="356" y="237" text-anchor="middle" font-size="9" fill="#9a9a9a">Prospecting Agent</text>
+<rect x="423.5" y="223" width="153" height="20" rx="10" fill="#9a9a9a" fill-opacity="0.12" stroke="#9a9a9a" stroke-width="1.2"/>
+<text x="500" y="237" text-anchor="middle" font-size="9" fill="#9a9a9a">Audio / PPTX / Image UI</text>
+<rect x="20" y="249" width="130" height="20" rx="10" fill="#9a9a9a" fill-opacity="0.12" stroke="#9a9a9a" stroke-width="1.2"/>
+<text x="85" y="263" text-anchor="middle" font-size="9" fill="#9a9a9a">Department surfaces</text>
+</svg>
+<div class="diagram-caption">Snapshot as of this document's writing — not a permanent state. See the status table in this chapter for sourcing.</div>
+</div>
+<h3>Company Assistant (Companion) — ✅ Ready, end to end</h3>
+<p>Chat, sessions, streaming, multi-provider support, and document reading (Docling or PaddleOCR, depending on configuration, already part of its read tools) all work today, including in the desktop app. This is the most complete piece of the platform and the base every customer gets.</p>
+<h3>Knowledge (RAG) — 🟢 Backend solid, 🟡 desktop/console interface in progress</h3>
+<p>The retrieval pipeline itself — hybrid search, ingestion, embedder configuration — is real across <code>seshat</code>, <code>seshat-backend</code> and <code>seshat-server</code>, and has been verified end-to-end against a real model. What's left for this MVP is finishing the desktop and console experience around it, not the retrieval capability itself.</p>
+<h3>Skills — 🟡 Deliberately descoped for this MVP</h3>
+<p>Reduced to viewing and reading (possibly light editing of) existing MCP-backed skills. Skill <em>creation</em> already exists in the current desktop code, but is intentionally left out of this MVP's surface area — not because it's broken, but to keep the MVP's scope small and stable while Company Assistant and Inbox Agent get hardened first.</p>
+<h3>Scheduling — 🟡 Implemented, verification pending</h3>
+<p>Cron-based scheduled jobs, TaskAgent, job history — fully implemented, both locally and in the multi-tenant control plane. Not yet verified in real use; the blocker is a hardware upgrade for the developer, not missing code.</p>
+<h3>Inbox Agent — 🚧 In active development, ~2-month target</h3>
+<p>The one genuinely new build in this MVP. It is not blocked by document handling — attachments can already be read using the same tools Company Assistant uses today.</p>
+<hr />
+<h2>Explicitly Not In This MVP</h2>
+<ul>
+<li><strong>Documents, in the full enterprise sense</strong> (<code>4.product.md</code> chapter 11) — importing and organizing data by department/team (HR, Legal, etc.). The underlying ability to read a file is already real and already used elsewhere; what's missing is the department-organized product built around it. Mainly relevant to larger, more formal customers — not needed for the first pilots.</li>
+<li><strong>Accounting Agent, Prospecting Agent</strong> — later Agent Workflows, sequenced against real demand rather than built speculatively (see <code>go-to-market-africa.md</code>'s build roadmap).</li>
+<li><strong>Meeting summarization from audio, image generation, PPTX generation</strong> — the underlying capability exists at the engine level (<code>seshat/pkg/audio</code>, <code>pkg/image</code>) but isn't wired into the product UI yet, and hasn't been tested against paid, production-grade models — only free-tier/local ones so far.</li>
+<li><strong>Department-specific bespoke surfaces</strong> (HR, data science, etc.) — sold case by case once a client needs one, not offered self-serve in this MVP.</li>
+<li><strong>Advanced Scheduling, Company Assistant across multiple devices, Enterprise Teams, Marketplace, autonomous long-running agents, cross-company collaboration, advanced enterprise analytics, industry-specific solution packs, governance dashboards, multi-organization federation</strong> — long-term roadmap, untouched by this MVP.</li>
+</ul>
+<hr />
+<h2>Who This MVP Already Serves</h2>
+<p>This MVP doesn't need every item above to close before it can be sold:</p>
+<ul>
+<li>An informal, relationship-based business is already fully served by Company Assistant and Scheduling alone — no blockers today.</li>
+<li>A formal SME with recurring back-office needs gets real value today (price comparison, structuring, drafting, calculations) and grows once Inbox Agent ships.</li>
+<li>A larger organization evaluating a self-hosted deployment is served today purely on Company Assistant's deployment story, independent of Inbox Agent entirely.</li>
+</ul>
+<p>See <code>go-to-market-africa.md</code> for the concrete cases this maps to, and how each one's offer is scoped to exactly what's real.</p>
+<hr />
+<blockquote>
+<p><em>This MVP is honest about what it is: mostly ready, partly waiting on an interface, and building exactly one new thing on purpose.</em></p>
+</blockquote>
+<hr />
+<h1>23. Current Status</h1>
+<h2>Product Maturity</h2>
+<p>Seshat has progressed beyond experimentation. The engine and backend layers (<code>seshat</code>, <code>seshat-backend</code>, <code>seshat-server</code>) are consistently ahead of the interface layers (<code>seshat-ui</code>, <code>seshat-console</code>) — a pattern that showed up repeatedly while auditing this MVP: RAG, document reading, audio, image generation and financial calculations all exist and largely work underneath, while the corresponding desktop/console surfaces are what's still catching up.</p>
+<hr />
+<h2>What Already Exists</h2>
+<h3>Solid end to end (engine, backend, and interface)</h3>
+<ul>
+<li>Company Assistant: chat, sessions, streaming, multi-provider, document reading.</li>
+<li>Scheduled jobs infrastructure (implementation-complete; verification pending — see the testing gap below).</li>
+</ul>
+<h3>Solid underneath, interface catching up</h3>
+<ul>
+<li>Knowledge/RAG: hybrid search, ingestion, embedder configuration — verified end-to-end against a real model at the backend level; desktop/console experience not finished.</li>
+<li>Audio (<code>pkg/audio</code>, including planned whisper.cpp integration) and image generation (<code>pkg/image</code>) — real at the engine level, not yet wired into the product UI.</li>
+<li>Financial calculation tools — real, available as engine tools.</li>
+<li>General-purpose tools (bash, notebook read/edit) — real, available as engine tools; what's missing for department-specific surfaces is a tailored frontend, not the tools themselves.</li>
+</ul>
+<h3>Governance and platform foundations</h3>
+<ul>
+<li>Multi-user auth, organizations, workspaces, role-based permissions.</li>
+<li>Audit logging, usage quotas.</li>
+<li>Multi-provider AI abstraction with fallback.</li>
+<li>MCP client support.</li>
+<li>REST + streaming API surface.</li>
+</ul>
+<hr />
+<h2>The Testing Gap</h2>
+<p>Two constraints apply across most of the above, and neither is a capability gap:</p>
+<ul>
+<li><strong>Hardware</strong> — Scheduling is implemented but unverified in practice; the developer's current machine needs an upgrade before it can be tested comfortably.</li>
+<li><strong>Budget</strong> — audio, image, and other engine-level tooling has only been exercised against free-tier or local models, never robustly tested against paid, production-grade ones.</li>
+</ul>
+<p>"Works in the code" and "proven to work" are not the same claim anywhere in this document — that distinction should hold whenever any of this gets described to a real customer.</p>
+<hr />
+<h2>Current Priorities</h2>
+<p>Current development effort focuses on:</p>
+<ul>
+<li>building Inbox Agent (the one new Agent Workflow in this MVP);</li>
+<li>finishing the Knowledge/RAG desktop and console experience on top of an already-solid backend;</li>
+<li>verifying Scheduling in real use once hardware allows it;</li>
+<li>validating the MVP's offer against real conversations in the field (see <code>go-to-market-africa.md</code>).</li>
+</ul>
+<p>The objective is no longer to prove that Seshat can be built. It's to close the gap between what already works underneath and what a customer can actually see and use.</p>
+<hr />
+<blockquote>
+<p><em>Most of what looked like missing capability turned out to be a missing interface. That changes what "finishing the MVP" actually means.</em></p>
+</blockquote>
+<hr />
+<h1>24. Beyond the MVP</h1>
+<p>Once Inbox Agent ships and the Knowledge/RAG interface catches up to its backend, the next candidates — not yet sequenced — are:</p>
+<ul>
+<li>Accounting Agent (likely composed from existing Skills plus an external document-management project rather than built from scratch).</li>
+<li>Prospecting Agent (dual purpose: a sellable Agent Workflow, and an internal tool for Seshat's own outbound sales effort).</li>
+<li>Documents in the full enterprise, department-organized sense.</li>
+<li>Audio meeting summarization, image generation, and PPTX generation, wired into the product UI and tested against paid models.</li>
+<li>Department-specific bespoke surfaces (HR, data science, and others as real demand shows up).</li>
+<li>The longer-standing roadmap items: Advanced Scheduling, Company Assistant across multiple devices, Enterprise Teams, a Skills marketplace, autonomous long-running agents, cross-company collaboration, advanced analytics, industry-specific packs, governance dashboards, multi-organization federation.</li>
+</ul>
+<p>Each of these gets built when a real, needs-driven case justifies it — not speculatively ahead of demand. See <code>go-to-market-africa.md</code> for how that sequencing gets decided.</p>
+<hr />
+<blockquote>
+<p><em>The MVP is not a reduced version of Seshat. It's the honest subset of it that's actually ready to be sold today.</em></p>
+</blockquote>
+</section>
+<hr class="file-break"/>
+<section class="file-section" id="7-go-to-market-africa-md">
+<h1>Go-to-Market — Africa / Ghana</h1>
+<p>Working notes, not a finished chapter. Started from a real, concrete situation: a planned trip to Ghana to try to sell Seshat to businesses there — some formal, some informal, none of them pre-sold on "AI." To be deepened once more real conversations have happened; nothing here should be treated as decided.</p>
+<p>Product source of truth is <a href="#4-product-md">4.product.md</a>. This file is downstream of it, not the other way around — and so is the public website (<code>website/src/pages/services/</code>), once this is far enough along to update it.</p>
+<hr />
+<h2>Starting complaint: the current website doesn't sell outcomes</h2>
+<p><code>website/src/pages/services/ServicesGrid.tsx</code> and <code>ServicesHero.tsx</code> describe the three service wedges (document processing, AI knowledge team, back-office &amp; finance) almost entirely in technical terms — RAG, OCR, hybrid retrieval, extraction pipelines.</p>
+<p>A director evaluating this doesn't care whether it's RAG or something else. They care what it does <em>for them</em> — time saved, errors avoided, a problem that stops being a problem. The site currently reads like it's written for another engineer, not for the person who signs the check.</p>
+<p>Fix comes later, after the product story (<code>4.product.md</code>) and the segment-specific pitches below are solid. Don't rewrite the site around guesses.</p>
+<hr />
+<h2>Three concrete cases</h2>
+<p>Not chosen as a representative market sample — chosen because they're real, known, and structurally different from each other. Each stress-tests the pitch differently.</p>
+<p><strong>Template used for each case, once decided (not while still a draft hypothesis):</strong> Profile (who they actually are, concretely) → Base offer (what we propose, in outcome terms, tagged by what it costs to deliver) → Usage (how the business actually uses it day to day). Case 1 below is the first one worked through to this level; Case 2 and 3 are still at the draft-hypothesis stage until they get the same treatment.</p>
+<h3>Case 1 — My father's business (informal trading, everything in his head) — DECIDED 2026-08-05</h3>
+<h4>Profile</h4>
+<ul>
+<li>Informal trading business: buys and sells through relationships and word-of-mouth, not contracts.</li>
+<li>Deals substantially through informal "agents" (intermediaries/middlemen) rather than direct, documented transactions.</li>
+<li>No formal bookkeeping: no invoices, no ledger, no CRM. Prices, debts, supplier terms, and customer history all live in his head.</li>
+<li>Runs mainly on WhatsApp/phone calls, not email or business software.</li>
+<li>If he's unavailable, the business's operational knowledge is effectively unavailable too — nothing is written down anywhere else.</li>
+<li>Price-sensitive, trust-based market — reputation and relationships matter more than any tool.</li>
+</ul>
+<h4>Base offer</h4>
+<p>Decided against building anything new for this profile specifically — the offer is entirely what's already real (Company Assistant) plus small, low-cost packaging on top. Nothing here waits on Documents, Knowledge, or any Agent Workflow.</p>
+<p><strong>Ready today, zero new engineering (Company Assistant + its existing <code>web_search</code> tool):</strong><br />
+- <strong>Price/market comparison</strong> — "is this a fair price for X," "what's the going rate right now." Directly useful in a trading business, directly showcases value in one conversation.<br />
+- <strong>Structuring sessions</strong> — working conversations where the Assistant helps turn what's in his head into something written: suppliers and their terms, recurring customers and prices, current debts/credits. The deliverable is the resulting notes, not an app he has to operate alone.<br />
+- <strong>Receipt / transaction-proof generation</strong> — dictate a sale, get a formatted document back. Creates a paper trail that doesn't exist today, without needing Documents or OCR.<br />
+- <strong>General personal assistant use</strong> — drafting a message to a supplier, doing a quick calculation, thinking through a decision out loud.</p>
+<p><strong>Small additional packaging (a Skill, plus Scheduling once it's actually tested):</strong><br />
+- <strong>Debt/credit tracker</strong> — who owes him, who he owes, due dates — with reminders once Scheduling is verified on the new hardware.<br />
+- <strong>Informal supplier/customer directory</strong> — a lightweight CRM built up through conversation over time, not entered into a form up front.</p>
+<p><strong>Explicitly not offered yet:</strong> anything implying automated WhatsApp triage (Inbox Agent), automated invoice reading (needs Documents), or a finished accounting system (Accounting Agent) — none of these exist in code. Promising them to the first, most relationship-critical customer is the fastest way to burn the referral chain this whole approach depends on.</p>
+<h4>Usage</h4>
+<p>A realistic day: before agreeing a purchase price with a supplier, he asks the Assistant what the going rate looks like. At the end of a day of sales, he dictates what happened and gets it turned into a simple written record — first time this business has any of that in writing. When a customer's payment is due, he gets a reminder instead of relying on memory. When he needs to message a supplier in a certain tone, he drafts it with the Assistant first. None of this asks him to change how he actually works — the Assistant sits alongside the same relationships and habits he already has.</p>
+<h4>Why this shape</h4>
+<p>This case is also the cheapest possible real-world test of the one solid piece of the platform (Company Assistant) before spending engineering time on Inbox/Accounting/Prospecting/RAG — and a working example here is what's supposed to generate the word-of-mouth referral into adjacent, slightly more formal businesses (see "Growth path hypothesis" below).</p>
+<h3>Case 2 — Sachet water / beer manufacturer (Ghana, unnamed example) — DECIDED 2026-08-05</h3>
+<h4>Profile (hypothesis, not a confirmed real company yet)</h4>
+<ul>
+<li>Beverage manufacturer (sachet water or beer): production + distribution, inherently more formal than Case 1 by nature of the business (food/beverage manufacturing usually implies at least minimal registration/safety standards, even if still fairly artisanal).</li>
+<li>Already has invoices, delivery notes, some paper or Excel bookkeeping — but nothing connecting production, deliveries, and cash.</li>
+<li>Likely sells partly on credit to recurring retailers/kiosks — a common pattern in West African beverage distribution.</li>
+<li>Coordinates drivers and retailer orders mainly by phone/WhatsApp, same channel reality as Case 1.</li>
+<li>Buys inputs (packaging, sugar, bottles/sachets) from suppliers whose prices fluctuate.</li>
+</ul>
+<h4>Base offer</h4>
+<p>Same discipline as Case 1 — only what's real gets offered. This is <em>not</em> yet the "Documents + Accounting Agent" pitch described in <code>4.product.md</code> chapter 13, since neither exists in code.</p>
+<p><strong>Ready today (Company Assistant + <code>web_search</code>):</strong><br />
+- Supplier price comparison for inputs (packaging, sugar, bottles).<br />
+- Structuring sessions: supplier terms, retail vs. wholesale pricing tiers, distributor network.<br />
+- Drafting purchase orders, distributor messages, retailer complaint responses.<br />
+- Ad hoc calculations: unit cost, margin, simple production planning.</p>
+<p><strong>Light packaging (Skill + Scheduling once tested):</strong><br />
+- Retailer credit/debt tracking — likely more critical here than Case 1 given the volume of recurring credit customers.<br />
+- Restock/collection reminders.<br />
+- Supplier/distributor directory.</p>
+<p><strong>Not yet deliverable — the real differentiator for this segment:</strong> automatically reconciling delivery notes against invoices, which needs Accounting Agent itself (not built) as the orchestrating piece — the document-reading part it would rely on (extracting data from a delivery note/invoice) is already real, so this is lighter to build than it first looked. Don't promise it yet — but it's the strongest signal so far for prioritizing Accounting Agent in the build roadmap.</p>
+<h4>Usage</h4>
+<p>Before ordering packaging, he compares supplier prices through the Assistant. He dictates the day's deliveries, creating a clear written record of who owes what. He gets a reminder before collecting from a retailer who buys on credit. He drafts a purchase order or a distributor message with the Assistant instead of calling on the fly.</p>
+<h4>Why this shape</h4>
+<p>This is also the strongest case so far for a customer-facing Prospecting Agent (finding new retail outlets/distributors in a region) — unlike Case 1, where the owner doesn't have that kind of expansion need.</p>
+<p><strong>Open question still unresolved:</strong> no real companies identified in this space in Ghana yet — this is an archetype, not a prospect list.</p>
+<h3>Case 3 — Medium/large enterprise, possibly already under an OpenAI/ChatGPT Enterprise contract — DECIDED 2026-08-05</h3>
+<h4>Profile</h4>
+<ul>
+<li>Formal organization with real IT/procurement process, unlike Cases 1 and 2 — buying decisions go through people, not just one owner.</li>
+<li>May already have an AI vendor relationship (ChatGPT Enterprise or similar) — the problem here isn't "convince them AI helps," it's "get in past an existing relationship."</li>
+<li>Distinct internal buying centers with different needs: IT/infrastructure, general staff productivity, and specific departments (HR, data/finance teams) — not one homogeneous buyer like Case 1 or 2.</li>
+<li>Realistic data governance/compliance concerns at this size, even if not always formalized.</li>
+<li>Has budget for real infrastructure, unlike Cases 1 and 2 — changes what's a credible ask.</li>
+</ul>
+<h4>Base offer — several distinct sub-offers, not one pitch</h4>
+<p><strong>A. Infrastructure pitch (to IT/compliance decision-makers) — the strongest, most differentiated offer, real today.</strong> Their own servers, running Company Assistant for every employee, self-hosted — or the lighter version, Bring Your Own AI / hybrid: data stays on their infrastructure, strong external models used only where acceptable. Both deployment shapes are already real and already documented (<code>5.business-strategy.md</code>, "Deployment Models"). Don't compete on "better chatbot" — that's already lost if they have an OpenAI contract. Compete on data sovereignty, which sits on a different budget line (infrastructure/compliance) their existing SaaS contract can't answer.</p>
+<p><strong>B. General staff productivity (to any employee, once A is approved) — mostly real today, two features close but not there yet.</strong> Drafting, structuring, calculations (including real financial calculations, <code>internal/tools/math/financial</code>) — same base as Cases 1 and 2. Meeting summarization from a text transcript works today; from a raw audio recording, <code>pkg/audio</code>/whisper.cpp exists at the engine level but isn't wired into the product UI yet and hasn't been tested against paid models — describe as "coming," not "ready," to this more skeptical buyer. Same caveat for PPTX generation (Skill or MCP server, not yet integrated) and generated images.</p>
+<p><strong>C. Department-specific surfaces (HR, data science, finance teams) — bespoke, not self-serve.</strong> The underlying tools (bash, notebook read/edit) already exist. What's sold here is Seshat building a tailored surface + a curated set of Skills for that department, not a shelf product the client configures themselves — set that expectation up front so it isn't mistaken for a finished, self-serve offering.</p>
+<p><strong>D. Not offered yet:</strong> Inbox Agent (email tools) — 💭 vision, same as the other two profiles, even though this segment might value it most given email volume.</p>
+<p><strong>E. "Add us, don't switch" — for prospects already committed to another AI vendor.</strong> A company already paying for OpenAI (or another provider) doesn't need to be sold a replacement, which is a much harder sell than an addition. Bring Your Own AI (<code>5.business-strategy.md</code>) makes this a real, sellable angle: they keep their existing API relationship and keep paying that bill directly, Seshat sells the platform/orchestration layer on top of it. Removes the single biggest objection this segment has — switching cost and sunk investment in another vendor — by not asking for a switch at all. See <code>8.financial-model.md</code> for the cost-side implication: this also drops Seshat's own LLM cost exposure for that client to near zero, since their key covers usage.</p>
+<h4>Usage</h4>
+<p>IT approves and deploys self-hosted Company Assistant across the org (offer A). Employees use it daily for drafting, structuring notes, running calculations, and — once wired in — summarizing recorded meetings and generating slide decks (offer B, phased in as those features get integrated and tested). A department that signs on for more (HR, data science) gets a surface and Skills built specifically for them by Seshat (offer C), understanding that's a bespoke engagement, not an off-the-shelf module.</p>
+<h4>Why this shape</h4>
+<p>This segment is where the self-hosted/sovereignty pitch (offer A) matters most and the informal-market pitches (price comparison, structuring sessions) matter least — the inverse of Case 1. It's also the one profile where overselling B or C too early carries real reputational cost, since this buyer will actually test what's promised before signing, unlike a referral-based informal customer.</p>
+<p><strong>Open questions:</strong> Realistic to reach in Ghana specifically at this stage, or is this case more relevant elsewhere (regulated sectors, government, banks) later once there's a track record from Cases 1 and 2? What's the actual sales motion into an org that size without an existing local network?</p>
+<hr />
+<h2>The dependency concern</h2>
+<p>Raised directly: "mon vrai problème c'est surtout rendre les entreprises dépendantes de moi." Self-hosted deployment + subcontracted setup/maintenance reframes this: the dependency isn't on a closed cloud vendor (the OpenAI-style lock-in), it's on <em>expertise</em> over infrastructure the customer actually owns. That's a healthier, easier-to-justify dependency to sell ("you keep your data, you pay for the skill") — but the pitch still needs to name this explicitly, not assume the customer infers it.</p>
+<hr />
+<h2>Growth path hypothesis (not validated)</h2>
+<div class="diagram">
+<svg viewBox="0 0 640 130" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;">
+<defs><marker id="arrow4" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#9a9a9a"/></marker></defs>
+<rect x="20" y="30" width="140" height="80" rx="8" fill="white" stroke="#ef7c2f" stroke-width="1.8"/>
+<text x="90.0" y="62" text-anchor="middle" font-size="12.5" font-weight="700" fill="#16151a">Case 1</text>
+<text x="90.0" y="82" text-anchor="middle" font-size="9.5" fill="#9a9a9a">Informal trading</text>
+<line x1="164" y1="70" x2="246" y2="70" stroke="#9a9a9a" stroke-width="1.5" marker-end="url(#arrow4)"/>
+<text x="205.0" y="62" text-anchor="middle" font-size="8.5" fill="#9a9a9a" font-style="italic">referral</text>
+<rect x="250" y="30" width="140" height="80" rx="8" fill="white" stroke="#c98a1c" stroke-width="1.8"/>
+<text x="320.0" y="62" text-anchor="middle" font-size="12.5" font-weight="700" fill="#16151a">Case 2</text>
+<text x="320.0" y="82" text-anchor="middle" font-size="9.5" fill="#9a9a9a">Formal SME</text>
+<line x1="394" y1="70" x2="476" y2="70" stroke="#9a9a9a" stroke-width="1.5" marker-end="url(#arrow4)"/>
+<text x="435.0" y="62" text-anchor="middle" font-size="8.5" fill="#9a9a9a" font-style="italic">credibility</text>
+<rect x="480" y="30" width="140" height="80" rx="8" fill="white" stroke="#2f2e34" stroke-width="1.8"/>
+<text x="550.0" y="62" text-anchor="middle" font-size="12.5" font-weight="700" fill="#16151a">Case 3</text>
+<text x="550.0" y="82" text-anchor="middle" font-size="9.5" fill="#9a9a9a">Large enterprise</text>
+</svg>
+<div class="diagram-caption">Hypothesis, not yet validated: start narrow and provable, let results carry the introduction to the next, more skeptical tier — proof, then referral, then enough credibility to approach a skeptical enterprise buyer.</div>
+</div>
+<p>Start informal/small (case 1 or similar) → if it works, word-of-mouth referral to adjacent businesses → build a track record of concrete, provable results in-market before approaching larger, more skeptical or already-served enterprises (case 3). Matches the site's own "pilot-first, start narrow" delivery model (<code>Process.tsx</code>) — the open question is whether that model, as priced/scoped today, actually fits a first-time informal customer with a very different budget reality than the site's implicit audience.</p>
+<hr />
+<h2>Build roadmap beyond Company Assistant / Scheduling — decided 2026-08-05, corrected twice same day</h2>
+<p>Base for every customer, any profile: <strong>Company Assistant</strong> (includes document reading via Docling/PaddleOCR already) + <strong>Scheduling</strong> (once verified on new hardware). <strong>Skills</strong> descoped for now to viewing/reading (maybe editing) existing MCP-backed skills — no user-facing skill creation yet in this MVP.</p>
+<p><strong>Second correction (same day):</strong> the pattern found for audio/image/financial tools turned out to generalize further. <code>seshat</code>, <code>seshat-backend</code>, and <code>seshat-server</code> are consistently ahead of <code>seshat-ui</code> (desktop) and <code>seshat-console</code> — including for RAG/Knowledge (hybrid search, ingestion, embedder config: real, verified end-to-end against a real model at the backend) and document reading (Docling/PaddleOCR: real, already used by Company Assistant's read tools today). What actually never got built anywhere yet is the <em>enterprise-scale, department-organized</em> version of Documents (importing/structuring data by team — HR, Legal, etc.) — that's the genuine gap behind <code>4.product.md</code> chapter 11's vision, not the ability to read a file.</p>
+<p>Practical effect: <strong>Inbox Agent is not blocked on document handling.</strong> It can already read attachments using the same tools Company Assistant uses today.</p>
+<ul>
+<li><strong>Inbox Agent</strong> — the one genuine from-scratch build. No dependency on Documents or Knowledge. Likely first candidate by elimination.</li>
+<li><strong>Knowledge/RAG desktop+console UI</strong> — not a new build, a finishing pass on an already-solid backend. Mainly unlocks Case 3 (large enterprise); Case 1 and Case 2 don't have a corpus worth querying yet.</li>
+<li><strong>Accounting Agent</strong> — mainly serves Case 2 (manufacturer). Expected to be composition, not a from-scratch build: a specialized agent wired with complete Skills, potentially leveraging an existing open-source project (paperless-ngx) for the document-management side. Full value (automated invoice extraction) can already use the existing document-reading tools — no dependency on the enterprise-Documents gap either, only a lighter/manual-entry-first version needs to wait on anything at all.</li>
+<li><strong>Prospecting Agent</strong> — dual purpose, both a sellable Agent Workflow for client sales/marketing teams <em>and</em> an internal tool for Seshat's own outbound effort into Ghana. The internal use case makes this higher-urgency than a pure future-product idea.</li>
+<li><strong>Documents, enterprise/department-organized sense</strong> — the real remaining gap, not document reading itself. Mainly relevant to Case 3 (large enterprise); not needed for Cases 1 or 2.</li>
+<li><strong>Meeting summarization from audio, image generation, PPTX generation</strong> — feature-level integration work that strengthens Case 3 and general productivity across all profiles: wire <code>pkg/audio</code> (whisper.cpp) and <code>pkg/image</code> into the product UI; add PPTX either via a Python Skill (inspired by <code>ppt-master</code>) or an existing MCP server (<code>Office-PowerPoint-MCP-Server</code>) rather than building a generator from scratch.</li>
+<li><strong>Department-specific surfaces (HR, data science, etc.)</strong> — the underlying tools (bash, notebook read/edit) already exist; what's missing is a tailored frontend per surface (the "Apps page" idea in <code>future-ideas.md</code>) plus, per client, a bespoke set of Skills — not self-serve yet.</li>
+</ul>
+<p>Per the "Beyond These Two" principle in <code>4.product.md</code>, this list isn't closed — new workflows get added only when a real, needs-driven case shows up (the market-comparison need surfaced this way for Case 1, and turned out to need no new build at all, just existing Company Assistant capability).</p>
+<p><strong>Cross-cutting constraints, not per-feature:</strong><br />
+- <strong>Hardware</strong> — Scheduling is implemented but unverified; the current dev machine needs an upgrade before it can be tested properly.<br />
+- <strong>Budget</strong> — audio/image/financial tooling has only been exercised with free-tier/local models, never robustly tested against paid, production-grade models. Both constraints mean "works in the code" and "proven to work" are not the same claim anywhere in this roadmap — keep that gap explicit when pricing or promising anything to a real customer.</p>
+<hr />
+<h2>Next steps (when this gets picked up again)</h2>
+<p>All three cases are now worked through (Profile → Base offer → Usage). Remaining:</p>
+<ul>
+<li>Real market scan for Case 2 — who actually exists in this space in Ghana, and how to reach them. Same question for Case 3, deferred until there's a track record from Cases 1/2.</li>
+<li>Sequence the build roadmap above against actual demand from all three cases, not just guesswork — Inbox Agent looks like the first real build by elimination, but not yet locked in.</li>
+<li>Decide pricing/scoping for a first pilot with a Case-1-style customer, who won't have a Case-3-style budget.</li>
+<li>Turn each case's offer into an actual one-page pitch (problem → what we do → what changes for you), value-first, no RAG/OCR vocabulary — per the original complaint about the current website.</li>
+<li>Only then: revisit <code>website/src/pages/services/</code> to match whatever this settles into.</li>
+</ul>
+</section>
+<hr class="file-break"/>
+<section class="file-section" id="8-financial-model-md">
+<h1>Financial Model — Infrastructure, AI Model, and Team Costs</h1>
+<p>Working numbers, not a final budget. Built to answer three questions raised directly: what does it cost to deploy Seshat (for us, or for a client), what does it cost to run on Chinese vs. American model providers, and what does a first hire cost — so we can work out what to charge and what margin is realistic, for an investor conversation.</p>
+<p><strong>Method:</strong> every figure below comes from a live web search (August 2026), cited at the point of use. Nothing here has been validated against real production load — treat these as first-pass estimates good enough to reason about pricing and margin, not as a guarantee. Section 5 lists exactly what still needs real-world verification before this becomes a number anyone commits to.</p>
+<p>Two deployment scenarios are costed throughout, per the decision to pursue both:<br />
+- <strong>Scenario A — Seshat-hosted (managed/subscription):</strong> we pay the infrastructure, we bill a recurring price.<br />
+- <strong>Scenario B — Client-hosted (self-hosted/sovereign):</strong> the client pays their own infrastructure, we bill setup + maintenance only. This isn't a fallback — it's the same self-hosted/data-sovereignty pitch already core to the Case 3 offer in <code>7.go-to-market-africa.md</code>.</p>
+<p>Two sizes are costed throughout:<br />
+- <strong>Small</strong> — 5 to 20 users (Case 1/2-shaped customer).<br />
+- <strong>Medium</strong> — 50 to 200 users (Case 3-shaped customer).</p>
+<hr />
+<h2>1. Infrastructure cost</h2>
+<p>What needs to run, beyond what's embedded in the desktop app (which costs nothing to "deploy" — it just runs on the user's machine): <code>seshat-server</code>, <code>seshat-console</code>, PostgreSQL, Docling (document conversion — noted in <code>ROADMAP.md</code> as a ~5GB CPU-only image running PyTorch + RapidOCR + layout models, the heaviest single piece), SearXNG (web search), and later some Python MCP servers (typically light).</p>
+<h3>Small deployment (5–20 users)</h3>
+<p>One box is enough at this scale. Docling's model-loading footprint is the reason to size up rather than run everything on the cheapest tier.</p>
+<table>
+<thead>
+<tr>
+<th>Provider</th>
+<th>Spec</th>
+<th>Monthly cost</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hetzner (CPX-class, 8 vCPU / 16 GB)</td>
+<td>covers server + console + Postgres + SearXNG + Docling</td>
+<td>≈ €40–55 (~$45–60)</td>
+</tr>
+<tr>
+<td>DigitalOcean (dedicated-CPU equivalent)</td>
+<td>same footprint</td>
+<td>≈ $84–150</td>
+</tr>
+</tbody>
+</table>
+<p>Hetzner is meaningfully cheaper for identical specs and is the reference point for price-per-spec in the VPS market this year — worth defaulting to it unless there's a reason to need DigitalOcean's ecosystem or a specific African/EU presence Hetzner doesn't offer.</p>
+<p><strong>Scenario A (we host):</strong> ≈ $50–60/month infrastructure, before LLM usage (section 2).<br />
+<strong>Scenario B (client hosts):</strong> $0 infrastructure cost to us — but this is still the spec we'd recommend the client provision, and the number that anchors a setup-fee estimate.</p>
+<h3>Medium deployment (50–200 users)</h3>
+<p>Docling gets split onto its own node once load grows, and the database benefits from being separate from the app server — roughly 3 nodes instead of 1.</p>
+<table>
+<thead>
+<tr>
+<th>Provider</th>
+<th>Spec (combined across nodes)</th>
+<th>Monthly cost</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hetzner (CCX-class, ~24 vCPU / 48 GB combined)</td>
+<td>app node + Docling worker node + DB node</td>
+<td>≈ €150–280 (~$165–305)</td>
+</tr>
+<tr>
+<td>DigitalOcean equivalent</td>
+<td>same footprint</td>
+<td>≈ $350–650</td>
+</tr>
+</tbody>
+</table>
+<p>Plus, at either size: domain, SSL, backups, basic monitoring — call it $10–25/month, not broken out further here.</p>
+<p><strong>Sources:</strong> <a href="https://deployhandbook.com/pricing/hetzner">Hetzner Cloud pricing 2026</a>, <a href="https://docs.hetzner.com/general/infrastructure-and-availability/price-adjustment/">Hetzner price adjustment notice</a>, <a href="https://www.digitalocean.com/pricing/droplets">DigitalOcean Droplet pricing</a>, <a href="https://kuberns.com/blogs/digitalocean-pricing/">DigitalOcean pricing breakdown</a>.</p>
+<hr />
+<h2>2. AI model cost — Chinese vs. American providers</h2>
+<p>Current per-million-token pricing (input/output), pulled directly August 2026:</p>
+<div class="diagram">
+<svg viewBox="0 0 640 310" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;">
+<text x="170" y="46.0" text-anchor="end" font-size="10.5" fill="#16151a">DeepSeek V4-Pro</text>
+<rect x="180" y="30" width="23.2" height="24" rx="3" fill="#ef7c2f"/>
+<text x="211.2" y="46.0" font-size="10" font-weight="700" fill="#ef7c2f">$0.87/M</text>
+<text x="170" y="82.0" text-anchor="end" font-size="10.5" fill="#16151a">MiniMax M3</text>
+<rect x="180" y="66" width="32.0" height="24" rx="3" fill="#ef7c2f"/>
+<text x="220.0" y="82.0" font-size="10" font-weight="700" fill="#ef7c2f">$1.20/M</text>
+<text x="170" y="118.0" text-anchor="end" font-size="10.5" fill="#16151a">GLM-4.6</text>
+<rect x="180" y="102" width="46.7" height="24" rx="3" fill="#ef7c2f"/>
+<text x="234.7" y="118.0" font-size="10" font-weight="700" fill="#ef7c2f">$1.75/M</text>
+<text x="170" y="154.0" text-anchor="end" font-size="10.5" fill="#16151a">GLM-5.2</text>
+<rect x="180" y="138" width="117.3" height="24" rx="3" fill="#ef7c2f"/>
+<text x="305.3" y="154.0" font-size="10" font-weight="700" fill="#ef7c2f">$4.40/M</text>
+<text x="170" y="190.0" text-anchor="end" font-size="10.5" fill="#16151a">Gemini 3.1 Pro</text>
+<rect x="180" y="174" width="320.0" height="24" rx="3" fill="#2f2e34"/>
+<text x="508.0" y="190.0" font-size="10" font-weight="700" fill="#2f2e34">$12.00/M</text>
+<text x="170" y="226.0" text-anchor="end" font-size="10.5" fill="#16151a">Claude Sonnet 5</text>
+<rect x="180" y="210" width="400.0" height="24" rx="3" fill="#2f2e34"/>
+<text x="588.0" y="226.0" font-size="10" font-weight="700" fill="#2f2e34">$15.00/M</text>
+<text x="170" y="262.0" text-anchor="end" font-size="10.5" fill="#16151a">GPT-5.4</text>
+<rect x="180" y="246" width="400.0" height="24" rx="3" fill="#2f2e34"/>
+<text x="588.0" y="262.0" font-size="10" font-weight="700" fill="#2f2e34">$15.00/M</text>
+  <rect x="180" y="282" width="12" height="12" rx="2" fill="#ef7c2f"/>
+  <text x="198" y="292" font-size="9" fill="#9a9a9a">Chinese provider</text>
+  <rect x="320" y="282" width="12" height="12" rx="2" fill="#2f2e34"/>
+  <text x="338" y="292" font-size="9" fill="#9a9a9a">American provider</text>
+    
+</svg>
+<div class="diagram-caption">Output-token price per million, representative mid/flagship models. Kimi K3 (Chinese) is excluded here — it prices at American-flagship parity, the exception noted in the text.</div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Provider</th>
+<th>Model</th>
+<th>Input</th>
+<th>Output</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>American</strong></td>
+<td>Claude Sonnet 5</td>
+<td>$2.00 (intro, until Aug 31) → $3.00</td>
+<td>$10.00 → $15.00</td>
+</tr>
+<tr>
+<td>American</td>
+<td>Claude Haiku 4.5</td>
+<td>$1.00</td>
+<td>$5.00</td>
+</tr>
+<tr>
+<td>American</td>
+<td>GPT-5.4</td>
+<td>$2.50</td>
+<td>$15.00</td>
+</tr>
+<tr>
+<td>American</td>
+<td>GPT-5.4 Mini</td>
+<td>$0.75</td>
+<td>$4.50</td>
+</tr>
+<tr>
+<td>American</td>
+<td>Gemini 3.1 Pro</td>
+<td>$2.00</td>
+<td>$12.00</td>
+</tr>
+<tr>
+<td>American</td>
+<td>Gemini 3.5 Flash-Lite</td>
+<td>$0.30</td>
+<td>$2.50</td>
+</tr>
+<tr>
+<td><strong>Chinese</strong></td>
+<td>Z.ai GLM-4.6</td>
+<td>$0.43</td>
+<td>$1.75</td>
+</tr>
+<tr>
+<td>Chinese</td>
+<td>MiniMax M3</td>
+<td>$0.30</td>
+<td>$1.20</td>
+</tr>
+<tr>
+<td>Chinese</td>
+<td>DeepSeek V4-Pro</td>
+<td>$0.435</td>
+<td>$0.87</td>
+</tr>
+<tr>
+<td>Chinese</td>
+<td>DeepSeek V4-Flash</td>
+<td>$0.14</td>
+<td>$0.28</td>
+</tr>
+<tr>
+<td>Chinese</td>
+<td>Kimi K2.5 (Moonshot AI)</td>
+<td>$0.60</td>
+<td>$3.00</td>
+</tr>
+<tr>
+<td>Chinese</td>
+<td>Kimi K2.6</td>
+<td>$0.95</td>
+<td>$4.00</td>
+</tr>
+<tr>
+<td>Chinese</td>
+<td>Kimi K3 (flagship)</td>
+<td>$3.00</td>
+<td>$15.00</td>
+</tr>
+<tr>
+<td>Chinese</td>
+<td>Z.ai GLM-5.2</td>
+<td>$1.40</td>
+<td>$4.40</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Pattern:</strong> at comparable "workhorse" tiers, Chinese providers run roughly <strong>5–8x cheaper per token</strong> than American flagship models. Seshat already supports Z.ai and MiniMax as first-class providers (<code>README.md</code>'s provider list), so this isn't a hypothetical switch — it's a default-provider decision.</p>
+<p><strong>Kimi is the exception that proves the pattern isn't "Chinese = cheap" automatically.</strong> Its cheaper tier (K2.5) is still meaningfully more expensive than GLM-4.6, MiniMax, or DeepSeek — and its flagship (K3) is priced at parity with American flagships ($3/$15, identical to Claude Sonnet's standard rate), not in the discount tier at all. Provider choice needs to be made model-by-model, not nationality-by-nationality. Kimi also isn't in Seshat's current native provider list (<code>README.md</code>) — reachable today only through OpenRouter (already supported), at OpenRouter's markup, unless direct integration gets added later.</p>
+<p><strong>GLM-5.2 is the middle tier worth knowing about.</strong> At $1.40/$4.40, it's about 3x GLM-4.6's price — but still roughly 2–3x cheaper than American flagships, positioned by Z.ai as noticeably stronger on long context, coding, reasoning, and tool use. A sensible "pro" option: more capable than GLM-4.6 for harder tasks, still meaningfully cheaper than going American.</p>
+<h3>Translating this into cost per user/month</h3>
+<p>Assumption stated explicitly (adjust as real usage data comes in): a business-chat user, not a heavy coding-agent loop, runs roughly 30 conversational exchanges/day, averaging ~2,000 input + 400 output tokens per exchange (includes conversation history/context overhead) — about 1.8M input + 360K output tokens/month/user.</p>
+<table>
+<thead>
+<tr>
+<th>Provider tier</th>
+<th>Cost/user/month</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Chinese (GLM-4.6)</td>
+<td>≈ $1.40</td>
+</tr>
+<tr>
+<td>Chinese (DeepSeek V4-Pro)</td>
+<td>≈ $1.10</td>
+</tr>
+<tr>
+<td>Chinese (GLM-5.2, "pro" tier)</td>
+<td>≈ $4.10</td>
+</tr>
+<tr>
+<td>American (Claude Sonnet, intro pricing)</td>
+<td>≈ $7.20</td>
+</tr>
+<tr>
+<td>American (Claude Sonnet, standard pricing from Sept 1)</td>
+<td>≈ $10.80</td>
+</tr>
+<tr>
+<td>American (GPT-5.4)</td>
+<td>≈ $10.50</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Recommendation this supports:</strong> default to a Chinese provider (GLM-4.6 or DeepSeek) as the cost-optimized tier for Cases 1 and 2, where margin matters most and the customer has no existing model preference, with GLM-5.2 as a paid upgrade for harder tasks. Keep American models available as an explicit, priced-higher option — mainly for Case 3 clients who already have a vendor relationship or a compliance reason to prefer them (Bring Your Own AI already covers this in <code>5.business-strategy.md</code>).</p>
+<p><strong>Sources:</strong> <a href="https://www.cloudzero.com/blog/claude-api-pricing/">Anthropic pricing</a>, <a href="https://www.cloudzero.com/blog/openai-pricing/">OpenAI pricing</a>, <a href="https://www.cloudzero.com/blog/gemini-pricing/">Gemini pricing</a>, <a href="https://openrouter.ai/z-ai/glm-4.6">GLM-4.6 pricing</a>, <a href="https://developer.puter.com/tutorials/minimax-api-pricing/">MiniMax pricing</a>, <a href="https://www.tldl.io/resources/deepseek-api-pricing">DeepSeek pricing</a>.</p>
+<hr />
+<h2>3. Team cost — first hire (bilingual EN/FR sales)</h2>
+<p>Decided: based in West Africa, not remote — for credibility at this stage.</p>
+<p>Local Ghana benchmarks found (Accra):<br />
+- General sales &amp; marketing representative: ≈ GHS 7,022/month average (≈ $465, using the ≈15 GHS/USD implied by the source below).<br />
+- Territory sales representative: ≈ GHS 4,547/month average (≈ $300).<br />
+- Country-wide average salary, all roles: ≈ GHS 5,000/month (≈ $330).</p>
+<p>None of this data is specific to a <em>bilingual</em> EN/FR sales hire — French speakers are relatively rare in anglophone Ghana, which should command a premium over the general sales-rep benchmark above. No direct comparable was found; broader "French-speaking sales Africa" listings ($41k–$110k/year) are for internationally-facing remote roles targeting all of Francophone Africa, not a like-for-like comparison for a locally based Ghana hire.</p>
+<p><strong>Working estimate (Ghana):</strong> $500–900/month (≈ GHS 7,500–13,500), i.e. roughly 1.1x–2x the general Accra sales-rep benchmark, to account for the bilingual premium and sales experience. <strong>This is the softest number in the model — worth checking against a local recruiter or job board before it goes into anything shown to an investor.</strong></p>
+<h3>Benin comparison, requested directly</h3>
+<p>Benin is Francophone — French fluency is the norm there, not a premium. That flips the bilingual-scarcity logic from Ghana: in Benin, <em>English</em> would be the harder-to-find skill and the one commanding a premium, not French.</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Benin</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>National minimum wage (SMIG)</td>
+<td>52,000 XOF/month (≈ $85)</td>
+</tr>
+<tr>
+<td>Average salary, all roles</td>
+<td>120,000 XOF/month (≈ $215)</td>
+</tr>
+<tr>
+<td>Median salary (most workers are below the average — high inequality)</td>
+<td>40,000 XOF/month (≈ $72)</td>
+</tr>
+<tr>
+<td>Living wage estimate, Cotonou</td>
+<td>90,000–110,000 XOF/month (≈ $160–195)</td>
+</tr>
+<tr>
+<td>Sales representative in commerce, 6–10 years experience + higher education</td>
+<td>420,000 XOF/month (≈ $735)</td>
+</tr>
+</tbody>
+</table>
+<p>At the general/entry-mid level, Benin (~$215/month average) is genuinely cheaper than Ghana (~$330/month average) — matches the intuition. But that one directly comparable sales-specific figure (~$735/month) is for someone senior (6–10 years, higher education) and comes out <em>higher</em> than Ghana's general sales-rep benchmark — not a clean like-for-like, since Ghana's number isn't broken out by seniority the same way. The honest read: Benin is likely cheaper for a similar experience level, but the data doesn't prove it as cleanly as the headline averages suggest.</p>
+<p><strong>A separate question worth deciding, not a cost one:</strong> the reason given for ruling out full remote was in-person credibility. Someone based in Benin is still remote relative to the Ghana market being targeted — cheaper on paper doesn't solve the "needs to look serious in Ghana" problem unless this person relocates to Ghana, splits time there, or the role gets redefined (e.g., founder covers Ghana directly, Beninese hire covers Francophone West Africa — Benin, Togo, Côte d'Ivoire — as a separate, genuinely well-matched market for a French-first hire).</p>
+<p><strong>Sources:</strong> <a href="https://www.glassdoor.com/Salaries/accra-ghana-sales-representative-salary-SRCH_IL.0,11_IM1421_KO12,32.htm">Glassdoor — Accra sales rep salaries</a>, <a href="https://remotepeople.com/countries/ghana/average-salary/">Average salary Ghana 2026</a>, <a href="https://worldsalaries.com/average-territory-sales-representative-salary-in-accra/ghana/">Territory sales rep Accra</a>, <a href="https://www.playroll.com/employment-cost/benin">Cost of hiring in Benin 2026</a>, <a href="https://remotepeople.com/countries/benin/employer-of-record/minimum-wage/">Benin minimum wage</a>, <a href="https://wage.is/benin/">Average salary Benin</a>.</p>
+<hr />
+<h2>4. Putting it together</h2>
+<h3>Scenario A — small client, Seshat-hosted (12 users, midpoint of 5–20)</h3>
+<table>
+<thead>
+<tr>
+<th>Line</th>
+<th>Monthly cost</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Infrastructure</td>
+<td>≈ $55</td>
+</tr>
+<tr>
+<td>LLM (Chinese default, 12 users × $1.40)</td>
+<td>≈ $17</td>
+</tr>
+<tr>
+<td>Misc (domain/SSL/backup/monitoring)</td>
+<td>≈ $15</td>
+</tr>
+<tr>
+<td><strong>Total direct cost</strong></td>
+<td><strong>≈ $87/month</strong></td>
+</tr>
+</tbody>
+</table>
+<p>At a per-business subscription price — not per-seat, since Case 1/2 customers think in terms of "what does this cost me," not "per user" — of, say, <strong>$150–250/month</strong>, direct cost is a small fraction of revenue: strong gross margin at the unit level. The real constraint isn't unit margin, it's volume: the sales hire's $500–900/month salary needs roughly <strong>3–6 small clients at this price point just to break even on that one hire</strong>, before covering anything else (the founder's own time, further hosting, growth).</p>
+<h3>Scenario B — client-hosted, any size</h3>
+<table>
+<thead>
+<tr>
+<th>Line</th>
+<th>Who pays</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Infrastructure</td>
+<td>Client, directly</td>
+</tr>
+<tr>
+<td>Setup (deployment, configuration)</td>
+<td>One-time fee to us</td>
+</tr>
+<tr>
+<td>Maintenance (updates, monitoring, support)</td>
+<td>Recurring retainer to us</td>
+</tr>
+</tbody>
+</table>
+<p>No infra cost to us here, but also less recurring revenue per client than Scenario A unless the maintenance retainer is priced deliberately (not sketched with a number yet — needs its own pass once a first Scenario-B client is real).</p>
+<h3>Medium client, Seshat-hosted (125 users, midpoint of 50–200)</h3>
+<table>
+<thead>
+<tr>
+<th>Line</th>
+<th>Monthly cost</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Infrastructure</td>
+<td>≈ $235</td>
+</tr>
+<tr>
+<td>LLM (mixed — assume some American-model usage at this tier, blended ≈ $4/user)</td>
+<td>≈ $500</td>
+</tr>
+<tr>
+<td>Misc</td>
+<td>≈ $25</td>
+</tr>
+<tr>
+<td><strong>Total direct cost</strong></td>
+<td><strong>≈ $760/month</strong></td>
+</tr>
+</tbody>
+</table>
+<p>At enterprise-negotiated pricing (not sketched with a specific number — this tier is priced case by case, per <code>5.business-strategy.md</code>'s pricing philosophy), a single medium client plausibly covers the sales hire's salary on its own, if priced above roughly $1,500–2,000/month.</p>
+<hr />
+<h2>5. Risks and reserves — not to be forgotten</h2>
+<h3>Usage risk: flat pricing against variable cost</h3>
+<p>Section 4's margin is calculated against an <em>assumed</em> usage level, not a measured one. If a client genuinely over-uses the agent under a flat subscription price, the LLM cost line grows while the price doesn't — the seller absorbs 100% of that risk under pure flat pricing. A sensitivity check: at the small-client price point (~$150/month, ~$63/month margin before salary allocation), a 2–3x usage surprise is absorbed comfortably; a 5x surprise (going from ≈$17 to ≈$84/month of LLM cost) eats nearly all of it.</p>
+<p><strong>Mitigation already available, not hypothetical:</strong> Quotas — per-user usage counters, daily/monthly — already exist as a real platform feature (<code>README.md</code>'s feature list). This should be configured as a real guardrail per pricing tier from day one, not treated as optional. Practical options once real usage data exists: a capped/tiered plan (X messages included, overage billed), soft rate-limiting on heavy usage rather than a hard cutoff, or simply pricing with the sensitivity above already priced in as margin buffer.</p>
+<h3>Startup credits — an immediate opportunity, not a "later" one</h3>
+<p>American AI/cloud providers run active startup credit programs, most of them accessible now rather than after volume is proven:</p>
+<table>
+<thead>
+<tr>
+<th>Provider</th>
+<th>Credit</th>
+<th>Requirement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OpenAI</td>
+<td>up to $500K, no equity</td>
+<td>general startup program</td>
+</tr>
+<tr>
+<td>Anthropic</td>
+<td>$100K (general) to $500K (via Y Combinator)</td>
+<td>pre-seed through Series A</td>
+</tr>
+<tr>
+<td>Google Cloud</td>
+<td>up to $350K (AI-focused path)</td>
+<td>qualifying AI-first startup</td>
+</tr>
+<tr>
+<td>AWS Activate</td>
+<td>$1K self-serve entry tier; up to $300K AI tier</td>
+<td>self-serve tier needs no backing; larger tiers need VC/accelerator backing</td>
+</tr>
+</tbody>
+</table>
+<p>This directly addresses the budget constraint noted earlier (no robust testing against paid models so far) — applying is plausibly higher-leverage right now than waiting for volume to negotiate with anyone.</p>
+<p><strong>No equivalent found for Chinese providers.</strong> What DeepSeek, Z.ai, and MiniMax are doing instead is aggressive public price-cutting (DeepSeek cut cache-hit pricing up to 90% at one point) rather than startup-credit programs. Reaching out directly once real volume exists is a normal, worthwhile move — but there's no confirmed formal partner/credit program to point to the way there is for OpenAI/Anthropic/Google/AWS. Treat it as "worth trying," not "expected."</p>
+<h3>Enterprise due-diligence caveat for Chinese providers</h3>
+<p>Search results flagged this directly: enterprise buyers evaluating a China-model-based stack should weigh what isn't in the sticker price — enterprise support, formal SLAs, and Western compliance certifications are less mature at DeepSeek/Z.ai/MiniMax than at OpenAI/Anthropic/Google, and jurisdictional risk (data or requests touching a Chinese company's infrastructure) is a real objection a sophisticated Case 3 buyer may raise.</p>
+<p><strong>This is where the self-hosted pitch and the cost pitch reinforce each other.</strong> Several of these Chinese models ship as open weights (DeepSeek, GLM, MiniMax all have open releases) and can in principle be self-hosted entirely on the client's own infrastructure — which would neutralize the jurisdictional objection specifically (nothing calls out to a Chinese company's cloud at all) while keeping the cost advantage over comparable American models. <strong>Not yet verified:</strong> the actual hardware/GPU cost of self-hosting these specific model sizes at usable speed — needs its own costing pass before this becomes a real offer, not just a promising direction.</p>
+<h3>Selling to clients who already have another AI vendor</h3>
+<p>Raised directly: a company already using another provider's API (e.g., an existing OpenAI relationship) doesn't need to be sold a replacement — they can adopt Seshat as an add-on layer on top of the API access they already pay for. This isn't a new technical capability to build: it's the existing <strong>Bring Your Own AI</strong> model (<code>5.business-strategy.md</code>) applied as a sales angle specifically for Case 3 prospects who already have a vendor relationship. It removes the single biggest objection that segment has (switching cost, sunk investment in another vendor) by not asking them to switch at all — Seshat sells the platform/orchestration layer, the client keeps paying their existing API bill directly, and Seshat's own LLM cost exposure for that client drops to near zero since the client's key covers it.</p>
+<hr />
+<h2>6. What still needs real-world verification before this goes to an investor</h2>
+<ul>
+<li><strong>The bilingual salary estimate</strong> — the softest number here, needs a local check, not just a global job-board search.</li>
+<li><strong>The usage assumption behind LLM cost/user</strong> (30 exchanges/day, ~2,400 tokens/exchange) — invented to make the calculation concrete, not measured. Actual usage from the first real pilot (Case 1) should replace this as soon as it exists.</li>
+<li><strong>Infrastructure sizing</strong> — based on Docling's documented footprint and general VPS specs, not a load test. Consistent with the testing gap already noted in <code>6.mvp.md</code>: nothing here has been proven under real concurrent load.</li>
+<li><strong>Scenario B's maintenance-retainer price</strong> — not estimated yet at all, just flagged as needed.</li>
+<li><strong>Enterprise (medium/large) pricing</strong> — deliberately left unspecified; <code>5.business-strategy.md</code> already commits to case-by-case pricing at that tier rather than a list price, and this model shouldn't contradict that by inventing one.</li>
+</ul>
+</section>
+
+</body>
+</html>

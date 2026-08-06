@@ -13,7 +13,7 @@ import { palette } from '@/theme/tokens'
 export function RolesPage() { const organizationId = useScopedOrganizationId()
   const [editing, setEditing] = useState<Role | 'new' | null>(null)
 
-  const { data, isLoading } = useRolesList(organizationId ?? undefined)
+  const { data, isLoading, error } = useRolesList(organizationId ?? undefined)
   const createRole = useCreateRole()
   const updateRole = useUpdateRole()
   const deleteRole = useDeleteRole()
@@ -87,6 +87,7 @@ export function RolesPage() { const organizationId = useScopedOrganizationId()
           columns={columns}
           dataSource={data?.roles ?? []}
           loading={isLoading}
+          queryError={error}
           pagination={false}
           locale={{ emptyText: (
               <Empty

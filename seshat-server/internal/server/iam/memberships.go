@@ -195,6 +195,9 @@ func (s *Service) CreateMembership(ctx context.Context, principal *Principal, pa
 		if err != nil {
 			return err
 		}
+		if err := requireGrantedRolePermissionsWithinCallerScope(tx, principal, organizationID, role); err != nil {
+			return err
+		}
 		_, exists, err := findMembershipByUserAndOrganization(tx, userID, organizationID)
 		if err != nil {
 			return err
@@ -261,6 +264,9 @@ func (s *Service) UpdateMembership(ctx context.Context, principal *Principal, me
 		}
 		role, err := validateRoleCodeForOrganization(tx, record.OrganizationID, params.Role)
 		if err != nil {
+			return err
+		}
+		if err := requireGrantedRolePermissionsWithinCallerScope(tx, principal, record.OrganizationID, role); err != nil {
 			return err
 		}
 		if isOwnerRole(record.Role) && !isOwnerRole(role) {

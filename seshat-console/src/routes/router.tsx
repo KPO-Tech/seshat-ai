@@ -7,6 +7,7 @@ import { LandingRedirect } from '@/routes/LandingRedirect'
 import { lazyPage, renderLazyPage } from '@/routes/lazyPage'
 
 const LoginPage = lazyPage(() => import('@/pages/auth/LoginPage').then((module) => ({ default: module.LoginPage })))
+const BootstrapPage = lazyPage(() => import('@/pages/auth/BootstrapPage').then((module) => ({ default: module.BootstrapPage })))
 const RegisterPage = lazyPage(() => import('@/pages/auth/RegisterPage').then((module) => ({ default: module.RegisterPage })))
 const CreateOrganizationPage = lazyPage(() =>
   import('@/pages/auth/CreateOrganizationPage').then((module) => ({ default: module.CreateOrganizationPage })),
@@ -61,6 +62,7 @@ const NoAccessPage = lazyPage(() => import('@/pages/errors/NoAccessPage').then((
 
 export const router = createBrowserRouter([
   { path: '/login', element: renderLazyPage(LoginPage) },
+  { path: '/bootstrap', element: renderLazyPage(BootstrapPage) },
   { path: '/register', element: renderLazyPage(RegisterPage) },
   { path: '/create-organization', element: renderLazyPage(CreateOrganizationPage) },
   { path: '/accept-invitation', element: renderLazyPage(AcceptInvitationPage) },

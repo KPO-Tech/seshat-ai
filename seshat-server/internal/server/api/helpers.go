@@ -5,10 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/apperr"
-	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
 )
 
@@ -70,21 +68,4 @@ func writeControlPlaneError(w http.ResponseWriter, err error) {
 func authPrincipalFromContext(ctx context.Context) (*iam.Principal, bool) {
 	principal, ok := ctx.Value(authPrincipalContextKey).(*iam.Principal)
 	return principal, ok
-}
-
-// redactSecret masks a credential value everywhere except the one response
-// that first hands it out, so listing/reading a resource never leaks a
-// usable copy of its client secret.
-func redactSecret(secret string) string {
-	const prefixLen = 6
-	if secret == "" {
-		return ""
-	}
-	if plaintext, err := sdb.DecryptSecret(secret); err == nil {
-		secret = plaintext
-	}
-	if len(secret) <= prefixLen {
-		return strings.Repeat("*", len(secret))
-	}
-	return secret[:prefixLen] + strings.Repeat("*", 8)
 }

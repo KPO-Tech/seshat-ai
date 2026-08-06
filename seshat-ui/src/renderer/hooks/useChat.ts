@@ -462,6 +462,13 @@ async function consumeElectronStream(
     body,
   })
   if ('error' in startResult) {
+    if (startResult.unauthorized) {
+      // The main process already cleared the OS-keychain session (see
+      // startStream in main/ipc/backend.ts) — this store also needs clearing
+      // so AuthGuard redirects to /login instead of the UI staying on a
+      // session the backend has already invalidated.
+      useAuthStore.getState().logout()
+    }
     throw makeRetryableError(startResult.error, startResult.retryable)
   }
   const { streamId } = startResult

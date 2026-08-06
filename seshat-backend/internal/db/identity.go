@@ -547,6 +547,36 @@ func (s *IdentityStore) AssignRoleToUser(ctx context.Context, userID string, rol
 	return nil
 }
 
+// ReplaceUserRoles clears every role currently assigned to userID and assigns
+// exactly roleNames instead, in a single transaction. Used for admin-driven
+// "set this user's role to X" updates, as opposed to AssignRoleToUser which
+// only ever adds (used at account creation, where roles start from empty).
+func (s *IdentityStore) ReplaceUserRoles(ctx context.Context, userID string, roleNames ...string) error {
+	return s.db.GormDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("user_id = ?", userID).Delete(&gUserRole{}).Error; err != nil {
+			return fmt.Errorf("clear roles for user %q: %w", userID, err)
+		}
+		for _, name := range roleNames {
+			var role gRole
+			if err := tx.Where("name = ?", strings.TrimSpace(strings.ToLower(name))).First(&role).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					return fmt.Errorf("role %q not found", name)
+				}
+				return fmt.Errorf("look up role %q: %w", name, err)
+			}
+			row := gUserRole{
+				UserID:         userID,
+				RoleID:         role.ID,
+				AssignedAtUnix: time.Now().UTC().Unix(),
+			}
+			if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&row).Error; err != nil {
+				return fmt.Errorf("assign role %q to user %q: %w", name, userID, err)
+			}
+		}
+		return nil
+	})
+}
+
 func (s *IdentityStore) ListUserRoles(ctx context.Context, userID string) ([]Role, error) {
 	var rows []gRole
 	if err := s.db.GormDB().WithContext(ctx).

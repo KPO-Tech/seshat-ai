@@ -4,7 +4,7 @@ import { readFile, writeFile } from 'fs/promises'
 import { extname } from 'path'
 import { assertTrustedSender } from './trusted-sender'
 import { isExternalOpenAllowed } from '../url-safety'
-import { assertLocalFilePath, sanitizeSaveFileInput } from './validation'
+import { assertLocalFilePath, assertPathWithinRuntimeRoot, sanitizeSaveFileInput } from './validation'
 
 const IMAGE_MIME_BY_EXT: Record<string, string> = {
   '.apng': 'image/apng',
@@ -25,17 +25,17 @@ export function registerSystemHandlers(ipcMain: IpcMain) {
 
   ipcMain.handle('system:open-path', (event, filePath: string) => {
     assertTrustedSender(event)
-    return shell.openPath(assertLocalFilePath(filePath))
+    return shell.openPath(assertPathWithinRuntimeRoot(filePath))
   })
 
   ipcMain.handle('system:show-file', (event, filePath: string) => {
     assertTrustedSender(event)
-    shell.showItemInFolder(assertLocalFilePath(filePath))
+    shell.showItemInFolder(assertPathWithinRuntimeRoot(filePath))
   })
 
   ipcMain.handle('system:read-file-data-url', async (event, filePath: string) => {
     assertTrustedSender(event)
-    const safePath = assertLocalFilePath(filePath)
+    const safePath = assertPathWithinRuntimeRoot(filePath)
     const mimeType = IMAGE_MIME_BY_EXT[extname(safePath).toLowerCase()]
     if (!mimeType) throw new Error('Unsupported preview file type')
     const buffer = await readFile(safePath)

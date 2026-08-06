@@ -20,7 +20,7 @@ import { monoStack, palette } from '@/theme/tokens'
 export function AgentPresetsPage() {
   const organizationId = useScopedOrganizationId()
   const [editing, setEditing] = useState<AgentPreset | 'new' | null>(null)
-  const { data, isLoading } = useAgentPresetsList(organizationId ?? undefined)
+  const { data, isLoading, error } = useAgentPresetsList(organizationId ?? undefined)
   const createPreset = useCreateAgentPreset()
   const updatePreset = useUpdateAgentPreset()
   const deletePreset = useDeleteAgentPreset()
@@ -101,6 +101,7 @@ export function AgentPresetsPage() {
         columns={columns}
         dataSource={data ?? []}
         loading={isLoading}
+        queryError={error}
         pagination={false}
         locale={{
           emptyText: (

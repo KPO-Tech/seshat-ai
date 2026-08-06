@@ -45,7 +45,7 @@ export function OrganizationsPage() {
   })
   const [editing, setEditing] = useState<Organization | 'new' | null>(null)
 
-  const { data, isLoading, isFetching } = useOrganizationsList({
+  const { data, isLoading, isFetching, error } = useOrganizationsList({
     q: search || undefined,
     sort: sort.field,
     order: sort.order,
@@ -315,6 +315,7 @@ export function OrganizationsPage() {
           columns={columns}
           dataSource={organizations}
           loading={isLoading || isFetching}
+          queryError={error}
           onChange={handleTableChange}
           onRow={(record) => ({
             onClick: () => navigate(`/orgs/${record.id}/overview`),

@@ -1,8 +1,9 @@
 import { type ReactNode, useEffect, useState } from 'react'
 import { Navigate } from 'react-router'
 import { LoadingOne } from '@icon-park/react'
-import { api } from '@/api/client'
+import { api, ApiError } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
+import { useInactivityTimeout } from '@/hooks/useInactivityTimeout'
 
 type Status = 'checking' | 'ok' | 'invalid'
 
@@ -10,6 +11,8 @@ export function AuthGuard({ children }: { children: ReactNode }) {
   const { isAuthenticated, token, logout, setSession } = useAuthStore()
   const bridgeManaged = typeof window !== 'undefined' && !!window.nexus?.auth
   const [status, setStatus] = useState<Status>(bridgeManaged || isAuthenticated ? 'checking' : 'invalid')
+
+  useInactivityTimeout()
 
   useEffect(() => {
     let cancelled = false
@@ -33,13 +36,30 @@ export function AuthGuard({ children }: { children: ReactNode }) {
         if (!cancelled) setStatus('ok')
       } catch (error) {
         if (cancelled) return
-        const statusCode = (error as { status?: number })?.status
-        if (statusCode === 401) {
+        if (!(error instanceof ApiError)) {
+          // No HTTP response reached us at all (network drop, backend not up
+          // yet) — not an auth decision either way. Stay optimistic rather
+          // than bouncing the user to /login over a transient connectivity
+          // blip to the local backend.
+          setStatus('ok')
+          return
+        }
+        if (error.status === 401) {
+          // The backend explicitly said the session is invalid/expired.
           logout()
           setStatus('invalid')
           return
         }
-        setStatus('ok')
+        if (error.status >= 500) {
+          // The backend is up but erroring server-side — not a statement
+          // about this session's validity, so don't treat it as one.
+          setStatus('ok')
+          return
+        }
+        // Any other real HTTP response (403, 404, ...) is unexpected for
+        // this endpoint and — unlike a network failure or a 5xx — is an
+        // actual answer from the backend. Don't fail open on it.
+        setStatus('invalid')
       }
     }
 

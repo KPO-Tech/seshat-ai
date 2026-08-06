@@ -11,12 +11,13 @@ import (
 )
 
 type App struct {
-	backend               *serverapp.App
-	config                Config
-	loginLimiter          *ipRateLimiter
-	registerLimiter       *ipRateLimiter
-	forgotPasswordLimiter *ipRateLimiter
-	resetPasswordLimiter  *ipRateLimiter
+	backend                 *serverapp.App
+	config                  Config
+	loginLimiter            *ipRateLimiter
+	registerLimiter         *ipRateLimiter
+	forgotPasswordLimiter   *ipRateLimiter
+	resetPasswordLimiter    *ipRateLimiter
+	invitationAcceptLimiter *ipRateLimiter
 }
 
 type contextKey string
@@ -38,6 +39,13 @@ func CreateRouter(cfg Config, backend *serverapp.App) http.Handler {
 		// an email-enumeration vector and a spam-the-victim's-inbox vector.
 		forgotPasswordLimiter: newIPRateLimiter(rate.Limit(3.0/60.0), 3),
 		resetPasswordLimiter:  newIPRateLimiter(rate.Limit(5.0/60.0), 5),
+		// Same shape as resetPasswordLimiter: an authenticated caller can
+		// still submit an unlimited number of guessed invitation tokens per
+		// second otherwise (2026-08-06 audit finding — every other
+		// token-bearing auth endpoint was already rate-limited, this one was
+		// missed). The token itself is high-entropy (192 bits) so this is
+		// defense in depth, not the primary safeguard.
+		invitationAcceptLimiter: newIPRateLimiter(rate.Limit(5.0/60.0), 5),
 	}
 	return app.corsMiddleware(app.routes())
 }

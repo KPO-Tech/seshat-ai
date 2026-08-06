@@ -172,7 +172,7 @@ export function OrganizationOverviewPage() {
         }}
       >
         <Card title="Setup status">
-          <Space direction="vertical" size={14} style={{ width: '100%' }}>
+          <Space orientation="vertical" size={14} style={{ width: '100%' }}>
             <div>
               <Typography.Text strong style={{ display: 'block' }}>Profile</Typography.Text>
               <Typography.Text style={{ color: palette.inkSecondary }}>
@@ -212,7 +212,7 @@ export function OrganizationOverviewPage() {
 
         <Card title="Needs attention">
           {alerts.length > 0 ? (
-            <Space direction="vertical" size={12} style={{ width: '100%' }}>
+            <Space orientation="vertical" size={12} style={{ width: '100%' }}>
               {alerts.map((alert) => (
                 <Alert
                   key={alert.title}
@@ -220,7 +220,7 @@ export function OrganizationOverviewPage() {
                   showIcon
                   title={alert.title}
                   description={
-                    <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                    <Space orientation="vertical" size={8} style={{ width: '100%' }}>
                       <Typography.Text style={{ color: palette.inkSecondary }}>
                         {alert.description}
                       </Typography.Text>

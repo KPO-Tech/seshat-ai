@@ -50,7 +50,7 @@ export function SearchTestCard<T extends { results?: SearchHit[] }>({
       )}
 
       {result && (result.results?.length ?? 0) > 0 && (
-        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+        <Space orientation="vertical" size={12} style={{ width: '100%' }}>
           {result.results!.map((item, index) => (
             <div key={index} style={{ paddingBottom: 12, borderBottom: `1px solid ${palette.border}` }}>
               <Space style={{ marginBottom: 4 }}>

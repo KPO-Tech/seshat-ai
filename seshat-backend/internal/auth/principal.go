@@ -9,10 +9,11 @@ import (
 )
 
 type User struct {
-	ID          string `json:"id"`
-	Email       string `json:"email"`
-	DisplayName string `json:"display_name"`
-	Status      string `json:"status"`
+	ID          string   `json:"id"`
+	Email       string   `json:"email"`
+	DisplayName string   `json:"display_name"`
+	Status      string   `json:"status"`
+	Roles       []string `json:"roles,omitempty"`
 }
 
 type AuthSession struct {

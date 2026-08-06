@@ -277,7 +277,26 @@ func corsMiddleware(allowedOrigins []string, next http.Handler) http.Handler {
 
 	isAllowed := func(origin string) bool {
 		if len(allowed) == 0 {
-			// Default: accept any localhost origin (127.0.0.1 or localhost, any port).
+			// Default: accept any localhost origin (127.0.0.1 or localhost, any
+			// port), deliberately, not just an oversight left unconfigured.
+			// seshat-ui's renderer talks to this API two ways: through the
+			// Electron main-process IPC bridge (not subject to CORS at all —
+			// it's not a browser fetch), or directly via browser fetch when
+			// window.nexus is unavailable ("browser dev mode", explicitly
+			// supported per seshat-ui/AGENTS.md) — that second path runs on
+			// an arbitrary Vite dev-server port that isn't known ahead of
+			// time, so pinning a single allowed origin by default would break
+			// it on every port change.
+			//
+			// This is safe to leave permissive because auth here is a Bearer
+			// token attached explicitly by the client, not a cookie the
+			// browser attaches automatically — CORS's main purpose (stopping
+			// a malicious page from riding the victim's ambient cookie/session)
+			// doesn't apply: a page on another origin has no way to obtain
+			// this app's token to put in an Authorization header, permissive
+			// CORS or not. Set AllowedOrigins explicitly for any deployment
+			// where the API is reachable by more than just this instance's
+			// own local UI (see the startup warning logged when it's unset).
 			return strings.HasPrefix(origin, "http://localhost:") ||
 				strings.HasPrefix(origin, "http://127.0.0.1:") ||
 				origin == "http://localhost" ||

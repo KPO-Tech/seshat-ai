@@ -2,6 +2,7 @@ import { createWriteStream } from 'fs'
 import { join } from 'path'
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { autoUpdater } from 'electron-updater'
+import { assertTrustedSender } from './ipc/trusted-sender'
 
 // Give the sidecar backend (see backend-process.ts) time to start before
 // competing for network/CPU with an update check.
@@ -64,7 +65,8 @@ export function setupAutoUpdater(): void {
     broadcast('updates:error', { message: err.message })
   })
 
-  ipcMain.handle('updates:check-now', async () => {
+  ipcMain.handle('updates:check-now', async (event) => {
+    assertTrustedSender(event)
     try {
       await autoUpdater.checkForUpdates()
       return { ok: true }
@@ -73,7 +75,8 @@ export function setupAutoUpdater(): void {
     }
   })
 
-  ipcMain.handle('updates:quit-and-install', () => {
+  ipcMain.handle('updates:quit-and-install', (event) => {
+    assertTrustedSender(event)
     if (updateReadyToInstall) {
       autoUpdater.quitAndInstall()
     }

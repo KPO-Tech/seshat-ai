@@ -39,10 +39,11 @@ type loginResponse struct {
 }
 
 type authUserResponse struct {
-	ID          string `json:"id"`
-	Email       string `json:"email"`
-	DisplayName string `json:"display_name"`
-	Status      string `json:"status"`
+	ID          string   `json:"id"`
+	Email       string   `json:"email"`
+	DisplayName string   `json:"display_name"`
+	Status      string   `json:"status"`
+	Roles       []string `json:"roles,omitempty"`
 }
 
 type authPrincipalResponse struct {
@@ -267,6 +268,7 @@ func toAuthUserResponse(user backendauth.User) authUserResponse {
 		Email:       user.Email,
 		DisplayName: user.DisplayName,
 		Status:      user.Status,
+		Roles:       append([]string(nil), user.Roles...),
 	}
 }
 

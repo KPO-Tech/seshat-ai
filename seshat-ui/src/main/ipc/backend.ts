@@ -246,7 +246,7 @@ async function startStream(
   event: IpcMainInvokeEvent,
   payload: StreamStartPayload,
   token?: string,
-): Promise<{ streamId: string } | { error: string; retryable: boolean }> {
+): Promise<{ streamId: string } | { error: string; retryable: boolean; unauthorized?: boolean }> {
   const controller = new AbortController()
   const headers: Record<string, string> = {
     Accept: 'text/event-stream',
@@ -280,6 +280,13 @@ async function startStream(
     const parsed = await parseResponse(res)
     if (res.status === 401) {
       await clearSession()
+      // Reported as a value, not a throw, specifically for 401: the renderer
+      // needs to see this one (to also clear useAuthStore, which clearSession
+      // above doesn't touch — that's main-process/OS-keychain state only) —
+      // an ipcMain.handle throw only carries a message string across, losing
+      // any way to distinguish "unauthorized" from any other stream-start
+      // failure. Same reasoning as retryable network errors above.
+      return { error: extractErrorMessage(parsed), retryable: false, unauthorized: true }
     }
     throw new Error(extractErrorMessage(parsed))
   }
@@ -367,13 +374,6 @@ async function startStream(
 // the renderer IPC bridge) - reuses the same stored session/trust handshake
 // as every renderer-originated call. Used by whisper-manager.ts to report
 // the local whisper-server's status to seshat-backend once it's spawned.
-// Used by terminal-relay.ts to authenticate the outbound terminal WebSocket
-// with the same session token every other backend call uses.
-export async function getCurrentAuthToken(): Promise<string | undefined> {
-  const session = await loadSession()
-  return session?.token
-}
-
 export async function callBackendAsCurrentUser(path: string, method: string, body?: unknown) {
   const session = await loadSession()
   const payload = await performJSONRequest(path, method, body, session?.token)

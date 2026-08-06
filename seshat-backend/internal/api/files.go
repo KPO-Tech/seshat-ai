@@ -201,6 +201,14 @@ func (app *App) handleSessionFiles(w http.ResponseWriter, r *http.Request, princ
 
 	switch r.Method {
 	case http.MethodGet:
+		if app.backend.Query == nil {
+			writeJSONError(w, http.StatusServiceUnavailable, "session service not configured")
+			return
+		}
+		if _, err := app.backend.Query.GetSession(r.Context(), p, sessionID); err != nil {
+			writeBackendError(w, err)
+			return
+		}
 		files, err := app.backend.Files.ListSessionFiles(r.Context(), p, sessionID)
 		if err != nil {
 			writeBackendError(w, err)

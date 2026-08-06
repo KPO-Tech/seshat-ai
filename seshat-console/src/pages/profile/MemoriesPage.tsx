@@ -21,7 +21,7 @@ import { palette } from '@/theme/tokens'
 
 export function MemoriesPage() {
   const [editing, setEditing] = useState<UserMemory | 'new' | null>(null)
-  const { data, isLoading } = useMyMemoriesList()
+  const { data, isLoading, error } = useMyMemoriesList()
   const createMemory = useCreateMyMemory()
   const updateMemory = useUpdateMyMemory()
   const deleteMemory = useDeleteMyMemory()
@@ -106,6 +106,7 @@ export function MemoriesPage() {
         columns={columns}
         dataSource={data ?? []}
         loading={isLoading}
+        queryError={error}
         pagination={false}
         locale={{
           emptyText: (

@@ -37,7 +37,7 @@ export function ApplicationsPage() { const organizationId = useScopedOrganizatio
     null,
   )
 
-  const { data, isLoading, isFetching } = useApplicationsList(organizationId ?? undefined, { q: search || undefined,
+  const { data, isLoading, isFetching, error } = useApplicationsList(organizationId ?? undefined, { q: search || undefined,
     sort: 'name',
     order: 'asc',
     limit: PAGE_SIZE,
@@ -120,6 +120,7 @@ export function ApplicationsPage() { const organizationId = useScopedOrganizatio
           columns={columns}
           dataSource={data?.applications ?? []}
           loading={isLoading || isFetching}
+          queryError={error}
           locale={{ emptyText: (
               <Empty
                 image={<AppstoreOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}

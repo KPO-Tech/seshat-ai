@@ -1,4 +1,5 @@
-import { basename, isAbsolute } from 'path'
+import { basename, isAbsolute, relative, resolve, sep } from 'path'
+import { resolveRuntimeRoot } from '../runtime'
 
 const API_PATH_PATTERN = /^\/[A-Za-z0-9._~!$&'()*+,;=:@/%?-]*$/
 const SECRET_KEY_PATTERN = /^[A-Za-z0-9._:-]{1,80}$/
@@ -40,6 +41,32 @@ export function assertLocalFilePath(value: unknown, label = 'File path'): string
     throw new Error(`${label} must be absolute`)
   }
   return filePath
+}
+
+// Stricter than assertLocalFilePath: also requires the path to resolve
+// inside this app's own data root (SESHAT_RUNTIME_ROOT/NEXUS_RUNTIME_ROOT,
+// or its default under the user's home directory — see resolveRuntimeRoot).
+//
+// Use this for handlers that read/open a path supplied by the renderer from
+// backend-controlled data (e.g. an attachment's local_path from a file API
+// response) — every current caller already only ever passes such a path, so
+// this changes nothing for them. It exists as defense in depth: without it,
+// a future source of local_path that's less trustworthy than "this app's own
+// upload response" (a synced session from another device, a compromised or
+// buggy MCP server, a malicious backend) could make these handlers read,
+// reveal, or open an arbitrary file anywhere the OS user account can access.
+// Deliberately NOT applied to save-file/select-file/openDirectory — those
+// paths come from a native OS dialog the user drove directly, not from
+// renderer-supplied data, so there's nothing to contain.
+export function assertPathWithinRuntimeRoot(value: unknown, label = 'File path'): string {
+  const filePath = assertLocalFilePath(value, label)
+  const root = resolve(resolveRuntimeRoot())
+  const resolved = resolve(filePath)
+  const rel = relative(root, resolved)
+  if (rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel)) {
+    throw new Error(`${label} must be within the app's data directory`)
+  }
+  return resolved
 }
 
 export function sanitizeSaveFileInput(defaultName: unknown, content: unknown): { defaultName: string; content: string } {

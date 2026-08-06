@@ -24,7 +24,7 @@ seshat-ui communicates with nexus-product **exclusively** through the HTTP API a
 
 | Layer | Technology |
 |---|---|
-| Desktop shell | Electron 37+ (frameless, `frame: false`, custom title bar) |
+| Desktop shell | Electron 43+ (frameless, `frame: false`, custom title bar) |
 | Build | electron-vite + Vite 6 |
 | UI framework | React 19 |
 | Styling | UnoCSS (utility classes) + scoped CSS-in-JS strings per component |
@@ -32,7 +32,7 @@ seshat-ui communicates with nexus-product **exclusively** through the HTTP API a
 | Icons | `@icon-park/react` |
 | State | Zustand 5 (persisted via `localStorage` for UI prefs) |
 | Data fetching | SWR + custom `api` client |
-| Router | React Router 7 (hash router — required for Electron file:// loads) |
+| Router | React Router 8 (hash router — required for Electron file:// loads) |
 | Markdown rendering | `react-markdown` + `remark-gfm` + `rehype-katex` + `remark-math` |
 | Diagram rendering | `mermaid` |
 | Lists (virtual) | `@tanstack/react-virtual` |
@@ -76,7 +76,8 @@ seshat-ui/
 │       │   ├── useChat.ts     ← SSE streaming logic (the main orchestrator)
 │       │   ├── useAuth.ts
 │       │   ├── useProviders.ts
-│       │   └── useInactivityTimeout.ts
+│       │   ├── chatControllers.ts
+│       │   └── useInactivityTimeout.ts  ← idle auto-logout, mounted in AuthGuard (added 2026-08-06)
 │       ├── lib/
 │       │   ├── chat.ts        ← message normalization, status helpers
 │       │   ├── plan.ts        ← plan parsing helpers

@@ -92,9 +92,6 @@ func (app *App) handleProviders(w http.ResponseWriter, r *http.Request) {
 			writeIAMError(w, err)
 			return
 		}
-		for i := range providers {
-			providers[i].ClientSecret = redactSecret(providers[i].ClientSecret)
-		}
 		writeListResponse(w, http.StatusOK, "providers", providers, query, int(total))
 	case http.MethodPost:
 		var req createProviderRequest
@@ -135,7 +132,7 @@ func (app *App) handleProviders(w http.ResponseWriter, r *http.Request) {
 		// Unlike application secrets (server-generated, revealed once at
 		// creation), provider secrets are supplied by the caller in the
 		// request body, so the caller already has them — never echo them back.
-		provider.ClientSecret = redactSecret(provider.ClientSecret)
+		// (toProvider, called inside CreateProvider, already masks this.)
 		writeJSON(w, http.StatusCreated, provider)
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -162,7 +159,6 @@ func (app *App) handleProviderByID(w http.ResponseWriter, r *http.Request) {
 			writeIAMError(w, err)
 			return
 		}
-		provider.ClientSecret = redactSecret(provider.ClientSecret)
 		writeJSON(w, http.StatusOK, provider)
 	case http.MethodPut:
 		var req updateProviderRequest
@@ -202,7 +198,6 @@ func (app *App) handleProviderByID(w http.ResponseWriter, r *http.Request) {
 			writeIAMError(w, err)
 			return
 		}
-		provider.ClientSecret = redactSecret(provider.ClientSecret)
 		writeJSON(w, http.StatusOK, provider)
 	case http.MethodDelete:
 		if err := app.backend.IAM.DeleteProvider(r.Context(), principal, providerID); err != nil {

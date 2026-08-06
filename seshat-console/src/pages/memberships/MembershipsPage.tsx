@@ -73,7 +73,7 @@ export function MembershipsPage() {
         const showEmail = Boolean(record.user_display_name && record.user_email)
 
         return (
-          <Space direction="vertical" size={2}>
+          <Space orientation="vertical" size={2}>
             <Space size={6}>
               <Typography.Text strong>{primary}</Typography.Text>
               {record.user_is_admin && (
@@ -111,7 +111,7 @@ export function MembershipsPage() {
         const label = role?.name ?? formatRoleLabel(value)
 
         return (
-          <Space direction="vertical" size={2}>
+          <Space orientation="vertical" size={2}>
             <Tag color={ROLE_COLORS[value ?? '']}>{label}</Tag>
             <Typography.Text style={{ fontSize: 12, color: palette.inkTertiary }}>
               {role?.system ? 'System role' : role ? 'Custom role' : value ?? 'Unknown role'}
@@ -221,6 +221,7 @@ export function MembershipsPage() {
           columns={columns}
           dataSource={memberships.data?.memberships ?? []}
           loading={memberships.isLoading || memberships.isFetching}
+          queryError={memberships.error}
           locale={{
             emptyText: (
               <Empty
@@ -342,7 +343,7 @@ function MembershipFormDrawer({
         </Button>
       }
     >
-      <Space direction="vertical" size={18} style={{ width: '100%' }}>
+      <Space orientation="vertical" size={18} style={{ width: '100%' }}>
         {!membership && (
           <Segmented
             value={mode}

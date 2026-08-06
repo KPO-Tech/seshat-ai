@@ -16,10 +16,11 @@ import {
   Share,
   Time,
   Workbench,
+  Mail,
 } from '@icon-park/react'
 
 type AppStatus = 'ready' | 'planned'
-type AppCategory = 'all' | 'agentic' | 'research' | 'creation' | 'documents'
+type AppCategory = 'all' | 'core' | 'agentic'
 type ViewMode = 'grid' | 'list'
 
 type AppEntry = {
@@ -36,112 +37,71 @@ type AppEntry = {
 
 const APPS: AppEntry[] = [
   {
-    id: 'workflows',
-    title: 'Workflows',
-    description: 'Visual DAGs, routers, verifier nodes, and reusable automation flows.',
-    route: '/workflows',
+    id: 'companion',
+    title: 'Companion',
+    description: 'Enterprise main assistant. Connects to your tools, documents, and agents.',
+    route: '/',
     status: 'ready',
-    category: 'agentic',
-    icon: <DataSheet size={32} />,
-    tone: 'workflow',
-    highlights: ['Graph execution', 'Agent handoffs', 'Reusable runs'],
+    category: 'core',
+    icon: <Message size={32} />,
+    tone: 'chat',
+    highlights: ['Multi-tool integration', 'Agent command entry', 'General Q&A'],
   },
   {
-    id: 'teams',
-    title: 'Teams',
-    description: 'Persistent groups of specialized agents collaborating on missions.',
-    route: '/teams',
+    id: 'knowledge',
+    title: 'Knowledge',
+    description: 'Centralized document retrieval. Search, ask questions, and summarize company knowledge.',
+    route: '/workspace',
     status: 'ready',
-    category: 'agentic',
-    icon: <Peoples size={32} />,
-    tone: 'teams',
-    highlights: ['Task board', 'Agent roles', 'Shared mission context'],
+    category: 'core',
+    icon: <Book size={32} />,
+    tone: 'knowledge',
+    highlights: ['Semantic RAG', 'PDF & DOCX ingestion', 'Notebook summaries'],
   },
   {
     id: 'skills-creator',
     title: 'Skills Creator',
-    description: 'Create and refine reusable skills that agents can invoke across work modes.',
+    description: 'Define and refine reusable instructions and tools that agents can invoke.',
     route: '/skills-creator',
     status: 'ready',
     category: 'agentic',
     icon: <Workbench size={32} />,
     tone: 'skills',
-    highlights: ['Skill authoring', 'Reusable instructions', 'Agent capabilities'],
+    highlights: ['YAML schema definition', 'Tool schemas', 'System prompts'],
   },
   {
-    id: 'research',
-    title: 'Deep Research',
-    description: 'Parallel investigation workspace for sources, evidence, and reports.',
+    id: 'inbox',
+    title: 'Inbox',
+    description: 'Intelligent mailbox. Auto-prioritizes, summarizes, and drafts email responses.',
     status: 'planned',
-    category: 'research',
-    icon: <Search size={32} />,
-    tone: 'research',
-    highlights: ['Parallel agents', 'Evidence board', 'Report synthesis'],
-  },
-  {
-    id: 'code',
-    title: 'Code',
-    description: 'Project-aware coding surface with files, diffs, terminal, and previews.',
-    status: 'planned',
-    category: 'creation',
-    icon: <Code size={32} />,
-    tone: 'code',
-    highlights: ['Workspace root', 'Diff review', 'Local preview'],
-  },
-  {
-    id: 'builder',
-    title: 'Web App Builder',
-    description: 'Prompt-to-app workflows with live preview and iteration tools.',
-    status: 'planned',
-    category: 'creation',
-    icon: <Share size={32} />,
-    tone: 'builder',
-    highlights: ['Live preview', 'Generated UI', 'Deploy path'],
-  },
-  {
-    id: 'images',
-    title: 'Image Generation',
-    description: 'Create and revise visual assets for documents, apps, and campaigns.',
-    status: 'planned',
-    category: 'creation',
-    icon: <ImageFiles size={32} />,
-    tone: 'images',
-    highlights: ['Asset briefs', 'Variants', 'Project library'],
-  },
-  {
-    id: 'documents',
-    title: 'Document Studio',
-    description: 'Review, transform, export, and package document-heavy work.',
-    status: 'planned',
-    category: 'documents',
-    icon: <FileText size={32} />,
-    tone: 'documents',
-    highlights: ['PDF/PPTX/DOCX', 'Export flows', 'Review workspace'],
-  },
-  {
-    id: 'browser',
-    title: 'Browser Workbench',
-    description: 'Focused web sessions for browsing, extraction, and validation.',
-    status: 'planned',
-    category: 'research',
-    icon: <Browser size={32} />,
+    category: 'core',
+    icon: <Mail size={32} />,
     tone: 'browser',
-    highlights: ['Web sessions', 'Extraction', 'Validation runs'],
+    highlights: ['Outlook & Gmail sync', 'Urgency classification', 'Proposed responses'],
+  },
+  {
+    id: 'teams',
+    title: 'Teams',
+    description: 'Persistent groups of specialized agents collaborating on multi-step missions.',
+    route: '/teams',
+    status: 'planned',
+    category: 'agentic',
+    icon: <Peoples size={32} />,
+    tone: 'teams',
+    highlights: ['Task boards', 'Agent handoffs', 'Collaborative execution'],
   },
 ]
 
 const FILTERS: Array<{ id: AppCategory; label: string }> = [
   { id: 'all', label: 'All' },
-  { id: 'agentic', label: 'Agentic' },
-  { id: 'research', label: 'Research' },
-  { id: 'creation', label: 'Creation' },
-  { id: 'documents', label: 'Documents' },
+  { id: 'core', label: 'Core Products' },
+  { id: 'agentic', label: 'Agentic Workflows' },
 ]
 
 export function AppsPage() {
   const navigate = useNavigate()
   const [category, setCategory] = useState<AppCategory>('all')
-  const [selectedId, setSelectedId] = useState('workflows')
+  const [selectedId, setSelectedId] = useState('companion')
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const selected = APPS.find((app) => app.id === selectedId) ?? APPS[0]
   const visibleApps = useMemo(
