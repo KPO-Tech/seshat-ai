@@ -4,7 +4,7 @@ import type { RAGSearchResult } from '@/api/types'
 import { useSessionStore } from '@/stores/session'
 
 type Theme = 'light' | 'dark'
-export type RightPanelKind = 'markdown' | 'subagent' | 'browser' | 'agent' | 'knowledge' | 'plan' | 'pdf' | 'artifact' | 'docx' | 'xlsx'
+export type RightPanelKind = 'markdown' | 'subagent' | 'browser' | 'agent' | 'knowledge' | 'plan' | 'pdf' | 'artifact' | 'docx' | 'xlsx' | 'pptx'
 export type UIPermissionMode = 'onRequest' | 'auto' | 'bypass'
 
 export type RightPanelFields = {
@@ -73,7 +73,7 @@ function isRightPanelPinned(p: RightPanelInstance): boolean {
 // panel. Keeps a document's own space "yours" across however many you open
 // in a row, while something like an Agent Monitor a user deliberately kept
 // open stays put instead of being silently evicted to make room.
-const DOCUMENT_PANEL_KINDS: ReadonlySet<RightPanelKind> = new Set(['pdf', 'docx', 'xlsx', 'markdown', 'plan', 'artifact'])
+const DOCUMENT_PANEL_KINDS: ReadonlySet<RightPanelKind> = new Set(['pdf', 'docx', 'xlsx', 'pptx', 'markdown', 'plan', 'artifact'])
 
 const RIGHT_PANEL_STACK_LIMIT = 2
 const RIGHT_PANEL_WIDE_COLUMN_LIMIT = 2
@@ -128,11 +128,15 @@ const MIN_CHAT_PANE_WIDTH = 460
 // panel's default width when it first opens (see RIGHT_PANEL_WIDTH_RATIO/
 // defaultWidth in openRightPanel, which is computed independently and
 // never routed through this clamp). Dragging a panel wider used to be able
-// to squeeze the chat pane down to roughly half the available width; this
-// keeps at least 3/4 of it for chat no matter how far a panel is dragged,
-// on top of (not instead of) the existing flat MIN_CHAT_PANE_WIDTH floor
-// below - whichever of the two protects more room wins.
-const CHAT_MIN_FRACTION = 0.75
+// to squeeze the chat pane down to roughly half the available width; the
+// chat pane should be enlargeable the *other* way too, down to as little as
+// 1/4 of the available width (i.e. a panel can grow up to 3/4) - this is
+// the floor that guarantees it, on top of (not instead of) the existing
+// flat MIN_CHAT_PANE_WIDTH floor below - whichever of the two protects more
+// room wins. In practice this fraction only binds on very wide/ultrawide
+// windows; on normal windows the flat MIN_CHAT_PANE_WIDTH floor and the
+// static SOLO/SHARED max above are what actually decide the ceiling.
+const CHAT_MIN_FRACTION = 0.25
 
 // The actual width a right-panel column is allowed to take: the static
 // SOLO/SHARED range, further capped by whatever the window can spare once
@@ -303,14 +307,16 @@ export const useUIStore = create<UIState>()(
           }
 
           const instance: RightPanelInstance = { ...panel, id, openedAt: Date.now() }
+          const isDocument = DOCUMENT_PANEL_KINDS.has(panel.kind)
+          const columnLimit = rightPanelColumnLimit(s.windowWidth)
 
           // A new document replaces another already-open document in
-          // place (same column/slot), leaving every non-document panel
+          // place (same column/slot, same width - respects a manual
+          // resize made in between), leaving every non-document panel
           // (Agent Monitor, a sub-agent trace, a browser trace, ...)
-          // untouched - see DOCUMENT_PANEL_KINDS. Falls through to the
-          // normal room-finding/eviction logic below when no document is
-          // currently open.
-          if (DOCUMENT_PANEL_KINDS.has(panel.kind)) {
+          // untouched - see DOCUMENT_PANEL_KINDS. Falls through when no
+          // document is currently open.
+          if (isDocument) {
             for (let ci = 0; ci < rightColumns.length; ci++) {
               const pi = rightColumns[ci].panels.findIndex((p) => DOCUMENT_PANEL_KINDS.has(p.kind))
               if (pi === -1) continue
@@ -320,6 +326,24 @@ export const useUIStore = create<UIState>()(
               nextColumns[ci] = { ...nextColumns[ci], panels: nextPanels }
               return { rightColumns: nextColumns }
             }
+          }
+
+          // On a single-column screen there's no room to stack a document
+          // next to something else and still read either one - a document
+          // opening here takes the column outright (Agent Monitor, a
+          // sub-agent trace, ... whatever was there closes), sized to half
+          // the window by default. Wide/2-column screens fall through to
+          // the stacking logic below unchanged (not yet redesigned - see
+          // RIGHT_PANEL_WIDTH_RATIO).
+          if (isDocument && columnLimit === 1) {
+            const halfWidth = Math.round(Math.max(RIGHT_PANEL_WIDTH_SOLO.min, Math.min(s.windowWidth * 0.5, RIGHT_PANEL_WIDTH_SOLO.max)))
+            const column: RightPanelColumn = {
+              id: rightColumns[0]?.id ?? crypto.randomUUID(),
+              panels: [instance],
+              width: panel.width ?? halfWidth,
+              split: 0.5,
+            }
+            return { rightColumns: [column] }
           }
 
           // First column, left-to-right, with room.
@@ -333,7 +357,6 @@ export const useUIStore = create<UIState>()(
           // No column has room - open a new one, if under the column cap.
           // The cap itself is only 2 on wide-enough windows; smaller windows
           // stay single-column so the chat pane is never squeezed.
-          const columnLimit = rightPanelColumnLimit(s.windowWidth)
           if (rightColumns.length < columnLimit) {
             const defaultWidth = Math.round(
               Math.max(RIGHT_PANEL_WIDTH_SOLO.min, Math.min(s.windowWidth * RIGHT_PANEL_WIDTH_RATIO, RIGHT_PANEL_WIDTH_SOLO.max))

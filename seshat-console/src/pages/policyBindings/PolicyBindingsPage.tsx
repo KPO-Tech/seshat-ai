@@ -33,7 +33,7 @@ export function PolicyBindingsPage() { const organizationId = useScopedOrganizat
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<PolicyBinding | 'new' | null>(null)
 
-  const { data, isLoading, isFetching } = usePolicyBindingsList(organizationId ?? undefined, { q: search || undefined,
+  const { data, isLoading, isFetching, error } = usePolicyBindingsList(organizationId ?? undefined, { q: search || undefined,
     sort: 'name',
     order: 'asc',
     limit: PAGE_SIZE,
@@ -119,6 +119,7 @@ export function PolicyBindingsPage() { const organizationId = useScopedOrganizat
           columns={columns}
           dataSource={data?.policy_bindings ?? []}
           loading={isLoading || isFetching}
+          queryError={error}
           locale={{ emptyText: (
               <Empty
                 image={<LockOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}

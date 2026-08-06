@@ -40,9 +40,16 @@ function createWindow() {
   win.removeMenu()
   win.on('ready-to-show', () => win.show())
 
-  globalShortcut.register('F12', () => {
-    win.webContents.toggleDevTools()
-  })
+  // DevTools access via a global (OS-wide, works even without window focus)
+  // shortcut is a dev convenience, not something a packaged production build
+  // should expose — restrict it to unpackaged/dev runs, same guard as
+  // setupAutoUpdater's no-op-in-dev check in auto-update.ts (the inverse
+  // condition, for the inverse reason).
+  if (!app.isPackaged) {
+    globalShortcut.register('F12', () => {
+      win.webContents.toggleDevTools()
+    })
+  }
 
   win.webContents.setWindowOpenHandler(({ url }) => {
     // Chat content (web search results, fetched pages) can put target="_blank" links

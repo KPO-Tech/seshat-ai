@@ -249,30 +249,18 @@ function isPDFAttachment(file: MessageAttachment): boolean {
   return file.filename.toLowerCase().endsWith('.pdf') || file.content_type === 'application/pdf'
 }
 
-// PPTX/HTML/TEX get a real visual rendering via the backend's on-demand
-// LibreOffice conversion (see PDFViewerPanel) instead of just the
-// docling-extracted text - a flat text dump loses slides/layout that matter
-// for these formats. DOCX/XLSX are carved out of this path (see
-// isDocxAttachment/isXlsxAttachment below) since they render natively and
-// near-instantly client-side instead of paying for a LibreOffice round trip.
-// MD/TXT/CSV/... (textPreviewKind === 'direct') deliberately stay on the
-// plain markdown/text panel: they have no "visual layout" to lose, and
-// MarkdownView already renders them properly.
-function isOfficePreviewAttachment(file: MessageAttachment): boolean {
-  return textPreviewKind(file.filename) === 'markdown' && !isDocxAttachment(file) && !isXlsxAttachment(file)
-}
-
-// Rendered natively in-browser via docx-preview/exceljs (DocxPreviewPanel/
-// XlsxPreviewPanel) instead of the LibreOffice-conversion path every other
-// office format goes through - no server round trip, no headless-office
-// cold start, matching how Claude/Gemini-style document previews render
-// instantly rather than shelling out to a real office suite.
+// Rendered natively in-browser via docx-preview/exceljs/pptx-preview in the
+// default preview mode.
 function isDocxAttachment(file: MessageAttachment): boolean {
   return file.filename.toLowerCase().endsWith('.docx')
 }
 
 function isXlsxAttachment(file: MessageAttachment): boolean {
   return file.filename.toLowerCase().endsWith('.xlsx')
+}
+
+function isPptxAttachment(file: MessageAttachment): boolean {
+  return file.filename.toLowerCase().endsWith('.pptx')
 }
 
 // DOCX/PPTX/XLSX are all OOXML zip packages that may carry a real embedded
@@ -390,7 +378,7 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
               const isPDF = isPDFAttachment(file)
               const isDocx = isDocxAttachment(file)
               const isXlsx = isXlsxAttachment(file)
-              const isOfficePreview = isOfficePreviewAttachment(file)
+              const isPptx = isPptxAttachment(file)
               function onOpen() {
                 if (isImage && previewURL) {
                   openLightbox({ url: previewURL, filename: file.filename })
@@ -400,10 +388,8 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
                   openRightPanel({ kind: 'docx', title: file.filename, documentFileId: file.id })
                 } else if (isXlsx) {
                   openRightPanel({ kind: 'xlsx', title: file.filename, documentFileId: file.id })
-                } else if (isOfficePreview) {
-                  // markdown here is the docling text fallback PDFViewerPanel
-                  // renders if the LibreOffice conversion 404s/503s.
-                  openRightPanel({ kind: 'pdf', title: file.filename, documentFileId: file.id, markdown: textPreview })
+                } else if (isPptx) {
+                  openRightPanel({ kind: 'pptx', title: file.filename, documentFileId: file.id, markdown: textPreview })
                 } else if (textPreview) {
                   openRightPanel({
                     kind: 'markdown',
@@ -526,10 +512,10 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
 export const MESSAGE_ITEM_CSS = `
 .msg-row {
   display: flex;
-  gap: 12px;
+  gap: var(--space-6);
   width: 100%;
   align-items: flex-start;
-  margin-top: 20px;
+  margin-top: var(--space-8);
 }
 
 .msg-row:first-child {
@@ -537,7 +523,7 @@ export const MESSAGE_ITEM_CSS = `
 }
 
 .msg-row.compact {
-  margin-top: 6px;
+  margin-top: var(--space-3);
 }
 
 .msg-row.user {
@@ -558,7 +544,7 @@ export const MESSAGE_ITEM_CSS = `
 }
 
 .msg-bubble {
-  font-size: 13px;
+  font-size: var(--font-size-base);
   line-height: 1.6;
   color: var(--color-text);
 }
@@ -573,7 +559,7 @@ export const MESSAGE_ITEM_CSS = `
 .msg-row.user .msg-bubble {
   background: var(--color-surface);
   padding: 7px 11px;
-  border-radius: 14px 14px 3px 14px;
+  border-radius: var(--radius-2xl) var(--radius-2xl) 3px var(--radius-2xl);
   border: 1px solid var(--color-border-subtle);
 }
 
@@ -582,7 +568,7 @@ export const MESSAGE_ITEM_CSS = `
   flex-wrap: nowrap;
   overflow-x: auto;
   justify-content: flex-end;
-  gap: 8px;
+  gap: var(--space-4);
   max-width: 100%;
   padding: 5px 2px;
 }
@@ -609,7 +595,7 @@ export const MESSAGE_ITEM_CSS = `
   display: block;
   width: 100%;
   height: 100%;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--color-border-subtle);
   background: var(--color-bg);
   color: var(--color-text-secondary);
@@ -655,8 +641,8 @@ export const MESSAGE_ITEM_CSS = `
   bottom: 3px;
   background: rgba(0, 0, 0, 0.72);
   color: white;
-  border-radius: 4px;
-  padding: 1px 4px;
+  border-radius: var(--radius-xs);
+  padding: 1px var(--space-2);
   font-size: 8px;
   font-weight: 800;
   letter-spacing: 0.02em;
@@ -668,13 +654,13 @@ export const MESSAGE_ITEM_CSS = `
 }
 
 .msg-thinking {
-  margin: 0 0 4px;
+  margin: 0 0 var(--space-2);
 }
 
 .msg-thinking-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-2);
   background: transparent;
   border: none;
   padding: 2px 0;
@@ -687,7 +673,7 @@ export const MESSAGE_ITEM_CSS = `
 }
 
 .msg-thinking-label {
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
   color: inherit;
   font-style: italic;
 }
@@ -704,10 +690,10 @@ export const MESSAGE_ITEM_CSS = `
 }
 
 .msg-thinking-body {
-  margin-top: 6px;
-  padding-left: 8px;
+  margin-top: var(--space-3);
+  padding-left: var(--space-4);
   border-left: 2px solid rgba(239, 124, 47, 0.22);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   font-style: italic;
   color: var(--color-text-muted);
   line-height: 1.65;
@@ -719,7 +705,7 @@ export const MESSAGE_ITEM_CSS = `
    the thinking body, instead of a nested heading/blockquote fighting for
    attention with its own border and full-brightness text. */
 .tb-thinking-md h1, .tb-thinking-md h2, .tb-thinking-md h3 {
-  margin: 0 0 4px;
+  margin: 0 0 var(--space-2);
   font-size: inherit;
   font-weight: 600;
   font-style: italic;
@@ -729,20 +715,20 @@ export const MESSAGE_ITEM_CSS = `
 .tb-thinking-md strong { font-weight: 600; }
 
 .tb-thinking-md blockquote {
-  margin: 4px 0;
-  padding-left: 8px;
+  margin: var(--space-2) 0;
+  padding-left: var(--space-4);
   border-left: 2px solid var(--color-border-subtle);
   color: inherit;
 }
 
-.tb-thinking-md p { margin: 0 0 6px; }
+.tb-thinking-md p { margin: 0 0 var(--space-3); }
 .tb-thinking-md p:last-child { margin-bottom: 0; }
 
 .msg-footer {
   display: flex;
   align-items: center;
   gap: 9px;
-  margin-top: 2px;
+  margin-top: var(--space-1);
   opacity: 0;
   transition: opacity 0.2s;
 }
@@ -760,10 +746,10 @@ export const MESSAGE_ITEM_CSS = `
   border: none;
   color: var(--color-text-muted);
   cursor: pointer;
-  padding: 2px;
+  padding: var(--space-1);
   display: flex;
   align-items: center;
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
 }
 
 .msg-action-btn:hover {

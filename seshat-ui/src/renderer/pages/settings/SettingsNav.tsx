@@ -1,7 +1,7 @@
 import { NexusLogo } from '@/components/NexusLogo'
 
 // Concrete TabId for the Settings page — exported for use in settings/index.tsx
-export type TabId = 'general' | 'providers' | 'knowledge' | 'memories' | 'capabilities' | 'remote' | 'cloud-automation' | 'system' | 'about' | 'admin-users' | 'admin-groups' | 'admin-organizations' | 'admin-workspaces' | 'admin-audit' | 'admin-quotas'
+export type TabId = 'general' | 'account' | 'connections' | 'providers' | 'knowledge' | 'memories' | 'capabilities' | 'remote' | 'runtime' | 'about' | 'admin-users' | 'admin-groups' | 'admin-organizations' | 'admin-workspaces' | 'admin-audit' | 'admin-quotas'
 
 // ─── Generic nav item ─────────────────────────────────────────────────────────
 
@@ -192,7 +192,7 @@ export const SETTINGS_NAV_CSS = `
 }
 `
 
-// ─── Shared layout + view CSS (used by both Settings and UserSettings) ────────
+// ─── Shared layout + view CSS ─────────────────────────────────────────────────
 
 export const SETTINGS_SHARED_CSS = `
 .settings-root {
@@ -229,6 +229,11 @@ export const SETTINGS_SHARED_CSS = `
 .sv-header-info p { color: var(--color-text-muted); margin: 0; font-size: var(--font-size-sm); }
 
 .sv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+
+.sv-section { margin-top: 28px; }
+.sv-section-header { margin-bottom: 14px; }
+.sv-section-header h2 { margin: 0 0 4px; font-size: var(--font-size-lg); font-weight: 700; }
+.sv-section-header p { margin: 0; color: var(--color-text-muted); font-size: var(--font-size-sm); }
 
 .sv-card {
   background: var(--color-bg);

@@ -2,21 +2,20 @@ import { useNavigate, useLocation } from 'react-router'
 import {
   Plus,
   Search,
-  Peoples,
   SettingTwo,
-  User,
   Down,
   Right,
   Delete,
   Edit,
-  EditTwo,
   Layers,
   Time,
   History,
-  Share,
+  SunOne,
+  Moon,
+  Workbench,
+  Browser,
 } from '@icon-park/react'
 import { useUIStore } from '@/stores/ui'
-import { useAuthStore } from '@/stores/auth'
 import { useSessionStore } from '@/stores/session'
 import { NexusLogo } from '@/components/NexusLogo'
 import { useEffect, useState } from 'react'
@@ -31,7 +30,8 @@ export function Sidebar() {
   const activeId = useSessionStore((s) => s.activeId)
   const setActive = useSessionStore((s) => s.setActive)
   const updateSession = useSessionStore((s) => s.updateSession)
-  const user = useAuthStore((s) => s.user)
+  const theme = useUIStore((s) => s.theme)
+  const toggleTheme = useUIStore((s) => s.toggleTheme)
   const navigate = useNavigate()
   const { pathname } = useLocation()
   
@@ -148,26 +148,18 @@ export function Sidebar() {
             onClick={() => setSearchOpen(true)}
           />
           <SidebarItem
-            icon={<Peoples theme="outline" size={16} />}
-            label="Teams"
-            collapsed={collapsed}
-            active={pathname.startsWith('/teams')}
-            onClick={() => navigate('/teams')}
-          />
-          <SidebarItem
-            icon={<EditTwo theme="outline" size={16} />}
-            label="Skills Creator"
-            collapsed={collapsed}
-            active={pathname === '/skills-creator'}
-            onClick={() => navigate('/skills-creator')}
-            accent
-          />
-          <SidebarItem
             icon={<Time theme="outline" size={16} />}
             label="Scheduling"
             collapsed={collapsed}
             active={pathname === '/scheduling'}
             onClick={() => navigate('/scheduling')}
+          />
+          <SidebarItem
+            icon={<Browser theme="outline" size={16} />}
+            label="Apps"
+            collapsed={collapsed}
+            active={pathname.startsWith('/apps') || pathname.startsWith('/workflows') || pathname.startsWith('/teams')}
+            onClick={() => navigate('/apps')}
           />
           <SidebarItem
             icon={<Layers theme="outline" size={16} />}
@@ -178,11 +170,11 @@ export function Sidebar() {
             accent
           />
           <SidebarItem
-            icon={<Share theme="outline" size={16} />}
-            label="Workflows"
+            icon={<Workbench theme="outline" size={16} />}
+            label="Projects"
             collapsed={collapsed}
-            active={pathname === '/workflows'}
-            onClick={() => navigate('/workflows')}
+            active={pathname.startsWith('/projects')}
+            onClick={() => navigate('/projects')}
           />
         </div>
 
@@ -289,9 +281,14 @@ export function Sidebar() {
               {!collapsed && <span>Settings</span>}
             </button>
 
-            <button className="sb-footer-btn profile" onClick={() => navigate('/user-settings')} title={collapsed ? user?.display_name || user?.email : ""}>
-              <div className="sb-avatar-circle">
-                <User theme="outline" size={collapsed ? 14 : 13} />
+            <button
+              className="sb-footer-btn theme-toggle"
+              onClick={toggleTheme}
+              title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+              aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+            >
+              <div className="sb-theme-circle">
+                {theme === 'dark' ? <SunOne size={collapsed ? 15 : 14} /> : <Moon size={collapsed ? 15 : 14} />}
               </div>
             </button>
           </div>
@@ -701,7 +698,7 @@ const SIDEBAR_CSS = `
   color: var(--color-text);
 }
 
-.sb-avatar-circle {
+.sb-theme-circle {
   width: 26px;
   height: 26px;
   border-radius: 50%;

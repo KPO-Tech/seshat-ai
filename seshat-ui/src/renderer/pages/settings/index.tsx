@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import {
   Browser, Book, Brain, Flashlamp, Earth, Computer, Info,
-  Left, SunOne, Moon, Setting, User, Peoples, BuildingTwo, Workbench, CloudStorage,
+  Left, SunOne, Moon, Setting, User, Peoples, BuildingTwo, Workbench, LinkOne,
 } from '@icon-park/react'
 import { useUIStore } from '@/stores/ui'
 import { useAuthStore } from '@/stores/auth'
@@ -16,6 +16,7 @@ import { CapabilitiesView, CAPABILITIES_CSS } from './CapabilitiesViews'
 import { WebSearchView } from './WebSearchView'
 import { GeneralView } from './GeneralView'
 import { CloudAutomationView } from './CloudAutomationView'
+import { AccountView, ConnectionsView } from './AccountView'
 import {
   AdminUsersView,
   AdminGroupsView,
@@ -31,7 +32,10 @@ export function Settings() {
   const location = useLocation()
   const initialTab = (() => {
     const requested = new URLSearchParams(location.search).get('tab')
-    if (requested === 'general' || requested === 'memories' || requested === 'providers' || requested === 'knowledge' || requested === 'capabilities' || requested === 'remote' || requested === 'cloud-automation' || requested === 'system' || requested === 'about' || requested === 'admin-users' || requested === 'admin-groups' || requested === 'admin-organizations' || requested === 'admin-workspaces' || requested === 'admin-audit' || requested === 'admin-quotas') {
+    if (requested === 'cloud-automation' || requested === 'system') {
+      return 'runtime' as TabId
+    }
+    if (requested === 'general' || requested === 'account' || requested === 'connections' || requested === 'memories' || requested === 'providers' || requested === 'knowledge' || requested === 'capabilities' || requested === 'remote' || requested === 'runtime' || requested === 'about' || requested === 'admin-users' || requested === 'admin-groups' || requested === 'admin-organizations' || requested === 'admin-workspaces' || requested === 'admin-audit' || requested === 'admin-quotas') {
       return requested as TabId
     }
     return 'general' as TabId
@@ -43,11 +47,23 @@ export function Settings() {
 
   const isAdmin = roles.includes('admin')
 
+  // Admin tabs are hidden from the sidebar for non-admins, but that alone is
+  // cosmetic — activeTab can also come straight from the URL (?tab=admin-users),
+  // which would otherwise render the admin view (and fire its API calls) for
+  // anyone. Bounce back to General if a non-admin ever lands on one.
+  useEffect(() => {
+    if (!isAdmin && activeTab.startsWith('admin-')) {
+      setActiveTab('general')
+    }
+  }, [isAdmin, activeTab])
+
   const navGroups = [
     {
       title: 'PERSONAL',
       items: [
         { id: 'general' as TabId, label: 'General', icon: <Setting size={16} /> },
+        { id: 'account' as TabId, label: 'Account', icon: <User size={16} /> },
+        { id: 'connections' as TabId, label: 'Connections', icon: <LinkOne size={16} /> },
         { id: 'memories' as TabId, label: 'Memories', icon: <Brain size={16} /> },
       ],
     },
@@ -60,11 +76,10 @@ export function Settings() {
       ],
     },
     {
-      title: 'APPLICATION',
+      title: 'RUNTIME',
       items: [
         { id: 'remote' as TabId, label: 'Web Search', icon: <Earth size={16} /> },
-        { id: 'cloud-automation' as TabId, label: 'Cloud Automation', icon: <CloudStorage size={16} /> },
-        { id: 'system' as TabId, label: 'System', icon: <Computer size={16} /> },
+        { id: 'runtime' as TabId, label: 'Runtime', icon: <Computer size={16} /> },
       ],
     },
     ...(isAdmin ? [{
@@ -120,29 +135,34 @@ export function Settings() {
       <main className={`settings-content ${sidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="settings-content-inner">
           {activeTab === 'general' && <GeneralView />}
+          {activeTab === 'account' && <AccountView />}
+          {activeTab === 'connections' && <ConnectionsView />}
           {activeTab === 'providers' && <ProvidersView />}
           {activeTab === 'knowledge' && <KnowledgeView />}
           {activeTab === 'memories' && <MemoriesView />}
           {activeTab === 'capabilities' && <CapabilitiesView />}
           {activeTab === 'remote' && <WebSearchView />}
-          {activeTab === 'cloud-automation' && <CloudAutomationView />}
-          {activeTab === 'system' && <SystemView />}
+          {activeTab === 'runtime' && <RuntimeView />}
           {activeTab === 'about' && <AboutView />}
-          {activeTab === 'admin-users' && <AdminUsersView />}
-          {activeTab === 'admin-groups' && <AdminGroupsView />}
-          {activeTab === 'admin-organizations' && <AdminOrganizationsView />}
-          {activeTab === 'admin-workspaces' && <AdminWorkspacesView />}
-          {activeTab === 'admin-audit' && <AdminAuditView />}
-          {activeTab === 'admin-quotas' && <AdminQuotasView />}
+          {isAdmin && activeTab === 'admin-users' && <AdminUsersView />}
+          {isAdmin && activeTab === 'admin-groups' && <AdminGroupsView />}
+          {isAdmin && activeTab === 'admin-organizations' && <AdminOrganizationsView />}
+          {isAdmin && activeTab === 'admin-workspaces' && <AdminWorkspacesView />}
+          {isAdmin && activeTab === 'admin-audit' && <AdminAuditView />}
+          {isAdmin && activeTab === 'admin-quotas' && <AdminQuotasView />}
         </div>
       </main>
     </div>
   )
 }
 
-type SystemStatus = { mode: 'standalone' | 'connected'; server_url?: string; sandbox_confined?: boolean }
+type SystemStatus = {
+  mode: 'standalone' | 'connected'
+  server_url?: string
+  sandbox_confined?: boolean
+}
 
-function SystemView() {
+function RuntimeView() {
   const [status, setStatus] = useState<SystemStatus | null>(null)
 
   useEffect(() => {
@@ -153,8 +173,8 @@ function SystemView() {
     <div className="sv-view">
       <header className="sv-view-header">
         <div className="sv-header-info">
-          <h1>System</h1>
-          <p>Runtime and infrastructure settings.</p>
+          <h1>Runtime</h1>
+          <p>System health, local infrastructure, and device automation.</p>
         </div>
       </header>
       <div className="sv-grid">
@@ -226,6 +246,15 @@ function SystemView() {
             </div>
           </div>
         </div>
+      </div>
+      <div className="sv-section">
+        <div className="sv-section-header">
+          <h2>Cloud Automation</h2>
+          <p>
+            Scheduled jobs run through Seshat Server. This machine only executes jobs assigned to it.
+          </p>
+        </div>
+        <CloudAutomationView embedded />
       </div>
     </div>
   )

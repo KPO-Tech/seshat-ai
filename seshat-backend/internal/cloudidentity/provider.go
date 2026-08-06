@@ -256,6 +256,9 @@ func (p *Provider) UpdateUser(ctx context.Context, principal *auth.Principal, us
 	if params.Status != nil {
 		return nil, bkerr.Forbidden("disabling accounts is not supported in connected mode; ask your organization administrator to remove the account", nil)
 	}
+	if params.Role != nil {
+		return nil, bkerr.Forbidden("role changes are not supported here in connected mode; manage membership roles from the organization's control plane instead", nil)
+	}
 	user, err := p.client.UpdateUser(ctx, principal.AuthSession.ID, userID, nil, params.DisplayName)
 	if err != nil {
 		return nil, cloudhttp.Translate(err)

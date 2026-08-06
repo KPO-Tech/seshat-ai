@@ -275,6 +275,39 @@ func bindingMatchesPrincipal(binding sdb.PolicyBinding, roleCodes, groupIDs map[
 	}
 }
 
+// requirePermissionsWithinCallerScope ensures every code in `codes` is
+// already held by principal within organizationID (platform admins always
+// pass). Use this wherever an action GRANTS permissions to someone or
+// something else — assigning a role to a membership, defining what a policy
+// binding grants, defining a custom role's permission set — so a principal
+// can never hand out more than they themselves currently hold.
+//
+// Added 2026-08-06: none of role assignment, policy bindings, or custom role
+// definitions checked this before. Holding only members.manage (an "admin"
+// role permission, not "owner") was enough to assign the "owner" role —
+// including organization.delete — to any membership, including your own.
+// Holding only policies.manage or roles.manage was enough to grant, via a
+// policy binding or a custom role, any permission in the catalog regardless
+// of what the grantor actually held. This closes all three the same way.
+func requirePermissionsWithinCallerScope(tx *gorm.DB, principal *Principal, organizationID string, codes []string) error {
+	if principal == nil {
+		return ErrUnauthorized("authentication required")
+	}
+	if principal.User.IsAdmin {
+		return nil
+	}
+	callerPermissions, err := effectivePermissionsForPrincipal(tx, principal, organizationID)
+	if err != nil {
+		return err
+	}
+	for _, code := range codes {
+		if _, ok := callerPermissions[code]; !ok {
+			return ErrForbidden("cannot grant a permission you do not hold: " + code)
+		}
+	}
+	return nil
+}
+
 func requireOrganizationPermission(tx *gorm.DB, principal *Principal, organizationID string, permissionCodes ...string) error {
 	if principal == nil {
 		return ErrUnauthorized("authentication required")

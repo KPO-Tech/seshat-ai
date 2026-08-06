@@ -18,7 +18,7 @@ import { palette } from '@/theme/tokens'
 export function SkillReposPage() {
   const organizationId = useScopedOrganizationId()
   const [editing, setEditing] = useState<SkillRepo | 'new' | null>(null)
-  const { data, isLoading } = useSkillReposList(organizationId ?? undefined)
+  const { data, isLoading, error } = useSkillReposList(organizationId ?? undefined)
   const createRepo = useCreateSkillRepo()
   const updateRepo = useUpdateSkillRepo()
   const deleteRepo = useDeleteSkillRepo()
@@ -89,6 +89,7 @@ export function SkillReposPage() {
         columns={columns}
         dataSource={data ?? []}
         loading={isLoading}
+        queryError={error}
         pagination={false}
         locale={{
           emptyText: (

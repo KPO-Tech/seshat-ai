@@ -30,6 +30,8 @@ seshat SDK ships `pkg/companion` (added v1.2.1): a `Profile` (name, style, trait
 
 **Idea:** expose this as a user-facing personalization feature (a settings page: name your assistant, pick a style/traits, optional custom instructions) rather than leaving it dark. Low implementation cost (the SDK does the work) — mainly a settings UI + wiring `ClientConfig.Companion` from stored preferences into session creation, on both `seshat-backend` (desktop) and `seshat-server` (cloud chat) client-construction paths.
 
+**2026-08-05 addendum:** distinct from the CLI/TUI mascot idea in `helps/seshat-openclaude-audit-and-workflows.md` (that one's a terminal personality system for the open-source `seshat` engine). This is the `seshat-ui` desktop equivalent — same underlying SDK capability (`pkg/companion`), different surface. Floated as something that could eventually be positioned as its own named product in `strategy/4.product.md`, not just a settings toggle — explicitly future, not scoped, not to be added to the strategy docs yet.
+
 ---
 
 ## Doctor diagnostics — no desktop equivalent

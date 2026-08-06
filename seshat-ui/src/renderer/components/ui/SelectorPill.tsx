@@ -66,11 +66,11 @@ export const SELECTOR_PILL_CSS = `
 .selector-pill {
   background: var(--color-surface);
   border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
-  padding: 4px 8px;
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-4);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-3);
   cursor: pointer;
   transition: all 0.15s;
   white-space: nowrap;
@@ -108,14 +108,14 @@ export const SELECTOR_PILL_CSS = `
   top: calc(100% + 6px);
   left: 0;
   min-width: 180px;
-  padding: 6px;
-  border-radius: 12px;
+  padding: var(--space-3);
+  border-radius: var(--radius-xl);
   border: 1px solid var(--color-border-subtle);
-  background: rgba(44, 42, 49, 0.98);
+  background: var(--color-menu-bg);
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.22);
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
   z-index: 30;
 }
 
@@ -137,9 +137,9 @@ export const SELECTOR_PILL_CSS = `
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 7px 10px;
-  border-radius: 8px;
+  gap: var(--space-5);
+  padding: 7px var(--space-5);
+  border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
   text-align: left;
   cursor: pointer;
@@ -148,7 +148,7 @@ export const SELECTOR_PILL_CSS = `
 .selector-menu-copy {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .selector-menu-description {
@@ -163,7 +163,7 @@ export const SELECTOR_PILL_CSS = `
 }
 
 .selector-menu-item.active {
-  background: rgba(239, 124, 47, 0.12);
+  background: var(--color-primary-subtle);
   color: var(--color-accent);
 }
 

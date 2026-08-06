@@ -63,6 +63,6 @@ func (app *App) handleTerminalWS(w http.ResponseWriter, r *http.Request) {
 		if err := json.Unmarshal(data, &res); err != nil {
 			continue
 		}
-		app.terminalRelay.Resolve(res)
+		app.terminalRelay.Resolve(sessionID, res)
 	}
 }

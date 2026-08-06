@@ -8,13 +8,17 @@ import { useCurrentPrincipal } from '@/api/auth'
  * Guards the authenticated part of the app. The auth store only persists the
  * bearer token (localStorage) - user/org/membership data is refetched via
  * /auth/me on every fresh page load, since that's the one call that always
- * reflects the server's current view of the session.
+ * reflects the server's current view of the session. Stays enabled (not just
+ * `!user`) so useCurrentPrincipal's periodic/refocus refetch keeps running
+ * for the lifetime of the session, not just the first load - see its own
+ * comment for why that matters (a demoted/removed user's stale local role
+ * data otherwise never gets corrected without a hard refresh).
  */
 export function ProtectedRoute() {
   const token = useAuthStore((s) => s.token)
   const user = useAuthStore((s) => s.user)
   const setSession = useAuthStore((s) => s.setSession)
-  const { data, isLoading, isError } = useCurrentPrincipal(Boolean(token) && !user)
+  const { data, isLoading, isError } = useCurrentPrincipal(Boolean(token))
 
   useEffect(() => {
     if (data?.user && data.session?.token === undefined) {

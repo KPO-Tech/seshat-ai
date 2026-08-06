@@ -347,8 +347,13 @@ func (s *Service) CreateProvider(ctx context.Context, principal *Principal, para
 		if err := appendAuditEvent(tx, principal, record.OrganizationID, "provider.created", "provider", record.ID, map[string]string{"slug": record.Slug, "kind": record.Kind}); err != nil {
 			return err
 		}
+		// Unlike CreateApplication (server-generated secret, the caller's
+		// only chance to see it), the caller supplied this secret themselves
+		// — never echo it back, not even once. toProvider already masks it;
+		// previously this line overwrote that mask with the real plaintext,
+		// an actual bug silently papered over by a redundant re-mask at the
+		// API layer (removed 2026-08-06, see maskedStoredSecret's comment).
 		converted := toProvider(record)
-		converted.ClientSecret = config.ClientSecret
 		provider = &converted
 		return nil
 	})

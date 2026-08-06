@@ -54,7 +54,7 @@ func (app *App) routes() http.Handler {
 	mux.HandleFunc("GET /api/v1/invitations/lookup", app.handleInvitationLookup)
 	mux.Handle("GET /api/v1/invitations/{invitationID}", app.authMiddleware(http.HandlerFunc(app.handleInvitationByID)))
 	mux.Handle("POST /api/v1/invitations/{invitationID}/revoke", app.authMiddleware(http.HandlerFunc(app.handleInvitationRevoke)))
-	mux.Handle("POST /api/v1/invitations/accept", app.authMiddleware(http.HandlerFunc(app.handleInvitationAccept)))
+	mux.Handle("POST /api/v1/invitations/accept", app.authMiddleware(rateLimited(app.invitationAcceptLimiter, app.handleInvitationAccept)))
 	mux.Handle("GET /api/v1/groups", app.authMiddleware(http.HandlerFunc(app.handleGroups)))
 	mux.Handle("POST /api/v1/groups", app.authMiddleware(http.HandlerFunc(app.handleGroups)))
 	mux.Handle("GET /api/v1/groups/{groupID}", app.authMiddleware(http.HandlerFunc(app.handleGroupByID)))

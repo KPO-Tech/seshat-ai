@@ -129,6 +129,9 @@ func (s *Service) CreatePolicyBinding(ctx context.Context, principal *Principal,
 		if err := requireOrganizationPermission(tx, principal, organizationID, "policies.manage", "organization.manage"); err != nil {
 			return err
 		}
+		if err := requirePermissionsWithinCallerScope(tx, principal, organizationID, permissionCodes); err != nil {
+			return err
+		}
 		if err := validatePolicySubject(tx, organizationID, subjectType, subjectID); err != nil {
 			return err
 		}
@@ -192,6 +195,9 @@ func (s *Service) UpdatePolicyBinding(ctx context.Context, principal *Principal,
 			return err
 		}
 		if err := requireOrganizationPermission(tx, principal, record.OrganizationID, "policies.manage", "organization.manage"); err != nil {
+			return err
+		}
+		if err := requirePermissionsWithinCallerScope(tx, principal, record.OrganizationID, permissionCodes); err != nil {
 			return err
 		}
 		if err := validatePolicySubject(tx, record.OrganizationID, subjectType, subjectID); err != nil {

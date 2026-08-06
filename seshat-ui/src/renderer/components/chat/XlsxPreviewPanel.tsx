@@ -35,12 +35,9 @@ function cellText(cell: ExcelJS.Cell): string {
   return String(v)
 }
 
-// Renders a .xlsx workbook's real content directly in the browser (exceljs
-// parses the workbook client-side) as a scrollable HTML table with a sheet
-// tab strip, instead of routing through the backend's on-demand
-// LibreOffice-to-PDF conversion - same rationale as DocxPreviewPanel, and
-// arguably a better fit for a spreadsheet than a flattened, paginated PDF
-// page in the first place (scroll instead of page-by-page).
+// Renders a .xlsx workbook's real content directly in the browser. exceljs
+// parses the workbook client-side, then this panel exposes the sheets as
+// scrollable HTML tables.
 export function XlsxPreviewPanel({ fileId, filename }: Props) {
   const [sheets, setSheets] = useState<SheetData[] | null>(null)
   const [activeSheet, setActiveSheet] = useState(0)

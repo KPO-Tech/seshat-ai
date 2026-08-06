@@ -78,6 +78,9 @@ func (s *Service) CreateOrganizationMember(ctx context.Context, principal *Princ
 			return err
 		}
 		role = validatedRole
+		if err := requireGrantedRolePermissionsWithinCallerScope(tx, principal, organizationID, role); err != nil {
+			return err
+		}
 
 		if _, ok, ferr := findUserByEmail(tx, email); ferr != nil {
 			return ferr

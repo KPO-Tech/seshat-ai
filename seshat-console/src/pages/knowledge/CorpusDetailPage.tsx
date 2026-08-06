@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { Button, Card, Empty, message, Popconfirm, Space, Tag, Upload } from 'antd'
+import { Alert, Button, Card, Empty, message, Popconfirm, Space, Tag, Upload } from 'antd'
 import type { TableProps, UploadProps } from 'antd'
 import { ArrowLeftOutlined, DeleteOutlined, EditOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons'
 import {
@@ -35,9 +35,9 @@ export function CorpusDetailPage() {
   const { organizationId, corpusId } = useParams<{ organizationId: string; corpusId: string }>()
   const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
-  const { data: corpus } = useCorpus(corpusId)
-  const { data: files, isLoading: filesLoading } = useCorpusFiles(corpusId)
-  const { data: jobs } = useIngestionJobs(corpusId)
+  const { data: corpus, error: corpusError } = useCorpus(corpusId)
+  const { data: files, isLoading: filesLoading, error: filesError } = useCorpusFiles(corpusId)
+  const { data: jobs, error: jobsError } = useIngestionJobs(corpusId)
   const uploadFile = useUploadCorpusFile(corpusId ?? '')
   const detachFile = useDetachCorpusFile(corpusId ?? '')
   const retryJob = useRetryIngestionJob(corpusId ?? '')
@@ -59,6 +59,34 @@ export function CorpusDetailPage() {
   }, [canonicalOrganizationId, corpusDetailPath, corpusId, navigate, organizationId])
 
   if (!corpusId) return null
+
+  // A failed corpus fetch (403 on a corpus belonging to another org, 404, a
+  // transient 5xx) must never render as if the corpus just has no files/jobs
+  // yet — canonicalOrganizationId falls back to the URL's own org id when
+  // `corpus` is undefined, which used to let the page render past this point
+  // looking like an empty-but-otherwise-normal corpus. See the 2026-08-06
+  // audit: this was the illustrating example for the "failed fetch renders
+  // as empty" finding across the console.
+  if (corpusError) {
+    return (
+      <div>
+        <PageHeader title="Corpus" description="" />
+        <Alert
+          type="error"
+          showIcon
+          message="Couldn't load this corpus"
+          description={getErrorMessage(corpusError)}
+          action={
+            corporaPath ? (
+              <Button size="small" onClick={() => navigate(corporaPath)}>
+                Back to corpora
+              </Button>
+            ) : undefined
+          }
+        />
+      </div>
+    )
+  }
 
   const uploadProps: UploadProps = {
     multiple: true,
@@ -176,7 +204,7 @@ export function CorpusDetailPage() {
         }
       />
 
-      <Space direction="vertical" size={20} style={{ width: '100%' }}>
+      <Space orientation="vertical" size={20} style={{ width: '100%' }}>
         <Card title="Files" size="small">
           <ConsoleTable<CorpusFile>
             rowKey="id"
@@ -184,10 +212,15 @@ export function CorpusDetailPage() {
             columns={fileColumns}
             dataSource={files ?? []}
             loading={filesLoading}
+            queryError={filesError}
             pagination={false}
             locale={{ emptyText: <Empty description="No files uploaded yet" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
           />
         </Card>
+
+        {jobsError && (
+          <Alert type="error" showIcon message="Couldn't load ingestion jobs" description={getErrorMessage(jobsError)} />
+        )}
 
         {jobs && jobs.length > 0 && (
           <Card title="Ingestion jobs" size="small">

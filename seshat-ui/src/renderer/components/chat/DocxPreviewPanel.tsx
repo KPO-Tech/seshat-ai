@@ -13,15 +13,21 @@ function base64ToArrayBuffer(dataUrl: string): ArrayBuffer {
   return bytes.buffer
 }
 
-// Renders a .docx file's real content directly in the browser (docx-preview
-// parses the document XML client-side) instead of routing through the
-// backend's on-demand LibreOffice-to-PDF conversion (see PDFViewerPanel,
-// used for PPTX/HTML/TEX which don't have a good native-renderer option).
-// This is the difference between an instant preview and a multi-second
-// cold LibreOffice process spin-up - the same reason Claude/Gemini-style
-// document previews don't shell out to a real office suite either.
+const SCROLL_PADDING = 20 // keep in sync with .docx-preview-scroll's padding below
+
+// Renders a .docx file's real content directly in the browser. docx-preview
+// parses the document XML client-side, which keeps the default preview path
+// local to the renderer and avoids server-side document rendering.
 export function DocxPreviewPanel({ fileId, filename }: Props) {
+  const scrollRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  // The page's real width in CSS px, as docx-preview laid it out (its own
+  // line-breaking is computed against this at render time, which is why an
+  // earlier attempt to let the page reflow to the panel's width instead -
+  // ignoreWidth:true - produced pathological one-character-per-line text).
+  // Fitting the panel is done by scaling the correctly-laid-out page
+  // afterwards, the same idea as a document thumbnail.
+  const naturalWidthRef = useRef(0)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [errorMessage, setErrorMessage] = useState('')
 
@@ -29,6 +35,21 @@ export function DocxPreviewPanel({ fileId, filename }: Props) {
     let cancelled = false
     setStatus('loading')
     setErrorMessage('')
+    naturalWidthRef.current = 0
+
+    function applyScale() {
+      const scroll = scrollRef.current
+      const container = containerRef.current
+      const naturalWidth = naturalWidthRef.current
+      if (!scroll || !container || naturalWidth <= 0) return
+      const available = Math.max(1, scroll.clientWidth - SCROLL_PADDING * 2)
+      const scale = available / naturalWidth
+      // zoom (not transform) - it reflows, so the scroll container's
+      // scrollable area and the flex-centering below both correctly follow
+      // the scaled-down size instead of the page's real, unscaled one.
+      container.style.width = `${naturalWidth}px`
+      container.style.zoom = String(scale)
+    }
 
     async function open() {
       if (!containerRef.current) return
@@ -37,20 +58,19 @@ export function DocxPreviewPanel({ fileId, filename }: Props) {
         if (cancelled || !containerRef.current) return
         const buffer = base64ToArrayBuffer(dataUrl)
         containerRef.current.innerHTML = ''
+        containerRef.current.style.width = ''
+        containerRef.current.style.zoom = ''
         await renderAsync(buffer, containerRef.current, undefined, {
           inWrapper: true,
-          // false (the default) renders the page at its real fixed
-          // pixel width (a Letter/A4 page comes out wider than most right-
-          // panel widths), so the panel either clipped the text at its own
-          // edge or forced an uncomfortable horizontal scroll just to read
-          // a line. true lets the page flow to the container's own width
-          // instead - CSS below still caps it at a comfortable reading
-          // max-width so it doesn't go edge-to-edge on a wide panel.
-          ignoreWidth: true,
           ignoreHeight: true,
           className: 'docx-preview-doc',
         })
-        if (cancelled) return
+        if (cancelled || !containerRef.current) return
+        // scrollWidth captures the true rendered content extent even
+        // though the container's own CSS width is still "auto" here (no
+        // zoom applied yet).
+        naturalWidthRef.current = containerRef.current.scrollWidth
+        applyScale()
         setStatus('ready')
       } catch (err) {
         if (cancelled) return
@@ -61,15 +81,20 @@ export function DocxPreviewPanel({ fileId, filename }: Props) {
     }
 
     void open()
+
+    const resizeObserver = new ResizeObserver(() => applyScale())
+    if (scrollRef.current) resizeObserver.observe(scrollRef.current)
+
     return () => {
       cancelled = true
+      resizeObserver.disconnect()
     }
   }, [fileId])
 
   return (
     <div className="docx-preview-panel">
       <style>{DOCX_PREVIEW_CSS}</style>
-      <div className="docx-preview-scroll">
+      <div className="docx-preview-scroll" ref={scrollRef}>
         <div className="docx-preview-container" ref={containerRef} />
       </div>
       {status === 'loading' && <div className="docx-preview-status">Loading {filename}…</div>}
@@ -90,16 +115,16 @@ const DOCX_PREVIEW_CSS = `
 .docx-preview-scroll {
   height: 100%;
   overflow: auto;
-  background: #525659;
-  padding: 10px;
+  background: var(--color-surface);
+  padding: ${SCROLL_PADDING}px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
 }
 
 .docx-preview-container .docx-preview-doc {
   background: white;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
-  margin: 0 auto;
-  width: 100%;
-  box-sizing: border-box;
 }
 
 /* The app-wide ::selection (globals.css) is tuned for the dark theme -
@@ -117,12 +142,12 @@ const DOCX_PREVIEW_CSS = `
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--color-text-muted);
   font-size: 12px;
   text-align: center;
   padding: 0 20px;
   pointer-events: none;
-  background: #525659;
+  background: var(--color-surface);
 }
 
 .docx-preview-status--error {

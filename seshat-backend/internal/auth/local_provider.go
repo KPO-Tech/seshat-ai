@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
@@ -16,6 +17,14 @@ import (
 type LocalProvider struct {
 	identity *db.IdentityStore
 	config   ServiceConfig
+	// registerMu serializes Register's count-then-promote-to-admin sequence
+	// (see Register below) — without it, two concurrent first-ever
+	// registrations could both observe "I'm user #1" and both become admin,
+	// or under different timing both land as non-admin. A single seshat-backend
+	// process is exactly one local desktop API instance per AGENTS.md (never
+	// horizontally scaled/replicated), so an in-process mutex fully closes
+	// this rather than merely narrowing it.
+	registerMu sync.Mutex
 }
 
 func NewLocalProvider(identity *db.IdentityStore, cfg ServiceConfig) *LocalProvider {
@@ -100,6 +109,24 @@ func (p *LocalProvider) Register(ctx context.Context, email, password, displayNa
 		displayName = email
 	}
 
+	hash, err := db.HashPassword(password)
+	if err != nil {
+		return nil, bkerr.Internal("failed to hash password", err)
+	}
+
+	// Serializes the whole count-sensitive sequence below against any other
+	// concurrent Register call (see registerMu's doc comment): the
+	// signup-disabled/first-admin-setup bypass check, user creation, and the
+	// "am I user #1" promotion decision all read or depend on the total user
+	// count, so two racing registrations both landing inside this section at
+	// once — not just the final count-then-assign step — is exactly the
+	// unsynchronized-read/write pattern that could double- or zero-admin the
+	// instance. Taken only after hashing (CPU-bound, unrelated to the race)
+	// so unrelated concurrent signups after an admin already exists aren't
+	// serialized on bcrypt, just on these few fast DB calls.
+	p.registerMu.Lock()
+	defer p.registerMu.Unlock()
+
 	// If signup is disabled, still allow if no users exist (first admin setup).
 	if !p.config.EnableSignup {
 		count, err := p.identity.CountUsers(ctx)
@@ -109,11 +136,6 @@ func (p *LocalProvider) Register(ctx context.Context, email, password, displayNa
 		if count > 0 {
 			return nil, bkerr.Forbidden("signup is disabled", nil)
 		}
-	}
-
-	hash, err := db.HashPassword(password)
-	if err != nil {
-		return nil, bkerr.Internal("failed to hash password", err)
 	}
 
 	user, err := p.identity.CreateUser(ctx, db.CreateUserParams{
@@ -277,7 +299,21 @@ func (p *LocalProvider) UpdateUser(ctx context.Context, principal *Principal, us
 	if err != nil {
 		return nil, bkerr.InvalidInput("failed to update user", err)
 	}
+	if params.Role != nil {
+		if err := p.identity.ReplaceUserRoles(ctx, userID, *params.Role); err != nil {
+			return nil, bkerr.InvalidInput("failed to update role: "+err.Error(), err)
+		}
+	}
+	roles, err := p.identity.ListUserRoles(ctx, userID)
+	if err != nil {
+		return nil, bkerr.Internal("failed to load updated roles", err)
+	}
 	result := userFromDB(user)
+	roleNames := make([]string, 0, len(roles))
+	for _, role := range roles {
+		roleNames = append(roleNames, role.Name)
+	}
+	result.Roles = roleNames
 	return &result, nil
 }
 

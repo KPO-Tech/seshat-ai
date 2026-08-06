@@ -7,7 +7,6 @@ import {
   useCreateMCPServerConfig,
   useUpdateMCPServerConfig,
   useDeleteMCPServerConfig,
-  useResolvedMCPServerConfigs,
   type MCPServerConfig,
   type MCPServerConfigInput,
   type MCPServerConfigUpdateInput,
@@ -35,8 +34,7 @@ const SERVER_TYPE_OPTIONS = [
 export function MCPServersPage() {
   const organizationId = useScopedOrganizationId()
   const [editing, setEditing] = useState<MCPServerConfig | 'new' | null>(null)
-  const { data, isLoading } = useMCPServerConfigsList(organizationId ?? undefined)
-  const resolved = useResolvedMCPServerConfigs(organizationId ?? undefined)
+  const { data, isLoading, error } = useMCPServerConfigsList(organizationId ?? undefined)
   const createConfig = useCreateMCPServerConfig()
   const updateConfig = useUpdateMCPServerConfig()
   const deleteConfig = useDeleteMCPServerConfig()
@@ -118,14 +116,15 @@ export function MCPServersPage() {
         type="info"
         style={{ marginBottom: 20 }}
         title="Connected backends resolve these configs locally"
-        description={`Resolved entries available to connected devices: ${resolved.data?.length ?? 0}. stdio servers still require explicit user approval on the desktop before they can run locally.`}
+        description={`Entries available to connected devices: ${data?.length ?? 0}. stdio servers still require explicit user approval on the desktop before they can run locally.`}
       />
 
       <ConsoleTable<MCPServerConfig>
         rowKey="id"
         columns={columns}
         dataSource={data ?? []}
-        loading={isLoading || resolved.isLoading}
+        loading={isLoading}
+        queryError={error}
         pagination={false}
         locale={{
           emptyText: (

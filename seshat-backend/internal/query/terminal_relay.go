@@ -38,20 +38,28 @@ type relayConn struct {
 	writeMu sync.Mutex
 }
 
+// pendingCommand tracks which session a relayed command belongs to, so
+// Resolve can refuse a result delivered over a different session's
+// connection — see the comment on Resolve for why this matters.
+type pendingCommand struct {
+	sessionID string
+	ch        chan TerminalResult
+}
+
 // TerminalRelay bridges the engine's bash-tool execution to Electron's real,
 // visible PTY over a per-session WebSocket. Mirrors the mutex+map convention
 // established by PermissionBroker/PromptBroker in broker.go.
 type TerminalRelay struct {
 	mu      sync.Mutex
-	conns   map[string]*relayConn          // sessionID -> Electron's relay connection
-	pending map[string]chan TerminalResult // command ID -> caller awaiting the result
+	conns   map[string]*relayConn     // sessionID -> Electron's relay connection
+	pending map[string]pendingCommand // command ID -> session + caller awaiting the result
 	nextID  uint64
 }
 
 func NewTerminalRelay() *TerminalRelay {
 	return &TerminalRelay{
 		conns:   make(map[string]*relayConn),
-		pending: make(map[string]chan TerminalResult),
+		pending: make(map[string]pendingCommand),
 	}
 }
 
@@ -100,7 +108,7 @@ func (r *TerminalRelay) Run(ctx context.Context, sessionID, command, cwd string)
 	r.nextID++
 	id := fmt.Sprintf("%s-%d", sessionID, r.nextID)
 	ch := make(chan TerminalResult, 1)
-	r.pending[id] = ch
+	r.pending[id] = pendingCommand{sessionID: sessionID, ch: ch}
 	r.mu.Unlock()
 
 	defer func() {
@@ -130,13 +138,21 @@ func (r *TerminalRelay) Run(ctx context.Context, sessionID, command, cwd string)
 }
 
 // Resolve delivers Electron's completion payload to whichever Run call is
-// awaiting it. Called from the WS handler's per-connection read loop.
-func (r *TerminalRelay) Resolve(res TerminalResult) {
+// awaiting it. Called from the WS handler's per-connection read loop, which
+// passes the sessionID that connection was registered under (handleTerminalWS
+// already verified that session belongs to the caller at upgrade time).
+//
+// A result is only delivered if it belongs to that same session: command IDs
+// are generated from a counter shared across all sessions, so without this
+// check a connection for session A could resolve a command pending for
+// session B (by guessing/observing its sequential ID) and inject an
+// arbitrary stdout/stderr/exit code into another user's bash execution.
+func (r *TerminalRelay) Resolve(sessionID string, res TerminalResult) {
 	r.mu.Lock()
-	ch, ok := r.pending[res.ID]
+	pc, ok := r.pending[res.ID]
 	r.mu.Unlock()
-	if !ok {
+	if !ok || pc.sessionID != sessionID {
 		return
 	}
-	ch <- res
+	pc.ch <- res
 }

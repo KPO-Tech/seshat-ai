@@ -9,7 +9,7 @@ import (
 )
 
 // Fixtures here are copied from the seshat SDK's own officetext/pdftext
-// testdata (real LibreOffice-produced files, already validated there) - kept
+// testdata (real office/PDF parser fixtures, already validated there) - kept
 // self-contained rather than referenced across repos so these tests still
 // work in CI, which builds against the published SDK module, not a sibling
 // checkout.

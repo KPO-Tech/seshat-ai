@@ -14,7 +14,7 @@ export function AuditEventsPage() { const { organizationId } = useParams<{ organ
   const [page, setPage] = useState(1)
   const [action, setAction] = useState('')
 
-  const { data, isLoading, isFetching } = useAuditEventsList(
+  const { data, isLoading, isFetching, error } = useAuditEventsList(
     { organizationId: organizationId ?? undefined, action: action || undefined },
     { sort: 'created_at', order: 'desc', limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE },
   )
@@ -66,6 +66,7 @@ export function AuditEventsPage() { const { organizationId } = useParams<{ organ
         columns={columns}
         dataSource={data?.audit_events ?? []}
         loading={isLoading || isFetching}
+        queryError={error}
         locale={{ emptyText: (
             <Empty
               image={<FileSearchOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}

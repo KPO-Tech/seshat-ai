@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "api:generate": "openapi-typescript ../seshat-server/openapi.yaml -o src/api/schema.d.ts"
+    "api:generate": "openapi-typescript ../seshat-server/openapi.yaml -o src/api/schema.d.ts",
+    "api:check": "npm run api:generate && git diff --exit-code -- src/api/schema.d.ts"
   },
   "dependencies": {
     "@ant-design/icons": "^6.3.2",

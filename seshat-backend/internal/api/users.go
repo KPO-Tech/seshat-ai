@@ -399,8 +399,26 @@ func (app *App) handleUserByID(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Use legacy resource update for core fields
-		app.handleUserByIDLegacy(w, r)
+		user, err := app.backend.Auth.UpdateUser(r.Context(), principal, userID, backendauth.UpdateUserParams{
+			DisplayName: req.DisplayName,
+			Password:    req.Password,
+			Status:      req.Status,
+			Role:        req.Role,
+		})
+		if err != nil {
+			writeBackendError(w, err)
+			return
+		}
+		app.backend.Audit.Log(r.Context(), backendaudit.LogParams{
+			ActorUserID:  principal.User.ID,
+			Action:       backendaudit.ActionAdminUserUpdate,
+			ResourceType: "user",
+			ResourceID:   userID,
+			IPAddress:    app.clientIP(r),
+			Status:       backendaudit.StatusSuccess,
+			Metadata:     map[string]any{"target_user_id": userID},
+		})
+		writeJSON(w, http.StatusOK, toAuthUserResponse(*user))
 
 	case http.MethodDelete:
 		if !isAdmin {
@@ -418,7 +436,7 @@ func (app *App) handleUserByID(w http.ResponseWriter, r *http.Request) {
 			Status:      backendaudit.StatusSuccess,
 			Metadata:    map[string]any{"target_user_id": userID},
 		})
-		app.handleUserByIDLegacy(w, r)
+		app.handleUserDelete(w, r)
 
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)

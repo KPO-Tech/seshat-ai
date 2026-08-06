@@ -39,13 +39,17 @@ function isPDFFile(file: File): boolean {
   return file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
 }
 
-// DOCX/PPTX/XLSX may carry a real embedded thumbnail (docProps/thumbnail.*,
-// see lib/officeThumbnail.ts) - extracted straight from the raw File object
+// DOCX/XLSX may carry a real embedded thumbnail (docProps/thumbnail.*, see
+// lib/officeThumbnail.ts) - extracted straight from the raw File object
 // client-side, same as PDF page previews below, so the attach card doesn't
 // have to wait on the upload/server round trip to show something better
-// than the tiny raw-text fallback.
+// than the tiny raw-text fallback. PPTX is deliberately excluded: a real
+// slide deck's embedded media makes JSZip's synchronous decompression slow
+// enough to freeze the UI for the better part of a minute, for a thumbnail
+// that's usually missing anyway on agent-generated files - the icon
+// fallback in ChatInput/MessageItem is instant and always available.
 function isOfficeZipFile(file: File): boolean {
-  return /\.(docx|pptx|xlsx)$/i.test(file.name)
+  return /\.(docx|xlsx)$/i.test(file.name)
 }
 
 function sentAttachment(file: ChatAttachment) {
@@ -275,6 +279,7 @@ export function Conversation() {
   const scrollRef = useRef<HTMLDivElement>(null)
   const { sendMessage, stopMessage, isStreaming } = useChat(id || '')
   const isAtBottomRef = useRef(true)
+  const scrollRafRef = useRef<number | null>(null)
 
   function toggleMonitor() {
     if (monitorOpen) {
@@ -617,10 +622,40 @@ export function Conversation() {
   }, [])
 
   // Auto-scroll to bottom on new messages or streaming tokens, but only if already near bottom.
+  //
+  // Root cause of the "violent"/jerky auto-scroll (2026-08-06 audit): `streaming`
+  // gets a new array reference on every single SSE delta (handleStreamChunk in
+  // useChat.ts calls store.setStreaming synchronously per token, not batched
+  // the way the RAF-throttled message-content sync is) — so during a dense
+  // response this effect could call scrollToIndex dozens of times per second,
+  // once per token, instead of once per painted frame. Throttling the call
+  // itself to at most one per animation frame (mirroring the scheduleSync
+  // pattern in useChat.ts) fixes the symptom without needing to touch the
+  // streaming state update path. Deliberately no cleanup tied to
+  // [visibleMessages.length, streaming]: a cleanup there would cancel the
+  // pending RAF on every token before it ever gets a chance to fire, starving
+  // the scroll entirely under fast streaming — see the separate unmount-only
+  // effect below instead.
   useEffect(() => {
     if (!isAtBottomRef.current || visibleMessages.length === 0) return
-    rowVirtualizer.scrollToIndex(visibleMessages.length - 1, { align: 'end', behavior: 'auto' })
+    if (scrollRafRef.current !== null) return
+    const targetIndex = visibleMessages.length - 1
+    scrollRafRef.current = requestAnimationFrame(() => {
+      scrollRafRef.current = null
+      if (isAtBottomRef.current) {
+        rowVirtualizer.scrollToIndex(targetIndex, { align: 'end', behavior: 'auto' })
+      }
+    })
   }, [visibleMessages.length, streaming]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    return () => {
+      if (scrollRafRef.current !== null) {
+        cancelAnimationFrame(scrollRafRef.current)
+        scrollRafRef.current = null
+      }
+    }
+  }, [])
 
   if (!session) {
     return (

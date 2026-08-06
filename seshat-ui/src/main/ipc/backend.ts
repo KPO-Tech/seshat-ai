@@ -3,6 +3,7 @@ import type { IpcMain, IpcMainInvokeEvent } from 'electron'
 import { desktopBridgeProof, ensureDesktopBridgeSecret, resolveBackendOrigin } from '../runtime'
 import { deleteSecret, getSecret, setSecret } from './secure-store'
 import { assertTrustedSender } from './trusted-sender'
+import { assertUploadPayloadShape, normalizeAPIPath } from './validation'
 
 type AuthUser = {
   id: string
@@ -47,18 +48,8 @@ const activeStreams = new Map<string, { controller: AbortController; webContents
 let cachedSession: StoredSession | null = null
 let backendTrustPromise: Promise<void> | null = null
 
-function normalizePath(path: string) {
-  if (!path.startsWith('/')) {
-    throw new Error('API path must start with /')
-  }
-  if (path.startsWith('//')) {
-    throw new Error('API path must not be absolute')
-  }
-  return path
-}
-
 function buildBackendURL(path: string) {
-  const normalized = normalizePath(path)
+  const normalized = normalizeAPIPath(path)
   return `${resolveBackendOrigin()}/api/v1${normalized}`
 }
 
@@ -204,6 +195,7 @@ async function performJSONRequest(path: string, method: string, body: unknown, t
 
 async function performUploadRequest(path: string, payload: UploadPayload, token?: string) {
   await ensureBackendTrusted()
+  assertUploadPayloadShape(payload)
   const form = new FormData()
   for (const field of payload.fields ?? []) {
     form.append(field.name, field.value)
@@ -254,7 +246,7 @@ async function startStream(
   event: IpcMainInvokeEvent,
   payload: StreamStartPayload,
   token?: string,
-): Promise<{ streamId: string } | { error: string; retryable: boolean }> {
+): Promise<{ streamId: string } | { error: string; retryable: boolean; unauthorized?: boolean }> {
   const controller = new AbortController()
   const headers: Record<string, string> = {
     Accept: 'text/event-stream',
@@ -288,6 +280,13 @@ async function startStream(
     const parsed = await parseResponse(res)
     if (res.status === 401) {
       await clearSession()
+      // Reported as a value, not a throw, specifically for 401: the renderer
+      // needs to see this one (to also clear useAuthStore, which clearSession
+      // above doesn't touch — that's main-process/OS-keychain state only) —
+      // an ipcMain.handle throw only carries a message string across, losing
+      // any way to distinguish "unauthorized" from any other stream-start
+      // failure. Same reasoning as retryable network errors above.
+      return { error: extractErrorMessage(parsed), retryable: false, unauthorized: true }
     }
     throw new Error(extractErrorMessage(parsed))
   }
@@ -375,13 +374,6 @@ async function startStream(
 // the renderer IPC bridge) - reuses the same stored session/trust handshake
 // as every renderer-originated call. Used by whisper-manager.ts to report
 // the local whisper-server's status to seshat-backend once it's spawned.
-// Used by terminal-relay.ts to authenticate the outbound terminal WebSocket
-// with the same session token every other backend call uses.
-export async function getCurrentAuthToken(): Promise<string | undefined> {
-  const session = await loadSession()
-  return session?.token
-}
-
 export async function callBackendAsCurrentUser(path: string, method: string, body?: unknown) {
   const session = await loadSession()
   const payload = await performJSONRequest(path, method, body, session?.token)

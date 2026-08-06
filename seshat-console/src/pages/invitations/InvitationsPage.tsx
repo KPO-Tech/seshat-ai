@@ -27,7 +27,7 @@ export function InvitationsPage() { const organizationId = useScopedOrganization
   const [status, setStatus] = useState<'all' | InvitationStatus>('all')
   const [creating, setCreating] = useState(false)
 
-  const { data, isLoading, isFetching } = useInvitationsList(
+  const { data, isLoading, isFetching, error } = useInvitationsList(
     organizationId ?? undefined,
     status === 'all' ? undefined : status,
     { sort: 'created_at', order: 'desc', limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE },
@@ -105,6 +105,7 @@ export function InvitationsPage() { const organizationId = useScopedOrganization
             columns={columns}
             dataSource={data?.invitations ?? []}
             loading={isLoading || isFetching}
+            queryError={error}
             locale={{ emptyText: (
                 <Empty
                   image={<MailOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}

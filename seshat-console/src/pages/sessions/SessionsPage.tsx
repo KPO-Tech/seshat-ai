@@ -12,7 +12,7 @@ const PAGE_SIZE = 20
 
 export function SessionsPage() { const [page, setPage] = useState(1)
 
-  const { data, isLoading, isFetching } = useSessionsList(undefined, { sort: 'created_at',
+  const { data, isLoading, isFetching, error } = useSessionsList(undefined, { sort: 'created_at',
     order: 'desc',
     limit: PAGE_SIZE,
     offset: (page - 1) * PAGE_SIZE, })
@@ -56,6 +56,7 @@ export function SessionsPage() { const [page, setPage] = useState(1)
         columns={columns}
         dataSource={data?.sessions ?? []}
         loading={isLoading || isFetching}
+        queryError={error}
         locale={{ emptyText: (
             <Empty
               image={<KeyOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}

@@ -2,6 +2,8 @@ package iam
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -1190,18 +1192,36 @@ func emailDomain(email string) string {
 	return domain
 }
 
+// maskedStoredSecret is the single place a client secret's stored (encrypted)
+// value gets turned into what List/Get/Update responses actually return.
+// Only the create-response path returns the real value once, in full (see
+// e.g. CreateApplication) — everything else goes through here.
+//
+// 2026-08-06: previously showed the decrypted secret's real first 6
+// characters in cleartext (secret[:6] + "********"). That's a genuine
+// plaintext leak to anyone with read access, not just an obfuscated display —
+// each read narrows the real secret's effective entropy, and a masked value
+// is exactly the kind of thing an attacker with partial/leaked-elsewhere
+// candidates would use to confirm a match. Replaced with a truncated SHA-256
+// fingerprint of the decrypted value: still lets an operator visually tell
+// two different configured secrets apart (or notice an unchanged one after
+// an "update"), but a one-way hash can't be reversed back into secret bytes
+// the way a literal prefix can.
+//
+// This also used to be duplicated near-verbatim in api/helpers.go
+// (redactSecret), applied a second time on top of this function's own
+// already-masked output by six API handlers — harmless only by coincidence
+// (both used prefixLen=6). Removed there; this is now the only masking path.
 func maskedStoredSecret(secret string) string {
-	const prefixLen = 6
 	if secret == "" {
 		return ""
 	}
 	if plaintext, err := sdb.DecryptSecret(secret); err == nil {
 		secret = plaintext
 	}
-	if len(secret) <= prefixLen {
-		return strings.Repeat("*", len(secret))
-	}
-	return secret[:prefixLen] + strings.Repeat("*", 8)
+	sum := sha256.Sum256([]byte(secret))
+	fingerprint := hex.EncodeToString(sum[:])[:8]
+	return fingerprint + strings.Repeat("*", 8)
 }
 
 func newID(prefix string) (string, error) { return sdb.NewID(prefix) }

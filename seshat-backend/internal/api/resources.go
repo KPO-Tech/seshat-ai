@@ -26,12 +26,6 @@ type createWorkspaceRequest struct {
 	Slug           string `json:"slug"`
 }
 
-type updateUserRequest struct {
-	DisplayName *string `json:"display_name,omitempty"`
-	Password    *string `json:"password,omitempty"`
-	Status      *string `json:"status,omitempty"`
-}
-
 type updateOrganizationRequest struct {
 	Name   *string `json:"name,omitempty"`
 	Slug   *string `json:"slug,omitempty"`
@@ -77,45 +71,28 @@ func (app *App) handleUsersLegacy(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (app *App) handleUserByIDLegacy(w http.ResponseWriter, r *http.Request) {
+// handleUserDelete handles the DELETE case of /api/v1/users/{id}. GET and PUT
+// are handled directly by handleUserByID in users.go — this used to be a
+// shared GET/PUT/DELETE handler ("legacy"), but the PUT branch double-decoded
+// an already-consumed request body (handleUserByID decoded it first), which
+// made every admin user update fail with a 400. Trimmed to the one method
+// that's actually still reachable through routing.
+func (app *App) handleUserDelete(w http.ResponseWriter, r *http.Request) {
 	userID := strings.TrimPrefix(r.URL.Path, "/users/")
 	if userID == "" {
 		writeJSONError(w, http.StatusBadRequest, "user id is required")
 		return
 	}
 	principal, _ := authPrincipalFromContext(r.Context())
-	switch r.Method {
-	case http.MethodGet:
-		user, err := app.backend.Auth.GetUser(r.Context(), principal, userID)
-		if err != nil {
-			writeBackendError(w, err)
-			return
-		}
-		writeJSON(w, http.StatusOK, toAuthUserResponse(*user))
-	case http.MethodPut:
-		var req updateUserRequest
-		if !decodeJSONBody(w, r, &req) {
-			return
-		}
-		user, err := app.backend.Auth.UpdateUser(r.Context(), principal, userID, backendauth.UpdateUserParams{
-			DisplayName: req.DisplayName,
-			Password:    req.Password,
-			Status:      req.Status,
-		})
-		if err != nil {
-			writeBackendError(w, err)
-			return
-		}
-		writeJSON(w, http.StatusOK, toAuthUserResponse(*user))
-	case http.MethodDelete:
-		if err := app.backend.Auth.DeleteUser(r.Context(), principal, userID); err != nil {
-			writeBackendError(w, err)
-			return
-		}
-		writeJSON(w, http.StatusOK, map[string]any{"status": "deleted"})
-	default:
+	if r.Method != http.MethodDelete {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
 	}
+	if err := app.backend.Auth.DeleteUser(r.Context(), principal, userID); err != nil {
+		writeBackendError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"status": "deleted"})
 }
 
 func (app *App) handleOrganizations(w http.ResponseWriter, r *http.Request) {

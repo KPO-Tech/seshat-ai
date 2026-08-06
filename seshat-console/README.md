@@ -32,6 +32,13 @@ npm run api:generate
 
 This regenerates `src/api/schema.d.ts`. Do not hand-edit that file.
 
+To verify that the generated types are up to date without keeping the generated
+diff:
+
+```bash
+npm run api:check
+```
+
 ## Auth
 
 Bearer token only (no cookies) — matches `seshat-server`'s auth model. The token is stored in `localStorage` (see `src/store/auth.ts`) and attached to every request by `src/api/client.ts`. A 401 response clears the local session and the app falls back to the login screen.

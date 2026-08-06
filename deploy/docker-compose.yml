@@ -42,6 +42,7 @@ services:
   # host port are two different things; only the latter is reachable via
   # localhost from outside Docker.
   docling:
+    profiles: ["docs", "full"]
     image: quay.io/docling-project/docling-serve-cpu:latest
     restart: unless-stopped
     ports:
@@ -64,12 +65,13 @@ services:
   # Comment this service and minio-createbucket out if you don't want it
   # running at all (e.g. no S3 storage testing planned).
   minio:
+    profiles: ["s3", "full"]
     image: minio/minio:latest
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER in .env, or comment the minio/minio-createbucket services out if you don't need S3 storage testing}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env, or comment the minio/minio-createbucket services out if you don't need S3 storage testing}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-seshat}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-changeme}
     volumes:
       - minio-data:/data
     ports:
@@ -84,13 +86,14 @@ services:
   # One-shot: creates the bucket seshat-server writes corpus files into.
   # Idempotent (mc mb --ignore-existing) so re-running compose is harmless.
   minio-createbucket:
+    profiles: ["s3", "full"]
     image: minio/mc:latest
     depends_on:
       minio:
         condition: service_healthy
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER in .env, or comment the minio/minio-createbucket services out if you don't need S3 storage testing}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env, or comment the minio/minio-createbucket services out if you don't need S3 storage testing}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-seshat}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-changeme}
     entrypoint: >
       /bin/sh -c "
       mc alias set local http://minio:9000 \"$$MINIO_ROOT_USER\" \"$$MINIO_ROOT_PASSWORD\" &&
@@ -119,9 +122,7 @@ services:
       postgres:
         condition: service_healthy
       mailpit:
-        condition: service_healthy
-      docling:
-        condition: service_healthy
+        condition: service_started
     environment:
       SESHAT_SERVER_PORT: "8081"
       SESHAT_SERVER_DB_DRIVER: postgres
@@ -136,11 +137,10 @@ services:
       # nginx reverse proxy (same-origin), not a cross-origin browser call —
       # only needed if something else calls the API directly from a browser.
       SESHAT_SERVER_CORS_ALLOWED_ORIGINS: ${SESHAT_SERVER_CORS_ALLOWED_ORIGINS:-}
-      # Points at the docling service above by its compose service name
-      # (container-to-container, over the internal Docker network - not the
-      # host-published ${DOCLING_PORT} above, which is for reaching it from
-      # outside Docker instead, e.g. the desktop app).
-      SESHAT_SERVER_DOCLING_URL: ${SESHAT_SERVER_DOCLING_URL:-http://docling:5001}
+      # Empty by default so the core stack starts quickly. Use
+      # `make deploy-up-docs` / `make deploy-up-full`, or set this explicitly
+      # in deploy/.env, to point at the optional docling service.
+      SESHAT_SERVER_DOCLING_URL: ${DEPLOY_DOCLING_URL:-}
       # Corpus file storage. Empty/unset SESHAT_SERVER_STORAGE_PROVIDER
       # defaults to local disk (today's behavior, unchanged) — set it to
       # "s3" in .env to point at the minio service above instead.
@@ -192,6 +192,7 @@ services:
   # Self-hosted meta-search instance for testing the SearXNG web-search
   # provider end-to-end from the control-plane stack.
   searxng-redis:
+    profiles: ["search", "full"]
     image: valkey/valkey:8-alpine
     command: valkey-server --save 30 1 --loglevel warning
     restart: unless-stopped
@@ -203,6 +204,7 @@ services:
   # file. Idempotent (the grep guards the sed) so re-running compose is
   # harmless once the key's been rotated the first time.
   searxng-secret-key:
+    profiles: ["search", "full"]
     image: alpine:3.20
     volumes:
       - ./searxng:/etc/searxng:rw
@@ -227,6 +229,7 @@ services:
   # auth_username/auth_password pair for exactly this case - see
   # WebSearchSettingsPage.tsx's SearXNG config drawer.
   searxng:
+    profiles: ["search", "full"]
     image: docker.io/searxng/searxng:latest
     restart: unless-stopped
     depends_on:
