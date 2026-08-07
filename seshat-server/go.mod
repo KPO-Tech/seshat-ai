@@ -3,7 +3,7 @@ module github.com/EngineerProjects/seshat-ai/seshat-server
 go 1.26.5
 
 require (
-	github.com/KPO-Tech/seshat v1.2.4
+	github.com/KPO-Tech/seshat v1.2.5
 	github.com/glebarez/sqlite v1.11.0
 	golang.org/x/crypto v0.54.0
 	golang.org/x/time v0.15.0

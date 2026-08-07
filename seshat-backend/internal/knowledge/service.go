@@ -16,6 +16,7 @@ import (
 	"github.com/KPO-Tech/seshat/pkg/docling"
 	"github.com/KPO-Tech/seshat/pkg/rag"
 	"github.com/KPO-Tech/seshat/pkg/storage"
+	"github.com/KPO-Tech/seshat/pkg/textquality"
 )
 
 type Service struct {
@@ -58,6 +59,17 @@ const (
 	defaultIngestionMaxAttempts = 3
 	defaultIngestionRetryDelay  = 2 * time.Second
 	defaultStaleJobTimeout      = 10 * time.Minute
+
+	// defaultHybridSearchWeight blends keyword (BM25/ts_rank) scoring into
+	// vector search results - pure vector (0) means a chunk that never
+	// literally mentions the query's own terms can still outrank one that
+	// does, if it's merely topically similar. 0.3 keeps vector similarity
+	// dominant while still rewarding literal term matches. Only the SQLite
+	// and pgvector vector backends run real BM25/ts_rank for this (see
+	// vector.Query.HybridWeight's doc); others fall back to a lightweight
+	// keyword-overlap approximation - still strictly better than ignoring
+	// keyword signal entirely.
+	defaultHybridSearchWeight = 0.3
 )
 
 // ─── Corpus CRUD ──────────────────────────────────────────────────────────────
@@ -436,9 +448,10 @@ func (s *Service) Search(ctx context.Context, principal *backendauth.Principal, 
 		topK = 5
 	}
 	resp, err := s.rag.Search(ctx, rag.SearchRequest{
-		CorpusID: params.CorpusID,
-		Query:    params.Query,
-		TopK:     topK,
+		CorpusID:     params.CorpusID,
+		Query:        params.Query,
+		TopK:         topK,
+		HybridWeight: defaultHybridSearchWeight,
 	})
 	if err != nil {
 		return nil, bkerr.Internal("search corpus: "+err.Error(), err)
@@ -599,12 +612,16 @@ func (s *Service) extractTextWithDocling(ctx context.Context, data []byte, conte
 			doclingClient = s.resolveDoclingClient(ctx)
 		}
 		if doclingClient != nil && doclingClient.IsAvailable(ctx) {
-			if conversion, err := doclingClient.ConvertBytes(ctx, data, filename); err == nil && strings.TrimSpace(conversion.Markdown) != "" {
+			if conversion, err := doclingClient.ConvertBytes(ctx, data, filename); err == nil &&
+				strings.TrimSpace(conversion.Markdown) != "" && !textquality.IsGarbledText(conversion.Markdown) {
 				return conversion.Markdown
 			}
 		}
-		// Docling unavailable or produced nothing — fall through to
-		// plain-text extraction as a last resort.
+		// Docling unavailable, produced nothing, or produced text that
+		// looks like broken extraction (see textquality.IsGarbledText) —
+		// fall through to plain-text extraction as a last resort, which
+		// for a binary format will itself correctly reject the raw bytes
+		// and fail the ingestion job rather than index garbage.
 	}
 	return extractText(data, contentType, filename)
 }

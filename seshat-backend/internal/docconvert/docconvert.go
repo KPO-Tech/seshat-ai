@@ -22,6 +22,7 @@ import (
 	"github.com/KPO-Tech/seshat/pkg/docling"
 	"github.com/KPO-Tech/seshat/pkg/officetext"
 	"github.com/KPO-Tech/seshat/pkg/pdftext"
+	"github.com/KPO-Tech/seshat/pkg/textquality"
 )
 
 // NativeExtensions lists formats converted locally, no docling-serve needed.
@@ -87,7 +88,7 @@ func Convert(ctx context.Context, filePath string, doclingClient *docling.Client
 
 	if NativeExtensions[ext] {
 		if data, err := os.ReadFile(filePath); err == nil {
-			if md, ok, sparse, extractErr := officetext.Extract(filePath, data); ok && extractErr == nil && !sparse {
+			if md, ok, sparse, extractErr := officetext.Extract(filePath, data); ok && extractErr == nil && !sparse && !textquality.IsGarbledText(md) {
 				return Result{Markdown: md, Source: SourceNative}, true, nil
 			}
 		}
@@ -117,6 +118,13 @@ func Convert(ctx context.Context, filePath string, doclingClient *docling.Client
 	if strings.TrimSpace(conversion.Markdown) == "" {
 		return Result{}, false, nil
 	}
+	// Rare, but a real failure mode worth guarding: docling itself
+	// producing garbled output (e.g. a broken embedded font it couldn't
+	// OCR around). Treat it the same as empty - "nothing usable came out
+	// of this" - rather than silently returning bad text as if it succeeded.
+	if textquality.IsGarbledText(conversion.Markdown) {
+		return Result{}, false, nil
+	}
 	return Result{Markdown: conversion.Markdown, Images: conversion.Images, Source: SourceDocling}, true, nil
 }
 
@@ -127,7 +135,7 @@ func ConvertBytes(ctx context.Context, data []byte, filename string, doclingClie
 	ext := strings.ToLower(filepath.Ext(filename))
 
 	if NativeExtensions[ext] {
-		if md, ok, sparse, extractErr := officetext.Extract(filename, data); ok && extractErr == nil && !sparse {
+		if md, ok, sparse, extractErr := officetext.Extract(filename, data); ok && extractErr == nil && !sparse && !textquality.IsGarbledText(md) {
 			return Result{Markdown: md, Source: SourceNative}, true, nil
 		}
 	}
@@ -151,6 +159,13 @@ func ConvertBytes(ctx context.Context, data []byte, filename string, doclingClie
 	if strings.TrimSpace(conversion.Markdown) == "" {
 		return Result{}, false, nil
 	}
+	// Rare, but a real failure mode worth guarding: docling itself
+	// producing garbled output (e.g. a broken embedded font it couldn't
+	// OCR around). Treat it the same as empty - "nothing usable came out
+	// of this" - rather than silently returning bad text as if it succeeded.
+	if textquality.IsGarbledText(conversion.Markdown) {
+		return Result{}, false, nil
+	}
 	return Result{Markdown: conversion.Markdown, Images: conversion.Images, Source: SourceDocling}, true, nil
 }
 
@@ -159,6 +174,10 @@ func ConvertBytes(ctx context.Context, data []byte, filename string, doclingClie
 // an otherwise text-heavy document can stay hidden under that average, and
 // image-only pages silently drop their content since native extraction
 // can't read images) using the same underlying parser pdftext itself wraps.
+// Also rejects a page whose text is merely long enough but not actually
+// usable - see textquality.IsGarbledText - which a character-count check
+// alone can't catch (a broken font's ToUnicode map can still yield plenty
+// of characters per page, just not real ones).
 // ok is false when the PDF can't be parsed at all - callers should treat
 // that as "can't tell, let docling have a look" the same as a sparse page,
 // not as "assume it's fine."
@@ -177,7 +196,7 @@ func pdfEveryPageHasText(data []byte) (allPagesHaveText bool, ok bool) {
 			return false, true
 		}
 		text, err := page.GetPlainText(nil)
-		if err != nil || len(strings.TrimSpace(text)) < pdftext.MinCharsPerPage {
+		if err != nil || len(strings.TrimSpace(text)) < pdftext.MinCharsPerPage || textquality.IsGarbledText(text) {
 			return false, true
 		}
 	}

@@ -21,6 +21,7 @@ import (
 	sdkdocling "github.com/KPO-Tech/seshat/pkg/docling"
 	sdkrag "github.com/KPO-Tech/seshat/pkg/rag"
 	sdkembedder "github.com/KPO-Tech/seshat/pkg/rag/embedder"
+	sdkreranker "github.com/KPO-Tech/seshat/pkg/rag/reranker"
 	sdkstorage "github.com/KPO-Tech/seshat/pkg/storage"
 	sdkvector "github.com/KPO-Tech/seshat/pkg/vector"
 
@@ -52,6 +53,17 @@ const (
 	defaultIngestionMaxAttempts = 3
 	defaultIngestionRetryDelay  = 2 * time.Second
 	defaultStaleJobTimeout      = 10 * time.Minute
+
+	// defaultHybridSearchWeight blends keyword (BM25/ts_rank) scoring into
+	// vector search results - pure vector (0) means a chunk that never
+	// literally mentions the query's own terms can still outrank one that
+	// does, if it's merely topically similar. 0.3 keeps vector similarity
+	// dominant while still rewarding literal term matches. Only the SQLite
+	// and pgvector vector backends run real BM25/ts_rank for this (see
+	// vector.Query.HybridWeight's doc); others fall back to a lightweight
+	// keyword-overlap approximation - still strictly better than ignoring
+	// keyword signal entirely.
+	defaultHybridSearchWeight = 0.3
 )
 
 // Service owns corpora, corpus files, their ingestion jobs, and embedder
@@ -360,7 +372,16 @@ func (s *Service) ragServiceFor(ctx context.Context, organizationID string) (*sd
 	if ok {
 		embedder = sdkembedder.New(&embedderCfg)
 	}
-	return sdkrag.NewService(s.artifacts, s.vectors, embedder, nil), true, nil
+	ragService := sdkrag.NewService(s.artifacts, s.vectors, embedder, nil)
+	// RAG_RERANK_URL points at any Cohere/TEI-compatible endpoint
+	// (self-hosted TEI/vLLM serving BAAI/bge-reranker-v2-m3, free and no
+	// API key needed) - falls back to LangSearch's hosted API if only
+	// LANGSEARCH_API_KEY is set. A no-op when neither is configured
+	// (SetReranker with an unconfigured reranker behaves exactly as nil).
+	if r := sdkreranker.NewFromEnv(); r.IsConfigured() {
+		ragService.SetReranker(r)
+	}
+	return ragService, true, nil
 }
 
 // RAGServiceForOrganization is the exported form of ragServiceFor, used by

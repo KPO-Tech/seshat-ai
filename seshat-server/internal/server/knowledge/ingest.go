@@ -13,6 +13,7 @@ import (
 	"gorm.io/gorm"
 
 	sdkrag "github.com/KPO-Tech/seshat/pkg/rag"
+	sdktextquality "github.com/KPO-Tech/seshat/pkg/textquality"
 
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
@@ -162,7 +163,12 @@ func (s *Service) Search(ctx context.Context, principal *iam.Principal, params S
 	if topK <= 0 {
 		topK = 5
 	}
-	resp, err := ragService.Search(ctx, sdkrag.SearchRequest{CorpusID: corpus.ID, Query: query, TopK: topK})
+	resp, err := ragService.Search(ctx, sdkrag.SearchRequest{
+		CorpusID:     corpus.ID,
+		Query:        query,
+		TopK:         topK,
+		HybridWeight: defaultHybridSearchWeight,
+	})
 	if err != nil {
 		return nil, ErrInvalidInput("search corpus: " + err.Error())
 	}
@@ -326,10 +332,15 @@ func (s *Service) extractTextWithDocling(ctx context.Context, data []byte, conte
 
 	if s.doclingClient != nil && doclingIngestExtensions[ext] && s.doclingClient.IsAvailable(ctx) {
 		result, err := s.doclingClient.ConvertBytes(ctx, data, filename)
-		if err == nil && strings.TrimSpace(result.Markdown) != "" {
+		if err == nil && strings.TrimSpace(result.Markdown) != "" && !sdktextquality.IsGarbledText(result.Markdown) {
 			return result.Markdown
 		}
-		// Docling failed or returned empty — fall through to plain-text extraction.
+		// Docling failed, returned empty, or produced text that looks like
+		// broken extraction (see sdktextquality.IsGarbledText — a rare but
+		// real failure mode, e.g. a broken embedded font docling couldn't
+		// OCR around) — fall through to plain-text extraction, which for a
+		// binary format will itself correctly reject the raw bytes and
+		// fail the ingestion job rather than index garbage.
 	}
 	return extractText(data, contentType)
 }

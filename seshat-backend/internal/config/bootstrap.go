@@ -483,9 +483,13 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 			fmt.Printf("[API] RAG service initialisé en mode vectorless (BM25) — aucun embedder configuré, backend=%s\n", backendName)
 		}
 
-		if key := strings.TrimSpace(os.Getenv("LANGSEARCH_API_KEY")); key != "" {
-			ragService.SetReranker(reranker.NewLangSearchRerankerWithKey(key))
-			fmt.Printf("[API] RAG reranker: LangSearch activé\n")
+		// RAG_RERANK_URL points at any Cohere/TEI-compatible endpoint
+		// (self-hosted TEI/vLLM serving BAAI/bge-reranker-v2-m3, free and
+		// no API key needed) - falls back to LangSearch's hosted API if
+		// only LANGSEARCH_API_KEY is set. See reranker.FromEnv's doc.
+		if r := reranker.NewFromEnv(); r.IsConfigured() {
+			ragService.SetReranker(r)
+			fmt.Printf("[API] RAG reranker actif (second passage sur les résultats de recherche)\n")
 		}
 	} else {
 		fmt.Fprintf(os.Stderr, "[API] Avertissement: vector store non disponible (%v)\n", err)

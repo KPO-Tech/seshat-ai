@@ -2,10 +2,14 @@ package docconvert
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/KPO-Tech/seshat/pkg/docling"
 )
 
 // Fixtures here are copied from the seshat SDK's own officetext/pdftext
@@ -117,6 +121,37 @@ func TestConvert_UnsupportedExtensionWithNilDoclingClientYieldsNoResult(t *testi
 	}
 	if ok {
 		t.Fatal("expected ok=false for a docling-only format with no docling client")
+	}
+}
+
+// Regression test for a rare but real failure mode: docling itself
+// returning garbled text (e.g. a broken embedded font it couldn't OCR
+// around) — "(cid:NNN)" placeholders are docling's own tell for this.
+// ConvertBytes must reject it (ok=false) rather than return it as if it
+// were a successful conversion.
+func TestConvertBytes_GarbledDoclingOutputIsRejected(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/health":
+			w.WriteHeader(http.StatusOK)
+		case "/v1/convert/file":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"success","document":{"md_content":"Report (cid:12)(cid:47) Summary (cid:8)(cid:91)","pages":[1]}}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	client := docling.NewClient(server.URL)
+	result, ok, err := ConvertBytes(context.Background(), []byte("not really audio, only the extension matters"), "voicenote.wav", client)
+	if err != nil {
+		t.Fatalf("ConvertBytes: %v", err)
+	}
+	if ok {
+		t.Fatalf("expected garbled docling output to be rejected, got markdown:\n%s", result.Markdown)
 	}
 }
 
