@@ -14,6 +14,7 @@ import { HistoryPage } from '@/pages/history'
 import { WorkflowsPage } from '@/pages/workflows'
 import { AppsPage } from '@/pages/apps'
 import { ProjectsPage } from '@/pages/projects'
+import { KnowledgePage } from '@/pages/knowledge'
 
 export const router = createHashRouter([
   {
@@ -48,7 +49,7 @@ export const router = createHashRouter([
       // Workspace's Agents tab (the fuller, better-maintained UI) - redirect
       // rather than 404 for anyone with an old link/shortcut.
       { path: 'agents', element: <Navigate to="/workspace" replace /> },
-      { path: 'knowledge', element: <Navigate to="/" replace /> },
+      { path: 'knowledge', element: <KnowledgePage /> },
       { path: 'memories', element: <Navigate to="/" replace /> },
       { path: 'scheduling', element: <SchedulingPage /> },
       // Scheduled Tasks / Automations were the old local-scheduler routes,

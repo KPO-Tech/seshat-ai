@@ -436,3 +436,47 @@ func (a *App) handleCorpusSearch(w http.ResponseWriter, r *http.Request, corpusI
 	}
 	writeJSON(w, http.StatusOK, resp)
 }
+
+// handleKnowledgeSearch handles POST /knowledge/search: a raw (non-agentic)
+// search across every corpus the principal can access, merged and ranked by
+// score via knowledge.SearchAll - the same function the knowledge_search
+// agent tool uses, so the Knowledge app's raw-results panel and its agent
+// answer are always ranking the same underlying chunks.
+func (a *App) handleKnowledgeSearch(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	principal, _ := authPrincipalFromContext(r.Context())
+	if principal == nil {
+		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	if !a.requireKnowledgePermission(w, r, principal) {
+		return
+	}
+
+	var body struct {
+		Query    string `json:"query"`
+		TopK     int    `json:"top_k"`
+		CorpusID string `json:"corpus_id"`
+	}
+	if !decodeJSONBody(w, r, &body) {
+		return
+	}
+	if strings.TrimSpace(body.Query) == "" {
+		writeJSONError(w, http.StatusBadRequest, "query is required")
+		return
+	}
+
+	res, err := knowledge.SearchAll(r.Context(), principal, a.backend.Knowledge, knowledge.SearchAllParams{
+		Query:    body.Query,
+		TopK:     body.TopK,
+		CorpusID: body.CorpusID,
+	})
+	if err != nil {
+		writeBackendError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
+}

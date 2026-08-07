@@ -8,25 +8,20 @@ package knowledgetool
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strings"
-	"sync"
 
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge"
-	"github.com/KPO-Tech/seshat/pkg/rag"
 	"github.com/KPO-Tech/seshat/pkg/tools"
 )
 
-const (
-	// ToolName is the name the agent calls this tool by.
-	ToolName    = "knowledge_search"
-	defaultTopK = 5
-	maxTopK     = 20
-)
+// ToolName is the name the agent calls this tool by.
+const ToolName = "knowledge_search"
 
 // SearchTool implements knowledge_search: semantic search across every
-// corpus the calling principal can access, merged and ranked by score.
+// corpus the calling principal can access, merged and ranked by score (see
+// knowledge.SearchAll, which does the actual multi-corpus work and is
+// shared with internal/api's raw cross-corpus search endpoint).
 //
 // The principal comes from context (see internal/auth.FromContext), not
 // from a constructor argument or request parameter - tools are registered
@@ -62,7 +57,7 @@ func (t *SearchTool) Definition() tools.Definition {
 					"type":        "integer",
 					"description": "Maximum number of chunks to return across all corpora (default 5).",
 					"minimum":     1,
-					"maximum":     maxTopK,
+					"maximum":     knowledge.MaxSearchTopK,
 				},
 				"corpus_id": map[string]any{
 					"type":        "string",
@@ -77,16 +72,6 @@ func (t *SearchTool) Definition() tools.Definition {
 	}
 }
 
-// taggedResult carries a corpus's identity alongside each of its results,
-// which rag.SearchResponse itself doesn't need since it's always scoped to
-// one corpus - once merged across corpora that context would otherwise be
-// lost.
-type taggedResult struct {
-	rag.SearchResult
-	CorpusID   string
-	CorpusName string
-}
-
 func (t *SearchTool) Call(ctx context.Context, input tools.CallInput, _ tools.CanUseToolFn) (tools.CallResult, error) {
 	principal, ok := backendauth.FromContext(ctx)
 	if !ok {
@@ -94,12 +79,8 @@ func (t *SearchTool) Call(ctx context.Context, input tools.CallInput, _ tools.Ca
 	}
 
 	query, _ := input.Parsed["query"].(string)
-	query = strings.TrimSpace(query)
-	if query == "" {
-		return tools.NewErrorResult(fmt.Errorf("query is required")), nil
-	}
 
-	topK := defaultTopK
+	topK := knowledge.DefaultSearchTopK
 	if v, ok := input.Parsed["top_k"]; ok {
 		switch n := v.(type) {
 		case float64:
@@ -108,81 +89,27 @@ func (t *SearchTool) Call(ctx context.Context, input tools.CallInput, _ tools.Ca
 			topK = n
 		}
 	}
-	if topK < 1 || topK > maxTopK {
-		topK = defaultTopK
-	}
 
 	corpusID, _ := input.Parsed["corpus_id"].(string)
-	corpusID = strings.TrimSpace(corpusID)
 
-	var corpora []knowledge.Corpus
-	if corpusID != "" {
-		c, err := t.backend.GetCorpus(ctx, principal, corpusID)
-		if err != nil {
-			return tools.NewErrorResult(fmt.Errorf("knowledge_search: corpus %q: %w", corpusID, err)), nil
-		}
-		corpora = []knowledge.Corpus{*c}
-	} else {
-		var err error
-		corpora, err = t.backend.ListCorpora(ctx, principal)
-		if err != nil {
-			return tools.NewErrorResult(fmt.Errorf("knowledge_search: listing corpora: %w", err)), nil
-		}
+	res, err := knowledge.SearchAll(ctx, principal, t.backend, knowledge.SearchAllParams{
+		Query:    query,
+		TopK:     topK,
+		CorpusID: corpusID,
+	})
+	if err != nil {
+		return tools.NewErrorResult(fmt.Errorf("knowledge_search: %w", err)), nil
 	}
-	if len(corpora) == 0 {
+	if res.CorporaSearched == 0 {
 		return tools.NewTextResult("No knowledge corpora are available to search."), nil
 	}
 
-	// Search corpora concurrently - each is an independent request against
-	// the (local or remote) backend, and a principal can have many corpora.
-	var (
-		wg      sync.WaitGroup
-		mu      sync.Mutex
-		merged  []taggedResult
-		lastErr error
-		hits    int
-	)
-	for _, corpus := range corpora {
-		wg.Add(1)
-		go func(c knowledge.Corpus) {
-			defer wg.Done()
-			resp, err := t.backend.Search(ctx, principal, knowledge.SearchParams{
-				CorpusID: c.ID,
-				Query:    query,
-				TopK:     topK,
-			})
-			mu.Lock()
-			defer mu.Unlock()
-			if err != nil {
-				lastErr = err
-				return
-			}
-			hits++
-			for _, r := range resp.Results {
-				merged = append(merged, taggedResult{SearchResult: r, CorpusID: c.ID, CorpusName: c.Name})
-			}
-		}(corpus)
-	}
-	wg.Wait()
-
-	// A corpus failing to search (e.g. transient remote error) shouldn't
-	// sink the whole tool call as long as at least one other corpus
-	// succeeded - only surface an error when every corpus failed.
-	if hits == 0 && lastErr != nil {
-		return tools.NewErrorResult(fmt.Errorf("knowledge_search: all corpus searches failed: %w", lastErr)), nil
-	}
-
-	sort.Slice(merged, func(i, j int) bool { return merged[i].Score > merged[j].Score })
-	if len(merged) > topK {
-		merged = merged[:topK]
-	}
-
-	result := tools.NewJSONResult(merged)
-	result.Content = formatResults(query, merged)
+	result := tools.NewJSONResult(res.Results)
+	result.Content = formatResults(query, res.Results)
 	result.Metadata = &tools.ResultMetadata{
 		Additional: map[string]any{
-			"corpora_searched": len(corpora),
-			"result_count":     len(merged),
+			"corpora_searched": res.CorporaSearched,
+			"result_count":     len(res.Results),
 		},
 	}
 	return result, nil
@@ -208,7 +135,7 @@ func (t *SearchTool) FormatResult(data any) string {
 	if s, ok := data.(string); ok {
 		return s
 	}
-	if results, ok := data.([]taggedResult); ok {
+	if results, ok := data.([]knowledge.TaggedSearchResult); ok {
 		return formatResults("", results)
 	}
 	return ""
@@ -218,7 +145,7 @@ func (t *SearchTool) BackfillInput(_ context.Context, input map[string]any) map[
 	return input
 }
 
-func formatResults(query string, results []taggedResult) string {
+func formatResults(query string, results []knowledge.TaggedSearchResult) string {
 	if len(results) == 0 {
 		if query != "" {
 			return fmt.Sprintf("No results found for %q across the available knowledge corpora.", query)

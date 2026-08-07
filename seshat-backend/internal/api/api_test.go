@@ -2114,6 +2114,72 @@ func TestCorpusIngestAndSearch(t *testing.T) {
 	}
 }
 
+func TestKnowledgeSearchAcrossCorpora(t *testing.T) {
+	app, _ := newKnowledgeTestApp(t)
+	router := CreateRouter(defaultAPIConfig, app)
+	token := loginAs(t, router, "admin@knowledge.test", "adminpass")
+
+	createCorpus := func(name string) string {
+		body, _ := json.Marshal(map[string]string{"name": name})
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/corpora", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+token)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		var corpus map[string]any
+		json.NewDecoder(rec.Body).Decode(&corpus)
+		return corpus["id"].(string)
+	}
+	ingest := func(corpusID, content, filename string) {
+		fileID := uploadTestFile(t, router, token, content, filename)
+		ingestBody, _ := json.Marshal(map[string]string{"file_id": fileID})
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/corpora/"+corpusID+"/ingest", bytes.NewReader(ingestBody))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+token)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		if rec.Code != http.StatusAccepted {
+			t.Fatalf("enqueue ingest: got %d, body=%s", rec.Code, rec.Body.String())
+		}
+		var enqueueResp map[string]any
+		json.NewDecoder(rec.Body).Decode(&enqueueResp)
+		waitForIngestionJobStatus(t, router, token, corpusID, enqueueResp["id"].(string), "completed")
+	}
+
+	corpusA := createCorpus("Engineering Docs")
+	corpusB := createCorpus("Sales Docs")
+	ingest(corpusA, "The Seshat engine is a powerful multi-agent AI framework that supports RAG retrieval.\n", "eng.txt")
+	ingest(corpusB, "Our sales team closed a multi-agent AI framework deal with a new enterprise customer.\n", "sales.txt")
+
+	searchBody, _ := json.Marshal(map[string]any{"query": "multi-agent AI framework", "top_k": 5})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/knowledge/search", bytes.NewReader(searchBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("knowledge search: got %d, body=%s", rec.Code, rec.Body.String())
+	}
+	var searchResp struct {
+		Results         []map[string]any `json:"results"`
+		CorporaSearched int              `json:"corpora_searched"`
+	}
+	json.NewDecoder(rec.Body).Decode(&searchResp)
+	if searchResp.CorporaSearched != 2 {
+		t.Fatalf("expected both corpora to be searched, got %d", searchResp.CorporaSearched)
+	}
+	if len(searchResp.Results) < 2 {
+		t.Fatalf("expected results from both corpora, got %d: %+v", len(searchResp.Results), searchResp.Results)
+	}
+	seenCorpora := map[string]bool{}
+	for _, r := range searchResp.Results {
+		seenCorpora[r["corpus_id"].(string)] = true
+	}
+	if !seenCorpora[corpusA] || !seenCorpora[corpusB] {
+		t.Fatalf("expected results tagged with both corpus IDs, got %+v", searchResp.Results)
+	}
+}
+
 func TestCorpusIngestionJobRetry(t *testing.T) {
 	embedder := &stubEmbedder{
 		dim:               8,

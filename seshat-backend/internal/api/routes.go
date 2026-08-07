@@ -106,6 +106,7 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 
 	apiV1.Handle("/corpora", app.authMiddleware(http.HandlerFunc(app.handleCorpora)))
 	apiV1.Handle("/corpora/", app.authMiddleware(http.HandlerFunc(app.handleCorpusByID)))
+	apiV1.Handle("/knowledge/search", app.authMiddleware(http.HandlerFunc(app.handleKnowledgeSearch)))
 
 	apiV1.Handle("/web/search", app.authMiddleware(http.HandlerFunc(app.handleWebSearch)))
 	apiV1.Handle("/web/search/settings", app.authMiddleware(http.HandlerFunc(app.handleWebSearchSettings)))
