@@ -31,6 +31,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudwebsearch"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	backendknowledge "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgetool"
 	backendmemories "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/memories"
 	backendpreferences "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/preferences"
 	backendquery "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/query"
@@ -753,6 +754,19 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		UserPreferencesStore:     userPreferencesStore,
 		AgentDefinitionStore:     agentDefinitionStore,
 	})
+
+	// knowledge_search: lets the Company Assistant (and any other session on
+	// this shared query client) search across every corpus the calling
+	// principal can access, not just one - see internal/knowledgetool's
+	// package doc. Registered here (not next to sdk.NewClient above) because
+	// it needs the fully-resolved backendApp.Knowledge (local
+	// *knowledge.Service or connected-mode *cloudknowledge.RemoteService),
+	// which only exists after seshat.NewApp runs its own fallback logic.
+	if backendApp.Knowledge != nil {
+		if err := queryClient.RegisterTool(knowledgetool.NewSearchTool(backendApp.Knowledge)); err != nil {
+			fmt.Fprintf(os.Stderr, "[API] Avertissement: knowledge_search tool non enregistré: %v\n", err)
+		}
+	}
 
 	// Cloud automation: this machine executes execution_target=device jobs
 	// claimed from a connected seshat-server, using its own locally
