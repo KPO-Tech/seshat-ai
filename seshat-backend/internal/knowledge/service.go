@@ -14,6 +14,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/docconvert"
 	"github.com/KPO-Tech/seshat/pkg/docling"
+	"github.com/KPO-Tech/seshat/pkg/pdfsmart"
 	"github.com/KPO-Tech/seshat/pkg/rag"
 	"github.com/KPO-Tech/seshat/pkg/storage"
 	"github.com/KPO-Tech/seshat/pkg/textquality"
@@ -604,12 +605,26 @@ func (s *Service) checkFileAccess(principal *backendauth.Principal, fileRecord *
 // check missed is a silent, permanent loss - not worth the speed. That
 // tradeoff is fine for the ephemeral chat-attachment path (internal/files),
 // which still uses docconvert's native-first Convert/ConvertBytes.
+//
+// PDFs get one exception: pdfsmart.Convert first, which extracts natively
+// page by page and only sends the individual pages that actually need it
+// (an embedded image, or a sparse/garbled native text layer) through
+// docling - not the whole document. Its own safety contract makes this
+// exactly as safe as sending the whole document: ok is false if even one
+// page that needed docling couldn't get usable text from it, in which
+// case this falls through to the existing whole-document path below
+// rather than accept a partial result.
 func (s *Service) extractTextWithDocling(ctx context.Context, data []byte, contentType, filename string) string {
 	ext := strings.ToLower(filepath.Ext(filename))
 	if docconvert.AllConvertibleExtensions[ext] {
 		var doclingClient *docling.Client
 		if s.resolveDoclingClient != nil {
 			doclingClient = s.resolveDoclingClient(ctx)
+		}
+		if ext == ".pdf" {
+			if result, ok, err := pdfsmart.Convert(ctx, data, doclingClient); err == nil && ok {
+				return result.Markdown
+			}
 		}
 		if doclingClient != nil && doclingClient.IsAvailable(ctx) {
 			if conversion, err := doclingClient.ConvertBytes(ctx, data, filename); err == nil &&

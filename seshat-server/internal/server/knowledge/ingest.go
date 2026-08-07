@@ -12,6 +12,7 @@ import (
 
 	"gorm.io/gorm"
 
+	sdkpdfsmart "github.com/KPO-Tech/seshat/pkg/pdfsmart"
 	sdkrag "github.com/KPO-Tech/seshat/pkg/rag"
 	sdktextquality "github.com/KPO-Tech/seshat/pkg/textquality"
 
@@ -327,8 +328,23 @@ func (s *Service) markIngestionJobFailed(ctx context.Context, job sdb.KnowledgeI
 // permanent loss. That's a cost worth avoiding entirely for RAG ingestion,
 // even at the price of always paying docling's per-page layout-detection
 // pass (see its standard PDF pipeline).
+//
+// PDFs get one exception: sdkpdfsmart.Convert first, which extracts
+// natively page by page and only sends the individual pages that actually
+// need it (an embedded image, or a sparse/garbled native text layer)
+// through docling - not the whole document. Its own safety contract makes
+// this exactly as safe as sending the whole document: ok is false if even
+// one page that needed docling couldn't get usable text from it, in which
+// case this falls through to the existing whole-document path below
+// rather than accept a partial result.
 func (s *Service) extractTextWithDocling(ctx context.Context, data []byte, contentType, filename string) string {
 	ext := strings.ToLower(filepath.Ext(filename))
+
+	if ext == ".pdf" {
+		if result, ok, err := sdkpdfsmart.Convert(ctx, data, s.doclingClient); err == nil && ok {
+			return result.Markdown
+		}
+	}
 
 	if s.doclingClient != nil && doclingIngestExtensions[ext] && s.doclingClient.IsAvailable(ctx) {
 		result, err := s.doclingClient.ConvertBytes(ctx, data, filename)

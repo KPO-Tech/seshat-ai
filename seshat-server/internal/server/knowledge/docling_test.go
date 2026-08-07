@@ -102,14 +102,15 @@ func TestIngestionRejectsGarbledDoclingOutputAndFailsCleanly(t *testing.T) {
 	}
 }
 
-// A PDF with a real text layer must still go through docling, not native
-// pdftext extraction — extractTextWithDocling deliberately skips the
-// native-first shortcut for corpus ingestion (see its own doc comment): a
-// document that lives in the knowledge base forever can't risk a table or
-// diagram silently getting dropped by a cheap text-density check. The fake
+// A PDF with a real text layer and no embedded images is now extracted
+// page by page via sdkpdfsmart.Convert, natively - not sent to docling at
+// all. This is the whole point of pdfsmart: most PDFs are mostly prose,
+// and paying docling's per-page layout-detection pass for every page of a
+// document that has nothing for it to find is wasted work. The fake
 // docling server here returns clearly distinguishable content, so finding
-// docling's markdown (not the PDF's own native text) proves docling won.
-func TestIngestionAlwaysUsesDoclingForPDFsEvenWithATextLayer(t *testing.T) {
+// the PDF's own native text (not docling's fake markdown) proves docling
+// was correctly skipped.
+func TestIngestionExtractsTextLayerPDFNativelyViaPdfsmart(t *testing.T) {
 	env := newTestEnv(t)
 	env.configurePlatformEmbedder(t)
 	env.configureDocling(t, "# This came from docling, not native extraction")
@@ -145,16 +146,76 @@ func TestIngestionAlwaysUsesDoclingForPDFsEvenWithATextLayer(t *testing.T) {
 		t.Fatalf("expected the file to be ingested, got %+v", files)
 	}
 
+	resp, err := env.knowledge.Search(context.Background(), env.adminPrincipal, SearchParams{CorpusID: corpus.ID, Query: "Alice"})
+	if err != nil {
+		t.Fatalf("search: %v", err)
+	}
+	if len(resp.Results) == 0 {
+		t.Fatal("expected search to find the natively-extracted content")
+	}
+	for _, r := range resp.Results {
+		if strings.Contains(r.Text, "came from docling") {
+			t.Fatalf("expected native extraction to win for a text-layer PDF with no images, but docling's fake output was ingested: %+v", r)
+		}
+	}
+}
+
+// A PDF page that DOES have an embedded image still needs docling -
+// pdfsmart routes only that page to it, not the whole document, but the
+// end result (docling's content present in the corpus) must be the same
+// as if pdfsmart didn't exist. scanned.pdf's only page is nothing but an
+// embedded screenshot image, so this exercises exactly the case pdfsmart
+// itself can't skip.
+func TestIngestionStillUsesDoclingForAPDFWithAnEmbeddedImage(t *testing.T) {
+	env := newTestEnv(t)
+	env.configurePlatformEmbedder(t)
+	env.configureDocling(t, "# This came from docling for the image page")
+
+	corpus, err := env.knowledge.CreateCorpus(context.Background(), env.adminPrincipal, CreateCorpusParams{
+		OrganizationID: env.orgID, Name: "Image PDF Test",
+	})
+	if err != nil {
+		t.Fatalf("create corpus: %v", err)
+	}
+
+	pdfBytes, err := os.ReadFile(filepath.Join("testdata", "scanned.pdf"))
+	if err != nil {
+		t.Fatalf("read testdata/scanned.pdf: %v", err)
+	}
+	if _, err := env.knowledge.UploadFile(context.Background(), env.adminPrincipal, corpus.ID, "scan.pdf", "application/pdf", pdfBytes); err != nil {
+		t.Fatalf("upload file: %v", err)
+	}
+
+	processed, err := env.knowledge.ProcessNextIngestionJob(context.Background())
+	if err != nil {
+		t.Fatalf("process ingestion job: %v", err)
+	}
+	if !processed {
+		t.Fatal("expected a queued job to be processed")
+	}
+
+	files, err := env.knowledge.ListFiles(context.Background(), env.adminPrincipal, corpus.ID)
+	if err != nil {
+		t.Fatalf("list files: %v", err)
+	}
+	if len(files) != 1 || files[0].Status != CorpusFileStatusIngested {
+		t.Fatalf("expected the file to be ingested via docling, got %+v", files)
+	}
+
 	resp, err := env.knowledge.Search(context.Background(), env.adminPrincipal, SearchParams{CorpusID: corpus.ID, Query: "docling"})
 	if err != nil {
 		t.Fatalf("search: %v", err)
 	}
 	if len(resp.Results) == 0 {
-		t.Fatal("expected search to find docling's extracted content")
+		t.Fatal("expected search to find docling's extracted content for the image page")
 	}
+	found := false
 	for _, r := range resp.Results {
-		if !strings.Contains(r.Text, "came from docling") {
-			t.Fatalf("expected docling to be used for every PDF regardless of text layer, got: %+v", r)
+		if strings.Contains(r.Text, "came from docling for the image page") {
+			found = true
 		}
+	}
+	if !found {
+		t.Fatalf("expected a chunk containing docling's markdown output, got %+v", resp.Results)
 	}
 }
