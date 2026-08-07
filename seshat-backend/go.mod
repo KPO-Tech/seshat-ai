@@ -3,9 +3,10 @@ module github.com/EngineerProjects/seshat-ai/seshat-backend
 go 1.26.5
 
 require (
-	github.com/KPO-Tech/seshat v1.2.3
+	github.com/KPO-Tech/seshat v1.2.4
 	github.com/glebarez/sqlite v1.11.0
 	github.com/gorilla/websocket v1.5.3
+	github.com/ledongthuc/pdf v0.0.0-20250511090121-5959a4027728
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.68.0
 	go.opentelemetry.io/otel v1.44.0
@@ -74,7 +75,6 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/ledongthuc/pdf v0.0.0-20250511090121-5959a4027728 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/mattn/go-runewidth v0.0.24 // indirect
 	github.com/ncruces/go-strftime v0.1.9 // indirect

@@ -197,6 +197,35 @@ func (app *App) handleCorpusFileByID(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleCorpusFileIngest re-triggers ingestion for an already-uploaded
+// file — the console-facing way to upgrade a file ingested vectorless to
+// real vectors after an embedder gets configured, or to retry one that
+// never got a job at all. Returns the existing job unchanged if one is
+// already queued/running for this file (see Service.enqueueIngestionJob).
+func (app *App) handleCorpusFileIngest(w http.ResponseWriter, r *http.Request) {
+	principal, ok := authPrincipalFromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "missing principal")
+		return
+	}
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	corpusID := strings.TrimSpace(r.PathValue("corpusID"))
+	fileID := strings.TrimSpace(r.PathValue("fileID"))
+	if corpusID == "" || fileID == "" {
+		writeJSONError(w, http.StatusBadRequest, "missing corpus or file id")
+		return
+	}
+	job, err := app.backend.Knowledge.EnqueueIngest(r.Context(), principal, corpusID, fileID)
+	if err != nil {
+		writeKnowledgeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, job)
+}
+
 func (app *App) handleCorpusIngestionJobs(w http.ResponseWriter, r *http.Request) {
 	principal, ok := authPrincipalFromContext(r.Context())
 	if !ok {

@@ -430,54 +430,65 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		}
 		fmt.Printf("[API] Embedder config chargée depuis DB: provider=%s model=%s\n", dbEmb.Provider, dbEmb.Model)
 	}
-	if embedderCfg.IsConfigured() {
-		embedder := ragembedder.New(embedderCfg)
-		pgvectorCreateExtension := config.PgVectorCreateExtension
-		vectorDim := 1536
-		if raw := strings.TrimSpace(os.Getenv("SESHAT_VECTOR_DIM")); raw != "" {
-			if n, err := fmt.Sscanf(raw, "%d", &vectorDim); n != 1 || err != nil {
-				fmt.Fprintf(os.Stderr, "[API] Avertissement: SESHAT_VECTOR_DIM invalide (%q), utilise 1536\n", raw)
-				vectorDim = 1536
-			} else if vectorDim < 64 || vectorDim > 4096 {
-				fmt.Fprintf(os.Stderr, "[API] Avertissement: SESHAT_VECTOR_DIM hors limites (%d, accepté: 64-4096), utilise 1536\n", vectorDim)
-				vectorDim = 1536
-			}
+	// The vector store (and so ragService) is built regardless of whether an
+	// embedder is configured — rag.Service itself already degrades to
+	// vectorless/BM25-only ingest+search when its embedder is nil (see the
+	// SDK's internal/rag/service.go), so gating construction on
+	// embedderCfg.IsConfigured() used to disable the whole knowledge feature
+	// instead of just skipping vector search. Configuring an embedder later
+	// and re-ingesting upgrades existing chunks in place (Ingest upserts by
+	// deterministic key), no need to re-upload anything.
+	pgvectorCreateExtension := config.PgVectorCreateExtension
+	vectorDim := 1536
+	if raw := strings.TrimSpace(os.Getenv("SESHAT_VECTOR_DIM")); raw != "" {
+		if n, err := fmt.Sscanf(raw, "%d", &vectorDim); n != 1 || err != nil {
+			fmt.Fprintf(os.Stderr, "[API] Avertissement: SESHAT_VECTOR_DIM invalide (%q), utilise 1536\n", raw)
+			vectorDim = 1536
+		} else if vectorDim < 64 || vectorDim > 4096 {
+			fmt.Fprintf(os.Stderr, "[API] Avertissement: SESHAT_VECTOR_DIM hors limites (%d, accepté: 64-4096), utilise 1536\n", vectorDim)
+			vectorDim = 1536
 		}
-		vectorCfg := vector.Config{
-			Backend:                    vector.Backend(config.VectorBackend),
-			DB:                         vector.NewDBHandle(string(vectorDatabase.Driver()), vectorDatabase.DSN()),
-			Dim:                        vectorDim,
-			QdrantHost:                 config.QdrantHost,
-			QdrantPort:                 config.QdrantPort,
-			QdrantAPIKey:               config.QdrantAPIKey,
-			QdrantPrefix:               config.QdrantPrefix,
-			PgVectorCreateExtension:    &pgvectorCreateExtension,
-			PgVectorIndexMethod:        config.PgVectorIndexMethod,
-			PgVectorHNSWM:              config.PgVectorHNSWM,
-			PgVectorHNSWEfConstruction: config.PgVectorHNSWEF,
-			PgVectorIVFFlatLists:       config.PgVectorIVFFlatLists,
-			ChromaURL:                  config.ChromaURL,
-			ChromaAPIKey:               config.ChromaAPIKey,
-			ChromaTenant:               config.ChromaTenant,
-			ChromaDatabase:             config.ChromaDatabase,
+	}
+	vectorCfg := vector.Config{
+		Backend:                    vector.Backend(config.VectorBackend),
+		DB:                         vector.NewDBHandle(string(vectorDatabase.Driver()), vectorDatabase.DSN()),
+		Dim:                        vectorDim,
+		QdrantHost:                 config.QdrantHost,
+		QdrantPort:                 config.QdrantPort,
+		QdrantAPIKey:               config.QdrantAPIKey,
+		QdrantPrefix:               config.QdrantPrefix,
+		PgVectorCreateExtension:    &pgvectorCreateExtension,
+		PgVectorIndexMethod:        config.PgVectorIndexMethod,
+		PgVectorHNSWM:              config.PgVectorHNSWM,
+		PgVectorHNSWEfConstruction: config.PgVectorHNSWEF,
+		PgVectorIVFFlatLists:       config.PgVectorIVFFlatLists,
+		ChromaURL:                  config.ChromaURL,
+		ChromaAPIKey:               config.ChromaAPIKey,
+		ChromaTenant:               config.ChromaTenant,
+		ChromaDatabase:             config.ChromaDatabase,
+	}
+	if vs, err := vector.NewStore(ctx, vectorCfg); err == nil {
+		var embedder rag.Embedder
+		if embedderCfg.IsConfigured() {
+			embedder = ragembedder.New(embedderCfg)
 		}
-		if vs, err := vector.NewStore(ctx, vectorCfg); err == nil {
-			ragService = rag.NewService(artifactStore, vs, embedder, nil)
-			backendName := string(vectorCfg.Backend)
-			if backendName == "" {
-				backendName = "sqlite"
-			}
+		ragService = rag.NewService(artifactStore, vs, embedder, nil)
+		backendName := string(vectorCfg.Backend)
+		if backendName == "" {
+			backendName = "sqlite"
+		}
+		if embedderCfg.IsConfigured() {
 			fmt.Printf("[API] RAG service initialisé: embedder=%s model=%s backend=%s\n", embedderCfg.Provider, embedderCfg.Model, backendName)
-
-			if key := strings.TrimSpace(os.Getenv("LANGSEARCH_API_KEY")); key != "" {
-				ragService.SetReranker(reranker.NewLangSearchRerankerWithKey(key))
-				fmt.Printf("[API] RAG reranker: LangSearch activé\n")
-			}
 		} else {
-			fmt.Fprintf(os.Stderr, "[API] Avertissement: vector store non disponible (%v)\n", err)
+			fmt.Printf("[API] RAG service initialisé en mode vectorless (BM25) — aucun embedder configuré, backend=%s\n", backendName)
+		}
+
+		if key := strings.TrimSpace(os.Getenv("LANGSEARCH_API_KEY")); key != "" {
+			ragService.SetReranker(reranker.NewLangSearchRerankerWithKey(key))
+			fmt.Printf("[API] RAG reranker: LangSearch activé\n")
 		}
 	} else {
-		fmt.Fprintf(os.Stderr, "[API] Avertissement: embedder non configuré (RAG_EMBEDDING_URL + RAG_EMBEDDING_MODEL requis) — knowledge ingest/search désactivé\n")
+		fmt.Fprintf(os.Stderr, "[API] Avertissement: vector store non disponible (%v)\n", err)
 	}
 
 	// Auto-import mcp.json into DB so the UI and runtime share the same state.
@@ -687,7 +698,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 				return nil
 			}
 			if cfg.BaseURL != "" {
-				return docling.NewClient(cfg.BaseURL)
+				return docling.NewClient(cfg.BaseURL, docling.WithTimeout(doclingConversionTimeout))
 			}
 		}
 		return bootDoclingClient
@@ -912,6 +923,17 @@ func (a *dbPlanStoreAdapter) SetStatus(ctx context.Context, planID string, statu
 
 // ─── Infrastructure helpers ───────────────────────────────────────────────────
 
+// doclingConversionTimeout replaces the SDK client's 120s default. This
+// same client serves both the ephemeral chat-attachment path (files.Service)
+// and RAG corpus ingestion (knowledge.Service, ResolveDoclingClient is
+// shared between them - see NewApp), and the latter now routes every
+// document through docling unconditionally (see internal/knowledge's
+// extractTextWithDocling doc comment for why). A several-hundred-page PDF
+// on a CPU-only docling-serve - layout detection runs on every page's
+// rasterized image regardless of native text - can genuinely take longer
+// than two minutes; 120s would fail it outright rather than let it finish.
+const doclingConversionTimeout = 15 * time.Minute
+
 // buildDoclingClient creates a docling client from a URL string.
 // Returns nil if the URL is empty (docling integration disabled).
 func buildDoclingClient(url string) *docling.Client {
@@ -919,7 +941,7 @@ func buildDoclingClient(url string) *docling.Client {
 	if url == "" {
 		return nil
 	}
-	return docling.NewClient(url)
+	return docling.NewClient(url, docling.WithTimeout(doclingConversionTimeout))
 }
 
 // logProviderDiscovery scans env vars and local services at startup and logs a

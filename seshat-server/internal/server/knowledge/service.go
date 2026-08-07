@@ -348,10 +348,19 @@ func (s *Service) ragServiceFor(ctx context.Context, organizationID string) (*sd
 	if err != nil {
 		return nil, false, err
 	}
-	if !ok {
-		return nil, false, nil
+	// Vectorless (BM25-only) ingest/search when neither the organization nor
+	// the platform default has an embedder configured — sdkrag.Service
+	// already degrades gracefully with a nil embedder (see its own doc
+	// comment), so this only builds it with one when there's one to use, it
+	// no longer skips construction (and so the whole feature) without one.
+	// The bool return stays for the vector-store-unavailable case, which
+	// can't happen here since s.vectors is set unconditionally at New(), but
+	// keeping the same three-value shape avoids touching every call site.
+	var embedder sdkrag.Embedder
+	if ok {
+		embedder = sdkembedder.New(&embedderCfg)
 	}
-	return sdkrag.NewService(s.artifacts, s.vectors, sdkembedder.New(&embedderCfg), nil), true, nil
+	return sdkrag.NewService(s.artifacts, s.vectors, embedder, nil), true, nil
 }
 
 // RAGServiceForOrganization is the exported form of ragServiceFor, used by

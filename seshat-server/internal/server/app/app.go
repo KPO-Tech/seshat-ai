@@ -87,7 +87,15 @@ func New(cfg serverconfig.Config) (*App, error) {
 	if cfg.DoclingURL != "" {
 		// Converts PDF/DOCX/PPTX/XLSX/audio/images to markdown before
 		// chunking. Optional — plain-text/markdown/JSON ingest fine without it.
-		knowledgeService = knowledgeService.WithDocling(sdkdocling.NewClient(cfg.DoclingURL))
+		//
+		// doclingIngestTimeout replaces the SDK client's 120s default:
+		// extractTextWithDocling routes every corpus document through
+		// docling unconditionally (no native-extraction shortcut, see its
+		// own doc comment), and a several-hundred-page PDF on a CPU-only
+		// docling-serve can genuinely take longer than two minutes — 120s
+		// would fail it outright rather than let it finish.
+		const doclingIngestTimeout = 15 * time.Minute
+		knowledgeService = knowledgeService.WithDocling(sdkdocling.NewClient(cfg.DoclingURL, sdkdocling.WithTimeout(doclingIngestTimeout)))
 	}
 	// Lets cloud-targeted job execution enable rag_search/rag_ingest,
 	// scoped per organization — see automation.Service.RAGResolver.

@@ -1675,6 +1675,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/knowledge/corpora/{corpusID}/files/{fileID}/ingest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                corpusID: string;
+                fileID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Re-trigger ingestion for an already-uploaded file
+         * @description Requires knowledge.manage or organization.manage. Upgrades a file ingested vectorless (no embedder configured at the time) to real vectors once one is set up, or retries one that never got a job at all — returns the existing queued/running job unchanged if one is already in flight for this file.
+         */
+        post: operations["ingestCorpusFile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/knowledge/corpora/{corpusID}/ingestion-jobs": {
         parameters: {
             query?: never;
@@ -6743,6 +6766,31 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    ingestCorpusFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                corpusID: string;
+                fileID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ingestion job queued (or the existing in-flight one) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngestionJob"];
+                };
             };
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];

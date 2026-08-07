@@ -11,10 +11,13 @@
 package docconvert
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/ledongthuc/pdf"
 
 	"github.com/KPO-Tech/seshat/pkg/docling"
 	"github.com/KPO-Tech/seshat/pkg/officetext"
@@ -73,9 +76,10 @@ type Result struct {
 }
 
 // Convert turns filePath's content into markdown. It tries native extraction
-// first for DOCX/PPTX/XLSX (always) and PDF (when the PDF has a real text
-// layer - see pdftext.Result.Sparse), then falls back to doclingClient
-// (which may be nil) for everything else: scans, audio, images, and any
+// first for DOCX/PPTX/XLSX (always) and PDF (only when *every* page has a
+// real text layer - see pdfEveryPageHasText), then falls back to
+// doclingClient (which may be nil) for everything else: scans, audio,
+// images, a PDF where even one page looks like it needs OCR, and any
 // native-extraction failure. ok is false when no path could produce text -
 // callers should not treat that as an error, just "nothing extracted".
 func Convert(ctx context.Context, filePath string, doclingClient *docling.Client) (Result, bool, error) {
@@ -83,18 +87,21 @@ func Convert(ctx context.Context, filePath string, doclingClient *docling.Client
 
 	if NativeExtensions[ext] {
 		if data, err := os.ReadFile(filePath); err == nil {
-			if md, ok, extractErr := officetext.Extract(filePath, data); ok && extractErr == nil {
+			if md, ok, sparse, extractErr := officetext.Extract(filePath, data); ok && extractErr == nil && !sparse {
 				return Result{Markdown: md, Source: SourceNative}, true, nil
 			}
 		}
-		// Read failure or a corrupt file that failed to parse - fall through
-		// to docling below, which may still salvage something.
+		// Read failure, a corrupt file, or an office document extraction
+		// deemed too thin to trust (e.g. a PPTX that's mostly images) -
+		// fall through to docling below, which may still salvage something.
 	}
 
 	if ext == ".pdf" {
 		if data, err := os.ReadFile(filePath); err == nil {
-			if native, extractErr := pdftext.Extract(data); extractErr == nil && !native.Sparse {
-				return Result{Markdown: native.Text, Source: SourceNative}, true, nil
+			if allPagesHaveText, ok := pdfEveryPageHasText(data); ok && allPagesHaveText {
+				if native, extractErr := pdftext.Extract(data); extractErr == nil && !native.Sparse {
+					return Result{Markdown: native.Text, Source: SourceNative}, true, nil
+				}
 			}
 		}
 	}
@@ -120,14 +127,16 @@ func ConvertBytes(ctx context.Context, data []byte, filename string, doclingClie
 	ext := strings.ToLower(filepath.Ext(filename))
 
 	if NativeExtensions[ext] {
-		if md, ok, extractErr := officetext.Extract(filename, data); ok && extractErr == nil {
+		if md, ok, sparse, extractErr := officetext.Extract(filename, data); ok && extractErr == nil && !sparse {
 			return Result{Markdown: md, Source: SourceNative}, true, nil
 		}
 	}
 
 	if ext == ".pdf" {
-		if native, extractErr := pdftext.Extract(data); extractErr == nil && !native.Sparse {
-			return Result{Markdown: native.Text, Source: SourceNative}, true, nil
+		if allPagesHaveText, ok := pdfEveryPageHasText(data); ok && allPagesHaveText {
+			if native, extractErr := pdftext.Extract(data); extractErr == nil && !native.Sparse {
+				return Result{Markdown: native.Text, Source: SourceNative}, true, nil
+			}
 		}
 	}
 
@@ -143,4 +152,34 @@ func ConvertBytes(ctx context.Context, data []byte, filename string, doclingClie
 		return Result{}, false, nil
 	}
 	return Result{Markdown: conversion.Markdown, Images: conversion.Images, Source: SourceDocling}, true, nil
+}
+
+// pdfEveryPageHasText re-scans the PDF page by page (pdftext.Extract only
+// exposes a whole-document average - a handful of scanned/diagram pages in
+// an otherwise text-heavy document can stay hidden under that average, and
+// image-only pages silently drop their content since native extraction
+// can't read images) using the same underlying parser pdftext itself wraps.
+// ok is false when the PDF can't be parsed at all - callers should treat
+// that as "can't tell, let docling have a look" the same as a sparse page,
+// not as "assume it's fine."
+func pdfEveryPageHasText(data []byte) (allPagesHaveText bool, ok bool) {
+	r, err := pdf.NewReader(bytes.NewReader(data), int64(len(data)))
+	if err != nil {
+		return false, false
+	}
+	pageCount := r.NumPage()
+	if pageCount == 0 {
+		return false, false
+	}
+	for i := 1; i <= pageCount; i++ {
+		page := r.Page(i)
+		if page.V.IsNull() {
+			return false, true
+		}
+		text, err := page.GetPlainText(nil)
+		if err != nil || len(strings.TrimSpace(text)) < pdftext.MinCharsPerPage {
+			return false, true
+		}
+	}
+	return true, true
 }

@@ -2849,6 +2849,35 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/knowledge/corpora/{corpusID}/files/{fileID}/ingest:
+    parameters:
+      - name: corpusID
+        in: path
+        required: true
+        schema: { type: string }
+      - name: fileID
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      operationId: ingestCorpusFile
+      tags: [knowledge]
+      summary: Re-trigger ingestion for an already-uploaded file
+      description: >-
+        Requires knowledge.manage or organization.manage. Upgrades a file
+        ingested vectorless (no embedder configured at the time) to real
+        vectors once one is set up, or retries one that never got a job at
+        all — returns the existing queued/running job unchanged if one is
+        already in flight for this file.
+      responses:
+        "200":
+          description: Ingestion job queued (or the existing in-flight one)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IngestionJob" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/knowledge/corpora/{corpusID}/ingestion-jobs:
     parameters:
       - name: corpusID

@@ -93,6 +93,61 @@ func TestCorpusCRUDAndFileUploadOverHTTP(t *testing.T) {
 	}
 }
 
+func TestFileIngestRouteReturnsTheExistingJob(t *testing.T) {
+	handler, _, token, orgID, _ := newTestServerRouter(t)
+
+	createBody, _ := json.Marshal(map[string]any{"organization_id": orgID, "name": "Re-ingest Target"})
+	createRequest := httptest.NewRequest(http.MethodPost, "/api/v1/knowledge/corpora", bytes.NewReader(createBody))
+	createRequest.Header.Set("Authorization", "Bearer "+token)
+	createRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(createRecorder, createRequest)
+	var corpus knowledge.Corpus
+	if err := json.NewDecoder(createRecorder.Body).Decode(&corpus); err != nil {
+		t.Fatalf("decode created corpus: %v", err)
+	}
+
+	var uploadBody bytes.Buffer
+	writer := multipart.NewWriter(&uploadBody)
+	part, err := writer.CreateFormFile("file", "notes.txt")
+	if err != nil {
+		t.Fatalf("create form file: %v", err)
+	}
+	if _, err := part.Write([]byte("Quarterly notes.")); err != nil {
+		t.Fatalf("write form file: %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("close multipart writer: %v", err)
+	}
+	uploadRequest := httptest.NewRequest(http.MethodPost, "/api/v1/knowledge/corpora/"+corpus.ID+"/files", &uploadBody)
+	uploadRequest.Header.Set("Authorization", "Bearer "+token)
+	uploadRequest.Header.Set("Content-Type", writer.FormDataContentType())
+	uploadRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(uploadRecorder, uploadRequest)
+	var file knowledge.CorpusFile
+	if err := json.NewDecoder(uploadRecorder.Body).Decode(&file); err != nil {
+		t.Fatalf("decode uploaded file: %v", err)
+	}
+
+	// Upload already auto-enqueued a job (vectorless, no embedder
+	// configured here) — re-triggering ingestion for the same file should
+	// return that existing queued/running job rather than erroring or
+	// silently no-op'ing, so the console can surface it either way.
+	ingestRequest := httptest.NewRequest(http.MethodPost, "/api/v1/knowledge/corpora/"+corpus.ID+"/files/"+file.ID+"/ingest", nil)
+	ingestRequest.Header.Set("Authorization", "Bearer "+token)
+	ingestRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(ingestRecorder, ingestRequest)
+	if ingestRecorder.Code != http.StatusOK {
+		t.Fatalf("expected re-ingest success, got %d: %s", ingestRecorder.Code, ingestRecorder.Body.String())
+	}
+	var job knowledge.IngestionJob
+	if err := json.NewDecoder(ingestRecorder.Body).Decode(&job); err != nil {
+		t.Fatalf("decode ingestion job: %v", err)
+	}
+	if job.CorpusFileID != file.ID {
+		t.Fatalf("expected the job to reference the re-ingested file, got %+v", job)
+	}
+}
+
 func TestKnowledgeRequiresAuthentication(t *testing.T) {
 	handler, _, _, orgID, _ := newTestServerRouter(t)
 	request := httptest.NewRequest(http.MethodGet, "/api/v1/knowledge/corpora?organization_id="+orgID, nil)
@@ -103,7 +158,7 @@ func TestKnowledgeRequiresAuthentication(t *testing.T) {
 	}
 }
 
-func TestSearchWithoutRAGConfiguredReturnsAClearError(t *testing.T) {
+func TestSearchWithoutEmbedderConfiguredStillSucceedsVectorless(t *testing.T) {
 	handler, _, token, orgID, _ := newTestServerRouter(t)
 
 	createBody, _ := json.Marshal(map[string]any{"organization_id": orgID, "name": "No Embedder Yet"})
@@ -122,9 +177,12 @@ func TestSearchWithoutRAGConfiguredReturnsAClearError(t *testing.T) {
 	searchRecorder := httptest.NewRecorder()
 	handler.ServeHTTP(searchRecorder, searchRequest)
 	// serverapp.New wires the Knowledge service with no RAG service configured
-	// (no embedder yet — see ROADMAP.md), so this must fail clearly rather
-	// than panic or silently return an empty result.
-	if searchRecorder.Code != http.StatusBadRequest {
-		t.Fatalf("expected a clear 400 when RAG isn't configured, got %d: %s", searchRecorder.Code, searchRecorder.Body.String())
+	// (no embedder yet — see ROADMAP.md). That no longer means "reject the
+	// call": sdkrag.Service falls back to vectorless (BM25) search with a
+	// nil embedder (see ragServiceFor's doc comment), so this must succeed —
+	// an empty result set here just reflects the empty corpus, not a
+	// missing-embedder error.
+	if searchRecorder.Code != http.StatusOK {
+		t.Fatalf("expected vectorless search to succeed (200) without an embedder configured, got %d: %s", searchRecorder.Code, searchRecorder.Body.String())
 	}
 }

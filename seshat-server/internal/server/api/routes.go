@@ -134,9 +134,10 @@ func (app *App) routes() http.Handler {
 	mux.Handle("POST /api/v1/provider-settings/{providerSettingID}/unset-default", app.authMiddleware(http.HandlerFunc(app.handleProviderSettingUnsetDefault)))
 
 	// Knowledge base — organization-scoped RAG corpora, file upload and
-	// ingestion. Search/ingestion return a clear "not configured" error
-	// until an embedder is wired in (see ROADMAP.md); corpus/file
-	// management works regardless.
+	// ingestion. Ingestion runs vectorless (BM25-only) until an embedder is
+	// configured (org or platform default — see embedder-settings.go), then
+	// automatically uses real vector search; corpus/file management works
+	// either way.
 	mux.Handle("GET /api/v1/knowledge/corpora", app.authMiddleware(http.HandlerFunc(app.handleCorpora)))
 	mux.Handle("POST /api/v1/knowledge/corpora", app.authMiddleware(http.HandlerFunc(app.handleCorpora)))
 	mux.Handle("GET /api/v1/knowledge/corpora/{corpusID}", app.authMiddleware(http.HandlerFunc(app.handleCorpusByID)))
@@ -145,6 +146,12 @@ func (app *App) routes() http.Handler {
 	mux.Handle("GET /api/v1/knowledge/corpora/{corpusID}/files", app.authMiddleware(http.HandlerFunc(app.handleCorpusFiles)))
 	mux.Handle("POST /api/v1/knowledge/corpora/{corpusID}/files", app.authMiddleware(http.HandlerFunc(app.handleCorpusFiles)))
 	mux.Handle("DELETE /api/v1/knowledge/corpora/{corpusID}/files/{fileID}", app.authMiddleware(http.HandlerFunc(app.handleCorpusFileByID)))
+	// Re-triggers ingestion for an already-uploaded file — used to upgrade a
+	// file ingested vectorless to real vectors once an embedder is
+	// configured (Ingest upserts by deterministic key, so this replaces the
+	// existing chunks in place rather than duplicating them), or to retry
+	// one that never got a job at all (a prior enqueue failure).
+	mux.Handle("POST /api/v1/knowledge/corpora/{corpusID}/files/{fileID}/ingest", app.authMiddleware(http.HandlerFunc(app.handleCorpusFileIngest)))
 	mux.Handle("GET /api/v1/knowledge/corpora/{corpusID}/ingestion-jobs", app.authMiddleware(http.HandlerFunc(app.handleCorpusIngestionJobs)))
 	mux.Handle("GET /api/v1/knowledge/corpora/{corpusID}/ingestion-jobs/{jobID}", app.authMiddleware(http.HandlerFunc(app.handleCorpusIngestionJobByID)))
 	mux.Handle("POST /api/v1/knowledge/corpora/{corpusID}/ingestion-jobs/{jobID}/retry", app.authMiddleware(http.HandlerFunc(app.handleCorpusIngestionJobRetry)))

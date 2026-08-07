@@ -580,10 +580,15 @@ func (s *Service) checkFileAccess(principal *backendauth.Principal, fileRecord *
 	return nil
 }
 
-// extractTextWithDocling tries native extraction (DOCX/PPTX/XLSX, PDF with a
-// text layer) then docling (scans, audio, images) for binary formats, then
-// falls back to plain-text extraction for everything else. See
-// internal/docconvert for the native/docling decision.
+// extractTextWithDocling always routes binary formats (DOCX/PPTX/XLSX, PDF,
+// scans, audio, images) through docling, then falls back to plain-text
+// extraction for everything else. Deliberately skips docconvert's
+// native-first shortcut: a corpus document lives in the knowledge base
+// permanently and gets searched forever, so a page docling would have
+// caught (a table, a diagram, a scan) but a cheap per-page text-density
+// check missed is a silent, permanent loss - not worth the speed. That
+// tradeoff is fine for the ephemeral chat-attachment path (internal/files),
+// which still uses docconvert's native-first Convert/ConvertBytes.
 func (s *Service) extractTextWithDocling(ctx context.Context, data []byte, contentType, filename string) string {
 	ext := strings.ToLower(filepath.Ext(filename))
 	if docconvert.AllConvertibleExtensions[ext] {
@@ -591,10 +596,13 @@ func (s *Service) extractTextWithDocling(ctx context.Context, data []byte, conte
 		if s.resolveDoclingClient != nil {
 			doclingClient = s.resolveDoclingClient(ctx)
 		}
-		if result, ok, _ := docconvert.ConvertBytes(ctx, data, filename, doclingClient); ok {
-			return result.Markdown
+		if doclingClient != nil && doclingClient.IsAvailable(ctx) {
+			if conversion, err := doclingClient.ConvertBytes(ctx, data, filename); err == nil && strings.TrimSpace(conversion.Markdown) != "" {
+				return conversion.Markdown
+			}
 		}
-		// Neither path produced text — fall through to plain-text extraction.
+		// Docling unavailable or produced nothing — fall through to
+		// plain-text extraction as a last resort.
 	}
 	return extractText(data, contentType, filename)
 }

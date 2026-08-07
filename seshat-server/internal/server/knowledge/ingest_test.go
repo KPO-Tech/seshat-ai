@@ -78,7 +78,13 @@ func TestUploadFileAutoEnqueuesAndProcessesIngestion(t *testing.T) {
 	}
 }
 
-func TestUploadFileWithoutEmbedderConfiguredSkipsAutoEnqueue(t *testing.T) {
+// Without an embedder configured, ingestion still runs — vectorless
+// (BM25-only), via sdkrag.Service's own nil-embedder fallback (see
+// ragServiceFor). This used to be a hard failure (auto-enqueue skipped,
+// Search rejected outright); it isn't anymore, since keyword search over
+// ungenerated-vector chunks is strictly better than no knowledge base
+// feature at all until someone configures a real embedder.
+func TestUploadFileWithoutEmbedderIngestsVectorlessAndSearchWorks(t *testing.T) {
 	env := newTestEnv(t) // no embedder configured — this is the default state
 
 	corpus, err := env.knowledge.CreateCorpus(context.Background(), env.adminPrincipal, CreateCorpusParams{
@@ -87,7 +93,8 @@ func TestUploadFileWithoutEmbedderConfiguredSkipsAutoEnqueue(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create corpus: %v", err)
 	}
-	if _, err := env.knowledge.UploadFile(context.Background(), env.adminPrincipal, corpus.ID, "doc.txt", "text/plain", []byte("some content")); err != nil {
+	text := "Refunds are processed within 14 business days of the return being received by our warehouse."
+	if _, err := env.knowledge.UploadFile(context.Background(), env.adminPrincipal, corpus.ID, "refund-policy.txt", "text/plain", []byte(text)); err != nil {
 		t.Fatalf("upload file: %v", err)
 	}
 
@@ -95,12 +102,35 @@ func TestUploadFileWithoutEmbedderConfiguredSkipsAutoEnqueue(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list ingestion jobs: %v", err)
 	}
-	if len(jobs) != 0 {
-		t.Fatalf("expected no auto-enqueued job without a configured embedder, got %d", len(jobs))
+	if len(jobs) != 1 || jobs[0].Status != IngestionJobStatusQueued {
+		t.Fatalf("expected exactly one auto-enqueued queued job even without an embedder, got %+v", jobs)
 	}
 
-	if _, err := env.knowledge.Search(context.Background(), env.adminPrincipal, SearchParams{CorpusID: corpus.ID, Query: "anything"}); err == nil {
-		t.Fatal("expected search to fail clearly when no embedder is configured")
+	processed, err := env.knowledge.ProcessNextIngestionJob(context.Background())
+	if err != nil {
+		t.Fatalf("process ingestion job: %v", err)
+	}
+	if !processed {
+		t.Fatal("expected a queued job to be processed")
+	}
+
+	job, err := env.knowledge.GetIngestionJob(context.Background(), env.adminPrincipal, corpus.ID, jobs[0].ID)
+	if err != nil {
+		t.Fatalf("get ingestion job: %v", err)
+	}
+	if job.Status != IngestionJobStatusCompleted {
+		t.Fatalf("expected the vectorless job to complete, got status=%q error=%q", job.Status, job.LastError)
+	}
+	if job.ChunkCount == 0 {
+		t.Fatal("expected the completed vectorless job to still report at least one chunk")
+	}
+
+	resp, err := env.knowledge.Search(context.Background(), env.adminPrincipal, SearchParams{CorpusID: corpus.ID, Query: "refund policy"})
+	if err != nil {
+		t.Fatalf("expected vectorless (BM25) search to succeed without an embedder, got: %v", err)
+	}
+	if len(resp.Results) == 0 {
+		t.Fatal("expected vectorless search to still find the ingested file via keyword match")
 	}
 }
 

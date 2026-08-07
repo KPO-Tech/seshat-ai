@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { Alert, Button, Card, Empty, message, Popconfirm, Space, Tag, Upload } from 'antd'
 import type { TableProps, UploadProps } from 'antd'
-import { ArrowLeftOutlined, DeleteOutlined, EditOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, DeleteOutlined, EditOutlined, ReloadOutlined, ThunderboltOutlined, UploadOutlined } from '@ant-design/icons'
 import {
   useCorpus,
   useCorpusFiles,
@@ -10,6 +10,7 @@ import {
   useDeleteCorpus,
   useUploadCorpusFile,
   useDetachCorpusFile,
+  useIngestCorpusFile,
   useIngestionJobs,
   useRetryIngestionJob,
   useSearchCorpus,
@@ -40,6 +41,7 @@ export function CorpusDetailPage() {
   const { data: jobs, error: jobsError } = useIngestionJobs(corpusId)
   const uploadFile = useUploadCorpusFile(corpusId ?? '')
   const detachFile = useDetachCorpusFile(corpusId ?? '')
+  const ingestFile = useIngestCorpusFile(corpusId ?? '')
   const retryJob = useRetryIngestionJob(corpusId ?? '')
   const updateCorpus = useUpdateCorpus()
   const deleteCorpus = useDeleteCorpus()
@@ -119,19 +121,34 @@ export function CorpusDetailPage() {
     {
       title: '',
       key: 'actions',
-      width: 64,
+      width: 96,
       render: (_, record) => (
-        <Popconfirm
-          title={`Remove ${record.filename}?`}
-          description="Deletes its ingested vector chunks too."
-          onConfirm={() =>
-            detachFile.mutate(record.id!, {
-              onError: (error) => message.error(getErrorMessage(error)),
-            })
-          }
-        >
-          <Button size="small" danger icon={<DeleteOutlined />} aria-label={`Remove ${record.filename}`} />
-        </Popconfirm>
+        <Space size={4}>
+          <Button
+            size="small"
+            icon={<ThunderboltOutlined />}
+            loading={ingestFile.isPending}
+            title="Re-ingest — upgrades to real vectors once an embedder is configured"
+            onClick={() =>
+              ingestFile.mutate(record.id!, {
+                onSuccess: () => message.success(`Queued ${record.filename} for ingestion`),
+                onError: (error) => message.error(getErrorMessage(error)),
+              })
+            }
+            aria-label={`Re-ingest ${record.filename}`}
+          />
+          <Popconfirm
+            title={`Remove ${record.filename}?`}
+            description="Deletes its ingested vector chunks too."
+            onConfirm={() =>
+              detachFile.mutate(record.id!, {
+                onError: (error) => message.error(getErrorMessage(error)),
+              })
+            }
+          >
+            <Button size="small" danger icon={<DeleteOutlined />} aria-label={`Remove ${record.filename}`} />
+          </Popconfirm>
+        </Space>
       ),
     },
   ]

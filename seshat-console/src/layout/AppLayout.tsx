@@ -68,14 +68,26 @@ export function AppLayout() {
   ])
 
   const workspaceOrganizationId = routeOrganizationId ?? selectedOrganizationId ?? fallbackOrganizationId
-  const organizationNavItems = workspaceOrganizationId ? getOrganizationNavItems(workspaceOrganizationId) : []
+  // The org group/sidebar should only take over once you're actually inside
+  // an organization's routes (routeOrganizationId) — not whenever there
+  // happens to be a fallback-selected org, which used to make "Organization"
+  // (and hiding "Platform" below) leak into pages like /platform/overview
+  // that have nothing to do with any single org.
+  const inOrganizationRoute = Boolean(routeOrganizationId)
+  const organizationNavItems = inOrganizationRoute && workspaceOrganizationId ? getOrganizationNavItems(workspaceOrganizationId) : []
   const activePrimary = getActivePrimaryNavItem(location.pathname, workspaceOrganizationId)
   const secondaryNavItems = getSecondaryNavItems(location.pathname, workspaceOrganizationId)
   const activeSecondary = getActiveSecondaryNavItem(location.pathname, secondaryNavItems)
   const isAdmin = Boolean(user?.is_admin)
+  // A platform admin drilling into one organization gets that organization's
+  // full nav as its own focused dashboard (everything Team & Access/AI
+  // Config/... already has) instead of it being squeezed in alongside
+  // Platform - same shape a single-org admin already sees, plus the "Back
+  // to Organizations" escape hatch below.
+  const showPlatformGroup = isAdmin && !inOrganizationRoute
 
   const menuItems = [
-    ...(isAdmin
+    ...(showPlatformGroup
       ? [
           {
             key: 'platform-group',
@@ -108,7 +120,7 @@ export function AppLayout() {
   ]
 
   const primaryItems = [
-    ...(isAdmin ? platformNavItems : []),
+    ...(showPlatformGroup ? platformNavItems : []),
     ...workspaceNavItems,
     ...accountNavItems,
     ...organizationNavItems,
@@ -224,8 +236,8 @@ export function AppLayout() {
           <div style={{ minWidth: 0, flex: '1 1 auto', overflow: 'hidden' }}>
             <Space size={8} align="center" wrap={false} style={{ maxWidth: '100%' }}>
               {isAdmin && routeOrganizationId && (
-                <Button size="small" type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate('/platform/overview')}>
-                  Back to platform
+                <Button size="small" type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate('/platform/organizations')}>
+                  Back to Organizations
                 </Button>
               )}
               <Tag color="orange" style={{ margin: 0, flexShrink: 0 }}>

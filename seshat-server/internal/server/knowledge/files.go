@@ -12,11 +12,12 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
 )
 
-// UploadFile stores the given file bytes for a corpus and creates its
-// CorpusFile record. When the RAG service is configured, it also
-// auto-enqueues an ingestion job — best-effort: a failure to enqueue does
-// not fail the upload, since ingestion can always be retried explicitly via
-// EnqueueIngest. Requires knowledge.manage or organization.manage.
+// UploadFile stores the given file bytes for a corpus, creates its
+// CorpusFile record, and auto-enqueues an ingestion job (vectorless/BM25 if
+// no embedder is configured yet, see ragServiceFor) — best-effort: a
+// failure to enqueue does not fail the upload, since ingestion can always
+// be retried explicitly via EnqueueIngest. Requires knowledge.manage or
+// organization.manage.
 func (s *Service) UploadFile(ctx context.Context, principal *iam.Principal, corpusID, filename, contentType string, data []byte) (*CorpusFile, error) {
 	if s.artifacts == nil {
 		return nil, ErrInvalidInput("artifact storage is not configured on this server")
@@ -67,12 +68,12 @@ func (s *Service) UploadFile(ctx context.Context, principal *iam.Principal, corp
 		return nil, err
 	}
 
-	if _, ok, embedderErr := s.resolveEmbedderConfig(ctx, corpus.OrganizationID); embedderErr == nil && ok {
-		if _, jobErr := s.enqueueIngestionJob(ctx, corpus.OrganizationID, corpus.ID, record.ID, filename); jobErr != nil {
-			// Best-effort: the file is uploaded either way; the caller can
-			// retry ingestion explicitly via EnqueueIngest.
-			_ = jobErr
-		}
+	// Always enqueue — ingestion works vectorless (BM25-only) without an
+	// embedder configured, see ragServiceFor. Best-effort: the file is
+	// uploaded either way; the caller can retry ingestion explicitly via
+	// EnqueueIngest.
+	if _, jobErr := s.enqueueIngestionJob(ctx, corpus.OrganizationID, corpus.ID, record.ID, filename); jobErr != nil {
+		_ = jobErr
 	}
 
 	result := toCorpusFile(record)

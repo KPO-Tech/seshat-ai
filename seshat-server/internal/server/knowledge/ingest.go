@@ -17,18 +17,16 @@ import (
 )
 
 // EnqueueIngest explicitly (re-)queues ingestion for an already-uploaded
-// file — the fallback for when UploadFile's best-effort auto-enqueue didn't
-// happen (RAG wasn't configured yet at upload time) or a caller wants to
-// force a fresh pass. Requires knowledge.manage or organization.manage.
+// file — the fallback for when UploadFile's best-effort auto-enqueue job
+// creation failed, or a caller wants to force a fresh pass (e.g. an
+// embedder was just configured and existing vectorless chunks should be
+// upgraded to real vectors — Ingest upserts by deterministic key, so this
+// replaces them in place rather than duplicating). Requires
+// knowledge.manage or organization.manage.
 func (s *Service) EnqueueIngest(ctx context.Context, principal *iam.Principal, corpusID, fileID string) (*IngestionJob, error) {
 	corpus, err := s.mustLoadCorpus(ctx, principal, corpusID, "knowledge.manage", "organization.manage")
 	if err != nil {
 		return nil, err
-	}
-	if _, ok, err := s.resolveEmbedderConfig(ctx, corpus.OrganizationID); err != nil {
-		return nil, err
-	} else if !ok {
-		return nil, ErrInvalidInput("no embedder configured (neither this organization nor the platform default — see the embedder-settings endpoints)")
 	}
 	var file sdb.CorpusFile
 	if err := s.db.Gorm().WithContext(ctx).First(&file, "id = ? AND corpus_id = ?", strings.TrimSpace(fileID), corpus.ID).Error; err != nil {
@@ -223,13 +221,13 @@ func (s *Service) claimNextIngestionJob(ctx context.Context) (sdb.KnowledgeInges
 }
 
 func (s *Service) processIngestionJob(ctx context.Context, job sdb.KnowledgeIngestionJob) {
-	ragService, ok, err := s.ragServiceFor(ctx, job.OrganizationID)
+	// ragServiceFor's bool return is always true when err is nil (a vector
+	// store is required at construction, an embedder is not — see its own
+	// doc comment); vectorless ingestion is deliberate, not a fallback for
+	// this case failing.
+	ragService, _, err := s.ragServiceFor(ctx, job.OrganizationID)
 	if err != nil {
 		s.markIngestionJobFailed(ctx, job, "resolve embedder: "+err.Error())
-		return
-	}
-	if !ok {
-		s.markIngestionJobFailed(ctx, job, "no embedder configured (neither this organization nor the platform default)")
 		return
 	}
 
@@ -308,11 +306,22 @@ func (s *Service) markIngestionJobFailed(ctx context.Context, job sdb.KnowledgeI
 		Updates(map[string]any{"status": status, "attempt_count": attempts, "last_error": reason, "next_run_at": nextRunAt}).Error
 }
 
-// extractTextWithDocling tries docling first for binary formats (PDF,
-// DOCX, PPTX, XLSX, audio, images), then falls back to plain-text
-// extraction — identical logic to seshat-backend's knowledge service.
+// extractTextWithDocling always routes binary formats (PDF, DOCX/PPTX/XLSX,
+// audio, images, HTML, LaTeX - see doclingIngestExtensions) through docling,
+// then falls back to plain-text extraction for everything else.
+//
+// Deliberately skips the native/dependency-free extraction shortcut used
+// elsewhere (e.g. seshat-backend's ephemeral chat-attachment path): a
+// corpus document lives in the knowledge base permanently and gets
+// searched forever, so a page docling would have caught — a table whose
+// row/column structure a plain-text extractor would scramble, a diagram, a
+// scanned page — but a cheap text-density check missed is a silent,
+// permanent loss. That's a cost worth avoiding entirely for RAG ingestion,
+// even at the price of always paying docling's per-page layout-detection
+// pass (see its standard PDF pipeline).
 func (s *Service) extractTextWithDocling(ctx context.Context, data []byte, contentType, filename string) string {
 	ext := strings.ToLower(filepath.Ext(filename))
+
 	if s.doclingClient != nil && doclingIngestExtensions[ext] && s.doclingClient.IsAvailable(ctx) {
 		result, err := s.doclingClient.ConvertBytes(ctx, data, filename)
 		if err == nil && strings.TrimSpace(result.Markdown) != "" {

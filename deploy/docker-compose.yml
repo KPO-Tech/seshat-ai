@@ -4,6 +4,7 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    mem_limit: 512m
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-seshat}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
@@ -45,6 +46,17 @@ services:
     profiles: ["docs", "full"]
     image: quay.io/docling-project/docling-serve-cpu:latest
     restart: unless-stopped
+    # The heaviest service by far (PyTorch + layout/OCR models) and the one
+    # most likely to run away with host RAM on a large/scanned PDF — without
+    # a cap, an oversized document can starve the whole host (Docker
+    # Desktop/WSL2 has no default ceiling of its own on Windows), which is
+    # what's behind unrelated apps crashing system-wide during a big
+    # ingestion batch. Capped here so the worst case is this one container
+    # getting OOM-killed and that ingestion job failing/retrying, not the
+    # host. On a 16 GB machine this still leaves headroom for the rest of
+    # the stack plus the host OS and browser - raise it if you have more
+    # RAM and hit legitimate OOM kills on large documents.
+    mem_limit: 3g
     ports:
       - "${DOCLING_PORT:-5001}:5001"
     healthcheck:
@@ -68,6 +80,7 @@ services:
     profiles: ["s3", "full"]
     image: minio/minio:latest
     restart: unless-stopped
+    mem_limit: 512m
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-seshat}
@@ -88,6 +101,7 @@ services:
   minio-createbucket:
     profiles: ["s3", "full"]
     image: minio/mc:latest
+    mem_limit: 128m
     depends_on:
       minio:
         condition: service_healthy
@@ -109,6 +123,7 @@ services:
   mailpit:
     image: axllent/mailpit:latest
     restart: unless-stopped
+    mem_limit: 256m
     ports:
       - "${MAILPIT_SMTP_PORT:-1025}:1025"
       - "${MAILPIT_WEB_PORT:-8025}:8025"
@@ -118,6 +133,7 @@ services:
       context: ..
       dockerfile: seshat-server/Dockerfile
     restart: unless-stopped
+    mem_limit: 1g
     depends_on:
       postgres:
         condition: service_healthy
@@ -171,6 +187,15 @@ services:
       # Defaults assume the default SESHAT_CONSOLE_PORT=3000 - set this
       # explicitly in .env if you changed that port.
       SESHAT_SERVER_PUBLIC_APP_URL: ${SESHAT_SERVER_PUBLIC_APP_URL:-http://localhost:3000}
+    # Corpus files land under /app/.seshat when SESHAT_SERVER_STORAGE_PROVIDER
+    # is empty/local (the default — see storageConfigFromEnv), which without
+    # this volume lives only in the container's writable layer: gone on the
+    # next `docker compose up --build`/`down`/image rebuild, silently, with
+    # no error. Switching to `s3` (the minio service) is the other way to
+    # get real persistence; this volume is what makes the *default* local
+    # mode persistent instead of a trap.
+    volumes:
+      - seshat-server-artifacts:/app/.seshat
     # Lets this container reach services running directly on the host (e.g.
     # a local Ollama for LLM/embedder settings) via http://host.docker.internal:<port>
     # instead of localhost, which inside a container means the container
@@ -184,6 +209,7 @@ services:
     build:
       context: ../seshat-console
     restart: unless-stopped
+    mem_limit: 256m
     depends_on:
       - seshat-server
     ports:
@@ -196,6 +222,7 @@ services:
     image: valkey/valkey:8-alpine
     command: valkey-server --save 30 1 --loglevel warning
     restart: unless-stopped
+    mem_limit: 256m
     volumes:
       - searxng-redis-data:/data
 
@@ -206,6 +233,7 @@ services:
   searxng-secret-key:
     profiles: ["search", "full"]
     image: alpine:3.20
+    mem_limit: 64m
     volumes:
       - ./searxng:/etc/searxng:rw
     entrypoint: ["/bin/sh", "-c"]
@@ -232,6 +260,7 @@ services:
     profiles: ["search", "full"]
     image: docker.io/searxng/searxng:latest
     restart: unless-stopped
+    mem_limit: 512m
     depends_on:
       searxng-redis:
         condition: service_started
@@ -247,6 +276,7 @@ services:
 
 volumes:
   postgres-data:
+  seshat-server-artifacts:
   minio-data:
   searxng-redis-data:
   searxng-data:
