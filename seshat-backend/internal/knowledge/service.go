@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
@@ -626,17 +628,29 @@ func extractText(data []byte, contentType, _ string) string {
 	return ""
 }
 
+// isPrintable reports whether s looks like real text rather than binary
+// data. utf8.ValidString is the load-bearing check: arbitrary binary (a
+// PDF's compressed stream data, for instance) essentially never forms
+// valid UTF-8 over any meaningful length, so this alone rejects almost all
+// non-text blobs. Without it, ranging over an invalid byte sequence
+// replaces each bad run with U+FFFD (>= 32), so the old "r >= 32" check
+// scored raw binary as ~100% printable - this is exactly what let a raw,
+// un-extracted PDF get silently indexed as "text" instead of the ingestion
+// job failing. The printable-character ratio on top catches the rarer
+// case of valid-but-not-really-text UTF-8 (e.g. mostly control characters).
 func isPrintable(s string) bool {
-	if len(s) == 0 {
+	if len(s) == 0 || !utf8.ValidString(s) {
 		return false
 	}
 	printable := 0
+	total := 0
 	for _, r := range s {
-		if r >= 32 || r == '\n' || r == '\r' || r == '\t' {
+		total++
+		if unicode.IsPrint(r) || r == '\n' || r == '\r' || r == '\t' {
 			printable++
 		}
 	}
-	return float64(printable)/float64(len([]rune(s))) > 0.8
+	return float64(printable)/float64(total) > 0.8
 }
 
 func corpusFromDB(r db.Corpus) *Corpus {

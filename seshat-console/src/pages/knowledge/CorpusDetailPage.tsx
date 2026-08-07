@@ -1,8 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { Alert, Button, Card, Empty, message, Popconfirm, Space, Tag, Upload } from 'antd'
+import { Alert, Button, Card, Empty, Input, message, Modal, Popconfirm, Space, Tag, Upload } from 'antd'
 import type { TableProps, UploadProps } from 'antd'
-import { ArrowLeftOutlined, DeleteOutlined, EditOutlined, ReloadOutlined, ThunderboltOutlined, UploadOutlined } from '@ant-design/icons'
+import {
+  ArrowLeftOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  HistoryOutlined,
+  LoadingOutlined,
+  ThunderboltOutlined,
+  UploadOutlined,
+} from '@ant-design/icons'
 import {
   useCorpus,
   useCorpusFiles,
@@ -12,7 +20,6 @@ import {
   useDetachCorpusFile,
   useIngestCorpusFile,
   useIngestionJobs,
-  useRetryIngestionJob,
   useSearchCorpus,
   type CorpusFile,
   type IngestionJob,
@@ -32,20 +39,45 @@ const STATUS_COLOR: Record<string, string> = {
   running: 'processing',
 }
 
+const IN_PROGRESS_JOB_STATUSES = new Set(['queued', 'running'])
+
 export function CorpusDetailPage() {
   const { organizationId, corpusId } = useParams<{ organizationId: string; corpusId: string }>()
   const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
+  const [errorModalFile, setErrorModalFile] = useState<CorpusFile | null>(null)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [historySearch, setHistorySearch] = useState('')
   const { data: corpus, error: corpusError } = useCorpus(corpusId)
   const { data: files, isLoading: filesLoading, error: filesError } = useCorpusFiles(corpusId)
   const { data: jobs, error: jobsError } = useIngestionJobs(corpusId)
   const uploadFile = useUploadCorpusFile(corpusId ?? '')
   const detachFile = useDetachCorpusFile(corpusId ?? '')
   const ingestFile = useIngestCorpusFile(corpusId ?? '')
-  const retryJob = useRetryIngestionJob(corpusId ?? '')
   const updateCorpus = useUpdateCorpus()
   const deleteCorpus = useDeleteCorpus()
   const searchCorpus = useSearchCorpus(corpusId ?? '')
+
+  // jobs comes back newest-created-first per file (see ListIngestionJobs),
+  // so the first match per corpus_file_id is that file's latest attempt -
+  // what the merged Files row's Attempts/error-popup should reflect. Old
+  // superseded attempts (e.g. a transient failure before a successful
+  // retry) still show up in the History modal, just not on the main row.
+  const latestJobByFileId = useMemo(() => {
+    const map = new Map<string, IngestionJob>()
+    for (const job of jobs ?? []) {
+      if (job.corpus_file_id && !map.has(job.corpus_file_id)) {
+        map.set(job.corpus_file_id, job)
+      }
+    }
+    return map
+  }, [jobs])
+
+  const filteredHistory = useMemo(() => {
+    const q = historySearch.trim().toLowerCase()
+    if (!q) return jobs ?? []
+    return (jobs ?? []).filter((job) => job.filename?.toLowerCase().includes(q))
+  }, [jobs, historySearch])
 
   const canonicalOrganizationId = corpus?.organization_id ?? organizationId
   const corporaPath = canonicalOrganizationId ? `/orgs/${canonicalOrganizationId}/knowledge/corpora` : null
@@ -111,10 +143,40 @@ export function CorpusDetailPage() {
     { title: 'Filename', dataIndex: 'filename', key: 'filename' },
     {
       title: 'Status',
-      dataIndex: 'status',
       key: 'status',
-      width: 120,
-      render: (status: string) => <Tag color={STATUS_COLOR[status]}>{status}</Tag>,
+      width: 130,
+      render: (_, record) => {
+        const job = record.id ? latestJobByFileId.get(record.id) : undefined
+        if (job && IN_PROGRESS_JOB_STATUSES.has(job.status ?? '')) {
+          return (
+            <Tag icon={<LoadingOutlined spin />} color="processing">
+              {job.status}
+            </Tag>
+          )
+        }
+        if (record.status === 'failed') {
+          return (
+            <Tag
+              color="error"
+              style={{ cursor: 'pointer' }}
+              onClick={() => setErrorModalFile(record)}
+              title="Click to see the error"
+            >
+              failed
+            </Tag>
+          )
+        }
+        return <Tag color={STATUS_COLOR[record.status ?? '']}>{record.status}</Tag>
+      },
+    },
+    {
+      title: 'Attempts',
+      key: 'attempts',
+      width: 90,
+      render: (_, record) => {
+        const job = record.id ? latestJobByFileId.get(record.id) : undefined
+        return job ? `${job.attempt_count}/${job.max_attempts}` : '—'
+      },
     },
     { title: 'Chunks', dataIndex: 'chunk_count', key: 'chunk_count', width: 90 },
     { title: 'Size', dataIndex: 'size', key: 'size', width: 100, render: (size: number) => formatBytes(size) },
@@ -153,7 +215,7 @@ export function CorpusDetailPage() {
     },
   ]
 
-  const jobColumns: TableProps<IngestionJob>['columns'] = [
+  const historyColumns: TableProps<IngestionJob>['columns'] = [
     { title: 'File', dataIndex: 'filename', key: 'filename' },
     {
       title: 'Status',
@@ -165,23 +227,11 @@ export function CorpusDetailPage() {
     { title: 'Attempts', key: 'attempts', width: 100, render: (_, record) => `${record.attempt_count}/${record.max_attempts}` },
     { title: 'Error', dataIndex: 'last_error', key: 'last_error', ellipsis: true, render: (value) => value || 'No error' },
     {
-      title: '',
-      key: 'actions',
-      width: 64,
-      render: (_, record) =>
-        record.status === 'failed' && (
-          <Button
-            size="small"
-            icon={<ReloadOutlined />}
-            loading={retryJob.isPending}
-            onClick={() =>
-              retryJob.mutate(record.id!, {
-                onError: (error) => message.error(getErrorMessage(error)),
-              })
-            }
-            aria-label={`Retry ${record.filename}`}
-          />
-        ),
+      title: 'When',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      width: 170,
+      render: (value: string | undefined) => (value ? new Date(value).toLocaleString() : '—'),
     },
   ]
 
@@ -222,7 +272,29 @@ export function CorpusDetailPage() {
       />
 
       <Space orientation="vertical" size={20} style={{ width: '100%' }}>
-        <Card title="Files" size="small">
+        <Card
+          title="Files"
+          size="small"
+          extra={
+            <Button
+              size="small"
+              icon={<HistoryOutlined />}
+              onClick={() => setHistoryOpen(true)}
+              disabled={!jobs || jobs.length === 0}
+            >
+              History
+            </Button>
+          }
+        >
+          {jobsError && (
+            <Alert
+              type="warning"
+              showIcon
+              message="Couldn't load ingestion attempts — status still reflects each file's own record"
+              description={getErrorMessage(jobsError)}
+              style={{ marginBottom: 12 }}
+            />
+          )}
           <ConsoleTable<CorpusFile>
             rowKey="id"
             size="small"
@@ -235,24 +307,50 @@ export function CorpusDetailPage() {
           />
         </Card>
 
-        {jobsError && (
-          <Alert type="error" showIcon message="Couldn't load ingestion jobs" description={getErrorMessage(jobsError)} />
-        )}
-
-        {jobs && jobs.length > 0 && (
-          <Card title="Ingestion jobs" size="small">
-            <ConsoleTable<IngestionJob>
-              rowKey="id"
-              size="small"
-              columns={jobColumns}
-              dataSource={jobs}
-              pagination={false}
-            />
-          </Card>
-        )}
-
         <SearchTestCard placeholder="Ask something this corpus should be able to answer" search={searchCorpus} />
       </Space>
+
+      <Modal
+        open={Boolean(errorModalFile)}
+        onCancel={() => setErrorModalFile(null)}
+        footer={null}
+        centered
+        title={`Ingestion error — ${errorModalFile?.filename ?? ''}`}
+      >
+        <Alert
+          type="error"
+          showIcon
+          message={
+            (errorModalFile?.id ? latestJobByFileId.get(errorModalFile.id)?.last_error : undefined) ||
+            'No error message recorded for this attempt.'
+          }
+        />
+      </Modal>
+
+      <Modal
+        open={historyOpen}
+        onCancel={() => setHistoryOpen(false)}
+        footer={null}
+        centered
+        width={800}
+        title="Ingestion history"
+      >
+        <Input.Search
+          placeholder="Filter by filename"
+          allowClear
+          value={historySearch}
+          onChange={(e) => setHistorySearch(e.target.value)}
+          style={{ marginBottom: 12 }}
+        />
+        <ConsoleTable<IngestionJob>
+          rowKey="id"
+          size="small"
+          columns={historyColumns}
+          dataSource={filteredHistory}
+          pagination={{ pageSize: 8, hideOnSinglePage: true }}
+          locale={{ emptyText: <Empty description="No ingestion attempts match" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
+        />
+      </Modal>
 
       {corpus && (
         <CorpusFormDrawer
