@@ -6,15 +6,52 @@
 package inbox
 
 import (
+	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
+	"github.com/KPO-Tech/seshat/pkg/storage"
+	"golang.org/x/oauth2"
 )
+
+// maxAttachmentBytes bounds both the eager (WhatsApp) and lazy (Gmail)
+// attachment fetch paths - both pull the full blob into memory
+// (ArtifactStore.Put([]byte, ...), whatsmeow's Download returns []byte), so
+// this guards against a stray large file blowing up memory. An oversized
+// attachment keeps its metadata (still visible as "an attachment exists")
+// but is simply not downloadable - a stated limitation, not silent data
+// loss.
+const maxAttachmentBytes = 25 * 1024 * 1024
+
+// authExpiredMessage is the user-facing LastError set on a channel account
+// once isAuthExpired classifies a sync/send failure as a dead OAuth refresh
+// token - deliberately not Google's raw "invalid_grant" text, which means
+// nothing to a non-technical user.
+const authExpiredMessage = "Authorization has expired - reconnect this account to keep syncing."
+
+// isAuthExpired reports whether err is a dead/revoked OAuth refresh token
+// (Google's "invalid_grant" from the token endpoint) - generic across any
+// oauth2-based connector, not Gmail-specific, so it lives here rather than
+// in internal/inboxgmail. errors.As walks through the %w-wrapping
+// Connector.Sync/Send already do, so this works regardless of how many
+// layers deep the error originated.
+func isAuthExpired(err error) bool {
+	var retrieveErr *oauth2.RetrieveError
+	if errors.As(err, &retrieveErr) {
+		return retrieveErr.ErrorCode == "invalid_grant"
+	}
+	return false
+}
 
 type Service struct {
 	accounts   *db.ChannelAccountStore
@@ -22,6 +59,7 @@ type Service struct {
 	threads    *db.InboxThreadStore
 	messages   *db.InboxMessageStore
 	connectors map[string]Connector
+	artifacts  storage.ArtifactStore
 }
 
 func NewService(
@@ -37,6 +75,18 @@ func NewService(
 		messages:   messages,
 		connectors: make(map[string]Connector),
 	}
+}
+
+// WithArtifactStore attaches the blob store attachment bytes are read from
+// and written to - same storage.ArtifactStore interface internal/files
+// already uses (see internal/config/bootstrap.go, where it's constructed
+// once and shared). Nil-tolerant: without it, attachment metadata is still
+// recorded and visible, but nothing is downloadable (Service.OpenAttachment
+// returns a clear "blob storage not configured" error) - the same
+// graceful-degrade posture files.Service has when its own store is nil.
+func (s *Service) WithArtifactStore(store storage.ArtifactStore) *Service {
+	s.artifacts = store
+	return s
 }
 
 // RegisterConnector wires a channel implementation in. Call once per
@@ -65,19 +115,32 @@ func (s *Service) ConnectAccount(ctx context.Context, principal *backendauth.Pri
 		return nil, bkerr.InvalidInput("channel is required", nil)
 	}
 
-	record, err := s.accounts.Create(ctx, db.CreateChannelAccountParams{
-		UserID:            principal.User.ID,
-		WorkspaceID:       params.WorkspaceID,
-		Channel:           channel,
-		DisplayName:       params.DisplayName,
-		ExternalAccountID: params.ExternalAccountID,
-	})
-	if err != nil {
-		return nil, bkerr.Internal("create channel account", err)
+	// Reconnecting an already-known account (same user, channel, and
+	// external ID - e.g. redoing Gmail's OAuth flow after its refresh
+	// token expired) must update that account in place, not create a
+	// second row: UpdateConnected already resets status to connected and
+	// clears last_error, exactly what a successful reconnect needs.
+	recordID := ""
+	if existing, found, err := s.accounts.GetByChannelAndExternalID(ctx, principal.User.ID, channel, params.ExternalAccountID); err != nil {
+		return nil, bkerr.Internal("look up existing channel account", err)
+	} else if found {
+		recordID = existing.ID
+	} else {
+		record, err := s.accounts.Create(ctx, db.CreateChannelAccountParams{
+			UserID:            principal.User.ID,
+			WorkspaceID:       params.WorkspaceID,
+			Channel:           channel,
+			DisplayName:       params.DisplayName,
+			ExternalAccountID: params.ExternalAccountID,
+		})
+		if err != nil {
+			return nil, bkerr.Internal("create channel account", err)
+		}
+		recordID = record.ID
 	}
 
 	connected, err := s.accounts.UpdateConnected(ctx, db.UpdateChannelAccountConnectedParams{
-		ID:                record.ID,
+		ID:                recordID,
 		DisplayName:       params.DisplayName,
 		ExternalAccountID: params.ExternalAccountID,
 		AccessToken:       params.AccessToken,
@@ -177,12 +240,22 @@ func (s *Service) SyncAccount(ctx context.Context, principal *backendauth.Princi
 		ExpiresAt:    secret.ExpiresAt,
 	})
 	if syncErr != nil {
-		_ = s.accounts.UpdateSyncState(ctx, db.UpdateChannelAccountSyncParams{
-			ID:           account.ID,
-			SyncCursor:   dbAccount.SyncCursor,
-			LastSyncedAt: dbAccount.LastSyncedAt,
-			LastError:    syncErr.Error(),
-		})
+		if isAuthExpired(syncErr) {
+			// A dead refresh token isn't a transient failure the next sync
+			// might recover from - flip status to error (with a clear,
+			// human message) so the account drops out of
+			// ListConnectedAccountsByChannel's candidates instead of
+			// failing silently every 2 minutes, and shows up in the UI as
+			// needing reconnection.
+			_ = s.accounts.UpdateStatus(ctx, account.ID, db.ChannelAccountStatusError, authExpiredMessage)
+		} else {
+			_ = s.accounts.UpdateSyncState(ctx, db.UpdateChannelAccountSyncParams{
+				ID:           account.ID,
+				SyncCursor:   dbAccount.SyncCursor,
+				LastSyncedAt: dbAccount.LastSyncedAt,
+				LastError:    syncErr.Error(),
+			})
+		}
 		return 0, bkerr.BadGateway(fmt.Sprintf("sync failed for channel %q", account.Channel), syncErr)
 	}
 
@@ -247,6 +320,10 @@ func (s *Service) persistNormalizedMessage(ctx context.Context, accountID string
 	if m.Direction == MessageDirectionInbound {
 		senderContactID = contact.ID
 	}
+	attachmentsJSON, err := s.storeAttachments(ctx, m.Attachments)
+	if err != nil {
+		return fmt.Errorf("store attachments: %w", err)
+	}
 	if _, err := s.messages.Create(ctx, db.CreateMessageParams{
 		ThreadID:          thread.ID,
 		ChannelAccountID:  accountID,
@@ -254,7 +331,7 @@ func (s *Service) persistNormalizedMessage(ctx context.Context, accountID string
 		Direction:         m.Direction,
 		SenderContactID:   senderContactID,
 		BodyText:          m.BodyText,
-		AttachmentsJSON:   m.AttachmentsJSON,
+		AttachmentsJSON:   attachmentsJSON,
 		SentAt:            m.SentAt,
 	}); err != nil {
 		return fmt.Errorf("create message: %w", err)
@@ -262,51 +339,118 @@ func (s *Service) persistNormalizedMessage(ctx context.Context, accountID string
 	return nil
 }
 
+// storeAttachments mints an ID for any attachment missing one, and for any
+// attachment already carrying bytes (Data != nil - WhatsApp's eager
+// download path), stores them in ArtifactStore and records the resulting
+// StorageKey. Returns the marshaled JSON to persist on the message row.
+// Never fails the whole message over one attachment's storage problem: an
+// oversized or unstorable attachment degrades to metadata-only (empty
+// StorageKey, simply not downloadable later) rather than losing the
+// message - the same "skip the one bad thing, keep going" posture
+// inboxgmail's fetchAndTranslate already uses for unparseable messages.
+func (s *Service) storeAttachments(ctx context.Context, atts []Attachment) (string, error) {
+	if len(atts) == 0 {
+		return "[]", nil
+	}
+	out := make([]Attachment, len(atts))
+	for i, a := range atts {
+		if a.ID == "" {
+			a.ID = newAttachmentID()
+		}
+		if len(a.Data) > 0 {
+			if s.artifacts != nil && int64(len(a.Data)) <= maxAttachmentBytes {
+				key := fmt.Sprintf("inbox-attachments/%s", newAttachmentID())
+				if _, err := s.artifacts.Put(ctx, key, a.Data, a.ContentType); err == nil {
+					a.StorageKey = key
+				}
+			}
+			a.Data = nil
+		}
+		out[i] = a
+	}
+	return marshalAttachments(out)
+}
+
+func newAttachmentID() string {
+	var b [12]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return fmt.Sprintf("att-%p", &b)
+	}
+	return hex.EncodeToString(b[:])
+}
+
+func parseAttachments(raw string) []Attachment {
+	if strings.TrimSpace(raw) == "" {
+		return nil
+	}
+	var atts []Attachment
+	if err := json.Unmarshal([]byte(raw), &atts); err != nil {
+		return nil
+	}
+	return atts
+}
+
+func marshalAttachments(atts []Attachment) (string, error) {
+	if len(atts) == 0 {
+		return "[]", nil
+	}
+	b, err := json.Marshal(atts)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
 // ─── Threads & messages ─────────────────────────────────────────────────────
 
-func (s *Service) ListThreads(ctx context.Context, principal *backendauth.Principal, params ListThreadsParams) ([]Thread, error) {
+// defaultMessagePageSize is the fixed page size for GetThread's message
+// history - not client-configurable (unlike thread listing's Limit), to
+// keep the new pagination surface area minimal.
+const defaultMessagePageSize = 50
+
+func (s *Service) ListThreads(ctx context.Context, principal *backendauth.Principal, params ListThreadsParams) ([]Thread, bool, error) {
 	if s == nil || s.threads == nil {
-		return nil, bkerr.Unavailable("inbox store not configured", nil)
+		return nil, false, bkerr.Unavailable("inbox store not configured", nil)
 	}
 	if principal == nil {
-		return nil, bkerr.Unauthorized("authentication required", nil)
+		return nil, false, bkerr.Unauthorized("authentication required", nil)
 	}
-	records, err := s.threads.ListByUserID(ctx, principal.User.ID, params.Status, params.Limit)
+	records, hasMore, err := s.threads.ListByUserID(ctx, principal.User.ID, params.Status, params.Limit, params.Offset)
 	if err != nil {
-		return nil, bkerr.Internal("list threads", err)
+		return nil, false, bkerr.Internal("list threads", err)
 	}
 	out := make([]Thread, 0, len(records))
 	for _, r := range records {
 		t, err := s.hydrateThread(ctx, r)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		out = append(out, *t)
 	}
-	return out, nil
+	return out, hasMore, nil
 }
 
-func (s *Service) GetThread(ctx context.Context, principal *backendauth.Principal, threadID string) (*Thread, []Message, error) {
+func (s *Service) GetThread(ctx context.Context, principal *backendauth.Principal, threadID string, msgOffset int) (*Thread, []Message, bool, error) {
 	dbThread, err := s.threads.GetByID(ctx, threadID)
 	if err != nil {
-		return nil, nil, bkerr.NotFound("thread not found", err)
+		return nil, nil, false, bkerr.NotFound("thread not found", err)
 	}
 	if _, _, err := s.getOwnedAccountRecord(ctx, principal, dbThread.ChannelAccountID); err != nil {
-		return nil, nil, err
+		return nil, nil, false, err
 	}
 	thread, err := s.hydrateThread(ctx, *dbThread)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, false, err
 	}
-	dbMessages, err := s.messages.ListByThreadID(ctx, threadID)
+	dbMessages, hasMore, err := s.messages.ListByThreadID(ctx, threadID, defaultMessagePageSize, msgOffset)
 	if err != nil {
-		return nil, nil, bkerr.Internal("list messages", err)
+		return nil, nil, false, bkerr.Internal("list messages", err)
 	}
 	messages := make([]Message, 0, len(dbMessages))
 	for _, m := range dbMessages {
 		messages = append(messages, *messageFromDB(m))
 	}
-	return thread, messages, nil
+	return thread, messages, hasMore, nil
 }
 
 func (s *Service) UpdateThreadStatus(ctx context.Context, principal *backendauth.Principal, threadID, status string) error {
@@ -379,6 +523,9 @@ func (s *Service) SendReply(ctx context.Context, principal *backendauth.Principa
 		ExpiresAt:    secret.ExpiresAt,
 	}, dbThread.ExternalThreadID, contact.ExternalID, params.Body)
 	if err != nil {
+		if isAuthExpired(err) {
+			_ = s.accounts.UpdateStatus(ctx, account.ID, db.ChannelAccountStatusError, authExpiredMessage)
+		}
 		return nil, bkerr.BadGateway(fmt.Sprintf("send failed for channel %q", account.Channel), err)
 	}
 
@@ -397,6 +544,93 @@ func (s *Service) SendReply(ctx context.Context, principal *backendauth.Principa
 		return nil, bkerr.Internal("update thread status", err)
 	}
 	return messageFromDB(*created), nil
+}
+
+// OpenAttachment returns a streaming reader for one message's attachment,
+// enforcing the same thread ownership check every other thread-scoped
+// method uses. If the attachment's bytes are already cached (StorageKey
+// set - always true for WhatsApp, true for Gmail after a first download),
+// it streams straight from ArtifactStore. Otherwise (Gmail, first request)
+// it fetches via the channel's AttachmentFetcher, caches the result for
+// next time, and serves the just-fetched bytes directly - a failure to
+// persist the cache doesn't fail the download that already succeeded.
+func (s *Service) OpenAttachment(ctx context.Context, principal *backendauth.Principal, threadID, messageID, attachmentID string) (io.ReadCloser, Attachment, error) {
+	dbThread, err := s.threads.GetByID(ctx, threadID)
+	if err != nil {
+		return nil, Attachment{}, bkerr.NotFound("thread not found", err)
+	}
+	_, account, err := s.getOwnedAccountRecord(ctx, principal, dbThread.ChannelAccountID)
+	if err != nil {
+		return nil, Attachment{}, err
+	}
+
+	dbMessage, err := s.messages.GetByID(ctx, messageID)
+	if err != nil {
+		return nil, Attachment{}, bkerr.NotFound("message not found", err)
+	}
+	if dbMessage.ThreadID != threadID {
+		return nil, Attachment{}, bkerr.NotFound("message not found in this thread", nil)
+	}
+
+	atts := parseAttachments(dbMessage.AttachmentsJSON)
+	idx := -1
+	for i, a := range atts {
+		if a.ID == attachmentID {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		return nil, Attachment{}, bkerr.NotFound("attachment not found", nil)
+	}
+	att := atts[idx]
+
+	if att.StorageKey != "" {
+		if s.artifacts == nil {
+			return nil, Attachment{}, bkerr.Unavailable("blob storage not configured", nil)
+		}
+		reader, _, err := s.artifacts.OpenReader(ctx, att.StorageKey)
+		if err != nil {
+			return nil, Attachment{}, bkerr.Internal("open attachment blob", err)
+		}
+		return reader, att, nil
+	}
+
+	// Not cached yet - only Gmail-shaped attachments reach here (WhatsApp
+	// always sets StorageKey eagerly at ingest).
+	if att.Size > maxAttachmentBytes {
+		return nil, Attachment{}, bkerr.TooLarge("attachment is too large to download", nil)
+	}
+	fetcher, ok := s.connectors[account.Channel].(AttachmentFetcher)
+	if !ok {
+		return nil, Attachment{}, bkerr.Unavailable(fmt.Sprintf("attachment content is not available for channel %q", account.Channel), nil)
+	}
+	secret, err := s.accounts.GetSecret(ctx, account.ID)
+	if err != nil {
+		return nil, Attachment{}, bkerr.Internal("load channel account secret", err)
+	}
+	data, err := fetcher.FetchAttachment(ctx, account, ConnectorSecret{
+		AccessToken:  secret.AccessToken,
+		RefreshToken: secret.RefreshToken,
+		SessionState: secret.SessionState,
+		ExpiresAt:    secret.ExpiresAt,
+	}, dbMessage.ExternalMessageID, att.GmailAttachmentID)
+	if err != nil {
+		return nil, Attachment{}, bkerr.BadGateway(fmt.Sprintf("fetch attachment failed for channel %q", account.Channel), err)
+	}
+
+	if s.artifacts != nil {
+		key := fmt.Sprintf("inbox-attachments/%s", newAttachmentID())
+		if _, err := s.artifacts.Put(ctx, key, data, att.ContentType); err == nil {
+			att.StorageKey = key
+			atts[idx] = att
+			if updated, err := marshalAttachments(atts); err == nil {
+				_ = s.messages.UpdateAttachments(ctx, dbMessage.ID, updated)
+			}
+		}
+	}
+
+	return io.NopCloser(bytes.NewReader(data)), att, nil
 }
 
 func (s *Service) SearchContacts(ctx context.Context, principal *backendauth.Principal, channelAccountID, query string, limit int) ([]Contact, error) {
@@ -495,7 +729,7 @@ func messageFromDB(r db.InboxMessage) *Message {
 		Direction:       r.Direction,
 		SenderContactID: r.SenderContactID,
 		BodyText:        r.BodyText,
-		AttachmentsJSON: r.AttachmentsJSON,
+		Attachments:     parseAttachments(r.AttachmentsJSON),
 		IsDraft:         r.IsDraft,
 		SentAt:          r.SentAt,
 		CreatedAt:       r.CreatedAt,

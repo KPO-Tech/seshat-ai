@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -431,13 +432,21 @@ type threadResponse struct {
 	LastMessageAt    int64           `json:"last_message_at"`
 }
 
+type attachmentResponse struct {
+	ID          string `json:"id"`
+	Filename    string `json:"filename"`
+	ContentType string `json:"content_type"`
+	Size        int64  `json:"size"`
+}
+
 type messageResponse struct {
-	ID        string `json:"id"`
-	ThreadID  string `json:"thread_id"`
-	Direction string `json:"direction"`
-	BodyText  string `json:"body_text"`
-	IsDraft   bool   `json:"is_draft"`
-	SentAt    int64  `json:"sent_at"`
+	ID          string               `json:"id"`
+	ThreadID    string               `json:"thread_id"`
+	Direction   string               `json:"direction"`
+	BodyText    string               `json:"body_text"`
+	Attachments []attachmentResponse `json:"attachments,omitempty"`
+	IsDraft     bool                 `json:"is_draft"`
+	SentAt      int64                `json:"sent_at"`
 }
 
 func threadToResponse(th inbox.Thread) threadResponse {
@@ -459,13 +468,23 @@ func threadToResponse(th inbox.Thread) threadResponse {
 }
 
 func messageToResponse(m inbox.Message) messageResponse {
+	atts := make([]attachmentResponse, 0, len(m.Attachments))
+	for _, a := range m.Attachments {
+		atts = append(atts, attachmentResponse{
+			ID:          a.ID,
+			Filename:    a.Filename,
+			ContentType: a.ContentType,
+			Size:        a.Size,
+		})
+	}
 	return messageResponse{
-		ID:        m.ID,
-		ThreadID:  m.ThreadID,
-		Direction: m.Direction,
-		BodyText:  m.BodyText,
-		IsDraft:   m.IsDraft,
-		SentAt:    m.SentAt.Unix(),
+		ID:          m.ID,
+		ThreadID:    m.ThreadID,
+		Direction:   m.Direction,
+		BodyText:    m.BodyText,
+		Attachments: atts,
+		IsDraft:     m.IsDraft,
+		SentAt:      m.SentAt.Unix(),
 	}
 }
 
@@ -490,9 +509,16 @@ func (a *App) handleInboxThreads(w http.ResponseWriter, r *http.Request) {
 			limit = n
 		}
 	}
-	threads, err := a.backend.Inbox.ListThreads(r.Context(), principal, inbox.ListThreadsParams{
+	offset := 0
+	if raw := r.URL.Query().Get("offset"); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil {
+			offset = n
+		}
+	}
+	threads, hasMore, err := a.backend.Inbox.ListThreads(r.Context(), principal, inbox.ListThreadsParams{
 		Status: r.URL.Query().Get("status"),
 		Limit:  limit,
+		Offset: offset,
 	})
 	if err != nil {
 		writeBackendError(w, err)
@@ -502,14 +528,15 @@ func (a *App) handleInboxThreads(w http.ResponseWriter, r *http.Request) {
 	for _, th := range threads {
 		items = append(items, threadToResponse(th))
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"threads": items, "count": len(items)})
+	writeJSON(w, http.StatusOK, map[string]any{"threads": items, "count": len(items), "has_more": hasMore, "offset": offset})
 }
 
 // handleInboxThreadByID handles /inbox/threads/{id} and sub-paths:
 //
-//	GET   /inbox/threads/{id}         → thread + full message history
-//	PATCH /inbox/threads/{id}         → {"status": "..."} update triage status
-//	POST  /inbox/threads/{id}/reply   → {"body": "...", "send": bool} draft or send
+//	GET   /inbox/threads/{id}                                              → thread + full message history
+//	PATCH /inbox/threads/{id}                                              → {"status": "..."} update triage status
+//	POST  /inbox/threads/{id}/reply                                        → {"body": "...", "send": bool} draft or send
+//	GET   /inbox/threads/{id}/messages/{messageID}/attachments/{attachID}  → streams the attachment's bytes
 func (a *App) handleInboxThreadByID(w http.ResponseWriter, r *http.Request) {
 	if a.backend.Inbox == nil {
 		writeJSONError(w, http.StatusServiceUnavailable, "inbox is not configured")
@@ -533,7 +560,13 @@ func (a *App) handleInboxThreadByID(w http.ResponseWriter, r *http.Request) {
 	if len(parts) == 1 {
 		switch r.Method {
 		case http.MethodGet:
-			thread, messages, err := a.backend.Inbox.GetThread(r.Context(), principal, threadID)
+			msgOffset := 0
+			if raw := r.URL.Query().Get("message_offset"); raw != "" {
+				if n, err := strconv.Atoi(raw); err == nil {
+					msgOffset = n
+				}
+			}
+			thread, messages, messagesHasMore, err := a.backend.Inbox.GetThread(r.Context(), principal, threadID, msgOffset)
 			if err != nil {
 				writeBackendError(w, err)
 				return
@@ -543,8 +576,10 @@ func (a *App) handleInboxThreadByID(w http.ResponseWriter, r *http.Request) {
 				msgItems = append(msgItems, messageToResponse(m))
 			}
 			writeJSON(w, http.StatusOK, map[string]any{
-				"thread":   threadToResponse(*thread),
-				"messages": msgItems,
+				"thread":            threadToResponse(*thread),
+				"messages":          msgItems,
+				"messages_has_more": messagesHasMore,
+				"messages_offset":   msgOffset,
 			})
 		case http.MethodPatch:
 			var body struct {
@@ -599,6 +634,30 @@ func (a *App) handleInboxThreadByID(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeJSON(w, http.StatusCreated, messageToResponse(*msg))
+		return
+	}
+
+	if len(parts) == 5 && parts[1] == "messages" && parts[3] == "attachments" {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		messageID := parts[2]
+		attachmentID := parts[4]
+		reader, att, err := a.backend.Inbox.OpenAttachment(r.Context(), principal, threadID, messageID, attachmentID)
+		if err != nil {
+			writeBackendError(w, err)
+			return
+		}
+		defer reader.Close()
+		ct := att.ContentType
+		if ct == "" {
+			ct = "application/octet-stream"
+		}
+		w.Header().Set("Content-Type", ct)
+		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename=%q`, att.Filename))
+		w.WriteHeader(http.StatusOK)
+		_, _ = io.Copy(w, reader)
 		return
 	}
 

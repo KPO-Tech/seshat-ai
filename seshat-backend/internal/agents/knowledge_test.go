@@ -40,6 +40,13 @@ func TestDefaultKnowledgeAgentParams_PromptIsComposedCorrectly(t *testing.T) {
 	if strings.Contains(p.SystemPrompt, prompt.Delegation) {
 		t.Error("expected Knowledge's SystemPrompt to NOT include prompt.Delegation (it has no agent/spawn_agent tool)")
 	}
+	// Knowledge does have knowledge_search in its Tools, but deliberately
+	// does not compose prompt.KnowledgeBase - its own identity/workflow
+	// already cover "search before answering, cite sources" in more depth,
+	// so the generic section would be redundant, not wrong.
+	if strings.Contains(p.SystemPrompt, prompt.KnowledgeBase) {
+		t.Error("expected Knowledge's SystemPrompt to NOT include prompt.KnowledgeBase (redundant with its own identity)")
+	}
 	if !strings.Contains(p.SystemPrompt, prompt.WorkingDiscipline) {
 		t.Error("expected Knowledge's SystemPrompt to include prompt.WorkingDiscipline")
 	}

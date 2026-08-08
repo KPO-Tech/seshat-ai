@@ -29,6 +29,9 @@ func DefaultInboxAgentParams() CreateParams {
 			// agent/spawn_agent in its Tools below - an agent without those
 			// tools should never get this section (see internal/prompt/base.go).
 			prompt.Delegation,
+			// Likewise KnowledgeBase - included because knowledge_search is
+			// actually in Tools below.
+			prompt.KnowledgeBase,
 			prompt.FactualDiscipline,
 			prompt.OutputDiscipline,
 		),

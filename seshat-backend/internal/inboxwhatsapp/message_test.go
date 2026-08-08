@@ -1,6 +1,7 @@
 package inboxwhatsapp
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -26,7 +27,7 @@ func TestTranslateIncoming_InboundPlainText(t *testing.T) {
 		Message: &waE2E.Message{Conversation: proto.String("Table for 4 tonight?")},
 	}
 
-	n, ok := translateIncoming(evt)
+	n, ok := translateIncoming(context.Background(), evt, nil)
 	if !ok {
 		t.Fatal("expected translateIncoming to succeed")
 	}
@@ -56,7 +57,7 @@ func TestTranslateIncoming_OutboundWhenFromMe(t *testing.T) {
 		},
 		Message: &waE2E.Message{Conversation: proto.String("Yes, see you at 8pm!")},
 	}
-	n, ok := translateIncoming(evt)
+	n, ok := translateIncoming(context.Background(), evt, nil)
 	if !ok {
 		t.Fatal("expected translateIncoming to succeed")
 	}
@@ -74,7 +75,7 @@ func TestTranslateIncoming_SkipsGroupChats(t *testing.T) {
 		},
 		Message: &waE2E.Message{Conversation: proto.String("hello group")},
 	}
-	if _, ok := translateIncoming(evt); ok {
+	if _, ok := translateIncoming(context.Background(), evt, nil); ok {
 		t.Fatal("expected group chat messages to be skipped")
 	}
 }
@@ -88,14 +89,67 @@ func TestTranslateIncoming_SkipsMessagesWithNoExtractableText(t *testing.T) {
 		},
 		Message: &waE2E.Message{}, // e.g. a sticker/reaction with nothing extractable
 	}
-	if _, ok := translateIncoming(evt); ok {
+	if _, ok := translateIncoming(context.Background(), evt, nil); ok {
 		t.Fatal("expected a message with no extractable text to be skipped")
 	}
 }
 
 func TestTranslateIncoming_NilEventIsSkipped(t *testing.T) {
-	if _, ok := translateIncoming(nil); ok {
+	if _, ok := translateIncoming(context.Background(), nil, nil); ok {
 		t.Fatal("expected a nil event to be skipped")
+	}
+}
+
+// TestTranslateIncoming_NilClientMeansNoAttachmentButStillNoTextIsSkipped
+// documents the current unit-testable boundary: without a real whatsmeow
+// client, a caption-less media message can't actually be downloaded, so it
+// still gets skipped here - the fix (see shouldIngestMessage) is that this
+// is now conditional on "no attachment either", not on body text alone.
+// See TestShouldIngestMessage for the actual fixed decision logic, which is
+// what a real Download() success would flip.
+func TestTranslateIncoming_NilClientMeansNoAttachmentButStillNoTextIsSkipped(t *testing.T) {
+	evt := &events.Message{
+		Info: types.MessageInfo{
+			MessageSource: types.MessageSource{Chat: chatJID()},
+			ID:            "wa-msg-5",
+			Timestamp:     time.Now(),
+		},
+		Message: &waE2E.Message{ImageMessage: &waE2E.ImageMessage{}}, // caption-less photo, no client to download it
+	}
+	if _, ok := translateIncoming(context.Background(), evt, nil); ok {
+		t.Fatal("expected a caption-less media message to still be skipped when there's no client to download it")
+	}
+}
+
+func TestShouldIngestMessage(t *testing.T) {
+	cases := []struct {
+		name       string
+		body       string
+		attachment *inbox.Attachment
+		want       bool
+	}{
+		{"body only", "hello", nil, true},
+		{"attachment only - the fix", "", &inbox.Attachment{Filename: "photo.jpg"}, true},
+		{"neither", "", nil, false},
+		{"both", "caption", &inbox.Attachment{Filename: "photo.jpg"}, true},
+	}
+	for _, c := range cases {
+		if got := shouldIngestMessage(c.body, c.attachment); got != c.want {
+			t.Errorf("%s: shouldIngestMessage(%q, %v) = %v, want %v", c.name, c.body, c.attachment, got, c.want)
+		}
+	}
+}
+
+func TestExtractAttachment_NilClientReturnsNil(t *testing.T) {
+	msg := &waE2E.Message{ImageMessage: &waE2E.ImageMessage{Mimetype: proto.String("image/jpeg")}}
+	if got := extractAttachment(context.Background(), nil, msg); got != nil {
+		t.Errorf("expected nil attachment with a nil client, got %+v", got)
+	}
+}
+
+func TestExtractAttachment_NilMessageReturnsNil(t *testing.T) {
+	if got := extractAttachment(context.Background(), nil, nil); got != nil {
+		t.Errorf("expected nil attachment for a nil message, got %+v", got)
 	}
 }
 

@@ -760,9 +760,13 @@ function TestChat({ agent }: { agent: Agent }) {
 
   useEffect(() => {
     let cancelled = false
+    // agent_slug isn't a session-creation field (the backend has no such
+    // concept - a session's agent is resolved per turn from the query
+    // request, see TestChatInner's sendMessage call below). Passing it here
+    // used to be silently ignored; removed so nothing implies it did
+    // anything.
     api.post<Session>('/sessions', {
       title: `Test — ${agent.name || agent.slug}`,
-      agent_slug: agent.slug,
     }).then(s => {
       if (cancelled) return
       useSessionStore.getState().upsertSession({
@@ -812,7 +816,7 @@ function TestChatInner({ sessionId, agent, messagesRef, input, setInput }: {
     const text = input.trim()
     if (!text || isStreaming) return
     setInput('')
-    await sendMessage(text)
+    await sendMessage(text, { agentSlug: agent.slug })
   }
 
   function handleKey(e: React.KeyboardEvent) {

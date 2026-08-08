@@ -2,6 +2,7 @@ package inboxtool_test
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"testing"
 	"time"
@@ -86,7 +87,7 @@ func seedThread(t *testing.T, svc *inbox.Service, principal *backendauth.Princip
 	_, err = svc.SyncAccount(ctx, principal, account.ID)
 	require.NoError(t, err)
 
-	threads, err := svc.ListThreads(ctx, principal, inbox.ListThreadsParams{})
+	threads, _, err := svc.ListThreads(ctx, principal, inbox.ListThreadsParams{})
 	require.NoError(t, err)
 	require.Len(t, threads, 1)
 	return threads[0].ID
@@ -133,6 +134,101 @@ func TestGetThreadTool_ReturnsMessageHistory(t *testing.T) {
 	require.Contains(t, result.Content, "Table for 4 tonight?")
 }
 
+func TestListThreadsTool_OffsetAndTruncationNote(t *testing.T) {
+	svc := newTestService(t, openTestDB(t))
+	principal := testPrincipal("user-1")
+	ctx := context.Background()
+	account, err := svc.ConnectAccount(ctx, principal, inbox.ConnectAccountParams{
+		Channel:           inbox.ChannelWhatsApp,
+		DisplayName:       "Restaurant WhatsApp",
+		ExternalAccountID: "15559998888@s.whatsapp.net",
+	})
+	require.NoError(t, err)
+	connector := &fakeConnector{channel: inbox.ChannelWhatsApp}
+	base := time.Now()
+	for i := 0; i < 2; i++ {
+		connector.syncMessages = append(connector.syncMessages, inbox.NormalizedMessage{
+			ExternalThreadID:   fmt.Sprintf("wa-thread-tool-page-%d", i),
+			ExternalMessageID:  fmt.Sprintf("wa-msg-tool-page-%d", i),
+			Direction:          inbox.MessageDirectionInbound,
+			ContactExternalID:  fmt.Sprintf("+1555%04d", i),
+			ContactDisplayName: fmt.Sprintf("Contact %d", i),
+			BodyText:           "hi",
+			SentAt:             base.Add(time.Duration(i) * time.Minute),
+		})
+	}
+	svc.RegisterConnector(connector)
+	_, err = svc.SyncAccount(ctx, principal, account.ID)
+	require.NoError(t, err)
+
+	tool := inboxtool.NewListThreadsTool(svc)
+	page1, err := tool.Call(ctxWithPrincipal(principal), tools.CallInput{
+		Parsed: map[string]any{"limit": float64(1), "offset": float64(0)},
+	}, nil)
+	require.NoError(t, err)
+	require.Nil(t, page1.Error)
+	require.Contains(t, page1.Content, "more threads available")
+	require.Contains(t, page1.Content, "offset=1")
+
+	page2, err := tool.Call(ctxWithPrincipal(principal), tools.CallInput{
+		Parsed: map[string]any{"limit": float64(1), "offset": float64(1)},
+	}, nil)
+	require.NoError(t, err)
+	require.Nil(t, page2.Error)
+	require.NotContains(t, page2.Content, "more threads available", "must not claim more exist once exhausted")
+}
+
+func TestGetThreadTool_MessageOffsetTruncationNote(t *testing.T) {
+	svc := newTestService(t, openTestDB(t))
+	principal := testPrincipal("user-1")
+	ctx := context.Background()
+	account, err := svc.ConnectAccount(ctx, principal, inbox.ConnectAccountParams{
+		Channel:           inbox.ChannelWhatsApp,
+		DisplayName:       "Restaurant WhatsApp",
+		ExternalAccountID: "15559998888@s.whatsapp.net",
+	})
+	require.NoError(t, err)
+
+	// 51 messages in one thread exceeds the fixed 50-message default page,
+	// so the first page must flag that earlier history exists.
+	connector := &fakeConnector{channel: inbox.ChannelWhatsApp}
+	base := time.Now()
+	for i := 0; i < 51; i++ {
+		connector.syncMessages = append(connector.syncMessages, inbox.NormalizedMessage{
+			ExternalThreadID:   "wa-thread-long",
+			ExternalMessageID:  fmt.Sprintf("wa-msg-long-%d", i),
+			Direction:          inbox.MessageDirectionInbound,
+			ContactExternalID:  "15551234567@s.whatsapp.net",
+			ContactDisplayName: "Restaurant Regular",
+			BodyText:           fmt.Sprintf("message %d", i),
+			SentAt:             base.Add(time.Duration(i) * time.Minute),
+		})
+	}
+	svc.RegisterConnector(connector)
+	_, err = svc.SyncAccount(ctx, principal, account.ID)
+	require.NoError(t, err)
+
+	threads, _, err := svc.ListThreads(ctx, principal, inbox.ListThreadsParams{})
+	require.NoError(t, err)
+	require.Len(t, threads, 1)
+
+	tool := inboxtool.NewGetThreadTool(svc)
+	page1, err := tool.Call(ctxWithPrincipal(principal), tools.CallInput{
+		Parsed: map[string]any{"thread_id": threads[0].ID},
+	}, nil)
+	require.NoError(t, err)
+	require.Nil(t, page1.Error)
+	require.Contains(t, page1.Content, "earlier messages not shown")
+	require.Contains(t, page1.Content, "message_offset=50")
+
+	page2, err := tool.Call(ctxWithPrincipal(principal), tools.CallInput{
+		Parsed: map[string]any{"thread_id": threads[0].ID, "message_offset": float64(50)},
+	}, nil)
+	require.NoError(t, err)
+	require.Nil(t, page2.Error)
+	require.NotContains(t, page2.Content, "earlier messages not shown", "must not claim more history once exhausted")
+}
+
 func TestGetThreadTool_MissingThreadIDReturnsError(t *testing.T) {
 	svc := newTestService(t, openTestDB(t))
 	principal := testPrincipal("user-1")
@@ -154,7 +250,7 @@ func TestUpdateThreadStatusTool_ChangesStatus(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, result.Error)
 
-	thread, _, err := svc.GetThread(context.Background(), principal, threadID)
+	thread, _, _, err := svc.GetThread(context.Background(), principal, threadID, 0)
 	require.NoError(t, err)
 	require.Equal(t, inbox.ThreadStatusSnoozed, thread.Status)
 }
@@ -175,7 +271,7 @@ func TestDraftReplyTool_SavesDraftWithoutSending(t *testing.T) {
 	require.True(t, ok)
 	require.True(t, msg.IsDraft)
 
-	thread, messages, err := svc.GetThread(context.Background(), principal, threadID)
+	thread, messages, _, err := svc.GetThread(context.Background(), principal, threadID, 0)
 	require.NoError(t, err)
 	require.Equal(t, inbox.ThreadStatusOpen, thread.Status, "a draft alone should not mark the thread handled")
 	require.Len(t, messages, 2)
@@ -201,7 +297,7 @@ func TestSendReplyTool_SendsAndMarksThreadHandled(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, result.Error)
 
-	thread, messages, err := svc.GetThread(context.Background(), principal, threadID)
+	thread, messages, _, err := svc.GetThread(context.Background(), principal, threadID, 0)
 	require.NoError(t, err)
 	require.Equal(t, inbox.ThreadStatusHandled, thread.Status)
 	require.Len(t, messages, 2)

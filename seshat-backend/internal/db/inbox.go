@@ -292,6 +292,26 @@ func (s *ChannelAccountStore) GetByID(ctx context.Context, id string) (*ChannelA
 	return channelAccountFromModel(row), nil
 }
 
+// GetByChannelAndExternalID looks up an already-connected account for
+// (userID, channel, externalAccountID) - used by inbox.Service.ConnectAccount
+// to make reconnecting (e.g. redoing Gmail's OAuth flow after its refresh
+// token expired) update the existing row in place instead of creating a
+// duplicate. found=false (not an error) means no prior account, a normal
+// first-connection outcome.
+func (s *ChannelAccountStore) GetByChannelAndExternalID(ctx context.Context, userID, channel, externalAccountID string) (*ChannelAccount, bool, error) {
+	var row gChannelAccount
+	err := s.db.GormDB().WithContext(ctx).
+		Where("user_id = ? AND channel = ? AND external_account_id = ?", userID, channel, externalAccountID).
+		First(&row).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, false, nil
+		}
+		return nil, false, err
+	}
+	return channelAccountFromModel(row), true, nil
+}
+
 func (s *ChannelAccountStore) ListByUserID(ctx context.Context, userID string) ([]ChannelAccount, error) {
 	var rows []gChannelAccount
 	if err := s.db.GormDB().WithContext(ctx).Where("user_id = ?", userID).Order("created_at_unix asc").Find(&rows).Error; err != nil {
@@ -606,10 +626,16 @@ func (s *InboxThreadStore) GetByID(ctx context.Context, id string) (*InboxThread
 
 // ListByUserID lists threads across every channel account the user owns,
 // most recently active first - status/limit let the UI ask for e.g. only
-// "open" threads.
-func (s *InboxThreadStore) ListByUserID(ctx context.Context, userID string, status string, limit int) ([]InboxThread, error) {
+// "open" threads. offset pages past earlier results; hasMore reports
+// whether there are more rows beyond the returned page (computed exactly,
+// by fetching one extra row and trimming, rather than guessed from "got a
+// full page").
+func (s *InboxThreadStore) ListByUserID(ctx context.Context, userID string, status string, limit, offset int) (threads []InboxThread, hasMore bool, err error) {
 	if limit <= 0 || limit > 200 {
 		limit = 50
+	}
+	if offset < 0 {
+		offset = 0
 	}
 	q := s.db.GormDB().WithContext(ctx).
 		Table("inbox_threads").
@@ -619,14 +645,18 @@ func (s *InboxThreadStore) ListByUserID(ctx context.Context, userID string, stat
 		q = q.Where("inbox_threads.status = ?", status)
 	}
 	var rows []gInboxThread
-	if err := q.Order("inbox_threads.last_message_at_unix DESC").Limit(limit).Find(&rows).Error; err != nil {
-		return nil, err
+	if err := q.Order("inbox_threads.last_message_at_unix DESC").Limit(limit + 1).Offset(offset).Find(&rows).Error; err != nil {
+		return nil, false, err
+	}
+	hasMore = len(rows) > limit
+	if hasMore {
+		rows = rows[:limit]
 	}
 	out := make([]InboxThread, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, *inboxThreadFromModel(row))
 	}
-	return out, nil
+	return out, hasMore, nil
 }
 
 func (s *InboxThreadStore) UpdateStatus(ctx context.Context, id, status string) error {
@@ -709,23 +739,58 @@ func (s *InboxMessageStore) Create(ctx context.Context, p CreateMessageParams) (
 	return inboxMessageFromModel(row), nil
 }
 
-func (s *InboxMessageStore) ListByThreadID(ctx context.Context, threadID string) ([]InboxMessage, error) {
+// ListByThreadID pages backward through a thread's messages, newest first
+// internally (offset 0 = the most recent limit messages), then returns them
+// reversed to the ascending order every existing consumer expects. offset
+// advances further into history for a "load earlier messages" UI; hasMore
+// reports whether older messages remain beyond the returned page.
+func (s *InboxMessageStore) ListByThreadID(ctx context.Context, threadID string, limit, offset int) (messages []InboxMessage, hasMore bool, err error) {
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	if offset < 0 {
+		offset = 0
+	}
 	var rows []gInboxMessage
 	if err := s.db.GormDB().WithContext(ctx).
 		Where("thread_id = ?", threadID).
-		Order("sent_at_unix asc, created_at_unix asc").
+		Order("sent_at_unix desc, created_at_unix desc").
+		Limit(limit + 1).Offset(offset).
 		Find(&rows).Error; err != nil {
-		return nil, err
+		return nil, false, err
+	}
+	hasMore = len(rows) > limit
+	if hasMore {
+		rows = rows[:limit]
 	}
 	out := make([]InboxMessage, 0, len(rows))
-	for _, row := range rows {
-		out = append(out, *inboxMessageFromModel(row))
+	for i := len(rows) - 1; i >= 0; i-- {
+		out = append(out, *inboxMessageFromModel(rows[i]))
 	}
-	return out, nil
+	return out, hasMore, nil
 }
 
 func (s *InboxMessageStore) DeleteDraft(ctx context.Context, id string) error {
 	return s.db.GormDB().WithContext(ctx).Delete(&gInboxMessage{}, "id = ? AND is_draft = ?", id, true).Error
+}
+
+func (s *InboxMessageStore) GetByID(ctx context.Context, id string) (*InboxMessage, error) {
+	var row gInboxMessage
+	if err := s.db.GormDB().WithContext(ctx).Where("id = ?", id).First(&row).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("inbox message not found")
+		}
+		return nil, err
+	}
+	return inboxMessageFromModel(row), nil
+}
+
+// UpdateAttachments overwrites a message's attachments_json - used after a
+// lazily-fetched attachment's bytes are cached in ArtifactStore, so the
+// StorageKey is persisted and a later download skips re-fetching from the
+// external channel (see inbox.Service.OpenAttachment).
+func (s *InboxMessageStore) UpdateAttachments(ctx context.Context, id, attachmentsJSON string) error {
+	return s.db.GormDB().WithContext(ctx).Model(&gInboxMessage{}).Where("id = ?", id).Update("attachments_json", attachmentsJSON).Error
 }
 
 func inboxMessageFromModel(row gInboxMessage) *InboxMessage {

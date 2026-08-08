@@ -57,6 +57,9 @@ func TestDefaultInboxAgentParams_PromptIsComposedCorrectly(t *testing.T) {
 	if !strings.Contains(p.SystemPrompt, prompt.Delegation) {
 		t.Error("expected Inbox's SystemPrompt to include prompt.Delegation (it has agent/spawn_agent tools)")
 	}
+	if !strings.Contains(p.SystemPrompt, prompt.KnowledgeBase) {
+		t.Error("expected Inbox's SystemPrompt to include prompt.KnowledgeBase (it has knowledge_search)")
+	}
 	if !strings.Contains(p.SystemPrompt, prompt.WorkingDiscipline) {
 		t.Error("expected Inbox's SystemPrompt to include prompt.WorkingDiscipline")
 	}

@@ -15,6 +15,7 @@ import {
   LoadingOne,
   Caution,
   Left,
+  Paperclip,
 } from '@icon-park/react'
 import { api, ApiError } from '@/api/client'
 
@@ -47,14 +48,30 @@ type Thread = {
   last_message_at: number
 }
 
+type Attachment = {
+  id: string
+  filename: string
+  content_type: string
+  size: number
+}
+
 type ThreadMessage = {
   id: string
   thread_id: string
   direction: 'inbound' | 'outbound' | string
   body_text: string
+  attachments?: Attachment[]
   is_draft: boolean
   sent_at: number
 }
+
+function formatAttachmentSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+const THREADS_PAGE_SIZE = 50
 
 const STATUS_TABS: Array<{ id: string; label: string }> = [
   { id: 'open', label: 'Open' },
@@ -73,10 +90,16 @@ export function InboxPage() {
   const [statusFilter, setStatusFilter] = useState('open')
   const [threads, setThreads] = useState<Thread[]>([])
   const [threadsLoading, setThreadsLoading] = useState(false)
+  const [threadsLoadingMore, setThreadsLoadingMore] = useState(false)
+  const [threadsHasMore, setThreadsHasMore] = useState(false)
+  const [threadsOffset, setThreadsOffset] = useState(0)
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null)
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null)
   const [messages, setMessages] = useState<ThreadMessage[]>([])
   const [threadLoading, setThreadLoading] = useState(false)
+  const [messagesLoadingMore, setMessagesLoadingMore] = useState(false)
+  const [messagesHasMore, setMessagesHasMore] = useState(false)
+  const [messagesOffset, setMessagesOffset] = useState(0)
   const [replyText, setReplyText] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -95,30 +118,54 @@ export function InboxPage() {
     }
   }, [])
 
-  const loadThreads = useCallback(async (status: string) => {
-    setThreadsLoading(true)
+  const loadThreads = useCallback(async (status: string, offset = 0, append = false) => {
+    if (append) setThreadsLoadingMore(true)
+    else setThreadsLoading(true)
     try {
-      const res = await api.get<{ threads: Thread[] }>(`/inbox/threads?status=${encodeURIComponent(status)}`)
-      setThreads(res.threads ?? [])
+      const res = await api.get<{ threads: Thread[]; has_more: boolean }>(
+        `/inbox/threads?status=${encodeURIComponent(status)}&limit=${THREADS_PAGE_SIZE}&offset=${offset}`,
+      )
+      const page = res.threads ?? []
+      setThreads((prev) => (append ? [...prev, ...page] : page))
+      setThreadsHasMore(res.has_more ?? false)
+      setThreadsOffset(offset + page.length)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Unable to load threads.')
     } finally {
-      setThreadsLoading(false)
+      if (append) setThreadsLoadingMore(false)
+      else setThreadsLoading(false)
     }
   }, [])
 
-  const loadThread = useCallback(async (id: string) => {
-    setThreadLoading(true)
+  const loadThread = useCallback(async (id: string, offset = 0, prepend = false) => {
+    if (prepend) setMessagesLoadingMore(true)
+    else setThreadLoading(true)
     try {
-      const res = await api.get<{ thread: Thread; messages: ThreadMessage[] }>(`/inbox/threads/${id}`)
+      const res = await api.get<{ thread: Thread; messages: ThreadMessage[]; messages_has_more: boolean }>(
+        `/inbox/threads/${id}?message_offset=${offset}`,
+      )
+      const page = res.messages ?? []
       setSelectedThread(res.thread)
-      setMessages(res.messages ?? [])
+      setMessages((prev) => (prepend ? [...page, ...prev] : page))
+      setMessagesHasMore(res.messages_has_more ?? false)
+      setMessagesOffset(offset + page.length)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Unable to load thread.')
     } finally {
-      setThreadLoading(false)
+      if (prepend) setMessagesLoadingMore(false)
+      else setThreadLoading(false)
     }
   }, [])
+
+  function loadMoreThreads() {
+    if (threadsLoadingMore || !threadsHasMore) return
+    void loadThreads(statusFilter, threadsOffset, true)
+  }
+
+  function loadEarlierMessages() {
+    if (!selectedThreadId || messagesLoadingMore || !messagesHasMore) return
+    void loadThread(selectedThreadId, messagesOffset, true)
+  }
 
   useEffect(() => {
     void loadAccounts()
@@ -158,6 +205,23 @@ export function InboxPage() {
       setError(e instanceof ApiError ? e.message : 'Unable to save the reply.')
     } finally {
       setSending(false)
+    }
+  }
+
+  async function downloadAttachment(messageId: string, att: Attachment) {
+    if (!selectedThreadId) return
+    try {
+      const dataUrl = await api.getFileDataURL(
+        `/inbox/threads/${selectedThreadId}/messages/${messageId}/attachments/${att.id}`,
+      )
+      const link = document.createElement('a')
+      link.href = dataUrl
+      link.download = att.filename
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Unable to download attachment.')
     }
   }
 
@@ -296,10 +360,10 @@ export function InboxPage() {
         {accounts.length > 0 && (
           <div className="ib-accounts-row">
             {accounts.map((a) => (
-              <div key={a.id} className={`ib-account-chip ${a.status}`}>
+              <div key={a.id} className={`ib-account-chip ${a.status}`} title={a.last_error || undefined}>
                 {channelIcon(a.channel)}
                 <span>{a.display_name || a.external_account_id}</span>
-                <em>{a.status}</em>
+                <em>{a.status === 'error' && a.last_error ? a.last_error : a.status}</em>
                 {a.channel === 'gmail' && (
                   <button type="button" title="Sync now" onClick={() => handleSyncNow(a.id)}>
                     <Refresh size={11} />
@@ -351,6 +415,11 @@ export function InboxPage() {
                   <time>{new Date(t.last_message_at * 1000).toLocaleDateString()}</time>
                 </button>
               ))}
+              {!threadsLoading && threadsHasMore && (
+                <button type="button" className="ib-load-more" onClick={loadMoreThreads} disabled={threadsLoadingMore}>
+                  {threadsLoadingMore ? <LoadingOne size={13} className="spin" /> : 'Load more'}
+                </button>
+              )}
             </div>
           </div>
 
@@ -377,10 +446,32 @@ export function InboxPage() {
                   </div>
                 </div>
                 <div className="ib-messages">
+                  {messagesHasMore && (
+                    <button type="button" className="ib-load-more" onClick={loadEarlierMessages} disabled={messagesLoadingMore}>
+                      {messagesLoadingMore ? <LoadingOne size={13} className="spin" /> : 'Load earlier messages'}
+                    </button>
+                  )}
                   {messages.map((m) => (
                     <div key={m.id} className={`ib-message ${m.direction} ${m.is_draft ? 'draft' : ''}`}>
                       {m.is_draft && <span className="ib-draft-tag">Draft</span>}
-                      <p>{m.body_text}</p>
+                      {m.body_text && <p>{m.body_text}</p>}
+                      {m.attachments && m.attachments.length > 0 && (
+                        <div className="ib-attachments">
+                          {m.attachments.map((att) => (
+                            <button
+                              key={att.id}
+                              type="button"
+                              className="ib-attachment-chip"
+                              onClick={() => downloadAttachment(m.id, att)}
+                              title={`Download ${att.filename}`}
+                            >
+                              <Paperclip size={12} />
+                              <span className="ib-attachment-name">{att.filename}</span>
+                              <span className="ib-attachment-size">{formatAttachmentSize(att.size)}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                       <time>{new Date(m.sent_at * 1000).toLocaleString()}</time>
                     </div>
                   ))}
@@ -623,7 +714,12 @@ const INBOX_CSS = `
   color: var(--color-text-muted);
   text-transform: uppercase;
   font-size: 9px;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+.ib-account-chip.error em { color: rgba(239, 68, 68, 0.85); text-transform: none; }
 
 .ib-account-chip.error { border-color: rgba(239, 68, 68, 0.5); }
 
@@ -696,6 +792,22 @@ const INBOX_CSS = `
 
 .ib-thread-list { flex: 1; overflow-y: auto; }
 
+.ib-load-more {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 9px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  text-align: center;
+  cursor: pointer;
+}
+.ib-load-more:hover { color: var(--color-text); }
+.ib-load-more:disabled { opacity: 0.5; cursor: default; }
+
 .ib-thread-item {
   width: 100%;
   display: flex;
@@ -748,6 +860,25 @@ const INBOX_CSS = `
 .ib-message p { margin: 0; font-size: 12.5px; line-height: 1.5; white-space: pre-wrap; }
 .ib-message time { display: block; margin-top: 4px; font-size: 10px; color: var(--color-text-muted); }
 .ib-draft-tag { font-size: 9px; font-weight: 800; text-transform: uppercase; color: var(--color-cta); }
+
+.ib-attachments { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.ib-attachment-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 5px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+  text-align: left;
+}
+.ib-attachment-chip:hover { color: var(--color-text); border-color: var(--color-primary); }
+.ib-attachment-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ib-attachment-size { flex-shrink: 0; color: var(--color-text-muted); }
 
 .ib-composer { flex-shrink: 0; border-top: 1px solid var(--color-border-subtle); padding: 10px 16px; }
 .ib-composer textarea {

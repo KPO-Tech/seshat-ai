@@ -146,7 +146,7 @@ func (m *Manager) PairNewDevice(ctx context.Context, onQR func(code string)) (*w
 // Adopt registers an already-authenticated client (from PairNewDevice or
 // Reconnect) under its real accountID and starts handling its events.
 func (m *Manager) Adopt(accountID string, client *whatsmeow.Client) {
-	client.AddEventHandler(m.handlerFor(accountID))
+	client.AddEventHandler(m.handlerFor(accountID, client))
 	m.mu.Lock()
 	m.clients[accountID] = client
 	m.mu.Unlock()
@@ -202,20 +202,22 @@ func (m *Manager) DisconnectAll() {
 	}
 }
 
-func (m *Manager) handlerFor(accountID string) whatsmeow.EventHandler {
+func (m *Manager) handlerFor(accountID string, client *whatsmeow.Client) whatsmeow.EventHandler {
 	return func(raw any) {
 		switch evt := raw.(type) {
 		case *events.Message:
-			normalized, ok := translateIncoming(evt)
-			if !ok {
-				return
-			}
 			// Detached from any request context - message delivery happens
 			// on whatsmeow's own background goroutine, well after whatever
 			// request (if any) started this connection has already
-			// returned.
+			// returned. Built before translateIncoming (not after, as
+			// before attachment support) since a media download now needs
+			// it too.
 			ctx, cancel := context.WithTimeout(context.Background(), ingestTimeout)
 			defer cancel()
+			normalized, ok := translateIncoming(ctx, evt, client)
+			if !ok {
+				return
+			}
 			if err := m.ingest(ctx, accountID, normalized); err != nil {
 				fmt.Printf("[WhatsApp] ingest failed for account %s: %v\n", accountID, err)
 			}

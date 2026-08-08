@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
+	"github.com/KPO-Tech/seshat/pkg/storage"
 )
 
 // fakeInboxConnector lets these HTTP-layer tests seed a thread/message
@@ -85,6 +87,22 @@ func newInboxTestApp(t *testing.T) (*App, *db.IdentityStore, *inbox.Service) {
 	return app, identity, inboxService
 }
 
+// newInboxTestAppWithArtifactStore is newInboxTestApp plus a real local-disk
+// storage.ArtifactStore, needed by the attachment-download route test.
+func newInboxTestAppWithArtifactStore(t *testing.T) (*App, *db.IdentityStore, *inbox.Service) {
+	t.Helper()
+	app, identity, inboxService := newInboxTestApp(t)
+	store, err := storage.NewArtifactStoreFromConfig(storage.Config{
+		Provider:  storage.ProviderLocal,
+		LocalPath: t.TempDir(),
+	})
+	if err != nil {
+		t.Fatalf("NewArtifactStoreFromConfig: %v", err)
+	}
+	inboxService.WithArtifactStore(store)
+	return app, identity, inboxService
+}
+
 // seedInboxThread connects a WhatsApp account and syncs one inbound message
 // through it under the given principal, returning the thread ID.
 func seedInboxThread(t *testing.T, svc *inbox.Service, userID string) string {
@@ -115,7 +133,7 @@ func seedInboxThread(t *testing.T, svc *inbox.Service, userID string) string {
 	if _, err := svc.SyncAccount(ctx, principal, account.ID); err != nil {
 		t.Fatalf("SyncAccount: %v", err)
 	}
-	threads, err := svc.ListThreads(ctx, principal, inbox.ListThreadsParams{})
+	threads, _, err := svc.ListThreads(ctx, principal, inbox.ListThreadsParams{})
 	if err != nil {
 		t.Fatalf("ListThreads: %v", err)
 	}
@@ -224,6 +242,248 @@ func TestInboxThreadsEndToEnd(t *testing.T) {
 	json.NewDecoder(rec.Body).Decode(&accountsResp)
 	if accountsResp.Count != 1 {
 		t.Fatalf("expected 1 account, got %d", accountsResp.Count)
+	}
+}
+
+func TestInboxThreadsPaginationOffsetAndHasMore(t *testing.T) {
+	app, _, svc := newInboxTestApp(t)
+	router := CreateRouter(defaultAPIConfig, app)
+	token := loginAs(t, router, "admin@inbox.test", "adminpass")
+	adminID := adminUserIDFromToken(t, router, token)
+
+	ctx := context.Background()
+	principal := &backendauth.Principal{User: backendauth.User{ID: adminID}}
+	account, err := svc.ConnectAccount(ctx, principal, inbox.ConnectAccountParams{
+		Channel:           inbox.ChannelWhatsApp,
+		DisplayName:       "Restaurant WhatsApp",
+		ExternalAccountID: "15559998888@s.whatsapp.net",
+	})
+	if err != nil {
+		t.Fatalf("ConnectAccount: %v", err)
+	}
+	base := time.Now()
+	connector := &fakeInboxConnector{channel: inbox.ChannelWhatsApp}
+	for i := 0; i < 3; i++ {
+		connector.syncMessages = append(connector.syncMessages, inbox.NormalizedMessage{
+			ExternalThreadID:   fmt.Sprintf("wa-thread-page-%d", i),
+			ExternalMessageID:  fmt.Sprintf("wa-msg-page-%d", i),
+			Direction:          inbox.MessageDirectionInbound,
+			ContactExternalID:  fmt.Sprintf("+1555%04d", i),
+			ContactDisplayName: fmt.Sprintf("Contact %d", i),
+			BodyText:           "hi",
+			SentAt:             base.Add(time.Duration(i) * time.Minute),
+		})
+	}
+	svc.RegisterConnector(connector)
+	if _, err := svc.SyncAccount(ctx, principal, account.ID); err != nil {
+		t.Fatalf("SyncAccount: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/inbox/threads?limit=2&offset=0", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("list threads (page 1): got %d, body=%s", rec.Code, rec.Body.String())
+	}
+	var page1 struct {
+		Threads []map[string]any `json:"threads"`
+		HasMore bool             `json:"has_more"`
+		Offset  int              `json:"offset"`
+	}
+	json.NewDecoder(rec.Body).Decode(&page1)
+	if len(page1.Threads) != 2 {
+		t.Fatalf("expected 2 threads on page 1, got %d", len(page1.Threads))
+	}
+	if !page1.HasMore {
+		t.Fatal("expected has_more=true on page 1 (3 threads seeded, limit 2)")
+	}
+	if page1.Offset != 0 {
+		t.Fatalf("expected offset=0 echoed back, got %d", page1.Offset)
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/inbox/threads?limit=2&offset=2", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("list threads (page 2): got %d, body=%s", rec.Code, rec.Body.String())
+	}
+	var page2 struct {
+		Threads []map[string]any `json:"threads"`
+		HasMore bool             `json:"has_more"`
+	}
+	json.NewDecoder(rec.Body).Decode(&page2)
+	if len(page2.Threads) != 1 {
+		t.Fatalf("expected 1 thread on page 2, got %d", len(page2.Threads))
+	}
+	if page2.HasMore {
+		t.Fatal("expected has_more=false on page 2 (exhausted)")
+	}
+}
+
+func TestInboxThreadDetailMessagesPaginationOffset(t *testing.T) {
+	app, _, svc := newInboxTestApp(t)
+	router := CreateRouter(defaultAPIConfig, app)
+	token := loginAs(t, router, "admin@inbox.test", "adminpass")
+	adminID := adminUserIDFromToken(t, router, token)
+
+	ctx := context.Background()
+	principal := &backendauth.Principal{User: backendauth.User{ID: adminID}}
+	account, err := svc.ConnectAccount(ctx, principal, inbox.ConnectAccountParams{
+		Channel:           inbox.ChannelWhatsApp,
+		DisplayName:       "Restaurant WhatsApp",
+		ExternalAccountID: "15559998888@s.whatsapp.net",
+	})
+	if err != nil {
+		t.Fatalf("ConnectAccount: %v", err)
+	}
+	base := time.Now()
+	connector := &fakeInboxConnector{channel: inbox.ChannelWhatsApp}
+	for i := 0; i < 3; i++ {
+		connector.syncMessages = append(connector.syncMessages, inbox.NormalizedMessage{
+			ExternalThreadID:   "wa-thread-msg-page",
+			ExternalMessageID:  fmt.Sprintf("wa-msg-msg-page-%d", i),
+			Direction:          inbox.MessageDirectionInbound,
+			ContactExternalID:  "15551234567@s.whatsapp.net",
+			ContactDisplayName: "Restaurant Regular",
+			BodyText:           fmt.Sprintf("message %d", i),
+			SentAt:             base.Add(time.Duration(i) * time.Minute),
+		})
+	}
+	svc.RegisterConnector(connector)
+	if _, err := svc.SyncAccount(ctx, principal, account.ID); err != nil {
+		t.Fatalf("SyncAccount: %v", err)
+	}
+	threads, _, err := svc.ListThreads(ctx, principal, inbox.ListThreadsParams{})
+	if err != nil {
+		t.Fatalf("ListThreads: %v", err)
+	}
+	if len(threads) != 1 {
+		t.Fatalf("expected 1 seeded thread, got %d", len(threads))
+	}
+	threadID := threads[0].ID
+
+	// message_offset=2 skips the 2 most recent messages, leaving only the
+	// oldest one - proves the query param reaches the service layer.
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/inbox/threads/"+threadID+"?message_offset=2", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("get thread with message_offset: got %d, body=%s", rec.Code, rec.Body.String())
+	}
+	var detail struct {
+		Messages        []map[string]any `json:"messages"`
+		MessagesHasMore bool             `json:"messages_has_more"`
+	}
+	json.NewDecoder(rec.Body).Decode(&detail)
+	if len(detail.Messages) != 1 {
+		t.Fatalf("expected 1 message after skipping the 2 most recent, got %d", len(detail.Messages))
+	}
+	if detail.Messages[0]["body_text"] != "message 0" {
+		t.Fatalf("expected the oldest message, got %v", detail.Messages[0]["body_text"])
+	}
+	if detail.MessagesHasMore {
+		t.Fatal("expected messages_has_more=false (only 3 messages seeded, well under the page size)")
+	}
+}
+
+func TestInboxAttachmentDownload(t *testing.T) {
+	app, _, svc := newInboxTestAppWithArtifactStore(t)
+	router := CreateRouter(defaultAPIConfig, app)
+	token := loginAs(t, router, "admin@inbox.test", "adminpass")
+	adminID := adminUserIDFromToken(t, router, token)
+
+	ctx := context.Background()
+	principal := &backendauth.Principal{User: backendauth.User{ID: adminID}}
+	account, err := svc.ConnectAccount(ctx, principal, inbox.ConnectAccountParams{
+		Channel:           inbox.ChannelWhatsApp,
+		DisplayName:       "Restaurant WhatsApp",
+		ExternalAccountID: "15559998888@s.whatsapp.net",
+	})
+	if err != nil {
+		t.Fatalf("ConnectAccount: %v", err)
+	}
+	connector := &fakeInboxConnector{
+		channel: inbox.ChannelWhatsApp,
+		syncMessages: []inbox.NormalizedMessage{{
+			ExternalThreadID:   "15551234567@s.whatsapp.net",
+			ExternalMessageID:  "wa-msg-att",
+			Direction:          inbox.MessageDirectionInbound,
+			ContactExternalID:  "15551234567@s.whatsapp.net",
+			ContactDisplayName: "Restaurant Regular",
+			Attachments: []inbox.Attachment{{
+				Filename:    "photo.jpg",
+				ContentType: "image/jpeg",
+				Size:        5,
+				Data:        []byte("hello"),
+			}},
+			SentAt: time.Now(),
+		}},
+	}
+	svc.RegisterConnector(connector)
+	if _, err := svc.SyncAccount(ctx, principal, account.ID); err != nil {
+		t.Fatalf("SyncAccount: %v", err)
+	}
+	threads, _, err := svc.ListThreads(ctx, principal, inbox.ListThreadsParams{})
+	if err != nil {
+		t.Fatalf("ListThreads: %v", err)
+	}
+	if len(threads) != 1 {
+		t.Fatalf("expected 1 seeded thread, got %d", len(threads))
+	}
+	threadID := threads[0].ID
+
+	// GET /inbox/threads/{id} - confirm the attachment metadata surfaces
+	// in the message response.
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/inbox/threads/"+threadID, nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("get thread: got %d, body=%s", rec.Code, rec.Body.String())
+	}
+	var detail struct {
+		Messages []messageResponse `json:"messages"`
+	}
+	json.NewDecoder(rec.Body).Decode(&detail)
+	if len(detail.Messages) != 1 || len(detail.Messages[0].Attachments) != 1 {
+		t.Fatalf("expected 1 message with 1 attachment, got %+v", detail.Messages)
+	}
+	att := detail.Messages[0].Attachments[0]
+	if att.Filename != "photo.jpg" || att.ContentType != "image/jpeg" {
+		t.Fatalf("unexpected attachment metadata: %+v", att)
+	}
+	messageID := detail.Messages[0].ID
+
+	// GET the attachment itself.
+	req = httptest.NewRequest(http.MethodGet, fmt.Sprintf(
+		"/api/v1/inbox/threads/%s/messages/%s/attachments/%s", threadID, messageID, att.ID), nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("download attachment: got %d, body=%s", rec.Code, rec.Body.String())
+	}
+	if got := rec.Body.String(); got != "hello" {
+		t.Fatalf("expected attachment bytes %q, got %q", "hello", got)
+	}
+	if ct := rec.Header().Get("Content-Type"); ct != "image/jpeg" {
+		t.Fatalf("expected Content-Type image/jpeg, got %q", ct)
+	}
+	if cd := rec.Header().Get("Content-Disposition"); cd != `attachment; filename="photo.jpg"` {
+		t.Fatalf("unexpected Content-Disposition: %q", cd)
+	}
+
+	// Unknown attachment ID -> 404.
+	req = httptest.NewRequest(http.MethodGet, fmt.Sprintf(
+		"/api/v1/inbox/threads/%s/messages/%s/attachments/does-not-exist", threadID, messageID), nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 for unknown attachment, got %d", rec.Code)
 	}
 }
 

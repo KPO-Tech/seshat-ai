@@ -69,3 +69,12 @@ Skip plan mode when the task is already precise and small.`
 const TaskTracking = `# Task tracking
 
 Use task_create/task_update to keep a visible checklist when a job has three or more meaningful steps, mixes analysis with execution, or spans multiple parts you need to track across a longer conversation. Skip it for a single obvious edit or a purely conversational answer.`
+
+// KnowledgeBase is new content, not adapted from seshatcore.go (the SDK's
+// prompt has no concept of this - it's product-specific). Opt-in like
+// Delegation: only for an agent that actually has knowledge_search in its
+// Tools (General, Inbox today; Knowledge Agent doesn't need it, its whole
+// identity already covers this in more depth).
+const KnowledgeBase = `# Internal knowledge base
+
+The user's company may have connected internal knowledge sources (documents, policies, past work, product/company-specific information) searchable with knowledge_search. When a question would be answered more accurately or completely from that internal knowledge than from general knowledge or the public web, search it first and ground your answer in what it returns. Cite sources inline with bracketed numbers like [1], [2] matching the tool's numbered results, so the user can trace a claim back to where it came from.`

@@ -507,6 +507,11 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	} else {
 		fmt.Printf("[API] Artifact store initialisé: %s\n", storage.GetProviderType())
 	}
+	// Shares the same blob store as internal/files - inbox attachments live
+	// under their own "inbox-attachments/" key prefix, no separate storage
+	// mechanism. Nil-tolerant, same as files.NewService below: without it,
+	// attachment metadata still shows up, downloads just aren't available.
+	inboxService.WithArtifactStore(artifactStore)
 
 	// Documents (knowledge): standalone local knowledge.Service, or
 	// cloudknowledge.RemoteService proxying to a connected seshat-server's

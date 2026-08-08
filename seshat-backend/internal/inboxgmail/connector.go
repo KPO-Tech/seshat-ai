@@ -203,6 +203,27 @@ func (c *Connector) Send(ctx context.Context, account *inbox.ChannelAccount, sec
 	return sent.Id, nil
 }
 
+// FetchAttachment implements inbox.AttachmentFetcher - Gmail attachments
+// aren't downloaded during Sync (see mime.go's doc comment), so Service
+// calls this lazily, the first time a user actually requests a download.
+// attachmentRef is the GmailAttachmentID captured at sync time.
+func (c *Connector) FetchAttachment(ctx context.Context, account *inbox.ChannelAccount, secret inbox.ConnectorSecret, externalMessageID, attachmentRef string) ([]byte, error) {
+	svc, err := c.client(ctx, secret)
+	if err != nil {
+		return nil, fmt.Errorf("build gmail client: %w", err)
+	}
+	body, err := svc.Users.Messages.Attachments.Get("me", externalMessageID, attachmentRef).Context(ctx).Do()
+	if err != nil {
+		return nil, fmt.Errorf("get attachment: %w", err)
+	}
+	// Same unpadded base64url convention as mime.go's decodeBody.
+	data, err := base64.RawURLEncoding.DecodeString(body.Data)
+	if err != nil {
+		return nil, fmt.Errorf("decode attachment data: %w", err)
+	}
+	return data, nil
+}
+
 // buildRawMessage builds a minimal RFC 2822 message and returns it as the
 // unpadded base64url string the Gmail API's Message.Raw field expects.
 func buildRawMessage(to, subject, body, inReplyTo, references string) string {
@@ -222,4 +243,7 @@ func buildRawMessage(to, subject, body, inReplyTo, references string) string {
 	return base64.RawURLEncoding.EncodeToString([]byte(sb.String()))
 }
 
-var _ inbox.Connector = (*Connector)(nil)
+var (
+	_ inbox.Connector         = (*Connector)(nil)
+	_ inbox.AttachmentFetcher = (*Connector)(nil)
+)

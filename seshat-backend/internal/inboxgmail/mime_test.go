@@ -187,11 +187,21 @@ func TestTranslateMessage_CollectsAttachmentMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatalf("translateMessage: %v", err)
 	}
-	if n.AttachmentsJSON == "[]" || n.AttachmentsJSON == "" {
-		t.Fatal("expected non-empty attachments JSON")
+	if len(n.Attachments) != 1 {
+		t.Fatalf("expected exactly 1 attachment, got %d", len(n.Attachments))
 	}
-	if !containsAll(n.AttachmentsJSON, `"filename":"invoice.pdf"`, `"gmail_attachment_id":"att-1"`, `"size":12345`) {
-		t.Errorf("attachments JSON missing expected fields: %s", n.AttachmentsJSON)
+	att := n.Attachments[0]
+	if att.Filename != "invoice.pdf" {
+		t.Errorf("expected filename %q, got %q", "invoice.pdf", att.Filename)
+	}
+	if att.GmailAttachmentID != "att-1" {
+		t.Errorf("expected gmail_attachment_id %q, got %q", "att-1", att.GmailAttachmentID)
+	}
+	if att.Size != 12345 {
+		t.Errorf("expected size 12345, got %d", att.Size)
+	}
+	if att.ContentType != "application/pdf" {
+		t.Errorf("expected content type %q, got %q", "application/pdf", att.ContentType)
 	}
 }
 

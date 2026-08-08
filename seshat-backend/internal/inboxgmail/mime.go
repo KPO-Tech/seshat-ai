@@ -2,7 +2,6 @@ package inboxgmail
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"net/mail"
 	"regexp"
@@ -12,13 +11,6 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
 	gmail "google.golang.org/api/gmail/v1"
 )
-
-type gmailAttachment struct {
-	Filename          string `json:"filename"`
-	ContentType       string `json:"content_type"`
-	Size              int64  `json:"size"`
-	GmailAttachmentID string `json:"gmail_attachment_id"`
-}
 
 // translateMessage converts a fully-populated (format=full) Gmail message
 // into the channel-agnostic shape inbox.Service persists. accountEmail is
@@ -50,12 +42,6 @@ func translateMessage(msg *gmail.Message, accountEmail string) (inbox.Normalized
 	if bodyText == "" {
 		bodyText = msg.Snippet
 	}
-	attachmentsJSON := "[]"
-	if len(attachments) > 0 {
-		if b, err := json.Marshal(attachments); err == nil {
-			attachmentsJSON = string(b)
-		}
-	}
 
 	sentAt := time.UnixMilli(msg.InternalDate)
 
@@ -67,7 +53,7 @@ func translateMessage(msg *gmail.Message, accountEmail string) (inbox.Normalized
 		ContactExternalID:  contact.Address,
 		ContactDisplayName: contact.Name,
 		BodyText:           bodyText,
-		AttachmentsJSON:    attachmentsJSON,
+		Attachments:        attachments,
 		SentAt:             sentAt,
 	}, nil
 }
@@ -120,12 +106,12 @@ func stripReplyPrefix(subject string) string {
 // depth-first, preferring the first text/plain part it finds for the body
 // and falling back to a crude tag-strip of text/html if no plain part
 // exists - Gmail always sends at least one of the two for a real email.
-// Any part with a Filename is collected as an attachment reference (not
-// downloaded here - a future tool can fetch attachment bytes on demand via
-// its GmailAttachmentID).
-func extractBodyAndAttachments(part *gmail.MessagePart) (string, []gmailAttachment) {
+// Any part with a Filename is collected as an attachment reference - not
+// downloaded here (see Connector.FetchAttachment, called on demand via
+// GmailAttachmentID the first time a user actually downloads it).
+func extractBodyAndAttachments(part *gmail.MessagePart) (string, []inbox.Attachment) {
 	var plainText, htmlText string
-	var attachments []gmailAttachment
+	var attachments []inbox.Attachment
 
 	var walk func(p *gmail.MessagePart)
 	walk = func(p *gmail.MessagePart) {
@@ -133,7 +119,7 @@ func extractBodyAndAttachments(part *gmail.MessagePart) (string, []gmailAttachme
 			return
 		}
 		if p.Filename != "" {
-			attachments = append(attachments, gmailAttachment{
+			attachments = append(attachments, inbox.Attachment{
 				Filename:    p.Filename,
 				ContentType: p.MimeType,
 				Size:        bodySize(p.Body),

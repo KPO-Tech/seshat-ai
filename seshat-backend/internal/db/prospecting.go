@@ -540,6 +540,36 @@ func (s *ProspectingBusinessStore) ExistingPlaceIDs(ctx context.Context, sweepID
 	return out, nil
 }
 
+// FindLatestByUserAndPlaceID looks up the most recently updated business
+// row for (userID, placeID) across ALL of the user's sweeps, not just one -
+// used to avoid re-fetching Place Details/company enrichment for a
+// business already discovered in an earlier sweep of an overlapping area.
+// found=false (not an error) means no prior sighting, a normal outcome.
+func (s *ProspectingBusinessStore) FindLatestByUserAndPlaceID(ctx context.Context, userID, placeID string) (*ProspectingBusiness, bool, error) {
+	// Both tables have columns of the same name (id, created_at_unix,
+	// updated_at_unix) - an unqualified SELECT * across the join would let
+	// GORM scan the wrong table's value into gProspectingBusiness's fields,
+	// so the select list is qualified explicitly.
+	var row gProspectingBusiness
+	err := s.db.GormDB().WithContext(ctx).
+		Model(&gProspectingBusiness{}).
+		Select("prospecting_businesses.*").
+		Joins("JOIN prospecting_sweeps ON prospecting_sweeps.id = prospecting_businesses.sweep_id").
+		Where("prospecting_sweeps.user_id = ? AND prospecting_businesses.place_id = ?", userID, placeID).
+		// id is a random suffix, not time-sortable, but it's a stable
+		// tie-breaker: updated_at_unix has only second granularity, so two
+		// upserts in the same second would otherwise sort non-deterministically.
+		Order("prospecting_businesses.updated_at_unix DESC, prospecting_businesses.id DESC").
+		First(&row).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, false, nil
+		}
+		return nil, false, err
+	}
+	return prospectingBusinessFromModel(row), true, nil
+}
+
 // ListBySweep returns candidates for a sweep, best reachability score
 // first, filtered/paginated. limit is clamped 1-100 like InboxContactStore.
 func (s *ProspectingBusinessStore) ListBySweep(ctx context.Context, sweepID string, filter ListProspectingBusinessesFilter, limit, offset int) ([]ProspectingBusiness, int, error) {

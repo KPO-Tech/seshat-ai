@@ -225,6 +225,83 @@ func TestProspectingBusinessStore_UpsertIsIdempotentOnSweepAndPlace(t *testing.T
 	}
 }
 
+func TestProspectingBusinessStore_FindLatestByUserAndPlaceID(t *testing.T) {
+	database := openTestDB(t)
+	sweeps, err := NewProspectingSweepStore(database)
+	if err != nil {
+		t.Fatalf("NewProspectingSweepStore: %v", err)
+	}
+	businesses, err := NewProspectingBusinessStore(database)
+	if err != nil {
+		t.Fatalf("NewProspectingBusinessStore: %v", err)
+	}
+	ctx := context.Background()
+
+	// No prior sighting yet.
+	_, found, err := businesses.FindLatestByUserAndPlaceID(ctx, "user-1", "place-1")
+	if err != nil {
+		t.Fatalf("FindLatestByUserAndPlaceID (none yet): %v", err)
+	}
+	if found {
+		t.Fatal("expected no prior sighting before any sweep has run")
+	}
+
+	firstSweep, err := sweeps.Create(ctx, CreateProspectingSweepParams{UserID: "user-1", AreaQuery: "Lille", TotalUnits: 1})
+	if err != nil {
+		t.Fatalf("Create firstSweep: %v", err)
+	}
+	if _, err := businesses.Upsert(ctx, UpsertProspectingBusinessParams{
+		SweepID: firstSweep.ID, PlaceID: "place-1", Name: "Boulangerie Martin", Phone: "0102030405", ReachabilityScore: 45,
+	}); err != nil {
+		t.Fatalf("Upsert into firstSweep: %v", err)
+	}
+
+	// A later, separate sweep (different sweep ID, same user) should find it.
+	secondSweep, err := sweeps.Create(ctx, CreateProspectingSweepParams{UserID: "user-1", AreaQuery: "Lille", TotalUnits: 1})
+	if err != nil {
+		t.Fatalf("Create secondSweep: %v", err)
+	}
+	prior, found, err := businesses.FindLatestByUserAndPlaceID(ctx, "user-1", "place-1")
+	if err != nil {
+		t.Fatalf("FindLatestByUserAndPlaceID: %v", err)
+	}
+	if !found {
+		t.Fatal("expected to find the business from the first sweep")
+	}
+	if prior.Phone != "0102030405" || prior.SweepID != firstSweep.ID {
+		t.Fatalf("unexpected prior sighting: %+v", prior)
+	}
+
+	// A different user must never see it.
+	_, found, err = businesses.FindLatestByUserAndPlaceID(ctx, "someone-else", "place-1")
+	if err != nil {
+		t.Fatalf("FindLatestByUserAndPlaceID (other user): %v", err)
+	}
+	if found {
+		t.Fatal("expected cross-sweep lookup to stay scoped to the requesting user")
+	}
+
+	// Upserting the same place into a second sweep, then asking again,
+	// should return the MOST RECENT sighting. updated_at_unix only has
+	// second granularity, so sleep past a second boundary first - otherwise
+	// both upserts could tie and the "most recent" assertion below would be
+	// flaky (the query's own id-based tie-breaker guarantees a stable
+	// result either way, just not necessarily this one).
+	time.Sleep(1100 * time.Millisecond)
+	if _, err := businesses.Upsert(ctx, UpsertProspectingBusinessParams{
+		SweepID: secondSweep.ID, PlaceID: "place-1", Name: "Boulangerie Martin", Phone: "0199999999", ReachabilityScore: 65,
+	}); err != nil {
+		t.Fatalf("Upsert into secondSweep: %v", err)
+	}
+	latest, found, err := businesses.FindLatestByUserAndPlaceID(ctx, "user-1", "place-1")
+	if err != nil {
+		t.Fatalf("FindLatestByUserAndPlaceID (after second sighting): %v", err)
+	}
+	if !found || latest.SweepID != secondSweep.ID || latest.Phone != "0199999999" {
+		t.Fatalf("expected the most recent sighting (secondSweep), got %+v", latest)
+	}
+}
+
 func TestProspectingBusinessStore_ListBySweepFiltersAndOrders(t *testing.T) {
 	database := openTestDB(t)
 	sweeps, err := NewProspectingSweepStore(database)

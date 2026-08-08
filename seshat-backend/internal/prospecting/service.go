@@ -21,6 +21,13 @@ const (
 	hardMaxTilesPerCall    = 30
 	maxNewDetailsPerCall   = 40
 	perTileSearchRadiusM   = 1500.0
+
+	// crossSweepReuseWindow bounds how long a business discovered in one
+	// sweep can be reused (without a fresh Place Details/company-registry
+	// call) if the same place turns up again in a later, separate sweep -
+	// matches Place Details' own cache TTL so "fresh enough" means the same
+	// thing in both places.
+	crossSweepReuseWindow = 30 * 24 * time.Hour
 )
 
 // Service orchestrates sweeps and exposes read access to their results.
@@ -190,42 +197,62 @@ func (s *Service) SweepArea(ctx context.Context, principal *backendauth.Principa
 			if seenPlaceIDs[ps.PlaceID] {
 				continue
 			}
-			if newDetailsThisCall >= maxNewDetailsPerCall {
-				break
-			}
-			details, err := s.places.PlaceDetails(ctx, ps.PlaceID)
-			if err != nil {
-				if errors.Is(err, ErrDailyCapReached) {
-					capHit = true
-					lastError = ErrDailyCapReached.Error()
+
+			var business Business
+			if prior, found, err := s.businesses.FindLatestByUserAndPlaceID(ctx, principal.User.ID, ps.PlaceID); err == nil && found && time.Since(prior.UpdatedAt) < crossSweepReuseWindow {
+				// Already known from an earlier sweep of this user's (any
+				// area, not just this one) within the reuse window - reuse
+				// it instead of re-paying for Place Details/company
+				// enrichment. This is the actual cost-saving mechanism;
+				// per-sweep result sets still stay separate (see
+				// db.ProspectingBusinessStore's own doc comment).
+				var executives []Executive
+				_ = json.Unmarshal([]byte(prior.ExecutivesJSON), &executives)
+				business = Business{
+					PlaceID: ps.PlaceID, Sector: unit.Sector, Name: ps.Name,
+					FormattedAddress: ps.FormattedAddress, PostalCode: ps.PostalCode, City: ps.City, Location: ps.Location,
+					Phone: prior.Phone, Website: prior.Website, Rating: prior.Rating, UserRatingCount: prior.UserRatingCount,
+					BusinessStatus: prior.BusinessStatus, OpeningHoursJSON: prior.OpeningHoursJSON,
+					SIREN: prior.SIREN, CompanyName: prior.CompanyName, Executives: executives, MatchConfidence: prior.MatchConfidence,
+				}
+			} else {
+				if newDetailsThisCall >= maxNewDetailsPerCall {
 					break
 				}
-				continue
-			}
-			newDetailsThisCall++
+				details, err := s.places.PlaceDetails(ctx, ps.PlaceID)
+				if err != nil {
+					if errors.Is(err, ErrDailyCapReached) {
+						capHit = true
+						lastError = ErrDailyCapReached.Error()
+						break
+					}
+					continue
+				}
+				newDetailsThisCall++
 
-			business := Business{
-				PlaceID:          ps.PlaceID,
-				Sector:           unit.Sector,
-				Name:             ps.Name,
-				FormattedAddress: ps.FormattedAddress,
-				PostalCode:       ps.PostalCode,
-				City:             ps.City,
-				Location:         ps.Location,
-				Phone:            details.Phone,
-				Website:          details.Website,
-				Rating:           details.Rating,
-				UserRatingCount:  details.UserRatingCount,
-				BusinessStatus:   details.BusinessStatus,
-				OpeningHoursJSON: details.OpeningHoursJSON,
-			}
+				business = Business{
+					PlaceID:          ps.PlaceID,
+					Sector:           unit.Sector,
+					Name:             ps.Name,
+					FormattedAddress: ps.FormattedAddress,
+					PostalCode:       ps.PostalCode,
+					City:             ps.City,
+					Location:         ps.Location,
+					Phone:            details.Phone,
+					Website:          details.Website,
+					Rating:           details.Rating,
+					UserRatingCount:  details.UserRatingCount,
+					BusinessStatus:   details.BusinessStatus,
+					OpeningHoursJSON: details.OpeningHoursJSON,
+				}
 
-			if record.Country == "fr" {
-				if match, found, err := EnrichCompany(ctx, s.places.http, s.cache, ps.Name, ps.PostalCode); err == nil && found {
-					business.SIREN = match.SIREN
-					business.CompanyName = match.CompanyName
-					business.Executives = match.Executives
-					business.MatchConfidence = match.Confidence
+				if record.Country == "fr" {
+					if match, found, err := EnrichCompany(ctx, s.places.http, s.cache, ps.Name, ps.PostalCode); err == nil && found {
+						business.SIREN = match.SIREN
+						business.CompanyName = match.CompanyName
+						business.Executives = match.Executives
+						business.MatchConfidence = match.Confidence
+					}
 				}
 			}
 			business.ReachabilityScore = ReachabilityScore(business)

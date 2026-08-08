@@ -272,6 +272,112 @@ func TestService_SweepArea_DailyCapProducesPartialNotError(t *testing.T) {
 	}
 }
 
+// fixedPlaceRoundTripper is like stubRoundTripper but always returns the
+// SAME place_id (simulating the real world: the same business exists
+// whether you sweep it once or twice) - needed to test cross-sweep reuse,
+// which stubRoundTripper's ever-incrementing place-%d can never trigger.
+type fixedPlaceRoundTripper struct {
+	searchCalls  int
+	detailsCalls int
+	gouvCalls    int
+}
+
+func (rt *fixedPlaceRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	var body string
+	switch {
+	case req.URL.Host == "api-adresse.data.gouv.fr":
+		body = `{"features":[{"geometry":{"coordinates":[3.0573,50.6292]},"properties":{"label":"Lille, France","postcode":"59000","city":"Lille"}}]}`
+	case req.URL.Host == "recherche-entreprises.api.gouv.fr":
+		rt.gouvCalls++
+		body = `{"results":[{"siren":"123456789","nom_complet":"Boulangerie Martin","siege":{"code_postal":"59000"},"dirigeants":[{"prenoms":"Jean","nom":"Martin","qualite":"Gerant"}]}]}`
+	case req.URL.Host == "places.googleapis.com" && req.Method == http.MethodPost:
+		rt.searchCalls++
+		body = `{"places":[{"id":"place-fixed","displayName":{"text":"Boulangerie Martin"},"formattedAddress":"1 rue Test, 59000 Lille","location":{"latitude":50.63,"longitude":3.06},"primaryType":"bakery","addressComponents":[{"types":["postal_code"],"longText":"59000"},{"types":["locality"],"longText":"Lille"}]}]}`
+	case req.URL.Host == "places.googleapis.com" && req.Method == http.MethodGet:
+		rt.detailsCalls++
+		body = `{"nationalPhoneNumber":"0102030405","websiteUri":"https://example.com","rating":4.5,"userRatingCount":42,"businessStatus":"OPERATIONAL"}`
+	default:
+		return nil, fmt.Errorf("fixedPlaceRoundTripper: no handler for %s %s", req.Method, req.URL.String())
+	}
+	rec := httptest.NewRecorder()
+	rec.WriteHeader(http.StatusOK)
+	_, _ = rec.WriteString(body)
+	resp := rec.Result()
+	resp.Request = req
+	return resp, nil
+}
+
+func TestService_SweepArea_ReusesBusinessAcrossSeparateSweeps(t *testing.T) {
+	database := openTestDB(t)
+	rt := &fixedPlaceRoundTripper{}
+
+	// Built manually (not via newTestService, which is typed for
+	// *stubRoundTripper, not this test's own fixedPlaceRoundTripper).
+	sweeps, err := db.NewProspectingSweepStore(database)
+	if err != nil {
+		t.Fatalf("NewProspectingSweepStore: %v", err)
+	}
+	businesses, err := db.NewProspectingBusinessStore(database)
+	if err != nil {
+		t.Fatalf("NewProspectingBusinessStore: %v", err)
+	}
+	cache, err := db.NewProspectingCacheStore(database)
+	if err != nil {
+		t.Fatalf("NewProspectingCacheStore: %v", err)
+	}
+	usage, err := db.NewProspectingUsageStore(database)
+	if err != nil {
+		t.Fatalf("NewProspectingUsageStore: %v", err)
+	}
+	svc := &Service{
+		sweeps: sweeps, businesses: businesses, cache: cache, usage: usage,
+		places: &Client{apiKey: "test-key", http: &http.Client{Transport: rt}, cache: cache, usage: usage, dailyCap: 100},
+	}
+	ctx := context.Background()
+	principal := testPrincipal("user-1")
+
+	first, err := svc.SweepArea(ctx, principal, SweepAreaParams{
+		AreaQuery: "Lille", Sectors: []string{"boulangerie"}, RadiusKM: 0.5,
+	})
+	if err != nil {
+		t.Fatalf("SweepArea (first): %v", err)
+	}
+	if first.BusinessesFound != 1 {
+		t.Fatalf("expected 1 business in the first sweep, got %d", first.BusinessesFound)
+	}
+	detailsAfterFirst, gouvAfterFirst := rt.detailsCalls, rt.gouvCalls
+	if detailsAfterFirst == 0 || gouvAfterFirst == 0 {
+		t.Fatalf("expected the first sweep to make real Details/gouv calls, got details=%d gouv=%d", detailsAfterFirst, gouvAfterFirst)
+	}
+
+	// A second, independent sweep (fresh sweep_id) of the same area, same
+	// user - the fixed place_id means this "discovers" the same business.
+	second, err := svc.SweepArea(ctx, principal, SweepAreaParams{
+		AreaQuery: "Lille", Sectors: []string{"boulangerie"}, RadiusKM: 0.5,
+	})
+	if err != nil {
+		t.Fatalf("SweepArea (second): %v", err)
+	}
+	if second.ID == first.ID {
+		t.Fatal("expected a genuinely new sweep, not the same one")
+	}
+	if second.BusinessesFound != 1 {
+		t.Fatalf("expected 1 business in the second sweep too, got %d", second.BusinessesFound)
+	}
+	if rt.detailsCalls != detailsAfterFirst || rt.gouvCalls != gouvAfterFirst {
+		t.Fatalf("expected NO new Details/gouv calls on the second sweep (reuse should have kicked in), details went %d->%d, gouv went %d->%d",
+			detailsAfterFirst, rt.detailsCalls, gouvAfterFirst, rt.gouvCalls)
+	}
+
+	list, _, err := svc.ListBusinesses(ctx, principal, ListBusinessesParams{SweepID: second.ID})
+	if err != nil {
+		t.Fatalf("ListBusinesses: %v", err)
+	}
+	if len(list) != 1 || list[0].Phone != "0102030405" || list[0].SIREN != "123456789" {
+		t.Fatalf("expected the reused business to carry over the original enrichment, got %+v", list)
+	}
+}
+
 func TestService_SweepArea_RejectsMissingAreaAndSectors(t *testing.T) {
 	database := openTestDB(t)
 	svc := newTestService(t, database, &stubRoundTripper{}, 100)

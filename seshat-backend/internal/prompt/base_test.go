@@ -15,6 +15,7 @@ func TestBaseSections_NonEmptyAndStartWithExpectedHeading(t *testing.T) {
 		{"Delegation", Delegation, "# Delegation"},
 		{"PlanMode", PlanMode, "# Plan mode"},
 		{"TaskTracking", TaskTracking, "# Task tracking"},
+		{"KnowledgeBase", KnowledgeBase, "# Internal knowledge base"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -32,7 +33,7 @@ func TestBaseSections_NonEmptyAndStartWithExpectedHeading(t *testing.T) {
 // accidentally reintroducing the coding-specific examples these sections
 // were deliberately trimmed of (see base.go's doc comment).
 func TestBaseSections_DropCodingSpecificExamples(t *testing.T) {
-	all := strings.Join([]string{WorkingDiscipline, Delegation, PlanMode, TaskTracking}, "\n\n")
+	all := strings.Join([]string{WorkingDiscipline, Delegation, PlanMode, TaskTracking, KnowledgeBase}, "\n\n")
 	forbidden := []string{"internal/auth", "edit_file", "write_file", "git push"}
 	for _, phrase := range forbidden {
 		if strings.Contains(all, phrase) {
@@ -44,7 +45,7 @@ func TestBaseSections_DropCodingSpecificExamples(t *testing.T) {
 func TestBaseSections_AreDistinctFromCorePrompt(t *testing.T) {
 	// Base sections are hand-adapted derivatives, not verbatim copies of
 	// sections.go - they should not be byte-identical to any core section.
-	base := []string{WorkingDiscipline, Delegation, PlanMode, TaskTracking}
+	base := []string{WorkingDiscipline, Delegation, PlanMode, TaskTracking, KnowledgeBase}
 	core := []string{Identity, RuntimeContract, WorkingRules, FactualDiscipline, ToolUse, ToolPriority, Workflow, Modes, Orchestration, Browser, Examples, VerificationExamples, OutputDiscipline}
 	for _, b := range base {
 		for _, c := range core {

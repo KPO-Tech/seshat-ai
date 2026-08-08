@@ -18,16 +18,18 @@ func Build(sections ...string) string {
 	return strings.Join(parts, "\n\n")
 }
 
-// DefaultCorePrompt is the General Agent's full prompt - every section, in
-// the same order as seshatcore.go's stableSystemPromptSections. This is the
-// direct replacement for depending on the SDK's own default: seshat-backend
-// now owns this content and can adapt it for the product over time (see
-// this package's own future changes for what's been corrected since the
-// initial verbatim copy).
+// DefaultCorePrompt is the General Agent's full prompt - the 13 sections
+// verbatim-copied from seshatcore.go, in the same order as its own
+// stableSystemPromptSections, plus KnowledgeBase (product-specific, not
+// from the SDK - the General Agent always has knowledge_search, so it
+// should know to reach for it; see base.go's doc comment on KnowledgeBase).
+// This is the direct replacement for depending on the SDK's own default:
+// seshat-backend now owns this content and can adapt it for the product
+// over time.
 func DefaultCorePrompt() string {
 	return Build(
 		Identity, RuntimeContract, WorkingRules, FactualDiscipline,
-		ToolUse, ToolPriority, Workflow, Modes, Orchestration,
+		ToolUse, ToolPriority, KnowledgeBase, Workflow, Modes, Orchestration,
 		Browser, Examples, VerificationExamples, OutputDiscipline,
 	)
 }

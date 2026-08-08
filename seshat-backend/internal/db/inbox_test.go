@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 )
@@ -109,6 +110,54 @@ func TestChannelAccountStore_UpdateSyncStateAndStatus(t *testing.T) {
 	}
 	if refreshed.Status != ChannelAccountStatusError || refreshed.LastError != "session expired" {
 		t.Fatalf("expected error status with message, got %+v", refreshed)
+	}
+}
+
+func TestChannelAccountStore_GetByChannelAndExternalID(t *testing.T) {
+	database := openTestDB(t)
+	identityStore, err := NewIdentityStore(database)
+	if err != nil {
+		t.Fatalf("NewIdentityStore: %v", err)
+	}
+	ctx := context.Background()
+	user := bootstrapTestUser(t, ctx, identityStore, "inbox-getbyext@example.com")
+
+	store, err := NewChannelAccountStore(database)
+	if err != nil {
+		t.Fatalf("NewChannelAccountStore: %v", err)
+	}
+	created, err := store.Create(ctx, CreateChannelAccountParams{
+		UserID:            user.ID,
+		Channel:           ChannelGmail,
+		ExternalAccountID: "owner@restaurant.com",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	found, ok, err := store.GetByChannelAndExternalID(ctx, user.ID, ChannelGmail, "owner@restaurant.com")
+	if err != nil {
+		t.Fatalf("GetByChannelAndExternalID: %v", err)
+	}
+	if !ok || found.ID != created.ID {
+		t.Fatalf("expected to find the created account, got ok=%v found=%+v", ok, found)
+	}
+
+	_, ok, err = store.GetByChannelAndExternalID(ctx, user.ID, ChannelGmail, "someone-else@example.com")
+	if err != nil {
+		t.Fatalf("GetByChannelAndExternalID (no match): %v", err)
+	}
+	if ok {
+		t.Fatal("expected no match for a different external account ID")
+	}
+
+	// Different channel, same external ID - must not match.
+	_, ok, err = store.GetByChannelAndExternalID(ctx, user.ID, ChannelWhatsApp, "owner@restaurant.com")
+	if err != nil {
+		t.Fatalf("GetByChannelAndExternalID (different channel): %v", err)
+	}
+	if ok {
+		t.Fatal("expected no match across a different channel")
 	}
 }
 
@@ -267,12 +316,168 @@ func TestInboxMessageStore_CreateIsIdempotentByExternalID(t *testing.T) {
 		t.Fatalf("expected the same message ID on re-sync, got %q vs %q", m1.ID, m2.ID)
 	}
 
-	messages, err := messageStore.ListByThreadID(ctx, thread.ID)
+	messages, _, err := messageStore.ListByThreadID(ctx, thread.ID, 50, 0)
 	if err != nil {
 		t.Fatalf("ListByThreadID: %v", err)
 	}
 	if len(messages) != 1 {
 		t.Fatalf("expected exactly 1 message despite re-sync, got %d", len(messages))
+	}
+}
+
+func TestInboxMessageStore_ListByThreadIDPaginatesNewestFirstButReturnsAscending(t *testing.T) {
+	database := openTestDB(t)
+	ctx := context.Background()
+	threadStore, err := NewInboxThreadStore(database)
+	if err != nil {
+		t.Fatalf("NewInboxThreadStore: %v", err)
+	}
+	messageStore, err := NewInboxMessageStore(database)
+	if err != nil {
+		t.Fatalf("NewInboxMessageStore: %v", err)
+	}
+
+	thread, err := threadStore.Upsert(ctx, UpsertThreadParams{
+		ChannelAccountID: "chacc_1",
+		ExternalThreadID: "ext-thread-msg-page",
+		LastMessageAt:    time.Now(),
+	})
+	if err != nil {
+		t.Fatalf("Upsert thread: %v", err)
+	}
+
+	base := time.Now()
+	for i := 0; i < 3; i++ {
+		if _, err := messageStore.Create(ctx, CreateMessageParams{
+			ThreadID:          thread.ID,
+			ChannelAccountID:  "chacc_1",
+			ExternalMessageID: fmt.Sprintf("ext-msg-page-%d", i),
+			Direction:         InboxMessageDirectionInbound,
+			BodyText:          fmt.Sprintf("message %d", i),
+			SentAt:            base.Add(time.Duration(i) * time.Minute),
+		}); err != nil {
+			t.Fatalf("Create message %d: %v", i, err)
+		}
+	}
+
+	// Default page (offset 0) should be the 2 most recent messages, in
+	// ascending order (oldest of the page first).
+	page1, hasMore, err := messageStore.ListByThreadID(ctx, thread.ID, 2, 0)
+	if err != nil {
+		t.Fatalf("ListByThreadID (page 1): %v", err)
+	}
+	if len(page1) != 2 {
+		t.Fatalf("expected 2 messages on page 1, got %d", len(page1))
+	}
+	if !hasMore {
+		t.Fatal("expected hasMore=true on page 1 (3 messages seeded, limit 2)")
+	}
+	if page1[0].BodyText != "message 1" || page1[1].BodyText != "message 2" {
+		t.Fatalf("expected ascending order within the newest page, got %+v", page1)
+	}
+
+	// Paging further back (offset 2) should surface the oldest message,
+	// with hasMore=false.
+	page2, hasMore, err := messageStore.ListByThreadID(ctx, thread.ID, 2, 2)
+	if err != nil {
+		t.Fatalf("ListByThreadID (page 2): %v", err)
+	}
+	if len(page2) != 1 {
+		t.Fatalf("expected 1 message on page 2, got %d", len(page2))
+	}
+	if hasMore {
+		t.Fatal("expected hasMore=false on page 2 (exhausted)")
+	}
+	if page2[0].BodyText != "message 0" {
+		t.Fatalf("expected the oldest message on page 2, got %+v", page2)
+	}
+}
+
+func TestInboxMessageStore_GetByID(t *testing.T) {
+	database := openTestDB(t)
+	ctx := context.Background()
+	threadStore, err := NewInboxThreadStore(database)
+	if err != nil {
+		t.Fatalf("NewInboxThreadStore: %v", err)
+	}
+	messageStore, err := NewInboxMessageStore(database)
+	if err != nil {
+		t.Fatalf("NewInboxMessageStore: %v", err)
+	}
+	thread, err := threadStore.Upsert(ctx, UpsertThreadParams{
+		ChannelAccountID: "chacc_1",
+		ExternalThreadID: "ext-thread-getbyid",
+		LastMessageAt:    time.Now(),
+	})
+	if err != nil {
+		t.Fatalf("Upsert thread: %v", err)
+	}
+	created, err := messageStore.Create(ctx, CreateMessageParams{
+		ThreadID:         thread.ID,
+		ChannelAccountID: "chacc_1",
+		Direction:        InboxMessageDirectionInbound,
+		BodyText:         "hello",
+		SentAt:           time.Now(),
+	})
+	if err != nil {
+		t.Fatalf("Create message: %v", err)
+	}
+
+	got, err := messageStore.GetByID(ctx, created.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.ID != created.ID || got.BodyText != "hello" {
+		t.Fatalf("expected the created message back, got %+v", got)
+	}
+
+	if _, err := messageStore.GetByID(ctx, "does-not-exist"); err == nil {
+		t.Fatal("expected an error for an unknown message ID")
+	}
+}
+
+func TestInboxMessageStore_UpdateAttachments(t *testing.T) {
+	database := openTestDB(t)
+	ctx := context.Background()
+	threadStore, err := NewInboxThreadStore(database)
+	if err != nil {
+		t.Fatalf("NewInboxThreadStore: %v", err)
+	}
+	messageStore, err := NewInboxMessageStore(database)
+	if err != nil {
+		t.Fatalf("NewInboxMessageStore: %v", err)
+	}
+	thread, err := threadStore.Upsert(ctx, UpsertThreadParams{
+		ChannelAccountID: "chacc_1",
+		ExternalThreadID: "ext-thread-updateatt",
+		LastMessageAt:    time.Now(),
+	})
+	if err != nil {
+		t.Fatalf("Upsert thread: %v", err)
+	}
+	created, err := messageStore.Create(ctx, CreateMessageParams{
+		ThreadID:         thread.ID,
+		ChannelAccountID: "chacc_1",
+		Direction:        InboxMessageDirectionInbound,
+		BodyText:         "has an attachment",
+		AttachmentsJSON:  `[{"id":"att-1","filename":"invoice.pdf"}]`,
+		SentAt:           time.Now(),
+	})
+	if err != nil {
+		t.Fatalf("Create message: %v", err)
+	}
+
+	updated := `[{"id":"att-1","filename":"invoice.pdf","storage_key":"inbox-attachments/abc"}]`
+	if err := messageStore.UpdateAttachments(ctx, created.ID, updated); err != nil {
+		t.Fatalf("UpdateAttachments: %v", err)
+	}
+
+	got, err := messageStore.GetByID(ctx, created.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.AttachmentsJSON != updated {
+		t.Fatalf("expected attachments_json to be overwritten, got %q", got.AttachmentsJSON)
 	}
 }
 
@@ -307,7 +512,7 @@ func TestInboxThreadStore_ListByUserIDJoinsChannelAccounts(t *testing.T) {
 		t.Fatalf("Upsert thread: %v", err)
 	}
 
-	threads, err := threadStore.ListByUserID(ctx, user.ID, "", 10)
+	threads, _, err := threadStore.ListByUserID(ctx, user.ID, "", 10, 0)
 	if err != nil {
 		t.Fatalf("ListByUserID: %v", err)
 	}
@@ -315,18 +520,82 @@ func TestInboxThreadStore_ListByUserIDJoinsChannelAccounts(t *testing.T) {
 		t.Fatalf("expected 1 thread for user via channel account join, got %+v", threads)
 	}
 
-	openThreads, err := threadStore.ListByUserID(ctx, user.ID, InboxThreadStatusOpen, 10)
+	openThreads, _, err := threadStore.ListByUserID(ctx, user.ID, InboxThreadStatusOpen, 10, 0)
 	if err != nil {
 		t.Fatalf("ListByUserID (status filter): %v", err)
 	}
 	if len(openThreads) != 1 {
 		t.Fatalf("expected 1 open thread, got %d", len(openThreads))
 	}
-	handledThreads, err := threadStore.ListByUserID(ctx, user.ID, InboxThreadStatusHandled, 10)
+	handledThreads, _, err := threadStore.ListByUserID(ctx, user.ID, InboxThreadStatusHandled, 10, 0)
 	if err != nil {
 		t.Fatalf("ListByUserID (handled filter): %v", err)
 	}
 	if len(handledThreads) != 0 {
 		t.Fatalf("expected 0 handled threads, got %d", len(handledThreads))
+	}
+}
+
+func TestInboxThreadStore_ListByUserIDPaginatesWithOffsetAndHasMore(t *testing.T) {
+	database := openTestDB(t)
+	identityStore, err := NewIdentityStore(database)
+	if err != nil {
+		t.Fatalf("NewIdentityStore: %v", err)
+	}
+	ctx := context.Background()
+	user := bootstrapTestUser(t, ctx, identityStore, "inbox-paginate@example.com")
+
+	accountStore, err := NewChannelAccountStore(database)
+	if err != nil {
+		t.Fatalf("NewChannelAccountStore: %v", err)
+	}
+	account, err := accountStore.Create(ctx, CreateChannelAccountParams{UserID: user.ID, Channel: ChannelGmail})
+	if err != nil {
+		t.Fatalf("Create account: %v", err)
+	}
+
+	threadStore, err := NewInboxThreadStore(database)
+	if err != nil {
+		t.Fatalf("NewInboxThreadStore: %v", err)
+	}
+	// Seed 3 threads with strictly increasing LastMessageAt, so
+	// most-recent-first order is deterministic.
+	base := time.Now()
+	for i := 0; i < 3; i++ {
+		if _, err := threadStore.Upsert(ctx, UpsertThreadParams{
+			ChannelAccountID: account.ID,
+			ExternalThreadID: fmt.Sprintf("ext-thread-page-%d", i),
+			LastMessageAt:    base.Add(time.Duration(i) * time.Minute),
+		}); err != nil {
+			t.Fatalf("Upsert thread %d: %v", i, err)
+		}
+	}
+
+	page1, hasMore, err := threadStore.ListByUserID(ctx, user.ID, "", 2, 0)
+	if err != nil {
+		t.Fatalf("ListByUserID (page 1): %v", err)
+	}
+	if len(page1) != 2 {
+		t.Fatalf("expected 2 threads on page 1, got %d", len(page1))
+	}
+	if !hasMore {
+		t.Fatal("expected hasMore=true on page 1 (3 threads seeded, limit 2)")
+	}
+	if page1[0].ExternalThreadID != "ext-thread-page-2" || page1[1].ExternalThreadID != "ext-thread-page-1" {
+		t.Fatalf("expected most-recent-first order, got %+v", page1)
+	}
+
+	page2, hasMore, err := threadStore.ListByUserID(ctx, user.ID, "", 2, 2)
+	if err != nil {
+		t.Fatalf("ListByUserID (page 2): %v", err)
+	}
+	if len(page2) != 1 {
+		t.Fatalf("expected 1 thread on page 2, got %d", len(page2))
+	}
+	if hasMore {
+		t.Fatal("expected hasMore=false on page 2 (exhausted)")
+	}
+	if page2[0].ExternalThreadID != "ext-thread-page-0" {
+		t.Fatalf("expected the oldest thread on page 2, got %+v", page2)
 	}
 }

@@ -69,15 +69,38 @@ type Thread struct {
 }
 
 type Message struct {
-	ID              string    `json:"id"`
-	ThreadID        string    `json:"thread_id"`
-	Direction       string    `json:"direction"`
-	SenderContactID string    `json:"sender_contact_id,omitempty"`
-	BodyText        string    `json:"body_text"`
-	AttachmentsJSON string    `json:"attachments_json,omitempty"`
-	IsDraft         bool      `json:"is_draft"`
-	SentAt          time.Time `json:"sent_at"`
-	CreatedAt       time.Time `json:"created_at"`
+	ID              string       `json:"id"`
+	ThreadID        string       `json:"thread_id"`
+	Direction       string       `json:"direction"`
+	SenderContactID string       `json:"sender_contact_id,omitempty"`
+	BodyText        string       `json:"body_text"`
+	Attachments     []Attachment `json:"attachments,omitempty"`
+	IsDraft         bool         `json:"is_draft"`
+	SentAt          time.Time    `json:"sent_at"`
+	CreatedAt       time.Time    `json:"created_at"`
+}
+
+// Attachment is one file attached to a message. Metadata (Filename/
+// ContentType/Size) is always populated by the connector that observed it;
+// StorageKey is set once the bytes are cached in ArtifactStore - either
+// immediately (WhatsApp, which downloads eagerly at ingest, see
+// internal/inboxwhatsapp's package doc) or lazily, on first download
+// request (Gmail, whose GmailAttachmentID stays valid indefinitely via the
+// API, so eager download would waste bandwidth on attachments nobody ever
+// opens - see Service.OpenAttachment).
+type Attachment struct {
+	ID                string `json:"id"`
+	Filename          string `json:"filename"`
+	ContentType       string `json:"content_type"`
+	Size              int64  `json:"size"`
+	StorageKey        string `json:"storage_key,omitempty"`
+	GmailAttachmentID string `json:"gmail_attachment_id,omitempty"`
+	// Data is transient - only ever set in-flight by a connector that
+	// already has the bytes in hand (WhatsApp's ingest path). Service
+	// stores it via ArtifactStore and clears this field before the
+	// attachment is ever marshaled to JSON for persistence; never read back
+	// from a persisted row.
+	Data []byte `json:"-"`
 }
 
 type ConnectAccountParams struct {
@@ -95,6 +118,7 @@ type ConnectAccountParams struct {
 type ListThreadsParams struct {
 	Status string
 	Limit  int
+	Offset int
 }
 
 type SendReplyParams struct {
@@ -120,7 +144,7 @@ type NormalizedMessage struct {
 	ContactDisplayName string
 	ContactAvatarURL   string
 	BodyText           string
-	AttachmentsJSON    string
+	Attachments        []Attachment
 	SentAt             time.Time
 }
 
@@ -142,6 +166,15 @@ type Connector interface {
 	// Sync recognizes and skips this message rather than re-importing it as
 	// a duplicate inbound one).
 	Send(ctx context.Context, account *ChannelAccount, secret ConnectorSecret, externalThreadID, contactExternalID, body string) (externalMessageID string, err error)
+}
+
+// AttachmentFetcher is implemented by a Connector whose attachments aren't
+// downloaded at ingest time (see Attachment's doc comment on eager vs. lazy
+// fetching) - Service.OpenAttachment calls this on the first download
+// request for an attachment whose StorageKey is still empty, then caches
+// the result so later requests skip the external API entirely.
+type AttachmentFetcher interface {
+	FetchAttachment(ctx context.Context, account *ChannelAccount, secret ConnectorSecret, externalMessageID, attachmentRef string) (data []byte, err error)
 }
 
 // ConnectorSecret is the decrypted connection material a Connector needs -

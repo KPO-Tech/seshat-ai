@@ -79,6 +79,11 @@ func (t *ListThreadsTool) Definition() tools.Definition {
 					"minimum":     1,
 					"maximum":     200,
 				},
+				"offset": map[string]any{
+					"type":        "integer",
+					"description": "How many threads to skip, for paging past an earlier result (default 0). Only needed when a prior call's result said more threads were available.",
+					"minimum":     0,
+				},
 			},
 		}),
 		IsReadOnly:         true,
@@ -92,16 +97,18 @@ func (t *ListThreadsTool) Call(ctx context.Context, input tools.CallInput, _ too
 	if err != nil {
 		return tools.NewErrorResult(err), nil
 	}
-	threads, err := t.backend.ListThreads(ctx, principal, inbox.ListThreadsParams{
+	offset := intInput(input.Parsed, "offset")
+	threads, hasMore, err := t.backend.ListThreads(ctx, principal, inbox.ListThreadsParams{
 		Status: stringInput(input.Parsed, "status"),
 		Limit:  intInput(input.Parsed, "limit"),
+		Offset: offset,
 	})
 	if err != nil {
 		return tools.NewErrorResult(err), nil
 	}
 	result := tools.NewJSONResult(threads)
-	result.Content = formatThreadList(threads)
-	result.Metadata = &tools.ResultMetadata{Additional: map[string]any{"count": len(threads)}}
+	result.Content = formatThreadList(threads, hasMore, offset+len(threads))
+	result.Metadata = &tools.ResultMetadata{Additional: map[string]any{"count": len(threads), "has_more": hasMore}}
 	return result, nil
 }
 
@@ -122,7 +129,7 @@ func (t *ListThreadsTool) FormatResult(data any) string {
 		return s
 	}
 	if threads, ok := data.([]inbox.Thread); ok {
-		return formatThreadList(threads)
+		return formatThreadList(threads, false, len(threads))
 	}
 	return ""
 }
@@ -130,7 +137,11 @@ func (t *ListThreadsTool) BackfillInput(_ context.Context, input map[string]any)
 	return input
 }
 
-func formatThreadList(threads []inbox.Thread) string {
+// formatThreadList renders threads for the agent. When hasMore is true, a
+// trailing note tells the agent more threads exist beyond this page and
+// gives the offset to call again with, so it never mistakes a truncated
+// page for the complete list.
+func formatThreadList(threads []inbox.Thread, hasMore bool, nextOffset int) string {
 	if len(threads) == 0 {
 		return "No threads found."
 	}
@@ -145,6 +156,9 @@ func formatThreadList(threads []inbox.Thread) string {
 			fmt.Fprintf(&sb, " — %q", th.Subject)
 		}
 		fmt.Fprintf(&sb, "\n  thread_id=%s  last_message_at=%s\n", th.ID, th.LastMessageAt.Format("2006-01-02 15:04"))
+	}
+	if hasMore {
+		fmt.Fprintf(&sb, "\n(more threads available — call again with offset=%d to see them)", nextOffset)
 	}
 	return strings.TrimRight(sb.String(), "\n")
 }
@@ -174,6 +188,11 @@ func (t *GetThreadTool) Definition() tools.Definition {
 					"type":        "string",
 					"description": "The thread ID, as returned by inbox_list_threads.",
 				},
+				"message_offset": map[string]any{
+					"type":        "integer",
+					"description": "How many of the most recent messages to skip, for paging further back into history (default 0 = the most recent messages). Only needed when a prior call's result said earlier history exists.",
+					"minimum":     0,
+				},
 			},
 			"required": []string{"thread_id"},
 		}),
@@ -197,13 +216,14 @@ func (t *GetThreadTool) Call(ctx context.Context, input tools.CallInput, _ tools
 	if threadID == "" {
 		return tools.NewErrorResult(fmt.Errorf("thread_id is required")), nil
 	}
-	thread, messages, err := t.backend.GetThread(ctx, principal, threadID)
+	msgOffset := intInput(input.Parsed, "message_offset")
+	thread, messages, hasMore, err := t.backend.GetThread(ctx, principal, threadID, msgOffset)
 	if err != nil {
 		return tools.NewErrorResult(err), nil
 	}
 	data := threadWithMessages{Thread: *thread, Messages: messages}
 	result := tools.NewJSONResult(data)
-	result.Content = formatThreadDetail(*thread, messages)
+	result.Content = formatThreadDetail(*thread, messages, hasMore, msgOffset+len(messages))
 	return result, nil
 }
 
@@ -224,7 +244,7 @@ func (t *GetThreadTool) FormatResult(data any) string {
 		return s
 	}
 	if d, ok := data.(threadWithMessages); ok {
-		return formatThreadDetail(d.Thread, d.Messages)
+		return formatThreadDetail(d.Thread, d.Messages, false, len(d.Messages))
 	}
 	return ""
 }
@@ -232,7 +252,12 @@ func (t *GetThreadTool) BackfillInput(_ context.Context, input map[string]any) m
 	return input
 }
 
-func formatThreadDetail(th inbox.Thread, messages []inbox.Message) string {
+// formatThreadDetail renders a thread's messages for the agent. When
+// hasMore is true, a trailing note flags that earlier history exists beyond
+// this page - important because the Inbox Agent's workflow says to read a
+// thread's full history before replying, so it must know when what it has
+// isn't actually everything.
+func formatThreadDetail(th inbox.Thread, messages []inbox.Message, hasMore bool, nextOffset int) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "Thread with %s (%s), status=%s", th.Contact.DisplayName, th.Channel, th.Status)
 	if th.Subject != "" {
@@ -248,7 +273,14 @@ func formatThreadDetail(th inbox.Thread, messages []inbox.Message) string {
 		if m.IsDraft {
 			draft = " (draft, not sent)"
 		}
-		fmt.Fprintf(&sb, "[%s]%s %s: %s\n\n", m.SentAt.Format("2006-01-02 15:04"), draft, who, m.BodyText)
+		fmt.Fprintf(&sb, "[%s]%s %s: %s", m.SentAt.Format("2006-01-02 15:04"), draft, who, m.BodyText)
+		for _, att := range m.Attachments {
+			fmt.Fprintf(&sb, " (attachment: %s)", att.Filename)
+		}
+		sb.WriteString("\n\n")
+	}
+	if hasMore {
+		fmt.Fprintf(&sb, "(earlier messages not shown — call again with message_offset=%d to see more history)\n", nextOffset)
 	}
 	return strings.TrimRight(sb.String(), "\n")
 }

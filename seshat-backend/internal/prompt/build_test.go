@@ -35,6 +35,7 @@ func TestDefaultCorePrompt_ContainsEverySectionOnce(t *testing.T) {
 		"FactualDiscipline":    "# Factual discipline",
 		"ToolUse":              "# Tool use",
 		"ToolPriority":         "# Tool priority",
+		"KnowledgeBase":        "# Internal knowledge base",
 		"Workflow":             "# Mono-run workflow",
 		"Modes":                "# Modes and delegation",
 		"Orchestration":        "# Orchestration",
@@ -55,7 +56,7 @@ func TestDefaultCorePrompt_SectionsAppearInDeclaredOrder(t *testing.T) {
 	got := DefaultCorePrompt()
 	order := []string{
 		"# Role", "# Runtime contract", "# Working rules", "# Factual discipline",
-		"# Tool use", "# Tool priority", "# Mono-run workflow", "# Modes and delegation",
+		"# Tool use", "# Tool priority", "# Internal knowledge base", "# Mono-run workflow", "# Modes and delegation",
 		"# Orchestration", "# Browser use", "# Workflow examples", "# Verification examples",
 		"# Output discipline",
 	}
