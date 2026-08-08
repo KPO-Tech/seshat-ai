@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
+	backendprompt "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/prompt"
 	"github.com/KPO-Tech/seshat/pkg/agent"
 )
 
@@ -88,5 +89,34 @@ func TestBuildContextInput_NoAgentSlugMeansNoRestriction(t *testing.T) {
 	})
 	if len(input.AllowedTools) != 0 {
 		t.Fatalf("AllowedTools = %v, want empty when no agent_slug is set", input.AllowedTools)
+	}
+}
+
+func TestBuildContextInput_NoAgentSlugFallsBackToDefaultCorePrompt(t *testing.T) {
+	svc := &Service{}
+	input, _ := svc.BuildContextInput(context.Background(), ContextBuildParams{
+		Prompt: "hello",
+	})
+	if input.SystemPromptOverride == nil {
+		t.Fatal("expected SystemPromptOverride to be populated with the default core prompt, got nil")
+	}
+	want := backendprompt.DefaultCorePrompt()
+	if *input.SystemPromptOverride != want {
+		t.Fatalf("SystemPromptOverride did not match prompt.DefaultCorePrompt()")
+	}
+}
+
+func TestBuildContextInput_AgentSystemPromptWinsOverDefault(t *testing.T) {
+	svc := &Service{
+		agents: fakeAgentsProvider{def: &agent.AgentDefinition{
+			GetSystemPrompt: func() string { return "you are a specialized agent" },
+		}},
+	}
+	input, _ := svc.BuildContextInput(context.Background(), ContextBuildParams{
+		Prompt:    "hello",
+		AgentSlug: "some-agent",
+	})
+	if input.SystemPromptOverride == nil || *input.SystemPromptOverride != "you are a specialized agent" {
+		t.Fatalf("expected the agent's own system prompt to win, got %v", input.SystemPromptOverride)
 	}
 }

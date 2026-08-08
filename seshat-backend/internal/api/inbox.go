@@ -255,10 +255,7 @@ func (a *App) ensureInboxAgent(ctx context.Context) {
 	if a.backend.Agents == nil {
 		return
 	}
-	if _, err := a.backend.Agents.GetBySlug(ctx, agents.InboxAgentSlug); err == nil {
-		return
-	}
-	if _, err := a.backend.Agents.Create(ctx, agents.DefaultInboxAgentParams()); err != nil {
+	if err := a.backend.Agents.EnsureDefault(ctx, agents.DefaultInboxAgentParams()); err != nil {
 		fmt.Fprintf(os.Stderr, "[API] Avertissement: création de l'Inbox Agent échouée: %v\n", err)
 	}
 }

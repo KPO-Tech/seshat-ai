@@ -17,6 +17,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	seshat "github.com/EngineerProjects/seshat-ai/seshat-backend/internal"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/agents"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/api"
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudagents"
@@ -882,6 +883,16 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		AgentDefinitionStore:     agentDefinitionStore,
 		Inbox:                    inboxService,
 	})
+
+	// Knowledge Agent: unlike the Inbox Agent (provisioned lazily on first
+	// channel connection, see api/inbox.go's ensureInboxAgent), the
+	// knowledge base has no "first connection" event to hook into - it's
+	// always available - so it's provisioned once, eagerly, right here.
+	if backendApp.Agents != nil {
+		if err := backendApp.Agents.EnsureDefault(ctx, agents.DefaultKnowledgeAgentParams()); err != nil {
+			fmt.Fprintf(os.Stderr, "[API] Avertissement: création du Knowledge Agent échouée: %v\n", err)
+		}
+	}
 
 	// knowledge_search: lets the Company Assistant (and any other session on
 	// this shared query client) search across every corpus the calling

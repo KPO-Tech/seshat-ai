@@ -89,7 +89,7 @@ export function KnowledgePage() {
     if (sessionId && pendingPrompt) {
       const prompt = pendingPrompt
       setPendingPrompt(null)
-      void sendMessage(prompt)
+      void sendMessage(prompt, { agentSlug: 'knowledge-agent' })
     }
   }, [sessionId, pendingPrompt, sendMessage])
 
@@ -102,7 +102,7 @@ export function KnowledgePage() {
     const instruction = buildAgentInstruction(trimmed)
     const existing = sessionId
     if (existing) {
-      void sendMessage(instruction)
+      void sendMessage(instruction, { agentSlug: 'knowledge-agent' })
       return
     }
     const created = await ensureSession()

@@ -1,5 +1,7 @@
 package agents
 
+import "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/prompt"
+
 // InboxAgentSlug is the well-known slug for the auto-provisioned Inbox
 // Agent - see DefaultInboxAgentParams and internal/api's ensureInboxAgent,
 // which creates it (idempotently, by this slug) the first time a user
@@ -19,7 +21,17 @@ func DefaultInboxAgentParams() CreateParams {
 		Name: "Inbox Agent",
 		WhenToUse: "Delegate here for anything about the user's connected inbox: triaging unread messages, " +
 			"summarizing a thread, drafting or sending a reply on email or WhatsApp, or figuring out what needs attention.",
-		SystemPrompt: inboxAgentSystemPrompt,
+		SystemPrompt: prompt.Build(
+			inboxIdentity,
+			inboxWorkflow,
+			prompt.WorkingDiscipline,
+			// Delegation is included because this agent actually has
+			// agent/spawn_agent in its Tools below - an agent without those
+			// tools should never get this section (see internal/prompt/base.go).
+			prompt.Delegation,
+			prompt.FactualDiscipline,
+			prompt.OutputDiscipline,
+		),
 		Tools: []string{
 			"inbox_list_threads",
 			"inbox_get_thread",
@@ -38,14 +50,17 @@ func DefaultInboxAgentParams() CreateParams {
 	}
 }
 
-// inboxAgentSystemPrompt is deliberately short - per-tool guidance already
-// lives in each inbox_* tool's own Description (what it does, when to use
-// it, its safety constraints), so this only needs the cross-cutting policy
-// that applies regardless of which tool is being called. See
-// internal/inboxtool's tool definitions for the rest.
-const inboxAgentSystemPrompt = `You are the Inbox Agent. You triage and respond to the user's connected communication channels (email, WhatsApp) on their behalf.
+const inboxIdentity = `# Role
 
-Core policy:
+You are the Inbox Agent. You triage and respond to the user's connected communication channels (email, WhatsApp) on their behalf.`
+
+// inboxWorkflow carries the same policy content this agent has always had -
+// per-tool guidance already lives in each inbox_* tool's own Description
+// (what it does, when to use it, its safety constraints; see
+// internal/inboxtool), so this only needs the cross-cutting policy that
+// applies regardless of which tool is being called.
+const inboxWorkflow = `# Workflow
+
 - Prefer drafting over sending. Only call inbox_send_reply after the user has explicitly confirmed a specific message should go out - never send on your own initiative.
 - Always read a thread's full history with inbox_get_thread before drafting or sending a reply to it, so your response is grounded in the real conversation.
 - If a thread is really the start of a different job (e.g. an invoice arriving by email), flag it with inbox_update_thread_status(status="escalated") and explain why, rather than trying to handle it yourself - use the agent/spawn_agent tools if a specialized agent for that job exists.

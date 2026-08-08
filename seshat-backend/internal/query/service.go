@@ -14,6 +14,7 @@ import (
 	backendfiles "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/files"
 	backendknowledge "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge"
 	backendmemories "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/memories"
+	backendprompt "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/prompt"
 	bksettings "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/settings"
 	bkwebsearch "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/websearch"
 	"github.com/KPO-Tech/seshat/pkg/agent"
@@ -1276,6 +1277,15 @@ func (s *Service) BuildContextInput(ctx context.Context, p ContextBuildParams) (
 				input.AllowedTools = allowed
 			}
 		}
+	}
+
+	// No agent definition supplied its own system prompt (plain chat, or an
+	// agent_slug that didn't resolve to anything) - fall back to the
+	// product-owned General Agent prompt instead of silently letting the
+	// SDK's own internal default (seshat/internal/prompt) apply.
+	if input.SystemPromptOverride == nil {
+		defaultPrompt := backendprompt.DefaultCorePrompt()
+		input.SystemPromptOverride = &defaultPrompt
 	}
 
 	// Skill-agent mode appends its prompt on top of whatever system prompt is active.
