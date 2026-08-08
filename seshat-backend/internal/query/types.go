@@ -34,6 +34,12 @@ type QueryInput struct {
 	// apply for this session. When set, the agent's system prompt, model, and
 	// permission mode override the defaults unless already explicitly provided.
 	AgentSlug string
+	// AllowedTools, when non-empty, restricts the session to exactly these
+	// tool names for this turn - populated from the resolved agent
+	// definition's Tools allowlist in BuildContextInput. Empty means no
+	// restriction (the full global tool set stays available), matching how
+	// AgentDefinition.Tools == nil means "unrestricted" elsewhere.
+	AllowedTools []string
 	// SystemPromptOverride fully replaces the engine's default system prompt
 	// (Seshat Core identity + rules + workflow). Used when an agent needs its
 	// own identity rather than layering on top of Seshat Core via AppendSystemPrompt.

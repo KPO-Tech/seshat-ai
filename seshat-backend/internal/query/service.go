@@ -1272,6 +1272,9 @@ func (s *Service) BuildContextInput(ctx context.Context, p ContextBuildParams) (
 			if input.PermissionMode == "" && def.PermissionMode != "" {
 				input.PermissionMode = def.PermissionMode
 			}
+			if allowed, restrict := toolAllowlistFromPatterns(def.GetToolPatterns()); restrict {
+				input.AllowedTools = allowed
+			}
 		}
 	}
 
@@ -1394,4 +1397,20 @@ func (s *Service) BuildContextInput(ctx context.Context, p ContextBuildParams) (
 	}
 
 	return input, ragResults
+}
+
+// toolAllowlistFromPatterns turns GetToolPatterns() into an exact-name
+// allowlist. A bare "*" (AgentDefinition.Tools == nil) means fully
+// unrestricted. Any other glob (e.g. "inbox_*") isn't supported by this
+// exact-match filter yet - fail OPEN (no restriction) rather than silently
+// blocking every tool for an agent whose pattern can't be correctly
+// evaluated; extend this if a future agent definition actually needs
+// glob-style tool patterns.
+func toolAllowlistFromPatterns(patterns []string) (allowed []string, restrict bool) {
+	for _, p := range patterns {
+		if p == "*" || strings.Contains(p, "*") {
+			return nil, false
+		}
+	}
+	return patterns, len(patterns) > 0
 }

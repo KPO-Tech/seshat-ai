@@ -109,6 +109,7 @@ func (r *SDKRuntime) RunPrompt(ctx context.Context, input QueryInput) (*QueryRes
 		return nil, err
 	}
 	r.applyRemoteExecutor(session, session.GetID().String())
+	applyToolAllowlist(session, input.AllowedTools)
 
 	if input.WebSearchRunner != nil {
 		client.SetWebSearchRunner(input.WebSearchRunner)
@@ -147,6 +148,7 @@ func (r *SDKRuntime) StreamPrompt(ctx context.Context, input QueryInput, onChunk
 		return nil, err
 	}
 	r.applyRemoteExecutor(session, session.GetID().String())
+	applyToolAllowlist(session, input.AllowedTools)
 
 	if input.PromptFn != nil {
 		client.SetPromptFn(input.PromptFn)
@@ -187,6 +189,29 @@ func (r *SDKRuntime) StreamPrompt(ctx context.Context, input QueryInput, onChunk
 // of a turn based on the host-set override read from the session's ownership
 // record — a no-op unless it actually needs to change anything, so calling it
 // unconditionally on every turn is cheap and idempotent.
+// applyToolAllowlist prunes a session down to exactly input.AllowedTools
+// when the active agent definition specifies one. Unregistering is the
+// only primitive available (there's no bulk "restore to global default"
+// call), so once a session is narrowed it stays narrowed for its
+// lifetime - acceptable today since agent selection happens once per
+// conversation, not mid-conversation, but worth knowing if that changes.
+// Calling this unconditionally on every turn is cheap and idempotent, same
+// as applyForcedExecutionMode below.
+func applyToolAllowlist(session *sdk.Session, allowed []string) {
+	if len(allowed) == 0 {
+		return
+	}
+	keep := make(map[string]bool, len(allowed))
+	for _, name := range allowed {
+		keep[name] = true
+	}
+	for _, name := range session.GetToolNames() {
+		if !keep[name] {
+			_ = session.UnregisterTool(name)
+		}
+	}
+}
+
 func applyForcedExecutionMode(session *sdk.Session, forced string) {
 	switch forced {
 	case "plan":
