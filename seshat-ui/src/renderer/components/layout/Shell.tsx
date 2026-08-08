@@ -49,6 +49,7 @@ export function Shell() {
         updated_at?: number
         provider_setting_id?: string
         model_id?: string
+        source?: string
       }>
     }>('/sessions')
       .then((response) => {
@@ -63,6 +64,7 @@ export function Shell() {
             updatedAt: new Date((session.updated_at ?? session.created_at ?? 0) * 1000).toISOString(),
             providerSettingId: session.provider_setting_id,
             modelId: session.model_id,
+            source: session.source,
           })
         }
       })

@@ -35,7 +35,7 @@ func (app *App) handleSessions(w http.ResponseWriter, r *http.Request) {
 			writeJSONError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		sessionID, err := app.backend.Query.CreateSession(r.Context(), principal, req.ProviderSettingID, req.ModelID, permissionMode, executionOrigin)
+		sessionID, err := app.backend.Query.CreateSession(r.Context(), principal, req.ProviderSettingID, req.ModelID, permissionMode, executionOrigin, req.Source)
 		if err != nil {
 			writeBackendError(w, err)
 			return

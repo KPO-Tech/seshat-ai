@@ -115,6 +115,13 @@ func (a *App) handleInboxAccountByID(w http.ResponseWriter, r *http.Request) {
 			writeBackendError(w, err)
 			return
 		}
+		// The service only flips the DB status - a WhatsApp account may still
+		// have a live whatsmeow connection running in Manager's memory (it
+		// doesn't know about DB status changes), so drop it explicitly here.
+		// Safe to call even if this account was never a WhatsApp connection.
+		if a.whatsappManager != nil {
+			a.whatsappManager.Disconnect(accountID)
+		}
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}

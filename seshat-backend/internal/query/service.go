@@ -236,6 +236,7 @@ func (s *Service) ListSessions(ctx context.Context, principal *backendauth.Princ
 			Title:             o.Title,
 			PermissionMode:    o.PermissionMode,
 			ExecutionOrigin:   o.ExecutionOrigin,
+			Source:            o.Source,
 			WorkspacePath:     o.WorkspacePath,
 			ProjectPath:       o.ProjectPath,
 			CreatedAt:         o.CreatedAt.Unix(),
@@ -468,8 +469,10 @@ func (s *Service) loadSessionMessages(ctx context.Context, sessionID string) ([]
 	return nil, nil
 }
 
-// CreateSession creates a runtime session and records ownership.
-func (s *Service) CreateSession(ctx context.Context, principal *backendauth.Principal, providerSettingID, modelID string, permissionMode types.PermissionMode, executionOrigin types.ExecutionOrigin) (string, error) {
+// CreateSession creates a runtime session and records ownership. source is a
+// UI-only hint ("" for a normal chat session, "knowledge" for one created by
+// the Knowledge search page) - see SessionOwnership.Source.
+func (s *Service) CreateSession(ctx context.Context, principal *backendauth.Principal, providerSettingID, modelID string, permissionMode types.PermissionMode, executionOrigin types.ExecutionOrigin, source string) (string, error) {
 	if s == nil || s.sessions == nil {
 		return "", bkerr.Unavailable("session store not available", nil)
 	}
@@ -508,6 +511,7 @@ func (s *Service) CreateSession(ctx context.Context, principal *backendauth.Prin
 			ModelID:           strings.TrimSpace(modelID),
 			PermissionMode:    string(effectiveMode),
 			ExecutionOrigin:   string(effectiveOrigin),
+			Source:            strings.TrimSpace(source),
 		}); err != nil {
 			// Ownership creation failed — delete the orphaned runtime session
 			_ = s.sessions.DeleteSession(sdk.SessionID(sessionID))

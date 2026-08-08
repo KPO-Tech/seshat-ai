@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router'
 import QRCode from 'qrcode'
 import {
   Mail,
@@ -13,6 +14,7 @@ import {
   CheckOne,
   LoadingOne,
   Caution,
+  Left,
 } from '@icon-park/react'
 import { api, ApiError } from '@/api/client'
 
@@ -66,6 +68,7 @@ function channelIcon(channel: string) {
 }
 
 export function InboxPage() {
+  const navigate = useNavigate()
   const [accounts, setAccounts] = useState<ChannelAccount[]>([])
   const [statusFilter, setStatusFilter] = useState('open')
   const [threads, setThreads] = useState<Thread[]>([])
@@ -274,7 +277,12 @@ export function InboxPage() {
 
       <main className="ib-content">
         <section className="ib-toolbar">
-          <h1>Inbox</h1>
+          <div className="ib-toolbar-heading">
+            <button type="button" className="ib-back-chip" onClick={() => navigate(-1)}>
+              <Left size={11} /> Home
+            </button>
+            <h1>Inbox</h1>
+          </div>
           <div className="ib-toolbar-actions">
             <button type="button" className="ib-connect-btn" onClick={handleConnectGmail} disabled={gmailConnecting}>
               {gmailConnecting ? <LoadingOne size={13} className="spin" /> : <Plus size={13} />} Connect Gmail
@@ -533,7 +541,7 @@ const INBOX_CSS = `
 }
 
 .ib-toolbar {
-  min-height: 62px;
+  min-height: 74px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -542,6 +550,22 @@ const INBOX_CSS = `
   padding: 0 28px;
   border-bottom: 1px solid var(--color-border-subtle);
 }
+
+.ib-toolbar-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.ib-back-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 7px; border-radius: 5px; border: none;
+  background: var(--color-hover); color: var(--color-text-secondary);
+  font-size: 10px; font-weight: 600; cursor: pointer;
+  transition: background 0.1s, color 0.1s; white-space: nowrap;
+}
+.ib-back-chip:hover { background: var(--color-border); color: var(--color-text); }
 
 .ib-toolbar h1 {
   margin: 0;

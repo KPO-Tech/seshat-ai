@@ -290,6 +290,13 @@ func backendMigrations() []schemaMigration {
 				)
 			},
 		},
+		{
+			ID:    "20260808_038_session_source",
+			Scope: migrationScopeBackend,
+			Run: func(ctx context.Context, db *DB) error {
+				return db.gormDB.WithContext(ctx).AutoMigrate(&gSessionOwnership{})
+			},
+		},
 	}
 }
 

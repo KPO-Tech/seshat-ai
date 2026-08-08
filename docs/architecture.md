@@ -140,6 +140,27 @@ Target role:
 
 The important rule is architectural, not just physical: `seshat-server` must not become a second copy of the local runtime backend. It should own cloud coordination concerns.
 
+### Example: Inbox
+
+The inbox connectors (Gmail, WhatsApp) are a concrete instance of this split.
+
+`seshat-backend` owns all of it today: the `Connector` interface, `inbox.Service`,
+the connector implementations, encrypted account tokens, threads/messages, the
+agent tools, and the Inbox Agent. This runs per local install regardless of mode.
+
+`seshat-server` owns nothing here yet. Two extensions are anticipated once a real
+multi-user/multi-device organization needs them, not before:
+
+- Org-level OAuth app credentials (an admin registers one Google Workspace client
+  for the whole org), mirroring the SSO `provider_config.go` pattern already used
+  for OIDC/SAML.
+- Multi-tenant sync orchestration through `cloudautomation`, replacing the
+  local-only ticker (`runGmailSyncLoop`) that exists solely because
+  `cloudautomation` is connected-mode-only.
+
+`seshat-server` must never store thread or message bodies itself — that would be
+the "second copy of the local runtime backend" the rule above forbids.
+
 ---
 
 ## Runtime boundary

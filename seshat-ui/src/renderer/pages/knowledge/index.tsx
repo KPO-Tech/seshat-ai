@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { Book, LoadingOne, Message, Search, FileText, Caution, RightC } from '@icon-park/react'
+import { Book, LoadingOne, Message, Search, FileText, Caution, RightC, Left } from '@icon-park/react'
 import { api, ApiError } from '@/api/client'
 import { useSessionStore } from '@/stores/session'
 import { useChat } from '@/hooks/useChat'
@@ -58,12 +58,15 @@ export function KnowledgePage() {
   async function ensureSession(): Promise<string | null> {
     if (sessionId) return sessionId
     try {
-      const created = await api.post<{ session_id: string; title?: string; created_at?: number }>('/sessions', {})
+      const created = await api.post<{ session_id: string; title?: string; created_at?: number }>('/sessions', {
+        source: 'knowledge',
+      })
       useSessionStore.getState().upsertSession({
         id: created.session_id,
         title: created.title ?? 'Untitled conversation',
         messages: [],
         createdAt: new Date((created.created_at ?? 0) * 1000 || Date.now()).toISOString(),
+        source: 'knowledge',
       })
       setSessionId(created.session_id)
       return created.session_id
@@ -143,7 +146,12 @@ export function KnowledgePage() {
 
       <main className="k-content">
         <section className="k-toolbar">
-          <h1>Knowledge</h1>
+          <div className="k-toolbar-heading">
+            <button type="button" className="k-back-chip" onClick={() => navigate(-1)}>
+              <Left size={11} /> Home
+            </button>
+            <h1>Knowledge</h1>
+          </div>
           <form className="k-searchbar" onSubmit={handleSubmit}>
             <Search size={16} />
             <input
@@ -298,6 +306,22 @@ const KNOWLEDGE_CSS = `
   font-weight: 800;
   flex-shrink: 0;
 }
+
+.k-toolbar-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.k-back-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 7px; border-radius: 5px; border: none;
+  background: var(--color-hover); color: var(--color-text-secondary);
+  font-size: 10px; font-weight: 600; cursor: pointer;
+  transition: background 0.1s, color 0.1s; white-space: nowrap;
+}
+.k-back-chip:hover { background: var(--color-border); color: var(--color-text); }
 
 .k-searchbar {
   flex: 1;

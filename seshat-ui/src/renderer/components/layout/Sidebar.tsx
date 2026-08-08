@@ -42,7 +42,11 @@ export function Sidebar() {
   const [searchOpen, setSearchOpen] = useState(false)
 
   const width = collapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)'
-  const recentSessions = [...sessions]
+  const recentSessions = sessions
+    // Sessions created from Knowledge are real, fully persisted sessions
+    // (reachable from History and Ctrl+K search) - just excluded from this
+    // list so a one-off lookup doesn't clutter the main chat sidebar.
+    .filter((s) => s.source !== 'knowledge')
     .sort((a, b) => {
       const aTime = new Date(a.updatedAt || a.createdAt).getTime()
       const bTime = new Date(b.updatedAt || b.createdAt).getTime()

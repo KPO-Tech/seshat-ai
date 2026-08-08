@@ -48,6 +48,9 @@ type createSessionRequest struct {
 	ModelID           string `json:"model_id,omitempty"`
 	PermissionMode    string `json:"permission_mode,omitempty"`
 	ExecutionOrigin   string `json:"execution_origin,omitempty"`
+	// Source is a UI-only hint ("knowledge" for sessions created by the
+	// Knowledge search page) - see query.Service.CreateSession.
+	Source string `json:"source,omitempty"`
 }
 
 type updateSessionRequest struct {

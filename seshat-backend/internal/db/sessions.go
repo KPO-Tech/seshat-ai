@@ -24,6 +24,12 @@ type SessionOwnership struct {
 	Title             string
 	PermissionMode    string
 	ExecutionOrigin   string
+	// Source identifies the feature that created this session ("" for a
+	// normal chat session, "knowledge" for one created by the Knowledge
+	// search page) - purely a UI hint so the sidebar's Recents list can
+	// exclude one-off lookups without treating them differently in any
+	// other way (they're still full sessions, reachable from History).
+	Source string
 	// ForcedExecutionMode is a host-set override ("plan"/"execute") applied
 	// to the SDK session right before the next turn is submitted — see
 	// query.Service's use of Session.ForcePlanMode()/ClearPlanMode(). Empty
@@ -46,6 +52,7 @@ type CreateSessionOwnershipParams struct {
 	Title             string // optional
 	PermissionMode    string // optional
 	ExecutionOrigin   string // optional; defaults to interactive
+	Source            string // optional; "" for a normal chat session
 	WorkspacePath     string // optional; session sandbox root
 	ProjectPath       string // optional; user-chosen project directory
 }
@@ -62,6 +69,7 @@ type gSessionOwnership struct {
 	Title               string  `gorm:"not null;default:''"`
 	PermissionMode      *string `gorm:"column:permission_mode;size:64;index"`
 	ExecutionOrigin     string  `gorm:"column:execution_origin;size:32;not null;default:'interactive'"`
+	Source              string  `gorm:"column:source;size:32;not null;default:''"`
 	ForcedExecutionMode *string `gorm:"column:forced_execution_mode;size:32"`
 	WorkspacePath       *string `gorm:"column:workspace_path;size:1024"`
 	ProjectPath         *string `gorm:"column:project_path;size:1024"`
@@ -77,6 +85,7 @@ func sessionOwnershipFromGorm(g gSessionOwnership) SessionOwnership {
 		UserID:          g.UserID,
 		Title:           g.Title,
 		ExecutionOrigin: string(types.NormalizeExecutionOrigin(g.ExecutionOrigin)),
+		Source:          g.Source,
 		CreatedAt:       time.Unix(g.CreatedAtUnix, 0).UTC(),
 		UpdatedAt:       time.Unix(g.UpdatedAtUnix, 0).UTC(),
 	}
@@ -133,6 +142,7 @@ func (s *SessionOwnershipStore) Create(ctx context.Context, params CreateSession
 		UserID:          params.UserID,
 		Title:           params.Title,
 		ExecutionOrigin: string(types.NormalizeExecutionOrigin(strings.TrimSpace(params.ExecutionOrigin))),
+		Source:          strings.TrimSpace(params.Source),
 		CreatedAtUnix:   now.Unix(),
 		UpdatedAtUnix:   now.Unix(),
 	}
@@ -176,6 +186,7 @@ func (s *SessionOwnershipStore) Create(ctx context.Context, params CreateSession
 		Title:             params.Title,
 		PermissionMode:    string(types.NormalizePermissionModeOrDefault(types.PermissionMode(strings.TrimSpace(params.PermissionMode)), types.PermissionModeOnRequest)),
 		ExecutionOrigin:   string(types.NormalizeExecutionOrigin(strings.TrimSpace(params.ExecutionOrigin))),
+		Source:            strings.TrimSpace(params.Source),
 		WorkspacePath:     strings.TrimSpace(params.WorkspacePath),
 		ProjectPath:       strings.TrimSpace(params.ProjectPath),
 		CreatedAt:         now,

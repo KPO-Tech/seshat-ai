@@ -24,6 +24,11 @@ export type ChatSession = {
   modelLabel?: string
   permissionMode?: string
   executionOrigin?: string
+  // "" / undefined for a normal chat session, "knowledge" for one created by
+  // the Knowledge search page - lets the sidebar's Recents list exclude
+  // one-off lookups without treating them differently anywhere else (still
+  // full sessions, reachable from History and Ctrl+K search).
+  source?: string
   workspacePath?: string
   projectPath?: string
   draftPrompt?: string
