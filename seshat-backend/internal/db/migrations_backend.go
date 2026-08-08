@@ -297,6 +297,18 @@ func backendMigrations() []schemaMigration {
 				return db.gormDB.WithContext(ctx).AutoMigrate(&gSessionOwnership{})
 			},
 		},
+		{
+			ID:    "20260808_039_prospecting_core",
+			Scope: migrationScopeBackend,
+			Run: func(ctx context.Context, db *DB) error {
+				return db.gormDB.WithContext(ctx).AutoMigrate(
+					&gProspectingCacheEntry{},
+					&gProspectingDailyUsage{},
+					&gProspectingSweep{},
+					&gProspectingBusiness{},
+				)
+			},
+		},
 	}
 }
 

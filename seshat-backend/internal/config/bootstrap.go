@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -38,6 +39,8 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgetool"
 	backendmemories "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/memories"
 	backendpreferences "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/preferences"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/prospecting"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/prospectingtool"
 	backendquery "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/query"
 	backendquotas "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/quotas"
 	backendsettings "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/settings"
@@ -279,6 +282,40 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		cleanups = append(cleanups, func() error { whatsappManager.DisconnectAll(); return nil })
 	} else {
 		fmt.Printf("[API] Inbox: connecteur WhatsApp désactivé (base de données %q non supportée par whatsmeow)\n", database.Driver())
+	}
+
+	prospectingCacheStore, err := db.NewProspectingCacheStore(database)
+	if err != nil {
+		_ = cleanup()
+		return nil, nil, fmt.Errorf("init prospecting cache store: %w", err)
+	}
+	prospectingUsageStore, err := db.NewProspectingUsageStore(database)
+	if err != nil {
+		_ = cleanup()
+		return nil, nil, fmt.Errorf("init prospecting usage store: %w", err)
+	}
+	prospectingSweepStore, err := db.NewProspectingSweepStore(database)
+	if err != nil {
+		_ = cleanup()
+		return nil, nil, fmt.Errorf("init prospecting sweep store: %w", err)
+	}
+	prospectingBusinessStore, err := db.NewProspectingBusinessStore(database)
+	if err != nil {
+		_ = cleanup()
+		return nil, nil, fmt.Errorf("init prospecting business store: %w", err)
+	}
+	var prospectingService *prospecting.Service
+	if prospecting.IsConfigured() {
+		dailyCap := 100
+		if raw := strings.TrimSpace(os.Getenv("PROSPECTING_PLACES_DAILY_CAP")); raw != "" {
+			if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
+				dailyCap = parsed
+			}
+		}
+		prospectingService = prospecting.NewService(prospectingSweepStore, prospectingBusinessStore, prospectingCacheStore, prospectingUsageStore, os.Getenv("GOOGLE_PLACES_API_KEY"), dailyCap)
+		fmt.Printf("[API] Prospecting: Google Places configuré (cap quotidien=%d)\n", dailyCap)
+	} else {
+		fmt.Printf("[API] Prospecting: désactivé (GOOGLE_PLACES_API_KEY non configurée)\n")
 	}
 
 	settingStore, err := db.NewProviderSettingStore(database)
@@ -877,6 +914,21 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		for _, tool := range inboxAgentTools {
 			if err := queryClient.RegisterTool(tool); err != nil {
 				fmt.Fprintf(os.Stderr, "[API] Avertissement: tool inbox non enregistré: %v\n", err)
+			}
+		}
+	}
+
+	// Prospecting tools are registered globally (like web_search/
+	// knowledge_search) rather than tied to a dedicated agent persona - any
+	// agent can use them via its tool-slug list.
+	if prospectingService != nil {
+		prospectingAgentTools := []sdk.Tool{
+			prospectingtool.NewSweepAreaTool(prospectingService),
+			prospectingtool.NewListBusinessesTool(prospectingService),
+		}
+		for _, tool := range prospectingAgentTools {
+			if err := queryClient.RegisterTool(tool); err != nil {
+				fmt.Fprintf(os.Stderr, "[API] Avertissement: tool prospecting non enregistré: %v\n", err)
 			}
 		}
 	}
