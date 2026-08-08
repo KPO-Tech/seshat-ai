@@ -72,12 +72,13 @@ const APPS: AppEntry[] = [
   {
     id: 'inbox',
     title: 'Inbox',
-    description: 'Intelligent mailbox. Auto-prioritizes, summarizes, and drafts email responses.',
-    status: 'planned',
+    description: 'Intelligent mailbox across email and WhatsApp. Triage, draft, and send replies, backed by the Inbox Agent.',
+    route: '/inbox',
+    status: 'ready',
     category: 'core',
     icon: <Mail size={32} />,
     tone: 'browser',
-    highlights: ['Outlook & Gmail sync', 'Urgency classification', 'Proposed responses'],
+    highlights: ['Gmail & WhatsApp sync', 'Draft before you send', 'Inbox Agent triage'],
   },
   {
     id: 'teams',

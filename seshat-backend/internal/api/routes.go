@@ -115,6 +115,8 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	apiV1.HandleFunc("/inbox/accounts/gmail/oauth/callback", app.handleInboxGmailOAuthCallback)
 	apiV1.Handle("/inbox/accounts/whatsapp/pair", app.authMiddleware(http.HandlerFunc(app.handleInboxWhatsAppPair)))
 	apiV1.Handle("/inbox/accounts/", app.authMiddleware(http.HandlerFunc(app.handleInboxAccountByID)))
+	apiV1.Handle("/inbox/threads", app.authMiddleware(http.HandlerFunc(app.handleInboxThreads)))
+	apiV1.Handle("/inbox/threads/", app.authMiddleware(http.HandlerFunc(app.handleInboxThreadByID)))
 
 	apiV1.Handle("/web/search", app.authMiddleware(http.HandlerFunc(app.handleWebSearch)))
 	apiV1.Handle("/web/search/settings", app.authMiddleware(http.HandlerFunc(app.handleWebSearchSettings)))

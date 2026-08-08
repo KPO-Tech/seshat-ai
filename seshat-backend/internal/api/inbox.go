@@ -7,9 +7,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/agents"
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inboxgmail"
@@ -230,7 +233,27 @@ func (a *App) handleInboxGmailOAuthCallback(w http.ResponseWriter, r *http.Reque
 		writeGmailOAuthResultPage(w, false, "Failed to save the connected account: "+err.Error())
 		return
 	}
+	a.ensureInboxAgent(r.Context())
 	writeGmailOAuthResultPage(w, true, fmt.Sprintf("Connected %s. You can close this tab and return to Seshat.", email))
+}
+
+// ensureInboxAgent creates the Inbox Agent (see agents.DefaultInboxAgentParams)
+// the first time any channel account connects, so the user has something to
+// actually talk to right after their first Gmail/WhatsApp connection instead
+// of a working inbox with no agent pointed at it. Idempotent by slug - a
+// NotFound from GetBySlug means "not created yet", anything else (including
+// success) means there's nothing to do. Best-effort: a failure here doesn't
+// undo the channel connection that just succeeded, only logs.
+func (a *App) ensureInboxAgent(ctx context.Context) {
+	if a.backend.Agents == nil {
+		return
+	}
+	if _, err := a.backend.Agents.GetBySlug(ctx, agents.InboxAgentSlug); err == nil {
+		return
+	}
+	if _, err := a.backend.Agents.Create(ctx, agents.DefaultInboxAgentParams()); err != nil {
+		fmt.Fprintf(os.Stderr, "[API] Avertissement: création de l'Inbox Agent échouée: %v\n", err)
+	}
 }
 
 func fetchGmailAccountEmail(ctx context.Context, cfg *oauth2.Config, token *oauth2.Token) (string, error) {
@@ -374,6 +397,206 @@ func (a *App) handleInboxWhatsAppPair(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.whatsappManager.Adopt(account.ID, client)
+	a.ensureInboxAgent(r.Context())
 
 	writeSSE("done", map[string]string{"account_id": account.ID, "display_name": account.DisplayName})
+}
+
+// ─── Threads & messages (human-facing REST surface) ────────────────────────
+//
+// Separate from the inbox_* agent tools (internal/inboxtool) - those exist
+// for the Inbox Agent to call from within a chat turn; these exist so the
+// Inbox app page can browse and reply to threads directly, without going
+// through a chat session at all.
+
+type contactResponse struct {
+	ID          string `json:"id"`
+	ExternalID  string `json:"external_id"`
+	DisplayName string `json:"display_name"`
+	AvatarURL   string `json:"avatar_url,omitempty"`
+}
+
+type threadResponse struct {
+	ID               string          `json:"id"`
+	ChannelAccountID string          `json:"channel_account_id"`
+	Channel          string          `json:"channel"`
+	Contact          contactResponse `json:"contact"`
+	Subject          string          `json:"subject,omitempty"`
+	Status           string          `json:"status"`
+	PriorityScore    float64         `json:"priority_score"`
+	LastMessageAt    int64           `json:"last_message_at"`
+}
+
+type messageResponse struct {
+	ID        string `json:"id"`
+	ThreadID  string `json:"thread_id"`
+	Direction string `json:"direction"`
+	BodyText  string `json:"body_text"`
+	IsDraft   bool   `json:"is_draft"`
+	SentAt    int64  `json:"sent_at"`
+}
+
+func threadToResponse(th inbox.Thread) threadResponse {
+	return threadResponse{
+		ID:               th.ID,
+		ChannelAccountID: th.ChannelAccountID,
+		Channel:          th.Channel,
+		Contact: contactResponse{
+			ID:          th.Contact.ID,
+			ExternalID:  th.Contact.ExternalID,
+			DisplayName: th.Contact.DisplayName,
+			AvatarURL:   th.Contact.AvatarURL,
+		},
+		Subject:       th.Subject,
+		Status:        th.Status,
+		PriorityScore: th.PriorityScore,
+		LastMessageAt: th.LastMessageAt.Unix(),
+	}
+}
+
+func messageToResponse(m inbox.Message) messageResponse {
+	return messageResponse{
+		ID:        m.ID,
+		ThreadID:  m.ThreadID,
+		Direction: m.Direction,
+		BodyText:  m.BodyText,
+		IsDraft:   m.IsDraft,
+		SentAt:    m.SentAt.Unix(),
+	}
+}
+
+// handleInboxThreads handles GET /inbox/threads?status=&limit=
+func (a *App) handleInboxThreads(w http.ResponseWriter, r *http.Request) {
+	if a.backend.Inbox == nil {
+		writeJSONError(w, http.StatusServiceUnavailable, "inbox is not configured")
+		return
+	}
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	principal, _ := authPrincipalFromContext(r.Context())
+	if principal == nil {
+		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	limit := 0
+	if raw := r.URL.Query().Get("limit"); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil {
+			limit = n
+		}
+	}
+	threads, err := a.backend.Inbox.ListThreads(r.Context(), principal, inbox.ListThreadsParams{
+		Status: r.URL.Query().Get("status"),
+		Limit:  limit,
+	})
+	if err != nil {
+		writeBackendError(w, err)
+		return
+	}
+	items := make([]threadResponse, 0, len(threads))
+	for _, th := range threads {
+		items = append(items, threadToResponse(th))
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"threads": items, "count": len(items)})
+}
+
+// handleInboxThreadByID handles /inbox/threads/{id} and sub-paths:
+//
+//	GET   /inbox/threads/{id}         → thread + full message history
+//	PATCH /inbox/threads/{id}         → {"status": "..."} update triage status
+//	POST  /inbox/threads/{id}/reply   → {"body": "...", "send": bool} draft or send
+func (a *App) handleInboxThreadByID(w http.ResponseWriter, r *http.Request) {
+	if a.backend.Inbox == nil {
+		writeJSONError(w, http.StatusServiceUnavailable, "inbox is not configured")
+		return
+	}
+	principal, _ := authPrincipalFromContext(r.Context())
+	if principal == nil {
+		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	rest := strings.TrimPrefix(r.URL.Path, "/inbox/threads/")
+	rest = strings.Trim(rest, "/")
+	if rest == "" {
+		writeJSONError(w, http.StatusBadRequest, "thread id is required")
+		return
+	}
+	parts := strings.Split(rest, "/")
+	threadID := parts[0]
+
+	if len(parts) == 1 {
+		switch r.Method {
+		case http.MethodGet:
+			thread, messages, err := a.backend.Inbox.GetThread(r.Context(), principal, threadID)
+			if err != nil {
+				writeBackendError(w, err)
+				return
+			}
+			msgItems := make([]messageResponse, 0, len(messages))
+			for _, m := range messages {
+				msgItems = append(msgItems, messageToResponse(m))
+			}
+			writeJSON(w, http.StatusOK, map[string]any{
+				"thread":   threadToResponse(*thread),
+				"messages": msgItems,
+			})
+		case http.MethodPatch:
+			var body struct {
+				Status string `json:"status"`
+			}
+			if !decodeJSONBody(w, r, &body) {
+				return
+			}
+			if strings.TrimSpace(body.Status) == "" {
+				writeJSONError(w, http.StatusBadRequest, "status is required")
+				return
+			}
+			if err := a.backend.Inbox.UpdateThreadStatus(r.Context(), principal, threadID, body.Status); err != nil {
+				writeBackendError(w, err)
+				return
+			}
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+		return
+	}
+
+	if len(parts) == 2 && parts[1] == "reply" {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		var body struct {
+			Body string `json:"body"`
+			Send bool   `json:"send"`
+		}
+		if !decodeJSONBody(w, r, &body) {
+			return
+		}
+		if strings.TrimSpace(body.Body) == "" {
+			writeJSONError(w, http.StatusBadRequest, "body is required")
+			return
+		}
+		params := inbox.SendReplyParams{ThreadID: threadID, Body: body.Body}
+		var (
+			msg *inbox.Message
+			err error
+		)
+		if body.Send {
+			msg, err = a.backend.Inbox.SendReply(r.Context(), principal, params)
+		} else {
+			msg, err = a.backend.Inbox.SaveDraft(r.Context(), principal, params)
+		}
+		if err != nil {
+			writeBackendError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusCreated, messageToResponse(*msg))
+		return
+	}
+
+	writeJSONError(w, http.StatusNotFound, "unknown thread sub-resource")
 }

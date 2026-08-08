@@ -32,6 +32,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inboxgmail"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inboxtool"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inboxwhatsapp"
 	backendknowledge "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgetool"
@@ -227,6 +228,19 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		}
 		inboxService.RegisterConnector(inboxgmail.NewConnector(gmailOAuthConfig))
 		fmt.Printf("[API] Inbox: connecteur Gmail activé\n")
+
+		// Gmail is poll-based (unlike WhatsApp's persistent push connection),
+		// and there is no local job scheduler anymore for standalone
+		// deployments - automation now runs exclusively through a connected
+		// seshat-server, configured via seshat-console (see
+		// internal/cloudautomation's package doc), which a standalone
+		// desktop install (like a first pilot customer's) won't have. This
+		// loop is deliberately narrow - keeping one connector's data fresh
+		// in the background, the way any ordinary email client polls, not a
+		// general-purpose automation system. Connected-mode users get this
+		// for free too; a seshat-console-configured job is a future,
+		// additive option for them, not a requirement.
+		go runGmailSyncLoop(inboxService)
 	}
 
 	// WhatsApp shares this app's own database connection for whatsmeow's
@@ -845,6 +859,28 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		}
 	}
 
+	// Inbox Agent tools - same registration point/reasoning as
+	// knowledge_search above. Registered whenever the inbox domain itself
+	// is configured, independent of which channel connectors ended up
+	// active - a tool call against a channel with no connector fails
+	// clearly through inbox.Service, same as any other inbox error.
+	if backendApp.Inbox != nil {
+		inboxAgentTools := []sdk.Tool{
+			inboxtool.NewListThreadsTool(backendApp.Inbox),
+			inboxtool.NewGetThreadTool(backendApp.Inbox),
+			inboxtool.NewUpdateThreadStatusTool(backendApp.Inbox),
+			inboxtool.NewDraftReplyTool(backendApp.Inbox),
+			inboxtool.NewSendReplyTool(backendApp.Inbox),
+			inboxtool.NewListAccountsTool(backendApp.Inbox),
+			inboxtool.NewSearchContactsTool(backendApp.Inbox),
+		}
+		for _, tool := range inboxAgentTools {
+			if err := queryClient.RegisterTool(tool); err != nil {
+				fmt.Fprintf(os.Stderr, "[API] Avertissement: tool inbox non enregistré: %v\n", err)
+			}
+		}
+	}
+
 	// Cloud automation: this machine executes execution_target=device jobs
 	// claimed from a connected seshat-server, using its own locally
 	// configured LLM credentials — see helps/seshat-architecture-target.md
@@ -1152,6 +1188,41 @@ func resolveCloudJobModel(ctx context.Context, settingsService *backendsettings.
 		}
 	}
 	return "", ""
+}
+
+// gmailSyncInterval mirrors a typical email client's background poll
+// cadence - frequent enough that new mail shows up promptly, cheap enough
+// (Gmail's History API returns just a delta) not to matter at this rate.
+const gmailSyncInterval = 2 * time.Minute
+
+// runGmailSyncLoop periodically syncs every connected Gmail account across
+// every user - see its call site's comment for why this exists instead of
+// relying on cloudautomation. Runs for the process's lifetime with no
+// explicit shutdown, matching this file's other daemon-style background
+// loops (e.g. api.NewApp's artifactPreviews.Sweep ticker).
+func runGmailSyncLoop(inboxService *inbox.Service) {
+	syncAllGmailAccounts(inboxService)
+	ticker := time.NewTicker(gmailSyncInterval)
+	defer ticker.Stop()
+	for range ticker.C {
+		syncAllGmailAccounts(inboxService)
+	}
+}
+
+func syncAllGmailAccounts(inboxService *inbox.Service) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	accounts, err := inboxService.ListConnectedAccountsByChannel(ctx, inbox.ChannelGmail)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[API] Gmail sync loop: échec de la liste des comptes: %v\n", err)
+		return
+	}
+	for _, account := range accounts {
+		principal := &backendauth.Principal{User: backendauth.User{ID: account.UserID}}
+		if _, err := inboxService.SyncAccount(ctx, principal, account.ID); err != nil {
+			fmt.Fprintf(os.Stderr, "[API] Gmail sync loop: échec de sync pour %s: %v\n", account.DisplayName, err)
+		}
+	}
 }
 
 // whatsappDialectFor maps this app's database driver to the dialect string

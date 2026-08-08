@@ -38,6 +38,7 @@
     "mermaid": "^11.13.0",
     "pdfjs-dist": "^5.4.624",
     "pptx-preview": "^1.0.7",
+    "qrcode": "^1.5.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-markdown": "^10.1.0",
@@ -52,6 +53,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "@types/react-syntax-highlighter": "^15.5.13",

@@ -15,6 +15,7 @@ import { WorkflowsPage } from '@/pages/workflows'
 import { AppsPage } from '@/pages/apps'
 import { ProjectsPage } from '@/pages/projects'
 import { KnowledgePage } from '@/pages/knowledge'
+import { InboxPage } from '@/pages/inbox'
 
 export const router = createHashRouter([
   {
@@ -50,6 +51,7 @@ export const router = createHashRouter([
       // rather than 404 for anyone with an old link/shortcut.
       { path: 'agents', element: <Navigate to="/workspace" replace /> },
       { path: 'knowledge', element: <KnowledgePage /> },
+      { path: 'inbox', element: <InboxPage /> },
       { path: 'memories', element: <Navigate to="/" replace /> },
       { path: 'scheduling', element: <SchedulingPage /> },
       // Scheduled Tasks / Automations were the old local-scheduler routes,
