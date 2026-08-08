@@ -278,6 +278,18 @@ func backendMigrations() []schemaMigration {
 				return db.gormDB.WithContext(ctx).AutoMigrate(&gFile{})
 			},
 		},
+		{
+			ID:    "20260808_037_inbox_core",
+			Scope: migrationScopeBackend,
+			Run: func(ctx context.Context, db *DB) error {
+				return db.gormDB.WithContext(ctx).AutoMigrate(
+					&gChannelAccount{},
+					&gInboxContact{},
+					&gInboxThread{},
+					&gInboxMessage{},
+				)
+			},
+		},
 	}
 }
 

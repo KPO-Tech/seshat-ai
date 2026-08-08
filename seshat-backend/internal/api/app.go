@@ -3,12 +3,14 @@ package api
 import (
 	"context"
 	"net"
+	"sync"
 	"time"
 
 	seshat "github.com/EngineerProjects/seshat-ai/seshat-backend/internal"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/artifactpreview"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudautomation"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inboxwhatsapp"
 	backendquery "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/query"
 	longterm "github.com/KPO-Tech/seshat/pkg/memory/longterm"
 	"github.com/KPO-Tech/seshat/pkg/sdk"
@@ -56,6 +58,14 @@ type App struct {
 	// a local whisper-server URL when local transcription is configured
 	// (see local_stt.go) — apiKey is ignored in that case.
 	transcribeAudio func(ctx context.Context, apiKey string, audioData []byte, baseURL string) (*sdk.TranscriptionResult, error)
+	// gmailOAuthStates tracks in-flight Gmail OAuth authorization requests
+	// (state -> issuing principal + expiry) for CSRF protection across the
+	// start/callback round trip. In-memory is fine: this app is a single
+	// desktop-local process, and a state is only ever alive for the few
+	// seconds/minutes a user takes to complete Google's consent screen.
+	gmailOAuthMu     sync.Mutex
+	gmailOAuthStates map[string]gmailOAuthState
+	whatsappManager  *inboxwhatsapp.Manager
 }
 
 // AppConfig holds all configuration needed to build an App.
@@ -84,6 +94,11 @@ type AppConfig struct {
 	// standalone instance (matching prior behavior) when nil, e.g. in tests
 	// that construct an App without a full bootstrap.
 	TerminalRelay *backendquery.TerminalRelay
+	// WhatsAppManager is nil when the WhatsApp connector isn't registered
+	// (see config/bootstrap.go's whatsappDialectFor) - only the pairing
+	// endpoint needs direct access to it; everything else goes through
+	// Backend.Inbox's channel-agnostic API.
+	WhatsAppManager *inboxwhatsapp.Manager
 }
 
 func NewApp(cfg AppConfig) *App {
@@ -104,6 +119,8 @@ func NewApp(cfg AppConfig) *App {
 		}
 	}()
 	return &App{
+		gmailOAuthStates:      make(map[string]gmailOAuthState),
+		whatsappManager:       cfg.WhatsAppManager,
 		backend:               cfg.Backend,
 		db:                    cfg.DB,
 		modelStore:            cfg.ModelStore,

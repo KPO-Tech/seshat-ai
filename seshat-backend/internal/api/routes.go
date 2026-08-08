@@ -108,6 +108,14 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	apiV1.Handle("/corpora/", app.authMiddleware(http.HandlerFunc(app.handleCorpusByID)))
 	apiV1.Handle("/knowledge/search", app.authMiddleware(http.HandlerFunc(app.handleKnowledgeSearch)))
 
+	apiV1.Handle("/inbox/accounts", app.authMiddleware(http.HandlerFunc(app.handleInboxAccounts)))
+	apiV1.Handle("/inbox/accounts/gmail/oauth/start", app.authMiddleware(http.HandlerFunc(app.handleInboxGmailOAuthStart)))
+	// Deliberately unauthenticated - Google's own redirect lands here with no
+	// bearer token; see handleInboxGmailOAuthCallback's doc comment.
+	apiV1.HandleFunc("/inbox/accounts/gmail/oauth/callback", app.handleInboxGmailOAuthCallback)
+	apiV1.Handle("/inbox/accounts/whatsapp/pair", app.authMiddleware(http.HandlerFunc(app.handleInboxWhatsAppPair)))
+	apiV1.Handle("/inbox/accounts/", app.authMiddleware(http.HandlerFunc(app.handleInboxAccountByID)))
+
 	apiV1.Handle("/web/search", app.authMiddleware(http.HandlerFunc(app.handleWebSearch)))
 	apiV1.Handle("/web/search/settings", app.authMiddleware(http.HandlerFunc(app.handleWebSearchSettings)))
 	apiV1.Handle("/web/search/logs", app.authMiddleware(http.HandlerFunc(app.handleWebSearchLogs)))

@@ -11,6 +11,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudwebsearch"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/files"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/mcp"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/memories"
@@ -133,6 +134,13 @@ type Dependencies struct {
 	// local-only behavior — set only by bootstrap.go when SESHAT_SERVER_URL
 	// is configured. Pure counting either way, never an enforced limit.
 	QuotaProvider quotas.Provider
+	// Inbox is pre-built by bootstrap.go (not assembled here from raw
+	// stores like most other services) because its Connector registrations
+	// depend on which channel credentials (e.g. GOOGLE_OAUTH_CLIENT_ID) are
+	// configured in the environment - that decision belongs where the rest
+	// of the env-var-driven optional integrations already live. nil = the
+	// inbox domain is disabled (no routes registered).
+	Inbox *inbox.Service
 }
 
 // App is the root backend service container.
@@ -154,6 +162,7 @@ type App struct {
 	Skills      *skills.Service
 	Agents      *agents.Service
 	Workflows   *workflows.Service
+	Inbox       *inbox.Service
 }
 
 func NewApp(deps Dependencies) *App {
@@ -222,6 +231,7 @@ func NewApp(deps Dependencies) *App {
 		Preferences: preferencesService,
 		Skills:      skillsService,
 		Agents:      agentsService,
+		Inbox:       deps.Inbox,
 		Workflows:   workflows.New(settingsService),
 	}
 }

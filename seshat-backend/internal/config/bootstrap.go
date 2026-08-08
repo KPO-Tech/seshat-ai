@@ -30,6 +30,9 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudsettings"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudwebsearch"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inboxgmail"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inboxwhatsapp"
 	backendknowledge "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgetool"
 	backendmemories "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/memories"
@@ -189,6 +192,79 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	if err != nil {
 		_ = cleanup()
 		return nil, nil, fmt.Errorf("init ingestion job store: %w", err)
+	}
+
+	channelAccountStore, err := db.NewChannelAccountStore(database)
+	if err != nil {
+		_ = cleanup()
+		return nil, nil, fmt.Errorf("init channel account store: %w", err)
+	}
+	inboxContactStore, err := db.NewInboxContactStore(database)
+	if err != nil {
+		_ = cleanup()
+		return nil, nil, fmt.Errorf("init inbox contact store: %w", err)
+	}
+	inboxThreadStore, err := db.NewInboxThreadStore(database)
+	if err != nil {
+		_ = cleanup()
+		return nil, nil, fmt.Errorf("init inbox thread store: %w", err)
+	}
+	inboxMessageStore, err := db.NewInboxMessageStore(database)
+	if err != nil {
+		_ = cleanup()
+		return nil, nil, fmt.Errorf("init inbox message store: %w", err)
+	}
+	inboxService := inbox.NewService(channelAccountStore, inboxContactStore, inboxThreadStore, inboxMessageStore)
+	// Each channel connector is registered only when its credentials are
+	// actually configured - same pattern as Docling/web search providers
+	// below: an unconfigured channel just doesn't show up as connectable,
+	// rather than the whole inbox domain failing to start.
+	if inboxgmail.IsConfigured() {
+		gmailOAuthConfig, err := inboxgmail.BaseOAuthConfig()
+		if err != nil {
+			_ = cleanup()
+			return nil, nil, fmt.Errorf("init gmail oauth config: %w", err)
+		}
+		inboxService.RegisterConnector(inboxgmail.NewConnector(gmailOAuthConfig))
+		fmt.Printf("[API] Inbox: connecteur Gmail activé\n")
+	}
+
+	// WhatsApp shares this app's own database connection for whatsmeow's
+	// session tables (see inboxwhatsapp.NewManager's doc) - only possible
+	// when the main DB is one whatsmeow's dbutil actually understands
+	// (SQLite or Postgres, not MySQL). On an unsupported driver, WhatsApp
+	// just doesn't register as connectable, same graceful-skip pattern as
+	// every other optional integration here.
+	var whatsappManager *inboxwhatsapp.Manager
+	if waDialect, ok := whatsappDialectFor(database.Driver()); ok {
+		sqlDB, err := database.GormDB().DB()
+		if err != nil {
+			_ = cleanup()
+			return nil, nil, fmt.Errorf("get sql.DB for whatsapp manager: %w", err)
+		}
+		whatsappManager, err = inboxwhatsapp.NewManager(ctx, sqlDB, waDialect, inboxService.IngestMessage, inboxService.MarkAccountError)
+		if err != nil {
+			_ = cleanup()
+			return nil, nil, fmt.Errorf("init whatsapp manager: %w", err)
+		}
+		inboxService.RegisterConnector(inboxwhatsapp.NewConnector(whatsappManager))
+		fmt.Printf("[API] Inbox: connecteur WhatsApp activé\n")
+
+		// Reconnect every already-paired WhatsApp account so incoming
+		// messages resume flowing immediately on restart, without waiting
+		// for a user action - mirrors how Gmail's connector is stateless
+		// per-call, except WhatsApp needs its persistent connection
+		// actually re-established, not just "available to call".
+		if accounts, err := inboxService.ListConnectedAccountsByChannel(ctx, inbox.ChannelWhatsApp); err == nil {
+			for _, account := range accounts {
+				if err := whatsappManager.Reconnect(ctx, account.ID, account.ExternalAccountID); err != nil {
+					fmt.Fprintf(os.Stderr, "[API] Avertissement: reconnexion WhatsApp échouée pour %s: %v\n", account.DisplayName, err)
+				}
+			}
+		}
+		cleanups = append(cleanups, func() error { whatsappManager.DisconnectAll(); return nil })
+	} else {
+		fmt.Printf("[API] Inbox: connecteur WhatsApp désactivé (base de données %q non supportée par whatsmeow)\n", database.Driver())
 	}
 
 	settingStore, err := db.NewProviderSettingStore(database)
@@ -753,6 +829,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		MCPOrgServerApprovals:    mcpOrgServerApprovalStore,
 		UserPreferencesStore:     userPreferencesStore,
 		AgentDefinitionStore:     agentDefinitionStore,
+		Inbox:                    inboxService,
 	})
 
 	// knowledge_search: lets the Company Assistant (and any other session on
@@ -858,6 +935,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		AllowedSkillRepoHosts: api.ParseSkillRepoHosts(config.SkillRepoHosts),
 		ConnectedServerURL:    serverURL,
 		TerminalRelay:         terminalRelay,
+		WhatsAppManager:       whatsappManager,
 	})
 
 	// Only the local knowledge.Service has a queue for this runner to drain —
@@ -1074,4 +1152,20 @@ func resolveCloudJobModel(ctx context.Context, settingsService *backendsettings.
 		}
 	}
 	return "", ""
+}
+
+// whatsappDialectFor maps this app's database driver to the dialect string
+// whatsmeow's sqlstore understands, so its session tables can live in the
+// same physical database as everything else rather than a second one.
+// whatsmeow only supports SQLite and Postgres (not MySQL) - see
+// go.mau.fi/util/dbutil's ParseDialect.
+func whatsappDialectFor(driver db.Driver) (string, bool) {
+	switch driver {
+	case db.DriverSQLite:
+		return "sqlite", true
+	case db.DriverPostgres:
+		return "postgres", true
+	default:
+		return "", false
+	}
 }
