@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, type ReactNode } from 'react'
-import { useNavigate } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
 import { CheckCorrect, FileTextOne, Browser, LightMember } from '@icon-park/react'
 import { ChatTopBar, CHAT_TOP_BAR_CSS } from '@/components/chat/ChatTopBar'
 import { ChatInput, CHAT_INPUT_CSS, type ChatAttachment } from '@/components/chat/ChatInput'
@@ -58,6 +58,7 @@ function sentAttachment(file: ChatAttachment) {
 
 export function Home() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { loading: providersLoading } = useProviders()
   const providers = useProvidersStore((s) => s.providers)
   const addSession = useSessionStore((s) => s.addSession)
@@ -82,6 +83,11 @@ export function Home() {
   const [attachmentError, setAttachmentError] = useState<string | null>(null)
 
   const selectedProvider = providers.find((provider) => provider.id === selectedProviderId) ?? null
+
+  useEffect(() => {
+    const project = searchParams.get('project')
+    if (project) setProjectPath(project)
+  }, [searchParams])
   // Use useMemo so the empty-array fallback is a stable reference across renders.
   // An inline [] would be a new reference every render, causing effects that depend
   // on selectedModels to re-run on every render when models aren't loaded yet.

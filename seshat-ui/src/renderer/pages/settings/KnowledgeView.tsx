@@ -4,6 +4,7 @@ import {
   Setting, PreviewOpen, PreviewClose, LinkCloud,
 } from '@icon-park/react'
 import { api } from '@/api/client'
+import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
 import type { Corpus, CorpusFile, IngestionJob, FileItem, EmbedderConfig, DoclingConfig } from '@/api/types'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -705,7 +706,7 @@ function CorpusCard({
       // Attach to corpus
       await api.post(`/corpora/${corpus.id}/files`, { file_id: uploaded.id })
       // Queue ingestion
-      await api.post(`/corpora/${corpus.id}/ingest`, {})
+      await api.post(`/corpora/${corpus.id}/ingest`, { file_id: uploaded.id })
       // Refresh
       await loadFiles()
       await loadJobs()
@@ -896,7 +897,7 @@ function NewCorpusModal({
         <header className="modal-header">
           <h2>New Corpus</h2>
           <button className="modal-close-btn" onClick={onClose}>
-            <CloseOne size={16} />
+            <WindowCloseIcon size={16} />
           </button>
         </header>
         <div className="modal-content">

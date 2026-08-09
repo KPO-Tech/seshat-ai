@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Search, Close, Sync } from '@icon-park/react'
+import { Search, Sync } from '@icon-park/react'
+import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
 import { api } from '@/api/client'
 import type { SessionSearchResult } from '@/api/types'
 import type { ChatSession } from '@/stores/session'
@@ -175,7 +176,7 @@ export function SearchModal({ open, sessions, onClose, onSelect }: Props) {
           />
           {loading ? <Sync size={11} className="spin srch-loading-icon" /> : null}
           <button className="srch-esc-btn" onClick={onClose} tabIndex={-1}>
-            <Close size={11} />
+            <WindowCloseIcon />
           </button>
         </div>
 

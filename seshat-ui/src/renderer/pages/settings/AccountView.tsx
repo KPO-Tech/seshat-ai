@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
-import { Close, Delete, LinkOne, Logout } from '@icon-park/react'
+import { Delete, LinkOne, Logout } from '@icon-park/react'
 import { api } from '@/api/client'
+import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
 import { useAuthStore } from '@/stores/auth'
 
 export function AccountView() {
@@ -114,7 +115,7 @@ export function AccountView() {
           <div className="modal-shell acct-delete-modal" onClick={(event) => event.stopPropagation()}>
             <div className="modal-header">
               <h2>Delete account</h2>
-              <button className="modal-close-btn" onClick={closeDeleteModal}><Close size={15} /></button>
+              <button className="modal-close-btn" onClick={closeDeleteModal}><WindowCloseIcon size={15} /></button>
             </div>
             <div className="modal-content">
               <p className="acct-delete-copy">

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { Left, Search, Edit, Delete, History as HistoryIcon } from '@icon-park/react'
+import { Search, Edit, Delete, History as HistoryIcon } from '@icon-park/react'
 import { useSessionStore } from '@/stores/session'
 import { api } from '@/api/client'
 import { UNTITLED_SESSION_TITLE } from '@/lib/sessionTitle'
@@ -100,10 +100,6 @@ export function HistoryPage() {
       <style>{CSS}</style>
 
       <header className="hist-topbar">
-        <button className="hist-back-chip" onClick={() => navigate('/')}>
-          <Left size={11} /> Home
-        </button>
-        <span className="hist-topbar-sep">/</span>
         <span className="hist-topbar-title">Chat History</span>
 
         <div className="hist-search">
@@ -217,13 +213,6 @@ const CSS = `
   background: var(--color-bg);
   border-bottom: 1px solid var(--color-border-subtle);
 }
-.hist-back-chip {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 4px 7px; border-radius: 5px; border: none;
-  background: var(--color-hover); color: var(--color-text-secondary);
-  font-size: 10px; font-weight: 600; cursor: pointer;
-}
-.hist-back-chip:hover { background: var(--color-border); color: var(--color-text); }
 .hist-topbar-sep { color: var(--color-text-muted); font-size: 12px; }
 .hist-topbar-title { font-size: 13px; font-weight: 700; white-space: nowrap; }
 

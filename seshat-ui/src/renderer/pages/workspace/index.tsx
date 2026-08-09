@@ -7,19 +7,22 @@ import {
 import { createAvatar } from '@dicebear/core'
 import { lorelei, adventurer } from '@dicebear/collection'
 import { api } from '@/api/client'
+import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
 import { useUIStore } from '@/stores/ui'
 import { useSessionStore, streamingToContentBlocks } from '@/stores/session'
 import { useChat } from '@/hooks/useChat'
 import { NexusLogo } from '@/components/NexusLogo'
-import { listToolCatalog, type ToolCatalogEntry, type ToolCategory } from '@/components/chat/tool-block/toolDisplay'
+import { listToolCatalog, type ToolCatalogEntry } from '@/components/chat/tool-block/toolDisplay'
 import { SETTINGS_SHARED_CSS } from '../settings/SettingsNav'
 import type { Agent, Session, Corpus, CorpusFile, IngestionJob } from '@/api/types'
+import type { ReactNode } from 'react'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 type WorkspaceTab = 'agents' | 'documents' | 'tools' | 'templates'
 type AgentsView   = 'grid' | 'detail'
 type DetailTab    = 'edit' | 'test'
+type ToolsSubTab  = 'mcp' | 'internal'
 
 const PERMISSION_MODE_OPTIONS = [
   { value: '',             label: 'Default' },
@@ -185,10 +188,15 @@ function Avatar({ agent, size = 40 }: { agent: Agent; size?: number }) {
 
 // ─── Root page ────────────────────────────────────────────────────────────────
 
-export function WorkspacePage() {
+type WorkspacePageProps = {
+  initialTab?: WorkspaceTab
+  embedded?: boolean
+}
+
+export function WorkspacePage({ initialTab = 'agents', embedded = false }: WorkspacePageProps = {}) {
   const closeAllRightPanels = useUIStore(s => s.closeAllRightPanels)
 
-  const [tab, setTab]               = useState<WorkspaceTab>('agents')
+  const [tab, setTab]               = useState<WorkspaceTab>(initialTab)
   const [agents, setAgents]         = useState<Agent[]>([])
   const [loading, setLoading]       = useState(true)
   const [error, setError]           = useState<string | null>(null)
@@ -197,8 +205,22 @@ export function WorkspacePage() {
   const [selected, setSelected]     = useState<Agent | null>(null)
   const [detailTab, setDetailTab]   = useState<DetailTab>('edit')
   const [isNewAgent, setIsNewAgent] = useState(false)
+  const [documentCrumb, setDocumentCrumb] = useState<string | null>(null)
+  const [documentsResetKey, setDocumentsResetKey] = useState(0)
+  const [embeddedActions, setEmbeddedActions] = useState<ReactNode | null>(null)
+  const [toolsSubTab, setToolsSubTab] = useState<ToolsSubTab>('mcp')
 
   useEffect(() => { closeAllRightPanels() }, [closeAllRightPanels])
+
+  useEffect(() => {
+    setTab(initialTab)
+    setView('grid')
+    setSelected(null)
+    setIsNewAgent(false)
+    setDocumentCrumb(null)
+    setEmbeddedActions(null)
+    setToolsSubTab('mcp')
+  }, [initialTab])
 
   const showToast = useCallback((text: string, kind: 'ok' | 'err' = 'ok') => {
     setToast({ text, kind })
@@ -245,9 +267,31 @@ export function WorkspacePage() {
 
   const userAgents    = agents.filter(a => a.source === 'user')
   const builtinAgents = agents.filter(a => a.source !== 'user')
+  const resourceTitle = RESOURCE_TABS.find((item) => item.id === tab)?.label ?? 'Workspace'
+
+  function resetDocumentsDetail() {
+    setDocumentCrumb(null)
+    setDocumentsResetKey((key) => key + 1)
+  }
+
+  useEffect(() => {
+    if (!embedded || tab === 'documents') return
+    if (tab === 'agents' && view === 'grid') {
+      setEmbeddedActions(
+        <>
+          <button className="wk-icon-btn" onClick={loadAgents} title="Refresh">
+            <Sync size={12} />
+          </button>
+          <button className="wk-new-btn" onClick={openNew}><Plus size={11} /> New Agent</button>
+        </>
+      )
+      return
+    }
+    setEmbeddedActions(null)
+  }, [embedded, tab, view, loadAgents])
 
   return (
-    <div className="wk-root">
+    <div className={`wk-root${embedded ? ' embedded' : ''}`}>
       <style>{CSS}</style>
       {/* Reused for the MCP section's sv-card/modal-* primitives (Tools & MCP tab) */}
       <style>{SETTINGS_SHARED_CSS}</style>
@@ -271,11 +315,19 @@ export function WorkspacePage() {
               </span>
             </>
           ) : (
-            <span className="wk-topbar-title">Workspace</span>
+            embedded && tab === 'documents' && documentCrumb ? (
+              <>
+                <button className="wk-topbar-crumb" type="button" onClick={resetDocumentsDetail}>Documents</button>
+                <span className="wk-topbar-sep">/</span>
+                <span className="wk-topbar-title">{documentCrumb}</span>
+              </>
+            ) : (
+              <span className="wk-topbar-title">{embedded ? resourceTitle : 'Workspace'}</span>
+            )
           )}
         </div>
 
-        {view === 'grid' && (
+        {view === 'grid' && !embedded && (
           <ResourceTabs
             tab={tab}
             onTabChange={(next) => { setTab(next); setView('grid') }}
@@ -283,6 +335,18 @@ export function WorkspacePage() {
         )}
 
         <div className="wk-topbar-right">
+          {embedded && view === 'grid' && tab === 'tools' ? (
+            <div className="wk-detail-tabs wk-tools-tabs">
+              <button className={`wk-detail-tab ${toolsSubTab === 'mcp' ? 'active' : ''}`} onClick={() => setToolsSubTab('mcp')}>
+                <Api size={11} /> MCP
+              </button>
+              <button className={`wk-detail-tab ${toolsSubTab === 'internal' ? 'active' : ''}`} onClick={() => setToolsSubTab('internal')}>
+                <Tool size={11} /> Internal
+              </button>
+            </div>
+          ) : (
+            embedded && view === 'grid' && embeddedActions
+          )}
           {tab === 'agents' && view === 'detail' && (
             <div className="wk-detail-tabs">
               <button className={`wk-detail-tab ${detailTab === 'edit' ? 'active' : ''}`}
@@ -308,9 +372,22 @@ export function WorkspacePage() {
         {/* Left sidebar nav */}
         {/* Content */}
         <div className="wk-body">
-          {tab === 'documents' && <DocumentsTab />}
+          {tab === 'documents' && (
+            <DocumentsTab
+              embedded={embedded}
+              resetKey={documentsResetKey}
+              onSelectionChange={setDocumentCrumb}
+              onActionsChange={setEmbeddedActions}
+            />
+          )}
 
-          {tab === 'tools' && <ToolsTab />}
+          {tab === 'tools' && (
+            <ToolsTab
+              embedded={embedded}
+              sub={toolsSubTab}
+              onSubChange={setToolsSubTab}
+            />
+          )}
 
           {tab === 'templates' && view === 'grid' && <PlannedResourceTab />}
 
@@ -889,28 +966,90 @@ function TestChatInner({ sessionId, agent, messagesRef, input, setInput }: {
 // actually invoke. "MCP" below it is the live, editable registry — servers
 // you add here are real config, reloaded into the running backend.
 
-const TOOL_CATEGORY_LABELS: Record<ToolCategory, string> = {
-  bash: 'Bash', read: 'Read', write: 'Write', edit: 'Edit', search: 'Search', other: 'Other',
+type InternalToolGroupId =
+  | 'browser'
+  | 'web'
+  | 'files'
+  | 'code'
+  | 'terminal'
+  | 'knowledge'
+  | 'agents'
+  | 'automation'
+  | 'notebooks'
+  | 'media'
+  | 'comms'
+  | 'skills'
+  | 'data'
+  | 'vcs'
+  | 'other'
+
+type InternalToolGroup = {
+  id: InternalToolGroupId
+  label: string
+  icon: ReactNode
 }
-const TOOL_CATEGORY_ORDER: ToolCategory[] = ['bash', 'read', 'write', 'edit', 'search', 'other']
 
-type ToolsSubTab = 'mcp' | 'internal'
+const INTERNAL_TOOL_GROUPS: InternalToolGroup[] = [
+  { id: 'browser', label: 'Browser', icon: <Globe size={14} /> },
+  { id: 'web', label: 'Web & Research', icon: <Search size={14} /> },
+  { id: 'files', label: 'Files', icon: <FileText size={14} /> },
+  { id: 'code', label: 'Code Editing', icon: <Edit size={14} /> },
+  { id: 'terminal', label: 'Terminal', icon: <Terminal size={14} /> },
+  { id: 'knowledge', label: 'Knowledge', icon: <Brain size={14} /> },
+  { id: 'agents', label: 'Agents & Tasks', icon: <Robot size={14} /> },
+  { id: 'automation', label: 'Automation', icon: <Lightning size={14} /> },
+  { id: 'notebooks', label: 'Notebooks', icon: <Book size={14} /> },
+  { id: 'media', label: 'Media', icon: <Upload size={14} /> },
+  { id: 'comms', label: 'Comms', icon: <Send size={14} /> },
+  { id: 'skills', label: 'Skills & Config', icon: <Api size={14} /> },
+  { id: 'data', label: 'Data & Math', icon: <Tool size={14} /> },
+  { id: 'vcs', label: 'Version Control', icon: <FileText size={14} /> },
+  { id: 'other', label: 'Other', icon: <Tool size={14} /> },
+]
 
-function ToolsTab() {
-  const [sub, setSub] = useState<ToolsSubTab>('mcp')
+function internalToolGroupFor(tool: ToolCatalogEntry): InternalToolGroupId {
+  const name = tool.name
+  if (name.startsWith('browser_')) return 'browser'
+  if (['web_search', 'web_fetch', 'read_document_url', 'read_url', 'hn_stories', 'hn_item', 'hn_search', 'devto_feed', 'devto_article', 'devto_publish'].includes(name)) return 'web'
+  if (['read', 'file_read', 'read_file', 'list_directory', 'write', 'file_write', 'write_file', 'create_directory', 'remove_file', 'get_file_metadata', 'docx'].includes(name)) return 'files'
+  if (['edit', 'file_edit', 'edit_file', 'apply_patch', 'lsp', 'code_complete'].includes(name)) return 'code'
+  if (tool.category === 'bash' || ['monitor', 'write_stdin', 'job_output', 'job_kill'].includes(name)) return 'terminal'
+  if (name.startsWith('rag_') || name.startsWith('memory_')) return 'knowledge'
+  if (name.includes('agent') || name.startsWith('task_') || ['ask_user_question'].includes(name)) return 'agents'
+  if (name.endsWith('_job') || name.endsWith('_jobs') || ['schedule_job', 'list_jobs', 'update_job', 'run_job_now', 'delete_job', 'pause_job', 'resume_job'].includes(name)) return 'automation'
+  if (name.startsWith('notebook_')) return 'notebooks'
+  if (['generate_image', 'text_to_speech', 'speech_to_text'].includes(name)) return 'media'
+  if (name.startsWith('mailbox_') || name.endsWith('_send') || name.includes('broadcast')) return 'comms'
+  if (['tool_search', 'skill', 'config', 'brief', 'request_permissions'].includes(name) || name.startsWith('seshat_')) return 'skills'
+  if (['calculator', 'unit_convert', 'statistics', 'financial_calc'].includes(name)) return 'data'
+  if (name.startsWith('git_')) return 'vcs'
+  return 'other'
+}
+
+type ToolsTabProps = {
+  embedded?: boolean
+  sub?: ToolsSubTab
+  onSubChange?: (sub: ToolsSubTab) => void
+}
+
+function ToolsTab({ embedded = false, sub: controlledSub, onSubChange }: ToolsTabProps = {}) {
+  const [localSub, setLocalSub] = useState<ToolsSubTab>('mcp')
+  const sub = controlledSub ?? localSub
+  const setSub = onSubChange ?? setLocalSub
+  const tabs = (
+    <div className="wk-detail-tabs wk-tools-tabs">
+      <button className={`wk-detail-tab ${sub === 'mcp' ? 'active' : ''}`} onClick={() => setSub('mcp')}>
+        <Api size={11} /> MCP
+      </button>
+      <button className={`wk-detail-tab ${sub === 'internal' ? 'active' : ''}`} onClick={() => setSub('internal')}>
+        <Tool size={11} /> Internal
+      </button>
+    </div>
+  )
 
   return (
     <div className="wk-tools-root">
-      <div className="wk-tools-subbar">
-        <div className="wk-detail-tabs">
-          <button className={`wk-detail-tab ${sub === 'mcp' ? 'active' : ''}`} onClick={() => setSub('mcp')}>
-            <Api size={11} /> MCP
-          </button>
-          <button className={`wk-detail-tab ${sub === 'internal' ? 'active' : ''}`} onClick={() => setSub('internal')}>
-            <Tool size={11} /> Internal
-          </button>
-        </div>
-      </div>
+      {!embedded && <div className="wk-tools-subbar">{tabs}</div>}
       <div className="wk-tools-scroll">
         {sub === 'mcp' ? <McpSection /> : <InternalToolsSection />}
       </div>
@@ -927,23 +1066,31 @@ function InternalToolsSection() {
   const seen = new Set<string>()
   const catalog = listToolCatalog().filter(t => {
     if (t.name.startsWith('mcp')) return false
-    const key = `${t.category}:${t.label}`
+    const key = `${internalToolGroupFor(t)}:${t.label}`
     if (seen.has(key)) return false
     seen.add(key)
     return true
   })
 
   const q = query.trim().toLowerCase()
-  const filtered = q ? catalog.filter(t => t.label.toLowerCase().includes(q)) : catalog
+  const filtered = q
+    ? catalog.filter(t => {
+        const group = INTERNAL_TOOL_GROUPS.find(item => item.id === internalToolGroupFor(t))
+        return t.label.toLowerCase().includes(q)
+          || t.name.toLowerCase().includes(q)
+          || group?.label.toLowerCase().includes(q)
+      })
+    : catalog
 
-  const grouped = new Map<ToolCategory, ToolCatalogEntry[]>()
+  const grouped = new Map<InternalToolGroupId, ToolCatalogEntry[]>()
   for (const entry of filtered) {
-    const list = grouped.get(entry.category) ?? []
+    const groupId = internalToolGroupFor(entry)
+    const list = grouped.get(groupId) ?? []
     list.push(entry)
-    grouped.set(entry.category, list)
+    grouped.set(groupId, list)
   }
   for (const list of grouped.values()) list.sort((a, b) => a.label.localeCompare(b.label))
-  const visibleCategories = TOOL_CATEGORY_ORDER.filter(cat => grouped.has(cat))
+  const visibleGroups = INTERNAL_TOOL_GROUPS.filter(group => grouped.has(group.id))
 
   return (
     <div className="wk-tools-internal">
@@ -955,22 +1102,26 @@ function InternalToolsSection() {
         />
       </div>
 
-      {visibleCategories.length === 0 ? (
+      {visibleGroups.length === 0 ? (
         <div className="wk-tools-empty">No tools match "{query}".</div>
       ) : (
-        <div className="wk-tools-groups">
-          {visibleCategories.map(cat => (
-            <div key={cat} className="wk-tools-group">
-              <div className="wk-tools-group-head">
-                <span className="wk-tools-group-title">{TOOL_CATEGORY_LABELS[cat]}</span>
-                <span className="wk-tools-group-count">{grouped.get(cat)!.length}</span>
+        <div className="wk-tools-category-grid">
+          {visibleGroups.map(group => (
+            <section key={group.id} className="wk-tools-category-card">
+              <div className="wk-tools-category-head">
+                <span className="wk-tools-category-icon">{group.icon}</span>
+                <span className="wk-tools-category-title">{group.label}</span>
+                <span className="wk-tools-group-count">{grouped.get(group.id)!.length}</span>
               </div>
-              <div className="wk-tools-chip-row">
-                {grouped.get(cat)!.map(t => (
-                  <span key={t.name} className="wk-tools-chip" title={t.name}>{t.label}</span>
+              <div className="wk-tools-tool-list">
+                {grouped.get(group.id)!.map(t => (
+                  <span key={t.name} className="wk-tools-tool-pill" title={t.name}>
+                    <span>{t.label}</span>
+                    <code>{t.name}</code>
+                  </span>
                 ))}
               </div>
-            </div>
+            </section>
           ))}
         </div>
       )}
@@ -1488,7 +1639,7 @@ function McpServerModal({
       <div className="modal-shell mcp-modal-shell">
         <div className="modal-header">
           <h2>{mode === 'add' ? 'Add MCP Server' : 'Edit MCP Server'}</h2>
-          <button className="modal-close-btn" onClick={onClose}><Close size={16} /></button>
+          <button className="modal-close-btn" onClick={onClose}><WindowCloseIcon size={16} /></button>
         </div>
         <div className="modal-content" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {err && <div className="caps-error">{err}</div>}
@@ -1628,7 +1779,14 @@ function McpServerModal({
 // ingesting — not a search/ask interface (that already happens in the
 // Companion chat, via a corpus-scoped rag_search call).
 
-function DocumentsTab() {
+type DocumentsTabProps = {
+  embedded?: boolean
+  resetKey?: number
+  onSelectionChange?: (name: string | null) => void
+  onActionsChange?: (actions: ReactNode | null) => void
+}
+
+function DocumentsTab({ embedded = false, resetKey = 0, onSelectionChange, onActionsChange }: DocumentsTabProps = {}) {
   const [corpora, setCorpora] = useState<Corpus[]>([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<Corpus | null>(null)
@@ -1648,6 +1806,42 @@ function DocumentsTab() {
     setTimeout(() => setToast(null), 3000)
   }
 
+  function selectCorpus(corpus: Corpus | null) {
+    setSelected(corpus)
+    onSelectionChange?.(corpus?.name ?? null)
+  }
+
+  useEffect(() => {
+    selectCorpus(null)
+  }, [resetKey])
+
+  useEffect(() => {
+    if (!embedded) return
+    if (selected) {
+      onActionsChange?.(
+        <>
+          <span className="wk-doc-count">{selected.chunk_count} chunks</span>
+          <button
+            className="wk-new-btn"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={actionLoading === 'upload'}
+          >
+            {actionLoading === 'upload'
+              ? <><LoadingOne size={11} className="spin" /> Uploading...</>
+              : <><Plus size={11} /> Add file</>}
+          </button>
+        </>
+      )
+    } else {
+      onActionsChange?.(
+        <button className="wk-new-btn" onClick={() => setShowCreate(true)}>
+          <Plus size={11} /> New Collection
+        </button>
+      )
+    }
+    return () => onActionsChange?.(null)
+  }, [embedded, selected, actionLoading, onActionsChange])
+
   useEffect(() => {
     setLoading(true)
     api.get<{ corpora: Corpus[] }>('/corpora')
@@ -1657,7 +1851,7 @@ function DocumentsTab() {
   }, [])
 
   function loadDetail(corpus: Corpus) {
-    setSelected(corpus)
+    selectCorpus(corpus)
     setDetailLoading(true)
     Promise.all([
       api.get<{ files: CorpusFile[] }>(`/corpora/${corpus.id}/files`),
@@ -1686,7 +1880,7 @@ function DocumentsTab() {
     try {
       await api.delete(`/corpora/${id}`)
       setCorpora(c => c.filter(item => item.id !== id))
-      if (selected?.id === id) setSelected(null)
+      if (selected?.id === id) selectCorpus(null)
       showToast('ok', 'Deleted')
     } catch { showToast('err', 'Failed to delete') }
   }
@@ -1733,11 +1927,11 @@ function DocumentsTab() {
   // ── Detail view ──────────────────────────────────────────────────────────────
   if (selected) {
     return (
-      <div className="wk-documents">
+      <div className={`wk-documents wk-documents-detail${embedded ? ' embedded' : ''}`}>
         <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={handleFileInput} />
         <div className="wk-grid-bar">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <button className="wk-icon-btn" onClick={() => setSelected(null)} title="Back">
+            <button className="wk-icon-btn" onClick={() => selectCorpus(null)} title="Back">
               <Left size={13} />
             </button>
             <span className="wk-grid-bar-title">{selected.name}</span>
@@ -1884,7 +2078,7 @@ function DocumentsTab() {
           <div className="wk-modal" onClick={e => e.stopPropagation()}>
             <div className="wk-modal-header">
               <span className="wk-modal-title">New Collection</span>
-              <button className="wk-icon-btn" onClick={() => setShowCreate(false)}><Close size={13} /></button>
+              <button className="wk-icon-btn" onClick={() => setShowCreate(false)}><WindowCloseIcon size={13} /></button>
             </div>
             <div className="wk-modal-body">
               <label className="wk-field">
@@ -2011,6 +2205,12 @@ const CSS = `
 .wk-back-chip:hover { background: var(--color-border); color: var(--color-text); }
 .wk-topbar-sep   { color: var(--color-text-muted); font-size: var(--font-size-sm); user-select: none; flex-shrink: 0; }
 .wk-topbar-title { font-size: var(--font-size-base); font-weight: 700; color: var(--color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wk-topbar-crumb {
+  border: none; background: transparent; padding: 0;
+  color: var(--color-text); font-size: var(--font-size-base); font-weight: 700;
+  cursor: pointer; white-space: nowrap;
+}
+.wk-topbar-crumb:hover { color: var(--color-cta); }
 
 /* Detail tabs */
 .wk-detail-tabs {
@@ -2085,8 +2285,12 @@ const CSS = `
   padding: var(--space-5) 28px; border-bottom: 1px solid var(--color-border-subtle);
   background: var(--color-bg); flex-shrink: 0;
 }
+.wk-root.embedded .wk-grid-bar { display: none; }
 .wk-grid-bar-title { font-size: var(--font-size-xs); font-weight: 600; color: var(--color-text-muted); }
 .wk-grid-bar-actions { display: flex; align-items: center; gap: var(--space-3); }
+.wk-documents-detail.embedded .wk-grid-bar { justify-content: flex-end; }
+.wk-documents-detail.embedded .wk-grid-bar > :first-child { display: none; }
+.wk-doc-count { font-size: var(--font-size-2xs); color: var(--color-text-muted); white-space: nowrap; }
 
 /* Card grid */
 .wk-grid-scroll { flex: 1; overflow-y: auto; padding: 22px 28px; display: flex; flex-direction: column; gap: 24px; }
@@ -2558,6 +2762,7 @@ const CSS = `
   padding: 14px 28px; border-bottom: 1px solid var(--color-border-subtle);
   background: var(--color-bg); flex-shrink: 0;
 }
+.wk-tools-tabs { flex-shrink: 0; }
 .wk-tools-scroll {
   flex: 1; overflow-y: auto; padding: 22px 28px 40px;
   display: flex; flex-direction: column;
@@ -2585,22 +2790,97 @@ const CSS = `
 
 .wk-tools-empty { padding: 48px 0; text-align: center; color: var(--color-text-muted); font-size: var(--font-size-sm); }
 
-.wk-tools-groups { display: flex; flex-direction: column; }
-.wk-tools-group { padding: 16px 0; border-bottom: 1px solid var(--color-border-subtle); }
-.wk-tools-group:last-child { border-bottom: none; padding-bottom: 0; }
-.wk-tools-group-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 11px; }
-.wk-tools-group-title {
-  font-size: var(--font-size-xs); font-weight: 700;
-  letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-text);
+.wk-tools-category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
 }
-.wk-tools-group-count { font-size: var(--font-size-2xs); color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
-.wk-tools-chip-row { display: flex; flex-wrap: wrap; gap: 7px; }
-.wk-tools-chip {
-  font-size: var(--font-size-2xs); font-weight: 600; color: var(--color-text-secondary);
-  background: var(--color-bg); border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-sm); padding: 4px 10px; transition: border-color 0.12s, color 0.12s;
+.wk-tools-category-card {
+  min-width: 0;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
 }
-.wk-tools-chip:hover { border-color: var(--color-border); color: var(--color-text); }
+.wk-tools-category-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 0 13px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+.wk-tools-category-icon {
+  width: 28px; height: 28px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-cta);
+  border: 1px solid var(--color-border-subtle);
+}
+.wk-tools-category-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+.wk-tools-group-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.wk-tools-tool-list {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  gap: 6px;
+}
+.wk-tools-tool-pill {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+  border: 1px solid transparent;
+}
+.wk-tools-tool-pill:hover {
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+.wk-tools-tool-pill span,
+.wk-tools-tool-pill code {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wk-tools-tool-pill span {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+.wk-tools-tool-pill code {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+  text-align: right;
+}
 
 /* MCP (moved from settings/CapabilitiesViews.tsx) */
 .caps-mcp-header {
@@ -2775,4 +3055,3 @@ const CSS = `
 @keyframes spin { to { transform: rotate(360deg); } }
 .spin { animation: spin 0.8s linear infinite; display: inline-block; }
 `
-

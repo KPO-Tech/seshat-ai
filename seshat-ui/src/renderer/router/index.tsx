@@ -16,6 +16,7 @@ import { AppsPage } from '@/pages/apps'
 import { ProjectsPage } from '@/pages/projects'
 import { KnowledgePage } from '@/pages/knowledge'
 import { InboxPage } from '@/pages/inbox'
+import { AdminConsolePage } from '@/pages/admin'
 
 export const router = createHashRouter([
   {
@@ -37,6 +38,7 @@ export const router = createHashRouter([
       { index: true, element: <Home /> },
       { path: 'conversation/:id', element: <Conversation /> },
       { path: 'settings', element: <Settings /> },
+      { path: 'admin', element: <AdminConsolePage /> },
       { path: 'user-settings', element: <Navigate to="/settings?tab=account" replace /> },
       { path: 'capabilities', element: <Navigate to="/settings" replace /> },
       { path: 'teams', element: <TeamPage /> },
@@ -44,6 +46,7 @@ export const router = createHashRouter([
       { path: 'workspace', element: <WorkspacePage /> },
       { path: 'apps', element: <AppsPage /> },
       { path: 'projects', element: <ProjectsPage /> },
+      { path: 'projects/:projectId', element: <ProjectsPage /> },
       { path: 'workflows', element: <WorkflowsPage /> },
       { path: 'history', element: <HistoryPage /> },
       // Agents used to have its own separate page; that's now covered by

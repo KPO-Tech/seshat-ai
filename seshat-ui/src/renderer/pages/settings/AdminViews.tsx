@@ -85,7 +85,6 @@ export function AdminUsersView() {
       <header className="adm-header">
         <div>
           <h1>Users</h1>
-          <p>Manage all registered accounts.</p>
         </div>
         <input
           className="adm-search"
@@ -158,7 +157,6 @@ export function AdminGroupsView() {
   return (
     <AdminResourceTable<AdminGroup>
       title="Groups"
-      description="User groups and their shared permission bundles."
       path="/groups"
       rowsKey="groups"
       emptyLabel="No groups found"
@@ -176,7 +174,6 @@ export function AdminOrganizationsView() {
   return (
     <AdminResourceTable<AdminOrganization>
       title="Organizations"
-      description="Top-level organizations available in the workspace graph."
       path="/organizations"
       rowsKey="organizations"
       emptyLabel="No organizations found"
@@ -194,7 +191,6 @@ export function AdminWorkspacesView() {
   return (
     <AdminResourceTable<AdminWorkspace>
       title="Workspaces"
-      description="Operational workspaces grouped under organizations."
       path="/workspaces"
       rowsKey="workspaces"
       emptyLabel="No workspaces found"
@@ -238,7 +234,6 @@ export function AdminAuditView() {
       <header className="adm-header">
         <div>
           <h1>Audit Logs</h1>
-          <p>Security-relevant events recorded by the engine.</p>
         </div>
         <button className="adm-ghost-btn" onClick={() => load(offset)} disabled={loading}>
           <Sync size={11} className={loading ? 'spin' : ''} /> Refresh
@@ -324,7 +319,6 @@ export function AdminQuotasView() {
       <header className="adm-header">
         <div>
           <h1>Usage &amp; Quotas</h1>
-          <p>Aggregated usage counters for this account.</p>
         </div>
         <button className="adm-ghost-btn" onClick={load} disabled={loading}>
           <Sync size={11} className={loading ? 'spin' : ''} /> Refresh
@@ -368,14 +362,12 @@ type Column<T> = {
 
 function AdminResourceTable<T extends { id: string }>({
   title,
-  description,
   path,
   rowsKey,
   emptyLabel,
   columns,
 }: {
   title: string
-  description: string
   path: string
   rowsKey: string
   emptyLabel: string
@@ -403,7 +395,6 @@ function AdminResourceTable<T extends { id: string }>({
       <header className="adm-header">
         <div>
           <h1>{title}</h1>
-          <p>{description}</p>
         </div>
         <button className="adm-ghost-btn" onClick={load} disabled={loading}>
           <Sync size={11} className={loading ? 'spin' : ''} /> Refresh
@@ -435,18 +426,18 @@ function AdminResourceTable<T extends { id: string }>({
 }
 
 export const ADMIN_CSS = `
-.adm-root { display: flex; flex-direction: column; gap: 18px; }
-.adm-header { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 9px; margin-bottom: 4px; }
-.adm-header h1 { font-size: 22px; font-weight: 700; margin: 0 0 6px; color: var(--color-text); }
-.adm-header p { color: var(--color-text-muted); margin: 0; font-size: 13px; }
+.adm-root { display: flex; flex-direction: column; gap: var(--space-7); width: 100%; min-width: 0; }
+.adm-header { min-height: 52px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-5); margin-bottom: 0; }
+.adm-header h1 { font-size: var(--font-size-base); font-weight: 700; margin: 0; color: var(--color-text); }
+.adm-header p { display: none; }
 .adm-ghost-btn { background: none; border: 1px solid var(--color-border); color: var(--color-text-secondary); font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 5px; cursor: pointer; padding: 5px 10px; border-radius: 6px; }
 .adm-ghost-btn:hover { background: var(--color-hover); }
 .adm-ghost-btn:disabled { opacity: 0.5; cursor: default; }
-.adm-search { background: var(--color-surface); border: 1px solid var(--color-border); padding: 6px 10px; border-radius: 7px; color: var(--color-text); font-size: 11px; outline: none; width: 260px; font-family: inherit; }
+.adm-search { background: var(--color-surface); border: 1px solid var(--color-border); padding: 7px 10px; border-radius: 7px; color: var(--color-text); font-size: 11px; outline: none; width: min(360px, 100%); font-family: inherit; }
 .adm-search:focus { border-color: var(--color-primary); }
 
-.adm-table-wrap { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 9px; overflow: hidden; }
-.adm-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.adm-table-wrap { width: 100%; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 9px; overflow: auto; }
+.adm-table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 11px; }
 .adm-table thead { background: var(--color-surface); }
 .adm-table th { padding: 8px 11px; text-align: left; font-size: 10px; font-weight: 800; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--color-border); }
 .adm-table td { padding: 8px 11px; border-bottom: 1px solid var(--color-border-subtle); color: var(--color-text); vertical-align: middle; }

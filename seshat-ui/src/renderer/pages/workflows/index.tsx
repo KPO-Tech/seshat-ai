@@ -1,6 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router'
-import { Left, Plus, Delete, Copy, CheckOne, Caution, Robot, Lightning, PlayOne, Square, LoadingOne, CloseOne } from '@icon-park/react'
+import { Plus, Delete, Copy, CheckOne, Caution, Robot, Lightning, PlayOne, Square, LoadingOne, CloseOne } from '@icon-park/react'
 import { NexusLogo } from '@/components/NexusLogo'
 import { runWorkflow, type WorkflowDoneEvent, type WorkflowNodeEvent } from '@/lib/workflowRun'
 
@@ -146,7 +145,6 @@ function validateWorkflow(nodes: WorkflowNode[]): string[] {
 }
 
 export function WorkflowsPage() {
-  const navigate = useNavigate()
   const [name, setName] = useState('deep-research')
   const [description, setDescription] = useState('Parallel investigation workflow with verification and critique.')
   const [nodes, setNodes] = useState<WorkflowNode[]>(STARTER_NODES)
@@ -250,9 +248,6 @@ export function WorkflowsPage() {
       <style>{CSS}</style>
       <header className="wf-topbar">
         <div className="wf-topbar-left">
-          <button className="wf-back" type="button" onClick={() => navigate(-1)}>
-            <Left size={12} /> Home
-          </button>
           <div>
             <div className="wf-title">Workflows</div>
             <div className="wf-subtitle">Visual static DAG designer for Seshat agents</div>
@@ -556,21 +551,6 @@ const CSS = `
   border-bottom: 1px solid var(--color-border-subtle);
 }
 .wf-topbar-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.wf-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 30px;
-  padding: 0 9px;
-  border: 1px solid var(--color-border);
-  border-radius: 7px;
-  background: var(--color-surface);
-  color: var(--color-text-secondary);
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.wf-back:hover { background: var(--color-hover); color: var(--color-text); }
 .wf-title { font-size: 14px; font-weight: 800; }
 .wf-subtitle { font-size: 10px; color: var(--color-text-muted); margin-top: 2px; }
 .wf-main {

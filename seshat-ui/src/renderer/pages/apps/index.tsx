@@ -2,18 +2,11 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 import {
   Book,
-  Browser,
-  Code,
-  DataSheet,
-  FileText,
-  ImageFiles,
   GridFour,
   List,
   Message,
   Peoples,
   PlayOne,
-  Search,
-  Share,
   Time,
   Workbench,
   Mail,
@@ -227,22 +220,22 @@ const APPS_CSS = `
 }
 
 .apps-toolbar {
-  min-height: 74px;
+  min-height: 56px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 0 28px;
+  gap: var(--space-7);
+  padding: 0 var(--space-8);
   border-bottom: 1px solid var(--color-border-subtle);
   background: var(--color-surface);
 }
 
 .apps-toolbar h1 {
   margin: 0;
-  font-size: 24px;
-  line-height: 1.15;
-  font-weight: 800;
+  font-size: var(--font-size-base);
+  line-height: 1.2;
+  font-weight: 700;
   letter-spacing: 0;
 }
 
@@ -260,29 +253,29 @@ const APPS_CSS = `
   max-width: 100%;
   overflow-x: auto;
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--color-bg);
 }
 
 .apps-filters button,
 .apps-view-toggle button {
-  min-height: 36px;
+  min-height: 30px;
   border: 0;
   border-right: 1px solid var(--color-border-subtle);
   background: transparent;
   color: var(--color-text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-sm);
   font-weight: 700;
   cursor: pointer;
 }
 
 .apps-filters button {
-  min-width: 96px;
-  padding: 0 12px;
+  min-width: 88px;
+  padding: 0 var(--space-5);
 }
 
 .apps-view-toggle button {
-  width: 38px;
+  width: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -313,7 +306,7 @@ const APPS_CSS = `
   grid-template-columns: minmax(0, 1fr) 340px;
   gap: 14px;
   overflow: hidden;
-  padding: 24px;
+  padding: var(--space-7);
 }
 
 .apps-list {
@@ -325,12 +318,12 @@ const APPS_CSS = `
 }
 
 .apps-list--grid {
-  padding: 22px;
+  padding: var(--space-7);
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  grid-auto-rows: 136px;
+  grid-auto-rows: 124px;
   align-content: start;
-  gap: 16px;
+  gap: var(--space-7);
 }
 
 .apps-list--list {
@@ -347,8 +340,8 @@ const APPS_CSS = `
 
 .apps-list--grid .apps-item {
   min-width: 0;
-  border-radius: 8px;
-  padding: 14px 10px;
+  border-radius: var(--radius-md);
+  padding: var(--space-6) var(--space-5);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -381,9 +374,9 @@ const APPS_CSS = `
 
 .apps-item-icon,
 .apps-inspector-icon {
-  width: 64px;
-  height: 64px;
-  border-radius: 12px;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-lg);
   border: 1px solid rgba(255, 255, 255, 0.12);
   display: flex;
   align-items: center;
@@ -459,19 +452,19 @@ const APPS_CSS = `
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: var(--color-bg);
-  padding: 18px;
+  padding: var(--space-7);
 }
 
 .apps-inspector-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 9px;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
 }
 
 .apps-inspector h2 {
-  margin: 18px 0 6px;
-  font-size: 18px;
-  font-weight: 850;
+  margin: var(--space-7) 0 var(--space-3);
+  font-size: var(--font-size-lg);
+  font-weight: 750;
 }
 
 .apps-inspector p {

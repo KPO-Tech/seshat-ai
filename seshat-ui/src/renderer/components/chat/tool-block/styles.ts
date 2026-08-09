@@ -37,7 +37,7 @@ export const TOOL_BLOCK_CSS = `
 .tb-hcard {
   border: 1px solid var(--color-border-subtle);
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.2);
+  background: color-mix(in srgb, var(--color-surface) 72%, transparent);
   overflow: hidden;
 }
 
@@ -45,8 +45,8 @@ export const TOOL_BLOCK_CSS = `
   display: flex;
   align-items: center;
   gap: 7px;
-  padding: 7px 10px;
-  font-size: 11.5px;
+  padding: 6px 9px;
+  font-size: 11px;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
   color: var(--color-text-secondary);
   border-bottom: 1px solid var(--color-border-subtle);
@@ -88,9 +88,9 @@ export const TOOL_BLOCK_CSS = `
 
 .tb-pre {
   margin: 0;
-  padding: 10px 12px;
+  padding: 9px 10px;
   font-family: monospace;
-  font-size: 12.5px;
+  font-size: 12px;
   line-height: 1.55;
   color: var(--color-text-secondary);
   white-space: pre-wrap;
@@ -141,9 +141,9 @@ export const TOOL_BLOCK_CSS = `
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px;
+  padding: 10px;
   border: 1px solid rgba(251, 191, 36, 0.22);
-  border-radius: 10px;
+  border-radius: 8px;
   background: rgba(251, 191, 36, 0.06);
 }
 
@@ -173,8 +173,8 @@ export const TOOL_BLOCK_CSS = `
 
 .tb-approval-btn {
   border: 1px solid transparent;
-  border-radius: 8px;
-  padding: 7px 12px;
+  border-radius: 7px;
+  padding: 6px 10px;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -194,9 +194,9 @@ export const TOOL_BLOCK_CSS = `
 
 .tb-ask-card {
   border: 1px solid var(--color-border-subtle);
-  border-radius: 10px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.02);
-  padding: 12px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -215,8 +215,8 @@ export const TOOL_BLOCK_CSS = `
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
-  padding: 4px 8px;
-  font-size: 11px;
+  padding: 3px 7px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -233,7 +233,7 @@ export const TOOL_BLOCK_CSS = `
 }
 
 .tb-ask-question {
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.55;
   color: var(--color-text);
 }
@@ -246,8 +246,8 @@ export const TOOL_BLOCK_CSS = `
 
 .tb-ask-option {
   border: 1px solid var(--color-border-subtle);
-  border-radius: 10px;
-  padding: 10px 12px;
+  border-radius: 8px;
+  padding: 9px 10px;
   background: rgba(255, 255, 255, 0.02);
   width: 100%;
   text-align: left;
@@ -339,7 +339,7 @@ export const TOOL_BLOCK_CSS = `
   width: 100%;
   resize: vertical;
   min-height: 78px;
-  border-radius: 10px;
+  border-radius: 8px;
   border: 1px solid var(--color-border-subtle);
   background: rgba(0, 0, 0, 0.24);
   color: var(--color-text);
@@ -360,8 +360,8 @@ export const TOOL_BLOCK_CSS = `
 
 .tb-ask-submit {
   border: 1px solid rgba(var(--color-success-rgb), 0.3);
-  border-radius: 8px;
-  padding: 8px 12px;
+  border-radius: 7px;
+  padding: 7px 10px;
   background: rgba(var(--color-success-rgb), 0.14);
   color: var(--color-success);
   font-size: 12px;
@@ -397,10 +397,10 @@ export const TOOL_BLOCK_CSS = `
 .tb-link-item {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 9px;
   border: 1px solid var(--color-border-subtle);
-  border-radius: 10px;
-  padding: 10px 12px;
+  border-radius: 8px;
+  padding: 9px 10px;
   text-decoration: none;
   background: rgba(255, 255, 255, 0.02);
   transition: background 0.15s ease, border-color 0.15s ease;
@@ -465,10 +465,10 @@ export const TOOL_BLOCK_CSS = `
 .tb-plan-item {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 9px;
   border: 1px solid var(--color-border-subtle);
-  border-radius: 10px;
-  padding: 10px 12px;
+  border-radius: 8px;
+  padding: 9px 10px;
   background: rgba(255, 255, 255, 0.02);
 }
 
@@ -536,7 +536,7 @@ export const TOOL_BLOCK_CSS = `
   border-bottom: none;
   border-radius: 8px 8px 0 0;
   background: rgba(255, 255, 255, 0.03);
-  padding: 7px 10px;
+  padding: 6px 9px;
   justify-content: space-between;
 }
 
@@ -591,7 +591,7 @@ export const TOOL_BLOCK_CSS = `
 .tb-diff {
   position: relative;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 12px;
+  font-size: 11.5px;
   line-height: 1.55;
   border: 1px solid var(--color-border-subtle);
   border-radius: 8px;
@@ -711,14 +711,14 @@ export const TOOL_BLOCK_CSS = `
 }
 
 .tb-prose-text {
-  font-size: 12.5px;
+  font-size: 12px;
   line-height: 1.6;
   color: var(--color-text-secondary);
   white-space: pre-wrap;
   word-break: break-word;
   max-height: 320px;
   overflow-y: auto;
-  padding: 10px 12px;
+  padding: 9px 10px;
 }
 
 .tb-prose .tb-copy { top: 6px; right: 6px; }

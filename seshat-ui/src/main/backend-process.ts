@@ -6,6 +6,7 @@ import { resolveDefaultServerURL, setDynamicBackendOrigin } from './runtime'
 
 const READY_LINE = /^SESHAT_BACKEND_READY port=(\d+)/
 const READY_TIMEOUT_MS = 15_000
+const CDP_DISCOVERY_TIMEOUT_MS = 1500
 
 let backendProcess: ChildProcess | null = null
 
@@ -40,6 +41,12 @@ export async function startBackendSidecar(): Promise<void> {
   if (!env.SESHAT_SERVER_URL && defaultServerURL) {
     env.SESHAT_SERVER_URL = defaultServerURL
   }
+  if (!env.SESHAT_BROWSER_REMOTE_CONTROL_URL) {
+    const browserControlURL = await resolveElectronBrowserControlURL()
+    if (browserControlURL) {
+      env.SESHAT_BROWSER_REMOTE_CONTROL_URL = browserControlURL
+    }
+  }
 
   const child = spawn(binaryPath, [], {
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -57,6 +64,21 @@ export async function startBackendSidecar(): Promise<void> {
 
   const port = await waitForReadyPort(child, logStream)
   setDynamicBackendOrigin(`http://127.0.0.1:${port}`)
+}
+
+async function resolveElectronBrowserControlURL(): Promise<string | null> {
+  const port = Number.parseInt(process.env.SESHAT_ELECTRON_REMOTE_DEBUG_PORT || '', 10)
+  if (!Number.isFinite(port) || port <= 0) return null
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/json/version`, {
+      signal: AbortSignal.timeout(CDP_DISCOVERY_TIMEOUT_MS),
+    })
+    if (!response.ok) return null
+    const payload = await response.json() as { webSocketDebuggerUrl?: unknown }
+    return typeof payload.webSocketDebuggerUrl === 'string' ? payload.webSocketDebuggerUrl : null
+  } catch {
+    return null
+  }
 }
 
 function waitForReadyPort(child: ChildProcess, logStream: NodeJS.WritableStream): Promise<number> {

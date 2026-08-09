@@ -23,9 +23,43 @@ type WhisperProgress = {
   totalBytes: number
 }
 
+type BrowserPanelBounds = {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+type BrowserPanelState = {
+  activeTabId: string | null
+  tabs: Array<{
+    id: string
+    label: string
+    url: string
+    status: 'loading' | 'ready'
+    canGoBack: boolean
+    canGoForward: boolean
+  }>
+}
+
+type TerminalEvent = {
+  id: string
+  type: 'started' | 'data' | 'error' | 'exit'
+  stream?: 'stdout' | 'stderr'
+  data?: string
+  message?: string
+  shell?: string
+  cwd?: string
+  pid?: number
+  code?: number | null
+  signal?: string | null
+}
+
 const nexusBridge = {
   getVersion: () => ipcRenderer.invoke('app:version'),
   openPath: (p: string) => ipcRenderer.invoke('system:open-path', p),
+  openLocalPath: (p: string) => ipcRenderer.invoke('system:open-local-path', p),
+  openTerminal: (p: string) => ipcRenderer.invoke('system:open-terminal', p),
   showFile: (p: string) => ipcRenderer.invoke('system:show-file', p),
   readFileDataURL: (p: string): Promise<string> => ipcRenderer.invoke('system:read-file-data-url', p),
   openExternal: (url: string) => ipcRenderer.invoke('system:open-external', url),
@@ -87,6 +121,47 @@ const nexusBridge = {
       const handler = (_event: Electron.IpcRendererEvent, progress: WhisperProgress) => listener(progress)
       ipcRenderer.on('whisper:progress', handler)
       return () => ipcRenderer.removeListener('whisper:progress', handler)
+    },
+  },
+  browser: {
+    show: (bounds?: BrowserPanelBounds): Promise<BrowserPanelState> => ipcRenderer.invoke('seshat:browser:show', bounds),
+    hide: (): Promise<BrowserPanelState> => ipcRenderer.invoke('seshat:browser:hide'),
+    openUrl: (url: string, provider = 'builtin') => ipcRenderer.invoke('seshat:browser:openUrl', url, provider),
+    navigate: (url: string): Promise<BrowserPanelState> => ipcRenderer.invoke('seshat:browser:navigate', url),
+    back: (): Promise<BrowserPanelState> => ipcRenderer.invoke('seshat:browser:back'),
+    forward: (): Promise<BrowserPanelState> => ipcRenderer.invoke('seshat:browser:forward'),
+    reload: (): Promise<BrowserPanelState> => ipcRenderer.invoke('seshat:browser:reload'),
+    setBounds: (bounds: BrowserPanelBounds): Promise<BrowserPanelState> => ipcRenderer.invoke('seshat:browser:bounds', bounds),
+    getState: (): Promise<BrowserPanelState> => ipcRenderer.invoke('seshat:browser:state'),
+    destroy: (): Promise<BrowserPanelState> => ipcRenderer.invoke('seshat:browser:destroy'),
+    onStateChange: (listener: (state: BrowserPanelState) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, state: BrowserPanelState) => listener(state)
+      ipcRenderer.on('seshat:browser:state', handler)
+      return () => ipcRenderer.removeListener('seshat:browser:state', handler)
+    },
+    onPanelOpened: (listener: (state: BrowserPanelState) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, state: BrowserPanelState) => listener(state)
+      ipcRenderer.on('seshat:browser:panel-opened', handler)
+      return () => ipcRenderer.removeListener('seshat:browser:panel-opened', handler)
+    },
+    onPanelClosed: (listener: (state: BrowserPanelState) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, state: BrowserPanelState) => listener(state)
+      ipcRenderer.on('seshat:browser:panel-closed', handler)
+      return () => ipcRenderer.removeListener('seshat:browser:panel-closed', handler)
+    },
+  },
+  terminal: {
+    start: (payload: { id: string; cwd: string }): Promise<{ ok: boolean; id: string; shell: string; cwd: string; pid?: number }> =>
+      ipcRenderer.invoke('terminal:start', payload),
+    write: (id: string, data: string): Promise<void> => ipcRenderer.invoke('terminal:write', { id, data }),
+    stop: (id: string): Promise<void> => ipcRenderer.invoke('terminal:stop', id),
+    onEvent: (id: string, listener: (event: TerminalEvent) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, payload: TerminalEvent) => {
+        if (payload.id !== id) return
+        listener(payload)
+      }
+      ipcRenderer.on('terminal:event', handler)
+      return () => ipcRenderer.removeListener('terminal:event', handler)
     },
   },
   updates: {

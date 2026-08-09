@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useNavigate } from 'react-router'
 import {
   Search, Right, Down, FolderClose, FolderOpen,
-  FileCode, Close, Sync, MoreOne, Edit, PreviewOpen, Left, Upload,
+  FileCode, Close, Sync, MoreOne, Edit, PreviewOpen, Upload,
   // Skill icon picker icons
   Code, CodeBrackets, Bug, Experiment, TestTube, BranchOne, Merge, Terminal,
   RocketOne, Play, Cycle, Refresh, Magic, MagicWand, Lightning, Robot,
@@ -11,6 +10,7 @@ import {
   Api, Server, DatabaseCode, Link, Connect, Share, SendEmail,
   CheckOne, Star, Flag, Shield, Lock, Key, Info, Timer, Globe,
 } from '@icon-park/react'
+import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { api } from '@/api/client'
@@ -234,7 +234,6 @@ function isMarkdownPath(path: string): boolean {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function SkillsCreatorPage() {
-  const navigate = useNavigate()
   const closeAllRightPanels = useUIStore((s) => s.closeAllRightPanels)
 
   // Close Agent Monitor and any right panel when entering this page
@@ -417,9 +416,6 @@ export function SkillsCreatorPage() {
       {/* ── Secondary sidebar ── */}
       <aside className="sc-sidebar">
         <div className="sc-sidebar-header">
-          <button className="sc-back-btn" onClick={() => navigate(-1)} title="Back to Chat">
-            <Left size={12} />
-          </button>
           <span className="sc-sidebar-title">Skills</span>
           <div className="sc-sidebar-actions">
             <button
@@ -485,7 +481,9 @@ export function SkillsCreatorPage() {
         {actionError && (
           <div className="sc-action-error" role="alert">
             {actionError}
-            <button className="sc-action-error-close" onClick={() => setActionError(null)} aria-label="Dismiss">×</button>
+            <button className="sc-action-error-close" onClick={() => setActionError(null)} aria-label="Dismiss">
+              <WindowCloseIcon size={12} />
+            </button>
           </div>
         )}
         {selectedSkill ? (
@@ -1117,7 +1115,7 @@ function RepoManagerModal({ catalog, installed, onChanged }: {
       <div className="modal-shell repo-modal-shell">
         <div className="modal-header">
           <h2>Import skills</h2>
-          <button className="modal-close-btn" onClick={onChanged}><Close size={16} /></button>
+          <button className="modal-close-btn" onClick={onChanged}><WindowCloseIcon size={16} /></button>
         </div>
         <div className="modal-content" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {err && <div className="caps-error">{err}</div>}
@@ -1252,25 +1250,6 @@ const SKILLS_CREATOR_CSS = `
   justify-content: space-between;
   padding: 7px 8px 6px;
   flex-shrink: 0;
-}
-
-.sc-back-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 5px;
-  background: transparent;
-  border: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background 0.15s, color 0.15s;
-}
-.sc-back-btn:hover {
-  background: var(--color-hover);
-  color: var(--color-text);
 }
 
 .sc-sidebar-title {
@@ -1512,7 +1491,7 @@ const SKILLS_CREATOR_CSS = `
 }
 
 .sc-editor-title {
-  font-size: 15px;
+  font-size: var(--font-size-base);
   font-weight: 700;
   color: var(--color-text);
   margin: 0;
@@ -2041,4 +2020,3 @@ const SKILLS_CREATOR_CSS = `
 }
 .sv-input-box input:focus { border-color: var(--color-primary); }
 `
-

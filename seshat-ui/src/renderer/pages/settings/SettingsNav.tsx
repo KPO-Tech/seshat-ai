@@ -225,14 +225,14 @@ export const SETTINGS_SHARED_CSS = `
 /* ── Shared view styles ── */
 .sv-view { display: flex; flex-direction: column; }
 .sv-view-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; }
-.sv-header-info h1 { font-size: var(--font-size-xl); font-weight: 700; margin: 0 0 4px; }
+.sv-header-info h1 { font-size: var(--font-size-base); font-weight: 700; margin: 0 0 4px; }
 .sv-header-info p { color: var(--color-text-muted); margin: 0; font-size: var(--font-size-sm); }
 
 .sv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
 
 .sv-section { margin-top: 28px; }
 .sv-section-header { margin-bottom: 14px; }
-.sv-section-header h2 { margin: 0 0 4px; font-size: var(--font-size-lg); font-weight: 700; }
+.sv-section-header h2 { margin: 0 0 4px; font-size: var(--font-size-base); font-weight: 700; }
 .sv-section-header p { margin: 0; color: var(--color-text-muted); font-size: var(--font-size-sm); }
 
 .sv-card {
@@ -322,7 +322,7 @@ export const SETTINGS_SHARED_CSS = `
 }
 
 .sv-about-hero { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 36px 0; text-align: center; }
-.sv-about-hero h2 { margin: 0; font-size: var(--font-size-xl); }
+.sv-about-hero h2 { margin: 0; font-size: var(--font-size-base); }
 .sv-about-hero p { margin: 0; color: var(--color-text-muted); }
 
 /* ── Footer controls (shared) ── */

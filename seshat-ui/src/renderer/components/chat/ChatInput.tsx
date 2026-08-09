@@ -1,10 +1,11 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
-import { Plus, FolderClose, AtSign, Voice, Send, CheckCorrect, LoadingOne, CloseSmall, Close, Browser } from '@icon-park/react'
+import { Plus, FolderClose, AtSign, Voice, Send, CheckCorrect, LoadingOne, Browser } from '@icon-park/react'
 import { AttachmentTypeIcon } from '@/components/AttachmentTypeIcon'
 import { api, ApiError } from '@/api/client'
 import type { Corpus } from '@/api/types'
 import { startWavRecording, type WavRecording } from '@/lib/wavRecorder'
 import { SelectorPill, SelectorMenu, SELECTOR_PILL_CSS, type SelectorOption } from '@/components/ui/SelectorPill'
+import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
 import { useUIStore } from '@/stores/ui'
 
 type SkillOption = { Name: string; DisplayName: string; Description: string; Source: string; UserInvocable?: boolean; IsHidden?: boolean }
@@ -380,7 +381,7 @@ export function ChatInput({
             onMouseDown={e => { e.preventDefault(); onCorpusChange(null) }}
             title="Remove knowledge base"
           >
-            <Close size={11} />
+            <WindowCloseIcon />
           </button>
         </div>
       )}
@@ -450,7 +451,7 @@ export function ChatInput({
                   onMouseDown={e => { e.preventDefault(); onRemoveAttachment?.(file.id) }}
                   title="Remove attachment"
                 >
-                  <Close size={10} />
+                  <WindowCloseIcon size={10} />
                 </button>
               </div>
             )
@@ -469,7 +470,7 @@ export function ChatInput({
             <div className="chat-attachment-preview-header">
               <span>{previewAttachment.filename}</span>
               <button type="button" onClick={() => setPreviewAttachment(null)} title="Close preview">
-                <Close size={14} />
+                <WindowCloseIcon size={14} />
               </button>
             </div>
             {previewAttachment.page_preview_urls?.length ? (
@@ -560,7 +561,7 @@ export function ChatInput({
                   title="Clear project folder"
                   onMouseDown={(e) => { e.preventDefault(); onProjectChange?.('') }}
                 >
-                  <Close size={11} />
+                  <WindowCloseIcon />
                 </button>
               </>
             )}
@@ -662,7 +663,7 @@ export function ChatInput({
           </div>
           {isStreaming ? (
             <button className="chat-stop-btn" onClick={onStop} type="button" title="Stop">
-              <CloseSmall size={14} />
+              <WindowCloseIcon size={14} />
             </button>
           ) : (
             <button
@@ -689,11 +690,11 @@ ${SELECTOR_PILL_CSS}
 /* Slash-command dropdown */
 .chat-slash-dropdown {
   position: absolute;
-  bottom: calc(100% + var(--space-4));
+  bottom: calc(100% + 8px);
   left: 0; right: 0;
   background: var(--color-bg);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-2xl);
+  border-radius: 10px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.18);
   overflow: hidden;
   z-index: 200;
@@ -704,7 +705,7 @@ ${SELECTOR_PILL_CSS}
 .chat-slash-item {
   width: 100%; text-align: left;
   background: none; border: none; cursor: pointer;
-  padding: var(--space-5) var(--space-7);
+  padding: 9px 12px;
   display: flex; align-items: baseline; gap: var(--space-5);
   transition: background 0.1s;
 }
@@ -712,32 +713,29 @@ ${SELECTOR_PILL_CSS}
   background: var(--color-surface);
 }
 .chat-slash-name {
-  font-size: var(--font-size-base); font-weight: 700; color: var(--color-cta);
+  font-size: 13px; font-weight: 700; color: var(--color-cta);
   flex-shrink: 0; font-family: var(--font-mono, monospace);
 }
 .chat-slash-desc {
-  font-size: var(--font-size-sm); color: var(--color-text-muted);
+  font-size: 12px; color: var(--color-text-muted);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
 .chat-input-wrapper {
   background: var(--color-bg);
-  border-radius: var(--radius-2xl);
-  padding: var(--space-5) var(--space-6);
+  border-radius: 14px;
+  padding: 12px 14px 10px;
   position: relative; /* anchors slash dropdown */
-  border: 1.5px solid transparent;
-  background-image: linear-gradient(var(--color-bg), var(--color-bg)),
-                    linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 50%, var(--color-surface-elevated) 100%);
-  background-origin: border-box;
-  background-clip: padding-box, border-box;
+  border: 1px solid var(--color-border);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.16);
 }
 
 .chat-input-textarea {
   background: transparent;
   border: none;
   color: var(--color-text);
-  font-size: var(--font-size-base);
-  line-height: 1.5;
+  font-size: 13px;
+  line-height: 1.55;
   outline: none;
   resize: none;
   width: 100%;
@@ -747,23 +745,22 @@ ${SELECTOR_PILL_CSS}
 
 .chat-input-textarea::placeholder {
   color: var(--color-text-muted);
-  font-style: italic;
 }
 
 .chat-attachment-row {
   display: flex;
   flex-wrap: nowrap;
   overflow-x: auto;
-  gap: var(--space-4);
-  margin-bottom: var(--space-5);
+  gap: 8px;
+  margin-bottom: 10px;
   padding: 5px 2px;
 }
 
 .chat-attachment-card {
   position: relative;
   flex-shrink: 0;
-  width: 64px;
-  height: 64px;
+  width: 56px;
+  height: 56px;
 }
 
 .chat-attachment-card--uploading .chat-attachment-thumb,
@@ -1028,29 +1025,29 @@ ${SELECTOR_PILL_CSS}
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: var(--space-4);
+  margin-top: 10px;
 }
 
 .chat-input-tools-left {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  gap: 6px;
   min-width: 0;
 }
 
 .chat-input-tools-right {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: 6px;
 }
 
 .chat-tool-circle {
   background: transparent;
   border: none;
   color: var(--color-text-muted);
-  width: 24px;
-  height: 24px;
-  border-radius: var(--radius-sm);
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1066,7 +1063,7 @@ ${SELECTOR_PILL_CSS}
 
 .chat-tool-circle:hover:not(:disabled) {
   color: var(--color-text-secondary);
-  transform: scale(1.06);
+  background: var(--color-hover);
 }
 
 .chat-tool-icon {
@@ -1074,7 +1071,11 @@ ${SELECTOR_PILL_CSS}
   border: none;
   color: var(--color-text-muted);
   cursor: pointer;
-  padding: var(--space-2);
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 7px;
   display: flex;
   align-items: center;
   transition: color 0.15s;
@@ -1106,19 +1107,20 @@ ${SELECTOR_PILL_CSS}
 
 .chat-tool-icon:hover {
   color: var(--color-text-secondary);
+  background: var(--color-hover);
 }
 
 .chat-workspace-control {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: 4px;
   min-width: 0;
   max-width: 180px;
 }
 
 .chat-workspace-label {
   color: var(--color-text-secondary);
-  font-size: var(--font-size-xs);
+  font-size: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1141,9 +1143,9 @@ ${SELECTOR_PILL_CSS}
 .chat-send-btn {
   background: var(--color-surface);
   color: var(--color-text-muted);
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
   border: none;
   display: flex;
   align-items: center;
@@ -1161,9 +1163,9 @@ ${SELECTOR_PILL_CSS}
 .chat-stop-btn {
   background: var(--color-primary-subtle);
   color: var(--color-primary);
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
   border: 1px solid var(--color-primary-hover);
   display: flex;
   align-items: center;
@@ -1179,9 +1181,9 @@ ${SELECTOR_PILL_CSS}
 .chat-status-inline {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  gap: 7px;
   color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
+  font-size: 12px;
   min-width: 0;
   max-width: 320px;
 }
@@ -1205,8 +1207,8 @@ ${SELECTOR_PILL_CSS}
 .chat-corpus-chip {
   display: inline-flex; align-items: center; gap: 5px;
   background: rgba(239,124,47,0.1); border: 1px solid rgba(239,124,47,0.3);
-  border-radius: var(--radius-sm); padding: 3px 8px 3px 6px;
-  margin-bottom: 8px; font-size: var(--font-size-sm); font-weight: 600;
+  border-radius: 7px; padding: 3px 8px 3px 6px;
+  margin-bottom: 8px; font-size: 12px; font-weight: 600;
   color: var(--color-primary);
 }
 .chat-corpus-chip-icon { font-size: var(--font-size-base); line-height: 1; }
@@ -1222,10 +1224,10 @@ ${SELECTOR_PILL_CSS}
 .chat-corpus-wrap { position: relative; }
 .chat-tool-icon-active { color: var(--color-primary) !important; }
 .chat-corpus-dropdown {
-  position: absolute; bottom: calc(100% + var(--space-4)); left: 0;
+  position: absolute; bottom: calc(100% + 8px); left: 0;
   min-width: 220px; max-width: 280px;
   background: var(--color-bg); border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl); box-shadow: 0 8px 28px rgba(0,0,0,0.18);
+  border-radius: 10px; box-shadow: 0 8px 28px rgba(0,0,0,0.18);
   overflow: hidden; z-index: 200;
   display: flex; flex-direction: column;
 }
@@ -1238,10 +1240,10 @@ ${SELECTOR_PILL_CSS}
   width: 100%; text-align: left; background: none; border: none;
   padding: 9px 14px; cursor: pointer; display: flex;
   align-items: center; justify-content: space-between; gap: var(--space-4);
-  font-size: var(--font-size-base); color: var(--color-text); transition: background 0.1s;
+  font-size: 13px; color: var(--color-text); transition: background 0.1s;
 }
 .chat-corpus-item:hover, .chat-corpus-item.selected { background: var(--color-surface); }
 .chat-corpus-item.selected .chat-corpus-item-name { color: var(--color-primary); font-weight: 700; }
 .chat-corpus-item-count { font-size: var(--font-size-xs); color: var(--color-text-muted); white-space: nowrap; }
-.chat-corpus-empty { padding: var(--space-6) 14px; font-size: var(--font-size-base); color: var(--color-text-muted); }
+.chat-corpus-empty { padding: 14px; font-size: 13px; color: var(--color-text-muted); }
 `

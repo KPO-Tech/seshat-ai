@@ -1,51 +1,49 @@
 import { useEffect, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router'
+import { Navigate, useLocation } from 'react-router'
 import {
-  Browser, Book, Brain, Flashlamp, Earth, Computer, Info,
-  Left, SunOne, Moon, Setting, User, Peoples, BuildingTwo, Workbench, LinkOne,
+  Brain, Computer, Info, SunOne, Moon, Setting, User, LinkOne,
 } from '@icon-park/react'
 import { useUIStore } from '@/stores/ui'
 import { useAuthStore } from '@/stores/auth'
 import { api } from '@/api/client'
 import { SettingsSidebar, SETTINGS_NAV_CSS, SETTINGS_SHARED_CSS } from './SettingsNav'
-import { ProvidersView, PROVIDERS_CSS } from './ProvidersView'
-import { KnowledgeView } from './KnowledgeView'
 import { MemoriesView } from './MemoriesView'
 import { AboutView } from './AboutView'
-import { MultimodalView, MULTIMODAL_CSS } from './CapabilitiesViews'
-import { WebSearchView } from './WebSearchView'
 import { GeneralView } from './GeneralView'
 import { CloudAutomationView } from './CloudAutomationView'
 import { AccountView, ConnectionsView } from './AccountView'
-import {
-  AdminUsersView,
-  AdminGroupsView,
-  AdminOrganizationsView,
-  AdminWorkspacesView,
-  AdminAuditView,
-  AdminQuotasView,
-  ADMIN_CSS,
-} from './AdminViews'
 import type { TabId } from './SettingsNav'
 
 export function Settings() {
   const location = useLocation()
   const initialTab = (() => {
     const requested = new URLSearchParams(location.search).get('tab')
-    if (requested === 'cloud-automation' || requested === 'system') {
-      return 'runtime' as TabId
-    }
-    if (requested === 'general' || requested === 'account' || requested === 'connections' || requested === 'memories' || requested === 'providers' || requested === 'knowledge' || requested === 'multimodal' || requested === 'remote' || requested === 'runtime' || requested === 'about' || requested === 'admin-users' || requested === 'admin-groups' || requested === 'admin-organizations' || requested === 'admin-workspaces' || requested === 'admin-audit' || requested === 'admin-quotas') {
+    if (requested === 'general' || requested === 'account' || requested === 'connections' || requested === 'memories' || requested === 'about') {
       return requested as TabId
     }
     return 'general' as TabId
   })()
   const [activeTab, setActiveTab] = useState<TabId>(initialTab)
-  const navigate = useNavigate()
   const { theme, setTheme, sidebarCollapsed } = useUIStore()
   const roles = useAuthStore((s) => s.roles)
 
   const isAdmin = roles.includes('admin')
+  const requestedTab = new URLSearchParams(location.search).get('tab')
+  const adminRedirects: Record<string, string> = {
+    providers: '/admin?tab=providers',
+    knowledge: '/admin?tab=knowledge',
+    multimodal: '/admin?tab=multimodal',
+    remote: '/admin?tab=websearch',
+    runtime: '/admin?tab=runtime',
+    system: '/admin?tab=runtime',
+    'cloud-automation': '/admin?tab=runtime',
+    'admin-users': '/admin?tab=users',
+    'admin-groups': '/admin?tab=groups',
+    'admin-organizations': '/admin?tab=organizations',
+    'admin-workspaces': '/admin?tab=workspaces',
+    'admin-audit': '/admin?tab=audit',
+    'admin-quotas': '/admin?tab=quotas',
+  }
 
   // Admin tabs are hidden from the sidebar for non-admins, but that alone is
   // cosmetic — activeTab can also come straight from the URL (?tab=admin-users),
@@ -68,32 +66,6 @@ export function Settings() {
       ],
     },
     {
-      title: 'AI CORE',
-      items: [
-        { id: 'providers' as TabId, label: 'Providers', icon: <Browser size={16} /> },
-        { id: 'knowledge' as TabId, label: 'Knowledge', icon: <Book size={16} /> },
-        { id: 'multimodal' as TabId, label: 'Multimodal', icon: <Flashlamp size={16} /> },
-      ],
-    },
-    {
-      title: 'RUNTIME',
-      items: [
-        { id: 'remote' as TabId, label: 'Web Search', icon: <Earth size={16} /> },
-        { id: 'runtime' as TabId, label: 'Runtime', icon: <Computer size={16} /> },
-      ],
-    },
-    ...(isAdmin ? [{
-      title: 'ADMIN',
-      items: [
-        { id: 'admin-users' as TabId, label: 'Users', icon: <User size={16} /> },
-        { id: 'admin-groups' as TabId, label: 'Groups', icon: <Peoples size={16} /> },
-        { id: 'admin-organizations' as TabId, label: 'Organizations', icon: <BuildingTwo size={16} /> },
-        { id: 'admin-workspaces' as TabId, label: 'Workspaces', icon: <Workbench size={16} /> },
-        { id: 'admin-audit' as TabId, label: 'Audit Logs', icon: <Info size={16} /> },
-        { id: 'admin-quotas' as TabId, label: 'Quotas', icon: <Flashlamp size={16} /> },
-      ],
-    }] : []),
-    {
       title: 'OTHER',
       items: [
         { id: 'about' as TabId, label: 'About', icon: <Info size={16} /> },
@@ -103,14 +75,6 @@ export function Settings() {
 
   const footer = (
     <div className={`snav-footer-items ${sidebarCollapsed ? 'collapsed' : ''}`}>
-      <button
-        className="snav-footer-btn"
-        onClick={() => navigate(-1)}
-        title={sidebarCollapsed ? 'Back to Chat' : undefined}
-      >
-        <Left size={13} />
-        {!sidebarCollapsed && <span>Back to Chat</span>}
-      </button>
       <button
         className="snav-theme-toggle"
         onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
@@ -123,6 +87,7 @@ export function Settings() {
   return (
     <div className="settings-root">
       <style>{SETTINGS_CSS}</style>
+      {requestedTab && adminRedirects[requestedTab] && isAdmin && <Navigate to={adminRedirects[requestedTab]} replace />}
 
       <SettingsSidebar
         activeTab={activeTab}
@@ -137,19 +102,8 @@ export function Settings() {
           {activeTab === 'general' && <GeneralView />}
           {activeTab === 'account' && <AccountView />}
           {activeTab === 'connections' && <ConnectionsView />}
-          {activeTab === 'providers' && <ProvidersView />}
-          {activeTab === 'knowledge' && <KnowledgeView />}
           {activeTab === 'memories' && <MemoriesView />}
-          {activeTab === 'multimodal' && <MultimodalView />}
-          {activeTab === 'remote' && <WebSearchView />}
-          {activeTab === 'runtime' && <RuntimeView />}
           {activeTab === 'about' && <AboutView />}
-          {isAdmin && activeTab === 'admin-users' && <AdminUsersView />}
-          {isAdmin && activeTab === 'admin-groups' && <AdminGroupsView />}
-          {isAdmin && activeTab === 'admin-organizations' && <AdminOrganizationsView />}
-          {isAdmin && activeTab === 'admin-workspaces' && <AdminWorkspacesView />}
-          {isAdmin && activeTab === 'admin-audit' && <AdminAuditView />}
-          {isAdmin && activeTab === 'admin-quotas' && <AdminQuotasView />}
         </div>
       </main>
     </div>
@@ -162,7 +116,7 @@ type SystemStatus = {
   sandbox_confined?: boolean
 }
 
-function RuntimeView() {
+export function RuntimeView() {
   const [status, setStatus] = useState<SystemStatus | null>(null)
 
   useEffect(() => {
@@ -262,8 +216,5 @@ function RuntimeView() {
 
 const SETTINGS_CSS = `
 ${SETTINGS_NAV_CSS}
-${PROVIDERS_CSS}
-${MULTIMODAL_CSS}
-${ADMIN_CSS}
 ${SETTINGS_SHARED_CSS}
 `

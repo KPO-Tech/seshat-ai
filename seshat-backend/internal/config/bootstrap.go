@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -92,6 +93,37 @@ func serverReachable(ctx context.Context, url string) bool {
 	}
 	defer resp.Body.Close()
 	return resp.StatusCode < 500
+}
+
+func discoverElectronBrowserRemoteControlURL(ctx context.Context) string {
+	port := strings.TrimSpace(os.Getenv("SESHAT_ELECTRON_REMOTE_DEBUG_PORT"))
+	if port == "" {
+		port = "9333"
+	}
+	if _, err := strconv.Atoi(port); err != nil {
+		return ""
+	}
+	reqCtx, cancel := context.WithTimeout(ctx, 350*time.Millisecond)
+	defer cancel()
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, "http://127.0.0.1:"+port+"/json/version", nil)
+	if err != nil {
+		return ""
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return ""
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return ""
+	}
+	var payload struct {
+		WebSocketDebuggerURL string `json:"webSocketDebuggerUrl"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return ""
+	}
+	return strings.TrimSpace(payload.WebSocketDebuggerURL)
 }
 
 // BuildApp wires all infrastructure (DB, stores, query runtime, RAG, MCP, skills)
@@ -645,6 +677,11 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		fmt.Printf("[API] MCP: %d server(s) chargés depuis la DB\n", len(dbServers))
 	}
 
+	browserRemoteControlURL := strings.TrimSpace(config.BrowserRemoteControlURL)
+	if browserRemoteControlURL == "" {
+		browserRemoteControlURL = discoverElectronBrowserRemoteControlURL(ctx)
+	}
+
 	queryClientConfig := &sdk.ClientConfig{
 		APIKey:                  config.APIKey,
 		Model:                   appconfig.ParseModelIdentifier(config.Model),
@@ -653,7 +690,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		PersistSessions:         true,
 		SessionSQLitePath:       appconfig.EffectiveSessionDBPath(config),
 		WorkingDir:              workingDir,
-		BrowserRemoteControlURL: strings.TrimSpace(config.BrowserRemoteControlURL),
+		BrowserRemoteControlURL: browserRemoteControlURL,
 		BrowserExecutablePath:   strings.TrimSpace(config.BrowserExecutablePath),
 		StorageGCEnabled:        config.StorageGCEnabled,
 		StorageGCInterval:       parseDurationOrDefault(config.StorageGCInterval, time.Hour),

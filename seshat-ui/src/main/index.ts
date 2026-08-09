@@ -10,6 +10,7 @@ import { stopWhisperServerProcess } from './whisper-manager'
 import { setupAutoUpdater } from './auto-update'
 import { isExternalOpenAllowed } from './url-safety'
 import { applyContentSecurityPolicy } from './content-security-policy'
+import { createBrowserPanel } from './browser-panel'
 
 function configureRuntimePaths() {
   const runtimeRoot = resolveRuntimeRoot()
@@ -19,6 +20,8 @@ function configureRuntimePaths() {
   app.setPath('temp', join(runtimeRoot, 'tmp', 'electron'))
   app.setAppLogsPath(join(runtimeRoot, 'electron', 'logs'))
 }
+
+let mainWindow: BrowserWindow | null = null
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -36,9 +39,13 @@ function createWindow() {
       sandbox: true,
     },
   })
+  mainWindow = win
 
   win.removeMenu()
   win.on('ready-to-show', () => win.show())
+  win.on('closed', () => {
+    if (mainWindow === win) mainWindow = null
+  })
 
   // DevTools access via a global (OS-wide, works even without window focus)
   // shortcut is a dev convenience, not something a packaged production build
@@ -74,6 +81,17 @@ configureRuntimePaths()
 
 app.commandLine.appendSwitch('disable-gpu-vsync')
 app.commandLine.appendSwitch('use-angle', 'gl')
+const remoteDebugPort = Number.parseInt(process.env.SESHAT_ELECTRON_REMOTE_DEBUG_PORT || '9333', 10)
+if (Number.isFinite(remoteDebugPort) && remoteDebugPort > 0) {
+  app.commandLine.appendSwitch('remote-debugging-port', String(remoteDebugPort))
+  app.commandLine.appendSwitch('remote-debugging-address', '127.0.0.1')
+  process.env.SESHAT_ELECTRON_REMOTE_DEBUG_PORT = String(remoteDebugPort)
+}
+
+const browserPanel = createBrowserPanel({
+  getWindow: () => mainWindow,
+  remoteDebugPort,
+})
 
 app.whenReady().then(async () => {
   Menu.setApplicationMenu(null)
@@ -82,6 +100,7 @@ app.whenReady().then(async () => {
   registerSecureStoreHandlers(ipcMain)
   registerBackendHandlers(ipcMain)
   registerWhisperHandlers(ipcMain)
+  browserPanel.registerIpc(ipcMain)
 
   // Packaged Electron apps deny every permission request by default when no
   // handler is registered. The voice-input control needs the renderer's
@@ -121,6 +140,7 @@ app.on('window-all-closed', () => {
 })
 
 app.on('will-quit', () => {
+  browserPanel.destroy()
   stopWhisperServerProcess()
   stopBackendSidecar()
 })

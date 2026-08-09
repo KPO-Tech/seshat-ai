@@ -84,11 +84,16 @@ export function Shell() {
       <Titlebar
         center="SeshatOS"
         left={
-          showSidebar && (
-            <button className="tb-toggle-btn" onClick={toggleSidebar} title="Toggle Sidebar">
+          <button
+            className="tb-toggle-btn"
+            onClick={toggleSidebar}
+            title={showSidebar ? 'Toggle Sidebar' : 'No sidebar on this page'}
+            disabled={!showSidebar}
+            aria-disabled={!showSidebar}
+            type="button"
+          >
               <InternalExpansion size={15} />
-            </button>
-          )
+          </button>
         }
       />
 
@@ -138,6 +143,16 @@ const SHELL_CSS = `
 .tb-toggle-btn:hover {
   background: var(--color-hover);
   color: var(--color-text);
+}
+
+.tb-toggle-btn:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+.tb-toggle-btn:disabled:hover {
+  background: transparent;
+  color: var(--color-text-secondary);
 }
 
 /* ── Body ── */

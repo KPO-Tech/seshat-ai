@@ -118,7 +118,6 @@ function ProviderCard({ provider, onSaved }: {
                 </span>
               )}
             </div>
-            <div className="wsp-provider-desc">{providerDescription(provider.provider)}</div>
           </div>
         </div>
         <div className="wsp-card-right">
@@ -227,17 +226,6 @@ function ProviderCard({ provider, onSaved }: {
   )
 }
 
-function providerDescription(name: string): string {
-  switch (name) {
-    case 'tavily':     return 'AI-powered search — high-quality results'
-    case 'exa':        return 'Neural search engine for AI apps'
-    case 'jina':       return 'AI-native search with reader API'
-    case 'langsearch': return 'Free API key, AI-optimised results'
-    case 'searxng':    return 'Self-hosted privacy-focused meta-search'
-    case 'ddg':        return 'Always-available fallback — no key needed'
-    default:           return ''
-  }
-}
 
 // ── Domain Catalog (premium grid) ─────────────────────────────────────────────
 
@@ -545,7 +533,6 @@ export function WebSearchView() {
                 <div className="sv-brand-icon"><Earth size={16} /></div>
                 <div>
                   <div className="sv-brand-name">Web Search</div>
-                  <div className="sv-brand-sub">Global web search settings</div>
                 </div>
               </div>
             </div>
@@ -555,7 +542,6 @@ export function WebSearchView() {
                   <Search size={15} />
                   <div>
                     <div className="sv-setting-label">Enable Web Search</div>
-                    <div className="sv-setting-desc">Allow AI agents to search the web during sessions</div>
                   </div>
                 </div>
                 <label className="ws-toggle">
@@ -568,7 +554,6 @@ export function WebSearchView() {
                   <Shield size={15} />
                   <div>
                     <div className="sv-setting-label">Allow ENV Fallback</div>
-                    <div className="sv-setting-desc">Use environment-level API keys if no provider is configured</div>
                   </div>
                 </div>
                 <label className="ws-toggle">
@@ -586,7 +571,6 @@ export function WebSearchView() {
                 <div className="sv-brand-icon"><Config size={16} /></div>
                 <div>
                   <div className="sv-brand-name">Rate Limiting</div>
-                  <div className="sv-brand-sub">Control how many searches are allowed per day</div>
                 </div>
               </div>
             </div>
@@ -614,7 +598,6 @@ export function WebSearchView() {
                 <div className="sv-brand-icon"><Search size={16} /></div>
                 <div>
                   <div className="sv-brand-name">Providers</div>
-                  <div className="sv-brand-sub">Enable providers and add your API keys</div>
                 </div>
               </div>
             </div>
@@ -653,25 +636,35 @@ const WEB_SEARCH_CSS = `
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 15px;
+  align-items: stretch;
 }
 @media (max-width: 860px) { .ws-layout { grid-template-columns: 1fr; } }
 .ws-full-card { grid-column: 1 / -1; }
+
+.ws-layout > .sv-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.ws-layout > .sv-card > .sv-card-body {
+  flex: 1;
+}
 
 /* ── Provider grid ── */
 .wsp-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 11px;
-  padding-top: 3px;
+  gap: 14px;
+  padding-top: 14px;
 }
 
 .wsp-card {
   border: 1px solid var(--color-border-subtle);
   border-radius: 9px;
-  padding: 10px 11px;
+  padding: 13px 14px;
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 12px;
   background: var(--color-surface);
   transition: border-color 0.15s;
 }
@@ -679,12 +672,12 @@ const WEB_SEARCH_CSS = `
 
 .wsp-card-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 8px;
+  gap: 12px;
 }
 
-.wsp-provider-info { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.wsp-provider-info { display: flex; align-items: center; gap: 10px; min-width: 0; }
 
 .wsp-provider-avatar {
   width: 34px; height: 34px;
@@ -695,21 +688,16 @@ const WEB_SEARCH_CSS = `
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0; text-transform: uppercase;
 }
-.wsp-provider-name { font-size: 12px; font-weight: 700; color: var(--color-text); }
+.wsp-provider-name { font-size: 12px; font-weight: 700; color: var(--color-text); line-height: 1.25; }
 .wsp-provider-name .pv-origin-badge { display: inline-flex; align-items: center; font-size: 10px; color: var(--color-text-muted); background: var(--color-surface); border: 1px solid var(--color-border); padding: 2px 5px; border-radius: 4px; font-weight: 600; margin-left: 8px; vertical-align: middle; }
-.wsp-provider-desc {
-  font-size: 10px; color: var(--color-text-muted);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-
 .wsp-card-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 
 .wsp-status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 .wsp-status-dot.ready { background: var(--color-success, #6faf7b); }
 .wsp-status-dot.warn  { background: #f59e0b; }
 
-.wsp-fields { display: flex; flex-direction: column; gap: 6px; }
-.wsp-field  { display: flex; flex-direction: column; gap: 3px; }
+.wsp-fields { display: flex; flex-direction: column; gap: 9px; }
+.wsp-field  { display: flex; flex-direction: column; gap: 5px; }
 .wsp-field label {
   font-size: 10px; font-weight: 700; color: var(--color-text-muted);
   text-transform: uppercase; letter-spacing: 0.04em;
@@ -720,7 +708,7 @@ const WEB_SEARCH_CSS = `
   border: 1.5px solid var(--color-border);
   color: var(--color-text);
   border-radius: 6px;
-  padding: 5px 7px;
+  padding: 7px 8px;
   font-size: 11px;
   outline: none;
   transition: border-color 0.15s;
@@ -742,7 +730,7 @@ const WEB_SEARCH_CSS = `
 }
 .wsp-optional { font-weight: 400; text-transform: none; letter-spacing: 0; font-style: italic; }
 
-.wsp-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.wsp-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
 .wsp-test-btn {
   display: flex; align-items: center; gap: 4px;

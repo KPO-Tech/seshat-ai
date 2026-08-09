@@ -28,3 +28,92 @@
 .interactive:hover {
   background: var(--color-hover);
 }
+
+/* App-wide product surface primitives.
+   Keep feature screens dense and uniform: large type is reserved for true
+   landing/empty hero moments, not normal workspace headers. */
+.app-page-title {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.app-toolbar {
+  min-height: 56px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-7);
+  padding: 0 var(--space-8);
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-surface);
+}
+
+.app-toolbar-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.app-control,
+.app-icon-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.app-control {
+  gap: var(--space-3);
+  height: 30px;
+  padding: 0 var(--space-5);
+}
+
+.app-icon-control {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+}
+
+.app-control:hover:not(:disabled),
+.app-icon-control:hover:not(:disabled) {
+  background: var(--color-hover);
+  color: var(--color-text);
+}
+
+.app-control:disabled,
+.app-icon-control:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.app-panel {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.app-section-label {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.sv-header-info p,
+.pv-header-info p {
+  display: none;
+}

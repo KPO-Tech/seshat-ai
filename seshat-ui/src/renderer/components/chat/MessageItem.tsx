@@ -512,10 +512,10 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
 export const MESSAGE_ITEM_CSS = `
 .msg-row {
   display: flex;
-  gap: var(--space-6);
+  gap: 12px;
   width: 100%;
   align-items: flex-start;
-  margin-top: var(--space-8);
+  margin-top: 22px;
 }
 
 .msg-row:first-child {
@@ -523,7 +523,7 @@ export const MESSAGE_ITEM_CSS = `
 }
 
 .msg-row.compact {
-  margin-top: var(--space-3);
+  margin-top: 8px;
 }
 
 .msg-row.user {
@@ -533,7 +533,7 @@ export const MESSAGE_ITEM_CSS = `
 .msg-content {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   flex: 1;
   min-width: 0;
 }
@@ -544,8 +544,8 @@ export const MESSAGE_ITEM_CSS = `
 }
 
 .msg-bubble {
-  font-size: var(--font-size-base);
-  line-height: 1.6;
+  font-size: 14px;
+  line-height: 1.62;
   color: var(--color-text);
 }
 
@@ -559,7 +559,7 @@ export const MESSAGE_ITEM_CSS = `
 .msg-row.user .msg-bubble {
   background: var(--color-surface);
   padding: 7px 11px;
-  border-radius: var(--radius-2xl) var(--radius-2xl) 3px var(--radius-2xl);
+  border-radius: 12px 12px 4px 12px;
   border: 1px solid var(--color-border-subtle);
 }
 
@@ -568,7 +568,7 @@ export const MESSAGE_ITEM_CSS = `
   flex-wrap: nowrap;
   overflow-x: auto;
   justify-content: flex-end;
-  gap: var(--space-4);
+  gap: 8px;
   max-width: 100%;
   padding: 5px 2px;
 }
@@ -576,8 +576,8 @@ export const MESSAGE_ITEM_CSS = `
 .msg-attachment {
   position: relative;
   flex-shrink: 0;
-  width: 52px;
-  height: 52px;
+  width: 48px;
+  height: 48px;
 }
 
 .msg-attachment--image .msg-attachment-thumb,
@@ -690,10 +690,10 @@ export const MESSAGE_ITEM_CSS = `
 }
 
 .msg-thinking-body {
-  margin-top: var(--space-3);
-  padding-left: var(--space-4);
+  margin-top: 5px;
+  padding-left: 9px;
   border-left: 2px solid rgba(239, 124, 47, 0.22);
-  font-size: var(--font-size-xs);
+  font-size: 12px;
   font-style: italic;
   color: var(--color-text-muted);
   line-height: 1.65;
@@ -727,7 +727,7 @@ export const MESSAGE_ITEM_CSS = `
 .msg-footer {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 7px;
   margin-top: var(--space-1);
   opacity: 0;
   transition: opacity 0.2s;

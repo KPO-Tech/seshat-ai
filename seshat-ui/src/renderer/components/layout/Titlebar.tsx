@@ -1,5 +1,8 @@
 import type { ReactNode } from 'react'
-import { Close, Minus, Square } from '@icon-park/react'
+import { useNavigate } from 'react-router'
+import { Home, Left, Right } from '@icon-park/react'
+import { NexusLogo } from '@/components/NexusLogo'
+import { WindowCloseIcon, WindowMaximizeIcon, WindowMinimizeIcon } from '@/components/ui/WindowControlIcon'
 
 type Props = {
   left?: ReactNode
@@ -13,24 +16,46 @@ type Props = {
 // routes, not Shell children) aren't left without any way to move or close
 // the window.
 export function Titlebar({ left, center }: Props) {
+  const navigate = useNavigate()
   const handleMinimize = () => window.nexus.window.minimize()
   const handleMaximize = () => window.nexus.window.maximize()
   const handleClose = () => window.nexus.window.close()
+  const handleBack = () => navigate(-1)
+  const handleForward = () => navigate(1)
+  const handleHome = () => navigate('/')
 
   return (
     <div className="shell-titlebar">
       <style>{TITLEBAR_CSS}</style>
-      <div className="titlebar-left">{left}</div>
-      {center && <div className="titlebar-center">{center}</div>}
+      <div className="titlebar-left">
+        {left}
+        <div className="tb-nav-group" aria-label="Navigation">
+          <button className="tb-nav-btn" onClick={handleHome} title="Home" type="button">
+            <Home size={14} />
+          </button>
+          <button className="tb-nav-btn" onClick={handleBack} title="Back" type="button">
+            <Left size={14} />
+          </button>
+          <button className="tb-nav-btn" onClick={handleForward} title="Forward" type="button">
+            <Right size={14} />
+          </button>
+        </div>
+      </div>
+      {center && (
+        <div className="titlebar-center">
+          <NexusLogo size={14} />
+          <span>{center}</span>
+        </div>
+      )}
       <div className="titlebar-right">
         <button className="tb-sys-btn" onClick={handleMinimize} title="Minimize">
-          <Minus size={11} />
+          <WindowMinimizeIcon />
         </button>
         <button className="tb-sys-btn" onClick={handleMaximize} title="Maximize/Restore">
-          <Square size={10} />
+          <WindowMaximizeIcon />
         </button>
         <button className="tb-sys-btn close" onClick={handleClose} title="Close">
-          <Close size={11} />
+          <WindowCloseIcon />
         </button>
       </div>
     </div>
@@ -57,6 +82,7 @@ export const TITLEBAR_CSS = `
 .titlebar-left {
   display: flex;
   align-items: center;
+  gap: 4px;
   -webkit-app-region: no-drag;
 }
 
@@ -79,7 +105,35 @@ export const TITLEBAR_CSS = `
   color: var(--color-text);
 }
 
+.tb-nav-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.tb-nav-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  width: 28px;
+  height: 32px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.tb-nav-btn:hover {
+  background: var(--color-hover);
+  color: var(--color-text);
+}
+
 .titlebar-center {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 11px;
   font-weight: 600;
   color: var(--color-text-muted);

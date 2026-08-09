@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import {
-  Plus, Down, Right, Delete, Sync, LinkCloud, Shield, Close, Crown,
+  Plus, Down, Right, Delete, Sync, LinkCloud, Shield, Crown,
 } from '@icon-park/react'
 import { ProviderIcon } from '@/components/ui/ProviderIcon'
+import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
 import { useProvidersStore } from '@/stores/providers'
 import {
   useProviders,
@@ -646,7 +647,7 @@ function AddProviderModal({ onClose, onSuccess }: { onClose: () => void; onSucce
       <div className="modal-shell">
         <header className="modal-header">
           <h2>Add Provider</h2>
-          <button className="modal-close-btn" onClick={onClose}><Close size={16} /></button>
+          <button className="modal-close-btn" onClick={onClose}><WindowCloseIcon size={16} /></button>
         </header>
         <div className="modal-content">
           <div className="modal-field" style={{ position: 'relative', zIndex: 100, marginBottom: 24 }}>
@@ -768,7 +769,7 @@ function AddCustomModelModal({ settingId, onClose, onSuccess }: {
       <div className="modal-shell">
         <header className="modal-header">
           <h2>Add Custom Model</h2>
-          <button className="modal-close-btn" onClick={onClose}><Close size={16} /></button>
+          <button className="modal-close-btn" onClick={onClose}><WindowCloseIcon size={16} /></button>
         </header>
         <div className="modal-content modal-grid-2">
           <div className="modal-field modal-full">
@@ -819,7 +820,7 @@ function AddCustomModelModal({ settingId, onClose, onSuccess }: {
 export const PROVIDERS_CSS = `
 .pv-root { display: flex; flex-direction: column; }
 .pv-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 40px; }
-.pv-header-info h1 { font-size: var(--font-size-xl); font-weight: 700; margin: 0 0 4px; color: var(--color-text); }
+.pv-header-info h1 { font-size: var(--font-size-base); font-weight: 700; margin: 0 0 4px; color: var(--color-text); }
 .pv-header-info p { color: var(--color-text-muted); margin: 0; font-size: var(--font-size-sm); }
 .pv-add-btn { background: var(--color-primary); color: white; border: none; padding: 7px 14px; border-radius: 8px; display: flex; align-items: center; gap: 7px; font-weight: 600; font-size: var(--font-size-sm); cursor: pointer; flex-shrink: 0; }
 .pv-add-btn:hover { opacity: 0.9; }

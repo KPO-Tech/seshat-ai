@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { CheckOne, CloseOne, Edit, DocDetail, Square, Close } from '@icon-park/react'
+import { CheckOne, CloseOne, Edit, DocDetail } from '@icon-park/react'
 import { MarkdownView } from '@/components/MarkdownView'
+import { WindowCloseIcon, WindowMaximizeIcon } from '@/components/ui/WindowControlIcon'
 import { api } from '@/api/client'
 import { useChat } from '@/hooks/useChat'
 import { useSessionStore } from '@/stores/session'
@@ -723,12 +724,12 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
         <span className="pep-name">Implementation Plan</span>
         {onToggleMaximize && (
           <button className="pep-frame-btn" type="button" onClick={onToggleMaximize} title={isMaximized ? 'Restore' : 'Maximize'}>
-            <Square size={10} theme={isMaximized ? 'filled' : 'outline'} />
+            <WindowMaximizeIcon />
           </button>
         )}
         {onClose && (
           <button className="pep-frame-btn" type="button" onClick={onClose} title="Close">
-            <Close size={11} />
+            <WindowCloseIcon />
           </button>
         )}
       </div>
@@ -914,12 +915,12 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
           <span className={badgeClass}>{status}</span>
           {onToggleMaximize && (
             <button className="pep-frame-btn" type="button" onClick={onToggleMaximize} title={isMaximized ? 'Restore' : 'Maximize'}>
-              <Square size={10} theme={isMaximized ? 'filled' : 'outline'} />
+              <WindowMaximizeIcon />
             </button>
           )}
           {onClose && (
             <button className="pep-frame-btn" type="button" onClick={onClose} title="Close">
-              <Close size={11} />
+              <WindowCloseIcon />
             </button>
           )}
         </div>

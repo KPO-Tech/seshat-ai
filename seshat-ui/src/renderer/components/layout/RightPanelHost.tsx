@@ -1,5 +1,5 @@
-import { useMemo, useRef } from 'react'
-import { Book, Browser, CheckOne, Close, Code, DocDetail, FilePdf, FileTextOne, Robot, LoadingOne, Square, FileWord, FileExcel } from '@icon-park/react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Book, Browser, CheckOne, Close, Code, DocDetail, FilePdf, FileTextOne, Robot, LoadingOne, FileWord, FileExcel, Left, Right, Refresh } from '@icon-park/react'
 import { MarkdownView } from '@/components/MarkdownView'
 import { derivePlanSnapshot } from '@/lib/plan'
 import { useUIStore } from '@/stores/ui'
@@ -12,6 +12,7 @@ import { DocxPreviewPanel } from '@/components/chat/DocxPreviewPanel'
 import { XlsxPreviewPanel } from '@/components/chat/XlsxPreviewPanel'
 import { PptxPreviewPanel } from '@/components/chat/PptxPreviewPanel'
 import { flattenRightPanels } from '@/stores/ui'
+import { WindowCloseIcon, WindowMaximizeIcon } from '@/components/ui/WindowControlIcon'
 import type { RightPanelInstance, RightPanelKind, RightPanelColumn } from '@/stores/ui'
 import type { AgentState } from '@/stores/session'
 import type { Message } from '@/api/types'
@@ -160,10 +161,10 @@ function PanelFrame({
         </div>
         <div className="right-panel-actions">
           <button className="right-panel-maximize-btn" type="button" onClick={onToggleMaximize} title={isMaximized ? 'Restore' : 'Maximize'}>
-            <Square size={10} theme={isMaximized ? 'filled' : 'outline'} />
+            <WindowMaximizeIcon />
           </button>
           <button className="right-panel-close" type="button" onClick={onClose}>
-            <Close size={11} />
+            <WindowCloseIcon />
           </button>
         </div>
       </div>
@@ -339,22 +340,100 @@ function KnowledgePanel({ results }: { results: NonNullable<RightPanelInstance['
 }
 
 function BrowserPanel({ url }: { url?: string }) {
+  const browserApi = window.nexus?.browser
+  const initialUrl = url || 'https://www.google.com/'
+  const viewportRef = useRef<HTMLDivElement>(null)
+  const [address, setAddress] = useState(initialUrl)
+  const [state, setState] = useState<BrowserPanelState | null>(null)
+  const activeTab = state?.tabs.find((tab) => tab.id === state.activeTabId) ?? state?.tabs[0] ?? null
+
+  const syncBounds = useCallback(() => {
+    const element = viewportRef.current
+    if (!element || !browserApi) return
+    const rect = element.getBoundingClientRect()
+    if (rect.width < 2 || rect.height < 2) return
+    const bounds = {
+      x: rect.left,
+      y: rect.top,
+      width: rect.width,
+      height: rect.height,
+    }
+    void browserApi.setBounds(bounds).catch(() => undefined)
+  }, [browserApi])
+
+  useEffect(() => {
+    if (!browserApi) return
+    const element = viewportRef.current
+    if (!element) return
+
+    const rect = element.getBoundingClientRect()
+    const bounds = { x: rect.left, y: rect.top, width: rect.width, height: rect.height }
+    void browserApi.show(bounds).then(setState).catch(() => undefined)
+    void browserApi.navigate(initialUrl).then(setState).catch(() => undefined)
+
+    const observer = new ResizeObserver(syncBounds)
+    observer.observe(element)
+    window.addEventListener('resize', syncBounds)
+    window.addEventListener('scroll', syncBounds, true)
+    const unsubscribeState = browserApi.onStateChange?.((next) => {
+      setState(next)
+      const nextUrl = next.tabs.find((tab) => tab.id === next.activeTabId)?.url ?? next.tabs[0]?.url
+      if (nextUrl && nextUrl !== 'about:blank') setAddress(nextUrl)
+    })
+    const frame = window.requestAnimationFrame(syncBounds)
+
+    return () => {
+      window.cancelAnimationFrame(frame)
+      observer.disconnect()
+      window.removeEventListener('resize', syncBounds)
+      window.removeEventListener('scroll', syncBounds, true)
+      unsubscribeState?.()
+      void browserApi.hide().catch(() => undefined)
+    }
+  }, [browserApi, initialUrl, syncBounds])
+
+  async function navigate() {
+    const target = address.trim()
+    if (!target || !browserApi) return
+    const next = await browserApi.navigate(target).catch(() => null)
+    if (next) setState(next)
+  }
+
   return (
     <div className="right-panel-browser">
-      <div className="right-panel-browser-icon">
-        <Browser size={18} />
+      <div className="right-panel-browser-toolbar">
+        <button type="button" onClick={() => void browserApi?.back().then(setState)} disabled={!activeTab?.canGoBack} title="Back">
+          <Left size={12} />
+        </button>
+        <button type="button" onClick={() => void browserApi?.forward().then(setState)} disabled={!activeTab?.canGoForward} title="Forward">
+          <Right size={12} />
+        </button>
+        <button type="button" onClick={() => void browserApi?.reload().then(setState)} title="Reload">
+          <Refresh size={12} />
+        </button>
+        <form
+          className="right-panel-browser-address"
+          onSubmit={(event) => {
+            event.preventDefault()
+            void navigate()
+          }}
+        >
+          <input
+            value={address}
+            onChange={(event) => setAddress(event.target.value)}
+            placeholder="Search or enter website"
+            spellCheck={false}
+          />
+        </form>
       </div>
-      <h3>Browser trace</h3>
-      {url ? (
-        <>
-          <a className="right-panel-browser-url" href={url} target="_blank" rel="noreferrer" title={url}>
-            {url}
-          </a>
-          <p>Open the browser tool result in the chat to inspect snapshots, screenshots, network output, and extracted content.</p>
-        </>
-      ) : (
-        <p>Browser tool output appears inline in the conversation as snapshots, screenshots, network output, and extracted content.</p>
-      )}
+      <div className="right-panel-browser-viewport" ref={viewportRef}>
+        {!browserApi && (
+          <div className="right-panel-browser-empty">
+            <Browser size={18} />
+            <span>Embedded browser is only available in the desktop app.</span>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -890,44 +969,83 @@ const RIGHT_PANEL_CSS = `
 .right-panel-browser {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 18px;
+  height: 100%;
+  min-height: 0;
+  background: #0b0c10;
   color: var(--color-text);
 }
 
-.right-panel-browser-icon {
-  width: 38px;
-  height: 38px;
+.right-panel-browser-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: rgba(255, 255, 255, 0.035);
+  flex-shrink: 0;
+}
+
+.right-panel-browser-toolbar button {
+  width: 26px;
+  height: 26px;
   border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--color-text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-accent);
-  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
 }
 
-.right-panel-browser h3 {
-  margin: 0;
-  font-size: 14px;
+.right-panel-browser-toolbar button:hover:not(:disabled) {
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
 }
 
-.right-panel-browser p {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--color-text-muted);
+.right-panel-browser-toolbar button:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
-.right-panel-browser-url {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: monospace;
+.right-panel-browser-address {
+  flex: 1;
+  min-width: 0;
+}
+
+.right-panel-browser-address input {
+  width: 100%;
+  height: 27px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--color-text);
+  padding: 0 9px;
   font-size: 11px;
-  color: var(--color-accent);
+  outline: none;
+}
+
+.right-panel-browser-address input:focus {
+  border-color: rgba(247, 122, 40, 0.7);
+}
+
+.right-panel-browser-viewport {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: #0b0c10;
+}
+
+.right-panel-browser-empty {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--color-text-muted);
+  font-size: 11px;
 }
 
 /* Agent Monitor */

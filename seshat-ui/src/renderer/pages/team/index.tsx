@@ -1,10 +1,8 @@
-import { useNavigate } from 'react-router'
-import { Left, Lightning, Mail, FileText, Caution, Robot } from '@icon-park/react'
+import { Lightning, Mail, FileText, Caution, Robot } from '@icon-park/react'
 import { useUIStore } from '@/stores/ui'
 import { useEffect } from 'react'
 
 export function TeamPage() {
-  const navigate = useNavigate()
   const closeAllRightPanels = useUIStore(s => s.closeAllRightPanels)
 
   useEffect(() => { closeAllRightPanels() }, [closeAllRightPanels])
@@ -15,10 +13,6 @@ export function TeamPage() {
 
       {/* Top bar */}
       <header className="tm-topbar">
-        <button className="tm-back-chip" onClick={() => navigate(-1)}>
-          <Left size={11} /> Home
-        </button>
-        <span className="tm-topbar-sep">/</span>
         <span className="tm-topbar-title">Agent Teams</span>
         <div className="tm-coming-badge">
           <Lightning size={10} /> Coming soon
@@ -126,14 +120,6 @@ const CSS = `
   background: var(--color-bg);
   border-bottom: 1px solid var(--color-border-subtle);
 }
-.tm-back-chip {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 4px 7px; border-radius: 5px; border: none;
-  background: var(--color-hover); color: var(--color-text-secondary);
-  font-size: 10px; font-weight: 600; cursor: pointer;
-  transition: background 0.1s, color 0.1s; white-space: nowrap;
-}
-.tm-back-chip:hover { background: var(--color-border); color: var(--color-text); }
 .tm-topbar-sep { color: var(--color-text-muted); font-size: 12px; user-select: none; }
 .tm-topbar-title { font-size: 13px; font-weight: 700; color: var(--color-text); }
 .tm-coming-badge {

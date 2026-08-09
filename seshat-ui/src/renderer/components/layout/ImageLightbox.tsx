@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { Close, Reduce, Add, Download } from '@icon-park/react'
+import { Reduce, Add, Download } from '@icon-park/react'
 import { useUIStore } from '@/stores/ui'
+import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
 
 // A single full-screen image viewer used everywhere an image can be
 // enlarged (chat attachments, sent messages, tool-generated images, ...) -
@@ -62,7 +63,7 @@ export function ImageLightbox() {
             <Download size={13} />
           </button>
           <button type="button" onClick={closeLightbox} title="Close">
-            <Close size={14} />
+            <WindowCloseIcon size={14} />
           </button>
         </div>
       </div>

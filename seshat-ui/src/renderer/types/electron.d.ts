@@ -2,6 +2,8 @@ interface Window {
   nexus: {
     getVersion: () => Promise<string>
     openPath: (p: string) => Promise<void>
+    openLocalPath: (p: string) => Promise<void>
+    openTerminal: (p: string) => Promise<void>
     showFile: (p: string) => Promise<void>
     readFileDataURL: (p: string) => Promise<string>
     openExternal: (url: string) => Promise<void>
@@ -53,6 +55,27 @@ interface Window {
       disable: () => Promise<{ supported: boolean; running: boolean; port?: number; activeModelId: string; downloadedModelIds: string[] }>
       onProgress: (listener: (progress: { phase: 'binary' | 'model'; modelId?: string; receivedBytes: number; totalBytes: number }) => void) => () => void
     }
+    browser?: {
+      show: (bounds?: { x: number; y: number; width: number; height: number }) => Promise<BrowserPanelState>
+      hide: () => Promise<BrowserPanelState>
+      openUrl: (url: string, provider?: string) => Promise<{ provider: string; browser_url: string; target_id: string; tab_id: string; url: string }>
+      navigate: (url: string) => Promise<BrowserPanelState>
+      back: () => Promise<BrowserPanelState>
+      forward: () => Promise<BrowserPanelState>
+      reload: () => Promise<BrowserPanelState>
+      setBounds: (bounds: { x: number; y: number; width: number; height: number }) => Promise<BrowserPanelState>
+      getState: () => Promise<BrowserPanelState>
+      destroy: () => Promise<BrowserPanelState>
+      onStateChange: (listener: (state: BrowserPanelState) => void) => () => void
+      onPanelOpened: (listener: (state: BrowserPanelState) => void) => () => void
+      onPanelClosed: (listener: (state: BrowserPanelState) => void) => () => void
+    }
+    terminal?: {
+      start: (payload: { id: string; cwd: string }) => Promise<{ ok: boolean; id: string; shell: string; cwd: string; pid?: number }>
+      write: (id: string, data: string) => Promise<void>
+      stop: (id: string) => Promise<void>
+      onEvent: (id: string, listener: (event: TerminalEvent) => void) => () => void
+    }
     updates?: {
       checkNow: () => Promise<{ ok: boolean; error?: string }>
       quitAndInstall: () => Promise<void>
@@ -62,4 +85,29 @@ interface Window {
       onError: (listener: (payload: { message: string }) => void) => () => void
     }
   }
+}
+
+type BrowserPanelState = {
+  activeTabId: string | null
+  tabs: Array<{
+    id: string
+    label: string
+    url: string
+    status: 'loading' | 'ready'
+    canGoBack: boolean
+    canGoForward: boolean
+  }>
+}
+
+type TerminalEvent = {
+  id: string
+  type: 'started' | 'data' | 'error' | 'exit'
+  stream?: 'stdout' | 'stderr'
+  data?: string
+  message?: string
+  shell?: string
+  cwd?: string
+  pid?: number
+  code?: number | null
+  signal?: string | null
 }

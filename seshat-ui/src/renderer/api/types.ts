@@ -263,6 +263,7 @@ export type SearchProviderConfig = {
 export type Corpus = {
   id: string
   user_id: string
+  workspace_id?: string
   name: string
   description?: string
   chunk_count: number

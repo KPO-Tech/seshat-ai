@@ -24,14 +24,14 @@ export type ChatSession = {
   modelLabel?: string
   permissionMode?: string
   executionOrigin?: string
-  // "" / undefined for a normal chat session, "knowledge" for one created by
-  // the Knowledge search page - lets the sidebar's Recents list exclude
-  // one-off lookups without treating them differently anywhere else (still
-  // full sessions, reachable from History and Ctrl+K search).
+  // "" / undefined for a normal chat session, or a product origin such as
+  // "knowledge" / "inbox" for one-off agent sessions that should stay full
+  // sessions while remaining easy to filter from product-neutral recents.
   source?: string
   workspacePath?: string
   projectPath?: string
   draftPrompt?: string
+  draftAgentSlug?: string
   // File IDs already uploaded (via /sessions/:id/files) before this session's
   // first message was sent - attached from the Home screen, where a session
   // has to exist for the upload but the real send is deferred to

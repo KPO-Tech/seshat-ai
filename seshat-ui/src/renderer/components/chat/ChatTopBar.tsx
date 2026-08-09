@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { More, FileTextOne, Share, Folder, Delete, Shield, Robot } from '@icon-park/react'
+import { More, FileTextOne, Share, Folder, Delete, Shield, Robot, Browser } from '@icon-park/react'
 import { SelectorMenu, SELECTOR_PILL_CSS, type SelectorOption } from '@/components/ui/SelectorPill'
 import { IconButton, ICON_BUTTON_CSS } from '@/components/ui/IconButton'
 import type { UIPermissionMode } from '@/stores/ui'
@@ -13,6 +13,8 @@ type Props = {
   onExecutionModeChange?: (mode: UIExecutionMode) => void
   monitorOpen?: boolean
   onToggleMonitor?: () => void
+  browserOpen?: boolean
+  onToggleBrowser?: () => void
   permissionMode?: UIPermissionMode
   onTogglePermission?: () => void
   onPermissionModeSelect?: (mode: UIPermissionMode) => void
@@ -44,6 +46,8 @@ export function ChatTopBar({
   onExecutionModeChange,
   monitorOpen = false,
   onToggleMonitor,
+  browserOpen = false,
+  onToggleBrowser,
   permissionMode = 'auto',
   onTogglePermission,
   onPermissionModeSelect,
@@ -141,6 +145,16 @@ export function ChatTopBar({
             onClick={onToggleMonitor}
           />
         )}
+        {onToggleBrowser && (
+          <IconButton
+            icon={<Browser size={15} />}
+            variant="bordered"
+            size={28}
+            title="Browser"
+            active={browserOpen}
+            onClick={onToggleBrowser}
+          />
+        )}
         {(onTogglePermission || onPermissionModeSelect) && (
           <div className="chat-top-selector">
             <IconButton
@@ -216,7 +230,8 @@ ${ICON_BUTTON_CSS}
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 28px;
+  min-height: 32px;
+  gap: 12px;
 }
 
 /* Shrinks (and the title inside it truncates, then disappears entirely)
@@ -237,13 +252,13 @@ ${ICON_BUTTON_CSS}
 }
 
 .chat-session-title {
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--color-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 320px;
+  max-width: 420px;
   min-width: 0;
 }
 
@@ -288,18 +303,20 @@ ${ICON_BUTTON_CSS}
 .chat-top-actions {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: 6px;
   position: relative;
   flex-shrink: 0;
 }
 
 .chat-auto-btn {
-  background: var(--color-surface);
+  height: 28px;
+  background: transparent;
   border: 1px solid var(--color-border-subtle);
   color: var(--color-text-secondary);
-  padding: 3px var(--space-4);
-  border-radius: var(--radius-lg);
-  font-size: var(--font-size-xs);
+  padding: 0 9px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
   display: flex;
   align-items: center;
   gap: 5px;
@@ -334,9 +351,9 @@ ${ICON_BUTTON_CSS}
 }
 
 .conv-menu-trigger {
-  width: 26px;
-  height: 26px;
-  border-radius: var(--radius-sm);
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
   border: none;
   background: transparent;
   color: var(--color-text-muted);
@@ -357,8 +374,8 @@ ${ICON_BUTTON_CSS}
   top: calc(100% + 6px);
   right: 0;
   min-width: 190px;
-  padding: var(--space-3);
-  border-radius: var(--radius-xl);
+  padding: 5px;
+  border-radius: 9px;
   border: 1px solid var(--color-border-subtle);
   background: var(--color-menu-bg);
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.22);
@@ -373,12 +390,12 @@ ${ICON_BUTTON_CSS}
   border: none;
   background: transparent;
   color: var(--color-text);
-  border-radius: var(--radius-md);
-  padding: 7px var(--space-5);
+  border-radius: 7px;
+  padding: 7px 9px;
   display: flex;
   align-items: center;
-  gap: var(--space-4);
-  font-size: var(--font-size-sm);
+  gap: 8px;
+  font-size: 12px;
   cursor: pointer;
   text-align: left;
   white-space: nowrap;

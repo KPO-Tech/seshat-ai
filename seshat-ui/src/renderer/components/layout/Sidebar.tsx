@@ -3,26 +3,46 @@ import {
   Plus,
   Search,
   SettingTwo,
+  Message,
   Down,
   Right,
   Delete,
   Edit,
-  Layers,
   Time,
   History,
+  Shield,
   SunOne,
   Moon,
   Workbench,
   Browser,
 } from '@icon-park/react'
 import { useUIStore } from '@/stores/ui'
+import { useAuthStore } from '@/stores/auth'
 import { useSessionStore } from '@/stores/session'
 import { NexusLogo } from '@/components/NexusLogo'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api } from '@/api/client'
 import { UNTITLED_SESSION_TITLE } from '@/lib/sessionTitle'
 import { deleteSession } from '@/lib/deleteSession'
 import { SearchModal } from './SearchModal'
+
+const PROJECTS_STORAGE_KEY = 'seshat.projects.v1'
+
+function normalizeProjectPath(path: string): string {
+  return path.trim().replace(/[\\/]+$/, '')
+}
+
+function readStoredProjectPath(projectId: string | null): string | null {
+  if (!projectId) return null
+  try {
+    const parsed = JSON.parse(localStorage.getItem(PROJECTS_STORAGE_KEY) || '[]')
+    if (!Array.isArray(parsed)) return null
+    const project = parsed.find((item) => item?.id === projectId)
+    return typeof project?.rootPath === 'string' ? project.rootPath : null
+  } catch {
+    return null
+  }
+}
 
 export function Sidebar() {
   const collapsed = useUIStore((s) => s.sidebarCollapsed)
@@ -32,21 +52,40 @@ export function Sidebar() {
   const updateSession = useSessionStore((s) => s.updateSession)
   const theme = useUIStore((s) => s.theme)
   const toggleTheme = useUIStore((s) => s.toggleTheme)
+  const roles = useAuthStore((s) => s.roles)
   const navigate = useNavigate()
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
   
   const [recentsOpen, setRecentsOpen] = useState(true)
   const [menuSessionId, setMenuSessionId] = useState<string | null>(null)
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
+  const [consoleMenuOpen, setConsoleMenuOpen] = useState(false)
 
   const width = collapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)'
+  const isAdmin = roles.includes('admin')
+  const projectParam = new URLSearchParams(search).get('project')
+  const projectRouteId = pathname.match(/^\/projects\/([^/]+)/)?.[1]
+  const projectContextPath = useMemo(() => {
+    if (projectParam) return projectParam
+    if (!projectRouteId) return null
+    const decodedId = decodeURIComponent(projectRouteId)
+    return readStoredProjectPath(decodedId)
+      || sessions.find((s) => s.projectPath && `path-${normalizeProjectPath(s.projectPath).toLowerCase()}` === decodedId)?.projectPath
+      || null
+  }, [projectParam, projectRouteId, sessions])
+  const inProjectContext = Boolean(projectContextPath)
   const recentSessions = sessions
     // Sessions created from Knowledge are real, fully persisted sessions
     // (reachable from History and Ctrl+K search) - just excluded from this
     // list so a one-off lookup doesn't clutter the main chat sidebar.
-    .filter((s) => s.source !== 'knowledge')
+    .filter((s) => s.source !== 'knowledge' && s.source !== 'inbox')
+    .filter((s) => {
+      if (!projectContextPath) return !s.projectPath
+      return normalizeProjectPath(s.projectPath ?? '').toLowerCase()
+        === normalizeProjectPath(projectContextPath).toLowerCase()
+    })
     .sort((a, b) => {
       const aTime = new Date(a.updatedAt || a.createdAt).getTime()
       const bTime = new Date(b.updatedAt || b.createdAt).getTime()
@@ -58,7 +97,9 @@ export function Sidebar() {
     function handlePointerDown(event: MouseEvent) {
       const target = event.target as HTMLElement | null
       if (target?.closest('.sb-recent-menu-wrap')) return
+      if (target?.closest('.sb-console-wrap')) return
       setMenuSessionId(null)
+      setConsoleMenuOpen(false)
     }
     document.addEventListener('mousedown', handlePointerDown)
     return () => document.removeEventListener('mousedown', handlePointerDown)
@@ -76,13 +117,26 @@ export function Sidebar() {
   }, [])
 
   function startNewChat() {
-    navigate('/')
+    navigate(projectContextPath ? `/?project=${encodeURIComponent(projectContextPath)}` : '/')
     useSessionStore.getState().setActive(null)
   }
 
   function openSession(id: string) {
     setActive(id)
     navigate(`/conversation/${id}`)
+  }
+
+  function openConsoleItem(kind: 'settings' | 'feedback' | 'admin') {
+    setConsoleMenuOpen(false)
+    if (kind === 'settings') {
+      navigate('/settings')
+      return
+    }
+    if (kind === 'admin') {
+      if (isAdmin) navigate('/admin')
+      return
+    }
+    window.location.href = 'mailto:feedback@seshat.local?subject=SeshatOS%20feedback'
   }
 
   async function handleDeleteSession(id: string) {
@@ -126,15 +180,6 @@ export function Sidebar() {
         className={`sb-root${collapsed ? ' collapsed' : ''}`}
         style={{ width }}
       >
-
-        {/* Header */}
-        <div className="sb-header">
-          <div className="sb-logo-wrap">
-            <NexusLogo size={collapsed ? 26 : 22} />
-            {!collapsed && <span className="sb-brand">SeshatOS</span>}
-          </div>
-        </div>
-
         {/* Primary Actions */}
         <div className="sb-section">
           <SidebarItem
@@ -151,35 +196,31 @@ export function Sidebar() {
             collapsed={collapsed}
             onClick={() => setSearchOpen(true)}
           />
-          <SidebarItem
-            icon={<Time theme="outline" size={16} />}
-            label="Scheduling"
-            collapsed={collapsed}
-            active={pathname === '/scheduling'}
-            onClick={() => navigate('/scheduling')}
-          />
-          <SidebarItem
-            icon={<Browser theme="outline" size={16} />}
-            label="Apps"
-            collapsed={collapsed}
-            active={pathname.startsWith('/apps') || pathname.startsWith('/workflows') || pathname.startsWith('/teams')}
-            onClick={() => navigate('/apps')}
-          />
-          <SidebarItem
-            icon={<Layers theme="outline" size={16} />}
-            label="Workspace"
-            collapsed={collapsed}
-            active={pathname === '/workspace'}
-            onClick={() => navigate('/workspace')}
-            accent
-          />
-          <SidebarItem
-            icon={<Workbench theme="outline" size={16} />}
-            label="Projects"
-            collapsed={collapsed}
-            active={pathname.startsWith('/projects')}
-            onClick={() => navigate('/projects')}
-          />
+          {!inProjectContext && (
+            <>
+              <SidebarItem
+                icon={<Time theme="outline" size={16} />}
+                label="Scheduling"
+                collapsed={collapsed}
+                active={pathname === '/scheduling'}
+                onClick={() => navigate('/scheduling')}
+              />
+              <SidebarItem
+                icon={<Browser theme="outline" size={16} />}
+                label="Apps"
+                collapsed={collapsed}
+                active={pathname.startsWith('/apps') || pathname.startsWith('/workflows') || pathname.startsWith('/teams')}
+                onClick={() => navigate('/apps')}
+              />
+              <SidebarItem
+                icon={<Workbench theme="outline" size={16} />}
+                label="Projects"
+                collapsed={collapsed}
+                active={pathname.startsWith('/projects')}
+                onClick={() => navigate('/projects')}
+              />
+            </>
+          )}
         </div>
 
         {/* History Sections */}
@@ -276,14 +317,46 @@ export function Sidebar() {
         {/* Footer */}
         <div className="sb-footer">
           <div className={`sb-footer-items ${collapsed ? 'collapsed' : ''}`}>
-            <button
-              className="sb-footer-btn"
-              onClick={() => navigate('/settings')}
-              title={collapsed ? "Settings" : ""}
-            >
-              <SettingTwo theme="outline" size={collapsed ? 20 : 18} />
-              {!collapsed && <span>Settings</span>}
-            </button>
+            <div className="sb-console-wrap">
+              <button
+                className={`sb-console-btn${consoleMenuOpen ? ' open' : ''}`}
+                onClick={() => setConsoleMenuOpen((open) => !open)}
+                title={collapsed ? 'Seshat menu' : undefined}
+                aria-expanded={consoleMenuOpen}
+                aria-haspopup="menu"
+              >
+                <NexusLogo size={collapsed ? 24 : 18} />
+                {!collapsed && (
+                  <>
+                    <span>SeshatOS</span>
+                    <Down size={12} />
+                  </>
+                )}
+              </button>
+
+              {consoleMenuOpen && (
+                <div className={`sb-console-menu${collapsed ? ' collapsed' : ''}`} role="menu">
+                  <button type="button" role="menuitem" onClick={() => openConsoleItem('settings')}>
+                    <SettingTwo theme="outline" size={14} />
+                    <span>Settings</span>
+                  </button>
+                  <button type="button" role="menuitem" onClick={() => openConsoleItem('feedback')}>
+                    <Message theme="outline" size={14} />
+                    <span>Feedback</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={!isAdmin}
+                    onClick={() => openConsoleItem('admin')}
+                    title={!isAdmin ? 'Admin access required' : undefined}
+                  >
+                    <Shield theme="outline" size={14} />
+                    <span>Admin</span>
+                  </button>
+                </div>
+              )}
+            </div>
 
             <button
               className="sb-footer-btn theme-toggle"
@@ -357,33 +430,8 @@ const SIDEBAR_CSS = `
   transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.sb-header {
-  padding: 14px 14px 8px;
-  flex-shrink: 0;
-  display: flex;
-  justify-content: center;
-}
-
-.sb-root:not(.collapsed) .sb-header {
-  justify-content: flex-start;
-  padding-left: 16px;
-}
-
-.sb-logo-wrap {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.sb-brand {
-  font-size: var(--font-size-lg);
-  font-weight: 800;
-  color: var(--color-text);
-  letter-spacing: -0.02em;
-}
-
 .sb-section {
-  padding: 4px 8px;
+  padding: 14px 8px 4px;
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -670,6 +718,7 @@ const SIDEBAR_CSS = `
 }
 
 .sb-footer-items {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -680,6 +729,88 @@ const SIDEBAR_CSS = `
   flex-direction: column;
   gap: 12px;
   padding: 0;
+}
+
+.sb-console-wrap {
+  position: relative;
+  min-width: 0;
+}
+
+.sb-console-btn {
+  background: none;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 8px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sb-console-btn span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sb-console-btn:hover,
+.sb-console-btn.open {
+  background: var(--color-hover);
+  color: var(--color-text);
+}
+
+.sb-console-menu {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 10px);
+  min-width: 190px;
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border-subtle);
+  background: rgba(44, 42, 49, 0.98);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.28);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 50;
+}
+
+.sb-console-menu.collapsed {
+  left: 0;
+  bottom: calc(100% + 8px);
+  min-width: 164px;
+}
+
+.sb-console-menu button {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  border-radius: 7px;
+  padding: 8px 9px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-sm);
+  font-weight: 650;
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.sb-console-menu button:hover:not(:disabled) {
+  background: var(--color-hover);
+}
+
+.sb-console-menu button:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .sb-footer-btn {

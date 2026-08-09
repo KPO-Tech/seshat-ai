@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState, useCallback, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import {
-  Plus, Play, PauseOne, Edit, Delete, History, Caution, CloseOne, LinkCloud,
-  CheckOne, Robot, Send, Close, Download, PreviewOpen,
+  Plus, Play, PauseOne, Edit, Delete, History, Caution, LinkCloud,
+  CheckOne, Robot, Send, Download, PreviewOpen,
 } from '@icon-park/react'
 import { api, ApiError } from '@/api/client'
+import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
 import type { Agent, ProviderModel, ProviderSetting } from '@/api/types'
 import { fetchProviderModels, useProviders } from '@/hooks/useProviders'
 import { useProvidersStore } from '@/stores/providers'
@@ -616,7 +617,7 @@ function RunInspectorPanel({ job, runs, tab, onTabChange, onClose, onRunNow, onT
   if (!job) {
     return (
       <aside className="sch-inspector">
-        <button className="sch-inspector-close" onClick={onClose}><Close size={13} /></button>
+        <button className="sch-inspector-close" onClick={onClose}><WindowCloseIcon size={13} /></button>
         <div className="sch-runs-empty">This job is no longer available.</div>
       </aside>
     )
@@ -638,7 +639,7 @@ function RunInspectorPanel({ job, runs, tab, onTabChange, onClose, onRunNow, onT
           <button onClick={() => onRunNow(job)} title="Run"><Play size={14} /><span>Run</span></button>
           <button onClick={() => onTogglePaused(job)} title={job.status === 'active' ? 'Pause' : 'Resume'}>{job.status === 'active' ? <PauseOne size={14} /> : <Play size={14} />}<span>{job.status === 'active' ? 'Pause' : 'Resume'}</span></button>
           <button onClick={() => onEdit(job)} title="Config"><Edit size={14} /><span>Config</span></button>
-          <button onClick={onClose} title="Close"><Close size={14} /><span>Close</span></button>
+          <button onClick={onClose} title="Close"><WindowCloseIcon size={14} /><span>Close</span></button>
         </div>
       </div>
 
@@ -903,7 +904,7 @@ function JobFormModal({
             <h2>{isEdit ? 'Edit scheduled job' : 'New scheduled job'}</h2>
             <p>{isEdit ? 'Update cadence, agent, and execution settings.' : 'Configure the automation run before creating it.'}</p>
           </div>
-          <button className="sch-modal-close" onClick={onClose}><CloseOne size={13} /></button>
+          <button className="sch-modal-close" onClick={onClose}><WindowCloseIcon size={13} /></button>
         </div>
         <form className="sch-modal-body" onSubmit={(e) => void handleSubmit(e)}>
           <div className="sch-modal-main">
@@ -2154,4 +2155,3 @@ const CSS = `
   .sch-activity-output-preview { border-left: 0; border-top: 1px solid var(--color-border-subtle); }
 }
 `
-

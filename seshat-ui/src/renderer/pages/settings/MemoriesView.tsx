@@ -5,6 +5,7 @@ import {
 } from '@icon-park/react'
 import { api } from '@/api/client'
 import type { UserMemory, StorageStatus, StorageConfigData } from '@/api/types'
+import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
 
 const MEMORY_TYPES: Record<string, { label: string; color: string }> = {
   preference: { label: 'Preferences', color: '#ef7c2f' },
@@ -285,7 +286,9 @@ function MemoryEditorModal({ state, saving, onClose, onSave }: {
             <h2>{state.mode === 'create' ? 'New Memory' : 'Edit Memory'}</h2>
             <p>{state.mode === 'create' ? 'Create a curated memory for the agent.' : 'Adjust an existing memory entry.'}</p>
           </div>
-          <button className="mv-modal-close" onClick={onClose}>×</button>
+          <button className="mv-modal-close" onClick={onClose} aria-label="Close">
+            <WindowCloseIcon size={15} />
+          </button>
         </div>
 
         <div className="mv-modal-body">
@@ -592,7 +595,7 @@ function memoryToForm(memory: UserMemory): MemoryFormState {
 const MEMORIES_CSS = `
 .mv-root { display: flex; flex-direction: column; }
 .mv-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 28px; flex-wrap: wrap; gap: 9px; }
-.mv-header-info h1 { font-size: 22px; font-weight: 700; margin: 0 0 6px; color: var(--color-text); }
+.mv-header-info h1 { font-size: var(--font-size-base); font-weight: 700; margin: 0 0 6px; color: var(--color-text); }
 .mv-header-info p { color: var(--color-text-muted); margin: 0; font-size: 13px; }
 .mv-header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .mv-primary-btn { background: var(--color-cta); border: none; color: white; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 5px; cursor: pointer; padding: 6px 10px; border-radius: 6px; }
@@ -644,7 +647,7 @@ const MEMORIES_CSS = `
 .mv-modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 9px; padding: 14px 17px; border-bottom: 1px solid var(--color-border-subtle); }
 .mv-modal-header h2 { margin: 0 0 6px; font-size: 17px; }
 .mv-modal-header p { margin: 0; font-size: 11px; color: var(--color-text-muted); }
-.mv-modal-close { width: 32px; height: 32px; border-radius: 6px; border: none; background: transparent; color: var(--color-text-muted); cursor: pointer; font-size: 19px; line-height: 1; }
+.mv-modal-close { width: 32px; height: 32px; border-radius: 6px; border: none; background: transparent; color: var(--color-text-muted); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
 .mv-modal-close:hover { background: var(--color-hover); color: var(--color-text); }
 .mv-modal-body { padding: 15px 17px; display: flex; flex-direction: column; gap: 12px; }
 .mv-modal-footer { padding: 11px 17px 17px; display: flex; justify-content: flex-end; gap: 8px; }

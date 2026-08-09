@@ -151,6 +151,9 @@ export function Conversation() {
   const monitorOpen = useUIStore((s) =>
     s.rightColumns.some((c) => c.panels.some((p) => p.kind === 'agent' && p.sessionId === id))
   )
+  const browserOpen = useUIStore((s) =>
+    s.rightColumns.some((c) => c.panels.some((p) => p.kind === 'browser'))
+  )
   const permissionMode = useUIStore((s) => s.permissionMode)
   const togglePermissionMode = useUIStore((s) => s.togglePermissionMode)
   const setPermissionMode = useUIStore((s) => s.setPermissionMode)
@@ -277,6 +280,7 @@ export function Conversation() {
   const [uploadingAttachments, setUploadingAttachments] = useState(false)
   const [attachmentError, setAttachmentError] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const browserToolNavigationRef = useRef<string | null>(null)
   const { sendMessage, stopMessage, isStreaming } = useChat(id || '')
   const isAtBottomRef = useRef(true)
   const scrollRafRef = useRef<number | null>(null)
@@ -286,6 +290,14 @@ export function Conversation() {
       closeRightPanel(buildRightPanelId({ kind: 'agent', sessionId: id }))
     } else {
       openRightPanel({ kind: 'agent', title: 'Agent Monitor', sessionId: id })
+    }
+  }
+
+  function toggleBrowser() {
+    if (browserOpen) {
+      closeRightPanel(buildRightPanelId({ kind: 'browser' }))
+    } else {
+      openRightPanel({ kind: 'browser', title: 'Browser', width: 620 })
     }
   }
 
@@ -423,6 +435,30 @@ export function Conversation() {
     openRightPanel({ kind: 'agent', title: 'Agent Monitor', sessionId: id })
   }, [id, agentState.activeTool?.toolName, monitorOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    const tool = agentState.activeTool
+    if (!tool?.toolName.startsWith('browser_')) return
+    if (!browserOpen) openRightPanel({ kind: 'browser', title: 'Browser', width: 620 })
+    if (tool.toolName !== 'browser_open' && tool.toolName !== 'browser_navigate') return
+    const toolBlock = [...streaming].reverse().find((block) => (
+      block.type === 'tool_use' &&
+      block.name === tool.toolName
+    ))
+    const input = toolBlock?.type === 'tool_use'
+      ? toolBlock.input as Record<string, unknown> | undefined
+      : undefined
+    const target = typeof input?.url === 'string'
+      ? input.url
+      : typeof input?.target === 'string'
+        ? input.target
+        : null
+    const navKey = target ? `${tool.toolName}:${target}` : null
+    if (target && browserToolNavigationRef.current !== navKey) {
+      browserToolNavigationRef.current = navKey
+      void window.nexus?.browser?.openUrl(target, 'builtin').catch(() => undefined)
+    }
+  }, [agentState.activeTool?.toolName, browserOpen, openRightPanel, streaming])
+
   // Auto-open the plan review panel when the agent calls exit_plan_mode
   // without a structured PlanDocument (no submit_plan): PlanEditorPanel
   // falls back to rendering the raw plan text in this case, so there's no
@@ -435,15 +471,16 @@ export function Conversation() {
   useEffect(() => {
     if (!session?.draftPrompt || !session.id) return
     const draft = session.draftPrompt
+    const draftAgentSlug = session.draftAgentSlug
     const draftFileIds = session.draftFileIds
     const draftAttachments = session.draftAttachments
-    updateSession(session.id, { draftPrompt: undefined, draftFileIds: undefined, draftAttachments: undefined })
+    updateSession(session.id, { draftPrompt: undefined, draftAgentSlug: undefined, draftFileIds: undefined, draftAttachments: undefined })
     if (session.messages.length === 0) {
-      void sendMessage(draft, { fileIds: draftFileIds, attachments: draftAttachments })
+      void sendMessage(draft, { fileIds: draftFileIds, attachments: draftAttachments, agentSlug: draftAgentSlug })
       return
     }
     setInputValue(draft)
-  }, [sendMessage, session?.draftPrompt, session?.draftFileIds, session?.draftAttachments, session?.id, session?.messages.length, updateSession])
+  }, [sendMessage, session?.draftPrompt, session?.draftAgentSlug, session?.draftFileIds, session?.draftAttachments, session?.id, session?.messages.length, updateSession])
 
   const sessionHasData = Boolean(session && (session.messages.length > 0 || session.draftPrompt))
 
@@ -678,6 +715,8 @@ export function Conversation() {
           onExecutionModeChange={handleExecutionModeSelect}
           monitorOpen={monitorOpen}
           onToggleMonitor={toggleMonitor}
+          browserOpen={browserOpen}
+          onToggleBrowser={toggleBrowser}
           permissionMode={permissionMode}
           onTogglePermission={togglePermissionMode}
           onPermissionModeSelect={handlePermissionModeSelect}
@@ -828,14 +867,16 @@ ${MESSAGE_ITEM_CSS}
 }
 
 .conv-top-bar {
-  padding: 11px 17px;
+  padding: 8px 16px;
   flex-shrink: 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-bg);
 }
 
 .conv-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 28px 0;
+  padding: 22px 0 18px;
   transition: filter 0.25s ease;
 }
 
@@ -850,9 +891,9 @@ ${MESSAGE_ITEM_CSS}
 }
 
 .conv-virtual-row {
-  max-width: 860px;
+  max-width: 880px;
   margin: 0 auto;
-  padding: 0 17px;
+  padding: 0 18px;
   box-sizing: border-box;
 }
 
@@ -860,12 +901,12 @@ ${MESSAGE_ITEM_CSS}
    site's conv-status-wrap/conv-status-inner. Deliberately no background/
    border/card here: a single slim line, not a banner. */
 .conv-status-wrap {
-  padding: 0 17px 18px;
+  padding: 0 18px 10px;
   flex-shrink: 0;
 }
 
 .conv-status-inner {
-  max-width: 1100px;
+  max-width: 1000px;
   margin: 0 auto;
 }
 
@@ -901,13 +942,13 @@ ${MESSAGE_ITEM_CSS}
 }
 
 .conv-input-area {
-  padding: 0 17px 10px;
+  padding: 0 16px 14px;
   background: linear-gradient(to top, var(--color-bg) 70%, transparent);
   flex-shrink: 0;
 }
 
 .conv-input-inner {
-  max-width: 1100px;
+  max-width: 1000px;
   margin: 0 auto;
   width: 100%;
 }

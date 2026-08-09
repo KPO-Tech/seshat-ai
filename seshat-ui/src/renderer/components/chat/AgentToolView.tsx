@@ -31,7 +31,7 @@ function fmtTokens(n: number): string {
 const AGENT_CARDS_CSS = `
 .agent-cards-row {
   display: flex;
-  gap: 8px;
+  gap: 7px;
   width: 100%;
   overflow-x: auto;
   scrollbar-width: thin;
@@ -49,10 +49,10 @@ const AGENT_CARDS_CSS = `
 
 .agent-card {
   flex: 1 1 0;
-  min-width: 240px;
+  min-width: 220px;
   max-width: 100%;
   border: 1px solid var(--color-border-subtle);
-  border-radius: 9px;
+  border-radius: 8px;
   background: var(--color-surface);
   overflow: hidden;
   display: flex;
@@ -81,13 +81,13 @@ const AGENT_CARDS_CSS = `
 .agent-card-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px 6px;
+  gap: 7px;
+  padding: 7px 9px 5px;
 }
 
 .agent-card-icon {
-  width: 32px;
-  height: 32px;
+  width: 26px;
+  height: 26px;
   border-radius: 6px;
   background: rgba(239, 124, 47, 0.12);
   display: flex;
@@ -117,8 +117,8 @@ const AGENT_CARDS_CSS = `
 
 .agent-card-type {
   font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.07em;
+  font-weight: 750;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--color-text-muted);
 }
@@ -128,7 +128,7 @@ const AGENT_CARDS_CSS = `
   align-items: center;
   gap: 4px;
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 650;
 }
 
 .agent-card-status--running { color: var(--color-accent); }
@@ -146,7 +146,7 @@ const AGENT_CARDS_CSS = `
 }
 
 .agent-card-body {
-  padding: 0 10px 8px;
+  padding: 0 9px 7px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -154,8 +154,8 @@ const AGENT_CARDS_CSS = `
 }
 
 .agent-card-task {
-  font-size: 11px;
-  line-height: 1.5;
+  font-size: 12px;
+  line-height: 1.45;
   color: var(--color-text);
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -176,7 +176,7 @@ const AGENT_CARDS_CSS = `
 }
 
 .agent-card-footer {
-  padding: 6px 10px;
+  padding: 6px 9px;
   border-top: 1px solid var(--color-border-subtle);
   display: flex;
   align-items: center;
@@ -185,7 +185,7 @@ const AGENT_CARDS_CSS = `
 
 .agent-card-view-link {
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 650;
   color: var(--color-accent);
   display: flex;
   align-items: center;
