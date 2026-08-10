@@ -4,6 +4,7 @@ import { registerSystemHandlers } from './ipc/system'
 import { registerSecureStoreHandlers } from './ipc/secure-store'
 import { registerBackendHandlers } from './ipc/backend'
 import { registerWhisperHandlers } from './ipc/whisper'
+import { registerEnvVarsHandlers } from './ipc/env-vars'
 import { resolveRuntimeRoot } from './runtime'
 import { startBackendSidecar, stopBackendSidecar } from './backend-process'
 import { stopWhisperServerProcess } from './whisper-manager'
@@ -100,6 +101,7 @@ app.whenReady().then(async () => {
   registerSecureStoreHandlers(ipcMain)
   registerBackendHandlers(ipcMain)
   registerWhisperHandlers(ipcMain)
+  registerEnvVarsHandlers(ipcMain)
   browserPanel.registerIpc(ipcMain)
 
   // Packaged Electron apps deny every permission request by default when no
@@ -142,5 +144,5 @@ app.on('window-all-closed', () => {
 app.on('will-quit', () => {
   browserPanel.destroy()
   stopWhisperServerProcess()
-  stopBackendSidecar()
+  void stopBackendSidecar()
 })

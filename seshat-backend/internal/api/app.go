@@ -22,12 +22,21 @@ type App struct {
 	backend *seshat.App
 	db      *db.DB
 	// Direct DB stores not yet wrapped in backend services
-	modelStore         *db.ProviderModelStore
-	groupStore         *db.GroupStore
-	embedderStore      *db.EmbedderConfigStore
-	doclingStore       *db.DoclingConfigStore
-	localSTTStore      *db.LocalSTTConfigStore
-	storageConfigStore *db.StorageConfigStore
+	modelStore          *db.ProviderModelStore
+	groupStore          *db.GroupStore
+	embedderStore       *db.EmbedderConfigStore
+	capabilityLinkStore *db.CapabilityLinkStore
+	// providerSettingStore is used only by the capability-links handlers to
+	// list/validate local chat providers as reuse candidates - everything
+	// else that needs full provider CRUD/OAuth goes through the abstracted
+	// backend.Settings service instead (see internal/settings.Provider),
+	// which also supports connected/cloud mode. Capability links are a
+	// local-device-only concept (like embedderStore, doclingStore below),
+	// so this is deliberately the raw local store, not the abstraction.
+	providerSettingStore *db.ProviderSettingStore
+	doclingStore         *db.DoclingConfigStore
+	localSTTStore        *db.LocalSTTConfigStore
+	storageConfigStore   *db.StorageConfigStore
 	// Long-term memory — kept here because extraction is fire-and-forget
 	// and depends on the extractor which lives outside seshat.App lifecycle
 	longTermExtractor *longterm.Extractor
@@ -75,6 +84,8 @@ type AppConfig struct {
 	ModelStore            *db.ProviderModelStore
 	GroupStore            *db.GroupStore
 	EmbedderStore         *db.EmbedderConfigStore
+	CapabilityLinkStore   *db.CapabilityLinkStore
+	ProviderSettingStore  *db.ProviderSettingStore
 	DoclingStore          *db.DoclingConfigStore
 	LocalSTTStore         *db.LocalSTTConfigStore
 	StorageConfigStore    *db.StorageConfigStore
@@ -126,6 +137,8 @@ func NewApp(cfg AppConfig) *App {
 		modelStore:            cfg.ModelStore,
 		groupStore:            cfg.GroupStore,
 		embedderStore:         cfg.EmbedderStore,
+		capabilityLinkStore:   cfg.CapabilityLinkStore,
+		providerSettingStore:  cfg.ProviderSettingStore,
 		doclingStore:          cfg.DoclingStore,
 		localSTTStore:         cfg.LocalSTTStore,
 		storageConfigStore:    cfg.StorageConfigStore,

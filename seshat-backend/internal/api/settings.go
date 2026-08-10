@@ -230,6 +230,13 @@ func (a *App) handleProviderSettingByID(w http.ResponseWriter, r *http.Request) 
 			writeBackendError(w, err)
 			return
 		}
+		// A capability link pointing at this now-deleted provider must not
+		// linger — resolveCapabilityCredential would otherwise silently keep
+		// failing forever instead of falling back cleanly. Best-effort: this
+		// only matters in standalone mode where capabilityLinkStore is set.
+		if a.capabilityLinkStore != nil {
+			_ = a.capabilityLinkStore.DeleteByProviderSettingID(r.Context(), id)
+		}
 		a.backend.Audit.Log(r.Context(), backendaudit.LogParams{
 			ActorUserID:  principal.User.ID,
 			Action:       backendaudit.ActionSettingsDelete,

@@ -309,6 +309,13 @@ func backendMigrations() []schemaMigration {
 				)
 			},
 		},
+		{
+			ID:    "20260810_040_capability_credential_links",
+			Scope: migrationScopeBackend,
+			Run: func(ctx context.Context, db *DB) error {
+				return db.gormDB.WithContext(ctx).AutoMigrate(&gCapabilityLink{})
+			},
+		},
 	}
 }
 

@@ -23,6 +23,15 @@ type WhisperProgress = {
   totalBytes: number
 }
 
+type EnvVarDef = {
+  key: string
+  label: string
+  description: string
+  group: string
+  groupLabel: string
+  helpUrl?: string
+}
+
 type BrowserPanelBounds = {
   x: number
   y: number
@@ -122,6 +131,13 @@ const nexusBridge = {
       ipcRenderer.on('whisper:progress', handler)
       return () => ipcRenderer.removeListener('whisper:progress', handler)
     },
+  },
+  envVars: {
+    catalog: (): Promise<EnvVarDef[]> => ipcRenderer.invoke('env-vars:catalog'),
+    status: (): Promise<Record<string, boolean>> => ipcRenderer.invoke('env-vars:status'),
+    set: (key: string, value: string): Promise<void> => ipcRenderer.invoke('env-vars:set', key, value),
+    delete: (key: string): Promise<void> => ipcRenderer.invoke('env-vars:delete', key),
+    restartBackend: (): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke('env-vars:restart-backend'),
   },
   browser: {
     show: (bounds?: BrowserPanelBounds): Promise<BrowserPanelState> => ipcRenderer.invoke('seshat:browser:show', bounds),

@@ -461,6 +461,12 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		return nil, nil, fmt.Errorf("init embedder config store: %w", err)
 	}
 
+	capabilityLinkStore, err := db.NewCapabilityLinkStore(database)
+	if err != nil {
+		_ = cleanup()
+		return nil, nil, fmt.Errorf("init capability link store: %w", err)
+	}
+
 	doclingConfigStore, err := db.NewDoclingConfigStore(database)
 	if err != nil {
 		_ = cleanup()
@@ -588,6 +594,13 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	}
 	if dbEmb, dbErr := embedderConfigStore.Get(ctx); dbErr == nil && dbEmb != nil && dbEmb.Enabled && dbEmb.BaseURL != "" && dbEmb.Model != "" {
 		apiKeyFromDB, _ := embedderConfigStore.GetDecryptedAPIKey(ctx)
+		// An opt-in capability link (Settings > Providers, "Use my <provider>
+		// key" - see internal/db/capability_links.go) takes precedence over
+		// the embedder's own standalone key, so the same OpenAI credential
+		// configured for chat doesn't have to be pasted a second time here.
+		if _, linkedKey, ok := resolveCapabilityCredential(ctx, capabilityLinkStore, settingStore, backendsettings.CapabilityEmbeddings); ok {
+			apiKeyFromDB = linkedKey
+		}
 		embedderCfg = &ragembedder.Config{
 			BaseURL:  dbEmb.BaseURL,
 			APIKey:   apiKeyFromDB,
@@ -703,9 +716,9 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		DoclingURL:              strings.TrimSpace(config.DoclingURL),
 		AutomationServiceURL:    strings.TrimSpace(config.AutomationServiceURL),
 		AutomationAPIKey:        strings.TrimSpace(os.Getenv("AUTOMATION_API_KEY")),
-		ImageGeneration:         defaultImageGenerationConfig(),
-		TextToSpeech:            defaultTextToSpeechConfig(),
-		SpeechToText:            defaultSpeechToTextConfig(),
+		ImageGeneration:         defaultImageGenerationConfig(ctx, capabilityLinkStore, settingStore),
+		TextToSpeech:            defaultTextToSpeechConfig(ctx, capabilityLinkStore, settingStore),
+		SpeechToText:            defaultSpeechToTextConfig(ctx, capabilityLinkStore, settingStore),
 		// The SDK auto-generates a short AI title after a session's first
 		// turn completes (see its own generateTitleAsync) and was already
 		// running unconditionally - just silently discarded, since nothing
@@ -1062,6 +1075,8 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		ModelStore:            modelStore,
 		GroupStore:            groupStore,
 		EmbedderStore:         embedderConfigStore,
+		CapabilityLinkStore:   capabilityLinkStore,
+		ProviderSettingStore:  settingStore,
 		DoclingStore:          doclingConfigStore,
 		LocalSTTStore:         localSTTConfigStore,
 		StorageConfigStore:    storageConfigStore,
@@ -1239,16 +1254,47 @@ func splitCommaList(raw string) []string {
 	return result
 }
 
+// resolveCapabilityCredential looks up an opt-in capability link (Settings
+// > Providers, "Use my <provider> key" — see internal/db/capability_links.go
+// and internal/settings/capabilities.go) and returns the linked provider's
+// type and decrypted API key, if one is configured and still resolves to a
+// real provider setting. Never errors: a missing link, a deleted provider,
+// or a store that failed to initialize all just mean "not linked" (ok =
+// false), so callers fall back to their own default the same as before this
+// feature existed.
+func resolveCapabilityCredential(ctx context.Context, linkStore *db.CapabilityLinkStore, providerStore *db.ProviderSettingStore, capability backendsettings.Capability) (providerType, apiKey string, ok bool) {
+	if linkStore == nil || providerStore == nil {
+		return "", "", false
+	}
+	providerSettingID, linked, err := linkStore.Get(ctx, string(capability))
+	if err != nil || !linked {
+		return "", "", false
+	}
+	setting, err := providerStore.GetByID(ctx, providerSettingID)
+	if err != nil {
+		return "", "", false
+	}
+	key, err := providerStore.GetDecryptedAPIKey(ctx, providerSettingID)
+	if err != nil || key == "" {
+		return "", "", false
+	}
+	return setting.Provider, key, true
+}
+
 // defaultImageGenerationConfig, defaultTextToSpeechConfig and
 // defaultSpeechToTextConfig enable the engine's generate_image/text_to_speech/
-// speech_to_text built-in tools whenever the operator already has the
-// corresponding provider key set — same env vars the chat model itself
-// resolves against (see pkg/config/provider_catalog.go), so a working
-// OPENAI_API_KEY/GOOGLE_API_KEY makes these tools visible to the LLM with no
-// extra configuration. Without this, ClientConfig.ImageGeneration/
-// .TextToSpeech/.SpeechToText stay nil and the tools are never initialized,
-// regardless of which API keys are configured.
-func defaultImageGenerationConfig() *sdk.ImageGenerationConfig {
+// speech_to_text built-in tools whenever a credential is available for that
+// capability — first an opt-in capability link to an already-configured chat
+// provider (resolveCapabilityCredential), then the corresponding raw env var
+// (OPENAI_API_KEY/GOOGLE_API_KEY — same ones the chat model itself resolves
+// against, see pkg/config/provider_catalog.go) as a fallback for anyone who
+// prefers to configure these independently via Settings > Environment.
+// Without either, ClientConfig.ImageGeneration/.TextToSpeech/.SpeechToText
+// stay nil and the tools are never initialized.
+func defaultImageGenerationConfig(ctx context.Context, linkStore *db.CapabilityLinkStore, providerStore *db.ProviderSettingStore) *sdk.ImageGenerationConfig {
+	if providerType, key, ok := resolveCapabilityCredential(ctx, linkStore, providerStore, backendsettings.CapabilityImage); ok {
+		return &sdk.ImageGenerationConfig{Provider: providerType, APIKey: key}
+	}
 	if key := strings.TrimSpace(os.Getenv("OPENAI_API_KEY")); key != "" {
 		return &sdk.ImageGenerationConfig{Provider: "openai", APIKey: key}
 	}
@@ -1258,14 +1304,20 @@ func defaultImageGenerationConfig() *sdk.ImageGenerationConfig {
 	return nil
 }
 
-func defaultTextToSpeechConfig() *sdk.TextToSpeechConfig {
+func defaultTextToSpeechConfig(ctx context.Context, linkStore *db.CapabilityLinkStore, providerStore *db.ProviderSettingStore) *sdk.TextToSpeechConfig {
+	if providerType, key, ok := resolveCapabilityCredential(ctx, linkStore, providerStore, backendsettings.CapabilityAudio); ok {
+		return &sdk.TextToSpeechConfig{Provider: providerType, APIKey: key}
+	}
 	if key := strings.TrimSpace(os.Getenv("OPENAI_API_KEY")); key != "" {
 		return &sdk.TextToSpeechConfig{Provider: "openai", APIKey: key}
 	}
 	return nil
 }
 
-func defaultSpeechToTextConfig() *sdk.SpeechToTextConfig {
+func defaultSpeechToTextConfig(ctx context.Context, linkStore *db.CapabilityLinkStore, providerStore *db.ProviderSettingStore) *sdk.SpeechToTextConfig {
+	if providerType, key, ok := resolveCapabilityCredential(ctx, linkStore, providerStore, backendsettings.CapabilityAudio); ok {
+		return &sdk.SpeechToTextConfig{Provider: providerType, APIKey: key}
+	}
 	if key := strings.TrimSpace(os.Getenv("OPENAI_API_KEY")); key != "" {
 		return &sdk.SpeechToTextConfig{Provider: "openai", APIKey: key}
 	}

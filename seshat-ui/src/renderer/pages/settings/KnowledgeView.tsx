@@ -5,6 +5,7 @@ import {
 } from '@icon-park/react'
 import { api } from '@/api/client'
 import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
+import { CapabilityLinkBanner, CAPABILITY_LINK_CSS } from '@/components/settings/CapabilityLink'
 import type { Corpus, CorpusFile, IngestionJob, FileItem, EmbedderConfig, DoclingConfig } from '@/api/types'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -71,6 +72,7 @@ export function KnowledgeView() {
   return (
     <div className="sv-view">
       <style>{KNOWLEDGE_CSS}</style>
+      <style>{CAPABILITY_LINK_CSS}</style>
 
       <header className="sv-view-header">
         <div className="sv-header-info">
@@ -338,6 +340,8 @@ function EmbedderConfigCard({
             />
           </div>
         </div>
+
+        {form.provider === 'openai' && <CapabilityLinkBanner capability="embeddings" label="embeddings" />}
 
         <div className="kv-emb-row">
           <div className="kv-emb-field kv-emb-field-lg">

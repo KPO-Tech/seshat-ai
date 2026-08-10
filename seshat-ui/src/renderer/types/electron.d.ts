@@ -55,6 +55,13 @@ interface Window {
       disable: () => Promise<{ supported: boolean; running: boolean; port?: number; activeModelId: string; downloadedModelIds: string[] }>
       onProgress: (listener: (progress: { phase: 'binary' | 'model'; modelId?: string; receivedBytes: number; totalBytes: number }) => void) => () => void
     }
+    envVars?: {
+      catalog: () => Promise<Array<{ key: string; label: string; description: string; group: string; groupLabel: string; helpUrl?: string }>>
+      status: () => Promise<Record<string, boolean>>
+      set: (key: string, value: string) => Promise<void>
+      delete: (key: string) => Promise<void>
+      restartBackend: () => Promise<{ ok: boolean; error?: string }>
+    }
     browser?: {
       show: (bounds?: { x: number; y: number; width: number; height: number }) => Promise<BrowserPanelState>
       hide: () => Promise<BrowserPanelState>

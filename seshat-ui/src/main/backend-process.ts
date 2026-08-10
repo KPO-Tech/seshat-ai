@@ -3,6 +3,7 @@ import { createWriteStream } from 'fs'
 import { join } from 'path'
 import { app } from 'electron'
 import { setDynamicBackendOrigin } from './runtime'
+import { resolveEnvVarOverrides } from './env-vars-manager'
 
 const READY_LINE = /^SESHAT_BACKEND_READY port=(\d+)/
 const READY_TIMEOUT_MS = 15_000
@@ -36,7 +37,12 @@ export async function startBackendSidecar(): Promise<void> {
   const binaryPath = resolveBackendBinaryPath()
   const logPath = join(app.getPath('logs'), 'backend-sidecar.log')
   const logStream = createWriteStream(logPath, { flags: 'a' })
-  const env = { ...process.env }
+  // Credentials the user pasted into Settings > Environment (Gmail OAuth,
+  // Google Places, OpenAI/Gemini, ...) take precedence over whatever's in
+  // the real process environment, since setting one via the UI is a more
+  // deliberate choice than an ambient shell var. See env-vars-manager.ts.
+  const envVarOverrides = await resolveEnvVarOverrides()
+  const env = { ...process.env, ...envVarOverrides }
   if (!env.SESHAT_BROWSER_REMOTE_CONTROL_URL) {
     const browserControlURL = await resolveElectronBrowserControlURL()
     if (browserControlURL) {
@@ -123,14 +129,37 @@ function waitForReadyPort(child: ChildProcess, logStream: NodeJS.WritableStream)
   })
 }
 
-/** Kills the sidecar, if running. Called on app quit to avoid orphaning it. */
-export function stopBackendSidecar(): void {
-  if (!backendProcess) return
-  const child = backendProcess
-  backendProcess = null
-  child.kill('SIGTERM')
-  const forceKillTimer = setTimeout(() => {
-    if (!child.killed) child.kill('SIGKILL')
-  }, 5_000)
-  child.once('exit', () => clearTimeout(forceKillTimer))
+/**
+ * Kills the sidecar, if running, and resolves once it has actually exited
+ * (immediately if none was running). Called on app quit (fire-and-forget
+ * there - see index.ts) and awaited by restartBackendSidecar so the
+ * respawn below never races the old process's port/log-file teardown.
+ */
+export function stopBackendSidecar(): Promise<void> {
+  return new Promise((resolve) => {
+    if (!backendProcess) {
+      resolve()
+      return
+    }
+    const child = backendProcess
+    backendProcess = null
+    child.kill('SIGTERM')
+    const forceKillTimer = setTimeout(() => {
+      if (!child.killed) child.kill('SIGKILL')
+    }, 5_000)
+    child.once('exit', () => {
+      clearTimeout(forceKillTimer)
+      resolve()
+    })
+  })
+}
+
+/** Stops the current sidecar (if any) and starts a fresh one - used after
+ * the user changes a credential in Settings > Environment, since
+ * seshat-backend only reads os.Getenv at startup (see bootstrap.go's
+ * IsConfigured() checks) and has no live-reload for these. No-ops in dev
+ * mode via startBackendSidecar's own app.isPackaged guard. */
+export async function restartBackendSidecar(): Promise<void> {
+  await stopBackendSidecar()
+  await startBackendSidecar()
 }
