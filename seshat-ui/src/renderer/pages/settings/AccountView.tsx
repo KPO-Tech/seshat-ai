@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { Delete, LinkOne, Logout } from '@icon-park/react'
-import { api } from '@/api/client'
+import QRCode from 'qrcode'
+import { Caution, Close, Delete, LinkOne, LoadingOne, Logout, Mail, Message, Plus } from '@icon-park/react'
+import { api, ApiError } from '@/api/client'
 import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
 import { useAuthStore } from '@/stores/auth'
+import { consumeWhatsAppPairStream, type ChannelAccount } from '../inbox'
 
 export function AccountView() {
   const { logout, user } = useAuthStore()
@@ -149,6 +151,121 @@ export function AccountView() {
 
 export function ConnectionsView() {
   const navigate = useNavigate()
+  const [accounts, setAccounts] = useState<ChannelAccount[]>([])
+  const [accountsLoading, setAccountsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [gmailConnecting, setGmailConnecting] = useState(false)
+  const [whatsappPairing, setWhatsappPairing] = useState<{ qr: string | null; error: string | null } | null>(null)
+  const [disconnectingId, setDisconnectingId] = useState<string | null>(null)
+
+  const pairAbortRef = useRef<AbortController | null>(null)
+  const gmailPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const gmailAccounts = accounts.filter((a) => a.channel === 'gmail')
+  const whatsappAccounts = accounts.filter((a) => a.channel === 'whatsapp')
+
+  const loadAccounts = useCallback(async () => {
+    setAccountsLoading(true)
+    try {
+      const res = await api.get<{ accounts: ChannelAccount[] }>('/inbox/accounts')
+      setAccounts(res.accounts ?? [])
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Unable to load connected accounts.')
+    } finally {
+      setAccountsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadAccounts()
+    return () => {
+      if (gmailPollRef.current) clearInterval(gmailPollRef.current)
+      pairAbortRef.current?.abort()
+    }
+  }, [loadAccounts])
+
+  async function handleConnectGmail() {
+    setGmailConnecting(true)
+    setError(null)
+    try {
+      const started = await api.post<{ authorization_url: string }>('/inbox/accounts/gmail/oauth/start')
+      if (window.nexus?.openExternal) {
+        await window.nexus.openExternal(started.authorization_url)
+      } else {
+        window.open(started.authorization_url, '_blank', 'noopener,noreferrer')
+      }
+      const knownIds = new Set(accounts.map((a) => a.id))
+      let attempts = 0
+      if (gmailPollRef.current) clearInterval(gmailPollRef.current)
+      gmailPollRef.current = setInterval(async () => {
+        attempts++
+        try {
+          const res = await api.get<{ accounts: ChannelAccount[] }>('/inbox/accounts')
+          setAccounts(res.accounts ?? [])
+          const connected = (res.accounts ?? []).some((a) => !knownIds.has(a.id) && a.channel === 'gmail')
+          if (connected) {
+            if (gmailPollRef.current) clearInterval(gmailPollRef.current)
+            gmailPollRef.current = null
+            setGmailConnecting(false)
+            return
+          }
+        } catch {
+          // Keep polling until the attempt budget expires.
+        }
+        if (attempts >= 30 && gmailPollRef.current) {
+          clearInterval(gmailPollRef.current)
+          gmailPollRef.current = null
+          setGmailConnecting(false)
+        }
+      }, 2000)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Unable to start Gmail connection.')
+      setGmailConnecting(false)
+    }
+  }
+
+  function handleConnectWhatsApp() {
+    setWhatsappPairing({ qr: null, error: null })
+    setError(null)
+    const controller = new AbortController()
+    pairAbortRef.current = controller
+
+    const onQR = async (code: string) => {
+      try {
+        const dataUrl = await QRCode.toDataURL(code, { margin: 1, width: 260 })
+        setWhatsappPairing({ qr: dataUrl, error: null })
+      } catch {
+        // The next QR rotation will retry.
+      }
+    }
+    const onDone = async () => {
+      setWhatsappPairing(null)
+      await loadAccounts()
+    }
+    const onError = (message: string) => {
+      setWhatsappPairing({ qr: null, error: message })
+    }
+
+    void consumeWhatsAppPairStream(controller.signal, onQR, onDone, onError)
+  }
+
+  function cancelWhatsAppPairing() {
+    pairAbortRef.current?.abort()
+    setWhatsappPairing(null)
+  }
+
+  async function handleDisconnect(accountId: string) {
+    setDisconnectingId(accountId)
+    setError(null)
+    try {
+      await api.delete(`/inbox/accounts/${accountId}`)
+      await loadAccounts()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Unable to disconnect.')
+    } finally {
+      setDisconnectingId(null)
+    }
+  }
 
   return (
     <div className="sv-view">
@@ -156,11 +273,76 @@ export function ConnectionsView() {
       <header className="sv-view-header">
         <div className="sv-header-info">
           <h1>Connections</h1>
-          <p>Linked accounts and identity integrations.</p>
+          <p>Linked accounts your agents can act on.</p>
         </div>
       </header>
 
+      {error && <div className="acct-inline-error" style={{ marginBottom: 16 }}>{error}</div>}
+
       <div className="sv-card" style={{ marginBottom: 24 }}>
+        <div className="sv-card-head">
+          <div className="sv-card-brand">
+            <div className="sv-brand-icon"><Mail size={15} /></div>
+            <div>
+              <div className="sv-brand-name">Gmail</div>
+              <div className="sv-brand-sub">Connect one or more accounts so agents can read and reply to email</div>
+            </div>
+          </div>
+        </div>
+        <div className="sv-card-body acct-stack">
+          {accountsLoading && gmailAccounts.length === 0 ? (
+            <div className="acct-note">Loading...</div>
+          ) : gmailAccounts.length === 0 ? (
+            <div className="acct-note">No Gmail account connected yet.</div>
+          ) : (
+            gmailAccounts.map((account) => (
+              <AccountRow
+                key={account.id}
+                account={account}
+                onDisconnect={() => void handleDisconnect(account.id)}
+                disconnecting={disconnectingId === account.id}
+              />
+            ))
+          )}
+          <button className="acct-primary-btn" onClick={() => void handleConnectGmail()} disabled={gmailConnecting}>
+            {gmailConnecting ? <LoadingOne size={12} className="spin" /> : <Plus size={12} />}
+            {gmailConnecting ? 'Waiting for Google sign-in...' : 'Connect a Gmail account'}
+          </button>
+        </div>
+      </div>
+
+      <div className="sv-card" style={{ marginBottom: 24 }}>
+        <div className="sv-card-head">
+          <div className="sv-card-brand">
+            <div className="sv-brand-icon"><Message size={15} /></div>
+            <div>
+              <div className="sv-brand-name">WhatsApp</div>
+              <div className="sv-brand-sub">Pair a device so agents can read and send WhatsApp messages</div>
+            </div>
+          </div>
+        </div>
+        <div className="sv-card-body acct-stack">
+          {accountsLoading && whatsappAccounts.length === 0 ? (
+            <div className="acct-note">Loading...</div>
+          ) : whatsappAccounts.length === 0 ? (
+            <div className="acct-note">No WhatsApp account connected yet.</div>
+          ) : (
+            whatsappAccounts.map((account) => (
+              <AccountRow
+                key={account.id}
+                account={account}
+                onDisconnect={() => void handleDisconnect(account.id)}
+                disconnecting={disconnectingId === account.id}
+              />
+            ))
+          )}
+          <button className="acct-primary-btn" onClick={handleConnectWhatsApp}>
+            <Plus size={12} /> Connect WhatsApp
+          </button>
+        </div>
+      </div>
+
+      <div className="sv-card">
         <div className="sv-card-head">
           <div className="sv-card-brand">
             <div className="sv-brand-icon"><LinkOne size={15} /></div>
@@ -180,22 +362,53 @@ export function ConnectionsView() {
         </div>
       </div>
 
-      <div className="sv-card">
-        <div className="sv-card-head">
-          <div className="sv-card-brand">
-            <div className="sv-brand-icon"><LinkOne size={15} /></div>
-            <div>
-              <div className="sv-brand-name">Coming next</div>
-              <div className="sv-brand-sub">GitHub, Google, Slack, and other user-linked accounts can be added here later</div>
+      {whatsappPairing && (
+        <div className="modal-backdrop" onClick={cancelWhatsAppPairing}>
+          <div className="modal-shell acct-pair-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Connect WhatsApp</h2>
+              <button className="modal-close-btn" onClick={cancelWhatsAppPairing}><WindowCloseIcon size={15} /></button>
+            </div>
+            <div className="modal-content acct-pair-content">
+              <p>Scan this QR code from WhatsApp, Settings, Linked Devices, Link a Device.</p>
+              {whatsappPairing.qr ? (
+                <img src={whatsappPairing.qr} alt="WhatsApp pairing QR code" width={220} height={220} />
+              ) : whatsappPairing.error ? (
+                <div className="acct-inline-error"><Caution size={13} /> {whatsappPairing.error}</div>
+              ) : (
+                <LoadingOne size={22} className="spin" />
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="modal-btn-cancel" onClick={cancelWhatsAppPairing}>Cancel</button>
             </div>
           </div>
         </div>
-        <div className="sv-card-body">
-          <div className="acct-note">
-            This section is reserved for identity/account-linking flows, not runtime model providers.
-          </div>
+      )}
+    </div>
+  )
+}
+
+function AccountRow({
+  account,
+  onDisconnect,
+  disconnecting,
+}: {
+  account: ChannelAccount
+  onDisconnect: () => void
+  disconnecting: boolean
+}) {
+  return (
+    <div className="sv-toggle-row">
+      <div className="acct-row-info">
+        <div className="sv-setting-label">{account.display_name || account.external_account_id}</div>
+        <div className="sv-setting-desc">
+          {account.status === 'error' && account.last_error ? account.last_error : account.status}
         </div>
       </div>
+      <button className="acct-ghost-btn" onClick={onDisconnect} disabled={disconnecting}>
+        <Close size={12} /> {disconnecting ? 'Disconnecting...' : 'Disconnect'}
+      </button>
     </div>
   )
 }
@@ -297,5 +510,47 @@ const ACCOUNT_CSS = `
   color: var(--color-text-secondary);
   font-size: 12px;
   line-height: 1.6;
+}
+
+.acct-row-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.acct-pair-modal {
+  max-width: 400px;
+}
+
+.acct-pair-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+  padding-top: 4px;
+}
+
+.acct-pair-content p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.acct-pair-content img {
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 `

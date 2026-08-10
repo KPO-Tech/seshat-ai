@@ -1,8 +1,9 @@
 import { spawn, type ChildProcess } from 'child_process'
 import { createWriteStream, existsSync } from 'fs'
-import { mkdir, chmod, readdir, stat, readFile, writeFile, unlink } from 'fs/promises'
-import { join } from 'path'
+import { mkdir, chmod, readdir, stat, readFile, writeFile, unlink, rm, rename } from 'fs/promises'
+import { join, relative, resolve as resolvePath } from 'path'
 import { createServer } from 'net'
+import JSZip from 'jszip'
 import { resolveRuntimeRoot } from './runtime'
 import { callBackendAsCurrentUser } from './ipc/backend'
 
@@ -163,7 +164,36 @@ async function downloadToFile(url: string, destPath: string, onProgress?: (recei
   }
 }
 
-function extractArchive(archivePath: string, destDir: string): Promise<void> {
+// Windows .zip assets are extracted with the bundled jszip (pure JS, already
+// a project dependency) instead of shelling out to whatever `tar` resolves
+// to on PATH - on Windows that's fragile in practice: pre-1803 builds ship
+// no tar.exe at all, Git/MSYS/Cygwin can shadow it with a GNU tar that can't
+// read zip, and antivirus quarantining a freshly-written unsigned .exe/.dll
+// mid-extraction kills the child process with a bare, undiagnosable exit
+// code. Linux's .tar.gz asset still goes through system tar, which is
+// universal and reliable there.
+async function extractZipArchive(archivePath: string, destDir: string): Promise<void> {
+  const buffer = await readFile(archivePath)
+  const zip = await JSZip.loadAsync(buffer)
+  const destRoot = resolvePath(destDir)
+  for (const entry of Object.values(zip.files)) {
+    const outPath = resolvePath(destDir, entry.name)
+    // Zip-slip guard: refuse any entry whose resolved path escapes destDir.
+    const rel = relative(destRoot, outPath)
+    if (rel.startsWith('..')) {
+      throw new Error(`refusing to extract entry outside destination: ${entry.name}`)
+    }
+    if (entry.dir) {
+      await mkdir(outPath, { recursive: true })
+      continue
+    }
+    await mkdir(join(outPath, '..'), { recursive: true })
+    const content = await entry.async('nodebuffer')
+    await writeFile(outPath, content)
+  }
+}
+
+function extractTarArchive(archivePath: string, destDir: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = spawn('tar', ['-xf', archivePath, '-C', destDir])
     let stderr = ''
@@ -176,6 +206,13 @@ function extractArchive(archivePath: string, destDir: string): Promise<void> {
   })
 }
 
+function extractArchive(archivePath: string, destDir: string): Promise<void> {
+  if (archivePath.toLowerCase().endsWith('.zip')) {
+    return extractZipArchive(archivePath, destDir)
+  }
+  return extractTarArchive(archivePath, destDir)
+}
+
 async function ensureBinaryDownloaded(onProgress?: (p: WhisperProgress) => void): Promise<void> {
   const asset = platformAsset()
   if (!asset) {
@@ -185,14 +222,25 @@ async function ensureBinaryDownloaded(onProgress?: (p: WhisperProgress) => void)
   if (binaryPath && existsSync(binaryPath)) return
 
   const dir = whisperDir()
-  const binDir = join(dir, 'bin')
-  await mkdir(binDir, { recursive: true })
+  await mkdir(dir, { recursive: true })
 
   const archivePath = join(dir, asset.archiveName)
   await downloadToFile(`${WHISPER_RELEASE_BASE}/${asset.archiveName}`, archivePath, (receivedBytes, totalBytes) =>
     onProgress?.({ phase: 'binary', receivedBytes, totalBytes }))
-  await extractArchive(archivePath, binDir)
+
+  // Extract into a scratch dir and rename into place only once extraction
+  // fully succeeds - if it's killed partway (e.g. antivirus quarantining a
+  // freshly-written .exe/.dll on Windows), a half-populated bin/ must not
+  // sit there looking "downloaded" to the existsSync() check above.
+  const binDir = join(dir, 'bin')
+  const stagingDir = join(dir, `bin.staging-${process.pid}`)
+  await rm(stagingDir, { recursive: true, force: true }).catch(() => {})
+  await mkdir(stagingDir, { recursive: true })
+  await extractArchive(archivePath, stagingDir)
   await unlink(archivePath).catch(() => {})
+
+  await rm(binDir, { recursive: true, force: true }).catch(() => {})
+  await rename(stagingDir, binDir)
 
   const resolvedBinaryPath = join(binDir, asset.binaryRelPath)
   if (!existsSync(resolvedBinaryPath)) {

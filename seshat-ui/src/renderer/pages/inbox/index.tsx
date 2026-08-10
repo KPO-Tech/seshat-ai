@@ -27,7 +27,7 @@ import { ChatInput, CHAT_INPUT_CSS } from '@/components/chat/ChatInput'
 import { MessageItem, MESSAGE_ITEM_CSS, isRenderableMessage } from '@/components/chat/MessageItem'
 import { useChat } from '@/hooks/useChat'
 
-type ChannelAccount = {
+export type ChannelAccount = {
   id: string
   channel: 'gmail' | 'whatsapp' | string
   display_name: string
@@ -1141,7 +1141,7 @@ function buildInboxAgentPrompt(thread: Thread | null, messages: ThreadMessage[])
   ].join('\n')
 }
 
-async function consumeWhatsAppPairStream(
+export async function consumeWhatsAppPairStream(
   signal: AbortSignal,
   onQR: (code: string) => void,
   onDone: () => void,
