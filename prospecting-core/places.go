@@ -1,4 +1,4 @@
-package prospecting
+package prospectingcore
 
 import (
 	"bytes"
@@ -10,8 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 )
 
 const (
@@ -36,9 +34,9 @@ const (
 	detailsFieldMask = "id,nationalPhoneNumber,internationalPhoneNumber,websiteUri,rating,userRatingCount,regularOpeningHours,businessStatus"
 )
 
-// IsConfigured reports whether GOOGLE_PLACES_API_KEY is set - bootstrap.go
-// uses this to decide whether to register the prospecting tools at all,
-// same convention as inboxgmail.IsConfigured().
+// IsConfigured reports whether GOOGLE_PLACES_API_KEY is set - callers use
+// this to decide whether to register prospecting tools/routes at all, same
+// convention as inboxgmail.IsConfigured().
 func IsConfigured() bool {
 	return strings.TrimSpace(os.Getenv("GOOGLE_PLACES_API_KEY")) != ""
 }
@@ -71,12 +69,12 @@ var ErrDailyCapReached = fmt.Errorf("prospecting: daily Places call cap reached"
 type Client struct {
 	apiKey   string
 	http     *http.Client
-	cache    *db.ProspectingCacheStore
-	usage    *db.ProspectingUsageStore
+	cache    Cache
+	usage    UsageTracker
 	dailyCap int
 }
 
-func NewClient(apiKey string, cache *db.ProspectingCacheStore, usage *db.ProspectingUsageStore, dailyCap int) *Client {
+func NewClient(apiKey string, cache Cache, usage UsageTracker, dailyCap int) *Client {
 	return &Client{
 		apiKey:   apiKey,
 		http:     &http.Client{Timeout: 15 * time.Second},
@@ -86,6 +84,19 @@ func NewClient(apiKey string, cache *db.ProspectingCacheStore, usage *db.Prospec
 	}
 }
 
+// HTTPClient returns the client's underlying *http.Client, for callers that
+// need to make other cached calls (Geocode, EnrichCompany) sharing the same
+// timeout/transport instead of constructing their own.
+func (c *Client) HTTPClient() *http.Client { return c.http }
+
+// SetHTTPClient overrides the client's underlying *http.Client - mainly for
+// tests that need to intercept requests via a custom http.RoundTripper
+// instead of touching the real network (Client's fields are unexported, so
+// a white-box test in another package can no longer set them via a struct
+// literal the way seshat-backend's tests did before this package moved out
+// of seshat-backend).
+func (c *Client) SetHTTPClient(hc *http.Client) { c.http = hc }
+
 // checkDailyCap returns ErrDailyCapReached if combined search+details real
 // calls today already meet or exceed the cap - checked before every real
 // (non-cache-hit) network call, never against cache hits.
@@ -93,7 +104,7 @@ func (c *Client) checkDailyCap(ctx context.Context) error {
 	if c.usage == nil || c.dailyCap <= 0 {
 		return nil
 	}
-	search, details, err := c.usage.GetTotals(ctx, db.DayPeriodKey(time.Now()))
+	search, details, err := c.usage.GetTotals(ctx, dayPeriodKey(time.Now()))
 	if err != nil {
 		return fmt.Errorf("check daily cap: %w", err)
 	}
@@ -101,6 +112,13 @@ func (c *Client) checkDailyCap(ctx context.Context) error {
 		return ErrDailyCapReached
 	}
 	return nil
+}
+
+// dayPeriodKey mirrors seshat-backend's db.DayPeriodKey (a UTC "2006-01-02"
+// day bucket) - duplicated rather than imported since it's one line and
+// this package must not depend on internal/db.
+func dayPeriodKey(t time.Time) string {
+	return t.UTC().Format("2006-01-02")
 }
 
 type placesSearchRequestBody struct {
@@ -151,8 +169,8 @@ func (c *Client) TextSearch(ctx context.Context, textQuery string, bias GeoPoint
 		var body []byte
 		var err error
 		if page == 0 {
-			key := cacheKey(db.ProspectingCacheSourcePlacesSearch, textQuery, formatFloat(bias.Lat), formatFloat(bias.Lng), formatFloat(radiusM))
-			body, err = doCached(ctx, c.http, c.cache, db.ProspectingCacheSourcePlacesSearch, key, func() (*http.Request, error) {
+			key := cacheKey(CacheSourcePlacesSearch, textQuery, formatFloat(bias.Lat), formatFloat(bias.Lng), formatFloat(radiusM))
+			body, err = doCached(ctx, c.http, c.cache, CacheSourcePlacesSearch, key, func() (*http.Request, error) {
 				if err := c.checkDailyCap(ctx); err != nil {
 					return nil, err
 				}
@@ -235,7 +253,7 @@ func (c *Client) buildSearchRequest(textQuery string, bias GeoPoint, radiusM flo
 
 func (c *Client) recordSearchCall(ctx context.Context) {
 	if c.usage != nil {
-		_, _ = c.usage.IncrementSearchCalls(ctx, db.DayPeriodKey(time.Now()), 1)
+		_, _ = c.usage.IncrementSearchCalls(ctx, dayPeriodKey(time.Now()), 1)
 	}
 }
 
@@ -255,8 +273,8 @@ func (c *Client) PlaceDetails(ctx context.Context, placeID string) (*PlaceDetail
 	if placeID == "" {
 		return nil, fmt.Errorf("place details: place_id is required")
 	}
-	key := cacheKey(db.ProspectingCacheSourcePlacesDetails, placeID)
-	body, err := doCached(ctx, c.http, c.cache, db.ProspectingCacheSourcePlacesDetails, key, func() (*http.Request, error) {
+	key := cacheKey(CacheSourcePlacesDetails, placeID)
+	body, err := doCached(ctx, c.http, c.cache, CacheSourcePlacesDetails, key, func() (*http.Request, error) {
 		if err := c.checkDailyCap(ctx); err != nil {
 			return nil, err
 		}
@@ -267,7 +285,7 @@ func (c *Client) PlaceDetails(ctx context.Context, placeID string) (*PlaceDetail
 		req.Header.Set("X-Goog-Api-Key", c.apiKey)
 		req.Header.Set("X-Goog-FieldMask", detailsFieldMask)
 		if c.usage != nil {
-			_, _ = c.usage.IncrementDetailsCalls(ctx, db.DayPeriodKey(time.Now()), 1)
+			_, _ = c.usage.IncrementDetailsCalls(ctx, dayPeriodKey(time.Now()), 1)
 		}
 		return req, nil
 	}, placesDetailsSuccessTTL)

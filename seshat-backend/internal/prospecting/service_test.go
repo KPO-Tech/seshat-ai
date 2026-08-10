@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	prospectingcore "github.com/EngineerProjects/seshat-ai/prospecting-core"
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 )
@@ -84,18 +85,16 @@ func newTestService(t *testing.T, database *db.DB, rt *stubRoundTripper, dailyCa
 	if err != nil {
 		t.Fatalf("NewProspectingUsageStore: %v", err)
 	}
+	adapter := cacheStoreAdapter{store: cache}
+	places := prospectingcore.NewClient("test-key", adapter, usage, dailyCap)
+	places.SetHTTPClient(&http.Client{Transport: rt})
 	return &Service{
-		sweeps:     sweeps,
-		businesses: businesses,
-		cache:      cache,
-		usage:      usage,
-		places: &Client{
-			apiKey:   "test-key",
-			http:     &http.Client{Transport: rt},
-			cache:    cache,
-			usage:    usage,
-			dailyCap: dailyCap,
-		},
+		sweeps:       sweeps,
+		businesses:   businesses,
+		cache:        cache,
+		cacheAdapter: adapter,
+		usage:        usage,
+		places:       places,
 	}
 }
 
@@ -329,9 +328,12 @@ func TestService_SweepArea_ReusesBusinessAcrossSeparateSweeps(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewProspectingUsageStore: %v", err)
 	}
+	adapter := cacheStoreAdapter{store: cache}
+	places := prospectingcore.NewClient("test-key", adapter, usage, 100)
+	places.SetHTTPClient(&http.Client{Transport: rt})
 	svc := &Service{
-		sweeps: sweeps, businesses: businesses, cache: cache, usage: usage,
-		places: &Client{apiKey: "test-key", http: &http.Client{Transport: rt}, cache: cache, usage: usage, dailyCap: 100},
+		sweeps: sweeps, businesses: businesses, cache: cache, cacheAdapter: adapter, usage: usage,
+		places: places,
 	}
 	ctx := context.Background()
 	principal := testPrincipal("user-1")

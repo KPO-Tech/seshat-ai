@@ -1,4 +1,4 @@
-package prospecting
+package prospectingcore
 
 import (
 	"context"
@@ -8,8 +8,6 @@ import (
 	"net/url"
 	"strings"
 	"time"
-
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 )
 
 const geocodeSuccessTTL = 365 * 24 * time.Hour
@@ -39,13 +37,13 @@ type baseAddressFeatureCollection struct {
 // Nationale, Tours") to coordinates via France's public, free, keyless
 // address API (api-adresse.data.gouv.fr) - it is used as the sweep's
 // center point and its label feeds the sweep's stored AreaLabel.
-func Geocode(ctx context.Context, httpClient *http.Client, cache *db.ProspectingCacheStore, query string) (*GeocodeResult, error) {
+func Geocode(ctx context.Context, httpClient *http.Client, cache Cache, query string) (*GeocodeResult, error) {
 	query = strings.TrimSpace(query)
 	if query == "" {
 		return nil, fmt.Errorf("geocode: query is required")
 	}
-	key := cacheKey(db.ProspectingCacheSourceGeocode, query)
-	body, err := doCached(ctx, httpClient, cache, db.ProspectingCacheSourceGeocode, key, func() (*http.Request, error) {
+	key := cacheKey(CacheSourceGeocode, query)
+	body, err := doCached(ctx, httpClient, cache, CacheSourceGeocode, key, func() (*http.Request, error) {
 		u := "https://api-adresse.data.gouv.fr/search/?q=" + url.QueryEscape(query) + "&limit=1"
 		return http.NewRequest(http.MethodGet, u, nil)
 	}, geocodeSuccessTTL)

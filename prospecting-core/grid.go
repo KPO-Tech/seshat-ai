@@ -1,4 +1,4 @@
-package prospecting
+package prospectingcore
 
 import (
 	"math"

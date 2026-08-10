@@ -1,4 +1,4 @@
-package prospecting
+package prospectingcore
 
 import (
 	"context"
@@ -8,8 +8,6 @@ import (
 	"net/url"
 	"strings"
 	"time"
-
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 )
 
 const gouvEnrichSuccessTTL = 90 * 24 * time.Hour
@@ -49,14 +47,14 @@ type gouvSearchResponse struct {
 // search, returning the best name-similarity match above
 // nameSimilarityThreshold. found=false (not an error) means no confident
 // match - a normal outcome, not a failure.
-func EnrichCompany(ctx context.Context, httpClient *http.Client, cache *db.ProspectingCacheStore, name, postcode string) (*CompanyMatch, bool, error) {
+func EnrichCompany(ctx context.Context, httpClient *http.Client, cache Cache, name, postcode string) (*CompanyMatch, bool, error) {
 	name = strings.TrimSpace(name)
 	postcode = strings.TrimSpace(postcode)
 	if name == "" {
 		return nil, false, fmt.Errorf("gouv enrich: name is required")
 	}
-	key := cacheKey(db.ProspectingCacheSourceGouvEnrich, name, postcode)
-	body, err := doCached(ctx, httpClient, cache, db.ProspectingCacheSourceGouvEnrich, key, func() (*http.Request, error) {
+	key := cacheKey(CacheSourceGouvEnrich, name, postcode)
+	body, err := doCached(ctx, httpClient, cache, CacheSourceGouvEnrich, key, func() (*http.Request, error) {
 		q := url.Values{}
 		q.Set("q", name)
 		if postcode != "" {

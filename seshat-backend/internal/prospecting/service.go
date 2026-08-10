@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	prospectingcore "github.com/EngineerProjects/seshat-ai/prospecting-core"
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
@@ -36,11 +37,12 @@ const (
 // are called as plain package functions (stateless besides the shared
 // cache), only the Places client is stateful enough to warrant a field.
 type Service struct {
-	sweeps     *db.ProspectingSweepStore
-	businesses *db.ProspectingBusinessStore
-	cache      *db.ProspectingCacheStore
-	usage      *db.ProspectingUsageStore
-	places     *Client
+	sweeps       *db.ProspectingSweepStore
+	businesses   *db.ProspectingBusinessStore
+	cache        *db.ProspectingCacheStore
+	cacheAdapter prospectingcore.Cache // wraps cache, see adapters.go
+	usage        *db.ProspectingUsageStore
+	places       *prospectingcore.Client
 }
 
 func NewService(
@@ -51,12 +53,14 @@ func NewService(
 	placesAPIKey string,
 	dailyCap int,
 ) *Service {
+	adapter := cacheStoreAdapter{store: cache}
 	return &Service{
-		sweeps:     sweeps,
-		businesses: businesses,
-		cache:      cache,
-		usage:      usage,
-		places:     NewClient(placesAPIKey, cache, usage, dailyCap),
+		sweeps:       sweeps,
+		businesses:   businesses,
+		cache:        cache,
+		cacheAdapter: adapter,
+		usage:        usage,
+		places:       prospectingcore.NewClient(placesAPIKey, adapter, usage, dailyCap),
 	}
 }
 
@@ -97,12 +101,12 @@ func (s *Service) SweepArea(ctx context.Context, principal *backendauth.Principa
 			radiusKM = 5
 		}
 
-		geo, err := Geocode(ctx, s.places.http, s.cache, areaQuery)
+		geo, err := prospectingcore.Geocode(ctx, s.places.HTTPClient(), s.cacheAdapter, areaQuery)
 		if err != nil {
 			return nil, bkerr.BadGateway("geocode area", err)
 		}
 		sectors = params.Sectors
-		grid = BuildGrid(geo.Point, radiusKM)
+		grid = prospectingcore.BuildGrid(geo.Point, radiusKM)
 		sectorsJSON, err := json.Marshal(sectors)
 		if err != nil {
 			return nil, bkerr.Internal("marshal sectors", err)
@@ -179,9 +183,9 @@ func (s *Service) SweepArea(ctx context.Context, principal *backendauth.Principa
 		unit := workUnitAt(sectors, grid, nextUnit)
 		summaries, err := s.places.TextSearch(ctx, unit.Sector+" "+record.AreaLabel, unit.Cell, perTileSearchRadiusM)
 		if err != nil {
-			if errors.Is(err, ErrDailyCapReached) {
+			if errors.Is(err, prospectingcore.ErrDailyCapReached) {
 				capHit = true
-				lastError = ErrDailyCapReached.Error()
+				lastError = prospectingcore.ErrDailyCapReached.Error()
 				break
 			}
 			// A single failed tile shouldn't abort the whole sweep - record
@@ -198,7 +202,7 @@ func (s *Service) SweepArea(ctx context.Context, principal *backendauth.Principa
 				continue
 			}
 
-			var business Business
+			var business prospectingcore.Business
 			if prior, found, err := s.businesses.FindLatestByUserAndPlaceID(ctx, principal.User.ID, ps.PlaceID); err == nil && found && time.Since(prior.UpdatedAt) < crossSweepReuseWindow {
 				// Already known from an earlier sweep of this user's (any
 				// area, not just this one) within the reuse window - reuse
@@ -208,7 +212,7 @@ func (s *Service) SweepArea(ctx context.Context, principal *backendauth.Principa
 				// db.ProspectingBusinessStore's own doc comment).
 				var executives []Executive
 				_ = json.Unmarshal([]byte(prior.ExecutivesJSON), &executives)
-				business = Business{
+				business = prospectingcore.Business{
 					PlaceID: ps.PlaceID, Sector: unit.Sector, Name: ps.Name,
 					FormattedAddress: ps.FormattedAddress, PostalCode: ps.PostalCode, City: ps.City, Location: ps.Location,
 					Phone: prior.Phone, Website: prior.Website, Rating: prior.Rating, UserRatingCount: prior.UserRatingCount,
@@ -221,16 +225,16 @@ func (s *Service) SweepArea(ctx context.Context, principal *backendauth.Principa
 				}
 				details, err := s.places.PlaceDetails(ctx, ps.PlaceID)
 				if err != nil {
-					if errors.Is(err, ErrDailyCapReached) {
+					if errors.Is(err, prospectingcore.ErrDailyCapReached) {
 						capHit = true
-						lastError = ErrDailyCapReached.Error()
+						lastError = prospectingcore.ErrDailyCapReached.Error()
 						break
 					}
 					continue
 				}
 				newDetailsThisCall++
 
-				business = Business{
+				business = prospectingcore.Business{
 					PlaceID:          ps.PlaceID,
 					Sector:           unit.Sector,
 					Name:             ps.Name,
@@ -247,7 +251,7 @@ func (s *Service) SweepArea(ctx context.Context, principal *backendauth.Principa
 				}
 
 				if record.Country == "fr" {
-					if match, found, err := EnrichCompany(ctx, s.places.http, s.cache, ps.Name, ps.PostalCode); err == nil && found {
+					if match, found, err := prospectingcore.EnrichCompany(ctx, s.places.HTTPClient(), s.cacheAdapter, ps.Name, ps.PostalCode); err == nil && found {
 						business.SIREN = match.SIREN
 						business.CompanyName = match.CompanyName
 						business.Executives = match.Executives
@@ -255,7 +259,7 @@ func (s *Service) SweepArea(ctx context.Context, principal *backendauth.Principa
 					}
 				}
 			}
-			business.ReachabilityScore = ReachabilityScore(business)
+			business.ReachabilityScore = prospectingcore.ReachabilityScore(business)
 
 			executivesJSON, _ := json.Marshal(business.Executives)
 			if _, err := s.businesses.Upsert(ctx, db.UpsertProspectingBusinessParams{

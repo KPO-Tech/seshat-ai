@@ -1,4 +1,4 @@
-package prospecting
+package prospectingcore
 
 import (
 	"context"
@@ -8,9 +8,47 @@ import (
 	"io"
 	"net/http"
 	"time"
-
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 )
+
+// Cache source tags — stable strings used as part of the cache key, kept
+// here (rather than only inside internal/db) since building the key is now
+// this package's own concern, not the caller's.
+const (
+	CacheSourceGeocode       = "geocode"
+	CacheSourcePlacesSearch  = "places_search"
+	CacheSourcePlacesDetails = "places_details"
+	CacheSourceGouvEnrich    = "gouv_enrich"
+)
+
+// CacheEntry is one cached external-API response.
+type CacheEntry struct {
+	Key        string
+	Source     string
+	ValueJSON  string
+	StatusCode int
+	ExpiresAt  time.Time
+}
+
+// Cache is the persistence boundary this package needs — implemented by
+// seshat-backend's *db.ProspectingCacheStore locally (via a small adapter,
+// see internal/prospecting/adapters.go) and, later, by an org-scoped
+// equivalent in seshat-server. Deliberately minimal: this package never
+// needs to list, delete, or otherwise manage cache entries, only get/set by
+// key.
+type Cache interface {
+	Get(ctx context.Context, key string) (*CacheEntry, bool, error)
+	Set(ctx context.Context, key, source, valueJSON string, statusCode int, ttl time.Duration) error
+}
+
+// UsageTracker is the daily real-call budget boundary this package needs —
+// implemented by seshat-backend's *db.ProspectingUsageStore directly today
+// (its method set already matches this interface, no adapter needed) and,
+// later, by an org-scoped equivalent in seshat-server.
+type UsageTracker interface {
+	GetTotals(ctx context.Context, periodKey string) (searchCalls, detailsCalls int64, err error)
+	IncrementSearchCalls(ctx context.Context, periodKey string, delta int64) (int64, error)
+	IncrementDetailsCalls(ctx context.Context, periodKey string, delta int64) (int64, error)
+}
 
 // failureTTL is deliberately short and source-independent - mirroring a
 // success TTL for a failed call (as a naive reading of "cache failures too"
@@ -39,7 +77,7 @@ func cacheKey(source string, parts ...string) string {
 // cached under successTTL and failure (non-2xx or a network error) under
 // the short failureTTL. cache may be nil (falls through to a real call
 // every time), which keeps this usable in tests without a database.
-func doCached(ctx context.Context, httpClient *http.Client, cache *db.ProspectingCacheStore, source, key string, buildReq func() (*http.Request, error), successTTL time.Duration) ([]byte, error) {
+func doCached(ctx context.Context, httpClient *http.Client, cache Cache, source, key string, buildReq func() (*http.Request, error), successTTL time.Duration) ([]byte, error) {
 	if cache != nil {
 		if entry, found, err := cache.Get(ctx, key); err == nil && found {
 			if entry.StatusCode == 0 {
