@@ -63,6 +63,11 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	apiV1 := http.NewServeMux()
 
 	apiV1.HandleFunc("/skills", app.handleSkillsRoot)
+	// requireRole("admin"), not requireScopedPermission: installing a skill
+	// repo pulls arbitrary git content the agent will subsequently follow,
+	// so this is deliberately gated by hard role in every mode, including
+	// standalone — see TestSkillReposRequireAdmin, which pins a non-admin
+	// local user getting 403 here as a requirement, not an oversight.
 	apiV1.Handle("/skills/repos", app.requireRole("admin", http.HandlerFunc(app.handleSkillRepos)))
 	apiV1.Handle("/skills/repos/", app.requireRole("admin", http.HandlerFunc(app.handleSkillRepoByNameDispatch)))
 	apiV1.Handle("/skills/", app.authMiddleware(http.HandlerFunc(app.handleSkillsDispatch)))
@@ -177,6 +182,10 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	apiV1.Handle("/users/me/preferences", app.authMiddleware(http.HandlerFunc(app.handleUserPreferences)))
 	apiV1.Handle("/users/", app.authMiddleware(http.HandlerFunc(app.handleUserByID)))
 
+	// Fully reachable in standalone/local mode too, on a single-user install's
+	// own "Default Organization"/"Main Workspace" — see the doc comment above
+	// Organization/Workspace/WorkspaceMembership in internal/db/tenancy.go for
+	// why that schema exists locally at all.
 	apiV1.Handle("/groups", app.authMiddleware(http.HandlerFunc(app.handleGroups)))
 	apiV1.Handle("/groups/", app.authMiddleware(http.HandlerFunc(app.handleGroupByID)))
 	apiV1.Handle("/organizations", app.authMiddleware(http.HandlerFunc(app.handleOrganizations)))

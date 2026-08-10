@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/KPO-Tech/seshat/pkg/sdk"
 )
@@ -13,15 +14,42 @@ type systemStatusResponse struct {
 	// OS-level sandbox (currently: Landlock, Linux-only) on this host. False
 	// on every non-Linux desktop install today.
 	SandboxConfined bool `json:"sandbox_confined"`
+	// DoclingConfigured/LocalSTTConfigured report whether the optional
+	// binary-document-conversion and local-speech-to-text backends are set
+	// up on this install — both degrade gracefully when unset (plain-text
+	// fallback for docling, no voice input for local STT), but the app
+	// should say so explicitly rather than silently drop the capability.
+	// See helps/audit-2026-08-10.md §Phase 2 for why this was added.
+	DoclingConfigured  bool `json:"docling_configured"`
+	LocalSTTConfigured bool `json:"local_stt_configured"`
 }
 
 // handleSystemStatus reports whether identity runs standalone or connected to
 // a seshat-server, plus host capabilities the UI should make visible.
 func (a *App) handleSystemStatus(w http.ResponseWriter, r *http.Request) {
 	sandboxConfined := sdk.SandboxAvailable()
-	if a.connectedServerURL == "" {
-		writeJSON(w, http.StatusOK, systemStatusResponse{Mode: "standalone", SandboxConfined: sandboxConfined})
-		return
+	doclingConfigured := false
+	if a.doclingStore != nil {
+		if cfg, err := a.doclingStore.Get(r.Context()); err == nil && cfg != nil {
+			doclingConfigured = cfg.Enabled && strings.TrimSpace(cfg.BaseURL) != ""
+		}
 	}
-	writeJSON(w, http.StatusOK, systemStatusResponse{Mode: "connected", ServerURL: a.connectedServerURL, SandboxConfined: sandboxConfined})
+	localSTTConfigured := false
+	if a.localSTTStore != nil {
+		if cfg, err := a.localSTTStore.Get(r.Context()); err == nil && cfg != nil {
+			localSTTConfigured = cfg.Enabled && strings.TrimSpace(cfg.BaseURL) != ""
+		}
+	}
+	resp := systemStatusResponse{
+		SandboxConfined:    sandboxConfined,
+		DoclingConfigured:  doclingConfigured,
+		LocalSTTConfigured: localSTTConfigured,
+	}
+	if a.connectedServerURL == "" {
+		resp.Mode = "standalone"
+	} else {
+		resp.Mode = "connected"
+		resp.ServerURL = a.connectedServerURL
+	}
+	writeJSON(w, http.StatusOK, resp)
 }

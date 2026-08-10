@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useLocation } from 'react-router'
+import { useLocation, useNavigate } from 'react-router'
 import {
   Api,
   Book,
@@ -7,6 +7,7 @@ import {
   Computer,
   Earth,
   Flashlamp,
+  LinkCloud,
   Peoples,
   Robot,
   Shield,
@@ -92,17 +93,33 @@ const ADMIN_GROUPS: Array<{ title: string; items: AdminItem[] }> = [
 
 const WORKSPACE_TABS = new Set<AdminTab>(['agents', 'documents', 'tools'])
 
+// Tabs whose data (users, groups, audit trail, usage quotas) only exists at
+// the organization level — meaningless without a connected seshat-server,
+// unlike Workspace/AI Core/Runtime which configure this local install.
+const ORGANIZATION_TABS = new Set<AdminTab>(['users', 'groups', 'audit', 'quotas'])
+
+type SystemStatus = { mode: 'standalone' | 'connected'; server_url?: string }
+
 export function AdminConsolePage() {
   const location = useLocation()
+  const navigate = useNavigate()
   const roles = useAuthStore((s) => s.roles)
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
   const requestedTab = new URLSearchParams(location.search).get('tab')
   const initialTab = isAdminTab(requestedTab) ? requestedTab : 'overview'
   const [activeTab, setActiveTab] = useState<AdminTab>(initialTab)
+  const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null)
   const isAdmin = roles.includes('admin')
+  const isConnected = systemStatus?.mode === 'connected'
 
   useEffect(() => {
     useUIStore.getState().closeAllRightPanels()
+  }, [])
+
+  useEffect(() => {
+    api.get<SystemStatus>('/system/status')
+      .then(setSystemStatus)
+      .catch(() => setSystemStatus(null))
   }, [])
 
   useEffect(() => {
@@ -135,6 +152,7 @@ export function AdminConsolePage() {
                 >
                   {item.icon}
                   <span>{item.label}</span>
+                  {ORGANIZATION_TABS.has(item.id) && !isConnected && <LinkCloud size={11} className="admin-nav-cloud-badge" />}
                 </button>
               ))}
             </div>
@@ -149,6 +167,8 @@ export function AdminConsolePage() {
             <h1>Admin access required</h1>
             <p>This console is reserved for organization administrators.</p>
           </div>
+        ) : ORGANIZATION_TABS.has(activeTab) && !isConnected ? (
+          <OrganizationTabLocked onGoToSettings={() => navigate('/settings?tab=runtime')} />
         ) : (
           <AdminPanel activeTab={activeTab} />
         )}
@@ -160,6 +180,22 @@ export function AdminConsolePage() {
 function isAdminTab(value: string | null): value is AdminTab {
   if (!value) return false
   return ADMIN_GROUPS.some((group) => group.items.some((item) => item.id === value))
+}
+
+function OrganizationTabLocked({ onGoToSettings }: { onGoToSettings: () => void }) {
+  return (
+    <div className="admin-org-locked">
+      <LinkCloud size={23} />
+      <h2>This requires an organization server</h2>
+      <p>
+        Users, groups, audit logs, and quotas are managed by your organization's Seshat Server.
+        Connect this machine to one in Settings → Cloud Automation to see and manage them.
+      </p>
+      <button className="admin-org-locked-cta" onClick={onGoToSettings}>
+        <LinkCloud size={11} /> Go to Cloud Automation settings
+      </button>
+    </div>
+  )
 }
 
 function AdminPanel({ activeTab }: { activeTab: AdminTab }) {
@@ -488,5 +524,57 @@ const ADMIN_CONSOLE_CSS = `
   justify-content: center;
   text-align: center;
   color: var(--color-text-muted);
+}
+
+.admin-nav-cloud-badge {
+  margin-left: auto;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.admin-org-locked {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: var(--space-4);
+  color: var(--color-text-muted);
+  padding: var(--space-8);
+}
+
+.admin-org-locked h2 {
+  margin: 0;
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.admin-org-locked p {
+  margin: 0;
+  max-width: 420px;
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.admin-org-locked-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: 30px;
+  padding: 0 var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: var(--font-size-xs);
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.admin-org-locked-cta:hover {
+  background: var(--color-hover);
 }
 `

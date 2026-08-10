@@ -1,7 +1,12 @@
 import { NexusLogo } from '@/components/NexusLogo'
 
-// Concrete TabId for the Settings page — exported for use in settings/index.tsx
-export type TabId = 'general' | 'account' | 'connections' | 'providers' | 'knowledge' | 'memories' | 'multimodal' | 'remote' | 'runtime' | 'about' | 'admin-users' | 'admin-groups' | 'admin-organizations' | 'admin-workspaces' | 'admin-audit' | 'admin-quotas'
+// Concrete TabId for the Settings page — exported for use in settings/index.tsx.
+// Admin-only tabs (users/groups/organizations/workspaces/audit/quotas) live
+// exclusively in the Admin Console now (pages/admin/index.tsx's own AdminTab
+// union) — old ?tab=admin-users style URLs still redirect there via
+// settings/index.tsx's plain-string adminRedirects table, which doesn't need
+// these in TabId.
+export type TabId = 'general' | 'account' | 'connections' | 'memories' | 'appearance' | 'providers' | 'remote' | 'knowledge' | 'multimodal' | 'mcp' | 'environment' | 'storage' | 'about'
 
 // ─── Generic nav item ─────────────────────────────────────────────────────────
 
@@ -320,6 +325,19 @@ export const SETTINGS_SHARED_CSS = `
   font-weight: 600;
   cursor: pointer;
 }
+
+.sv-inline-action {
+  flex-shrink: 0;
+  padding: 5px 10px;
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  background: var(--color-bg);
+  border-radius: 7px;
+  font-size: var(--font-size-2xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+.sv-inline-action:hover { border-color: var(--color-primary); color: var(--color-primary); }
 
 .sv-about-hero { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 36px 0; text-align: center; }
 .sv-about-hero h2 { margin: 0; font-size: var(--font-size-base); }

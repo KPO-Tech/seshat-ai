@@ -29,11 +29,6 @@ export function resolveBackendOrigin() {
   return dynamicBackendOrigin || DEFAULT_BACKEND_ORIGIN
 }
 
-export function resolveDefaultServerURL() {
-  const explicit = process.env.SESHAT_DEFAULT_SERVER_URL?.trim()
-  return explicit ? explicit.replace(/\/$/, '') : ''
-}
-
 export function getDesktopBridgeSecretPath() {
   return join(resolveRuntimeRoot(), 'data', DESKTOP_SECRET_FILE)
 }

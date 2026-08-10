@@ -200,8 +200,6 @@ export function MemoriesView() {
           </div>
         )}
 
-        <div className="mv-section-gap" />
-        <StorageCard />
       </div>
 
       {editor && (
@@ -367,7 +365,7 @@ const PROVIDER_OPTIONS = [
   { id: 's3', label: 'S3 / MinIO', icon: <CloudStorage size={13} /> },
 ]
 
-function StorageCard() {
+export function StorageCard() {
   const [status, setStatus] = useState<StorageStatus | null>(null)
   const [form, setForm] = useState<{
     provider: string
@@ -592,7 +590,7 @@ function memoryToForm(memory: UserMemory): MemoryFormState {
   }
 }
 
-const MEMORIES_CSS = `
+export const MEMORIES_CSS = `
 .mv-root { display: flex; flex-direction: column; }
 .mv-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 28px; flex-wrap: wrap; gap: 9px; }
 .mv-header-info h1 { font-size: var(--font-size-base); font-weight: 700; margin: 0 0 6px; color: var(--color-text); }

@@ -1,6 +1,6 @@
 # Architecture — SeshatOS
 
-This document describes the current repository layout and the package boundaries between the local product backend, the cloud server bootstrap, and the open-source runtime.
+This document describes the current repository layout and the package boundaries between the local product backend, the cloud control plane, and the open-source runtime.
 
 ---
 
@@ -9,7 +9,7 @@ This document describes the current repository layout and the package boundaries
 ```
 seshat-ai/
 ├── seshat-backend/   ← local backend / desktop HTTP API
-├── seshat-server/    ← cloud server bootstrap (auth, orgs, jobs, sync)
+├── seshat-server/    ← cloud control plane (IAM, orgs, automation, knowledge, ...)
 └── seshat-ui/        ← Electron desktop client
 ```
 
@@ -21,11 +21,18 @@ The dependency direction is intentionally one-way:
 
 ```text
 seshat-ui        → seshat-backend   (HTTP only)
-seshat-server    → seshat-backend   (temporary shared Go packages)
 seshat-backend   → seshat           (pkg/* only)
+seshat-server    → seshat           (pkg/* only)
 seshat           → seshat-backend   (never)
 seshat           → seshat-server    (never)
 ```
+
+`seshat-server` does not import `seshat-backend` — confirmed 2026-08-10 (zero
+occurrences of the module path in `seshat-server/go.mod` or any import). The
+two product backends are independent Go modules that both depend on `seshat`,
+not on each other; see "Cloud server bootstrap" below for why an earlier
+version of this document described a temporary shared-package dependency
+that no longer reflects the code.
 
 `go.work` at the repository root ties the two local Go modules together during local development:
 
@@ -115,30 +122,67 @@ cmd/api
 
 ## Cloud server bootstrap
 
-The cloud-side server now lives in `seshat-server/`.
+**This section was stale until 2026-08-10** — it previously described
+`seshat-server` as an early bootstrap with only `api/`/`app/`/`config/` and a
+"target role" still to be built. The code has moved well past that; see
+`helps/audit-2026-08-10.md` (local/cloud boundary section) for the audit that
+caught the drift, and `ROADMAP.md` ("Direction: seshat-server becomes the
+multi-tenant backbone") for the up-to-date migration status, which is the
+document to check first when this section next goes stale.
+
+`seshat-server/` is a real, independently mature control plane, not a
+bootstrap:
 
 ```
 seshat-server/
 ├── cmd/server/                  ← server entrypoint
 └── internal/server/
-    ├── api/                     ← HTTP handlers for server bootstrap
-    ├── app/                     ← minimal server dependency container
-    └── config/                  ← bootstrap and wiring
+    ├── api/                     ← HTTP handlers
+    ├── app/                     ← server dependency container
+    ├── config/                  ← bootstrap and wiring
+    ├── iam/                     ← orgs, users, memberships, roles, policy bindings, audit (mature, heavily tested)
+    ├── automation/               ← devices, scheduled jobs, runs (mature, heavily tested)
+    ├── knowledge/                 ← org-scoped RAG/corpus domain, mirrors seshat-backend's knowledge
+    ├── agentregistry/             ← shared agent preset catalog
+    ├── mcpregistry/                ← shared MCP server catalog
+    ├── skillregistry/              ← shared skill repo catalog
+    ├── memories/                   ← flat memory list (connected-mode counterpart to local memories)
+    ├── longtermmemory/              ← graph memory (connected-mode counterpart to local long-term store)
+    ├── preferences/                 ← connected-mode user preferences
+    ├── quotas/                      ← usage counters (counting only, no enforcement)
+    ├── websearchsettings/            ← org/platform web search provider config
+    ├── workspacechat/                ← console's own live chat playground (sdk.Session directly, not job-based)
+    ├── mailer/                       ← SMTP sender (self-service registration emails)
+    └── apperr/                       ← typed server errors
 ```
 
-Current role:
-- Separate cloud-oriented entrypoint from the local desktop backend
-- Bootstrap auth, users, organizations, audit, and future job/sync domains
-- Reuse some backend packages temporarily while the split is still in progress
+Current role — already built, not aspirational:
+- Full cloud IAM: organizations, memberships, invitations, groups, dynamic
+  custom roles, policy bindings, audit trail, superadmin
+- Automation: device pairing, scheduled jobs, runs, single-instance scheduler
+- Org-scoped knowledge/RAG, hybrid BYOK/platform-default provider and
+  embedder settings
+- Shared catalogs (agents/MCP/skills) that `seshat-backend`'s `cloud*`
+  adapters consume read-only, enrichment-only, in connected mode
+- Self-service registration by email domain
 
-Target role:
-- Cloud auth and IAM surfaces
-- Organizations and tenancy
-- Devices and trust relationships
-- Jobs, runs, automation orchestration
-- Sync and audit surfaces
+Known-thin areas (built and wired, but with minimal test coverage — see the
+LOC/test-file breakdown in `helps/audit-2026-08-10.md`): `websearchsettings`,
+`mcpregistry`, `agentregistry`, `preferences`, `skillregistry`,
+`longtermmemory`, `quotas` (each has real handlers but only one test file);
+`workspacechat` has no dedicated test file at all despite reusing
+`sdk.Client`/`sdk.Session` directly.
 
-The important rule is architectural, not just physical: `seshat-server` must not become a second copy of the local runtime backend. It should own cloud coordination concerns.
+Explicitly deferred, not started: **interactive sessions** (multi-turn,
+streamed, persistent chat through `seshat-server` itself, as opposed to
+one-shot scheduled jobs) — see ROADMAP.md for why this is scoped separately
+rather than an extension of `automation`.
+
+The important rule is still architectural, not just physical: `seshat-server`
+must not become a second copy of the local runtime backend. It should own
+cloud coordination concerns. In practice this holds today — e.g. inbox
+thread/message bodies stay exclusively in `seshat-backend` (see "Example:
+Inbox" below), and `seshat-server` never stores them.
 
 ### Example: Inbox
 

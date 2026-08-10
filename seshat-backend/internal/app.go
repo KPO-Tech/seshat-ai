@@ -36,10 +36,14 @@ type Dependencies struct {
 	APIKeyStore *db.APIKeyStore // nil = api keys disabled
 	GroupStore  *db.GroupStore  // nil = groups disabled
 	AuthConfig  auth.ServiceConfig
-	// AuthProvider selects standalone vs connected identity (see
-	// helps/seshat-architecture-target.md). nil = auth.NewLocalProvider(Identity),
-	// i.e. today's standalone behavior — set only by bootstrap.go when
-	// SESHAT_SERVER_URL is configured.
+	// AuthProvider selects standalone vs connected identity (see ROADMAP.md,
+	// "Direction: seshat-server becomes the multi-tenant backbone"). nil =
+	// auth.NewLocalProvider(Identity), i.e. today's standalone behavior —
+	// set only by bootstrap.go when connected mode is active. Connected mode
+	// is not user-configurable: it is decided at boot by a reachability probe
+	// against a build-fixed seshat-server URL (defaultServerURL in
+	// internal/config/bootstrap.go), deliberately not an environment
+	// variable — see that file's doc comment for why.
 	AuthProvider      auth.Provider
 	QueryRuntime      query.QueryRuntime
 	SessionManager    query.SessionManager
@@ -53,7 +57,8 @@ type Dependencies struct {
 	// SettingsProvider selects standalone vs connected provider-settings
 	// resolution (org → platform → local personal key). nil =
 	// settings.NewLocalProvider(...), i.e. today's local-only behavior — set
-	// only by bootstrap.go when SESHAT_SERVER_URL is configured.
+	// only by bootstrap.go when connected mode is active (see
+	// internal/config/bootstrap.go).
 	SettingsProvider         settings.Provider
 	WebSearchSettings        *db.WebSearchSettingStore
 	WebSearchLogs            *db.WebSearchLogStore
@@ -62,17 +67,18 @@ type Dependencies struct {
 	// WebSearchCloudClient enriches the local provider-resolution chain and
 	// domain policy with a connected seshat-server's org/platform web-search
 	// config — nil in standalone mode, set only by bootstrap.go when
-	// SESHAT_SERVER_URL is configured. The organization itself is resolved
-	// fresh per call from the caller's own principal (see
-	// auth.Principal.OrganizationID), not configured here. See
-	// internal/cloudwebsearch's package doc.
+	// connected mode is active (see internal/config/bootstrap.go). The
+	// organization itself is resolved fresh per call from the caller's own
+	// principal (see auth.Principal.OrganizationID), not configured here.
+	// See internal/cloudwebsearch's package doc.
 	WebSearchCloudClient *cloudwebsearch.Client
 	// KnowledgeBackend selects standalone vs connected Documents storage.
 	// nil = knowledge.NewService(CorpusStore, FileStore, IngestionJobStore,
 	// ArtifactStore, RAGService), i.e. today's local-only behavior — set only
-	// by bootstrap.go to a *cloudknowledge.RemoteService when SESHAT_SERVER_URL
-	// is configured. Unlike MCP/agents/web-search (which enrich the local
-	// behavior with an org catalog), this is a clean swap: in connected mode
+	// by bootstrap.go to a *cloudknowledge.RemoteService when connected mode
+	// is active (see internal/config/bootstrap.go). Unlike MCP/agents/
+	// web-search (which enrich the local behavior with an org catalog),
+	// this is a clean swap: in connected mode
 	// there is exactly one set of corpora, the organization's, not local
 	// corpora plus org corpora. See internal/cloudknowledge's package doc.
 	KnowledgeBackend    knowledge.Backend
@@ -104,9 +110,10 @@ type Dependencies struct {
 	// MCPCloudClient/MCPOrgServerApprovals enrich the local MCP runtime with
 	// a connected seshat-server's shared server catalog, once the user has
 	// explicitly approved each one — nil in standalone mode, set only by
-	// bootstrap.go when SESHAT_SERVER_URL is configured. The organization
-	// itself is resolved fresh per request (see api.requestOrganizationID),
-	// not configured here. See internal/cloudmcp's package doc.
+	// bootstrap.go when connected mode is active (see
+	// internal/config/bootstrap.go). The organization itself is resolved
+	// fresh per request (see api.requestOrganizationID), not configured
+	// here. See internal/cloudmcp's package doc.
 	MCPCloudClient        *cloudmcp.Client
 	MCPOrgServerApprovals *db.MCPOrgServerApprovalStore
 	UserPreferencesStore  *db.UserPreferencesStore
@@ -114,25 +121,27 @@ type Dependencies struct {
 	// AgentsCloudClient enriches local agent resolution with a connected
 	// seshat-server's shared preset catalog, once a caller has an
 	// authenticated principal — nil in standalone mode, set only by
-	// bootstrap.go when SESHAT_SERVER_URL is configured. The organization
-	// itself is resolved fresh per call from the caller's own principal (see
+	// bootstrap.go when connected mode is active (see
+	// internal/config/bootstrap.go). The organization itself is resolved
+	// fresh per call from the caller's own principal (see
 	// auth.Principal.OrganizationID). Purely additive, see
 	// internal/agents.Service's own doc comment.
 	AgentsCloudClient *cloudagents.Client
 	// PreferencesProvider selects standalone vs connected preferences storage.
 	// nil = preferences.NewLocalProvider(UserPreferencesStore), i.e. today's
-	// local-only behavior — set only by bootstrap.go when SESHAT_SERVER_URL
-	// is configured.
+	// local-only behavior — set only by bootstrap.go when connected mode is
+	// active (see internal/config/bootstrap.go).
 	PreferencesProvider preferences.Provider
 	// MemoriesProvider selects standalone vs connected flat-memory-list
 	// storage. nil = memories.NewLocalProvider(UserMemoryStore), i.e.
-	// today's local-only behavior — set only by bootstrap.go when
-	// SESHAT_SERVER_URL is configured.
+	// today's local-only behavior — set only by bootstrap.go when connected
+	// mode is active (see internal/config/bootstrap.go).
 	MemoriesProvider memories.Provider
 	// QuotaProvider selects standalone vs connected usage-counter storage.
 	// nil = quotas.NewLocalProvider(UsageCounterStore), i.e. today's
-	// local-only behavior — set only by bootstrap.go when SESHAT_SERVER_URL
-	// is configured. Pure counting either way, never an enforced limit.
+	// local-only behavior — set only by bootstrap.go when connected mode is
+	// active (see internal/config/bootstrap.go). Pure counting either way,
+	// never an enforced limit.
 	QuotaProvider quotas.Provider
 	// Inbox is pre-built by bootstrap.go (not assembled here from raw
 	// stores like most other services) because its Connector registrations

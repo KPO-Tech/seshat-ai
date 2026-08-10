@@ -1,6 +1,7 @@
 import { Lightning, Mail, FileText, Caution, Robot } from '@icon-park/react'
 import { useUIStore } from '@/stores/ui'
 import { useEffect } from 'react'
+import { StatusBadge, STATUS_BADGE_CSS } from '@/components/ui/StatusBadge'
 
 export function TeamPage() {
   const closeAllRightPanels = useUIStore(s => s.closeAllRightPanels)
@@ -10,13 +11,12 @@ export function TeamPage() {
   return (
     <div className="tm-root">
       <style>{CSS}</style>
+      <style>{STATUS_BADGE_CSS}</style>
 
       {/* Top bar */}
       <header className="tm-topbar">
         <span className="tm-topbar-title">Agent Teams</span>
-        <div className="tm-coming-badge">
-          <Lightning size={10} /> Coming soon
-        </div>
+        <StatusBadge variant="planned" icon={<Lightning size={10} />} label="Coming soon" className="tm-badge-right" />
       </header>
 
       {/* Content */}
@@ -31,9 +31,7 @@ export function TeamPage() {
             asynchronously — each with its own role, memory, tools, and inbox.
             No central orchestrator: agents claim tasks, send messages, and act independently.
           </p>
-          <div className="tm-coming-pill">
-            <Lightning size={11} /> Coming in a future release
-          </div>
+          <StatusBadge variant="planned" icon={<Lightning size={11} />} label="Coming in a future release" />
         </div>
 
         {/* Mission example */}
@@ -122,15 +120,7 @@ const CSS = `
 }
 .tm-topbar-sep { color: var(--color-text-muted); font-size: 12px; user-select: none; }
 .tm-topbar-title { font-size: 13px; font-weight: 700; color: var(--color-text); }
-.tm-coming-badge {
-  margin-left: auto;
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 3px 7px; border-radius: 5px;
-  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-primary) 25%, transparent);
-  color: var(--color-primary);
-  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
-}
+.tm-badge-right { margin-left: auto; }
 
 /* Body */
 .tm-body {
@@ -153,14 +143,6 @@ const CSS = `
 }
 .tm-hero h1 { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.02em; }
 .tm-hero p  { margin: 0; font-size: 13px; color: var(--color-text-muted); line-height: 1.7; }
-.tm-coming-pill {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 6px 13px; border-radius: 779px;
-  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-primary) 28%, transparent);
-  color: var(--color-primary);
-  font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
-}
 
 /* Mission preview */
 .tm-mission-preview {

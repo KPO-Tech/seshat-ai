@@ -140,6 +140,7 @@ export function InboxPage() {
   const [launchingAgent, setLaunchingAgent] = useState(false)
   const [automationCreating, setAutomationCreating] = useState(false)
   const [automationNotice, setAutomationNotice] = useState<string | null>(null)
+  const [systemStatus, setSystemStatus] = useState<{ mode: 'standalone' | 'connected' } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [syncingAccountId, setSyncingAccountId] = useState<string | null>(null)
 
@@ -175,6 +176,12 @@ export function InboxPage() {
     if (!el) return
     el.scrollTop = el.scrollHeight
   }, [agentMessages.length, agentStreaming])
+
+  useEffect(() => {
+    api.get<{ mode: 'standalone' | 'connected' }>('/system/status')
+      .then(setSystemStatus)
+      .catch(() => setSystemStatus(null))
+  }, [])
 
   useEffect(() => {
     if (!agentSessionId && latestInboxSession) setAgentSessionId(latestInboxSession.id)
@@ -918,9 +925,16 @@ export function InboxPage() {
                 <button type="button" className="ib-action-btn primary" onClick={handleStartInboxReview} disabled={connectedAccounts.length === 0 || launchingAgent || agentStreaming}>
                   {launchingAgent || agentStreaming ? <LoadingOne size={13} className="spin" /> : <Send size={13} />} Start inbox review
                 </button>
-                <button type="button" className="ib-action-btn" onClick={handleCreateInboxReviewJob} disabled={automationCreating}>
-                  {automationCreating ? <LoadingOne size={13} className="spin" /> : <AlarmClock size={13} />} Create weekday review
-                </button>
+                {systemStatus?.mode === 'connected' ? (
+                  <button type="button" className="ib-action-btn" onClick={handleCreateInboxReviewJob} disabled={automationCreating}>
+                    {automationCreating ? <LoadingOne size={13} className="spin" /> : <AlarmClock size={13} />} Create weekday review
+                  </button>
+                ) : (
+                  <p className="ib-agent-note">
+                    Recurring review jobs run through your organization's Seshat Server. Connect this machine to one in
+                    Settings → Cloud Automation to create one.
+                  </p>
+                )}
               </section>
 
               <section className="ib-agent-panel-card">

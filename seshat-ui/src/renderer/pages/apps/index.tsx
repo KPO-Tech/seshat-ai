@@ -11,6 +11,7 @@ import {
   Workbench,
   Mail,
 } from '@icon-park/react'
+import { StatusBadge, STATUS_BADGE_CSS } from '@/components/ui/StatusBadge'
 
 type AppStatus = 'ready' | 'planned'
 type AppCategory = 'all' | 'core' | 'agentic'
@@ -32,7 +33,7 @@ const APPS: AppEntry[] = [
   {
     id: 'companion',
     title: 'Companion',
-    description: 'Enterprise main assistant. Connects to your tools, documents, and agents.',
+    description: 'Your main assistant. Connects to your tools, documents, and agents.',
     route: '/',
     status: 'ready',
     category: 'core',
@@ -43,7 +44,7 @@ const APPS: AppEntry[] = [
   {
     id: 'knowledge',
     title: 'Knowledge',
-    description: 'Search, ask questions, and summarize company and personal knowledge — public documents managed by admins plus your own.',
+    description: 'Search, ask questions, and summarize your personal knowledge — plus shared collections when connected to an organization.',
     route: '/knowledge',
     status: 'ready',
     category: 'core',
@@ -115,6 +116,7 @@ export function AppsPage() {
   return (
     <div className="apps-root">
       <style>{APPS_CSS}</style>
+      <style>{STATUS_BADGE_CSS}</style>
 
       <main className="apps-content">
         <section className="apps-toolbar">
@@ -157,9 +159,11 @@ export function AppsPage() {
                   <strong>{app.title}</strong>
                   <small>{app.description}</small>
                 </span>
-                <span className={`apps-status ${app.status}`}>
-                  {app.status === 'ready' ? 'Ready' : 'Planned'}
-                </span>
+                <StatusBadge
+                  className="apps-status"
+                  variant={app.status === 'ready' ? 'success' : 'planned'}
+                  label={app.status === 'ready' ? 'Ready' : 'Planned'}
+                />
               </button>
             ))}
           </div>
@@ -421,29 +425,12 @@ const APPS_CSS = `
   white-space: nowrap;
 }
 
-.apps-status {
-  flex-shrink: 0;
-  border-radius: 999px;
-  padding: 2px 7px;
-  font-size: 9px;
-  font-weight: 850;
-  text-transform: uppercase;
-}
+.apps-status { flex-shrink: 0; }
 
 .apps-list--grid .apps-status {
   position: absolute;
   opacity: 0;
   pointer-events: none;
-}
-
-.apps-status.ready {
-  color: var(--color-success);
-  background: rgba(var(--color-success-rgb), 0.12);
-}
-
-.apps-status.planned {
-  color: var(--color-text-muted);
-  background: rgba(148, 163, 184, 0.14);
 }
 
 .apps-inspector {

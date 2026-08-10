@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process'
-import { mkdirSync } from 'node:fs'
+import { mkdirSync, rmSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -25,6 +25,23 @@ if (!selected) {
 const outDir = resolve(repoRoot, 'seshat-ui', 'resources', 'backend')
 const outPath = resolve(outDir, `seshat-backend${selected.ext}`)
 mkdirSync(outDir, { recursive: true })
+
+// electron-builder's extraResources bundles every file in outDir as-is, and
+// Linux/macOS binaries share the exact same filename ("seshat-backend", no
+// extension) — see resources/backend/README.md. Without this cleanup, a
+// stray binary from a previous build for a different platform can either
+// silently overwrite the wrong content (linux <-> darwin, same filename) or
+// linger alongside the new one and get bundled into an installer that will
+// never run it (e.g. a leftover Linux ELF shipped inside the Windows NSIS
+// package). Remove every other-platform output before building this one, so
+// outDir always contains exactly one binary: the one just built.
+for (const other of Object.values(targets)) {
+  if (other === selected) continue
+  const otherPath = resolve(outDir, `seshat-backend${other.ext}`)
+  if (otherPath !== outPath) {
+    rmSync(otherPath, { force: true })
+  }
+}
 
 const result = spawnSync('go', ['build', '-o', outPath, './cmd/api'], {
   cwd: resolve(repoRoot, 'seshat-backend'),

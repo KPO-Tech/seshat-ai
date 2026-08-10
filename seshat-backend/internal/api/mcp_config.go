@@ -365,12 +365,16 @@ func requestOrganizationID(r *http.Request) string {
 // per-handler call that was easy to forget — and had in fact been forgotten
 // for handleMCPTools.
 func (a *App) mcpRoute(handler http.HandlerFunc, reloadsItself bool) http.Handler {
-	return a.requireRole("admin", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !reloadsItself {
 			a.backend.MCP.NoteRequestToken(r.Context(), requestToken(r), requestOrganizationID(r))
 		}
 		handler(w, r)
-	}))
+	})
+	if a.connectedServerURL == "" {
+		return a.authMiddleware(inner)
+	}
+	return a.requireRole("admin", inner)
 }
 
 type mcpOrgCatalogEntryResponse struct {

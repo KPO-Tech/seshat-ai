@@ -14,6 +14,7 @@ import { useChat } from '@/hooks/useChat'
 import { NexusLogo } from '@/components/NexusLogo'
 import { listToolCatalog, type ToolCatalogEntry } from '@/components/chat/tool-block/toolDisplay'
 import { SETTINGS_SHARED_CSS } from '../settings/SettingsNav'
+import { PlannedFeatureCard, PLANNED_FEATURE_CARD_CSS } from '@/components/ui/PlannedFeatureCard'
 import type { Agent, Session, Corpus, CorpusFile, IngestionJob } from '@/api/types'
 import type { ReactNode } from 'react'
 
@@ -295,6 +296,7 @@ export function WorkspacePage({ initialTab = 'agents', embedded = false }: Works
       <style>{CSS}</style>
       {/* Reused for the MCP section's sv-card/modal-* primitives (Tools & MCP tab) */}
       <style>{SETTINGS_SHARED_CSS}</style>
+      <style>{PLANNED_FEATURE_CARD_CSS}</style>
 
       {toast && (
         <div className={`wk-toast ${toast.kind}`}>
@@ -446,16 +448,12 @@ function ResourceTabs({ tab, onTabChange }: {
 
 function PlannedResourceTab() {
   return (
-    <div className="wk-planned">
-      <div className="wk-planned-card">
-        <div className="wk-planned-icon">
-          <FileText size={24} />
-        </div>
-        <h2>Templates</h2>
-        <p>Reusable project, document, workflow, and prompt templates.</p>
-        <div className="wk-planned-note">This resource family is reserved in the Workspace console and will be connected when the backend model is ready.</div>
-      </div>
-    </div>
+    <PlannedFeatureCard
+      icon={<FileText size={24} />}
+      title="Templates"
+      description="Reusable project, document, workflow, and prompt templates."
+      note="This resource family is reserved in the Workspace console and will be connected when the backend model is ready."
+    />
   )
 }
 
@@ -1173,7 +1171,7 @@ type MCPOrgCatalogEntry = {
 
 // ─── MCP panel ────────────────────────────────────────────────────────────────
 
-function McpPanel() {
+export function McpPanel() {
   const [servers, setServers] = useState<MCPServer[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -2735,27 +2733,6 @@ const CSS = `
 .wk-agent-health.off { color: var(--color-accent); }
 .wk-agent-health.off span { background: var(--color-accent); }
 
-.wk-planned {
-  flex: 1; display: flex; align-items: center; justify-content: center;
-  padding: 28px; overflow: auto;
-}
-.wk-planned-card {
-  width: min(440px, 100%); border: 1px solid var(--color-border);
-  border-radius: var(--radius-md); background: var(--color-bg); padding: 24px; text-align: center;
-}
-.wk-planned-icon {
-  width: 52px; height: 52px; margin: 0 auto 12px; border-radius: var(--radius-lg);
-  display: flex; align-items: center; justify-content: center;
-  color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-primary) 22%, transparent);
-}
-.wk-planned-card h2 { margin: 0 0 var(--space-3); color: var(--color-text); font-size: var(--font-size-xl); }
-.wk-planned-card p { margin: 0; color: var(--color-text-secondary); font-size: var(--font-size-sm); line-height: 1.55; }
-.wk-planned-note {
-  margin-top: 16px; padding: 10px; border-radius: var(--radius-sm); background: var(--color-surface);
-  border: 1px solid var(--color-border-subtle); color: var(--color-text-muted); font-size: var(--font-size-xs);
-}
-
 /* Tools & MCP tab */
 .wk-tools-root { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
 .wk-tools-subbar {
@@ -3055,3 +3032,5 @@ const CSS = `
 @keyframes spin { to { transform: rotate(360deg); } }
 .spin { animation: spin 0.8s linear infinite; display: inline-block; }
 `
+
+export { CSS as WORKSPACE_PAGE_CSS }

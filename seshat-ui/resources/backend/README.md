@@ -24,14 +24,14 @@ The sidecar build step uses `scripts/build-desktop-sidecar.mjs`, which sets
 `GOOS`, `GOARCH`, and `CGO_ENABLED=0` explicitly so the output matches the
 requested target even when the command is launched from another OS.
 
-For a centrally managed build, set `SESHAT_DEFAULT_SERVER_URL` while packaging
-or launching the Electron app. The main process passes it to the sidecar as
-`SESHAT_SERVER_URL` only when `SESHAT_SERVER_URL` is not already set. Leaving it
-empty keeps the desktop app local-first/standalone.
-
-```sh
-SESHAT_DEFAULT_SERVER_URL=https://server.example.com npm run package:linux
-```
+The desktop app does not accept a build-time or launch-time override for which
+`seshat-server` it connects to. Connected mode is decided by the sidecar
+itself at boot, against a fixed URL compiled into the Go binary (see
+`defaultServerURL` in `seshat-backend/internal/config/bootstrap.go`) —
+deliberately not an environment variable, since `seshat-server` access is
+Seshat's paid managed-service tier and a configurable target would let anyone
+redirect the app to their own free self-hosted instance. If that server isn't
+reachable, the sidecar starts in standalone/local-only mode.
 
 This directory's actual binary is intentionally not committed because it is a
 per-target build artifact, not source.

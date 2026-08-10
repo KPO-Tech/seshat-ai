@@ -25,11 +25,16 @@ Dependency direction is one-way:
 
 ```text
 seshat-ui       → seshat-backend   (HTTP only)
-seshat-server   → seshat-backend   (temporary shared Go packages)
 seshat-backend  → seshat           (pkg/* only)
+seshat-server   → seshat           (pkg/* only)
 seshat          → seshat-backend   (never)
 seshat          → seshat-server    (never)
 ```
+
+`seshat-server` does not import `seshat-backend` (confirmed 2026-08-10 — zero
+occurrences in `seshat-server/go.mod` or any import). See
+`docs/architecture.md`'s "Cloud server bootstrap" section for the current
+(mature, not bootstrap-stage) shape of `seshat-server`.
 
 `seshat-backend` may import `seshat/pkg/*` freely. It must never import `seshat/internal/*`.
 

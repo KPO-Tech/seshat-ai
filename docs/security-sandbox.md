@@ -36,10 +36,11 @@ The Electron app launches a local backend sidecar. The renderer talks to that
 sidecar through the Electron main-process proxy after the desktop HMAC
 handshake. This is a local trust boundary, not a cloud authentication boundary.
 
-When a default cloud server URL is bundled with `SESHAT_DEFAULT_SERVER_URL`, the
-sidecar receives it as `SESHAT_SERVER_URL`. This does not bypass local tool
-permissions; it only gives the backend a default remote server to use for
-cloud-managed features.
+Connected mode (whether this sidecar talks to `seshat-server` for
+cloud-managed features) is decided by the sidecar itself against a URL
+compiled into the Go binary, not by anything Electron passes in — see
+`docs/desktop-packaging.md`, "Connected Mode Is Not Configurable". Either way,
+this does not bypass local tool permissions.
 
 ## Release Checklist
 
@@ -49,5 +50,3 @@ cloud-managed features.
   enforced sandbox is implemented and tested there.
 - Confirm the sidecar is bundled and starts without developer environment
   variables.
-- Confirm `SESHAT_DEFAULT_SERVER_URL` is empty for local-first releases, or set
-  deliberately for centrally managed builds.

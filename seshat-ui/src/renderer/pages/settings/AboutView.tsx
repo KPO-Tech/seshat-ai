@@ -48,6 +48,7 @@ export function AboutView() {
 
   return (
     <div className="sv-view">
+      <style>{ABOUT_CSS}</style>
       <header className="sv-view-header">
         <div className="sv-header-info">
           <h1>About</h1>
@@ -60,11 +61,11 @@ export function AboutView() {
 
         <div className="sv-about-updates">
           {status === 'downloaded' ? (
-            <button className="kv-emb-save-btn" onClick={handleRestart} type="button">
+            <button className="about-update-btn primary" onClick={handleRestart} type="button">
               Restart to apply update
             </button>
           ) : (
-            <button className="kv-emb-test-btn" onClick={handleCheck} disabled={status === 'checking'} type="button">
+            <button className="about-update-btn" onClick={handleCheck} disabled={status === 'checking'} type="button">
               {status === 'checking' ? 'Checking…' : 'Check for updates'}
             </button>
           )}
@@ -76,3 +77,46 @@ export function AboutView() {
     </div>
   )
 }
+
+const ABOUT_CSS = `
+.sv-about-updates {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.about-update-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 15px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, opacity 0.15s;
+}
+
+.about-update-btn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  background: var(--color-hover);
+}
+
+.about-update-btn.primary {
+  border-color: transparent;
+  background: var(--color-cta);
+  color: white;
+}
+
+.about-update-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+`

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  Book, Plus, Delete, Upload, Sync, CheckOne, CloseOne, FolderClose,
+  Book, Delete, Upload, Sync, CheckOne, CloseOne, FolderClose,
   Setting, PreviewOpen, PreviewClose, LinkCloud,
 } from '@icon-park/react'
 import { api } from '@/api/client'
@@ -31,7 +31,6 @@ export function KnowledgeView() {
   const [corpora, setCorpora] = useState<Corpus[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [showNewCorpus, setShowNewCorpus] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [embedderConfig, setEmbedderConfig] = useState<EmbedderConfig | null>(null)
   const [doclingConfig, setDoclingConfig] = useState<DoclingConfig | null>(null)
@@ -78,10 +77,6 @@ export function KnowledgeView() {
           <h1>Knowledge Base</h1>
           <p>Manage document corpora for Retrieval-Augmented Generation (RAG).</p>
         </div>
-        <button className="kv-add-btn" onClick={() => setShowNewCorpus(true)}>
-          <Plus size={13} />
-          <span>New Corpus</span>
-        </button>
       </header>
 
       <EmbedderConfigCard
@@ -124,15 +119,6 @@ export function KnowledgeView() {
         </div>
       )}
 
-      {showNewCorpus && (
-        <NewCorpusModal
-          onClose={() => setShowNewCorpus(false)}
-          onCreated={(c) => {
-            setCorpora((prev) => [c, ...prev])
-            setShowNewCorpus(false)
-          }}
-        />
-      )}
     </div>
   )
 }
@@ -861,7 +847,7 @@ function CorpusCard({
 
 // ─── New Corpus modal ─────────────────────────────────────────────────────────
 
-function NewCorpusModal({
+export function NewCorpusModal({
   onClose,
   onCreated,
 }: {

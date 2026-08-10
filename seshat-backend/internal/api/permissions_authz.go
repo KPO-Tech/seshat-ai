@@ -14,6 +14,9 @@ func (app *App) requireScopedPermission(w http.ResponseWriter, r *http.Request, 
 		writeJSONError(w, http.StatusUnauthorized, "authentication required")
 		return false
 	}
+	if app != nil && app.connectedServerURL == "" {
+		return true
+	}
 	if principal.HasRole("admin") || app == nil || app.groupStore == nil || check == nil {
 		return true
 	}

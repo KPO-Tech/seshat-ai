@@ -1,7 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
-import { User, Sync, Left, Right } from '@icon-park/react'
-import { api } from '@/api/client'
+import { User, Sync, Left, Right, Caution } from '@icon-park/react'
+import { api, ApiError } from '@/api/client'
 import type { AdminGroup, AdminOrganization, AdminWorkspace } from '@/api/types'
+
+function loadErrorMessage(err: unknown, fallback: string): string {
+  return err instanceof ApiError ? err.message : fallback
+}
 
 type AdminUser = {
   id: string
@@ -58,16 +62,20 @@ export function AdminUsersView() {
   const [page, setPage] = useState(1)
   const [data, setData] = useState<UsersPage | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async (p: number, q: string) => {
     setLoading(true)
+    setError(null)
     try {
       const params = new URLSearchParams({ page: String(p), per_page: String(PER_PAGE) })
       if (q) params.set('search', q)
       const res = await api.get<UsersPage>(`/users?${params}`)
       setData(res)
-    } catch { /* ignore */ }
-    finally { setLoading(false) }
+    } catch (err) {
+      setData(null)
+      setError(loadErrorMessage(err, 'Failed to load users.'))
+    } finally { setLoading(false) }
   }, [])
 
   useEffect(() => { load(page, search) }, [load, page, search])
@@ -108,6 +116,8 @@ export function AdminUsersView() {
           <tbody>
             {loading ? (
               <tr><td colSpan={5} className="adm-td-center"><Sync size={13} className="spin" /> Loading…</td></tr>
+            ) : error ? (
+              <tr><td colSpan={5} className="adm-td-center adm-error"><Caution size={13} /> {error}</td></tr>
             ) : !data?.users.length ? (
               <tr><td colSpan={5} className="adm-td-center adm-muted">No users found</td></tr>
             ) : data.users.map((u) => (
@@ -208,14 +218,18 @@ export function AdminAuditView() {
   const [offset, setOffset] = useState(0)
   const [data, setData] = useState<AuditPage | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async (off: number) => {
     setLoading(true)
+    setError(null)
     try {
       const res = await api.get<AuditPage>(`/audit/logs?limit=${AUDIT_LIMIT}&offset=${off}`)
       setData(res)
-    } catch { /* ignore */ }
-    finally { setLoading(false) }
+    } catch (err) {
+      setData(null)
+      setError(loadErrorMessage(err, 'Failed to load audit logs.'))
+    } finally { setLoading(false) }
   }, [])
 
   useEffect(() => { load(offset) }, [load, offset])
@@ -255,6 +269,8 @@ export function AdminAuditView() {
           <tbody>
             {loading ? (
               <tr><td colSpan={6} className="adm-td-center"><Sync size={13} className="spin" /> Loading…</td></tr>
+            ) : error ? (
+              <tr><td colSpan={6} className="adm-td-center adm-error"><Caution size={13} /> {error}</td></tr>
             ) : !data?.logs.length ? (
               <tr><td colSpan={6} className="adm-td-center adm-muted">No logs found</td></tr>
             ) : data.logs.map((e) => (
@@ -297,14 +313,18 @@ export function AdminAuditView() {
 export function AdminQuotasView() {
   const [data, setData] = useState<UsageSummary | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
+    setError(null)
     try {
       const res = await api.get<UsageSummary>('/quotas')
       setData(res)
-    } catch { /* ignore */ }
-    finally { setLoading(false) }
+    } catch (err) {
+      setData(null)
+      setError(loadErrorMessage(err, 'Failed to load usage data.'))
+    } finally { setLoading(false) }
   }, [])
 
   useEffect(() => { load() }, [load])
@@ -327,6 +347,8 @@ export function AdminQuotasView() {
 
       {loading ? (
         <div className="adm-empty"><Sync size={16} className="spin" /> Loading…</div>
+      ) : error ? (
+        <div className="adm-empty adm-error"><Caution size={16} /> {error}</div>
       ) : !data || !data.entries.length ? (
         <div className="adm-empty adm-muted">No usage data available.</div>
       ) : (
@@ -375,18 +397,21 @@ function AdminResourceTable<T extends { id: string }>({
 }) {
   const [rows, setRows] = useState<T[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
+    setError(null)
     try {
       const res = await api.get<Record<string, unknown>>(path)
       setRows((res[rowsKey] as T[] | undefined) ?? [])
-    } catch {
+    } catch (err) {
       setRows([])
+      setError(loadErrorMessage(err, `Failed to load ${title.toLowerCase()}.`))
     } finally {
       setLoading(false)
     }
-  }, [path, rowsKey])
+  }, [path, rowsKey, title])
 
   useEffect(() => { load() }, [load])
 
@@ -411,6 +436,8 @@ function AdminResourceTable<T extends { id: string }>({
           <tbody>
             {loading ? (
               <tr><td colSpan={columns.length} className="adm-td-center"><Sync size={13} className="spin" /> Loading…</td></tr>
+            ) : error ? (
+              <tr><td colSpan={columns.length} className="adm-td-center adm-error"><Caution size={13} /> {error}</td></tr>
             ) : rows.length === 0 ? (
               <tr><td colSpan={columns.length} className="adm-td-center adm-muted">{emptyLabel}</td></tr>
             ) : rows.map((row) => (
@@ -469,6 +496,8 @@ export const ADMIN_CSS = `
 .adm-page-info { font-size: 11px; color: var(--color-text-muted); }
 
 .adm-empty { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 42px 0; color: var(--color-text-muted); font-size: 12px; }
+.adm-error { color: var(--color-error); }
+.adm-error svg { flex-shrink: 0; }
 .adm-quota-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
 .adm-quota-card { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 9px; padding: 13px; }
 .adm-quota-metric { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted); margin-bottom: 8px; }

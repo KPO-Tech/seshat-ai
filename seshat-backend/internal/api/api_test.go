@@ -935,8 +935,9 @@ func newPermissionedTestApp(t *testing.T) (*App, *db.IdentityStore, *db.GroupSto
 			WebSearchSettings: webSearchSettingStore,
 			WebSearchLogs:     webSearchLogStore,
 		}),
-		groupStore:    groupStore,
-		enableAPIKeys: true,
+		groupStore:         groupStore,
+		enableAPIKeys:      true,
+		connectedServerURL: "https://seshat-server.test",
 	}
 	return app, identity, groupStore
 }
@@ -4261,6 +4262,8 @@ func TestPromptResponseRejectsDifferentUserOrSession(t *testing.T) {
 
 func TestMCPConfigRequiresAdminAndRedactsSecrets(t *testing.T) {
 	fx := newSecurityTestFixture(t)
+	fx.app.connectedServerURL = "https://seshat-server.test"
+	fx.router = CreateRouter(APIConfig{}, fx.app)
 	_, err := fx.mcpStore.Create(context.Background(), db.CreateMCPServerParams{
 		Name:       "secure-server",
 		ServerType: "http",

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Navigate, useLocation } from 'react-router'
+import { Navigate, useLocation, useNavigate } from 'react-router'
 import {
-  Brain, Computer, Info, SunOne, Moon, Setting, User, LinkOne,
+  Api, Brain, CloudStorage, ColorFilter, Computer, Earth, Info, SunOne, Moon, Setting, User, LinkOne,
+  Book, Terminal, Voice,
 } from '@icon-park/react'
 import { useUIStore } from '@/stores/ui'
 import { useAuthStore } from '@/stores/auth'
@@ -12,13 +13,26 @@ import { AboutView } from './AboutView'
 import { GeneralView } from './GeneralView'
 import { CloudAutomationView } from './CloudAutomationView'
 import { AccountView, ConnectionsView } from './AccountView'
+import { ProvidersView } from './ProvidersView'
+import { WebSearchView } from './WebSearchView'
+import { KnowledgeView } from './KnowledgeView'
+import { MultimodalView } from './CapabilitiesViews'
+import { AppearanceView } from './AppearanceView'
+import { EnvironmentView } from './EnvironmentView'
+import { StorageView } from './StorageView'
+import { McpView } from './McpView'
 import type { TabId } from './SettingsNav'
 
 export function Settings() {
   const location = useLocation()
   const initialTab = (() => {
     const requested = new URLSearchParams(location.search).get('tab')
-    if (requested === 'general' || requested === 'account' || requested === 'connections' || requested === 'memories' || requested === 'about') {
+    const allowed: TabId[] = [
+      'general', 'account', 'connections', 'memories', 'appearance',
+      'providers', 'remote', 'knowledge', 'multimodal',
+      'mcp', 'environment', 'storage', 'about',
+    ]
+    if (requested && allowed.includes(requested as TabId)) {
       return requested as TabId
     }
     return 'general' as TabId
@@ -30,11 +44,6 @@ export function Settings() {
   const isAdmin = roles.includes('admin')
   const requestedTab = new URLSearchParams(location.search).get('tab')
   const adminRedirects: Record<string, string> = {
-    providers: '/admin?tab=providers',
-    knowledge: '/admin?tab=knowledge',
-    multimodal: '/admin?tab=multimodal',
-    remote: '/admin?tab=websearch',
-    runtime: '/admin?tab=runtime',
     system: '/admin?tab=runtime',
     'cloud-automation': '/admin?tab=runtime',
     'admin-users': '/admin?tab=users',
@@ -63,6 +72,24 @@ export function Settings() {
         { id: 'account' as TabId, label: 'Account', icon: <User size={16} /> },
         { id: 'connections' as TabId, label: 'Connections', icon: <LinkOne size={16} /> },
         { id: 'memories' as TabId, label: 'Memories', icon: <Brain size={16} /> },
+        { id: 'appearance' as TabId, label: 'Appearance', icon: <ColorFilter size={16} /> },
+      ],
+    },
+    {
+      title: 'AI',
+      items: [
+        { id: 'providers' as TabId, label: 'AI Providers', icon: <CloudStorage size={16} /> },
+        { id: 'remote' as TabId, label: 'Web Search', icon: <Earth size={16} /> },
+        { id: 'knowledge' as TabId, label: 'Knowledge', icon: <Book size={16} /> },
+        { id: 'multimodal' as TabId, label: 'Multimodal', icon: <Voice size={16} /> },
+      ],
+    },
+    {
+      title: 'WORKSPACE',
+      items: [
+        { id: 'mcp' as TabId, label: 'MCP', icon: <Api size={16} /> },
+        { id: 'environment' as TabId, label: 'Environment', icon: <Terminal size={16} /> },
+        { id: 'storage' as TabId, label: 'Storage', icon: <CloudStorage size={16} /> },
       ],
     },
     {
@@ -103,6 +130,14 @@ export function Settings() {
           {activeTab === 'account' && <AccountView />}
           {activeTab === 'connections' && <ConnectionsView />}
           {activeTab === 'memories' && <MemoriesView />}
+          {activeTab === 'appearance' && <AppearanceView />}
+          {activeTab === 'providers' && <ProvidersView />}
+          {activeTab === 'remote' && <WebSearchView />}
+          {activeTab === 'knowledge' && <KnowledgeView />}
+          {activeTab === 'multimodal' && <MultimodalView />}
+          {activeTab === 'mcp' && <McpView />}
+          {activeTab === 'environment' && <EnvironmentView />}
+          {activeTab === 'storage' && <StorageView />}
           {activeTab === 'about' && <AboutView />}
         </div>
       </main>
@@ -114,10 +149,13 @@ type SystemStatus = {
   mode: 'standalone' | 'connected'
   server_url?: string
   sandbox_confined?: boolean
+  docling_configured?: boolean
+  local_stt_configured?: boolean
 }
 
 export function RuntimeView() {
   const [status, setStatus] = useState<SystemStatus | null>(null)
+  const navigate = useNavigate()
 
   useEffect(() => {
     api.get<SystemStatus>('/system/status').then(setStatus).catch(() => setStatus(null))
@@ -181,6 +219,50 @@ export function RuntimeView() {
                   </div>
                 </div>
               </div>
+            </div>
+            <div className="sv-toggle-row">
+              <div className="sv-toggle-info">
+                <div>
+                  <div className="sv-setting-label">Document conversion (Docling)</div>
+                  <div
+                    className="sv-setting-desc"
+                    style={status?.docling_configured === false ? { color: 'var(--color-warning)' } : undefined}
+                  >
+                    {status?.docling_configured === true
+                      ? 'Configured — scans, images, and audio convert through Docling'
+                      : status?.docling_configured === false
+                        ? 'Not configured — scans, images, and audio fall back to plain text instead of failing'
+                        : 'Loading…'}
+                  </div>
+                </div>
+              </div>
+              {status?.docling_configured === false && (
+                <button type="button" className="sv-inline-action" onClick={() => navigate('/admin?tab=knowledge')}>
+                  Configure
+                </button>
+              )}
+            </div>
+            <div className="sv-toggle-row">
+              <div className="sv-toggle-info">
+                <div>
+                  <div className="sv-setting-label">Local voice input</div>
+                  <div
+                    className="sv-setting-desc"
+                    style={status?.local_stt_configured === false ? { color: 'var(--color-warning)' } : undefined}
+                  >
+                    {status?.local_stt_configured === true
+                      ? 'Configured — voice input is transcribed on this device'
+                      : status?.local_stt_configured === false
+                        ? 'Not set up yet — download a model to enable voice input'
+                        : 'Loading…'}
+                  </div>
+                </div>
+              </div>
+              {status?.local_stt_configured === false && (
+                <button type="button" className="sv-inline-action" onClick={() => navigate('/admin?tab=multimodal')}>
+                  Set up
+                </button>
+              )}
             </div>
             <div className="sv-toggle-row">
               <div className="sv-toggle-info">

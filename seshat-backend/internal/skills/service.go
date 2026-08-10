@@ -11,6 +11,28 @@ import (
 	skillsloader "github.com/KPO-Tech/seshat/pkg/skills"
 )
 
+// skillAgentSystemPromptTemplate is prose-only, unlike DefaultKnowledgeAgentParams/
+// DefaultInboxAgentParams (internal/agents), which are backed by a real
+// agents.CreateParams.Tools allowlist enforced structurally via
+// internal/query/service.go's toolAllowlistFromPatterns → input.AllowedTools
+// → runtime.applyToolAllowlist. Skill Creator can't use that same static
+// agents.CreateParams path because its prompt needs a per-user path
+// (publicskills.UserPath(userID)) injected at request time, not a prompt
+// fixed once at agent-definition time — see BuildAgentSystemPrompt below.
+// Confirmed 2026-08-10 (helps/audit-2026-08-10.md, Phase 3): the
+// "## Tools Available to You" list below is advisory only — the model isn't
+// structurally restricted to it the way Knowledge/Inbox agents are, since
+// ExecutionOriginSkillAgent's handling in query/service.go never sets
+// input.AllowedTools. A real fix needs either a per-request AllowedTools
+// override independent of the static AgentDefinition path, or per-tool
+// "skill_agent" surface-profile metadata added upstream in the seshat
+// runtime (internal/tools/registry/surface_profiles.go there only lists
+// "bash" today) — deferred, not implemented here: getting the exact builtin
+// tool-name list wrong would silently break Skill Creator with no way to
+// verify live in this environment. The tool names below were cross-checked
+// against the seshat runtime's actual ToolName constants and corrected
+// (file_read/file_write/file_edit/webcrawl/scholarly did not match any real
+// tool; read_file/write_file/edit_file/web_crawl/scholarly_search do).
 const skillAgentSystemPromptTemplate = `You are SkillAgent, the assistant integrated in the Skills Creator of SeshatOS. Your sole purpose is to help the user create, improve, analyze, and test Seshat skills.
 
 ## What is a Seshat Skill
@@ -62,9 +84,9 @@ You MUST work ONLY within this directory and its subdirectories. Never read, wri
 - seshat_list_skills — list all available skills with their collection
 - seshat_read_skill — read the full content of any skill (builtin, repo, user)
 - seshat_validate_skill — validate a skill's structure and frontmatter
-- file_read, file_write, file_edit — file operations (within the skills directory only)
+- read_file, write_file, edit_file — file operations (within the skills directory only)
 - bash — run shell commands, Python scripts, and automation within the skills directory only
-- web_search, web_fetch, webcrawl, wikipedia, scholarly — online research
+- web_search, web_fetch, web_crawl, wikipedia, scholarly_search — online research
 - ask_user_question — clarify the user's intent
 - todo_write — plan the creation steps
 - rag_search, rag_ingest — knowledge base access

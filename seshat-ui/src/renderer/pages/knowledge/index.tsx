@@ -25,6 +25,7 @@ import { PDFViewerPanel } from '@/components/chat/PDFViewerPanel'
 import { PptxPreviewPanel } from '@/components/chat/PptxPreviewPanel'
 import { XlsxPreviewPanel } from '@/components/chat/XlsxPreviewPanel'
 import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
+import { PlannedFeatureCard, PLANNED_FEATURE_CARD_CSS } from '@/components/ui/PlannedFeatureCard'
 import { streamingToContentBlocks, useSessionStore } from '@/stores/session'
 import { useChat } from '@/hooks/useChat'
 import { ChatInput, CHAT_INPUT_CSS } from '@/components/chat/ChatInput'
@@ -53,11 +54,18 @@ type CorpusDetail = {
 }
 
 type KnowledgeView = 'search' | 'collections' | 'chat'
-type KnowledgePreviewKind = 'pdf' | 'docx' | 'xlsx' | 'pptx' | 'markdown' | 'csv' | 'text' | 'unsupported'
+type KnowledgePreviewKind = 'pdf' | 'docx' | 'xlsx' | 'pptx' | 'markdown' | 'csv' | 'text' | 'image' | 'audio' | 'unsupported'
 
 const MARKDOWN_EXTENSIONS = new Set(['md', 'markdown'])
 const TEXT_EXTENSIONS = new Set(['txt', 'json', 'yaml', 'yml', 'log', 'tex'])
 const MARKDOWN_CONVERTED_EXTENSIONS = new Set(['html', 'htm'])
+// Rendered natively by the browser (<img>/<audio>) — no docling conversion
+// needed for a *preview* (docling only matters for RAG text extraction from
+// these, a separate concern). Superset of docconvert.DoclingOnlyExtensions
+// on the backend (png/tiff/tif/jpeg/jpg/wav/mp3) plus common formats that
+// convert fine in-browser without any backend involvement at all.
+const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'tiff', 'tif', 'gif', 'bmp', 'webp'])
+const AUDIO_EXTENSIONS = new Set(['wav', 'mp3', 'm4a', 'ogg', 'flac'])
 
 function fileExtension(filename: string): string {
   return filename.split('.').pop()?.toLowerCase() ?? ''
@@ -73,6 +81,8 @@ function previewKind(filename: string): KnowledgePreviewKind {
   if (MARKDOWN_EXTENSIONS.has(ext)) return 'markdown'
   if (TEXT_EXTENSIONS.has(ext)) return 'text'
   if (MARKDOWN_CONVERTED_EXTENSIONS.has(ext)) return 'markdown'
+  if (IMAGE_EXTENSIONS.has(ext)) return 'image'
+  if (AUDIO_EXTENSIONS.has(ext)) return 'audio'
   return 'unsupported'
 }
 
@@ -488,6 +498,7 @@ export function KnowledgePage() {
   return (
     <div className="k-root">
       <style>{KNOWLEDGE_CSS}</style>
+      <style>{PLANNED_FEATURE_CARD_CSS}</style>
       <input
         ref={fileRef}
         type="file"
@@ -1232,6 +1243,7 @@ function KnowledgeFileIcon({ filename }: { filename: string }) {
 
 function KnowledgeDocumentPreview({ file }: { file: CorpusFile | null }) {
   const [text, setText] = useState('')
+  const [mediaUrl, setMediaUrl] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [error, setError] = useState('')
 
@@ -1240,11 +1252,30 @@ function KnowledgeDocumentPreview({ file }: { file: CorpusFile | null }) {
   useEffect(() => {
     let cancelled = false
     setText('')
+    setMediaUrl('')
     setError('')
 
-    if (!file || !['markdown', 'csv', 'text'].includes(kind)) {
+    if (!file || !['markdown', 'csv', 'text', 'image', 'audio'].includes(kind)) {
       setStatus(file ? 'ready' : 'idle')
       return
+    }
+
+    if (kind === 'image' || kind === 'audio') {
+      setStatus('loading')
+      void api.getFileDataURL(`/files/${file.file_id}/content`)
+        .then((dataUrl) => {
+          if (cancelled) return
+          setMediaUrl(dataUrl)
+          setStatus('ready')
+        })
+        .catch((err) => {
+          if (cancelled) return
+          setError(err instanceof ApiError ? err.message : 'Unable to load this document.')
+          setStatus('error')
+        })
+      return () => {
+        cancelled = true
+      }
     }
 
     setStatus('loading')
@@ -1311,6 +1342,22 @@ function KnowledgeDocumentPreview({ file }: { file: CorpusFile | null }) {
 
   if (kind === 'text') {
     return <pre className="k-text-preview">{text || 'Empty document'}</pre>
+  }
+
+  if (kind === 'image') {
+    return (
+      <div className="k-image-preview">
+        {mediaUrl && <img src={mediaUrl} alt={file.filename} />}
+      </div>
+    )
+  }
+
+  if (kind === 'audio') {
+    return (
+      <div className="k-audio-preview">
+        {mediaUrl && <audio src={mediaUrl} controls />}
+      </div>
+    )
   }
 
   return (
@@ -1395,11 +1442,12 @@ function PublicLibraryModal({ onClose }: { onClose: () => void }) {
           </div>
           <button type="button" onClick={onClose}>Close</button>
         </div>
-        <div className="k-public-placeholder">
-          <Book size={30} />
-          <strong>No public catalog connected yet</strong>
-          <span>Admin-added company knowledge should come from Seshat Server and be included by default. Public community knowledge should stay opt-in.</span>
-        </div>
+        <PlannedFeatureCard
+          icon={<Book size={24} />}
+          title="No public catalog connected yet"
+          description="Admin-added company knowledge should come from Seshat Server and be included by default. Public community knowledge should stay opt-in."
+          note="Requires an organization server with a shared knowledge catalog — see Settings → Cloud Automation."
+        />
       </section>
     </div>
   )
@@ -2380,28 +2428,6 @@ ${MESSAGE_ITEM_CSS}
   font-size: 12px;
 }
 
-.k-public-placeholder {
-  min-height: 320px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 40px;
-  text-align: center;
-  color: var(--color-text-muted);
-}
-
-.k-public-placeholder strong {
-  color: var(--color-text);
-  font-size: 14px;
-}
-
-.k-public-placeholder span {
-  max-width: 460px;
-  font-size: 12px;
-  line-height: 1.55;
-}
 
 .k-drawer-backdrop {
   position: absolute;
@@ -3395,6 +3421,30 @@ ${MESSAGE_ITEM_CSS}
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+.k-image-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 20px;
+}
+.k-image-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+  border: 1px solid var(--color-border-subtle);
+}
+
+.k-audio-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 20px;
+}
+.k-audio-preview audio { width: 100%; max-width: 420px; }
 
 .k-csv-preview table {
   width: max-content;
