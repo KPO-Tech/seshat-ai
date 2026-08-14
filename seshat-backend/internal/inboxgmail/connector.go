@@ -16,6 +16,7 @@ import (
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/option"
 
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/connector"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
 )
 
@@ -35,6 +36,12 @@ func NewConnector(oauthConfig *oauth2.Config) *Connector {
 }
 
 func (c *Connector) Channel() string { return inbox.ChannelGmail }
+
+func (c *Connector) Kind() connector.Kind { return connector.Kind(inbox.ChannelGmail) }
+
+func (c *Connector) Capabilities() []connector.Capability {
+	return []connector.Capability{connector.CapabilityMessaging}
+}
 
 func (c *Connector) client(ctx context.Context, secret inbox.ConnectorSecret) (*gmail.Service, error) {
 	if c.oauthConfig == nil {

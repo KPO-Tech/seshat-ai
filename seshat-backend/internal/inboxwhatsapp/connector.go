@@ -3,6 +3,7 @@ package inboxwhatsapp
 import (
 	"context"
 
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/connector"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
 )
 
@@ -20,6 +21,12 @@ func NewConnector(manager *Manager) *Connector {
 }
 
 func (c *Connector) Channel() string { return inbox.ChannelWhatsApp }
+
+func (c *Connector) Kind() connector.Kind { return connector.Kind(inbox.ChannelWhatsApp) }
+
+func (c *Connector) Capabilities() []connector.Capability {
+	return []connector.Capability{connector.CapabilityMessaging}
+}
 
 func (c *Connector) Sync(_ context.Context, account *inbox.ChannelAccount, _ inbox.ConnectorSecret) ([]inbox.NormalizedMessage, string, error) {
 	return nil, account.SyncCursor, nil

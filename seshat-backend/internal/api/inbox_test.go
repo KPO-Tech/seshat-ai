@@ -13,6 +13,7 @@ import (
 
 	seshat "github.com/EngineerProjects/seshat-ai/seshat-backend/internal"
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/connector"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
 	"github.com/KPO-Tech/seshat/pkg/storage"
@@ -29,6 +30,13 @@ type fakeInboxConnector struct {
 }
 
 func (f *fakeInboxConnector) Channel() string { return f.channel }
+
+func (f *fakeInboxConnector) Kind() connector.Kind { return connector.Kind(f.channel) }
+
+func (f *fakeInboxConnector) Capabilities() []connector.Capability {
+	return []connector.Capability{connector.CapabilityMessaging}
+}
+
 func (f *fakeInboxConnector) Sync(_ context.Context, _ *inbox.ChannelAccount, _ inbox.ConnectorSecret) ([]inbox.NormalizedMessage, string, error) {
 	return f.syncMessages, "cursor-1", nil
 }

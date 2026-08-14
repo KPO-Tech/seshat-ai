@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/connector"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 )
 
@@ -152,7 +153,17 @@ type NormalizedMessage struct {
 // It never touches the database directly - Sync returns normalized data for
 // the Service to persist, and Send only needs enough identity to address the
 // external API, not local row IDs.
+//
+// Embeds connector.Connector (Kind/Capabilities) - the shared base contract
+// every connector implements regardless of domain, generalized out of what
+// used to be this messaging-only interface (see internal/connector's doc
+// comment and helps/roadmap.md Phase 1). Channel() is kept alongside Kind()
+// deliberately rather than replaced by it: it's the string persisted on
+// every ChannelAccount/message row and threaded through the whole existing
+// schema/API, so replacing it here would ripple far beyond this interface.
 type Connector interface {
+	connector.Connector
+
 	Channel() string
 
 	// Sync pulls everything new since account.SyncCursor and returns it
