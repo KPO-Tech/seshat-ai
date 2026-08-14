@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge"
 	"github.com/KPO-Tech/seshat/pkg/rag"
@@ -71,6 +72,23 @@ func testPrincipal(userID string) *backendauth.Principal {
 	return &backendauth.Principal{
 		User:  backendauth.User{ID: userID},
 		Roles: []string{"member"},
+	}
+}
+
+// testPrincipalInWorkspace is testPrincipal plus membership in workspaceID.
+func testPrincipalInWorkspace(userID, workspaceID string) *backendauth.Principal {
+	p := testPrincipal(userID)
+	p.WorkspaceMemberships = []backendauth.WorkspaceMembership{{WorkspaceID: workspaceID}}
+	return p
+}
+
+// testAdminPrincipal constructs an authenticated admin with no memberships of
+// its own — used to verify checkAccess/Search no longer grant admins a
+// blanket bypass onto other users' Knowledge content (roadmap.md Phase 1).
+func testAdminPrincipal(userID string) *backendauth.Principal {
+	return &backendauth.Principal{
+		User:  backendauth.User{ID: userID},
+		Roles: []string{"admin"},
 	}
 }
 
@@ -268,6 +286,59 @@ func TestService_DetachFile_ClearsVectors(t *testing.T) {
 	files, err := svc.ListFiles(ctx, principal, corpus.ID)
 	require.NoError(t, err)
 	require.Empty(t, files, "file should be removed from corpus after detach")
+}
+
+// ─── Permission filter tests (roadmap.md Phase 1) ─────────────────────────────
+
+func TestService_CheckAccess_WorkspaceMemberCanSearch(t *testing.T) {
+	ctx := context.Background()
+	database := openTestDB(t)
+	artifacts := newTestArtifactStore(t)
+	svc := newTestService(t, database, artifacts)
+	owner := testPrincipalInWorkspace("owner-1", "ws-1")
+
+	corpus, err := svc.CreateCorpus(ctx, owner, knowledge.CreateCorpusParams{Name: "shared kb", WorkspaceID: "ws-1"})
+	require.NoError(t, err)
+
+	fileID := seedFile(t, ctx, database, artifacts, "owner-1", "page.txt", "The quick brown fox jumps over the lazy dog.")
+	_, err = svc.AttachFile(ctx, owner, corpus.ID, fileID)
+	require.NoError(t, err)
+	_, err = svc.ProcessNextIngestionJob(ctx)
+	require.NoError(t, err)
+
+	// A different user, member of the same workspace but not the owner,
+	// must be able to see and search the corpus.
+	teammate := testPrincipalInWorkspace("teammate-1", "ws-1")
+	_, err = svc.GetCorpus(ctx, teammate, corpus.ID)
+	require.NoError(t, err, "workspace member must be able to access a shared corpus")
+
+	resp, err := svc.Search(ctx, teammate, knowledge.SearchParams{CorpusID: corpus.ID, Query: "fox", TopK: 5})
+	require.NoError(t, err)
+	require.Greater(t, len(resp.Results), 0, "workspace member must see workspace-scoped chunks")
+
+	// A user outside the workspace must be denied.
+	outsider := testPrincipal("outsider-1")
+	_, err = svc.GetCorpus(ctx, outsider, corpus.ID)
+	require.Error(t, err, "non-member must not access a workspace corpus they don't belong to")
+}
+
+func TestService_CheckAccess_AdminHasNoRAGBypass(t *testing.T) {
+	ctx := context.Background()
+	database := openTestDB(t)
+	artifacts := newTestArtifactStore(t)
+	svc := newTestService(t, database, artifacts)
+	owner := testPrincipal("owner-2")
+
+	corpus, err := svc.CreateCorpus(ctx, owner, knowledge.CreateCorpusParams{Name: "private kb"})
+	require.NoError(t, err)
+
+	admin := testAdminPrincipal("admin-1")
+	_, err = svc.GetCorpus(ctx, admin, corpus.ID)
+	require.Error(t, err, "admin must not get a blanket bypass onto another user's personal corpus")
+
+	var bkErr *bkerr.Error
+	require.ErrorAs(t, err, &bkErr)
+	require.Equal(t, bkerr.ErrorKindForbidden, bkErr.Kind)
 }
 
 // ─── Runner tests ─────────────────────────────────────────────────────────────

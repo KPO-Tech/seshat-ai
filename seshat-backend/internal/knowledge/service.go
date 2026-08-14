@@ -407,7 +407,7 @@ func (s *Service) Ingest(ctx context.Context, principal *backendauth.Principal, 
 		return nil, bkerr.Unavailable("artifact store not configured", nil)
 	}
 
-	_, fileRecord, err := s.loadIngestInputs(ctx, principal, params)
+	corpus, fileRecord, err := s.loadIngestInputs(ctx, principal, params)
 	if err != nil {
 		return nil, err
 	}
@@ -420,7 +420,7 @@ func (s *Service) Ingest(ctx context.Context, principal *backendauth.Principal, 
 		Status:   db.CorpusFileStatusPending,
 	})
 
-	cf, _, err := s.ingestFile(ctx, params.CorpusID, fileRecord)
+	cf, _, err := s.ingestFile(ctx, params.CorpusID, fileRecord, corpus.WorkspaceID, corpus.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -448,11 +448,24 @@ func (s *Service) Search(ctx context.Context, principal *backendauth.Principal, 
 	if topK <= 0 {
 		topK = 5
 	}
+	// allowedScopeIDs mirrors checkAccess's own rule (owner or workspace
+	// member) at the chunk level, so that a corpus which one day aggregates
+	// multi-source content (e.g. a connector syncing more than one
+	// department) can restrict individual chunks below the corpus-level
+	// check above — see helps/roadmap.md Phase 1.
+	allowedScopeIDs := make([]string, 0, 1+len(principal.WorkspaceMemberships))
+	allowedScopeIDs = append(allowedScopeIDs, principal.User.ID)
+	for _, m := range principal.WorkspaceMemberships {
+		allowedScopeIDs = append(allowedScopeIDs, m.WorkspaceID)
+	}
 	resp, err := s.rag.Search(ctx, rag.SearchRequest{
 		CorpusID:     params.CorpusID,
 		Query:        params.Query,
 		TopK:         topK,
 		HybridWeight: defaultHybridSearchWeight,
+		Filter: map[string]any{
+			"scope_id": map[string]any{"$in": allowedScopeIDs},
+		},
 	})
 	if err != nil {
 		return nil, bkerr.Internal("search corpus: "+err.Error(), err)
@@ -490,7 +503,7 @@ func (s *Service) processIngestionJob(ctx context.Context, job db.KnowledgeInges
 		return
 	}
 
-	_, chunks, err := s.ingestFile(ctx, job.CorpusID, fileRecord)
+	_, chunks, err := s.ingestFile(ctx, job.CorpusID, fileRecord, job.WorkspaceID, job.UserID)
 	if err != nil {
 		_ = s.jobs.MarkFailed(ctx, job, err, defaultIngestionRetryDelay)
 		return
@@ -517,7 +530,11 @@ func (s *Service) loadIngestInputs(ctx context.Context, principal *backendauth.P
 	return record, fileRecord, nil
 }
 
-func (s *Service) ingestFile(ctx context.Context, corpusID string, fileRecord *db.File) (*CorpusFile, int, error) {
+// ingestFile chunks+embeds fileRecord into the corpus's vector namespace.
+// workspaceID/ownerID determine the scope_id tag written on every resulting
+// chunk (workspace wins when the corpus is shared, else the owner) — see
+// helps/roadmap.md Phase 1.
+func (s *Service) ingestFile(ctx context.Context, corpusID string, fileRecord *db.File, workspaceID, ownerID string) (*CorpusFile, int, error) {
 	// Record the previous chunk count so we can compute a delta and clean up stale vectors
 	// when a re-ingest produces fewer chunks than the previous run.
 	oldChunkCount := 0
@@ -537,11 +554,16 @@ func (s *Service) ingestFile(ctx context.Context, corpusID string, fileRecord *d
 		return nil, 0, bkerr.InvalidInput("file has no extractable text content", nil)
 	}
 
+	scopeID := workspaceID
+	if scopeID == "" {
+		scopeID = ownerID
+	}
 	result, err := s.rag.Ingest(ctx, rag.IngestRequest{
 		CorpusID: corpusID,
 		FileID:   fileRecord.ID, // deterministic artifact key — prevents duplicate vectors on re-ingest
 		Filename: fileRecord.Filename,
 		Text:     text,
+		ScopeID:  scopeID,
 	})
 	if err != nil {
 		_ = s.corpora.UpdateFileStatus(ctx, corpusID, fileRecord.ID, db.CorpusFileStatusFailed, 0)
@@ -570,17 +592,37 @@ func (s *Service) ingestFile(ctx context.Context, corpusID string, fileRecord *d
 	return corpusFileFromDB(*cf), result.Chunks, nil
 }
 
+// checkAccess gates Knowledge content access: owning the corpus, or being a
+// member of the workspace it's shared with. Deliberately does NOT grant
+// admins a blanket bypass here — admins still see every corpus via
+// ListCorpora's ListAll for management purposes, but reading RAG content
+// belonging to another user/workspace requires actually being in scope, the
+// same way any other principal would need to be. See helps/roadmap.md
+// Phase 1 for why this changed from the previous unconditional admin bypass.
 func (s *Service) checkAccess(principal *backendauth.Principal, corpus *db.Corpus) error {
 	if principal == nil {
 		return bkerr.Unauthorized("authentication required", nil)
 	}
-	if principal.HasRole("admin") {
+	if corpus.UserID == principal.User.ID {
 		return nil
 	}
-	if corpus.UserID != principal.User.ID {
-		return bkerr.Forbidden("corpus belongs to another user", nil)
+	if corpus.WorkspaceID != "" && isWorkspaceMember(principal, corpus.WorkspaceID) {
+		return nil
 	}
-	return nil
+	return bkerr.Forbidden("corpus belongs to another user", nil)
+}
+
+// isWorkspaceMember checks actual membership only — deliberately not
+// principal.CanViewWorkspace, whose admin bypass is right for org-management
+// UI but wrong here (see checkAccess's doc comment on why admins don't get a
+// free pass to RAG content).
+func isWorkspaceMember(principal *backendauth.Principal, workspaceID string) bool {
+	for _, m := range principal.WorkspaceMemberships {
+		if m.WorkspaceID == workspaceID {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Service) checkFileAccess(principal *backendauth.Principal, fileRecord *db.File) error {

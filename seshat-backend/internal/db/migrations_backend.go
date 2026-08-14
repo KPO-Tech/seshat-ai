@@ -2,10 +2,12 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
+	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
@@ -316,7 +318,73 @@ func backendMigrations() []schemaMigration {
 				return db.gormDB.WithContext(ctx).AutoMigrate(&gCapabilityLink{})
 			},
 		},
+		{
+			ID:    "20260814_041_backfill_rag_scope_id",
+			Scope: migrationScopeBackend,
+			Run:   backfillRAGScopeID,
+		},
 	}
+}
+
+// backfillRAGScopeID re-queues every already-ingested corpus file so its
+// chunks get re-embedded with the scope_id metadata tag the RAG permission
+// filter added (Phase 1 of helps/roadmap.md — the tag didn't exist before
+// this migration, so without this every existing chunk would silently drop
+// out of search results). Reuses the existing ingestion job queue/worker
+// instead of touching vector storage directly: ingestFile's re-ingest is
+// already idempotent (deterministic per-file artifact key), so simply
+// re-running it is enough. Runs once, tracked by the migration framework
+// itself — no separate marker needed.
+func backfillRAGScopeID(ctx context.Context, db *DB) error {
+	var files []gCorpusFile
+	if err := db.gormDB.WithContext(ctx).
+		Where("status = ?", CorpusFileStatusIngested).
+		Find(&files).Error; err != nil {
+		return fmt.Errorf("list ingested corpus files: %w", err)
+	}
+	if len(files) == 0 {
+		return nil
+	}
+
+	jobs, err := NewKnowledgeIngestionJobStore(db)
+	if err != nil {
+		return fmt.Errorf("ingestion job store: %w", err)
+	}
+
+	corpusCache := make(map[string]gCorpus)
+	for _, f := range files {
+		corpus, ok := corpusCache[f.CorpusID]
+		if !ok {
+			if err := db.gormDB.WithContext(ctx).Where("id = ?", f.CorpusID).First(&corpus).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					continue // corpus deleted since this file was ingested
+				}
+				return fmt.Errorf("load corpus %s: %w", f.CorpusID, err)
+			}
+			corpusCache[f.CorpusID] = corpus
+		}
+
+		if active, err := jobs.FindActiveByCorpusFile(ctx, f.CorpusID, f.FileID); err != nil {
+			return fmt.Errorf("find active ingestion job: %w", err)
+		} else if active != nil {
+			continue
+		}
+
+		workspaceID := ""
+		if corpus.WorkspaceID != nil {
+			workspaceID = *corpus.WorkspaceID
+		}
+		if _, err := jobs.Create(ctx, CreateKnowledgeIngestionJobParams{
+			CorpusID:    f.CorpusID,
+			FileID:      f.FileID,
+			UserID:      corpus.UserID,
+			WorkspaceID: workspaceID,
+			Filename:    f.Filename,
+		}); err != nil {
+			return fmt.Errorf("enqueue backfill job for %s/%s: %w", f.CorpusID, f.FileID, err)
+		}
+	}
+	return nil
 }
 
 func migrateProviderModels(ctx context.Context, db *DB) error {

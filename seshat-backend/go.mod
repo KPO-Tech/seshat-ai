@@ -1,9 +1,9 @@
 module github.com/EngineerProjects/seshat-ai/seshat-backend
 
-go 1.26.5
+go 1.26.6
 
 require (
-	github.com/KPO-Tech/seshat v1.2.7
+	github.com/KPO-Tech/seshat v1.2.8
 	github.com/glebarez/go-sqlite v1.21.2
 	github.com/glebarez/sqlite v1.11.0
 	github.com/gorilla/websocket v1.5.3
@@ -132,10 +132,10 @@ require (
 	go.opentelemetry.io/proto/otlp v1.10.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/exp v0.0.0-20260709172345-9ea1abe57597 // indirect
-	golang.org/x/image v0.43.0 // indirect
+	golang.org/x/image v0.45.0 // indirect
 	golang.org/x/net v0.57.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
-	golang.org/x/text v0.40.0 // indirect
+	golang.org/x/text v0.41.0 // indirect
 	gonum.org/v1/gonum v0.17.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260630182238-925bb5da69e7 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260803160001-6ac0973c030d // indirect
