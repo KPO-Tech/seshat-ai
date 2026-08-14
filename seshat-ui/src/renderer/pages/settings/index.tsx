@@ -23,16 +23,17 @@ import { StorageView } from './StorageView'
 import { McpView } from './McpView'
 import type { TabId } from './SettingsNav'
 
+const ALLOWED_TABS: TabId[] = [
+  'general', 'account', 'connections', 'memories', 'appearance',
+  'providers', 'remote', 'knowledge', 'multimodal',
+  'mcp', 'environment', 'storage', 'about',
+]
+
 export function Settings() {
   const location = useLocation()
   const initialTab = (() => {
     const requested = new URLSearchParams(location.search).get('tab')
-    const allowed: TabId[] = [
-      'general', 'account', 'connections', 'memories', 'appearance',
-      'providers', 'remote', 'knowledge', 'multimodal',
-      'mcp', 'environment', 'storage', 'about',
-    ]
-    if (requested && allowed.includes(requested as TabId)) {
+    if (requested && ALLOWED_TABS.includes(requested as TabId)) {
       return requested as TabId
     }
     return 'general' as TabId
@@ -43,6 +44,19 @@ export function Settings() {
 
   const isAdmin = roles.includes('admin')
   const requestedTab = new URLSearchParams(location.search).get('tab')
+
+  // initialTab only runs once (React ignores the useState initializer on
+  // re-render), so navigate('/settings?tab=x') calls from other views - e.g.
+  // AccountView's "View providers", or a "Configure" link pointing at
+  // Environment - land here but never actually switch the visible tab
+  // without this: sync activeTab whenever the URL's ?tab= changes while
+  // already mounted on /settings.
+  useEffect(() => {
+    if (requestedTab && ALLOWED_TABS.includes(requestedTab as TabId) && requestedTab !== activeTab) {
+      setActiveTab(requestedTab as TabId)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestedTab])
   const adminRedirects: Record<string, string> = {
     system: '/admin?tab=runtime',
     'cloud-automation': '/admin?tab=runtime',

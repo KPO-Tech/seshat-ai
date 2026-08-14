@@ -23,6 +23,7 @@ Thumbs.db
 .gemini/
 private/
 helps/
+graphify-out/
 
 # Generic local artifacts
 *.log
