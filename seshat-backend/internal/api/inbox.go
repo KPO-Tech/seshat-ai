@@ -22,9 +22,9 @@ import (
 	"google.golang.org/api/option"
 )
 
-const gmailOAuthStateTTL = 10 * time.Minute
+const oauthStateTTL = 10 * time.Minute
 
-type gmailOAuthState struct {
+type oauthState struct {
 	userID    string
 	createdAt time.Time
 }
@@ -170,7 +170,7 @@ func (a *App) handleInboxGmailOAuthStart(w http.ResponseWriter, r *http.Request)
 		writeJSONError(w, http.StatusInternalServerError, "failed to generate oauth state")
 		return
 	}
-	a.storeGmailOAuthState(state, principal.User.ID)
+	a.storeOAuthState(state, principal.User.ID)
 
 	cfgCopy := *cfg
 	cfgCopy.RedirectURL = gmailCallbackURL(r)
@@ -190,40 +190,40 @@ func (a *App) handleInboxGmailOAuthCallback(w http.ResponseWriter, r *http.Reque
 	}
 	query := r.URL.Query()
 	if errMsg := query.Get("error"); errMsg != "" {
-		writeGmailOAuthResultPage(w, false, "Google reported an error: "+errMsg)
+		writeOAuthResultPage(w, false, "Google reported an error: "+errMsg)
 		return
 	}
 	code := query.Get("code")
 	state := query.Get("state")
 	if code == "" || state == "" {
-		writeGmailOAuthResultPage(w, false, "Missing authorization code or state.")
+		writeOAuthResultPage(w, false, "Missing authorization code or state.")
 		return
 	}
-	userID, ok := a.takeGmailOAuthState(state)
+	userID, ok := a.takeOAuthState(state)
 	if !ok {
-		writeGmailOAuthResultPage(w, false, "This authorization link has expired or was already used - please try connecting again.")
+		writeOAuthResultPage(w, false, "This authorization link has expired or was already used - please try connecting again.")
 		return
 	}
 	if a.backend.Inbox == nil {
-		writeGmailOAuthResultPage(w, false, "Inbox is not configured on this server.")
+		writeOAuthResultPage(w, false, "Inbox is not configured on this server.")
 		return
 	}
 
 	cfg, err := inboxgmail.BaseOAuthConfig()
 	if err != nil {
-		writeGmailOAuthResultPage(w, false, err.Error())
+		writeOAuthResultPage(w, false, err.Error())
 		return
 	}
 	cfg.RedirectURL = gmailCallbackURL(r)
 
 	token, err := cfg.Exchange(r.Context(), code)
 	if err != nil {
-		writeGmailOAuthResultPage(w, false, "Failed to exchange authorization code: "+err.Error())
+		writeOAuthResultPage(w, false, "Failed to exchange authorization code: "+err.Error())
 		return
 	}
-	email, err := fetchGmailAccountEmail(r.Context(), cfg, token)
+	email, err := fetchGoogleAccountEmail(r.Context(), cfg, token)
 	if err != nil {
-		writeGmailOAuthResultPage(w, false, "Connected to Google, but could not read the account email: "+err.Error())
+		writeOAuthResultPage(w, false, "Connected to Google, but could not read the account email: "+err.Error())
 		return
 	}
 
@@ -238,11 +238,11 @@ func (a *App) handleInboxGmailOAuthCallback(w http.ResponseWriter, r *http.Reque
 		ExpiresAt:         token.Expiry,
 	})
 	if err != nil {
-		writeGmailOAuthResultPage(w, false, "Failed to save the connected account: "+err.Error())
+		writeOAuthResultPage(w, false, "Failed to save the connected account: "+err.Error())
 		return
 	}
 	a.ensureInboxAgent(r.Context())
-	writeGmailOAuthResultPage(w, true, fmt.Sprintf("Connected %s. You can close this tab and return to Seshat.", email))
+	writeOAuthResultPage(w, true, fmt.Sprintf("Connected %s. You can close this tab and return to Seshat.", email))
 }
 
 // ensureInboxAgent creates the Inbox Agent (see agents.DefaultInboxAgentParams)
@@ -261,7 +261,7 @@ func (a *App) ensureInboxAgent(ctx context.Context) {
 	}
 }
 
-func fetchGmailAccountEmail(ctx context.Context, cfg *oauth2.Config, token *oauth2.Token) (string, error) {
+func fetchGoogleAccountEmail(ctx context.Context, cfg *oauth2.Config, token *oauth2.Token) (string, error) {
 	svc, err := oauth2api.NewService(ctx, option.WithTokenSource(cfg.TokenSource(ctx, token)))
 	if err != nil {
 		return "", err
@@ -276,29 +276,29 @@ func fetchGmailAccountEmail(ctx context.Context, cfg *oauth2.Config, token *oaut
 	return info.Email, nil
 }
 
-func (a *App) storeGmailOAuthState(state, userID string) {
-	a.gmailOAuthMu.Lock()
-	defer a.gmailOAuthMu.Unlock()
-	a.gmailOAuthStates[state] = gmailOAuthState{userID: userID, createdAt: time.Now()}
+func (a *App) storeOAuthState(state, userID string) {
+	a.oauthMu.Lock()
+	defer a.oauthMu.Unlock()
+	a.oauthStates[state] = oauthState{userID: userID, createdAt: time.Now()}
 	// Opportunistic sweep of expired entries - this map only ever holds as
 	// many concurrent entries as there are in-flight OAuth attempts, so a
 	// full scan on every new one is cheap.
-	for s, st := range a.gmailOAuthStates {
-		if time.Since(st.createdAt) > gmailOAuthStateTTL {
-			delete(a.gmailOAuthStates, s)
+	for s, st := range a.oauthStates {
+		if time.Since(st.createdAt) > oauthStateTTL {
+			delete(a.oauthStates, s)
 		}
 	}
 }
 
-func (a *App) takeGmailOAuthState(state string) (string, bool) {
-	a.gmailOAuthMu.Lock()
-	defer a.gmailOAuthMu.Unlock()
-	st, ok := a.gmailOAuthStates[state]
+func (a *App) takeOAuthState(state string) (string, bool) {
+	a.oauthMu.Lock()
+	defer a.oauthMu.Unlock()
+	st, ok := a.oauthStates[state]
 	if !ok {
 		return "", false
 	}
-	delete(a.gmailOAuthStates, state) // single use
-	if time.Since(st.createdAt) > gmailOAuthStateTTL {
+	delete(a.oauthStates, state) // single use
+	if time.Since(st.createdAt) > oauthStateTTL {
 		return "", false
 	}
 	return st.userID, true
@@ -322,7 +322,7 @@ func gmailCallbackURL(r *http.Request) string {
 	return fmt.Sprintf("%s://%s/api/v1/inbox/accounts/gmail/oauth/callback", scheme, r.Host)
 }
 
-func writeGmailOAuthResultPage(w http.ResponseWriter, ok bool, message string) {
+func writeOAuthResultPage(w http.ResponseWriter, ok bool, message string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if !ok {
 		w.WriteHeader(http.StatusBadRequest)

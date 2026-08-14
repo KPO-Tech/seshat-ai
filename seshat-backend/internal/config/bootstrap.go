@@ -38,6 +38,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inboxtool"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inboxwhatsapp"
 	backendknowledge "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgegdrive"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgetool"
 	backendmemories "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/memories"
 	backendpreferences "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/preferences"
@@ -315,6 +316,27 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		cleanups = append(cleanups, func() error { whatsappManager.DisconnectAll(); return nil })
 	} else {
 		fmt.Printf("[API] Inbox: connecteur WhatsApp désactivé (base de données %q non supportée par whatsmeow)\n", database.Driver())
+	}
+
+	// Google Drive Knowledge connector - same env-var-gated, graceful-skip
+	// pattern as Gmail above. Read-only, manual sync trigger only in this
+	// first version (see helps/roadmap.md Phase 1) - no background loop like
+	// Gmail's, since there's no local scheduler to run one on and syncing a
+	// whole Drive is a heavier operation than polling a mailbox.
+	connectorAccountStore, err := db.NewConnectorAccountStore(database)
+	if err != nil {
+		_ = cleanup()
+		return nil, nil, fmt.Errorf("init connector account store: %w", err)
+	}
+	var knowledgeGDriveConnector *knowledgegdrive.Connector
+	if knowledgegdrive.IsConfigured() {
+		gdriveOAuthConfig, err := knowledgegdrive.BaseOAuthConfig()
+		if err != nil {
+			_ = cleanup()
+			return nil, nil, fmt.Errorf("init google drive oauth config: %w", err)
+		}
+		knowledgeGDriveConnector = knowledgegdrive.NewConnector(gdriveOAuthConfig)
+		fmt.Printf("[API] Knowledge: connecteur Google Drive activé\n")
 	}
 
 	prospectingCacheStore, err := db.NewProspectingCacheStore(database)
@@ -937,6 +959,8 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		UserPreferencesStore:     userPreferencesStore,
 		AgentDefinitionStore:     agentDefinitionStore,
 		Inbox:                    inboxService,
+		KnowledgeGDrive:          knowledgeGDriveConnector,
+		KnowledgeGDriveAccounts:  connectorAccountStore,
 	})
 
 	// Knowledge Agent: unlike the Inbox Agent (provisioned lazily on first

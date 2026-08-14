@@ -341,6 +341,97 @@ func TestService_CheckAccess_AdminHasNoRAGBypass(t *testing.T) {
 	require.Equal(t, bkerr.ErrorKindForbidden, bkErr.Kind)
 }
 
+func TestService_IngestExternal_MultiIdentityACL(t *testing.T) {
+	ctx := context.Background()
+	database := openTestDB(t)
+	artifacts := newTestArtifactStore(t)
+	svc := newTestService(t, database, artifacts)
+	// checkAccess gates the whole corpus first (ownership or workspace
+	// membership) - per-chunk ACL can only narrow further within what that
+	// already allows, never grant access beyond it (see checkAccess's own
+	// doc comment). So testing the ACL's differentiating power requires two
+	// principals who both clear the corpus-level gate via a shared
+	// workspace, then differ at the chunk level.
+	owner := testPrincipalInWorkspace("owner-3", "ws-conn")
+	teammate := testPrincipalInWorkspace("teammate-3", "ws-conn")
+
+	corpus, err := svc.CreateCorpus(ctx, owner, knowledge.CreateCorpusParams{Name: "connector kb", WorkspaceID: "ws-conn"})
+	require.NoError(t, err)
+
+	// A resource shared with two identities at once - mirrors a Google
+	// Drive file shared with a specific user plus a group, though here
+	// using real resolvable identities (user IDs) rather than opaque
+	// prefixed strings, since that's what Search() actually checks a
+	// principal against today.
+	_, err = svc.IngestExternal(ctx, owner, knowledge.ExternalIngestParams{
+		CorpusID:      corpus.ID,
+		ExternalID:    "gdrive-shared-file",
+		Filename:      "shared.txt",
+		Text:          "alpha content shared with owner and teammate",
+		AccessControl: []string{"owner-3", "teammate-3"},
+	})
+	require.NoError(t, err)
+
+	_, err = svc.IngestExternal(ctx, owner, knowledge.ExternalIngestParams{
+		CorpusID:      corpus.ID,
+		ExternalID:    "gdrive-private-file",
+		Filename:      "private.txt",
+		Text:          "alpha content private to the owner only",
+		AccessControl: []string{"owner-3"},
+	})
+	require.NoError(t, err)
+
+	// corpus_files bookkeeping works for connector-sourced content exactly
+	// like uploaded files - both show up ingested with a chunk count.
+	files, err := svc.ListFiles(ctx, owner, corpus.ID)
+	require.NoError(t, err)
+	require.Len(t, files, 2)
+	for _, f := range files {
+		require.Equal(t, db.CorpusFileStatusIngested, f.Status)
+		require.Greater(t, f.ChunkCount, 0)
+	}
+
+	// The teammate is entitled to shared-file only.
+	resp, err := svc.Search(ctx, teammate, knowledge.SearchParams{CorpusID: corpus.ID, Query: "alpha", TopK: 10})
+	require.NoError(t, err)
+	require.Len(t, resp.Results, 1)
+	require.Equal(t, "shared.txt", resp.Results[0].Metadata["filename"])
+
+	// The owner is entitled to both.
+	resp, err = svc.Search(ctx, owner, knowledge.SearchParams{CorpusID: corpus.ID, Query: "alpha", TopK: 10})
+	require.NoError(t, err)
+	require.Len(t, resp.Results, 2)
+
+	// An unrelated user has no access to the corpus at all (checkAccess
+	// gates first), independent of the per-chunk ACL.
+	_, err = svc.Search(ctx, testPrincipal("outsider-3"), knowledge.SearchParams{CorpusID: corpus.ID, Query: "alpha", TopK: 10})
+	require.Error(t, err)
+}
+
+func TestService_IngestExternal_EmptyACLFallsBackToCorpusScope(t *testing.T) {
+	ctx := context.Background()
+	database := openTestDB(t)
+	artifacts := newTestArtifactStore(t)
+	svc := newTestService(t, database, artifacts)
+	owner := testPrincipal("owner-4")
+
+	corpus, err := svc.CreateCorpus(ctx, owner, knowledge.CreateCorpusParams{Name: "connector kb 2"})
+	require.NoError(t, err)
+
+	_, err = svc.IngestExternal(ctx, owner, knowledge.ExternalIngestParams{
+		CorpusID:   corpus.ID,
+		ExternalID: "gdrive-unscoped-file",
+		Filename:   "unscoped.txt",
+		Text:       "alpha content with no explicit access control",
+		// AccessControl deliberately omitted.
+	})
+	require.NoError(t, err)
+
+	resp, err := svc.Search(ctx, owner, knowledge.SearchParams{CorpusID: corpus.ID, Query: "alpha", TopK: 10})
+	require.NoError(t, err)
+	require.Len(t, resp.Results, 1, "empty AccessControl must fall back to the corpus owner's scope, not vanish")
+}
+
 // ─── Runner tests ─────────────────────────────────────────────────────────────
 
 func TestRunner_ProcessesAllPendingJobs(t *testing.T) {

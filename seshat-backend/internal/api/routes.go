@@ -123,6 +123,13 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	apiV1.Handle("/inbox/threads", app.authMiddleware(http.HandlerFunc(app.handleInboxThreads)))
 	apiV1.Handle("/inbox/threads/", app.authMiddleware(http.HandlerFunc(app.handleInboxThreadByID)))
 
+	apiV1.Handle("/knowledge/connectors/gdrive/accounts", app.authMiddleware(http.HandlerFunc(app.handleKnowledgeGDriveAccounts)))
+	apiV1.Handle("/knowledge/connectors/gdrive/accounts/", app.authMiddleware(http.HandlerFunc(app.handleKnowledgeGDriveAccountSync)))
+	apiV1.Handle("/knowledge/connectors/gdrive/oauth/start", app.authMiddleware(http.HandlerFunc(app.handleKnowledgeGDriveOAuthStart)))
+	// Deliberately unauthenticated - Google's own redirect lands here with no
+	// bearer token; see handleKnowledgeGDriveOAuthCallback's doc comment.
+	apiV1.HandleFunc("/knowledge/connectors/gdrive/oauth/callback", app.handleKnowledgeGDriveOAuthCallback)
+
 	apiV1.Handle("/web/search", app.authMiddleware(http.HandlerFunc(app.handleWebSearch)))
 	apiV1.Handle("/web/search/settings", app.authMiddleware(http.HandlerFunc(app.handleWebSearchSettings)))
 	apiV1.Handle("/web/search/logs", app.authMiddleware(http.HandlerFunc(app.handleWebSearchLogs)))

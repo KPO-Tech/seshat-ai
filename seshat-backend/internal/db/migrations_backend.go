@@ -323,6 +323,13 @@ func backendMigrations() []schemaMigration {
 			Scope: migrationScopeBackend,
 			Run:   backfillRAGScopeID,
 		},
+		{
+			ID:    "20260814_042_connector_accounts",
+			Scope: migrationScopeBackend,
+			Run: func(ctx context.Context, db *DB) error {
+				return db.gormDB.WithContext(ctx).AutoMigrate(&gConnectorAccount{})
+			},
+		},
 	}
 }
 

@@ -1,12 +1,9 @@
 package inboxgmail
 
 import (
-	"fmt"
-	"os"
-	"strings"
-
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
+
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/googleoauth"
 )
 
 // Scopes requested from Google - read + send only, matching what this
@@ -27,30 +24,12 @@ var Scopes = []string{
 // at all, the same way other optional integrations (Docling, web search
 // providers) are skipped rather than half-initialized when unconfigured.
 func IsConfigured() bool {
-	return strings.TrimSpace(os.Getenv("GOOGLE_OAUTH_CLIENT_ID")) != "" &&
-		strings.TrimSpace(os.Getenv("GOOGLE_OAUTH_CLIENT_SECRET")) != ""
+	return googleoauth.IsConfigured()
 }
 
-// BaseOAuthConfig builds the Google OAuth2 client config from
-// GOOGLE_OAUTH_CLIENT_ID/GOOGLE_OAUTH_CLIENT_SECRET, with an empty
-// RedirectURL - the caller (internal/api's OAuth start/callback handlers)
-// fills that in per-request from the incoming request's own host:port,
-// since this app's local HTTP server's port isn't fixed (main.go falls
-// back to an OS-assigned port if the preferred one is taken) and can't be
-// known this early at startup. The Google Cloud OAuth client must be
-// registered as a "Desktop app" type, which Google treats as a native app
-// under RFC 8252 and accepts any loopback port for - not "Web application",
-// which would require every possible port pre-registered.
+// BaseOAuthConfig builds the Gmail OAuth2 client config - see
+// googleoauth.BaseConfig for the shared client-ID/secret sourcing and
+// "Desktop app" redirect setup this delegates to.
 func BaseOAuthConfig() (*oauth2.Config, error) {
-	clientID := strings.TrimSpace(os.Getenv("GOOGLE_OAUTH_CLIENT_ID"))
-	clientSecret := strings.TrimSpace(os.Getenv("GOOGLE_OAUTH_CLIENT_SECRET"))
-	if clientID == "" || clientSecret == "" {
-		return nil, fmt.Errorf("GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET are not configured")
-	}
-	return &oauth2.Config{
-		ClientID:     clientID,
-		ClientSecret: clientSecret,
-		Endpoint:     google.Endpoint,
-		Scopes:       Scopes,
-	}, nil
+	return googleoauth.BaseConfig(Scopes)
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/files"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgegdrive"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/mcp"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/memories"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/metrics"
@@ -150,6 +151,12 @@ type Dependencies struct {
 	// of the env-var-driven optional integrations already live. nil = the
 	// inbox domain is disabled (no routes registered).
 	Inbox *inbox.Service
+	// KnowledgeGDrive/KnowledgeGDriveAccounts follow the same
+	// bootstrap.go-owned, env-var-gated pattern as Inbox above - nil = the
+	// Google Drive Knowledge connector is disabled (no routes registered).
+	// See helps/roadmap.md Phase 1.
+	KnowledgeGDrive         *knowledgegdrive.Connector
+	KnowledgeGDriveAccounts *db.ConnectorAccountStore
 }
 
 // App is the root backend service container.
@@ -172,6 +179,9 @@ type App struct {
 	Agents      *agents.Service
 	Workflows   *workflows.Service
 	Inbox       *inbox.Service
+
+	KnowledgeGDrive         *knowledgegdrive.Connector
+	KnowledgeGDriveAccounts *db.ConnectorAccountStore
 }
 
 func NewApp(deps Dependencies) *App {
@@ -241,6 +251,9 @@ func NewApp(deps Dependencies) *App {
 		Skills:      skillsService,
 		Agents:      agentsService,
 		Inbox:       deps.Inbox,
-		Workflows:   workflows.New(settingsService),
+
+		KnowledgeGDrive:         deps.KnowledgeGDrive,
+		KnowledgeGDriveAccounts: deps.KnowledgeGDriveAccounts,
+		Workflows:               workflows.New(settingsService),
 	}
 }

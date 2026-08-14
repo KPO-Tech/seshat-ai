@@ -80,6 +80,17 @@ type Account struct {
 // permission filter, roadmap.md Phase 1's first item).
 type AccessEntry string
 
+// Secret is the decrypted connection material a KnowledgeConnector/
+// ActionConnector needs to call its external API - the generic-domain
+// counterpart of inbox.ConnectorSecret, kept separate from Account so
+// callers can pass account metadata around without risking a secret
+// leaking into a log line or API response.
+type Secret struct {
+	AccessToken  string
+	RefreshToken string
+	ExpiresAt    time.Time
+}
+
 // ResourceRef is what Discover returns per resource found - enough to
 // decide whether/how to sync it without fetching its content yet.
 type ResourceRef struct {
@@ -98,11 +109,10 @@ type SyncItem struct {
 }
 
 // KnowledgeConnector discovers and syncs external resources into Knowledge.
-// No implementation exists yet - see helps/roadmap.md Phase 1.
 type KnowledgeConnector interface {
 	Connector
-	Discover(ctx context.Context, account Account) ([]ResourceRef, error)
-	Sync(ctx context.Context, account Account, cursor string) (items []SyncItem, nextCursor string, err error)
+	Discover(ctx context.Context, account Account, secret Secret) ([]ResourceRef, error)
+	Sync(ctx context.Context, account Account, secret Secret, cursor string) (items []SyncItem, nextCursor string, err error)
 }
 
 // ─── Action connectors (contract only - no implementation yet) ────────────
@@ -118,5 +128,5 @@ type ActionResult struct {
 // system (e.g. creating a CRM entry). No implementation exists yet.
 type ActionConnector interface {
 	Connector
-	Act(ctx context.Context, account Account, action string, payload map[string]any) (ActionResult, error)
+	Act(ctx context.Context, account Account, secret Secret, action string, payload map[string]any) (ActionResult, error)
 }

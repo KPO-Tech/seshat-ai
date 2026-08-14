@@ -535,13 +535,6 @@ func (s *Service) loadIngestInputs(ctx context.Context, principal *backendauth.P
 // chunk (workspace wins when the corpus is shared, else the owner) — see
 // helps/roadmap.md Phase 1.
 func (s *Service) ingestFile(ctx context.Context, corpusID string, fileRecord *db.File, workspaceID, ownerID string) (*CorpusFile, int, error) {
-	// Record the previous chunk count so we can compute a delta and clean up stale vectors
-	// when a re-ingest produces fewer chunks than the previous run.
-	oldChunkCount := 0
-	if existing, err := s.corpora.GetFile(ctx, corpusID, fileRecord.ID); err == nil {
-		oldChunkCount = existing.ChunkCount
-	}
-
 	data, err := s.artifacts.Get(ctx, fileRecord.StorageKey)
 	if err != nil {
 		_ = s.corpora.UpdateFileStatus(ctx, corpusID, fileRecord.ID, db.CorpusFileStatusFailed, 0)
@@ -558,26 +551,45 @@ func (s *Service) ingestFile(ctx context.Context, corpusID string, fileRecord *d
 	if scopeID == "" {
 		scopeID = ownerID
 	}
+	return s.ingestText(ctx, corpusID, fileRecord.ID, fileRecord.Filename, text, scopeID, nil)
+}
+
+// ingestText is the common core shared by ingestFile (text extracted from an
+// uploaded blob) and IngestExternal (text already in hand, from a Knowledge
+// connector) — chunk+embed via rag.Service, corpus_files bookkeeping, and
+// stale-chunk cleanup on shrink. fileID is the key used for corpus_files and
+// rag's deterministic artifact key: either a real db.File.ID or a synthetic
+// connector-sourced identifier (e.g. "gdrive-{driveFileID}") — corpus_files
+// has no foreign key on it, so a synthetic ID is safe.
+func (s *Service) ingestText(ctx context.Context, corpusID, fileID, filename, text string, scopeID string, scopeIDs []string) (*CorpusFile, int, error) {
+	// Record the previous chunk count so we can compute a delta and clean up stale vectors
+	// when a re-ingest produces fewer chunks than the previous run.
+	oldChunkCount := 0
+	if existing, err := s.corpora.GetFile(ctx, corpusID, fileID); err == nil {
+		oldChunkCount = existing.ChunkCount
+	}
+
 	result, err := s.rag.Ingest(ctx, rag.IngestRequest{
 		CorpusID: corpusID,
-		FileID:   fileRecord.ID, // deterministic artifact key — prevents duplicate vectors on re-ingest
-		Filename: fileRecord.Filename,
+		FileID:   fileID, // deterministic artifact key — prevents duplicate vectors on re-ingest
+		Filename: filename,
 		Text:     text,
 		ScopeID:  scopeID,
+		ScopeIDs: scopeIDs,
 	})
 	if err != nil {
-		_ = s.corpora.UpdateFileStatus(ctx, corpusID, fileRecord.ID, db.CorpusFileStatusFailed, 0)
+		_ = s.corpora.UpdateFileStatus(ctx, corpusID, fileID, db.CorpusFileStatusFailed, 0)
 		return nil, 0, bkerr.Internal("ingest chunks: "+err.Error(), err)
 	}
 
 	// Remove stale chunk vectors when a re-ingest produced fewer chunks than the prior run.
 	// Chunk keys follow "rag/{corpusID}/{fileID}#chunk-{i}" (set by rag.Service when FileID is given).
 	if oldChunkCount > result.Chunks {
-		artifactKey := fmt.Sprintf("rag/%s/%s", corpusID, fileRecord.ID)
+		artifactKey := fmt.Sprintf("rag/%s/%s", corpusID, fileID)
 		_ = s.rag.DeleteFileChunks(ctx, corpusID, artifactKey, result.Chunks, oldChunkCount)
 	}
 
-	_ = s.corpora.UpdateFileStatus(ctx, corpusID, fileRecord.ID, db.CorpusFileStatusIngested, result.Chunks)
+	_ = s.corpora.UpdateFileStatus(ctx, corpusID, fileID, db.CorpusFileStatusIngested, result.Chunks)
 
 	// Use delta so re-ingesting a file doesn't double-count its chunks in the corpus total.
 	chunkDelta := result.Chunks - oldChunkCount
@@ -585,11 +597,68 @@ func (s *Service) ingestFile(ctx context.Context, corpusID string, fileRecord *d
 		_ = s.corpora.IncrementChunkCount(ctx, corpusID, chunkDelta)
 	}
 
-	cf, err := s.corpora.GetFile(ctx, corpusID, fileRecord.ID)
+	cf, err := s.corpora.GetFile(ctx, corpusID, fileID)
 	if err != nil {
 		return nil, 0, bkerr.Internal("get corpus file: "+err.Error(), err)
 	}
 	return corpusFileFromDB(*cf), result.Chunks, nil
+}
+
+// IngestExternal ingests text pulled live from an external source (a
+// Knowledge connector - see internal/connector.KnowledgeConnector) rather
+// than an already-uploaded db.File. Shares ingestFile's corpus_files
+// bookkeeping via ingestText, so connector-synced content shows up in the
+// Knowledge UI's per-file status exactly like an uploaded file — it just
+// skips reading a blob out of ArtifactStore, since the caller already has
+// the text.
+func (s *Service) IngestExternal(ctx context.Context, principal *backendauth.Principal, params ExternalIngestParams) (*CorpusFile, error) {
+	if s == nil || s.corpora == nil {
+		return nil, bkerr.Unavailable("knowledge store not configured", nil)
+	}
+	if s.rag == nil {
+		return nil, bkerr.Unavailable("RAG service not configured (embedder required)", nil)
+	}
+	if strings.TrimSpace(params.ExternalID) == "" {
+		return nil, bkerr.InvalidInput("external id is required", nil)
+	}
+	if strings.TrimSpace(params.Text) == "" {
+		return nil, bkerr.InvalidInput("text is required", nil)
+	}
+
+	corpus, err := s.corpora.GetByID(ctx, params.CorpusID)
+	if err != nil {
+		return nil, bkerr.NotFound("corpus not found", err)
+	}
+	if err := s.checkAccess(principal, corpus); err != nil {
+		return nil, err
+	}
+
+	// An empty AccessControl falls back to the corpus's own scope (workspace,
+	// else owner) rather than being left unscoped - scope_id is what the
+	// search-time filter matches against, and an unscoped chunk matches
+	// nothing (see vector.matchesFilter), so it would silently vanish from
+	// every search rather than "be public." Never over-share by default.
+	scopeIDs := params.AccessControl
+	if len(scopeIDs) == 0 {
+		scopeID := corpus.WorkspaceID
+		if scopeID == "" {
+			scopeID = corpus.UserID
+		}
+		scopeIDs = []string{scopeID}
+	}
+
+	_, _ = s.corpora.AddFile(ctx, db.UpsertCorpusFileParams{
+		CorpusID: params.CorpusID,
+		FileID:   params.ExternalID,
+		Filename: params.Filename,
+		Status:   db.CorpusFileStatusPending,
+	})
+
+	cf, _, err := s.ingestText(ctx, params.CorpusID, params.ExternalID, params.Filename, params.Text, "", scopeIDs)
+	if err != nil {
+		return nil, err
+	}
+	return cf, nil
 }
 
 // checkAccess gates Knowledge content access: owning the corpus, or being a

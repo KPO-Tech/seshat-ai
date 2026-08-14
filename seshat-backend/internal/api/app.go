@@ -67,14 +67,17 @@ type App struct {
 	// a local whisper-server URL when local transcription is configured
 	// (see local_stt.go) — apiKey is ignored in that case.
 	transcribeAudio func(ctx context.Context, apiKey string, audioData []byte, baseURL string) (*sdk.TranscriptionResult, error)
-	// gmailOAuthStates tracks in-flight Gmail OAuth authorization requests
-	// (state -> issuing principal + expiry) for CSRF protection across the
-	// start/callback round trip. In-memory is fine: this app is a single
-	// desktop-local process, and a state is only ever alive for the few
-	// seconds/minutes a user takes to complete Google's consent screen.
-	gmailOAuthMu     sync.Mutex
-	gmailOAuthStates map[string]gmailOAuthState
-	whatsappManager  *inboxwhatsapp.Manager
+	// oauthStates tracks in-flight OAuth authorization requests across every
+	// redirect-based OAuth flow this app handles (Gmail, Google Drive, ...)
+	// - state -> issuing principal + expiry, for CSRF protection across the
+	// start/callback round trip. A single shared map is safe: state values
+	// are random and single-use regardless of which flow issued them. In-
+	// memory is fine: this app is a single desktop-local process, and a
+	// state is only ever alive for the few seconds/minutes a user takes to
+	// complete Google's consent screen.
+	oauthMu         sync.Mutex
+	oauthStates     map[string]oauthState
+	whatsappManager *inboxwhatsapp.Manager
 }
 
 // AppConfig holds all configuration needed to build an App.
@@ -130,7 +133,7 @@ func NewApp(cfg AppConfig) *App {
 		}
 	}()
 	return &App{
-		gmailOAuthStates:      make(map[string]gmailOAuthState),
+		oauthStates:           make(map[string]oauthState),
 		whatsappManager:       cfg.WhatsAppManager,
 		backend:               cfg.Backend,
 		db:                    cfg.DB,
