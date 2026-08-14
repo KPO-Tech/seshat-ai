@@ -21,6 +21,13 @@ type capabilityLinkCandidate struct {
 	ID       string `json:"id"`
 	Provider string `json:"provider"`
 	Name     string `json:"name"`
+	// BaseURL/Model are only populated for the "embeddings" capability -
+	// see backendsettings.EmbedderDefaultsFor. Image/audio candidates don't
+	// need them: the SDK only needs a key for those (see capabilities.go's
+	// doc comments on why embeddings, uniquely, also needs a full
+	// embedder_config row, not just a key).
+	BaseURL string `json:"base_url,omitempty"`
+	Model   string `json:"model,omitempty"`
 }
 
 type capabilityLinkStatus struct {
@@ -131,7 +138,14 @@ func (a *App) handleListCapabilityLinks(w http.ResponseWriter, r *http.Request, 
 		status := capabilityLinkStatus{Capability: string(capability), Candidates: []capabilityLinkCandidate{}}
 		for _, s := range settings {
 			if s.HasAPIKey && backendsettings.SupportsCapability(s.Provider, capability) {
-				status.Candidates = append(status.Candidates, capabilityLinkCandidate{ID: s.ID, Provider: s.Provider, Name: s.Name})
+				candidate := capabilityLinkCandidate{ID: s.ID, Provider: s.Provider, Name: s.Name}
+				if capability == backendsettings.CapabilityEmbeddings {
+					if defaults, ok := backendsettings.EmbedderDefaultsFor(s.Provider); ok {
+						candidate.BaseURL = defaults.BaseURL
+						candidate.Model = defaults.Model
+					}
+				}
+				status.Candidates = append(status.Candidates, candidate)
 			}
 		}
 		if link, ok := links[string(capability)]; ok {

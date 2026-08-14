@@ -5,7 +5,7 @@ import {
 } from '@icon-park/react'
 import { api } from '@/api/client'
 import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
-import { CapabilityLinkBanner, CAPABILITY_LINK_CSS } from '@/components/settings/CapabilityLink'
+import { useCapabilityLink } from '@/components/settings/CapabilityLink'
 import type { Corpus, CorpusFile, IngestionJob, FileItem, EmbedderConfig, DoclingConfig } from '@/api/types'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -72,7 +72,6 @@ export function KnowledgeView() {
   return (
     <div className="sv-view">
       <style>{KNOWLEDGE_CSS}</style>
-      <style>{CAPABILITY_LINK_CSS}</style>
 
       <header className="sv-view-header">
         <div className="sv-header-info">
@@ -127,11 +126,6 @@ export function KnowledgeView() {
 
 // ─── Embedder config card ─────────────────────────────────────────────────────
 
-const PROVIDER_OPTIONS = [
-  { value: 'openai', label: 'OpenAI-compatible' },
-  { value: 'ollama', label: 'Ollama (local)' },
-]
-
 const DEFAULT_BASE_URLS: Record<string, string> = {
   openai: 'https://api.openai.com/v1',
   ollama: 'http://localhost:11434',
@@ -142,6 +136,15 @@ const SUGGESTED_MODELS: Record<string, string[]> = {
   ollama: [],
 }
 
+// The "Source" dropdown's two fixed entries - everything else is built from
+// useCapabilityLink('embeddings').status.candidates, i.e. whichever AI
+// Providers the user has already configured that are actually
+// embeddings-compatible (see seshat-backend's EmbedderDefaultsFor). No more
+// hardcoded "OpenAI-compatible" as if it were the only option - configured
+// providers show up under their own name automatically.
+const OLLAMA_SOURCE = '__ollama__'
+const CUSTOM_SOURCE = '__custom__'
+
 function EmbedderConfigCard({
   config,
   onSaved,
@@ -149,6 +152,11 @@ function EmbedderConfigCard({
   config: EmbedderConfig | null
   onSaved: (cfg: EmbedderConfig) => void
 }) {
+  const { status: linkStatus, link: linkCapability, unlink: unlinkCapability } = useCapabilityLink('embeddings')
+  const candidates = linkStatus?.candidates ?? []
+
+  const [source, setSource] = useState<string>(CUSTOM_SOURCE)
+  const [sourceInitialized, setSourceInitialized] = useState(false)
   const [form, setForm] = useState({
     provider: config?.provider ?? 'openai',
     base_url: config?.base_url ?? '',
@@ -179,6 +187,23 @@ function EmbedderConfigCard({
     }
   }, [config])
 
+  // Figure out which "Source" entry the current config actually corresponds
+  // to - a linked candidate, Ollama, or a fully custom/manual setup - once
+  // both the embedder config and the capability-link candidates have
+  // loaded. Runs once; the user's own selection takes over after that.
+  useEffect(() => {
+    if (sourceInitialized || !config || !linkStatus) return
+    if (config.provider === 'ollama') {
+      setSource(OLLAMA_SOURCE)
+    } else if (linkStatus.linked_provider_id && candidates.some(c => c.id === linkStatus.linked_provider_id)) {
+      setSource(linkStatus.linked_provider_id)
+    } else {
+      setSource(CUSTOM_SOURCE)
+    }
+    setSourceInitialized(true)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config, linkStatus, sourceInitialized])
+
   // Auto-detect Ollama models when provider=ollama and base_url is available
   useEffect(() => {
     if (form.provider === 'ollama' && form.base_url && detectedEmbedModels.length === 0 && !detecting) {
@@ -188,34 +213,58 @@ function EmbedderConfigCard({
   }, [form.provider, form.base_url])
 
   function update<K extends keyof typeof form>(key: K, value: typeof form[K]) {
-    if (key === 'provider') {
-      const prov = value as string
-      const defaultModel = prov !== 'ollama' ? (SUGGESTED_MODELS[prov]?.[0] ?? '') : ''
-      setForm(f => ({
-        ...f,
-        provider: prov,
-        base_url: DEFAULT_BASE_URLS[prov] ?? f.base_url,
-        model: defaultModel,
-      }))
-      setDetectedEmbedModels([])
-      setDirty(true)
-      return
-    }
     setForm(f => ({ ...f, [key]: value }))
     setDirty(true)
   }
+
+  function handleSourceChange(value: string) {
+    setSource(value)
+    setDetectedEmbedModels([])
+    setDirty(true)
+    if (value === OLLAMA_SOURCE) {
+      setForm(f => ({ ...f, provider: 'ollama', base_url: DEFAULT_BASE_URLS.ollama, model: '', api_key: '' }))
+      return
+    }
+    if (value === CUSTOM_SOURCE) {
+      setForm(f => ({ ...f, provider: 'openai', base_url: DEFAULT_BASE_URLS.openai, model: SUGGESTED_MODELS.openai[0], api_key: '' }))
+      return
+    }
+    const candidate = candidates.find(c => c.id === value)
+    if (candidate) {
+      setForm(f => ({
+        ...f,
+        provider: candidate.provider,
+        base_url: candidate.base_url || f.base_url,
+        model: candidate.model || f.model,
+        api_key: '',
+      }))
+    }
+  }
+
+  const isCandidateSource = source !== OLLAMA_SOURCE && source !== CUSTOM_SOURCE
+  const activeCandidate = candidates.find(c => c.id === source)
 
   async function handleSave() {
     setSaving(true)
     setSaveError(null)
     try {
+      if (isCandidateSource) {
+        await linkCapability(source)
+      } else if (linkStatus?.linked_provider_id) {
+        // Switching away from a linked provider - the link no longer
+        // applies, don't leave a stale one silently overriding the key.
+        await unlinkCapability()
+      }
       const body: Record<string, unknown> = {
         provider: form.provider,
         base_url: form.base_url,
         model: form.model,
         enabled: form.enabled,
       }
-      if (form.api_key !== '') body.api_key = form.api_key
+      // A candidate source reuses that provider's key via the capability
+      // link above - never send one here, so embedder_config's own
+      // (unused in that case) key field stays untouched.
+      if (!isCandidateSource && form.api_key !== '') body.api_key = form.api_key
       const saved = await api.put<EmbedderConfig>('/settings/embedder', body)
       onSaved(saved)
       setDirty(false)
@@ -282,7 +331,7 @@ function EmbedderConfigCard({
 
   const isConfigured = config?.is_configured ?? false
   const suggestions = detectedEmbedModels.length > 0 ? detectedEmbedModels : (SUGGESTED_MODELS[form.provider] ?? [])
-  const isOllama = form.provider === 'ollama'
+  const isOllama = source === OLLAMA_SOURCE
 
   return (
     <div className="kv-emb-card">
@@ -320,14 +369,16 @@ function EmbedderConfigCard({
       <div className="kv-emb-body">
         <div className="kv-emb-row">
           <div className="kv-emb-field kv-emb-field-sm">
-            <label>Provider</label>
+            <label>Source</label>
             <select
-              value={form.provider}
-              onChange={e => update('provider', e.target.value)}
+              value={source}
+              onChange={e => handleSourceChange(e.target.value)}
             >
-              {PROVIDER_OPTIONS.map(o => (
-                <option key={o.value} value={o.value}>{o.label}</option>
+              {candidates.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
               ))}
+              <option value={OLLAMA_SOURCE}>Ollama (local)</option>
+              <option value={CUSTOM_SOURCE}>Custom</option>
             </select>
           </div>
           <div className="kv-emb-field kv-emb-field-lg">
@@ -341,35 +392,41 @@ function EmbedderConfigCard({
           </div>
         </div>
 
-        {form.provider === 'openai' && <CapabilityLinkBanner capability="embeddings" label="embeddings" />}
+        {isCandidateSource && activeCandidate && (
+          <div className="kv-emb-inherit-note">
+            <CheckOne size={11} /> Using the API key already configured for <strong>{activeCandidate.name}</strong> in AI Providers — no key needed here.
+          </div>
+        )}
 
         <div className="kv-emb-row">
-          <div className="kv-emb-field kv-emb-field-lg">
-            <label>
-              API Key
-              {config?.has_api_key && form.api_key === '' && (
-                <span className="kv-emb-key-hint"> (leave blank to keep current)</span>
-              )}
-            </label>
-            <div className="kv-emb-key-wrap">
-              <input
-                type={showKey ? 'text' : 'password'}
-                value={form.api_key}
-                onChange={e => update('api_key', e.target.value)}
-                placeholder={config?.has_api_key ? '••••••••••••' : 'sk-…'}
-                autoComplete="new-password"
-              />
-              <button
-                className="kv-emb-eye"
-                type="button"
-                onClick={() => setShowKey(v => !v)}
-                tabIndex={-1}
-              >
-                {showKey ? <PreviewClose size={12} /> : <PreviewOpen size={12} />}
-              </button>
+          {!isCandidateSource && (
+            <div className="kv-emb-field kv-emb-field-lg">
+              <label>
+                API Key
+                {config?.has_api_key && form.api_key === '' && (
+                  <span className="kv-emb-key-hint"> (leave blank to keep current)</span>
+                )}
+              </label>
+              <div className="kv-emb-key-wrap">
+                <input
+                  type={showKey ? 'text' : 'password'}
+                  value={form.api_key}
+                  onChange={e => update('api_key', e.target.value)}
+                  placeholder={config?.has_api_key ? '••••••••••••' : 'sk-…'}
+                  autoComplete="new-password"
+                />
+                <button
+                  className="kv-emb-eye"
+                  type="button"
+                  onClick={() => setShowKey(v => !v)}
+                  tabIndex={-1}
+                >
+                  {showKey ? <PreviewClose size={12} /> : <PreviewOpen size={12} />}
+                </button>
+              </div>
             </div>
-          </div>
-          <div className="kv-emb-field kv-emb-field-md">
+          )}
+          <div className={`kv-emb-field ${isCandidateSource ? 'kv-emb-field-lg' : 'kv-emb-field-md'}`}>
             <label>
               Embedding Model
               {detectedEmbedModels.length > 0 && (
@@ -1395,6 +1452,19 @@ const KNOWLEDGE_CSS = `
   align-items: center;
 }
 .kv-emb-eye:hover { color: var(--color-text); }
+
+.kv-emb-inherit-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(111,175,123,0.08);
+  border: 1px dashed rgba(111,175,123,0.35);
+  color: var(--color-text-secondary);
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+}
+.kv-emb-inherit-note strong { color: var(--color-text); }
 
 .kv-emb-error {
   background: rgba(201,107,92,0.1);

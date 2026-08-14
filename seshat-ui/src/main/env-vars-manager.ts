@@ -8,7 +8,7 @@ import { getSecret, setSecret, deleteSecret } from './ipc/secure-store'
 // infra knobs the backend also reads from the environment (SESHAT_API_PORT,
 // SESHAT_VECTOR_DIM, PROSPECTING_PLACES_DAILY_CAP, ...) don't belong in a
 // "your API keys" UI and aren't listed.
-export type EnvVarGroup = 'gmail' | 'prospecting' | 'multimodal' | 'automation'
+export type EnvVarGroup = 'gmail' | 'prospecting' | 'automation' | 'multimodal'
 
 export type EnvVarDef = {
   key: string
@@ -17,6 +17,15 @@ export type EnvVarDef = {
   group: EnvVarGroup
   groupLabel: string
   helpUrl?: string
+  // Multimodal's two entries are managed from their own "Custom" mode in
+  // Settings > Multimodal (image generation / speech) instead of the
+  // generic Environment list, now that AI Providers auto-links a
+  // compatible provider's key here first - see CapabilitiesViews.tsx.
+  // Still real ENV_VAR_CATALOG entries (same secure-storage/IPC plumbing,
+  // still injected into the backend sidecar's env) so there's one
+  // mechanism, not two - just not rendered a second time on the
+  // Environment page.
+  hidden?: boolean
 }
 
 export const ENV_VAR_CATALOG: EnvVarDef[] = [
@@ -45,27 +54,29 @@ export const ENV_VAR_CATALOG: EnvVarDef[] = [
     helpUrl: 'https://console.cloud.google.com/apis/credentials',
   },
   {
-    key: 'OPENAI_API_KEY',
-    label: 'OpenAI API Key',
-    description: 'Enables image generation (DALL-E) and cloud speech-to-text/text-to-speech fallback.',
-    group: 'multimodal',
-    groupLabel: 'Multimodal',
-    helpUrl: 'https://platform.openai.com/api-keys',
-  },
-  {
-    key: 'GOOGLE_API_KEY',
-    label: 'Gemini API Key',
-    description: 'Alternative image generation backend, via Google Gemini.',
-    group: 'multimodal',
-    groupLabel: 'Multimodal',
-    helpUrl: 'https://aistudio.google.com/apikey',
-  },
-  {
     key: 'AUTOMATION_API_KEY',
     label: 'Automation Service API Key',
     description: 'Auth key for the external automation service used by recurring/scheduled agent runs.',
     group: 'automation',
     groupLabel: 'Automation',
+  },
+  {
+    key: 'OPENAI_API_KEY',
+    label: 'OpenAI API Key',
+    description: 'Standalone key for image generation and speech, when not reusing a chat provider - see Settings > Multimodal.',
+    group: 'multimodal',
+    groupLabel: 'Multimodal',
+    helpUrl: 'https://platform.openai.com/api-keys',
+    hidden: true,
+  },
+  {
+    key: 'GOOGLE_API_KEY',
+    label: 'Gemini API Key',
+    description: 'Standalone key for image generation, when not reusing a chat provider - see Settings > Multimodal.',
+    group: 'multimodal',
+    groupLabel: 'Multimodal',
+    helpUrl: 'https://aistudio.google.com/apikey',
+    hidden: true,
   },
 ]
 

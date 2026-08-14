@@ -4,9 +4,11 @@ import { api } from '@/api/client'
 
 export type CapabilityId = 'image' | 'audio' | 'embeddings'
 
-type Candidate = { id: string; provider: string; name: string }
+// base_url/model are only populated for 'embeddings' candidates - see
+// seshat-backend's internal/settings/capabilities.go EmbedderDefaultsFor.
+export type Candidate = { id: string; provider: string; name: string; base_url?: string; model?: string }
 
-type CapabilityStatus = {
+export type CapabilityStatus = {
   capability: string
   linked_provider_id?: string
   linked_provider?: string
@@ -15,10 +17,13 @@ type CapabilityStatus = {
 }
 
 /**
- * Backs the "Use my <provider> key" opt-in for image generation, audio
- * (TTS/STT), and embeddings — see seshat-backend's
- * internal/db/capability_links.go. Reuse is always explicit: nothing here
- * links automatically just because a compatible provider exists.
+ * Backs image generation, audio (TTS/STT), and embeddings' reuse of an
+ * already-configured chat provider's key — see seshat-backend's
+ * internal/db/capability_links.go. As of 2026-08-13 the FIRST compatible
+ * provider gets linked automatically the moment it's saved in AI Providers
+ * (internal/api/capability_autolink.go) — this hook/banner is for seeing
+ * that link, switching to a different configured candidate, or unlinking,
+ * not for the initial opt-in anymore.
  */
 export function useCapabilityLink(capability: CapabilityId) {
   const [status, setStatus] = useState<CapabilityStatus | null>(null)

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CheckOne, Delete, LoadingOne, Lock, Refresh } from '@icon-park/react'
-import { CapabilityLinkBanner, CAPABILITY_LINK_CSS } from '@/components/settings/CapabilityLink'
 
 type EnvVarDef = {
   key: string
@@ -9,6 +8,7 @@ type EnvVarDef = {
   group: string
   groupLabel: string
   helpUrl?: string
+  hidden?: boolean
 }
 
 export function EnvironmentView() {
@@ -46,10 +46,14 @@ export function EnvironmentView() {
     return () => { cancelled = true }
   }, [])
 
+  // Multimodal's two keys are managed from Settings > Multimodal's own
+  // "Custom" mode now - see env-vars-manager.ts's hidden flag doc comment.
+  const visibleCatalog = useMemo(() => catalog.filter((def) => !def.hidden), [catalog])
+
   const groups = useMemo(() => {
     const order: string[] = []
     const byGroup = new Map<string, { label: string; defs: EnvVarDef[] }>()
-    for (const def of catalog) {
+    for (const def of visibleCatalog) {
       if (!byGroup.has(def.group)) {
         byGroup.set(def.group, { label: def.groupLabel, defs: [] })
         order.push(def.group)
@@ -57,9 +61,9 @@ export function EnvironmentView() {
       byGroup.get(def.group)!.defs.push(def)
     }
     return order.map((id) => ({ id, ...byGroup.get(id)! }))
-  }, [catalog])
+  }, [visibleCatalog])
 
-  const configuredCount = Object.values(status).filter(Boolean).length
+  const configuredCount = visibleCatalog.filter((def) => status[def.key]).length
 
   async function handleApply() {
     setRestarting(true)
@@ -77,7 +81,6 @@ export function EnvironmentView() {
   return (
     <div className="sv-view">
       <style>{ENVIRONMENT_CSS}</style>
-      <style>{CAPABILITY_LINK_CSS}</style>
       <header className="sv-view-header">
         <div className="sv-header-info">
           <h1>Environment</h1>
@@ -111,12 +114,6 @@ export function EnvironmentView() {
               <div className="sv-brand-name">{group.label}</div>
             </div>
             <div className="sv-card-body env-stack">
-              {group.id === 'multimodal' && (
-                <>
-                  <CapabilityLinkBanner capability="image" label="image generation" />
-                  <CapabilityLinkBanner capability="audio" label="speech-to-text / text-to-speech" />
-                </>
-              )}
               {group.defs.map((def) => (
                 <EnvVarRow
                   key={def.key}
@@ -130,8 +127,8 @@ export function EnvironmentView() {
         ))
       )}
 
-      {!loading && catalog.length > 0 && (
-        <div className="env-summary">{configuredCount} of {catalog.length} configured</div>
+      {!loading && visibleCatalog.length > 0 && (
+        <div className="env-summary">{configuredCount} of {visibleCatalog.length} configured</div>
       )}
     </div>
   )

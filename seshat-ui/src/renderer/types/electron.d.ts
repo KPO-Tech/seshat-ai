@@ -56,7 +56,7 @@ interface Window {
       onProgress: (listener: (progress: { phase: 'binary' | 'model'; modelId?: string; receivedBytes: number; totalBytes: number }) => void) => () => void
     }
     envVars?: {
-      catalog: () => Promise<Array<{ key: string; label: string; description: string; group: string; groupLabel: string; helpUrl?: string }>>
+      catalog: () => Promise<Array<{ key: string; label: string; description: string; group: string; groupLabel: string; helpUrl?: string; hidden?: boolean }>>
       status: () => Promise<Record<string, boolean>>
       set: (key: string, value: string) => Promise<void>
       delete: (key: string) => Promise<void>
