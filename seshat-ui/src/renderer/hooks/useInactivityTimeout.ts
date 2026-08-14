@@ -1,7 +1,13 @@
 import { useEffect, useRef } from 'react'
 import { useAuthStore } from '@/stores/auth'
 
-const DEFAULT_TIMEOUT_MS = 30 * 60 * 1000 // 30 minutes
+// Was 30 minutes when this was first added (2026-08-06 security audit) —
+// far too aggressive for a local single-user desktop app and just meant
+// getting bounced to /login mid-work any time the window sat idle for a
+// coffee break. Widened to 2 days per product decision (2026-08-13): still
+// signs out a genuinely abandoned/long-unused install, without punishing
+// normal usage patterns.
+const DEFAULT_TIMEOUT_MS = 2 * 24 * 60 * 60 * 1000 // 2 days
 
 const ACTIVITY_EVENTS = ['mousemove', 'mousedown', 'keydown', 'wheel', 'touchstart', 'scroll'] as const
 

@@ -69,6 +69,21 @@ export function AuthGuard({ children }: { children: ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // AuthGuard mounts once for the whole authenticated route subtree (see
+  // router/index.tsx — it wraps <Shell/>, which never remounts on
+  // navigation), so the one-time validate() above only ever runs at app
+  // start. Every logout() call after that — the inactivity timeout, a 401
+  // from api/client.ts, a mid-stream 401 in useChat.ts — clears
+  // isAuthenticated in the store but was never actually reflected here:
+  // status stayed 'ok' forever once set, so the UI kept rendering the app
+  // on a session the backend/store had already invalidated instead of
+  // bouncing to /login like every one of those call sites' comments assumed.
+  useEffect(() => {
+    if (status === 'ok' && !isAuthenticated) {
+      setStatus('invalid')
+    }
+  }, [isAuthenticated, status])
+
   if (status === 'checking') {
     return (
       <div style={{
