@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudskillregistry"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/skillregistry"
 	skillsloader "github.com/KPO-Tech/seshat/pkg/skills"
 	"github.com/KPO-Tech/seshat/pkg/skills/skillrepos"
 )

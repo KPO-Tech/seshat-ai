@@ -8,7 +8,7 @@ import (
 
 	seshat "github.com/EngineerProjects/seshat-ai/seshat-backend/internal"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/artifactpreview"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudautomation"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/automation"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inboxwhatsapp"
 	backendquery "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/query"

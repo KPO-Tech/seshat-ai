@@ -7,7 +7,7 @@ import (
 
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudagents"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/agents"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	pkgagent "github.com/KPO-Tech/seshat/pkg/agent"
 	"github.com/KPO-Tech/seshat/pkg/types"

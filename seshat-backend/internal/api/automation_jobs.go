@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudautomation"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudhttp"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/automation"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/http"
 )
 
 // Job management proxies seshat-server's /api/v1/jobs* API using the
