@@ -1,6 +1,7 @@
 import { HeaderCard, Section, CodeBox } from '../common'
 import { fmtDuration, parseWebSearchHits } from '../helpers'
 import type { ToolViewProps } from '../types'
+import { openInAppBrowser, shouldOpenInAppBrowser } from '@/lib/openInAppBrowser'
 
 export function WebSearchToolView({ tool, result }: ToolViewProps) {
   const query = typeof tool.input.query === 'string' ? tool.input.query : ''
@@ -41,6 +42,11 @@ export function WebSearchToolView({ tool, result }: ToolViewProps) {
               target="_blank"
               rel="noreferrer"
               title={hit.url}
+              onClick={(event) => {
+                if (!shouldOpenInAppBrowser(event, hit.url)) return
+                event.preventDefault()
+                openInAppBrowser(hit.url)
+              }}
             >
               <span className="tb-link-index">{index + 1}.</span>
               <span className="tb-link-copy">

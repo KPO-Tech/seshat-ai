@@ -7,6 +7,7 @@ import { Copy, Check, Down } from '@icon-park/react'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import 'katex/dist/katex.min.css'
+import { openInAppBrowser, shouldOpenInAppBrowser } from '@/lib/openInAppBrowser'
 
 // Short language tags read poorly as headers ("md", "js", "py") - a small
 // display-name map for the common ones, falling back to just capitalizing
@@ -271,6 +272,29 @@ export function MarkdownView({ children, className, streaming = false }: Props) 
               <div style={{ overflowX: 'auto', margin: '16px 0' }}>
                 <table>{children}</table>
               </div>
+            )
+          },
+          // Plain markdown links otherwise render as a bare <a href> with no
+          // target/onClick - in Electron that's a same-frame top-level
+          // navigation, replacing the whole app UI with the linked page
+          // instead of opening it anywhere sensible. Route through the
+          // built-in browser panel instead, same as tool-result citation
+          // links (WebSearchToolView.tsx).
+          a({ href, children, ...props }: any) {
+            return (
+              <a
+                href={href}
+                target="_blank"
+                rel="noreferrer"
+                {...props}
+                onClick={(event) => {
+                  if (!shouldOpenInAppBrowser(event, href)) return
+                  event.preventDefault()
+                  openInAppBrowser(href)
+                }}
+              >
+                {children}
+              </a>
             )
           },
         }}
