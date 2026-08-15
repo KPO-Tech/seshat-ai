@@ -33,11 +33,13 @@ const (
 )
 
 // exportMimeTypes maps a Google-native document's mimeType to the mimeType
-// requested from Files.Export - only Docs/Sheets/Slides need this; every
-// other file downloads its raw bytes directly via Files.Get(...).Download().
+// requested from Files.Export - only Docs/Slides need this; every other
+// allowed file downloads its raw bytes directly via Files.Get(...).Download().
+// Google Sheets is deliberately absent - same spreadsheet reasoning as
+// allowedExtensions's doc comment, and this map doubles as isAllowedFile's
+// "is this a native Google format we accept" check.
 var exportMimeTypes = map[string]string{
 	"application/vnd.google-apps.document":     "text/plain",
-	"application/vnd.google-apps.spreadsheet":  "text/csv",
 	"application/vnd.google-apps.presentation": "text/plain",
 }
 
@@ -54,17 +56,27 @@ const folderMimeType = "application/vnd.google-apps.folder"
 // extension rather than Drive's own mimeType: Drive commonly reports
 // arbitrary code/text files as generic "text/plain", so mimeType alone
 // can't reliably tell a script from a real text document.
+//
+// Deliberately excludes spreadsheet formats (.xls/.xlsx/.csv, and Google
+// Sheets - see exportMimeTypes) even though they're not code: a spreadsheet
+// is usually either a small table authored to be read (fine for RAG in
+// principle) or a raw structured-data export (a client list, a transaction
+// log) - and there's no reliable way to tell those apart from the file
+// alone. Chunking tabular data as prose has the same failure mode already
+// found with the notebook (structure destroyed, low-quality fragments), and
+// more importantly, structured/tabular data is what a real database or BI
+// tool answers precisely (aggregates, filters) - RAG's fuzzy semantic
+// search is the wrong tool for it regardless of chunking quality. A
+// spreadsheet genuinely worth searching should go through Knowledge as an
+// intentional file upload, not an automatic bulk sync.
 var allowedExtensions = map[string]bool{
 	".pdf":  true,
 	".doc":  true,
 	".docx": true,
 	".ppt":  true,
 	".pptx": true,
-	".xls":  true,
-	".xlsx": true,
 	".txt":  true,
 	".md":   true,
-	".csv":  true,
 }
 
 // isAllowedFile reports whether f should be discovered/synced at all -

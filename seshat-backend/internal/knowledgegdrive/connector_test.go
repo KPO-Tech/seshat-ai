@@ -56,12 +56,9 @@ func TestIsAllowedFile(t *testing.T) {
 		{"report.pdf", "application/pdf", true},
 		{"notes.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", true},
 		{"deck.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation", true},
-		{"sheet.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", true},
 		{"readme.txt", "text/plain", true},
 		{"notes.md", "text/markdown", true},
-		{"export.csv", "text/csv", true},
 		{"Untitled document", "application/vnd.google-apps.document", true}, // Google-native, no extension
-		{"Untitled spreadsheet", "application/vnd.google-apps.spreadsheet", true},
 		// Business-document allowlist, not a code denylist - source/notebook
 		// files are never synced regardless of what mimeType Drive reports
 		// for them (often just generic "text/plain").
@@ -72,6 +69,13 @@ func TestIsAllowedFile(t *testing.T) {
 		{"config.yaml", "text/plain", false},
 		{"data.json", "application/json", false},
 		{"noextension", "application/octet-stream", false},
+		// Spreadsheets excluded too - tabular/structured data, not a
+		// document, regardless of format (see allowedExtensions's doc
+		// comment).
+		{"sheet.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", false},
+		{"legacy.xls", "application/vnd.ms-excel", false},
+		{"export.csv", "text/csv", false},
+		{"Untitled spreadsheet", "application/vnd.google-apps.spreadsheet", false},
 	}
 	for _, tc := range cases {
 		got := isAllowedFile(&drive.File{Name: tc.name, MimeType: tc.mimeType})
