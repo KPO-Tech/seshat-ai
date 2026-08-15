@@ -47,6 +47,40 @@ func TestPermissionsToAccessControl_Empty(t *testing.T) {
 	}
 }
 
+func TestIsAllowedFile(t *testing.T) {
+	cases := []struct {
+		name     string
+		mimeType string
+		want     bool
+	}{
+		{"report.pdf", "application/pdf", true},
+		{"notes.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", true},
+		{"deck.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation", true},
+		{"sheet.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", true},
+		{"readme.txt", "text/plain", true},
+		{"notes.md", "text/markdown", true},
+		{"export.csv", "text/csv", true},
+		{"Untitled document", "application/vnd.google-apps.document", true}, // Google-native, no extension
+		{"Untitled spreadsheet", "application/vnd.google-apps.spreadsheet", true},
+		// Business-document allowlist, not a code denylist - source/notebook
+		// files are never synced regardless of what mimeType Drive reports
+		// for them (often just generic "text/plain").
+		{"script.py", "text/plain", false},
+		{"analysis.ipynb", "application/json", false},
+		{"main.rs", "text/plain", false},
+		{"lib.c", "text/x-c", false},
+		{"config.yaml", "text/plain", false},
+		{"data.json", "application/json", false},
+		{"noextension", "application/octet-stream", false},
+	}
+	for _, tc := range cases {
+		got := isAllowedFile(&drive.File{Name: tc.name, MimeType: tc.mimeType})
+		if got != tc.want {
+			t.Errorf("isAllowedFile(%q, %q) = %v, want %v", tc.name, tc.mimeType, got, tc.want)
+		}
+	}
+}
+
 func TestConnector_KindAndCapabilities(t *testing.T) {
 	c := NewConnector(nil)
 	if c.Kind() != connector.Kind("gdrive") {

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -43,6 +44,40 @@ var exportMimeTypes = map[string]string{
 // folderMimeType identifies a Drive folder, which Discover/Sync both skip -
 // there's no content to ingest, only files.
 const folderMimeType = "application/vnd.google-apps.folder"
+
+// allowedExtensions is a business-document allowlist, not a code denylist:
+// source/notebook files (.py, .ipynb, .rs, .c, ...) are deliberately never
+// synced into Knowledge - not useful company knowledge, and (found via a
+// real end-to-end test) a large .ipynb's raw JSON produces thousands of
+// syntactically-fragmented, low-quality chunks that drown out genuinely
+// relevant results from smaller, well-formed documents. Checked by
+// extension rather than Drive's own mimeType: Drive commonly reports
+// arbitrary code/text files as generic "text/plain", so mimeType alone
+// can't reliably tell a script from a real text document.
+var allowedExtensions = map[string]bool{
+	".pdf":  true,
+	".doc":  true,
+	".docx": true,
+	".ppt":  true,
+	".pptx": true,
+	".xls":  true,
+	".xlsx": true,
+	".txt":  true,
+	".md":   true,
+	".csv":  true,
+}
+
+// isAllowedFile reports whether f should be discovered/synced at all -
+// Google-native files (Docs/Sheets/Slides, identified by mimeType, not a
+// filename extension) are always allowed since exportMimeTypes already
+// converts them to plain text/CSV; anything else must match
+// allowedExtensions.
+func isAllowedFile(f *drive.File) bool {
+	if _, native := exportMimeTypes[f.MimeType]; native {
+		return true
+	}
+	return allowedExtensions[strings.ToLower(filepath.Ext(f.Name))]
+}
 
 // maxFileBytes bounds a single file's exported/downloaded content - a
 // pragmatic cap so one huge file can't stall or blow up memory during a
@@ -112,7 +147,7 @@ func (c *Connector) Discover(ctx context.Context, account connector.Account, sec
 			return nil, fmt.Errorf("list drive files: %w", err)
 		}
 		for _, f := range list.Files {
-			if f.MimeType == folderMimeType {
+			if f.MimeType == folderMimeType || !isAllowedFile(f) {
 				continue
 			}
 			refs = append(refs, driveFileToResourceRef(f))
@@ -161,7 +196,7 @@ func (c *Connector) bootstrapSync(ctx context.Context, srv *drive.Service) ([]co
 			return nil, "", fmt.Errorf("list drive files: %w", err)
 		}
 		for _, f := range list.Files {
-			if f.MimeType == folderMimeType {
+			if f.MimeType == folderMimeType || !isAllowedFile(f) {
 				continue
 			}
 			if item, ok := c.syncOneFile(ctx, srv, f); ok {
@@ -186,7 +221,7 @@ func (c *Connector) incrementalSync(ctx context.Context, srv *drive.Service, cur
 			return nil, "", fmt.Errorf("list drive changes: %w", err)
 		}
 		for _, ch := range list.Changes {
-			if ch.Removed || ch.File == nil || ch.File.Trashed || ch.File.MimeType == folderMimeType {
+			if ch.Removed || ch.File == nil || ch.File.Trashed || ch.File.MimeType == folderMimeType || !isAllowedFile(ch.File) {
 				continue
 			}
 			if item, ok := c.syncOneFile(ctx, srv, ch.File); ok {
