@@ -216,6 +216,10 @@ type GroupMember struct {
 }
 
 // PolicyBinding grants a set of permissions to a role, user or group.
+// ResourceType/ResourceID narrow the grant to one resource within the
+// organization (e.g. one Corpus) instead of every resource of that kind —
+// both empty means organization-wide, the original and still most common
+// shape. See iam.bindingMatchesPrincipal for how the two are matched.
 type PolicyBinding struct {
 	ID              string   `gorm:"primaryKey;size:32"`
 	OrganizationID  string   `gorm:"size:32;not null;index"`
@@ -224,6 +228,8 @@ type PolicyBinding struct {
 	SubjectType     string   `gorm:"size:32;not null"`
 	SubjectID       string   `gorm:"size:64;not null;index"`
 	PermissionCodes []string `gorm:"serializer:json;type:text"`
+	ResourceType    string   `gorm:"size:32"`
+	ResourceID      string   `gorm:"size:64;index"`
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 }

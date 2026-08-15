@@ -301,7 +301,7 @@ func (s *Service) UpdateCorpus(ctx context.Context, principal *iam.Principal, co
 			return err
 		}
 		if !principal.User.IsAdmin {
-			if err := s.iam.CheckOrganizationPermission(tx, principal, corpus.OrganizationID, "knowledge.manage", "organization.manage"); err != nil {
+			if err := s.iam.CheckResourcePermission(tx, principal, corpus.OrganizationID, "corpus", corpus.ID, "knowledge.manage", "organization.manage"); err != nil {
 				return err
 			}
 		}
@@ -410,7 +410,7 @@ func (s *Service) mustLoadCorpus(ctx context.Context, principal *iam.Principal, 
 		return nil, err
 	}
 	if !principal.User.IsAdmin {
-		if err := s.iam.CheckOrganizationPermission(s.db.Gorm().WithContext(ctx), principal, record.OrganizationID, permissionCodes...); err != nil {
+		if err := s.iam.CheckResourcePermission(s.db.Gorm().WithContext(ctx), principal, record.OrganizationID, "corpus", record.ID, permissionCodes...); err != nil {
 			return nil, err
 		}
 	}

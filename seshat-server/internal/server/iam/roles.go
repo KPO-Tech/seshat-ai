@@ -129,7 +129,7 @@ func (s *Service) CreateRole(ctx context.Context, principal *Principal, params C
 		if err := requireOrganizationPermission(tx, principal, organizationID, "roles.manage", "organization.manage"); err != nil {
 			return err
 		}
-		if err := requirePermissionsWithinCallerScope(tx, principal, organizationID, permissions); err != nil {
+		if err := requirePermissionsWithinCallerScope(tx, principal, organizationID, "", "", permissions); err != nil {
 			return err
 		}
 		var existing int64
@@ -202,7 +202,7 @@ func (s *Service) UpdateRole(ctx context.Context, principal *Principal, roleCode
 		if err := requireOrganizationPermission(tx, principal, organizationID, "roles.manage", "organization.manage"); err != nil {
 			return err
 		}
-		if err := requirePermissionsWithinCallerScope(tx, principal, organizationID, permissions); err != nil {
+		if err := requirePermissionsWithinCallerScope(tx, principal, organizationID, "", "", permissions); err != nil {
 			return err
 		}
 		record, ok, err := findCustomRoleRecord(tx, organizationID, currentCode)
@@ -449,7 +449,7 @@ func requireGrantedRolePermissionsWithinCallerScope(tx *gorm.DB, principal *Prin
 	if !ok {
 		return ErrInvalidInput("unsupported role")
 	}
-	return requirePermissionsWithinCallerScope(tx, principal, organizationID, role.Permissions)
+	return requirePermissionsWithinCallerScope(tx, principal, organizationID, "", "", role.Permissions)
 }
 
 func findCustomRoleRecord(tx *gorm.DB, organizationID, code string) (sdb.CustomRole, bool, error) {

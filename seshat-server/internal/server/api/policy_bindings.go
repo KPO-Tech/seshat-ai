@@ -15,6 +15,8 @@ type createPolicyBindingRequest struct {
 	SubjectType     string   `json:"subject_type"`
 	SubjectID       string   `json:"subject_id"`
 	PermissionCodes []string `json:"permission_codes"`
+	ResourceType    string   `json:"resource_type"`
+	ResourceID      string   `json:"resource_id"`
 }
 
 type updatePolicyBindingRequest struct {
@@ -23,6 +25,8 @@ type updatePolicyBindingRequest struct {
 	SubjectType     string   `json:"subject_type"`
 	SubjectID       string   `json:"subject_id"`
 	PermissionCodes []string `json:"permission_codes"`
+	ResourceType    string   `json:"resource_type"`
+	ResourceID      string   `json:"resource_id"`
 }
 
 func (app *App) handlePolicyBindings(w http.ResponseWriter, r *http.Request) {
@@ -65,6 +69,8 @@ func (app *App) handlePolicyBindings(w http.ResponseWriter, r *http.Request) {
 			SubjectType:     req.SubjectType,
 			SubjectID:       req.SubjectID,
 			PermissionCodes: req.PermissionCodes,
+			ResourceType:    req.ResourceType,
+			ResourceID:      req.ResourceID,
 		})
 		if err != nil {
 			writeIAMError(w, err)
@@ -108,6 +114,8 @@ func (app *App) handlePolicyBindingByID(w http.ResponseWriter, r *http.Request) 
 			SubjectType:     req.SubjectType,
 			SubjectID:       req.SubjectID,
 			PermissionCodes: req.PermissionCodes,
+			ResourceType:    req.ResourceType,
+			ResourceID:      req.ResourceID,
 		})
 		if err != nil {
 			writeIAMError(w, err)

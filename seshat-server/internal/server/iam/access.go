@@ -31,7 +31,9 @@ type Group struct {
 	UpdatedAt      time.Time `json:"updated_at"`
 }
 
-// PolicyBinding grants permissions to a role, user or group.
+// PolicyBinding grants permissions to a role, user or group. ResourceType/
+// ResourceID optionally narrow the grant to one resource within the
+// organization (both empty = organization-wide, see bindingMatchesPrincipal).
 type PolicyBinding struct {
 	ID              string    `json:"id"`
 	OrganizationID  string    `json:"organization_id"`
@@ -40,6 +42,8 @@ type PolicyBinding struct {
 	SubjectType     string    `json:"subject_type"`
 	SubjectID       string    `json:"subject_id"`
 	PermissionCodes []string  `json:"permission_codes"`
+	ResourceType    string    `json:"resource_type"`
+	ResourceID      string    `json:"resource_id"`
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
 }
@@ -49,6 +53,34 @@ const (
 	policySubjectGroup = "group"
 	policySubjectRole  = "role"
 )
+
+// resourceTypeCorpus is the first (and currently only) resource kind a
+// PolicyBinding can be scoped to. iam deliberately does not verify a
+// ResourceID actually refers to an existing corpus — that would require
+// importing the knowledge package, which already imports iam, an import
+// cycle. A dangling ResourceID (its corpus later deleted) is harmless: it
+// just never matches anything again, the same as a binding whose group
+// subject was deleted.
+const resourceTypeCorpus = "corpus"
+
+var knownResourceTypes = map[string]struct{}{
+	resourceTypeCorpus: {},
+}
+
+func validatePolicyResourceScope(resourceType, resourceID string) (string, string, error) {
+	resourceType = strings.ToLower(strings.TrimSpace(resourceType))
+	resourceID = strings.TrimSpace(resourceID)
+	if resourceType == "" && resourceID == "" {
+		return "", "", nil
+	}
+	if _, ok := knownResourceTypes[resourceType]; !ok {
+		return "", "", ErrInvalidInput("unsupported resource_type")
+	}
+	if resourceID == "" {
+		return "", "", ErrInvalidInput("resource_id is required when resource_type is set")
+	}
+	return resourceType, resourceID, nil
+}
 
 // ListPermissions exposes the server-defined permission catalog.
 func (s *Service) ListPermissions(ctx context.Context, principal *Principal) ([]Permission, error) {
@@ -165,6 +197,41 @@ func hasOrganizationPermission(tx *gorm.DB, principal *Principal, organizationID
 	return ok, nil
 }
 
+// hasResourcePermission is the resource-scoped counterpart of
+// hasOrganizationPermission: it also credits bindings scoped to
+// (resourceType, resourceID), on top of every organization-wide grant.
+func hasResourcePermission(tx *gorm.DB, principal *Principal, organizationID, resourceType, resourceID, permissionCode string) (bool, error) {
+	if principal == nil {
+		return false, nil
+	}
+	if principal.User.IsAdmin {
+		var count int64
+		if err := tx.Model(&sdb.Organization{}).Where("id = ?", organizationID).Count(&count).Error; err != nil {
+			return false, err
+		}
+		return count > 0, nil
+	}
+	permissions, err := effectivePermissionsForPrincipalScoped(tx, principal, organizationID, resourceType, resourceID)
+	if err != nil {
+		return false, err
+	}
+	_, ok := permissions[permissionCode]
+	return ok, nil
+}
+
+func hasAnyResourcePermission(tx *gorm.DB, principal *Principal, organizationID, resourceType, resourceID string, permissionCodes ...string) (bool, error) {
+	for _, permissionCode := range permissionCodes {
+		ok, err := hasResourcePermission(tx, principal, organizationID, resourceType, resourceID, permissionCode)
+		if err != nil {
+			return false, err
+		}
+		if ok {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func hasAnyOrganizationPermission(tx *gorm.DB, principal *Principal, organizationID string, permissionCodes ...string) (bool, error) {
 	for _, permissionCode := range permissionCodes {
 		ok, err := hasOrganizationPermission(tx, principal, organizationID, permissionCode)
@@ -179,10 +246,27 @@ func hasAnyOrganizationPermission(tx *gorm.DB, principal *Principal, organizatio
 }
 
 // effectivePermissionsForPrincipal resolves the union of role-derived and
-// policy-binding-derived permissions for one principal, scoped to one
-// organization. Every query here is scoped by organization_id (indexed),
-// never a full-table scan of every tenant's data.
+// organization-wide policy-binding-derived permissions for one principal,
+// scoped to one organization. It's a thin wrapper over
+// effectivePermissionsForPrincipalScoped with an empty resource — see that
+// function for resource-scoped resolution.
 func effectivePermissionsForPrincipal(tx *gorm.DB, principal *Principal, organizationID string) (map[string]struct{}, error) {
+	return effectivePermissionsForPrincipalScoped(tx, principal, organizationID, "", "")
+}
+
+// effectivePermissionsForPrincipalScoped resolves the union of role-derived
+// and policy-binding-derived permissions for one principal, scoped to one
+// organization and optionally one resource within it. Every query here is
+// scoped by organization_id (indexed), never a full-table scan of every
+// tenant's data.
+//
+// resourceType/resourceID identify the resource the caller is checking
+// access to, if any. Passing both empty resolves organization-wide
+// permissions only (bindings scoped to a specific resource never match —
+// see bindingMatchesPrincipal). Passing a resource additionally credits
+// bindings scoped to exactly that resource; organization-wide bindings
+// always match regardless.
+func effectivePermissionsForPrincipalScoped(tx *gorm.DB, principal *Principal, organizationID, resourceType, resourceID string) (map[string]struct{}, error) {
 	permissions := map[string]struct{}{}
 	if principal == nil {
 		return permissions, nil
@@ -240,7 +324,7 @@ func effectivePermissionsForPrincipal(tx *gorm.DB, principal *Principal, organiz
 		return nil, err
 	}
 	for _, binding := range bindings {
-		if bindingMatchesPrincipal(binding, roleCodes, groupIDs, principal.User.ID) {
+		if bindingMatchesPrincipal(binding, roleCodes, groupIDs, principal.User.ID, resourceType, resourceID) {
 			for _, permissionCode := range binding.PermissionCodes {
 				permissions[permissionCode] = struct{}{}
 			}
@@ -260,19 +344,30 @@ func sortedPermissionCodes(permissions map[string]struct{}) []string {
 	return codes
 }
 
-func bindingMatchesPrincipal(binding sdb.PolicyBinding, roleCodes, groupIDs map[string]struct{}, userID string) bool {
+// bindingMatchesPrincipal checks both dimensions of a binding: WHO it's
+// granted to (subject: user/group/role) and WHAT resource it applies to.
+// An organization-wide binding (empty ResourceType) matches any requested
+// resource, including no resource at all — that's what makes existing
+// bindings keep working unchanged. A resource-scoped binding only matches
+// when the caller is checking access to that exact resource; it never
+// satisfies an organization-wide check (resourceType/resourceID == "").
+func bindingMatchesPrincipal(binding sdb.PolicyBinding, roleCodes, groupIDs map[string]struct{}, userID, resourceType, resourceID string) bool {
+	subjectMatches := false
 	switch binding.SubjectType {
 	case policySubjectUser:
-		return binding.SubjectID == userID
+		subjectMatches = binding.SubjectID == userID
 	case policySubjectGroup:
-		_, ok := groupIDs[binding.SubjectID]
-		return ok
+		_, subjectMatches = groupIDs[binding.SubjectID]
 	case policySubjectRole:
-		_, ok := roleCodes[binding.SubjectID]
-		return ok
-	default:
+		_, subjectMatches = roleCodes[binding.SubjectID]
+	}
+	if !subjectMatches {
 		return false
 	}
+	if binding.ResourceType == "" {
+		return true
+	}
+	return binding.ResourceType == resourceType && binding.ResourceID == resourceID
 }
 
 // requirePermissionsWithinCallerScope ensures every code in `codes` is
@@ -289,14 +384,22 @@ func bindingMatchesPrincipal(binding sdb.PolicyBinding, roleCodes, groupIDs map[
 // Holding only policies.manage or roles.manage was enough to grant, via a
 // policy binding or a custom role, any permission in the catalog regardless
 // of what the grantor actually held. This closes all three the same way.
-func requirePermissionsWithinCallerScope(tx *gorm.DB, principal *Principal, organizationID string, codes []string) error {
+// resourceType/resourceID identify the scope of the binding/role being
+// granted, not the caller. Granting an organization-wide permission
+// (resourceType == "") requires the caller to hold it organization-wide —
+// a permission the caller only holds on one resource does not satisfy this,
+// by construction of bindingMatchesPrincipal, so a resource-scoped grant can
+// never be used to escalate to organization-wide. Granting a resource-scoped
+// permission requires the caller to hold it on that same resource, or
+// organization-wide (which always covers every resource).
+func requirePermissionsWithinCallerScope(tx *gorm.DB, principal *Principal, organizationID, resourceType, resourceID string, codes []string) error {
 	if principal == nil {
 		return ErrUnauthorized("authentication required")
 	}
 	if principal.User.IsAdmin {
 		return nil
 	}
-	callerPermissions, err := effectivePermissionsForPrincipal(tx, principal, organizationID)
+	callerPermissions, err := effectivePermissionsForPrincipalScoped(tx, principal, organizationID, resourceType, resourceID)
 	if err != nil {
 		return err
 	}
@@ -327,6 +430,39 @@ func requireOrganizationPermission(tx *gorm.DB, principal *Principal, organizati
 		return nil
 	}
 	return ErrForbidden("organization permission denied")
+}
+
+// requireResourcePermission is the resource-scoped counterpart of
+// requireOrganizationPermission: it passes if the principal holds any of
+// permissionCodes either organization-wide or specifically on
+// (resourceType, resourceID).
+func requireResourcePermission(tx *gorm.DB, principal *Principal, organizationID, resourceType, resourceID string, permissionCodes ...string) error {
+	if principal == nil {
+		return ErrUnauthorized("authentication required")
+	}
+	var count int64
+	if err := tx.Model(&sdb.Organization{}).Where("id = ?", organizationID).Count(&count).Error; err != nil {
+		return err
+	}
+	if count == 0 {
+		return ErrNotFound("organization not found")
+	}
+	ok, err := hasAnyResourcePermission(tx, principal, organizationID, resourceType, resourceID, permissionCodes...)
+	if err != nil {
+		return err
+	}
+	if ok {
+		return nil
+	}
+	return ErrForbidden("organization permission denied")
+}
+
+// CheckResourcePermission is the exported form of requireResourcePermission,
+// for sibling control-plane packages (e.g. knowledge) that need to gate an
+// action on one specific resource (e.g. one Corpus) rather than the whole
+// organization. Same tx-handle requirement as CheckOrganizationPermission.
+func (s *Service) CheckResourcePermission(tx *gorm.DB, principal *Principal, organizationID, resourceType, resourceID string, permissionCodes ...string) error {
+	return requireResourcePermission(tx, principal, organizationID, resourceType, resourceID, permissionCodes...)
 }
 
 // CheckOrganizationPermission is the exported form of requireOrganizationPermission,
@@ -395,6 +531,8 @@ func toPolicyBinding(record sdb.PolicyBinding) PolicyBinding {
 		SubjectType:     record.SubjectType,
 		SubjectID:       record.SubjectID,
 		PermissionCodes: append([]string(nil), record.PermissionCodes...),
+		ResourceType:    record.ResourceType,
+		ResourceID:      record.ResourceID,
 		CreatedAt:       record.CreatedAt,
 		UpdatedAt:       record.UpdatedAt,
 	}
