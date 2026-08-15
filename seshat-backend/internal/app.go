@@ -15,6 +15,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgegdrive"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledges3"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/mcp"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/memories"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/metrics"
@@ -168,6 +169,11 @@ type Dependencies struct {
 	// connector is configured (no routes registered).
 	ConnectorAccounts *db.ConnectorAccountStore
 	ActionConnectors  map[string]connector.ActionConnector
+	// KnowledgeConnectors mirrors ActionConnectors, for the generic
+	// POST .../accounts/{id}/sync route - internal/knowledges3 is its first
+	// entry. Deliberately not used for Drive, which keeps its own dedicated
+	// KnowledgeGDrive field/routes (see helps/roadmap.md Phase 3 for why).
+	KnowledgeConnectors map[string]connector.KnowledgeConnector
 }
 
 // App is the root backend service container.
@@ -195,6 +201,7 @@ type App struct {
 	KnowledgeGDriveAccounts *db.ConnectorAccountStore
 	ConnectorAccounts       *db.ConnectorAccountStore
 	ActionConnectors        map[string]connector.ActionConnector
+	KnowledgeConnectors     map[string]connector.KnowledgeConnector
 }
 
 func NewApp(deps Dependencies) *App {
@@ -231,8 +238,18 @@ func NewApp(deps Dependencies) *App {
 	// *knowledge.Service (IngestExternal's own home) - connected mode's
 	// RemoteService isn't wired for connector-driven ingestion in this
 	// phase either.
-	if concreteKnowledge, ok := knowledgeService.(*knowledge.Service); ok && deps.KnowledgeGDrive != nil {
-		deps.KnowledgeGDrive.WithTextExtractor(concreteKnowledge.ExtractText)
+	// Same reasoning applies to any generic KnowledgeConnector that needs
+	// Docling-backed extraction - internal/knowledges3 (Phase 3) is the
+	// first one, resolved by kind rather than a dedicated field since
+	// KnowledgeConnectors is the generic map, not KnowledgeGDrive's
+	// one-off pattern.
+	if concreteKnowledge, ok := knowledgeService.(*knowledge.Service); ok {
+		if deps.KnowledgeGDrive != nil {
+			deps.KnowledgeGDrive.WithTextExtractor(concreteKnowledge.ExtractText)
+		}
+		if s3Connector, ok := deps.KnowledgeConnectors[string(knowledges3.Kind)].(*knowledges3.Connector); ok {
+			s3Connector.WithTextExtractor(concreteKnowledge.ExtractText)
+		}
 	}
 	skillsService := skills.NewService()
 	agentsService := agents.NewService(deps.AgentDefinitionStore, deps.AgentsCloudClient)
@@ -279,6 +296,7 @@ func NewApp(deps Dependencies) *App {
 		KnowledgeGDriveAccounts: deps.KnowledgeGDriveAccounts,
 		ConnectorAccounts:       deps.ConnectorAccounts,
 		ActionConnectors:        deps.ActionConnectors,
+		KnowledgeConnectors:     deps.KnowledgeConnectors,
 		Workflows:               workflows.New(settingsService),
 	}
 }

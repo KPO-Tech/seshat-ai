@@ -1,17 +1,27 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/connector"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge"
 )
 
 type connectManualAccountRequest struct {
 	DisplayName       string `json:"display_name"`
 	ExternalAccountID string `json:"external_account_id"`
 	AccessToken       string `json:"access_token"`
+	// RefreshToken/Config are optional, for connector kinds whose auth
+	// shape needs more than one static token - e.g. knowledges3 stores the
+	// S3 secret access key here and non-secret bucket/region/endpoint
+	// config in Config (JSON-encoded into ConnectorAccount.Scope). A
+	// single-token connector like mcpaction's simply leaves both empty.
+	RefreshToken string         `json:"refresh_token"`
+	Config       map[string]any `json:"config"`
 }
 
 // handleConnectorsDispatch handles every /connectors/{kind}/... route.
@@ -19,8 +29,15 @@ type connectManualAccountRequest struct {
 // in skills_manage.go, this codebase's established convention for
 // path-segment routing rather than Go 1.22 {param} mux patterns) since
 // {kind} sits in the middle of the path:
-//   - POST /connectors/{kind}/accounts            -> handleConnectorAccounts
-//   - POST /connectors/{kind}/accounts/{id}/act    -> handleConnectorAccountAct
+//   - POST /connectors/{kind}/accounts             -> handleConnectorAccounts
+//   - POST /connectors/{kind}/accounts/{id}/act     -> handleConnectorAccountAct
+//   - POST /connectors/{kind}/accounts/{id}/sync    -> handleConnectorAccountSync
+//
+// The /sync case is knowledges3's route, deliberately generic rather than
+// a dedicated /knowledge/connectors/s3/... pair like Drive's - see
+// helps/roadmap.md Phase 3 for why Drive's existing routes aren't migrated
+// to match (working, low-value refactor) while S3 starts on the generic
+// path from day one.
 func (a *App) handleConnectorsDispatch(w http.ResponseWriter, r *http.Request) {
 	trimmed := strings.Trim(strings.TrimPrefix(r.URL.Path, "/connectors/"), "/")
 	parts := strings.Split(trimmed, "/")
@@ -31,6 +48,8 @@ func (a *App) handleConnectorsDispatch(w http.ResponseWriter, r *http.Request) {
 		a.handleConnectorAccounts(w, r, kind)
 	case len(parts) == 4 && parts[1] == "accounts" && parts[3] == "act":
 		a.handleConnectorAccountAct(w, r, kind, parts[2])
+	case len(parts) == 4 && parts[1] == "accounts" && parts[3] == "sync":
+		a.handleConnectorAccountSync(w, r, kind, parts[2])
 	default:
 		writeJSONError(w, http.StatusNotFound, "not found")
 	}
@@ -69,6 +88,15 @@ func (a *App) handleConnectorAccounts(w http.ResponseWriter, r *http.Request, ki
 		writeJSONError(w, http.StatusBadRequest, "access_token is required")
 		return
 	}
+	scope := ""
+	if len(req.Config) > 0 {
+		encoded, err := json.Marshal(req.Config)
+		if err != nil {
+			writeJSONError(w, http.StatusBadRequest, "invalid config: "+err.Error())
+			return
+		}
+		scope = string(encoded)
+	}
 
 	accounts := a.backend.ConnectorAccounts
 	record, err := accounts.Create(r.Context(), db.CreateConnectorAccountParams{
@@ -86,6 +114,8 @@ func (a *App) handleConnectorAccounts(w http.ResponseWriter, r *http.Request, ki
 		DisplayName:       req.DisplayName,
 		ExternalAccountID: req.ExternalAccountID,
 		AccessToken:       req.AccessToken,
+		RefreshToken:      req.RefreshToken,
+		Scope:             scope,
 	}); err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "failed to save connector credentials: "+err.Error())
 		return
@@ -162,6 +192,7 @@ func (a *App) handleConnectorAccountAct(w http.ResponseWriter, r *http.Request, 
 		ID:     account.ID,
 		UserID: account.UserID,
 		Status: account.Status,
+		Config: account.Scope,
 	}, connector.Secret{
 		AccessToken:  secret.AccessToken,
 		RefreshToken: secret.RefreshToken,
@@ -172,4 +203,107 @@ func (a *App) handleConnectorAccountAct(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 	writeJSON(w, http.StatusOK, result)
+}
+
+// handleConnectorAccountSync handles
+// POST /connectors/{kind}/accounts/{accountID}/sync?corpus_id=... - the
+// generic counterpart of handleKnowledgeGDriveAccountSync (knowledgegdrive.go),
+// resolving the target connector.KnowledgeConnector by kind from
+// a.backend.KnowledgeConnectors instead of a dedicated field. Same steps:
+// load the account, verify ownership, load the secret, Sync, IngestExternal
+// each item, persist the new cursor.
+func (a *App) handleConnectorAccountSync(w http.ResponseWriter, r *http.Request, kind, accountID string) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if a.backend.ConnectorAccounts == nil {
+		writeJSONError(w, http.StatusServiceUnavailable, "connector accounts are not configured")
+		return
+	}
+	principal, _ := authPrincipalFromContext(r.Context())
+	if principal == nil {
+		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	if kind == "" || accountID == "" {
+		writeJSONError(w, http.StatusBadRequest, "kind and account id are required")
+		return
+	}
+	knowledgeConnector, ok := a.backend.KnowledgeConnectors[kind]
+	if !ok {
+		writeJSONError(w, http.StatusNotFound, "no knowledge connector configured for kind "+kind)
+		return
+	}
+	// IngestExternal is only available on the local knowledge.Service, not
+	// the knowledge.Backend interface (connected mode's RemoteService also
+	// implements it) - same limitation as Drive's sync handler, connector-
+	// driven ingestion is out of scope for connected mode in this phase.
+	knowledgeSvc, ok := a.backend.Knowledge.(*knowledge.Service)
+	if !ok {
+		writeJSONError(w, http.StatusNotImplemented, "connector sync is not supported in connected mode yet")
+		return
+	}
+	corpusID := r.URL.Query().Get("corpus_id")
+	if corpusID == "" {
+		writeJSONError(w, http.StatusBadRequest, "corpus_id query parameter is required")
+		return
+	}
+
+	accounts := a.backend.ConnectorAccounts
+	account, err := accounts.GetByID(r.Context(), accountID)
+	if err != nil {
+		writeJSONError(w, http.StatusNotFound, "connector account not found")
+		return
+	}
+	if account.UserID != principal.User.ID {
+		writeJSONError(w, http.StatusForbidden, "connector account belongs to another user")
+		return
+	}
+	secret, err := accounts.GetSecret(r.Context(), accountID)
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "failed to load connector credentials")
+		return
+	}
+
+	items, nextCursor, err := knowledgeConnector.Sync(r.Context(), connector.Account{
+		ID:     account.ID,
+		UserID: account.UserID,
+		Status: account.Status,
+		Config: account.Scope,
+	}, connector.Secret{
+		AccessToken:  secret.AccessToken,
+		RefreshToken: secret.RefreshToken,
+		ExpiresAt:    secret.ExpiresAt,
+	}, account.SyncCursor)
+	if err != nil {
+		_ = accounts.UpdateSyncState(r.Context(), db.UpdateConnectorAccountSyncParams{
+			ID: accountID, SyncCursor: account.SyncCursor, LastSyncedAt: time.Now(), LastError: err.Error(),
+		})
+		writeJSONError(w, http.StatusBadGateway, "sync failed: "+err.Error())
+		return
+	}
+
+	ingested := 0
+	for _, item := range items {
+		acl := make([]string, 0, len(item.AccessControl))
+		for _, entry := range item.AccessControl {
+			acl = append(acl, string(entry))
+		}
+		_, err := knowledgeSvc.IngestExternal(r.Context(), principal, knowledge.ExternalIngestParams{
+			CorpusID:      corpusID,
+			ExternalID:    kind + "-" + item.ID,
+			Filename:      item.Name,
+			Text:          item.Text,
+			AccessControl: acl,
+		})
+		if err == nil {
+			ingested++
+		}
+	}
+
+	_ = accounts.UpdateSyncState(r.Context(), db.UpdateConnectorAccountSyncParams{
+		ID: accountID, SyncCursor: nextCursor, LastSyncedAt: time.Now(),
+	})
+	writeJSON(w, http.StatusOK, map[string]any{"synced_items": len(items), "ingested": ingested})
 }

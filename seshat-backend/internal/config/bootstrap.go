@@ -40,6 +40,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inboxwhatsapp"
 	backendknowledge "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgegdrive"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledges3"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgetool"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/mcpaction"
 	backendmemories "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/memories"
@@ -940,6 +941,16 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		string(demoCRMConnector.Kind()): demoCRMConnector,
 	}
 
+	// KnowledgeConnectors: the generic counterpart of actionConnectors above,
+	// for connector.KnowledgeConnector implementations reached via the
+	// generic POST .../accounts/{id}/sync route (internal/app.go's NewApp
+	// wires this instance's text extractor once knowledgeService exists,
+	// same reasoning as Drive's WithTextExtractor call there).
+	s3Connector := knowledges3.NewConnector()
+	knowledgeConnectors := map[string]connector.KnowledgeConnector{
+		string(knowledges3.Kind): s3Connector,
+	}
+
 	backendApp := seshat.NewApp(seshat.Dependencies{
 		Identity:            identityStore,
 		APIKeyStore:         apiKeyStore,
@@ -989,6 +1000,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		KnowledgeGDriveAccounts:  connectorAccountStore,
 		ConnectorAccounts:        connectorAccountStore,
 		ActionConnectors:         actionConnectors,
+		KnowledgeConnectors:      knowledgeConnectors,
 	})
 
 	// Knowledge Agent: unlike the Inbox Agent (provisioned lazily on first

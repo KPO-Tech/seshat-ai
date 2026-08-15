@@ -69,6 +69,15 @@ type Account struct {
 	Status       string
 	LastSyncedAt time.Time
 	LastError    string
+	// Config is opaque, connector-interpreted, non-secret connection
+	// configuration (e.g. an S3 connector's bucket/region/endpoint/prefix,
+	// JSON-encoded) - the counterpart to Secret for settings that aren't
+	// credentials. Populated by the caller from db.ConnectorAccount.Scope
+	// (a free-text column already repurposed this way, see
+	// internal/knowledges3's doc comment). Empty for connectors that don't
+	// need any (Drive, the MCP-backed Action connector) - added when
+	// knowledges3 needed it, not before, so it stays genuinely optional.
+	Config string
 }
 
 // AccessEntry names one identity or group allowed to see a resource,
