@@ -163,6 +163,7 @@ type SystemStatus = {
   mode: 'standalone' | 'connected'
   server_url?: string
   sandbox_confined?: boolean
+  sandbox_kind?: 'docker' | 'landlock' | ''
   docling_configured?: boolean
   local_stt_configured?: boolean
 }
@@ -225,11 +226,13 @@ export function RuntimeView() {
                     className="sv-setting-desc"
                     style={status?.sandbox_confined === false ? { color: 'var(--color-warning)' } : undefined}
                   >
-                    {status?.sandbox_confined === true
-                      ? 'Shell commands run inside an OS-level sandbox (Landlock)'
-                      : status?.sandbox_confined === false
-                        ? 'No OS-level sandbox on this host — shell commands run unconfined (Landlock is Linux-only)'
-                        : 'Loading…'}
+                    {status?.sandbox_kind === 'docker'
+                      ? 'Shell commands run inside a Docker sandbox container'
+                      : status?.sandbox_kind === 'landlock'
+                        ? 'Shell commands run inside an OS-level sandbox (Landlock)'
+                        : status?.sandbox_confined === false
+                          ? 'No OS-level sandbox on this host — shell commands run unconfined (install and start Docker Desktop for isolation, or Landlock on Linux)'
+                          : 'Loading…'}
                   </div>
                 </div>
               </div>

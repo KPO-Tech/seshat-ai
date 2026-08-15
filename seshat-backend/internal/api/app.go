@@ -62,6 +62,13 @@ type App struct {
 	// configured here - seshat-server enforces at most one organization per
 	// user account, so there's no deployment-time value to store.
 	connectedServerURL string
+	// sandboxKind is the bash-tool sandbox backend the query client's SDK
+	// Client actually resolved to at boot (sdk.SandboxKindDocker or
+	// sdk.SandboxKindLocal, as a string) - see bootstrap.go's
+	// queryClient.SandboxKind() call. Not the same fact as
+	// sdk.SandboxAvailable() (system.go), which only ever checks Landlock
+	// and so can't reflect a Docker sandbox being used instead.
+	sandboxKind string
 	// transcribeAudio defaults to sdk.TranscribeAudio; overridden in tests to
 	// avoid a real network call. baseURL is empty for OpenAI's cloud API, or
 	// a local whisper-server URL when local transcription is configured
@@ -102,6 +109,9 @@ type AppConfig struct {
 	TrustedProxyCIDRs     []*net.IPNet
 	AllowedSkillRepoHosts []string
 	ConnectedServerURL    string
+	// SandboxKind is the bash-tool sandbox backend the query client's SDK
+	// Client actually resolved to at boot - see App.sandboxKind's doc comment.
+	SandboxKind string
 	// TerminalRelay, when set, is shared with the SDKRuntime constructed in
 	// bootstrap.go so a terminal registered via the WS handler here is
 	// visible to bash-tool calls made through that runtime. Falls back to a
@@ -159,6 +169,7 @@ func NewApp(cfg AppConfig) *App {
 		trustedProxyCIDRs:     cfg.TrustedProxyCIDRs,
 		allowedSkillRepoHosts: cfg.AllowedSkillRepoHosts,
 		connectedServerURL:    cfg.ConnectedServerURL,
+		sandboxKind:           cfg.SandboxKind,
 		transcribeAudio: func(ctx context.Context, apiKey string, audioData []byte, baseURL string) (*sdk.TranscriptionResult, error) {
 			if baseURL != "" {
 				return sdk.TranscribeAudio(ctx, apiKey, audioData, sdk.WithTranscribeBaseURL(baseURL))

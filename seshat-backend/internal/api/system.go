@@ -14,9 +14,14 @@ type systemStatusResponse struct {
 	Mode      string `json:"mode"` // "standalone" | "connected"
 	ServerURL string `json:"server_url,omitempty"`
 	// SandboxConfined reports whether bash tool execution is confined by an
-	// OS-level sandbox (currently: Landlock, Linux-only) on this host. False
-	// on every non-Linux desktop install today.
+	// OS-level sandbox on this host - either a Docker sandbox container
+	// (desktop default since query client construction, any OS with Docker
+	// installed and running) or Landlock (Linux-only, used when Docker isn't
+	// available). False only when neither backend is available.
 	SandboxConfined bool `json:"sandbox_confined"`
+	// SandboxKind is which of the two backends above is actually active:
+	// "docker", "landlock", or "" when neither is.
+	SandboxKind string `json:"sandbox_kind,omitempty"`
 	// DoclingConfigured/LocalSTTConfigured report whether the optional
 	// binary-document-conversion and local-speech-to-text backends are set
 	// up on this install — both degrade gracefully when unset (plain-text
@@ -36,7 +41,16 @@ type systemStatusResponse struct {
 // handleSystemStatus reports whether identity runs standalone or connected to
 // a seshat-server, plus host capabilities the UI should make visible.
 func (a *App) handleSystemStatus(w http.ResponseWriter, r *http.Request) {
-	sandboxConfined := sdk.SandboxAvailable()
+	sandboxKind := ""
+	sandboxConfined := false
+	switch {
+	case a.sandboxKind == string(sdk.SandboxKindDocker):
+		sandboxKind = "docker"
+		sandboxConfined = true
+	case sdk.SandboxAvailable():
+		sandboxKind = "landlock"
+		sandboxConfined = true
+	}
 	doclingConfigured := false
 	if a.doclingStore != nil {
 		if cfg, err := a.doclingStore.Get(r.Context()); err == nil && cfg != nil {
@@ -51,6 +65,7 @@ func (a *App) handleSystemStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	resp := systemStatusResponse{
 		SandboxConfined:           sandboxConfined,
+		SandboxKind:               sandboxKind,
 		DoclingConfigured:         doclingConfigured,
 		LocalSTTConfigured:        localSTTConfigured,
 		ImageGenerationConfigured: a.imageGenerationConfigured(r.Context()),

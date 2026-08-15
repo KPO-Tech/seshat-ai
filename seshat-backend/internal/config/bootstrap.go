@@ -718,13 +718,21 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	}
 
 	queryClientConfig := &sdk.ClientConfig{
-		APIKey:                  config.APIKey,
-		Model:                   appconfig.ParseModelIdentifier(config.Model),
-		PermissionMode:          sdk.PermissionModeNever,
-		AutoCompact:             true,
-		PersistSessions:         true,
-		SessionSQLitePath:       appconfig.EffectiveSessionDBPath(config),
-		WorkingDir:              workingDir,
+		APIKey:            config.APIKey,
+		Model:             appconfig.ParseModelIdentifier(config.Model),
+		PermissionMode:    sdk.PermissionModeNever,
+		AutoCompact:       true,
+		PersistSessions:   true,
+		SessionSQLitePath: appconfig.EffectiveSessionDBPath(config),
+		WorkingDir:        workingDir,
+		// Desktop default: try Docker sandboxing for bash tool execution,
+		// with a sane zero-value SandboxDocker config. RequireSandbox stays
+		// false (the zero value) — the SDK itself documents that refusing to
+		// run bash entirely is worse desktop UX than a visible, logged
+		// fallback to unconfined execution when Docker isn't installed or
+		// running; NewTool already handles that fallback silently and safely
+		// (internal/tools/bash/bash.go's NewTool, seshat SDK).
+		SandboxKind:             sdk.SandboxKindDocker,
 		BrowserRemoteControlURL: browserRemoteControlURL,
 		BrowserExecutablePath:   strings.TrimSpace(config.BrowserExecutablePath),
 		StorageGCEnabled:        config.StorageGCEnabled,
@@ -761,6 +769,10 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		return nil, nil, fmt.Errorf("init query runtime: %w", err)
 	}
 	cleanups = append(cleanups, func() error { queryClient.Close(); return nil })
+	// The kind actually resolved to (Docker only if it passed its health
+	// check; Local otherwise) — not just what was requested above. See
+	// api.App's sandboxKind field for how this reaches /system/status.
+	sandboxKind := string(queryClient.SandboxKind())
 
 	if err := managedskills.EnsureExtracted(skillsloader.GetBuiltinSkillsPath()); err != nil {
 		fmt.Fprintf(os.Stderr, "[API] Avertissement builtin skills: %v\n", err)
@@ -1114,6 +1126,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		TrustedProxyCIDRs:     api.ParseTrustedProxies(config.TrustedProxies),
 		AllowedSkillRepoHosts: api.ParseSkillRepoHosts(config.SkillRepoHosts),
 		ConnectedServerURL:    serverURL,
+		SandboxKind:           sandboxKind,
 		TerminalRelay:         terminalRelay,
 		WhatsAppManager:       whatsappManager,
 	})
