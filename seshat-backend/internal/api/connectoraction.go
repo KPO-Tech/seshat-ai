@@ -29,15 +29,20 @@ type connectManualAccountRequest struct {
 // in skills_manage.go, this codebase's established convention for
 // path-segment routing rather than Go 1.22 {param} mux patterns) since
 // {kind} sits in the middle of the path:
-//   - POST /connectors/{kind}/accounts             -> handleConnectorAccounts
-//   - POST /connectors/{kind}/accounts/{id}/act     -> handleConnectorAccountAct
-//   - POST /connectors/{kind}/accounts/{id}/sync    -> handleConnectorAccountSync
+//   - GET/POST /connectors/{kind}/accounts              -> handleConnectorAccounts
+//   - DELETE   /connectors/{kind}/accounts/{id}          -> handleConnectorAccountDelete
+//   - POST     /connectors/{kind}/accounts/{id}/act      -> handleConnectorAccountAct
+//   - POST     /connectors/{kind}/accounts/{id}/sync     -> handleConnectorAccountSync
 //
 // The /sync case is knowledges3's route, deliberately generic rather than
 // a dedicated /knowledge/connectors/s3/... pair like Drive's - see
 // helps/roadmap.md Phase 3 for why Drive's existing routes aren't migrated
 // to match (working, low-value refactor) while S3 starts on the generic
-// path from day one.
+// path from day one. GET/DELETE were added alongside the Settings
+// connector catalog (same phase) - Drive keeps using its own dedicated
+// GET .../gdrive/accounts, but DELETE is only ever this generic route,
+// even for Drive accounts: ConnectorAccountStore.Delete is already
+// kind-agnostic, so there was nothing Drive-specific to build.
 func (a *App) handleConnectorsDispatch(w http.ResponseWriter, r *http.Request) {
 	trimmed := strings.Trim(strings.TrimPrefix(r.URL.Path, "/connectors/"), "/")
 	parts := strings.Split(trimmed, "/")
@@ -46,6 +51,8 @@ func (a *App) handleConnectorsDispatch(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case len(parts) == 2 && parts[1] == "accounts":
 		a.handleConnectorAccounts(w, r, kind)
+	case len(parts) == 3 && parts[1] == "accounts":
+		a.handleConnectorAccountDelete(w, r, kind, parts[2])
 	case len(parts) == 4 && parts[1] == "accounts" && parts[3] == "act":
 		a.handleConnectorAccountAct(w, r, kind, parts[2])
 	case len(parts) == 4 && parts[1] == "accounts" && parts[3] == "sync":
@@ -55,18 +62,16 @@ func (a *App) handleConnectorsDispatch(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleConnectorAccounts handles POST /connectors/{kind}/accounts - manual
-// (non-OAuth) account connection: the caller already has a static
+// handleConnectorAccounts handles GET/POST /connectors/{kind}/accounts.
+// GET lists the caller's own accounts of this kind - the read side needed
+// by the Settings connector catalog (helps/roadmap.md Phase 3). POST is
+// manual (non-OAuth) account connection: the caller already has a static
 // credential (an API key/bearer token, as most MCP servers use) rather
 // than an authorization-code flow to run. Distinct from Drive/Gmail's
 // OAuth start/callback pair, which this deliberately does not replicate -
 // see internal/mcpaction's doc comment for why a static token fits an
 // MCP-backed ActionConnector's actual auth shape.
 func (a *App) handleConnectorAccounts(w http.ResponseWriter, r *http.Request, kind string) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 	if a.backend.ConnectorAccounts == nil {
 		writeJSONError(w, http.StatusServiceUnavailable, "connector accounts are not configured")
 		return
@@ -80,6 +85,27 @@ func (a *App) handleConnectorAccounts(w http.ResponseWriter, r *http.Request, ki
 		writeJSONError(w, http.StatusBadRequest, "kind is required")
 		return
 	}
+
+	if r.Method == http.MethodGet {
+		all, err := a.backend.ConnectorAccounts.ListByUserID(r.Context(), principal.User.ID)
+		if err != nil {
+			writeJSONError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		items := make([]connectorAccountResponse, 0, len(all))
+		for _, acc := range all {
+			if acc.Kind == kind {
+				items = append(items, connectorAccountToResponse(acc))
+			}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"accounts": items, "count": len(items)})
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	var req connectManualAccountRequest
 	if !decodeJSONBody(w, r, &req) {
 		return
@@ -126,6 +152,51 @@ func (a *App) handleConnectorAccounts(w http.ResponseWriter, r *http.Request, ki
 		return
 	}
 	writeJSON(w, http.StatusCreated, connectorAccountToResponse(*updated))
+}
+
+// handleConnectorAccountDelete handles
+// DELETE /connectors/{kind}/accounts/{accountID} - disconnects any
+// connector account regardless of kind (including Drive's, which has no
+// dedicated delete route of its own - ConnectorAccountStore.Delete was
+// already kind-agnostic, so this one route covers every connector).
+func (a *App) handleConnectorAccountDelete(w http.ResponseWriter, r *http.Request, kind, accountID string) {
+	if r.Method != http.MethodDelete {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if a.backend.ConnectorAccounts == nil {
+		writeJSONError(w, http.StatusServiceUnavailable, "connector accounts are not configured")
+		return
+	}
+	principal, _ := authPrincipalFromContext(r.Context())
+	if principal == nil {
+		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	if kind == "" || accountID == "" {
+		writeJSONError(w, http.StatusBadRequest, "kind and account id are required")
+		return
+	}
+
+	accounts := a.backend.ConnectorAccounts
+	account, err := accounts.GetByID(r.Context(), accountID)
+	if err != nil {
+		writeJSONError(w, http.StatusNotFound, "connector account not found")
+		return
+	}
+	if account.UserID != principal.User.ID {
+		writeJSONError(w, http.StatusForbidden, "connector account belongs to another user")
+		return
+	}
+	if account.Kind != kind {
+		writeJSONError(w, http.StatusNotFound, "connector account not found")
+		return
+	}
+	if err := accounts.Delete(r.Context(), accountID); err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "failed to disconnect: "+err.Error())
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 type actRequest struct {

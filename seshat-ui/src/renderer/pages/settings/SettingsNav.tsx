@@ -6,7 +6,7 @@ import { NexusLogo } from '@/components/NexusLogo'
 // union) — old ?tab=admin-users style URLs still redirect there via
 // settings/index.tsx's plain-string adminRedirects table, which doesn't need
 // these in TabId.
-export type TabId = 'general' | 'account' | 'connections' | 'memories' | 'appearance' | 'providers' | 'remote' | 'knowledge' | 'multimodal' | 'mcp' | 'environment' | 'storage' | 'about'
+export type TabId = 'general' | 'account' | 'connections' | 'memories' | 'appearance' | 'providers' | 'remote' | 'knowledge' | 'multimodal' | 'mcp' | 'connectors' | 'environment' | 'storage' | 'about'
 
 // ─── Generic nav item ─────────────────────────────────────────────────────────
 

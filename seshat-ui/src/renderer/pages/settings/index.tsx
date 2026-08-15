@@ -21,12 +21,13 @@ import { AppearanceView } from './AppearanceView'
 import { EnvironmentView } from './EnvironmentView'
 import { StorageView } from './StorageView'
 import { McpView } from './McpView'
+import { ConnectorsView } from './ConnectorsView'
 import type { TabId } from './SettingsNav'
 
 const ALLOWED_TABS: TabId[] = [
   'general', 'account', 'connections', 'memories', 'appearance',
   'providers', 'remote', 'knowledge', 'multimodal',
-  'mcp', 'environment', 'storage', 'about',
+  'mcp', 'connectors', 'environment', 'storage', 'about',
 ]
 
 export function Settings() {
@@ -102,6 +103,7 @@ export function Settings() {
       title: 'WORKSPACE',
       items: [
         { id: 'mcp' as TabId, label: 'MCP', icon: <Api size={16} /> },
+        { id: 'connectors' as TabId, label: 'Connectors', icon: <LinkOne size={16} /> },
         { id: 'environment' as TabId, label: 'Environment', icon: <Terminal size={16} /> },
         { id: 'storage' as TabId, label: 'Storage', icon: <CloudStorage size={16} /> },
       ],
@@ -150,6 +152,7 @@ export function Settings() {
           {activeTab === 'knowledge' && <KnowledgeView />}
           {activeTab === 'multimodal' && <MultimodalView />}
           {activeTab === 'mcp' && <McpView />}
+          {activeTab === 'connectors' && <ConnectorsView />}
           {activeTab === 'environment' && <EnvironmentView />}
           {activeTab === 'storage' && <StorageView />}
           {activeTab === 'about' && <AboutView />}

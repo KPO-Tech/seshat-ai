@@ -271,6 +271,31 @@ export type Corpus = {
   updated_at: number
 }
 
+// ConnectorAccount mirrors seshat-backend's connectorAccountResponse
+// (internal/api/knowledgegdrive.go) - the generic, kind-agnostic shape
+// shared by every internal/connector implementation (Drive, S3, the
+// MCP-backed Action connector), same as ChannelAccount is for Inbox.
+export type ConnectorAccount = {
+  id: string
+  kind: string
+  display_name: string
+  external_account_id: string
+  status: string
+  last_synced_at?: number
+  last_error?: string
+  created_at: number
+}
+
+// ActionResult mirrors connector.ActionResult (seshat-backend/internal/connector/types.go)
+// exactly, including its unusual PascalCase JSON keys - that struct has no
+// json tags, so Go's default field-name marshaling applies, unlike every
+// snake_case type elsewhere in this file.
+export type ActionResult = {
+  Success: boolean
+  Message: string
+  Data?: Record<string, unknown>
+}
+
 export type CorpusFile = {
   corpus_id: string
   file_id: string
