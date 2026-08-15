@@ -137,6 +137,7 @@ func (d *DB) Migrate() error {
 		&WorkspaceChatSession{},
 		&WorkspaceChatMessageRecord{},
 		&PasswordResetToken{},
+		&OIDCLoginState{},
 	)
 }
 

@@ -59,6 +59,7 @@ func New(cfg serverconfig.Config) (*App, error) {
 	if err := iamService.EnsureSuperAdmin(context.Background(), cfg.BootstrapAdminEmail, cfg.BootstrapAdminPassword); err != nil {
 		return nil, fmt.Errorf("ensure super admin: %w", err)
 	}
+	iamService.SetPublicAPIURL(cfg.PublicAPIURL)
 	if cfg.SMTPHost != "" {
 		iamService.SetMailer(mailer.NewSMTPSender(mailer.Config{
 			Host:     cfg.SMTPHost,

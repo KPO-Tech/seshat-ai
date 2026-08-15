@@ -106,6 +106,29 @@ type PasswordResetToken struct {
 	UsedAt    *time.Time
 }
 
+// OIDCLoginState is one in-flight OIDC authorization-code login attempt,
+// created by BeginOIDCLogin and consumed (deleted) by CompleteOIDCLogin —
+// single-use, same lifecycle shape as PasswordResetToken above. StateHash is
+// the SHA-256 hash of the state value round-tripped through the identity
+// provider (sdb.HashOpaqueToken), never the raw value. CodeVerifier (PKCE)
+// and Nonce are stored in plaintext: both are single-use, short-lived
+// (ExpiresAt), and only ever read back by this same server process
+// completing its own login attempt - not credentials presented by a client.
+// RedirectURI is the caller's final destination after login succeeds,
+// validated loopback-only at creation time (see BeginOIDCLogin) - distinct
+// from the OIDC RedirectURL sent to the identity provider itself, which is
+// always this server's own callback route.
+type OIDCLoginState struct {
+	ID           string `gorm:"primaryKey;size:32"`
+	ProviderID   string `gorm:"size:32;not null;index"`
+	StateHash    string `gorm:"uniqueIndex;size:64;not null"`
+	CodeVerifier string `gorm:"size:255;not null"`
+	Nonce        string `gorm:"size:64;not null"`
+	RedirectURI  string `gorm:"size:500;not null"`
+	CreatedAt    time.Time
+	ExpiresAt    time.Time
+}
+
 // Application is an OAuth/OIDC client application managed by the control plane.
 type Application struct {
 	ID                     string   `gorm:"primaryKey;size:32"`

@@ -246,6 +246,12 @@ type Service struct {
 	// through New() - see SetMailer's doc comment for why.
 	mailer       mailer.Sender
 	publicAppURL string
+	// publicAPIURL is set post-construction via SetPublicAPIURL, same
+	// New()-signature-stability reasoning as SetMailer above. Used to build
+	// the redirect_uri this server presents to an OIDC identity provider
+	// (see oidc.go's BeginOIDCLogin) - distinct from publicAppURL, which
+	// points at the console frontend, not an API route.
+	publicAPIURL string
 }
 
 func New(database *sdb.DB, sessionTTL time.Duration) *Service {
@@ -264,6 +270,17 @@ func New(database *sdb.DB, sessionTTL time.Duration) *Service {
 func (s *Service) SetMailer(sender mailer.Sender, publicAppURL string) {
 	s.mailer = sender
 	s.publicAppURL = strings.TrimRight(publicAppURL, "/")
+}
+
+// SetPublicAPIURL wires up this server's own public API base URL, used to
+// build the redirect_uri sent to an OIDC identity provider during login
+// (see oidc.go). Not a New() parameter for the same reason as SetMailer -
+// most of iam.New's many callers (mostly unrelated test-env helpers) have no
+// reason to care. An empty value (never calling this) means OIDC login
+// can't be started - BeginOIDCLogin returns a clear error rather than
+// silently building a broken redirect_uri.
+func (s *Service) SetPublicAPIURL(publicAPIURL string) {
+	s.publicAPIURL = strings.TrimRight(publicAPIURL, "/")
 }
 
 func (s *Service) BootstrapStatus(ctx context.Context) (bool, error) {

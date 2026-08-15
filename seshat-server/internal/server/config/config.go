@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -59,13 +60,22 @@ type Config struct {
 	SMTPFrom string
 	// PublicAppURL is this deployment's own console URL (e.g.
 	// http://localhost:3000), used to build the links embedded in emails.
-	// Nothing else needs the server to know its own public URL today.
 	PublicAppURL string
+	// PublicAPIURL is this deployment's own API base URL (e.g.
+	// http://localhost:8081, or the real internet-facing URL in production),
+	// distinct from PublicAppURL above - used to build the redirect_uri this
+	// server presents to an OIDC identity provider (iam.Service.BeginOIDCLogin),
+	// which must point at an API route (/api/v1/auth/oidc/.../callback), not
+	// the console frontend. Defaults to matching Port when unset, since a
+	// local dev/single-instance deployment's own API is reachable at
+	// localhost:Port by construction.
+	PublicAPIURL string
 }
 
 func LoadFromEnv() Config {
+	port := envInt("SESHAT_SERVER_PORT", 8081)
 	return Config{
-		Port:                         envInt("SESHAT_SERVER_PORT", 8081),
+		Port:                         port,
 		ReadTimeout:                  15 * time.Second,
 		WriteTimeout:                 15 * time.Second,
 		IdleTimeout:                  60 * time.Second,
@@ -88,7 +98,19 @@ func LoadFromEnv() Config {
 		SMTPPassword:                 strings.TrimSpace(os.Getenv("SESHAT_SERVER_SMTP_PASSWORD")),
 		SMTPFrom:                     strings.TrimSpace(os.Getenv("SESHAT_SERVER_SMTP_FROM")),
 		PublicAppURL:                 strings.TrimRight(strings.TrimSpace(os.Getenv("SESHAT_SERVER_PUBLIC_APP_URL")), "/"),
+		PublicAPIURL:                 publicAPIURLFromEnv(port),
 	}
+}
+
+// publicAPIURLFromEnv defaults to localhost:port (matching Port's own
+// default) rather than requiring every local/dev deployment to set this
+// explicitly - only a real internet-facing production deployment behind a
+// domain needs to override it.
+func publicAPIURLFromEnv(port int) string {
+	if explicit := strings.TrimRight(strings.TrimSpace(os.Getenv("SESHAT_SERVER_PUBLIC_API_URL")), "/"); explicit != "" {
+		return explicit
+	}
+	return fmt.Sprintf("http://localhost:%d", port)
 }
 
 // corsAllowedOriginsFromEnv reads a comma-separated allow-list (e.g. the
