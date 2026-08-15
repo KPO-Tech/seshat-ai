@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -50,10 +51,26 @@ const maxFileBytes = 20 * 1024 * 1024 // 20MB
 
 type Connector struct {
 	oauthConfig *oauth2.Config
+	// extractText converts a downloaded binary file's raw bytes into
+	// ingestable text (PDF/DOCX/PPTX/XLSX via Docling, plain-text formats
+	// read directly) - nil means "no extractor wired" and downloadText
+	// falls back to treating raw bytes as text, which is wrong for binary
+	// formats. Set via WithTextExtractor, normally to
+	// knowledge.Service.ExtractText (see config/bootstrap.go).
+	extractText func(ctx context.Context, data []byte, contentType, filename string) string
 }
 
 func NewConnector(oauthConfig *oauth2.Config) *Connector {
 	return &Connector{oauthConfig: oauthConfig}
+}
+
+// WithTextExtractor wires binary-file extraction (PDF/DOCX/PPTX/XLSX via
+// Docling) into downloadText - see extractText's doc comment. Returns the
+// receiver so callers can chain it onto NewConnector, mirroring
+// knowledge.Service.WithDocling's fluent pattern.
+func (c *Connector) WithTextExtractor(fn func(ctx context.Context, data []byte, contentType, filename string) string) *Connector {
+	c.extractText = fn
+	return c
 }
 
 func (c *Connector) Kind() connector.Kind { return Kind }
@@ -208,9 +225,10 @@ func (c *Connector) syncOneFile(ctx context.Context, srv *drive.Service, f *driv
 }
 
 func (c *Connector) downloadText(ctx context.Context, srv *drive.Service, f *drive.File) (string, bool) {
+	exportMime, exported := exportMimeTypes[f.MimeType]
 	var resp *http.Response
 	var err error
-	if exportMime, ok := exportMimeTypes[f.MimeType]; ok {
+	if exported {
 		resp, err = srv.Files.Export(f.Id, exportMime).Context(ctx).Download()
 	} else {
 		resp, err = srv.Files.Get(f.Id).Context(ctx).Download()
@@ -222,6 +240,19 @@ func (c *Connector) downloadText(ctx context.Context, srv *drive.Service, f *dri
 	data, err := io.ReadAll(io.LimitReader(resp.Body, maxFileBytes))
 	if err != nil || len(data) == 0 {
 		return "", false
+	}
+	// Google-native exports are already plain text/CSV - no extraction
+	// needed. Everything else downloaded raw (PDF, DOCX, images, ...) needs
+	// the same Docling-backed extraction an uploaded file gets, or its raw
+	// bytes get ingested as unsearchable noise (see extractText's doc
+	// comment - a real gap found via an end-to-end test with a live Drive
+	// account, not a hypothetical).
+	if !exported && c.extractText != nil {
+		text := c.extractText(ctx, data, f.MimeType, f.Name)
+		if strings.TrimSpace(text) == "" {
+			return "", false
+		}
+		return text, true
 	}
 	return string(data), true
 }

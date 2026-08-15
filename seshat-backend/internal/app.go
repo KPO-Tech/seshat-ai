@@ -211,6 +211,16 @@ func NewApp(deps Dependencies) *App {
 	if knowledgeService == nil {
 		knowledgeService = knowledge.NewService(deps.CorpusStore, deps.FileStore, deps.IngestionJobStore, deps.ArtifactStore, deps.RAGService).WithDocling(deps.ResolveDoclingClient)
 	}
+	// Give the Drive connector the same Docling-backed extraction an
+	// uploaded file gets, instead of ingesting a downloaded PDF/DOCX's raw
+	// bytes as text (unsearchable garbage - found via a real end-to-end
+	// test, see helps/roadmap.md Phase 1). Only possible against the local
+	// *knowledge.Service (IngestExternal's own home) - connected mode's
+	// RemoteService isn't wired for connector-driven ingestion in this
+	// phase either.
+	if concreteKnowledge, ok := knowledgeService.(*knowledge.Service); ok && deps.KnowledgeGDrive != nil {
+		deps.KnowledgeGDrive.WithTextExtractor(concreteKnowledge.ExtractText)
+	}
 	skillsService := skills.NewService()
 	agentsService := agents.NewService(deps.AgentDefinitionStore, deps.AgentsCloudClient)
 	quotaProvider := deps.QuotaProvider

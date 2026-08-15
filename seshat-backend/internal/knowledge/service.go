@@ -707,6 +707,17 @@ func (s *Service) checkFileAccess(principal *backendauth.Principal, fileRecord *
 	return nil
 }
 
+// ExtractText is extractTextWithDocling exported for callers outside this
+// package - specifically Knowledge connectors (e.g. internal/knowledgegdrive)
+// that download a binary file's raw bytes and need the exact same
+// extraction quality an uploaded file gets, rather than treating raw
+// PDF/DOCX bytes as plain text (which produces unsearchable garbage - see
+// helps/roadmap.md Phase 1's Google Drive connector for how this gap was
+// found via a real end-to-end test).
+func (s *Service) ExtractText(ctx context.Context, data []byte, contentType, filename string) string {
+	return s.extractTextWithDocling(ctx, data, contentType, filename)
+}
+
 // extractTextWithDocling always routes binary formats (DOCX/PPTX/XLSX, PDF,
 // scans, audio, images) through docling, then falls back to plain-text
 // extraction for everything else. Deliberately skips docconvert's
