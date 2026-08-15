@@ -143,6 +143,26 @@ func (s *MCPServerStore) GetByID(ctx context.Context, id string) (*MCPServer, er
 	return &m, nil
 }
 
+// GetByName looks up a configured MCP server by its unique Name - used by
+// an ActionConnector implementation to resolve its target server by a
+// well-known name rather than an opaque ID. found=false (not an error)
+// means no server is configured under that name yet.
+func (s *MCPServerStore) GetByName(ctx context.Context, name string) (*MCPServer, bool, error) {
+	var row gMCPServer
+	err := s.db.gormDB.WithContext(ctx).Where("name = ?", name).First(&row).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	m, err := mcpServerFromModel(row)
+	if err != nil {
+		return nil, false, err
+	}
+	return &m, true, nil
+}
+
 func (s *MCPServerStore) Create(ctx context.Context, p CreateMCPServerParams) (*MCPServer, error) {
 	if strings.TrimSpace(p.Name) == "" {
 		return nil, fmt.Errorf("name is required")

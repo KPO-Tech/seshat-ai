@@ -32,6 +32,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/quotas"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/settings"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/websearch"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/connector"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inboxgmail"
@@ -40,6 +41,7 @@ import (
 	backendknowledge "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgegdrive"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgetool"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/mcpaction"
 	backendmemories "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/memories"
 	backendpreferences "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/preferences"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/prospecting"
@@ -926,6 +928,18 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		return bootDoclingClient
 	}
 
+	// ActionConnectors: one entry per MCP-backed connector.ActionConnector
+	// (see internal/mcpaction and helps/roadmap.md Phase 3). "demo-crm" is
+	// the first concrete instance, not a hardcoded special case - any MCP
+	// server registered under a different name (via the existing generic
+	// /mcp API/Settings UI) can be wrapped the same way by adding another
+	// entry here. Resolution of whether that server is actually configured
+	// happens per-call in Connector.Act, not here.
+	demoCRMConnector := mcpaction.NewConnector(mcpServerStore, "demo-crm")
+	actionConnectors := map[string]connector.ActionConnector{
+		string(demoCRMConnector.Kind()): demoCRMConnector,
+	}
+
 	backendApp := seshat.NewApp(seshat.Dependencies{
 		Identity:            identityStore,
 		APIKeyStore:         apiKeyStore,
@@ -973,6 +987,8 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		Inbox:                    inboxService,
 		KnowledgeGDrive:          knowledgeGDriveConnector,
 		KnowledgeGDriveAccounts:  connectorAccountStore,
+		ConnectorAccounts:        connectorAccountStore,
+		ActionConnectors:         actionConnectors,
 	})
 
 	// Knowledge Agent: unlike the Inbox Agent (provisioned lazily on first

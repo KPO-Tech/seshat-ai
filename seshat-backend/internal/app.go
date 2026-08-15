@@ -9,6 +9,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/agents"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/mcp"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/websearch"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/connector"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/files"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
@@ -157,6 +158,16 @@ type Dependencies struct {
 	// See helps/roadmap.md Phase 1.
 	KnowledgeGDrive         *knowledgegdrive.Connector
 	KnowledgeGDriveAccounts *db.ConnectorAccountStore
+	// ConnectorAccounts is the same generic, kind-agnostic store as
+	// KnowledgeGDriveAccounts (identical underlying table - see
+	// db.ConnectorAccountStore's own doc comment) but named for its general
+	// use across every connector kind, not just Drive. ActionConnectors
+	// maps connector.Kind (as a string) to the implementation that should
+	// handle a POST .../accounts/{id}/act call for that kind - see
+	// internal/mcpaction and helps/roadmap.md Phase 3. Both nil = no Action
+	// connector is configured (no routes registered).
+	ConnectorAccounts *db.ConnectorAccountStore
+	ActionConnectors  map[string]connector.ActionConnector
 }
 
 // App is the root backend service container.
@@ -182,6 +193,8 @@ type App struct {
 
 	KnowledgeGDrive         *knowledgegdrive.Connector
 	KnowledgeGDriveAccounts *db.ConnectorAccountStore
+	ConnectorAccounts       *db.ConnectorAccountStore
+	ActionConnectors        map[string]connector.ActionConnector
 }
 
 func NewApp(deps Dependencies) *App {
@@ -264,6 +277,8 @@ func NewApp(deps Dependencies) *App {
 
 		KnowledgeGDrive:         deps.KnowledgeGDrive,
 		KnowledgeGDriveAccounts: deps.KnowledgeGDriveAccounts,
+		ConnectorAccounts:       deps.ConnectorAccounts,
+		ActionConnectors:        deps.ActionConnectors,
 		Workflows:               workflows.New(settingsService),
 	}
 }

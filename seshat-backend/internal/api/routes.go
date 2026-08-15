@@ -130,6 +130,8 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	// bearer token; see handleKnowledgeGDriveOAuthCallback's doc comment.
 	apiV1.HandleFunc("/knowledge/connectors/gdrive/oauth/callback", app.handleKnowledgeGDriveOAuthCallback)
 
+	apiV1.Handle("/connectors/", app.authMiddleware(http.HandlerFunc(app.handleConnectorsDispatch)))
+
 	apiV1.Handle("/web/search", app.authMiddleware(http.HandlerFunc(app.handleWebSearch)))
 	apiV1.Handle("/web/search/settings", app.authMiddleware(http.HandlerFunc(app.handleWebSearchSettings)))
 	apiV1.Handle("/web/search/logs", app.authMiddleware(http.HandlerFunc(app.handleWebSearchLogs)))
