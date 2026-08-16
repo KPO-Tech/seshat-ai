@@ -41,6 +41,8 @@ func writeAutomationError(w http.ResponseWriter, err error) { writeControlPlaneE
 
 func writeKnowledgeError(w http.ResponseWriter, err error) { writeControlPlaneError(w, err) }
 
+func writeProspectingError(w http.ResponseWriter, err error) { writeControlPlaneError(w, err) }
+
 func writePreferencesError(w http.ResponseWriter, err error) { writeControlPlaneError(w, err) }
 
 func writeControlPlaneError(w http.ResponseWriter, err error) {

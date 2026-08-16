@@ -443,6 +443,113 @@ type EmbedderSetting struct {
 	UpdatedAt       time.Time
 }
 
+// ProspectingSweep is one organization-scoped business-discovery run
+// (Google Places + French company-registry sweep, algorithm/external-API
+// logic lives in the tenant-agnostic sibling module prospecting-core).
+// Org-scoped rather than user-scoped like seshat-backend's local
+// equivalent — Prospecting is team data, not private (see
+// helps/audit-2026-08-10.md section 6): any organization member with
+// prospecting.manage can continue a sweep a teammate started.
+type ProspectingSweep struct {
+	ID                  string  `gorm:"primaryKey;size:32"`
+	OrganizationID      string  `gorm:"size:32;not null;index"`
+	CreatedByUserID     string  `gorm:"size:32;not null"`
+	Country             string  `gorm:"size:8;not null;default:'fr'"`
+	AreaQuery           string  `gorm:"size:500;not null;default:''"`
+	AreaLabel           string  `gorm:"size:500;not null;default:''"`
+	CenterLat           float64 `gorm:"not null;default:0"`
+	CenterLng           float64 `gorm:"not null;default:0"`
+	RadiusKM            float64 `gorm:"not null;default:0"`
+	SectorsJSON         string  `gorm:"type:text;not null;default:'[]'"`
+	GridJSON            string  `gorm:"type:text;not null;default:'[]'"`
+	NextUnitIndex       int     `gorm:"not null;default:0"`
+	TotalUnits          int     `gorm:"not null;default:0"`
+	Status              string  `gorm:"size:32;not null;default:'running';index"`
+	BusinessesFound     int     `gorm:"not null;default:0"`
+	RealPlacesCallsUsed int     `gorm:"not null;default:0"`
+	LastError           string  `gorm:"type:text"`
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
+	CompletedAt         *time.Time
+}
+
+// ProspectingBusiness is one discovered candidate, unique per (sweep,
+// place). OrganizationID is denormalized from the parent sweep so
+// listing/authorization doesn't require a join — same convention as
+// CorpusFile.OrganizationID.
+type ProspectingBusiness struct {
+	ID                string  `gorm:"primaryKey;size:32"`
+	SweepID           string  `gorm:"size:32;not null;uniqueIndex:idx_pbiz_sweep_place"`
+	OrganizationID    string  `gorm:"size:32;not null;index"`
+	PlaceID           string  `gorm:"size:255;not null;default:'';uniqueIndex:idx_pbiz_sweep_place"`
+	Sector            string  `gorm:"size:255;not null;default:''"`
+	Name              string  `gorm:"size:500;not null;default:''"`
+	FormattedAddress  string  `gorm:"size:500;not null;default:''"`
+	PostalCode        string  `gorm:"size:16;not null;default:''"`
+	City              string  `gorm:"size:255;not null;default:''"`
+	Lat               float64 `gorm:"not null;default:0"`
+	Lng               float64 `gorm:"not null;default:0"`
+	Phone             string  `gorm:"size:64;not null;default:''"`
+	Website           string  `gorm:"size:500;not null;default:''"`
+	Rating            float64 `gorm:"not null;default:0"`
+	UserRatingCount   int     `gorm:"not null;default:0"`
+	BusinessStatus    string  `gorm:"size:32;not null;default:''"`
+	OpeningHoursJSON  string  `gorm:"type:text;not null;default:'[]'"`
+	SIREN             string  `gorm:"size:16;not null;default:'';index"`
+	CompanyName       string  `gorm:"size:500;not null;default:''"`
+	ExecutivesJSON    string  `gorm:"type:text;not null;default:'[]'"`
+	MatchConfidence   float64 `gorm:"not null;default:0"`
+	ReachabilityScore int     `gorm:"not null;default:0;index"`
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
+// ProspectingCache is a deliberately global (non-organization-scoped)
+// cache of external lookups (geocoding, Google Places, French
+// company-registry) — the cached data is factual/non-tenant, so sharing it
+// across organizations reduces real API cost instead of multiplying it.
+// Mirrors seshat-backend's local prospecting cache, which is likewise never
+// scoped by user.
+type ProspectingCache struct {
+	Key        string    `gorm:"primaryKey;size:191"`
+	Source     string    `gorm:"size:32;not null;index"`
+	ValueJSON  string    `gorm:"type:text;not null;default:''"`
+	StatusCode int       `gorm:"not null;default:0"`
+	ExpiresAt  time.Time `gorm:"index"`
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
+// ProspectingUsage tracks real (non-cache-hit) Google Places calls against
+// one organization's own daily budget — scoped by organization (unlike
+// ProspectingCache) because each organization brings its own API key (see
+// ProspectingSettings) and therefore has its own bill to protect.
+type ProspectingUsage struct {
+	ID             string `gorm:"primaryKey;size:32"`
+	OrganizationID string `gorm:"size:32;not null;uniqueIndex:idx_pusage_org_period"`
+	PeriodKey      string `gorm:"size:32;not null;uniqueIndex:idx_pusage_org_period"`
+	SearchCalls    int64  `gorm:"not null;default:0"`
+	DetailsCalls   int64  `gorm:"not null;default:0"`
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+// ProspectingSettings is an organization's own Google Places API key and
+// daily call budget — a singleton per organization (uniqueIndex on
+// OrganizationID alone), same shape/rationale as EmbedderSetting. Strict
+// BYOK: there is deliberately no platform-default fallback the way
+// EmbedderSetting has (resolveEmbedderConfig) — sharing a paid Google key
+// across organizations is a business decision, not a code default.
+type ProspectingSettings struct {
+	ID              string `gorm:"primaryKey;size:32"`
+	OrganizationID  string `gorm:"size:32;not null;uniqueIndex"`
+	CreatedByUserID string `gorm:"size:32;not null"`
+	EncryptedAPIKey string `gorm:"type:text;not null"`
+	DailyCap        int    `gorm:"not null;default:0"`
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
 // UserPreference is a strictly personal, one-row-per-user settings singleton
 // — unlike ProviderSetting/EmbedderSetting, there is no organization column
 // and no org/platform hierarchy: a preference only ever means one thing,

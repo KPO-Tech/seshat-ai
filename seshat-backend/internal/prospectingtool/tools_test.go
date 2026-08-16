@@ -58,12 +58,12 @@ func TestSweepAreaTool_Definition(t *testing.T) {
 }
 
 func TestSweepAreaTool_IsEnabled(t *testing.T) {
-	t.Setenv("GOOGLE_PLACES_API_KEY", "")
+	// IsEnabled no longer checks GOOGLE_PLACES_API_KEY itself (see the
+	// method's doc comment) — a non-nil Backend is enough, since
+	// bootstrap.go only ever sets one when a usable backend actually exists
+	// for the current mode (local env var, or a connected seshat-server).
 	require.False(t, prospectingtool.NewSweepAreaTool(nil).IsEnabled(), "nil backend must never be enabled")
-	require.False(t, prospectingtool.NewSweepAreaTool(newTestService(t)).IsEnabled(), "unconfigured GOOGLE_PLACES_API_KEY must disable the tool")
-
-	t.Setenv("GOOGLE_PLACES_API_KEY", "a-test-key")
-	require.True(t, prospectingtool.NewSweepAreaTool(newTestService(t)).IsEnabled())
+	require.True(t, prospectingtool.NewSweepAreaTool(newTestService(t)).IsEnabled(), "a non-nil backend must be enabled regardless of the local env var")
 }
 
 func TestSweepAreaTool_Call_NoPrincipalReturnsError(t *testing.T) {

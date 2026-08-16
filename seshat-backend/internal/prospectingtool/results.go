@@ -13,10 +13,10 @@ import (
 const ListBusinessesToolName = "prospecting_list_businesses"
 
 type ListBusinessesTool struct {
-	backend *prospecting.Service
+	backend prospecting.Backend
 }
 
-func NewListBusinessesTool(backend *prospecting.Service) *ListBusinessesTool {
+func NewListBusinessesTool(backend prospecting.Backend) *ListBusinessesTool {
 	return &ListBusinessesTool{backend: backend}
 }
 
@@ -107,8 +107,11 @@ func (t *ListBusinessesTool) CheckPermissions(_ context.Context, input map[strin
 }
 func (t *ListBusinessesTool) IsConcurrencySafe(_ map[string]any) bool { return true }
 func (t *ListBusinessesTool) IsReadOnly(_ map[string]any) bool        { return true }
+
+// See SweepAreaTool.IsEnabled's doc comment for why this isn't also gated
+// on prospecting.IsConfigured().
 func (t *ListBusinessesTool) IsEnabled() bool {
-	return t.backend != nil && prospecting.IsConfigured()
+	return t.backend != nil
 }
 func (t *ListBusinessesTool) FormatResult(data any) string {
 	if s, ok := data.(string); ok {

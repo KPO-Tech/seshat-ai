@@ -20,6 +20,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/mcpregistry"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/memories"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/preferences"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/prospecting"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/quotas"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/skillregistry"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/websearchsettings"
@@ -33,6 +34,7 @@ type App struct {
 	Scheduler            *automation.Scheduler
 	Knowledge            *knowledge.Service
 	IngestionRunner      *knowledge.Runner
+	Prospecting          *prospecting.Service
 	Preferences          *preferences.Service
 	SkillRegistry        *skillregistry.Service
 	WebSearchSettings    *websearchsettings.Service
@@ -116,6 +118,7 @@ func New(cfg serverconfig.Config) (*App, error) {
 		Scheduler:            automation.NewScheduler(automationService, cfg.SchedulerInterval).WithStaleRunTimeout(cfg.StaleRunTimeout),
 		Knowledge:            knowledgeService,
 		IngestionRunner:      knowledge.NewRunner(knowledgeService, knowledge.RunnerConfig{PollInterval: cfg.IngestionPollInterval, MaxPollInterval: cfg.IngestionMaxPollInterval}),
+		Prospecting:          prospecting.New(database, iamService),
 		Preferences:          preferences.New(database, iamService),
 		SkillRegistry:        skillregistry.New(database, iamService),
 		WebSearchSettings:    webSearchService,

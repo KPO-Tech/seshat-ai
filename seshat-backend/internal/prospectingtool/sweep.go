@@ -90,10 +90,10 @@ func stringSliceInput(input map[string]any, key string) []string {
 const SweepAreaToolName = "prospecting_sweep_area"
 
 type SweepAreaTool struct {
-	backend *prospecting.Service
+	backend prospecting.Backend
 }
 
-func NewSweepAreaTool(backend *prospecting.Service) *SweepAreaTool {
+func NewSweepAreaTool(backend prospecting.Backend) *SweepAreaTool {
 	return &SweepAreaTool{backend: backend}
 }
 
@@ -173,7 +173,12 @@ func (t *SweepAreaTool) CheckPermissions(_ context.Context, input map[string]any
 }
 func (t *SweepAreaTool) IsConcurrencySafe(_ map[string]any) bool { return true }
 func (t *SweepAreaTool) IsReadOnly(_ map[string]any) bool        { return true }
-func (t *SweepAreaTool) IsEnabled() bool                         { return t.backend != nil && prospecting.IsConfigured() }
+
+// Not gated on prospecting.IsConfigured() (that only checks the local
+// GOOGLE_PLACES_API_KEY env var) — in connected mode the org's key lives on
+// seshat-server instead, and bootstrap.go only sets prospectingBackend
+// non-nil when a usable backend actually exists for the current mode.
+func (t *SweepAreaTool) IsEnabled() bool { return t.backend != nil }
 func (t *SweepAreaTool) FormatResult(data any) string {
 	if s, ok := data.(string); ok {
 		return s

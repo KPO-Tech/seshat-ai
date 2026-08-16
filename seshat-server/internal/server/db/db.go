@@ -138,6 +138,11 @@ func (d *DB) Migrate() error {
 		&WorkspaceChatMessageRecord{},
 		&PasswordResetToken{},
 		&OIDCLoginState{},
+		&ProspectingSweep{},
+		&ProspectingBusiness{},
+		&ProspectingCache{},
+		&ProspectingUsage{},
+		&ProspectingSettings{},
 	)
 }
 

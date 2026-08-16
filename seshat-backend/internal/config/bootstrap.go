@@ -29,6 +29,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/mcp"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/memories"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/preferences"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/prospecting"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/quotas"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/settings"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/websearch"
@@ -594,6 +595,20 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		knowledgeCloudBackend = cloudknowledge.NewRemoteService(serverURL, fileStore, artifactStore)
 	}
 
+	// Prospecting: same clean-swap pattern as Documents above — connected
+	// mode always wins when a seshat-server is reachable (the org's own
+	// Places API key lives there, see seshat-server's ProspectingSettings),
+	// falling back to the local prospectingService (built earlier, guarded
+	// by prospecting.IsConfigured()) only in standalone mode. Declared as
+	// the prospecting.Backend interface for the same nil-interface reason
+	// as knowledgeCloudBackend above.
+	var prospectingBackend prospecting.Backend
+	if serverURL != "" {
+		prospectingBackend = cloudprospecting.NewRemoteService(serverURL)
+	} else if prospectingService != nil {
+		prospectingBackend = prospectingService
+	}
+
 	vectorDatabase := database
 	if vector.Backend(config.VectorBackend) == vector.BackendPgVector && strings.TrimSpace(config.PgVectorDSN) != "" {
 		vectorDB, err := db.Open(ctx, db.Config{
@@ -1051,10 +1066,10 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	// Prospecting tools are registered globally (like web_search/
 	// knowledge_search) rather than tied to a dedicated agent persona - any
 	// agent can use them via its tool-slug list.
-	if prospectingService != nil {
+	if prospectingBackend != nil {
 		prospectingAgentTools := []sdk.Tool{
-			prospectingtool.NewSweepAreaTool(prospectingService),
-			prospectingtool.NewListBusinessesTool(prospectingService),
+			prospectingtool.NewSweepAreaTool(prospectingBackend),
+			prospectingtool.NewListBusinessesTool(prospectingBackend),
 		}
 		for _, tool := range prospectingAgentTools {
 			if err := queryClient.RegisterTool(tool); err != nil {
