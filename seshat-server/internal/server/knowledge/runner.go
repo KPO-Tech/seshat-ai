@@ -32,7 +32,8 @@ func (c RunnerConfig) withDefaults() RunnerConfig {
 }
 
 // Runner polls the ingestion job queue and processes pending jobs,
-// backing off exponentially while idle. Single-instance only — see
+// backing off exponentially while idle. Safe to run on more than one
+// seshat-server process concurrently — see
 // Service.ProcessNextIngestionJob's doc comment.
 type Runner struct {
 	service *Service

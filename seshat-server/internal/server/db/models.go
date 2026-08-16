@@ -403,9 +403,9 @@ type CorpusFile struct {
 }
 
 // KnowledgeIngestionJob queues one CorpusFile for chunk+embed+vector-upsert
-// processing. Polled by a single-instance worker, same pattern as
-// automation.Scheduler's run-queuing (see its doc comment on the
-// multi-instance limitation — the same caveat applies here).
+// processing. Polled via an atomic claim (see knowledge.Service.
+// claimNextIngestionJob), safe to run on more than one seshat-server
+// process concurrently.
 type KnowledgeIngestionJob struct {
 	ID             string `gorm:"primaryKey;size:32"`
 	CorpusID       string `gorm:"size:32;not null;index"`

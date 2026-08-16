@@ -20,12 +20,14 @@ const defaultStaleRunTimeout = 10 * time.Minute
 // Scheduler periodically queues runs for jobs whose next_run_at is due, and
 // reaps runs that a device claimed but then went silent on.
 //
-// Single-instance only: it re-reads and updates each due job sequentially
-// within one goroutine, which is race-free as long as exactly one
-// seshat-server process runs the scheduler. Running multiple instances of
-// the scheduler concurrently (multi-instance HA) could double-queue a run —
-// out of scope for now (see helps/seshat-architecture-target.md, this is a
-// deliberately deferred "later" concern, not an oversight).
+// Safe to run on more than one seshat-server process concurrently (see
+// queueAndReschedule's doc comment for the claim mechanism this relies on —
+// no leader election or distributed lock needed). reapStaleRuns and
+// executeQueuedCloudRuns were already safe this way (each ends in a
+// conditional UPDATE ... WHERE status = <expected>, checked via
+// RowsAffected — see failStaleRun and executeCloudRun); queueAndReschedule
+// was the one gap, fixed the same way rather than introducing a different
+// coordination mechanism just for this one caller.
 type Scheduler struct {
 	service         *Service
 	interval        time.Duration
@@ -198,23 +200,41 @@ func (sch *Scheduler) failStaleRun(ctx context.Context, runID string) error {
 	})
 }
 
+// queueAndReschedule claims job's current due firing before acting on it,
+// via a conditional UPDATE guarded by the exact next_run_at value tick()
+// read when it decided this job was due (job.NextRunAt) — the same
+// atomic-conditional-update idiom already used by failStaleRun and
+// executeCloudRun elsewhere in this package. If a concurrent seshat-server
+// instance's tick already claimed and advanced this job's next_run_at, the
+// UPDATE's WHERE clause no longer matches, RowsAffected is 0, and this
+// instance skips queuing a run instead of creating a duplicate — this is
+// what makes running the scheduler on more than one process safe.
 func (sch *Scheduler) queueAndReschedule(ctx context.Context, job sdb.ScheduledJob, now time.Time) error {
+	trigger := jobTriggerParams{
+		TriggerType:     job.TriggerType,
+		CronExpr:        job.CronExpr,
+		IntervalSeconds: job.IntervalSeconds,
+		RunAt:           job.RunAt,
+	}
+	next, err := computeNextRunAt(trigger, now)
+	if err != nil {
+		return err
+	}
+
 	return sch.service.db.Transaction(func(tx *gorm.DB) error {
 		tx = tx.WithContext(ctx)
-		if _, err := queueRunForJob(tx, job, now); err != nil {
-			return err
+		claim := tx.Model(&sdb.ScheduledJob{}).
+			Where("id = ? AND next_run_at = ?", job.ID, job.NextRunAt).
+			Updates(map[string]any{"next_run_at": next, "updated_at": now})
+		if claim.Error != nil {
+			return claim.Error
 		}
-		trigger := jobTriggerParams{
-			TriggerType:     job.TriggerType,
-			CronExpr:        job.CronExpr,
-			IntervalSeconds: job.IntervalSeconds,
-			RunAt:           job.RunAt,
+		if claim.RowsAffected == 0 {
+			return nil // this due firing was already claimed by a concurrent instance
 		}
-		next, err := computeNextRunAt(trigger, now)
-		if err != nil {
-			return err
-		}
-		return tx.Model(&sdb.ScheduledJob{}).Where("id = ?", job.ID).
-			Updates(map[string]any{"next_run_at": next, "updated_at": now}).Error
+		job.NextRunAt = next
+		job.UpdatedAt = now
+		_, err := queueRunForJob(tx, job, now)
+		return err
 	})
 }

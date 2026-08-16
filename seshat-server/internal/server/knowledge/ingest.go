@@ -179,10 +179,13 @@ func (s *Service) Search(ctx context.Context, principal *iam.Principal, params S
 // ─── Ingestion worker (called by Runner; see runner.go) ──────────────────
 
 // ProcessNextIngestionJob claims and processes one due ingestion job.
-// Returns false when there is nothing to do right now. Single-instance
-// only, same caveat as automation.Scheduler's run-queuing: running more
-// than one seshat-server process with the knowledge runner enabled could
-// double-claim work.
+// Returns false when there is nothing to do right now. Safe to run on more
+// than one seshat-server process concurrently: claimNextIngestionJob's
+// claim is a conditional UPDATE ... WHERE status = <expected>, checked via
+// RowsAffected, not a plain read-then-write — a concurrent instance racing
+// the same job simply fails to claim it (RowsAffected 0) instead of
+// double-processing it. Same idiom as automation.Scheduler's
+// queueAndReschedule/failStaleRun/executeCloudRun.
 func (s *Service) ProcessNextIngestionJob(ctx context.Context) (bool, error) {
 	if s.artifacts == nil {
 		return false, nil
