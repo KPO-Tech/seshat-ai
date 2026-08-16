@@ -27,14 +27,20 @@ const cloudMaxTokens = 4096
 
 // jobWorkflow adapts a queued cloud run to the automation.Workflow interface
 // the absorbed Runner/Executor expects. It only ever calls SubmitMessage —
-// the model itself decides whether to call a tool during that turn. Cloud
-// jobs still cannot touch bash, the filesystem, or anything local-machine
-// (automation.Runner.Execute never registers those), but rag_search/
-// rag_ingest are available whenever a RAGService is resolved for the job's
-// organization, and read_document_url is available whenever docling is
-// configured server-wide (see executeCloudRun) — the "cloud jobs are
-// text-only" boundary from earlier in this project's life is now
-// specifically "no local-machine access", not "no tools at all".
+// the model itself decides whether to call a tool during that turn.
+//
+// Bash IS reachable here: the SDK's sdk.NewClient registers the bash tool
+// unconditionally on every client (there is no tool allowlist in
+// ClientConfig), and the default "mono_run" surface profile includes it —
+// verified by reading the SDK directly, not assumed from an older comment
+// that used to claim otherwise here and was wrong. executeCloudRun sets
+// RequireSandbox: true on the RunnerConfig below (same posture
+// workspacechat.Service.getOrCreateSession already has, see its own
+// comment) so a model-issued shell command either runs Landlock-confined
+// (Linux hosts where the kernel supports it) or is refused outright — never
+// unconfined on this shared multi-tenant host. rag_search/rag_ingest are
+// available whenever a RAGService is resolved for the job's organization,
+// and read_document_url whenever docling is configured server-wide.
 type jobWorkflow struct {
 	id          string
 	description string
@@ -119,6 +125,10 @@ func (s *Service) executeCloudRun(ctx context.Context, runID string) error {
 			MaxTokens:      cloudMaxTokens,
 			RAGService:     ragService,
 			DoclingURL:     s.doclingURL,
+			// See jobWorkflow's doc comment above — bash is reachable from
+			// this executor, so it must never run unconfined on this shared
+			// host.
+			RequireSandbox: true,
 		},
 	})
 	if err != nil {
