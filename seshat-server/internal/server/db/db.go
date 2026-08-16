@@ -104,6 +104,7 @@ func (d *DB) Migrate() error {
 	return d.gormDB.AutoMigrate(
 		&User{},
 		&Organization{},
+		&OrganizationDataKey{},
 		&Membership{},
 		&Session{},
 		&Application{},

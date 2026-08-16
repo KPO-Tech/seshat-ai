@@ -54,6 +54,24 @@ type Organization struct {
 	UpdatedAt time.Time
 }
 
+// OrganizationDataKey holds one organization's Data Encryption Key (DEK) for
+// envelope encryption of secrets (see secrets.go) — EncryptedDEK is the raw
+// 32-byte AES-256 key, itself encrypted by the single master key
+// (SESHAT_SERVER_ENCRYPTION_KEY). Every stored secret across the control
+// plane (provider API keys, OIDC client secrets, MCP server credentials,
+// ...) is encrypted with its owning organization's DEK, not the master key
+// directly — a leaked DEK (or a compromised organization) exposes only that
+// one tenant's secrets, and rotating the master key only ever means
+// re-encrypting these small per-organization rows, never every secret in
+// the database. Created lazily on first use per organization (see
+// getOrCreateOrganizationDEK), not at organization-creation time.
+type OrganizationDataKey struct {
+	OrganizationID string `gorm:"primaryKey;size:32"`
+	EncryptedDEK   string `gorm:"type:text;not null"`
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
 // Membership binds one user to one organization with a role.
 type Membership struct {
 	ID string `gorm:"primaryKey;size:32"`

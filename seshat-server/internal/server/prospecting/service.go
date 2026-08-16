@@ -461,7 +461,7 @@ func (s *Service) placesClient(ctx context.Context, organizationID string) (*pro
 	if err != nil {
 		return nil, err
 	}
-	apiKey, err := decryptSecret(record.EncryptedAPIKey)
+	apiKey, err := decryptSecret(s.db.Gorm().WithContext(ctx), organizationID, record.EncryptedAPIKey)
 	if err != nil {
 		return nil, err
 	}

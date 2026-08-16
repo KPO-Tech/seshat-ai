@@ -137,14 +137,6 @@ func (s *Service) CreateServerConfig(ctx context.Context, principal *iam.Princip
 	if err != nil {
 		return nil, err
 	}
-	encryptedEnv, err := encryptSecretMap(params.Env)
-	if err != nil {
-		return nil, err
-	}
-	encryptedHeaders, err := encryptSecretMap(params.Headers)
-	if err != nil {
-		return nil, err
-	}
 
 	var record sdb.MCPServerConfig
 	err = s.db.Transaction(func(tx *gorm.DB) error {
@@ -158,6 +150,14 @@ func (s *Service) CreateServerConfig(ctx context.Context, principal *iam.Princip
 		}
 		if conflicting > 0 {
 			return iam.ErrConflict("an MCP server config named " + name + " already exists in this organization; use update instead")
+		}
+		encryptedEnv, err := encryptSecretMap(tx, organizationID, params.Env)
+		if err != nil {
+			return err
+		}
+		encryptedHeaders, err := encryptSecretMap(tx, organizationID, params.Headers)
+		if err != nil {
+			return err
 		}
 		id, err := sdb.NewID("mcpsrvcfg")
 		if err != nil {
@@ -223,14 +223,14 @@ func (s *Service) UpdateServerConfig(ctx context.Context, principal *iam.Princip
 		record.TimeoutSecs = timeoutSecs
 		record.Icon = icon
 		if params.Env != nil {
-			encryptedEnv, err := encryptSecretMap(params.Env)
+			encryptedEnv, err := encryptSecretMap(tx, record.OrganizationID, params.Env)
 			if err != nil {
 				return err
 			}
 			record.EncryptedEnvJSON = encryptedEnv
 		}
 		if params.Headers != nil {
-			encryptedHeaders, err := encryptSecretMap(params.Headers)
+			encryptedHeaders, err := encryptSecretMap(tx, record.OrganizationID, params.Headers)
 			if err != nil {
 				return err
 			}
@@ -299,7 +299,7 @@ func (s *Service) ResolveServerConfigs(ctx context.Context, principal *iam.Princ
 	}
 	out := make([]ResolvedMCPServerConfig, 0, len(records))
 	for _, r := range records {
-		resolved, err := toResolvedServerConfig(r)
+		resolved, err := toResolvedServerConfig(tx, r)
 		if err != nil {
 			return nil, err
 		}
@@ -337,7 +337,7 @@ func (s *Service) listServerConfigsWithFallback(tx *gorm.DB, organizationID stri
 
 // ─── converters ───────────────────────────────────────────────────────────────
 
-func encryptSecretMap(values map[string]string) (string, error) {
+func encryptSecretMap(gormDB *gorm.DB, organizationID string, values map[string]string) (string, error) {
 	if len(values) == 0 {
 		return "", nil
 	}
@@ -345,14 +345,14 @@ func encryptSecretMap(values map[string]string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return sdb.EncryptSecret(string(raw))
+	return sdb.EncryptSecret(gormDB, organizationID, string(raw))
 }
 
-func decryptSecretMap(encoded string) (map[string]string, error) {
+func decryptSecretMap(gormDB *gorm.DB, organizationID, encoded string) (map[string]string, error) {
 	if strings.TrimSpace(encoded) == "" {
 		return map[string]string{}, nil
 	}
-	raw, err := sdb.DecryptSecret(encoded)
+	raw, err := sdb.DecryptSecret(gormDB, organizationID, encoded)
 	if err != nil {
 		return nil, err
 	}
@@ -376,14 +376,18 @@ func toServerConfig(r sdb.MCPServerConfig) MCPServerConfig {
 	}
 }
 
-func toResolvedServerConfig(r sdb.MCPServerConfig) (ResolvedMCPServerConfig, error) {
+func toResolvedServerConfig(gormDB *gorm.DB, r sdb.MCPServerConfig) (ResolvedMCPServerConfig, error) {
 	var args []string
 	_ = json.Unmarshal([]byte(r.ArgsJSON), &args)
-	env, err := decryptSecretMap(r.EncryptedEnvJSON)
+	// r.OrganizationID, not the "requesting" organizationID one level up in
+	// ResolveServerConfigs - r may be a platform-default org's row mixed in
+	// by listServerConfigsWithFallback, and each row carries its own owning
+	// organization regardless.
+	env, err := decryptSecretMap(gormDB, r.OrganizationID, r.EncryptedEnvJSON)
 	if err != nil {
 		return ResolvedMCPServerConfig{}, err
 	}
-	headers, err := decryptSecretMap(r.EncryptedHeadersJSON)
+	headers, err := decryptSecretMap(gormDB, r.OrganizationID, r.EncryptedHeadersJSON)
 	if err != nil {
 		return ResolvedMCPServerConfig{}, err
 	}

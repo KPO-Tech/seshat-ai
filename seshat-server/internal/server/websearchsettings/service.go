@@ -140,7 +140,7 @@ func (s *Service) CreateProviderSetting(ctx context.Context, principal *iam.Prin
 		if conflicting > 0 {
 			return iam.ErrConflict("a web search provider setting for " + provider + " already exists in this organization; use update instead")
 		}
-		encrypted, err := sdb.EncryptSecret(apiKey)
+		encrypted, err := sdb.EncryptSecret(tx, organizationID, apiKey)
 		if err != nil {
 			return err
 		}
@@ -184,7 +184,7 @@ func (s *Service) UpdateProviderSetting(ctx context.Context, principal *iam.Prin
 		record.BaseURL = strings.TrimSpace(params.BaseURL)
 		record.AuthUsername = strings.TrimSpace(params.AuthUsername)
 		if apiKey := strings.TrimSpace(params.APIKey); apiKey != "" {
-			encrypted, err := sdb.EncryptSecret(apiKey)
+			encrypted, err := sdb.EncryptSecret(tx, record.OrganizationID, apiKey)
 			if err != nil {
 				return err
 			}
@@ -248,7 +248,7 @@ func (s *Service) ResolveProviderSetting(ctx context.Context, principal *iam.Pri
 	var orgSetting sdb.WebSearchProviderSetting
 	err = tx.Where("organization_id = ? AND provider = ?", organizationID, provider).First(&orgSetting).Error
 	if err == nil {
-		apiKey, decErr := sdb.DecryptSecret(orgSetting.EncryptedAPIKey)
+		apiKey, decErr := sdb.DecryptSecret(tx, organizationID, orgSetting.EncryptedAPIKey)
 		if decErr != nil {
 			return nil, decErr
 		}
@@ -269,7 +269,9 @@ func (s *Service) ResolveProviderSetting(ctx context.Context, principal *iam.Pri
 		var defaultSetting sdb.WebSearchProviderSetting
 		err = tx.Where("organization_id = ? AND provider = ?", defaultOrgID, provider).First(&defaultSetting).Error
 		if err == nil {
-			apiKey, decErr := sdb.DecryptSecret(defaultSetting.EncryptedAPIKey)
+			// defaultOrgID, not organizationID - this secret was encrypted
+			// with the DEFAULT organization's DEK.
+			apiKey, decErr := sdb.DecryptSecret(tx, defaultOrgID, defaultSetting.EncryptedAPIKey)
 			if decErr != nil {
 				return nil, decErr
 			}

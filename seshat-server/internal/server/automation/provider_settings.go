@@ -121,7 +121,7 @@ func (s *Service) CreateProviderSetting(ctx context.Context, principal *iam.Prin
 			return err
 		}
 
-		encrypted, err := encryptSecret(apiKey)
+		encrypted, err := encryptSecret(tx, organizationID, apiKey)
 		if err != nil {
 			return err
 		}
@@ -174,7 +174,7 @@ func (s *Service) UpdateProviderSetting(ctx context.Context, principal *iam.Prin
 		}
 		setting.BaseURL = strings.TrimSpace(params.BaseURL)
 		if apiKey := strings.TrimSpace(params.APIKey); apiKey != "" {
-			encrypted, err := encryptSecret(apiKey)
+			encrypted, err := encryptSecret(tx, setting.OrganizationID, apiKey)
 			if err != nil {
 				return err
 			}
@@ -266,7 +266,7 @@ func (s *Service) ResolveProviderSetting(ctx context.Context, principal *iam.Pri
 	if orgSetting, found, err := s.findProviderSetting(ctx, organizationID, provider); err != nil {
 		return nil, err
 	} else if found {
-		apiKey, err := decryptSecret(orgSetting.EncryptedAPIKey)
+		apiKey, err := decryptSecret(tx, organizationID, orgSetting.EncryptedAPIKey)
 		if err != nil {
 			return nil, err
 		}
@@ -284,7 +284,9 @@ func (s *Service) ResolveProviderSetting(ctx context.Context, principal *iam.Pri
 		if defaultSetting, found, err := s.findProviderSetting(ctx, defaultOrgID, provider); err != nil {
 			return nil, err
 		} else if found {
-			apiKey, err := decryptSecret(defaultSetting.EncryptedAPIKey)
+			// defaultOrgID, not organizationID - this secret was encrypted
+			// with the DEFAULT organization's DEK.
+			apiKey, err := decryptSecret(tx, defaultOrgID, defaultSetting.EncryptedAPIKey)
 			if err != nil {
 				return nil, err
 			}

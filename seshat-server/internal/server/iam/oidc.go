@@ -65,7 +65,7 @@ func (s *Service) BeginOIDCLogin(ctx context.Context, providerID, redirectURI st
 		return "", ErrInvalidInput("provider is not an OIDC provider")
 	}
 
-	oauth2Config, err := oidcOAuth2Config(ctx, record, s.oidcRedirectURL(providerID))
+	oauth2Config, err := oidcOAuth2Config(ctx, tx, record, s.oidcRedirectURL(providerID))
 	if err != nil {
 		return "", fmt.Errorf("resolve provider endpoints: %w", err)
 	}
@@ -155,7 +155,7 @@ func (s *Service) CompleteOIDCLogin(ctx context.Context, providerID, code, state
 		if err != nil {
 			return fmt.Errorf("resolve provider endpoints: %w", err)
 		}
-		clientSecret, err := sdb.DecryptSecret(record.ClientSecret)
+		clientSecret, err := sdb.DecryptSecret(tx, record.OrganizationID, record.ClientSecret)
 		if err != nil {
 			return fmt.Errorf("decrypt provider client secret: %w", err)
 		}
@@ -382,7 +382,7 @@ func (s *Service) oidcRedirectURL(providerID string) string {
 // supports standard discovery, so this covers the real-world case without
 // that extra risk. The explicit fields remain on the model for a future
 // non-discovery flow (e.g. SAML), not this one.
-func oidcOAuth2Config(ctx context.Context, record sdb.Provider, redirectURL string) (*oauth2.Config, error) {
+func oidcOAuth2Config(ctx context.Context, gormDB *gorm.DB, record sdb.Provider, redirectURL string) (*oauth2.Config, error) {
 	if record.IssuerURL == "" {
 		return nil, fmt.Errorf("provider has no issuer_url configured - OIDC login requires discovery")
 	}
@@ -390,7 +390,7 @@ func oidcOAuth2Config(ctx context.Context, record sdb.Provider, redirectURL stri
 	if err != nil {
 		return nil, err
 	}
-	clientSecret, err := sdb.DecryptSecret(record.ClientSecret)
+	clientSecret, err := sdb.DecryptSecret(gormDB, record.OrganizationID, record.ClientSecret)
 	if err != nil {
 		return nil, fmt.Errorf("decrypt provider client secret: %w", err)
 	}

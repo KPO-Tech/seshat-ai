@@ -85,7 +85,7 @@ func (s *Service) SetSettings(ctx context.Context, principal *iam.Principal, org
 		encryptedAPIKey := record.EncryptedAPIKey // keep existing by default on update
 		apiKey := strings.TrimSpace(params.APIKey)
 		if apiKey != "" {
-			encrypted, err := encryptSecret(apiKey)
+			encrypted, err := encryptSecret(tx, organizationID, apiKey)
 			if err != nil {
 				return err
 			}

@@ -25,7 +25,7 @@ func TestSetSettingsEncryptsTheAPIKeyAtRest(t *testing.T) {
 	if stored.EncryptedAPIKey == "" || stored.EncryptedAPIKey == "AIza-super-secret-places-key" {
 		t.Fatalf("expected the API key to be encrypted at rest, got %q", stored.EncryptedAPIKey)
 	}
-	decrypted, err := decryptSecret(stored.EncryptedAPIKey)
+	decrypted, err := decryptSecret(env.db.Gorm(), env.orgID, stored.EncryptedAPIKey)
 	if err != nil {
 		t.Fatalf("decrypt stored key: %v", err)
 	}
@@ -61,7 +61,7 @@ func TestSetSettingsIsUpsertAndKeepsKeyWhenOmitted(t *testing.T) {
 	if err := env.db.Gorm().Table("prospecting_settings").Select("encrypted_api_key").Where("id = ?", first.ID).Scan(&stored).Error; err != nil {
 		t.Fatalf("read stored row: %v", err)
 	}
-	decrypted, err := decryptSecret(stored.EncryptedAPIKey)
+	decrypted, err := decryptSecret(env.db.Gorm(), env.orgID, stored.EncryptedAPIKey)
 	if err != nil {
 		t.Fatalf("decrypt stored key: %v", err)
 	}

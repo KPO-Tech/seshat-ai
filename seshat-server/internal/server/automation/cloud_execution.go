@@ -85,14 +85,14 @@ func (s *Service) executeCloudRun(ctx context.Context, runID string) error {
 		return s.markCloudRunFailed(ctx, run.ID, err.Error())
 	}
 
-	encryptedAPIKey, baseURL, ok, err := s.resolveProviderCredentials(ctx, job.OrganizationID, provider)
+	encryptedAPIKey, baseURL, resolvedOrgID, ok, err := s.resolveProviderCredentials(ctx, job.OrganizationID, provider)
 	if err != nil {
 		return err
 	}
 	if !ok {
 		return s.markCloudRunFailed(ctx, run.ID, fmt.Sprintf("no provider credentials configured for %q (checked this organization's provider_settings and the platform default)", provider))
 	}
-	apiKey, err := decryptSecret(encryptedAPIKey)
+	apiKey, err := decryptSecret(s.db.Gorm().WithContext(ctx), resolvedOrgID, encryptedAPIKey)
 	if err != nil {
 		return s.markCloudRunFailed(ctx, run.ID, "failed to decrypt provider credentials: "+err.Error())
 	}
@@ -180,31 +180,36 @@ func (s *Service) markCloudRunFailed(ctx context.Context, runID, reason string) 
 // currently flagged IsDefault (see iam.Service.DefaultOrganizationID) - the
 // credentials a paying-subscription org would run on without ever
 // configuring its own key. Returns ok=false if neither exists.
-func (s *Service) resolveProviderCredentials(ctx context.Context, organizationID, provider string) (encryptedAPIKey, baseURL string, ok bool, err error) {
+// resolveProviderCredentials returns the encrypted API key alongside
+// resolvedOrgID, the organization whose DEK actually encrypted it - the
+// org-tier and platform-fallback branches don't always agree with the
+// requested organizationID, and the caller needs the right one to decrypt
+// (see DecryptSecret's doc comment).
+func (s *Service) resolveProviderCredentials(ctx context.Context, organizationID, provider string) (encryptedAPIKey, baseURL, resolvedOrgID string, ok bool, err error) {
 	orgSetting, found, err := s.findProviderSetting(ctx, organizationID, provider)
 	if err != nil {
-		return "", "", false, err
+		return "", "", "", false, err
 	}
 	if found {
-		return orgSetting.EncryptedAPIKey, orgSetting.BaseURL, true, nil
+		return orgSetting.EncryptedAPIKey, orgSetting.BaseURL, organizationID, true, nil
 	}
 
 	tx := s.db.Gorm().WithContext(ctx)
 	defaultOrgID, found, err := s.iam.DefaultOrganizationIDForDomain(tx, iam.SharedDomainProviderSettings)
 	if err != nil {
-		return "", "", false, err
+		return "", "", "", false, err
 	}
 	if !found || defaultOrgID == organizationID {
-		return "", "", false, nil
+		return "", "", "", false, nil
 	}
 	defaultSetting, found, err := s.findProviderSetting(ctx, defaultOrgID, provider)
 	if err != nil {
-		return "", "", false, err
+		return "", "", "", false, err
 	}
 	if found {
-		return defaultSetting.EncryptedAPIKey, defaultSetting.BaseURL, true, nil
+		return defaultSetting.EncryptedAPIKey, defaultSetting.BaseURL, defaultOrgID, true, nil
 	}
-	return "", "", false, nil
+	return "", "", "", false, nil
 }
 
 // parseModelOverride splits a job's model_override ("provider:model") into

@@ -1098,7 +1098,7 @@ func toSession(record sdb.Session) Session {
 	return Session{ID: record.ID, UserID: record.UserID, CreatedAt: record.CreatedAt, ExpiresAt: record.ExpiresAt}
 }
 
-func toApplication(record sdb.Application) Application {
+func toApplication(gormDB *gorm.DB, record sdb.Application) Application {
 	return Application{
 		ID:                     record.ID,
 		OrganizationID:         record.OrganizationID,
@@ -1117,7 +1117,7 @@ func toApplication(record sdb.Application) Application {
 		ResponseTypes:          append([]string(nil), record.ResponseTypes...),
 		Scopes:                 append([]string(nil), record.Scopes...),
 		ClientID:               record.ClientID,
-		ClientSecret:           maskedStoredSecret(record.ClientSecret),
+		ClientSecret:           maskedStoredSecret(gormDB, record.OrganizationID, record.ClientSecret),
 		ProviderIDs:            append([]string(nil), record.ProviderIDs...),
 		SigninURL:              record.SigninURL,
 		SignupURL:              record.SignupURL,
@@ -1132,7 +1132,7 @@ func toApplication(record sdb.Application) Application {
 	}
 }
 
-func toProvider(record sdb.Provider) Provider {
+func toProvider(gormDB *gorm.DB, record sdb.Provider) Provider {
 	return Provider{
 		ID:               record.ID,
 		OrganizationID:   record.OrganizationID,
@@ -1141,7 +1141,7 @@ func toProvider(record sdb.Provider) Provider {
 		Kind:             record.Kind,
 		Enabled:          record.Enabled,
 		ClientID:         record.ClientID,
-		ClientSecret:     maskedStoredSecret(record.ClientSecret),
+		ClientSecret:     maskedStoredSecret(gormDB, record.OrganizationID, record.ClientSecret),
 		IssuerURL:        record.IssuerURL,
 		DiscoveryURL:     record.DiscoveryURL,
 		AuthorizationURL: record.AuthorizationURL,
@@ -1229,11 +1229,11 @@ func emailDomain(email string) string {
 // (redactSecret), applied a second time on top of this function's own
 // already-masked output by six API handlers — harmless only by coincidence
 // (both used prefixLen=6). Removed there; this is now the only masking path.
-func maskedStoredSecret(secret string) string {
+func maskedStoredSecret(gormDB *gorm.DB, organizationID, secret string) string {
 	if secret == "" {
 		return ""
 	}
-	if plaintext, err := sdb.DecryptSecret(secret); err == nil {
+	if plaintext, err := sdb.DecryptSecret(gormDB, organizationID, secret); err == nil {
 		secret = plaintext
 	}
 	sum := sha256.Sum256([]byte(secret))
