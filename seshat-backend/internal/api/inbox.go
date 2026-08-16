@@ -27,6 +27,13 @@ const oauthStateTTL = 10 * time.Minute
 type oauthState struct {
 	userID    string
 	createdAt time.Time
+	// codeVerifier is the PKCE verifier for flows that need one instead of
+	// (or alongside) a client secret - empty for Google-backed connectors
+	// (Gmail, Drive), which authenticate with a client secret and don't use
+	// PKCE. Populated for Microsoft-backed connectors (SharePoint), whose
+	// Entra ID app registration must be a public/native client - see
+	// internal/microsoftoauth's package doc comment.
+	codeVerifier string
 }
 
 type channelAccountResponse struct {
@@ -277,9 +284,16 @@ func fetchGoogleAccountEmail(ctx context.Context, cfg *oauth2.Config, token *oau
 }
 
 func (a *App) storeOAuthState(state, userID string) {
+	a.storeOAuthStateWithVerifier(state, userID, "")
+}
+
+// storeOAuthStateWithVerifier is storeOAuthState plus a PKCE code verifier
+// to carry across the redirect round trip - see oauthState.codeVerifier's
+// doc comment.
+func (a *App) storeOAuthStateWithVerifier(state, userID, codeVerifier string) {
 	a.oauthMu.Lock()
 	defer a.oauthMu.Unlock()
-	a.oauthStates[state] = oauthState{userID: userID, createdAt: time.Now()}
+	a.oauthStates[state] = oauthState{userID: userID, createdAt: time.Now(), codeVerifier: codeVerifier}
 	// Opportunistic sweep of expired entries - this map only ever holds as
 	// many concurrent entries as there are in-flight OAuth attempts, so a
 	// full scan on every new one is cheap.
@@ -291,17 +305,24 @@ func (a *App) storeOAuthState(state, userID string) {
 }
 
 func (a *App) takeOAuthState(state string) (string, bool) {
+	userID, _, ok := a.takeOAuthStateWithVerifier(state)
+	return userID, ok
+}
+
+// takeOAuthStateWithVerifier is takeOAuthState plus the stored PKCE code
+// verifier (empty for a state stored via plain storeOAuthState).
+func (a *App) takeOAuthStateWithVerifier(state string) (userID, codeVerifier string, ok bool) {
 	a.oauthMu.Lock()
 	defer a.oauthMu.Unlock()
-	st, ok := a.oauthStates[state]
-	if !ok {
-		return "", false
+	st, found := a.oauthStates[state]
+	if !found {
+		return "", "", false
 	}
 	delete(a.oauthStates, state) // single use
 	if time.Since(st.createdAt) > oauthStateTTL {
-		return "", false
+		return "", "", false
 	}
-	return st.userID, true
+	return st.userID, st.codeVerifier, true
 }
 
 func randomState() (string, error) {

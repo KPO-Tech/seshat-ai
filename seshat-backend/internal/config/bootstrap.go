@@ -42,6 +42,7 @@ import (
 	backendknowledge "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgegdrive"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledges3"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgesharepoint"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgetool"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/mcpaction"
 	backendmemories "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/memories"
@@ -341,6 +342,16 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		}
 		knowledgeGDriveConnector = knowledgegdrive.NewConnector(gdriveOAuthConfig)
 		fmt.Printf("[API] Knowledge: connecteur Google Drive activé\n")
+	}
+	var knowledgeSharePointConnector *knowledgesharepoint.Connector
+	if knowledgesharepoint.IsConfigured() {
+		sharepointOAuthConfig, err := knowledgesharepoint.BaseOAuthConfig()
+		if err != nil {
+			_ = cleanup()
+			return nil, nil, fmt.Errorf("init sharepoint oauth config: %w", err)
+		}
+		knowledgeSharePointConnector = knowledgesharepoint.NewConnector(sharepointOAuthConfig)
+		fmt.Printf("[API] Knowledge: connecteur SharePoint activé\n")
 	}
 
 	prospectingCacheStore, err := db.NewProspectingCacheStore(database)
@@ -964,6 +975,9 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	s3Connector := knowledges3.NewConnector()
 	knowledgeConnectors := map[string]connector.KnowledgeConnector{
 		string(knowledges3.Kind): s3Connector,
+	}
+	if knowledgeSharePointConnector != nil {
+		knowledgeConnectors[string(knowledgesharepoint.Kind)] = knowledgeSharePointConnector
 	}
 
 	backendApp := seshat.NewApp(seshat.Dependencies{

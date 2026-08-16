@@ -130,6 +130,18 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	// bearer token; see handleKnowledgeGDriveOAuthCallback's doc comment.
 	apiV1.HandleFunc("/knowledge/connectors/gdrive/oauth/callback", app.handleKnowledgeGDriveOAuthCallback)
 
+	// SharePoint has no dedicated accounts/sync routes like Drive above -
+	// list/delete/sync go through the generic /connectors/sharepoint/...
+	// dispatcher below (KnowledgeConnectors["sharepoint"], see
+	// bootstrap.go). Only OAuth start/callback need dedicated routes, since
+	// the generic dispatcher's POST /connectors/{kind}/accounts is a manual
+	// static-token connect, not a full authorization-code flow.
+	apiV1.Handle("/knowledge/connectors/sharepoint/oauth/start", app.authMiddleware(http.HandlerFunc(app.handleKnowledgeSharePointOAuthStart)))
+	// Deliberately unauthenticated - Microsoft's own redirect lands here
+	// with no bearer token; see handleKnowledgeSharePointOAuthCallback's
+	// doc comment.
+	apiV1.HandleFunc("/knowledge/connectors/sharepoint/oauth/callback", app.handleKnowledgeSharePointOAuthCallback)
+
 	apiV1.Handle("/connectors/", app.authMiddleware(http.HandlerFunc(app.handleConnectorsDispatch)))
 
 	apiV1.Handle("/web/search", app.authMiddleware(http.HandlerFunc(app.handleWebSearch)))

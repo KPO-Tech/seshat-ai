@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { FolderClose, CloudStorage, Send, Plus, Close, LoadingOne, Caution } from '@icon-park/react'
+import { FolderClose, CloudStorage, Share, Send, Plus, Close, LoadingOne, Caution } from '@icon-park/react'
 import { api, ApiError } from '@/api/client'
 import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
 import type { Corpus, ConnectorAccount, ActionResult } from '@/api/types'
@@ -30,6 +30,7 @@ export function ConnectorsView() {
       </header>
 
       <DriveConnectorCard corpora={corpora} />
+      <SharePointConnectorCard corpora={corpora} />
       <StaticAccountConnectorCard
         kind="s3"
         title="S3-compatible storage"
@@ -166,6 +167,136 @@ function DriveConnectorCard({ corpora }: { corpora: Corpus[] }) {
         <button className="cnv-primary-btn" onClick={() => void handleConnect()} disabled={connecting}>
           {connecting ? <LoadingOne size={12} className="spin" /> : <Plus size={12} />}
           {connecting ? 'Waiting for Google sign-in…' : 'Connect a Google Drive account'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── SharePoint card (OAuth) ────────────────────────────────────────────────────
+//
+// Same OAuth-poll shape as DriveConnectorCard above (a second copy rather
+// than extracting a shared component — Drive's own routes stay untouched
+// by design, see helps/roadmap.md, and duplicating ~60 lines once costs
+// less than a generic abstraction would for exactly two current OAuth
+// connectors), but list/disconnect/sync go through the SAME generic
+// /connectors/sharepoint/... routes StaticAccountConnectorCard uses below —
+// only oauth/start is a dedicated SharePoint route (the generic
+// POST /connectors/{kind}/accounts is a manual static-token connect, not
+// an authorization-code flow).
+
+function SharePointConnectorCard({ corpora }: { corpora: Corpus[] }) {
+  const [accounts, setAccounts] = useState<ConnectorAccount[]>([])
+  const [loading, setLoading] = useState(true)
+  const [connecting, setConnecting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await api.get<{ accounts: ConnectorAccount[] }>('/connectors/sharepoint/accounts')
+      setAccounts(res.accounts ?? [])
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Unable to load SharePoint accounts.')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void load()
+    return () => { if (pollRef.current) clearInterval(pollRef.current) }
+  }, [load])
+
+  async function handleConnect() {
+    setConnecting(true)
+    setError(null)
+    try {
+      const started = await api.post<{ authorization_url: string }>('/knowledge/connectors/sharepoint/oauth/start')
+      if (window.nexus?.openExternal) {
+        await window.nexus.openExternal(started.authorization_url)
+      } else {
+        window.open(started.authorization_url, '_blank', 'noopener,noreferrer')
+      }
+      const knownIds = new Set(accounts.map((a) => a.id))
+      let attempts = 0
+      if (pollRef.current) clearInterval(pollRef.current)
+      pollRef.current = setInterval(async () => {
+        attempts++
+        try {
+          const res = await api.get<{ accounts: ConnectorAccount[] }>('/connectors/sharepoint/accounts')
+          setAccounts(res.accounts ?? [])
+          if ((res.accounts ?? []).some((a) => !knownIds.has(a.id))) {
+            if (pollRef.current) clearInterval(pollRef.current)
+            pollRef.current = null
+            setConnecting(false)
+            return
+          }
+        } catch {
+          // Keep polling until the attempt budget expires.
+        }
+        if (attempts >= 30 && pollRef.current) {
+          clearInterval(pollRef.current)
+          pollRef.current = null
+          setConnecting(false)
+        }
+      }, 2000)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Unable to start the SharePoint connection.')
+      setConnecting(false)
+    }
+  }
+
+  async function handleDisconnect(id: string) {
+    try {
+      await api.delete(`/connectors/sharepoint/accounts/${id}`)
+      await load()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Unable to disconnect.')
+    }
+  }
+
+  async function handleSync(id: string, corpusId: string) {
+    try {
+      await api.post(`/connectors/sharepoint/accounts/${id}/sync?corpus_id=${encodeURIComponent(corpusId)}`)
+      await load()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Sync failed.')
+    }
+  }
+
+  return (
+    <div className="sv-card cnv-card">
+      <div className="sv-card-head">
+        <div className="sv-card-brand">
+          <div className="sv-brand-icon"><Share size={15} /></div>
+          <div>
+            <div className="sv-brand-name">SharePoint</div>
+            <div className="sv-brand-sub">Sync business documents (PDF, Word, PowerPoint, text) into a corpus</div>
+          </div>
+        </div>
+      </div>
+      <div className="sv-card-body cnv-stack">
+        {error && <div className="cnv-inline-error"><Caution size={13} /> {error}</div>}
+        {loading && accounts.length === 0 ? (
+          <div className="cnv-note">Loading…</div>
+        ) : accounts.length === 0 ? (
+          <div className="cnv-note">No SharePoint account connected yet.</div>
+        ) : (
+          accounts.map((account) => (
+            <ConnectorAccountRow
+              key={account.id}
+              account={account}
+              corpora={corpora}
+              onDisconnect={() => void handleDisconnect(account.id)}
+              onSync={(corpusId) => void handleSync(account.id, corpusId)}
+            />
+          ))
+        )}
+        <button className="cnv-primary-btn" onClick={() => void handleConnect()} disabled={connecting}>
+          {connecting ? <LoadingOne size={12} className="spin" /> : <Plus size={12} />}
+          {connecting ? 'Waiting for Microsoft sign-in…' : 'Connect a SharePoint account'}
         </button>
       </div>
     </div>

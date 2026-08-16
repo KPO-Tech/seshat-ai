@@ -16,6 +16,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgegdrive"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledges3"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgesharepoint"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/mcp"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/memories"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/metrics"
@@ -249,6 +250,9 @@ func NewApp(deps Dependencies) *App {
 		}
 		if s3Connector, ok := deps.KnowledgeConnectors[string(knowledges3.Kind)].(*knowledges3.Connector); ok {
 			s3Connector.WithTextExtractor(concreteKnowledge.ExtractText)
+		}
+		if spConnector, ok := deps.KnowledgeConnectors[string(knowledgesharepoint.Kind)].(*knowledgesharepoint.Connector); ok {
+			spConnector.WithTextExtractor(concreteKnowledge.ExtractText)
 		}
 	}
 	skillsService := skills.NewService()
