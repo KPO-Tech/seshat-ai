@@ -3,12 +3,13 @@ package connectors
 import (
 	"context"
 	"time"
+
+	coreconnectors "github.com/EngineerProjects/seshat-ai/core/connectors"
 )
 
-// connectorKind identifies a connector implementation - "s3" today, "gdrive"/
-// "sharepoint" once their own files (gdrive.go, sharepoint.go) land next to
-// s3.go. Each implementation lives in its own file within this package
-// rather than its own subpackage: nothing outside connectors ever
+// connectorKind identifies a connector implementation - "s3", "gdrive", or
+// "sharepoint". Each implementation lives in its own file within this
+// package rather than its own subpackage: nothing outside connectors ever
 // needs to construct or type-switch on a connector directly (verified -
 // s3.go's predecessor package had exactly one importer, this one), so a
 // separate package per connector bought isolation nothing else used, at the
@@ -27,47 +28,29 @@ type syncAccount struct {
 	LastSyncedAt   time.Time
 	LastError      string
 	// Config is opaque, connector-interpreted, non-secret connection
-	// configuration (e.g. s3AccountConfig, JSON-encoded) - the counterpart
-	// of syncSecret for settings that aren't credentials.
+	// configuration (e.g. coreconnectors.S3AccountConfig, JSON-encoded) -
+	// the counterpart of syncSecret for settings that aren't credentials.
 	Config string
 }
 
-// accessEntry names one identity or group allowed to see a resource
-// ("user:alice@example.com", "group:eng-team", "domain:example.com"). A nil
-// or empty AccessControl on a syncItem means "inherit the connector
-// account's own scope" - today's coarser org-scoped corpus permissions.
-type accessEntry string
-
-// syncSecret is the decrypted connection material a knowledgeConnector needs
-// to call its external API - decrypted from sdb.ConnectorAccount's encrypted
-// columns per call (see processSyncJob), never persisted itself.
-type syncSecret struct {
-	AccessToken  string
-	RefreshToken string
-	ExpiresAt    time.Time
-}
-
-// resourceRef is what Discover returns per resource found - enough to
-// decide whether/how to sync it without fetching its content yet.
-type resourceRef struct {
-	ID       string
-	Name     string
-	Kind     string // "file", "folder", "record", ...
-	Modified time.Time
-}
-
-// syncItem is what Sync yields per resource - content ready for Knowledge
-// ingestion (handed to knowledge.Service.IngestFromConnector), plus the
-// access control list it should carry.
-type syncItem struct {
-	resourceRef
-	Text          string
-	AccessControl []accessEntry
-}
+// resourceRef, syncSecret, syncItem, accessEntry are aliases, not new
+// types: the Discover/Sync logic that produces/consumes them now lives in
+// core/connectors (see gdrive.go/sharepoint.go/s3.go's doc comments) -
+// aliasing keeps every other file in this package working unchanged, with
+// zero conversion code between this package's own shapes and core's.
+type (
+	resourceRef = coreconnectors.ResourceRef
+	syncSecret  = coreconnectors.Secret
+	syncItem    = coreconnectors.SyncItem
+	accessEntry = coreconnectors.AccessEntry
+)
 
 // knowledgeConnector discovers and syncs external resources into Knowledge.
-// Every connector implementation in this package (s3Connector today) and
-// connectorFor's registry satisfy this.
+// Every connector implementation in this package and connectorFor's
+// registry satisfy this. account is accepted for interface uniformity but
+// only s3Connector actually reads it (Config) - see core/connectors'
+// package doc comment for why the shared core underneath doesn't need a
+// generic Account shape at all.
 type knowledgeConnector interface {
 	Kind() connectorKind
 	Discover(ctx context.Context, account syncAccount, secret syncSecret) ([]resourceRef, error)

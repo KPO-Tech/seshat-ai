@@ -1,6 +1,11 @@
 package api
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/gmailmcp"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/msgraphmcp"
+)
 
 func (app *App) routes() http.Handler {
 	mux := http.NewServeMux()
@@ -169,6 +174,8 @@ func (app *App) routes() http.Handler {
 	mux.Handle("DELETE /api/v1/connectors/accounts/{accountID}", app.authMiddleware(http.HandlerFunc(app.handleConnectorAccountByID)))
 	mux.Handle("POST /api/v1/connectors/accounts/{accountID}/sync", app.authMiddleware(http.HandlerFunc(app.handleConnectorAccountSync)))
 	mux.Handle("GET /api/v1/connectors/accounts/{accountID}/sync-jobs", app.authMiddleware(http.HandlerFunc(app.handleConnectorAccountSyncJobs)))
+	mux.Handle("GET /api/v1/connectors/my-accounts", app.authMiddleware(http.HandlerFunc(app.handleMyConnectorAccounts)))
+	mux.Handle("DELETE /api/v1/connectors/my-accounts/{accountID}", app.authMiddleware(http.HandlerFunc(app.handleMyConnectorAccountByID)))
 	mux.Handle("GET /api/v1/connectors/oauth-apps", app.authMiddleware(http.HandlerFunc(app.handleConnectorOAuthApps)))
 	mux.Handle("PUT /api/v1/connectors/oauth-apps/{kind}", app.authMiddleware(http.HandlerFunc(app.handleConnectorOAuthAppByKind)))
 	mux.Handle("POST /api/v1/connectors/{kind}/oauth/start", app.authMiddleware(http.HandlerFunc(app.handleConnectorOAuthStart)))
@@ -176,6 +183,16 @@ func (app *App) routes() http.Handler {
 	// bearer token — trust comes from the single-use signed state instead,
 	// same as the OIDC login callback above.
 	mux.HandleFunc("GET /api/v1/connectors/{kind}/oauth/callback", app.handleConnectorOAuthCallback)
+
+	// Self-hosted MCP servers bridging core/msgraph - see
+	// msgraphmcp's package doc comment. Public/unauthenticated at the
+	// seshat-server level, same reasoning as the OAuth callback above: the
+	// only caller is this same process's own sdk.Client (MCP client),
+	// and the Authorization header it sends is a Microsoft Graph access
+	// token, not a seshat session token.
+	mux.Handle("/internal/mcp/outlook", msgraphmcp.NewOutlookHandler())
+	mux.Handle("/internal/mcp/teams", msgraphmcp.NewTeamsHandler())
+	mux.Handle("/internal/mcp/gmail", gmailmcp.NewHandler())
 
 	// Embedder settings — hybrid org/platform-default embedder used for RAG
 	// ingestion/search (same shape as provider-settings for LLMs, but a
@@ -192,6 +209,7 @@ func (app *App) routes() http.Handler {
 	// seshat-backend's local equivalent: any member with prospecting.manage
 	// can continue a sweep a teammate started. Settings follow the same
 	// organization_id-query-param convention as embedder-settings above.
+	mux.Handle("GET /api/v1/prospecting/sweeps", app.authMiddleware(http.HandlerFunc(app.handleProspectingSweeps)))
 	mux.Handle("POST /api/v1/prospecting/sweeps", app.authMiddleware(http.HandlerFunc(app.handleProspectingSweeps)))
 	mux.Handle("GET /api/v1/prospecting/sweeps/{sweepID}/businesses", app.authMiddleware(http.HandlerFunc(app.handleProspectingBusinesses)))
 	mux.Handle("GET /api/v1/prospecting/settings", app.authMiddleware(http.HandlerFunc(app.handleProspectingSettings)))

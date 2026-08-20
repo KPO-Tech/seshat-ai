@@ -24,6 +24,7 @@ const ResetPasswordPage = lazyPage(() =>
 const PlatformOverviewPage = lazyPage(() => import('@/pages/dashboard/DashboardPage').then((module) => ({ default: module.DashboardPage })))
 const WorkspaceOverviewPage = lazyPage(() => import('@/pages/workspace/WorkspaceOverviewPage').then((module) => ({ default: module.WorkspaceOverviewPage })))
 const WorkspaceChatPage = lazyPage(() => import('@/pages/workspace/WorkspaceChatPage').then((module) => ({ default: module.WorkspaceChatPage })))
+const ConnectionsPage = lazyPage(() => import('@/pages/workspace/ConnectionsPage').then((module) => ({ default: module.ConnectionsPage })))
 const OrganizationOverviewPage = lazyPage(() => import('@/pages/organization/OrganizationOverviewPage').then((module) => ({ default: module.OrganizationOverviewPage })))
 const OrganizationsPage = lazyPage(() => import('@/pages/organizations/OrganizationsPage').then((module) => ({ default: module.OrganizationsPage })))
 const MyOrganizationsPage = lazyPage(() => import('@/pages/myOrganizations/MyOrganizationsPage').then((module) => ({ default: module.MyOrganizationsPage })))
@@ -53,6 +54,10 @@ const CorporaPage = lazyPage(() => import('@/pages/knowledge/CorporaPage').then(
 const CorpusDetailPage = lazyPage(() => import('@/pages/knowledge/CorpusDetailPage').then((module) => ({ default: module.CorpusDetailPage })))
 const EmbedderSettingsPage = lazyPage(() => import('@/pages/knowledge/EmbedderSettingsPage').then((module) => ({ default: module.EmbedderSettingsPage })))
 const ConnectorsPage = lazyPage(() => import('@/pages/knowledge/ConnectorsPage').then((module) => ({ default: module.ConnectorsPage })))
+const SweepsPage = lazyPage(() => import('@/pages/prospecting/SweepsPage').then((module) => ({ default: module.SweepsPage })))
+const ProspectingSettingsPage = lazyPage(() =>
+  import('@/pages/prospecting/ProspectingSettingsPage').then((module) => ({ default: module.ProspectingSettingsPage })),
+)
 const WebSearchSettingsPage = lazyPage(() => import('@/pages/webSearch/WebSearchSettingsPage').then((module) => ({ default: module.WebSearchSettingsPage })))
 const OrganizationPreferencesPage = lazyPage(() =>
   import('@/pages/organizationPreferences/OrganizationPreferencesPage').then((module) => ({ default: module.OrganizationPreferencesPage })),
@@ -80,6 +85,7 @@ export const router = createBrowserRouter([
           { path: '/workspace', element: <Navigate to="/workspace/overview" replace /> },
           { path: '/workspace/overview', element: renderLazyPage(WorkspaceOverviewPage) },
           { path: '/workspace/chat', element: renderLazyPage(WorkspaceChatPage) },
+          { path: '/workspace/connections', element: renderLazyPage(ConnectionsPage) },
           { path: '/profile', element: <Navigate to="/me/profile" replace /> },
           { path: '/me', element: <Navigate to="/me/profile" replace /> },
           { path: '/me/profile', element: renderLazyPage(MyProfilePage) },
@@ -126,6 +132,8 @@ export const router = createBrowserRouter([
               { path: 'knowledge/connectors', element: renderLazyPage(ConnectorsPage) },
               { path: 'integrations/applications', element: renderLazyPage(ApplicationsPage) },
               { path: 'integrations/providers', element: renderLazyPage(ProvidersPage) },
+              { path: 'prospecting/sweeps', element: renderLazyPage(SweepsPage) },
+              { path: 'prospecting/settings', element: renderLazyPage(ProspectingSettingsPage) },
               { path: 'activity/audit', element: renderLazyPage(AuditEventsPage) },
             ],
           },

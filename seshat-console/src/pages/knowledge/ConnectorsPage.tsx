@@ -38,15 +38,32 @@ const STATUS_COLOR: Record<string, string> = {
 // s3 connects with static credentials; gdrive/sharepoint connect via OAuth
 // (see the OAuth Apps card and OAuthConnectForm below) - the two families
 // need different forms, not just different field sets.
-const OAUTH_CONNECTOR_KINDS = ['gdrive', 'sharepoint'] as const
-
 const CONNECTOR_KINDS = [
   { value: 's3', label: 'S3-compatible bucket' },
   { value: 'gdrive', label: 'Google Drive' },
   { value: 'sharepoint', label: 'SharePoint' },
 ]
 
-const OAUTH_APP_LABELS: Record<string, string> = { gdrive: 'Google', sharepoint: 'Microsoft' }
+// The OAuth Apps modal is purpose-agnostic (RegisterOAuthApp doesn't care
+// whether a kind is knowledge_sync-only or agent_action-only) even though
+// this page's own table is knowledge_sync-only (see the accounts filter
+// below) - slack/outlook/teams are agent_action-only, self-service-
+// connected from Workspace → Connections, never created here, but an org
+// admin still needs somewhere to register their client_id/secret once per
+// organization, and this modal is that one place for every OAuth-based
+// kind regardless of purpose - see connectors.RegisterOAuthApp's doc
+// comment. Known UI-label mismatch (this page is titled/scoped as
+// Knowledge), not relocated yet - see helps/roadmap.md.
+const OAUTH_CONNECTOR_KINDS = ['gdrive', 'sharepoint', 'slack', 'outlook', 'teams', 'gmail'] as const
+
+const OAUTH_APP_LABELS: Record<string, string> = {
+  gdrive: 'Google',
+  sharepoint: 'Microsoft',
+  slack: 'Slack',
+  outlook: 'Microsoft',
+  gmail: 'Google',
+  teams: 'Microsoft',
+}
 
 export function ConnectorsPage() {
   const organizationId = useScopedOrganizationId()
@@ -54,7 +71,12 @@ export function ConnectorsPage() {
   const [managingOAuthApps, setManagingOAuthApps] = useState(false)
   const [historyAccount, setHistoryAccount] = useState<ConnectorAccount | null>(null)
 
-  const { data: accounts, isLoading, error } = useConnectorAccountsList(organizationId ?? undefined)
+  const { data: allAccounts, isLoading, error } = useConnectorAccountsList(organizationId ?? undefined)
+  // ListAccounts returns every account regardless of purpose - a member's
+  // own agent_action account (self-service, see Workspace → Connections)
+  // has no corpus and would show up here as broken (blank corpus, a Sync
+  // button that errors). This page is knowledge_sync-only.
+  const accounts = (allAccounts ?? []).filter((a) => a.purpose !== 'agent_action')
   const { data: corpora } = useCorporaList(organizationId ?? undefined, { limit: 500 })
   const { data: oauthApps } = useOAuthAppsList(organizationId ?? undefined)
   const createAccount = useCreateConnectorAccount()
@@ -412,6 +434,7 @@ function ConnectorFormDrawer({
               body: {
                 organization_id: organizationId,
                 corpus_id: values.corpus_id,
+                purpose: 'knowledge_sync',
                 display_name: values.display_name,
                 sync_interval_seconds: values.sync_interval_seconds,
               },

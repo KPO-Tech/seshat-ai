@@ -17,6 +17,8 @@ import (
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inboxgmail"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inboxoutlook"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inboxteams"
 	"golang.org/x/oauth2"
 	oauth2api "google.golang.org/api/oauth2/v2"
 	"google.golang.org/api/option"
@@ -250,6 +252,144 @@ func (a *App) handleInboxGmailOAuthCallback(w http.ResponseWriter, r *http.Reque
 	}
 	a.ensureInboxAgent(r.Context())
 	writeOAuthResultPage(w, true, fmt.Sprintf("Connected %s. You can close this tab and return to Seshat.", email))
+}
+
+// microsoftInboxChannel parameterizes the shared PKCE OAuth dance below
+// across outlook/teams - they differ only in channel string, which
+// package's BaseOAuthConfig/Scopes to use, and the callback URL's channel
+// segment. Unlike Gmail, both need PKCE (Microsoft's public/native client
+// model - see internal/microsoftoauth's package doc comment), so this
+// mirrors handleKnowledgeSharePointOAuthStart/Callback's shape, not Gmail's.
+type microsoftInboxChannel struct {
+	channel         string
+	baseOAuthConfig func() (*oauth2.Config, error)
+	scopes          []string
+}
+
+func (a *App) handleInboxMicrosoftOAuthStart(w http.ResponseWriter, r *http.Request, ch microsoftInboxChannel) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	principal, _ := authPrincipalFromContext(r.Context())
+	if principal == nil {
+		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	cfg, err := ch.baseOAuthConfig()
+	if err != nil {
+		writeJSONError(w, http.StatusServiceUnavailable, err.Error())
+		return
+	}
+
+	state, err := randomState()
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "failed to generate oauth state")
+		return
+	}
+	verifier := oauth2.GenerateVerifier()
+	a.storeOAuthStateWithVerifier(state, principal.User.ID, verifier)
+
+	cfgCopy := *cfg
+	cfgCopy.RedirectURL = inboxMicrosoftCallbackURL(r, ch.channel)
+	authURL := cfgCopy.AuthCodeURL(state, oauth2.S256ChallengeOption(verifier))
+	writeJSON(w, http.StatusOK, map[string]any{"authorization_url": authURL})
+}
+
+func (a *App) handleInboxMicrosoftOAuthCallback(w http.ResponseWriter, r *http.Request, ch microsoftInboxChannel) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	query := r.URL.Query()
+	if errMsg := query.Get("error"); errMsg != "" {
+		writeOAuthResultPage(w, false, "Microsoft reported an error: "+errMsg)
+		return
+	}
+	code := query.Get("code")
+	state := query.Get("state")
+	if code == "" || state == "" {
+		writeOAuthResultPage(w, false, "Missing authorization code or state.")
+		return
+	}
+	userID, verifier, ok := a.takeOAuthStateWithVerifier(state)
+	if !ok {
+		writeOAuthResultPage(w, false, "This authorization link has expired or was already used - please try connecting again.")
+		return
+	}
+	if a.backend.Inbox == nil {
+		writeOAuthResultPage(w, false, "Inbox is not configured on this server.")
+		return
+	}
+
+	cfg, err := ch.baseOAuthConfig()
+	if err != nil {
+		writeOAuthResultPage(w, false, err.Error())
+		return
+	}
+	cfg.RedirectURL = inboxMicrosoftCallbackURL(r, ch.channel)
+
+	token, err := cfg.Exchange(r.Context(), code, oauth2.VerifierOption(verifier))
+	if err != nil {
+		writeOAuthResultPage(w, false, "Failed to exchange authorization code: "+err.Error())
+		return
+	}
+	upn, err := fetchMicrosoftAccountUPN(r.Context(), cfg, token)
+	if err != nil {
+		writeOAuthResultPage(w, false, "Connected to Microsoft, but could not read the account identity: "+err.Error())
+		return
+	}
+
+	principal := &backendauth.Principal{User: backendauth.User{ID: userID}}
+	_, err = a.backend.Inbox.ConnectAccount(r.Context(), principal, inbox.ConnectAccountParams{
+		Channel:           ch.channel,
+		DisplayName:       upn,
+		ExternalAccountID: upn,
+		AccessToken:       token.AccessToken,
+		RefreshToken:      token.RefreshToken,
+		Scope:             strings.Join(ch.scopes, " "),
+		ExpiresAt:         token.Expiry,
+	})
+	if err != nil {
+		writeOAuthResultPage(w, false, "Failed to save the connected account: "+err.Error())
+		return
+	}
+	a.ensureInboxAgent(r.Context())
+	writeOAuthResultPage(w, true, fmt.Sprintf("Connected %s. You can close this tab and return to Seshat.", upn))
+}
+
+// inboxMicrosoftCallbackURL derives the redirect URI from the incoming
+// request's own host:port, same reasoning as gmailCallbackURL.
+func inboxMicrosoftCallbackURL(r *http.Request, channel string) string {
+	return fmt.Sprintf("http://%s/api/v1/inbox/accounts/%s/oauth/callback", r.Host, channel)
+}
+
+// handleInboxOutlookOAuthStart handles POST /inbox/accounts/outlook/oauth/start.
+func (a *App) handleInboxOutlookOAuthStart(w http.ResponseWriter, r *http.Request) {
+	a.handleInboxMicrosoftOAuthStart(w, r, microsoftInboxChannel{
+		channel: inbox.ChannelOutlook, baseOAuthConfig: inboxoutlook.BaseOAuthConfig, scopes: inboxoutlook.Scopes,
+	})
+}
+
+// handleInboxOutlookOAuthCallback handles GET /inbox/accounts/outlook/oauth/callback.
+func (a *App) handleInboxOutlookOAuthCallback(w http.ResponseWriter, r *http.Request) {
+	a.handleInboxMicrosoftOAuthCallback(w, r, microsoftInboxChannel{
+		channel: inbox.ChannelOutlook, baseOAuthConfig: inboxoutlook.BaseOAuthConfig, scopes: inboxoutlook.Scopes,
+	})
+}
+
+// handleInboxTeamsOAuthStart handles POST /inbox/accounts/teams/oauth/start.
+func (a *App) handleInboxTeamsOAuthStart(w http.ResponseWriter, r *http.Request) {
+	a.handleInboxMicrosoftOAuthStart(w, r, microsoftInboxChannel{
+		channel: inbox.ChannelTeams, baseOAuthConfig: inboxteams.BaseOAuthConfig, scopes: inboxteams.Scopes,
+	})
+}
+
+// handleInboxTeamsOAuthCallback handles GET /inbox/accounts/teams/oauth/callback.
+func (a *App) handleInboxTeamsOAuthCallback(w http.ResponseWriter, r *http.Request) {
+	a.handleInboxMicrosoftOAuthCallback(w, r, microsoftInboxChannel{
+		channel: inbox.ChannelTeams, baseOAuthConfig: inboxteams.BaseOAuthConfig, scopes: inboxteams.Scopes,
+	})
 }
 
 // ensureInboxAgent creates the Inbox Agent (see agents.DefaultInboxAgentParams)

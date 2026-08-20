@@ -118,6 +118,11 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	// Deliberately unauthenticated - Google's own redirect lands here with no
 	// bearer token; see handleInboxGmailOAuthCallback's doc comment.
 	apiV1.HandleFunc("/inbox/accounts/gmail/oauth/callback", app.handleInboxGmailOAuthCallback)
+	apiV1.Handle("/inbox/accounts/outlook/oauth/start", app.authMiddleware(http.HandlerFunc(app.handleInboxOutlookOAuthStart)))
+	// Deliberately unauthenticated - same reasoning as the gmail callback above.
+	apiV1.HandleFunc("/inbox/accounts/outlook/oauth/callback", app.handleInboxOutlookOAuthCallback)
+	apiV1.Handle("/inbox/accounts/teams/oauth/start", app.authMiddleware(http.HandlerFunc(app.handleInboxTeamsOAuthStart)))
+	apiV1.HandleFunc("/inbox/accounts/teams/oauth/callback", app.handleInboxTeamsOAuthCallback)
 	apiV1.Handle("/inbox/accounts/whatsapp/pair", app.authMiddleware(http.HandlerFunc(app.handleInboxWhatsAppPair)))
 	apiV1.Handle("/inbox/accounts/", app.authMiddleware(http.HandlerFunc(app.handleInboxAccountByID)))
 	apiV1.Handle("/inbox/threads", app.authMiddleware(http.HandlerFunc(app.handleInboxThreads)))

@@ -29,28 +29,43 @@ func (app *App) handleProspectingSweeps(w http.ResponseWriter, r *http.Request) 
 		writeJSONError(w, http.StatusUnauthorized, "missing principal")
 		return
 	}
-	if r.Method != http.MethodPost {
+	switch r.Method {
+	case http.MethodGet:
+		q := r.URL.Query()
+		limit, _ := strconv.Atoi(q.Get("limit"))
+		offset, _ := strconv.Atoi(q.Get("offset"))
+		sweeps, total, err := app.backend.Prospecting.ListSweeps(r.Context(), principal, prospecting.ListSweepsParams{
+			OrganizationID: strings.TrimSpace(q.Get("organization_id")),
+			Limit:          limit,
+			Offset:         offset,
+		})
+		if err != nil {
+			writeProspectingError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"sweeps": sweeps, "total": total})
+	case http.MethodPost:
+		var req sweepAreaRequest
+		if !decodeJSONBody(w, r, &req) {
+			return
+		}
+		sweep, err := app.backend.Prospecting.SweepArea(r.Context(), principal, prospecting.SweepAreaParams{
+			SweepID:        req.SweepID,
+			OrganizationID: req.OrganizationID,
+			AreaQuery:      req.Area,
+			Country:        req.Country,
+			Sectors:        req.Sectors,
+			RadiusKM:       req.RadiusKM,
+			MaxTiles:       req.MaxTiles,
+		})
+		if err != nil {
+			writeProspectingError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, sweep)
+	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
 	}
-	var req sweepAreaRequest
-	if !decodeJSONBody(w, r, &req) {
-		return
-	}
-	sweep, err := app.backend.Prospecting.SweepArea(r.Context(), principal, prospecting.SweepAreaParams{
-		SweepID:        req.SweepID,
-		OrganizationID: req.OrganizationID,
-		AreaQuery:      req.Area,
-		Country:        req.Country,
-		Sectors:        req.Sectors,
-		RadiusKM:       req.RadiusKM,
-		MaxTiles:       req.MaxTiles,
-	})
-	if err != nil {
-		writeProspectingError(w, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, sweep)
 }
 
 func (app *App) handleProspectingBusinesses(w http.ResponseWriter, r *http.Request) {

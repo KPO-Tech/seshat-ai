@@ -1,4 +1,4 @@
-package inboxgmail
+package gmail
 
 import (
 	"encoding/base64"
@@ -8,19 +8,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
-	gmail "google.golang.org/api/gmail/v1"
+	gmailapi "google.golang.org/api/gmail/v1"
 )
 
-// translateMessage converts a fully-populated (format=full) Gmail message
-// into the channel-agnostic shape inbox.Service persists. accountEmail is
-// the connected mailbox's own address, used to tell an inbound message
-// (someone wrote to this mailbox) from an outbound one (this mailbox sent
-// it, e.g. from another client) - Gmail's API has no direction flag of its
-// own to read off directly.
-func translateMessage(msg *gmail.Message, accountEmail string) (inbox.NormalizedMessage, error) {
+// translateRawMessage converts a fully-populated (format=full) Gmail
+// message into this package's own Message shape - MIME parsing only, no
+// direction/contact resolution (see Message's doc comment).
+func translateRawMessage(msg *gmailapi.Message) (Message, error) {
 	if msg == nil || msg.Payload == nil {
-		return inbox.NormalizedMessage{}, fmt.Errorf("message has no payload")
+		return Message{}, fmt.Errorf("message has no payload")
 	}
 	headers := msg.Payload.Headers
 
@@ -28,37 +24,24 @@ func translateMessage(msg *gmail.Message, accountEmail string) (inbox.Normalized
 	to := parseFirstAddress(headerValue(headers, "To"))
 	subject := stripReplyPrefix(headerValue(headers, "Subject"))
 
-	direction := inbox.MessageDirectionInbound
-	contact := from
-	if from.Address != "" && strings.EqualFold(from.Address, accountEmail) {
-		direction = inbox.MessageDirectionOutbound
-		contact = to
-	}
-	if contact.Address == "" {
-		return inbox.NormalizedMessage{}, fmt.Errorf("message %s has no usable contact address", msg.Id)
-	}
-
 	bodyText, attachments := extractBodyAndAttachments(msg.Payload)
 	if bodyText == "" {
 		bodyText = msg.Snippet
 	}
 
-	sentAt := time.UnixMilli(msg.InternalDate)
-
-	return inbox.NormalizedMessage{
-		ExternalThreadID:   msg.ThreadId,
-		ThreadSubject:      subject,
-		ExternalMessageID:  msg.Id,
-		Direction:          direction,
-		ContactExternalID:  contact.Address,
-		ContactDisplayName: contact.Name,
-		BodyText:           bodyText,
-		Attachments:        attachments,
-		SentAt:             sentAt,
+	return Message{
+		ID:          msg.Id,
+		ThreadID:    msg.ThreadId,
+		Subject:     subject,
+		From:        EmailAddress{Address: from.Address, Name: from.Name},
+		To:          EmailAddress{Address: to.Address, Name: to.Name},
+		BodyText:    bodyText,
+		Attachments: attachments,
+		SentAt:      time.UnixMilli(msg.InternalDate),
 	}, nil
 }
 
-func headerValue(headers []*gmail.MessagePartHeader, name string) string {
+func headerValue(headers []*gmailapi.MessagePartHeader, name string) string {
 	for _, h := range headers {
 		if strings.EqualFold(h.Name, name) {
 			return h.Value
@@ -96,8 +79,7 @@ var replyPrefixRe = regexp.MustCompile(`(?i)^(re|fwd?)\s*:\s*`)
 
 // stripReplyPrefix removes one leading "Re:"/"Fwd:" so a thread's stored
 // subject stays stable across a whole back-and-forth instead of
-// accumulating "Re: Re: Re: ..." as each reply's header gets stored -
-// InboxThreadStore.Upsert overwrites the subject on every new message.
+// accumulating "Re: Re: Re: ..." as each reply's header gets stored.
 func stripReplyPrefix(subject string) string {
 	return replyPrefixRe.ReplaceAllString(strings.TrimSpace(subject), "")
 }
@@ -107,19 +89,19 @@ func stripReplyPrefix(subject string) string {
 // and falling back to a crude tag-strip of text/html if no plain part
 // exists - Gmail always sends at least one of the two for a real email.
 // Any part with a Filename is collected as an attachment reference - not
-// downloaded here (see Connector.FetchAttachment, called on demand via
+// downloaded here (see Client.FetchAttachment, called on demand via
 // GmailAttachmentID the first time a user actually downloads it).
-func extractBodyAndAttachments(part *gmail.MessagePart) (string, []inbox.Attachment) {
+func extractBodyAndAttachments(part *gmailapi.MessagePart) (string, []Attachment) {
 	var plainText, htmlText string
-	var attachments []inbox.Attachment
+	var attachments []Attachment
 
-	var walk func(p *gmail.MessagePart)
-	walk = func(p *gmail.MessagePart) {
+	var walk func(p *gmailapi.MessagePart)
+	walk = func(p *gmailapi.MessagePart) {
 		if p == nil {
 			return
 		}
 		if p.Filename != "" {
-			attachments = append(attachments, inbox.Attachment{
+			attachments = append(attachments, Attachment{
 				Filename:    p.Filename,
 				ContentType: p.MimeType,
 				Size:        bodySize(p.Body),
@@ -159,14 +141,14 @@ func extractBodyAndAttachments(part *gmail.MessagePart) (string, []inbox.Attachm
 	return "", attachments
 }
 
-func bodySize(body *gmail.MessagePartBody) int64 {
+func bodySize(body *gmailapi.MessagePartBody) int64 {
 	if body == nil {
 		return 0
 	}
 	return body.Size
 }
 
-func decodeBody(body *gmail.MessagePartBody) string {
+func decodeBody(body *gmailapi.MessagePartBody) string {
 	if body == nil || body.Data == "" {
 		return ""
 	}
@@ -184,8 +166,7 @@ var (
 )
 
 // stripHTML is a deliberately crude fallback, not a real HTML renderer -
-// only used when a message has no text/plain part at all, to give the
-// triage UI and the agent something readable instead of raw markup.
+// only used when a message has no text/plain part at all.
 func stripHTML(htmlText string) string {
 	text := htmlTagRe.ReplaceAllString(htmlText, " ")
 	text = htmlSpaceRe.ReplaceAllString(text, " ")

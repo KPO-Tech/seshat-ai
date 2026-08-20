@@ -72,6 +72,72 @@ func TestSweepAreaRequiresProspectingManage(t *testing.T) {
 	}
 }
 
+func TestListSweepsReturnsNewestFirstAndIsOrgScoped(t *testing.T) {
+	env := newTestEnv(t)
+	rt := &stubRoundTripper{}
+	env.configurePlaces(t, env.orgID, rt, 100)
+
+	first, err := env.prospecting.SweepArea(context.Background(), env.adminPrincipal, SweepAreaParams{
+		OrganizationID: env.orgID, AreaQuery: "Lille", Sectors: []string{"boulangerie"}, RadiusKM: 0.5,
+	})
+	if err != nil {
+		t.Fatalf("first sweep: %v", err)
+	}
+	// created_at only has second-level precision in this SQLite setup - a
+	// real gap here is needed for newest-first ordering to be deterministic
+	// rather than a coin flip on tied timestamps.
+	time.Sleep(1100 * time.Millisecond)
+	second, err := env.prospecting.SweepArea(context.Background(), env.adminPrincipal, SweepAreaParams{
+		OrganizationID: env.orgID, AreaQuery: "Lens", Sectors: []string{"boulangerie"}, RadiusKM: 0.5,
+	})
+	if err != nil {
+		t.Fatalf("second sweep: %v", err)
+	}
+
+	sweeps, total, err := env.prospecting.ListSweeps(context.Background(), env.adminPrincipal, ListSweepsParams{OrganizationID: env.orgID})
+	if err != nil {
+		t.Fatalf("list sweeps: %v", err)
+	}
+	if total != 2 || len(sweeps) != 2 {
+		t.Fatalf("expected 2 sweeps, got total=%d len=%d", total, len(sweeps))
+	}
+	if sweeps[0].ID != second.ID || sweeps[1].ID != first.ID {
+		t.Fatalf("expected newest-first order (%s, %s), got (%s, %s)", second.ID, first.ID, sweeps[0].ID, sweeps[1].ID)
+	}
+
+	// A member without prospecting.read/manage is rejected outright (this
+	// domain hard-errors on missing permission, unlike knowledge/connectors'
+	// softer "empty list" convention - see ListSweeps's doc comment).
+	outsiderMember := env.addMember(t, "member")
+	if _, _, err := env.prospecting.ListSweeps(context.Background(), outsiderMember, ListSweepsParams{OrganizationID: env.orgID}); err == nil {
+		t.Fatal("expected a member without prospecting.read/manage to be denied listing sweeps")
+	}
+
+	// A genuine non-member of a different org is rejected outright, not just
+	// scoped to see zero results.
+	otherOrg, err := env.iam.CreateOrganization(context.Background(), env.adminPrincipal, iam.CreateOrganizationParams{Name: "Other", Slug: "other-org-prospecting"})
+	if err != nil {
+		t.Fatalf("create other org: %v", err)
+	}
+	otherUser, err := env.iam.CreateUser(context.Background(), env.adminPrincipal, iam.CreateUserParams{
+		Email: "outsider2@example.com", Password: "password123", DisplayName: "Outsider", OrganizationID: otherOrg.ID, Role: "member",
+	})
+	if err != nil {
+		t.Fatalf("create outsider user: %v", err)
+	}
+	login, err := env.iam.Login(context.Background(), otherUser.Email, "password123")
+	if err != nil {
+		t.Fatalf("login outsider: %v", err)
+	}
+	outsider, err := env.iam.ResolvePrincipal(context.Background(), login.Token)
+	if err != nil {
+		t.Fatalf("resolve outsider principal: %v", err)
+	}
+	if _, _, err := env.prospecting.ListSweeps(context.Background(), outsider, ListSweepsParams{OrganizationID: env.orgID}); err == nil {
+		t.Fatal("expected a non-member of a different org to be rejected")
+	}
+}
+
 func TestListBusinessesRequiresProspectingReadAndIsOrgScoped(t *testing.T) {
 	env := newTestEnv(t)
 	rt := &stubRoundTripper{}

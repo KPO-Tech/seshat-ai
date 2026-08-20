@@ -18,6 +18,7 @@ import (
 const (
 	ChannelGmail    = "gmail"
 	ChannelOutlook  = "outlook"
+	ChannelTeams    = "teams"
 	ChannelWhatsApp = "whatsapp"
 )
 

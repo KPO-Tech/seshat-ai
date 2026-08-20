@@ -1869,6 +1869,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/connectors/my-accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the caller's own agent_action-purposed connector accounts
+         * @description Self-service counterpart to listConnectorAccounts — any org member may call this for their own accounts, no knowledge.read/manage or organization.manage required. Only returns purpose=agent_action accounts created by the caller.
+         */
+        get: operations["listMyConnectorAccounts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/my-accounts/{accountID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Disconnect one of the caller's own agent_action accounts
+         * @description Self-service counterpart to deleteConnectorAccount — succeeds only for an agent_action account the caller themselves created; 404 (not 403) for any other account, including one owned by someone else.
+         */
+        delete: operations["deleteMyConnectorAccount"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/connectors/oauth-apps": {
         parameters: {
             query?: never;
@@ -1894,13 +1936,13 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                kind: "gdrive" | "sharepoint";
+                kind: "gdrive" | "sharepoint" | "slack" | "outlook" | "teams" | "gmail";
             };
             cookie?: never;
         };
         get?: never;
         /**
-         * Register or update an organization's OAuth app for gdrive/sharepoint
+         * Register or update an organization's OAuth app for gdrive/sharepoint/slack/outlook/teams/gmail
          * @description Requires knowledge.manage or organization.manage. client_secret is required the first time an app is registered for this (organization, kind); omit it on a later update to keep the existing one.
          */
         put: operations["registerConnectorOAuthApp"];
@@ -1916,15 +1958,15 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                kind: "gdrive" | "sharepoint";
+                kind: "gdrive" | "sharepoint" | "slack" | "outlook" | "teams" | "gmail";
             };
             cookie?: never;
         };
         get?: never;
         put?: never;
         /**
-         * Start a "connect an account" OAuth flow for gdrive/sharepoint
-         * @description Requires knowledge.manage or organization.manage, and that the organization has already registered an OAuth app for kind. Returns a URL to open in a new browser tab; the resulting ConnectorAccount is created by the callback once the user completes the provider's consent screen, not by this call.
+         * Start a "connect an account" OAuth flow for gdrive/sharepoint/slack/outlook/teams/gmail
+         * @description Requires that the organization has already registered an OAuth app for kind. With purpose=knowledge_sync (the default), also requires knowledge.manage or organization.manage and a valid corpus_id - this is the admin-run flow for gdrive/sharepoint. With purpose=agent_action, only requires organization membership and no corpus_id - any employee connects their own account for their own future MCP-backed agent actions; slack/outlook/teams/gmail only support this purpose. Returns a URL to open in a new browser tab; the resulting ConnectorAccount is created by the callback once the user completes the provider's consent screen, not by this call.
          */
         post: operations["beginConnectorOAuth"];
         delete?: never;
@@ -1938,7 +1980,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                kind: "gdrive" | "sharepoint";
+                kind: "gdrive" | "sharepoint" | "slack" | "outlook" | "teams" | "gmail";
             };
             cookie?: never;
         };
@@ -2387,6 +2429,76 @@ export interface paths {
         put?: never;
         /** Record a failed run outcome */
         post: operations["failRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prospecting/sweeps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List an organization's sweeps, newest first
+         * @description Requires prospecting.read, prospecting.manage, or organization.manage.
+         */
+        get: operations["listProspectingSweeps"];
+        put?: never;
+        /**
+         * Start a new business-discovery sweep, or continue an existing one
+         * @description Requires prospecting.manage — spends the organization's own Google Places budget (see prospecting.read/prospecting.manage and the organization's ProspectingSettings.daily_cap). Pass sweep_id to continue an already-started sweep from where it left off — when set, every other field is ignored and the sweep's own stored values are used instead.
+         */
+        post: operations["sweepProspectingArea"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prospecting/sweeps/{sweepID}/businesses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sweepID: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * List one sweep's discovered businesses
+         * @description Requires prospecting.read or prospecting.manage.
+         */
+        get: operations["listProspectingBusinesses"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prospecting/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get an organization's Prospecting settings
+         * @description Requires prospecting.read, prospecting.manage, or organization.manage. Strict BYOK — there is no platform-default Places API key, unlike embedder settings.
+         */
+        get: operations["getProspectingSettings"];
+        /**
+         * Create or update an organization's Prospecting settings
+         * @description Requires prospecting.manage or organization.manage. api_key is required on first creation; omit on update to keep the existing key unchanged (there is no keyless provider, unlike an embedder's platform-default fallback).
+         */
+        put: operations["setProspectingSettings"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3284,6 +3396,11 @@ export interface components {
             url?: string;
             timeout_secs?: number;
             icon?: string;
+            /**
+             * @description When set, this server's headers are personalized per caller at resolve time - see ResolvedMCPServerConfig.connected.
+             * @enum {string}
+             */
+            connector_kind?: "" | "gdrive" | "sharepoint" | "slack" | "outlook" | "teams" | "gmail";
         };
         /** @description Unlike MCPServerConfig, this includes the decrypted env/headers maps — see the resolveMCPServerConfigs operation. */
         ResolvedMCPServerConfig: {
@@ -3298,11 +3415,16 @@ export interface components {
                 [key: string]: string;
             };
             url?: string;
+            /** @description May include an Authorization: Bearer entry personalized for the calling principal when connector_kind is set - see connected. */
             headers?: {
                 [key: string]: string;
             };
             timeout_secs?: number;
             icon?: string;
+            /** @enum {string} */
+            connector_kind?: "" | "gdrive" | "sharepoint" | "slack" | "outlook" | "teams" | "gmail";
+            /** @description Always true when connector_kind is empty. When connector_kind is set, true only if the calling principal has their own connected agent_action ConnectorAccount for that kind - false means this server was returned but has no Bearer header injected (the calling employee hasn't connected their own account yet). */
+            connected?: boolean;
         };
         MCPServerConfigInput: {
             organization_id: string;
@@ -3328,6 +3450,11 @@ export interface components {
             /** @default 30 */
             timeout_secs: number;
             icon?: string;
+            /**
+             * @description See MCPServerConfig.connector_kind. Empty (default) means static config only.
+             * @enum {string}
+             */
+            connector_kind?: "" | "gdrive" | "sharepoint" | "slack" | "outlook" | "teams" | "gmail";
         };
         MCPServerConfigUpdateInput: {
             display_name?: string;
@@ -3346,6 +3473,8 @@ export interface components {
             };
             timeout_secs?: number;
             icon?: string;
+            /** @enum {string} */
+            connector_kind?: "" | "gdrive" | "sharepoint" | "slack" | "outlook" | "teams" | "gmail";
         };
         Corpus: {
             id?: string;
@@ -3393,10 +3522,15 @@ export interface components {
         ConnectorAccount: {
             id?: string;
             organization_id?: string;
-            /** @description Set for a Knowledge-purposed connector account (every one today) - a connected account itself is reusable infrastructure, not Knowledge-only. */
+            /** @description Set only for a knowledge_sync-purposed account - empty for agent_action. */
             corpus_id?: string;
             /** @enum {string} */
-            kind?: "s3" | "gdrive" | "sharepoint";
+            kind?: "s3" | "gdrive" | "sharepoint" | "slack" | "outlook" | "teams" | "gmail";
+            /**
+             * @description knowledge_sync: admin-run, feeds a corpus. agent_action: self-service, one employee's own account for their own future MCP-backed agent actions - see connectors' package doc.
+             * @enum {string}
+             */
+            purpose?: "knowledge_sync" | "agent_action";
             display_name?: string;
             external_account_id?: string;
             /** @enum {string} */
@@ -3449,7 +3583,7 @@ export interface components {
         /** @description The client secret is never returned, only whether one is configured. */
         ConnectorOAuthApp: {
             /** @enum {string} */
-            kind?: "gdrive" | "sharepoint";
+            kind?: "gdrive" | "sharepoint" | "slack" | "outlook" | "teams" | "gmail";
             client_id?: string;
             configured?: boolean;
             /** Format: date-time */
@@ -3461,12 +3595,19 @@ export interface components {
             /** @description Required the first time an app is registered for this (organization, kind); omit on a later update to keep the existing one. */
             client_secret?: string;
         };
+        /** @description purpose=knowledge_sync (default, omit to get this) requires corpus_id and knowledge.manage/organization.manage. purpose= agent_action is self-service (any org member, no special permission) - corpus_id must be omitted, rejected if present. */
         BeginConnectorOAuthInput: {
             organization_id: string;
-            corpus_id: string;
+            /** @description Required for purpose=knowledge_sync, must be omitted for purpose=agent_action. */
+            corpus_id?: string;
+            /**
+             * @default knowledge_sync
+             * @enum {string}
+             */
+            purpose: "knowledge_sync" | "agent_action";
             /** @description Optional - defaults to the connected account's email/UPN once the flow completes. */
             display_name?: string;
-            /** @description Defaults to 3600 (1 hour). */
+            /** @description Defaults to 3600 (1 hour). Ignored for purpose=agent_action. */
             sync_interval_seconds?: number;
         };
         IngestionJob: {
@@ -3679,6 +3820,103 @@ export interface components {
             configuration?: {
                 [key: string]: string;
             };
+        };
+        GeoPoint: {
+            lat?: number;
+            lng?: number;
+        };
+        Sweep: {
+            id?: string;
+            organization_id?: string;
+            created_by_user_id?: string;
+            country?: string;
+            area_query?: string;
+            area_label?: string;
+            center?: components["schemas"]["GeoPoint"];
+            radius_km?: number;
+            sectors?: string[];
+            /** @description Progress cursor - how many grid tiles/sectors have been swept so far. */
+            next_unit_index?: number;
+            /** @description Total grid tiles × sectors this sweep covers. */
+            total_units?: number;
+            /**
+             * @description running: freshly created, before its first call completes. partial: some tiles swept, more remain (or the daily cap was hit) - continue via sweep_id. completed: every tile swept.
+             * @enum {string}
+             */
+            status?: "running" | "partial" | "completed" | "failed";
+            businesses_found?: number;
+            /** @description Live Google Places API calls this sweep has spent so far, counted against the organization's daily_cap. */
+            real_places_calls_used?: number;
+            last_error?: string;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+            /** Format: date-time */
+            completed_at?: string | null;
+        };
+        /** @description Set sweep_id alone to continue an existing sweep - every other field is then ignored. Omit sweep_id to start a new one, in which case organization_id/area/country are required. */
+        SweepAreaInput: {
+            /** @description Set to continue an existing sweep instead of starting a new one. */
+            sweep_id?: string;
+            organization_id: string;
+            /** @description Free-text area query, e.g. "Lyon, France" - geocoded server-side. */
+            area: string;
+            country: string;
+            /** @description Business categories to search, e.g. ["restaurant", "plumber"]. */
+            sectors?: string[];
+            radius_km?: number;
+            /** @description Caps how many grid tiles this single call processes - the sweep can be continued afterward via sweep_id. */
+            max_tiles?: number;
+        };
+        Executive: {
+            name?: string;
+            role?: string;
+        };
+        Business: {
+            id?: string;
+            sweep_id?: string;
+            place_id?: string;
+            sector?: string;
+            name?: string;
+            formatted_address?: string;
+            postal_code?: string;
+            city?: string;
+            location?: components["schemas"]["GeoPoint"];
+            phone?: string;
+            website?: string;
+            rating?: number;
+            user_rating_count?: number;
+            business_status?: string;
+            /** @description Raw JSON as returned by Google Places, not re-parsed here. */
+            opening_hours_json?: string;
+            /** @description French company registry identifier, set only when enrichment matched a company. */
+            siren?: string;
+            company_name?: string;
+            executives?: components["schemas"]["Executive"][];
+            /** @description 0-1 confidence the registry enrichment match is correct. */
+            match_confidence?: number;
+            /** @description 0-100 composite score (has phone/website, rating, matched registry data, etc.). */
+            reachability_score?: number;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        ProspectingSettings: {
+            id?: string;
+            organization_id?: string;
+            /** @description Max real Google Places API calls per day, across all this org's sweeps. */
+            daily_cap?: number;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        ProspectingSettingsInput: {
+            /** @description Google Places API key. Required on first creation; omit on update to keep the existing key unchanged. */
+            api_key?: string;
+            daily_cap?: number;
         };
     };
     responses: {
@@ -7304,6 +7542,54 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    listMyConnectorAccounts: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The caller's own connector account list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        connector_accounts?: components["schemas"]["ConnectorAccount"][];
+                        count?: number;
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    deleteMyConnectorAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
     listConnectorOAuthApps: {
         parameters: {
             query?: {
@@ -7336,7 +7622,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                kind: "gdrive" | "sharepoint";
+                kind: "gdrive" | "sharepoint" | "slack" | "outlook" | "teams" | "gmail";
             };
             cookie?: never;
         };
@@ -7364,7 +7650,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                kind: "gdrive" | "sharepoint";
+                kind: "gdrive" | "sharepoint" | "slack" | "outlook" | "teams" | "gmail";
             };
             cookie?: never;
         };
@@ -7398,7 +7684,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                kind: "gdrive" | "sharepoint";
+                kind: "gdrive" | "sharepoint" | "slack" | "outlook" | "teams" | "gmail";
             };
             cookie?: never;
         };
@@ -8205,6 +8491,147 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    listProspectingSweeps: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sweep list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        sweeps?: components["schemas"]["Sweep"][];
+                        total?: number;
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    sweepProspectingArea: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SweepAreaInput"];
+            };
+        };
+        responses: {
+            /** @description The sweep's current state after this call */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Sweep"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    listProspectingBusinesses: {
+        parameters: {
+            query?: {
+                /** @description Minimum reachability_score (0-100). */
+                min_score?: number;
+                has_phone?: boolean;
+                sector?: string;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                sweepID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Business list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        businesses?: components["schemas"]["Business"][];
+                        total?: number;
+                    };
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getProspectingSettings: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Prospecting settings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProspectingSettings"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    setProspectingSettings: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProspectingSettingsInput"];
+            };
+        };
+        responses: {
+            /** @description Saved settings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProspectingSettings"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
         };
     };
 }

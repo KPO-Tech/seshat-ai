@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import {
   ApartmentOutlined,
   AppstoreOutlined,
+  CompassOutlined,
   DashboardOutlined,
   DatabaseOutlined,
   ExperimentOutlined,
@@ -137,6 +138,13 @@ export function getOrganizationNavItems(organizationId: string): NavItem[] {
       icon: <AppstoreOutlined />,
     },
     {
+      key: 'org-prospecting',
+      label: 'Prospecting',
+      path: `/orgs/${organizationId}/prospecting/sweeps`,
+      matchPrefix: `/orgs/${organizationId}/prospecting/`,
+      icon: <CompassOutlined />,
+    },
+    {
       key: 'org-activity',
       label: 'Activity',
       path: `/orgs/${organizationId}/activity/audit`,
@@ -160,6 +168,12 @@ export function getSecondaryNavItems(pathname: string, organizationId: string | 
         label: 'Chat',
         path: '/workspace/chat',
         matchPrefix: '/workspace/chat',
+      },
+      {
+        key: 'workspace-connections',
+        label: 'Connections',
+        path: '/workspace/connections',
+        matchPrefix: '/workspace/connections',
       },
     ]
   }
@@ -347,6 +361,23 @@ export function getSecondaryNavItems(pathname: string, organizationId: string | 
         label: 'Connectors',
         path: `/orgs/${organizationId}/knowledge/connectors`,
         matchPrefix: `/orgs/${organizationId}/knowledge/connectors`,
+      },
+    ]
+  }
+
+  if (pathname.startsWith(`/orgs/${organizationId}/prospecting/`)) {
+    return [
+      {
+        key: 'org-prospecting-sweeps',
+        label: 'Sweeps',
+        path: `/orgs/${organizationId}/prospecting/sweeps`,
+        matchPrefix: `/orgs/${organizationId}/prospecting/sweeps`,
+      },
+      {
+        key: 'org-prospecting-settings',
+        label: 'Settings',
+        path: `/orgs/${organizationId}/prospecting/settings`,
+        matchPrefix: `/orgs/${organizationId}/prospecting/settings`,
       },
     ]
   }

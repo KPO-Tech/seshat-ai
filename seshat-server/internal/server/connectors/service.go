@@ -406,6 +406,76 @@ func (s *Service) AccessTokenForUser(ctx context.Context, organizationID, kind, 
 	return fresh.AccessToken, true, nil
 }
 
+// ListMyAccounts returns organizationID's agent_action-purposed connector
+// accounts created by principal - the self-service counterpart to
+// ListAccounts. Reachable by any org member (plain membership, same check
+// BeginConnectorOAuth's agent_action branch uses), unlike ListAccounts
+// which requires knowledge.read/knowledge.manage/organization.manage - an
+// employee who self-connected their own account has no reason to hold
+// either of those permissions.
+func (s *Service) ListMyAccounts(ctx context.Context, principal *iam.Principal, organizationID string) ([]ConnectorAccount, error) {
+	if principal == nil {
+		return nil, ErrUnauthorized("authentication required")
+	}
+	organizationID = strings.TrimSpace(organizationID)
+	if organizationID == "" {
+		return nil, ErrInvalidInput("organization_id is required")
+	}
+	allowed, err := s.iam.CanAccessOrganization(s.db.Gorm().WithContext(ctx), principal, organizationID)
+	if err != nil {
+		return nil, err
+	}
+	if !allowed {
+		return nil, ErrUnauthorized("not a member of this organization")
+	}
+	var records []sdb.ConnectorAccount
+	if err := s.db.Gorm().WithContext(ctx).
+		Where("organization_id = ? AND purpose = ? AND created_by_user_id = ?", organizationID, PurposeAgentAction, principal.User.ID).
+		Order("created_at asc").Find(&records).Error; err != nil {
+		return nil, err
+	}
+	out := make([]ConnectorAccount, 0, len(records))
+	for _, r := range records {
+		out = append(out, toConnectorAccount(r))
+	}
+	return out, nil
+}
+
+// DeleteMyAccount deletes accountID if it's an agent_action-purposed
+// account owned by principal - the self-service counterpart to
+// DeleteAccount. Not found (never forbidden) for an account that exists
+// but belongs to someone else or isn't agent_action-purposed - same
+// don't-leak-existence convention used throughout this package.
+func (s *Service) DeleteMyAccount(ctx context.Context, principal *iam.Principal, accountID string) error {
+	if principal == nil {
+		return ErrUnauthorized("authentication required")
+	}
+	accountID = strings.TrimSpace(accountID)
+	if accountID == "" {
+		return ErrInvalidInput("account_id is required")
+	}
+	var record sdb.ConnectorAccount
+	if err := s.db.Gorm().WithContext(ctx).First(&record, "id = ?", accountID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrNotFound("connector account not found")
+		}
+		return err
+	}
+	if record.Purpose != PurposeAgentAction || record.CreatedByUserID != principal.User.ID {
+		return ErrNotFound("connector account not found")
+	}
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		tx = tx.WithContext(ctx)
+		if err := tx.Where("connector_account_id = ?", record.ID).Delete(&sdb.ConnectorSyncJob{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Delete(&sdb.ConnectorAccount{}, "id = ?", record.ID).Error; err != nil {
+			return err
+		}
+		return s.iam.AppendAuditEvent(tx, principal, record.OrganizationID, "connector_account.deleted", "connector_account", record.ID, map[string]string{"kind": record.Kind})
+	})
+}
+
 // ─── Sync jobs ───────────────────────────────────────────────────────────
 
 // TriggerSync queues an immediate sync for accountID, in addition to

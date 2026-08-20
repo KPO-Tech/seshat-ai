@@ -55,8 +55,8 @@ func TestCreateS3AccountSyncIngestsIntoCorpus(t *testing.T) {
 	env.connectors.connectorOverrides = map[string]knowledgeConnector{
 		"s3": &fakeConnector{
 			items: []syncItem{
-				{resourceRef: resourceRef{ID: "docs/policy.txt", Name: "policy.txt"}, Text: "Refunds are processed within 14 business days."},
-				{resourceRef: resourceRef{ID: "docs/faq.txt", Name: "faq.txt"}, Text: "Contact support@example.com for help."},
+				{ResourceRef: resourceRef{ID: "docs/policy.txt", Name: "policy.txt"}, Text: "Refunds are processed within 14 business days."},
+				{ResourceRef: resourceRef{ID: "docs/faq.txt", Name: "faq.txt"}, Text: "Contact support@example.com for help."},
 			},
 			nextCursor: "cursor-1",
 		},

@@ -72,6 +72,7 @@ require (
 	github.com/ledongthuc/pdf v0.0.0-20250511090121-5959a4027728 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/mattn/go-runewidth v0.0.24 // indirect
+	github.com/modelcontextprotocol/go-sdk v1.7.0
 	github.com/ncruces/go-strftime v0.1.9 // indirect
 	github.com/pdfcpu/pdfcpu v0.13.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.3.1 // indirect

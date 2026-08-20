@@ -151,6 +151,52 @@ func (app *App) handleConnectorAccountSyncJobs(w http.ResponseWriter, r *http.Re
 	}
 }
 
+// handleMyConnectorAccounts is the self-service counterpart to
+// handleConnectorAccounts - scoped to the calling principal's own
+// agent_action-purposed accounts, reachable by any org member (see
+// connectors.Service.ListMyAccounts/DeleteMyAccount).
+func (app *App) handleMyConnectorAccounts(w http.ResponseWriter, r *http.Request) {
+	principal, ok := authPrincipalFromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "missing principal")
+		return
+	}
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	organizationID := strings.TrimSpace(r.URL.Query().Get("organization_id"))
+	accounts, err := app.backend.Connectors.ListMyAccounts(r.Context(), principal, organizationID)
+	if err != nil {
+		writeKnowledgeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"connector_accounts": accounts, "count": len(accounts)})
+}
+
+func (app *App) handleMyConnectorAccountByID(w http.ResponseWriter, r *http.Request) {
+	principal, ok := authPrincipalFromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "missing principal")
+		return
+	}
+	accountID := strings.TrimSpace(r.PathValue("accountID"))
+	if accountID == "" {
+		writeJSONError(w, http.StatusBadRequest, "missing connector account id")
+		return
+	}
+	switch r.Method {
+	case http.MethodDelete:
+		if err := app.backend.Connectors.DeleteMyAccount(r.Context(), principal, accountID); err != nil {
+			writeKnowledgeError(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
 // ─── OAuth app registration + connect flow (gdrive/sharepoint) ───────────
 
 type registerOAuthAppRequest struct {

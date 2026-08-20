@@ -18,6 +18,8 @@ package connector
 import (
 	"context"
 	"time"
+
+	coreconnectors "github.com/EngineerProjects/seshat-ai/core/connectors"
 )
 
 // Kind identifies a connector implementation, e.g. "gmail", "whatsapp",
@@ -80,6 +82,13 @@ type Account struct {
 	Config string
 }
 
+// AccessEntry, Secret, ResourceRef, SyncItem are aliases, not new types:
+// the Discover/Sync logic that produces/consumes them now lives in
+// core/connectors (shared with seshat-server's own connectors package, see
+// ROADMAP.md's "core/connectors" entry) - aliasing keeps every consumer in
+// this module (inbox, inboxgmail, inboxwhatsapp, mcpaction, the three
+// knowledge connectors) working unchanged, with zero conversion code.
+//
 // AccessEntry names one identity or group allowed to see a resource,
 // mirroring Elastic Connectors' prefixed-identity ACL model
 // ("user:alice@example.com", "group:eng-team", "domain:example.com" -
@@ -87,35 +96,24 @@ type Account struct {
 // empty AccessControl on a SyncItem means "inherit the connector account's
 // own scope" - today's coarser scope_id (see internal/knowledge's
 // permission filter, roadmap.md Phase 1's first item).
-type AccessEntry string
-
+//
 // Secret is the decrypted connection material a KnowledgeConnector/
 // ActionConnector needs to call its external API - the generic-domain
 // counterpart of inbox.ConnectorSecret, kept separate from Account so
 // callers can pass account metadata around without risking a secret
 // leaking into a log line or API response.
-type Secret struct {
-	AccessToken  string
-	RefreshToken string
-	ExpiresAt    time.Time
-}
-
+//
 // ResourceRef is what Discover returns per resource found - enough to
 // decide whether/how to sync it without fetching its content yet.
-type ResourceRef struct {
-	ID       string
-	Name     string
-	Kind     string // "file", "folder", "record", ...
-	Modified time.Time
-}
-
+//
 // SyncItem is what Sync yields per resource - content ready for Knowledge
 // ingestion, plus the access control list it should carry.
-type SyncItem struct {
-	ResourceRef
-	Text          string
-	AccessControl []AccessEntry
-}
+type (
+	AccessEntry = coreconnectors.AccessEntry
+	Secret      = coreconnectors.Secret
+	ResourceRef = coreconnectors.ResourceRef
+	SyncItem    = coreconnectors.SyncItem
+)
 
 // KnowledgeConnector discovers and syncs external resources into Knowledge.
 type KnowledgeConnector interface {

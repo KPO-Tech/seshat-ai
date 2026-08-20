@@ -233,7 +233,7 @@ func (c *spGraphClient) downloadContent(ctx context.Context, driveID, itemID str
 }
 
 // listPermissions returns a DriveItem's access list, mapped by the caller
-// into an accessEntry slice.
+// into an AccessEntry slice.
 func (c *spGraphClient) listPermissions(ctx context.Context, driveID, itemID string) ([]spGraphPermission, error) {
 	var page spPermissionsResponse
 	url := spGraphBaseURL + "/drives/" + driveID + "/items/" + itemID + "/permissions"

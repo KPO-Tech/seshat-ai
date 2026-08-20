@@ -31,6 +31,30 @@ const SERVER_TYPE_OPTIONS = [
   { value: 'websocket', label: 'websocket' },
 ]
 
+// See sdb.MCPServerConfig.ConnectorKind's doc comment - when set, resolving
+// this server injects a per-caller Authorization: Bearer header from that
+// person's own connected agent_action account (Workspace → Connections).
+const CONNECTOR_KIND_OPTIONS = [
+  { value: '', label: 'None (static config only)' },
+  { value: 'gdrive', label: 'Google Drive' },
+  { value: 'sharepoint', label: 'SharePoint' },
+  { value: 'slack', label: 'Slack' },
+  { value: 'outlook', label: 'Outlook' },
+  { value: 'teams', label: 'Microsoft Teams' },
+  { value: 'gmail', label: 'Gmail' },
+]
+
+// outlook/teams/gmail are self-hosted by this seshat-server itself (see
+// internal/server/msgraphmcp, internal/server/gmailmcp) rather than a
+// third-party service like Slack's public https://mcp.slack.com/mcp - an
+// admin has no way to already know this URL, so picking one of these kinds
+// pre-fills (not force-locks) the url/server_type fields below.
+const SELF_HOSTED_MCP_PATH: Partial<Record<string, string>> = {
+  outlook: '/internal/mcp/outlook',
+  teams: '/internal/mcp/teams',
+  gmail: '/internal/mcp/gmail',
+}
+
 export function MCPServersPage() {
   const organizationId = useScopedOrganizationId()
   const [editing, setEditing] = useState<MCPServerConfig | 'new' | null>(null)
@@ -45,10 +69,15 @@ export function MCPServersPage() {
       key: 'name',
       render: (_, record) => (
         <div>
-          <div style={{ fontWeight: 500 }}>{record.display_name || record.name}</div>
-          <Typography.Text style={{ fontSize: 12, color: palette.inkTertiary, fontFamily: monoStack }}>
-            {record.name}
-          </Typography.Text>
+          <Space size={6}>
+            <span style={{ fontWeight: 500 }}>{record.display_name || record.name}</span>
+            {record.connector_kind && <Tag color="blue">🔗 {record.connector_kind}</Tag>}
+          </Space>
+          <div>
+            <Typography.Text style={{ fontSize: 12, color: palette.inkTertiary, fontFamily: monoStack }}>
+              {record.name}
+            </Typography.Text>
+          </div>
         </div>
       ),
     },
@@ -201,6 +230,7 @@ function MCPServerFormDrawer({
       headers_json: '',
       timeout_secs: config?.timeout_secs ?? 30,
       icon: config?.icon ?? '',
+      connector_kind: config?.connector_kind ?? '',
     })
   }, [config, form, open])
 
@@ -280,6 +310,21 @@ function MCPServerFormDrawer({
         <Form.Item name="icon" label="Icon">
           <Input placeholder="Optional icon name or URL" />
         </Form.Item>
+        <Form.Item
+          name="connector_kind"
+          label="Bridged account"
+          extra="When set, each member's own connected account (Workspace → Connections) is injected as a Bearer header when this server resolves - lets an agent action run under that person's own permissions."
+        >
+          <Select
+            options={CONNECTOR_KIND_OPTIONS}
+            onChange={(value: string) => {
+              const selfHostedPath = SELF_HOSTED_MCP_PATH[value]
+              if (selfHostedPath && !form.getFieldValue('url')) {
+                form.setFieldsValue({ url: window.location.origin + selfHostedPath, server_type: 'http' })
+              }
+            }}
+          />
+        </Form.Item>
       </Form>
     </Drawer>
   )
@@ -289,6 +334,8 @@ function buildPayload(values: Record<string, unknown>, organizationId: string | 
   const args = parseStringList(values.args_text)
   const env = parseRecord(values.env_json, 'environment variables')
   const headers = parseRecord(values.headers_json, 'headers')
+
+  const connectorKind = String(values.connector_kind ?? '').trim() as MCPServerConfigInput['connector_kind']
 
   const create: MCPServerConfigInput = {
     organization_id: organizationId ?? '',
@@ -302,6 +349,7 @@ function buildPayload(values: Record<string, unknown>, organizationId: string | 
     headers,
     timeout_secs: Number(values.timeout_secs ?? 30),
     icon: String(values.icon ?? '').trim() || undefined,
+    connector_kind: connectorKind,
   }
 
   const update: MCPServerConfigUpdateInput = {
@@ -314,6 +362,7 @@ function buildPayload(values: Record<string, unknown>, organizationId: string | 
     headers,
     timeout_secs: Number(values.timeout_secs ?? 30),
     icon: String(values.icon ?? '').trim() || undefined,
+    connector_kind: connectorKind,
   }
 
   return { create, update }

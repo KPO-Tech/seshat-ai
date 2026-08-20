@@ -37,6 +37,8 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inboxgmail"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inboxoutlook"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inboxteams"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inboxtool"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inboxwhatsapp"
 	backendknowledge "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge"
@@ -283,6 +285,31 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		// for free too; a seshat-console-configured job is a future,
 		// additive option for them, not a requirement.
 		go runGmailSyncLoop(inboxService)
+	}
+
+	// Outlook Mail and Teams share one Microsoft OAuth client
+	// (MICROSOFT_OAUTH_CLIENT_ID) with the SharePoint Knowledge connector
+	// below - Graph scopes are additive across grants, so one Entra app
+	// registration covers all three. Same graceful-skip pattern as Gmail.
+	if inboxoutlook.IsConfigured() {
+		outlookOAuthConfig, err := inboxoutlook.BaseOAuthConfig()
+		if err != nil {
+			_ = cleanup()
+			return nil, nil, fmt.Errorf("init outlook oauth config: %w", err)
+		}
+		inboxService.RegisterConnector(inboxoutlook.NewConnector(outlookOAuthConfig))
+		fmt.Printf("[API] Inbox: connecteur Outlook activé\n")
+		go runMicrosoftInboxSyncLoop(inboxService, inbox.ChannelOutlook)
+	}
+	if inboxteams.IsConfigured() {
+		teamsOAuthConfig, err := inboxteams.BaseOAuthConfig()
+		if err != nil {
+			_ = cleanup()
+			return nil, nil, fmt.Errorf("init teams oauth config: %w", err)
+		}
+		inboxService.RegisterConnector(inboxteams.NewConnector(teamsOAuthConfig))
+		fmt.Printf("[API] Inbox: connecteur Teams activé\n")
+		go runMicrosoftInboxSyncLoop(inboxService, inbox.ChannelTeams)
 	}
 
 	// WhatsApp shares this app's own database connection for whatsmeow's
@@ -1472,6 +1499,41 @@ func syncAllGmailAccounts(inboxService *inbox.Service) {
 		principal := &backendauth.Principal{User: backendauth.User{ID: account.UserID}}
 		if _, err := inboxService.SyncAccount(ctx, principal, account.ID); err != nil {
 			fmt.Fprintf(os.Stderr, "[API] Gmail sync loop: échec de sync pour %s: %v\n", account.DisplayName, err)
+		}
+	}
+}
+
+// microsoftInboxSyncInterval mirrors gmailSyncInterval's reasoning -
+// frequent enough that new mail/chat messages show up promptly, cheap
+// enough (Mail delta/Teams chat listing are both lightweight) not to matter
+// at this rate.
+const microsoftInboxSyncInterval = 2 * time.Minute
+
+// runMicrosoftInboxSyncLoop is runGmailSyncLoop's shape, generalized across
+// channel since outlook/teams differ only in which channel string to list
+// accounts for - both poll-based, same reasoning as Gmail's loop (no local
+// job scheduler for standalone deployments).
+func runMicrosoftInboxSyncLoop(inboxService *inbox.Service, channel string) {
+	syncAllAccountsForChannel(inboxService, channel)
+	ticker := time.NewTicker(microsoftInboxSyncInterval)
+	defer ticker.Stop()
+	for range ticker.C {
+		syncAllAccountsForChannel(inboxService, channel)
+	}
+}
+
+func syncAllAccountsForChannel(inboxService *inbox.Service, channel string) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	accounts, err := inboxService.ListConnectedAccountsByChannel(ctx, channel)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[API] %s sync loop: échec de la liste des comptes: %v\n", channel, err)
+		return
+	}
+	for _, account := range accounts {
+		principal := &backendauth.Principal{User: backendauth.User{ID: account.UserID}}
+		if _, err := inboxService.SyncAccount(ctx, principal, account.ID); err != nil {
+			fmt.Fprintf(os.Stderr, "[API] %s sync loop: échec de sync pour %s: %v\n", channel, account.DisplayName, err)
 		}
 	}
 }

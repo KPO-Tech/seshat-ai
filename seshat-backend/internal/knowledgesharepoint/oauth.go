@@ -3,6 +3,7 @@ package knowledgesharepoint
 import (
 	"golang.org/x/oauth2"
 
+	coreconnectors "github.com/EngineerProjects/seshat-ai/core/connectors"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/microsoftoauth"
 )
 
@@ -10,14 +11,9 @@ import (
 // openid/profile/offline_access (the last is required to receive a refresh
 // token, Microsoft's equivalent of Google's access_type=offline). Read-only
 // by design: this is a Knowledge connector, never writes back to
-// SharePoint.
-var Scopes = []string{
-	"openid",
-	"profile",
-	"offline_access",
-	"https://graph.microsoft.com/Files.Read.All",
-	"https://graph.microsoft.com/Sites.Read.All",
-}
+// SharePoint. Re-exported from core/connectors so there's exactly one
+// list, shared with seshat-server's own sharepoint connect flow.
+var Scopes = coreconnectors.SharePointScopes
 
 // IsConfigured reports whether the shared Microsoft OAuth client
 // (MICROSOFT_OAUTH_CLIENT_ID) is configured.

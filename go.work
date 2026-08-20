@@ -1,6 +1,9 @@
 go 1.26.6
 
 use (
+	./core/connectors
+	./core/gmail
+	./core/msgraph
 	./core/prospecting
 	./seshat-backend
 	./seshat-server

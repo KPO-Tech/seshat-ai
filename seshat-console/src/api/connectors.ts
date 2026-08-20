@@ -13,7 +13,7 @@ const ACCOUNTS_KEY = 'connector-accounts'
 const SYNC_JOBS_KEY = 'connector-sync-jobs'
 const OAUTH_APPS_KEY = 'connector-oauth-apps'
 
-export type OAuthConnectorKind = 'gdrive' | 'sharepoint'
+export type OAuthConnectorKind = 'gdrive' | 'sharepoint' | 'slack' | 'outlook' | 'teams' | 'gmail'
 
 export function useConnectorAccountsList(organizationId: string | undefined) {
   return useQuery({

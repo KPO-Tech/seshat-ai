@@ -29,12 +29,27 @@ const connectorOAuthStateTTL = 10 * time.Minute
 var oauthConnectorKinds = map[string]bool{
 	string(gdriveKind):     true,
 	string(sharepointKind): true,
+	string(slackKind):      true,
+	string(outlookKind):    true,
+	string(teamsKind):      true,
+	string(gmailKind):      true,
+}
+
+// agentActionOnlyKinds are OAuth connector kinds with no Discover/Sync -
+// they only make sense as a self-service, per-employee agent_action
+// connect, never an admin-run knowledge_sync source. Checked in
+// BeginConnectorOAuth.
+var agentActionOnlyKinds = map[string]bool{
+	string(slackKind):   true,
+	string(outlookKind): true,
+	string(teamsKind):   true,
+	string(gmailKind):   true,
 }
 
 func validateOAuthKind(kind string) (string, error) {
 	kind = strings.ToLower(strings.TrimSpace(kind))
 	if !oauthConnectorKinds[kind] {
-		return "", ErrInvalidInput(fmt.Sprintf("unsupported oauth connector kind %q (must be \"gdrive\" or \"sharepoint\")", kind))
+		return "", ErrInvalidInput(fmt.Sprintf("unsupported oauth connector kind %q (must be one of \"gdrive\", \"sharepoint\", \"slack\", \"outlook\", \"teams\", \"gmail\")", kind))
 	}
 	return kind, nil
 }
@@ -212,6 +227,9 @@ func (s *Service) BeginConnectorOAuth(ctx context.Context, principal *iam.Princi
 	}
 	if purpose != PurposeKnowledgeSync && purpose != PurposeAgentAction {
 		return "", ErrInvalidInput(fmt.Sprintf("unsupported purpose %q (must be %q or %q)", purpose, PurposeKnowledgeSync, PurposeAgentAction))
+	}
+	if agentActionOnlyKinds[kind] && purpose != PurposeAgentAction {
+		return "", ErrInvalidInput(fmt.Sprintf("%q only supports purpose %q, not %q", kind, PurposeAgentAction, purpose))
 	}
 
 	var corpusIDPtr *string
@@ -506,15 +524,24 @@ func (s *Service) connectorOAuthRedirectURL(kind string) string {
 
 func connectorOAuthEndpoint(kind string) oauth2.Endpoint {
 	switch kind {
-	case string(gdriveKind):
+	case string(gdriveKind), string(gmailKind):
 		return google.Endpoint
-	case string(sharepointKind):
+	case string(sharepointKind), string(outlookKind), string(teamsKind):
 		// "organizations" tenant - any work/school (Entra ID) account across
 		// any tenant, never a personal Microsoft account. SharePoint access
-		// isn't supported for personal accounts anyway.
+		// isn't supported for personal accounts anyway, and outlook/teams
+		// deliberately stay on the same work/school-only restriction (an
+		// enterprise product, not a consumer Outlook.com/personal-Teams one).
 		return oauth2.Endpoint{
 			AuthURL:  "https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize",
 			TokenURL: "https://login.microsoftonline.com/organizations/oauth2/v2.0/token",
+		}
+	case string(slackKind):
+		// v2_user endpoints: this app only ever needs a user token (per-
+		// employee identity), never a bot token - see fetchSlackTeamAndUserID.
+		return oauth2.Endpoint{
+			AuthURL:  "https://slack.com/oauth/v2_user/authorize",
+			TokenURL: "https://slack.com/api/oauth.v2.user.access",
 		}
 	default:
 		return oauth2.Endpoint{}
@@ -527,6 +554,14 @@ func connectorOAuthScopes(kind string) []string {
 		return gdriveScopes
 	case string(sharepointKind):
 		return sharepointScopes
+	case string(slackKind):
+		return slackScopes
+	case string(outlookKind):
+		return outlookScopes
+	case string(teamsKind):
+		return teamsScopes
+	case string(gmailKind):
+		return gmailScopes
 	default:
 		return nil
 	}
@@ -537,10 +572,12 @@ func connectorOAuthScopes(kind string) []string {
 // for Microsoft (its work/school tenant equivalent of an email address).
 func fetchConnectorIdentity(ctx context.Context, kind string, cfg *oauth2.Config, token *oauth2.Token) (string, error) {
 	switch kind {
-	case string(gdriveKind):
+	case string(gdriveKind), string(gmailKind):
 		return fetchGoogleAccountEmail(ctx, cfg, token)
-	case string(sharepointKind):
+	case string(sharepointKind), string(outlookKind), string(teamsKind):
 		return fetchMicrosoftAccountUPN(ctx, cfg, token)
+	case string(slackKind):
+		return fetchSlackTeamAndUserID(ctx, cfg, token)
 	default:
 		return "", fmt.Errorf("unsupported kind %q", kind)
 	}

@@ -17,6 +17,7 @@ import (
 const (
 	ChannelGmail    = db.ChannelGmail
 	ChannelOutlook  = db.ChannelOutlook
+	ChannelTeams    = db.ChannelTeams
 	ChannelWhatsApp = db.ChannelWhatsApp
 
 	AccountStatusPending      = db.ChannelAccountStatusPending

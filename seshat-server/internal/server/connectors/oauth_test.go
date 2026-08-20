@@ -326,6 +326,359 @@ func TestCompleteConnectorOAuthAgentActionEndToEnd(t *testing.T) {
 	}
 }
 
+// TestListMyAccountsAndDeleteMyAccountAreSelfScoped verifies the self-
+// service management fix: the connecting employee can list/delete their
+// own agent_action account without knowledge.manage/organization.manage,
+// a different employee sees none of it, and a non-member is rejected.
+func TestListMyAccountsAndDeleteMyAccountAreSelfScoped(t *testing.T) {
+	env := newTestEnv(t)
+	member := env.addMember(t)
+	setIdentity := setUpFakeConnectorOAuth(t, env)
+	setIdentity("carol@example.com")
+
+	if _, err := env.connectors.RegisterOAuthApp(context.Background(), env.adminPrincipal, RegisterOAuthAppParams{
+		OrganizationID: env.orgID, Kind: "gdrive", ClientID: "client-1", ClientSecret: "secret-1",
+	}); err != nil {
+		t.Fatalf("register app: %v", err)
+	}
+	authURL, err := env.connectors.BeginConnectorOAuth(context.Background(), member, "gdrive", BeginOAuthParams{
+		OrganizationID: env.orgID, Purpose: PurposeAgentAction,
+	})
+	if err != nil {
+		t.Fatalf("begin agent_action oauth: %v", err)
+	}
+	account, err := env.connectors.CompleteConnectorOAuth(context.Background(), "gdrive", "fake-code", mustParseState(t, authURL))
+	if err != nil {
+		t.Fatalf("complete oauth: %v", err)
+	}
+
+	// The connecting member sees exactly their own account.
+	mine, err := env.connectors.ListMyAccounts(context.Background(), member, env.orgID)
+	if err != nil {
+		t.Fatalf("list my accounts: %v", err)
+	}
+	if len(mine) != 1 || mine[0].ID != account.ID {
+		t.Fatalf("expected exactly the connecting member's own account, got %+v", mine)
+	}
+
+	// A different member (even the admin) sees none of it via ListMyAccounts.
+	adminMine, err := env.connectors.ListMyAccounts(context.Background(), env.adminPrincipal, env.orgID)
+	if err != nil {
+		t.Fatalf("list my accounts as admin: %v", err)
+	}
+	if len(adminMine) != 0 {
+		t.Fatalf("expected the admin's own agent_action list to be empty, got %+v", adminMine)
+	}
+	// ...but the admin's org-wide ListAccounts still sees it (unchanged
+	// visibility - see helps/roadmap.md's note on this being intentional).
+	all, err := env.connectors.ListAccounts(context.Background(), env.adminPrincipal, env.orgID)
+	if err != nil {
+		t.Fatalf("list all accounts as admin: %v", err)
+	}
+	if len(all) != 1 {
+		t.Fatalf("expected the admin's org-wide list to still include the agent_action account, got %+v", all)
+	}
+
+	// The admin cannot delete someone else's agent_action account through
+	// the self-service path (not found, not forbidden).
+	if err := env.connectors.DeleteMyAccount(context.Background(), env.adminPrincipal, account.ID); err == nil {
+		t.Fatal("expected the admin to be rejected deleting another member's agent_action account via DeleteMyAccount")
+	}
+	// A non-member is rejected from listing entirely.
+	otherOrg, err := env.iam.CreateOrganization(context.Background(), env.adminPrincipal, iam.CreateOrganizationParams{Name: "Other", Slug: "other-org-2"})
+	if err != nil {
+		t.Fatalf("create other org: %v", err)
+	}
+	outsiderUser, err := env.iam.CreateUser(context.Background(), env.adminPrincipal, iam.CreateUserParams{
+		Email: "outsider2@example.com", Password: "password123", DisplayName: "Outsider", OrganizationID: otherOrg.ID, Role: "member",
+	})
+	if err != nil {
+		t.Fatalf("create outsider: %v", err)
+	}
+	login, err := env.iam.Login(context.Background(), outsiderUser.Email, "password123")
+	if err != nil {
+		t.Fatalf("login outsider: %v", err)
+	}
+	outsider, err := env.iam.ResolvePrincipal(context.Background(), login.Token)
+	if err != nil {
+		t.Fatalf("resolve outsider: %v", err)
+	}
+	if _, err := env.connectors.ListMyAccounts(context.Background(), outsider, env.orgID); err == nil {
+		t.Fatal("expected a non-member to be rejected from ListMyAccounts")
+	}
+
+	// The connecting member can delete their own account.
+	if err := env.connectors.DeleteMyAccount(context.Background(), member, account.ID); err != nil {
+		t.Fatalf("delete my account: %v", err)
+	}
+	mineAfterDelete, err := env.connectors.ListMyAccounts(context.Background(), member, env.orgID)
+	if err != nil {
+		t.Fatalf("list my accounts after delete: %v", err)
+	}
+	if len(mineAfterDelete) != 0 {
+		t.Fatalf("expected no accounts left after self-delete, got %+v", mineAfterDelete)
+	}
+}
+
+// TestBeginConnectorOAuthSlackIsAgentActionOnly verifies the restriction
+// added for kinds with no Discover/Sync: slack can self-service an
+// agent_action connect exactly like gdrive/sharepoint, but a knowledge_sync
+// attempt is rejected outright, even from an admin with a corpus in hand.
+func TestBeginConnectorOAuthSlackIsAgentActionOnly(t *testing.T) {
+	env := newTestEnv(t)
+	member := env.addMember(t)
+	env.connectors.SetPublicAPIURL("http://localhost:8080")
+	if _, err := env.connectors.RegisterOAuthApp(context.Background(), env.adminPrincipal, RegisterOAuthAppParams{
+		OrganizationID: env.orgID, Kind: "slack", ClientID: "client-1", ClientSecret: "secret-1",
+	}); err != nil {
+		t.Fatalf("register slack app: %v", err)
+	}
+
+	authURL, err := env.connectors.BeginConnectorOAuth(context.Background(), member, "slack", BeginOAuthParams{
+		OrganizationID: env.orgID, Purpose: PurposeAgentAction,
+	})
+	if err != nil {
+		t.Fatalf("expected a plain member to self-service a slack agent_action connect, got: %v", err)
+	}
+	if _, err := url.Parse(authURL); err != nil {
+		t.Fatalf("expected a valid authorization url, got %q: %v", authURL, err)
+	}
+
+	corpus, err := env.knowledge.CreateCorpus(context.Background(), env.adminPrincipal, knowledge.CreateCorpusParams{
+		OrganizationID: env.orgID, Name: "Docs",
+	})
+	if err != nil {
+		t.Fatalf("create corpus: %v", err)
+	}
+	// Even an admin, with a real corpus, cannot start a knowledge_sync
+	// connect for slack - it only supports agent_action.
+	if _, err := env.connectors.BeginConnectorOAuth(context.Background(), env.adminPrincipal, "slack", BeginOAuthParams{
+		OrganizationID: env.orgID, CorpusID: corpus.ID,
+	}); err == nil {
+		t.Fatal("expected a knowledge_sync connect for slack to be rejected")
+	}
+	// Purpose defaults to knowledge_sync when unset - must still be rejected.
+	if _, err := env.connectors.BeginConnectorOAuth(context.Background(), env.adminPrincipal, "slack", BeginOAuthParams{
+		OrganizationID: env.orgID,
+	}); err == nil {
+		t.Fatal("expected an unspecified-purpose slack connect to default to knowledge_sync and be rejected")
+	}
+}
+
+// TestCompleteConnectorOAuthSlackResolvesIdentityAndToken proves the full
+// slack path end to end: connecting stores a team_id:user_id identity and
+// AccessTokenForUser resolves a live token for exactly that employee -
+// slack rides AccessTokenForUser/oauthConfigFor entirely unchanged, so this
+// is really a test that the switch-statement wiring (endpoint/scopes/
+// identity) is correct, not new self-service logic.
+func TestCompleteConnectorOAuthSlackResolvesIdentityAndToken(t *testing.T) {
+	env := newTestEnv(t)
+	member := env.addMember(t)
+	tokenServer := fakeOAuthTokenServer(t)
+	env.connectors.oauthEndpointOverride = func(kind string) oauth2.Endpoint {
+		return oauth2.Endpoint{AuthURL: tokenServer.URL + "/authorize", TokenURL: tokenServer.URL + "/token"}
+	}
+	env.connectors.identityOverride = func(ctx context.Context, kind string, cfg *oauth2.Config, token *oauth2.Token) (string, error) {
+		return "T123:U456", nil
+	}
+	env.connectors.SetPublicAPIURL("http://localhost:8080")
+
+	if _, err := env.connectors.RegisterOAuthApp(context.Background(), env.adminPrincipal, RegisterOAuthAppParams{
+		OrganizationID: env.orgID, Kind: "slack", ClientID: "client-1", ClientSecret: "secret-1",
+	}); err != nil {
+		t.Fatalf("register slack app: %v", err)
+	}
+	authURL, err := env.connectors.BeginConnectorOAuth(context.Background(), member, "slack", BeginOAuthParams{
+		OrganizationID: env.orgID, Purpose: PurposeAgentAction,
+	})
+	if err != nil {
+		t.Fatalf("begin slack agent_action oauth: %v", err)
+	}
+	account, err := env.connectors.CompleteConnectorOAuth(context.Background(), "slack", "fake-code", mustParseState(t, authURL))
+	if err != nil {
+		t.Fatalf("complete slack oauth: %v", err)
+	}
+	if account.Purpose != PurposeAgentAction || account.CorpusID != "" {
+		t.Fatalf("expected an agent_action account with no corpus, got %+v", account)
+	}
+	if account.ExternalAccountID != "T123:U456" {
+		t.Fatalf("expected external_account_id %q, got %q", "T123:U456", account.ExternalAccountID)
+	}
+
+	token, connected, err := env.connectors.AccessTokenForUser(context.Background(), env.orgID, "slack", member.User.ID)
+	if err != nil {
+		t.Fatalf("AccessTokenForUser: %v", err)
+	}
+	if !connected || token == "" {
+		t.Fatalf("expected a live token for the connecting employee, got connected=%v token=%q", connected, token)
+	}
+}
+
+// TestBeginConnectorOAuthOutlookAndTeamsAreAgentActionOnly mirrors
+// TestBeginConnectorOAuthSlackIsAgentActionOnly for both new Microsoft
+// kinds - neither has Discover/Sync (see outlook.go/teams.go), so both
+// should be rejected for knowledge_sync the same way slack is.
+func TestBeginConnectorOAuthOutlookAndTeamsAreAgentActionOnly(t *testing.T) {
+	for _, kind := range []string{"outlook", "teams"} {
+		t.Run(kind, func(t *testing.T) {
+			env := newTestEnv(t)
+			member := env.addMember(t)
+			env.connectors.SetPublicAPIURL("http://localhost:8080")
+			if _, err := env.connectors.RegisterOAuthApp(context.Background(), env.adminPrincipal, RegisterOAuthAppParams{
+				OrganizationID: env.orgID, Kind: kind, ClientID: "client-1", ClientSecret: "secret-1",
+			}); err != nil {
+				t.Fatalf("register %s app: %v", kind, err)
+			}
+
+			authURL, err := env.connectors.BeginConnectorOAuth(context.Background(), member, kind, BeginOAuthParams{
+				OrganizationID: env.orgID, Purpose: PurposeAgentAction,
+			})
+			if err != nil {
+				t.Fatalf("expected a plain member to self-service a %s agent_action connect, got: %v", kind, err)
+			}
+			if _, err := url.Parse(authURL); err != nil {
+				t.Fatalf("expected a valid authorization url, got %q: %v", authURL, err)
+			}
+
+			corpus, err := env.knowledge.CreateCorpus(context.Background(), env.adminPrincipal, knowledge.CreateCorpusParams{
+				OrganizationID: env.orgID, Name: "Docs",
+			})
+			if err != nil {
+				t.Fatalf("create corpus: %v", err)
+			}
+			if _, err := env.connectors.BeginConnectorOAuth(context.Background(), env.adminPrincipal, kind, BeginOAuthParams{
+				OrganizationID: env.orgID, CorpusID: corpus.ID,
+			}); err == nil {
+				t.Fatalf("expected a knowledge_sync connect for %s to be rejected", kind)
+			}
+		})
+	}
+}
+
+// TestCompleteConnectorOAuthOutlookAndTeamsResolveIdentityAndToken mirrors
+// TestCompleteConnectorOAuthSlackResolvesIdentityAndToken - both route
+// through the same fetchMicrosoftAccountUPN identity lookup sharepoint
+// already uses, so this also proves that reuse is wired correctly for the
+// two new kinds.
+func TestCompleteConnectorOAuthOutlookAndTeamsResolveIdentityAndToken(t *testing.T) {
+	for _, kind := range []string{"outlook", "teams"} {
+		t.Run(kind, func(t *testing.T) {
+			env := newTestEnv(t)
+			member := env.addMember(t)
+			setIdentity := setUpFakeConnectorOAuth(t, env)
+			setIdentity("employee@contoso.com")
+
+			if _, err := env.connectors.RegisterOAuthApp(context.Background(), env.adminPrincipal, RegisterOAuthAppParams{
+				OrganizationID: env.orgID, Kind: kind, ClientID: "client-1", ClientSecret: "secret-1",
+			}); err != nil {
+				t.Fatalf("register %s app: %v", kind, err)
+			}
+			authURL, err := env.connectors.BeginConnectorOAuth(context.Background(), member, kind, BeginOAuthParams{
+				OrganizationID: env.orgID, Purpose: PurposeAgentAction,
+			})
+			if err != nil {
+				t.Fatalf("begin %s agent_action oauth: %v", kind, err)
+			}
+			account, err := env.connectors.CompleteConnectorOAuth(context.Background(), kind, "fake-code", mustParseState(t, authURL))
+			if err != nil {
+				t.Fatalf("complete %s oauth: %v", kind, err)
+			}
+			if account.Purpose != PurposeAgentAction || account.CorpusID != "" {
+				t.Fatalf("expected an agent_action account with no corpus, got %+v", account)
+			}
+			if account.ExternalAccountID != "employee@contoso.com" {
+				t.Fatalf("expected external_account_id %q, got %q", "employee@contoso.com", account.ExternalAccountID)
+			}
+
+			token, connected, err := env.connectors.AccessTokenForUser(context.Background(), env.orgID, kind, member.User.ID)
+			if err != nil {
+				t.Fatalf("AccessTokenForUser: %v", err)
+			}
+			if !connected || token == "" {
+				t.Fatalf("expected a live token for the connecting employee, got connected=%v token=%q", connected, token)
+			}
+		})
+	}
+}
+
+// TestBeginConnectorOAuthGmailIsAgentActionOnly mirrors
+// TestBeginConnectorOAuthSlackIsAgentActionOnly - gmail has no
+// Discover/Sync in this package either (unlike gdrive), so it's
+// agent_action-only the same way.
+func TestBeginConnectorOAuthGmailIsAgentActionOnly(t *testing.T) {
+	env := newTestEnv(t)
+	member := env.addMember(t)
+	env.connectors.SetPublicAPIURL("http://localhost:8080")
+	if _, err := env.connectors.RegisterOAuthApp(context.Background(), env.adminPrincipal, RegisterOAuthAppParams{
+		OrganizationID: env.orgID, Kind: "gmail", ClientID: "client-1", ClientSecret: "secret-1",
+	}); err != nil {
+		t.Fatalf("register gmail app: %v", err)
+	}
+
+	authURL, err := env.connectors.BeginConnectorOAuth(context.Background(), member, "gmail", BeginOAuthParams{
+		OrganizationID: env.orgID, Purpose: PurposeAgentAction,
+	})
+	if err != nil {
+		t.Fatalf("expected a plain member to self-service a gmail agent_action connect, got: %v", err)
+	}
+	if _, err := url.Parse(authURL); err != nil {
+		t.Fatalf("expected a valid authorization url, got %q: %v", authURL, err)
+	}
+
+	corpus, err := env.knowledge.CreateCorpus(context.Background(), env.adminPrincipal, knowledge.CreateCorpusParams{
+		OrganizationID: env.orgID, Name: "Docs",
+	})
+	if err != nil {
+		t.Fatalf("create corpus: %v", err)
+	}
+	if _, err := env.connectors.BeginConnectorOAuth(context.Background(), env.adminPrincipal, "gmail", BeginOAuthParams{
+		OrganizationID: env.orgID, CorpusID: corpus.ID,
+	}); err == nil {
+		t.Fatal("expected a knowledge_sync connect for gmail to be rejected")
+	}
+}
+
+// TestCompleteConnectorOAuthGmailResolvesIdentityAndToken mirrors
+// TestCompleteConnectorOAuthSlackResolvesIdentityAndToken - gmail routes
+// through the same fetchGoogleAccountEmail identity lookup gdrive already
+// uses, so this also proves that reuse is wired correctly.
+func TestCompleteConnectorOAuthGmailResolvesIdentityAndToken(t *testing.T) {
+	env := newTestEnv(t)
+	member := env.addMember(t)
+	setIdentity := setUpFakeConnectorOAuth(t, env)
+	setIdentity("employee@example.com")
+
+	if _, err := env.connectors.RegisterOAuthApp(context.Background(), env.adminPrincipal, RegisterOAuthAppParams{
+		OrganizationID: env.orgID, Kind: "gmail", ClientID: "client-1", ClientSecret: "secret-1",
+	}); err != nil {
+		t.Fatalf("register gmail app: %v", err)
+	}
+	authURL, err := env.connectors.BeginConnectorOAuth(context.Background(), member, "gmail", BeginOAuthParams{
+		OrganizationID: env.orgID, Purpose: PurposeAgentAction,
+	})
+	if err != nil {
+		t.Fatalf("begin gmail agent_action oauth: %v", err)
+	}
+	account, err := env.connectors.CompleteConnectorOAuth(context.Background(), "gmail", "fake-code", mustParseState(t, authURL))
+	if err != nil {
+		t.Fatalf("complete gmail oauth: %v", err)
+	}
+	if account.Purpose != PurposeAgentAction || account.CorpusID != "" {
+		t.Fatalf("expected an agent_action account with no corpus, got %+v", account)
+	}
+	if account.ExternalAccountID != "employee@example.com" {
+		t.Fatalf("expected external_account_id %q, got %q", "employee@example.com", account.ExternalAccountID)
+	}
+
+	token, connected, err := env.connectors.AccessTokenForUser(context.Background(), env.orgID, "gmail", member.User.ID)
+	if err != nil {
+		t.Fatalf("AccessTokenForUser: %v", err)
+	}
+	if !connected || token == "" {
+		t.Fatalf("expected a live token for the connecting employee, got connected=%v token=%q", connected, token)
+	}
+}
+
 func mustParseState(t *testing.T, authURL string) string {
 	t.Helper()
 	parsed, err := url.Parse(authURL)

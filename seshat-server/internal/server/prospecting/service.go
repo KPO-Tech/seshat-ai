@@ -3,7 +3,7 @@
 // Sweep lifecycle and storage, delegating the actual algorithm/external-API
 // work (geocoding, grid tiling, the Google Places client, French
 // company-registry enrichment, reachability scoring) to the tenant-agnostic
-// sibling module github.com/EngineerProjects/seshat-ai/prospecting-core —
+// sibling module github.com/EngineerProjects/seshat-ai/core/prospecting —
 // see that module's own doc comment for why it's a separate package.
 //
 // Unlike the local version, ownership here is by organization, not by
@@ -25,7 +25,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
-	prospectingcore "github.com/EngineerProjects/seshat-ai/prospecting-core"
+	prospectingcore "github.com/EngineerProjects/seshat-ai/core/prospecting"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/apperr"
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
@@ -78,31 +78,31 @@ type GeoPoint = prospectingcore.GeoPoint
 type Executive = prospectingcore.Executive
 
 type Sweep struct {
-	ID                  string
-	OrganizationID      string
-	CreatedByUserID     string
-	Country             string
-	AreaQuery           string
-	AreaLabel           string
-	Center              GeoPoint
-	RadiusKM            float64
-	Sectors             []string
-	NextUnitIndex       int
-	TotalUnits          int
-	Status              string
-	BusinessesFound     int
-	RealPlacesCallsUsed int
-	LastError           string
-	CreatedAt           time.Time
-	UpdatedAt           time.Time
-	CompletedAt         *time.Time
+	ID                  string     `json:"id"`
+	OrganizationID      string     `json:"organization_id"`
+	CreatedByUserID     string     `json:"created_by_user_id"`
+	Country             string     `json:"country"`
+	AreaQuery           string     `json:"area_query"`
+	AreaLabel           string     `json:"area_label"`
+	Center              GeoPoint   `json:"center"`
+	RadiusKM            float64    `json:"radius_km"`
+	Sectors             []string   `json:"sectors"`
+	NextUnitIndex       int        `json:"next_unit_index"`
+	TotalUnits          int        `json:"total_units"`
+	Status              string     `json:"status"`
+	BusinessesFound     int        `json:"businesses_found"`
+	RealPlacesCallsUsed int        `json:"real_places_calls_used"`
+	LastError           string     `json:"last_error"`
+	CreatedAt           time.Time  `json:"created_at"`
+	UpdatedAt           time.Time  `json:"updated_at"`
+	CompletedAt         *time.Time `json:"completed_at,omitempty"`
 }
 
 type Business struct {
 	prospectingcore.Business
-	ID        string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID        string    `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // SweepAreaParams starts a new sweep (SweepID empty, OrganizationID
@@ -388,6 +388,58 @@ func (s *Service) SweepArea(ctx context.Context, principal *iam.Principal, param
 		return nil, err
 	}
 	return sweepFromModel(updated, sectors), nil
+}
+
+// ListSweepsParams filters/paginates ListSweeps.
+type ListSweepsParams struct {
+	OrganizationID string
+	Limit          int
+	Offset         int
+}
+
+// ListSweeps returns organizationID's sweeps, newest first - lets a caller
+// (e.g. the console's Sweeps page) show a persistent history instead of
+// only sweeps it triggered itself this session. Requires
+// prospecting.read/prospecting.manage/organization.manage, same gate as
+// ListBusinesses/GetSettings - a hard error on missing permission, not the
+// softer "empty list" degradation some other domains use.
+func (s *Service) ListSweeps(ctx context.Context, principal *iam.Principal, params ListSweepsParams) ([]Sweep, int, error) {
+	if principal == nil {
+		return nil, 0, ErrUnauthorized("authentication required")
+	}
+	organizationID := strings.TrimSpace(params.OrganizationID)
+	if organizationID == "" {
+		return nil, 0, ErrInvalidInput("organization_id is required")
+	}
+	if !principal.User.IsAdmin {
+		if err := s.iam.CheckOrganizationPermission(s.db.Gorm().WithContext(ctx), principal, organizationID, "prospecting.read", "prospecting.manage", "organization.manage"); err != nil {
+			return nil, 0, err
+		}
+	}
+	limit := params.Limit
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	offset := params.Offset
+	if offset < 0 {
+		offset = 0
+	}
+
+	tx := s.db.Gorm().WithContext(ctx).Model(&sdb.ProspectingSweep{}).Where("organization_id = ?", organizationID)
+	var total int64
+	if err := tx.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var records []sdb.ProspectingSweep
+	if err := s.db.Gorm().WithContext(ctx).Where("organization_id = ?", organizationID).
+		Order("created_at desc").Limit(limit).Offset(offset).Find(&records).Error; err != nil {
+		return nil, 0, err
+	}
+	out := make([]Sweep, 0, len(records))
+	for _, r := range records {
+		out = append(out, *sweepFromModel(r, sectorsFromJSON(r.SectorsJSON)))
+	}
+	return out, int(total), nil
 }
 
 // ListBusinesses pages through one sweep's discovered candidates. Requires

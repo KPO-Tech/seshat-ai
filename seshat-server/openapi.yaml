@@ -95,13 +95,16 @@ tags:
       domains are always applied, allowed domains are additive.
   - name: mcp-server-configs
     description: >-
-      An organization's shared MCP server definitions (stdio/http/sse) —
-      config only, execution always happens locally on the connected
-      member's own machine, never here. Read/resolve is open to any org
-      member; write requires mcp_registry.manage. A connected
-      seshat-backend requires the user to explicitly approve each server
-      before loading it locally (stdio servers spawn an arbitrary command
-      on the user's machine).
+      An organization's shared MCP server definitions (stdio/http/sse).
+      Read/resolve is open to any org member; write requires
+      mcp_registry.manage. Mainly config a connected seshat-backend fetches
+      and, once the user explicitly approves each server, loads locally
+      (stdio servers spawn an arbitrary command on the user's machine) —
+      but the workspace chat's own agent session also resolves and executes
+      these servers directly server-side. A server whose connector_kind is
+      set (gdrive/sharepoint/slack/outlook/teams/gmail) has a per-caller Authorization: Bearer header
+      bridged in from that person's own connected account when resolved —
+      see ResolvedMCPServerConfig.connected.
   - name: devices
     description: Registered seshat-backend (local desktop) instances that the cloud can target.
   - name: jobs
@@ -113,6 +116,12 @@ tags:
       Device-bearer-token-authenticated endpoints (a registered device's own
       token, not a user session) used by seshat-backend to claim and report
       on its assigned runs.
+  - name: prospecting
+    description: >-
+      Organization-scoped business-discovery sweeps (Google Places grid
+      search + French company-registry enrichment) — team data, not
+      per-user like seshat-backend's local equivalent. Requires
+      prospecting.read/prospecting.manage.
 
 paths:
   /health:
@@ -3102,6 +3111,51 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/connectors/my-accounts:
+    get:
+      operationId: listMyConnectorAccounts
+      tags: [connectors]
+      summary: List the caller's own agent_action-purposed connector accounts
+      description: >-
+        Self-service counterpart to listConnectorAccounts — any org member
+        may call this for their own accounts, no knowledge.read/manage or
+        organization.manage required. Only returns purpose=agent_action
+        accounts created by the caller.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: The caller's own connector account list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  connector_accounts:
+                    type: array
+                    items: { $ref: "#/components/schemas/ConnectorAccount" }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /api/v1/connectors/my-accounts/{accountID}:
+    parameters:
+      - name: accountID
+        in: path
+        required: true
+        schema: { type: string }
+    delete:
+      operationId: deleteMyConnectorAccount
+      tags: [connectors]
+      summary: Disconnect one of the caller's own agent_action accounts
+      description: >-
+        Self-service counterpart to deleteConnectorAccount — succeeds only
+        for an agent_action account the caller themselves created; 404 (not
+        403) for any other account, including one owned by someone else.
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/connectors/oauth-apps:
     get:
       operationId: listConnectorOAuthApps
@@ -3134,11 +3188,11 @@ paths:
       - name: kind
         in: path
         required: true
-        schema: { type: string, enum: [gdrive, sharepoint] }
+        schema: { type: string, enum: [gdrive, sharepoint, slack, outlook, teams, gmail] }
     put:
       operationId: registerConnectorOAuthApp
       tags: [connectors]
-      summary: Register or update an organization's OAuth app for gdrive/sharepoint
+      summary: Register or update an organization's OAuth app for gdrive/sharepoint/slack/outlook/teams/gmail
       description: >-
         Requires knowledge.manage or organization.manage. client_secret is
         required the first time an app is registered for this
@@ -3163,17 +3217,23 @@ paths:
       - name: kind
         in: path
         required: true
-        schema: { type: string, enum: [gdrive, sharepoint] }
+        schema: { type: string, enum: [gdrive, sharepoint, slack, outlook, teams, gmail] }
     post:
       operationId: beginConnectorOAuth
       tags: [connectors]
-      summary: Start a "connect an account" OAuth flow for gdrive/sharepoint
+      summary: Start a "connect an account" OAuth flow for gdrive/sharepoint/slack/outlook/teams/gmail
       description: >-
-        Requires knowledge.manage or organization.manage, and that the
-        organization has already registered an OAuth app for kind. Returns
-        a URL to open in a new browser tab; the resulting ConnectorAccount
-        is created by the callback once the user completes the provider's
-        consent screen, not by this call.
+        Requires that the organization has already registered an OAuth app
+        for kind. With purpose=knowledge_sync (the default), also requires
+        knowledge.manage or organization.manage and a valid corpus_id -
+        this is the admin-run flow for gdrive/sharepoint. With
+        purpose=agent_action, only requires organization membership and no
+        corpus_id - any employee connects their own account for their own
+        future MCP-backed agent actions; slack/outlook/teams/gmail only
+        support this purpose.
+        Returns a URL to open in a new browser tab; the resulting
+        ConnectorAccount is created by the callback once the user completes
+        the provider's consent screen, not by this call.
       requestBody:
         required: true
         content:
@@ -3196,7 +3256,7 @@ paths:
       - name: kind
         in: path
         required: true
-        schema: { type: string, enum: [gdrive, sharepoint] }
+        schema: { type: string, enum: [gdrive, sharepoint, slack, outlook, teams, gmail] }
     get:
       operationId: completeConnectorOAuth
       tags: [connectors]
@@ -3910,6 +3970,146 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/prospecting/sweeps:
+    get:
+      operationId: listProspectingSweeps
+      tags: [prospecting]
+      summary: List an organization's sweeps, newest first
+      description: Requires prospecting.read, prospecting.manage, or organization.manage.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50 }
+        - name: offset
+          in: query
+          schema: { type: integer, default: 0 }
+      responses:
+        "200":
+          description: Sweep list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sweeps:
+                    type: array
+                    items: { $ref: "#/components/schemas/Sweep" }
+                  total: { type: integer }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      operationId: sweepProspectingArea
+      tags: [prospecting]
+      summary: Start a new business-discovery sweep, or continue an existing one
+      description: >-
+        Requires prospecting.manage — spends the organization's own Google
+        Places budget (see prospecting.read/prospecting.manage and the
+        organization's ProspectingSettings.daily_cap). Pass sweep_id to
+        continue an already-started sweep from where it left off — when set,
+        every other field is ignored and the sweep's own stored values are
+        used instead.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SweepAreaInput" }
+      responses:
+        "200":
+          description: The sweep's current state after this call
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Sweep" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/prospecting/sweeps/{sweepID}/businesses:
+    parameters:
+      - name: sweepID
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      operationId: listProspectingBusinesses
+      tags: [prospecting]
+      summary: List one sweep's discovered businesses
+      description: Requires prospecting.read or prospecting.manage.
+      parameters:
+        - name: min_score
+          in: query
+          schema: { type: integer }
+          description: Minimum reachability_score (0-100).
+        - name: has_phone
+          in: query
+          schema: { type: boolean }
+        - name: sector
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer }
+        - name: offset
+          in: query
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Business list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  businesses:
+                    type: array
+                    items: { $ref: "#/components/schemas/Business" }
+                  total: { type: integer }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/prospecting/settings:
+    get:
+      operationId: getProspectingSettings
+      tags: [prospecting]
+      summary: Get an organization's Prospecting settings
+      description: >-
+        Requires prospecting.read, prospecting.manage, or
+        organization.manage. Strict BYOK — there is no platform-default
+        Places API key, unlike embedder settings.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: Prospecting settings
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProspectingSettings" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      operationId: setProspectingSettings
+      tags: [prospecting]
+      summary: Create or update an organization's Prospecting settings
+      description: >-
+        Requires prospecting.manage or organization.manage. api_key is
+        required on first creation; omit on update to keep the existing key
+        unchanged (there is no keyless provider, unlike an embedder's
+        platform-default fallback).
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProspectingSettingsInput" }
+      responses:
+        "200":
+          description: Saved settings
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProspectingSettings" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
 components:
   securitySchemes:
@@ -5123,7 +5323,7 @@ components:
         url: { type: string, description: Only meaningful for server_type=http/sse/websocket. }
         timeout_secs: { type: integer }
         icon: { type: string }
-        connector_kind: { type: string, enum: ["", gdrive, sharepoint], description: "When set, this server's headers are personalized per caller at resolve time - see ResolvedMCPServerConfig.connected." }
+        connector_kind: { type: string, enum: ["", gdrive, sharepoint, slack, outlook, teams, gmail], description: "When set, this server's headers are personalized per caller at resolve time - see ResolvedMCPServerConfig.connected." }
 
     ResolvedMCPServerConfig:
       type: object
@@ -5142,7 +5342,7 @@ components:
         headers: { type: object, additionalProperties: { type: string }, description: "May include an Authorization: Bearer entry personalized for the calling principal when connector_kind is set - see connected." }
         timeout_secs: { type: integer }
         icon: { type: string }
-        connector_kind: { type: string, enum: ["", gdrive, sharepoint] }
+        connector_kind: { type: string, enum: ["", gdrive, sharepoint, slack, outlook, teams, gmail] }
         connected: { type: boolean, description: "Always true when connector_kind is empty. When connector_kind is set, true only if the calling principal has their own connected agent_action ConnectorAccount for that kind - false means this server was returned but has no Bearer header injected (the calling employee hasn't connected their own account yet)." }
 
     MCPServerConfigInput:
@@ -5166,7 +5366,7 @@ components:
           description: Encrypted at rest. Optional on create.
         timeout_secs: { type: integer, default: 30 }
         icon: { type: string }
-        connector_kind: { type: string, enum: ["", gdrive, sharepoint], description: "See MCPServerConfig.connector_kind. Empty (default) means static config only." }
+        connector_kind: { type: string, enum: ["", gdrive, sharepoint, slack, outlook, teams, gmail], description: "See MCPServerConfig.connector_kind. Empty (default) means static config only." }
 
     # Distinct from MCPServerConfigInput: the update handler's request
     # struct has neither organization_id nor name (an existing config's
@@ -5190,7 +5390,7 @@ components:
           description: Omit to keep the existing stored headers unchanged.
         timeout_secs: { type: integer }
         icon: { type: string }
-        connector_kind: { type: string, enum: ["", gdrive, sharepoint] }
+        connector_kind: { type: string, enum: ["", gdrive, sharepoint, slack, outlook, teams, gmail] }
 
     Corpus:
       type: object
@@ -5241,7 +5441,7 @@ components:
         id: { type: string }
         organization_id: { type: string }
         corpus_id: { type: string, description: "Set only for a knowledge_sync-purposed account - empty for agent_action." }
-        kind: { type: string, enum: [s3, gdrive, sharepoint] }
+        kind: { type: string, enum: [s3, gdrive, sharepoint, slack, outlook, teams, gmail] }
         purpose: { type: string, enum: [knowledge_sync, agent_action], description: "knowledge_sync: admin-run, feeds a corpus. agent_action: self-service, one employee's own account for their own future MCP-backed agent actions - see connectors' package doc." }
         display_name: { type: string }
         external_account_id: { type: string }
@@ -5291,7 +5491,7 @@ components:
       type: object
       description: The client secret is never returned, only whether one is configured.
       properties:
-        kind: { type: string, enum: [gdrive, sharepoint] }
+        kind: { type: string, enum: [gdrive, sharepoint, slack, outlook, teams, gmail] }
         client_id: { type: string }
         configured: { type: boolean }
         updated_at: { type: string, format: date-time }
@@ -5551,3 +5751,94 @@ components:
         configuration:
           type: object
           additionalProperties: { type: string }
+
+    GeoPoint:
+      type: object
+      properties:
+        lat: { type: number }
+        lng: { type: number }
+
+    Sweep:
+      type: object
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        created_by_user_id: { type: string }
+        country: { type: string }
+        area_query: { type: string }
+        area_label: { type: string }
+        center: { $ref: "#/components/schemas/GeoPoint" }
+        radius_km: { type: number }
+        sectors: { type: array, items: { type: string } }
+        next_unit_index: { type: integer, description: "Progress cursor - how many grid tiles/sectors have been swept so far." }
+        total_units: { type: integer, description: "Total grid tiles × sectors this sweep covers." }
+        status: { type: string, enum: [running, partial, completed, failed], description: "running: freshly created, before its first call completes. partial: some tiles swept, more remain (or the daily cap was hit) - continue via sweep_id. completed: every tile swept." }
+        businesses_found: { type: integer }
+        real_places_calls_used: { type: integer, description: "Live Google Places API calls this sweep has spent so far, counted against the organization's daily_cap." }
+        last_error: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        completed_at: { type: string, format: date-time, nullable: true }
+
+    SweepAreaInput:
+      type: object
+      description: >-
+        Set sweep_id alone to continue an existing sweep - every other
+        field is then ignored. Omit sweep_id to start a new one, in which
+        case organization_id/area/country are required.
+      properties:
+        sweep_id: { type: string, description: "Set to continue an existing sweep instead of starting a new one." }
+        organization_id: { type: string }
+        area: { type: string, description: "Free-text area query, e.g. \"Lyon, France\" - geocoded server-side." }
+        country: { type: string }
+        sectors: { type: array, items: { type: string }, description: "Business categories to search, e.g. [\"restaurant\", \"plumber\"]." }
+        radius_km: { type: number }
+        max_tiles: { type: integer, description: "Caps how many grid tiles this single call processes - the sweep can be continued afterward via sweep_id." }
+      required: [organization_id, area, country]
+
+    Executive:
+      type: object
+      properties:
+        name: { type: string }
+        role: { type: string }
+
+    Business:
+      type: object
+      properties:
+        id: { type: string }
+        sweep_id: { type: string }
+        place_id: { type: string }
+        sector: { type: string }
+        name: { type: string }
+        formatted_address: { type: string }
+        postal_code: { type: string }
+        city: { type: string }
+        location: { $ref: "#/components/schemas/GeoPoint" }
+        phone: { type: string }
+        website: { type: string }
+        rating: { type: number }
+        user_rating_count: { type: integer }
+        business_status: { type: string }
+        opening_hours_json: { type: string, description: "Raw JSON as returned by Google Places, not re-parsed here." }
+        siren: { type: string, description: "French company registry identifier, set only when enrichment matched a company." }
+        company_name: { type: string }
+        executives: { type: array, items: { $ref: "#/components/schemas/Executive" } }
+        match_confidence: { type: number, description: "0-1 confidence the registry enrichment match is correct." }
+        reachability_score: { type: integer, description: "0-100 composite score (has phone/website, rating, matched registry data, etc.)." }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    ProspectingSettings:
+      type: object
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        daily_cap: { type: integer, description: "Max real Google Places API calls per day, across all this org's sweeps." }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    ProspectingSettingsInput:
+      type: object
+      properties:
+        api_key: { type: string, description: "Google Places API key. Required on first creation; omit on update to keep the existing key unchanged." }
+        daily_cap: { type: integer }
