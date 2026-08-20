@@ -10,6 +10,7 @@ import (
 	"context"
 
 	sdkrag "github.com/KPO-Tech/seshat/pkg/rag"
+	sdkstorage "github.com/KPO-Tech/seshat/pkg/storage"
 
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/apperr"
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
@@ -31,8 +32,9 @@ type RAGResolver interface {
 type Service struct {
 	db         *sdb.DB
 	iam        *iam.Service
-	rag        RAGResolver // nil until SetRAGResolver is called
-	doclingURL string      // empty until SetDoclingURL is called
+	rag        RAGResolver              // nil until SetRAGResolver is called
+	doclingURL string                   // empty until SetDoclingURL is called
+	artifacts  sdkstorage.ArtifactStore // nil until SetArtifactStore is called
 }
 
 func New(database *sdb.DB, iamService *iam.Service) *Service {
@@ -54,6 +56,19 @@ func (s *Service) SetRAGResolver(r RAGResolver) {
 // interface. Empty disables the tool, same as leaving it unset.
 func (s *Service) SetDoclingURL(url string) {
 	s.doclingURL = url
+}
+
+// SetArtifactStore backs cloud-targeted job execution's SDK client file I/O
+// (bash/file tools writing artifacts) with a real store instead of
+// ClientConfig's own per-process local-disk default — same shared,
+// not-a-secret infrastructure reasoning as SetDoclingURL, not per-tenant
+// like the RAG resolver: every organization's blobs share this one store,
+// namespaced by key prefix (mirrors knowledge.Service's own artifacts field,
+// which is typically the very same store — see app.New). Called once at
+// app startup, after both services exist. Nil (the default) leaves cloud
+// jobs on ClientConfig's own local-disk fallback.
+func (s *Service) SetArtifactStore(store sdkstorage.ArtifactStore) {
+	s.artifacts = store
 }
 
 // DoclingStatus reports whether this server has a docling-serve instance

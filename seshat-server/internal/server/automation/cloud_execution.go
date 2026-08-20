@@ -125,6 +125,7 @@ func (s *Service) executeCloudRun(ctx context.Context, runID string) error {
 			MaxTokens:      cloudMaxTokens,
 			RAGService:     ragService,
 			DoclingURL:     s.doclingURL,
+			ArtifactStore:  s.artifacts,
 			// See jobWorkflow's doc comment above — bash is reachable from
 			// this executor, so it must never run unconfined on this shared
 			// host.

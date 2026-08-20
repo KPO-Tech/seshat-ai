@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	sdkrag "github.com/KPO-Tech/seshat/pkg/rag"
+	sdkstorage "github.com/KPO-Tech/seshat/pkg/storage"
 )
 
 // fakeRAGResolver lets tests observe how executeCloudRun consults the
@@ -89,5 +90,21 @@ func TestSetDoclingURLWiresTheURLIn(t *testing.T) {
 	env.automation.SetDoclingURL("http://docling:5001")
 	if env.automation.doclingURL != "http://docling:5001" {
 		t.Fatalf("expected SetDoclingURL to set the URL, got %q", env.automation.doclingURL)
+	}
+}
+
+func TestSetArtifactStoreWiresItIn(t *testing.T) {
+	env := newTestEnv(t)
+	if env.automation.artifacts != nil {
+		t.Fatal("expected a fresh Service to have no ArtifactStore until SetArtifactStore is called")
+	}
+
+	store, err := sdkstorage.NewArtifactStoreFromConfig(sdkstorage.Config{Provider: sdkstorage.ProviderLocal, LocalPath: t.TempDir()})
+	if err != nil {
+		t.Fatalf("open artifact store: %v", err)
+	}
+	env.automation.SetArtifactStore(store)
+	if env.automation.artifacts == nil {
+		t.Fatal("expected SetArtifactStore to set the store")
 	}
 }
