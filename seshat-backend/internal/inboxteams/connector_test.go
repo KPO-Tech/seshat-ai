@@ -3,9 +3,9 @@ package inboxteams
 import (
 	"testing"
 
-	coremsgraph "github.com/EngineerProjects/seshat-ai/core/msgraph"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/connector"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
+	coremsgraph "github.com/EngineerProjects/seshat-ai/seshat-core/msgraph"
 )
 
 func TestConnector_ChannelKindAndCapabilities(t *testing.T) {

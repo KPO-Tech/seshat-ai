@@ -14,9 +14,9 @@ import (
 
 	"golang.org/x/oauth2"
 
-	coremsgraph "github.com/EngineerProjects/seshat-ai/core/msgraph"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/connector"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
+	coremsgraph "github.com/EngineerProjects/seshat-ai/seshat-core/msgraph"
 )
 
 type Connector struct {

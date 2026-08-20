@@ -19,7 +19,7 @@ import (
 	"context"
 	"time"
 
-	coreconnectors "github.com/EngineerProjects/seshat-ai/core/connectors"
+	coreconnectors "github.com/EngineerProjects/seshat-ai/seshat-core/connectors"
 )
 
 // Kind identifies a connector implementation, e.g. "gmail", "whatsapp",

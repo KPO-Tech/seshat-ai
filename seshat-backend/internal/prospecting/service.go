@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	prospectingcore "github.com/EngineerProjects/seshat-ai/core/prospecting"
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
+	prospectingcore "github.com/EngineerProjects/seshat-ai/seshat-core/prospecting"
 )
 
 // Per-call sizing - bounded so one tool invocation never turns into an

@@ -13,7 +13,7 @@ import (
 	"golang.org/x/oauth2"
 	"google.golang.org/api/option"
 
-	coregmail "github.com/EngineerProjects/seshat-ai/core/gmail"
+	coregmail "github.com/EngineerProjects/seshat-ai/seshat-core/gmail"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/mcpbridge"
 )
 

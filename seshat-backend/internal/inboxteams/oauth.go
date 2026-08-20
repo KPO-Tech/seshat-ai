@@ -3,8 +3,8 @@ package inboxteams
 import (
 	"golang.org/x/oauth2"
 
-	coremsgraph "github.com/EngineerProjects/seshat-ai/core/msgraph"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/microsoftoauth"
+	coremsgraph "github.com/EngineerProjects/seshat-ai/seshat-core/msgraph"
 )
 
 // Scopes requested from Microsoft - 1:1/group chats only for v1, see

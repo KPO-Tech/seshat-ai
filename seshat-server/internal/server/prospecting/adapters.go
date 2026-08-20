@@ -9,7 +9,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
-	prospectingcore "github.com/EngineerProjects/seshat-ai/core/prospecting"
+	prospectingcore "github.com/EngineerProjects/seshat-ai/seshat-core/prospecting"
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 )
 

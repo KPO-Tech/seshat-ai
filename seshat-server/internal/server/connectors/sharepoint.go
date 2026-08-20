@@ -14,7 +14,7 @@ import (
 
 	"golang.org/x/oauth2"
 
-	coreconnectors "github.com/EngineerProjects/seshat-ai/core/connectors"
+	coreconnectors "github.com/EngineerProjects/seshat-ai/seshat-core/connectors"
 )
 
 const sharepointKind connectorKind = "sharepoint"

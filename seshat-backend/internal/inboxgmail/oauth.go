@@ -3,8 +3,8 @@ package inboxgmail
 import (
 	"golang.org/x/oauth2"
 
-	coregmail "github.com/EngineerProjects/seshat-ai/core/gmail"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/googleoauth"
+	coregmail "github.com/EngineerProjects/seshat-ai/seshat-core/gmail"
 )
 
 // Scopes requested from Google - re-exported from core/gmail so there's

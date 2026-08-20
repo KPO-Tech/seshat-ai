@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	coreconnectors "github.com/EngineerProjects/seshat-ai/core/connectors"
+	coreconnectors "github.com/EngineerProjects/seshat-ai/seshat-core/connectors"
 )
 
 // connectorKind identifies a connector implementation - "s3", "gdrive", or

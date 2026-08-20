@@ -13,7 +13,7 @@ import (
 
 	"golang.org/x/oauth2"
 
-	coremsgraph "github.com/EngineerProjects/seshat-ai/core/msgraph"
+	coremsgraph "github.com/EngineerProjects/seshat-ai/seshat-core/msgraph"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/mcpbridge"
 )
 

@@ -3,8 +3,8 @@ package knowledgegdrive
 import (
 	"golang.org/x/oauth2"
 
-	coreconnectors "github.com/EngineerProjects/seshat-ai/core/connectors"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/googleoauth"
+	coreconnectors "github.com/EngineerProjects/seshat-ai/seshat-core/connectors"
 )
 
 // Scopes requested from Google - read-only Drive access plus the account's

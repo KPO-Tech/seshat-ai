@@ -7,9 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	prospectingcore "github.com/EngineerProjects/seshat-ai/core/prospecting"
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/prospecting"
+	prospectingcore "github.com/EngineerProjects/seshat-ai/seshat-core/prospecting"
 )
 
 func testPrincipal() *backendauth.Principal {

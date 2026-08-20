@@ -3,8 +3,8 @@ package inboxoutlook
 import (
 	"golang.org/x/oauth2"
 
-	coremsgraph "github.com/EngineerProjects/seshat-ai/core/msgraph"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/microsoftoauth"
+	coremsgraph "github.com/EngineerProjects/seshat-ai/seshat-core/msgraph"
 )
 
 // Scopes requested from Microsoft - write-capable (Mail.Send), unlike

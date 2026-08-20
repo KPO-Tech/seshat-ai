@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	prospectingcore "github.com/EngineerProjects/seshat-ai/core/prospecting"
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
+	prospectingcore "github.com/EngineerProjects/seshat-ai/seshat-core/prospecting"
 )
 
 // stubRoundTripper intercepts requests by host and serves them from an

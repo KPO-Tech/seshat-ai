@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	prospectingcore "github.com/EngineerProjects/seshat-ai/core/prospecting"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
+	prospectingcore "github.com/EngineerProjects/seshat-ai/seshat-core/prospecting"
 )
 
 // cacheStoreAdapter satisfies prospectingcore.Cache on top of

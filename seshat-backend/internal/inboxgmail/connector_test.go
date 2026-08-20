@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	coregmail "github.com/EngineerProjects/seshat-ai/core/gmail"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/connector"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
+	coregmail "github.com/EngineerProjects/seshat-ai/seshat-core/gmail"
 )
 
 func TestConnector_ChannelKindAndCapabilities(t *testing.T) {

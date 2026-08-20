@@ -11,7 +11,7 @@ package connectors
 import (
 	"context"
 
-	coreconnectors "github.com/EngineerProjects/seshat-ai/core/connectors"
+	coreconnectors "github.com/EngineerProjects/seshat-ai/seshat-core/connectors"
 )
 
 const s3Kind connectorKind = "s3"

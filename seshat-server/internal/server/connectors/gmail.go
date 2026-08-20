@@ -1,6 +1,6 @@
 package connectors
 
-import coregmail "github.com/EngineerProjects/seshat-ai/core/gmail"
+import coregmail "github.com/EngineerProjects/seshat-ai/seshat-core/gmail"
 
 // gmailKind is agent_action-only, same reasoning as outlook.go/slack.go:
 // Gmail has no Discover/Sync in this package, it never implements

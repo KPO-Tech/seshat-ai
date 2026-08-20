@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
-	prospectingcore "github.com/EngineerProjects/seshat-ai/core/prospecting"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/http"
+	prospectingcore "github.com/EngineerProjects/seshat-ai/seshat-core/prospecting"
 )
 
 // ─── Wire DTOs ──────────────────────────────────────────────────────────────

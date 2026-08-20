@@ -3,7 +3,7 @@
 // Sweep lifecycle and storage, delegating the actual algorithm/external-API
 // work (geocoding, grid tiling, the Google Places client, French
 // company-registry enrichment, reachability scoring) to the tenant-agnostic
-// sibling module github.com/EngineerProjects/seshat-ai/core/prospecting —
+// sibling module github.com/EngineerProjects/seshat-ai/seshat-core/prospecting —
 // see that module's own doc comment for why it's a separate package.
 //
 // Unlike the local version, ownership here is by organization, not by
@@ -25,7 +25,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
-	prospectingcore "github.com/EngineerProjects/seshat-ai/core/prospecting"
+	prospectingcore "github.com/EngineerProjects/seshat-ai/seshat-core/prospecting"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/apperr"
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"

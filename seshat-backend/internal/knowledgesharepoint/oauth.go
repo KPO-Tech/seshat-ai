@@ -3,8 +3,8 @@ package knowledgesharepoint
 import (
 	"golang.org/x/oauth2"
 
-	coreconnectors "github.com/EngineerProjects/seshat-ai/core/connectors"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/microsoftoauth"
+	coreconnectors "github.com/EngineerProjects/seshat-ai/seshat-core/connectors"
 )
 
 // Scopes requested from Microsoft - read-only Sites/Files access plus

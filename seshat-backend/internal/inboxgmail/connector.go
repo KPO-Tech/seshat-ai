@@ -14,9 +14,9 @@ import (
 
 	"golang.org/x/oauth2"
 
-	coregmail "github.com/EngineerProjects/seshat-ai/core/gmail"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/connector"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
+	coregmail "github.com/EngineerProjects/seshat-ai/seshat-core/gmail"
 )
 
 type Connector struct {

@@ -5,7 +5,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	coremsgraph "github.com/EngineerProjects/seshat-ai/core/msgraph"
+	coremsgraph "github.com/EngineerProjects/seshat-ai/seshat-core/msgraph"
 )
 
 type listOutlookMessagesInput struct{}

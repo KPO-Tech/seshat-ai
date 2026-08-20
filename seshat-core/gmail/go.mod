@@ -1,4 +1,4 @@
-module github.com/EngineerProjects/seshat-ai/core/gmail
+module github.com/EngineerProjects/seshat-ai/seshat-core/gmail
 
 go 1.26.6
 
