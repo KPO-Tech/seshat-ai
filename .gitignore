@@ -22,7 +22,7 @@ Thumbs.db
 .claude/
 .gemini/
 private/
-helps/
+docs/helps/
 graphify-out/
 
 # Generic local artifacts
