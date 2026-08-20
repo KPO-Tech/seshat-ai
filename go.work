@@ -1,7 +1,7 @@
 go 1.26.6
 
 use (
-	./prospecting-core
+	./core/prospecting
 	./seshat-backend
 	./seshat-server
 )

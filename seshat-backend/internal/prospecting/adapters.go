@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	prospectingcore "github.com/EngineerProjects/seshat-ai/prospecting-core"
+	prospectingcore "github.com/EngineerProjects/seshat-ai/core/prospecting"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 )
 

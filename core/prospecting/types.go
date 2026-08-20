@@ -17,8 +17,8 @@ package prospectingcore
 
 // GeoPoint is a plain lat/lng pair.
 type GeoPoint struct {
-	Lat float64
-	Lng float64
+	Lat float64 `json:"lat"`
+	Lng float64 `json:"lng"`
 }
 
 // Executive is one named company officer, as returned by the French company
@@ -32,23 +32,23 @@ type Executive struct {
 // an opaque foreign key string, not a tenant identifier; ownership of the
 // sweep it belongs to is tracked by the caller, not here.
 type Business struct {
-	SweepID           string
-	PlaceID           string
-	Sector            string
-	Name              string
-	FormattedAddress  string
-	PostalCode        string
-	City              string
-	Location          GeoPoint
-	Phone             string
-	Website           string
-	Rating            float64
-	UserRatingCount   int
-	BusinessStatus    string
-	OpeningHoursJSON  string
-	SIREN             string
-	CompanyName       string
-	Executives        []Executive
-	MatchConfidence   float64
-	ReachabilityScore int
+	SweepID           string      `json:"sweep_id"`
+	PlaceID           string      `json:"place_id"`
+	Sector            string      `json:"sector"`
+	Name              string      `json:"name"`
+	FormattedAddress  string      `json:"formatted_address"`
+	PostalCode        string      `json:"postal_code"`
+	City              string      `json:"city"`
+	Location          GeoPoint    `json:"location"`
+	Phone             string      `json:"phone"`
+	Website           string      `json:"website"`
+	Rating            float64     `json:"rating"`
+	UserRatingCount   int         `json:"user_rating_count"`
+	BusinessStatus    string      `json:"business_status"`
+	OpeningHoursJSON  string      `json:"opening_hours_json"`
+	SIREN             string      `json:"siren"`
+	CompanyName       string      `json:"company_name"`
+	Executives        []Executive `json:"executives"`
+	MatchConfidence   float64     `json:"match_confidence"`
+	ReachabilityScore int         `json:"reachability_score"`
 }

@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	prospectingcore "github.com/EngineerProjects/seshat-ai/prospecting-core"
+	prospectingcore "github.com/EngineerProjects/seshat-ai/core/prospecting"
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/prospecting"
 )

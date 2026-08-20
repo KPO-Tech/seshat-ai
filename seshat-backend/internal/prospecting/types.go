@@ -4,7 +4,7 @@
 // delegates the actual algorithm/external-API work (geocoding, grid tiling,
 // the Google Places client, French company-registry enrichment,
 // reachability scoring, name-similarity matching) to the shared
-// github.com/EngineerProjects/seshat-ai/prospecting-core module - see that
+// github.com/EngineerProjects/seshat-ai/core/prospecting module - see that
 // module's own doc comment for why it's a separate sibling package rather
 // than living here or in the seshat runtime. See internal/prospectingtool
 // for the agent-facing tools built on top of this package.
@@ -13,7 +13,7 @@ package prospecting
 import (
 	"time"
 
-	prospectingcore "github.com/EngineerProjects/seshat-ai/prospecting-core"
+	prospectingcore "github.com/EngineerProjects/seshat-ai/core/prospecting"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 )
 
