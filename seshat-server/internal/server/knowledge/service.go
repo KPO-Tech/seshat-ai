@@ -156,6 +156,9 @@ type CorpusFile struct {
 	ChunkCount  int        `json:"chunk_count"`
 	IngestedAt  *time.Time `json:"ingested_at,omitempty"`
 	CreatedAt   time.Time  `json:"created_at"`
+	// Source is "upload" or "connector" - see ConnectorAccountID.
+	Source             string  `json:"source"`
+	ConnectorAccountID *string `json:"connector_account_id,omitempty"`
 }
 
 // IngestionJob is one queued/processed ingestion attempt for a CorpusFile.
@@ -431,16 +434,22 @@ func toCorpus(r sdb.Corpus) Corpus {
 }
 
 func toCorpusFile(r sdb.CorpusFile) CorpusFile {
+	source := "upload"
+	if r.ConnectorAccountID != nil {
+		source = "connector"
+	}
 	return CorpusFile{
-		ID:          r.ID,
-		CorpusID:    r.CorpusID,
-		Filename:    r.Filename,
-		ContentType: r.ContentType,
-		Size:        r.Size,
-		Status:      r.Status,
-		ChunkCount:  r.ChunkCount,
-		IngestedAt:  r.IngestedAt,
-		CreatedAt:   r.CreatedAt,
+		ID:                 r.ID,
+		CorpusID:           r.CorpusID,
+		Filename:           r.Filename,
+		ContentType:        r.ContentType,
+		Size:               r.Size,
+		Status:             r.Status,
+		ChunkCount:         r.ChunkCount,
+		IngestedAt:         r.IngestedAt,
+		CreatedAt:          r.CreatedAt,
+		Source:             source,
+		ConnectorAccountID: r.ConnectorAccountID,
 	}
 }
 

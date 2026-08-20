@@ -12,6 +12,7 @@ import (
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/knowledge"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/mcpregistry"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/websearchsettings"
 )
 
@@ -19,13 +20,15 @@ type testEnv struct {
 	db             *sdb.DB
 	chat           *Service
 	iam            *iam.Service
+	mcpRegistry    *mcpregistry.Service
 	adminPrincipal *iam.Principal
 	orgID          string
 }
 
 // newTestEnv bootstraps a fresh in-memory database plus every dependency
-// workspacechat.Service needs (iam, automation, websearchsettings, knowledge)
-// — mirroring automation's and knowledge's own newTestEnv shape. No provider
+// workspacechat.Service needs (iam, automation, websearchsettings, knowledge,
+// mcpregistry) — mirroring automation's and knowledge's own newTestEnv
+// shape. No provider
 // credentials are configured by default, so getOrCreateSession's call into
 // automation.ResolveProviderSetting fails deterministically (same "not
 // configured" path automation's own provider_settings_test.go exercises) -
@@ -56,8 +59,9 @@ func newTestEnv(t *testing.T) testEnv {
 		t.Fatalf("open artifact store: %v", err)
 	}
 	knowledgeService := knowledge.New(database, iamService, artifacts, sdkvector.NewMemoryStore())
+	mcpRegistryService := mcpregistry.New(database, iamService)
 
-	chatService := New(database, iamService, automationService, webSearchService, knowledgeService, "")
+	chatService := New(database, iamService, automationService, webSearchService, knowledgeService, mcpRegistryService, "")
 
 	boot, err := iamService.Bootstrap(context.Background(), iam.BootstrapParams{
 		Email:            "admin@example.com",
@@ -78,6 +82,7 @@ func newTestEnv(t *testing.T) testEnv {
 		db:             database,
 		chat:           chatService,
 		iam:            iamService,
+		mcpRegistry:    mcpRegistryService,
 		adminPrincipal: principal,
 		orgID:          boot.Organizations[0].ID,
 	}

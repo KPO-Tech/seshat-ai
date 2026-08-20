@@ -159,6 +159,24 @@ func (app *App) routes() http.Handler {
 	mux.Handle("POST /api/v1/knowledge/corpora/{corpusID}/ingestion-jobs/{jobID}/retry", app.authMiddleware(http.HandlerFunc(app.handleCorpusIngestionJobRetry)))
 	mux.Handle("POST /api/v1/knowledge/corpora/{corpusID}/search", app.authMiddleware(http.HandlerFunc(app.handleCorpusSearch)))
 
+	// Connectors — organization-scoped external-account connections (S3
+	// today, Knowledge-purposed) synced fully server-side. Deliberately not
+	// under /knowledge/: a connected account is reusable infrastructure, not
+	// a Knowledge-only concept — see docs/architecture.md's "Example:
+	// Knowledge connectors" and internal/server/connectors' package doc.
+	mux.Handle("GET /api/v1/connectors/accounts", app.authMiddleware(http.HandlerFunc(app.handleConnectorAccounts)))
+	mux.Handle("POST /api/v1/connectors/accounts", app.authMiddleware(http.HandlerFunc(app.handleConnectorAccounts)))
+	mux.Handle("DELETE /api/v1/connectors/accounts/{accountID}", app.authMiddleware(http.HandlerFunc(app.handleConnectorAccountByID)))
+	mux.Handle("POST /api/v1/connectors/accounts/{accountID}/sync", app.authMiddleware(http.HandlerFunc(app.handleConnectorAccountSync)))
+	mux.Handle("GET /api/v1/connectors/accounts/{accountID}/sync-jobs", app.authMiddleware(http.HandlerFunc(app.handleConnectorAccountSyncJobs)))
+	mux.Handle("GET /api/v1/connectors/oauth-apps", app.authMiddleware(http.HandlerFunc(app.handleConnectorOAuthApps)))
+	mux.Handle("PUT /api/v1/connectors/oauth-apps/{kind}", app.authMiddleware(http.HandlerFunc(app.handleConnectorOAuthAppByKind)))
+	mux.Handle("POST /api/v1/connectors/{kind}/oauth/start", app.authMiddleware(http.HandlerFunc(app.handleConnectorOAuthStart)))
+	// Public, unauthenticated: the identity provider's redirect carries no
+	// bearer token — trust comes from the single-use signed state instead,
+	// same as the OIDC login callback above.
+	mux.HandleFunc("GET /api/v1/connectors/{kind}/oauth/callback", app.handleConnectorOAuthCallback)
+
 	// Embedder settings — hybrid org/platform-default embedder used for RAG
 	// ingestion/search (same shape as provider-settings for LLMs, but a
 	// singleton per organization — see knowledge.EmbedderSetting's doc

@@ -205,6 +205,73 @@ multi-user/multi-device organization needs them, not before:
 `seshat-server` must never store thread or message bodies itself — that would be
 the "second copy of the local runtime backend" the rule above forbids.
 
+### Example: Knowledge connectors
+
+Knowledge connectors (S3 today; Google Drive/SharePoint planned) made the
+**opposite** choice from Inbox above, deliberately: `seshat-server` executes
+Discover/Sync fully itself — all in `internal/server/connectors` —
+with no device involved at all, not even for orchestration.
+
+That package holds the account/job orchestration (`service.go`, `worker.go`,
+`runner.go`) *and* one file per connector implementation (`s3.go` today,
+`gdrive.go`/`sharepoint.go` planned) — deliberately not split into a separate
+package per connector, or a generic top-level `connector` interface package:
+nothing outside this domain ever needs to construct or type-switch on a
+connector directly, so the extra package boundaries bought isolation nothing
+else used. The shared contract (`knowledgeConnector` interface,
+`syncAccount`/`syncSecret`/`resourceRef`/`syncItem` shapes) lives in
+`types.go`, unexported — a connector implementation only needs to satisfy the
+interface, not import it from elsewhere.
+
+Why the split is different here: Inbox connectors hold *live, growing,
+per-device state* (thread/message bodies accumulating indefinitely on one
+user's machine) that the rule above exists to keep out of the control plane.
+A Knowledge connector sync is the opposite shape — a read-only pull of
+point-in-time document content that becomes a `CorpusFile`, i.e. exactly the
+kind of organization-scoped record `knowledge` already owns and stores
+server-side for a manual upload. Running Discover/Sync in `seshat-server`
+doesn't duplicate a local backend's job; it's the same `knowledge.Service`
+ingestion pipeline (`UploadFile` and `IngestFromConnector` both end at
+`enqueueIngestionJob`) fed from a second source. This is also what makes an
+org's knowledge base usable with **no desktop app running anywhere** — the
+goal driving this domain, distinct from Inbox's still-open "org-level OAuth
+app + orchestration only" plan above.
+
+`seshat-backend`'s `internal/connector`/`internal/knowledges3` packages are the
+blueprint, ported and adapted (not imported — see the runtime-boundary rule
+below) to be organization-scoped: `syncAccount`/`syncSecret` carry an
+`OrganizationID`/`CorpusID` instead of a `UserID`, and secrets are encrypted
+under the organization's own DEK (`sdb.EncryptSecret`, the same envelope
+encryption `Provider.ClientSecret` already uses) rather than
+`seshat-backend`'s flat AES-GCM. A `ConnectorSyncRunner` (same
+poll-and-backoff `Runner` shape as `knowledge.Runner`) reaps due accounts into
+`ConnectorSyncJob` rows and processes them, so periodic auto-sync needs no
+separate cron.
+
+Google Drive/SharePoint (built) reuse `iam.Provider`'s OAuth pattern
+directly: `ConnectorOAuthApp` (org-scoped `ClientID`/encrypted
+`ClientSecret`, one per `(OrganizationID, Kind)`) and `ConnectorOAuthState`
+(DB-persisted single-use state+PKCE, shaped like `OIDCLoginState`), a fixed
+server-owned callback URL (`{PublicAPIURL}/api/v1/connectors/{kind}/oauth/
+callback`) — a better fit than seshat-backend's shared-global-client +
+in-memory-state pattern, which assumes one desktop user and one shared app
+registration. Unlike seshat-backend's native/desktop OAuth client type
+(loopback redirect, no real client secret for Microsoft), both providers
+here register as confidential "Web application" clients, since the callback
+is always this server's own fixed public URL — PKCE is layered on top of
+both anyway, uniformly, matching `iam`'s own OIDC flow instead of
+special-casing Microsoft's public-client requirement.
+
+`gdrive.go`/`sharepoint.go`/`sharepoint_graph.go` in
+`internal/server/connectors` are the ported Discover/Sync logic (unchanged
+from `seshat-backend`'s `knowledgegdrive`/`knowledgesharepoint`); `oauth.go`
+in the same package owns the app-registration + connect-flow service
+methods (`RegisterOAuthApp`, `BeginConnectorOAuth`, `CompleteConnectorOAuth`).
+`connectorFor` is org-aware (`(ctx, kind, organizationID)`) so it can resolve
+the right org's OAuth app when building a gdrive/sharepoint connector for a
+sync job — s3 ignores the organization ID entirely, since its credentials
+are already embedded in the account itself.
+
 ---
 
 ## Runtime boundary

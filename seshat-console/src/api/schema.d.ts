@@ -1782,6 +1782,179 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/connectors/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List an organization's connector accounts
+         * @description Scoped visibility like every other list endpoint: a caller lacking knowledge.read/knowledge.manage/organization.manage gets an empty list, not a 403.
+         */
+        get: operations["listConnectorAccounts"];
+        put?: never;
+        /**
+         * Connect a new external source
+         * @description Requires knowledge.manage or organization.manage. Only kind "s3" is available today (Google Drive/SharePoint are a fast-follow, see docs/architecture.md's "Example: Knowledge connectors") — an S3-compatible bucket is connected and starts syncing immediately, no OAuth step. Secrets are encrypted at rest and never returned.
+         */
+        post: operations["createConnectorAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/accounts/{accountID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Disconnect an external source
+         * @description Requires knowledge.manage or organization.manage. Removes the connector account and its sync job history — already-ingested corpus files are left in place (detach them individually if that's the intent).
+         */
+        delete: operations["deleteConnectorAccount"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/accounts/{accountID}/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Queue an immediate sync for a connector account
+         * @description Requires knowledge.manage or organization.manage. In addition to the account's own periodic sync_interval_seconds schedule. Returns the already-queued/running job unchanged if one exists.
+         */
+        post: operations["triggerConnectorSync"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/accounts/{accountID}/sync-jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        /** List a connector account's sync job history, newest first */
+        get: operations["listConnectorSyncJobs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/oauth-apps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List an organization's registered connector OAuth apps
+         * @description Scoped visibility like every other list endpoint: a caller lacking knowledge.read/knowledge.manage/organization.manage gets an empty list, not a 403. Client secrets are never returned, only whether one is configured.
+         */
+        get: operations["listConnectorOAuthApps"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/oauth-apps/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "gdrive" | "sharepoint";
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Register or update an organization's OAuth app for gdrive/sharepoint
+         * @description Requires knowledge.manage or organization.manage. client_secret is required the first time an app is registered for this (organization, kind); omit it on a later update to keep the existing one.
+         */
+        put: operations["registerConnectorOAuthApp"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/{kind}/oauth/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "gdrive" | "sharepoint";
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start a "connect an account" OAuth flow for gdrive/sharepoint
+         * @description Requires knowledge.manage or organization.manage, and that the organization has already registered an OAuth app for kind. Returns a URL to open in a new browser tab; the resulting ConnectorAccount is created by the callback once the user completes the provider's consent screen, not by this call.
+         */
+        post: operations["beginConnectorOAuth"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/{kind}/oauth/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "gdrive" | "sharepoint";
+            };
+            cookie?: never;
+        };
+        /**
+         * OAuth redirect target - not called directly by API clients
+         * @description Public, unauthenticated - the identity provider redirects the browser here after consent. Trust comes from the single-use signed state issued by the start endpoint. Returns an HTML page, not JSON.
+         */
+        get: operations["completeConnectorOAuth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/embedder-settings": {
         parameters: {
             query?: never;
@@ -2441,6 +2614,10 @@ export interface components {
             subject_type?: "user" | "group" | "role";
             subject_id?: string;
             permission_codes?: string[];
+            /** @description Optional resource kind this binding is scoped to (currently only "corpus"). Empty means organization-wide. */
+            resource_type?: string;
+            /** @description ID of the specific resource this binding is scoped to. Empty when resource_type is empty. */
+            resource_id?: string;
             /** Format: date-time */
             created_at?: string;
             /** Format: date-time */
@@ -2454,6 +2631,10 @@ export interface components {
             subject_type: "user" | "group" | "role";
             subject_id: string;
             permission_codes: string[];
+            /** @description Optional resource kind to scope this binding to (currently only "corpus"). Omit for an organization-wide binding. */
+            resource_type?: string;
+            /** @description ID of the specific resource to scope this binding to. Required when resource_type is set. */
+            resource_id?: string;
         };
         PolicyBindingUpdateInput: {
             name: string;
@@ -2461,6 +2642,10 @@ export interface components {
             /** @enum {string} */
             subject_type: "user" | "group" | "role";
             subject_id: string;
+            /** @description Optional resource kind to scope this binding to (currently only "corpus"). Omit for an organization-wide binding. */
+            resource_type?: string;
+            /** @description ID of the specific resource to scope this binding to. Required when resource_type is set. */
+            resource_id?: string;
             permission_codes: string[];
         };
         AuditEvent: {
@@ -3197,6 +3382,92 @@ export interface components {
             ingested_at?: string;
             /** Format: date-time */
             created_at?: string;
+            /**
+             * @description "connector" for a file pulled in by a Knowledge connector sync, "upload" for a manually uploaded one.
+             * @enum {string}
+             */
+            source?: "upload" | "connector";
+            /** @description Set only when source is "connector". */
+            connector_account_id?: string;
+        };
+        ConnectorAccount: {
+            id?: string;
+            organization_id?: string;
+            /** @description Set for a Knowledge-purposed connector account (every one today) - a connected account itself is reusable infrastructure, not Knowledge-only. */
+            corpus_id?: string;
+            /** @enum {string} */
+            kind?: "s3" | "gdrive" | "sharepoint";
+            display_name?: string;
+            external_account_id?: string;
+            /** @enum {string} */
+            status?: "connected" | "error" | "disconnected";
+            sync_interval_seconds?: number;
+            /** Format: date-time */
+            last_synced_at?: string;
+            last_error?: string;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        /** @description Only kind "s3" is supported today; bucket/region/endpoint/prefix and access_key_id/secret_access_key apply to it. Region defaults to "us-east-1" if omitted. */
+        ConnectorAccountInput: {
+            organization_id: string;
+            corpus_id: string;
+            /**
+             * @description Defaults to "s3".
+             * @enum {string}
+             */
+            kind?: "s3";
+            display_name: string;
+            bucket: string;
+            region?: string;
+            endpoint: string;
+            prefix?: string;
+            access_key_id: string;
+            secret_access_key: string;
+            /** @description Defaults to 3600 (1 hour). */
+            sync_interval_seconds?: number;
+        };
+        ConnectorSyncJob: {
+            id?: string;
+            connector_account_id?: string;
+            corpus_id?: string;
+            /** @enum {string} */
+            status?: "queued" | "running" | "completed" | "failed";
+            attempt_count?: number;
+            max_attempts?: number;
+            items_synced?: number;
+            last_error?: string;
+            /** Format: date-time */
+            started_at?: string;
+            /** Format: date-time */
+            completed_at?: string;
+            /** Format: date-time */
+            created_at?: string;
+        };
+        /** @description The client secret is never returned, only whether one is configured. */
+        ConnectorOAuthApp: {
+            /** @enum {string} */
+            kind?: "gdrive" | "sharepoint";
+            client_id?: string;
+            configured?: boolean;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        ConnectorOAuthAppInput: {
+            organization_id: string;
+            client_id: string;
+            /** @description Required the first time an app is registered for this (organization, kind); omit on a later update to keep the existing one. */
+            client_secret?: string;
+        };
+        BeginConnectorOAuthInput: {
+            organization_id: string;
+            corpus_id: string;
+            /** @description Optional - defaults to the connected account's email/UPN once the flow completes. */
+            display_name?: string;
+            /** @description Defaults to 3600 (1 hour). */
+            sync_interval_seconds?: number;
         };
         IngestionJob: {
             id?: string;
@@ -6905,6 +7176,243 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    listConnectorAccounts: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Connector account list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        connector_accounts?: components["schemas"]["ConnectorAccount"][];
+                        count?: number;
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    createConnectorAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectorAccountInput"];
+            };
+        };
+        responses: {
+            /** @description Connector account created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorAccount"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    deleteConnectorAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    triggerConnectorSync: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sync job (queued or already in flight) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorSyncJob"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listConnectorSyncJobs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sync job list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        sync_jobs?: components["schemas"]["ConnectorSyncJob"][];
+                        count?: number;
+                    };
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listConnectorOAuthApps: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OAuth app list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        oauth_apps?: components["schemas"]["ConnectorOAuthApp"][];
+                        count?: number;
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    registerConnectorOAuthApp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "gdrive" | "sharepoint";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectorOAuthAppInput"];
+            };
+        };
+        responses: {
+            /** @description OAuth app registered/updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorOAuthApp"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    beginConnectorOAuth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "gdrive" | "sharepoint";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BeginConnectorOAuthInput"];
+            };
+        };
+        responses: {
+            /** @description Authorization URL */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        authorization_url?: string;
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    completeConnectorOAuth: {
+        parameters: {
+            query?: {
+                code?: string;
+                state?: string;
+                error?: string;
+            };
+            header?: never;
+            path: {
+                kind: "gdrive" | "sharepoint";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description HTML result page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
         };
     };
     getEmbedderSetting: {

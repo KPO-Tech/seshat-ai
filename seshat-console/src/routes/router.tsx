@@ -52,6 +52,7 @@ const AuditEventsPage = lazyPage(() => import('@/pages/auditEvents/AuditEventsPa
 const CorporaPage = lazyPage(() => import('@/pages/knowledge/CorporaPage').then((module) => ({ default: module.CorporaPage })))
 const CorpusDetailPage = lazyPage(() => import('@/pages/knowledge/CorpusDetailPage').then((module) => ({ default: module.CorpusDetailPage })))
 const EmbedderSettingsPage = lazyPage(() => import('@/pages/knowledge/EmbedderSettingsPage').then((module) => ({ default: module.EmbedderSettingsPage })))
+const ConnectorsPage = lazyPage(() => import('@/pages/knowledge/ConnectorsPage').then((module) => ({ default: module.ConnectorsPage })))
 const WebSearchSettingsPage = lazyPage(() => import('@/pages/webSearch/WebSearchSettingsPage').then((module) => ({ default: module.WebSearchSettingsPage })))
 const OrganizationPreferencesPage = lazyPage(() =>
   import('@/pages/organizationPreferences/OrganizationPreferencesPage').then((module) => ({ default: module.OrganizationPreferencesPage })),
@@ -122,6 +123,7 @@ export const router = createBrowserRouter([
               { path: 'automation/runs', element: renderLazyPage(RunsPage) },
               { path: 'knowledge/corpora', element: renderLazyPage(CorporaPage) },
               { path: 'knowledge/corpora/:corpusId', element: renderLazyPage(CorpusDetailPage) },
+              { path: 'knowledge/connectors', element: renderLazyPage(ConnectorsPage) },
               { path: 'integrations/applications', element: renderLazyPage(ApplicationsPage) },
               { path: 'integrations/providers', element: renderLazyPage(ProvidersPage) },
               { path: 'activity/audit', element: renderLazyPage(AuditEventsPage) },

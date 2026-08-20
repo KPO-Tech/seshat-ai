@@ -334,6 +334,23 @@ export function getSecondaryNavItems(pathname: string, organizationId: string | 
     ]
   }
 
+  if (pathname.startsWith(`/orgs/${organizationId}/knowledge/`)) {
+    return [
+      {
+        key: 'org-knowledge-corpora',
+        label: 'Corpora',
+        path: `/orgs/${organizationId}/knowledge/corpora`,
+        matchPrefix: `/orgs/${organizationId}/knowledge/corpora`,
+      },
+      {
+        key: 'org-knowledge-connectors',
+        label: 'Connectors',
+        path: `/orgs/${organizationId}/knowledge/connectors`,
+        matchPrefix: `/orgs/${organizationId}/knowledge/connectors`,
+      },
+    ]
+  }
+
   if (pathname.startsWith(`/orgs/${organizationId}/integrations/`)) {
     return [
       {

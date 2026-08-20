@@ -12,6 +12,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/agentregistry"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/automation"
 	serverconfig "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/config"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/connectors"
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/knowledge"
@@ -34,6 +35,8 @@ type App struct {
 	Scheduler            *automation.Scheduler
 	Knowledge            *knowledge.Service
 	IngestionRunner      *knowledge.Runner
+	Connectors           *connectors.Service
+	ConnectorSyncRunner  *connectors.Runner
 	Prospecting          *prospecting.Service
 	Preferences          *preferences.Service
 	SkillRegistry        *skillregistry.Service
@@ -77,6 +80,11 @@ func New(cfg serverconfig.Config) (*App, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open artifact storage: %w", err)
 	}
+	// Lets cloud-targeted job execution's SDK client persist file I/O
+	// (bash/file tool artifacts) to the same store knowledge corpus files
+	// use, instead of falling back to ClientConfig's own local-disk default
+	// — see automation.Service.SetArtifactStore's doc comment.
+	automationService.SetArtifactStore(artifactStore)
 	vectorStore, err := sdkvector.NewStore(context.Background(), cfg.Vector)
 	if err != nil {
 		return nil, fmt.Errorf("open vector store: %w", err)
@@ -108,8 +116,20 @@ func New(cfg serverconfig.Config) (*App, error) {
 	// not per-tenant, since docling-serve isn't a secret or credential.
 	automationService.SetDoclingURL(cfg.DoclingURL)
 
+	connectorsService := connectors.New(database, iamService, knowledgeService)
+	// Lets gdrive/sharepoint's OAuth connect flow build the fixed,
+	// server-owned callback URL every registered OAuth app targets — see
+	// connectors.Service.SetPublicAPIURL's doc comment.
+	connectorsService.SetPublicAPIURL(cfg.PublicAPIURL)
+
+	mcpRegistryService := mcpregistry.New(database, iamService)
+	// Lets a ConnectorKind-tagged MCP server resolve with a per-employee
+	// Bearer token bridged in from their own connected account — see
+	// mcpregistry.Service.SetConnectorTokenResolver's doc comment.
+	mcpRegistryService.SetConnectorTokenResolver(connectorsService)
+
 	webSearchService := websearchsettings.New(database, iamService)
-	workspaceChatService := workspacechat.New(database, iamService, automationService, webSearchService, knowledgeService, cfg.DoclingURL)
+	workspaceChatService := workspacechat.New(database, iamService, automationService, webSearchService, knowledgeService, mcpRegistryService, cfg.DoclingURL)
 
 	return &App{
 		DB:                   database,
@@ -118,11 +138,13 @@ func New(cfg serverconfig.Config) (*App, error) {
 		Scheduler:            automation.NewScheduler(automationService, cfg.SchedulerInterval).WithStaleRunTimeout(cfg.StaleRunTimeout),
 		Knowledge:            knowledgeService,
 		IngestionRunner:      knowledge.NewRunner(knowledgeService, knowledge.RunnerConfig{PollInterval: cfg.IngestionPollInterval, MaxPollInterval: cfg.IngestionMaxPollInterval}),
+		Connectors:           connectorsService,
+		ConnectorSyncRunner:  connectors.NewRunner(connectorsService, connectors.RunnerConfig{PollInterval: cfg.IngestionPollInterval, MaxPollInterval: cfg.IngestionMaxPollInterval}),
 		Prospecting:          prospecting.New(database, iamService),
 		Preferences:          preferences.New(database, iamService),
 		SkillRegistry:        skillregistry.New(database, iamService),
 		WebSearchSettings:    webSearchService,
-		MCPRegistry:          mcpregistry.New(database, iamService),
+		MCPRegistry:          mcpRegistryService,
 		Memories:             memories.New(database),
 		LongTermMemory:       longtermmemory.New(database),
 		AgentRegistry:        agentregistry.New(database, iamService),

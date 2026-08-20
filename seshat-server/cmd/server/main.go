@@ -30,6 +30,9 @@ func main() {
 	app.IngestionRunner.Start()
 	defer app.IngestionRunner.Stop()
 
+	app.ConnectorSyncRunner.Start()
+	defer app.ConnectorSyncRunner.Stop()
+
 	app.WorkspaceChatCleanup.Start()
 	defer app.WorkspaceChatCleanup.Stop()
 

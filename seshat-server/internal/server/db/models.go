@@ -416,8 +416,127 @@ type CorpusFile struct {
 	Status          string `gorm:"size:32;not null;index"` // pending | ingested | failed
 	ChunkCount      int    `gorm:"not null;default:0"`
 	IngestedAt      *time.Time
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	// ConnectorAccountID/ExternalResourceID are set only for files pulled in
+	// by a knowledge connector sync (nil/"" for a manual upload) - together
+	// they let a re-sync upsert the same CorpusFile in place instead of
+	// duplicating it. See connectors.Service.IngestFromConnector.
+	ConnectorAccountID *string `gorm:"size:32;index"`
+	ExternalResourceID string  `gorm:"size:1000"`
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+}
+
+// ConnectorAccount is one connected external account (an S3 bucket, a
+// Google Drive account, a SharePoint site) - org-scoped counterpart of
+// seshat-backend's db.ConnectorAccount (per-user there). See
+// docs/architecture.md's "Example: Knowledge connectors" for why this
+// executes fully server-side instead of staying tied to a local device like
+// Inbox connectors.
+//
+// CorpusID is nullable: today every account is Knowledge-purposed (set,
+// synced into that corpus via knowledge.Service.IngestFromConnector), but
+// the connection itself (OAuth grant / bucket credentials) is reusable
+// infrastructure, not a Knowledge-only concept - see internal/server/
+// connectors' package doc for why a future non-Knowledge use (e.g. an
+// agent writing a file into the user's Drive, no corpus involved) likely
+// means an MCP tool consuming this account's credentials, not a new Go
+// interface in that package, and isn't precluded by this schema either way.
+//
+// Purpose distinguishes that future use from today's: "knowledge_sync"
+// (every row today - org-admin-authorized, CorpusID set, polled by the
+// sync scheduler) vs. "agent_action" (schema-ready, not created anywhere
+// yet - a single employee's own OAuth grant, no CorpusID, resolved by
+// CreatedByUserID at MCP-call time instead of by schedule). See
+// connectors' package doc comment for what's still undesigned there.
+type ConnectorAccount struct {
+	ID                    string  `gorm:"primaryKey;size:32"`
+	OrganizationID        string  `gorm:"size:32;not null;index"`
+	CorpusID              *string `gorm:"size:32;index"`
+	CreatedByUserID       string  `gorm:"size:32;not null"`
+	Kind                  string  `gorm:"size:32;not null;index"`                          // "s3" today - see connectorKind
+	Purpose               string  `gorm:"size:32;not null;index;default:'knowledge_sync'"` // "knowledge_sync" | "agent_action" - see doc comment above
+	DisplayName           string  `gorm:"size:255;not null"`
+	ExternalAccountID     string  `gorm:"size:500"`
+	Status                string  `gorm:"size:32;not null;index"` // connected | error | disconnected
+	AccessTokenEncrypted  string  `gorm:"type:text"`              // sdb.EncryptSecret, per-organization DEK
+	RefreshTokenEncrypted string  `gorm:"type:text"`
+	Config                string  `gorm:"type:text"` // connector-specific non-secret JSON config
+	Scope                 string  `gorm:"size:500"`
+	ExpiresAt             *time.Time
+	SyncCursor            string `gorm:"type:text"`
+	SyncIntervalSeconds   int    `gorm:"not null;default:3600"`
+	NextSyncAt            *time.Time
+	LastSyncedAt          *time.Time
+	LastError             string `gorm:"type:text"`
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+}
+
+// ConnectorSyncJob queues one ConnectorAccount sync attempt. Polled via the
+// same atomic-claim idiom as KnowledgeIngestionJob (see
+// connectors.Service.claimNextSyncJob), safe to run on more than
+// one seshat-server process concurrently.
+type ConnectorSyncJob struct {
+	ID                 string `gorm:"primaryKey;size:32"`
+	ConnectorAccountID string `gorm:"size:32;not null;index"`
+	CorpusID           string `gorm:"size:32;not null;index"`
+	OrganizationID     string `gorm:"size:32;not null;index"`
+	Status             string `gorm:"size:32;not null;index"` // queued | running | completed | failed
+	AttemptCount       int    `gorm:"not null;default:0"`
+	MaxAttempts        int    `gorm:"not null;default:3"`
+	ItemsSynced        int    `gorm:"not null;default:0"`
+	LastError          string `gorm:"type:text"`
+	NextRunAt          *time.Time
+	StartedAt          *time.Time
+	CompletedAt        *time.Time
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+}
+
+// ConnectorOAuthApp is one organization's registered OAuth app credentials
+// for an OAuth-based connector kind (gdrive, sharepoint) - the org-scoped
+// counterpart of Provider's ClientID/ClientSecret, but for connector
+// accounts rather than SSO login. One organization can register at most one
+// app per kind (OrganizationID, Kind unique together). A confidential
+// "Web application" client, not the native/desktop client type
+// seshat-backend used - the callback is always this server's own fixed
+// public URL, never a loopback, so a real client secret is expected and
+// stored (see connectors' package doc, "Example: Knowledge connectors").
+type ConnectorOAuthApp struct {
+	ID                    string `gorm:"primaryKey;size:32"`
+	OrganizationID        string `gorm:"size:32;not null;uniqueIndex:idx_connector_oauth_app_org_kind"`
+	Kind                  string `gorm:"size:32;not null;uniqueIndex:idx_connector_oauth_app_org_kind"` // "gdrive" | "sharepoint"
+	ClientID              string `gorm:"size:255;not null"`
+	ClientSecretEncrypted string `gorm:"type:text;not null"` // sdb.EncryptSecret, per-organization DEK
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+}
+
+// ConnectorOAuthState is one in-flight "connect an account" OAuth attempt,
+// created by BeginConnectorOAuth and consumed (deleted) by
+// CompleteConnectorOAuth - single-use, same lifecycle shape as
+// OIDCLoginState (see its doc comment for the hashed-state/plaintext-PKCE-
+// verifier reasoning, identical here). CorpusID/Purpose/DisplayName/
+// SyncIntervalSeconds carry the console form's choices across the redirect
+// round trip so CompleteConnectorOAuth can create the ConnectorAccount with
+// them already set, without a second round trip. CorpusID is nullable like
+// ConnectorAccount.CorpusID - every flow today still sets it (validated at
+// the BeginConnectorOAuth API layer, unchanged), but a future
+// agent_action-purposed connect (see ConnectorAccount's doc comment) won't
+// have one, and this schema doesn't preclude that.
+type ConnectorOAuthState struct {
+	ID                  string  `gorm:"primaryKey;size:32"`
+	OrganizationID      string  `gorm:"size:32;not null;index"`
+	CorpusID            *string `gorm:"size:32"`
+	Kind                string  `gorm:"size:32;not null"`                          // "gdrive" | "sharepoint"
+	Purpose             string  `gorm:"size:32;not null;default:'knowledge_sync'"` // "knowledge_sync" | "agent_action" - see ConnectorAccount's doc comment
+	CreatedByUserID     string  `gorm:"size:32;not null"`
+	StateHash           string  `gorm:"uniqueIndex;size:64;not null"`
+	CodeVerifier        string  `gorm:"size:255;not null"`
+	DisplayName         string  `gorm:"size:255"`
+	SyncIntervalSeconds int     `gorm:"not null;default:3600"`
+	CreatedAt           time.Time
+	ExpiresAt           time.Time
 }
 
 // KnowledgeIngestionJob queues one CorpusFile for chunk+embed+vector-upsert
@@ -718,6 +837,12 @@ type WebSearchOrgPolicy struct {
 // provider settings and web search. No platform tier — an MCP tool shared
 // across the entire platform (not just one org) doesn't have a clear use
 // case today, unlike LLM/web-search provider defaults.
+//
+// One real exception to "execution never happens here" (2026-08-20):
+// workspacechat.Service does execute MCP tool calls, inside seshat-server,
+// as part of an interactive chat session - see mcpregistry.Service.
+// ResolveServerConfigs, whose result now also feeds sdk.ClientConfig.
+// MCPServers there, not just seshat-backend's remote fetch.
 type MCPServerConfig struct {
 	ID                   string `gorm:"primaryKey;size:32"`
 	OrganizationID       string `gorm:"size:32;not null;uniqueIndex:idx_mcp_server_config_org_name;index"`
@@ -732,8 +857,16 @@ type MCPServerConfig struct {
 	EncryptedHeadersJSON string `gorm:"column:encrypted_headers_json;type:text;not null;default:''"`
 	TimeoutSecs          int    `gorm:"not null;default:30"`
 	Icon                 string `gorm:"size:64;not null;default:'🔌'"`
-	CreatedAt            time.Time
-	UpdatedAt            time.Time
+	// ConnectorKind, when non-empty ("gdrive" | "sharepoint"), marks this
+	// server as needing a per-caller Bearer token bridged in from that
+	// person's own agent_action-purposed connectors.ConnectorAccount rather
+	// than relying solely on EncryptedHeadersJSON's static, server-wide
+	// headers - see mcpregistry.Service.ResolveServerConfigs and
+	// connectors.Service.AccessTokenForUser. Empty (the default, and the
+	// only value before 2026-08-20) means static config only, unchanged.
+	ConnectorKind string `gorm:"size:32;not null;default:''"`
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 // UserMemory mirrors seshat-backend's own gUserMemory (internal/db/user_memories.go)

@@ -10,6 +10,7 @@ import (
 
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/apperr"
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/mcpregistry"
 )
 
 func noopEmit(Event) {}
@@ -42,6 +43,54 @@ func TestStreamChatRequiresAllParams(t *testing.T) {
 				t.Fatalf("expected invalid-input error, got %v", err)
 			}
 		})
+	}
+}
+
+// TestResolveMCPServersConvertsResolvedConfigs proves the field mapping
+// from mcpregistry.ResolvedMCPServerConfig to sdk.MCPServerConfig - the
+// piece getOrCreateSession relies on to populate sdk.ClientConfig.MCPServers
+// and to feed sdk.Client.ReloadMCPServers on every message. Tested directly
+// rather than through the full getOrCreateSession/StreamChat path: this
+// test suite's own newTestEnv doc comment already establishes that no
+// provider is configured by default, so getOrCreateSession never reaches
+// sdk.NewClient in any existing test - resolveMCPServers has no such
+// dependency (it only calls mcpRegistry.ResolveServerConfigs), so it's
+// testable in isolation without faking the LLM provider boundary too.
+func TestResolveMCPServersConvertsResolvedConfigs(t *testing.T) {
+	// mcpregistry encrypts Headers under the organization's DEK - see
+	// sdb.EncryptSecret, which needs a master key configured.
+	t.Setenv("SESHAT_SERVER_ENCRYPTION_KEY", "g/t9EsDxTTJSTu6Q+Kne06PBHoGmhH3yAJaEuHmFl9A=")
+	env := newTestEnv(t)
+
+	// No servers configured yet - must return an empty/nil slice, not error
+	// or panic.
+	if servers := env.chat.resolveMCPServers(context.Background(), env.adminPrincipal, env.orgID); len(servers) != 0 {
+		t.Fatalf("expected no servers before any are configured, got %+v", servers)
+	}
+
+	if _, err := env.mcpRegistry.CreateServerConfig(context.Background(), env.adminPrincipal, mcpregistry.CreateServerConfigParams{
+		OrganizationID: env.orgID, Name: "jira", ServerType: "http", URL: "https://mcp.example.com/jira",
+		Headers: map[string]string{"Authorization": "Bearer static-token"}, TimeoutSecs: 45,
+	}); err != nil {
+		t.Fatalf("create server config: %v", err)
+	}
+
+	servers := env.chat.resolveMCPServers(context.Background(), env.adminPrincipal, env.orgID)
+	if len(servers) != 1 {
+		t.Fatalf("expected exactly one resolved server, got %+v", servers)
+	}
+	got := servers[0]
+	if got.Name != "jira" || got.URL != "https://mcp.example.com/jira" {
+		t.Fatalf("unexpected name/url: %+v", got)
+	}
+	if got.Transport != sdk.MCPTransportType("http") {
+		t.Fatalf("expected transport mapped from server_type, got %v", got.Transport)
+	}
+	if got.Headers["Authorization"] != "Bearer static-token" {
+		t.Fatalf("expected headers to carry through, got %+v", got.Headers)
+	}
+	if got.Timeout != 45*time.Second {
+		t.Fatalf("expected timeout_secs converted to a time.Duration, got %v", got.Timeout)
 	}
 }
 

@@ -1,8 +1,13 @@
 // Package mcpregistry lets an organization define shared MCP server
 // configurations once, so every connected seshat-backend can pick them up
 // instead of each user re-entering the same command/URL/credentials. This
-// is config only — execution always happens locally on the member's own
-// machine (see helps/seshat-architecture-target.md, "MCP config").
+// is config only for that consumer — execution happens locally on the
+// member's own machine (see helps/seshat-architecture-target.md, "MCP
+// config"). Since 2026-08-20 that's no longer the only consumer:
+// workspacechat.Service also resolves this same catalog and feeds it
+// straight into its own sdk.ClientConfig.MCPServers, executing MCP tool
+// calls inside seshat-server itself for an interactive chat session - see
+// ResolveServerConfigs's doc comment.
 //
 // Like LLM/embedder/web-search provider settings, an organization with no
 // MCP servers of its own falls back to whichever organization is currently
@@ -39,23 +44,34 @@ type MCPServerConfig struct {
 	URL             string   `json:"url,omitempty"`
 	TimeoutSecs     int      `json:"timeout_secs"`
 	Icon            string   `json:"icon,omitempty"`
+	// ConnectorKind - see sdb.MCPServerConfig's doc comment.
+	ConnectorKind string `json:"connector_kind,omitempty"`
 }
 
 // ResolvedMCPServerConfig includes the decrypted env/headers — see
 // ResolveServerConfigs. This is the one response in this domain meant to
-// actually be used (loaded into a local MCP runtime), not just displayed.
+// actually be used (loaded into a local MCP runtime, or, since 2026-08-20,
+// into workspacechat's own sdk.ClientConfig.MCPServers), not just displayed.
+// When ConnectorKind is set, Headers may include an Authorization: Bearer
+// entry personalized for whichever principal called ResolveServerConfigs -
+// see its doc comment. Connected reports whether that injection actually
+// happened (false when ConnectorKind is set but the calling principal
+// hasn't connected their own account yet, or has none available) - callers
+// can use it to decide whether to offer this server at all.
 type ResolvedMCPServerConfig struct {
-	ID          string            `json:"id"`
-	Name        string            `json:"name"`
-	DisplayName string            `json:"display_name,omitempty"`
-	ServerType  string            `json:"server_type"`
-	Command     string            `json:"command,omitempty"`
-	Args        []string          `json:"args,omitempty"`
-	Env         map[string]string `json:"env,omitempty"`
-	URL         string            `json:"url,omitempty"`
-	Headers     map[string]string `json:"headers,omitempty"`
-	TimeoutSecs int               `json:"timeout_secs"`
-	Icon        string            `json:"icon,omitempty"`
+	ID            string            `json:"id"`
+	Name          string            `json:"name"`
+	DisplayName   string            `json:"display_name,omitempty"`
+	ServerType    string            `json:"server_type"`
+	Command       string            `json:"command,omitempty"`
+	Args          []string          `json:"args,omitempty"`
+	Env           map[string]string `json:"env,omitempty"`
+	URL           string            `json:"url,omitempty"`
+	Headers       map[string]string `json:"headers,omitempty"`
+	TimeoutSecs   int               `json:"timeout_secs"`
+	Icon          string            `json:"icon,omitempty"`
+	ConnectorKind string            `json:"connector_kind,omitempty"`
+	Connected     bool              `json:"connected"`
 }
 
 type CreateServerConfigParams struct {
@@ -66,6 +82,7 @@ type CreateServerConfigParams struct {
 	Headers                                                map[string]string
 	TimeoutSecs                                            int
 	Icon                                                   string
+	ConnectorKind                                          string
 }
 
 type UpdateServerConfigParams struct {
@@ -76,15 +93,37 @@ type UpdateServerConfigParams struct {
 	Headers                          map[string]string
 	TimeoutSecs                      int
 	Icon                             string
+	ConnectorKind                    string
+}
+
+// ConnectorTokenResolver resolves a per-employee access token for an
+// MCPServerConfig whose ConnectorKind is set - satisfied by
+// *connectors.Service (connectors.Service.AccessTokenForUser). An
+// interface, not a direct import of connectors, to avoid a cross-import
+// between the two packages - same composition-through-an-interface pattern
+// already used by automation.RAGResolver.
+type ConnectorTokenResolver interface {
+	AccessTokenForUser(ctx context.Context, organizationID, kind, userID string) (token string, connected bool, err error)
 }
 
 type Service struct {
-	db  *sdb.DB
-	iam *iam.Service
+	db              *sdb.DB
+	iam             *iam.Service
+	connectorTokens ConnectorTokenResolver
 }
 
 func New(database *sdb.DB, iamService *iam.Service) *Service {
 	return &Service{db: database, iam: iamService}
+}
+
+// SetConnectorTokenResolver wires the resolver used to bridge a per-employee
+// access token into a ConnectorKind-tagged server's headers - called once at
+// app startup after both services exist, same wiring shape as
+// automation.Service.SetRAGResolver. Nil (the default) means
+// ConnectorKind-tagged servers resolve with no Bearer header injected -
+// harmless, matching "not connected" rather than crashing.
+func (s *Service) SetConnectorTokenResolver(r ConnectorTokenResolver) {
+	s.connectorTokens = r
 }
 
 func (s *Service) ListServerConfigs(ctx context.Context, principal *iam.Principal, organizationID string) ([]MCPServerConfig, error) {
@@ -168,7 +207,8 @@ func (s *Service) CreateServerConfig(ctx context.Context, principal *iam.Princip
 			Name: name, DisplayName: strings.TrimSpace(params.DisplayName), ServerType: serverType,
 			Command: strings.TrimSpace(params.Command), ArgsJSON: string(argsJSON), EncryptedEnvJSON: encryptedEnv,
 			URL: strings.TrimSpace(params.URL), EncryptedHeadersJSON: encryptedHeaders,
-			TimeoutSecs: timeoutSecs, Icon: icon,
+			ConnectorKind: strings.ToLower(strings.TrimSpace(params.ConnectorKind)),
+			TimeoutSecs:   timeoutSecs, Icon: icon,
 		}
 		if err := tx.Create(&record).Error; err != nil {
 			return err
@@ -222,6 +262,7 @@ func (s *Service) UpdateServerConfig(ctx context.Context, principal *iam.Princip
 		record.URL = strings.TrimSpace(params.URL)
 		record.TimeoutSecs = timeoutSecs
 		record.Icon = icon
+		record.ConnectorKind = strings.ToLower(strings.TrimSpace(params.ConnectorKind))
 		if params.Env != nil {
 			encryptedEnv, err := encryptSecretMap(tx, record.OrganizationID, params.Env)
 			if err != nil {
@@ -303,9 +344,35 @@ func (s *Service) ResolveServerConfigs(ctx context.Context, principal *iam.Princ
 		if err != nil {
 			return nil, err
 		}
+		if r.ConnectorKind != "" {
+			s.injectConnectorToken(ctx, &resolved, r.OrganizationID, principal.User.ID)
+		}
 		out = append(out, resolved)
 	}
 	return out, nil
+}
+
+// injectConnectorToken bridges the calling principal's own agent_action
+// ConnectorAccount token into resolved.Headers, when one exists - see
+// ResolvedMCPServerConfig's doc comment. Best-effort like ragService in
+// workspacechat: a resolution error (no resolver wired, decrypt failure,
+// expired-and-unrefreshable token) just means this one server comes back
+// without a Bearer header rather than failing the whole resolve call - the
+// target MCP server rejecting an unauthenticated call is the correct,
+// visible failure mode instead of a silent broken one here.
+func (s *Service) injectConnectorToken(ctx context.Context, resolved *ResolvedMCPServerConfig, organizationID, userID string) {
+	if s.connectorTokens == nil {
+		return
+	}
+	token, connected, err := s.connectorTokens.AccessTokenForUser(ctx, organizationID, resolved.ConnectorKind, userID)
+	if err != nil || !connected || token == "" {
+		return
+	}
+	if resolved.Headers == nil {
+		resolved.Headers = make(map[string]string, 1)
+	}
+	resolved.Headers["Authorization"] = "Bearer " + token
+	resolved.Connected = true
 }
 
 // listServerConfigsWithFallback returns this organization's own MCP server
@@ -373,6 +440,7 @@ func toServerConfig(r sdb.MCPServerConfig) MCPServerConfig {
 		ID: r.ID, OrganizationID: r.OrganizationID, CreatedByUserID: r.CreatedByUserID,
 		Name: r.Name, DisplayName: r.DisplayName, ServerType: r.ServerType,
 		Command: r.Command, Args: args, URL: r.URL, TimeoutSecs: r.TimeoutSecs, Icon: r.Icon,
+		ConnectorKind: r.ConnectorKind,
 	}
 }
 
@@ -395,5 +463,6 @@ func toResolvedServerConfig(gormDB *gorm.DB, r sdb.MCPServerConfig) (ResolvedMCP
 		ID: r.ID, Name: r.Name, DisplayName: r.DisplayName, ServerType: r.ServerType,
 		Command: r.Command, Args: args, Env: env, URL: r.URL, Headers: headers,
 		TimeoutSecs: r.TimeoutSecs, Icon: r.Icon,
+		ConnectorKind: r.ConnectorKind, Connected: r.ConnectorKind == "",
 	}, nil
 }

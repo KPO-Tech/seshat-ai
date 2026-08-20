@@ -28,6 +28,7 @@ import (
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/knowledge"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/mcpregistry"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/websearchsettings"
 )
 
@@ -52,12 +53,13 @@ const sessionRetention = 48 * time.Hour
 // sdk.Client+sdk.Session per browser conversation) and resolves the
 // credentials/tools each one needs from the rest of the control plane.
 type Service struct {
-	db         *sdb.DB
-	iam        *iam.Service
-	automation *automation.Service
-	webSearch  *websearchsettings.Service
-	knowledge  *knowledge.Service
-	doclingURL string
+	db          *sdb.DB
+	iam         *iam.Service
+	automation  *automation.Service
+	webSearch   *websearchsettings.Service
+	knowledge   *knowledge.Service
+	mcpRegistry *mcpregistry.Service
+	doclingURL  string
 
 	mu       sync.Mutex
 	sessions map[string]*chatSession
@@ -71,10 +73,10 @@ type chatSession struct {
 	lastUsed   time.Time
 }
 
-func New(database *sdb.DB, iamService *iam.Service, automationService *automation.Service, webSearchService *websearchsettings.Service, knowledgeService *knowledge.Service, doclingURL string) *Service {
+func New(database *sdb.DB, iamService *iam.Service, automationService *automation.Service, webSearchService *websearchsettings.Service, knowledgeService *knowledge.Service, mcpRegistryService *mcpregistry.Service, doclingURL string) *Service {
 	return &Service{
 		db: database, iam: iamService, automation: automationService,
-		webSearch: webSearchService, knowledge: knowledgeService, doclingURL: doclingURL,
+		webSearch: webSearchService, knowledge: knowledgeService, mcpRegistry: mcpRegistryService, doclingURL: doclingURL,
 		sessions: make(map[string]*chatSession),
 	}
 }
@@ -348,11 +350,51 @@ func (s *Service) purgeExpiredSessions(ctx context.Context) {
 	}
 }
 
+// resolveMCPServers converts organizationID's MCP server catalog
+// (mcpregistry.ResolveServerConfigs, already personalized for principal -
+// see its own doc comment on Bearer-token bridging) into the SDK's own
+// config shape. Best-effort like ragService just below in
+// getOrCreateSession: an org with no MCP servers, or a resolve error, just
+// means the chat runs with none available, not a reason to fail it.
+func (s *Service) resolveMCPServers(ctx context.Context, principal *iam.Principal, organizationID string) []sdk.MCPServerConfig {
+	if s.mcpRegistry == nil {
+		return nil
+	}
+	resolved, err := s.mcpRegistry.ResolveServerConfigs(ctx, principal, organizationID)
+	if err != nil {
+		log.Printf("workspacechat: resolve mcp servers for org %s: %v", organizationID, err)
+		return nil
+	}
+	servers := make([]sdk.MCPServerConfig, 0, len(resolved))
+	for _, r := range resolved {
+		servers = append(servers, sdk.MCPServerConfig{
+			Name:      r.Name,
+			Command:   r.Command,
+			Args:      r.Args,
+			URL:       r.URL,
+			Transport: sdk.MCPTransportType(r.ServerType),
+			Env:       r.Env,
+			Headers:   r.Headers,
+			Timeout:   time.Duration(r.TimeoutSecs) * time.Second,
+		})
+	}
+	return servers
+}
+
 func (s *Service) getOrCreateSession(ctx context.Context, principal *iam.Principal, params StreamChatParams) (*sdk.Session, error) {
+	// Resolved before the cache-hit check, and unconditionally on every
+	// call, so a long-lived cached session's Bearer tokens (see
+	// resolveMCPServers) never go stale mid-conversation - Google/Microsoft
+	// access tokens expire well within sessionIdleTimeout's 2h window.
+	mcpServers := s.resolveMCPServers(ctx, principal, params.OrganizationID)
+
 	s.mu.Lock()
 	if existing, ok := s.sessions[params.SessionID]; ok && existing.provider == params.Provider && existing.model == params.Model {
 		existing.lastUsed = time.Now()
 		s.mu.Unlock()
+		if err := existing.client.ReloadMCPServers(ctx, mcpServers); err != nil {
+			log.Printf("workspacechat: reload mcp servers for session %s: %v", params.SessionID, err)
+		}
 		return existing.sdkSession, nil
 	}
 	s.mu.Unlock()
@@ -390,6 +432,7 @@ func (s *Service) getOrCreateSession(ctx context.Context, principal *iam.Princip
 		WebSearchKeys:          webSearchKeys,
 		RAGService:             ragService,
 		DoclingURL:             s.doclingURL,
+		MCPServers:             mcpServers,
 		// This is a multi-tenant server: the bash tool is registered on every
 		// sdk.Client with no way to exclude it, and PermissionModeBypass means
 		// no human approves each call. Without this, an LLM-invoked shell
