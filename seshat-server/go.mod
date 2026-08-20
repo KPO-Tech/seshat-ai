@@ -2,16 +2,8 @@ module github.com/EngineerProjects/seshat-ai/seshat-server
 
 go 1.26.6
 
-// TEMPORARY, local-only: builds against the working copy at ../../seshat so
-// automation.RunnerConfig's new ArtifactStore field (not yet released as a
-// tagged seshat version) can be wired in and verified end-to-end. Remove
-// this replace and bump the require above to a real tagged version once
-// that SDK change is published — see docs/architecture.md's runtime-boundary
-// rule (seshat-ai pins seshat via go.mod, it isn't a monorepo path).
-replace github.com/KPO-Tech/seshat => ../../seshat
-
 require (
-	github.com/KPO-Tech/seshat v1.2.13
+	github.com/KPO-Tech/seshat v1.2.14
 	github.com/coreos/go-oidc/v3 v3.20.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/go-jose/go-jose/v4 v4.1.4
