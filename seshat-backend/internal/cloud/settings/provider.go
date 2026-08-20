@@ -44,7 +44,7 @@ func NewProvider(serverURL string, local *settings.LocalProvider) *Provider {
 // hierarchy exists to serve — does not have. Probing resolve() per known
 // provider name works for any org member, matching the endpoint's own,
 // deliberately looser authorization (see Phase 0's ResolveProviderSetting).
-var knownProviders = []string{"anthropic", "openai", "codex", "mistral", "gemini", "z-ai", "minimax", "openrouter", "ollama", "kimi"}
+var knownProviders = []string{"anthropic", "openai", "codex", "mistral", "gemini", "z-ai", "minimax", "openrouter", "ollama", "kimi", "deepseek", "opencode", "workers-ai"}
 
 func (p *Provider) List(ctx context.Context, principal *backendauth.Principal) ([]settings.ProviderSetting, error) {
 	if err := backendauth.EnsureAuthenticated(principal); err != nil {

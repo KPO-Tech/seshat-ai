@@ -30,6 +30,9 @@ const SUPPORTED_PROVIDERS = [
   { id: 'openrouter', name: 'OpenRouter', desc: '300+ models through one API key' },
   { id: 'ollama', name: 'Ollama', desc: 'Run models locally on your machine' },
   { id: 'kimi', name: 'Kimi (Moonshot AI)', desc: 'Kimi K3, K2.7 Code — long-context agentic coding' },
+  { id: 'deepseek', name: 'DeepSeek', desc: 'DeepSeek Chat, Reasoner — direct API' },
+  { id: 'opencode', name: 'OpenCode Zen', desc: 'Curated gateway — Claude, Codex, GLM models' },
+  { id: 'workers-ai', name: 'Cloudflare Workers AI', desc: 'Edge inference — needs your account-specific URL' },
 ]
 
 const PROVIDER_DEFAULT_URLS: Record<string, string> = {
@@ -43,9 +46,12 @@ const PROVIDER_DEFAULT_URLS: Record<string, string> = {
   openrouter: 'https://openrouter.ai/api/v1',
   ollama: 'http://localhost:11434',
   kimi: 'https://api.moonshot.ai/v1',
+  deepseek: 'https://api.deepseek.com/v1',
+  opencode: 'https://opencode.ai/zen/v1',
+  'workers-ai': 'https://workers.ai/v1/chat',
 }
 
-const PROVIDER_DISPLAY_ORDER = ['anthropic', 'openai', 'codex', 'mistral', 'gemini', 'z-ai', 'minimax', 'openrouter', 'ollama', 'kimi']
+const PROVIDER_DISPLAY_ORDER = ['anthropic', 'openai', 'codex', 'mistral', 'gemini', 'z-ai', 'minimax', 'openrouter', 'ollama', 'kimi', 'deepseek', 'opencode', 'workers-ai']
 
 const OAUTH_ONLY_PROVIDERS = new Set(['codex'])
 
