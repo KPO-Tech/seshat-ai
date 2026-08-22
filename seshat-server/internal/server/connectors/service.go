@@ -134,7 +134,15 @@ func New(database *sdb.DB, iamService *iam.Service, knowledgeService *knowledge.
 }
 
 // ConnectorAccount is the caller-facing view of a connected external
-// account. Secrets are never exposed here.
+// account. Secrets are never exposed here. The static-credential kinds'
+// (s3/azureblob) own non-secret config - bucket/region/endpoint/prefix or
+// account_name/container/prefix - IS exposed (parsed from sdb.
+// ConnectorAccount.Config, which already stores it in plaintext): omitting
+// it here made a connected account's own configuration permanently
+// invisible after creation, with no way to review or correct it short of
+// deleting and reconnecting from scratch. OAuth-based kinds leave these
+// fields empty - Discover/Sync auth is a live token, not a static config
+// blob, so there's nothing to surface here for them.
 type ConnectorAccount struct {
 	ID             string `json:"id"`
 	OrganizationID string `json:"organization_id"`
@@ -151,6 +159,15 @@ type ConnectorAccount struct {
 	LastError           string     `json:"last_error,omitempty"`
 	CreatedAt           time.Time  `json:"created_at"`
 	UpdatedAt           time.Time  `json:"updated_at"`
+	// s3 only.
+	Bucket   string `json:"bucket,omitempty"`
+	Region   string `json:"region,omitempty"`
+	Endpoint string `json:"endpoint,omitempty"`
+	// Prefix is shared by s3 and azureblob.
+	Prefix string `json:"prefix,omitempty"`
+	// azureblob only.
+	AccountName string `json:"account_name,omitempty"`
+	Container   string `json:"container,omitempty"`
 }
 
 // SyncJob is one queued/processed sync attempt for a ConnectorAccount.
@@ -417,6 +434,123 @@ func (s *Service) DeleteAccount(ctx context.Context, principal *iam.Principal, a
 		}
 		return s.iam.AppendAuditEvent(tx, principal, record.OrganizationID, "connector_account.deleted", "connector_account", record.ID, map[string]string{"kind": record.Kind})
 	})
+}
+
+// UpdateAccountParams updates an existing s3 or azureblob connector
+// account's configuration. Which kind-specific fields apply depends on the
+// account's own existing Kind, not caller input - kind is immutable via
+// this endpoint, the same "existing setting's kind is fixed" convention
+// already used for ProviderSetting/WebSearchProviderSetting updates
+// elsewhere in this app. AccessKeyID/SecretAccessKey (s3) or AccountKey
+// (azureblob) are optional - leave blank to keep the existing encrypted
+// credential(s) unchanged, the same "leave blank to keep" convention used
+// for every other secret in this app.
+type UpdateAccountParams struct {
+	DisplayName         string
+	Bucket              string
+	Region              string
+	Endpoint            string
+	Prefix              string
+	AccessKeyID         string
+	SecretAccessKey     string
+	AccountName         string
+	Container           string
+	AccountKey          string
+	SyncIntervalSeconds int
+}
+
+// UpdateAccount validates and persists changes to an existing s3 or
+// azureblob connector account - closes a real gap where a connector's own
+// configuration (bucket/endpoint/prefix/credentials) was stored (sdb.
+// ConnectorAccount.Config) but never exposed or editable anywhere, so a
+// typo'd endpoint or a key that needs rotating meant deleting and
+// reconnecting from scratch instead of fixing it in place. Requires
+// knowledge.manage or organization.manage. Rejects every OAuth-based kind
+// (gdrive/sharepoint/onedrive/confluence/slack/outlook/teams/gmail) - those
+// have no static config to edit here; reconnecting via BeginConnectorOAuth
+// already handles credential rotation for them.
+func (s *Service) UpdateAccount(ctx context.Context, principal *iam.Principal, accountID string, params UpdateAccountParams) (*ConnectorAccount, error) {
+	record, err := s.mustLoadAccount(ctx, principal, accountID, "knowledge.manage", "organization.manage")
+	if err != nil {
+		return nil, err
+	}
+	displayName := strings.TrimSpace(params.DisplayName)
+	if displayName == "" {
+		return nil, ErrInvalidInput("display_name is required")
+	}
+	syncInterval := params.SyncIntervalSeconds
+	if syncInterval <= 0 {
+		syncInterval = defaultSyncIntervalSeconds
+	}
+
+	var config string
+	switch record.Kind {
+	case string(s3Kind):
+		config, err = encodeS3AccountConfig(strings.TrimSpace(params.Bucket), strings.TrimSpace(params.Region), strings.TrimSpace(params.Endpoint), strings.TrimSpace(params.Prefix))
+		if err != nil {
+			return nil, ErrInvalidInput("encode s3 config: " + err.Error())
+		}
+		if _, err := parseS3AccountConfig(config); err != nil {
+			return nil, ErrInvalidInput(err.Error())
+		}
+		accessKeyID := strings.TrimSpace(params.AccessKeyID)
+		secretAccessKey := strings.TrimSpace(params.SecretAccessKey)
+		if (accessKeyID == "") != (secretAccessKey == "") {
+			return nil, ErrInvalidInput("access_key_id and secret_access_key must be provided together")
+		}
+	case string(azureBlobKind):
+		config, err = encodeAzureBlobAccountConfig(strings.TrimSpace(params.AccountName), strings.TrimSpace(params.Container), strings.TrimSpace(params.Prefix))
+		if err != nil {
+			return nil, ErrInvalidInput("encode azureblob config: " + err.Error())
+		}
+		if _, err := parseAzureBlobAccountConfig(config); err != nil {
+			return nil, ErrInvalidInput(err.Error())
+		}
+	default:
+		return nil, ErrInvalidInput(fmt.Sprintf("connector kind %q has no editable static configuration - reconnect via the OAuth flow instead", record.Kind))
+	}
+
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		tx = tx.WithContext(ctx)
+		record.DisplayName = displayName
+		record.Config = config
+		record.SyncIntervalSeconds = syncInterval
+		switch record.Kind {
+		case string(s3Kind):
+			accessKeyID := strings.TrimSpace(params.AccessKeyID)
+			secretAccessKey := strings.TrimSpace(params.SecretAccessKey)
+			if accessKeyID != "" {
+				accessEnc, encErr := sdb.EncryptSecret(tx, record.OrganizationID, accessKeyID)
+				if encErr != nil {
+					return encErr
+				}
+				secretEnc, encErr := sdb.EncryptSecret(tx, record.OrganizationID, secretAccessKey)
+				if encErr != nil {
+					return encErr
+				}
+				record.AccessTokenEncrypted = accessEnc
+				record.RefreshTokenEncrypted = secretEnc
+			}
+		case string(azureBlobKind):
+			accountKey := strings.TrimSpace(params.AccountKey)
+			if accountKey != "" {
+				accessEnc, encErr := sdb.EncryptSecret(tx, record.OrganizationID, accountKey)
+				if encErr != nil {
+					return encErr
+				}
+				record.AccessTokenEncrypted = accessEnc
+			}
+		}
+		if err := tx.Save(record).Error; err != nil {
+			return err
+		}
+		return s.iam.AppendAuditEvent(tx, principal, record.OrganizationID, "connector_account.updated", "connector_account", record.ID, map[string]string{"kind": record.Kind})
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := toConnectorAccount(*record)
+	return &result, nil
 }
 
 func (s *Service) mustLoadAccount(ctx context.Context, principal *iam.Principal, accountID string, permissionCodes ...string) (*sdb.ConnectorAccount, error) {
@@ -694,7 +828,7 @@ func toConnectorAccount(r sdb.ConnectorAccount) ConnectorAccount {
 	if r.CorpusID != nil {
 		corpusID = *r.CorpusID
 	}
-	return ConnectorAccount{
+	out := ConnectorAccount{
 		ID:                  r.ID,
 		OrganizationID:      r.OrganizationID,
 		CorpusID:            corpusID,
@@ -709,6 +843,21 @@ func toConnectorAccount(r sdb.ConnectorAccount) ConnectorAccount {
 		CreatedAt:           r.CreatedAt,
 		UpdatedAt:           r.UpdatedAt,
 	}
+	// Best-effort: a malformed/empty Config just leaves these fields blank
+	// rather than failing the whole list/get - the same "don't break the
+	// read path over one row's bad data" posture used elsewhere in this
+	// package (e.g. worker.go's Sync error handling).
+	switch r.Kind {
+	case string(s3Kind):
+		if cfg, err := parseS3AccountConfig(r.Config); err == nil {
+			out.Bucket, out.Region, out.Endpoint, out.Prefix = cfg.Bucket, cfg.Region, cfg.Endpoint, cfg.Prefix
+		}
+	case string(azureBlobKind):
+		if cfg, err := parseAzureBlobAccountConfig(r.Config); err == nil {
+			out.AccountName, out.Container, out.Prefix = cfg.AccountName, cfg.Container, cfg.Prefix
+		}
+	}
+	return out
 }
 
 func toSyncJob(r sdb.ConnectorSyncJob) SyncJob {

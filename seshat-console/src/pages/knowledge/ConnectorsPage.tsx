@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Alert, Button, Card, Empty, Form, Input, Modal, Popconfirm, Select, Space, Tag, Typography, message } from 'antd'
 import type { TableProps } from 'antd'
-import { CloudUploadOutlined, DeleteOutlined, HistoryOutlined, PlusOutlined, SettingOutlined, SyncOutlined } from '@ant-design/icons'
+import { CloudUploadOutlined, DeleteOutlined, EditOutlined, HistoryOutlined, PlusOutlined, SettingOutlined, SyncOutlined } from '@ant-design/icons'
 import {
   useConnectorAccountsList,
   useCreateConnectorAccount,
+  useUpdateConnectorAccount,
   useDeleteConnectorAccount,
   useTriggerConnectorSync,
   useConnectorSyncJobs,
@@ -13,6 +14,7 @@ import {
   useBeginConnectorOAuth,
   type ConnectorAccount,
   type ConnectorAccountInput,
+  type ConnectorAccountUpdateInput,
   type ConnectorSyncJob,
   type ConnectorOAuthApp,
   type ConnectorOAuthAppInput,
@@ -59,6 +61,11 @@ const CONNECTOR_KINDS = [
 // Knowledge), not relocated yet - see helps/roadmap.md.
 const OAUTH_CONNECTOR_KINDS = ['gdrive', 'sharepoint', 'onedrive', 'confluence', 'slack', 'outlook', 'teams', 'gmail'] as const
 
+// The only two kinds with a static, editable config (see connectors.
+// Service.UpdateAccount's own doc comment) - every OAuth-based kind has no
+// static config here, only a live token, so there's nothing to edit.
+const STATIC_CONFIG_KINDS = new Set(['s3', 'azureblob'])
+
 const OAUTH_APP_LABELS: Record<string, string> = {
   gdrive: 'Google',
   sharepoint: 'Microsoft',
@@ -73,6 +80,7 @@ const OAUTH_APP_LABELS: Record<string, string> = {
 export function ConnectorsPage() {
   const organizationId = useScopedOrganizationId()
   const [creating, setCreating] = useState(false)
+  const [editingAccount, setEditingAccount] = useState<ConnectorAccount | null>(null)
   const [managingOAuthApps, setManagingOAuthApps] = useState(false)
   const [historyAccount, setHistoryAccount] = useState<ConnectorAccount | null>(null)
 
@@ -85,6 +93,7 @@ export function ConnectorsPage() {
   const { data: corpora } = useCorporaList(organizationId ?? undefined, { limit: 500 })
   const { data: oauthApps } = useOAuthAppsList(organizationId ?? undefined)
   const createAccount = useCreateConnectorAccount()
+  const updateAccount = useUpdateConnectorAccount()
   const deleteAccount = useDeleteConnectorAccount()
   const triggerSync = useTriggerConnectorSync()
 
@@ -134,6 +143,15 @@ export function ConnectorsPage() {
       width: 130,
       render: (_, record) => (
         <Space size={4}>
+          {record.kind && STATIC_CONFIG_KINDS.has(record.kind) && (
+            <Button
+              size="small"
+              icon={<EditOutlined />}
+              title="Edit configuration"
+              onClick={() => setEditingAccount(record)}
+              aria-label={`Edit ${record.display_name}`}
+            />
+          )}
           <Button
             size="small"
             icon={<SyncOutlined />}
@@ -219,11 +237,15 @@ export function ConnectorsPage() {
       />
 
       <ConnectorFormDrawer
-        open={creating}
+        open={creating || Boolean(editingAccount)}
+        editingAccount={editingAccount}
         corpusOptions={corpusOptions}
         configuredOAuthKinds={configuredOAuthKinds}
         organizationId={organizationId ?? undefined}
-        onClose={() => setCreating(false)}
+        onClose={() => {
+          setCreating(false)
+          setEditingAccount(null)
+        }}
         onSubmitStaticAccount={(values) => {
           if (!organizationId) return
           createAccount.mutate(
@@ -235,6 +257,20 @@ export function ConnectorsPage() {
           )
         }}
         submittingStaticAccount={createAccount.isPending}
+        onSubmitUpdate={(values) => {
+          if (!editingAccount?.id) return
+          updateAccount.mutate(
+            { id: editingAccount.id, body: values },
+            {
+              onSuccess: () => {
+                message.success(`Saved ${editingAccount.display_name}`)
+                setEditingAccount(null)
+              },
+              onError: (error) => message.error(getErrorMessage(error)),
+            },
+          )
+        }}
+        submittingUpdate={updateAccount.isPending}
       />
 
       <OAuthAppsModal open={managingOAuthApps} organizationId={organizationId ?? undefined} apps={oauthApps ?? []} onClose={() => setManagingOAuthApps(false)} />
@@ -367,51 +403,71 @@ function OAuthAppCard({
 
 function ConnectorFormDrawer({
   open,
+  editingAccount,
   corpusOptions,
   configuredOAuthKinds,
   organizationId,
   onClose,
   onSubmitStaticAccount,
   submittingStaticAccount,
+  onSubmitUpdate,
+  submittingUpdate,
 }: {
   open: boolean
+  editingAccount: ConnectorAccount | null
   corpusOptions: { value: string; label: string }[]
   configuredOAuthKinds: Set<string>
   organizationId: string | undefined
   onClose: () => void
   onSubmitStaticAccount: (values: Omit<ConnectorAccountInput, 'organization_id'>) => void
   submittingStaticAccount: boolean
+  onSubmitUpdate: (values: ConnectorAccountUpdateInput) => void
+  submittingUpdate: boolean
 }) {
+  const isEditing = Boolean(editingAccount)
   const [kind, setKind] = useState('s3')
   const [form] = Form.useForm<ConnectorAccountInput>()
   const beginOAuth = useBeginConnectorOAuth()
 
   useEffect(() => {
-    if (open) {
-      setKind('s3')
+    if (!open) return
+    if (editingAccount) {
+      setKind(editingAccount.kind ?? 's3')
       form.resetFields()
-      form.setFieldsValue({ kind: 's3', sync_interval_seconds: 3600, region: 'us-east-1' })
+      form.setFieldsValue({
+        display_name: editingAccount.display_name,
+        bucket: editingAccount.bucket,
+        region: editingAccount.region,
+        endpoint: editingAccount.endpoint,
+        prefix: editingAccount.prefix,
+        account_name: editingAccount.account_name,
+        container: editingAccount.container,
+        sync_interval_seconds: editingAccount.sync_interval_seconds ?? 3600,
+      })
+      return
     }
-  }, [open, form])
+    setKind('s3')
+    form.resetFields()
+    form.setFieldsValue({ kind: 's3', sync_interval_seconds: 3600, region: 'us-east-1' })
+  }, [open, editingAccount, form])
 
-  const isOAuthKind = OAUTH_CONNECTOR_KINDS.includes(kind as (typeof OAUTH_CONNECTOR_KINDS)[number])
+  const isOAuthKind = !isEditing && OAUTH_CONNECTOR_KINDS.includes(kind as (typeof OAUTH_CONNECTOR_KINDS)[number])
   const oauthConfigured = configuredOAuthKinds.has(kind)
 
   return (
     <Modal
-      title="New connector"
+      title={isEditing ? `Edit ${editingAccount?.display_name}` : 'New connector'}
       open={open}
       onCancel={onClose}
       centered
       destroyOnHidden
       footer={
-        isOAuthKind ? (
-          <Button
-            type="primary"
-            loading={beginOAuth.isPending}
-            disabled={!oauthConfigured}
-            onClick={() => form.submit()}
-          >
+        isEditing ? (
+          <Button type="primary" loading={submittingUpdate} onClick={() => form.submit()}>
+            Save
+          </Button>
+        ) : isOAuthKind ? (
+          <Button type="primary" loading={beginOAuth.isPending} disabled={!oauthConfigured} onClick={() => form.submit()}>
             Connect with {OAUTH_APP_LABELS[kind]}
           </Button>
         ) : (
@@ -428,6 +484,10 @@ function ConnectorFormDrawer({
           if (changed.kind) setKind(changed.kind)
         }}
         onFinish={(values) => {
+          if (isEditing) {
+            onSubmitUpdate(values)
+            return
+          }
           if (!isOAuthKind) {
             onSubmitStaticAccount(values)
             return
@@ -455,12 +515,16 @@ function ConnectorFormDrawer({
           )
         }}
       >
-        <Form.Item name="kind" label="Kind" rules={[{ required: true }]}>
-          <Select options={CONNECTOR_KINDS} />
-        </Form.Item>
-        <Form.Item name="corpus_id" label="Corpus" rules={[{ required: true, message: 'Required' }]} extra="Which corpus this connector syncs documents into.">
-          <Select options={corpusOptions} placeholder="Select a corpus" showSearch optionFilterProp="label" />
-        </Form.Item>
+        {!isEditing && (
+          <Form.Item name="kind" label="Kind" rules={[{ required: true }]}>
+            <Select options={CONNECTOR_KINDS} />
+          </Form.Item>
+        )}
+        {!isEditing && (
+          <Form.Item name="corpus_id" label="Corpus" rules={[{ required: true, message: 'Required' }]} extra="Which corpus this connector syncs documents into.">
+            <Select options={corpusOptions} placeholder="Select a corpus" showSearch optionFilterProp="label" />
+          </Form.Item>
+        )}
 
         {isOAuthKind && !oauthConfigured && (
           <Alert
@@ -495,8 +559,13 @@ function ConnectorFormDrawer({
             <Form.Item name="prefix" label="Prefix" extra="Optional - limit sync to blobs under this path.">
               <Input placeholder="docs/" />
             </Form.Item>
-            <Form.Item name="account_key" label="Account key" extra="Stored encrypted. Never shown again after saving." rules={[{ required: true, message: 'Required' }]}>
-              <Input.Password autoComplete="new-password" />
+            <Form.Item
+              name="account_key"
+              label="Account key"
+              extra={isEditing ? 'Stored encrypted. Leave blank to keep the existing key.' : 'Stored encrypted. Never shown again after saving.'}
+              rules={[{ required: !isEditing, message: 'Required' }]}
+            >
+              <Input.Password autoComplete="new-password" placeholder={isEditing ? 'Unchanged' : undefined} />
             </Form.Item>
             <Form.Item name="sync_interval_seconds" label="Sync interval (seconds)" extra="How often to check for new/changed files automatically.">
               <Input type="number" min={60} />
@@ -519,11 +588,21 @@ function ConnectorFormDrawer({
             <Form.Item name="prefix" label="Prefix" extra="Optional - limit sync to keys under this path.">
               <Input placeholder="docs/" />
             </Form.Item>
-            <Form.Item name="access_key_id" label="Access key ID" rules={[{ required: true, message: 'Required' }]}>
-              <Input autoComplete="off" />
+            <Form.Item
+              name="access_key_id"
+              label="Access key ID"
+              extra={isEditing ? 'Leave blank to keep the existing key.' : undefined}
+              rules={[{ required: !isEditing, message: 'Required' }]}
+            >
+              <Input autoComplete="off" placeholder={isEditing ? 'Unchanged' : undefined} />
             </Form.Item>
-            <Form.Item name="secret_access_key" label="Secret access key" extra="Stored encrypted. Never shown again after saving." rules={[{ required: true, message: 'Required' }]}>
-              <Input.Password autoComplete="new-password" />
+            <Form.Item
+              name="secret_access_key"
+              label="Secret access key"
+              extra={isEditing ? 'Stored encrypted. Leave blank to keep the existing key.' : 'Stored encrypted. Never shown again after saving.'}
+              rules={[{ required: !isEditing, message: 'Required' }]}
+            >
+              <Input.Password autoComplete="new-password" placeholder={isEditing ? 'Unchanged' : undefined} />
             </Form.Item>
             <Form.Item name="sync_interval_seconds" label="Sync interval (seconds)" extra="How often to check for new/changed files automatically.">
               <Input type="number" min={60} />

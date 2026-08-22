@@ -3049,6 +3049,39 @@ paths:
         in: path
         required: true
         schema: { type: string }
+    put:
+      operationId: updateConnectorAccount
+      tags: [connectors]
+      summary: Edit an existing s3 or azureblob connector account's configuration
+      description: >-
+        Requires knowledge.manage or organization.manage. Closes a real gap:
+        a connected account's own configuration (bucket/endpoint/prefix or
+        account_name/container, plus credentials) was stored server-side but
+        never exposed or editable — the only way to fix a typo'd endpoint or
+        rotate a leaked key was to delete and reconnect from scratch. kind is
+        fixed (not part of this body, same convention as every other
+        *UpdateInput here) — only s3/azureblob accounts have static config
+        to edit; every OAuth-based kind (gdrive/sharepoint/onedrive/
+        confluence/slack/outlook/teams/gmail) is rejected here, since
+        reconnecting via the OAuth flow already handles credential rotation
+        for those. access_key_id/secret_access_key (s3) or account_key
+        (azureblob) are optional — leave blank to keep the existing
+        encrypted credential(s) unchanged; for s3, access_key_id and
+        secret_access_key must be provided together, not one at a time.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ConnectorAccountUpdateInput" }
+      responses:
+        "200":
+          description: Connector account updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConnectorAccount" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
     delete:
       operationId: deleteConnectorAccount
       tags: [connectors]
@@ -5451,6 +5484,12 @@ components:
         last_error: { type: string }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+        bucket: { type: string, description: "s3 only." }
+        region: { type: string, description: "s3 only." }
+        endpoint: { type: string, description: "s3 only." }
+        prefix: { type: string, description: "s3 and azureblob only." }
+        account_name: { type: string, description: "azureblob only: the storage account name." }
+        container: { type: string, description: "azureblob only: the blob container name." }
 
     ConnectorAccountInput:
       type: object
@@ -5476,6 +5515,30 @@ components:
         account_key: { type: string, description: "azureblob only: the storage account's shared key." }
         sync_interval_seconds: { type: integer, description: "Defaults to 3600 (1 hour)." }
       required: [organization_id, corpus_id, display_name]
+
+    ConnectorAccountUpdateInput:
+      type: object
+      description: >-
+        Same shape as ConnectorAccountInput minus the create-only,
+        immutable fields (organization_id/corpus_id/kind - kind comes from
+        the existing account, not this body). access_key_id/
+        secret_access_key (s3) or account_key (azureblob) are optional -
+        leave blank to keep the existing encrypted credential(s) unchanged;
+        for s3, access_key_id and secret_access_key must be provided
+        together, not one at a time.
+      properties:
+        display_name: { type: string }
+        bucket: { type: string }
+        region: { type: string }
+        endpoint: { type: string }
+        prefix: { type: string }
+        access_key_id: { type: string }
+        secret_access_key: { type: string }
+        account_name: { type: string, description: "azureblob only: the storage account name." }
+        container: { type: string, description: "azureblob only: the blob container name." }
+        account_key: { type: string, description: "azureblob only: the storage account's shared key." }
+        sync_interval_seconds: { type: integer, description: "Defaults to 3600 (1 hour)." }
+      required: [display_name]
 
     ConnectorSyncJob:
       type: object

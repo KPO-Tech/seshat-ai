@@ -4,6 +4,7 @@ import type { components } from '@/api/schema'
 
 export type ConnectorAccount = components['schemas']['ConnectorAccount']
 export type ConnectorAccountInput = components['schemas']['ConnectorAccountInput']
+export type ConnectorAccountUpdateInput = components['schemas']['ConnectorAccountUpdateInput']
 export type ConnectorSyncJob = components['schemas']['ConnectorSyncJob']
 export type ConnectorOAuthApp = components['schemas']['ConnectorOAuthApp']
 export type ConnectorOAuthAppInput = components['schemas']['ConnectorOAuthAppInput']
@@ -35,6 +36,21 @@ export function useCreateConnectorAccount() {
   return useMutation({
     mutationFn: async (body: ConnectorAccountInput) => {
       const { data, error } = await api.POST('/api/v1/connectors/accounts', { body })
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [ACCOUNTS_KEY] }),
+  })
+}
+
+export function useUpdateConnectorAccount() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, body }: { id: string; body: ConnectorAccountUpdateInput }) => {
+      const { data, error } = await api.PUT('/api/v1/connectors/accounts/{accountID}', {
+        params: { path: { accountID: id } },
+        body,
+      })
       if (error) throw error
       return data
     },

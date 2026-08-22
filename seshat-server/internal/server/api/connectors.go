@@ -97,6 +97,26 @@ func (app *App) handleConnectorAccounts(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
+// updateConnectorAccountRequest mirrors createConnectorAccountRequest minus
+// organization_id/corpus_id/kind - the same "same shape minus the
+// create-only, immutable fields" *UpdateInput convention used elsewhere in
+// this app (see ROADMAP.md, 2026-07-12). Which fields apply depends on the
+// existing account's own kind, not this request - unknown fields for that
+// kind are simply ignored, same as connectors.Service.UpdateAccount itself.
+type updateConnectorAccountRequest struct {
+	DisplayName         string `json:"display_name"`
+	Bucket              string `json:"bucket"`
+	Region              string `json:"region"`
+	Endpoint            string `json:"endpoint"`
+	Prefix              string `json:"prefix"`
+	AccessKeyID         string `json:"access_key_id"`
+	SecretAccessKey     string `json:"secret_access_key"`
+	AccountName         string `json:"account_name"`
+	Container           string `json:"container"`
+	AccountKey          string `json:"account_key"`
+	SyncIntervalSeconds int    `json:"sync_interval_seconds"`
+}
+
 func (app *App) handleConnectorAccountByID(w http.ResponseWriter, r *http.Request) {
 	principal, ok := authPrincipalFromContext(r.Context())
 	if !ok {
@@ -110,6 +130,29 @@ func (app *App) handleConnectorAccountByID(w http.ResponseWriter, r *http.Reques
 	}
 
 	switch r.Method {
+	case http.MethodPut:
+		var req updateConnectorAccountRequest
+		if !decodeJSONBody(w, r, &req) {
+			return
+		}
+		account, err := app.backend.Connectors.UpdateAccount(r.Context(), principal, accountID, connectors.UpdateAccountParams{
+			DisplayName:         req.DisplayName,
+			Bucket:              req.Bucket,
+			Region:              req.Region,
+			Endpoint:            req.Endpoint,
+			Prefix:              req.Prefix,
+			AccessKeyID:         req.AccessKeyID,
+			SecretAccessKey:     req.SecretAccessKey,
+			AccountName:         req.AccountName,
+			Container:           req.Container,
+			AccountKey:          req.AccountKey,
+			SyncIntervalSeconds: req.SyncIntervalSeconds,
+		})
+		if err != nil {
+			writeKnowledgeError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, account)
 	case http.MethodDelete:
 		if err := app.backend.Connectors.DeleteAccount(r.Context(), principal, accountID); err != nil {
 			writeKnowledgeError(w, err)

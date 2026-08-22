@@ -1816,7 +1816,11 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        put?: never;
+        /**
+         * Edit an existing s3 or azureblob connector account's configuration
+         * @description Requires knowledge.manage or organization.manage. Closes a real gap: a connected account's own configuration (bucket/endpoint/prefix or account_name/container, plus credentials) was stored server-side but never exposed or editable — the only way to fix a typo'd endpoint or rotate a leaked key was to delete and reconnect from scratch. kind is fixed (not part of this body, same convention as every other *UpdateInput here) — only s3/azureblob accounts have static config to edit; every OAuth-based kind (gdrive/sharepoint/onedrive/ confluence/slack/outlook/teams/gmail) is rejected here, since reconnecting via the OAuth flow already handles credential rotation for those. access_key_id/secret_access_key (s3) or account_key (azureblob) are optional — leave blank to keep the existing encrypted credential(s) unchanged; for s3, access_key_id and secret_access_key must be provided together, not one at a time.
+         */
+        put: operations["updateConnectorAccount"];
         post?: never;
         /**
          * Disconnect an external source
@@ -3543,6 +3547,18 @@ export interface components {
             created_at?: string;
             /** Format: date-time */
             updated_at?: string;
+            /** @description s3 only. */
+            bucket?: string;
+            /** @description s3 only. */
+            region?: string;
+            /** @description s3 only. */
+            endpoint?: string;
+            /** @description s3 and azureblob only. */
+            prefix?: string;
+            /** @description azureblob only: the storage account name. */
+            account_name?: string;
+            /** @description azureblob only: the blob container name. */
+            container?: string;
         };
         /** @description Kinds "s3" and "azureblob" are supported here. For "s3": bucket/region/endpoint/prefix and access_key_id/secret_access_key apply (region defaults to "us-east-1" if omitted). For "azureblob": account_name/container/prefix and account_key apply. Each kind only requires its own fields - the required list below is a union. */
         ConnectorAccountInput: {
@@ -3553,6 +3569,24 @@ export interface components {
              * @enum {string}
              */
             kind?: "s3" | "azureblob";
+            display_name: string;
+            bucket?: string;
+            region?: string;
+            endpoint?: string;
+            prefix?: string;
+            access_key_id?: string;
+            secret_access_key?: string;
+            /** @description azureblob only: the storage account name. */
+            account_name?: string;
+            /** @description azureblob only: the blob container name. */
+            container?: string;
+            /** @description azureblob only: the storage account's shared key. */
+            account_key?: string;
+            /** @description Defaults to 3600 (1 hour). */
+            sync_interval_seconds?: number;
+        };
+        /** @description Same shape as ConnectorAccountInput minus the create-only, immutable fields (organization_id/corpus_id/kind - kind comes from the existing account, not this body). access_key_id/ secret_access_key (s3) or account_key (azureblob) are optional - leave blank to keep the existing encrypted credential(s) unchanged; for s3, access_key_id and secret_access_key must be provided together, not one at a time. */
+        ConnectorAccountUpdateInput: {
             display_name: string;
             bucket?: string;
             region?: string;
@@ -7473,6 +7507,35 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             403: components["responses"]["Forbidden"];
+        };
+    };
+    updateConnectorAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectorAccountUpdateInput"];
+            };
+        };
+        responses: {
+            /** @description Connector account updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorAccount"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     deleteConnectorAccount: {

@@ -171,6 +171,7 @@ func (app *App) routes() http.Handler {
 	// Knowledge connectors" and internal/server/connectors' package doc.
 	mux.Handle("GET /api/v1/connectors/accounts", app.authMiddleware(http.HandlerFunc(app.handleConnectorAccounts)))
 	mux.Handle("POST /api/v1/connectors/accounts", app.authMiddleware(http.HandlerFunc(app.handleConnectorAccounts)))
+	mux.Handle("PUT /api/v1/connectors/accounts/{accountID}", app.authMiddleware(http.HandlerFunc(app.handleConnectorAccountByID)))
 	mux.Handle("DELETE /api/v1/connectors/accounts/{accountID}", app.authMiddleware(http.HandlerFunc(app.handleConnectorAccountByID)))
 	mux.Handle("POST /api/v1/connectors/accounts/{accountID}/sync", app.authMiddleware(http.HandlerFunc(app.handleConnectorAccountSync)))
 	mux.Handle("GET /api/v1/connectors/accounts/{accountID}/sync-jobs", app.authMiddleware(http.HandlerFunc(app.handleConnectorAccountSyncJobs)))
