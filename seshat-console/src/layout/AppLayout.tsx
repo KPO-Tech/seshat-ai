@@ -4,7 +4,6 @@ import { ArrowLeftOutlined, LogoutOutlined, UserOutlined } from '@ant-design/ico
 import { Outlet, matchPath, useLocation, useNavigate } from 'react-router'
 import { useOrganizationsList } from '@/api/organizations'
 import { useLogout } from '@/api/auth'
-import { OrganizationSelect } from '@/components/OrganizationSelect'
 import {
   accountNavItems,
   getActivePrimaryNavItem,
@@ -34,10 +33,10 @@ export function AppLayout() {
   const organizations = organizationsData?.organizations ?? EMPTY_ORGANIZATIONS
   const routeOrganizationId = matchPath('/orgs/:organizationId/*', location.pathname)?.params.organizationId ?? null
   // The generic "Organization" scope tag alone doesn't say WHICH one when
-  // there's more than one on the platform (a platform admin browsing
-  // several orgs in a row has no other always-visible indicator beyond the
-  // sidebar dropdown's current value) - so every org-scoped page's header
-  // names it explicitly, not just the Overview page.
+  // there's more than one on the platform (a platform admin browsing several
+  // orgs in a row has no sidebar picker to glance at any more - switching
+  // orgs happens via /platform/organizations' own "Open" action) - so every
+  // org-scoped page's header names it explicitly, not just the Overview page.
   const routeOrganizationName = routeOrganizationId
     ? (organizations.find((organization) => organization.id === routeOrganizationId)?.name ?? null)
     : null
@@ -74,14 +73,6 @@ export function AppLayout() {
   // (and hiding "Platform" below) leak into pages like /platform/overview
   // that have nothing to do with any single org.
   const inOrganizationRoute = Boolean(routeOrganizationId)
-  // Mirrors inOrganizationRoute's own reasoning: the picker is only
-  // meaningful where something on screen actually reads
-  // workspaceOrganizationId (org-scoped pages, and /workspace/* — Chat/
-  // Connections resolve their org via this same store). Platform pages
-  // (e.g. /platform/organizations, which lists every org) and /me/* are
-  // org-agnostic, so showing "Organization: microsoft" there is a leak of
-  // the same kind the comment above already fixed for the nav group.
-  const showOrganizationPicker = inOrganizationRoute || location.pathname.startsWith('/workspace/')
   const organizationNavItems = inOrganizationRoute && workspaceOrganizationId ? getOrganizationNavItems(workspaceOrganizationId) : []
   const activePrimary = getActivePrimaryNavItem(location.pathname, workspaceOrganizationId)
   const secondaryNavItems = getSecondaryNavItems(location.pathname, workspaceOrganizationId)
@@ -134,19 +125,6 @@ export function AppLayout() {
     ...organizationNavItems,
   ]
 
-  const navigateToOrganization = (nextOrganizationId: string | undefined) => {
-    if (!nextOrganizationId) return
-    setSelectedOrganizationId(nextOrganizationId)
-
-    if (routeOrganizationId) {
-      const suffix = location.pathname.replace(`/orgs/${routeOrganizationId}`, '') || '/overview'
-      navigate(`/orgs/${nextOrganizationId}${suffix}`)
-      return
-    }
-
-    navigate(`/orgs/${nextOrganizationId}/overview`)
-  }
-
   return (
     <Layout className="console-shell" style={{ height: '100vh', overflow: 'hidden', background: palette.canvas }}>
       <Sider
@@ -191,26 +169,17 @@ export function AppLayout() {
           Seshat Console
         </div>
 
-        {showOrganizationPicker && (
-          <div style={{ padding: '0 16px 16px' }}>
-            <div
-              style={{
-                padding: 14,
-                border: `1px solid ${palette.border}`,
-                borderRadius: 12,
-                background: palette.surface,
-              }}
+        {isAdmin && inOrganizationRoute && (
+          <div style={{ padding: '0 12px 10px' }}>
+            <Button
+              type="text"
+              size="small"
+              icon={<ArrowLeftOutlined />}
+              onClick={() => navigate('/platform/organizations')}
+              style={{ color: palette.inkTertiary, fontSize: 12, paddingInline: 8 }}
             >
-              <Typography.Text style={{ display: 'block', fontSize: 12, color: palette.inkTertiary, marginBottom: 8 }}>
-                Organization
-              </Typography.Text>
-              <OrganizationSelect
-                value={workspaceOrganizationId ?? undefined}
-                onChange={navigateToOrganization}
-                placeholder="Choose organization"
-                style={{ width: '100%', minWidth: 0 }}
-              />
-            </div>
+              Back to Organizations
+            </Button>
           </div>
         )}
 
@@ -245,11 +214,6 @@ export function AppLayout() {
         >
           <div style={{ minWidth: 0, flex: '1 1 auto', overflow: 'hidden' }}>
             <Space size={8} align="center" wrap={false} style={{ maxWidth: '100%' }}>
-              {isAdmin && routeOrganizationId && (
-                <Button size="small" type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate('/platform/organizations')}>
-                  Back to Organizations
-                </Button>
-              )}
               <Tag color="orange" style={{ margin: 0, flexShrink: 0 }}>
                 {routeOrganizationName ? `Organization: ${routeOrganizationName}` : getScopeTagLabel(location.pathname)}
               </Tag>
