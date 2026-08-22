@@ -1,13 +1,18 @@
 # Build context is the repo root (seshat-ai/), not this directory — see
 # ../.dockerignore. seshat-server/go.mod depends on the published
 # github.com/KPO-Tech/seshat module directly (go mod download fetches it),
-# so GOWORK=off keeps this build scoped to exactly seshat-server/ (never
-# pulls in seshat-backend).
+# so GOWORK=off keeps this build scoped to seshat-server/ + seshat-core/
+# (never pulls in seshat-backend or seshat-ui). seshat-server/go.mod also
+# has local `replace` directives for the seshat-core/* modules it imports
+# (connectors/prospecting/msgraph/gmail — unpublished, monorepo-only, only
+# resolvable via go.work in normal dev) pointing at ../seshat-core/*, so
+# that directory has to be present in the build context too.
 
 FROM golang:1.26-alpine AS builder
 
 WORKDIR /build
 
+COPY seshat-core/ ./seshat-core/
 COPY seshat-server/ ./seshat-server/
 
 WORKDIR /build/seshat-server

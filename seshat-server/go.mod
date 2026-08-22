@@ -3,6 +3,10 @@ module github.com/EngineerProjects/seshat-ai/seshat-server
 go 1.26.6
 
 require (
+	github.com/EngineerProjects/seshat-ai/seshat-core/connectors v0.0.0-00010101000000-000000000000
+	github.com/EngineerProjects/seshat-ai/seshat-core/gmail v0.0.0-00010101000000-000000000000
+	github.com/EngineerProjects/seshat-ai/seshat-core/msgraph v0.0.0-00010101000000-000000000000
+	github.com/EngineerProjects/seshat-ai/seshat-core/prospecting v0.0.0-00010101000000-000000000000
 	github.com/KPO-Tech/seshat v1.2.14
 	github.com/coreos/go-oidc/v3 v3.20.0
 	github.com/glebarez/sqlite v1.11.0
@@ -12,6 +16,24 @@ require (
 	golang.org/x/time v0.15.0
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.31.2
+)
+
+require (
+	cloud.google.com/go/auth v0.22.0 // indirect
+	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
+	cloud.google.com/go/compute/metadata v0.9.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.22.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/internal v1.12.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.8.0 // indirect
+	github.com/felixge/httpsnoop v1.0.4 // indirect
+	github.com/google/jsonschema-go v0.4.3 // indirect
+	github.com/google/s2a-go v0.1.9 // indirect
+	github.com/googleapis/enterprise-certificate-proxy v0.3.19 // indirect
+	github.com/googleapis/gax-go/v2 v2.23.0 // indirect
+	github.com/segmentio/asm v1.1.3 // indirect
+	github.com/segmentio/encoding v0.5.4 // indirect
+	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.68.0 // indirect
 )
 
 require (
@@ -116,8 +138,8 @@ require (
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
 	gonum.org/v1/gonum v0.17.0 // indirect
-	google.golang.org/api v0.292.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20260526163538-3dc84a4a5aaa // indirect
+	google.golang.org/api v0.292.0
+	google.golang.org/genproto/googleapis/api v0.0.0-20260630182238-925bb5da69e7 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260803160001-6ac0973c030d // indirect
 	google.golang.org/grpc v1.83.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
@@ -129,3 +151,11 @@ require (
 	modernc.org/memory v1.11.0 // indirect
 	modernc.org/sqlite v1.39.1 // indirect
 )
+
+replace github.com/EngineerProjects/seshat-ai/seshat-core/connectors => ../seshat-core/connectors
+
+replace github.com/EngineerProjects/seshat-ai/seshat-core/prospecting => ../seshat-core/prospecting
+
+replace github.com/EngineerProjects/seshat-ai/seshat-core/msgraph => ../seshat-core/msgraph
+
+replace github.com/EngineerProjects/seshat-ai/seshat-core/gmail => ../seshat-core/gmail
