@@ -74,6 +74,14 @@ export function AppLayout() {
   // (and hiding "Platform" below) leak into pages like /platform/overview
   // that have nothing to do with any single org.
   const inOrganizationRoute = Boolean(routeOrganizationId)
+  // Mirrors inOrganizationRoute's own reasoning: the picker is only
+  // meaningful where something on screen actually reads
+  // workspaceOrganizationId (org-scoped pages, and /workspace/* — Chat/
+  // Connections resolve their org via this same store). Platform pages
+  // (e.g. /platform/organizations, which lists every org) and /me/* are
+  // org-agnostic, so showing "Organization: microsoft" there is a leak of
+  // the same kind the comment above already fixed for the nav group.
+  const showOrganizationPicker = inOrganizationRoute || location.pathname.startsWith('/workspace/')
   const organizationNavItems = inOrganizationRoute && workspaceOrganizationId ? getOrganizationNavItems(workspaceOrganizationId) : []
   const activePrimary = getActivePrimaryNavItem(location.pathname, workspaceOrganizationId)
   const secondaryNavItems = getSecondaryNavItems(location.pathname, workspaceOrganizationId)
@@ -183,26 +191,28 @@ export function AppLayout() {
           Seshat Console
         </div>
 
-        <div style={{ padding: '0 16px 16px' }}>
-          <div
-            style={{
-              padding: 14,
-              border: `1px solid ${palette.border}`,
-              borderRadius: 12,
-              background: palette.surface,
-            }}
-          >
-            <Typography.Text style={{ display: 'block', fontSize: 12, color: palette.inkTertiary, marginBottom: 8 }}>
-              Organization
-            </Typography.Text>
-            <OrganizationSelect
-              value={workspaceOrganizationId ?? undefined}
-              onChange={navigateToOrganization}
-              placeholder="Choose organization"
-              style={{ width: '100%', minWidth: 0 }}
-            />
+        {showOrganizationPicker && (
+          <div style={{ padding: '0 16px 16px' }}>
+            <div
+              style={{
+                padding: 14,
+                border: `1px solid ${palette.border}`,
+                borderRadius: 12,
+                background: palette.surface,
+              }}
+            >
+              <Typography.Text style={{ display: 'block', fontSize: 12, color: palette.inkTertiary, marginBottom: 8 }}>
+                Organization
+              </Typography.Text>
+              <OrganizationSelect
+                value={workspaceOrganizationId ?? undefined}
+                onChange={navigateToOrganization}
+                placeholder="Choose organization"
+                style={{ width: '100%', minWidth: 0 }}
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         <Menu
           theme="dark"
