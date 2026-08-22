@@ -35,13 +35,16 @@ const STATUS_COLOR: Record<string, string> = {
   failed: 'error',
 }
 
-// s3 connects with static credentials; gdrive/sharepoint connect via OAuth
-// (see the OAuth Apps card and OAuthConnectForm below) - the two families
-// need different forms, not just different field sets.
+// s3/azureblob connect with static credentials; gdrive/sharepoint connect
+// via OAuth (see the OAuth Apps card and OAuthConnectForm below) - the two
+// families need different forms, not just different field sets.
 const CONNECTOR_KINDS = [
   { value: 's3', label: 'S3-compatible bucket' },
+  { value: 'azureblob', label: 'Azure Blob Storage' },
   { value: 'gdrive', label: 'Google Drive' },
   { value: 'sharepoint', label: 'SharePoint' },
+  { value: 'onedrive', label: 'OneDrive for Business' },
+  { value: 'confluence', label: 'Confluence' },
 ]
 
 // The OAuth Apps modal is purpose-agnostic (RegisterOAuthApp doesn't care
@@ -54,11 +57,13 @@ const CONNECTOR_KINDS = [
 // kind regardless of purpose - see connectors.RegisterOAuthApp's doc
 // comment. Known UI-label mismatch (this page is titled/scoped as
 // Knowledge), not relocated yet - see helps/roadmap.md.
-const OAUTH_CONNECTOR_KINDS = ['gdrive', 'sharepoint', 'slack', 'outlook', 'teams', 'gmail'] as const
+const OAUTH_CONNECTOR_KINDS = ['gdrive', 'sharepoint', 'onedrive', 'confluence', 'slack', 'outlook', 'teams', 'gmail'] as const
 
 const OAUTH_APP_LABELS: Record<string, string> = {
   gdrive: 'Google',
   sharepoint: 'Microsoft',
+  onedrive: 'Microsoft',
+  confluence: 'Atlassian',
   slack: 'Slack',
   outlook: 'Microsoft',
   gmail: 'Google',
@@ -219,7 +224,7 @@ export function ConnectorsPage() {
         configuredOAuthKinds={configuredOAuthKinds}
         organizationId={organizationId ?? undefined}
         onClose={() => setCreating(false)}
-        onSubmitS3={(values) => {
+        onSubmitStaticAccount={(values) => {
           if (!organizationId) return
           createAccount.mutate(
             { ...values, organization_id: organizationId },
@@ -229,7 +234,7 @@ export function ConnectorsPage() {
             },
           )
         }}
-        submittingS3={createAccount.isPending}
+        submittingStaticAccount={createAccount.isPending}
       />
 
       <OAuthAppsModal open={managingOAuthApps} organizationId={organizationId ?? undefined} apps={oauthApps ?? []} onClose={() => setManagingOAuthApps(false)} />
@@ -366,16 +371,16 @@ function ConnectorFormDrawer({
   configuredOAuthKinds,
   organizationId,
   onClose,
-  onSubmitS3,
-  submittingS3,
+  onSubmitStaticAccount,
+  submittingStaticAccount,
 }: {
   open: boolean
   corpusOptions: { value: string; label: string }[]
   configuredOAuthKinds: Set<string>
   organizationId: string | undefined
   onClose: () => void
-  onSubmitS3: (values: Omit<ConnectorAccountInput, 'organization_id'>) => void
-  submittingS3: boolean
+  onSubmitStaticAccount: (values: Omit<ConnectorAccountInput, 'organization_id'>) => void
+  submittingStaticAccount: boolean
 }) {
   const [kind, setKind] = useState('s3')
   const [form] = Form.useForm<ConnectorAccountInput>()
@@ -410,7 +415,7 @@ function ConnectorFormDrawer({
             Connect with {OAUTH_APP_LABELS[kind]}
           </Button>
         ) : (
-          <Button type="primary" loading={submittingS3} onClick={() => form.submit()}>
+          <Button type="primary" loading={submittingStaticAccount} onClick={() => form.submit()}>
             Connect
           </Button>
         )
@@ -424,7 +429,7 @@ function ConnectorFormDrawer({
         }}
         onFinish={(values) => {
           if (!isOAuthKind) {
-            onSubmitS3(values)
+            onSubmitStaticAccount(values)
             return
           }
           if (!organizationId || !values.corpus_id) return
@@ -471,6 +476,27 @@ function ConnectorFormDrawer({
           <>
             <Form.Item name="display_name" label="Name" extra="Optional - defaults to the connected account's email once connected.">
               <Input placeholder="e.g. Marketing Drive" />
+            </Form.Item>
+            <Form.Item name="sync_interval_seconds" label="Sync interval (seconds)" extra="How often to check for new/changed files automatically.">
+              <Input type="number" min={60} />
+            </Form.Item>
+          </>
+        ) : kind === 'azureblob' ? (
+          <>
+            <Form.Item name="display_name" label="Name" rules={[{ required: true, message: 'Required' }]}>
+              <Input placeholder="e.g. Vendor Docs Container" />
+            </Form.Item>
+            <Form.Item name="account_name" label="Storage account name" rules={[{ required: true, message: 'Required' }]}>
+              <Input />
+            </Form.Item>
+            <Form.Item name="container" label="Container" rules={[{ required: true, message: 'Required' }]}>
+              <Input />
+            </Form.Item>
+            <Form.Item name="prefix" label="Prefix" extra="Optional - limit sync to blobs under this path.">
+              <Input placeholder="docs/" />
+            </Form.Item>
+            <Form.Item name="account_key" label="Account key" extra="Stored encrypted. Never shown again after saving." rules={[{ required: true, message: 'Required' }]}>
+              <Input.Password autoComplete="new-password" />
             </Form.Item>
             <Form.Item name="sync_interval_seconds" label="Sync interval (seconds)" extra="How often to check for new/changed files automatically.">
               <Input type="number" min={60} />

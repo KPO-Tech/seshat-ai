@@ -1936,7 +1936,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                kind: "gdrive" | "sharepoint" | "slack" | "outlook" | "teams" | "gmail";
+                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail";
             };
             cookie?: never;
         };
@@ -1958,15 +1958,15 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                kind: "gdrive" | "sharepoint" | "slack" | "outlook" | "teams" | "gmail";
+                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail";
             };
             cookie?: never;
         };
         get?: never;
         put?: never;
         /**
-         * Start a "connect an account" OAuth flow for gdrive/sharepoint/slack/outlook/teams/gmail
-         * @description Requires that the organization has already registered an OAuth app for kind. With purpose=knowledge_sync (the default), also requires knowledge.manage or organization.manage and a valid corpus_id - this is the admin-run flow for gdrive/sharepoint. With purpose=agent_action, only requires organization membership and no corpus_id - any employee connects their own account for their own future MCP-backed agent actions; slack/outlook/teams/gmail only support this purpose. Returns a URL to open in a new browser tab; the resulting ConnectorAccount is created by the callback once the user completes the provider's consent screen, not by this call.
+         * Start a "connect an account" OAuth flow for gdrive/sharepoint/onedrive/confluence/slack/outlook/teams/gmail
+         * @description Requires that the organization has already registered an OAuth app for kind. With purpose=knowledge_sync (the default), also requires knowledge.manage or organization.manage and a valid corpus_id - this is the admin-run flow for gdrive/sharepoint/onedrive/confluence. With purpose=agent_action, only requires organization membership and no corpus_id - any employee connects their own account for their own future MCP-backed agent actions; slack/outlook/teams/gmail only support this purpose. Returns a URL to open in a new browser tab; the resulting ConnectorAccount is created by the callback once the user completes the provider's consent screen, not by this call.
          */
         post: operations["beginConnectorOAuth"];
         delete?: never;
@@ -1980,7 +1980,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                kind: "gdrive" | "sharepoint" | "slack" | "outlook" | "teams" | "gmail";
+                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail";
             };
             cookie?: never;
         };
@@ -3525,7 +3525,7 @@ export interface components {
             /** @description Set only for a knowledge_sync-purposed account - empty for agent_action. */
             corpus_id?: string;
             /** @enum {string} */
-            kind?: "s3" | "gdrive" | "sharepoint" | "slack" | "outlook" | "teams" | "gmail";
+            kind?: "s3" | "azureblob" | "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail";
             /**
              * @description knowledge_sync: admin-run, feeds a corpus. agent_action: self-service, one employee's own account for their own future MCP-backed agent actions - see connectors' package doc.
              * @enum {string}
@@ -3544,7 +3544,7 @@ export interface components {
             /** Format: date-time */
             updated_at?: string;
         };
-        /** @description Only kind "s3" is supported today; bucket/region/endpoint/prefix and access_key_id/secret_access_key apply to it. Region defaults to "us-east-1" if omitted. */
+        /** @description Kinds "s3" and "azureblob" are supported here. For "s3": bucket/region/endpoint/prefix and access_key_id/secret_access_key apply (region defaults to "us-east-1" if omitted). For "azureblob": account_name/container/prefix and account_key apply. Each kind only requires its own fields - the required list below is a union. */
         ConnectorAccountInput: {
             organization_id: string;
             corpus_id: string;
@@ -3552,14 +3552,20 @@ export interface components {
              * @description Defaults to "s3".
              * @enum {string}
              */
-            kind?: "s3";
+            kind?: "s3" | "azureblob";
             display_name: string;
-            bucket: string;
+            bucket?: string;
             region?: string;
-            endpoint: string;
+            endpoint?: string;
             prefix?: string;
-            access_key_id: string;
-            secret_access_key: string;
+            access_key_id?: string;
+            secret_access_key?: string;
+            /** @description azureblob only: the storage account name. */
+            account_name?: string;
+            /** @description azureblob only: the blob container name. */
+            container?: string;
+            /** @description azureblob only: the storage account's shared key. */
+            account_key?: string;
             /** @description Defaults to 3600 (1 hour). */
             sync_interval_seconds?: number;
         };
@@ -3583,7 +3589,7 @@ export interface components {
         /** @description The client secret is never returned, only whether one is configured. */
         ConnectorOAuthApp: {
             /** @enum {string} */
-            kind?: "gdrive" | "sharepoint" | "slack" | "outlook" | "teams" | "gmail";
+            kind?: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail";
             client_id?: string;
             configured?: boolean;
             /** Format: date-time */
@@ -7622,7 +7628,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                kind: "gdrive" | "sharepoint" | "slack" | "outlook" | "teams" | "gmail";
+                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail";
             };
             cookie?: never;
         };
@@ -7650,7 +7656,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                kind: "gdrive" | "sharepoint" | "slack" | "outlook" | "teams" | "gmail";
+                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail";
             };
             cookie?: never;
         };
@@ -7684,7 +7690,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                kind: "gdrive" | "sharepoint" | "slack" | "outlook" | "teams" | "gmail";
+                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail";
             };
             cookie?: never;
         };

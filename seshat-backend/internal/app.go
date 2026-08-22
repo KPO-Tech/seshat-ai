@@ -14,7 +14,9 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/files"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgeazureblob"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgegdrive"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgeonedrive"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledges3"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgesharepoint"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/mcp"
@@ -253,6 +255,12 @@ func NewApp(deps Dependencies) *App {
 		}
 		if spConnector, ok := deps.KnowledgeConnectors[string(knowledgesharepoint.Kind)].(*knowledgesharepoint.Connector); ok {
 			spConnector.WithTextExtractor(concreteKnowledge.ExtractText)
+		}
+		if azureBlobConnector, ok := deps.KnowledgeConnectors[string(knowledgeazureblob.Kind)].(*knowledgeazureblob.Connector); ok {
+			azureBlobConnector.WithTextExtractor(concreteKnowledge.ExtractText)
+		}
+		if oneDriveConnector, ok := deps.KnowledgeConnectors[string(knowledgeonedrive.Kind)].(*knowledgeonedrive.Connector); ok {
+			oneDriveConnector.WithTextExtractor(concreteKnowledge.ExtractText)
 		}
 	}
 	skillsService := skills.NewService()

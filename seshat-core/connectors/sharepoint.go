@@ -205,6 +205,15 @@ func (c *SharePointConnector) allDrives(ctx context.Context, graph *spGraphClien
 // syncOneItem downloads one file's content and permissions. ok=false is a
 // normal skip, not an error, mirroring GDriveConnector.syncOneFile.
 func (c *SharePointConnector) syncOneItem(ctx context.Context, graph *spGraphClient, driveID string, item spGraphDriveItem) (SyncItem, bool) {
+	return graphSyncOneItem(ctx, graph, driveID, item, c.extractText)
+}
+
+// graphSyncOneItem downloads one Graph DriveItem's content and permissions,
+// extracting its text - shared by SharePointConnector and OneDriveConnector,
+// since both sync plain Graph drives the same way and only differ in which
+// drive(s) they enumerate (every site's document library vs. exactly one
+// personal drive). ok=false is a normal skip, not an error.
+func graphSyncOneItem(ctx context.Context, graph *spGraphClient, driveID string, item spGraphDriveItem, extract TextExtractorFunc) (SyncItem, bool) {
 	if item.Size > maxSPFileBytes {
 		return SyncItem{}, false
 	}
@@ -212,33 +221,34 @@ func (c *SharePointConnector) syncOneItem(ctx context.Context, graph *spGraphCli
 	if err != nil || len(data) == 0 {
 		return SyncItem{}, false
 	}
-	text := c.extractedText(ctx, data, item.Name)
+	text := graphExtractedText(ctx, data, item.Name, extract)
 	if strings.TrimSpace(text) == "" {
 		return SyncItem{}, false
 	}
 	return SyncItem{
 		ResourceRef:   spDriveItemToResourceRef(driveID, item),
 		Text:          text,
-		AccessControl: c.fetchAccessControl(ctx, graph, driveID, item.ID),
+		AccessControl: graphFetchAccessControl(ctx, graph, driveID, item.ID),
 	}, true
 }
 
-// extractedText mirrors GDriveConnector.downloadText's non-native branch:
-// every SharePoint file needs the same Docling-backed extraction an
-// uploaded file gets, or its raw bytes get ingested as unsearchable noise.
-// Plain-text/markdown pass through unchanged when no extractor is wired.
-func (c *SharePointConnector) extractedText(ctx context.Context, data []byte, filename string) string {
-	if c.extractText == nil {
+// graphExtractedText mirrors GDriveConnector.downloadText's non-native
+// branch: every Graph-drive file needs the same Docling-backed extraction
+// an uploaded file gets, or its raw bytes get ingested as unsearchable
+// noise. Plain-text/markdown pass through unchanged when no extractor is
+// wired.
+func graphExtractedText(ctx context.Context, data []byte, filename string, extract TextExtractorFunc) string {
+	if extract == nil {
 		return string(data)
 	}
-	return c.extractText(ctx, data, "", filename)
+	return extract(ctx, data, "", filename)
 }
 
-// fetchAccessControl maps a DriveItem's permissions to prefixed identity
-// strings - see spPermissionsToAccessControl for the actual mapping rules.
-// Errors are swallowed (nil result), same discipline as
+// graphFetchAccessControl maps a DriveItem's permissions to prefixed
+// identity strings - see spPermissionsToAccessControl for the actual
+// mapping rules. Errors are swallowed (nil result), same discipline as
 // GDriveConnector.fetchAccessControl.
-func (c *SharePointConnector) fetchAccessControl(ctx context.Context, graph *spGraphClient, driveID, itemID string) []AccessEntry {
+func graphFetchAccessControl(ctx context.Context, graph *spGraphClient, driveID, itemID string) []AccessEntry {
 	permissions, err := graph.listPermissions(ctx, driveID, itemID)
 	if err != nil {
 		return nil

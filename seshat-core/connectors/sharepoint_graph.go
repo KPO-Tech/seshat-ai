@@ -35,6 +35,10 @@ type spDrivesResponse struct {
 	Value []spGraphDrive `json:"value"`
 }
 
+type spGraphMyDrive struct {
+	ID string `json:"id"`
+}
+
 // spGraphDriveItem is one file/folder/package as returned by a delta page.
 // Deleted is non-nil when this item represents a deletion in the delta feed.
 type spGraphDriveItem struct {
@@ -151,6 +155,21 @@ func (c *spGraphClient) listDrives(ctx context.Context, siteID string) ([]spGrap
 		return nil, fmt.Errorf("list drives for site %s: %w", siteID, err)
 	}
 	return page.Value, nil
+}
+
+// myDriveID returns the connected account's own OneDrive drive ID
+// (GET /me/drive) - used by OneDriveConnector, which (unlike
+// SharePointConnector) only ever touches exactly one drive: the signed-in
+// user's personal one, never a site's document library.
+func (c *spGraphClient) myDriveID(ctx context.Context) (string, error) {
+	var drive spGraphMyDrive
+	if _, err := c.get(ctx, spGraphBaseURL+"/me/drive?$select=id", &drive); err != nil {
+		return "", fmt.Errorf("get my drive: %w", err)
+	}
+	if drive.ID == "" {
+		return "", fmt.Errorf("me/drive response missing id")
+	}
+	return drive.ID, nil
 }
 
 // deltaPage returns every item changed since deltaLink (empty = full

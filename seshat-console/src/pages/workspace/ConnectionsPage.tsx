@@ -1,16 +1,18 @@
 import { Alert, Button, Card, Popconfirm, Space, Tag, Typography, message } from 'antd'
-import { DeleteOutlined, GoogleOutlined, WindowsOutlined, SlackOutlined, MailOutlined, TeamOutlined } from '@ant-design/icons'
+import { DeleteOutlined, GoogleOutlined, WindowsOutlined, SlackOutlined, MailOutlined, TeamOutlined, BookOutlined } from '@ant-design/icons'
 import { useMyConnectorAccountsList, useDeleteMyConnectorAccount } from '@/api/myConnections'
 import { useBeginConnectorOAuth, type ConnectorAccount, type OAuthConnectorKind } from '@/api/connectors'
 import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
 import { useWorkspaceOrganizationStore } from '@/store/workspaceOrganization'
 
-const OAUTH_CONNECTOR_KINDS: OAuthConnectorKind[] = ['gdrive', 'sharepoint', 'slack', 'outlook', 'teams', 'gmail']
+const OAUTH_CONNECTOR_KINDS: OAuthConnectorKind[] = ['gdrive', 'sharepoint', 'onedrive', 'confluence', 'slack', 'outlook', 'teams', 'gmail']
 
 const KIND_META: Record<OAuthConnectorKind, { label: string; icon: React.ReactNode }> = {
   gdrive: { label: 'Google Drive', icon: <GoogleOutlined /> },
   sharepoint: { label: 'SharePoint', icon: <WindowsOutlined /> },
+  onedrive: { label: 'OneDrive', icon: <WindowsOutlined /> },
+  confluence: { label: 'Confluence', icon: <BookOutlined /> },
   slack: { label: 'Slack', icon: <SlackOutlined /> },
   outlook: { label: 'Outlook', icon: <MailOutlined /> },
   teams: { label: 'Microsoft Teams', icon: <TeamOutlined /> },

@@ -147,11 +147,50 @@ func (s *Service) processSyncJob(ctx context.Context, job sdb.ConnectorSyncJob) 
 	}
 
 	now := time.Now().UTC()
+	updates := map[string]any{"sync_cursor": nextCursor, "last_synced_at": &now, "last_error": "", "status": StatusConnected}
+	s.applyRefreshedTokenIfAny(ctx, conn, account.OrganizationID, updates)
 	_ = s.db.Gorm().WithContext(ctx).Model(&sdb.ConnectorAccount{}).Where("id = ?", account.ID).
-		Updates(map[string]any{"sync_cursor": nextCursor, "last_synced_at": &now, "last_error": "", "status": StatusConnected}).Error
+		Updates(updates).Error
 
 	_ = s.db.Gorm().WithContext(ctx).Model(&sdb.ConnectorSyncJob{}).Where("id = ?", job.ID).
 		Updates(map[string]any{"status": SyncJobStatusCompleted, "completed_at": &now, "items_synced": synced}).Error
+}
+
+// tokenRefreshReporter is implemented by connectors whose OAuth provider
+// rotates refresh tokens on every use (confluenceConnector, today) - see
+// ConfluenceConnector's package doc comment in core/connectors for why the
+// "never persist a refreshed token" pattern every other connector here
+// relies on would silently break this one after roughly its second sync.
+type tokenRefreshReporter interface {
+	RefreshedToken() (accessToken, refreshToken string, expiry time.Time, ok bool)
+}
+
+// applyRefreshedTokenIfAny folds a rotated credential pair into updates (the
+// same map processSyncJob is about to persist for sync_cursor/
+// last_synced_at) so there is no extra DB round trip - a no-op for every
+// connector kind that doesn't implement tokenRefreshReporter, or that does
+// but didn't actually rotate this call.
+func (s *Service) applyRefreshedTokenIfAny(ctx context.Context, conn knowledgeConnector, organizationID string, updates map[string]any) {
+	reporter, ok := conn.(tokenRefreshReporter)
+	if !ok {
+		return
+	}
+	accessToken, refreshToken, expiry, refreshed := reporter.RefreshedToken()
+	if !refreshed {
+		return
+	}
+	tx := s.db.Gorm().WithContext(ctx)
+	accessEnc, err := sdb.EncryptSecret(tx, organizationID, accessToken)
+	if err != nil {
+		return // best-effort - the stale-but-still-valid-until-next-rotation token stays in place
+	}
+	refreshEnc, err := sdb.EncryptSecret(tx, organizationID, refreshToken)
+	if err != nil {
+		return
+	}
+	updates["access_token_encrypted"] = accessEnc
+	updates["refresh_token_encrypted"] = refreshEnc
+	updates["expires_at"] = &expiry
 }
 
 func (s *Service) markAccountError(ctx context.Context, accountID, message string) {

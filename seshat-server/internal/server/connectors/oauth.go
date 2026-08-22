@@ -29,6 +29,8 @@ const connectorOAuthStateTTL = 10 * time.Minute
 var oauthConnectorKinds = map[string]bool{
 	string(gdriveKind):     true,
 	string(sharepointKind): true,
+	string(onedriveKind):   true,
+	string(confluenceKind): true,
 	string(slackKind):      true,
 	string(outlookKind):    true,
 	string(teamsKind):      true,
@@ -49,7 +51,7 @@ var agentActionOnlyKinds = map[string]bool{
 func validateOAuthKind(kind string) (string, error) {
 	kind = strings.ToLower(strings.TrimSpace(kind))
 	if !oauthConnectorKinds[kind] {
-		return "", ErrInvalidInput(fmt.Sprintf("unsupported oauth connector kind %q (must be one of \"gdrive\", \"sharepoint\", \"slack\", \"outlook\", \"teams\", \"gmail\")", kind))
+		return "", ErrInvalidInput(fmt.Sprintf("unsupported oauth connector kind %q (must be one of \"gdrive\", \"sharepoint\", \"onedrive\", \"confluence\", \"slack\", \"outlook\", \"teams\", \"gmail\")", kind))
 	}
 	return kind, nil
 }
@@ -317,6 +319,12 @@ func (s *Service) BeginConnectorOAuth(ctx context.Context, principal *iam.Princi
 		// refresh token silently gets no new one.
 		authOpts = append(authOpts, oauth2.AccessTypeOffline, oauth2.SetAuthURLParam("prompt", "consent"))
 	}
+	if kind == string(confluenceKind) {
+		// Atlassian's authorize endpoint requires an explicit audience and,
+		// like Google, only issues a refresh token when prompt=consent is
+		// set - verified live against Atlassian's OAuth 2.0 (3LO) docs.
+		authOpts = append(authOpts, oauth2.SetAuthURLParam("audience", "api.atlassian.com"), oauth2.SetAuthURLParam("prompt", "consent"))
+	}
 	return oauthCfg.AuthCodeURL(state, authOpts...), nil
 }
 
@@ -526,12 +534,13 @@ func connectorOAuthEndpoint(kind string) oauth2.Endpoint {
 	switch kind {
 	case string(gdriveKind), string(gmailKind):
 		return google.Endpoint
-	case string(sharepointKind), string(outlookKind), string(teamsKind):
+	case string(sharepointKind), string(onedriveKind), string(outlookKind), string(teamsKind):
 		// "organizations" tenant - any work/school (Entra ID) account across
 		// any tenant, never a personal Microsoft account. SharePoint access
-		// isn't supported for personal accounts anyway, and outlook/teams
-		// deliberately stay on the same work/school-only restriction (an
-		// enterprise product, not a consumer Outlook.com/personal-Teams one).
+		// isn't supported for personal accounts anyway, and onedrive/outlook/
+		// teams deliberately stay on the same work/school-only restriction
+		// (an enterprise product, not a consumer Outlook.com/personal-Teams/
+		// personal-OneDrive one).
 		return oauth2.Endpoint{
 			AuthURL:  "https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize",
 			TokenURL: "https://login.microsoftonline.com/organizations/oauth2/v2.0/token",
@@ -542,6 +551,11 @@ func connectorOAuthEndpoint(kind string) oauth2.Endpoint {
 		return oauth2.Endpoint{
 			AuthURL:  "https://slack.com/oauth/v2_user/authorize",
 			TokenURL: "https://slack.com/api/oauth.v2.user.access",
+		}
+	case string(confluenceKind):
+		return oauth2.Endpoint{
+			AuthURL:  "https://auth.atlassian.com/authorize",
+			TokenURL: "https://auth.atlassian.com/oauth/token",
 		}
 	default:
 		return oauth2.Endpoint{}
@@ -554,6 +568,10 @@ func connectorOAuthScopes(kind string) []string {
 		return gdriveScopes
 	case string(sharepointKind):
 		return sharepointScopes
+	case string(onedriveKind):
+		return onedriveScopes
+	case string(confluenceKind):
+		return confluenceScopes
 	case string(slackKind):
 		return slackScopes
 	case string(outlookKind):
@@ -574,10 +592,12 @@ func fetchConnectorIdentity(ctx context.Context, kind string, cfg *oauth2.Config
 	switch kind {
 	case string(gdriveKind), string(gmailKind):
 		return fetchGoogleAccountEmail(ctx, cfg, token)
-	case string(sharepointKind), string(outlookKind), string(teamsKind):
+	case string(sharepointKind), string(onedriveKind), string(outlookKind), string(teamsKind):
 		return fetchMicrosoftAccountUPN(ctx, cfg, token)
 	case string(slackKind):
 		return fetchSlackTeamAndUserID(ctx, cfg, token)
+	case string(confluenceKind):
+		return fetchAtlassianAccountEmail(ctx, cfg, token)
 	default:
 		return "", fmt.Errorf("unsupported kind %q", kind)
 	}
@@ -625,4 +645,35 @@ func fetchMicrosoftAccountUPN(ctx context.Context, cfg *oauth2.Config, token *oa
 		return "", fmt.Errorf("no userPrincipalName in /me response")
 	}
 	return info.UserPrincipalName, nil
+}
+
+// fetchAtlassianAccountEmail is a direct HTTP call rather than a generated
+// SDK client, matching fetchMicrosoftAccountUPN's own reasoning - no
+// official Go SDK is vendored in this module. Uses the read:me-scoped User
+// Identity API, not a Confluence-specific endpoint - the same identity
+// lookup would serve any future Atlassian-product connector (Jira, etc.).
+func fetchAtlassianAccountEmail(ctx context.Context, cfg *oauth2.Config, token *oauth2.Token) (string, error) {
+	client := cfg.Client(ctx, token)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.atlassian.com/me", nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		return "", fmt.Errorf("atlassian /me returned %d", resp.StatusCode)
+	}
+	var info struct {
+		Email string `json:"email"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		return "", err
+	}
+	if info.Email == "" {
+		return "", fmt.Errorf("no email in atlassian /me response")
+	}
+	return info.Email, nil
 }

@@ -9,9 +9,9 @@ import (
 )
 
 // createConnectorAccountRequest covers every connector kind's fields in one
-// shape - only "s3" is accepted today (see handleConnectorAccounts), the
-// rest are reserved for the gdrive/sharepoint fast-follow (see
-// docs/architecture.md's "Example: Knowledge connectors").
+// shape - only "s3" and "azureblob" are accepted here (see
+// handleConnectorAccounts), gdrive/sharepoint are reserved for the OAuth
+// flow (see docs/architecture.md's "Example: Knowledge connectors").
 type createConnectorAccountRequest struct {
 	OrganizationID      string `json:"organization_id"`
 	CorpusID            string `json:"corpus_id"`
@@ -23,6 +23,9 @@ type createConnectorAccountRequest struct {
 	Prefix              string `json:"prefix"`
 	AccessKeyID         string `json:"access_key_id"`
 	SecretAccessKey     string `json:"secret_access_key"`
+	AccountName         string `json:"account_name"`
+	Container           string `json:"container"`
+	AccountKey          string `json:"account_key"`
 	SyncIntervalSeconds int    `json:"sync_interval_seconds"`
 }
 
@@ -51,22 +54,39 @@ func (app *App) handleConnectorAccounts(w http.ResponseWriter, r *http.Request) 
 		if kind == "" {
 			kind = "s3"
 		}
-		if kind != "s3" {
+		var (
+			account *connectors.ConnectorAccount
+			err     error
+		)
+		switch kind {
+		case "s3":
+			account, err = app.backend.Connectors.CreateS3Account(r.Context(), principal, connectors.CreateS3AccountParams{
+				OrganizationID:      req.OrganizationID,
+				CorpusID:            req.CorpusID,
+				DisplayName:         req.DisplayName,
+				Bucket:              req.Bucket,
+				Region:              req.Region,
+				Endpoint:            req.Endpoint,
+				Prefix:              req.Prefix,
+				AccessKeyID:         req.AccessKeyID,
+				SecretAccessKey:     req.SecretAccessKey,
+				SyncIntervalSeconds: req.SyncIntervalSeconds,
+			})
+		case "azureblob":
+			account, err = app.backend.Connectors.CreateAzureBlobAccount(r.Context(), principal, connectors.CreateAzureBlobAccountParams{
+				OrganizationID:      req.OrganizationID,
+				CorpusID:            req.CorpusID,
+				DisplayName:         req.DisplayName,
+				AccountName:         req.AccountName,
+				Container:           req.Container,
+				Prefix:              req.Prefix,
+				AccountKey:          req.AccountKey,
+				SyncIntervalSeconds: req.SyncIntervalSeconds,
+			})
+		default:
 			writeJSONError(w, http.StatusBadRequest, fmt.Sprintf("unsupported connector kind %q here - \"gdrive\"/\"sharepoint\" accounts are created via POST /api/v1/connectors/{kind}/oauth/start, not this endpoint", kind))
 			return
 		}
-		account, err := app.backend.Connectors.CreateS3Account(r.Context(), principal, connectors.CreateS3AccountParams{
-			OrganizationID:      req.OrganizationID,
-			CorpusID:            req.CorpusID,
-			DisplayName:         req.DisplayName,
-			Bucket:              req.Bucket,
-			Region:              req.Region,
-			Endpoint:            req.Endpoint,
-			Prefix:              req.Prefix,
-			AccessKeyID:         req.AccessKeyID,
-			SecretAccessKey:     req.SecretAccessKey,
-			SyncIntervalSeconds: req.SyncIntervalSeconds,
-		})
 		if err != nil {
 			writeKnowledgeError(w, err)
 			return

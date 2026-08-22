@@ -184,6 +184,22 @@ type CreateS3AccountParams struct {
 	SyncIntervalSeconds int
 }
 
+// CreateAzureBlobAccountParams connects a new Azure Blob Storage container
+// as a Knowledge source. AccountKey is stored encrypted under the
+// organization's own DEK (sdb.EncryptSecret) and never returned afterward -
+// shared-key auth needs only this one secret, so RefreshTokenEncrypted stays
+// unset (same field-reuse note as core/connectors.AzureBlobConnector).
+type CreateAzureBlobAccountParams struct {
+	OrganizationID      string
+	CorpusID            string
+	DisplayName         string
+	AccountName         string
+	Container           string
+	Prefix              string
+	AccountKey          string
+	SyncIntervalSeconds int
+}
+
 // ─── Connector accounts ─────────────────────────────────────────────────
 
 // CreateS3Account validates and stores an S3 connector account and connects
@@ -258,6 +274,87 @@ func (s *Service) CreateS3Account(ctx context.Context, principal *iam.Principal,
 			Config:                config,
 			SyncIntervalSeconds:   syncInterval,
 			NextSyncAt:            &now,
+		}
+		if err := tx.Create(&record).Error; err != nil {
+			return err
+		}
+		return s.iam.AppendAuditEvent(tx, principal, organizationID, "connector_account.created", "connector_account", record.ID, map[string]string{"kind": record.Kind, "corpus_id": corpusID})
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := toConnectorAccount(record)
+	return &result, nil
+}
+
+// CreateAzureBlobAccount validates and stores an Azure Blob Storage
+// connector account and connects it immediately - unlike an OAuth-based
+// connector, shared-key auth has no authorize/callback step. Requires
+// knowledge.manage or organization.manage.
+func (s *Service) CreateAzureBlobAccount(ctx context.Context, principal *iam.Principal, params CreateAzureBlobAccountParams) (*ConnectorAccount, error) {
+	if principal == nil {
+		return nil, ErrUnauthorized("authentication required")
+	}
+	organizationID := strings.TrimSpace(params.OrganizationID)
+	corpusID := strings.TrimSpace(params.CorpusID)
+	displayName := strings.TrimSpace(params.DisplayName)
+	if organizationID == "" || corpusID == "" || displayName == "" {
+		return nil, ErrInvalidInput("organization_id, corpus_id and display_name are required")
+	}
+	if strings.TrimSpace(params.AccountName) == "" || strings.TrimSpace(params.AccountKey) == "" {
+		return nil, ErrInvalidInput("account_name and account_key are required")
+	}
+	if !principal.User.IsAdmin {
+		if err := s.iam.CheckOrganizationPermission(s.db.Gorm().WithContext(ctx), principal, organizationID, "knowledge.manage", "organization.manage"); err != nil {
+			return nil, err
+		}
+	}
+	var corpus sdb.Corpus
+	if err := s.db.Gorm().WithContext(ctx).First(&corpus, "id = ? AND organization_id = ?", corpusID, organizationID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrInvalidInput("corpus not found in this organization")
+		}
+		return nil, err
+	}
+
+	config, err := encodeAzureBlobAccountConfig(strings.TrimSpace(params.AccountName), strings.TrimSpace(params.Container), strings.TrimSpace(params.Prefix))
+	if err != nil {
+		return nil, ErrInvalidInput("encode azureblob config: " + err.Error())
+	}
+	if _, err := parseAzureBlobAccountConfig(config); err != nil {
+		return nil, ErrInvalidInput(err.Error())
+	}
+
+	syncInterval := params.SyncIntervalSeconds
+	if syncInterval <= 0 {
+		syncInterval = defaultSyncIntervalSeconds
+	}
+
+	var record sdb.ConnectorAccount
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		tx = tx.WithContext(ctx)
+		accountID, idErr := newID("connacc")
+		if idErr != nil {
+			return idErr
+		}
+		accessEnc, encErr := sdb.EncryptSecret(tx, organizationID, params.AccountKey)
+		if encErr != nil {
+			return encErr
+		}
+		now := time.Now().UTC()
+		record = sdb.ConnectorAccount{
+			ID:                   accountID,
+			OrganizationID:       organizationID,
+			CorpusID:             &corpusID,
+			CreatedByUserID:      principal.User.ID,
+			Kind:                 string(azureBlobKind),
+			Purpose:              PurposeKnowledgeSync,
+			DisplayName:          displayName,
+			Status:               StatusConnected,
+			AccessTokenEncrypted: accessEnc,
+			Config:               config,
+			SyncIntervalSeconds:  syncInterval,
+			NextSyncAt:           &now,
 		}
 		if err := tx.Create(&record).Error; err != nil {
 			return err
@@ -561,6 +658,8 @@ func (s *Service) connectorFor(ctx context.Context, kind, organizationID string)
 	switch kind {
 	case string(s3Kind):
 		return newS3Connector().withTextExtractor(s.knowledge.ExtractText), nil
+	case string(azureBlobKind):
+		return newAzureBlobConnector().withTextExtractor(s.knowledge.ExtractText), nil
 	case string(gdriveKind):
 		oauthCfg, err := s.oauthConfigFor(ctx, organizationID, kind)
 		if err != nil {
@@ -573,6 +672,18 @@ func (s *Service) connectorFor(ctx context.Context, kind, organizationID string)
 			return nil, err
 		}
 		return newSharePointConnector(oauthCfg).withTextExtractor(s.knowledge.ExtractText), nil
+	case string(onedriveKind):
+		oauthCfg, err := s.oauthConfigFor(ctx, organizationID, kind)
+		if err != nil {
+			return nil, err
+		}
+		return newOneDriveConnector(oauthCfg).withTextExtractor(s.knowledge.ExtractText), nil
+	case string(confluenceKind):
+		oauthCfg, err := s.oauthConfigFor(ctx, organizationID, kind)
+		if err != nil {
+			return nil, err
+		}
+		return newConfluenceConnector(oauthCfg).withTextExtractor(s.knowledge.ExtractText), nil
 	default:
 		return nil, fmt.Errorf("unsupported connector kind %q", kind)
 	}

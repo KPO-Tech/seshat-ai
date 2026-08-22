@@ -42,7 +42,9 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inboxtool"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inboxwhatsapp"
 	backendknowledge "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgeazureblob"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgegdrive"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgeonedrive"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledges3"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgesharepoint"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgetool"
@@ -379,6 +381,16 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		}
 		knowledgeSharePointConnector = knowledgesharepoint.NewConnector(sharepointOAuthConfig)
 		fmt.Printf("[API] Knowledge: connecteur SharePoint activé\n")
+	}
+	var knowledgeOneDriveConnector *knowledgeonedrive.Connector
+	if knowledgeonedrive.IsConfigured() {
+		onedriveOAuthConfig, err := knowledgeonedrive.BaseOAuthConfig()
+		if err != nil {
+			_ = cleanup()
+			return nil, nil, fmt.Errorf("init onedrive oauth config: %w", err)
+		}
+		knowledgeOneDriveConnector = knowledgeonedrive.NewConnector(onedriveOAuthConfig)
+		fmt.Printf("[API] Knowledge: connecteur OneDrive activé\n")
 	}
 
 	prospectingCacheStore, err := db.NewProspectingCacheStore(database)
@@ -1000,11 +1012,16 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	// wires this instance's text extractor once knowledgeService exists,
 	// same reasoning as Drive's WithTextExtractor call there).
 	s3Connector := knowledges3.NewConnector()
+	azureBlobConnector := knowledgeazureblob.NewConnector()
 	knowledgeConnectors := map[string]connector.KnowledgeConnector{
-		string(knowledges3.Kind): s3Connector,
+		string(knowledges3.Kind):        s3Connector,
+		string(knowledgeazureblob.Kind): azureBlobConnector,
 	}
 	if knowledgeSharePointConnector != nil {
 		knowledgeConnectors[string(knowledgesharepoint.Kind)] = knowledgeSharePointConnector
+	}
+	if knowledgeOneDriveConnector != nil {
+		knowledgeConnectors[string(knowledgeonedrive.Kind)] = knowledgeOneDriveConnector
 	}
 
 	backendApp := seshat.NewApp(seshat.Dependencies{
