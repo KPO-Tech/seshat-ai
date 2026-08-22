@@ -5,12 +5,12 @@ import { Outlet, matchPath, useLocation, useNavigate } from 'react-router'
 import { useOrganizationsList } from '@/api/organizations'
 import { useLogout } from '@/api/auth'
 import {
-  accountNavItems,
   getActivePrimaryNavItem,
   getActiveSecondaryNavItem,
   getOrganizationNavItems,
   getScopeTagLabel,
   getSecondaryNavItems,
+  organizationNavGroups,
   platformNavItems,
   workspaceNavItems,
 } from '@/layout/nav'
@@ -85,6 +85,27 @@ export function AppLayout() {
   // to Organizations" escape hatch below.
   const showPlatformGroup = isAdmin && !inOrganizationRoute
 
+  // Overview/Preferences render as plain items (no group label) bracketing
+  // the three themed groups below - see organizationNavGroups' own comment
+  // for why those two don't belong to any theme. Any key not claimed by a
+  // group (there should only ever be these two) surfaces itself here too,
+  // so a new org nav item is never silently dropped from the sidebar just
+  // because nobody remembered to add it to a group.
+  const organizationNavItemsByKey = new Map(organizationNavItems.map((item) => [item.key, item]))
+  const groupedOrganizationKeys = new Set(organizationNavGroups.flatMap((group) => group.keys))
+  const ungroupedOrganizationItems = organizationNavItems.filter((item) => !groupedOrganizationKeys.has(item.key))
+  const organizationGroupMenuItems = organizationNavGroups
+    .map((group) => ({
+      key: `org-group-${group.label}`,
+      type: 'group' as const,
+      label: group.label,
+      children: group.keys
+        .map((key) => organizationNavItemsByKey.get(key))
+        .filter((item): item is NonNullable<typeof item> => Boolean(item))
+        .map((item) => ({ key: item.key, label: item.label, icon: item.icon })),
+    }))
+    .filter((group) => group.children.length > 0)
+
   const menuItems = [
     ...(showPlatformGroup
       ? [
@@ -96,34 +117,16 @@ export function AppLayout() {
           },
         ]
       : []),
-    {
-      key: 'personal-group',
-      type: 'group' as const,
-      label: 'Personal',
-      children: [...workspaceNavItems, ...accountNavItems].map((item) => ({
-        key: item.key,
-        label: item.label,
-        icon: item.icon,
-      })),
-    },
-    ...(organizationNavItems.length > 0
-      ? [
-          {
-            key: 'organization-group',
-            type: 'group' as const,
-            label: 'Organization',
-            children: organizationNavItems.map((item) => ({ key: item.key, label: item.label, icon: item.icon })),
-          },
-        ]
+    ...(ungroupedOrganizationItems[0]
+      ? [{ key: ungroupedOrganizationItems[0].key, label: ungroupedOrganizationItems[0].label, icon: ungroupedOrganizationItems[0].icon }]
       : []),
+    ...organizationGroupMenuItems,
+    ...ungroupedOrganizationItems.slice(1).map((item) => ({ key: item.key, label: item.label, icon: item.icon })),
+    ...(showPlatformGroup || organizationNavItems.length > 0 ? [{ key: 'workspace-divider', type: 'divider' as const }] : []),
+    ...workspaceNavItems.map((item) => ({ key: item.key, label: item.label, icon: item.icon })),
   ]
 
-  const primaryItems = [
-    ...(showPlatformGroup ? platformNavItems : []),
-    ...workspaceNavItems,
-    ...accountNavItems,
-    ...organizationNavItems,
-  ]
+  const primaryItems = [...(showPlatformGroup ? platformNavItems : []), ...organizationNavItems, ...workspaceNavItems]
 
   return (
     <Layout className="console-shell" style={{ height: '100vh', overflow: 'hidden', background: palette.canvas }}>

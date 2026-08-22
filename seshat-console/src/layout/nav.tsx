@@ -154,6 +154,22 @@ export function getOrganizationNavItems(organizationId: string): NavItem[] {
   ]
 }
 
+export interface OrganizationNavGroup {
+  label: string
+  keys: string[]
+}
+
+// Overview and Preferences deliberately sit outside any labeled group (kept
+// as the first/last plain items instead) - a dashboard and a catch-all
+// settings page don't belong to a theme the way the other 8 do, and forcing
+// them into one would leave that group's label describing only half its
+// children.
+export const organizationNavGroups: OrganizationNavGroup[] = [
+  { label: 'Access & Governance', keys: ['org-team', 'org-activity'] },
+  { label: 'AI & Automation', keys: ['org-ai', 'org-agents', 'org-automation', 'org-knowledge'] },
+  { label: 'Integrations', keys: ['org-integrations', 'org-prospecting'] },
+]
+
 export function getSecondaryNavItems(pathname: string, organizationId: string | null): SecondaryNavItem[] {
   if (pathname.startsWith('/workspace/')) {
     return [
