@@ -118,6 +118,27 @@ func (s *Service) executeCloudRun(ctx context.Context, runID string) error {
 		}
 	}
 
+	// Whose per-employee MCP tokens (Slack/Outlook/Teams/Gmail, ...) a
+	// scheduled job bridges is a real design question, not an assumption -
+	// unlike workspacechat's interactive session (a live request always has
+	// a principal to bridge for), a background ScheduledJob has no "person
+	// currently waiting" at all. Resolved to the job's own creator
+	// (CreatedByUserID) - the only identity already on the row, and the
+	// only sane default given nothing in this codebase has an org-level
+	// "service account" concept for these MCP-action kinds at all today
+	// (see connectors' own package doc). Best-effort like ragService above:
+	// the creator not having connected an account for a given kind, or no
+	// longer being a member of this organization, just means this run
+	// executes without those MCP tools this time, not a reason to fail it -
+	// same "don't let an optional capability's absence break a job"
+	// posture used for every other resolved dependency here.
+	var mcpServers []sdk.MCPServerConfig
+	if s.mcp != nil {
+		if resolved, mcpErr := s.mcp.ResolveServerConfigsForUser(ctx, job.OrganizationID, job.CreatedByUserID); mcpErr == nil {
+			mcpServers = resolved
+		}
+	}
+
 	executor, err := sdkautomation.NewExecutor(sdkautomation.ExecutorConfig{
 		RunnerConfig: sdkautomation.RunnerConfig{
 			Model:          sdkautomation.ModelIdentifier{Provider: sdktypes.APIProvider(provider), Model: model},
@@ -126,6 +147,7 @@ func (s *Service) executeCloudRun(ctx context.Context, runID string) error {
 			RAGService:     ragService,
 			DoclingURL:     s.doclingURL,
 			ArtifactStore:  s.artifacts,
+			MCPServers:     mcpServers,
 			// See jobWorkflow's doc comment above — bash is reachable from
 			// this executor, so it must never run unconfined on this shared
 			// host.

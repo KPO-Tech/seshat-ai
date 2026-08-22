@@ -433,20 +433,7 @@ func (s *Service) resolveMCPServers(ctx context.Context, principal *iam.Principa
 		log.Printf("workspacechat: resolve mcp servers for org %s: %v", organizationID, err)
 		return nil
 	}
-	servers := make([]sdk.MCPServerConfig, 0, len(resolved))
-	for _, r := range resolved {
-		servers = append(servers, sdk.MCPServerConfig{
-			Name:      r.Name,
-			Command:   r.Command,
-			Args:      r.Args,
-			URL:       r.URL,
-			Transport: sdk.MCPTransportType(r.ServerType),
-			Env:       r.Env,
-			Headers:   r.Headers,
-			Timeout:   time.Duration(r.TimeoutSecs) * time.Second,
-		})
-	}
-	return servers
+	return mcpregistry.ToSDKServerConfigs(resolved)
 }
 
 func (s *Service) getOrCreateSession(ctx context.Context, principal *iam.Principal, params StreamChatParams) (*sdk.Session, error) {

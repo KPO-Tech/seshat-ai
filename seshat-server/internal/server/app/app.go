@@ -127,6 +127,12 @@ func New(cfg serverconfig.Config) (*App, error) {
 	// Bearer token bridged in from their own connected account — see
 	// mcpregistry.Service.SetConnectorTokenResolver's doc comment.
 	mcpRegistryService.SetConnectorTokenResolver(connectorsService)
+	// Lets cloud-targeted job execution bridge its creator's own per-
+	// employee MCP servers/tokens (Slack/Outlook/Teams/Gmail, ...) the same
+	// way workspacechat's interactive sessions already do — see
+	// automation.Service.MCPResolver's doc comment for why the creator, not
+	// some other identity, is what a ScheduledJob resolves against.
+	automationService.SetMCPResolver(mcpRegistryService)
 
 	webSearchService := websearchsettings.New(database, iamService)
 	workspaceChatService := workspacechat.New(database, iamService, automationService, webSearchService, knowledgeService, mcpRegistryService, cfg.DoclingURL)

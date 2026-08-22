@@ -10,6 +10,7 @@ import (
 	"context"
 
 	sdkrag "github.com/KPO-Tech/seshat/pkg/rag"
+	"github.com/KPO-Tech/seshat/pkg/sdk"
 	sdkstorage "github.com/KPO-Tech/seshat/pkg/storage"
 
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/apperr"
@@ -28,11 +29,28 @@ type RAGResolver interface {
 	RAGServiceForOrganization(ctx context.Context, organizationID string) (*sdkrag.Service, bool, error)
 }
 
+// MCPResolver resolves the MCP servers available to organizationID for
+// userID specifically - cloud-targeted job execution bridges a scheduled
+// job's own creator's per-employee connected accounts (Slack/Outlook/
+// Teams/Gmail, ...) into that job's tool access, the same mechanism
+// workspacechat already uses for interactive sessions, just resolved for a
+// stored ScheduledJob.CreatedByUserID instead of a live request's
+// principal - see executeCloudRun's own comment for why the creator is the
+// chosen identity (a user-confirmed design call, not assumed) and why a
+// resolution failure degrades the run rather than failing it. Satisfied by
+// *mcpregistry.Service (ResolveServerConfigsForUser), injected via
+// SetMCPResolver rather than imported directly - same reasoning as
+// RAGResolver.
+type MCPResolver interface {
+	ResolveServerConfigsForUser(ctx context.Context, organizationID, userID string) ([]sdk.MCPServerConfig, error)
+}
+
 // Service owns devices, scheduled jobs and job runs.
 type Service struct {
 	db         *sdb.DB
 	iam        *iam.Service
 	rag        RAGResolver              // nil until SetRAGResolver is called
+	mcp        MCPResolver              // nil until SetMCPResolver is called
 	doclingURL string                   // empty until SetDoclingURL is called
 	artifacts  sdkstorage.ArtifactStore // nil until SetArtifactStore is called
 }
@@ -46,6 +64,15 @@ func New(database *sdb.DB, iamService *iam.Service) *Service {
 // once at app startup, after both services exist — see app.New.
 func (s *Service) SetRAGResolver(r RAGResolver) {
 	s.rag = r
+}
+
+// SetMCPResolver wires in the mcpregistry domain's per-employee MCP
+// server/token resolution so cloud-targeted job execution can give the
+// model access to Slack/Outlook/Teams/Gmail (and any other configured MCP
+// server) on behalf of the job's own creator. Called once at app startup,
+// after both services exist — see app.New.
+func (s *Service) SetMCPResolver(r MCPResolver) {
+	s.mcp = r
 }
 
 // SetDoclingURL enables the read_document_url tool for cloud-targeted job

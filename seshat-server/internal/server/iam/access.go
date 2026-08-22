@@ -490,6 +490,23 @@ func (s *Service) CanAccessOrganization(tx *gorm.DB, principal *Principal, organ
 	return canAccessOrganization(tx, principal, organizationID)
 }
 
+// IsOrganizationMember reports whether userID currently has a non-blocked
+// membership in organizationID - the same coarse check canAccessOrganization
+// makes internally, but for a bare userID with no live Principal to wrap it
+// in (e.g. automation's cloud-job execution resolving MCP servers on behalf
+// of a ScheduledJob's creator, not an authenticated HTTP caller). No
+// IsAdmin fast-path, unlike canAccessOrganization - a job's creator being a
+// platform admin doesn't change whose per-employee connected account gets
+// bridged, and platform admins get a real membership row like anyone else
+// in every organization they actually manage.
+func (s *Service) IsOrganizationMember(tx *gorm.DB, userID, organizationID string) (bool, error) {
+	var count int64
+	if err := tx.Model(&sdb.Membership{}).Where("user_id = ? AND organization_id = ? AND status <> ?", userID, organizationID, "blocked").Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
 // canAccessOrganization is the coarse "is this principal a member (or a
 // platform admin) of this organization" check used by read-only Get/List
 // paths that don't gate on a specific permission code.

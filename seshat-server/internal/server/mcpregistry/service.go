@@ -23,8 +23,11 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"time"
 
 	"gorm.io/gorm"
+
+	"github.com/KPO-Tech/seshat/pkg/sdk"
 
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
@@ -373,6 +376,75 @@ func (s *Service) injectConnectorToken(ctx context.Context, resolved *ResolvedMC
 	}
 	resolved.Headers["Authorization"] = "Bearer " + token
 	resolved.Connected = true
+}
+
+// ResolveServerConfigsForUser is ResolveServerConfigs' counterpart for
+// contexts with no live iam.Principal to check against - a scheduled cloud
+// job (automation.Service.executeCloudRun) resolving MCP servers on behalf
+// of its own creator (userID), not an authenticated HTTP caller mid-request.
+// Same per-user Bearer-token bridging as ResolveServerConfigs; the
+// membership gate is checked directly by userID instead of via a
+// Principal's own already-resolved memberships, since none exists here.
+//
+// Returns sdk.MCPServerConfig directly, not this package's own
+// ResolvedMCPServerConfig, so automation.MCPResolver is satisfied with zero
+// adapter code in the automation package - automation intentionally doesn't
+// import mcpregistry directly, the same "compose through an interface, don't
+// couple bounded contexts" reasoning already used for automation.RAGResolver
+// (which likewise hands back an SDK type, not a knowledge-package type).
+func (s *Service) ResolveServerConfigsForUser(ctx context.Context, organizationID, userID string) ([]sdk.MCPServerConfig, error) {
+	organizationID = strings.TrimSpace(organizationID)
+	userID = strings.TrimSpace(userID)
+	if organizationID == "" || userID == "" {
+		return nil, iam.ErrInvalidInput("organization_id and user_id are required")
+	}
+	tx := s.db.Gorm().WithContext(ctx)
+	member, err := s.iam.IsOrganizationMember(tx, userID, organizationID)
+	if err != nil {
+		return nil, err
+	}
+	if !member {
+		return nil, iam.ErrForbidden("not a member of this organization")
+	}
+	records, err := s.listServerConfigsWithFallback(tx, organizationID)
+	if err != nil {
+		return nil, err
+	}
+	resolved := make([]ResolvedMCPServerConfig, 0, len(records))
+	for _, r := range records {
+		rc, err := toResolvedServerConfig(tx, r)
+		if err != nil {
+			return nil, err
+		}
+		if r.ConnectorKind != "" {
+			s.injectConnectorToken(ctx, &rc, r.OrganizationID, userID)
+		}
+		resolved = append(resolved, rc)
+	}
+	return ToSDKServerConfigs(resolved), nil
+}
+
+// ToSDKServerConfigs converts this package's own ResolvedMCPServerConfig
+// list into sdk.MCPServerConfig, matching sdk.ClientConfig.MCPServers'
+// shape directly. Shared by every caller that feeds a resolved catalog
+// straight into an SDK client (workspacechat's interactive sessions,
+// ResolveServerConfigsForUser's cloud jobs above) instead of each
+// duplicating the same field-by-field mapping.
+func ToSDKServerConfigs(resolved []ResolvedMCPServerConfig) []sdk.MCPServerConfig {
+	servers := make([]sdk.MCPServerConfig, 0, len(resolved))
+	for _, r := range resolved {
+		servers = append(servers, sdk.MCPServerConfig{
+			Name:      r.Name,
+			Command:   r.Command,
+			Args:      r.Args,
+			URL:       r.URL,
+			Transport: sdk.MCPTransportType(r.ServerType),
+			Env:       r.Env,
+			Headers:   r.Headers,
+			Timeout:   time.Duration(r.TimeoutSecs) * time.Second,
+		})
+	}
+	return servers
 }
 
 // listServerConfigsWithFallback returns this organization's own MCP server

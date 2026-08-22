@@ -159,3 +159,5 @@ replace github.com/EngineerProjects/seshat-ai/seshat-core/prospecting => ../sesh
 replace github.com/EngineerProjects/seshat-ai/seshat-core/msgraph => ../seshat-core/msgraph
 
 replace github.com/EngineerProjects/seshat-ai/seshat-core/gmail => ../seshat-core/gmail
+
+replace github.com/KPO-Tech/seshat => ../../seshat
