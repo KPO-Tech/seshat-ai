@@ -7,7 +7,7 @@ require (
 	github.com/EngineerProjects/seshat-ai/seshat-core/gmail v0.0.0-00010101000000-000000000000
 	github.com/EngineerProjects/seshat-ai/seshat-core/msgraph v0.0.0-00010101000000-000000000000
 	github.com/EngineerProjects/seshat-ai/seshat-core/prospecting v0.0.0-00010101000000-000000000000
-	github.com/KPO-Tech/seshat v1.2.14
+	github.com/KPO-Tech/seshat v1.2.15
 	github.com/coreos/go-oidc/v3 v3.20.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/go-jose/go-jose/v4 v4.1.4
@@ -159,5 +159,3 @@ replace github.com/EngineerProjects/seshat-ai/seshat-core/prospecting => ../sesh
 replace github.com/EngineerProjects/seshat-ai/seshat-core/msgraph => ../seshat-core/msgraph
 
 replace github.com/EngineerProjects/seshat-ai/seshat-core/gmail => ../seshat-core/gmail
-
-replace github.com/KPO-Tech/seshat => ../../seshat
