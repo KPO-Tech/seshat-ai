@@ -20,8 +20,8 @@ import { getProviderModels } from '@/lib/providerCatalog'
 import { palette, monoStack } from '@/theme/tokens'
 
 const SUPPORTED_PROVIDERS = [
-  { id: 'anthropic', name: 'Anthropic', desc: 'Claude models — coding, reasoning, agents' },
-  { id: 'openai', name: 'OpenAI', desc: 'GPT models — pay-per-use API key' },
+  { id: 'anthropic', name: 'Anthropic', desc: 'Claude models, coding, reasoning, agents' },
+  { id: 'openai', name: 'OpenAI', desc: 'GPT models, pay-per-use API key' },
   { id: 'mistral', name: 'Mistral AI', desc: 'Open & efficient European models' },
   { id: 'gemini', name: 'Google Gemini', desc: 'Massive context windows' },
   { id: 'z-ai', name: 'Z.ai', desc: 'GLM models' },
@@ -256,7 +256,7 @@ function ProviderSettingFormDrawer({
           setDetectedModels(models)
           if (models.length === 0) {
             message.warning(
-              `No models found — check that Ollama is running and reachable at ${watchedBaseURL || PROVIDER_DEFAULT_URLS.ollama}`,
+              `No models found. Check that Ollama is running and reachable at ${watchedBaseURL || PROVIDER_DEFAULT_URLS.ollama}`,
             )
           } else {
             message.success(`Found ${models.length} model${models.length === 1 ? '' : 's'}`)
@@ -286,7 +286,7 @@ function ProviderSettingFormDrawer({
           label="Base URL"
           extra={
             isOllama
-              ? "seshat-server itself runs in a container in this project's docker-compose stack — from inside it, localhost means the container, not your machine. Use http://host.docker.internal:11434 to reach an Ollama running on your host."
+              ? "seshat-server itself runs in a container in this project's docker-compose stack. From inside it, localhost means the container, not your machine. Use http://host.docker.internal:11434 to reach an Ollama running on your host."
               : undefined
           }
         >

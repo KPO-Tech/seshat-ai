@@ -137,7 +137,7 @@ export function InvitationsPage() { const organizationId = useScopedOrganization
                 if (invitation?.token) {
                   const link = `${window.location.origin}/accept-invitation?token=${invitation.token}`
                   navigator.clipboard?.writeText(link).catch(() => {})
-                  message.success(`Invitation sent to ${values.email} — accept link also copied to your clipboard`)
+                  message.success(`Invitation sent to ${values.email}. Accept link also copied to your clipboard.`)
                 } else {
                   message.success(`Invitation sent to ${values.email}`)
                 } },

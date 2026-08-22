@@ -284,7 +284,7 @@ export function MembershipsPage() {
             {
               onSuccess: () => {
                 setEditing(null)
-                message.success(`${values.display_name} was created — they'll get an email to set their password.`)
+                message.success(`${values.display_name} was created. They'll get an email to set their password.`)
               },
               onError: (error) => message.error(getErrorMessage(error)),
             },
@@ -384,7 +384,7 @@ function MembershipFormDrawer({
           <>
             <Typography.Text style={{ color: palette.inkSecondary }}>
               Creates a brand-new platform account and adds it to this organization in one step. They'll get an
-              email with a link to set their own password — nobody here ever sees or sets it for them.
+              email with a link to set their own password. Nobody here ever sees or sets it for them.
             </Typography.Text>
 
             <Form key="new-user" form={newUserForm} layout="vertical" onFinish={onSubmitNewUser} initialValues={{ role: 'member' }}>
@@ -406,7 +406,7 @@ function MembershipFormDrawer({
               >
                 <RoleSelect organizationId={organizationId ?? undefined} />
               </Form.Item>
-              <Form.Item name="group_ids" label="Teams" extra="Optional — add this member to one or more teams right away.">
+              <Form.Item name="group_ids" label="Teams" extra="Optional. Add this member to one or more teams right away.">
                 <GroupMultiSelect organizationId={organizationId ?? undefined} />
               </Form.Item>
             </Form>

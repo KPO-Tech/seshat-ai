@@ -45,7 +45,7 @@ const EMBEDDER_VENDORS: EmbedderVendor[] = [
     baseURL: 'https://api.mistral.ai/v1',
     hostMatch: 'api.mistral.ai',
     defaultModel: 'mistral-embed',
-    desc: 'Free tier available — verified working end-to-end with Seshat',
+    desc: 'Free tier available, verified working end-to-end with Seshat',
   },
   {
     id: 'openai',
@@ -270,7 +270,7 @@ function EmbedderSettingFormDrawer({
           const models = data?.embedding_models ?? []
           setModelOptions(models)
           if (models.length === 0) {
-            message.warning(`No embedding models found — check the base URL${isOllama ? ' and that Ollama is reachable' : ''}.`)
+            message.warning(`No embedding models found. Check the base URL${isOllama ? ' and that Ollama is reachable' : ''}.`)
           } else {
             message.success(`Found ${models.length} model${models.length === 1 ? '' : 's'}`)
           }
@@ -314,7 +314,7 @@ function EmbedderSettingFormDrawer({
           rules={[{ required: true, message: 'Required' }]}
           extra={
             isOllama
-              ? "seshat-server itself runs in a container in this project's docker-compose stack — from inside it, localhost means the container, not your machine. Use http://host.docker.internal:11434 to reach an Ollama running on your host."
+              ? "seshat-server itself runs in a container in this project's docker-compose stack. From inside it, localhost means the container, not your machine. Use http://host.docker.internal:11434 to reach an Ollama running on your host."
               : 'An OpenAI-compatible embeddings endpoint. Pick "Other OpenAI-compatible" above for a vendor not listed by name.'
           }
         >

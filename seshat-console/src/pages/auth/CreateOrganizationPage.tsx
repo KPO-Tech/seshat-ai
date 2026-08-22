@@ -75,7 +75,7 @@ export function CreateOrganizationPage() {
     return (
       <AuthLayout
         title="Almost there"
-        subtitle="Your account was created and you're signed in — we just couldn't create your organization yet."
+        subtitle="Your account was created and you're signed in. We just couldn't create your organization yet."
       >
         <Alert type="error" showIcon message={orgError} style={{ marginBottom: 24 }} />
         <Button
@@ -94,7 +94,7 @@ export function CreateOrganizationPage() {
   return (
     <AuthLayout
       title="Create your organization"
-      subtitle="Start your own Seshat organization — you'll be its owner, with full control over its members and settings."
+      subtitle="Start your own Seshat organization. You'll be its owner, with full control over its members and settings."
     >
       <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 24 }}>
         Create an organization

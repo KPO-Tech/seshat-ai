@@ -30,7 +30,7 @@ export function ResetPasswordPage() {
       { token, new_password: values.new_password },
       {
         onSuccess: () => {
-          message.success('Password reset — sign in with your new password')
+          message.success('Password reset. Sign in with your new password.')
           navigate('/login', { replace: true })
         },
         onError: (error) => message.error(getErrorMessage(error)),

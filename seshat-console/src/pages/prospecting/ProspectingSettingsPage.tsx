@@ -19,7 +19,7 @@ export function ProspectingSettingsPage() {
     <div>
       <PageHeader
         title="Prospecting settings"
-        description="A Google Places API key for this organization's business-discovery sweeps. Strict bring-your-own-key - there is no platform default."
+        description="This organization's own Google Places API key for business-discovery sweeps. There is no platform default."
       />
       <Card size="small" loading={isLoading} style={{ maxWidth: 480 }}>
         <Form<ProspectingSettingsInput>
@@ -61,7 +61,7 @@ export function ProspectingSettingsPage() {
         </Form>
         {!settings && !isLoading && (
           <Typography.Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0 }}>
-            Not configured yet - sweeps can't run until an API key is saved.
+            Not configured yet. Sweeps can't run until an API key is saved.
           </Typography.Paragraph>
         )}
       </Card>

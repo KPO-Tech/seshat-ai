@@ -12,11 +12,11 @@ import { PageHeader } from '@/components/PageHeader'
 import { permissionModeOptions } from '@/lib/runtimeOptions'
 
 // Org-scoped defaults for the subset of personal Preferences fields that
-// make sense at an organization level (no preferred_name/profession/about —
+// make sense at an organization level (no preferred_name/profession/about,
 // see OrganizationPreferences' doc comment on the backend). A member's own
-// personal preference always wins over these when they've set one; an org
+// personal preference always wins over these when they've set one. An org
 // with nothing of its own falls back to the platform-default organization's
-// values, if any and shared - both resolved transparently server-side.
+// values, if any and shared, both resolved transparently server-side.
 export function OrganizationPreferencesPage() {
   const { organizationId } = useParams<{ organizationId: string }>()
   const [form] = Form.useForm()
@@ -39,37 +39,13 @@ export function OrganizationPreferencesPage() {
     <div>
       <PageHeader
         title="Preferences"
-        description="Default working style, response style, and permission modes for members of this organization who haven't set their own. A member's own preference always takes priority over these."
-        actions={
-          <Space>
-            {data && (
-              <Popconfirm
-                title="Clear this organization's preferences?"
-                description="Members will fall back to the platform default (if any) instead."
-                onConfirm={() =>
-                  organizationId &&
-                  deletePreferences.mutate(organizationId, {
-                    onSuccess: () => message.success('Organization preferences cleared'),
-                    onError: (error) => message.error(getErrorMessage(error)),
-                  })
-                }
-              >
-                <Button danger icon={<DeleteOutlined />} loading={deletePreferences.isPending}>
-                  Clear
-                </Button>
-              </Popconfirm>
-            )}
-            <Button type="primary" icon={<SaveOutlined />} loading={setPreferences.isPending} onClick={() => form.submit()}>
-              Save
-            </Button>
-          </Space>
-        }
+        description="Defaults members inherit until they set their own."
       />
 
       <Card loading={isLoading}>
         {!data && !isLoading && (
           <Typography.Paragraph type="secondary">
-            Not configured yet — members currently fall back to the platform default (if any).
+            Not configured yet. Members fall back to the platform default, if any.
           </Typography.Paragraph>
         )}
         <Form
@@ -106,6 +82,28 @@ export function OrganizationPreferencesPage() {
           <Form.Item name="max_sub_agent_depth" label="Max sub-agent depth">
             <InputNumber min={0} max={5} style={{ width: '100%' }} />
           </Form.Item>
+          <Space>
+            <Button type="primary" icon={<SaveOutlined />} htmlType="submit" loading={setPreferences.isPending}>
+              Save
+            </Button>
+            {data && (
+              <Popconfirm
+                title="Clear this organization's preferences?"
+                description="Members will fall back to the platform default, if any, instead."
+                onConfirm={() =>
+                  organizationId &&
+                  deletePreferences.mutate(organizationId, {
+                    onSuccess: () => message.success('Organization preferences cleared'),
+                    onError: (error) => message.error(getErrorMessage(error)),
+                  })
+                }
+              >
+                <Button danger icon={<DeleteOutlined />} loading={deletePreferences.isPending}>
+                  Clear
+                </Button>
+              </Popconfirm>
+            )}
+          </Space>
         </Form>
       </Card>
     </div>

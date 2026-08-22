@@ -190,7 +190,7 @@ export function CorpusDetailPage() {
             size="small"
             icon={<ThunderboltOutlined />}
             loading={ingestFile.isPending}
-            title="Re-ingest — upgrades to real vectors once an embedder is configured"
+            title="Re-ingest, upgrades to real vectors once an embedder is configured"
             onClick={() =>
               ingestFile.mutate(record.id!, {
                 onSuccess: () => message.success(`Queued ${record.filename} for ingestion`),
@@ -290,7 +290,7 @@ export function CorpusDetailPage() {
             <Alert
               type="warning"
               showIcon
-              message="Couldn't load ingestion attempts — status still reflects each file's own record"
+              message="Couldn't load ingestion attempts. Status still reflects each file's own record."
               description={getErrorMessage(jobsError)}
               style={{ marginBottom: 12 }}
             />
