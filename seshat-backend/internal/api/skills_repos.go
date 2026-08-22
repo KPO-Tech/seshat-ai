@@ -101,6 +101,11 @@ var DefaultFeaturedRepos = []FeaturedSkillRepo{
 		URL:         "https://github.com/sergebulaev/linkedin-skills",
 		Description: "Skills for LinkedIn profile optimization, job search automation, and professional networking.",
 	},
+	{
+		Name:        "strix",
+		URL:         "https://github.com/usestrix/strix",
+		Description: "Autonomous AI pentesting agents — reconnaissance, exploitation, and validated proof-of-concept findings. Requires Docker running; the skill installs the strix CLI itself on first use.",
+	},
 }
 
 // countSkillsInRepo counts skills found in repoRoot. It handles two layouts:
