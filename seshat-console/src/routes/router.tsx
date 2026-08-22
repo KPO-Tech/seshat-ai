@@ -50,6 +50,7 @@ const MCPServersPage = lazyPage(() => import('@/pages/mcpServers/MCPServersPage'
 const SkillReposPage = lazyPage(() => import('@/pages/skillRepos/SkillReposPage').then((module) => ({ default: module.SkillReposPage })))
 const AgentPresetsPage = lazyPage(() => import('@/pages/agentPresets/AgentPresetsPage').then((module) => ({ default: module.AgentPresetsPage })))
 const AuditEventsPage = lazyPage(() => import('@/pages/auditEvents/AuditEventsPage').then((module) => ({ default: module.AuditEventsPage })))
+const ChatSessionsPage = lazyPage(() => import('@/pages/chatSessions/ChatSessionsPage').then((module) => ({ default: module.ChatSessionsPage })))
 const CorporaPage = lazyPage(() => import('@/pages/knowledge/CorporaPage').then((module) => ({ default: module.CorporaPage })))
 const CorpusDetailPage = lazyPage(() => import('@/pages/knowledge/CorpusDetailPage').then((module) => ({ default: module.CorpusDetailPage })))
 const EmbedderSettingsPage = lazyPage(() => import('@/pages/knowledge/EmbedderSettingsPage').then((module) => ({ default: module.EmbedderSettingsPage })))
@@ -135,6 +136,7 @@ export const router = createBrowserRouter([
               { path: 'prospecting/sweeps', element: renderLazyPage(SweepsPage) },
               { path: 'prospecting/settings', element: renderLazyPage(ProspectingSettingsPage) },
               { path: 'activity/audit', element: renderLazyPage(AuditEventsPage) },
+              { path: 'activity/chat-sessions', element: renderLazyPage(ChatSessionsPage) },
             ],
           },
           { path: '*', element: renderLazyPage(NotFoundPage) },

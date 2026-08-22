@@ -1786,6 +1786,42 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/workspace-chat/sessions:
+    get:
+      operationId: listWorkspaceChatSessions
+      tags: [workspace-chat]
+      summary: List an organization's Workspace Chat sessions across every member
+      description: >-
+        The admin-visibility counterpart to getWorkspaceChatSession above -
+        metadata (who, when, how many messages) across an organization's
+        members, not any one person's own conversation content. Requires
+        organization.manage. Sessions past the 48-hour retention window are
+        excluded, same as getWorkspaceChatSession's own "gone once past the
+        window" behavior.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+        - $ref: "#/components/parameters/sort"
+        - $ref: "#/components/parameters/order"
+        - $ref: "#/components/parameters/q"
+      responses:
+        "200":
+          description: Workspace Chat session list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ListMeta"
+                  - type: object
+                    properties:
+                      sessions:
+                        type: array
+                        items: { $ref: "#/components/schemas/WorkspaceChatSessionSummary" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
   /api/v1/skill-repos:
     get:
       operationId: listSkillRepos
@@ -5340,6 +5376,24 @@ components:
           type: array
           description: Present for assistant messages only - the ordered event log of that turn, replayable through the same client-side reducer used for live streaming to reconstruct identical content/trace.
           items: { $ref: "#/components/schemas/WorkspaceChatEvent" }
+
+    WorkspaceChatSessionSummary:
+      type: object
+      description: >-
+        Metadata only - no message content. The admin-visibility list
+        (listWorkspaceChatSessions) shows this across every member of an
+        organization; a specific conversation's actual messages stay behind
+        the owner-scoped getWorkspaceChatSession, which has no admin-override
+        path at all.
+      properties:
+        id: { type: string }
+        user_id: { type: string }
+        user_email: { type: string }
+        user_display_name: { type: string }
+        title: { type: string }
+        message_count: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
 
     MCPServerConfig:
       type: object

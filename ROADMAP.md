@@ -190,9 +190,15 @@ User asked what RAG does today, what a genuinely good one should do, and specifi
 
 ---
 
-## Interactive sessions in seshat-server (proposed 2026-07-09, not started)
+## Interactive sessions in seshat-server (proposed 2026-07-09) — **core gap closed, this note was stale (checked 2026-08-22)**
 
-User's proposal, explicitly deferred until the RAG console UI (above) is finished — noted here in full so the shape is captured before it's lost, not because it's next in line.
+**Checked 2026-08-22, before starting a scoping pass that turned out to be unnecessary**: the console-scoped version of this epic (multi-turn, streamed, persisted chat in `seshat-server`) already exists — `internal/server/workspacechat` (`Service.StreamChat`, 575 lines, 14 tests), backing `seshat-console`'s `/workspace/chat` (`WorkspaceChatPage.tsx`/`src/features/workspaceChat`). Built sometime after this section was written and wired further in items 16/17/23 above (MCP Bearer-bridging into it, `resolveMCPServers`), but this section itself was never revisited to say so - same kind of staleness already caught twice this session (the bundle-splitting and Prospecting-cloud notes above).
+
+What it actually does, checked against every bullet below: real-time streaming over chunked HTTP (`text_delta`/`thinking_delta`/`tool_progress`/`done`/`error` events - not strict SSE, but the same effect, no WebSocket needed); a real DB domain (`WorkspaceChatSession`/`WorkspaceChatMessageRecord`, org-scoped, persisted with a 48h retention window + periodic purge, not indefinite); org-scoped hybrid provider/web-search/RAG credential resolution and MCP tool bridging, reusing everything already proven for jobs; ownership-scoped `GetSession` for reload/replay. Not a prototype - `TestPersistTurnAndGetSessionRoundTrip`, `TestGetSessionExpiresPastRetentionWindow`, `TestPurgeExpiredSessionsDeletesOnlyStaleOnes` and 11 others actually exercise it.
+
+**What's genuinely still open**, all explicitly deferred by the user rather than assumed: `seshat-ui` integration (bullet 2 below - still nobody's build target), usage billing/quotas (bullet 3 below - `sessionIdleTimeout`/`sessionRetention` already bound the blast radius somewhat, but no metering exists), and one real small gap - no admin-facing session list for an org (`getWorkspaceChatSession` is single-session, owner-scoped only; no `listWorkspaceChatSessions` for `seshat-console`). Richer output (audio/video, bullet 3) and a standalone client-facing web app (bullet 4) remain long-term, untouched.
+
+The rest of this section is kept as-is below for the historical context (why it looked this big, the original ask) - not rewritten, since it's still accurate about what *wasn't* built, just wrong about whether the core gap was.
 
 **The gap this closes**: everything built so far (`automation`'s `ScheduledJob`/`JobRun`) is one-shot — a prompt goes in, one final answer comes out (`jobWorkflow.Run` calls `session.SubmitMessage` exactly once, then the run is done). There is no multi-turn, persistent, streamed conversation in `seshat-server` today. The runtime's own `sdk.Session` already supports that (multi-turn, tool use, streaming deltas via `ResponseChunkFn`) and `seshat-backend` already implements a full interactive chat system locally on top of it — but nothing in `seshat-server` exposes an equivalent for multi-tenant/cloud use.
 

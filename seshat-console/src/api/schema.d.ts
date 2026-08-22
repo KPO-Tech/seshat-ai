@@ -1047,6 +1047,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspace-chat/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List an organization's Workspace Chat sessions across every member
+         * @description The admin-visibility counterpart to getWorkspaceChatSession above - metadata (who, when, how many messages) across an organization's members, not any one person's own conversation content. Requires organization.manage. Sessions past the 48-hour retention window are excluded, same as getWorkspaceChatSession's own "gone once past the window" behavior.
+         */
+        get: operations["listWorkspaceChatSessions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/skill-repos": {
         parameters: {
             query?: never;
@@ -3379,6 +3399,19 @@ export interface components {
             created_at?: string;
             /** @description Present for assistant messages only - the ordered event log of that turn, replayable through the same client-side reducer used for live streaming to reconstruct identical content/trace. */
             events?: components["schemas"]["WorkspaceChatEvent"][];
+        };
+        /** @description Metadata only - no message content. The admin-visibility list (listWorkspaceChatSessions) shows this across every member of an organization; a specific conversation's actual messages stay behind the owner-scoped getWorkspaceChatSession, which has no admin-override path at all. */
+        WorkspaceChatSessionSummary: {
+            id?: string;
+            user_id?: string;
+            user_email?: string;
+            user_display_name?: string;
+            title?: string;
+            message_count?: number;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
         };
         /** @description Never includes env/headers values — they're a caller-supplied secret, redacted in every response including create. */
         MCPServerConfig: {
@@ -6027,6 +6060,41 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    listWorkspaceChatSessions: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+                /** @description Max items per page (default 50, capped at 200). */
+                limit?: components["parameters"]["limit"];
+                offset?: components["parameters"]["offset"];
+                /** @description Field to sort by; valid values are endpoint-specific (see each list's `sort` in the response). */
+                sort?: components["parameters"]["sort"];
+                order?: components["parameters"]["order"];
+                /** @description Free-text search, fields vary per resource. */
+                q?: components["parameters"]["q"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Workspace Chat session list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListMeta"] & {
+                        sessions?: components["schemas"]["WorkspaceChatSessionSummary"][];
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
     listSkillRepos: {

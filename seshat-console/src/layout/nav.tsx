@@ -398,6 +398,23 @@ export function getSecondaryNavItems(pathname: string, organizationId: string | 
     ]
   }
 
+  if (pathname.startsWith(`/orgs/${organizationId}/activity/`)) {
+    return [
+      {
+        key: 'org-activity-audit',
+        label: 'Audit',
+        path: `/orgs/${organizationId}/activity/audit`,
+        matchPrefix: `/orgs/${organizationId}/activity/audit`,
+      },
+      {
+        key: 'org-activity-chat-sessions',
+        label: 'Chat Sessions',
+        path: `/orgs/${organizationId}/activity/chat-sessions`,
+        matchPrefix: `/orgs/${organizationId}/activity/chat-sessions`,
+      },
+    ]
+  }
+
   if (pathname.startsWith(`/orgs/${organizationId}/integrations/`)) {
     return [
       {

@@ -92,6 +92,10 @@ func (app *App) routes() http.Handler {
 
 	mux.Handle("POST /api/v1/users/me/workspace/chat/stream", app.authMiddleware(http.HandlerFunc(app.handleWorkspaceChatStream)))
 	mux.Handle("GET /api/v1/users/me/workspace/chat/sessions/{sessionID}", app.authMiddleware(http.HandlerFunc(app.handleWorkspaceChatSession)))
+	// Admin-visibility list across an organization's members - see
+	// handleWorkspaceChatSessions' own doc comment for why this is a
+	// separate, differently-scoped endpoint from the owner-scoped one above.
+	mux.Handle("GET /api/v1/workspace-chat/sessions", app.authMiddleware(http.HandlerFunc(app.handleWorkspaceChatSessions)))
 
 	mux.Handle("GET /api/v1/skill-repos", app.authMiddleware(http.HandlerFunc(app.handleSkillRepos)))
 	mux.Handle("POST /api/v1/skill-repos", app.authMiddleware(http.HandlerFunc(app.handleSkillRepos)))

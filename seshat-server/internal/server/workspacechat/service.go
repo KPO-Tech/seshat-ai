@@ -264,6 +264,74 @@ func (s *Service) persistTurn(ctx context.Context, principal *iam.Principal, par
 	}
 }
 
+// SessionSummary is one row of an organization's workspace chat sessions,
+// for the admin-visibility list (see ListSessions) - metadata only, not the
+// owning member's own full message replay (that's SessionHistory/GetSession,
+// owner-scoped for the personal Workspace > Chat screen itself).
+type SessionSummary struct {
+	ID              string    `json:"id"`
+	UserID          string    `json:"user_id"`
+	UserEmail       string    `json:"user_email"`
+	UserDisplayName string    `json:"user_display_name"`
+	Title           string    `json:"title"`
+	MessageCount    int       `json:"message_count"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+}
+
+var sessionSortFields = map[string]sdb.SortField{
+	"created_at": {Column: "workspace_chat_sessions.created_at", Tiebreak: "workspace_chat_sessions.id"},
+	"updated_at": {Column: "workspace_chat_sessions.updated_at", Tiebreak: "workspace_chat_sessions.id"},
+	"title":      {Column: "workspace_chat_sessions.title", Tiebreak: "workspace_chat_sessions.id"},
+}
+
+var sessionSearchColumns = []string{"workspace_chat_sessions.title", "users.email", "users.display_name"}
+
+// ListSessions returns a page of organizationID's workspace chat sessions
+// across every member, newest-activity first by default - an admin-
+// visibility surface, unlike GetSession's owner-scoped single-session
+// lookup. Requires organization.manage, not the plain org-membership check
+// GetSession uses, since this exposes other people's session metadata (not
+// message content - see handleListWorkspaceChatSessions's own doc comment
+// on why message bodies stay out of this endpoint). Sessions past
+// sessionRetention are excluded, matching GetSession/purgeExpiredSessions'
+// own "gone once past the window" convention - the row may not even be
+// purged from the DB yet, but it's already meaningless to list.
+func (s *Service) ListSessions(ctx context.Context, principal *iam.Principal, organizationID string, listParams sdb.ListParams) ([]SessionSummary, int64, error) {
+	if principal == nil {
+		return nil, 0, apperr.Unauthorized("authentication required")
+	}
+	organizationID = strings.TrimSpace(organizationID)
+	if organizationID == "" {
+		return nil, 0, apperr.InvalidInput("organization_id is required")
+	}
+	if !principal.User.IsAdmin {
+		if err := s.iam.CheckOrganizationPermission(s.db.Gorm().WithContext(ctx), principal, organizationID, "organization.manage"); err != nil {
+			return nil, 0, err
+		}
+	}
+
+	tx := s.db.Gorm().WithContext(ctx)
+	cutoff := time.Now().UTC().Add(-sessionRetention)
+	query := tx.Table("workspace_chat_sessions").
+		Select("workspace_chat_sessions.id AS id, workspace_chat_sessions.user_id AS user_id, "+
+			"users.email AS user_email, users.display_name AS user_display_name, "+
+			"workspace_chat_sessions.title AS title, workspace_chat_sessions.created_at AS created_at, "+
+			"workspace_chat_sessions.updated_at AS updated_at, "+
+			"(SELECT COUNT(*) FROM workspace_chat_message_records WHERE workspace_chat_message_records.session_id = workspace_chat_sessions.id) AS message_count").
+		Joins("JOIN users ON users.id = workspace_chat_sessions.user_id").
+		Where("workspace_chat_sessions.organization_id = ? AND workspace_chat_sessions.updated_at > ?", organizationID, cutoff)
+
+	sortField, err := sdb.ResolveSortField(sessionSortFields, listParams.Sort)
+	if err != nil {
+		return nil, 0, apperr.InvalidInput(err.Error())
+	}
+	query = sdb.ApplySearch(query, listParams.Search, sessionSearchColumns...)
+	query = sdb.ApplySort(query, sortField, listParams.Order)
+
+	return sdb.Page[SessionSummary](query, listParams.Limit, listParams.Offset)
+}
+
 // SessionHistory is a previously persisted conversation, ready to replay
 // client-side.
 type SessionHistory struct {

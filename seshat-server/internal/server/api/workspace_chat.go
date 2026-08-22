@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/workspacechat"
 )
 
@@ -85,4 +86,37 @@ func (app *App) handleWorkspaceChatSession(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	writeJSON(w, http.StatusOK, history)
+}
+
+// handleWorkspaceChatSessions — GET /api/v1/workspace-chat/sessions.
+// The admin-visibility counterpart to handleWorkspaceChatSession above:
+// metadata (who, when, how many messages) across every member of an
+// organization, not any one person's own full conversation - message
+// bodies are deliberately not exposed here, only via the owner-scoped
+// GET .../sessions/{sessionID} above (that endpoint has no admin-override
+// path at all, by design - see workspacechat.Service.GetSession).
+func (app *App) handleWorkspaceChatSessions(w http.ResponseWriter, r *http.Request) {
+	principal, ok := authPrincipalFromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "missing principal")
+		return
+	}
+	organizationID := strings.TrimSpace(r.URL.Query().Get("organization_id"))
+	query, err := parseListQuery(r, "updated_at", "desc")
+	if err != nil {
+		writeJSONError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	sessions, total, err := app.backend.WorkspaceChat.ListSessions(r.Context(), principal, organizationID, sdb.ListParams{
+		Search: query.Search,
+		Sort:   query.Sort,
+		Order:  query.Order,
+		Limit:  query.Limit,
+		Offset: query.Offset,
+	})
+	if err != nil {
+		writeControlPlaneError(w, err)
+		return
+	}
+	writeListResponse(w, http.StatusOK, "sessions", sessions, query, int(total))
 }
