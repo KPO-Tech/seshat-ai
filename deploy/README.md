@@ -15,6 +15,7 @@ Heavy or optional services are behind Docker Compose profiles:
 - `docs`: Docling document conversion
 - `search`: SearXNG web search, included by `make deploy-up`
 - `s3`: MinIO S3-compatible storage testing
+- `tls`: Caddy TLS termination in front of `seshat-console` — see "TLS" below
 - `full`: all optional services
 
 This is the only stack meant to run centrally. `seshat-backend` and
@@ -30,6 +31,7 @@ make deploy-up-core    # smallest core: no Docling, no MinIO, no SearXNG
 make deploy-up-docs    # default + Docling
 make deploy-up-search  # alias for deploy-up
 make deploy-up-s3      # default + MinIO
+make deploy-up-tls     # core stack behind Caddy TLS termination
 make deploy-up-full    # everything
 ```
 
@@ -62,6 +64,30 @@ DEPLOY_DOCLING_URL=http://docling:5001 docker compose --profile full up --build
 - MinIO console: http://localhost:9001 with `make deploy-up-s3` or `make deploy-up-full`
 - MinIO S3 API: http://localhost:9000 with `make deploy-up-s3` or `make deploy-up-full`
 
+## TLS
+
+`make deploy-up-tls` puts Caddy (`reverse-proxy`, `tls`/`full` profile) in
+front of `seshat-console`, which already reverse-proxies `/api/*` to
+`seshat-server` — so `seshat-server` itself never needs to know about
+certificates, and only one more hop gets HTTPS.
+
+Caddy's automatic HTTPS reads `SESHAT_PUBLIC_DOMAIN` (set in `deploy/.env`)
+and decides the certificate source from that value alone, no other config:
+
+- **Local testing** (default, `SESHAT_PUBLIC_DOMAIN=localhost`): Caddy
+  issues a certificate from its own locally-trusted CA — works immediately,
+  no domain needed. The browser still warns once until Caddy's local CA is
+  trusted (same as any self-signed certificate); `curl -k` skips that.
+- **A real deployment**: set `SESHAT_PUBLIC_DOMAIN` to a real hostname that
+  already resolves to this host, and update `SESHAT_SERVER_PUBLIC_APP_URL`
+  in the same `.env` to match (`https://yourdomain.com`) — the two aren't
+  linked automatically. Caddy then requests a real certificate via ACME
+  (Let's Encrypt) the first time it starts, and renews it automatically.
+
+`TLS_HTTP_PORT`/`TLS_HTTPS_PORT` (default `80`/`443`) are Caddy's own
+published ports — separate from `SESHAT_CONSOLE_PORT`, which still reaches
+`seshat-console` directly over plain HTTP for local dev either way.
+
 ## What's In Each Image
 
 - `seshat-server/Dockerfile`: multi-stage Go build. Build context is the repo
@@ -90,8 +116,9 @@ self-hosting, but Postgres is the recommended deployment path.
 
 ## Production Notes
 
-- Add real TLS termination with a reverse proxy or load balancer for anything
-  beyond local testing.
+- Run behind TLS for anything beyond local testing — `make deploy-up-tls`
+  (see "TLS" above) or your own reverse proxy/load balancer in front of
+  `seshat-console`.
 - The scheduler is single-instance today; do not scale `seshat-server` above
   one replica until it has a distributed lock.
 - `/health` and `/metrics` are unauthenticated. Keep port `8081` private or

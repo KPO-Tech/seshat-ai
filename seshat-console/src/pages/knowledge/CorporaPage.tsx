@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Button, Empty, Input, Space, Spin, message } from 'antd'
-import { PlusOutlined } from '@ant-design/icons'
+import { Button, Empty, Input, Select, Space, Spin, message } from 'antd'
+import { PlusOutlined, SortAscendingOutlined, SortDescendingOutlined } from '@ant-design/icons'
 import { useCorporaList, useCreateCorpus } from '@/api/knowledge'
 import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
@@ -13,15 +13,26 @@ import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
 // organization actually has today; revisit if that stops holding.
 const FETCH_LIMIT = 500
 
+// A card grid, not a table (see CorpusCard below) - no columns to attach
+// antd's sorter icons to, so sort field/order are a plain control instead,
+// same backend sortFields (name/created_at/updated_at) Organizations'
+// column sorter picks from.
+const CORPUS_SORT_OPTIONS = [
+  { value: 'name', label: 'Name' },
+  { value: 'created_at', label: 'Created' },
+  { value: 'updated_at', label: 'Updated' },
+]
+
 export function CorporaPage() {
   const organizationId = useScopedOrganizationId()
   const [search, setSearch] = useState('')
+  const [sort, setSort] = useState<{ field: string; order: 'asc' | 'desc' }>({ field: 'name', order: 'asc' })
   const [creatingCorpus, setCreatingCorpus] = useState(false)
 
   const { data, isLoading, isFetching } = useCorporaList(organizationId ?? undefined, {
     q: search || undefined,
-    sort: 'name',
-    order: 'asc',
+    sort: sort.field,
+    order: sort.order,
     limit: FETCH_LIMIT,
   })
   const createCorpus = useCreateCorpus()
@@ -41,6 +52,20 @@ export function CorporaPage() {
               onSearch={setSearch}
               style={{ width: 220 }}
               disabled={!organizationId}
+            />
+            <Select
+              value={sort.field}
+              onChange={(field) => setSort((current) => ({ ...current, field }))}
+              options={CORPUS_SORT_OPTIONS}
+              style={{ width: 120 }}
+              disabled={!organizationId}
+              aria-label="Sort corpora by"
+            />
+            <Button
+              icon={sort.order === 'asc' ? <SortAscendingOutlined /> : <SortDescendingOutlined />}
+              onClick={() => setSort((current) => ({ ...current, order: current.order === 'asc' ? 'desc' : 'asc' }))}
+              disabled={!organizationId}
+              aria-label={sort.order === 'asc' ? 'Sort ascending' : 'Sort descending'}
             />
             <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreatingCorpus(true)} disabled={!organizationId}>
               New corpus

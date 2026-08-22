@@ -31,21 +31,30 @@ const PAGE_SIZE = 20
 export function ProvidersPage() { const organizationId = useScopedOrganizationId()
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
+  const [sort, setSort] = useState<{ field: string; order: 'asc' | 'desc' }>({ field: 'name', order: 'asc' })
   const [editing, setEditing] = useState<Provider | 'new' | null>(null)
 
   const { data, isLoading, isFetching, error } = useProvidersList(organizationId ?? undefined, { q: search || undefined,
-    sort: 'name',
-    order: 'asc',
+    sort: sort.field,
+    order: sort.order,
     limit: PAGE_SIZE,
     offset: (page - 1) * PAGE_SIZE, })
   const createProvider = useCreateProvider()
   const updateProvider = useUpdateProvider()
   const deleteProvider = useDeleteProvider()
 
+  const handleTableChange: TableProps<Provider>['onChange'] = (_pagination, _filters, sorter) => {
+    const single = Array.isArray(sorter) ? sorter[0] : sorter
+    if (single?.field && single.order) {
+      setSort({ field: String(single.field), order: single.order === 'ascend' ? 'asc' : 'desc' })
+    }
+  }
+
   const columns: TableProps<Provider>['columns'] = [
     { title: 'Name',
       dataIndex: 'name',
       key: 'name',
+      sorter: true,
       render: (name: string, record) => (
         <div>
           <div style={{ fontWeight: 500 }}>{name}</div>
@@ -56,11 +65,13 @@ export function ProvidersPage() { const organizationId = useScopedOrganizationId
       dataIndex: 'kind',
       key: 'kind',
       width: 100,
+      sorter: true,
       render: (kind: string) => <Tag>{kind?.toUpperCase()}</Tag>, },
     { title: 'Status',
       dataIndex: 'enabled',
       key: 'enabled',
       width: 100,
+      sorter: true,
       render: (enabled: boolean) => (enabled ? <Tag color="green">Enabled</Tag> : <Tag>Disabled</Tag>), },
     { title: 'Issuer / Metadata', key: 'issuer', render: (_, record) => presentText(record.issuer_url || record.metadata_url, 'Not configured') },
     { title: '',
@@ -117,6 +128,7 @@ export function ProvidersPage() { const organizationId = useScopedOrganizationId
           dataSource={data?.providers ?? []}
           loading={isLoading || isFetching}
           queryError={error}
+          onChange={handleTableChange}
           locale={{ emptyText: (
               <Empty
                 image={<CloudServerOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}

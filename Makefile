@@ -87,7 +87,7 @@ UI_PKG_MGR := $(shell $(SHELL) -c 'command -v bun >/dev/null 2>&1 && echo bun ||
         website-install website-build website-dev \
         install-python start-docling \
         logs logs-last logs-docling \
-        deploy-env deploy-up deploy-up-core deploy-up-docs deploy-up-search deploy-up-s3 deploy-up-full deploy-smoke-core \
+        deploy-env deploy-up deploy-up-core deploy-up-docs deploy-up-search deploy-up-s3 deploy-up-full deploy-up-tls deploy-smoke-core \
         deploy-build deploy-pull deploy-down deploy-logs deploy-ps \
         clean clean-all
 
@@ -210,6 +210,11 @@ deploy-up-full: deploy-env ## Build and start every deploy service
 	@cd $(DEPLOY_DIR) && DEPLOY_DOCLING_URL=http://docling:5001 docker compose --profile full up --build -d
 	@printf "\033[32m[deploy]\033[0m full stack ready: console http://localhost:%s  api http://localhost:%s  docling http://localhost:%s  searxng http://localhost:%s  minio http://localhost:%s  mailpit http://localhost:%s\n" \
 	  "$${SESHAT_CONSOLE_PORT:-3000}" "$${SESHAT_SERVER_PORT:-8081}" "$${DOCLING_PORT:-5001}" "$${SEARXNG_PORT:-8080}" "$${MINIO_CONSOLE_PORT:-9001}" "$${MAILPIT_WEB_PORT:-8025}"
+
+deploy-up-tls: deploy-env ## Build and start the core stack behind Caddy TLS termination
+	@cd $(DEPLOY_DIR) && DEPLOY_DOCLING_URL= docker compose --profile tls up --build -d
+	@printf "\033[32m[deploy]\033[0m tls stack ready: https://%s  (self-signed for localhost - see deploy/README.md)\n" \
+	  "$${SESHAT_PUBLIC_DOMAIN:-localhost}"
 
 deploy-build: deploy-env ## Build deploy images without starting containers
 	@cd $(DEPLOY_DIR) && docker compose --profile full build

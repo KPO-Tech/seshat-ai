@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Avatar, Button, Dropdown, Layout, Menu, Space, Tag, Typography } from 'antd'
+import { Avatar, Button, Dropdown, Layout, Menu, Select, Space, Tag, Typography } from 'antd'
 import { ArrowLeftOutlined, LogoutOutlined, UserOutlined } from '@ant-design/icons'
 import { Outlet, matchPath, useLocation, useNavigate } from 'react-router'
 import { useOrganizationsList } from '@/api/organizations'
@@ -73,6 +73,17 @@ export function AppLayout() {
   // (and hiding "Platform" below) leak into pages like /platform/overview
   // that have nothing to do with any single org.
   const inOrganizationRoute = Boolean(routeOrganizationId)
+  // /workspace/* (Chat, Connections) has no org id in its URL - it reads
+  // workspaceOrganizationId from the store directly - so a multi-org admin
+  // needs a way to see/change which org those pages act on. The sidebar
+  // picker that used to cover this was removed for /platform/* and
+  // /orgs/:id/* (both already show the org unambiguously elsewhere), but
+  // Workspace never had an equivalent, so it's restored here specifically -
+  // in the header, not the sidebar, and only when there's more than one org
+  // to pick between (a single-org member already gets the right one from
+  // the store's own fallback effect above, a picker would just be noise).
+  const isWorkspaceRoute = location.pathname.startsWith('/workspace/')
+  const showWorkspaceOrganizationSwitcher = isWorkspaceRoute && organizations.length > 1
   const organizationNavItems = inOrganizationRoute && workspaceOrganizationId ? getOrganizationNavItems(workspaceOrganizationId) : []
   const activePrimary = getActivePrimaryNavItem(location.pathname, workspaceOrganizationId)
   const secondaryNavItems = getSecondaryNavItems(location.pathname, workspaceOrganizationId)
@@ -225,6 +236,17 @@ export function AppLayout() {
               </Typography.Text>
             </Space>
           </div>
+
+          {showWorkspaceOrganizationSwitcher && (
+            <Select
+              size="small"
+              value={workspaceOrganizationId ?? undefined}
+              onChange={(nextOrganizationId) => setSelectedOrganizationId(nextOrganizationId)}
+              options={organizations.map((organization) => ({ value: organization.id, label: organization.name }))}
+              style={{ minWidth: 160, flexShrink: 0 }}
+              aria-label="Active organization for Workspace"
+            />
+          )}
 
           <Dropdown
             trigger={['click']}

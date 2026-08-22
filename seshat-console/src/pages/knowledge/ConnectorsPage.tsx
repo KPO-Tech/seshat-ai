@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Alert, Button, Card, Empty, Form, Input, Modal, Popconfirm, Select, Space, Tag, Typography, message } from 'antd'
+import { Alert, Button, Drawer, Empty, Form, Input, Modal, Popconfirm, Select, Space, Tag, Typography, message } from 'antd'
 import type { TableProps } from 'antd'
 import { CloudUploadOutlined, DeleteOutlined, EditOutlined, HistoryOutlined, PlusOutlined, SettingOutlined, SyncOutlined } from '@ant-design/icons'
 import {
@@ -317,6 +317,11 @@ function SyncHistoryModal({ account, onClose }: { account: ConnectorAccount | nu
 // see connectors.ConnectorOAuthApp's doc comment for why this is separate
 // from the per-account connect flow (one app registration serves every
 // account an org later connects for that kind).
+// Each provider renders as a compact summary row (name/kind, a Configured/
+// Not configured Tag, Configure/Edit) with the Client ID/secret form living
+// in a Drawer that only opens for the row being edited - same collapsed-
+// row-plus-drawer pattern as Embedder/Prospecting Settings, replacing 8
+// always-open Client ID/secret forms stacked in one modal.
 function OAuthAppsModal({
   open,
   organizationId,
@@ -328,50 +333,109 @@ function OAuthAppsModal({
   apps: ConnectorOAuthApp[]
   onClose: () => void
 }) {
+  const [editingKind, setEditingKind] = useState<OAuthConnectorKind | null>(null)
+
   return (
-    <Modal open={open} onCancel={onClose} footer={null} centered title="OAuth apps" width={520} destroyOnHidden>
+    <Modal open={open} onCancel={onClose} footer={null} centered title="OAuth apps" width={480} destroyOnHidden>
       <Typography.Paragraph type="secondary" style={{ marginTop: -8 }}>
-        Register this organization's own Google/Microsoft OAuth app once per provider - every Drive/SharePoint connector account
-        this org connects afterward reuses it.
+        Register this organization's own OAuth app once per provider - every account this org connects afterward reuses it.
       </Typography.Paragraph>
-      <Space orientation="vertical" size={16} style={{ width: '100%' }}>
-        {OAUTH_CONNECTOR_KINDS.map((kind) => (
-          <OAuthAppCard key={kind} kind={kind} organizationId={organizationId} existing={apps.find((a) => a.kind === kind)} />
-        ))}
+      <Space orientation="vertical" size={8} style={{ width: '100%' }}>
+        {OAUTH_CONNECTOR_KINDS.map((kind) => {
+          const existing = apps.find((a) => a.kind === kind)
+          const configured = Boolean(existing?.configured)
+          return (
+            <div
+              key={kind}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '10px 14px',
+                border: `1px solid ${palette.border}`,
+                borderRadius: 10,
+                background: palette.surface,
+              }}
+            >
+              <div>
+                <Typography.Text strong>{OAUTH_APP_LABELS[kind]}</Typography.Text>
+                <Typography.Text style={{ display: 'block', fontSize: 12, color: palette.inkTertiary }}>{kind}</Typography.Text>
+              </div>
+              <Space size={8}>
+                <Tag color={configured ? 'green' : 'default'} style={{ margin: 0 }}>
+                  {configured ? 'Configured' : 'Not configured'}
+                </Tag>
+                {configured ? (
+                  <Button
+                    size="small"
+                    icon={<EditOutlined />}
+                    onClick={() => setEditingKind(kind)}
+                    aria-label={`Edit ${OAUTH_APP_LABELS[kind]} app`}
+                  />
+                ) : (
+                  <Button size="small" type="primary" onClick={() => setEditingKind(kind)}>
+                    Configure
+                  </Button>
+                )}
+              </Space>
+            </div>
+          )
+        })}
       </Space>
+
+      <OAuthAppFormDrawer
+        kind={editingKind}
+        organizationId={organizationId}
+        existing={editingKind ? apps.find((a) => a.kind === editingKind) : undefined}
+        onClose={() => setEditingKind(null)}
+      />
     </Modal>
   )
 }
 
-// Split out from OAuthAppsModal so each card owns its own Form instance -
-// calling Form.useForm() once per fixed OAUTH_CONNECTOR_KINDS entry inside
-// a .map() would violate the Rules of Hooks (conditional/loop-scoped hook
-// calls); a real child component per array item is the correct way to get
-// one form per kind.
-function OAuthAppCard({
+function OAuthAppFormDrawer({
   kind,
   organizationId,
   existing,
+  onClose,
 }: {
-  kind: OAuthConnectorKind
+  kind: OAuthConnectorKind | null
   organizationId: string | undefined
   existing: ConnectorOAuthApp | undefined
+  onClose: () => void
 }) {
   const registerApp = useRegisterOAuthApp()
   const [form] = Form.useForm<ConnectorOAuthAppInput>()
 
+  useEffect(() => {
+    if (kind) form.setFieldsValue({ client_id: existing?.client_id ?? '' })
+  }, [kind, existing, form])
+
   return (
-    <Card size="small" title={`${OAUTH_APP_LABELS[kind]} (${kind})`}>
+    <Drawer
+      title={kind ? `${OAUTH_APP_LABELS[kind]} OAuth app` : ''}
+      open={Boolean(kind)}
+      onClose={onClose}
+      destroyOnHidden
+      extra={
+        <Button type="primary" loading={registerApp.isPending} onClick={() => form.submit()}>
+          Save
+        </Button>
+      }
+    >
       <Form<ConnectorOAuthAppInput>
         form={form}
         layout="vertical"
-        initialValues={{ client_id: existing?.client_id ?? '' }}
         onFinish={(values) => {
-          if (!organizationId) return
+          if (!organizationId || !kind) return
           registerApp.mutate(
             { kind, body: { ...values, organization_id: organizationId } },
             {
-              onSuccess: () => message.success(`Saved ${OAUTH_APP_LABELS[kind]} app credentials`),
+              onSuccess: () => {
+                message.success(`Saved ${OAUTH_APP_LABELS[kind]} app credentials`)
+                onClose()
+              },
               onError: (error) => message.error(getErrorMessage(error)),
             },
           )
@@ -388,16 +452,8 @@ function OAuthAppCard({
         >
           <Input.Password autoComplete="new-password" placeholder={existing?.configured ? 'Unchanged' : undefined} />
         </Form.Item>
-        <Button type="primary" htmlType="submit" loading={registerApp.isPending} size="small">
-          Save
-        </Button>
-        {existing?.configured && (
-          <Tag color="success" style={{ marginLeft: 8 }}>
-            Configured
-          </Tag>
-        )}
       </Form>
-    </Card>
+    </Drawer>
   )
 }
 
