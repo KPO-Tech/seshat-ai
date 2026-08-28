@@ -71,6 +71,10 @@ const nexusBridge = {
   openTerminal: (p: string) => ipcRenderer.invoke('system:open-terminal', p),
   showFile: (p: string) => ipcRenderer.invoke('system:show-file', p),
   readFileDataURL: (p: string): Promise<string> => ipcRenderer.invoke('system:read-file-data-url', p),
+  hasProjectContextFile: (projectPath: string): Promise<boolean> =>
+    ipcRenderer.invoke('project:has-context-file', projectPath),
+  projectPathExists: (projectPath: string): Promise<boolean> =>
+    ipcRenderer.invoke('project:path-exists', projectPath),
   openExternal: (url: string) => ipcRenderer.invoke('system:open-external', url),
   selectFile: (opts?: Electron.OpenDialogOptions) => ipcRenderer.invoke('system:select-file', opts),
   saveFile: (defaultName: string, content: string): Promise<{ canceled: boolean; filePath?: string }> =>
@@ -140,28 +144,40 @@ const nexusBridge = {
     restartBackend: (): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke('env-vars:restart-backend'),
   },
   browser: {
-    show: (bounds?: BrowserPanelBounds): Promise<BrowserPanelState> => ipcRenderer.invoke('seshat:browser:show', bounds),
-    hide: (): Promise<BrowserPanelState> => ipcRenderer.invoke('seshat:browser:hide'),
-    openUrl: (url: string, provider = 'builtin') => ipcRenderer.invoke('seshat:browser:openUrl', url, provider),
-    navigate: (url: string): Promise<BrowserPanelState> => ipcRenderer.invoke('seshat:browser:navigate', url),
-    back: (): Promise<BrowserPanelState> => ipcRenderer.invoke('seshat:browser:back'),
-    forward: (): Promise<BrowserPanelState> => ipcRenderer.invoke('seshat:browser:forward'),
-    reload: (): Promise<BrowserPanelState> => ipcRenderer.invoke('seshat:browser:reload'),
-    setBounds: (bounds: BrowserPanelBounds): Promise<BrowserPanelState> => ipcRenderer.invoke('seshat:browser:bounds', bounds),
-    getState: (): Promise<BrowserPanelState> => ipcRenderer.invoke('seshat:browser:state'),
-    destroy: (): Promise<BrowserPanelState> => ipcRenderer.invoke('seshat:browser:destroy'),
-    onStateChange: (listener: (state: BrowserPanelState) => void) => {
-      const handler = (_event: Electron.IpcRendererEvent, state: BrowserPanelState) => listener(state)
+    show: (contextId: string, bounds?: BrowserPanelBounds): Promise<BrowserPanelState> => ipcRenderer.invoke('seshat:browser:show', contextId, bounds),
+    hide: (contextId: string): Promise<BrowserPanelState> => ipcRenderer.invoke('seshat:browser:hide', contextId),
+    openUrl: (url: string, provider = 'builtin', sessionId?: string) => ipcRenderer.invoke('seshat:browser:openUrl', url, provider, sessionId),
+    navigate: (contextId: string, url: string): Promise<BrowserPanelState> => ipcRenderer.invoke('seshat:browser:navigate', contextId, url),
+    back: (contextId: string): Promise<BrowserPanelState> => ipcRenderer.invoke('seshat:browser:back', contextId),
+    forward: (contextId: string): Promise<BrowserPanelState> => ipcRenderer.invoke('seshat:browser:forward', contextId),
+    reload: (contextId: string): Promise<BrowserPanelState> => ipcRenderer.invoke('seshat:browser:reload', contextId),
+    setBounds: (contextId: string, bounds: BrowserPanelBounds): Promise<BrowserPanelState> => ipcRenderer.invoke('seshat:browser:bounds', contextId, bounds),
+    getState: (contextId: string): Promise<BrowserPanelState> => ipcRenderer.invoke('seshat:browser:state', contextId),
+    destroy: (contextId: string): Promise<BrowserPanelState> => ipcRenderer.invoke('seshat:browser:destroy', contextId),
+    newTab: (contextId: string, url?: string): Promise<BrowserPanelState> => ipcRenderer.invoke('seshat:browser:new-tab', contextId, url),
+    closeTab: (contextId: string, tabId: string): Promise<BrowserPanelState> => ipcRenderer.invoke('seshat:browser:close-tab', contextId, tabId),
+    switchTab: (contextId: string, tabId: string): Promise<BrowserPanelState> => ipcRenderer.invoke('seshat:browser:switch-tab', contextId, tabId),
+    onStateChange: (contextId: string, listener: (state: BrowserPanelState) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, payload: { contextId: string; state: BrowserPanelState }) => {
+        if (payload.contextId !== contextId) return
+        listener(payload.state)
+      }
       ipcRenderer.on('seshat:browser:state', handler)
       return () => ipcRenderer.removeListener('seshat:browser:state', handler)
     },
-    onPanelOpened: (listener: (state: BrowserPanelState) => void) => {
-      const handler = (_event: Electron.IpcRendererEvent, state: BrowserPanelState) => listener(state)
+    onPanelOpened: (contextId: string, listener: (state: BrowserPanelState) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, payload: { contextId: string; state: BrowserPanelState }) => {
+        if (payload.contextId !== contextId) return
+        listener(payload.state)
+      }
       ipcRenderer.on('seshat:browser:panel-opened', handler)
       return () => ipcRenderer.removeListener('seshat:browser:panel-opened', handler)
     },
-    onPanelClosed: (listener: (state: BrowserPanelState) => void) => {
-      const handler = (_event: Electron.IpcRendererEvent, state: BrowserPanelState) => listener(state)
+    onPanelClosed: (contextId: string, listener: (state: BrowserPanelState) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, payload: { contextId: string; state: BrowserPanelState }) => {
+        if (payload.contextId !== contextId) return
+        listener(payload.state)
+      }
       ipcRenderer.on('seshat:browser:panel-closed', handler)
       return () => ipcRenderer.removeListener('seshat:browser:panel-closed', handler)
     },

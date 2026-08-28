@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router'
 import { CheckCorrect, FileTextOne, Browser, LightMember } from '@icon-park/react'
 import { ChatTopBar, CHAT_TOP_BAR_CSS } from '@/components/chat/ChatTopBar'
 import { ChatInput, CHAT_INPUT_CSS, type ChatAttachment } from '@/components/chat/ChatInput'
+import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
 import { api, ApiError } from '@/api/client'
 import type { ProviderModel } from '@/api/types'
 import { useProviders, fetchProviderModels } from '@/hooks/useProviders'
@@ -43,6 +44,35 @@ function isOfficeZipFile(file: File): boolean {
   return /\.(docx|xlsx)$/i.test(file.name)
 }
 
+// Per-project dismissal for the "no project context yet" banner below -
+// localStorage, same as PROJECTS_STORAGE_KEY in Sidebar.tsx, since a
+// "project" here is entirely client-side state (a folder path), not a
+// backend entity with somewhere server-side to record this.
+const CONTEXT_BANNER_DISMISSED_KEY = 'seshat.project-context-banner-dismissed.v1'
+
+function isContextBannerDismissed(projectPath: string): boolean {
+  try {
+    const raw = localStorage.getItem(CONTEXT_BANNER_DISMISSED_KEY)
+    const dismissed = raw ? JSON.parse(raw) : []
+    return Array.isArray(dismissed) && dismissed.includes(projectPath)
+  } catch {
+    return false
+  }
+}
+
+function dismissContextBanner(projectPath: string) {
+  try {
+    const raw = localStorage.getItem(CONTEXT_BANNER_DISMISSED_KEY)
+    const dismissed = raw ? JSON.parse(raw) : []
+    if (!Array.isArray(dismissed) || dismissed.includes(projectPath)) return
+    localStorage.setItem(CONTEXT_BANNER_DISMISSED_KEY, JSON.stringify([...dismissed, projectPath]))
+  } catch {
+    // best-effort only - worst case the banner reappears next time
+  }
+}
+
+const PROJECT_CONTEXT_STARTER_MESSAGE = "Let's define this project's context and rules together."
+
 function sentAttachment(file: ChatAttachment) {
   return {
     id: file.id,
@@ -81,6 +111,7 @@ export function Home() {
   const [attachments, setAttachments] = useState<ChatAttachment[]>([])
   const [isUploadingAttachments, setIsUploadingAttachments] = useState(false)
   const [attachmentError, setAttachmentError] = useState<string | null>(null)
+  const [showContextBanner, setShowContextBanner] = useState(false)
 
   const selectedProvider = providers.find((provider) => provider.id === selectedProviderId) ?? null
 
@@ -88,6 +119,27 @@ export function Home() {
     const project = searchParams.get('project')
     if (project) setProjectPath(project)
   }, [searchParams])
+
+  // Offers the guided "Project Context Setup" skill (see seshat-backend's
+  // internal/skills) whenever a project has no SESHAT.md/AGENTS.md/
+  // .seshat/instructions.md yet - re-checked whenever projectPath changes,
+  // so switching between recently-opened projects updates the banner
+  // correctly instead of carrying over the previous project's state.
+  useEffect(() => {
+    if (!projectPath) {
+      setShowContextBanner(false)
+      return
+    }
+    if (isContextBannerDismissed(projectPath)) {
+      setShowContextBanner(false)
+      return
+    }
+    let cancelled = false
+    window.nexus?.hasProjectContextFile?.(projectPath)
+      .then((hasFile) => { if (!cancelled) setShowContextBanner(!hasFile) })
+      .catch(() => { if (!cancelled) setShowContextBanner(false) })
+    return () => { cancelled = true }
+  }, [projectPath])
   // Use useMemo so the empty-array fallback is a stable reference across renders.
   // An inline [] would be a new reference every render, causing effects that depend
   // on selectedModels to re-run on every render when models aren't loaded yet.
@@ -295,12 +347,17 @@ export function Home() {
     }
   }
 
-  async function handleSend() {
+  // promptOverride lets callers (e.g. the project-context banner's Start
+  // button below) send a specific message without going through inputValue
+  // first - setInputValue() then immediately calling handleSend() in the
+  // same handler would still read the pre-update, stale inputValue since
+  // React state updates aren't synchronous.
+  async function handleSend(promptOverride?: string) {
     if (attachments.some((file) => file.upload_status === 'uploading')) {
       setAttachmentError('Wait for attachments to finish uploading before sending.')
       return
     }
-    const prompt = inputValue.trim() || (attachments.length > 0 ? 'Please analyze the attached file(s).' : '')
+    const prompt = (promptOverride ?? inputValue).trim() || (attachments.length > 0 ? 'Please analyze the attached file(s).' : '')
     if (!prompt) return
 
     setIsCreatingSession(true)
@@ -364,6 +421,16 @@ export function Home() {
     }
   }
 
+  function startProjectContextSetup() {
+    setShowContextBanner(false)
+    void handleSend(PROJECT_CONTEXT_STARTER_MESSAGE)
+  }
+
+  function skipProjectContextSetup() {
+    dismissContextBanner(projectPath)
+    setShowContextBanner(false)
+  }
+
   return (
     <div className="home-root">
       <style>{HOME_CSS}</style>
@@ -380,6 +447,27 @@ export function Home() {
       {/* Main Content */}
       <div className="home-center">
         <h1 className="home-greeting">Hi, what's your plan for today?</h1>
+
+        {showContextBanner && (
+          <div className="home-context-banner">
+            <FileTextOne size={16} />
+            <div className="home-context-banner-copy">
+              <strong>This project doesn't have a context file yet</strong>
+              <span>Define its goals, audience, and rules once — Seshat will keep them in mind for every conversation about this project.</span>
+            </div>
+            <button type="button" className="home-context-banner-start" onClick={startProjectContextSetup}>
+              Start
+            </button>
+            <button
+              type="button"
+              className="home-context-banner-skip"
+              aria-label="Skip"
+              onClick={skipProjectContextSetup}
+            >
+              <WindowCloseIcon size={12} />
+            </button>
+          </div>
+        )}
 
         <div className="home-input-container">
           <ChatInput
@@ -503,6 +591,70 @@ ${CHAT_INPUT_CSS}
   color: var(--color-text);
   margin-bottom: var(--space-7);
   letter-spacing: -0.01em;
+}
+
+.home-context-banner {
+  width: 100%;
+  max-width: 760px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-bottom: var(--space-6);
+  border: 1px solid rgba(239, 124, 47, 0.28);
+  border-radius: 10px;
+  background: rgba(239, 124, 47, 0.06);
+  color: var(--color-cta);
+}
+
+.home-context-banner-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.home-context-banner-copy strong {
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+}
+
+.home-context-banner-copy span {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.home-context-banner-start {
+  flex-shrink: 0;
+  height: 30px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--color-cta);
+  color: white;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.home-context-banner-skip {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.home-context-banner-skip:hover {
+  color: var(--color-text);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .home-input-container {

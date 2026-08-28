@@ -6,6 +6,8 @@ interface Window {
     openTerminal: (p: string) => Promise<void>
     showFile: (p: string) => Promise<void>
     readFileDataURL: (p: string) => Promise<string>
+    hasProjectContextFile: (projectPath: string) => Promise<boolean>
+    projectPathExists: (projectPath: string) => Promise<boolean>
     openExternal: (url: string) => Promise<void>
     selectFile: (opts?: Electron.OpenDialogOptions) => Promise<Electron.OpenDialogReturnValue>
     saveFile: (defaultName: string, content: string) => Promise<{ canceled: boolean; filePath?: string }>
@@ -63,19 +65,22 @@ interface Window {
       restartBackend: () => Promise<{ ok: boolean; error?: string }>
     }
     browser?: {
-      show: (bounds?: { x: number; y: number; width: number; height: number }) => Promise<BrowserPanelState>
-      hide: () => Promise<BrowserPanelState>
-      openUrl: (url: string, provider?: string) => Promise<{ provider: string; browser_url: string; target_id: string; tab_id: string; url: string }>
-      navigate: (url: string) => Promise<BrowserPanelState>
-      back: () => Promise<BrowserPanelState>
-      forward: () => Promise<BrowserPanelState>
-      reload: () => Promise<BrowserPanelState>
-      setBounds: (bounds: { x: number; y: number; width: number; height: number }) => Promise<BrowserPanelState>
-      getState: () => Promise<BrowserPanelState>
-      destroy: () => Promise<BrowserPanelState>
-      onStateChange: (listener: (state: BrowserPanelState) => void) => () => void
-      onPanelOpened: (listener: (state: BrowserPanelState) => void) => () => void
-      onPanelClosed: (listener: (state: BrowserPanelState) => void) => () => void
+      show: (contextId: string, bounds?: { x: number; y: number; width: number; height: number }) => Promise<BrowserPanelState>
+      hide: (contextId: string) => Promise<BrowserPanelState>
+      openUrl: (url: string, provider?: string, sessionId?: string) => Promise<{ provider: string; browser_url: string; target_id: string; tab_id: string; url: string }>
+      navigate: (contextId: string, url: string) => Promise<BrowserPanelState>
+      back: (contextId: string) => Promise<BrowserPanelState>
+      forward: (contextId: string) => Promise<BrowserPanelState>
+      reload: (contextId: string) => Promise<BrowserPanelState>
+      setBounds: (contextId: string, bounds: { x: number; y: number; width: number; height: number }) => Promise<BrowserPanelState>
+      getState: (contextId: string) => Promise<BrowserPanelState>
+      destroy: (contextId: string) => Promise<BrowserPanelState>
+      newTab: (contextId: string, url?: string) => Promise<BrowserPanelState>
+      closeTab: (contextId: string, tabId: string) => Promise<BrowserPanelState>
+      switchTab: (contextId: string, tabId: string) => Promise<BrowserPanelState>
+      onStateChange: (contextId: string, listener: (state: BrowserPanelState) => void) => () => void
+      onPanelOpened: (contextId: string, listener: (state: BrowserPanelState) => void) => () => void
+      onPanelClosed: (contextId: string, listener: (state: BrowserPanelState) => void) => () => void
     }
     terminal?: {
       start: (payload: { id: string; cwd: string }) => Promise<{ ok: boolean; id: string; shell: string; cwd: string; pid?: number }>

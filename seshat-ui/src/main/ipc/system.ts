@@ -2,10 +2,18 @@ import type { IpcMain } from 'electron'
 import { app, dialog, shell, BrowserWindow } from 'electron'
 import { stat, readFile, writeFile } from 'fs/promises'
 import { spawn } from 'child_process'
-import { extname } from 'path'
+import { extname, join } from 'path'
 import { assertTrustedSender } from './trusted-sender'
 import { isExternalOpenAllowed } from '../url-safety'
 import { assertLocalFilePath, assertPathWithinRuntimeRoot, sanitizeSaveFileInput } from './validation'
+
+// Mirrors the seshat engine's own candidateInstructionFiles (seshat SDK,
+// internal/engine/project_instructions.go) exactly, in the same order - the
+// engine re-reads these fresh on every turn and uses the first non-empty
+// one, so this check must agree with it or the banner (Home.tsx) could
+// claim a project has no context file when the engine would actually find
+// one, or vice versa.
+const PROJECT_CONTEXT_CANDIDATE_FILES = ['SESHAT.md', 'AGENTS.md', join('.seshat', 'instructions.md')]
 
 const IMAGE_MIME_BY_EXT: Record<string, string> = {
   '.apng': 'image/apng',
@@ -166,6 +174,31 @@ export function registerSystemHandlers(ipcMain: IpcMain) {
     if (!mimeType) throw new Error('Unsupported preview file type')
     const buffer = await readFile(safePath)
     return `data:${mimeType};base64,${buffer.toString('base64')}`
+  })
+
+  ipcMain.handle('project:has-context-file', async (event, projectPath: string) => {
+    assertTrustedSender(event)
+    const safeProjectPath = assertLocalFilePath(projectPath, 'Project path')
+    for (const name of PROJECT_CONTEXT_CANDIDATE_FILES) {
+      try {
+        const content = await readFile(join(safeProjectPath, name), 'utf-8')
+        if (content.trim() !== '') return true
+      } catch {
+        // Missing/unreadable - try the next candidate, same as the engine.
+      }
+    }
+    return false
+  })
+
+  ipcMain.handle('project:path-exists', async (event, projectPath: string) => {
+    assertTrustedSender(event)
+    const safeProjectPath = assertLocalFilePath(projectPath, 'Project path')
+    try {
+      const info = await stat(safeProjectPath)
+      return info.isDirectory()
+    } catch {
+      return false
+    }
   })
 
   ipcMain.handle('system:open-external', (event, url: string) => {
