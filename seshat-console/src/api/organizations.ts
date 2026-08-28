@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/api/client'
+import { BOOTSTRAP_STATUS_KEY } from '@/api/auth'
 import type { components } from '@/api/schema'
 
 type Organization = components['schemas']['Organization']
@@ -36,7 +37,15 @@ export function useCreateOrganization() {
       if (error) throw error
       return data
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: [LIST_KEY] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [LIST_KEY] })
+      // useBootstrapStatus (api/auth.ts) is cached with staleTime: Infinity.
+      // In single org_mode, creating the deployment's one organization here
+      // must flip useOrganizationCreationLocked() to true immediately -
+      // without this, the "New organization" button / create-organization
+      // route would stay unlocked until a hard reload.
+      queryClient.invalidateQueries({ queryKey: BOOTSTRAP_STATUS_KEY })
+    },
   })
 }
 

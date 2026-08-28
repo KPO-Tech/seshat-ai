@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Avatar, Button, Card, Empty, Input, message, Popconfirm, Popover, Space, Switch, Tag, Typography } from 'antd'
+import { Avatar, Button, Card, Empty, Input, message, Popconfirm, Popover, Space, Switch, Tag, Tooltip, Typography } from 'antd'
 import type { TableProps } from 'antd'
 import {
   ApartmentOutlined,
@@ -24,6 +24,7 @@ import {
   useSetOrganizationSharedDomains,
   type Organization,
 } from '@/api/organizations'
+import { useOrganizationCreationLocked } from '@/api/auth'
 import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
 import { ConsoleTable } from '@/components/ConsoleTable'
@@ -44,6 +45,7 @@ export function OrganizationsPage() {
     order: 'asc',
   })
   const [editing, setEditing] = useState<Organization | 'new' | null>(null)
+  const orgCreationLocked = useOrganizationCreationLocked()
 
   const { data, isLoading, isFetching, error } = useOrganizationsList({
     q: search || undefined,
@@ -283,9 +285,16 @@ export function OrganizationsPage() {
               }}
               style={{ width: 260 }}
             />
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing('new')}>
-              New organization
-            </Button>
+            <Tooltip title={orgCreationLocked ? 'This deployment is restricted to a single organization' : undefined}>
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                disabled={orgCreationLocked}
+                onClick={() => setEditing('new')}
+              >
+                New organization
+              </Button>
+            </Tooltip>
           </Space>
         }
       />

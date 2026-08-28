@@ -23,6 +23,12 @@ export function useLogin() {
   })
 }
 
+// BOOTSTRAP_STATUS_KEY is exported so useCreateOrganization (api/organizations.ts)
+// can invalidate this exact cache entry after creating the deployment's
+// (possibly only, in single org_mode) organization — see
+// useOrganizationCreationLocked below.
+export const BOOTSTRAP_STATUS_KEY = ['bootstrap-status']
+
 /**
  * Whether this seshat-server has ever had a platform admin created — public,
  * unauthenticated, and safe to call before any session exists. Used to
@@ -30,7 +36,7 @@ export function useLogin() {
  */
 export function useBootstrapStatus() {
   return useQuery({
-    queryKey: ['bootstrap-status'],
+    queryKey: BOOTSTRAP_STATUS_KEY,
     queryFn: async () => {
       const { data, error } = await api.GET('/api/v1/bootstrap/status')
       if (error) throw error
@@ -38,8 +44,28 @@ export function useBootstrapStatus() {
     },
     // Once a platform is initialized it never goes back — no point
     // refetching this on every focus/mount the way session-bound queries do.
+    // has_organization CAN flip false -> true within that same lifetime
+    // (single org_mode, before the deployment's one org is created yet) —
+    // useCreateOrganization's onSuccess invalidates this key explicitly for
+    // that case rather than shortening staleTime for everyone.
     staleTime: Infinity,
   })
+}
+
+/**
+ * True once this deployment's single organization slot is taken — i.e.
+ * org_mode is "single" and an organization already exists. Used to hide/
+ * disable the two "create organization" UI surfaces (CreateOrganizationPage,
+ * OrganizationsPage's "New organization") before the user hits a 409 from
+ * the server, which remains the real enforcement point either way.
+ */
+export function useOrganizationCreationLocked() {
+  const bootstrapStatus = useBootstrapStatus()
+  return (
+    bootstrapStatus.isSuccess &&
+    bootstrapStatus.data?.org_mode === 'single' &&
+    bootstrapStatus.data?.has_organization === true
+  )
 }
 
 /**

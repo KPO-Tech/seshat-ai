@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Avatar, Button, Dropdown, Layout, Menu, Select, Space, Tag, Typography } from 'antd'
+import { Avatar, Button, Dropdown, Layout, Menu, Select, Space, Typography } from 'antd'
 import { ArrowLeftOutlined, LogoutOutlined, UserOutlined } from '@ant-design/icons'
 import { Outlet, matchPath, useLocation, useNavigate } from 'react-router'
 import { useOrganizationsList } from '@/api/organizations'
@@ -143,74 +143,96 @@ export function AppLayout() {
     <Layout className="console-shell" style={{ height: '100vh', overflow: 'hidden', background: palette.canvas }}>
       <Sider
         theme="dark"
-        width={272}
+        width={264}
         style={{
           height: '100vh',
           overflowX: 'hidden',
           overflowY: 'auto',
+          background: palette.sidebarBg,
           borderRight: `1px solid ${palette.border}`,
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
+        {/* Brand Header */}
         <div
           style={{
-            color: palette.ink,
-            fontWeight: 600,
-            fontSize: 15,
-            padding: '22px 20px 18px',
-            letterSpacing: 0.1,
+            padding: '20px 18px 16px',
             display: 'flex',
             alignItems: 'center',
-            gap: 10,
+            justifyContent: 'space-between',
+            borderBottom: `1px solid ${palette.borderSubtle}`,
+            marginBottom: 8,
           }}
         >
-          <span
-            style={{
-              width: 24,
-              height: 24,
-              borderRadius: 7,
-              background: palette.accent,
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 12,
-              fontWeight: 700,
-              color: '#1F1D22',
-              flexShrink: 0,
-            }}
-          >
-            S
-          </span>
-          Seshat Console
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: 8,
+                background: 'linear-gradient(135deg, #FF8F3D 0%, #EF7C2F 100%)',
+                boxShadow: '0 2px 8px rgba(239, 124, 47, 0.35)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 14,
+                fontWeight: 800,
+                color: '#131217',
+                flexShrink: 0,
+              }}
+            >
+              S
+            </div>
+            <div>
+              <div style={{ color: palette.ink, fontWeight: 700, fontSize: 14.5, letterSpacing: '-0.01em', lineHeight: 1.2 }}>
+                Seshat Console
+              </div>
+              <div style={{ fontSize: 11, color: palette.inkTertiary, letterSpacing: '0.04em' }}>
+                CONTROL PLANE
+              </div>
+            </div>
+          </div>
         </div>
 
         {isAdmin && inOrganizationRoute && (
-          <div style={{ padding: '0 12px 10px' }}>
+          <div style={{ padding: '4px 14px 8px' }}>
             <Button
               type="text"
               size="small"
-              icon={<ArrowLeftOutlined />}
+              icon={<ArrowLeftOutlined style={{ fontSize: 11 }} />}
               onClick={() => navigate('/platform/organizations')}
-              style={{ color: palette.inkTertiary, fontSize: 12, paddingInline: 8 }}
+              style={{
+                color: palette.inkSecondary,
+                fontSize: 12,
+                paddingInline: 8,
+                width: '100%',
+                justifyContent: 'flex-start',
+                borderRadius: 6,
+                background: 'rgba(255, 255, 255, 0.03)',
+              }}
             >
               Back to Organizations
             </Button>
           </div>
         )}
 
-        <Menu
-          theme="dark"
-          mode="inline"
-          selectedKeys={activePrimary ? [activePrimary.key] : []}
-          items={menuItems}
-          style={{ borderInlineEnd: 'none' }}
-          onClick={({ key }) => {
-            const target = primaryItems.find((item) => item.key === key)
-            if (target) navigate(target.path)
-          }}
-        />
+        <div style={{ flex: 1, paddingBottom: 16 }}>
+          <Menu
+            theme="dark"
+            mode="inline"
+            selectedKeys={activePrimary ? [activePrimary.key] : []}
+            items={menuItems}
+            style={{ borderInlineEnd: 'none', background: 'transparent' }}
+            onClick={({ key }) => {
+              const target = primaryItems.find((item) => item.key === key)
+              if (target) navigate(target.path)
+            }}
+          />
+        </div>
       </Sider>
 
-      <Layout style={{ minWidth: 0, height: '100vh' }}>
+      <Layout style={{ minWidth: 0, height: '100vh', background: palette.canvas }}>
         <Header
           style={{
             background: palette.surface,
@@ -219,19 +241,35 @@ export function AppLayout() {
             justifyContent: 'space-between',
             padding: '0 24px',
             borderBottom: `1px solid ${palette.border}`,
-            minHeight: 56,
-            height: 56,
+            minHeight: 54,
+            height: 54,
             flexShrink: 0,
             lineHeight: 'normal',
-            gap: 12,
+            gap: 16,
           }}
         >
           <div style={{ minWidth: 0, flex: '1 1 auto', overflow: 'hidden' }}>
-            <Space size={8} align="center" wrap={false} style={{ maxWidth: '100%' }}>
-              <Tag color="orange" style={{ margin: 0, flexShrink: 0 }}>
-                {routeOrganizationName ? `Organization: ${routeOrganizationName}` : getScopeTagLabel(location.pathname)}
-              </Tag>
-              <Typography.Text strong style={{ fontSize: 16, color: palette.ink }} ellipsis>
+            <Space size={10} align="center" wrap={false} style={{ maxWidth: '100%' }}>
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '3px 10px',
+                  borderRadius: 6,
+                  background: palette.accentSoft,
+                  border: `1px solid ${palette.accentSoftBorder}`,
+                  color: palette.accentHover,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  letterSpacing: '0.02em',
+                  flexShrink: 0,
+                }}
+              >
+                {routeOrganizationName ? routeOrganizationName : getScopeTagLabel(location.pathname)}
+              </span>
+              <Typography.Text style={{ color: palette.inkTertiary, fontSize: 13 }}>/</Typography.Text>
+              <Typography.Text strong style={{ fontSize: 14.5, color: palette.ink }} ellipsis>
                 {activePrimary?.label ?? 'Console'}
               </Typography.Text>
             </Space>
@@ -243,7 +281,7 @@ export function AppLayout() {
               value={workspaceOrganizationId ?? undefined}
               onChange={(nextOrganizationId) => setSelectedOrganizationId(nextOrganizationId)}
               options={organizations.map((organization) => ({ value: organization.id, label: organization.name }))}
-              style={{ minWidth: 160, flexShrink: 0 }}
+              style={{ minWidth: 170, flexShrink: 0 }}
               aria-label="Active organization for Workspace"
             />
           )}
@@ -252,6 +290,17 @@ export function AppLayout() {
             trigger={['click']}
             menu={{
               items: [
+                {
+                  key: 'user-info',
+                  disabled: true,
+                  label: (
+                    <div style={{ padding: '4px 0' }}>
+                      <div style={{ fontWeight: 600, color: palette.ink }}>{user?.display_name || 'User'}</div>
+                      <div style={{ fontSize: 12, color: palette.inkTertiary }}>{user?.email}</div>
+                    </div>
+                  ),
+                },
+                { type: 'divider' },
                 {
                   key: 'profile',
                   icon: <UserOutlined />,
@@ -267,9 +316,30 @@ export function AppLayout() {
               ],
             }}
           >
-            <Space size={10} style={{ cursor: 'pointer', flexShrink: 0, maxWidth: '100%' }}>
-              <Avatar size="small" style={{ background: palette.accentSoft, color: palette.accent }} icon={<UserOutlined />} />
-              <Typography.Text className="console-user-label" style={{ fontSize: 13 }}>
+            <Space
+              size={8}
+              style={{
+                cursor: 'pointer',
+                flexShrink: 0,
+                padding: '4px 10px',
+                borderRadius: 8,
+                background: 'rgba(255, 255, 255, 0.03)',
+                border: `1px solid ${palette.borderSubtle}`,
+                transition: 'background 0.15s ease',
+              }}
+            >
+              <Avatar
+                size={24}
+                style={{
+                  background: palette.accentSoft,
+                  color: palette.accentHover,
+                  border: `1px solid ${palette.accentSoftBorder}`,
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}
+                icon={<UserOutlined />}
+              />
+              <Typography.Text className="console-user-label" style={{ fontSize: 13, color: palette.inkSecondary, fontWeight: 500 }}>
                 {user?.display_name ?? user?.email}
               </Typography.Text>
             </Space>
@@ -277,31 +347,26 @@ export function AppLayout() {
         </Header>
 
         {secondaryNavItems.length > 1 && (
-          <div
-            className="console-subnav"
-            style={{
-              padding: '0 24px',
-              background: palette.surface,
-              borderBottom: `1px solid ${palette.borderSubtle}`,
-              flexShrink: 0,
-            }}
-          >
-            <Menu
-              mode="horizontal"
-              selectedKeys={activeSecondary ? [activeSecondary.key] : []}
-              items={secondaryNavItems.map((item) => ({ key: item.key, label: item.label }))}
-              style={{ background: 'transparent', borderBottom: 'none', minWidth: 'max-content' }}
-              onClick={({ key }) => {
-                const target = secondaryNavItems.find((item) => item.key === key)
-                if (target) navigate(target.path)
-              }}
-            />
+          <div className="console-subnav-bar">
+            {secondaryNavItems.map((item) => {
+              const isActive = activeSecondary?.key === item.key
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => navigate(item.path)}
+                  className={`console-subnav-item ${isActive ? 'console-subnav-item--active' : ''}`}
+                >
+                  {item.label}
+                </button>
+              )
+            })}
           </div>
         )}
 
         <Content
           className="console-content"
-          style={{ padding: 28, width: '100%', minWidth: 0, flex: '1 1 auto', minHeight: 0, overflowY: 'auto' }}
+          style={{ padding: '24px 28px', width: '100%', minWidth: 0, flex: '1 1 auto', minHeight: 0, overflowY: 'auto' }}
         >
           <Outlet />
         </Content>

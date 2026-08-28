@@ -4111,6 +4111,12 @@ export interface operations {
                 content: {
                     "application/json": {
                         initialized?: boolean;
+                        /**
+                         * @example multi
+                         * @enum {string}
+                         */
+                        org_mode?: "single" | "multi";
+                        has_organization?: boolean;
                     };
                 };
             };

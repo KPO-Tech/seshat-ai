@@ -14,6 +14,21 @@ import (
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 )
 
+// OrgMode controls whether this deployment allows more than one
+// Organization to ever exist. See orgModeFromEnv for the two valid values.
+type OrgMode string
+
+const (
+	// OrgModeMulti is today's behavior - unlimited organizations (the SaaS
+	// deployment: one per self-serve founder, plus admin-created ones). The
+	// default, so an unset env var never changes existing behavior.
+	OrgModeMulti OrgMode = "multi"
+	// OrgModeSingle restricts the whole deployment to exactly one
+	// Organization ever, for a company self-hosting seshat-server for
+	// itself only. See iam.Service.SetOrgMode / iam.Service.CreateOrganization.
+	OrgModeSingle OrgMode = "single"
+)
+
 type Config struct {
 	Port                     int
 	ReadTimeout              time.Duration
@@ -70,6 +85,18 @@ type Config struct {
 	// local dev/single-instance deployment's own API is reachable at
 	// localhost:Port by construction.
 	PublicAPIURL string
+	// OrgMode is "multi" (default - preserves today's behavior) or "single"
+	// (for a company self-hosting seshat-server for itself only; restricts
+	// the deployment to exactly one Organization ever - see
+	// iam.Service.CreateOrganization). Unlike Storage/Vector's
+	// provider/backend fields, an explicit-but-invalid value here is NOT
+	// silently coerced to the default: that would leave a self-hoster's
+	// deployment open to unlimited orgs without them knowing, which is the
+	// one thing this flag exists to prevent. Validation happens at
+	// iam.Service.SetOrgMode (called from app.New), the same fail-fast
+	// point a bad SESHAT_SERVER_DB_DRIVER gets in sdb.Open - LoadFromEnv
+	// itself stays error-free, consistent with every other field here.
+	OrgMode OrgMode
 }
 
 func LoadFromEnv() Config {
@@ -99,7 +126,21 @@ func LoadFromEnv() Config {
 		SMTPFrom:                     strings.TrimSpace(os.Getenv("SESHAT_SERVER_SMTP_FROM")),
 		PublicAppURL:                 strings.TrimRight(strings.TrimSpace(os.Getenv("SESHAT_SERVER_PUBLIC_APP_URL")), "/"),
 		PublicAPIURL:                 publicAPIURLFromEnv(port),
+		OrgMode:                      orgModeFromEnv(),
 	}
+}
+
+// orgModeFromEnv defaults to OrgModeMulti when unset. A non-empty value is
+// passed through verbatim (lowercased/trimmed) rather than validated here -
+// iam.Service.SetOrgMode rejects anything other than "single"/"multi" at
+// startup (see app.New), so a typo can't silently leave a deployment in
+// unlimited-org mode.
+func orgModeFromEnv() OrgMode {
+	raw := strings.ToLower(strings.TrimSpace(os.Getenv("SESHAT_SERVER_ORG_MODE")))
+	if raw == "" {
+		return OrgModeMulti
+	}
+	return OrgMode(raw)
 }
 
 // publicAPIURLFromEnv defaults to localhost:port (matching Port's own

@@ -157,6 +157,8 @@ paths:
                 type: object
                 properties:
                   initialized: { type: boolean }
+                  org_mode: { type: string, enum: [single, multi], example: multi }
+                  has_organization: { type: boolean }
 
   /api/v1/auth/bootstrap:
     post:

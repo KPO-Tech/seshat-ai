@@ -252,7 +252,20 @@ type Service struct {
 	// (see oidc.go's BeginOIDCLogin) - distinct from publicAppURL, which
 	// points at the console frontend, not an API route.
 	publicAPIURL string
+	// orgMode is set post-construction via SetOrgMode, same New()-signature-
+	// stability reasoning as publicAPIURL. Zero value "" is treated as
+	// orgModeMulti (today's unlimited-org behavior), so every existing
+	// caller/test that never calls SetOrgMode is unaffected.
+	orgMode string
 }
+
+// orgModeMulti/orgModeSingle mirror config.OrgModeMulti/config.OrgModeSingle
+// as plain strings - see SetOrgMode's doc comment for why iam takes a
+// string here instead of importing the config package's type.
+const (
+	orgModeMulti  = "multi"
+	orgModeSingle = "single"
+)
 
 func New(database *sdb.DB, sessionTTL time.Duration) *Service {
 	return &Service{db: database, sessionTTL: sessionTTL}
@@ -283,9 +296,54 @@ func (s *Service) SetPublicAPIURL(publicAPIURL string) {
 	s.publicAPIURL = strings.TrimRight(publicAPIURL, "/")
 }
 
+// SetOrgMode wires up whether this deployment allows more than one
+// Organization to ever exist ("single") or not ("multi" - also the zero
+// value, i.e. never calling this, which preserves today's behavior for the
+// many test-env callers that don't care). Not a New() parameter for the
+// same reason as SetMailer/SetPublicAPIURL. Unlike those setters this one
+// validates: an unrecognized value returns an error so a misconfigured
+// deployment fails at startup (see app.New) instead of silently running
+// with the wrong org-count policy - see CreateOrganization for enforcement.
+func (s *Service) SetOrgMode(mode string) error {
+	switch mode {
+	case "", orgModeMulti:
+		s.orgMode = orgModeMulti
+	case orgModeSingle:
+		s.orgMode = orgModeSingle
+	default:
+		return fmt.Errorf("invalid org mode %q: must be %q or %q", mode, orgModeSingle, orgModeMulti)
+	}
+	return nil
+}
+
+// OrgMode reports the deployment's org mode ("single" or "multi"), for
+// surfacing to the frontend via GET /api/v1/bootstrap/status (see
+// api.handleBootstrapStatus) so it can proactively hide/disable
+// organization-creation UI before the user hits a 409 from CreateOrganization.
+func (s *Service) OrgMode() string {
+	if s.orgMode == "" {
+		return orgModeMulti
+	}
+	return s.orgMode
+}
+
 func (s *Service) BootstrapStatus(ctx context.Context) (bool, error) {
 	var count int64
 	if err := s.db.Gorm().WithContext(ctx).Model(&sdb.User{}).Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+// HasAnyOrganization reports whether at least one Organization has ever
+// been created in this deployment - the correct signal for single-org-mode
+// gating (see CreateOrganization), distinct from BootstrapStatus's "at
+// least one User exists": Register can create a User with zero
+// Organizations (someone registers before ever creating/joining one), so
+// the two can diverge - BootstrapStatus's count must not be reused here.
+func (s *Service) HasAnyOrganization(ctx context.Context) (bool, error) {
+	var count int64
+	if err := s.db.Gorm().WithContext(ctx).Model(&sdb.Organization{}).Count(&count).Error; err != nil {
 		return false, err
 	}
 	return count > 0, nil
@@ -717,6 +775,15 @@ func (s *Service) CreateOrganization(ctx context.Context, principal *Principal, 
 	var organization *Organization
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		tx = tx.WithContext(ctx)
+		if s.orgMode == orgModeSingle {
+			var orgCount int64
+			if err := tx.Model(&sdb.Organization{}).Count(&orgCount).Error; err != nil {
+				return err
+			}
+			if orgCount > 0 {
+				return ErrConflict("this deployment is restricted to a single organization")
+			}
+		}
 		var existing int64
 		if err := tx.Model(&sdb.Organization{}).Where("slug = ?", slug).Count(&existing).Error; err != nil {
 			return err

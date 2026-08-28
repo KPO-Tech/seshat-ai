@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Alert, Button, Form, Input, message, Typography } from 'antd'
 import { UserOutlined, MailOutlined, LockOutlined, ApartmentOutlined, LinkOutlined } from '@ant-design/icons'
-import { Link, useNavigate } from 'react-router'
+import { Link, Navigate, useNavigate } from 'react-router'
 import { api } from '@/api/client'
-import { useRegister } from '@/api/auth'
+import { useRegister, useOrganizationCreationLocked } from '@/api/auth'
 import { useCreateOrganization } from '@/api/organizations'
 import { useAuthStore } from '@/store/auth'
 import { getErrorMessage } from '@/api/errors'
@@ -30,8 +30,16 @@ export function CreateOrganizationPage() {
   const register = useRegister()
   const createOrg = useCreateOrganization()
   const navigate = useNavigate()
+  const orgCreationLocked = useOrganizationCreationLocked()
   const [pendingOrg, setPendingOrg] = useState<{ name: string; slug: string } | null>(null)
   const [orgError, setOrgError] = useState<string | null>(null)
+
+  // Single org_mode, and this deployment's one organization already exists:
+  // this public self-serve "found a new org" flow no longer makes sense -
+  // the server would reject the create-organization call with a 409 anyway.
+  if (orgCreationLocked) {
+    return <Navigate to="/login" replace />
+  }
 
   const submitOrganization = (name: string, slug: string) => {
     createOrg.mutate(

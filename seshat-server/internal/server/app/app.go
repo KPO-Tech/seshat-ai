@@ -65,6 +65,9 @@ func New(cfg serverconfig.Config) (*App, error) {
 		return nil, fmt.Errorf("ensure super admin: %w", err)
 	}
 	iamService.SetPublicAPIURL(cfg.PublicAPIURL)
+	if err := iamService.SetOrgMode(string(cfg.OrgMode)); err != nil {
+		return nil, fmt.Errorf("set org mode: %w", err)
+	}
 	if cfg.SMTPHost != "" {
 		iamService.SetMailer(mailer.NewSMTPSender(mailer.Config{
 			Host:     cfg.SMTPHost,
