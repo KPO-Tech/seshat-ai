@@ -546,8 +546,12 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md). PRs target `dev`, never directly `main
 
 ## 📄 License
 
-SeshatOS is licensed under the **GNU Affero General Public License v3.0** (AGPL-3.0).
+> **Draft status:** the split below is not yet in effect for any published version — see the notice at the top of [`LICENSE`](LICENSE) and [`ROADMAP.md`](ROADMAP.md). Today the whole repository is AGPL-3.0.
+
+This repository is moving toward a directory-split license, the same pattern used by GitLab and OpenWork:
+
+- `seshat-backend/` and `seshat-ui/` — **GNU Affero General Public License v3.0** (AGPL-3.0), see [`LICENSE`](LICENSE).
+- `seshat-core/` (shared connector/domain code used by both `seshat-backend` and `seshat-server`) — **Apache License 2.0**, see [`seshat-core/LICENSE`](seshat-core/LICENSE).
+- `seshat-server/` and `seshat-console/` — a source-available license (draft, not final), see [`seshat-server/LICENSE`](seshat-server/LICENSE).
 
 The underlying runtime, [seshat](https://github.com/KPO-Tech/seshat), is Apache 2.0.
-
-See [`LICENSE`](LICENSE) for the full text.

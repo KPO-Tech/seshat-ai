@@ -86,6 +86,10 @@
       {
         "from": "resources/backend",
         "to": "backend"
+      },
+      {
+        "from": "build/install-docling.ps1",
+        "to": "install-docling.ps1"
       }
     ],
     "linux": {
@@ -99,6 +103,10 @@
         "nsis"
       ],
       "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "include": "build/installer.nsh"
     },
     "publish": [
       {

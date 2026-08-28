@@ -81,8 +81,8 @@ UI_PKG_MGR := $(shell $(SHELL) -c 'command -v bun >/dev/null 2>&1 && echo bun ||
         test test-v test-race test-short test-pkg \
         fmt vet lint tidy hooks \
         install-all build-all \
-        ui-install ui-build ui-dev \
-        desktop-install desktop-build desktop-dev \
+        ui-install ui-build ui-dev ui-package-win ui-package-linux \
+        desktop-install desktop-build desktop-dev desktop-package-win desktop-package-linux \
         console-install console-build console-dev \
         website-install website-build website-dev \
         install-python start-docling \
@@ -291,6 +291,10 @@ ui-build: desktop-build ## Alias for desktop-build
 
 ui-dev: desktop-dev ## Alias for desktop-dev
 
+ui-package-win: desktop-package-win ## Alias for desktop-package-win
+
+ui-package-linux: desktop-package-linux ## Alias for desktop-package-linux
+
 desktop-install: ## Install desktop Electron dependencies
 	@if [ ! -d "$(UI_DIR)/node_modules" ]; then \
 	  printf "\033[32m[desktop]\033[0m installing dependencies with %s...\n" $(UI_PKG_MGR); \
@@ -304,6 +308,20 @@ desktop-build: desktop-install build ## Build desktop Electron app and local bac
 
 desktop-dev: desktop-install ## Start desktop Vite dev server only (no Electron sidecar)
 	cd $(UI_DIR) && $(UI_PKG_MGR) run dev
+
+# Packaging a real installer (electron-builder) is much slower than `make dev`
+# but produces the actual artifact users run - closer to what "does this work
+# for real" testing needs. Each target is host-OS-specific (electron-builder
+# cannot reliably cross-package): run desktop-package-win on Windows,
+# desktop-package-linux on Linux/CI. See docs/desktop-packaging.md.
+
+desktop-package-win: desktop-install ## Package a Windows .exe installer (run on Windows)
+	cd $(UI_DIR) && $(UI_PKG_MGR) run package:win
+	@printf "\033[32m[desktop]\033[0m installer ready: %s\n" "$(UI_DIR)/dist"
+
+desktop-package-linux: desktop-install ## Package a Linux AppImage + .deb (run on Linux)
+	cd $(UI_DIR) && $(UI_PKG_MGR) run package:linux
+	@printf "\033[32m[desktop]\033[0m artifacts ready: %s\n" "$(UI_DIR)/dist"
 
 console-install: ## Install admin console dependencies
 	@if [ ! -d "$(CONSOLE_DIR)/node_modules" ]; then \
