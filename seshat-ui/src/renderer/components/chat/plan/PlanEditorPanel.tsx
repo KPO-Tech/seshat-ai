@@ -941,7 +941,7 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
             {!contentToShow ? (
               <span style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Loading content…</span>
             ) : isReadonly ? (
-              <MarkdownView>{contentToShow}</MarkdownView>
+              <MarkdownView sessionId={sessionId}>{contentToShow}</MarkdownView>
             ) : (
               splitMarkdownBlocks(contentToShow).map((block, i) => (
                 <div key={i} className="pep-line-wrap">
@@ -953,7 +953,7 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
                   >
                     +
                   </button>
-                  <MarkdownView>{block}</MarkdownView>
+                  <MarkdownView sessionId={sessionId}>{block}</MarkdownView>
                 </div>
               ))
             )}

@@ -11,14 +11,22 @@ import { useUIStore } from '@/stores/ui'
 // to newly mount (its own mount effect calls browserApi.show + navigate) -
 // if the panel is already open, that effect won't re-run for the new URL,
 // so navigate() is also called directly here to cover both cases.
-export function openInAppBrowser(url: string): void {
+//
+// sessionId scopes the browser tab/history to the conversation the link was
+// clicked from (matching RightPanelHost's `session:<id>` contextId), so
+// links clicked in different conversations don't share tabs. Falls back to
+// the shared 'chat' context when no sessionId is available (e.g. Knowledge
+// base previews, Skills Creator - contexts with no conversation of their
+// own).
+export function openInAppBrowser(url: string, sessionId?: string): void {
   if (typeof window === 'undefined' || !window.nexus?.browser) {
     // Web build / no Electron bridge - fall back to a normal external tab.
     window.open(url, '_blank', 'noopener,noreferrer')
     return
   }
-  useUIStore.getState().openRightPanel({ kind: 'browser', title: 'Browser', browserUrl: url })
-  void window.nexus.browser.navigate(url).catch(() => {
+  const contextId = sessionId ? `session:${sessionId}` : 'chat'
+  useUIStore.getState().openRightPanel({ kind: 'browser', title: 'Browser', browserUrl: url, sessionId })
+  void window.nexus.browser.navigate(contextId, url).catch(() => {
     // Panel will still be open; the user can retry via its own address bar.
   })
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Book, Browser, CheckOne, Close, Code, DocDetail, FilePdf, FileTextOne, Robot, LoadingOne, FileWord, FileExcel, Left, Right, Refresh } from '@icon-park/react'
+import { AddOne, Book, Browser, CheckOne, Close, Code, DocDetail, FilePdf, FileTextOne, Robot, LoadingOne, FileWord, FileExcel, Left, Right, Refresh } from '@icon-park/react'
 import { MarkdownView } from '@/components/MarkdownView'
 import { derivePlanSnapshot } from '@/lib/plan'
 import { useUIStore } from '@/stores/ui'
@@ -217,10 +217,10 @@ function renderPanelBody(panel: RightPanelInstance) {
       return panel.plainText ? (
         <pre className="right-panel-plaintext">{panel.markdown}</pre>
       ) : (
-        <MarkdownView>{panel.markdown}</MarkdownView>
+        <MarkdownView sessionId={panel.sessionId}>{panel.markdown}</MarkdownView>
       )
     case 'browser':
-      return <BrowserPanel url={panel.browserUrl} />
+      return <BrowserPanel url={panel.browserUrl} contextId={panel.sessionId ? `session:${panel.sessionId}` : 'chat'} />
     case 'knowledge':
       return <KnowledgePanel results={panel.knowledgeResults ?? []} />
     case 'subagent':
@@ -339,7 +339,12 @@ function KnowledgePanel({ results }: { results: NonNullable<RightPanelInstance['
   )
 }
 
-function BrowserPanel({ url }: { url?: string }) {
+// contextId scopes tabs/history to a single browsing session - the shared
+// chat right panel ('chat', the default) vs. each project's own Browser tab
+// (Projects passes 'project:<rootPath>'). Without this every caller shared
+// one global browser instance, so opening the panel from a different
+// project would show whatever the last project (or chat) was browsing.
+export function BrowserPanel({ url, contextId = 'chat' }: { url?: string; contextId?: string }) {
   const browserApi = window.nexus?.browser
   const initialUrl = url || 'https://www.google.com/'
   const viewportRef = useRef<HTMLDivElement>(null)
@@ -358,8 +363,8 @@ function BrowserPanel({ url }: { url?: string }) {
       width: rect.width,
       height: rect.height,
     }
-    void browserApi.setBounds(bounds).catch(() => undefined)
-  }, [browserApi])
+    void browserApi.setBounds(contextId, bounds).catch(() => undefined)
+  }, [browserApi, contextId])
 
   useEffect(() => {
     if (!browserApi) return
@@ -368,14 +373,26 @@ function BrowserPanel({ url }: { url?: string }) {
 
     const rect = element.getBoundingClientRect()
     const bounds = { x: rect.left, y: rect.top, width: rect.width, height: rect.height }
-    void browserApi.show(bounds).then(setState).catch(() => undefined)
-    void browserApi.navigate(initialUrl).then(setState).catch(() => undefined)
+    void browserApi.show(contextId, bounds).then((next) => {
+      setState(next)
+      // Re-mounting (e.g. switching away from and back to a Browser tab)
+      // must not force-navigate over an already-open tab - only do that
+      // when the caller passed an explicit url (opening a link from chat)
+      // or when this is a genuinely fresh session with no tabs yet.
+      // Otherwise this wipes out whatever the user was browsing every time.
+      if (url || next.tabs.length === 0) {
+        void browserApi.navigate(contextId, initialUrl).then(setState).catch(() => undefined)
+        return
+      }
+      const activeUrl = next.tabs.find((tab) => tab.id === next.activeTabId)?.url ?? next.tabs[0]?.url
+      if (activeUrl && activeUrl !== 'about:blank') setAddress(activeUrl)
+    }).catch(() => undefined)
 
     const observer = new ResizeObserver(syncBounds)
     observer.observe(element)
     window.addEventListener('resize', syncBounds)
     window.addEventListener('scroll', syncBounds, true)
-    const unsubscribeState = browserApi.onStateChange?.((next) => {
+    const unsubscribeState = browserApi.onStateChange?.(contextId, (next) => {
       setState(next)
       const nextUrl = next.tabs.find((tab) => tab.id === next.activeTabId)?.url ?? next.tabs[0]?.url
       if (nextUrl && nextUrl !== 'about:blank') setAddress(nextUrl)
@@ -388,27 +405,71 @@ function BrowserPanel({ url }: { url?: string }) {
       window.removeEventListener('resize', syncBounds)
       window.removeEventListener('scroll', syncBounds, true)
       unsubscribeState?.()
-      void browserApi.hide().catch(() => undefined)
+      void browserApi.hide(contextId).catch(() => undefined)
     }
-  }, [browserApi, initialUrl, syncBounds])
+  }, [browserApi, contextId, initialUrl, syncBounds])
 
   async function navigate() {
     const target = address.trim()
     if (!target || !browserApi) return
-    const next = await browserApi.navigate(target).catch(() => null)
+    const next = await browserApi.navigate(contextId, target).catch(() => null)
     if (next) setState(next)
   }
 
+  function openNewTab() {
+    void browserApi?.newTab(contextId).then(setState)
+  }
+
+  function switchToTab(tabId: string) {
+    void browserApi?.switchTab(contextId, tabId).then(setState)
+  }
+
+  function closeTab(event: React.MouseEvent, tabId: string) {
+    event.stopPropagation()
+    void browserApi?.closeTab(contextId, tabId).then(setState)
+  }
+
+  const tabs = state?.tabs ?? []
+
   return (
     <div className="right-panel-browser">
+      {tabs.length > 0 && (
+        <div className="right-panel-browser-tabstrip">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              className={`right-panel-browser-tab${tab.id === state?.activeTabId ? ' active' : ''}`}
+              onClick={() => switchToTab(tab.id)}
+              title={tab.url}
+            >
+              {tab.status === 'loading' ? <LoadingOne className="spin" size={11} /> : <Browser size={11} />}
+              <span>{tab.label}</span>
+              {tabs.length > 1 && (
+                <span
+                  className="right-panel-browser-tab-close"
+                  role="button"
+                  aria-label="Close tab"
+                  onClick={(event) => closeTab(event, tab.id)}
+                >
+                  <Close size={10} />
+                </span>
+              )}
+            </button>
+          ))}
+          <button type="button" className="right-panel-browser-tab-add" onClick={openNewTab} title="New tab">
+            <AddOne size={12} />
+          </button>
+        </div>
+      )}
       <div className="right-panel-browser-toolbar">
-        <button type="button" onClick={() => void browserApi?.back().then(setState)} disabled={!activeTab?.canGoBack} title="Back">
+        <button type="button" onClick={() => void browserApi?.back(contextId).then(setState)} disabled={!activeTab?.canGoBack} title="Back">
           <Left size={12} />
         </button>
-        <button type="button" onClick={() => void browserApi?.forward().then(setState)} disabled={!activeTab?.canGoForward} title="Forward">
+        <button type="button" onClick={() => void browserApi?.forward(contextId).then(setState)} disabled={!activeTab?.canGoForward} title="Forward">
           <Right size={12} />
         </button>
-        <button type="button" onClick={() => void browserApi?.reload().then(setState)} title="Reload">
+        <button type="button" onClick={() => void browserApi?.reload(contextId).then(setState)} title="Reload">
           <Refresh size={12} />
         </button>
         <form
@@ -691,7 +752,7 @@ function EmptyState({ title, description }: { title: string; description: string
   )
 }
 
-const RIGHT_PANEL_CSS = `
+export const RIGHT_PANEL_CSS = `
 .right-panel-columns {
   display: flex;
   flex-direction: row;
@@ -971,8 +1032,97 @@ const RIGHT_PANEL_CSS = `
   flex-direction: column;
   height: 100%;
   min-height: 0;
-  background: #0b0c10;
+  background: var(--color-bg);
   color: var(--color-text);
+}
+
+.right-panel-browser .spin {
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+}
+
+.right-panel-browser-tabstrip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 7px 0;
+  overflow-x: auto;
+  flex-shrink: 0;
+  scrollbar-width: none;
+}
+
+.right-panel-browser-tabstrip::-webkit-scrollbar {
+  display: none;
+}
+
+.right-panel-browser-tab {
+  flex-shrink: 0;
+  max-width: 160px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: 7px 7px 0 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.right-panel-browser-tab:hover {
+  color: var(--color-text);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.right-panel-browser-tab.active {
+  color: var(--color-text);
+  border-color: var(--color-border-subtle);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.right-panel-browser-tab span:not(.right-panel-browser-tab-close) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.right-panel-browser-tab-close {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--color-text-muted);
+}
+
+.right-panel-browser-tab-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text);
+}
+
+.right-panel-browser-tab-add {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.right-panel-browser-tab-add:hover {
+  color: var(--color-cta);
+  background: rgba(239, 124, 47, 0.1);
 }
 
 .right-panel-browser-toolbar {
@@ -1026,7 +1176,7 @@ const RIGHT_PANEL_CSS = `
 }
 
 .right-panel-browser-address input:focus {
-  border-color: rgba(247, 122, 40, 0.7);
+  border-color: rgba(239, 124, 47, 0.7);
 }
 
 .right-panel-browser-viewport {
@@ -1034,7 +1184,7 @@ const RIGHT_PANEL_CSS = `
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  background: #0b0c10;
+  background: var(--color-bg);
 }
 
 .right-panel-browser-empty {

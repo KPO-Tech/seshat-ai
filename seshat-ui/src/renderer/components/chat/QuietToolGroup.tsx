@@ -33,7 +33,7 @@ export function QuietToolGroup({ items, sessionId, onSubmitPrompt }: Props) {
       <div className="qtg-items">
         {items.map((item) => {
           if (item.kind === 'thinking') {
-            return <ThinkingGroupItem key={item.thinkingId} thinkingId={item.thinkingId} thinking={item.thinking} />
+            return <ThinkingGroupItem key={item.thinkingId} thinkingId={item.thinkingId} thinking={item.thinking} sessionId={sessionId} />
           }
           const tool = item.tool
           const status = toolStatus(tool)
@@ -70,7 +70,7 @@ export function QuietToolGroup({ items, sessionId, onSubmitPrompt }: Props) {
 // groupable tool calls (see groupBlocks in MessageItem.tsx) - same row shape
 // as ToolLineItem so it sits on the same timeline, closed by default since
 // it's reasoning the run doesn't need to justify itself.
-function ThinkingGroupItem({ thinkingId, thinking }: { thinkingId: string; thinking: string }) {
+function ThinkingGroupItem({ thinkingId, thinking, sessionId }: { thinkingId: string; thinking: string; sessionId?: string }) {
   const expanded = useUIStore((s) => s.thinkingExpansion[thinkingId] ?? false)
   const setThinkingExpansion = useUIStore((s) => s.setThinkingExpansion)
 
@@ -96,7 +96,7 @@ function ThinkingGroupItem({ thinkingId, thinking }: { thinkingId: string; think
       </div>
       {expanded && (
         <div className="qtg-item-body qtg-item-body--thinking">
-          <MarkdownView className="tb-thinking-md">{thinking}</MarkdownView>
+          <MarkdownView className="tb-thinking-md" sessionId={sessionId}>{thinking}</MarkdownView>
         </div>
       )}
     </div>

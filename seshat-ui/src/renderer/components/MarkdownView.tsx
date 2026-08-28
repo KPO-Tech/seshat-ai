@@ -218,6 +218,7 @@ type Props = {
   children: string
   className?: string
   streaming?: boolean
+  sessionId?: string
 }
 
 // Close any unclosed code fences so the markdown parser never treats the
@@ -233,7 +234,7 @@ function sealOpenFences(text: string): string {
   return inFence ? text + '\n```' : text
 }
 
-export function MarkdownView({ children, className, streaming = false }: Props) {
+export function MarkdownView({ children, className, streaming = false, sessionId }: Props) {
   const content = streaming ? sealOpenFences(children) : children
 
   return (
@@ -290,7 +291,7 @@ export function MarkdownView({ children, className, streaming = false }: Props) 
                 onClick={(event) => {
                   if (!shouldOpenInAppBrowser(event, href)) return
                   event.preventDefault()
-                  openInAppBrowser(href)
+                  openInAppBrowser(href, sessionId)
                 }}
               >
                 {children}

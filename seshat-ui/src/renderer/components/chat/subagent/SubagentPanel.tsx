@@ -563,7 +563,7 @@ export const SubagentPanel = memo(function SubagentPanel({ sessionId, toolUseId 
                   />
                 )
               }
-              return <StreamBlockView key={`${toolUseId}-block-${i}`} block={item.block} />
+              return <StreamBlockView key={`${toolUseId}-block-${i}`} block={item.block} sessionId={sessionId} />
             })}
             {subagent.activeTool && (
               <div className="sap-active-tool">
@@ -590,7 +590,7 @@ export const SubagentPanel = memo(function SubagentPanel({ sessionId, toolUseId 
               </div>
             )}
             {hasTerminalOutputState && (
-              <FinalOutputSummary status={subagent.status} result={result} />
+              <FinalOutputSummary status={subagent.status} result={result} sessionId={sessionId} />
             )}
             <div ref={bottomRef} />
           </div>
@@ -601,7 +601,7 @@ export const SubagentPanel = memo(function SubagentPanel({ sessionId, toolUseId 
             {hasResult
               ? (
                 <div className="sap-output-content">
-                  <MarkdownView>{result ?? ''}</MarkdownView>
+                  <MarkdownView sessionId={sessionId}>{result ?? ''}</MarkdownView>
                 </div>
               )
               : (
@@ -620,7 +620,7 @@ export const SubagentPanel = memo(function SubagentPanel({ sessionId, toolUseId 
   )
 })
 
-function FinalOutputSummary({ status, result }: { status: 'running' | 'completed' | 'failed'; result?: string }) {
+function FinalOutputSummary({ status, result, sessionId }: { status: 'running' | 'completed' | 'failed'; result?: string; sessionId?: string }) {
   const hasResult = Boolean(result?.trim())
   return (
     <div className="sap-final-output">
@@ -631,7 +631,7 @@ function FinalOutputSummary({ status, result }: { status: 'running' | 'completed
       {hasResult
         ? (
           <div className="sap-final-output-content">
-            <MarkdownView>{result ?? ''}</MarkdownView>
+            <MarkdownView sessionId={sessionId}>{result ?? ''}</MarkdownView>
           </div>
         )
         : (
@@ -642,14 +642,14 @@ function FinalOutputSummary({ status, result }: { status: 'running' | 'completed
   )
 }
 
-function StreamBlockView({ block }: { block: Parameters<typeof groupBlocks>[0][number] }) {
+function StreamBlockView({ block, sessionId }: { block: Parameters<typeof groupBlocks>[0][number]; sessionId?: string }) {
   if (block.type === 'tool_result') return null
 
   if (block.type === 'text') {
     if (!block.text.trim()) return null
     return (
       <div className="sap-block-text">
-        <MarkdownView>{block.text}</MarkdownView>
+        <MarkdownView sessionId={sessionId}>{block.text}</MarkdownView>
       </div>
     )
   }

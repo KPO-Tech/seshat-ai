@@ -3,7 +3,7 @@ import { fmtDuration, parseWebSearchHits } from '../helpers'
 import type { ToolViewProps } from '../types'
 import { openInAppBrowser, shouldOpenInAppBrowser } from '@/lib/openInAppBrowser'
 
-export function WebSearchToolView({ tool, result }: ToolViewProps) {
+export function WebSearchToolView({ tool, result, sessionId }: ToolViewProps) {
   const query = typeof tool.input.query === 'string' ? tool.input.query : ''
   const hits = parseWebSearchHits(result?.content)
   const provider = result?.metadata?.provider != null ? String(result.metadata.provider) : ''
@@ -45,7 +45,7 @@ export function WebSearchToolView({ tool, result }: ToolViewProps) {
               onClick={(event) => {
                 if (!shouldOpenInAppBrowser(event, hit.url)) return
                 event.preventDefault()
-                openInAppBrowser(hit.url)
+                openInAppBrowser(hit.url, sessionId)
               }}
             >
               <span className="tb-link-index">{index + 1}.</span>

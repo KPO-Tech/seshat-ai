@@ -103,7 +103,7 @@ export function isRenderableMessage(message: Message): boolean {
 
 // ThinkingBlock isolates its own Zustand subscription so toggling one thinking
 // block does NOT trigger re-renders in sibling MessageItems.
-function ThinkingBlock({ thinkingId, thinking }: { thinkingId: string; thinking: string }) {
+function ThinkingBlock({ thinkingId, thinking, sessionId }: { thinkingId: string; thinking: string; sessionId?: string }) {
   const expanded = useUIStore((s) => s.thinkingExpansion[thinkingId] ?? false)
   const setThinkingExpansion = useUIStore((s) => s.setThinkingExpansion)
   return (
@@ -129,7 +129,7 @@ function ThinkingBlock({ thinkingId, thinking }: { thinkingId: string; thinking:
               that looks like its own card. tb-thinking-md neutralizes that
               formatting back down to the same subdued style regardless of
               what markdown the model used. */}
-          <MarkdownView className="tb-thinking-md">{thinking}</MarkdownView>
+          <MarkdownView className="tb-thinking-md" sessionId={sessionId}>{thinking}</MarkdownView>
         </div>
       )}
     </div>
@@ -455,13 +455,13 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
           if (block.type === 'text') {
             return (
               <div key={`${message.id ?? 'msg'}-text-${item.index}`} className={`msg-bubble${isUser ? '' : ' msg-bubble--plain'}`}>
-                <MarkdownView>{block.text}</MarkdownView>
+                <MarkdownView sessionId={sessionId}>{block.text}</MarkdownView>
               </div>
             )
           }
           if (block.type === 'thinking') {
             const thinkingId = `${message.id ?? 'msg'}-thinking-${item.index}`
-            return <ThinkingBlock key={thinkingId} thinkingId={thinkingId} thinking={block.thinking} />
+            return <ThinkingBlock key={thinkingId} thinkingId={thinkingId} thinking={block.thinking} sessionId={sessionId} />
           }
           if (block.type === 'tool_use') {
             const key = block.id || `${message.id ?? 'msg'}-tool-${item.index}`

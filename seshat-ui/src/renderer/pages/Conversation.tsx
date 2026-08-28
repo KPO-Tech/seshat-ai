@@ -152,7 +152,7 @@ export function Conversation() {
     s.rightColumns.some((c) => c.panels.some((p) => p.kind === 'agent' && p.sessionId === id))
   )
   const browserOpen = useUIStore((s) =>
-    s.rightColumns.some((c) => c.panels.some((p) => p.kind === 'browser'))
+    s.rightColumns.some((c) => c.panels.some((p) => p.kind === 'browser' && p.sessionId === id))
   )
   const permissionMode = useUIStore((s) => s.permissionMode)
   const togglePermissionMode = useUIStore((s) => s.togglePermissionMode)
@@ -438,7 +438,7 @@ export function Conversation() {
   useEffect(() => {
     const tool = agentState.activeTool
     if (!tool?.toolName.startsWith('browser_')) return
-    if (!browserOpen) openRightPanel({ kind: 'browser', title: 'Browser', width: 620 })
+    if (!browserOpen) openRightPanel({ kind: 'browser', title: 'Browser', width: 620, sessionId: id })
     if (tool.toolName !== 'browser_open' && tool.toolName !== 'browser_navigate') return
     const toolBlock = [...streaming].reverse().find((block) => (
       block.type === 'tool_use' &&
@@ -455,9 +455,9 @@ export function Conversation() {
     const navKey = target ? `${tool.toolName}:${target}` : null
     if (target && browserToolNavigationRef.current !== navKey) {
       browserToolNavigationRef.current = navKey
-      void window.nexus?.browser?.openUrl(target, 'builtin').catch(() => undefined)
+      void window.nexus?.browser?.openUrl(target, 'builtin', id).catch(() => undefined)
     }
-  }, [agentState.activeTool?.toolName, browserOpen, openRightPanel, streaming])
+  }, [agentState.activeTool?.toolName, browserOpen, openRightPanel, streaming, id])
 
   // Auto-open the plan review panel when the agent calls exit_plan_mode
   // without a structured PlanDocument (no submit_plan): PlanEditorPanel
