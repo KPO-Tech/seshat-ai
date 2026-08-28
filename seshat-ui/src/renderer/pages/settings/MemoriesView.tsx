@@ -75,20 +75,26 @@ export function MemoriesView() {
   async function handleDelete(id: string) {
     if (deletingId) return
     setDeletingId(id)
+    setError(null)
     try {
       await api.delete(`/memories/${id}`)
       setMemories((prev) => prev.filter((m) => m.id !== id))
-    } catch { /* silently handle */ }
+    } catch (e: unknown) {
+      setError((e as { message?: string })?.message ?? 'Failed to delete this memory')
+    }
     finally { setDeletingId(null) }
   }
 
   async function handleClearAll() {
     if (clearing || !confirm('Clear all memories? This cannot be undone.')) return
     setClearing(true)
+    setError(null)
     try {
       await api.delete('/memories')
       setMemories([])
-    } catch { /* silently handle */ }
+    } catch (e: unknown) {
+      setError((e as { message?: string })?.message ?? 'Failed to clear memories')
+    }
     finally { setClearing(false) }
   }
 

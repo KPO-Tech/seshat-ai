@@ -224,7 +224,11 @@ export const SETTINGS_SHARED_CSS = `
 .settings-content-inner {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 28px 32px;
+  /* Bottom padding is deliberately much larger than the other sides - with
+     only 28px, the last row of a long list (e.g. Web Search's domain
+     categories) sits flush against the window edge with no visible gap,
+     so scrolling looks broken/cut-off rather than finished. */
+  padding: 28px 32px 96px;
 }
 
 /* ── Shared view styles ── */

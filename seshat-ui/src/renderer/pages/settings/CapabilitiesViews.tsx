@@ -46,6 +46,7 @@ const CUSTOM_SOURCE = '__custom__'
 // first and this is only needed when the user wants a key that ISN'T also
 // a general chat provider.
 function CustomCapabilityKey({ capability }: { capability: 'image' | 'audio' }) {
+  const { theme } = useUIStore()
   const [provider, setProvider] = useState<'openai' | 'gemini'>('openai')
   const envKey = provider === 'openai' ? 'OPENAI_API_KEY' : 'GOOGLE_API_KEY'
   const [status, setStatus] = useState<Record<string, boolean>>({})
@@ -89,9 +90,10 @@ function CustomCapabilityKey({ capability }: { capability: 'image' | 'audio' }) 
           <label>Provider</label>
           <div className="sv-select-static">
             <select
+              className="caps-model-select"
               value={provider}
               onChange={(e) => { setProvider(e.target.value as 'openai' | 'gemini'); setValue('') }}
-              style={{ width: '100%', background: 'transparent', border: 'none', color: 'inherit', font: 'inherit' }}
+              style={{ width: '100%', background: 'transparent', border: 'none', color: 'inherit', font: 'inherit', colorScheme: theme }}
             >
               <option value="openai">OpenAI</option>
               <option value="gemini">Gemini</option>
