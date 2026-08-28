@@ -1,14 +1,23 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import {
   AddOne,
+  Attention,
   Book,
+  Browser as BrowserIcon,
+  CheckOne,
   Command,
   DataSheet,
+  Delete,
+  Edit,
   FolderClose,
   FolderOpen,
+  GridFour,
+  LinkOne,
+  List,
   Message,
   More,
+  Refresh,
   Search,
   Time,
   Workbench,
@@ -17,6 +26,9 @@ import { api } from '@/api/client'
 import type { Session } from '@/api/types'
 import { useSessionStore, type ChatSession } from '@/stores/session'
 import { normalizeSessionMessages } from '@/lib/chat'
+import { deleteSession } from '@/lib/deleteSession'
+import { UNTITLED_SESSION_TITLE } from '@/lib/sessionTitle'
+import { BrowserPanel, RIGHT_PANEL_CSS } from '@/components/layout/RightPanelHost'
 
 type ProjectRecord = {
   id: string
@@ -28,6 +40,12 @@ type ProjectRecord = {
 }
 
 const STORAGE_KEY = 'seshat.projects.v1'
+// Removing a project only deletes its localStorage customization (name,
+// saved-project record) - the underlying sessions still carry projectPath,
+// so buildProjects() would otherwise just re-synthesize the same project
+// on the next render. This separate "tombstone" set is what actually keeps
+// a removed project out of the Hub.
+const REMOVED_STORAGE_KEY = 'seshat.projects.removed.v1'
 
 function readProjects(): ProjectRecord[] {
   try {
@@ -42,6 +60,21 @@ function readProjects(): ProjectRecord[] {
 
 function writeProjects(projects: ProjectRecord[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(projects))
+}
+
+function readRemovedPaths(): Set<string> {
+  try {
+    const raw = localStorage.getItem(REMOVED_STORAGE_KEY)
+    if (!raw) return new Set()
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? new Set(parsed.filter((item) => typeof item === 'string')) : new Set()
+  } catch {
+    return new Set()
+  }
+}
+
+function writeRemovedPaths(paths: Set<string>) {
+  localStorage.setItem(REMOVED_STORAGE_KEY, JSON.stringify([...paths]))
 }
 
 function basename(path: string): string {
@@ -97,23 +130,38 @@ function sessionKind(session: ChatSession) {
   return 'Chat'
 }
 
+// No dedicated "session failed" flag exists in the store - a failure shows
+// up as a failed tool_use in the last message instead, so that's what we
+// check rather than inventing a new status field.
+function sessionHasError(session: ChatSession): boolean {
+  const last = session.messages[session.messages.length - 1]
+  if (!last) return false
+  return last.content.some((block) => block.type === 'tool_use' && block._status === 'failed')
+}
+
+function sessionStatus(session: ChatSession, streaming: boolean): 'running' | 'error' | 'completed' {
+  if (streaming) return 'running'
+  if (sessionHasError(session)) return 'error'
+  return 'completed'
+}
+
 type TerminalLine = {
   id: string
   text: string
   kind: 'input' | 'stdout' | 'stderr' | 'system'
 }
 
-function buildProjects(saved: ProjectRecord[], sessions: ChatSession[]): ProjectRecord[] {
+function buildProjects(saved: ProjectRecord[], sessions: ChatSession[], removedPaths: Set<string>): ProjectRecord[] {
   const byPath = new Map<string, ProjectRecord>()
   for (const project of saved) {
     const rootPath = normalizePath(project.rootPath)
-    if (!rootPath) continue
+    if (!rootPath || removedPaths.has(rootPath.toLowerCase())) continue
     byPath.set(rootPath.toLowerCase(), { ...project, rootPath })
   }
 
   for (const session of sessions) {
     const rootPath = normalizePath(session.projectPath ?? '')
-    if (!rootPath) continue
+    if (!rootPath || removedPaths.has(rootPath.toLowerCase())) continue
     const key = rootPath.toLowerCase()
     const existing = byPath.get(key)
     const updatedAt = session.updatedAt || session.createdAt
@@ -145,16 +193,31 @@ export function ProjectsPage() {
   const openedId = projectId ? decodeURIComponent(projectId) : null
   const sessions = useSessionStore((s) => s.sessions)
   const upsertSession = useSessionStore((s) => s.upsertSession)
+  const updateSession = useSessionStore((s) => s.updateSession)
   const isSessionStreaming = useSessionStore((s) => s.isSessionStreaming)
   const [savedProjects, setSavedProjects] = useState<ProjectRecord[]>([])
+  const [removedPaths, setRemovedPaths] = useState<Set<string>>(() => new Set())
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
-  const [projectAppsOpen, setProjectAppsOpen] = useState(false)
+  const [appsViewMode, setAppsViewMode] = useState<'grid' | 'list'>('list')
+  const [rightPanelView, setRightPanelView] = useState<'terminal' | 'browser'>('terminal')
+  const [terminalRunning, setTerminalRunning] = useState(false)
+  const [terminalShellLabel, setTerminalShellLabel] = useState('Shell')
+  const terminalRef = useRef<ProjectTerminalHandle>(null)
   const [sessionsLoading, setSessionsLoading] = useState(false)
   const [sessionsLoaded, setSessionsLoaded] = useState(false)
+  const [projectMenuId, setProjectMenuId] = useState<string | null>(null)
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null)
+  const [editingProjectName, setEditingProjectName] = useState('')
+  const [sessionMenuId, setSessionMenuId] = useState<string | null>(null)
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
+  const [editingSessionTitle, setEditingSessionTitle] = useState('')
+  const [contextStatus, setContextStatus] = useState<Record<string, boolean>>({})
+  const [pathExists, setPathExists] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     setSavedProjects(readProjects())
+    setRemovedPaths(readRemovedPaths())
   }, [])
 
   useEffect(() => {
@@ -173,7 +236,125 @@ export function ProjectsPage() {
       })
   }, [sessions.length, sessionsLoaded, sessionsLoading, upsertSession])
 
-  const projects = useMemo(() => buildProjects(savedProjects, sessions), [savedProjects, sessions])
+  const projects = useMemo(() => buildProjects(savedProjects, sessions, removedPaths), [savedProjects, sessions, removedPaths])
+
+  useEffect(() => {
+    const hasProjectContextFile = window.nexus?.hasProjectContextFile
+    if (!hasProjectContextFile) return
+    const missing = projects.filter((project) => !(project.rootPath in contextStatus))
+    if (missing.length === 0) return
+    let cancelled = false
+    for (const project of missing) {
+      void hasProjectContextFile(project.rootPath).then((hasContext) => {
+        if (cancelled) return
+        setContextStatus((current) => ({ ...current, [project.rootPath]: hasContext }))
+      }).catch(() => undefined)
+    }
+    return () => { cancelled = true }
+  }, [projects, contextStatus])
+
+  useEffect(() => {
+    const projectPathExists = window.nexus?.projectPathExists
+    if (!projectPathExists) return
+    const missing = projects.filter((project) => !(project.rootPath in pathExists))
+    if (missing.length === 0) return
+    let cancelled = false
+    for (const project of missing) {
+      void projectPathExists(project.rootPath).then((exists) => {
+        if (cancelled) return
+        setPathExists((current) => ({ ...current, [project.rootPath]: exists }))
+      }).catch(() => undefined)
+    }
+    return () => { cancelled = true }
+  }, [projects, pathExists])
+
+  useEffect(() => {
+    function handlePointerDown(event: MouseEvent) {
+      const target = event.target as HTMLElement | null
+      if (target?.closest('.project-menu-wrap')) return
+      if (target?.closest('.session-menu-wrap')) return
+      setProjectMenuId(null)
+      setSessionMenuId(null)
+    }
+    document.addEventListener('mousedown', handlePointerDown)
+    return () => document.removeEventListener('mousedown', handlePointerDown)
+  }, [])
+
+  function persistProject(id: string, patch: Partial<Pick<ProjectRecord, 'name'>>) {
+    const project = projects.find((p) => p.id === id)
+    if (!project) return
+    const now = new Date().toISOString()
+    const updated: ProjectRecord = { ...project, ...patch, updatedAt: now }
+    const persisted = savedProjects.filter(
+      (p) => normalizePath(p.rootPath).toLowerCase() !== normalizePath(project.rootPath).toLowerCase(),
+    )
+    const next = [updated, ...persisted]
+    setSavedProjects(next)
+    writeProjects(next)
+  }
+
+  function startRenameProject(id: string, currentName: string) {
+    setProjectMenuId(null)
+    setEditingProjectId(id)
+    setEditingProjectName(currentName)
+  }
+
+  function commitRenameProject(id: string) {
+    const name = editingProjectName.trim()
+    setEditingProjectId(null)
+    if (!name) return
+    persistProject(id, { name })
+  }
+
+  function removeProject(id: string) {
+    setProjectMenuId(null)
+    const project = projects.find((p) => p.id === id)
+    if (!project) return
+    if (!window.confirm(`Remove "${project.name}" from the Project Hub? Its sessions and files are kept - it will just no longer show up here.`)) {
+      return
+    }
+    const key = normalizePath(project.rootPath).toLowerCase()
+    const nextRemoved = new Set(removedPaths)
+    nextRemoved.add(key)
+    setRemovedPaths(nextRemoved)
+    writeRemovedPaths(nextRemoved)
+    const nextSaved = savedProjects.filter((p) => normalizePath(p.rootPath).toLowerCase() !== key)
+    setSavedProjects(nextSaved)
+    writeProjects(nextSaved)
+    if (openedId === id) navigate('/projects')
+    if (selectedId === id) setSelectedId(null)
+  }
+
+  function startRenameSession(id: string, currentTitle?: string) {
+    setSessionMenuId(null)
+    setEditingSessionId(id)
+    setEditingSessionTitle((currentTitle || UNTITLED_SESSION_TITLE).trim())
+  }
+
+  async function commitRenameSession(id: string) {
+    const nextTitle = editingSessionTitle.trim()
+    setEditingSessionId(null)
+    if (!nextTitle) {
+      setEditingSessionTitle('')
+      return
+    }
+    updateSession(id, { title: nextTitle, updatedAt: new Date().toISOString() })
+    setEditingSessionTitle('')
+    try {
+      await api.patch(`/sessions/${id}`, { title: nextTitle })
+    } catch {
+      // noop for now
+    }
+  }
+
+  async function handleDeleteSession(id: string) {
+    setSessionMenuId(null)
+    try {
+      await deleteSession(id)
+    } catch {
+      // noop for now
+    }
+  }
 
   useEffect(() => {
     if (!projects.length) {
@@ -235,6 +416,13 @@ export function ProjectsPage() {
     setSelectedId(nextProject.id)
     navigate('/projects')
     writeProjects(nextProjects)
+
+    if (removedPaths.has(normalizedRoot.toLowerCase())) {
+      const nextRemoved = new Set(removedPaths)
+      nextRemoved.delete(normalizedRoot.toLowerCase())
+      setRemovedPaths(nextRemoved)
+      writeRemovedPaths(nextRemoved)
+    }
   }
 
   return (
@@ -242,9 +430,37 @@ export function ProjectsPage() {
       <style>{PROJECTS_CSS}</style>
       <header className="projects-topbar">
         <div className="projects-heading-wrap">
-          <div className="projects-topbar-title" title={detailProject?.rootPath}>
-            {detailProject ? detailProject.rootPath : 'Projects'}
-          </div>
+          {detailProject ? (
+            <div className="projects-topbar-title-group">
+              <span className="projects-topbar-subtitle" title={detailProject.rootPath}>{detailProject.rootPath}</span>
+              <span className="projects-topbar-sep">/</span>
+              {editingProjectId === detailProject.id ? (
+                <input
+                  className="projects-topbar-title-input"
+                  value={editingProjectName}
+                  autoFocus
+                  onChange={(event) => setEditingProjectName(event.target.value)}
+                  onBlur={() => commitRenameProject(detailProject.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') { event.preventDefault(); commitRenameProject(detailProject.id) }
+                    else if (event.key === 'Escape') setEditingProjectId(null)
+                  }}
+                />
+              ) : (
+                <button
+                  type="button"
+                  className="projects-topbar-title-edit"
+                  title="Rename project"
+                  onClick={() => startRenameProject(detailProject.id, detailProject.name)}
+                >
+                  <strong>{detailProject.name}</strong>
+                  <Edit size={12} />
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="projects-topbar-title">Projects</div>
+          )}
         </div>
         <div className="projects-topbar-actions">
           {!detailProject && (
@@ -299,35 +515,86 @@ export function ProjectsPage() {
                 const projectSessionCount = sessions.filter(
                   (session) => normalizePath(session.projectPath ?? '').toLowerCase() === normalizePath(project.rootPath).toLowerCase(),
                 ).length
+                const hasContext = contextStatus[project.rootPath]
+                const isMissing = pathExists[project.rootPath] === false
                 return (
-                  <button
+                  <div
                     key={project.id}
                     className={`project-row ${selected?.id === project.id ? 'active' : ''}`}
-                    type="button"
                     onClick={() => {
+                      if (editingProjectId === project.id) return
                       setSelectedId(project.id)
                       navigate(`/projects/${encodeURIComponent(project.id)}`)
                     }}
                   >
-                    <span className="project-row-main">
-                      <span className="project-folder-icon"><FolderClose size={20} /></span>
-                      <span className="project-card-copy">
-                        <strong>{project.name}</strong>
-                        <small title={project.rootPath}>{project.rootPath}</small>
-                      </span>
-                    </span>
-                    <span className="project-row-context">
-                      <strong>{projectSessionCount}</strong>
-                      <small>sessions</small>
-                    </span>
-                    <span className="project-mini-apps">
-                      <span className="mini-app chat" title="Companion"><Message size={12} /></span>
-                      <span className="mini-app folder" title="Folder"><FolderOpen size={12} /></span>
-                      <span className="mini-app terminal" title="Terminal"><Command size={12} /></span>
-                    </span>
-                    <span className="project-row-activity">{formatActivity(project)}</span>
-                    <span className="project-row-action"><More size={14} /></span>
-                  </button>
+                    {editingProjectId === project.id ? (
+                      <input
+                        className="project-row-rename"
+                        value={editingProjectName}
+                        autoFocus
+                        onClick={(event) => event.stopPropagation()}
+                        onChange={(event) => setEditingProjectName(event.target.value)}
+                        onBlur={() => commitRenameProject(project.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') { event.preventDefault(); commitRenameProject(project.id) }
+                          else if (event.key === 'Escape') setEditingProjectId(null)
+                        }}
+                      />
+                    ) : (
+                      <>
+                        <span className="project-row-main">
+                          <span className={`project-folder-icon${isMissing ? ' missing' : ''}`}>
+                            {isMissing ? <Attention size={18} /> : <FolderClose size={20} />}
+                          </span>
+                          <span className="project-card-copy">
+                            <strong>{project.name}</strong>
+                            <small title={project.rootPath}>{project.rootPath}</small>
+                          </span>
+                        </span>
+                        <span className="project-row-context">
+                          {isMissing ? (
+                            <small className="project-context-badge missing" title="This folder could not be found on disk">
+                              <Attention size={11} /> Folder not found
+                            </small>
+                          ) : hasContext === undefined ? (
+                            <small className="project-context-badge pending">Checking...</small>
+                          ) : hasContext ? (
+                            <small className="project-context-badge set"><CheckOne size={11} /> Context set</small>
+                          ) : (
+                            <small className="project-context-badge unset">No context yet</small>
+                          )}
+                        </span>
+                        <span className="project-mini-apps">
+                          <span className="mini-app chat" title="Seshat"><Message size={12} /></span>
+                          <span className="mini-app folder" title="Folder"><FolderOpen size={12} /></span>
+                          <span className="mini-app terminal" title="Terminal"><Command size={12} /></span>
+                          <span className="mini-count" title="Sessions using this project">{projectSessionCount}</span>
+                        </span>
+                        <span className="project-row-activity">{formatActivity(project)}</span>
+                      </>
+                    )}
+                    <div className="project-menu-wrap" onClick={(event) => event.stopPropagation()}>
+                      <button
+                        type="button"
+                        className={`project-row-action${projectMenuId === project.id ? ' open' : ''}`}
+                        onClick={() => setProjectMenuId((current) => current === project.id ? null : project.id)}
+                      >
+                        <More size={14} />
+                      </button>
+                      {projectMenuId === project.id && (
+                        <div className="project-row-menu">
+                          <button type="button" onClick={() => startRenameProject(project.id, project.name)}>
+                            <Edit size={12} />
+                            <span>Rename</span>
+                          </button>
+                          <button type="button" className="danger" onClick={() => removeProject(project.id)}>
+                            <Delete size={12} />
+                            <span>Remove</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 )
               })}
             </div>
@@ -343,119 +610,192 @@ export function ProjectsPage() {
           {detailProject ? (
             <>
               <div className="project-workbench-panel">
-                <div className="project-canvas-head">
-                  <button
-                    className={`project-app-drawer-btn${projectAppsOpen ? ' open' : ''}`}
-                    type="button"
-                    aria-label="Project apps"
-                    aria-expanded={projectAppsOpen}
-                    onClick={() => setProjectAppsOpen((open) => !open)}
-                  >
-                    <span className="project-burger-lines" aria-hidden="true">
-                      <i />
-                      <i />
-                      <i />
-                    </span>
-                  </button>
-                  <div className="project-canvas-title">
-                    <h1>{detailProject.name}</h1>
-                    <span title={detailProject.rootPath}>{detailProject.rootPath}</span>
-                  </div>
-                  <button
-                    className="project-header-action"
-                    type="button"
-                    onClick={() => { void window.nexus?.openLocalPath?.(detailProject.rootPath) }}
-                  >
-                    <FolderOpen size={14} /> Open Folder
-                  </button>
-                </div>
-
-                {projectAppsOpen && (
-                  <div className="project-app-drawer">
-                    <button
-                      className="project-app-drawer-item active"
-                      type="button"
-                      onClick={() => navigate(`/?project=${encodeURIComponent(detailProject.rootPath)}`)}
-                    >
-                      <Message size={15} />
-                      <span>Companion</span>
-                    </button>
-                    <button className="project-app-drawer-item disabled" type="button" disabled>
-                      <Book size={15} />
-                      <span>Notebook</span>
-                      <em>Coming soon</em>
-                    </button>
-                    <button className="project-app-drawer-item disabled" type="button" disabled>
-                      <DataSheet size={15} />
-                      <span>Data Lab</span>
-                      <em>Coming soon</em>
-                    </button>
-                  </div>
-                )}
-
-                <div className="project-workbench-grid">
-                  <div className="project-main-column">
-                    <div className="project-companion-panel">
-                      <div className="project-panel-title">
-                        <Message size={16} />
-                        <strong>Project Companion</strong>
+                <div className="project-main-column">
+                  {pathExists[detailProject.rootPath] === false && (
+                    <div className="project-missing-banner">
+                      <Attention size={15} />
+                      <span>This folder could not be found on disk. Sessions and history are kept, but Seshat, Terminal, and Browser actions here may fail.</span>
+                    </div>
+                  )}
+                  <div className="project-apps-panel">
+                    <div className="project-apps-head">
+                      <strong>Apps</strong>
+                      <div className="project-apps-view-toggle" aria-label="Apps view mode">
+                        <button
+                          className={appsViewMode === 'grid' ? 'active' : ''}
+                          type="button"
+                          title="Grid view"
+                          onClick={() => setAppsViewMode('grid')}
+                        >
+                          <GridFour size={13} />
+                        </button>
+                        <button
+                          className={appsViewMode === 'list' ? 'active' : ''}
+                          type="button"
+                          title="List view"
+                          onClick={() => setAppsViewMode('list')}
+                        >
+                          <List size={13} />
+                        </button>
                       </div>
+                    </div>
+                    <div className={`project-apps-grid project-apps-grid--${appsViewMode}`}>
                       <button
-                        className="project-companion-input"
+                        className="project-app-row active"
                         type="button"
                         onClick={() => navigate(`/?project=${encodeURIComponent(detailProject.rootPath)}`)}
                       >
-                        <span>Ask anything about this project</span>
-                        <em>→</em>
+                        <span className="project-app-icon seshat"><Message size={16} /></span>
+                        <span className="project-app-copy">
+                          <strong>Seshat</strong>
+                          <small className="project-app-copy-hint">Ask anything about this project →</small>
+                        </span>
+                      </button>
+                      <button className="project-app-row disabled" type="button" disabled>
+                        <span className="project-app-icon notebook"><Book size={16} /></span>
+                        <span className="project-app-copy">
+                          <strong>Notebook</strong>
+                          <small>Coming soon</small>
+                        </span>
+                      </button>
+                      <button className="project-app-row disabled" type="button" disabled>
+                        <span className="project-app-icon datalab"><DataSheet size={16} /></span>
+                        <span className="project-app-copy">
+                          <strong>Data Lab</strong>
+                          <small>Coming soon</small>
+                        </span>
                       </button>
                     </div>
-
-                    <div className="project-context-panel">
-                      <div className="project-context-head">
-                        <strong>Context summary</strong>
-                      </div>
-                      <div className="project-context-list">
-                        <span><FolderOpen size={13} /> Files <em>0</em></span>
-                        <span><Command size={13} /> Code files <em>0</em></span>
-                        <span><Book size={13} /> Notebooks <em>0</em></span>
-                        <span><DataSheet size={13} /> Datasets <em>0</em></span>
-                      </div>
-                    </div>
                   </div>
 
-                  <ProjectTerminal projectPath={detailProject.rootPath} />
-                </div>
-              </div>
-
-              <div className="project-runs-panel">
-                <div className="project-runs-head">
-                  <div>
-                    <More size={15} />
-                    <strong>Recent Sessions / Runs</strong>
-                  </div>
-                  <button type="button">View All</button>
-                </div>
-                <div className="project-runs-list">
-                  {projectSessions.length === 0 ? (
-                    <div className="project-runs-empty">
-                      No sessions have used this project yet.
-                    </div>
-                  ) : projectSessions.map((session) => (
-                    <div key={session.id} className="project-run-row">
-                      <span className={`project-run-icon ${session.source === 'knowledge' ? 'knowledge' : 'chat'}`} />
+                  <div className="project-runs-panel">
+                    <div className="project-runs-head">
                       <div>
-                        <strong>{session.title}</strong>
-                        <small>{sessionKind(session)}</small>
+                        <More size={15} />
+                        <strong>Recent Sessions / Runs</strong>
                       </div>
-                      <time>{formatSessionTime(session)}</time>
-                      <span className={`project-run-status ${isSessionStreaming(session.id) ? 'running' : 'completed'}`}>
-                        {isSessionStreaming(session.id) ? 'Running' : 'Completed'}
-                      </span>
-                      <button type="button" aria-label="Open conversation" onClick={() => navigate(`/conversation/${session.id}`)}>
-                        <More size={13} />
+                    </div>
+                    <div className="project-runs-list">
+                      {projectSessions.length === 0 ? (
+                        <div className="project-runs-empty">
+                          No sessions have used this project yet.
+                        </div>
+                      ) : projectSessions.map((session) => {
+                        const status = sessionStatus(session, isSessionStreaming(session.id))
+                        return (
+                        <div
+                          key={session.id}
+                          className="project-run-row"
+                          onClick={() => {
+                            if (editingSessionId === session.id) return
+                            navigate(`/conversation/${session.id}`)
+                          }}
+                        >
+                          <span className={`project-run-icon ${session.source === 'knowledge' ? 'knowledge' : 'chat'}`} />
+                          {editingSessionId === session.id ? (
+                            <input
+                              className="project-run-rename"
+                              value={editingSessionTitle}
+                              autoFocus
+                              onClick={(event) => event.stopPropagation()}
+                              onChange={(event) => setEditingSessionTitle(event.target.value)}
+                              onBlur={() => { void commitRenameSession(session.id) }}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter') { event.preventDefault(); void commitRenameSession(session.id) }
+                                else if (event.key === 'Escape') { setEditingSessionId(null); setEditingSessionTitle('') }
+                              }}
+                            />
+                          ) : (
+                            <div>
+                              <strong>{session.title || UNTITLED_SESSION_TITLE}</strong>
+                              <small>{sessionKind(session)}</small>
+                            </div>
+                          )}
+                          <time>{formatSessionTime(session)}</time>
+                          <span className={`project-run-status ${status}`}>
+                            {status === 'running' ? 'Running' : status === 'error' ? 'Error' : 'Completed'}
+                          </span>
+                          <div className="session-menu-wrap" onClick={(event) => event.stopPropagation()}>
+                            <button
+                              type="button"
+                              className={`project-run-menu-btn${sessionMenuId === session.id ? ' open' : ''}`}
+                              aria-label="Session actions"
+                              onClick={() => setSessionMenuId((current) => current === session.id ? null : session.id)}
+                            >
+                              <More size={13} />
+                            </button>
+                            {sessionMenuId === session.id && (
+                              <div className="project-row-menu">
+                                <button type="button" onClick={() => startRenameSession(session.id, session.title)}>
+                                  <Edit size={12} />
+                                  <span>Rename</span>
+                                </button>
+                                <button type="button" className="danger" onClick={() => { void handleDeleteSession(session.id) }}>
+                                  <Delete size={12} />
+                                  <span>Delete</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="project-right-panel">
+                  <style>{RIGHT_PANEL_CSS}</style>
+                  <div className="project-right-panel-tabs">
+                    <div className="project-right-panel-switch">
+                      <button
+                        type="button"
+                        className={rightPanelView === 'terminal' ? 'active' : ''}
+                        title="Terminal"
+                        onClick={() => setRightPanelView('terminal')}
+                      >
+                        <Command size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        className={rightPanelView === 'browser' ? 'active' : ''}
+                        title="Browser"
+                        onClick={() => setRightPanelView('browser')}
+                      >
+                        <BrowserIcon size={14} />
                       </button>
                     </div>
-                  ))}
+                    {rightPanelView === 'terminal' && (
+                      <div className="project-right-panel-actions">
+                        <em>{terminalRunning ? terminalShellLabel : 'Stopped'}</em>
+                        <button type="button" title="Clear" onClick={() => terminalRef.current?.clear()}>
+                          <Delete size={13} />
+                        </button>
+                        <button type="button" title="Restart" onClick={() => terminalRef.current?.restart()}>
+                          <Refresh size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          title="Open in external terminal"
+                          onClick={() => { void window.nexus?.openTerminal?.(detailProject.rootPath) }}
+                        >
+                          <LinkOne size={13} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <ProjectTerminal
+                    ref={terminalRef}
+                    projectPath={detailProject.rootPath}
+                    hidden={rightPanelView !== 'terminal'}
+                    onStatusChange={(running, shellLabel) => {
+                      setTerminalRunning(running)
+                      setTerminalShellLabel(shellLabel)
+                    }}
+                  />
+                  {rightPanelView === 'browser' && (
+                    <BrowserPanel contextId={`project:${normalizePath(detailProject.rootPath).toLowerCase()}`} />
+                  )}
                 </div>
               </div>
             </>
@@ -476,7 +816,21 @@ export function ProjectsPage() {
   )
 }
 
-function ProjectTerminal({ projectPath }: { projectPath: string }) {
+type ProjectTerminalHandle = {
+  clear: () => void
+  restart: () => void
+}
+
+type ProjectTerminalProps = {
+  projectPath: string
+  hidden: boolean
+  onStatusChange: (running: boolean, shellLabel: string) => void
+}
+
+const ProjectTerminal = forwardRef<ProjectTerminalHandle, ProjectTerminalProps>(function ProjectTerminal(
+  { projectPath, hidden, onStatusChange },
+  ref,
+) {
   const terminalIdRef = useRef(`project-terminal-${crypto.randomUUID()}`)
   const outputRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -484,7 +838,10 @@ function ProjectTerminal({ projectPath }: { projectPath: string }) {
   const [command, setCommand] = useState('')
   const [running, setRunning] = useState(false)
   const [shellLabel, setShellLabel] = useState('Shell')
-  const [terminalStyle, setTerminalStyle] = useState<'warm' | 'ink'>('warm')
+
+  useEffect(() => {
+    onStatusChange(running, shellLabel)
+  }, [running, shellLabel, onStatusChange])
 
   function appendLine(text: string, kind: TerminalLine['kind'] = 'system') {
     if (!text) return
@@ -524,6 +881,11 @@ function ProjectTerminal({ projectPath }: { projectPath: string }) {
       appendLine(error instanceof Error ? error.message : 'Terminal failed to start.', 'stderr')
     }
   }
+
+  useImperativeHandle(ref, () => ({
+    clear: () => setLines([]),
+    restart: () => { void startTerminal() },
+  }))
 
   useEffect(() => {
     const terminal = window.nexus?.terminal
@@ -576,33 +938,11 @@ function ProjectTerminal({ projectPath }: { projectPath: string }) {
   }
 
   return (
-    <section className={`project-terminal-panel terminal-style-${terminalStyle}`} onClick={() => inputRef.current?.focus()}>
-      <div className="terminal-header">
-        <span><Command size={14} /> Terminal</span>
-        <div>
-          <em>{running ? shellLabel : 'Stopped'}</em>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation()
-              setTerminalStyle((style) => style === 'warm' ? 'ink' : 'warm')
-            }}
-          >
-            {terminalStyle === 'warm' ? 'Warm' : 'Ink'}
-          </button>
-          <button type="button" onClick={(event) => { event.stopPropagation(); setLines([]) }}>Clear</button>
-          <button type="button" onClick={(event) => { event.stopPropagation(); void startTerminal() }}>Restart</button>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation()
-              void window.nexus?.openTerminal?.(projectPath)
-            }}
-          >
-            External
-          </button>
-        </div>
-      </div>
+    <section
+      className="project-terminal-panel"
+      style={hidden ? { display: 'none' } : undefined}
+      onClick={() => inputRef.current?.focus()}
+    >
       <div className="terminal-lines" ref={outputRef}>
         {lines.length === 0 ? (
           <span className="terminal-muted">Starting terminal...</span>
@@ -625,7 +965,7 @@ function ProjectTerminal({ projectPath }: { projectPath: string }) {
       </form>
     </section>
   )
-}
+})
 
 const PROJECTS_CSS = `
 .projects-root {
@@ -639,13 +979,13 @@ const PROJECTS_CSS = `
 }
 
 .projects-topbar {
-  height: 52px;
+  min-height: 52px;
   flex-shrink: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 16px;
-  padding: 0 17px;
+  padding: 8px 17px;
   border-bottom: 1px solid var(--color-border-subtle);
   background: var(--color-bg);
 }
@@ -676,6 +1016,76 @@ const PROJECTS_CSS = `
   white-space: nowrap;
   font-size: var(--font-size-base);
   font-weight: 700;
+}
+
+.projects-topbar-title-group {
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.projects-topbar-sep {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  opacity: 0.5;
+}
+
+.projects-topbar-title-edit {
+  min-width: 0;
+  flex-shrink: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  padding: 0;
+  cursor: pointer;
+}
+
+.projects-topbar-title-edit strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-base);
+  font-weight: 700;
+}
+
+.projects-topbar-title-edit svg {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  opacity: 0;
+}
+
+.projects-topbar-title-edit:hover svg {
+  opacity: 1;
+}
+
+.projects-topbar-title-input {
+  height: 24px;
+  max-width: 340px;
+  border: 1px solid rgba(239, 124, 47, 0.4);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: 0 8px;
+  font: inherit;
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  outline: 0;
+}
+
+.projects-topbar-subtitle {
+  flex: 1 1 auto;
+  min-width: 40px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-muted);
+  font-size: 11px;
 }
 
 .projects-topbar-actions {
@@ -829,6 +1239,7 @@ const PROJECTS_CSS = `
 }
 
 .project-row {
+  position: relative;
   width: 100%;
   min-height: 58px;
   padding: 8px 10px;
@@ -858,6 +1269,21 @@ const PROJECTS_CSS = `
   gap: 10px;
 }
 
+.project-row-rename {
+  grid-column: 1 / 5;
+  height: 32px;
+  min-width: 0;
+  border: 1px solid rgba(239, 124, 47, 0.4);
+  border-radius: 6px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  padding: 0 10px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  outline: 0;
+}
+
 .project-row-context {
   display: flex;
   align-items: baseline;
@@ -865,8 +1291,25 @@ const PROJECTS_CSS = `
   color: var(--color-text);
 }
 
-.project-row-context strong {
-  font-size: 13px;
+.project-context-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--color-text-muted);
+}
+
+.project-context-badge.set {
+  color: var(--color-success);
+}
+
+.project-context-badge.pending {
+  opacity: 0.6;
+}
+
+.project-context-badge.missing {
+  color: #ff9b8f;
 }
 
 .project-row-context small,
@@ -875,19 +1318,71 @@ const PROJECTS_CSS = `
   font-size: 11px;
 }
 
-.project-row-action {
+.project-menu-wrap,
+.session-menu-wrap {
+  position: relative;
+  z-index: 1;
+  justify-self: end;
+}
+
+.project-row-action,
+.project-run-menu-btn {
   width: 26px;
   height: 26px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  justify-self: end;
+  border: 0;
   border-radius: 6px;
+  background: transparent;
   color: var(--color-text-muted);
+  cursor: pointer;
 }
 
-.project-row:hover .project-row-action {
+.project-row:hover .project-row-action,
+.project-row-action.open,
+.project-run-menu-btn.open {
   background: rgba(255, 255, 255, 0.05);
+}
+
+.project-row-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  min-width: 140px;
+  padding: 4px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 8px;
+  background: var(--color-bg);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.project-row-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.project-row-menu button:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.project-row-menu button.danger {
+  color: #ff9b8f;
 }
 
 .projects-empty-state {
@@ -953,6 +1448,12 @@ const PROJECTS_CSS = `
   color: var(--color-cta);
   background: rgba(239, 124, 47, 0.12);
   border: 1px solid rgba(239, 124, 47, 0.22);
+}
+
+.project-folder-icon.missing {
+  color: #ff9b8f;
+  background: rgba(255, 155, 143, 0.12);
+  border-color: rgba(255, 155, 143, 0.28);
 }
 
 .tone-0 { background: rgba(239, 124, 47, 0.16); color: var(--color-cta); }
@@ -1047,254 +1548,270 @@ const PROJECTS_CSS = `
   background: var(--color-surface);
   display: grid;
   grid-template-columns: minmax(360px, 36%) minmax(520px, 1fr);
-  grid-template-rows: 74px minmax(0, 1fr) 190px;
+  grid-template-rows: minmax(0, 1fr);
   gap: 14px;
 }
 
-.project-runs-panel {
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  border-radius: 8px;
-  background: var(--color-bg);
-}
-
 .project-workbench-panel {
-  min-height: 0;
   display: contents;
 }
 
-.project-canvas-head {
-  position: relative;
+.project-main-column {
   grid-column: 1;
-  grid-row: 1;
-  display: grid;
-  grid-template-columns: 36px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
   min-width: 0;
-  padding: 10px 12px;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.project-missing-banner {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 155, 143, 0.3);
+  border-radius: 8px;
+  background: rgba(255, 155, 143, 0.1);
+  color: #ff9b8f;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.project-missing-banner svg {
+  flex-shrink: 0;
+}
+
+.project-apps-panel {
+  flex-shrink: 0;
+  padding: 6px;
   border: 1px solid rgba(148, 163, 184, 0.16);
   border-radius: 8px;
   background: var(--color-bg);
 }
 
-.project-app-drawer-btn {
-  width: 34px;
-  height: 34px;
-  display: inline-flex;
+.project-apps-head {
+  padding: 6px 8px 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.project-apps-head strong {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.project-apps-view-toggle {
+  display: flex;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.project-apps-view-toggle button {
+  width: 26px;
+  height: 24px;
+  display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.035);
+  border: 0;
+  background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;
 }
 
-.project-burger-lines {
-  width: 14px;
-  display: grid;
-  gap: 3px;
+.project-apps-view-toggle button + button {
+  border-left: 1px solid rgba(148, 163, 184, 0.16);
 }
 
-.project-burger-lines i {
-  display: block;
-  height: 1.5px;
-  border-radius: 999px;
-  background: currentColor;
-}
-
-.project-app-drawer-btn.open {
+.project-apps-view-toggle button.active {
   color: var(--color-cta);
-  border-color: rgba(239, 124, 47, 0.32);
-  background: rgba(239, 124, 47, 0.08);
+  background: rgba(239, 124, 47, 0.1);
 }
 
-.project-canvas-title {
-  min-width: 0;
-}
-
-.project-canvas-title h1 {
-  margin: 0;
-  font-size: 15px;
-  line-height: 1.2;
-}
-
-.project-canvas-title span {
-  margin-top: 5px;
+.project-apps-grid--list {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  color: var(--color-text-muted);
-  font-size: 11px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.project-header-action {
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 0 10px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.035);
-  color: var(--color-text);
-  font-size: var(--font-size-2xs);
-  font-weight: 800;
-  cursor: pointer;
+.project-apps-grid--grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+  padding: 4px;
 }
 
-.project-app-drawer {
-  position: absolute;
-  top: 52px;
-  left: 0;
-  z-index: 4;
-  width: 270px;
-  padding: 6px;
-  border: 1px solid rgba(148, 163, 184, 0.14);
-  border-radius: 8px;
-  background: #26262e;
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
-}
-
-.project-app-drawer-item {
+.project-app-row {
   position: relative;
   width: 100%;
-  min-height: 34px;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 0 10px;
   border: 0;
   border-radius: 7px;
   background: transparent;
   color: var(--color-text);
   font: inherit;
-  font-size: 12px;
-  font-weight: 800;
   cursor: pointer;
   text-align: left;
 }
 
-.project-app-drawer-item.active {
-  color: var(--color-text);
+.project-apps-grid--list .project-app-row {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+}
+
+.project-apps-grid--grid .project-app-row {
+  min-height: 84px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 8px;
+  text-align: center;
+}
+
+.project-app-row.active {
   background: rgba(239, 124, 47, 0.08);
 }
 
-.project-app-drawer-item.disabled {
+.project-app-row.disabled {
   cursor: not-allowed;
   opacity: 0.52;
 }
 
-.project-app-drawer-item em {
-  margin-left: auto;
-  padding: 3px 6px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  border-radius: 6px;
-  color: var(--color-text-muted);
-  font-style: normal;
-  font-size: 10px;
-  font-weight: 700;
+.project-app-icon {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.project-workbench-grid {
+.project-app-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.project-apps-grid--list .project-app-copy {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 8px;
+  flex: 1;
+}
+
+.project-app-copy strong {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.project-app-copy small {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-apps-grid--list .project-app-copy small {
+  margin-left: auto;
+}
+
+.project-apps-grid--grid .project-app-copy {
+  align-items: center;
+  text-align: center;
+}
+
+.project-apps-grid--grid .project-app-copy small {
+  white-space: normal;
+}
+
+.project-apps-grid--grid .project-app-copy-hint {
+  display: none;
+}
+
+.project-app-icon.seshat { background: rgba(239, 124, 47, 0.18); color: #f7a35c; }
+.project-app-icon.notebook { background: rgba(245, 158, 11, 0.18); color: #fbbf24; }
+.project-app-icon.datalab { background: rgba(20, 184, 166, 0.18); color: #5eead4; }
+
+.project-terminal-panel:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.project-right-panel {
+  grid-column: 2;
+  min-width: 0;
   min-height: 0;
   overflow: hidden;
-  padding: 0;
-  display: contents;
-}
-
-.project-main-column {
-  min-width: 0;
-  min-height: 0;
-  display: contents;
-}
-
-.project-companion-panel,
-.project-terminal-panel {
-  min-width: 0;
   border: 1px solid rgba(148, 163, 184, 0.16);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.025);
   color: var(--color-text);
-  text-align: left;
-  transition: border-color 0.15s, background 0.15s;
-}
-
-.project-companion-panel {
-  display: none;
-}
-
-.project-action-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
   display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 14px 32px rgba(0, 0, 0, 0.22);
-  transition: transform 0.16s ease, filter 0.16s ease;
+  flex-direction: column;
 }
 
-.project-terminal-panel:hover,
-.project-header-action:hover {
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.project-app-drawer-btn:hover {
-  transform: translateY(-2px);
-  filter: brightness(1.08);
-}
-
-.project-terminal-panel {
-  grid-column: 2;
-  grid-row: 1 / -1;
-  min-height: 0;
-  padding: 0;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.025);
-  display: grid;
-  grid-template-rows: 38px minmax(0, 1fr) 38px;
-}
-
-.project-terminal-panel.terminal-style-ink {
-  background: #0d0f14;
-}
-
-.project-terminal-panel.terminal-style-warm {
-  background: rgba(255, 255, 255, 0.025);
-}
-
-.terminal-header {
+.project-right-panel-tabs {
   height: 38px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 14px;
+  padding: 0 10px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.14);
   background: rgba(255, 255, 255, 0.025);
 }
 
-.terminal-header span {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--color-text);
-  font-size: 12px;
-  font-weight: 800;
+.project-right-panel-switch {
+  display: flex;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 6px;
+  overflow: hidden;
 }
 
-.terminal-header div {
-  display: inline-flex;
+.project-right-panel-switch button {
+  width: 30px;
+  height: 24px;
+  display: flex;
   align-items: center;
-  gap: 7px;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
 }
 
-.terminal-header em {
+.project-right-panel-switch button + button {
+  border-left: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.project-right-panel-switch button.active {
+  color: var(--color-cta);
+  background: rgba(239, 124, 47, 0.1);
+}
+
+.project-right-panel-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.project-right-panel-actions em {
   max-width: 110px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1305,17 +1822,30 @@ const PROJECTS_CSS = `
   font-weight: 800;
 }
 
-.terminal-header button {
+.project-right-panel-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: 0;
   background: transparent;
-  color: var(--color-cta);
-  font-size: 11px;
-  font-weight: 800;
+  color: var(--color-text-muted);
   cursor: pointer;
 }
 
-.terminal-header button:hover {
+.project-right-panel-actions button:hover {
+  color: var(--color-cta);
+}
+
+.project-terminal-panel {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
   color: var(--color-text);
+  text-align: left;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 38px;
 }
 
 .terminal-lines {
@@ -1330,14 +1860,6 @@ const PROJECTS_CSS = `
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 11px;
   line-height: 1.55;
-}
-
-.terminal-style-warm .terminal-lines {
-  background: transparent;
-}
-
-.terminal-style-ink .terminal-lines {
-  background: #0d0f14;
 }
 
 .terminal-muted {
@@ -1375,10 +1897,6 @@ const PROJECTS_CSS = `
   font-size: 11px;
 }
 
-.terminal-style-ink .terminal-input-row {
-  background: #111217;
-}
-
 .terminal-input-row input {
   min-width: 0;
   width: 100%;
@@ -1393,62 +1911,14 @@ const PROJECTS_CSS = `
   color: rgba(248, 250, 252, 0.38);
 }
 
-.project-context-panel {
-  grid-column: 1;
-  grid-row: 2;
-  min-width: 0;
-  min-height: 0;
-  border: 1px solid rgba(148, 163, 184, 0.14);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.025);
-  overflow: hidden;
-}
-
-.project-context-head {
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 14px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
-}
-
-.project-context-head strong {
-  font-size: 12px;
-}
-
-.project-context-list {
-  padding: 0;
-  display: grid;
-}
-
-.project-context-list span {
-  min-height: 36px;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 0 14px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
-  color: var(--color-text-muted);
-  font-size: 11px;
-}
-
-.project-context-list span:last-child {
-  border-bottom: 0;
-}
-
-.project-context-list em {
-  margin-left: auto;
-  color: var(--color-text-secondary);
-  font-style: normal;
-}
-
 .project-runs-panel {
-  grid-column: 1;
-  grid-row: 3;
+  flex: 1;
   min-height: 0;
   margin-top: 0;
   padding: 16px 20px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 8px;
+  background: var(--color-bg);
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
 }
@@ -1470,6 +1940,7 @@ const PROJECTS_CSS = `
 }
 
 .project-run-row {
+  position: relative;
   min-height: 52px;
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr) 130px 98px 26px;
@@ -1479,6 +1950,21 @@ const PROJECTS_CSS = `
   border: 1px solid rgba(148, 163, 184, 0.13);
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+}
+
+.project-run-rename {
+  height: 30px;
+  min-width: 0;
+  border: 1px solid rgba(239, 124, 47, 0.4);
+  border-radius: 6px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  padding: 0 8px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  outline: 0;
 }
 
 .project-run-icon {
@@ -1517,6 +2003,11 @@ const PROJECTS_CSS = `
 .project-run-status.running {
   color: var(--color-cta);
   background: rgba(239, 124, 47, 0.12);
+}
+
+.project-run-status.error {
+  color: #ff9b8f;
+  background: rgba(255, 155, 143, 0.14);
 }
 
 .project-runs-empty {
@@ -1593,10 +2084,10 @@ const PROJECTS_CSS = `
   cursor: pointer;
 }
 
-@media (max-width: 1280px) {
-  .project-workbench-grid {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
-  }
+.project-right-panel .right-panel-browser {
+  flex: 1;
+  min-height: 0;
+  height: auto;
 }
+
 `
