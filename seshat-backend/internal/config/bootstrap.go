@@ -344,6 +344,15 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 			for _, account := range accounts {
 				if err := whatsappManager.Reconnect(ctx, account.ID, account.ExternalAccountID); err != nil {
 					fmt.Fprintf(os.Stderr, "[API] Avertissement: reconnexion WhatsApp échouée pour %s: %v\n", account.DisplayName, err)
+					// Without this, the account's DB status stays "connected"
+					// (last known-good state) even though no live client exists -
+					// the Accounts page would show a green tile that will never
+					// sync or send again until the user notices and manually
+					// reconnects. Mirrors the live events.LoggedOut handler in
+					// inboxwhatsapp/manager.go, which marks the same way.
+					if markErr := inboxService.MarkAccountError(ctx, account.ID, inbox.AccountStatusError, err.Error()); markErr != nil {
+						fmt.Fprintf(os.Stderr, "[API] Avertissement: échec de l'enregistrement de l'erreur de compte WhatsApp pour %s: %v\n", account.DisplayName, markErr)
+					}
 				}
 			}
 		}
