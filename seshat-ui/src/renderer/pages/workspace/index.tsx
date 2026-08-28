@@ -1775,7 +1775,7 @@ function McpServerModal({
 // and become available to every user (see the future user-facing Knowledge
 // app, separate from this page). Purely a manager — creating/uploading/
 // ingesting — not a search/ask interface (that already happens in the
-// Companion chat, via a corpus-scoped rag_search call).
+// main Seshat chat, via a corpus-scoped rag_search call).
 
 type DocumentsTabProps = {
   embedded?: boolean

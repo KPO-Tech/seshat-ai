@@ -31,17 +31,6 @@ type AppEntry = {
 
 const APPS: AppEntry[] = [
   {
-    id: 'companion',
-    title: 'Companion',
-    description: 'Your main assistant. Connects to your tools, documents, and agents.',
-    route: '/',
-    status: 'ready',
-    category: 'core',
-    icon: <Message size={32} />,
-    tone: 'chat',
-    highlights: ['Multi-tool integration', 'Agent command entry', 'General Q&A'],
-  },
-  {
     id: 'knowledge',
     title: 'Knowledge',
     description: 'Search, ask questions, and summarize your personal knowledge — plus shared collections when connected to an organization.',
@@ -96,7 +85,7 @@ const FILTERS: Array<{ id: AppCategory; label: string }> = [
 export function AppsPage() {
   const navigate = useNavigate()
   const [category, setCategory] = useState<AppCategory>('all')
-  const [selectedId, setSelectedId] = useState('companion')
+  const [selectedId, setSelectedId] = useState('knowledge')
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const selected = APPS.find((app) => app.id === selectedId) ?? APPS[0]
   const visibleApps = useMemo(

@@ -28,6 +28,8 @@ import { SearchModal } from './SearchModal'
 
 const PROJECTS_STORAGE_KEY = 'seshat.projects.v1'
 
+type SystemStatus = { mode: 'standalone' | 'connected'; server_url?: string }
+
 function normalizeProjectPath(path: string): string {
   return path.trim().replace(/[\\/]+$/, '')
 }
@@ -62,19 +64,31 @@ export function Sidebar() {
   const [editingTitle, setEditingTitle] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const [consoleMenuOpen, setConsoleMenuOpen] = useState(false)
+  const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null)
+
+  useEffect(() => {
+    api.get<SystemStatus>('/system/status').then(setSystemStatus).catch(() => setSystemStatus(null))
+  }, [])
+  const connected = systemStatus?.mode === 'connected'
 
   const width = collapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)'
   const isAdmin = roles.includes('admin')
   const projectParam = new URLSearchParams(search).get('project')
   const projectRouteId = pathname.match(/^\/projects\/([^/]+)/)?.[1]
+  const conversationRouteId = pathname.match(/^\/conversation\/([^/]+)/)?.[1]
   const projectContextPath = useMemo(() => {
     if (projectParam) return projectParam
-    if (!projectRouteId) return null
-    const decodedId = decodeURIComponent(projectRouteId)
-    return readStoredProjectPath(decodedId)
-      || sessions.find((s) => s.projectPath && `path-${normalizeProjectPath(s.projectPath).toLowerCase()}` === decodedId)?.projectPath
-      || null
-  }, [projectParam, projectRouteId, sessions])
+    if (projectRouteId) {
+      const decodedId = decodeURIComponent(projectRouteId)
+      return readStoredProjectPath(decodedId)
+        || sessions.find((s) => s.projectPath && `path-${normalizeProjectPath(s.projectPath).toLowerCase()}` === decodedId)?.projectPath
+        || null
+    }
+    if (conversationRouteId) {
+      return sessions.find((s) => s.id === conversationRouteId)?.projectPath || null
+    }
+    return null
+  }, [projectParam, projectRouteId, conversationRouteId, sessions])
   const inProjectContext = Boolean(projectContextPath)
   const recentSessions = sessions
     // Sessions created from Knowledge are real, fully persisted sessions
@@ -198,13 +212,15 @@ export function Sidebar() {
           />
           {!inProjectContext && (
             <>
-              <SidebarItem
-                icon={<Time theme="outline" size={16} />}
-                label="Scheduling"
-                collapsed={collapsed}
-                active={pathname === '/scheduling'}
-                onClick={() => navigate('/scheduling')}
-              />
+              {connected && (
+                <SidebarItem
+                  icon={<Time theme="outline" size={16} />}
+                  label="Scheduling"
+                  collapsed={collapsed}
+                  active={pathname === '/scheduling'}
+                  onClick={() => navigate('/scheduling')}
+                />
+              )}
               <SidebarItem
                 icon={<Browser theme="outline" size={16} />}
                 label="Apps"
@@ -344,16 +360,18 @@ export function Sidebar() {
                     <Message theme="outline" size={14} />
                     <span>Feedback</span>
                   </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    disabled={!isAdmin}
-                    onClick={() => openConsoleItem('admin')}
-                    title={!isAdmin ? 'Admin access required' : undefined}
-                  >
-                    <Shield theme="outline" size={14} />
-                    <span>Admin</span>
-                  </button>
+                  {connected && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={!isAdmin}
+                      onClick={() => openConsoleItem('admin')}
+                      title={!isAdmin ? 'Admin access required' : undefined}
+                    >
+                      <Shield theme="outline" size={14} />
+                      <span>Admin</span>
+                    </button>
+                  )}
                 </div>
               )}
             </div>
