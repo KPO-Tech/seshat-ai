@@ -4,6 +4,7 @@ import { desktopBridgeProof, ensureDesktopBridgeSecret, resolveBackendOrigin } f
 import { deleteSecret, getSecret, setSecret } from './secure-store'
 import { assertTrustedSender } from './trusted-sender'
 import { assertUploadPayloadShape, normalizeAPIPath } from './validation'
+import { isRetryableNetworkError } from './network-errors'
 
 type AuthUser = {
   id: string
@@ -150,22 +151,6 @@ function extractErrorMessage(payload: { status: number; data?: any; text?: strin
     if (typeof payload.data.message === 'string' && payload.data.message.trim()) return payload.data.message
   }
   return payload.text || `HTTP ${payload.status}`
-}
-
-// True for a connection-level failure (backend unreachable, dropped mid-stream,
-// DNS/timeout) as opposed to a real API error (4xx/5xx with a body). Node's
-// fetch (undici) throws a TypeError for these, mirroring the browser fetch
-// contract — this is the SAME check the renderer's browser-fetch fallback path
-// already relies on. It's evaluated here, in the main process, on the actual
-// error object before it crosses the IPC boundary: Electron's ipcMain.handle
-// only preserves an Error's message across that boundary, not its prototype
-// chain, so `error instanceof TypeError` would always be false by the time it
-// reached the renderer — that mismatch is why the retry path was effectively
-// dead for the Electron build (the app's primary runtime mode) despite working
-// in the browser-dev fallback. Retryability is carried across explicitly
-// instead (see startStream's return shape and the stream 'error' event).
-function isRetryableNetworkError(error: unknown): boolean {
-  return error instanceof TypeError
 }
 
 async function performJSONRequest(path: string, method: string, body: unknown, token?: string) {
