@@ -1,9 +1,21 @@
-import { memo } from 'react'
-import { Typography } from 'antd'
-import { CheckCircleOutlined, ClockCircleOutlined, DatabaseOutlined, FileSearchOutlined, GlobalOutlined, LoadingOutlined } from '@ant-design/icons'
+import { memo, useState } from 'react'
+import { Typography, Tooltip } from 'antd'
+import {
+  CheckCircleOutlined,
+  CheckOutlined,
+  ClockCircleOutlined,
+  CopyOutlined,
+  DatabaseOutlined,
+  FileSearchOutlined,
+  GlobalOutlined,
+  LoadingOutlined,
+  RobotOutlined,
+  UserOutlined,
+} from '@ant-design/icons'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import type { WorkspaceChatMessage as WorkspaceChatMessageModel, WorkspaceTraceStep } from '@/features/workspaceChat/types'
+import { palette } from '@/theme/tokens'
 
 function getDomain(url: string | undefined): string {
   if (!url) return ''
@@ -25,25 +37,12 @@ function sealOpenFences(text: string): string {
   return inFence ? `${text}\n\`\`\`` : text
 }
 
-function getRoleLabel(role: WorkspaceChatMessageModel['role']) {
-  switch (role) {
-    case 'assistant':
-      return 'Assistant'
-    case 'system':
-      return 'System'
-    default:
-      return 'You'
-  }
-}
-
 function formatMessageTime(value: string) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return ''
   return new Intl.DateTimeFormat('en-GB', {
     hour: '2-digit',
     minute: '2-digit',
-    day: '2-digit',
-    month: 'short',
   }).format(date)
 }
 
@@ -59,6 +58,73 @@ function toolIcon(toolName: string | undefined) {
     default:
       return <DatabaseOutlined />
   }
+}
+
+function CodeBlock({ children, className }: { children?: React.ReactNode; className?: string }) {
+  const [copied, setCopied] = useState(false)
+  const language = className ? className.replace(/language-/, '') : ''
+  const codeContent = String(children).replace(/\n$/, '')
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(codeContent)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div
+      style={{
+        margin: '16px 0',
+        borderRadius: 10,
+        background: '#141318',
+        border: `1px solid ${palette.border}`,
+        overflow: 'hidden',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '6px 14px',
+          background: '#18171e',
+          borderBottom: `1px solid ${palette.borderSubtle}`,
+          fontSize: 12,
+          color: palette.inkTertiary,
+        }}
+      >
+        <span style={{ fontFamily: 'ui-monospace, monospace', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          {language || 'code'}
+        </span>
+        <Tooltip title={copied ? 'Copied!' : 'Copy snippet'}>
+          <button
+            type="button"
+            onClick={handleCopy}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: copied ? palette.success : palette.inkTertiary,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              fontSize: 12,
+              padding: '2px 6px',
+              borderRadius: 4,
+            }}
+          >
+            {copied ? <CheckOutlined /> : <CopyOutlined />}
+            <span>{copied ? 'Copied' : 'Copy'}</span>
+          </button>
+        </Tooltip>
+      </div>
+      <div style={{ padding: '14px 16px', overflowX: 'auto' }}>
+        <code style={{ background: 'transparent', border: 'none', padding: 0, color: '#e8e2d8' }} className={className}>
+          {children}
+        </code>
+      </div>
+    </div>
+  )
 }
 
 function TraceStepRow({ step }: { step: WorkspaceTraceStep }) {
@@ -112,31 +178,41 @@ function TraceStepRow({ step }: { step: WorkspaceTraceStep }) {
   )
 }
 
-// Memoized: the parent re-renders on every streaming flush (see
-// WorkspaceChatPage's FLUSH_INTERVAL_MS), but only the trailing message's
-// object identity actually changes each time. Without this, every prior
-// message in a growing thread would re-run its (non-trivial) ReactMarkdown
-// parse on every flush too, and that compounding cost is what made longer
-// conversations feel like the page had frozen, including scrolling.
 export const WorkspaceChatMessage = memo(function WorkspaceChatMessage({ message }: { message: WorkspaceChatMessageModel }) {
   const content = sealOpenFences(message.content)
-  const role = getRoleLabel(message.role)
+  const isUser = message.role === 'user'
   const timeLabel = formatMessageTime(message.createdAt)
-  const showEyebrow = message.role !== 'user'
   const trace = message.trace ?? []
   const showDoneMarker = trace.length > 0 && (message.content.length > 0 || message.status !== 'draft')
 
   return (
     <article className={`workspace-thread-message workspace-thread-message--${message.role}`}>
       <div className="workspace-thread-message__surface">
-        {showEyebrow ? (
-          <div className="workspace-thread-message__eyebrow">
-            <Typography.Text type="secondary">
-              {role}
-              {timeLabel ? ` · ${timeLabel}` : ''}
+        <div className="workspace-thread-message__eyebrow">
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 22,
+              height: 22,
+              borderRadius: 6,
+              background: isUser ? 'rgba(255, 255, 255, 0.08)' : palette.accentSoft,
+              color: isUser ? palette.inkSecondary : palette.accentHover,
+              fontSize: 12,
+            }}
+          >
+            {isUser ? <UserOutlined /> : <RobotOutlined />}
+          </span>
+          <Typography.Text style={{ fontWeight: 600, fontSize: 13, color: isUser ? palette.inkSecondary : palette.ink }}>
+            {isUser ? 'You' : 'Seshat Assistant'}
+          </Typography.Text>
+          {timeLabel ? (
+            <Typography.Text style={{ fontSize: 11.5, color: palette.inkTertiary }}>
+              · {timeLabel}
             </Typography.Text>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
 
         {trace.length > 0 ? (
           <div className="workspace-trace">
@@ -148,7 +224,7 @@ export const WorkspaceChatMessage = memo(function WorkspaceChatMessage({ message
                 <span className="workspace-trace-step__icon">
                   <CheckCircleOutlined />
                 </span>
-                <span className="workspace-trace-step__text">Done</span>
+                <span className="workspace-trace-step__text">Execution completed</span>
               </div>
             ) : null}
           </div>
@@ -173,6 +249,21 @@ export const WorkspaceChatMessage = memo(function WorkspaceChatMessage({ message
                     </div>
                   )
                 },
+                pre({ children }) {
+                  return <>{children}</>
+                },
+                code({ className, children, ...props }) {
+                  const match = /language-(\w+)/.exec(className || '')
+                  const isInline = !match && typeof children === 'string' && !children.includes('\n')
+                  if (isInline) {
+                    return (
+                      <code className={className} {...props}>
+                        {children}
+                      </code>
+                    )
+                  }
+                  return <CodeBlock className={className}>{children}</CodeBlock>
+                },
               }}
             >
               {content}
@@ -183,3 +274,4 @@ export const WorkspaceChatMessage = memo(function WorkspaceChatMessage({ message
     </article>
   )
 })
+

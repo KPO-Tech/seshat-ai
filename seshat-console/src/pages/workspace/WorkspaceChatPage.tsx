@@ -12,6 +12,7 @@ import { clearStoredSessionId, getStoredSessionId, setStoredSessionId } from '@/
 import type { WorkspaceChatEvent, WorkspaceChatSession, WorkspaceTraceStep } from '@/features/workspaceChat/types'
 import { useAuthStore } from '@/store/auth'
 import { useWorkspaceOrganizationStore } from '@/store/workspaceOrganization'
+import { palette } from '@/theme/tokens'
 
 function generateID(prefix: string) {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -473,6 +474,37 @@ export function WorkspaceChatPage() {
       })
   }
 
+  const STARTER_PROMPTS = [
+    {
+      icon: '🔍',
+      label: 'Search Knowledge Base',
+      sub: 'Query internal documents and corpora',
+      prompt: 'Search the knowledge base for recent documents and give me a summary.',
+    },
+    {
+      icon: '⚡',
+      label: 'Check Automation Status',
+      sub: 'Overview of recent runs and jobs',
+      prompt: 'What is the current status of recent automation runs and device workers?',
+    },
+    {
+      icon: '📊',
+      label: 'Summarize Recent Activity',
+      sub: 'Audit events and platform actions',
+      prompt: 'Provide a high-level summary of the latest audit and configuration events.',
+    },
+    {
+      icon: '🛡️',
+      label: 'Review Access & Roles',
+      sub: 'Organization permissions and memberships',
+      prompt: 'Explain the configured roles and active policies in this organization.',
+    },
+  ]
+
+  const handleSelectPrompt = (promptText: string) => {
+    setDraftPrompt(promptText)
+  }
+
   return (
     <div className="workspace-chat-page">
       <div className="workspace-chat-page__inner">
@@ -482,7 +514,7 @@ export function WorkspaceChatPage() {
             <DownOutlined />
           </button>
 
-          <Space size={12} wrap>
+          <Space size={10} wrap>
             {agentOptions.length > 0 ? (
               <Select
                 value={selectedAgentPresetId ?? undefined}
@@ -494,7 +526,13 @@ export function WorkspaceChatPage() {
                 popupMatchSelectWidth={false}
               />
             ) : null}
-            <Button type="text" icon={<PlusOutlined />} onClick={handleReset} className="workspace-chat-topbar__action">
+            <Button
+              type="default"
+              icon={<PlusOutlined />}
+              onClick={handleReset}
+              className="workspace-chat-topbar__action"
+              style={{ borderRadius: 8 }}
+            >
               New chat
             </Button>
           </Space>
@@ -513,13 +551,32 @@ export function WorkspaceChatPage() {
             </div>
           ) : (
             <div className="workspace-chat-empty">
-              <Typography.Title level={2} style={{ margin: 0 }}>
-                Start a real chat flow
+              <div className="workspace-chat-empty__badge">
+                <span>✦</span> Workspace Assistant
+              </div>
+              <Typography.Title level={2} className="workspace-chat-empty__title">
+                How can I help you today?
               </Typography.Title>
-              <Typography.Text type="secondary" className="workspace-chat-empty__copy">
-                Talk to a real LLM using this organization's configured providers, with web search, knowledge search, and document
-                reading available as tools.
+              <Typography.Text className="workspace-chat-empty__copy">
+                Search organization knowledge, run automated workflows, or query tools in real time.
               </Typography.Text>
+
+              <div className="workspace-prompt-chips">
+                {STARTER_PROMPTS.map((item) => (
+                  <button
+                    key={item.label}
+                    type="button"
+                    className="workspace-prompt-chip"
+                    onClick={() => handleSelectPrompt(item.prompt)}
+                  >
+                    <span className="workspace-prompt-chip__icon">{item.icon}</span>
+                    <div className="workspace-prompt-chip__content">
+                      <span className="workspace-prompt-chip__label">{item.label}</span>
+                      <span className="workspace-prompt-chip__sub">{item.sub}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -541,9 +598,9 @@ export function WorkspaceChatPage() {
           <div className="workspace-chat-composer">
             <Input.TextArea
               value={draftPrompt}
-              autoSize={{ minRows: 1, maxRows: 8 }}
+              autoSize={{ minRows: 2, maxRows: 8 }}
               variant="borderless"
-              placeholder="Write a message..."
+              placeholder="Ask anything or request an action..."
               className="workspace-chat-composer__input"
               disabled={isLoadingHistory}
               onChange={(event) => setDraftPrompt(event.target.value)}
@@ -556,7 +613,9 @@ export function WorkspaceChatPage() {
             />
 
             <div className="workspace-chat-composer__toolbar">
-              <Button type="text" icon={<PlusOutlined />} className="workspace-chat-composer__icon" />
+              <div style={{ fontSize: 11.5, color: palette.inkTertiary }}>
+                Press <kbd style={{ background: 'rgba(255,255,255,0.06)', padding: '2px 5px', borderRadius: 4 }}>Enter</kbd> to send
+              </div>
 
               <div className="workspace-chat-composer__selectors">
                 <Select
@@ -596,22 +655,26 @@ export function WorkspaceChatPage() {
                   className="workspace-chat-select workspace-chat-select--composer"
                   disabled={modelOptions.length === 0 || isGenerating}
                 />
-              </div>
 
-              <Tooltip title={isGenerating ? 'Generating…' : 'Send'}>
-                <Button
-                  type="text"
-                  icon={<SendOutlined />}
-                  className="workspace-chat-composer__send"
-                  onClick={handleSend}
-                  loading={isGenerating}
-                  disabled={isGenerating || isLoadingHistory}
-                />
-              </Tooltip>
+                <Tooltip title={isGenerating ? 'Generating…' : 'Send message'}>
+                  <Button
+                    type="primary"
+                    icon={<SendOutlined />}
+                    className="workspace-chat-composer__send"
+                    onClick={handleSend}
+                    loading={isGenerating}
+                    disabled={isGenerating || isLoadingHistory || !draftPrompt.trim()}
+                  />
+                </Tooltip>
+              </div>
             </div>
           </div>
 
-          {composerError ? <Typography.Text type="danger">{composerError}</Typography.Text> : null}
+          {composerError ? (
+            <div style={{ marginTop: 8, padding: '4px 8px', borderRadius: 6, background: palette.dangerSoft, color: palette.danger, fontSize: 12.5 }}>
+              {composerError}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

@@ -1,59 +1,65 @@
 import { theme, type ThemeConfig } from 'antd'
 
 // ─── Palette ────────────────────────────────────────────────────────────────
-// Matches the product's real design system, not a console-only invention -
-// values are ported directly from seshat-ui's dark theme
-// (seshat-ui/src/renderer/styles/tokens.css: `:root, [data-theme='dark']`,
-// the app's default/root look, not the light variant). Warm neutrals, a
-// single orange brand accent, warm off-white text - same identity as the
-// desktop app, not stock Ant Design blue on a white canvas.
+// Modern, crisp dark theme for Seshat Console with warm obsidian tones,
+// glowing orange accents, deep layered surfaces and high-contrast typography.
 export const palette = {
-  ink: '#E7E2DA',
-  inkSecondary: '#B6AEA3',
-  inkTertiary: '#918A82',
-  inkDisabled: '#6F6A64',
-  canvas: '#2F2E34',
-  surface: '#3A3941',
-  surfaceElevated: '#4A4852',
-  border: '#54515B',
-  borderSubtle: '#4D4A54',
+  ink: '#F5F2EC',
+  inkSecondary: '#B8B0A5',
+  inkTertiary: '#8A8379',
+  inkDisabled: '#5D574F',
+  canvas: '#131217',
+  surface: '#1C1B22',
+  surfaceElevated: '#26242E',
+  surfaceSubtle: '#18171E',
+  border: '#32303C',
+  borderSubtle: '#26242E',
+  borderGlow: 'rgba(239, 124, 47, 0.35)',
   accent: '#EF7C2F',
-  accentHover: '#DB6E24',
-  accentSoft: 'rgba(239, 124, 47, 0.14)',
+  accentHover: '#FF8F3D',
+  accentActive: '#D96B1E',
+  accentSoft: 'rgba(239, 124, 47, 0.12)',
+  accentSoftBorder: 'rgba(239, 124, 47, 0.28)',
   accentSecondary: '#C89A6A',
-  success: '#6FAF7B',
-  warning: '#D6A15F',
-  danger: '#C96B5C',
-  info: '#7D9CCF',
-  hover: 'rgba(231, 226, 218, 0.06)',
-  active: 'rgba(231, 226, 218, 0.1)',
-  // The sidebar blends with the canvas (same background, separated only by
-  // a border) rather than being a distinctly-colored block - this is how
-  // seshat-ui's own Sidebar.tsx works (`background: var(--color-bg)`), not a
-  // dashboard-style dark-sider-on-light-canvas split.
-  sidebarBg: '#2F2E34',
-  sidebarText: '#B6AEA3',
-  sidebarTextMuted: '#918A82',
-  sidebarActiveBg: 'rgba(239, 124, 47, 0.14)',
-  sidebarActiveText: '#EF7C2F',
+  success: '#22C55E',
+  successSoft: 'rgba(34, 197, 94, 0.12)',
+  warning: '#F59E0B',
+  warningSoft: 'rgba(245, 158, 11, 0.12)',
+  danger: '#EF4444',
+  dangerSoft: 'rgba(239, 68, 68, 0.12)',
+  info: '#3B82F6',
+  infoSoft: 'rgba(59, 130, 246, 0.12)',
+  hover: 'rgba(245, 242, 236, 0.05)',
+  active: 'rgba(245, 242, 236, 0.08)',
+  sidebarBg: '#141318',
+  sidebarText: '#B8B0A5',
+  sidebarTextMuted: '#7A736A',
+  sidebarActiveBg: 'rgba(239, 124, 47, 0.12)',
+  sidebarActiveText: '#FF8F3D',
 } as const
 
 export const fontStack =
   '"Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
 export const monoStack =
-  'ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace'
+  'ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", Menlo, Consolas, monospace'
 
 export const consoleTheme: ThemeConfig = {
   algorithm: theme.darkAlgorithm,
   token: {
     fontFamily: fontStack,
     colorPrimary: palette.accent,
+    colorPrimaryHover: palette.accentHover,
+    colorPrimaryActive: palette.accentActive,
     colorInfo: palette.info,
-    colorLink: palette.accent,
+    colorLink: palette.accentHover,
+    colorLinkHover: '#FFAE71',
     colorSuccess: palette.success,
     colorWarning: palette.warning,
     colorError: palette.danger,
     colorTextBase: palette.ink,
+    colorTextSecondary: palette.inkSecondary,
+    colorTextTertiary: palette.inkTertiary,
+    colorTextDisabled: palette.inkDisabled,
     colorBgBase: palette.canvas,
     colorBgContainer: palette.surface,
     colorBgLayout: palette.canvas,
@@ -61,9 +67,10 @@ export const consoleTheme: ThemeConfig = {
     colorBorder: palette.border,
     colorBorderSecondary: palette.borderSubtle,
     borderRadius: 8,
-    borderRadiusLG: 10,
+    borderRadiusLG: 12,
+    borderRadiusSM: 6,
     fontSize: 14,
-    controlHeight: 34,
+    controlHeight: 36,
     wireframe: false,
   },
   components: {
@@ -82,35 +89,63 @@ export const consoleTheme: ThemeConfig = {
       darkItemSelectedColor: palette.sidebarActiveText,
       darkGroupTitleColor: palette.sidebarTextMuted,
       itemBorderRadius: 8,
-      itemMarginInline: 8,
+      itemMarginInline: 10,
     },
     Card: {
       colorBgContainer: palette.surface,
-      borderRadiusLG: 12,
-      boxShadowTertiary: '0 1px 2px rgba(0, 0, 0, 0.16), 0 1px 6px -2px rgba(0, 0, 0, 0.24)',
+      borderRadiusLG: 14,
+      boxShadowTertiary: '0 2px 8px -2px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.2)',
     },
     Table: {
       colorBgContainer: palette.surface,
       headerBg: palette.surfaceElevated,
       headerColor: palette.inkSecondary,
-      borderColor: palette.border,
-      rowHoverBg: palette.surfaceElevated,
+      borderColor: palette.borderSubtle,
+      rowHoverBg: 'rgba(255, 255, 255, 0.03)',
+      borderRadius: 12,
     },
     Input: {
       colorBgContainer: palette.canvas,
       activeBorderColor: palette.accent,
-      hoverBorderColor: palette.accentSecondary,
+      hoverBorderColor: palette.accentHover,
+      colorBorder: palette.border,
+      borderRadius: 8,
     },
     Select: {
       colorBgContainer: palette.canvas,
       optionSelectedBg: palette.accentSoft,
+      colorBorder: palette.border,
+      borderRadius: 8,
     },
     Drawer: {
       colorBgElevated: palette.surface,
     },
+    Modal: {
+      contentBg: palette.surface,
+      headerBg: palette.surface,
+    },
     Button: {
       fontWeight: 500,
-      primaryShadow: 'none',
+      borderRadius: 8,
+      primaryShadow: '0 2px 10px rgba(239, 124, 47, 0.3)',
+      defaultBorderColor: palette.border,
+      defaultBg: 'rgba(255, 255, 255, 0.02)',
+      defaultHoverBg: 'rgba(255, 255, 255, 0.06)',
+      defaultHoverBorderColor: palette.inkTertiary,
+    },
+    Tag: {
+      borderRadiusSM: 6,
+      defaultBg: 'rgba(255, 255, 255, 0.04)',
+      defaultColor: palette.inkSecondary,
+    },
+    Dropdown: {
+      colorBgElevated: palette.surfaceElevated,
+    },
+    Tabs: {
+      itemColor: palette.inkSecondary,
+      itemHoverColor: palette.ink,
+      itemSelectedColor: palette.accentHover,
+      inkBarColor: palette.accent,
     },
   },
 }
