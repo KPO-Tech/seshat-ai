@@ -42,13 +42,13 @@ const PROVIDER_DEFAULT_URLS: Record<string, string> = {
   mistral: 'https://api.mistral.ai/v1',
   gemini: 'https://generativelanguage.googleapis.com/v1beta',
   'z-ai': 'https://api.z.ai/api/paas/v4',
-  minimax: 'https://api.minimax.chat/v1',
+  minimax: 'https://api.minimax.io/v1',
   openrouter: 'https://openrouter.ai/api/v1',
   ollama: 'http://localhost:11434',
   kimi: 'https://api.moonshot.ai/v1',
   deepseek: 'https://api.deepseek.com/v1',
   opencode: 'https://opencode.ai/zen/v1',
-  'workers-ai': 'https://workers.ai/v1/chat',
+  'workers-ai': 'https://api.cloudflare.com/client/v4',
 }
 
 const PROVIDER_DISPLAY_ORDER = ['anthropic', 'openai', 'codex', 'mistral', 'gemini', 'z-ai', 'minimax', 'openrouter', 'ollama', 'kimi', 'deepseek', 'opencode', 'workers-ai']
@@ -129,6 +129,7 @@ export function ProvidersView() {
   const [settingDefaultId, setSettingDefaultId] = useState<string | null>(null)
   const [showAddProvider, setShowAddProvider] = useState(false)
   const [addModelFor, setAddModelFor] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   const sorted = sortProviders(providers)
 
@@ -136,13 +137,14 @@ export function ProvidersView() {
     const next = expandedId === setting.id ? null : setting.id
     setExpandedId(next)
     setSelectedKey(null)
+    setActionError(null)
     if (next && !models[next]) {
       setLoadingModels((s) => ({ ...s, [next]: true }))
       try {
         const fetched = await fetchProviderModels(next)
         setModels((s) => ({ ...s, [next]: fetched }))
-      } catch {
-        // silently handle
+      } catch (e: unknown) {
+        setActionError((e as { message?: string })?.message ?? 'Failed to load models for this provider.')
       } finally {
         setLoadingModels((s) => ({ ...s, [next]: false }))
       }
@@ -150,12 +152,13 @@ export function ProvidersView() {
   }
 
   async function handleSync(settingId: string) {
+    setActionError(null)
     setSyncingModels((s) => ({ ...s, [settingId]: true }))
     try {
       const fetched = await syncProviderModels(settingId)
       setModels((s) => ({ ...s, [settingId]: fetched }))
-    } catch {
-      // silently handle
+    } catch (e: unknown) {
+      setActionError((e as { message?: string })?.message ?? 'Failed to sync models for this provider.')
     } finally {
       setSyncingModels((s) => ({ ...s, [settingId]: false }))
     }
@@ -163,13 +166,14 @@ export function ProvidersView() {
 
   async function handleDelete(id: string) {
     if (deletingId) return
+    setActionError(null)
     setDeletingId(id)
     try {
       await deleteProviderSetting(id)
       removeProvider(id)
       if (expandedId === id) setExpandedId(null)
-    } catch {
-      // silently handle
+    } catch (e: unknown) {
+      setActionError((e as { message?: string })?.message ?? 'Failed to delete this provider.')
     } finally {
       setDeletingId(null)
     }
@@ -177,12 +181,13 @@ export function ProvidersView() {
 
   async function handleSetDefault(id: string) {
     if (settingDefaultId) return
+    setActionError(null)
     setSettingDefaultId(id)
     try {
       await setProviderDefault(id)
       setDefault(id)
-    } catch {
-      // silently handle
+    } catch (e: unknown) {
+      setActionError((e as { message?: string })?.message ?? 'Failed to set this provider as default.')
     } finally {
       setSettingDefaultId(null)
     }
@@ -208,6 +213,13 @@ export function ProvidersView() {
           <span>Add Provider</span>
         </button>
       </header>
+
+      {actionError && (
+        <div className="pv-action-error">
+          {actionError}
+          <button type="button" onClick={() => setActionError(null)} aria-label="Dismiss">×</button>
+        </div>
+      )}
 
       {sorted.length === 0 && (
         <div className="pv-empty">
@@ -825,6 +837,13 @@ function AddCustomModelModal({ settingId, onClose, onSuccess }: {
 
 export const PROVIDERS_CSS = `
 .pv-root { display: flex; flex-direction: column; }
+.pv-action-error {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: rgba(201,107,92,0.1); border: 1px solid rgba(201,107,92,0.3);
+  padding: 8px 12px; border-radius: 7px; color: var(--color-error);
+  font-size: var(--font-size-xs); margin-bottom: 16px;
+}
+.pv-action-error button { background: none; border: none; color: inherit; cursor: pointer; font-size: 14px; line-height: 1; padding: 0 2px; }
 .pv-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 40px; }
 .pv-header-info h1 { font-size: var(--font-size-base); font-weight: 700; margin: 0 0 4px; color: var(--color-text); }
 .pv-header-info p { color: var(--color-text-muted); margin: 0; font-size: var(--font-size-sm); }

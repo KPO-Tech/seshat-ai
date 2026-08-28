@@ -16,6 +16,8 @@ const PROVIDER_LABELS: Record<string, string> = {
   opencode: 'OpenCode Zen',
   'z-ai': 'Z.ai',
   ollama: 'Ollama',
+  kimi: 'Kimi (Moonshot AI)',
+  'workers-ai': 'Cloudflare Workers AI',
 }
 
 const PROVIDER_MODELS: Record<string, ProviderModelOption[]> = {
@@ -30,8 +32,8 @@ const PROVIDER_MODELS: Record<string, ProviderModelOption[]> = {
     { id: 'gpt-4o', label: 'GPT-4o', description: 'Multimodal general-purpose flagship.' },
   ],
   codex: [
-    { id: 'gpt-5.3-codex', label: 'GPT-5.3 Codex', description: 'Flagship coding model.' },
-    { id: 'gpt-5.2-codex', label: 'GPT-5.2 Codex', description: 'Stable coding model.' },
+    { id: 'gpt-5.6-sol', label: 'GPT-5.6-Sol', description: 'Flagship Codex model via ChatGPT Pro subscription.' },
+    { id: 'gpt-5.5', label: 'GPT-5.5', description: 'Codex model via ChatGPT Pro subscription.' },
     { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini', description: 'Fast and efficient via Codex.' },
   ],
   mistral: [
@@ -55,9 +57,9 @@ const PROVIDER_MODELS: Record<string, ProviderModelOption[]> = {
     { id: 'deepseek/deepseek-r1', label: 'DeepSeek R1', description: 'Reasoning model through OpenRouter.' },
   ],
   deepseek: [
-    { id: 'deepseek-chat', label: 'DeepSeek Chat', description: 'General-purpose chat and coding model.' },
-    { id: 'deepseek-reasoner', label: 'DeepSeek Reasoner', description: 'Deep reasoning model.' },
-    { id: 'deepseek-coder-v2', label: 'DeepSeek Coder V2', description: 'Code-specialized model.' },
+    { id: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash', description: 'Fast, cost-effective default. 1M context.' },
+    { id: 'deepseek-v4-pro', label: 'DeepSeek V4 Pro', description: 'Flagship, highest-capability model.' },
+    { id: 'deepseek-v4-flash-vision-exp', label: 'DeepSeek V4 Flash Vision (exp)', description: 'Same as Flash, adds image understanding.' },
   ],
   opencode: [
     { id: 'claude-sonnet-4', label: 'Claude Sonnet 4', description: 'Claude via OpenCode Zen.' },
@@ -68,6 +70,16 @@ const PROVIDER_MODELS: Record<string, ProviderModelOption[]> = {
     { id: 'glm-5.1', label: 'GLM-5.1', description: 'Latest flagship GLM model.' },
     { id: 'glm-4.7', label: 'GLM-4.7', description: 'Long-context model.' },
     { id: 'glm-4.5', label: 'GLM-4.5', description: 'Balanced reasoning model.' },
+  ],
+  kimi: [
+    { id: 'kimi-k3', label: 'Kimi K3', description: 'Flagship, 1M-token context, vision and reasoning.' },
+    { id: 'kimi-k2.7-code', label: 'Kimi K2.7 Code', description: 'Coding specialist for long-horizon agentic work.' },
+    { id: 'kimi-k2.6', label: 'Kimi K2.6', description: 'Multimodal model with vision and thinking mode.' },
+  ],
+  'workers-ai': [
+    { id: '@cf/meta/llama-3.1-70b-instruct', label: 'Llama 3.1 70B', description: 'Edge inference via Cloudflare.' },
+    { id: '@cf/deepseek-ai/deepseek-r1', label: 'DeepSeek-R1', description: 'Reasoning model at the edge.' },
+    { id: '@cf/qwen/qwen2.5-coder-7b', label: 'Qwen2.5 Coder 7B', description: 'Lightweight coding model at the edge.' },
   ],
 }
 

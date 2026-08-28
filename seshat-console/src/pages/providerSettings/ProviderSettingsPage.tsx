@@ -28,6 +28,9 @@ const SUPPORTED_PROVIDERS = [
   { id: 'minimax', name: 'MiniMax', desc: 'Agentic, long-context models' },
   { id: 'openrouter', name: 'OpenRouter', desc: '300+ models through one API key' },
   { id: 'ollama', name: 'Ollama', desc: 'Run models locally on your own infrastructure' },
+  { id: 'deepseek', name: 'DeepSeek', desc: 'DeepSeek V4 — direct API' },
+  { id: 'opencode', name: 'OpenCode Zen', desc: 'Curated gateway — Claude, Codex, GLM models' },
+  { id: 'kimi', name: 'Kimi (Moonshot AI)', desc: 'Kimi K3, K2.7 Code — long-context agentic coding' },
 ]
 
 const PROVIDER_DEFAULT_URLS: Record<string, string> = {
@@ -36,9 +39,12 @@ const PROVIDER_DEFAULT_URLS: Record<string, string> = {
   mistral: 'https://api.mistral.ai/v1',
   gemini: 'https://generativelanguage.googleapis.com/v1beta',
   'z-ai': 'https://api.z.ai/api/paas/v4',
-  minimax: 'https://api.minimax.chat/v1',
+  minimax: 'https://api.minimax.io/v1',
   openrouter: 'https://openrouter.ai/api/v1',
   ollama: 'http://localhost:11434',
+  deepseek: 'https://api.deepseek.com/v1',
+  opencode: 'https://opencode.ai/zen/v1',
+  kimi: 'https://api.moonshot.ai/v1',
 }
 
 export function ProviderSettingsPage() {
