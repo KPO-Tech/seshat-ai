@@ -145,6 +145,8 @@ export function KnowledgePage() {
   const [newCorpusName, setNewCorpusName] = useState('')
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [processing, setProcessing] = useState(false)
+  const [processError, setProcessError] = useState<string | null>(null)
   const [publicLibraryOpen, setPublicLibraryOpen] = useState(false)
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [view, setView] = useState<KnowledgeView>('search')
@@ -349,6 +351,31 @@ export function KnowledgePage() {
     if (created) setPendingPrompt(instruction)
   }
 
+  // Entry point for CollectionsWorkspace's "Test" forms - takes an explicit
+  // corpusId rather than reading selectedCorpusId from closure, since
+  // setSelectedCorpusId(corpusId) below wouldn't be visible yet within this
+  // same synchronous handler (React state updates are async).
+  async function testSearch(q: string, corpusId: string) {
+    const trimmed = q.trim()
+    if (!trimmed) return
+    setSelectedCorpusId(corpusId)
+    setView('search')
+    setSubmittedQuery(trimmed)
+    void runRawSearch(trimmed, corpusId)
+
+    const corpusName = corpora.find((c) => c.id === corpusId)?.name
+    const instruction = buildAgentInstruction(trimmed, corpusId === 'all' ? undefined : corpusName)
+    if (sessionId) {
+      void sendMessage(instruction, {
+        agentSlug: 'knowledge-agent',
+        corpusId: corpusId === 'all' ? undefined : corpusId,
+      })
+      return
+    }
+    const created = await ensureSession()
+    if (created) setPendingPrompt(instruction)
+  }
+
   async function handleSendChatPrompt() {
     const prompt = chatPrompt.trim()
     if (!prompt) return
@@ -470,6 +497,32 @@ export function KnowledgePage() {
     }
   }
 
+  // Re-enqueues ingestion for files a corpus already has. `mode: 'missing'`
+  // targets files that never finished (not ready, no job already in
+  // flight) - `mode: 'all'` re-queues every file without an active job,
+  // for a full reprocess (e.g. after changing the embedder).
+  async function processFiles(corpusId: string, mode: 'missing' | 'all') {
+    const activeFileIds = new Set(detail.jobs.filter(isJobActive).map((job) => job.file_id))
+    const targets = detail.files.filter((file) => {
+      if (activeFileIds.has(file.file_id)) return false
+      return mode === 'all' || !isFileReady(file)
+    })
+    if (targets.length === 0) return
+
+    setProcessing(true)
+    setProcessError(null)
+    try {
+      for (const file of targets) {
+        await api.post(`/corpora/${corpusId}/ingest`, { file_id: file.file_id })
+      }
+      await loadCorpusDetail(corpusId)
+    } catch (err) {
+      setProcessError(err instanceof ApiError ? err.message : 'Unable to queue some files for processing.')
+    } finally {
+      setProcessing(false)
+    }
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     void runSearch(query)
@@ -549,6 +602,8 @@ export function KnowledgePage() {
                 totalChunks={totalChunks}
                 uploading={uploading}
                 uploadError={uploadError}
+                processing={processing}
+                processError={processError}
                 newCorpusName={newCorpusName}
                 creatingCorpus={creatingCorpus}
                 corporaError={corporaError}
@@ -557,6 +612,10 @@ export function KnowledgePage() {
                 onBrowsePublic={() => setPublicLibraryOpen(true)}
                 onUpload={() => fileRef.current?.click()}
                 onSelectCorpus={setSelectedCorpusId}
+                onTestSearch={testSearch}
+                onProcessMissing={(corpusId) => void processFiles(corpusId, 'missing')}
+                onProcessAll={(corpusId) => void processFiles(corpusId, 'all')}
+                onRetryDetail={(corpusId) => void loadCorpusDetail(corpusId)}
               />
             ) : view === 'chat' ? (
               <KnowledgeChatWorkspace
@@ -891,6 +950,8 @@ function CollectionsWorkspace({
   totalChunks,
   uploading,
   uploadError,
+  processing,
+  processError,
   newCorpusName,
   creatingCorpus,
   corporaError,
@@ -899,6 +960,10 @@ function CollectionsWorkspace({
   onBrowsePublic,
   onUpload,
   onSelectCorpus,
+  onTestSearch,
+  onProcessMissing,
+  onProcessAll,
+  onRetryDetail,
 }: {
   corpora: Corpus[]
   selectedCorpus: Corpus | null
@@ -909,6 +974,8 @@ function CollectionsWorkspace({
   totalChunks: number
   uploading: boolean
   uploadError: string | null
+  processing: boolean
+  processError: string | null
   newCorpusName: string
   creatingCorpus: boolean
   corporaError: string | null
@@ -917,6 +984,10 @@ function CollectionsWorkspace({
   onBrowsePublic: () => void
   onUpload: () => void
   onSelectCorpus: (id: string) => void
+  onTestSearch: (query: string, corpusId: string) => void
+  onProcessMissing: (corpusId: string) => void
+  onProcessAll: (corpusId: string) => void
+  onRetryDetail: (corpusId: string) => void
 }) {
   const [openedCorpusId, setOpenedCorpusId] = useState<string | null>(null)
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null)
@@ -936,6 +1007,7 @@ function CollectionsWorkspace({
     return (
       <div className="k-collections-page detail">
         {uploadError && <div className="k-page-error">{uploadError}</div>}
+        {processError && <div className="k-page-error">{processError}</div>}
 
         <section className="k-collection-detail-grid">
           <main className="k-hub-panel">
@@ -950,16 +1022,39 @@ function CollectionsWorkspace({
                 <button type="button" className="k-mini-action" onClick={onUpload} disabled={uploading}>
                   <Upload size={13} /> {uploading ? 'Uploading...' : 'Import files'}
                 </button>
-                <button type="button" className="k-mini-action" disabled>
-                  <LoadingOne size={13} /> Process missing
+                <button
+                  type="button"
+                  className="k-mini-action"
+                  onClick={() => onProcessMissing(openedCorpus.id)}
+                  disabled={processing}
+                >
+                  <LoadingOne size={13} className={processing ? 'spin' : undefined} /> Process missing
                 </button>
-                <button type="button" className="k-mini-action primary" disabled>
-                  <LoadingOne size={13} /> Process all
+                <button
+                  type="button"
+                  className="k-mini-action primary"
+                  onClick={() => onProcessAll(openedCorpus.id)}
+                  disabled={processing}
+                >
+                  <LoadingOne size={13} className={processing ? 'spin' : undefined} /> Process all
                 </button>
               </div>
             </div>
             <div className="k-detail-files">
-              {detail.files.length === 0 ? (
+              {detail.loading ? (
+                <div className="k-preview-empty">
+                  <LoadingOne size={18} className="spin" />
+                  <span>Loading files…</span>
+                </div>
+              ) : detail.error ? (
+                <div className="k-preview-empty error">
+                  <Caution size={20} />
+                  <span>{detail.error}</span>
+                  <button type="button" className="k-mini-action" onClick={() => onRetryDetail(openedCorpus.id)}>
+                    Retry
+                  </button>
+                </div>
+              ) : detail.files.length === 0 ? (
                 <button type="button" className="k-upload-drop large" onClick={onUpload} disabled={uploading}>
                   <Upload size={20} />
                   <span>{uploading ? 'Uploading...' : 'Import documents into this collection'}</span>
@@ -1003,7 +1098,13 @@ function CollectionsWorkspace({
                 {selectedFile ? (
                   <KnowledgeDocumentPreview file={selectedFile} />
                 ) : (
-                  <form className="k-test-search k-test-search-full" onSubmit={(e) => e.preventDefault()}>
+                  <form
+                    className="k-test-search k-test-search-full"
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      onTestSearch(testQuery, openedCorpus.id)
+                    }}
+                  >
                     <Search size={14} />
                     <input value={testQuery} onChange={(e) => setTestQuery(e.target.value)} placeholder="Try a query..." />
                     <button type="submit" disabled={!testQuery.trim()}>Test</button>
@@ -1094,7 +1195,13 @@ function CollectionsWorkspace({
                 <div><span>Jobs</span><strong>{activeJobs} active</strong></div>
                 <div><span>Chunks</span><strong>{selectedCorpus.chunk_count}</strong></div>
               </div>
-              <form className="k-test-search" onSubmit={(e) => e.preventDefault()}>
+              <form
+                className="k-test-search"
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  onTestSearch(testQuery, selectedCorpus.id)
+                }}
+              >
                 <Search size={14} />
                 <input value={testQuery} onChange={(e) => setTestQuery(e.target.value)} placeholder="Test this collection..." />
                 <button type="submit" disabled={!testQuery.trim()}>Test</button>
@@ -1105,122 +1212,6 @@ function CollectionsWorkspace({
             </div>
           )}
         </aside>
-      </section>
-    </div>
-  )
-}
-
-export function KnowledgeDashboard({
-  corpora,
-  selectedCorpus,
-  selectedScope,
-  needsSetup,
-  totalChunks,
-  onCreateFocus,
-  onBrowsePublic,
-  onUpload,
-  onConfigure,
-}: {
-  corpora: Corpus[]
-  selectedCorpus: Corpus | null
-  selectedScope: string
-  needsSetup: boolean
-  totalChunks: number
-  onCreateFocus: () => void
-  onBrowsePublic: () => void
-  onUpload: () => void
-  onConfigure: () => void
-}) {
-  const personalCount = corpora.filter((corpus) => !corpus.workspace_id).length
-  const organizationCount = corpora.filter((corpus) => Boolean(corpus.workspace_id)).length
-
-  return (
-    <div className="k-home">
-      <section className="k-hero-panel">
-        <div className="k-hero-copy">
-          <span className="k-eyebrow">Knowledge Hub</span>
-          <h2>{selectedCorpus ? selectedCorpus.name : 'All indexed knowledge'}</h2>
-          <p>{selectedCorpus ? `${selectedScope} collection · ${selectedCorpus.chunk_count} chunks` : `${corpora.length} included collections · ${totalChunks} chunks ready for search`}</p>
-        </div>
-        <div className="k-hero-actions">
-          {selectedCorpus && (
-            <button type="button" className="k-primary-action" onClick={onUpload}>
-              <Upload size={14} /> Add document
-            </button>
-          )}
-          <button type="button" className="k-secondary-action" onClick={onCreateFocus}>
-            <Plus size={14} /> New collection
-          </button>
-        </div>
-      </section>
-
-      <section className="k-hub-grid">
-        <button type="button" className="k-hub-card active" onClick={onCreateFocus}>
-          <Book size={24} />
-          <span>
-            <strong>Personal collections</strong>
-            <small>{personalCount} local or private bases</small>
-          </span>
-        </button>
-        <button type="button" className="k-hub-card" onClick={onBrowsePublic}>
-          <Search size={24} />
-          <span>
-            <strong>Public library</strong>
-            <small>Browse and include shared bases</small>
-          </span>
-        </button>
-        <button type="button" className="k-hub-card muted" onClick={onConfigure}>
-          <Setting size={24} />
-          <span>
-            <strong>Organization defaults</strong>
-            <small>{organizationCount} company collections</small>
-          </span>
-        </button>
-      </section>
-
-      <section className="k-hub-split">
-        <div className="k-hub-panel">
-          <div className="k-panel-title">
-            <span>Included collections</span>
-            <strong>{corpora.length}</strong>
-          </div>
-          {corpora.length === 0 ? (
-            <div className="k-dashboard-empty">No collection yet.</div>
-          ) : (
-            <div className="k-collection-grid">
-              {corpora.slice(0, 6).map((corpus) => (
-                <div key={corpus.id} className="k-collection-card">
-                  <FileText size={16} />
-                  <span>
-                    <strong>{corpus.name}</strong>
-                    <small>{corpus.workspace_id ? 'Organization' : 'Personal'} · {corpus.chunk_count} chunks</small>
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="k-hub-panel">
-          <div className="k-panel-title">
-            <span>Status</span>
-            <strong>{needsSetup ? 'Setup' : 'Ready'}</strong>
-          </div>
-          <div className="k-status-stack">
-            <div>
-              <span>Search scope</span>
-              <strong>{selectedCorpus ? selectedCorpus.name : 'All included collections'}</strong>
-            </div>
-            <div>
-              <span>Embedding</span>
-              <strong>{needsSetup ? 'Configuration required' : 'Ready for ingestion'}</strong>
-            </div>
-            <div>
-              <span>Public sources</span>
-              <strong>Manual include only</strong>
-            </div>
-          </div>
-        </div>
       </section>
     </div>
   )
