@@ -233,8 +233,23 @@ func (s *Service) ResolveDevice(ctx context.Context, token string) (*Device, err
 	return &device, nil
 }
 
-// Heartbeat records device liveness. Device-authenticated (no user principal).
-func (s *Service) Heartbeat(ctx context.Context, token string) (*Device, error) {
+// HeartbeatResult is the heartbeat response - the usual Device view plus
+// this device's resolved desktop policy bundle (see
+// iam.Service.ResolveDesktopPolicies). Device is embedded (not nested under
+// a "device" key) so the wire shape stays exactly what it was before
+// policies existed, plus one new top-level "policies" field - existing
+// decoders that only care about the device fields are unaffected.
+type HeartbeatResult struct {
+	Device
+	Policies map[string]bool `json:"policies"`
+}
+
+// Heartbeat records device liveness and resolves this device's current
+// desktop policy bundle. Device-authenticated (no user principal) - policies
+// are resolved for whoever registered the device (Device.RegisteredByUserID
+// within Device.OrganizationID), since that's the identity this device
+// connection represents.
+func (s *Service) Heartbeat(ctx context.Context, token string) (*HeartbeatResult, error) {
 	record, err := s.resolveDeviceByToken(ctx, token)
 	if err != nil {
 		return nil, err
@@ -245,8 +260,11 @@ func (s *Service) Heartbeat(ctx context.Context, token string) (*Device, error) 
 	if err := s.db.Gorm().WithContext(ctx).Save(&record).Error; err != nil {
 		return nil, err
 	}
-	device := toDevice(record)
-	return &device, nil
+	policies, err := s.iam.ResolveDesktopPolicies(s.db.Gorm().WithContext(ctx), record.OrganizationID, record.RegisteredByUserID)
+	if err != nil {
+		return nil, err
+	}
+	return &HeartbeatResult{Device: toDevice(record), Policies: policies}, nil
 }
 
 func toDevice(record sdb.Device) Device {

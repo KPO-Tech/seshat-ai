@@ -31,7 +31,7 @@ func TestRegisterAndConnectRegistersThenPersists(t *testing.T) {
 	}))
 	defer fakeServer.Close()
 
-	service := NewService(NewStore(openTestDB(t)))
+	service := newTestService(t)
 	status, err := service.RegisterAndConnect(context.Background(), "usr_1", fakeServer.URL, "user-session-token", "org_1", "")
 	if err != nil {
 		t.Fatalf("register and connect: %v", err)
@@ -66,7 +66,7 @@ func TestRegisterAndConnectHonorsCustomName(t *testing.T) {
 	}))
 	defer fakeServer.Close()
 
-	service := NewService(NewStore(openTestDB(t)))
+	service := newTestService(t)
 	if _, err := service.RegisterAndConnect(context.Background(), "usr_1", fakeServer.URL, "tok", "org_1", "Custom Name"); err != nil {
 		t.Fatalf("register and connect: %v", err)
 	}
@@ -90,7 +90,7 @@ func TestRegisterAndConnectIsIdempotentWhenAlreadyConnected(t *testing.T) {
 	}))
 	defer fakeServer.Close()
 
-	service := NewService(NewStore(openTestDB(t)))
+	service := newTestService(t)
 	if _, err := service.RegisterAndConnect(context.Background(), "usr_1", fakeServer.URL, "tok", "org_1", ""); err != nil {
 		t.Fatalf("first register and connect: %v", err)
 	}
@@ -112,7 +112,7 @@ func TestRegisterAndConnectIsIdempotentWhenAlreadyConnected(t *testing.T) {
 }
 
 func TestRegisterAndConnectRejectsMissingOrganization(t *testing.T) {
-	service := NewService(NewStore(openTestDB(t)))
+	service := newTestService(t)
 	if _, err := service.RegisterAndConnect(context.Background(), "usr_1", "https://example.test", "tok", "", ""); err == nil {
 		t.Fatal("expected an error when organization_id is missing")
 	}

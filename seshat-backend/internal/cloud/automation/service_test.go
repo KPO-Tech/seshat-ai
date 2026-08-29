@@ -9,7 +9,7 @@ import (
 )
 
 func TestServiceStatusWhenNotConnected(t *testing.T) {
-	service := NewService(NewStore(openTestDB(t)))
+	service := newTestService(t)
 	status, err := service.Status(context.Background())
 	if err != nil {
 		t.Fatalf("status: %v", err)
@@ -30,7 +30,7 @@ func TestServiceConnectValidatesAndPersists(t *testing.T) {
 	}))
 	defer fakeServer.Close()
 
-	service := NewService(NewStore(openTestDB(t)))
+	service := newTestService(t)
 	status, err := service.Connect(context.Background(), "usr_1", fakeServer.URL, "device-token-abc")
 	if err != nil {
 		t.Fatalf("connect: %v", err)
@@ -56,6 +56,55 @@ func TestServiceConnectValidatesAndPersists(t *testing.T) {
 	}
 }
 
+func TestServiceConnectPersistsHeartbeatPolicies(t *testing.T) {
+	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(Device{
+			ID: "dev_123", Name: "Alice's laptop", Status: "active",
+			Policies: map[string]bool{"allow_custom_providers": false, "allow_local_models": true},
+		})
+	}))
+	defer fakeServer.Close()
+
+	service, policies := newTestServiceWithPolicyStore(t)
+	if _, err := service.Connect(context.Background(), "usr_1", fakeServer.URL, "device-token-abc"); err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+
+	ctx := context.Background()
+	if policies.Allowed(ctx, "allow_custom_providers") {
+		t.Fatal("expected Connect's own heartbeat to have persisted the restriction")
+	}
+	if !policies.Allowed(ctx, "allow_local_models") {
+		t.Fatal("expected the allowed policy to also be persisted")
+	}
+}
+
+func TestServiceDisconnectClearsPolicies(t *testing.T) {
+	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(Device{
+			ID: "dev_123", Name: "Alice's laptop", Status: "active",
+			Policies: map[string]bool{"allow_custom_providers": false},
+		})
+	}))
+	defer fakeServer.Close()
+
+	service, policies := newTestServiceWithPolicyStore(t)
+	if _, err := service.Connect(context.Background(), "usr_1", fakeServer.URL, "device-token-abc"); err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	ctx := context.Background()
+	if policies.Allowed(ctx, "allow_custom_providers") {
+		t.Fatal("expected the restriction to apply before disconnect")
+	}
+
+	if err := service.Disconnect(ctx); err != nil {
+		t.Fatalf("disconnect: %v", err)
+	}
+	if !policies.Allowed(ctx, "allow_custom_providers") {
+		t.Fatal("expected a disconnected device to fail open again, not keep enforcing a stale restriction from an org it's no longer connected to")
+	}
+}
+
 func TestServiceConnectRejectsInvalidToken(t *testing.T) {
 	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -63,7 +112,7 @@ func TestServiceConnectRejectsInvalidToken(t *testing.T) {
 	}))
 	defer fakeServer.Close()
 
-	service := NewService(NewStore(openTestDB(t)))
+	service := newTestService(t)
 	if _, err := service.Connect(context.Background(), "usr_1", fakeServer.URL, "bad-token"); err == nil {
 		t.Fatal("expected connect to fail for a rejected token")
 	}
@@ -78,7 +127,7 @@ func TestServiceConnectRejectsInvalidToken(t *testing.T) {
 }
 
 func TestServiceConnectRequiresServerURLAndToken(t *testing.T) {
-	service := NewService(NewStore(openTestDB(t)))
+	service := newTestService(t)
 	if _, err := service.Connect(context.Background(), "usr_1", "", "token"); err == nil {
 		t.Fatal("expected connect to reject an empty server_url")
 	}
@@ -93,7 +142,7 @@ func TestServiceDisconnectClearsConnection(t *testing.T) {
 	}))
 	defer fakeServer.Close()
 
-	service := NewService(NewStore(openTestDB(t)))
+	service := newTestService(t)
 	if _, err := service.Connect(context.Background(), "usr_1", fakeServer.URL, "tok"); err != nil {
 		t.Fatalf("connect: %v", err)
 	}
@@ -110,7 +159,7 @@ func TestServiceDisconnectClearsConnection(t *testing.T) {
 }
 
 func TestServiceRecentRunsRequiresConnection(t *testing.T) {
-	service := NewService(NewStore(openTestDB(t)))
+	service := newTestService(t)
 	if _, err := service.RecentRuns(context.Background()); err == nil {
 		t.Fatal("expected recent runs to fail when not connected")
 	}

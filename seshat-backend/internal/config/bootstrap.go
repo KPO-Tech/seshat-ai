@@ -1152,6 +1152,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	// captures backendApp so the cloudautomation package never needs to
 	// import query/settings directly, mirroring the old scheduler's pattern.
 	cloudAutomationStore := cloudautomation.NewStore(database)
+	cloudAutomationPolicyStore := cloudautomation.NewPolicyStore(database)
 	cloudAutomationExecutor := cloudautomation.JobExecutor(func(ctx context.Context, p cloudautomation.ExecParams) (string, error) {
 		principal := &backendauth.Principal{
 			User: backendauth.User{ID: p.UserID},
@@ -1170,10 +1171,10 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		}
 		return result.Content, nil
 	})
-	cloudAutomationWorker := cloudautomation.NewWorker(cloudAutomationStore, cloudAutomationExecutor)
+	cloudAutomationWorker := cloudautomation.NewWorker(cloudAutomationStore, cloudAutomationPolicyStore, cloudAutomationExecutor)
 	cloudAutomationWorker.Start()
 	cleanups = append(cleanups, func() error { cloudAutomationWorker.Stop(); return nil })
-	cloudAutomationService := cloudautomation.NewService(cloudAutomationStore)
+	cloudAutomationService := cloudautomation.NewService(cloudAutomationStore, cloudAutomationPolicyStore)
 	fmt.Printf("[API] Cloud automation worker démarré\n")
 
 	// Abandoned-session sweep: a session (plus any files attached to it) is

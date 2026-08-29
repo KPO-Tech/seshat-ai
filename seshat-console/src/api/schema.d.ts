@@ -4099,6 +4099,12 @@ export interface components {
             /** Format: date-time */
             updated_at?: string;
         };
+        /** @description The Device fields, plus this device's resolved desktop policy bundle - keyed by policy code (see DesktopPolicy.code), value is whether that policy currently allows the action. A code absent from this map (an old server predating a newer client's expectations) should be treated as allowed by the client - see the desktop policies plan's fail-open design. */
+        HeartbeatResult: components["schemas"]["Device"] & {
+            policies?: {
+                [key: string]: boolean;
+            };
+        };
         RegisterDeviceResult: {
             device?: components["schemas"]["Device"];
             /** @description Full device bearer token, shown in full only in this response. */
@@ -8761,13 +8767,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Updated device */
+            /** @description Updated device, plus its resolved desktop policy bundle */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Device"];
+                    "application/json": components["schemas"]["HeartbeatResult"];
                 };
             };
             401: components["responses"]["Unauthorized"];

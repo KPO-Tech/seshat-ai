@@ -23,13 +23,14 @@ const (
 // Does nothing (not an error) while no Connection is established.
 type Worker struct {
 	store    *Store
+	policies *PolicyStore
 	executor JobExecutor
 	quit     chan struct{}
 	once     sync.Once
 }
 
-func NewWorker(store *Store, executor JobExecutor) *Worker {
-	return &Worker{store: store, executor: executor, quit: make(chan struct{})}
+func NewWorker(store *Store, policies *PolicyStore, executor JobExecutor) *Worker {
+	return &Worker{store: store, policies: policies, executor: executor, quit: make(chan struct{})}
 }
 
 func (w *Worker) Start() {
@@ -68,9 +69,13 @@ func (w *Worker) tick() {
 	}
 
 	client := NewClient(conn.ServerURL, conn.DeviceToken)
-	if _, err := client.Heartbeat(ctx); err != nil {
+	if device, err := client.Heartbeat(ctx); err != nil {
 		log.Printf("[cloudautomation] heartbeat: %v", err)
 		// A transient network blip shouldn't stop the claim attempt below.
+	} else if w.policies != nil {
+		if err := w.policies.Save(ctx, device.Policies); err != nil {
+			log.Printf("[cloudautomation] save desktop policies: %v", err)
+		}
 	}
 
 	run, err := client.ClaimRun(ctx)

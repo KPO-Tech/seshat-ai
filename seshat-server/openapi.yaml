@@ -3917,10 +3917,10 @@ paths:
         - deviceBearerAuth: []
       responses:
         "200":
-          description: Updated device
+          description: Updated device, plus its resolved desktop policy bundle
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Device" }
+              schema: { $ref: "#/components/schemas/HeartbeatResult" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   /api/v1/jobs:
@@ -6260,6 +6260,22 @@ components:
         last_seen_at: { type: string, format: date-time, nullable: true }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+
+    HeartbeatResult:
+      description: >
+        The Device fields, plus this device's resolved desktop policy
+        bundle - keyed by policy code (see DesktopPolicy.code), value is
+        whether that policy currently allows the action. A code absent from
+        this map (an old server predating a newer client's expectations)
+        should be treated as allowed by the client - see the desktop
+        policies plan's fail-open design.
+      allOf:
+        - $ref: "#/components/schemas/Device"
+        - type: object
+          properties:
+            policies:
+              type: object
+              additionalProperties: { type: boolean }
 
     RegisterDeviceResult:
       type: object

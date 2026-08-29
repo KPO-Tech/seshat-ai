@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
 )
 
 func TestRegisterListRevokeDeviceFlow(t *testing.T) {
@@ -173,5 +174,59 @@ func TestHeartbeatUpdatesLastSeenAt(t *testing.T) {
 	}
 	if device.LastSeenAt == nil {
 		t.Fatal("expected last_seen_at to be set after a heartbeat")
+	}
+}
+
+// TestHeartbeatReturnsResolvedDesktopPolicies and
+// TestHeartbeatReflectsDesktopPolicyRestriction cover the desktop policies
+// plan's Étape 4 delivery mechanism: the heartbeat response carries this
+// device's resolved policy bundle, keyed off whoever registered it.
+func TestHeartbeatReturnsResolvedDesktopPolicies(t *testing.T) {
+	env := newTestEnv(t)
+	result, err := env.automation.RegisterDevice(context.Background(), env.adminPrincipal, RegisterDeviceParams{
+		OrganizationID: env.orgID, Name: "Admin's Laptop",
+	})
+	if err != nil {
+		t.Fatalf("register device: %v", err)
+	}
+
+	heartbeat, err := env.automation.Heartbeat(context.Background(), result.Token)
+	if err != nil {
+		t.Fatalf("heartbeat: %v", err)
+	}
+	if len(heartbeat.Policies) != 4 {
+		t.Fatalf("expected 4 resolved policies, got %+v", heartbeat.Policies)
+	}
+	for code, allowed := range heartbeat.Policies {
+		if !allowed {
+			t.Fatalf("expected %s to default to allowed with no bindings, got %+v", code, heartbeat.Policies)
+		}
+	}
+}
+
+func TestHeartbeatReflectsDesktopPolicyRestriction(t *testing.T) {
+	env := newTestEnv(t)
+	result, err := env.automation.RegisterDevice(context.Background(), env.adminPrincipal, RegisterDeviceParams{
+		OrganizationID: env.orgID, Name: "Admin's Laptop",
+	})
+	if err != nil {
+		t.Fatalf("register device: %v", err)
+	}
+
+	if _, err := env.iam.SetDesktopPolicyBinding(context.Background(), env.adminPrincipal, iam.SetDesktopPolicyBindingParams{
+		OrganizationID: env.orgID, PolicyCode: iam.DesktopPolicyAllowCustomProviders, SubjectType: "org", Value: false,
+	}); err != nil {
+		t.Fatalf("set desktop policy binding: %v", err)
+	}
+
+	heartbeat, err := env.automation.Heartbeat(context.Background(), result.Token)
+	if err != nil {
+		t.Fatalf("heartbeat: %v", err)
+	}
+	if heartbeat.Policies[iam.DesktopPolicyAllowCustomProviders] {
+		t.Fatal("expected the org-wide restriction to be reflected in the heartbeat's resolved policies")
+	}
+	if !heartbeat.Policies[iam.DesktopPolicyAllowLocalModels] {
+		t.Fatal("expected an unrelated policy to remain at its default")
 	}
 }

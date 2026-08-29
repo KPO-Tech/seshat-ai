@@ -14,11 +14,12 @@ import (
 // disconnect, recent runs). Job management itself is not exposed here — it
 // happens exclusively in seshat-console once connected.
 type Service struct {
-	store *Store
+	store    *Store
+	policies *PolicyStore
 }
 
-func NewService(store *Store) *Service {
-	return &Service{store: store}
+func NewService(store *Store, policies *PolicyStore) *Service {
+	return &Service{store: store, policies: policies}
 }
 
 // Connect validates the pasted device token by heartbeating with it, then
@@ -36,6 +37,11 @@ func (s *Service) Connect(ctx context.Context, userID, serverURL, deviceToken st
 	device, err := client.Heartbeat(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("could not reach seshat-server with this token: %w", err)
+	}
+	if s.policies != nil {
+		if err := s.policies.Save(ctx, device.Policies); err != nil {
+			return nil, fmt.Errorf("save desktop policies: %w", err)
+		}
 	}
 
 	conn := Connection{
@@ -91,6 +97,11 @@ func (s *Service) RegisterAndConnect(ctx context.Context, userID, serverURL, use
 }
 
 func (s *Service) Disconnect(ctx context.Context) error {
+	if s.policies != nil {
+		if err := s.policies.Clear(ctx); err != nil {
+			return err
+		}
+	}
 	return s.store.Clear(ctx)
 }
 

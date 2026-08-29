@@ -37,13 +37,18 @@ type Status struct {
 }
 
 // Device mirrors seshat-server's Device schema — only the fields this
-// package actually uses.
+// package actually uses. Policies is only ever populated on the response to
+// POST /device/heartbeat (seshat-server's automation.HeartbeatResult) - it's
+// nil/empty on responses from the other endpoints this package calls that
+// also happen to return a Device (register), since desktop policies were
+// only ever intended to be delivered on that one already-periodic call.
 type Device struct {
-	ID         string `json:"id"`
-	Name       string `json:"name"`
-	Platform   string `json:"platform,omitempty"`
-	Status     string `json:"status"`
-	LastSeenAt string `json:"last_seen_at,omitempty"`
+	ID         string          `json:"id"`
+	Name       string          `json:"name"`
+	Platform   string          `json:"platform,omitempty"`
+	Status     string          `json:"status"`
+	LastSeenAt string          `json:"last_seen_at,omitempty"`
+	Policies   map[string]bool `json:"policies,omitempty"`
 }
 
 // registerDeviceParams/registerDeviceResult mirror seshat-server's

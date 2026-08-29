@@ -19,6 +19,26 @@ func openTestDB(t *testing.T) *db.DB {
 	return database
 }
 
+// newTestService builds a Service backed by a single shared test database -
+// NewStore/NewPolicyStore must share one *db.DB, unlike two independent
+// openTestDB(t) calls which would each get their own isolated temp file.
+func newTestService(t *testing.T) *Service {
+	t.Helper()
+	database := openTestDB(t)
+	return NewService(NewStore(database), NewPolicyStore(database))
+}
+
+// newTestServiceWithPolicyStore is newTestService plus a handle onto the
+// same underlying PolicyStore, for tests that need to assert what a
+// heartbeat actually persisted - NewPolicyStore is a stateless wrapper
+// around the shared *db.DB, so calling it twice here is safe (unlike
+// calling openTestDB twice, which would open two unrelated databases).
+func newTestServiceWithPolicyStore(t *testing.T) (*Service, *PolicyStore) {
+	t.Helper()
+	database := openTestDB(t)
+	return NewService(NewStore(database), NewPolicyStore(database)), NewPolicyStore(database)
+}
+
 func TestStoreSaveLoadClearRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	store := NewStore(openTestDB(t))
