@@ -8,10 +8,12 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
 
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/apperr"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/scim"
 )
 
@@ -30,6 +32,33 @@ func writeScimError(w http.ResponseWriter, status int, detail string) {
 		"status":  strconv.Itoa(status),
 		"detail":  detail,
 	})
+}
+
+// writeScimErrorFromErr maps a service-layer error (apperr.Error, the same
+// type writeControlPlaneError switches on) to a SCIM-formatted response
+// with the matching HTTP status - the mapping itself is identical to
+// writeControlPlaneError, just rendered as a SCIM error body instead of
+// this API's usual envelope.
+func writeScimErrorFromErr(w http.ResponseWriter, err error) {
+	var typed *apperr.Error
+	if !errors.As(err, &typed) {
+		writeScimError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	switch typed.Kind {
+	case "invalid_input":
+		writeScimError(w, http.StatusBadRequest, typed.Message)
+	case "unauthorized":
+		writeScimError(w, http.StatusUnauthorized, typed.Message)
+	case "forbidden":
+		writeScimError(w, http.StatusForbidden, typed.Message)
+	case "conflict":
+		writeScimError(w, http.StatusConflict, typed.Message)
+	case "not_found":
+		writeScimError(w, http.StatusNotFound, typed.Message)
+	default:
+		writeScimError(w, http.StatusInternalServerError, typed.Message)
+	}
 }
 
 // resolveScimConnectionFromRequest authenticates one incoming SCIM protocol

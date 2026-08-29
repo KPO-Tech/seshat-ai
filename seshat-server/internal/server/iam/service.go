@@ -72,6 +72,10 @@ type Membership struct {
 	UserEmail       string   `json:"user_email,omitempty"`
 	UserDisplayName string   `json:"user_display_name,omitempty"`
 	UserIsAdmin     bool     `json:"user_is_admin,omitempty"`
+	// ScimExternalID is set only for a membership created by a SCIM
+	// connection (see the scim package) - the IdP's own id for this member,
+	// echoed back so the IdP can correlate its own records with ours.
+	ScimExternalID *string `json:"scim_external_id,omitempty"`
 }
 
 type Session struct {
@@ -1158,6 +1162,7 @@ func toMembership(record sdb.Membership) Membership {
 	return Membership{
 		ID: record.ID, UserID: record.UserID, OrganizationID: record.OrganizationID, Role: record.Role,
 		Status: record.Status, PendingSince: record.PendingSince, CreatedAt: record.CreatedAt,
+		ScimExternalID: record.ScimExternalID,
 	}
 }
 
