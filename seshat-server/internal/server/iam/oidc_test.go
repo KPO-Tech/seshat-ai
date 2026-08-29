@@ -328,6 +328,54 @@ func TestCompleteOIDCLoginRejectsSignupWhenDisabled(t *testing.T) {
 	}
 }
 
+func TestCompleteOIDCLoginRecordsHealthOnSuccess(t *testing.T) {
+	env := newOIDCTestEnv(t, nil)
+	state, nonce := env.beginAndExtractStateParams(t)
+	env.idp.nextClaims = map[string]any{
+		"email": "healthy@example.com", "email_verified": true, "name": "Healthy", "nonce": nonce,
+	}
+	before := time.Now().UTC()
+	if _, err := env.service.CompleteOIDCLogin(context.Background(), env.providerID, "fake-code", state); err != nil {
+		t.Fatalf("CompleteOIDCLogin: %v", err)
+	}
+
+	provider, err := env.service.GetProvider(context.Background(), env.adminPrincipal, env.providerID)
+	if err != nil {
+		t.Fatalf("GetProvider: %v", err)
+	}
+	if provider.LastLoginSuccess == nil || !*provider.LastLoginSuccess {
+		t.Fatalf("expected LastLoginSuccess=true, got %+v", provider.LastLoginSuccess)
+	}
+	if provider.LastLoginAt == nil || provider.LastLoginAt.Before(before) {
+		t.Fatalf("expected LastLoginAt to be set to a recent time, got %+v", provider.LastLoginAt)
+	}
+	if provider.LastError != "" {
+		t.Fatalf("expected no LastError after a successful login, got %q", provider.LastError)
+	}
+}
+
+func TestCompleteOIDCLoginRecordsHealthOnFailure(t *testing.T) {
+	env := newOIDCTestEnv(t, func(p *CreateProviderParams) { p.AllowSignup = false })
+	state, nonce := env.beginAndExtractStateParams(t)
+	env.idp.nextClaims = map[string]any{
+		"email": "nobody-yet@example.com", "email_verified": true, "nonce": nonce,
+	}
+	if _, err := env.service.CompleteOIDCLogin(context.Background(), env.providerID, "fake-code", state); err == nil {
+		t.Fatal("expected signup to be rejected when AllowSignup is false")
+	}
+
+	provider, err := env.service.GetProvider(context.Background(), env.adminPrincipal, env.providerID)
+	if err != nil {
+		t.Fatalf("GetProvider: %v", err)
+	}
+	if provider.LastLoginSuccess == nil || *provider.LastLoginSuccess {
+		t.Fatalf("expected LastLoginSuccess=false, got %+v", provider.LastLoginSuccess)
+	}
+	if provider.LastError == "" {
+		t.Fatal("expected a non-empty LastError after a failed login")
+	}
+}
+
 func TestCompleteOIDCLoginAutoLinksExistingUserWhenAllowed(t *testing.T) {
 	env := newOIDCTestEnv(t, func(p *CreateProviderParams) { p.AllowAutoLink = true })
 	// Register a password account first, matching the email the fake IdP

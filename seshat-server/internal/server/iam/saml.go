@@ -105,15 +105,15 @@ func (s *Service) BeginSAMLLogin(ctx context.Context, providerID, redirectURI st
 // IdP's HTTP-POST to the ACS endpoint - passed as a string, not a
 // *http.Request, so this package doesn't need to depend on net/http
 // request plumbing the way the HTTP handler layer already does.
-func (s *Service) CompleteSAMLLogin(ctx context.Context, providerID, samlResponseBase64 string) (string, error) {
+func (s *Service) CompleteSAMLLogin(ctx context.Context, providerID, samlResponseBase64 string) (result string, err error) {
 	providerID = strings.TrimSpace(providerID)
 	samlResponseBase64 = strings.TrimSpace(samlResponseBase64)
 	if providerID == "" || samlResponseBase64 == "" {
 		return "", ErrInvalidInput("provider_id and SAMLResponse are required")
 	}
+	defer func() { s.recordProviderLoginAttempt(providerID, err) }()
 
-	var result string
-	err := s.db.Transaction(func(tx *gorm.DB) error {
+	err = s.db.Transaction(func(tx *gorm.DB) error {
 		tx = tx.WithContext(ctx)
 
 		record, err := loadSAMLProvider(tx, providerID)

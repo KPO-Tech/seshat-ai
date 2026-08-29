@@ -265,6 +265,16 @@ type Provider struct {
 	Configuration    map[string]string `gorm:"serializer:json;type:text"`
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
+
+	// LastLoginAt/LastLoginSuccess/LastError are this connection's health -
+	// updated only by a completed OIDC/SAML login round trip (see
+	// Service.recordProviderLoginAttempt), never by a Begin*Login failure,
+	// which is almost always local misconfiguration already caught by
+	// provider_config.go's validation and says nothing about whether the
+	// identity provider itself is reachable and correctly configured.
+	LastLoginAt      *time.Time
+	LastLoginSuccess *bool
+	LastError        string `gorm:"type:text"`
 }
 
 // Invitation is a pending or resolved organization access invite. Token

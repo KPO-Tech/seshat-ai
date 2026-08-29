@@ -157,6 +157,10 @@ type Provider struct {
 	Configuration    map[string]string `json:"configuration"`
 	CreatedAt        time.Time         `json:"created_at"`
 	UpdatedAt        time.Time         `json:"updated_at"`
+
+	LastLoginAt      *time.Time `json:"last_login_at"`
+	LastLoginSuccess *bool      `json:"last_login_success"`
+	LastError        string     `json:"last_error"`
 }
 
 type BootstrapParams struct {
@@ -1270,7 +1274,41 @@ func toProvider(gormDB *gorm.DB, record sdb.Provider) Provider {
 		Configuration:    normalizeStringMap(record.Configuration),
 		CreatedAt:        record.CreatedAt,
 		UpdatedAt:        record.UpdatedAt,
+		LastLoginAt:      record.LastLoginAt,
+		LastLoginSuccess: record.LastLoginSuccess,
+		LastError:        record.LastError,
 	}
+}
+
+// recordProviderLoginAttempt updates a Provider's connection-health fields
+// after a completed OIDC/SAML login round trip - success or failure - so an
+// admin can see whether a configured connection actually works, not just
+// whether it was configured. Deliberately its own write outside any
+// surrounding transaction: a failed login's transaction rolls back, but the
+// fact that it failed is exactly the signal this is meant to preserve, so
+// it must survive that rollback rather than be undone by it.
+//
+// Only called from CompleteOIDCLogin/CompleteSAMLLogin, never from either
+// protocol's Begin*Login half - a Begin failure is almost always a bad
+// redirect_uri or an unknown/disabled provider_id, already caught by
+// validation elsewhere, and says nothing about whether the identity
+// provider itself is reachable and correctly configured.
+func (s *Service) recordProviderLoginAttempt(providerID string, loginErr error) {
+	if providerID == "" {
+		return
+	}
+	now := time.Now().UTC()
+	success := loginErr == nil
+	errMsg := ""
+	if loginErr != nil {
+		errMsg = loginErr.Error()
+	}
+	// Best-effort: this must never surface as the login's own failure - by
+	// the time this runs, the login has already succeeded or failed
+	// regardless of whether this particular write lands.
+	s.db.Gorm().Model(&sdb.Provider{}).Where("id = ?", providerID).Updates(map[string]any{
+		"last_login_at": now, "last_login_success": success, "last_error": errMsg,
+	})
 }
 
 // bcryptCost matches the "cost 12 minimum" policy documented in SECURITY.md.

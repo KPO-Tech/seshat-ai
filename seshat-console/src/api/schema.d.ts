@@ -3292,6 +3292,15 @@ export interface components {
             created_at?: string;
             /** Format: date-time */
             updated_at?: string;
+            /**
+             * Format: date-time
+             * @description When a completed OIDC/SAML login round trip through this connection last finished, success or failure. Null if never attempted.
+             */
+            last_login_at?: string | null;
+            /** @description Whether that last completed login succeeded. Null if never attempted. */
+            last_login_success?: boolean | null;
+            /** @description Error message from the last failed login attempt, empty if the last attempt succeeded or none has happened yet. */
+            last_error?: string;
         };
         ProviderInput: {
             organization_id: string;

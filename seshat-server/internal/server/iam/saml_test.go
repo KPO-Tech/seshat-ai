@@ -644,6 +644,46 @@ func TestCompleteSAMLLoginRejectsUnknownProvider(t *testing.T) {
 	}
 }
 
+func TestCompleteSAMLLoginRecordsHealthOnSuccess(t *testing.T) {
+	env := newSAMLE2ETestEnv(t, nil)
+	before := time.Now().UTC()
+	if _, err := env.login(t, "healthy@example.com", "http://localhost:9999/callback"); err != nil {
+		t.Fatalf("CompleteSAMLLogin: %v", err)
+	}
+
+	provider, err := env.service.GetProvider(context.Background(), env.adminPrincipal, env.providerID)
+	if err != nil {
+		t.Fatalf("GetProvider: %v", err)
+	}
+	if provider.LastLoginSuccess == nil || !*provider.LastLoginSuccess {
+		t.Fatalf("expected LastLoginSuccess=true, got %+v", provider.LastLoginSuccess)
+	}
+	if provider.LastLoginAt == nil || provider.LastLoginAt.Before(before) {
+		t.Fatalf("expected LastLoginAt to be set to a recent time, got %+v", provider.LastLoginAt)
+	}
+	if provider.LastError != "" {
+		t.Fatalf("expected no LastError after a successful login, got %q", provider.LastError)
+	}
+}
+
+func TestCompleteSAMLLoginRecordsHealthOnFailure(t *testing.T) {
+	env := newSAMLE2ETestEnv(t, func(p *CreateProviderParams) { p.AllowSignup = false })
+	if _, err := env.login(t, "nobody-yet@example.com", "http://localhost:9999/callback"); err == nil {
+		t.Fatal("expected signup to be rejected when AllowSignup is false")
+	}
+
+	provider, err := env.service.GetProvider(context.Background(), env.adminPrincipal, env.providerID)
+	if err != nil {
+		t.Fatalf("GetProvider: %v", err)
+	}
+	if provider.LastLoginSuccess == nil || *provider.LastLoginSuccess {
+		t.Fatalf("expected LastLoginSuccess=false, got %+v", provider.LastLoginSuccess)
+	}
+	if provider.LastError == "" {
+		t.Fatal("expected a non-empty LastError after a failed login")
+	}
+}
+
 func TestCompleteSAMLLoginAppliesClaimMappings(t *testing.T) {
 	env := newSAMLE2ETestEnv(t, func(p *CreateProviderParams) {
 		p.ClaimMappings = map[string]string{"email": "urn:oid:0.9.2342.19200300.100.1.3"}

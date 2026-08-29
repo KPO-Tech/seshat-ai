@@ -10,9 +10,15 @@ import { Button,
   Space,
   Switch,
   Tag,
+  Tooltip,
   Typography, } from 'antd'
 import type { TableProps } from 'antd'
-import { PlusOutlined, DeleteOutlined, EditOutlined, CloudServerOutlined } from '@ant-design/icons'
+import { PlusOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  CloudServerOutlined,
+  CheckCircleFilled,
+  CloseCircleFilled, } from '@ant-design/icons'
 import { useProvidersList,
   useCreateProvider,
   useUpdateProvider,
@@ -27,6 +33,32 @@ import { palette } from '@/theme/tokens'
 import { presentText } from '@/lib/present'
 
 const PAGE_SIZE = 20
+
+// HealthBadge reflects whether a login through this connection has ever
+// actually completed - separate from "enabled" (which only says the
+// connection is turned on, not that it works). Only OIDC/SAML providers
+// carry this signal today: it's updated at the end of CompleteOIDCLogin/
+// CompleteSAMLLogin, so an OAuth2-kind provider (no login flow of its own
+// yet) always shows "No activity yet".
+function HealthBadge({ provider }: { provider: Provider }) {
+  if (provider.last_login_success === undefined || provider.last_login_success === null) {
+    return <Tag style={{ margin: 0 }}>No activity yet</Tag>
+  }
+  const label = provider.last_login_at ? new Date(provider.last_login_at).toLocaleString() : ''
+  return provider.last_login_success ? (
+    <Tooltip title={label ? `Last login succeeded ${label}` : 'Last login succeeded'}>
+      <Tag color="green" icon={<CheckCircleFilled />} style={{ margin: 0 }}>
+        Healthy
+      </Tag>
+    </Tooltip>
+  ) : (
+    <Tooltip title={[label ? `Last login failed ${label}` : 'Last login failed', provider.last_error].filter(Boolean).join(' — ')}>
+      <Tag color="red" icon={<CloseCircleFilled />} style={{ margin: 0 }}>
+        Last login failed
+      </Tag>
+    </Tooltip>
+  )
+}
 
 export function ProvidersPage() { const organizationId = useScopedOrganizationId()
   const [page, setPage] = useState(1)
@@ -73,6 +105,7 @@ export function ProvidersPage() { const organizationId = useScopedOrganizationId
       width: 100,
       sorter: true,
       render: (enabled: boolean) => (enabled ? <Tag color="green">Enabled</Tag> : <Tag>Disabled</Tag>), },
+    { title: 'Health', key: 'health', width: 150, render: (_, record) => <HealthBadge provider={record} /> },
     { title: 'Issuer / Metadata', key: 'issuer', render: (_, record) => presentText(record.issuer_url || record.metadata_url, 'Not configured') },
     { title: '',
       key: 'actions',

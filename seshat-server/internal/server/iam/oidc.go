@@ -109,16 +109,16 @@ func (s *Service) BeginOIDCLogin(ctx context.Context, providerID, redirectURI st
 // callers (the HTTP handler) are expected to redirect the browser there
 // either way, appending ?error=... instead when err is non-nil and a
 // redirect destination could still be recovered.
-func (s *Service) CompleteOIDCLogin(ctx context.Context, providerID, code, state string) (string, error) {
+func (s *Service) CompleteOIDCLogin(ctx context.Context, providerID, code, state string) (result string, err error) {
 	providerID = strings.TrimSpace(providerID)
 	code = strings.TrimSpace(code)
 	state = strings.TrimSpace(state)
 	if providerID == "" || code == "" || state == "" {
 		return "", ErrInvalidInput("provider_id, code and state are required")
 	}
+	defer func() { s.recordProviderLoginAttempt(providerID, err) }()
 
-	var result string
-	err := s.db.Transaction(func(tx *gorm.DB) error {
+	err = s.db.Transaction(func(tx *gorm.DB) error {
 		tx = tx.WithContext(ctx)
 
 		var loginState sdb.OIDCLoginState

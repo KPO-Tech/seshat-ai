@@ -5304,6 +5304,18 @@ components:
           additionalProperties: { type: string }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+        last_login_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When a completed OIDC/SAML login round trip through this connection last finished, success or failure. Null if never attempted.
+        last_login_success:
+          type: boolean
+          nullable: true
+          description: Whether that last completed login succeeded. Null if never attempted.
+        last_error:
+          type: string
+          description: Error message from the last failed login attempt, empty if the last attempt succeeded or none has happened yet.
 
     ProviderInput:
       type: object
