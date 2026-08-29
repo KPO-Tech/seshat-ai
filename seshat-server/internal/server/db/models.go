@@ -244,10 +244,15 @@ type Invitation struct {
 // for why.
 type Group struct {
 	ID             string `gorm:"primaryKey;size:32"`
-	OrganizationID string `gorm:"size:32;not null;uniqueIndex:idx_group_org_slug;index"`
+	OrganizationID string `gorm:"size:32;not null;uniqueIndex:idx_group_org_slug;index;uniqueIndex:idx_group_org_scim_external"`
 	Name           string `gorm:"size:255;not null"`
 	Slug           string `gorm:"size:255;not null;uniqueIndex:idx_group_org_slug"`
 	Description    string `gorm:"type:text"`
+	// ScimExternalID mirrors Membership.ScimExternalID - set once for a
+	// group created via a SCIM connection's auto-create-teams mode, nil for
+	// every group created any other way. Unique per organization (not
+	// globally), same reasoning as Membership's.
+	ScimExternalID *string `gorm:"size:255;uniqueIndex:idx_group_org_scim_external"`
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }

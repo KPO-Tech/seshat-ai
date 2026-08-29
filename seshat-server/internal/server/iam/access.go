@@ -29,6 +29,10 @@ type Group struct {
 	MemberUserIDs  []string  `json:"member_user_ids"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
+	// ScimExternalID is set only for a group created by a SCIM connection's
+	// auto-create-teams mode (see the scim package) - the IdP's own id for
+	// this group, echoed back so the IdP can correlate its own records.
+	ScimExternalID *string `json:"scim_external_id,omitempty"`
 }
 
 // PolicyBinding grants permissions to a role, user or group. ResourceType/
@@ -577,6 +581,7 @@ func toGroup(record sdb.Group, memberUserIDs []string) Group {
 		MemberUserIDs:  append([]string(nil), memberUserIDs...),
 		CreatedAt:      record.CreatedAt,
 		UpdatedAt:      record.UpdatedAt,
+		ScimExternalID: record.ScimExternalID,
 	}
 }
 
