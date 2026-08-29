@@ -84,7 +84,7 @@ type Membership struct {
 	// instead of a raw constraint error on the happy path; this index is the
 	// last-resort guard against a race between that check and the INSERT.
 	UserID         string `gorm:"size:32;not null;uniqueIndex:idx_membership_user_org;uniqueIndex:idx_membership_user"`
-	OrganizationID string `gorm:"size:32;not null;uniqueIndex:idx_membership_user_org;index:idx_membership_org"`
+	OrganizationID string `gorm:"size:32;not null;uniqueIndex:idx_membership_user_org;index:idx_membership_org;uniqueIndex:idx_membership_org_scim_external"`
 	Role           string `gorm:"size:64;not null"`
 	// Status is "active" (default - every pre-existing membership-creation
 	// path is unaffected, see the Go zero-value/gorm-default-tag omission
@@ -92,10 +92,19 @@ type Membership struct {
 	// full access already, just flagged for admin attention), or "blocked"
 	// (excluded from every authorization check in access.go, as if the
 	// membership didn't exist - set by BlockExpiredPendingMemberships once
-	// a pending membership ages past the confirmation window unconfirmed).
+	// a pending membership ages past the confirmation window unconfirmed,
+	// or by a SCIM PATCH setting active:false - see the scim package).
 	Status       string `gorm:"size:16;not null;default:'active'"`
 	PendingSince *time.Time
-	CreatedAt    time.Time
+	// ScimExternalID is the IdP's own id for this membership's user, set
+	// once at SCIM-driven creation and never changed - PATCH/DELETE by the
+	// IdP address a resource by this id, not by our internal UserID. Nil
+	// for every membership not created via SCIM. Unique per organization
+	// (not globally: two different orgs could each run their own SCIM
+	// connection to unrelated IdP tenants that happen to reuse an id
+	// scheme), paired with OrganizationID in idx_membership_org_scim_external.
+	ScimExternalID *string `gorm:"size:255;uniqueIndex:idx_membership_org_scim_external"`
+	CreatedAt      time.Time
 }
 
 // Session is an active bearer-token login. Token stores the SHA-256 hash
@@ -827,6 +836,57 @@ type WebSearchOrgPolicy struct {
 	AllowedDomainsJSON string `gorm:"column:allowed_domains_json;type:text;not null;default:'[]'"`
 	BlockedDomainsJSON string `gorm:"column:blocked_domains_json;type:text;not null;default:'[]'"`
 	UpdatedAt          time.Time
+}
+
+// ScimConnection is one organization's SCIM 2.0 provisioning connection
+// (RFC 7643/7644) - an enterprise IdP (Okta, Entra ID, ...) authenticates
+// against /scim/v2/* with the bearer token this row's TokenHash matches,
+// scoped to exactly this organization. Deliberately one connection per org
+// (uniqueIndex on OrganizationID alone, same shape as EmbedderSetting) - a
+// second row for the same org replaces rather than adds a connection.
+//
+// TokenHash follows the one-way HashOpaqueToken pattern (see secrets.go),
+// not EncryptSecret/DecryptSecret: like Device.Token or Invitation.Token,
+// the raw value only needs to be *compared* at request time, never read
+// back - it's shown to the admin once, at creation or rotation, and never
+// again.
+type ScimConnection struct {
+	ID              string `gorm:"primaryKey;size:32"`
+	OrganizationID  string `gorm:"size:32;not null;uniqueIndex"`
+	CreatedByUserID string `gorm:"size:32;not null"`
+	Name            string `gorm:"size:200;not null"`
+	Enabled         bool   `gorm:"not null;default:true"`
+	TokenHash       string `gorm:"size:64;not null;uniqueIndex"`
+	// SyncGroups=false means /Groups pushes are recorded (ScimSyncEvent) for
+	// visibility but never touch a real Group/GroupMember row - "metadata
+	// only" mode. AutoCreateTeams only has an effect when SyncGroups=true.
+	SyncGroups      bool `gorm:"not null;default:false"`
+	AutoCreateTeams bool `gorm:"not null;default:false"`
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
+// ScimSyncEvent is an append-only log of SCIM protocol operations against
+// one connection - the source of truth for the admin-facing "health" view
+// (last sync, recent errors) rather than a separately maintained summary
+// column, and deliberately not a retry queue: SCIM here is a synchronous,
+// IdP-initiated push, so a well-formed SCIM error response IS the retry
+// mechanism (the IdP's own scheduler retries), not something this table
+// drives. OrganizationID is denormalized from ScimConnectionID so recent-
+// activity queries don't need a join.
+type ScimSyncEvent struct {
+	ID               string `gorm:"primaryKey;size:32"`
+	ScimConnectionID string `gorm:"size:32;not null;index"`
+	OrganizationID   string `gorm:"size:32;not null;index:idx_scim_sync_event_org_created"`
+	// Operation is e.g. "user.create", "user.patch", "user.delete",
+	// "group.sync". ResourceType is "User" or "Group". ExternalID is the
+	// IdP's id for the resource this operation targeted, when known.
+	Operation    string    `gorm:"size:64;not null"`
+	ResourceType string    `gorm:"size:32;not null"`
+	ExternalID   string    `gorm:"size:255"`
+	Success      bool      `gorm:"not null"`
+	ErrorMessage string    `gorm:"type:text"`
+	CreatedAt    time.Time `gorm:"index:idx_scim_sync_event_org_created"`
 }
 
 // MCPServerConfig is an organization's shared MCP server definition — a

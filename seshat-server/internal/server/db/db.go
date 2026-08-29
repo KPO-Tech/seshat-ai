@@ -148,6 +148,8 @@ func (d *DB) Migrate() error {
 		&ProspectingCache{},
 		&ProspectingUsage{},
 		&ProspectingSettings{},
+		&ScimConnection{},
+		&ScimSyncEvent{},
 	)
 }
 

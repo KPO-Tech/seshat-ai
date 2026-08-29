@@ -93,3 +93,79 @@ func TestMembershipUserIDIsUniqueAcrossOrganizations(t *testing.T) {
 		t.Fatal("expected a second membership for the same user in a different organization to violate the unique index")
 	}
 }
+
+// TestScimSchemaMigratesAndEnforcesUniqueness is Étape 1's cold-migration
+// check for the SCIM tables (see docs/helps/audit-2026-08-29-openwork-den-comparison.md
+// § 3): a fresh database migrates cleanly, one ScimConnection per
+// organization is enforced at the schema level (not just application code),
+// and Membership.ScimExternalID is unique per organization while still
+// allowing any number of non-SCIM memberships (NULL) to coexist.
+func TestScimSchemaMigratesAndEnforcesUniqueness(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "state.db")
+	database, err := Open(Config{Driver: DriverSQLite, DSN: dbPath})
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer database.Close()
+
+	if err := database.Migrate(); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+
+	org := Organization{ID: "org_1", Name: "Seshat", Slug: "seshat"}
+	if err := database.Gorm().Create(&org).Error; err != nil {
+		t.Fatalf("create organization: %v", err)
+	}
+
+	connection := ScimConnection{ID: "scim_1", OrganizationID: org.ID, Name: "Okta", TokenHash: "hash-a"}
+	if err := database.Gorm().Create(&connection).Error; err != nil {
+		t.Fatalf("create scim connection: %v", err)
+	}
+	duplicateOrg := ScimConnection{ID: "scim_2", OrganizationID: org.ID, Name: "Entra ID", TokenHash: "hash-b"}
+	if err := database.Gorm().Create(&duplicateOrg).Error; err == nil {
+		t.Fatal("expected a second SCIM connection for the same organization to violate the unique index")
+	}
+
+	otherOrg := Organization{ID: "org_2", Name: "Other", Slug: "other"}
+	if err := database.Gorm().Create(&otherOrg).Error; err != nil {
+		t.Fatalf("create other organization: %v", err)
+	}
+	duplicateToken := ScimConnection{ID: "scim_3", OrganizationID: otherOrg.ID, Name: "Duplicate token", TokenHash: "hash-a"}
+	if err := database.Gorm().Create(&duplicateToken).Error; err == nil {
+		t.Fatal("expected a reused token hash across organizations to violate the unique index")
+	}
+
+	event := ScimSyncEvent{
+		ID: "sse_1", ScimConnectionID: connection.ID, OrganizationID: org.ID,
+		Operation: "user.create", ResourceType: "User", ExternalID: "ext-1", Success: true,
+	}
+	if err := database.Gorm().Create(&event).Error; err != nil {
+		t.Fatalf("create scim sync event: %v", err)
+	}
+
+	userA := User{ID: "usr_a", Email: "a@example.com", DisplayName: "A", PasswordHash: "hash"}
+	userB := User{ID: "usr_b", Email: "b@example.com", DisplayName: "B", PasswordHash: "hash"}
+	if err := database.Gorm().Create(&userA).Error; err != nil {
+		t.Fatalf("create user A: %v", err)
+	}
+	if err := database.Gorm().Create(&userB).Error; err != nil {
+		t.Fatalf("create user B: %v", err)
+	}
+
+	externalID := "idp-external-1"
+	memberA := Membership{ID: "mem_a", UserID: userA.ID, OrganizationID: org.ID, Role: "member", ScimExternalID: &externalID}
+	if err := database.Gorm().Create(&memberA).Error; err != nil {
+		t.Fatalf("create scim-provisioned membership: %v", err)
+	}
+	memberBSameExternal := Membership{ID: "mem_b", UserID: userB.ID, OrganizationID: org.ID, Role: "member", ScimExternalID: &externalID}
+	if err := database.Gorm().Create(&memberBSameExternal).Error; err == nil {
+		t.Fatal("expected reusing a SCIM external id within the same organization to violate the unique index")
+	}
+
+	// Two non-SCIM memberships (ScimExternalID nil) in the same org must not
+	// collide with each other or with the SCIM-provisioned one above.
+	memberBNoExternal := Membership{ID: "mem_b2", UserID: userB.ID, OrganizationID: org.ID, Role: "member"}
+	if err := database.Gorm().Create(&memberBNoExternal).Error; err != nil {
+		t.Fatalf("expected a non-SCIM membership to coexist with a SCIM one in the same org: %v", err)
+	}
+}
