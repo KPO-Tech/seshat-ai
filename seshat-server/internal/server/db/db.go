@@ -143,6 +143,7 @@ func (d *DB) Migrate() error {
 		&WorkspaceChatMessageRecord{},
 		&PasswordResetToken{},
 		&OIDCLoginState{},
+		&SAMLAuthRequestState{},
 		&ProspectingSweep{},
 		&ProspectingBusiness{},
 		&ProspectingCache{},

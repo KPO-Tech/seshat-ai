@@ -124,8 +124,21 @@ func validateProviderConfig(config normalizedProviderConfig) error {
 		if config.EntityID == "" {
 			return ErrInvalidInput("entity_id is required for saml providers")
 		}
-		if config.MetadataURL == "" && config.SSOURL == "" {
-			return ErrInvalidInput("saml provider requires metadata_url or sso_url")
+		// sso_url and x509_certificate are both required, not "either/or"
+		// with metadata_url: BeginSAMLLogin/CompleteSAMLLogin (saml.go) read
+		// these two fields directly and never fetch metadata_url - a
+		// provider saved with only metadata_url set would pass this check
+		// but silently fail at actual login time, exactly the "looks
+		// configured but does nothing" trap this validation exists to
+		// prevent (see the staged SAML plan's research notes). Dynamic
+		// metadata_url fetching, if ever added, belongs here as an
+		// additional way to satisfy this same requirement, not a
+		// replacement for it.
+		if config.SSOURL == "" {
+			return ErrInvalidInput("saml provider requires sso_url")
+		}
+		if config.X509Certificate == "" {
+			return ErrInvalidInput("saml provider requires x509_certificate - without it, no assertion signature can ever be verified")
 		}
 	}
 	return nil

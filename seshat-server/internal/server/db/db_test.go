@@ -3,6 +3,7 @@ package db
 import (
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestMigrateCreatesSchemaAndEnforcesUniqueSlug(t *testing.T) {
@@ -167,5 +168,41 @@ func TestScimSchemaMigratesAndEnforcesUniqueness(t *testing.T) {
 	memberBNoExternal := Membership{ID: "mem_b2", UserID: userB.ID, OrganizationID: org.ID, Role: "member"}
 	if err := database.Gorm().Create(&memberBNoExternal).Error; err != nil {
 		t.Fatalf("expected a non-SCIM membership to coexist with a SCIM one in the same org: %v", err)
+	}
+}
+
+// TestSAMLAuthRequestStateSchemaMigratesAndEnforcesUniqueness is the SAML
+// SSO plan's cold-migration check (mirrors the SCIM one above): a fresh
+// database migrates SAMLAuthRequestState cleanly, and RequestIDHash - the
+// InResponseTo correlator, SAML's equivalent of OIDCLoginState.StateHash -
+// is unique, since two in-flight login attempts must never collide on the
+// same AuthnRequest id.
+func TestSAMLAuthRequestStateSchemaMigratesAndEnforcesUniqueness(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "state.db")
+	database, err := Open(Config{Driver: DriverSQLite, DSN: dbPath})
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer database.Close()
+
+	if err := database.Migrate(); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+
+	now := time.Now().UTC()
+	first := SAMLAuthRequestState{
+		ID: "sam_1", ProviderID: "prv_1", RequestIDHash: "hash-a",
+		RedirectURI: "http://localhost:1234/callback", CreatedAt: now, ExpiresAt: now.Add(10 * time.Minute),
+	}
+	if err := database.Gorm().Create(&first).Error; err != nil {
+		t.Fatalf("create saml auth request state: %v", err)
+	}
+
+	duplicate := SAMLAuthRequestState{
+		ID: "sam_2", ProviderID: "prv_1", RequestIDHash: "hash-a",
+		RedirectURI: "http://localhost:1234/callback", CreatedAt: now, ExpiresAt: now.Add(10 * time.Minute),
+	}
+	if err := database.Gorm().Create(&duplicate).Error; err == nil {
+		t.Fatal("expected a reused RequestIDHash to violate the unique index")
 	}
 }

@@ -176,6 +176,23 @@ type OIDCLoginState struct {
 	ExpiresAt    time.Time
 }
 
+// SAMLAuthRequestState is SAML's counterpart to OIDCLoginState - one
+// in-flight SP-initiated login attempt. SAML has no separate "state"
+// parameter the way OIDC does: the AuthnRequest's own ID doubles as both
+// identifier and anti-replay/anti-forgery correlator (the IdP's Response
+// echoes it back as InResponseTo), so RequestIDHash plays StateHash's
+// exact role. No PKCE/nonce equivalent - SAML has no PKCE concept, and
+// replay protection is InResponseTo (checked here) plus the assertion's
+// own Conditions (NotBefore/NotOnOrAfter, checked at ACS time, not stored).
+type SAMLAuthRequestState struct {
+	ID            string `gorm:"primaryKey;size:32"`
+	ProviderID    string `gorm:"size:32;not null;index"`
+	RequestIDHash string `gorm:"uniqueIndex;size:64;not null"`
+	RedirectURI   string `gorm:"size:500;not null"`
+	CreatedAt     time.Time
+	ExpiresAt     time.Time
+}
+
 // Application is an OAuth/OIDC client application managed by the control plane.
 type Application struct {
 	ID                     string   `gorm:"primaryKey;size:32"`
