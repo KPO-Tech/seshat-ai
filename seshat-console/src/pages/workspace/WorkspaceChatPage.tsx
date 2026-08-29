@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Input, Select, Space, Tooltip, Typography } from 'antd'
 import { ArrowDownOutlined, DownOutlined, PlusOutlined, SendOutlined } from '@ant-design/icons'
 import { useAgentPresetsList } from '@/api/agentPresets'
-import { useProviderSettingsList } from '@/api/providerSettings'
+import { useUsableProviderSettingsList } from '@/api/providerSettings'
 import { ProviderIcon } from '@/components/ProviderIcon'
 import { WorkspaceChatMessage } from '@/components/workspace/WorkspaceChatMessage'
 import { getProviderLabel, getProviderModels } from '@/lib/providerCatalog'
@@ -198,7 +198,7 @@ export function WorkspaceChatPage() {
   const pendingEventsRef = useRef<WorkspaceChatEvent[]>([])
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const providerSettings = useProviderSettingsList(activeOrganizationId)
+  const providerSettings = useUsableProviderSettingsList(activeOrganizationId)
   const agentPresets = useAgentPresetsList(activeOrganizationId)
 
   function stopStreaming() {
@@ -613,8 +613,18 @@ export function WorkspaceChatPage() {
             />
 
             <div className="workspace-chat-composer__toolbar">
-              <div style={{ fontSize: 11.5, color: palette.inkTertiary }}>
-                Press <kbd style={{ background: 'rgba(255,255,255,0.06)', padding: '2px 5px', borderRadius: 4 }}>Enter</kbd> to send
+              <div className="workspace-chat-composer__tools">
+                <Tooltip title="Attach files">
+                  <Button
+                    type="text"
+                    icon={<PlusOutlined />}
+                    className="workspace-chat-composer__attach"
+                    aria-label="Attach files"
+                  />
+                </Tooltip>
+                <div className="workspace-chat-composer__hint">
+                  Press <kbd>Enter</kbd> to send
+                </div>
               </div>
 
               <div className="workspace-chat-composer__selectors">

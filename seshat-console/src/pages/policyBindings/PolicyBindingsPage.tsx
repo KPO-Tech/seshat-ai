@@ -10,6 +10,8 @@ import { usePolicyBindingsList,
   type PolicyBindingInput, } from '@/api/policyBindings'
 import { useGroupsList } from '@/api/groups'
 import { useRolesList } from '@/api/roles'
+import { useCorporaList } from '@/api/knowledge'
+import { useProviderSettingsList } from '@/api/providerSettings'
 import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
 import { ConsoleTable } from '@/components/ConsoleTable'
@@ -26,6 +28,15 @@ const SUBJECT_TYPE_LABELS: Record<string, string> = {
   user: 'User',
   group: 'Team',
   role: 'Role',
+}
+
+// Matches iam.knownResourceTypes on the backend - a binding scoped to one of
+// these narrows it to that single resource instead of the whole
+// organization (see each service's own resource-scope tests for what that
+// unlocks: per-corpus sharing, per-member/team provider access control).
+const RESOURCE_TYPE_LABELS: Record<string, string> = {
+  corpus: 'Corpus',
+  provider_setting: 'Provider setting',
 }
 
 export function PolicyBindingsPage() { const organizationId = useScopedOrganizationId()
@@ -67,6 +78,15 @@ export function PolicyBindingsPage() { const organizationId = useScopedOrganizat
       key: 'permission_codes',
       width: 110,
       render: (codes: string[]) => codes?.length ?? 0, },
+    { title: 'Scope',
+      key: 'scope',
+      width: 160,
+      render: (_, record) =>
+        record.resource_type ? (
+          <Tag color="blue">{RESOURCE_TYPE_LABELS[record.resource_type] ?? record.resource_type}</Tag>
+        ) : (
+          <Typography.Text style={{ color: palette.inkTertiary }}>Organization-wide</Typography.Text>
+        ), },
     { title: '',
       key: 'actions',
       width: 96,
@@ -166,11 +186,15 @@ function PolicyBindingFormDrawer({ binding,
   onSubmit: (values: Omit<PolicyBindingInput, 'organization_id'>) => void
   submitting: boolean }) { const [form] = Form.useForm<Omit<PolicyBindingInput, 'organization_id'>>()
   const subjectType = Form.useWatch('subject_type', form)
+  const resourceType = Form.useWatch('resource_type', form)
   const { data: groupsData } = useGroupsList(organizationId ?? undefined, { limit: 200 })
   const { data: rolesData } = useRolesList(organizationId ?? undefined)
+  const { data: corporaData } = useCorporaList(organizationId ?? undefined, { limit: 200 })
+  const { data: providerSettingsData } = useProviderSettingsList(organizationId ?? undefined)
 
   useEffect(() => { if (open) { form.setFieldsValue(
-        binding ?? { name: '', description: '', subject_type: 'user', subject_id: '', permission_codes: [] },
+        binding ?? { name: '', description: '', subject_type: 'user', subject_id: '',
+          permission_codes: [], resource_type: undefined, resource_id: undefined, },
       ) } }, [open, binding, form])
 
   return (
@@ -222,6 +246,35 @@ function PolicyBindingFormDrawer({ binding,
         <Form.Item name="permission_codes" label="Permissions">
           <PermissionChecklist />
         </Form.Item>
+        <Form.Item
+          name="resource_type"
+          label="Scope"
+          tooltip="Leave as organization-wide unless you're restricting access to one specific corpus or provider setting."
+        >
+          <Select
+            allowClear
+            placeholder="Organization-wide"
+            options={Object.entries(RESOURCE_TYPE_LABELS).map(([value, label]) => ({ value, label }))}
+            onChange={() => form.setFieldValue('resource_id', undefined)}
+          />
+        </Form.Item>
+        {resourceType && (
+          <Form.Item name="resource_id" label={RESOURCE_TYPE_LABELS[resourceType] ?? 'Resource'} rules={[{ required: true, message: 'Required' }]}>
+            {resourceType === 'provider_setting' ? (
+              <Select
+                showSearch
+                optionFilterProp="label"
+                options={(providerSettingsData ?? []).map((p) => ({ value: p.id, label: `${p.provider} (${p.default_model})` }))}
+              />
+            ) : (
+              <Select
+                showSearch
+                optionFilterProp="label"
+                options={(corporaData?.corpora ?? []).map((c) => ({ value: c.id, label: c.name }))}
+              />
+            )}
+          </Form.Item>
+        )}
       </Form>
     </Drawer>
   ) }

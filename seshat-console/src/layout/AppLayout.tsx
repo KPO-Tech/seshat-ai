@@ -156,20 +156,22 @@ export function AppLayout() {
       >
         {/* Brand Header */}
         <div
+          className="console-brand"
           style={{
-            padding: '20px 18px 16px',
+            padding: '10px 18px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             borderBottom: `1px solid ${palette.borderSubtle}`,
-            marginBottom: 8,
+            minHeight: 56,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div
+              className="console-brand__mark"
               style={{
-                width: 28,
-                height: 28,
+                width: 34,
+                height: 34,
                 borderRadius: 8,
                 background: 'linear-gradient(135deg, #FF8F3D 0%, #EF7C2F 100%)',
                 boxShadow: '0 2px 8px rgba(239, 124, 47, 0.35)',
@@ -185,10 +187,10 @@ export function AppLayout() {
               S
             </div>
             <div>
-              <div style={{ color: palette.ink, fontWeight: 700, fontSize: 14.5, letterSpacing: '-0.01em', lineHeight: 1.2 }}>
+              <div style={{ color: palette.ink, fontWeight: 700, fontSize: 14, letterSpacing: '-0.01em', lineHeight: 1.15 }}>
                 Seshat Console
               </div>
-              <div style={{ fontSize: 11, color: palette.inkTertiary, letterSpacing: '0.04em' }}>
+              <div style={{ fontSize: 10.5, color: palette.inkTertiary, letterSpacing: '0.04em', marginTop: 2 }}>
                 CONTROL PLANE
               </div>
             </div>
@@ -234,11 +236,12 @@ export function AppLayout() {
 
       <Layout style={{ minWidth: 0, height: '100vh', background: palette.canvas }}>
         <Header
+          className="console-topbar"
           style={{
             background: palette.surface,
-            display: 'flex',
+            display: 'grid',
+            gridTemplateColumns: 'minmax(220px, 1fr) auto minmax(220px, 1fr)',
             alignItems: 'center',
-            justifyContent: 'space-between',
             padding: '0 24px',
             borderBottom: `1px solid ${palette.border}`,
             minHeight: 54,
@@ -248,7 +251,7 @@ export function AppLayout() {
             gap: 16,
           }}
         >
-          <div style={{ minWidth: 0, flex: '1 1 auto', overflow: 'hidden' }}>
+          <div className="console-topbar__scope" style={{ minWidth: 0, overflow: 'hidden' }}>
             <Space size={10} align="center" wrap={false} style={{ maxWidth: '100%' }}>
               <span
                 style={{
@@ -275,94 +278,96 @@ export function AppLayout() {
             </Space>
           </div>
 
-          {showWorkspaceOrganizationSwitcher && (
-            <Select
-              size="small"
-              value={workspaceOrganizationId ?? undefined}
-              onChange={(nextOrganizationId) => setSelectedOrganizationId(nextOrganizationId)}
-              options={organizations.map((organization) => ({ value: organization.id, label: organization.name }))}
-              style={{ minWidth: 170, flexShrink: 0 }}
-              aria-label="Active organization for Workspace"
-            />
+          {secondaryNavItems.length > 1 && (
+            <nav className="console-subnav-bar" aria-label="Section navigation">
+              {secondaryNavItems.map((item) => {
+                const isActive = activeSecondary?.key === item.key
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => navigate(item.path)}
+                    className={`console-subnav-item ${isActive ? 'console-subnav-item--active' : ''}`}
+                  >
+                    {item.label}
+                  </button>
+                )
+              })}
+            </nav>
           )}
 
-          <Dropdown
-            trigger={['click']}
-            menu={{
-              items: [
-                {
-                  key: 'user-info',
-                  disabled: true,
-                  label: (
-                    <div style={{ padding: '4px 0' }}>
-                      <div style={{ fontWeight: 600, color: palette.ink }}>{user?.display_name || 'User'}</div>
-                      <div style={{ fontSize: 12, color: palette.inkTertiary }}>{user?.email}</div>
-                    </div>
-                  ),
-                },
-                { type: 'divider' },
-                {
-                  key: 'profile',
-                  icon: <UserOutlined />,
-                  label: 'My Account',
-                  onClick: () => navigate('/me/profile'),
-                },
-                {
-                  key: 'logout',
-                  icon: <LogoutOutlined />,
-                  label: 'Log out',
-                  onClick: () => logout.mutate(),
-                },
-              ],
-            }}
-          >
-            <Space
-              size={8}
-              style={{
-                cursor: 'pointer',
-                flexShrink: 0,
-                padding: '4px 10px',
-                borderRadius: 8,
-                background: 'rgba(255, 255, 255, 0.03)',
-                border: `1px solid ${palette.borderSubtle}`,
-                transition: 'background 0.15s ease',
+          <div className="console-topbar__session">
+            {showWorkspaceOrganizationSwitcher && (
+              <Select
+                size="small"
+                value={workspaceOrganizationId ?? undefined}
+                onChange={(nextOrganizationId) => setSelectedOrganizationId(nextOrganizationId)}
+                options={organizations.map((organization) => ({ value: organization.id, label: organization.name }))}
+                style={{ minWidth: 170, flexShrink: 0 }}
+                aria-label="Active organization for Workspace"
+              />
+            )}
+
+            <Dropdown
+              trigger={['click']}
+              menu={{
+                items: [
+                  {
+                    key: 'user-info',
+                    disabled: true,
+                    label: (
+                      <div style={{ padding: '4px 0' }}>
+                        <div style={{ fontWeight: 600, color: palette.ink }}>{user?.display_name || 'User'}</div>
+                        <div style={{ fontSize: 12, color: palette.inkTertiary }}>{user?.email}</div>
+                      </div>
+                    ),
+                  },
+                  { type: 'divider' },
+                  {
+                    key: 'profile',
+                    icon: <UserOutlined />,
+                    label: 'My Account',
+                    onClick: () => navigate('/me/profile'),
+                  },
+                  {
+                    key: 'logout',
+                    icon: <LogoutOutlined />,
+                    label: 'Log out',
+                    onClick: () => logout.mutate(),
+                  },
+                ],
               }}
             >
-              <Avatar
-                size={24}
+              <Space
+                size={8}
                 style={{
-                  background: palette.accentSoft,
-                  color: palette.accentHover,
-                  border: `1px solid ${palette.accentSoftBorder}`,
-                  fontSize: 12,
-                  fontWeight: 600,
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  padding: '4px 10px',
+                  borderRadius: 8,
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: `1px solid ${palette.borderSubtle}`,
+                  transition: 'background 0.15s ease',
                 }}
-                icon={<UserOutlined />}
-              />
-              <Typography.Text className="console-user-label" style={{ fontSize: 13, color: palette.inkSecondary, fontWeight: 500 }}>
-                {user?.display_name ?? user?.email}
-              </Typography.Text>
-            </Space>
-          </Dropdown>
-        </Header>
-
-        {secondaryNavItems.length > 1 && (
-          <div className="console-subnav-bar">
-            {secondaryNavItems.map((item) => {
-              const isActive = activeSecondary?.key === item.key
-              return (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => navigate(item.path)}
-                  className={`console-subnav-item ${isActive ? 'console-subnav-item--active' : ''}`}
-                >
-                  {item.label}
-                </button>
-              )
-            })}
+              >
+                <Avatar
+                  size={24}
+                  style={{
+                    background: palette.accentSoft,
+                    color: palette.accentHover,
+                    border: `1px solid ${palette.accentSoftBorder}`,
+                    fontSize: 12,
+                    fontWeight: 600,
+                  }}
+                  icon={<UserOutlined />}
+                />
+                <Typography.Text className="console-user-label" style={{ fontSize: 13, color: palette.inkSecondary, fontWeight: 500 }}>
+                  {user?.display_name ?? user?.email}
+                </Typography.Text>
+              </Space>
+            </Dropdown>
           </div>
-        )}
+        </Header>
 
         <Content
           className="console-content"

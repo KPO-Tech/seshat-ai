@@ -51,6 +51,14 @@ body {
   overflow-x: auto;
 }
 
+.console-topbar__session {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 /* Page Header */
 .console-page-header {
   display: flex;
@@ -59,6 +67,16 @@ body {
   gap: 16px;
   flex-wrap: wrap;
   margin-bottom: 24px;
+}
+
+.console-page-header--compact {
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.console-page-header__badge {
+  min-width: 0;
+  flex: 0 1 auto;
 }
 
 .console-page-header__meta {
@@ -90,6 +108,10 @@ body {
   justify-content: flex-end;
 }
 
+.console-page-header--compact .console-page-header__actions {
+  flex: 1 1 100%;
+}
+
 .console-page-header__actions .ant-space {
   width: 100%;
   justify-content: flex-end;
@@ -100,10 +122,25 @@ body {
   max-width: 100%;
 }
 
+.console-page-header__actions .ant-space-item:has(.ant-input-search),
+.console-page-header__actions .ant-space-item:has(.ant-input-affix-wrapper),
+.console-page-header__actions .ant-space-item:has(.ant-input) {
+  flex: 1 1 320px;
+  min-width: 260px;
+}
+
 .console-page-header__actions .ant-input-search,
+.console-page-header__actions > .ant-input-affix-wrapper,
+.console-page-header__actions > .ant-input,
 .console-page-header__actions .ant-select,
 .console-page-header__actions .ant-picker {
   max-width: 100%;
+}
+
+.console-page-header__actions .ant-input-search,
+.console-page-header__actions .ant-input-affix-wrapper,
+.console-page-header__actions > .ant-input {
+  width: 100% !important;
 }
 
 /* Table Styles */
@@ -143,6 +180,10 @@ body {
 
 .console-table .ant-table-tbody > tr:last-child > td {
   border-bottom: none;
+}
+
+.ant-drawer-right > .ant-drawer-content-wrapper {
+  width: min(480px, calc(100vw - 32px)) !important;
 }
 
 .console-user-label {
@@ -214,6 +255,10 @@ body {
   box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(239, 124, 47, 0.15) !important;
 }
 
+.organization-overview-detail-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 /* Nav Menu Enhancements */
 .ant-menu-dark.ant-menu-inline .ant-menu-item-selected {
   background: rgba(239, 124, 47, 0.12) !important;
@@ -245,10 +290,11 @@ body {
 .console-subnav-bar {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 8px 24px;
-  background: #18171e;
-  border-bottom: 1px solid #26242e;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .console-subnav-item {
@@ -256,16 +302,21 @@ body {
   border-radius: 8px;
   font-size: 13px;
   font-weight: 500;
-  color: #b8b0a5;
+  color: #c8c1b8;
+  background: rgba(245, 242, 236, 0.06);
   cursor: pointer;
-  transition: all 0.15s ease;
-  border: 1px solid transparent;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  border: 1px solid rgba(245, 242, 236, 0.1);
   text-decoration: none;
+  font-family: inherit;
+  line-height: 1.3;
+  white-space: nowrap;
 }
 
 .console-subnav-item:hover {
   color: #f5f2ec;
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(245, 242, 236, 0.1);
+  border-color: rgba(245, 242, 236, 0.16);
 }
 
 .console-subnav-item--active {
@@ -817,10 +868,51 @@ body {
   padding-top: 10px;
 }
 
+.workspace-chat-composer__tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.workspace-chat-composer__attach {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  color: #c8c1b8;
+  background: rgba(245, 242, 236, 0.05);
+  border: 1px solid rgba(245, 242, 236, 0.08);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.workspace-chat-composer__attach:hover {
+  color: #ff8f3d !important;
+  background: rgba(239, 124, 47, 0.1) !important;
+  border-color: rgba(239, 124, 47, 0.24) !important;
+}
+
+.workspace-chat-composer__hint {
+  font-size: 11.5px;
+  color: #8a8379;
+  white-space: nowrap;
+}
+
+.workspace-chat-composer__hint kbd {
+  background: rgba(255, 255, 255, 0.06);
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 11px;
+  color: #b8b0a5;
+}
+
 .workspace-chat-composer__selectors {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
   min-width: 0;
   margin-left: auto;
 }
@@ -834,19 +926,21 @@ body {
 }
 
 .workspace-chat-select--composer {
-  min-width: 150px;
+  width: 94px;
+  min-width: 94px;
 }
 
 .workspace-chat-select--provider {
-  min-width: 170px;
+  width: 112px;
+  min-width: 112px;
 }
 
 .workspace-chat-select .ant-select-selector {
-  border-radius: 8px !important;
+  border-radius: 7px !important;
   border: 1px solid #32303c !important;
   background: #141318 !important;
   box-shadow: none !important;
-  font-size: 12.5px !important;
+  font-size: 11.5px !important;
 }
 
 .workspace-chat-select--top .ant-select-selector {
@@ -854,7 +948,21 @@ body {
 }
 
 .workspace-chat-select--composer .ant-select-selector {
-  min-height: 34px !important;
+  min-height: 26px !important;
+  height: 26px !important;
+  padding-inline: 8px !important;
+}
+
+.workspace-chat-select--composer .ant-select-selection-search-input,
+.workspace-chat-select--composer .ant-select-selection-item,
+.workspace-chat-select--composer .ant-select-selection-placeholder {
+  height: 24px !important;
+  line-height: 24px !important;
+}
+
+.workspace-chat-select--composer .ant-select-arrow {
+  font-size: 10px;
+  inset-inline-end: 8px;
 }
 
 .workspace-chat-select .ant-select-selection-item,
@@ -883,9 +991,9 @@ body {
 }
 
 .workspace-chat-composer__send {
-  width: 36px;
-  height: 36px;
-  border-radius: 9px;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
   background: #ef7c2f;
   color: #131217;
   display: inline-flex;
@@ -899,7 +1007,7 @@ body {
 .workspace-chat-composer__send:hover:not(:disabled) {
   background: #ff8f3d;
   color: #131217;
-  transform: scale(1.04);
+  transform: scale(1.03);
 }
 
 .workspace-chat-footnote {
@@ -911,6 +1019,30 @@ body {
 }
 
 @media (max-width: 960px) {
+  .organization-overview-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .console-topbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    height: auto !important;
+    min-height: 54px !important;
+    padding-block: 8px !important;
+  }
+
+  .console-subnav-bar {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: flex-start;
+    order: 3;
+    width: 100%;
+  }
+
+  .console-topbar__session {
+    grid-column: 2;
+    justify-self: end;
+  }
+
   .console-page-header__actions {
     flex-basis: 100%;
     justify-content: stretch;
@@ -956,4 +1088,3 @@ body {
     width: 100%;
   }
 }
-

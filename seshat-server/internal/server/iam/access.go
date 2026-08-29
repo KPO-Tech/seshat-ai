@@ -63,8 +63,18 @@ const (
 // subject was deleted.
 const resourceTypeCorpus = "corpus"
 
+// resourceTypeProviderSetting scopes a PolicyBinding to one LLM provider
+// setting (automation.ProviderSetting.ID) - see
+// Service.HasResourceScopedBindings and automation.ListUsableProviderSettings
+// for how this turns into an opt-in per-member/team allowlist: a provider
+// setting with no bindings scoped to it stays usable by every org member
+// (today's behavior, unchanged), and creating even one such binding switches
+// that specific setting into "only these subjects" mode.
+const resourceTypeProviderSetting = "provider_setting"
+
 var knownResourceTypes = map[string]struct{}{
-	resourceTypeCorpus: {},
+	resourceTypeCorpus:          {},
+	resourceTypeProviderSetting: {},
 }
 
 func validatePolicyResourceScope(resourceType, resourceID string) (string, string, error) {
@@ -465,6 +475,33 @@ func requireResourcePermission(tx *gorm.DB, principal *Principal, organizationID
 // organization. Same tx-handle requirement as CheckOrganizationPermission.
 func (s *Service) CheckResourcePermission(tx *gorm.DB, principal *Principal, organizationID, resourceType, resourceID string, permissionCodes ...string) error {
 	return requireResourcePermission(tx, principal, organizationID, resourceType, resourceID, permissionCodes...)
+}
+
+// HasResourceScopedBindings reports whether at least one PolicyBinding is
+// scoped to exactly (resourceType, resourceID) within organizationID -
+// regardless of which subject it grants to. Callers use this to decide
+// whether a resource is in its default "open to every org member" state or
+// has been switched into an opt-in allowlist by the presence of any binding
+// at all; the actual authorization decision still goes through
+// CheckResourcePermission/HasAnyResourcePermission.
+func (s *Service) HasResourceScopedBindings(tx *gorm.DB, organizationID, resourceType, resourceID string) (bool, error) {
+	var count int64
+	err := tx.Model(&sdb.PolicyBinding{}).
+		Where("organization_id = ? AND resource_type = ? AND resource_id = ?", organizationID, resourceType, resourceID).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+// HasAnyResourcePermission is the exported form of hasAnyResourcePermission,
+// for sibling packages that need a boolean check (not an error-returning
+// gate) on one specific resource - e.g. filtering a list down to only the
+// items a principal is allowed to see, rather than rejecting a single
+// request outright.
+func (s *Service) HasAnyResourcePermission(tx *gorm.DB, principal *Principal, organizationID, resourceType, resourceID string, permissionCodes ...string) (bool, error) {
+	return hasAnyResourcePermission(tx, principal, organizationID, resourceType, resourceID, permissionCodes...)
 }
 
 // CheckOrganizationPermission is the exported form of requireOrganizationPermission,

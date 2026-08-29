@@ -1,13 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/api/client'
 import type { components } from '@/api/schema'
-import { PROVIDER_SETTINGS_LIST_KEY, EMBEDDER_SETTING_KEY } from '@/api/settingsQueryKeys'
+import { PROVIDER_SETTINGS_LIST_KEY, PROVIDER_SETTINGS_USABLE_KEY, EMBEDDER_SETTING_KEY } from '@/api/settingsQueryKeys'
 
 export type ProviderSetting = components['schemas']['ProviderSetting']
 export type ProviderSettingInput = components['schemas']['ProviderSettingInput']
 export type ProviderSettingUpdateInput = components['schemas']['ProviderSettingUpdateInput']
 
 const LIST_KEY = PROVIDER_SETTINGS_LIST_KEY
+const USABLE_KEY = PROVIDER_SETTINGS_USABLE_KEY
 
 export function useProviderSettingsList(organizationId: string | undefined) {
   return useQuery({
@@ -15,6 +16,27 @@ export function useProviderSettingsList(organizationId: string | undefined) {
     enabled: Boolean(organizationId),
     queryFn: async () => {
       const { data, error } = await api.GET('/api/v1/provider-settings', {
+        params: { query: { organization_id: organizationId } },
+      })
+      if (error) throw error
+      return data.provider_settings ?? []
+    },
+  })
+}
+
+// The settings/credentials page above is admin-gated (provider_settings.read
+// or .manage) - a plain member sees an empty list from it by design, which
+// is wrong for anything user-facing like a chat provider picker. Use this
+// hook there instead: it calls /provider-settings/usable, which any org
+// member can read, and which additionally respects any per-member/team
+// access restriction an admin has set up (see the Policy Bindings page,
+// resource_type=provider_setting).
+export function useUsableProviderSettingsList(organizationId: string | undefined) {
+  return useQuery({
+    queryKey: [USABLE_KEY, organizationId],
+    enabled: Boolean(organizationId),
+    queryFn: async () => {
+      const { data, error } = await api.GET('/api/v1/provider-settings/usable', {
         params: { query: { organization_id: organizationId } },
       })
       if (error) throw error
@@ -37,6 +59,7 @@ export function useCreateProviderSetting() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [LIST_KEY] })
+      queryClient.invalidateQueries({ queryKey: [USABLE_KEY] })
       queryClient.invalidateQueries({ queryKey: [EMBEDDER_SETTING_KEY] })
     },
   })
@@ -55,6 +78,7 @@ export function useUpdateProviderSetting() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [LIST_KEY] })
+      queryClient.invalidateQueries({ queryKey: [USABLE_KEY] })
       queryClient.invalidateQueries({ queryKey: [EMBEDDER_SETTING_KEY] })
     },
   })
@@ -69,7 +93,10 @@ export function useDeleteProviderSetting() {
       })
       if (error) throw error
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: [LIST_KEY] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [LIST_KEY] })
+      queryClient.invalidateQueries({ queryKey: [USABLE_KEY] })
+    },
   })
 }
 
@@ -84,7 +111,10 @@ export function useSetProviderSettingDefault() {
       if (error) throw error
       return data
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: [LIST_KEY] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [LIST_KEY] })
+      queryClient.invalidateQueries({ queryKey: [USABLE_KEY] })
+    },
   })
 }
 

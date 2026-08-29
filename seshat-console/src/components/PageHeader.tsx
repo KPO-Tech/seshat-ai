@@ -1,9 +1,6 @@
 import type { ReactNode } from 'react'
-import { Typography } from 'antd'
 
 export function PageHeader({
-  title,
-  description,
   actions,
   badge,
 }: {
@@ -12,23 +9,12 @@ export function PageHeader({
   actions?: ReactNode
   badge?: ReactNode
 }) {
+  if (!actions && !badge) return null
+
   return (
-    <div className="console-page-header">
-      <div className="console-page-header__meta">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <Typography.Title level={4} className="console-page-header__title">
-            {title}
-          </Typography.Title>
-          {badge}
-        </div>
-        {description && (
-          <Typography.Text className="console-page-header__description">
-            {description}
-          </Typography.Text>
-        )}
-      </div>
+    <div className="console-page-header console-page-header--compact">
+      {badge ? <div className="console-page-header__badge">{badge}</div> : null}
       {actions ? <div className="console-page-header__actions">{actions}</div> : null}
     </div>
   )
 }
-

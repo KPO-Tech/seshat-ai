@@ -26,6 +26,17 @@ function OpenAIIcon({ size = 36 }: IconProps) {
   )
 }
 
+function CodexIcon({ size = 36 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 36 36" fill="none">
+      <rect width="36" height="36" rx="9" fill="#0B6B5C" />
+      <path d="M12 11 6 18l6 7" stroke="white" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+      <path d="m24 11 6 7-6 7" stroke="white" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+      <path d="m20.5 9-5 18" stroke="#9FF5DE" strokeWidth={2.4} strokeLinecap="round" />
+    </svg>
+  )
+}
+
 function MistralIcon({ size = 36 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 36 36" fill="none">
@@ -43,11 +54,41 @@ function MistralIcon({ size = 36 }: IconProps) {
   )
 }
 
+function DeepSeekIcon({ size = 36 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 36 36" fill="none">
+      <rect width="36" height="36" rx="9" fill="#2563EB" />
+      <path
+        d="M8 19c0-5.2 4.1-9.5 9.5-9.5 4.9 0 8.9 3.5 9.4 8.1l3.1.8-3.3 2.4c-.9 3.7-4.3 6.7-9.2 6.7C12.1 27.5 8 24.2 8 19Z"
+        fill="white"
+      />
+      <path
+        d="M13.5 18.4c1.4 1.7 3.2 2.5 5.4 2.5 2 0 3.8-.6 5.3-1.9"
+        stroke="#2563EB"
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+      <circle cx="14.2" cy="15.6" r="1.4" fill="#2563EB" />
+    </svg>
+  )
+}
+
 function GeminiIcon({ size = 36 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 36 36" fill="none">
       <rect width="36" height="36" rx="9" fill="#4285F4" />
       <path d="M18 4C18 4 20.5 12.5 28 18C20.5 23.5 18 32 18 32C18 32 15.5 23.5 8 18C15.5 12.5 18 4 18 4Z" fill="white" />
+    </svg>
+  )
+}
+
+function KimiIcon({ size = 36 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 36 36" fill="none">
+      <rect width="36" height="36" rx="9" fill="#111827" />
+      <circle cx="18" cy="18" r="11" fill="#F5F2EC" />
+      <circle cx="15.5" cy="15.5" r="11" fill="#111827" />
+      <path d="M12 24V12M12 18l8-6M15.4 17.1 24 24" stroke="#F5F2EC" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
@@ -65,12 +106,35 @@ function OllamaIcon({ size = 36 }: IconProps) {
   )
 }
 
+function OpenCodeZenIcon({ size = 36 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 36 36" fill="none">
+      <rect width="36" height="36" rx="9" fill="#7C3AED" />
+      <path d="M11 13c2.1-2.2 4.4-3.3 7-3.3s4.9 1.1 7 3.3" stroke="white" strokeWidth={2.2} strokeLinecap="round" />
+      <path d="M11 23c2.1 2.2 4.4 3.3 7 3.3s4.9-1.1 7-3.3" stroke="white" strokeWidth={2.2} strokeLinecap="round" />
+      <path d="M10 18h16" stroke="#D8B4FE" strokeWidth={2.2} strokeLinecap="round" />
+      <path d="m15 14-3.8 4 3.8 4M21 14l3.8 4-3.8 4" stroke="white" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 function OpenRouterIcon({ size = 36 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 36 36" fill="none">
       <rect width="36" height="36" rx="9" fill="#6B39CB" />
       <path d="M8 13h12l-4-4M20 13l-4 4" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
       <path d="M28 23H16l4 4M16 23l4-4" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function WorkersAIIcon({ size = 36 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 36 36" fill="none">
+      <rect width="36" height="36" rx="9" fill="#F38020" />
+      <path d="M9 22.5c.7-3.5 3.1-5.6 6.4-5.6 2.4 0 4.2.9 5.4 2.7 1-.7 2.1-1 3.3-1 2.4 0 4 1.4 4.9 3.9H9Z" fill="white" />
+      <path d="M11.8 16.8c1.3-3 3.6-4.7 6.8-4.7 3.5 0 6 1.9 7.3 5.4-.6-.2-1.2-.3-1.9-.3-1.1 0-2.1.3-3 .8-1.4-1.6-3.2-2.4-5.6-2.4-1.3 0-2.5.4-3.6 1.2Z" fill="#FFF3E6" />
+      <path d="M13 24h10M16 27h7" stroke="#7C2D12" strokeWidth={2} strokeLinecap="round" />
     </svg>
   )
 }
@@ -106,12 +170,17 @@ function GenericProviderIcon({ size = 36 }: IconProps) {
 const ICON_MAP: Record<string, (props: IconProps) => ReactElement> = {
   anthropic: AnthropicIcon,
   openai: OpenAIIcon,
+  codex: CodexIcon,
   mistral: MistralIcon,
   gemini: GeminiIcon,
   ollama: OllamaIcon,
   openrouter: OpenRouterIcon,
   minimax: MiniMaxIcon,
   'z-ai': ZAiIcon,
+  deepseek: DeepSeekIcon,
+  opencode: OpenCodeZenIcon,
+  kimi: KimiIcon,
+  'workers-ai': WorkersAIIcon,
 }
 
 export function ProviderIcon({ provider, size = 36 }: IconProps & { provider: string }) {

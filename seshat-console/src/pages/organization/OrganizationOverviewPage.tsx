@@ -201,19 +201,56 @@ export function OrganizationOverviewPage() {
         />
       </div>
 
+      <Card title="Needs Attention" style={{ marginBottom: 24 }}>
+        {alerts.length > 0 ? (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: 12,
+            }}
+          >
+            {alerts.map((alert) => (
+              <Alert
+                key={alert.title}
+                type={alert.type ?? 'warning'}
+                showIcon
+                message={<span style={{ fontWeight: 600 }}>{alert.title}</span>}
+                description={
+                  <div style={{ marginTop: 4 }}>
+                    <div style={{ color: palette.inkSecondary, fontSize: 13, marginBottom: 8 }}>
+                      {alert.description}
+                    </div>
+                    <Button size="small" type="default" onClick={alert.action} style={{ borderRadius: 6 }}>
+                      {alert.actionLabel}
+                    </Button>
+                  </div>
+                }
+                style={{ borderRadius: 10, height: '100%' }}
+              />
+            ))}
+          </div>
+        ) : (
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description="This organization is fully configured and operational."
+            style={{ padding: '20px 0' }}
+          />
+        )}
+      </Card>
+
       <div
+        className="organization-overview-detail-grid"
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
           gap: 16,
-          marginBottom: 24,
-          alignItems: 'start',
+          alignItems: 'stretch',
         }}
       >
-        <Card title="Setup Status">
+        <Card title="Setup Status" style={{ height: '100%' }}>
           <Space direction="vertical" size={14} style={{ width: '100%' }}>
             <div style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 8, border: `1px solid ${palette.borderSubtle}` }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 4 }}>
                 <Typography.Text strong>Profile & Branding</Typography.Text>
                 <Tag color={profile.isReady ? 'green' : 'orange'} style={{ margin: 0, borderRadius: 6 }}>
                   {profile.isReady ? 'Complete' : 'Incomplete'}
@@ -225,7 +262,7 @@ export function OrganizationOverviewPage() {
             </div>
 
             <div style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 8, border: `1px solid ${palette.borderSubtle}` }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 4 }}>
                 <Typography.Text strong>AI Credentials</Typography.Text>
                 <Tag color={providerSettings.data?.length ? 'green' : 'orange'} style={{ margin: 0, borderRadius: 6 }}>
                   {providerSettings.data?.length ? `${providerSettings.data.length} Configured` : 'Missing'}
@@ -241,7 +278,7 @@ export function OrganizationOverviewPage() {
             </div>
 
             <div style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 8, border: `1px solid ${palette.borderSubtle}` }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 4 }}>
                 <Typography.Text strong>Embedder & Search</Typography.Text>
                 <Tag color={embedder.data ? 'green' : 'default'} style={{ margin: 0, borderRadius: 6 }}>
                   {embedder.data ? 'Configured' : 'Inherited'}
@@ -257,7 +294,7 @@ export function OrganizationOverviewPage() {
             </div>
 
             <div style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 8, border: `1px solid ${palette.borderSubtle}` }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 4 }}>
                 <Typography.Text strong>Integrations & Apps</Typography.Text>
                 <Tag color={(applications.data?.total ?? 0) > 0 ? 'green' : 'default'} style={{ margin: 0, borderRadius: 6 }}>
                   {(applications.data?.total ?? 0) > 0 ? `${applications.data?.total} Connected` : 'None'}
@@ -274,48 +311,7 @@ export function OrganizationOverviewPage() {
           </Space>
         </Card>
 
-        <Card title="Needs Attention">
-          {alerts.length > 0 ? (
-            <Space direction="vertical" size={12} style={{ width: '100%' }}>
-              {alerts.map((alert) => (
-                <Alert
-                  key={alert.title}
-                  type={alert.type ?? 'warning'}
-                  showIcon
-                  message={<span style={{ fontWeight: 600 }}>{alert.title}</span>}
-                  description={
-                    <div style={{ marginTop: 4 }}>
-                      <div style={{ color: palette.inkSecondary, fontSize: 13, marginBottom: 8 }}>
-                        {alert.description}
-                      </div>
-                      <Button size="small" type="default" onClick={alert.action} style={{ borderRadius: 6 }}>
-                        {alert.actionLabel}
-                      </Button>
-                    </div>
-                  }
-                  style={{ borderRadius: 10 }}
-                />
-              ))}
-            </Space>
-          ) : (
-            <Empty
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description="This organization is fully configured and operational."
-              style={{ padding: '24px 0' }}
-            />
-          )}
-        </Card>
-      </div>
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-          gap: 16,
-          alignItems: 'start',
-        }}
-      >
-        <Card title="Recent Activity" styles={{ body: { padding: 0 } }}>
+        <Card title="Recent Activity" style={{ height: '100%' }} styles={{ body: { padding: 0 } }}>
           {auditEvents.isLoading ? (
             <div style={{ padding: 20 }}>
               <Skeleton active paragraph={{ rows: 4 }} />
@@ -352,7 +348,7 @@ export function OrganizationOverviewPage() {
           )}
         </Card>
 
-        <Card title="Recent runs" styles={{ body: { padding: 0 } }}>
+        <Card title="Recent runs" style={{ height: '100%' }} styles={{ body: { padding: 0 } }}>
           {runs.isLoading ? (
             <div style={{ padding: 20 }}>
               <Skeleton active paragraph={{ rows: 4 }} />

@@ -1339,9 +1339,29 @@ export interface paths {
         };
         /**
          * Resolve the effective, usable provider config for an organization
-         * @description Unlike every other provider-settings endpoint, this INCLUDES the decrypted api_key — the point is for a connected seshat-backend to actually make the LLM call with it, not to administer the setting. Authorization is deliberately looser than provider_settings.read/ manage: any member of the organization (or a platform admin) can resolve "what should I use", the same trust level as using their own session. Falls back to the platform default when the organization has no setting of its own for this provider; 404 if neither exists.
+         * @description Unlike every other provider-settings endpoint, this INCLUDES the decrypted api_key — the point is for a connected seshat-backend to actually make the LLM call with it, not to administer the setting. Authorization is deliberately looser than provider_settings.read/ manage: any member of the organization (or a platform admin) can resolve "what should I use", the same trust level as using their own session — unless an admin has scoped one or more policy bindings to this specific provider setting, in which case only matching subjects may resolve it (403 otherwise). Falls back to the platform default when the organization has no setting of its own for this provider; 404 if neither exists.
          */
         get: operations["resolveProviderSetting"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/provider-settings/usable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the provider settings the caller may pick from (e.g. a chat provider dropdown)
+         * @description Unlike GET /provider-settings (admin-only, for the settings/ credentials page), authorization here is the same loose "any member of the organization" trust level as /provider-settings/resolve — no secret is included, just which providers are configured and their default model. A provider setting is usable by every member by default; an admin can restrict a specific one to chosen members or teams by scoping one or more policy bindings to it (resource_type=provider_setting, resource_id=<setting id>) — the moment any such binding exists, that setting is hidden from this list for every other subject.
+         */
+        get: operations["listUsableProviderSettings"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2750,7 +2770,7 @@ export interface components {
             subject_type?: "user" | "group" | "role";
             subject_id?: string;
             permission_codes?: string[];
-            /** @description Optional resource kind this binding is scoped to (currently only "corpus"). Empty means organization-wide. */
+            /** @description Optional resource kind this binding is scoped to ("corpus" or "provider_setting"). Empty means organization-wide. */
             resource_type?: string;
             /** @description ID of the specific resource this binding is scoped to. Empty when resource_type is empty. */
             resource_id?: string;
@@ -2767,7 +2787,7 @@ export interface components {
             subject_type: "user" | "group" | "role";
             subject_id: string;
             permission_codes: string[];
-            /** @description Optional resource kind to scope this binding to (currently only "corpus"). Omit for an organization-wide binding. */
+            /** @description Optional resource kind to scope this binding to ("corpus" or "provider_setting"). Omit for an organization-wide binding. */
             resource_type?: string;
             /** @description ID of the specific resource to scope this binding to. Required when resource_type is set. */
             resource_id?: string;
@@ -2778,7 +2798,7 @@ export interface components {
             /** @enum {string} */
             subject_type: "user" | "group" | "role";
             subject_id: string;
-            /** @description Optional resource kind to scope this binding to (currently only "corpus"). Omit for an organization-wide binding. */
+            /** @description Optional resource kind to scope this binding to ("corpus" or "provider_setting"). Omit for an organization-wide binding. */
             resource_type?: string;
             /** @description ID of the specific resource to scope this binding to. Required when resource_type is set. */
             resource_id?: string;
@@ -6711,6 +6731,33 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    listUsableProviderSettings: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Usable provider setting list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        provider_settings?: components["schemas"]["ProviderSetting"][];
+                        count?: number;
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
         };
     };
     getProviderSetting: {

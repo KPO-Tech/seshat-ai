@@ -2294,8 +2294,11 @@ paths:
         Authorization is deliberately looser than provider_settings.read/
         manage: any member of the organization (or a platform admin) can
         resolve "what should I use", the same trust level as using their own
-        session. Falls back to the platform default when the organization has
-        no setting of its own for this provider; 404 if neither exists.
+        session — unless an admin has scoped one or more policy bindings to
+        this specific provider setting, in which case only matching
+        subjects may resolve it (403 otherwise). Falls back to the platform
+        default when the organization has no setting of its own for this
+        provider; 404 if neither exists.
       parameters:
         - $ref: "#/components/parameters/organizationIDQuery"
         - name: provider
@@ -2312,6 +2315,39 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/provider-settings/usable:
+    get:
+      operationId: listUsableProviderSettings
+      tags: [provider-settings]
+      summary: List the provider settings the caller may pick from (e.g. a chat provider dropdown)
+      description: >-
+        Unlike GET /provider-settings (admin-only, for the settings/
+        credentials page), authorization here is the same loose "any member
+        of the organization" trust level as /provider-settings/resolve — no
+        secret is included, just which providers are configured and their
+        default model. A provider setting is usable by every member by
+        default; an admin can restrict a specific one to chosen members or
+        teams by scoping one or more policy bindings to it
+        (resource_type=provider_setting, resource_id=<setting id>) — the
+        moment any such binding exists, that setting is hidden from this
+        list for every other subject.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: Usable provider setting list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  provider_settings:
+                    type: array
+                    items: { $ref: "#/components/schemas/ProviderSetting" }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "400": { $ref: "#/components/responses/BadRequest" }
 
   /api/v1/provider-settings/{providerSettingID}:
     parameters:
@@ -4559,7 +4595,7 @@ components:
           items: { type: string }
         resource_type:
           type: string
-          description: Optional resource kind this binding is scoped to (currently only "corpus"). Empty means organization-wide.
+          description: Optional resource kind this binding is scoped to ("corpus" or "provider_setting"). Empty means organization-wide.
         resource_id:
           type: string
           description: ID of the specific resource this binding is scoped to. Empty when resource_type is empty.
@@ -4580,7 +4616,7 @@ components:
           items: { type: string }
         resource_type:
           type: string
-          description: Optional resource kind to scope this binding to (currently only "corpus"). Omit for an organization-wide binding.
+          description: Optional resource kind to scope this binding to ("corpus" or "provider_setting"). Omit for an organization-wide binding.
         resource_id:
           type: string
           description: ID of the specific resource to scope this binding to. Required when resource_type is set.
@@ -4597,7 +4633,7 @@ components:
         subject_id: { type: string }
         resource_type:
           type: string
-          description: Optional resource kind to scope this binding to (currently only "corpus"). Omit for an organization-wide binding.
+          description: Optional resource kind to scope this binding to ("corpus" or "provider_setting"). Omit for an organization-wide binding.
         resource_id:
           type: string
           description: ID of the specific resource to scope this binding to. Required when resource_type is set.
