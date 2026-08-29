@@ -4686,6 +4686,15 @@ components:
           type: string
           format: date-time
           description: Absent until POST .../verify-domain succeeds. Reset to unset whenever domain changes to a different value.
+        min_app_version:
+          type: string
+          description: >-
+            Lowest seshat-ui version this organization's desktop devices are
+            expected to report, as a plain "major.minor.patch" string (e.g.
+            "1.4.0") - no "v" prefix, no pre-release suffix. Absent when no
+            restriction is configured. Enforced as a WARNING only: a device
+            reporting a lower version is flagged via
+            HeartbeatResult.app_version_outdated, never blocked.
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
 
@@ -4699,6 +4708,9 @@ components:
         website_url: { type: string }
         support_email: { type: string, format: email }
         domain: { type: string }
+        min_app_version:
+          type: string
+          description: Plain "major.minor.patch" string, or omit/empty to clear any configured restriction. See Organization.min_app_version.
 
     # All fields optional - omit one to leave that domain's flag unchanged.
     OrganizationSharedDomainsInput:
@@ -6276,6 +6288,12 @@ components:
             policies:
               type: object
               additionalProperties: { type: boolean }
+            min_app_version:
+              type: string
+              description: This device's organization's configured minimum app version (see Organization.min_app_version), absent when none is configured.
+            app_version_outdated:
+              type: boolean
+              description: True when this device's own app_version is below min_app_version. Warning-only - never a reason this heartbeat call itself fails.
 
     RegisterDeviceResult:
       type: object

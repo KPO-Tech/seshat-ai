@@ -9,6 +9,7 @@ import { useAuthStore } from '@/stores/auth'
 import { api } from '@/api/client'
 import { SettingsSidebar, SETTINGS_NAV_CSS, SETTINGS_SHARED_CSS } from './SettingsNav'
 import { SettingsLockedBanner, SETTINGS_LOCKED_BANNER_CSS } from './SettingsLockedBanner'
+import { AppVersionWarningBanner, APP_VERSION_WARNING_BANNER_CSS } from './AppVersionWarningBanner'
 import { MemoriesView } from './MemoriesView'
 import { AboutView } from './AboutView'
 import { GeneralView } from './GeneralView'
@@ -144,6 +145,7 @@ export function Settings() {
       <main className={`settings-content ${sidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="settings-content-inner">
           <SettingsLockedBanner />
+          <AppVersionWarningBanner />
           {activeTab === 'general' && <GeneralView />}
           {activeTab === 'account' && <AccountView />}
           {activeTab === 'connections' && <ConnectionsView />}
@@ -322,4 +324,5 @@ const SETTINGS_CSS = `
 ${SETTINGS_NAV_CSS}
 ${SETTINGS_SHARED_CSS}
 ${SETTINGS_LOCKED_BANNER_CSS}
+${APP_VERSION_WARNING_BANNER_CSS}
 `

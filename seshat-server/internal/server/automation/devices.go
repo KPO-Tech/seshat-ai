@@ -242,6 +242,16 @@ func (s *Service) ResolveDevice(ctx context.Context, token string) (*Device, err
 type HeartbeatResult struct {
 	Device
 	Policies map[string]bool `json:"policies"`
+	// MinAppVersion is the organization's configured minimum app version
+	// (nil if none is configured) and AppVersionOutdated is true when this
+	// device's own AppVersion is below it. Enforced as a WARNING only, per
+	// the desktop policies plan - the device is not blocked, this is purely
+	// for the client to surface a banner. Left false whenever either
+	// version string fails to parse (missing AppVersion, unset
+	// MinAppVersion, or a malformed value) rather than erroring the
+	// heartbeat over it.
+	MinAppVersion      *string `json:"min_app_version,omitempty"`
+	AppVersionOutdated bool    `json:"app_version_outdated"`
 }
 
 // Heartbeat records device liveness and resolves this device's current
@@ -264,7 +274,24 @@ func (s *Service) Heartbeat(ctx context.Context, token string) (*HeartbeatResult
 	if err != nil {
 		return nil, err
 	}
-	return &HeartbeatResult{Device: toDevice(record), Policies: policies}, nil
+
+	var org sdb.Organization
+	if err := s.db.Gorm().WithContext(ctx).Select("min_app_version").First(&org, "id = ?", record.OrganizationID).Error; err != nil {
+		return nil, err
+	}
+	outdated := false
+	if org.MinAppVersion != nil {
+		if cmp, err := iam.CompareAppVersions(record.AppVersion, *org.MinAppVersion); err == nil {
+			outdated = cmp < 0
+		}
+	}
+
+	return &HeartbeatResult{
+		Device:             toDevice(record),
+		Policies:           policies,
+		MinAppVersion:      org.MinAppVersion,
+		AppVersionOutdated: outdated,
+	}, nil
 }
 
 func toDevice(record sdb.Device) Device {

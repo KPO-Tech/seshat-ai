@@ -66,6 +66,52 @@ func TestUpdateOrganizationSettingsAndAuditFlow(t *testing.T) {
 	}
 }
 
+func TestUpdateOrganizationSetsAndClearsMinAppVersion(t *testing.T) {
+	service := newTestService(t)
+
+	boot, err := service.Bootstrap(context.Background(), BootstrapParams{
+		Email:            "admin@example.com",
+		Password:         "password123",
+		DisplayName:      "Admin",
+		OrganizationName: "Seshat",
+		OrganizationSlug: "seshat",
+	})
+	if err != nil {
+		t.Fatalf("bootstrap: %v", err)
+	}
+	principal, err := service.ResolvePrincipal(context.Background(), boot.Token)
+	if err != nil {
+		t.Fatalf("resolve principal: %v", err)
+	}
+	orgID := boot.Organizations[0].ID
+
+	updated, err := service.UpdateOrganization(context.Background(), principal, orgID, UpdateOrganizationParams{
+		Name: "Seshat", Slug: "seshat", MinAppVersion: "1.2.3",
+	})
+	if err != nil {
+		t.Fatalf("update organization: %v", err)
+	}
+	if updated.MinAppVersion == nil || *updated.MinAppVersion != "1.2.3" {
+		t.Fatalf("expected min_app_version to be set, got %+v", updated.MinAppVersion)
+	}
+
+	if _, err := service.UpdateOrganization(context.Background(), principal, orgID, UpdateOrganizationParams{
+		Name: "Seshat", Slug: "seshat", MinAppVersion: "not-a-version",
+	}); err == nil {
+		t.Fatal("expected a malformed min_app_version to be rejected")
+	}
+
+	cleared, err := service.UpdateOrganization(context.Background(), principal, orgID, UpdateOrganizationParams{
+		Name: "Seshat", Slug: "seshat", MinAppVersion: "",
+	})
+	if err != nil {
+		t.Fatalf("update organization to clear min_app_version: %v", err)
+	}
+	if cleared.MinAppVersion != nil {
+		t.Fatalf("expected min_app_version to be cleared, got %+v", cleared.MinAppVersion)
+	}
+}
+
 func TestAuditTrailCapturesMembershipAndInvitationEvents(t *testing.T) {
 	service := newTestService(t)
 

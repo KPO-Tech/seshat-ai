@@ -230,3 +230,110 @@ func TestHeartbeatReflectsDesktopPolicyRestriction(t *testing.T) {
 		t.Fatal("expected an unrelated policy to remain at its default")
 	}
 }
+
+// setMinAppVersion is a small test helper round-tripping through
+// GetOrganization/UpdateOrganization so it exercises the same validation
+// path a real admin request would, instead of writing to sdb.Organization
+// directly.
+func (env testEnv) setMinAppVersion(t *testing.T, minAppVersion string) {
+	t.Helper()
+	org, err := env.iam.GetOrganization(context.Background(), env.adminPrincipal, env.orgID)
+	if err != nil {
+		t.Fatalf("get organization: %v", err)
+	}
+	if _, err := env.iam.UpdateOrganization(context.Background(), env.adminPrincipal, env.orgID, iam.UpdateOrganizationParams{
+		Name: org.Name, Slug: org.Slug, MinAppVersion: minAppVersion,
+	}); err != nil {
+		t.Fatalf("update organization: %v", err)
+	}
+}
+
+// TestHeartbeatFlagsOutdatedAppVersionAsWarningOnly and
+// TestHeartbeatDoesNotFlagAppVersionWithoutRestriction cover Étape 8: the
+// heartbeat surfaces whether a device is below the organization's minimum
+// app version, but this is advisory only - the device is not blocked (there
+// is nothing here that could reject the heartbeat itself).
+func TestHeartbeatFlagsOutdatedAppVersionAsWarningOnly(t *testing.T) {
+	env := newTestEnv(t)
+	env.setMinAppVersion(t, "1.0.0")
+
+	result, err := env.automation.RegisterDevice(context.Background(), env.adminPrincipal, RegisterDeviceParams{
+		OrganizationID: env.orgID, Name: "Old Laptop", AppVersion: "0.9.0",
+	})
+	if err != nil {
+		t.Fatalf("register device: %v", err)
+	}
+
+	heartbeat, err := env.automation.Heartbeat(context.Background(), result.Token)
+	if err != nil {
+		t.Fatalf("heartbeat: %v", err)
+	}
+	if heartbeat.MinAppVersion == nil || *heartbeat.MinAppVersion != "1.0.0" {
+		t.Fatalf("expected min_app_version to be reflected, got %+v", heartbeat.MinAppVersion)
+	}
+	if !heartbeat.AppVersionOutdated {
+		t.Fatal("expected a device below the configured minimum to be flagged outdated")
+	}
+}
+
+func TestHeartbeatDoesNotFlagAppVersionWithoutRestriction(t *testing.T) {
+	env := newTestEnv(t)
+
+	result, err := env.automation.RegisterDevice(context.Background(), env.adminPrincipal, RegisterDeviceParams{
+		OrganizationID: env.orgID, Name: "Any Laptop", AppVersion: "0.1.0",
+	})
+	if err != nil {
+		t.Fatalf("register device: %v", err)
+	}
+
+	heartbeat, err := env.automation.Heartbeat(context.Background(), result.Token)
+	if err != nil {
+		t.Fatalf("heartbeat: %v", err)
+	}
+	if heartbeat.MinAppVersion != nil {
+		t.Fatalf("expected no min_app_version with no restriction configured, got %+v", heartbeat.MinAppVersion)
+	}
+	if heartbeat.AppVersionOutdated {
+		t.Fatal("expected no outdated flag with no restriction configured")
+	}
+}
+
+func TestHeartbeatDoesNotFlagAppVersionAtOrAboveMinimum(t *testing.T) {
+	env := newTestEnv(t)
+	env.setMinAppVersion(t, "1.0.0")
+
+	result, err := env.automation.RegisterDevice(context.Background(), env.adminPrincipal, RegisterDeviceParams{
+		OrganizationID: env.orgID, Name: "Current Laptop", AppVersion: "1.2.0",
+	})
+	if err != nil {
+		t.Fatalf("register device: %v", err)
+	}
+
+	heartbeat, err := env.automation.Heartbeat(context.Background(), result.Token)
+	if err != nil {
+		t.Fatalf("heartbeat: %v", err)
+	}
+	if heartbeat.AppVersionOutdated {
+		t.Fatal("expected a device at or above the configured minimum to not be flagged outdated")
+	}
+}
+
+func TestHeartbeatDoesNotFlagAppVersionWhenDeviceVersionIsMalformed(t *testing.T) {
+	env := newTestEnv(t)
+	env.setMinAppVersion(t, "1.0.0")
+
+	result, err := env.automation.RegisterDevice(context.Background(), env.adminPrincipal, RegisterDeviceParams{
+		OrganizationID: env.orgID, Name: "Unknown Laptop", AppVersion: "",
+	})
+	if err != nil {
+		t.Fatalf("register device: %v", err)
+	}
+
+	heartbeat, err := env.automation.Heartbeat(context.Background(), result.Token)
+	if err != nil {
+		t.Fatalf("heartbeat: %v", err)
+	}
+	if heartbeat.AppVersionOutdated {
+		t.Fatal("expected no outdated flag when the device's own app version doesn't parse")
+	}
+}

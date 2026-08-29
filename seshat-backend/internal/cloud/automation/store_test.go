@@ -20,12 +20,13 @@ func openTestDB(t *testing.T) *db.DB {
 }
 
 // newTestService builds a Service backed by a single shared test database -
-// NewStore/NewPolicyStore must share one *db.DB, unlike two independent
-// openTestDB(t) calls which would each get their own isolated temp file.
+// NewStore/NewPolicyStore/NewVersionStore must share one *db.DB, unlike two
+// independent openTestDB(t) calls which would each get their own isolated
+// temp file.
 func newTestService(t *testing.T) *Service {
 	t.Helper()
 	database := openTestDB(t)
-	return NewService(NewStore(database), NewPolicyStore(database))
+	return NewService(NewStore(database), NewPolicyStore(database), NewVersionStore(database))
 }
 
 // newTestServiceWithPolicyStore is newTestService plus a handle onto the
@@ -36,7 +37,16 @@ func newTestService(t *testing.T) *Service {
 func newTestServiceWithPolicyStore(t *testing.T) (*Service, *PolicyStore) {
 	t.Helper()
 	database := openTestDB(t)
-	return NewService(NewStore(database), NewPolicyStore(database)), NewPolicyStore(database)
+	return NewService(NewStore(database), NewPolicyStore(database), NewVersionStore(database)), NewPolicyStore(database)
+}
+
+// newTestServiceWithVersionStore is newTestService plus a handle onto the
+// same underlying VersionStore, for tests that need to assert what a
+// heartbeat actually persisted about app-version status.
+func newTestServiceWithVersionStore(t *testing.T) (*Service, *VersionStore) {
+	t.Helper()
+	database := openTestDB(t)
+	return NewService(NewStore(database), NewPolicyStore(database), NewVersionStore(database)), NewVersionStore(database)
 }
 
 func TestStoreSaveLoadClearRoundTrip(t *testing.T) {

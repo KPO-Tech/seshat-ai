@@ -18,12 +18,13 @@ type createOrganizationRequest struct {
 }
 
 type updateOrganizationRequest struct {
-	Name         string `json:"name"`
-	Slug         string `json:"slug"`
-	Description  string `json:"description"`
-	WebsiteURL   string `json:"website_url"`
-	SupportEmail string `json:"support_email"`
-	Domain       string `json:"domain"`
+	Name          string `json:"name"`
+	Slug          string `json:"slug"`
+	Description   string `json:"description"`
+	WebsiteURL    string `json:"website_url"`
+	SupportEmail  string `json:"support_email"`
+	Domain        string `json:"domain"`
+	MinAppVersion string `json:"min_app_version"`
 }
 
 func (app *App) handleOrganizations(w http.ResponseWriter, r *http.Request) {
@@ -105,12 +106,13 @@ func (app *App) handleOrganizationByID(w http.ResponseWriter, r *http.Request) {
 		// Organization updates keep the tenant identity stable while allowing the
 		// admin console to edit human-facing settings and routing slugs.
 		organization, err := app.backend.IAM.UpdateOrganization(r.Context(), principal, organizationID, iam.UpdateOrganizationParams{
-			Name:         req.Name,
-			Slug:         req.Slug,
-			Description:  req.Description,
-			WebsiteURL:   req.WebsiteURL,
-			SupportEmail: req.SupportEmail,
-			Domain:       req.Domain,
+			Name:          req.Name,
+			Slug:          req.Slug,
+			Description:   req.Description,
+			WebsiteURL:    req.WebsiteURL,
+			SupportEmail:  req.SupportEmail,
+			Domain:        req.Domain,
+			MinAppVersion: req.MinAppVersion,
 		})
 		if err != nil {
 			writeIAMError(w, err)

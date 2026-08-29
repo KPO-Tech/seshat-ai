@@ -39,6 +39,13 @@ type Status struct {
 	// A code missing from this map must be treated as allowed, same as
 	// PolicyStore.Allowed's own fail-open default.
 	Policies map[string]bool `json:"policies"`
+	// MinAppVersion/AppVersionOutdated are this device's last-synced
+	// app-version-restriction status (see VersionStore) - nil/false when
+	// never connected/never synced or when the organization has no minimum
+	// configured. Warning-only: nothing reads this to block anything, it
+	// exists purely for the UI to show a banner.
+	MinAppVersion      *string `json:"min_app_version,omitempty"`
+	AppVersionOutdated bool    `json:"app_version_outdated"`
 }
 
 // Device mirrors seshat-server's Device schema — only the fields this
@@ -47,13 +54,19 @@ type Status struct {
 // nil/empty on responses from the other endpoints this package calls that
 // also happen to return a Device (register), since desktop policies were
 // only ever intended to be delivered on that one already-periodic call.
+// MinAppVersion/AppVersionOutdated mirror seshat-server's
+// automation.HeartbeatResult fields - like Policies, only ever populated on
+// a heartbeat response (see version_store.go for why this is tracked
+// separately from desktop policies).
 type Device struct {
-	ID         string          `json:"id"`
-	Name       string          `json:"name"`
-	Platform   string          `json:"platform,omitempty"`
-	Status     string          `json:"status"`
-	LastSeenAt string          `json:"last_seen_at,omitempty"`
-	Policies   map[string]bool `json:"policies,omitempty"`
+	ID                 string          `json:"id"`
+	Name               string          `json:"name"`
+	Platform           string          `json:"platform,omitempty"`
+	Status             string          `json:"status"`
+	LastSeenAt         string          `json:"last_seen_at,omitempty"`
+	Policies           map[string]bool `json:"policies,omitempty"`
+	MinAppVersion      *string         `json:"min_app_version,omitempty"`
+	AppVersionOutdated bool            `json:"app_version_outdated,omitempty"`
 }
 
 // registerDeviceParams/registerDeviceResult mirror seshat-server's

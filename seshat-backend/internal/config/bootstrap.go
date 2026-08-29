@@ -471,6 +471,10 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	// since it's a thin stateless wrapper around the shared *db.DB (safe to
 	// construct once and hand out, unlike the DB itself).
 	cloudAutomationPolicyStore := cloudautomation.NewPolicyStore(database)
+	// Reused later for the automation Service/Worker, same reasoning as
+	// cloudAutomationPolicyStore above - a thin stateless wrapper around the
+	// shared *db.DB, safe to construct once.
+	cloudAutomationVersionStore := cloudautomation.NewVersionStore(database)
 	serverURL := ""
 	if serverReachable(ctx, defaultServerURL) {
 		serverURL = defaultServerURL
@@ -1178,10 +1182,10 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		}
 		return result.Content, nil
 	})
-	cloudAutomationWorker := cloudautomation.NewWorker(cloudAutomationStore, cloudAutomationPolicyStore, cloudAutomationExecutor)
+	cloudAutomationWorker := cloudautomation.NewWorker(cloudAutomationStore, cloudAutomationPolicyStore, cloudAutomationVersionStore, cloudAutomationExecutor)
 	cloudAutomationWorker.Start()
 	cleanups = append(cleanups, func() error { cloudAutomationWorker.Stop(); return nil })
-	cloudAutomationService := cloudautomation.NewService(cloudAutomationStore, cloudAutomationPolicyStore)
+	cloudAutomationService := cloudautomation.NewService(cloudAutomationStore, cloudAutomationPolicyStore, cloudAutomationVersionStore)
 	fmt.Printf("[API] Cloud automation worker démarré\n")
 
 	// Abandoned-session sweep: a session (plus any files attached to it) is

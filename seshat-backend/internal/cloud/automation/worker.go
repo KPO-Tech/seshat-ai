@@ -24,13 +24,14 @@ const (
 type Worker struct {
 	store    *Store
 	policies *PolicyStore
+	versions *VersionStore
 	executor JobExecutor
 	quit     chan struct{}
 	once     sync.Once
 }
 
-func NewWorker(store *Store, policies *PolicyStore, executor JobExecutor) *Worker {
-	return &Worker{store: store, policies: policies, executor: executor, quit: make(chan struct{})}
+func NewWorker(store *Store, policies *PolicyStore, versions *VersionStore, executor JobExecutor) *Worker {
+	return &Worker{store: store, policies: policies, versions: versions, executor: executor, quit: make(chan struct{})}
 }
 
 func (w *Worker) Start() {
@@ -72,9 +73,16 @@ func (w *Worker) tick() {
 	if device, err := client.Heartbeat(ctx); err != nil {
 		log.Printf("[cloudautomation] heartbeat: %v", err)
 		// A transient network blip shouldn't stop the claim attempt below.
-	} else if w.policies != nil {
-		if err := w.policies.Save(ctx, device.Policies); err != nil {
-			log.Printf("[cloudautomation] save desktop policies: %v", err)
+	} else {
+		if w.policies != nil {
+			if err := w.policies.Save(ctx, device.Policies); err != nil {
+				log.Printf("[cloudautomation] save desktop policies: %v", err)
+			}
+		}
+		if w.versions != nil {
+			if err := w.versions.Save(ctx, device.MinAppVersion, device.AppVersionOutdated); err != nil {
+				log.Printf("[cloudautomation] save app version status: %v", err)
+			}
 		}
 	}
 

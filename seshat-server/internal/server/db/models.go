@@ -70,8 +70,18 @@ type Organization struct {
 	// changes to a different value - verifying acmecorp.com is not
 	// evidence of controlling a different domain the org later switches to.
 	DomainVerifiedAt *time.Time
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	// MinAppVersion is the lowest seshat-ui version this organization allows
+	// its desktop devices to report at heartbeat, expressed as a plain
+	// dotted "major.minor.patch" string (see iam.compareAppVersions) - no
+	// "v" prefix, no pre-release suffix, matching seshat-ui's own
+	// package.json version field. Nil means no restriction is configured.
+	// Deliberately enforced as a WARNING, not a block: a device on an older
+	// version is still let through (see automation.Heartbeat) so an admin
+	// tightening this can never accidentally lock out an entire fleet before
+	// every machine has had a chance to update.
+	MinAppVersion *string `gorm:"size:32"`
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 // OrganizationDataKey holds one organization's Data Encryption Key (DEK) for

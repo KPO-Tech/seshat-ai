@@ -16,10 +16,11 @@ import (
 type Service struct {
 	store    *Store
 	policies *PolicyStore
+	versions *VersionStore
 }
 
-func NewService(store *Store, policies *PolicyStore) *Service {
-	return &Service{store: store, policies: policies}
+func NewService(store *Store, policies *PolicyStore, versions *VersionStore) *Service {
+	return &Service{store: store, policies: policies, versions: versions}
 }
 
 // Connect validates the pasted device token by heartbeating with it, then
@@ -41,6 +42,11 @@ func (s *Service) Connect(ctx context.Context, userID, serverURL, deviceToken st
 	if s.policies != nil {
 		if err := s.policies.Save(ctx, device.Policies); err != nil {
 			return nil, fmt.Errorf("save desktop policies: %w", err)
+		}
+	}
+	if s.versions != nil {
+		if err := s.versions.Save(ctx, device.MinAppVersion, device.AppVersionOutdated); err != nil {
+			return nil, fmt.Errorf("save app version status: %w", err)
 		}
 	}
 
@@ -102,6 +108,11 @@ func (s *Service) Disconnect(ctx context.Context) error {
 			return err
 		}
 	}
+	if s.versions != nil {
+		if err := s.versions.Clear(ctx); err != nil {
+			return err
+		}
+	}
 	return s.store.Clear(ctx)
 }
 
@@ -110,22 +121,29 @@ func (s *Service) Status(ctx context.Context) (*Status, error) {
 	if s.policies != nil {
 		policies = s.policies.All(ctx)
 	}
+	var minAppVersion *string
+	var appVersionOutdated bool
+	if s.versions != nil {
+		minAppVersion, appVersionOutdated = s.versions.Status(ctx)
+	}
 	conn, err := s.store.Load(ctx)
 	if err != nil {
 		return nil, err
 	}
 	if conn == nil {
-		return &Status{Connected: false, Policies: policies}, nil
+		return &Status{Connected: false, Policies: policies, MinAppVersion: minAppVersion, AppVersionOutdated: appVersionOutdated}, nil
 	}
 	connectedAt := conn.ConnectedAt
 	return &Status{
-		Connected:         true,
-		ServerURL:         conn.ServerURL,
-		DeviceID:          conn.DeviceID,
-		DeviceName:        conn.DeviceName,
-		ConnectedByUserID: conn.ConnectedByUserID,
-		ConnectedAt:       &connectedAt,
-		Policies:          policies,
+		Connected:          true,
+		ServerURL:          conn.ServerURL,
+		DeviceID:           conn.DeviceID,
+		DeviceName:         conn.DeviceName,
+		ConnectedByUserID:  conn.ConnectedByUserID,
+		ConnectedAt:        &connectedAt,
+		Policies:           policies,
+		MinAppVersion:      minAppVersion,
+		AppVersionOutdated: appVersionOutdated,
 	}, nil
 }
 

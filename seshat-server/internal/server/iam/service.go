@@ -57,8 +57,12 @@ type Organization struct {
 	// unset - nothing left to prove.
 	DomainVerificationToken *string    `json:"domain_verification_token,omitempty"`
 	DomainVerifiedAt        *time.Time `json:"domain_verified_at,omitempty"`
-	CreatedAt               time.Time  `json:"created_at"`
-	UpdatedAt               time.Time  `json:"updated_at"`
+	// MinAppVersion is a plain "major.minor.patch" string (see
+	// compareAppVersions) enforced as a warning, not a block, at device
+	// heartbeat - see automation.Heartbeat and db.Organization.MinAppVersion.
+	MinAppVersion *string   `json:"min_app_version,omitempty"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 type Membership struct {
@@ -1193,6 +1197,7 @@ func toOrganization(record sdb.Organization) Organization {
 		Domain:                       record.Domain,
 		DomainVerificationToken:      record.DomainVerificationToken,
 		DomainVerifiedAt:             record.DomainVerifiedAt,
+		MinAppVersion:                record.MinAppVersion,
 		CreatedAt:                    record.CreatedAt,
 		UpdatedAt:                    record.UpdatedAt,
 	}

@@ -20,6 +20,9 @@ type UpdateOrganizationParams struct {
 	WebsiteURL   string `json:"website_url"`
 	SupportEmail string `json:"support_email"`
 	Domain       string `json:"domain"`
+	// MinAppVersion is a plain "major.minor.patch" string, or "" to clear
+	// any configured restriction. See db.Organization.MinAppVersion.
+	MinAppVersion string `json:"min_app_version"`
 }
 
 // GetOrganization returns one organization if the caller belongs to it or is a platform admin.
@@ -63,12 +66,16 @@ func (s *Service) UpdateOrganization(ctx context.Context, principal *Principal, 
 	websiteURL := strings.TrimSpace(params.WebsiteURL)
 	supportEmail := normalizeEmail(params.SupportEmail)
 	domain := normalizeDomain(params.Domain)
+	minAppVersion, err := normalizeAppVersion(params.MinAppVersion)
+	if err != nil {
+		return nil, err
+	}
 	if organizationID == "" || name == "" || slug == "" {
 		return nil, ErrInvalidInput("organization_id, name and slug are required")
 	}
 
 	var organization *Organization
-	err := s.db.Transaction(func(tx *gorm.DB) error {
+	err = s.db.Transaction(func(tx *gorm.DB) error {
 		tx = tx.WithContext(ctx)
 		var record sdb.Organization
 		if err := tx.First(&record, "id = ?", organizationID).Error; err != nil {
@@ -111,6 +118,7 @@ func (s *Service) UpdateOrganization(ctx context.Context, principal *Principal, 
 		record.WebsiteURL = websiteURL
 		record.SupportEmail = supportEmail
 		record.Domain = domain
+		record.MinAppVersion = minAppVersion
 		if domainChanged {
 			record.DomainVerifiedAt = nil
 			if domain != nil {

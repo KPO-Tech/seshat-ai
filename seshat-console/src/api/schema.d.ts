@@ -2790,6 +2790,8 @@ export interface components {
              * @description Absent until POST .../verify-domain succeeds. Reset to unset whenever domain changes to a different value.
              */
             domain_verified_at?: string;
+            /** @description Lowest seshat-ui version this organization's desktop devices are expected to report, as a plain "major.minor.patch" string (e.g. "1.4.0") - no "v" prefix, no pre-release suffix. Absent when no restriction is configured. Enforced as a WARNING only: a device reporting a lower version is flagged via HeartbeatResult.app_version_outdated, never blocked. */
+            min_app_version?: string;
             /** Format: date-time */
             created_at?: string;
             /** Format: date-time */
@@ -2803,6 +2805,8 @@ export interface components {
             /** Format: email */
             support_email?: string;
             domain?: string;
+            /** @description Plain "major.minor.patch" string, or omit/empty to clear any configured restriction. See Organization.min_app_version. */
+            min_app_version?: string;
         };
         OrganizationSharedDomainsInput: {
             share_provider_settings?: boolean;
@@ -4104,6 +4108,10 @@ export interface components {
             policies?: {
                 [key: string]: boolean;
             };
+            /** @description This device's organization's configured minimum app version (see Organization.min_app_version), absent when none is configured. */
+            min_app_version?: string;
+            /** @description True when this device's own app_version is below min_app_version. Warning-only - never a reason this heartbeat call itself fails. */
+            app_version_outdated?: boolean;
         };
         RegisterDeviceResult: {
             device?: components["schemas"]["Device"];
