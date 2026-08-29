@@ -8,6 +8,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -84,6 +85,264 @@ func (s *Service) BeginSAMLLogin(ctx context.Context, providerID, redirectURI st
 	}
 
 	return redirectURL.String(), nil
+}
+
+// CompleteSAMLLogin finishes an SP-initiated login started by
+// BeginSAMLLogin: validates the IdP's SAMLResponse (signature against
+// Provider.X509Certificate, InResponseTo against the still-pending
+// SAMLAuthRequestState rows for this provider, assertion timing), then
+// resolves or provisions the local account. Mirrors CompleteOIDCLogin's
+// decision tree exactly (auto-link/auto-signup/auto-join, redirect_uri
+// recovery only on success) - see its doc comment for the general shape.
+//
+// Unlike OIDC there is no separate "email_verified" claim to check: SAML's
+// equivalent trust boundary is the assertion's digital signature itself -
+// once crewjam/saml's ParseResponse confirms the assertion was signed by
+// the certificate configured on this Provider, the identity it asserts is
+// as trustworthy as that IdP is configured to be trusted.
+//
+// samlResponseBase64 is the raw base64 "SAMLResponse" form field from the
+// IdP's HTTP-POST to the ACS endpoint - passed as a string, not a
+// *http.Request, so this package doesn't need to depend on net/http
+// request plumbing the way the HTTP handler layer already does.
+func (s *Service) CompleteSAMLLogin(ctx context.Context, providerID, samlResponseBase64 string) (string, error) {
+	providerID = strings.TrimSpace(providerID)
+	samlResponseBase64 = strings.TrimSpace(samlResponseBase64)
+	if providerID == "" || samlResponseBase64 == "" {
+		return "", ErrInvalidInput("provider_id and SAMLResponse are required")
+	}
+
+	var result string
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		tx = tx.WithContext(ctx)
+
+		record, err := loadSAMLProvider(tx, providerID)
+		if err != nil {
+			return err
+		}
+		if !record.Enabled {
+			return ErrInvalidInput("provider is disabled")
+		}
+
+		sp, err := s.samlServiceProvider(providerID, record)
+		if err != nil {
+			return fmt.Errorf("configure SAML service provider: %w", err)
+		}
+
+		var pending []sdb.SAMLAuthRequestState
+		if err := tx.Where("provider_id = ? AND expires_at > ?", providerID, time.Now().UTC()).Find(&pending).Error; err != nil {
+			return err
+		}
+		if len(pending) == 0 {
+			return ErrUnauthorized("invalid or expired login attempt")
+		}
+		possibleRequestIDs := make([]string, len(pending))
+		for i, p := range pending {
+			possibleRequestIDs[i] = p.RequestID
+		}
+
+		fakeRequest := &http.Request{
+			Method:   "POST",
+			URL:      &url.URL{},
+			PostForm: url.Values{"SAMLResponse": {samlResponseBase64}},
+		}
+		assertion, err := sp.ParseResponse(fakeRequest, possibleRequestIDs)
+		if err != nil {
+			return ErrUnauthorized("invalid SAML response")
+		}
+
+		// The request this response answers - ParseResponse already
+		// confirmed InResponseTo matches one of possibleRequestIDs, so this
+		// lookup can only fail if two rows raced to the same RequestID,
+		// which the column's uniqueIndex already makes impossible.
+		inResponseTo := samlAssertionInResponseTo(assertion)
+		var matched *sdb.SAMLAuthRequestState
+		for i := range pending {
+			if pending[i].RequestID == inResponseTo {
+				matched = &pending[i]
+				break
+			}
+		}
+		if matched == nil {
+			return ErrUnauthorized("invalid or expired login attempt")
+		}
+		// Single-use: deleted only now, after a fully validated response,
+		// not upfront like OIDCLoginState - unlike OIDC's state token
+		// (looked up directly by hash), a SAML request ID can only be
+		// identified as "the one this response answers" after ParseResponse
+		// has already verified it, so there is no earlier point at which to
+		// safely burn it without also blocking a legitimate retry after a
+		// transient failure.
+		if err := tx.Delete(&sdb.SAMLAuthRequestState{}, "id = ?", matched.ID).Error; err != nil {
+			return err
+		}
+
+		if assertion.Subject == nil || assertion.Subject.NameID == nil || strings.TrimSpace(assertion.Subject.NameID.Value) == "" {
+			return ErrUnauthorized("assertion did not include a NameID")
+		}
+		email, displayName := samlMappedIdentity(record.ClaimMappings, assertion.Subject.NameID.Value, assertion.AttributeStatements)
+		email = normalizeEmail(email)
+		if email == "" {
+			return ErrUnauthorized("identity provider did not return a usable identity")
+		}
+
+		existing, found, err := findUserByEmail(tx, email)
+		if err != nil {
+			return err
+		}
+
+		var user sdb.User
+		now := time.Now().UTC()
+		switch {
+		case found && record.AllowAutoLink:
+			user = existing
+		case found && !record.AllowAutoLink:
+			return ErrForbidden("an account with this email already exists; auto-linking is disabled for this provider")
+		case !found && record.AllowSignup:
+			if displayName == "" {
+				displayName = email
+			}
+			randomPassword, err := newToken()
+			if err != nil {
+				return err
+			}
+			passwordHash, err := hashPassword(randomPassword)
+			if err != nil {
+				return fmt.Errorf("hash password: %w", err)
+			}
+			userID, err := newID("usr")
+			if err != nil {
+				return err
+			}
+			user = sdb.User{
+				ID: userID, Email: email, DisplayName: displayName, PasswordHash: passwordHash,
+				CreatedAt: now, UpdatedAt: now,
+			}
+			if err := tx.Create(&user).Error; err != nil {
+				return err
+			}
+		default:
+			return ErrForbidden("no account exists for this identity and signup is disabled for this provider")
+		}
+
+		if !found {
+			if err := samlAutoJoinOrganization(tx, user, record, now); err != nil {
+				return err
+			}
+		}
+
+		session, rawToken, err := s.newSession(user.ID, now)
+		if err != nil {
+			return err
+		}
+		if err := tx.Create(&session).Error; err != nil {
+			return err
+		}
+		if err := appendAuditEvent(tx, &Principal{User: toUser(user)}, record.OrganizationID, "saml_login.succeeded", "user", user.ID, map[string]string{"email": email, "provider_id": providerID}); err != nil {
+			return err
+		}
+
+		redirectURL, err := url.Parse(matched.RedirectURI)
+		if err != nil {
+			return fmt.Errorf("parse stored redirect_uri: %w", err)
+		}
+		query := redirectURL.Query()
+		query.Set("token", rawToken)
+		redirectURL.RawQuery = query.Encode()
+		result = redirectURL.String()
+		return nil
+	})
+	return result, err
+}
+
+// samlAssertionInResponseTo reads the request-correlator crewjam/saml
+// stamps onto a validated assertion's SubjectConfirmationData - the SAML
+// equivalent of an OIDC state parameter, but only readable after the
+// library has already verified it matches one of the candidate ids we gave
+// ParseResponse (see CompleteSAMLLogin).
+func samlAssertionInResponseTo(assertion *saml.Assertion) string {
+	if assertion.Subject == nil {
+		return ""
+	}
+	for _, confirmation := range assertion.Subject.SubjectConfirmations {
+		if confirmation.SubjectConfirmationData != nil && confirmation.SubjectConfirmationData.InResponseTo != "" {
+			return confirmation.SubjectConfirmationData.InResponseTo
+		}
+	}
+	return ""
+}
+
+// samlAutoJoinOrganization is oidcAutoJoinOrganization's SAML twin - same
+// provider-scoped "pending" auto-join, same AllowedDomains narrowing, kept
+// as a separate small function (not shared code) so each protocol's own
+// audit event name/action string stays a literal, grep-able string at its
+// call site rather than a parameter threaded through a shared helper.
+func samlAutoJoinOrganization(tx *gorm.DB, user sdb.User, provider sdb.Provider, now time.Time) error {
+	if len(provider.AllowedDomains) > 0 {
+		domain := emailDomain(user.Email)
+		allowed := false
+		for _, d := range provider.AllowedDomains {
+			if strings.EqualFold(strings.TrimSpace(d), domain) {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			return nil
+		}
+	}
+	membershipID, err := newID("mem")
+	if err != nil {
+		return err
+	}
+	membership := sdb.Membership{
+		ID: membershipID, UserID: user.ID, OrganizationID: provider.OrganizationID, Role: "member",
+		Status: "pending", PendingSince: &now, CreatedAt: now,
+	}
+	if err := tx.Create(&membership).Error; err != nil {
+		return err
+	}
+	return appendAuditEvent(tx, nil, provider.OrganizationID, "membership.saml_provisioned", "membership", membership.ID, map[string]string{"user_id": user.ID, "email": user.Email})
+}
+
+// samlMappedIdentity mirrors oidcMappedIdentity: Provider.ClaimMappings
+// (custom attribute names, for IdPs that don't put email/name in NameID)
+// override the default of treating NameID itself as the email - the
+// convention this codebase already documented in the SAML plan (NameID, or
+// a ClaimMappings-mapped attribute, as the email source).
+func samlMappedIdentity(claimMappings map[string]string, nameID string, attributeStatements []saml.AttributeStatement) (email, displayName string) {
+	email = nameID
+	if claimMappings == nil {
+		return email, displayName
+	}
+	if claim, ok := claimMappings["email"]; ok {
+		if v := samlFirstAttributeValue(attributeStatements, claim); v != "" {
+			email = v
+		}
+	}
+	if claim, ok := claimMappings["name"]; ok {
+		if v := samlFirstAttributeValue(attributeStatements, claim); v != "" {
+			displayName = v
+		}
+	}
+	return email, displayName
+}
+
+// samlFirstAttributeValue looks up attrName by Name or FriendlyName across
+// every AttributeStatement (a validated assertion may have more than one),
+// returning the first value of the first match.
+func samlFirstAttributeValue(attributeStatements []saml.AttributeStatement, attrName string) string {
+	for _, statement := range attributeStatements {
+		for _, attr := range statement.Attributes {
+			if attr.Name != attrName && attr.FriendlyName != attrName {
+				continue
+			}
+			if len(attr.Values) > 0 {
+				return attr.Values[0].Value
+			}
+		}
+	}
+	return ""
 }
 
 // SAMLServiceProviderMetadata returns this server's SP metadata XML for

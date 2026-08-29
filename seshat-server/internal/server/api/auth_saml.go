@@ -3,6 +3,8 @@ package api
 import (
 	"net/http"
 	"strings"
+
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
 )
 
 // handleSAMLLoginStart — GET /api/v1/auth/saml/{providerID}/start?redirect_uri=...
@@ -18,6 +20,27 @@ func (app *App) handleSAMLLoginStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, ssoURL, http.StatusFound)
+}
+
+// handleSAMLACS — POST /api/v1/auth/saml/{providerID}/acs (public,
+// rate-limited like /auth/login; standard HTTP-POST binding for the IdP's
+// response). Errors here render as plain JSON, same reasoning as
+// handleOIDCLoginCallback: the caller's redirect_uri can't be recovered
+// once CompleteSAMLLogin fails (the matching SAMLAuthRequestState row,
+// the only place it was stored, is single-use and already consumed by then
+// on any successfully-parsed response, and simply absent on a malformed one).
+func (app *App) handleSAMLACS(w http.ResponseWriter, r *http.Request) {
+	providerID := strings.TrimSpace(r.PathValue("providerID"))
+	if err := r.ParseForm(); err != nil {
+		writeIAMError(w, iam.ErrInvalidInput("invalid form body"))
+		return
+	}
+	redirectURL, err := app.backend.IAM.CompleteSAMLLogin(r.Context(), providerID, r.PostFormValue("SAMLResponse"))
+	if err != nil {
+		writeIAMError(w, err)
+		return
+	}
+	http.Redirect(w, r, redirectURL, http.StatusFound)
 }
 
 // handleSAMLMetadata — GET /api/v1/auth/saml/{providerID}/metadata (public,
