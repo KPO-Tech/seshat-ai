@@ -44,6 +44,7 @@ const ProvidersPage = lazyPage(() => import('@/pages/providers/ProvidersPage').t
 const ScimSettingsPage = lazyPage(() => import('@/pages/scim/ScimSettingsPage').then((module) => ({ default: module.ScimSettingsPage })))
 const SessionsPage = lazyPage(() => import('@/pages/sessions/SessionsPage').then((module) => ({ default: module.SessionsPage })))
 const DevicesPage = lazyPage(() => import('@/pages/devices/DevicesPage').then((module) => ({ default: module.DevicesPage })))
+const DesktopPoliciesPage = lazyPage(() => import('@/pages/desktopPolicies/DesktopPoliciesPage').then((module) => ({ default: module.DesktopPoliciesPage })))
 const JobsPage = lazyPage(() => import('@/pages/jobs/JobsPage').then((module) => ({ default: module.JobsPage })))
 const RunsPage = lazyPage(() => import('@/pages/runs/RunsPage').then((module) => ({ default: module.RunsPage })))
 const ProviderSettingsPage = lazyPage(() => import('@/pages/providerSettings/ProviderSettingsPage').then((module) => ({ default: module.ProviderSettingsPage })))
@@ -127,6 +128,7 @@ export const router = createBrowserRouter([
               { path: 'catalog/agent-presets', element: renderLazyPage(AgentPresetsPage) },
               { path: 'catalog/skill-repos', element: renderLazyPage(SkillReposPage) },
               { path: 'automation/devices', element: renderLazyPage(DevicesPage) },
+              { path: 'automation/desktop-policies', element: renderLazyPage(DesktopPoliciesPage) },
               { path: 'automation/jobs', element: renderLazyPage(JobsPage) },
               { path: 'automation/runs', element: renderLazyPage(RunsPage) },
               { path: 'knowledge/corpora', element: renderLazyPage(CorporaPage) },

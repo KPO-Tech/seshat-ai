@@ -350,6 +350,12 @@ export function getSecondaryNavItems(pathname: string, organizationId: string | 
         matchPrefix: `/orgs/${organizationId}/automation/devices`,
       },
       {
+        key: 'org-automation-desktop-policies',
+        label: 'Desktop Policies',
+        path: `/orgs/${organizationId}/automation/desktop-policies`,
+        matchPrefix: `/orgs/${organizationId}/automation/desktop-policies`,
+      },
+      {
         key: 'org-automation-jobs',
         label: 'Jobs',
         path: `/orgs/${organizationId}/automation/jobs`,
