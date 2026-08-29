@@ -205,3 +205,75 @@ func TestSAMLAuthRequestStateSchemaMigratesAndEnforcesUniqueness(t *testing.T) {
 		t.Fatal("expected a reused RequestID to violate the unique index")
 	}
 }
+
+// TestDesktopPolicyBindingSchemaMigratesAndEnforcesUniqueness is the desktop
+// policies plan's cold-migration check (mirrors the SCIM/SAML ones above): a
+// fresh database migrates DesktopPolicyBinding cleanly, and the
+// (organization_id, policy_code, subject_type, subject_id) quadruplet is
+// unique - an admin must update a binding's Value in place rather than ever
+// accumulating two rows for the same subject.
+func TestDesktopPolicyBindingSchemaMigratesAndEnforcesUniqueness(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "state.db")
+	database, err := Open(Config{Driver: DriverSQLite, DSN: dbPath})
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer database.Close()
+
+	if err := database.Migrate(); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+
+	org := Organization{ID: "org_1", Name: "Seshat", Slug: "seshat"}
+	if err := database.Gorm().Create(&org).Error; err != nil {
+		t.Fatalf("create organization: %v", err)
+	}
+
+	first := DesktopPolicyBinding{
+		ID: "dpb_1", OrganizationID: org.ID, PolicyCode: "allow_custom_providers",
+		SubjectType: "role", SubjectID: "member", Value: false,
+	}
+	if err := database.Gorm().Create(&first).Error; err != nil {
+		t.Fatalf("create desktop policy binding: %v", err)
+	}
+
+	duplicate := DesktopPolicyBinding{
+		ID: "dpb_2", OrganizationID: org.ID, PolicyCode: "allow_custom_providers",
+		SubjectType: "role", SubjectID: "member", Value: true,
+	}
+	if err := database.Gorm().Create(&duplicate).Error; err == nil {
+		t.Fatal("expected a duplicate (org, policy_code, subject_type, subject_id) to violate the unique index")
+	}
+
+	// A different subject, or a different policy code, for the same org must
+	// not collide with the binding above.
+	differentSubject := DesktopPolicyBinding{
+		ID: "dpb_3", OrganizationID: org.ID, PolicyCode: "allow_custom_providers",
+		SubjectType: "role", SubjectID: "admin", Value: false,
+	}
+	if err := database.Gorm().Create(&differentSubject).Error; err != nil {
+		t.Fatalf("expected a different subject to coexist: %v", err)
+	}
+	differentCode := DesktopPolicyBinding{
+		ID: "dpb_4", OrganizationID: org.ID, PolicyCode: "allow_local_models",
+		SubjectType: "role", SubjectID: "member", Value: false,
+	}
+	if err := database.Gorm().Create(&differentCode).Error; err != nil {
+		t.Fatalf("expected a different policy code to coexist: %v", err)
+	}
+
+	// An org-wide binding (empty SubjectID) for a different org must not
+	// collide with an org-wide binding on the first org either.
+	otherOrg := Organization{ID: "org_2", Name: "Other", Slug: "other"}
+	if err := database.Gorm().Create(&otherOrg).Error; err != nil {
+		t.Fatalf("create other organization: %v", err)
+	}
+	orgWideA := DesktopPolicyBinding{ID: "dpb_5", OrganizationID: org.ID, PolicyCode: "allow_settings_modification", SubjectType: "org", SubjectID: "", Value: false}
+	if err := database.Gorm().Create(&orgWideA).Error; err != nil {
+		t.Fatalf("create org-wide binding: %v", err)
+	}
+	orgWideB := DesktopPolicyBinding{ID: "dpb_6", OrganizationID: otherOrg.ID, PolicyCode: "allow_settings_modification", SubjectType: "org", SubjectID: "", Value: false}
+	if err := database.Gorm().Create(&orgWideB).Error; err != nil {
+		t.Fatalf("expected an org-wide binding in a different organization to coexist: %v", err)
+	}
+}

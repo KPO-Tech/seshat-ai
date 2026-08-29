@@ -345,6 +345,38 @@ type PolicyBinding struct {
 	UpdatedAt       time.Time
 }
 
+// DesktopPolicyBinding assigns a value for one code from the fixed,
+// code-defined desktop policy catalog (see iam.desktopPolicyCatalog) to one
+// subject within an organization - org-wide, a role, a specific member, or
+// a team (group; SubjectType "group" reuses the same Group model
+// PolicyBinding's own "group" subject does). Resolution ANDs every
+// applicable binding together with the catalog's own default (see
+// iam.Service.ResolveDesktopPolicies): once any applicable source says
+// false, the effective value is false, with no way for a more specific
+// binding to carve out an exception - "most restrictive wins" was chosen
+// deliberately over an OR-based scheme, see
+// docs/helps/audit-2026-08-29-openwork-den-comparison.md § 5. Deliberately
+// its own table, not a reuse of PolicyBinding: PolicyBinding grants CRUD-
+// style permission codes on a resource *instance* (one Corpus, one
+// ProviderSetting); a desktop policy is a boolean feature flag with an
+// admin description, a user-facing block message and a default value,
+// which PolicyBinding has no room to carry.
+type DesktopPolicyBinding struct {
+	ID             string `gorm:"primaryKey;size:32"`
+	OrganizationID string `gorm:"size:32;not null;uniqueIndex:idx_desktop_policy_binding_subject;index"`
+	PolicyCode     string `gorm:"size:64;not null;uniqueIndex:idx_desktop_policy_binding_subject"`
+	// SubjectType is "org" (whole organization, SubjectID empty), "role",
+	// "user" or "group" - matches PolicyBinding's own subject vocabulary
+	// plus the new "org" case a desktop policy needs but PolicyBinding does
+	// not (PolicyBinding's org-wide-ness comes from an empty ResourceType,
+	// not a distinct subject).
+	SubjectType string `gorm:"size:32;not null;uniqueIndex:idx_desktop_policy_binding_subject"`
+	SubjectID   string `gorm:"size:64;not null;uniqueIndex:idx_desktop_policy_binding_subject"`
+	Value       bool   `gorm:"not null"`
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
 // CustomRole is a tenant-scoped role definition whose permissions are fully
 // managed from the control plane. System roles (owner/admin/member/viewer)
 // remain code-defined and are not stored here.

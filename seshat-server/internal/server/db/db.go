@@ -151,6 +151,7 @@ func (d *DB) Migrate() error {
 		&ProspectingSettings{},
 		&ScimConnection{},
 		&ScimSyncEvent{},
+		&DesktopPolicyBinding{},
 	)
 }
 

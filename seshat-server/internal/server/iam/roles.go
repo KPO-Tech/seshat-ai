@@ -327,14 +327,14 @@ func roleCatalog() []Role {
 			// requirePermissionsWithinCallerScope (added the same day, to
 			// close a privilege-escalation hole) checks literal code
 			// membership, not implied access.
-			Permissions: []string{"organization.manage", "organization.delete", "organization.read", "organization.use", "members.read", "members.manage", "roles.read", "roles.manage", "applications.read", "applications.manage", "providers.read", "providers.manage", "invitations.read", "invitations.manage", "groups.read", "groups.manage", "policies.read", "policies.manage", "audit.read", "devices.read", "devices.manage", "jobs.read", "jobs.manage", "provider_settings.read", "provider_settings.manage", "scim_connections.read", "scim_connections.manage", "knowledge.read", "knowledge.manage", "skills_registry.manage", "web_search_settings.manage", "mcp_registry.manage", "agents_registry.manage"},
+			Permissions: []string{"organization.manage", "organization.delete", "organization.read", "organization.use", "members.read", "members.manage", "roles.read", "roles.manage", "applications.read", "applications.manage", "providers.read", "providers.manage", "invitations.read", "invitations.manage", "groups.read", "groups.manage", "policies.read", "policies.manage", "desktop_policies.read", "desktop_policies.manage", "audit.read", "devices.read", "devices.manage", "jobs.read", "jobs.manage", "provider_settings.read", "provider_settings.manage", "scim_connections.read", "scim_connections.manage", "knowledge.read", "knowledge.manage", "skills_registry.manage", "web_search_settings.manage", "mcp_registry.manage", "agents_registry.manage"},
 			System:      true,
 		},
 		{
 			Code:        "admin",
 			Name:        "Admin",
 			Description: "Administrative access for users, applications, providers, invitations and roles.",
-			Permissions: []string{"organization.manage", "organization.read", "organization.use", "members.read", "members.manage", "roles.read", "roles.manage", "applications.read", "applications.manage", "providers.read", "providers.manage", "invitations.read", "invitations.manage", "groups.read", "groups.manage", "policies.read", "policies.manage", "audit.read", "devices.read", "devices.manage", "jobs.read", "jobs.manage", "provider_settings.read", "provider_settings.manage", "scim_connections.read", "scim_connections.manage", "knowledge.read", "knowledge.manage", "skills_registry.manage", "web_search_settings.manage", "mcp_registry.manage", "agents_registry.manage"},
+			Permissions: []string{"organization.manage", "organization.read", "organization.use", "members.read", "members.manage", "roles.read", "roles.manage", "applications.read", "applications.manage", "providers.read", "providers.manage", "invitations.read", "invitations.manage", "groups.read", "groups.manage", "policies.read", "policies.manage", "desktop_policies.read", "desktop_policies.manage", "audit.read", "devices.read", "devices.manage", "jobs.read", "jobs.manage", "provider_settings.read", "provider_settings.manage", "scim_connections.read", "scim_connections.manage", "knowledge.read", "knowledge.manage", "skills_registry.manage", "web_search_settings.manage", "mcp_registry.manage", "agents_registry.manage"},
 			System:      true,
 		},
 		{

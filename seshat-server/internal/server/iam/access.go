@@ -125,6 +125,8 @@ func permissionCatalog() []Permission {
 		{Code: "groups.manage", Name: "Manage Groups", Description: "Create, update and delete authorization groups.", Category: "groups"},
 		{Code: "policies.read", Name: "Read Policies", Description: "Inspect policy bindings.", Category: "policies"},
 		{Code: "policies.manage", Name: "Manage Policies", Description: "Create, update and delete policy bindings.", Category: "policies"},
+		{Code: "desktop_policies.read", Name: "Read Desktop Policies", Description: "Inspect the desktop policy catalog and how it's assigned by role, member and team.", Category: "desktop_policies"},
+		{Code: "desktop_policies.manage", Name: "Manage Desktop Policies", Description: "Create, update and delete desktop policy assignments.", Category: "desktop_policies"},
 		{Code: "audit.read", Name: "Read Audit Events", Description: "Inspect organization audit events.", Category: "audit"},
 		{Code: "devices.read", Name: "Read Devices", Description: "Inspect registered devices.", Category: "devices"},
 		{Code: "devices.manage", Name: "Manage Devices", Description: "Register and revoke devices.", Category: "devices"},
