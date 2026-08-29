@@ -554,6 +554,33 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/organizations/{organizationID}/verify-domain:
+    post:
+      operationId: verifyOrganizationDomain
+      tags: [organizations]
+      summary: Verify ownership of this organization's claimed email domain
+      description: >-
+        Resolves a DNS TXT record at _seshat-challenge.<domain> (expected
+        value "seshat-verification=<domain_verification_token>") and marks
+        the domain verified on a match. Requires organization.manage.
+        Closes a real gap: claiming a domain alone previously granted no
+        proof of ownership, and self-service registration
+        (POST /auth/register) trusted it anyway for auto-join — that
+        auto-join now requires domain_verified_at to be set. 400 if the
+        organization has no domain pending verification, or if the TXT
+        record is missing/mismatched/not yet propagated.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDPath"
+      responses:
+        "200":
+          description: Domain verified
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Organization" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/platform/docling-status:
     get:
       operationId: getDoclingStatus
@@ -4553,7 +4580,25 @@ components:
           description: Only meaningful while is_default is true - whether this organization's preference defaults are shared as the platform-wide fallback.
         domain:
           type: string
-          description: This organization's own email domain (e.g. "acmecorp.com"), if set. Self-service registration (POST /auth/register) auto-joins a new user to this organization as a pending member when their email matches. At most one organization holds a given domain.
+          description: >-
+            This organization's own email domain (e.g. "acmecorp.com"), if
+            set. Self-service registration (POST /auth/register) auto-joins
+            a new user to this organization as a pending member when their
+            email matches — but only once domain_verified_at is set; a
+            claimed-but-unverified domain grants no auto-join. At most one
+            organization holds a given domain.
+        domain_verification_token:
+          type: string
+          description: >-
+            The value to publish as a DNS TXT record at
+            _seshat-challenge.<domain> (as "seshat-verification=<token>") to
+            prove ownership — see POST .../verify-domain. Regenerated
+            whenever domain changes to a new value. Absent once verified or
+            when no domain is set.
+        domain_verified_at:
+          type: string
+          format: date-time
+          description: Absent until POST .../verify-domain succeeds. Reset to unset whenever domain changes to a different value.
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
 

@@ -127,3 +127,31 @@ func (app *App) handleOrganizationByID(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
+
+// handleOrganizationVerifyDomain — POST /api/v1/organizations/{organizationID}/verify-domain.
+// Resolves the DNS TXT challenge published for the organization's claimed
+// Domain and marks it verified on a match - see
+// iam.Service.VerifyOrganizationDomain's doc comment for why this exists at
+// all (closing a real domain-ownership gap, not a hardening nice-to-have).
+func (app *App) handleOrganizationVerifyDomain(w http.ResponseWriter, r *http.Request) {
+	principal, ok := authPrincipalFromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "missing principal")
+		return
+	}
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	organizationID := strings.TrimSpace(r.PathValue("organizationID"))
+	if organizationID == "" {
+		writeJSONError(w, http.StatusBadRequest, "missing organization id")
+		return
+	}
+	organization, err := app.backend.IAM.VerifyOrganizationDomain(r.Context(), principal, organizationID)
+	if err != nil {
+		writeIAMError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, organization)
+}

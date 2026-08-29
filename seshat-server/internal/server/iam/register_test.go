@@ -8,6 +8,36 @@ import (
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 )
 
+// verifyDomainForTest fakes a matching DNS TXT answer and calls
+// VerifyOrganizationDomain, for tests that need Register()'s domain
+// auto-join to actually trigger - which, since 2026-08-29, requires a
+// verified domain, not just a claimed one (see Organization.Domain's doc
+// comment in models.go). Real tests exercising the DNS-lookup plumbing
+// itself (match/mismatch/error) live in organization_domain_verification_test.go;
+// this helper exists purely so every OTHER test that needs a verified
+// domain as a precondition doesn't have to repeat the fake-lookup wiring.
+func verifyDomainForTest(t *testing.T, service *Service, principal *Principal, organizationID, domain string) {
+	t.Helper()
+	org, err := service.GetOrganization(context.Background(), principal, organizationID)
+	if err != nil {
+		t.Fatalf("load organization for domain verification: %v", err)
+	}
+	if org.DomainVerificationToken == nil {
+		t.Fatalf("expected a pending domain verification token for organization %s", organizationID)
+	}
+	expectedHost := domainVerificationTXTHost(domain)
+	expectedValue := domainVerificationTXTValue(*org.DomainVerificationToken)
+	service.SetDomainLookupTXT(func(_ context.Context, host string) ([]string, error) {
+		if host != expectedHost {
+			return nil, nil
+		}
+		return []string{expectedValue}, nil
+	})
+	if _, err := service.VerifyOrganizationDomain(context.Background(), principal, organizationID); err != nil {
+		t.Fatalf("verify domain: %v", err)
+	}
+}
+
 func TestRegisterJoinsMatchingDomainAsPending(t *testing.T) {
 	service, adminPrincipal, _, orgID := bootstrapWithMember(t, "member")
 
@@ -16,6 +46,7 @@ func TestRegisterJoinsMatchingDomainAsPending(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("set organization domain: %v", err)
 	}
+	verifyDomainForTest(t, service, adminPrincipal, orgID, "acmecorp.com")
 
 	result, err := service.Register(context.Background(), RegisterParams{
 		Email: "new.hire@AcmeCorp.com", Password: "password123", DisplayName: "New Hire",
@@ -135,6 +166,7 @@ func TestConfirmMembership(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("set organization domain: %v", err)
 	}
+	verifyDomainForTest(t, service, adminPrincipal, orgID, "acmecorp.com")
 	result, err := service.Register(context.Background(), RegisterParams{
 		Email: "pending.person@acmecorp.com", Password: "password123", DisplayName: "Pending Person",
 	})
@@ -164,6 +196,7 @@ func TestBlockExpiredPendingMemberships(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("set organization domain: %v", err)
 	}
+	verifyDomainForTest(t, service, adminPrincipal, orgID, "acmecorp.com")
 	result, err := service.Register(context.Background(), RegisterParams{
 		Email: "aging.person@acmecorp.com", Password: "password123", DisplayName: "Aging Person",
 	})

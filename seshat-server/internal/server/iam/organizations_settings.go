@@ -97,12 +97,32 @@ func (s *Service) UpdateOrganization(ctx context.Context, principal *Principal, 
 			}
 		}
 
+		// A domain changing to a different value (including being newly set,
+		// or cleared) invalidates any prior verification: proving control of
+		// acmecorp.com is not evidence of controlling whatever domain comes
+		// next, and an unset domain has nothing left to verify. Leaving the
+		// domain unchanged (the common case: editing name/description etc.
+		// without touching Domain) must NOT force a re-verification the
+		// admin already completed.
+		domainChanged := (record.Domain == nil) != (domain == nil) || (record.Domain != nil && domain != nil && *record.Domain != *domain)
 		record.Name = name
 		record.Slug = slug
 		record.Description = description
 		record.WebsiteURL = websiteURL
 		record.SupportEmail = supportEmail
 		record.Domain = domain
+		if domainChanged {
+			record.DomainVerifiedAt = nil
+			if domain != nil {
+				token, err := newDomainVerificationToken()
+				if err != nil {
+					return err
+				}
+				record.DomainVerificationToken = &token
+			} else {
+				record.DomainVerificationToken = nil
+			}
+		}
 		record.UpdatedAt = time.Now().UTC()
 		if err := tx.Save(&record).Error; err != nil {
 			if isUniqueConstraintError(err) {
@@ -121,6 +141,101 @@ func (s *Service) UpdateOrganization(ctx context.Context, principal *Principal, 
 		return nil
 	})
 	return organization, err
+}
+
+// domainVerificationTXTHost is a dedicated subdomain, not a root-domain TXT
+// record - the same convention Vercel/Stripe-style domain checks use
+// (`_vercel.example.com`, etc.) so this challenge never collides with an
+// organization's own SPF/DKIM/other TXT records already crowding their
+// apex domain.
+func domainVerificationTXTHost(domain string) string { return "_seshat-challenge." + domain }
+
+func domainVerificationTXTValue(token string) string { return "seshat-verification=" + token }
+
+// VerifyOrganizationDomain resolves organizationID's DomainVerificationToken
+// against a DNS TXT record the admin is expected to have published at
+// domainVerificationTXTHost(Domain), and marks the domain verified on a
+// match. Requires organization.manage. Closes a real gap: before this
+// existed, any authenticated caller could set Organization.Domain to any
+// unclaimed string with no proof of control, and Register()'s self-service
+// auto-join trusted that raw string - see Organization.Domain's doc comment
+// in models.go. Register() now requires DomainVerifiedAt to be set, not
+// just a Domain match.
+//
+// The DNS lookup deliberately happens outside any DB transaction - it's a
+// network call that can take seconds, and holding a transaction open for
+// that long would be its own problem (fatal under SQLite's single-connection
+// pool, see CheckOrganizationPermission's doc comment on the same
+// constraint). The eventual write re-checks DomainVerificationToken hasn't
+// changed since the lookup, closing the small window where an admin swaps
+// the domain mid-verification.
+func (s *Service) VerifyOrganizationDomain(ctx context.Context, principal *Principal, organizationID string) (*Organization, error) {
+	if principal == nil {
+		return nil, ErrUnauthorized("authentication required")
+	}
+	organizationID = strings.TrimSpace(organizationID)
+	if organizationID == "" {
+		return nil, ErrInvalidInput("organization_id is required")
+	}
+
+	readTx := s.db.Gorm().WithContext(ctx)
+	var record sdb.Organization
+	if err := readTx.First(&record, "id = ?", organizationID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound("organization not found")
+		}
+		return nil, err
+	}
+	if err := requireOrganizationPermission(readTx, principal, organizationID, "organization.manage"); err != nil {
+		return nil, err
+	}
+	if record.Domain == nil || record.DomainVerificationToken == nil {
+		return nil, ErrInvalidInput("organization has no domain pending verification")
+	}
+	domain, token := *record.Domain, *record.DomainVerificationToken
+
+	txtRecords, err := s.lookupTXT(ctx, domainVerificationTXTHost(domain))
+	if err != nil {
+		return nil, ErrInvalidInput("could not resolve the verification TXT record - it may not have propagated yet: " + err.Error())
+	}
+	expected := domainVerificationTXTValue(token)
+	matched := false
+	for _, txt := range txtRecords {
+		if strings.TrimSpace(txt) == expected {
+			matched = true
+			break
+		}
+	}
+	if !matched {
+		return nil, ErrInvalidInput("no matching TXT record found at " + domainVerificationTXTHost(domain))
+	}
+
+	var organization *Organization
+	txErr := s.db.Transaction(func(tx *gorm.DB) error {
+		tx = tx.WithContext(ctx)
+		var current sdb.Organization
+		if err := tx.First(&current, "id = ?", organizationID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrNotFound("organization not found")
+			}
+			return err
+		}
+		if current.DomainVerificationToken == nil || *current.DomainVerificationToken != token {
+			return ErrConflict("the domain or its verification token changed during verification - please retry")
+		}
+		now := time.Now().UTC()
+		current.DomainVerifiedAt = &now
+		if err := tx.Save(&current).Error; err != nil {
+			return err
+		}
+		if err := appendAuditEvent(tx, principal, current.ID, "organization.domain_verified", "organization", current.ID, map[string]string{"domain": domain}); err != nil {
+			return err
+		}
+		converted := toOrganization(current)
+		organization = &converted
+		return nil
+	})
+	return organization, txErr
 }
 
 // DeleteOrganization removes an organization and every resource scoped to it.

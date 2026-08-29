@@ -49,9 +49,29 @@ type Organization struct {
 	// as a pending member. A *string (not string) so an org without a
 	// domain stores NULL, not "" - a unique index allows any number of NULLs
 	// but would reject a second org ever setting an empty string.
-	Domain    *string `gorm:"uniqueIndex;size:255"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	//
+	// Setting this field alone proves nothing: until 2026-08-29, any
+	// authenticated caller could claim any domain string (so long as no
+	// other org already had it) and every future self-registration from
+	// that domain would auto-join as a "pending" member with full access -
+	// a real, previously-unnoticed vulnerability, not a hardening
+	// nice-to-have. DomainVerificationToken/DomainVerifiedAt close it: see
+	// iam.Service.VerifyOrganizationDomain. Register()'s auto-join now
+	// requires DomainVerifiedAt to be set, not just a Domain match.
+	Domain *string `gorm:"uniqueIndex;size:255"`
+	// DomainVerificationToken is the value the organization's admin must
+	// publish as a DNS TXT record (see VerifyOrganizationDomain) to prove
+	// they control Domain. Regenerated whenever Domain changes to a new
+	// value (never reused across domains) and cleared alongside
+	// DomainVerifiedAt when Domain is cleared.
+	DomainVerificationToken *string `gorm:"size:64"`
+	// DomainVerifiedAt is nil until VerifyOrganizationDomain successfully
+	// resolves the matching TXT record. Reset to nil whenever Domain
+	// changes to a different value - verifying acmecorp.com is not
+	// evidence of controlling a different domain the org later switches to.
+	DomainVerifiedAt *time.Time
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 // OrganizationDataKey holds one organization's Data Encryption Key (DEK) for

@@ -317,6 +317,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organizationID}/verify-domain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify ownership of this organization's claimed email domain
+         * @description Resolves a DNS TXT record at _seshat-challenge.<domain> (expected value "seshat-verification=<domain_verification_token>") and marks the domain verified on a match. Requires organization.manage. Closes a real gap: claiming a domain alone previously granted no proof of ownership, and self-service registration (POST /auth/register) trusted it anyway for auto-join — that auto-join now requires domain_verified_at to be set. 400 if the organization has no domain pending verification, or if the TXT record is missing/mismatched/not yet propagated.
+         */
+        post: operations["verifyOrganizationDomain"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/docling-status": {
         parameters: {
             query?: never;
@@ -2695,8 +2715,15 @@ export interface components {
             share_skill_repos?: boolean;
             /** @description Only meaningful while is_default is true - whether this organization's preference defaults are shared as the platform-wide fallback. */
             share_organization_preferences?: boolean;
-            /** @description This organization's own email domain (e.g. "acmecorp.com"), if set. Self-service registration (POST /auth/register) auto-joins a new user to this organization as a pending member when their email matches. At most one organization holds a given domain. */
+            /** @description This organization's own email domain (e.g. "acmecorp.com"), if set. Self-service registration (POST /auth/register) auto-joins a new user to this organization as a pending member when their email matches — but only once domain_verified_at is set; a claimed-but-unverified domain grants no auto-join. At most one organization holds a given domain. */
             domain?: string;
+            /** @description The value to publish as a DNS TXT record at _seshat-challenge.<domain> (as "seshat-verification=<token>") to prove ownership — see POST .../verify-domain. Regenerated whenever domain changes to a new value. Absent once verified or when no domain is set. */
+            domain_verification_token?: string;
+            /**
+             * Format: date-time
+             * @description Absent until POST .../verify-domain succeeds. Reset to unset whenever domain changes to a different value.
+             */
+            domain_verified_at?: string;
             /** Format: date-time */
             created_at?: string;
             /** Format: date-time */
@@ -4758,6 +4785,31 @@ export interface operations {
                     "application/json": components["schemas"]["Organization"];
                 };
             };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    verifyOrganizationDomain: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationID: components["parameters"]["organizationIDPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Domain verified */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Organization"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
         };

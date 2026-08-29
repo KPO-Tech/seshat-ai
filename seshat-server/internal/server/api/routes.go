@@ -30,6 +30,7 @@ func (app *App) routes() http.Handler {
 	mux.Handle("POST /api/v1/organizations/{organizationID}/activate", app.authMiddleware(http.HandlerFunc(app.handleOrganizationActivate)))
 	mux.Handle("POST /api/v1/organizations/{organizationID}/deactivate", app.authMiddleware(http.HandlerFunc(app.handleOrganizationDeactivate)))
 	mux.Handle("PUT /api/v1/organizations/{organizationID}/shared-domains", app.authMiddleware(http.HandlerFunc(app.handleOrganizationSharedDomains)))
+	mux.Handle("POST /api/v1/organizations/{organizationID}/verify-domain", app.authMiddleware(http.HandlerFunc(app.handleOrganizationVerifyDomain)))
 	mux.Handle("GET /api/v1/platform/docling-status", app.authMiddleware(http.HandlerFunc(app.handleDoclingStatus)))
 	mux.Handle("GET /api/v1/users", app.authMiddleware(http.HandlerFunc(app.handleUsers)))
 	mux.Handle("POST /api/v1/users", app.authMiddleware(http.HandlerFunc(app.handleUsers)))

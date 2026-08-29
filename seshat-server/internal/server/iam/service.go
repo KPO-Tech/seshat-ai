@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net"
 	"strings"
 	"time"
 
@@ -34,23 +35,30 @@ type User struct {
 }
 
 type Organization struct {
-	ID                           string    `json:"id"`
-	Name                         string    `json:"name"`
-	Slug                         string    `json:"slug"`
-	Description                  string    `json:"description"`
-	WebsiteURL                   string    `json:"website_url"`
-	SupportEmail                 string    `json:"support_email"`
-	IsDefault                    bool      `json:"is_default"`
-	IsActive                     bool      `json:"is_active"`
-	ShareProviderSettings        bool      `json:"share_provider_settings"`
-	ShareEmbedderSettings        bool      `json:"share_embedder_settings"`
-	ShareWebSearchSettings       bool      `json:"share_web_search_settings"`
-	ShareMCPServers              bool      `json:"share_mcp_servers"`
-	ShareSkillRepos              bool      `json:"share_skill_repos"`
-	ShareOrganizationPreferences bool      `json:"share_organization_preferences"`
-	Domain                       *string   `json:"domain,omitempty"`
-	CreatedAt                    time.Time `json:"created_at"`
-	UpdatedAt                    time.Time `json:"updated_at"`
+	ID                           string  `json:"id"`
+	Name                         string  `json:"name"`
+	Slug                         string  `json:"slug"`
+	Description                  string  `json:"description"`
+	WebsiteURL                   string  `json:"website_url"`
+	SupportEmail                 string  `json:"support_email"`
+	IsDefault                    bool    `json:"is_default"`
+	IsActive                     bool    `json:"is_active"`
+	ShareProviderSettings        bool    `json:"share_provider_settings"`
+	ShareEmbedderSettings        bool    `json:"share_embedder_settings"`
+	ShareWebSearchSettings       bool    `json:"share_web_search_settings"`
+	ShareMCPServers              bool    `json:"share_mcp_servers"`
+	ShareSkillRepos              bool    `json:"share_skill_repos"`
+	ShareOrganizationPreferences bool    `json:"share_organization_preferences"`
+	Domain                       *string `json:"domain,omitempty"`
+	// DomainVerificationToken is the TXT record value to publish - only
+	// meaningful (and only ever seen) by callers who can already read this
+	// organization's own settings (organization.read/.manage), same trust
+	// level as every other field here. Empty once Domain is verified or
+	// unset - nothing left to prove.
+	DomainVerificationToken *string    `json:"domain_verification_token,omitempty"`
+	DomainVerifiedAt        *time.Time `json:"domain_verified_at,omitempty"`
+	CreatedAt               time.Time  `json:"created_at"`
+	UpdatedAt               time.Time  `json:"updated_at"`
 }
 
 type Membership struct {
@@ -261,6 +269,14 @@ type Service struct {
 	// orgModeMulti (today's unlimited-org behavior), so every existing
 	// caller/test that never calls SetOrgMode is unaffected.
 	orgMode string
+	// lookupTXT resolves DNS TXT records for VerifyOrganizationDomain.
+	// Defaulted in New() to the real resolver, not left nil - unlike
+	// mailer/publicAPIURL/orgMode, there is no meaningful "unset" behavior
+	// for a DNS lookup, so every caller gets working domain verification
+	// without an extra setup step. Swappable via SetDomainLookupTXT so
+	// tests can fake a DNS answer instead of depending on real DNS/network
+	// access.
+	lookupTXT func(ctx context.Context, host string) ([]string, error)
 }
 
 // orgModeMulti/orgModeSingle mirror config.OrgModeMulti/config.OrgModeSingle
@@ -272,7 +288,15 @@ const (
 )
 
 func New(database *sdb.DB, sessionTTL time.Duration) *Service {
-	return &Service{db: database, sessionTTL: sessionTTL}
+	return &Service{db: database, sessionTTL: sessionTTL, lookupTXT: net.DefaultResolver.LookupTXT}
+}
+
+// SetDomainLookupTXT overrides the DNS TXT resolver VerifyOrganizationDomain
+// uses - production code never needs this (New already wires up the real
+// resolver), it exists purely so tests can fake a DNS answer instead of
+// depending on real DNS/network access.
+func (s *Service) SetDomainLookupTXT(lookup func(ctx context.Context, host string) ([]string, error)) {
+	s.lookupTXT = lookup
 }
 
 // SetMailer wires up outbound email (invitation accept links, password
@@ -506,7 +530,10 @@ func (s *Service) Register(ctx context.Context, params RegisterParams) (*AuthRes
 		memberships := []Membership{}
 		if domain := emailDomain(email); domain != "" {
 			var org sdb.Organization
-			err := tx.Where("domain = ?", domain).First(&org).Error
+			// domain_verified_at IS NOT NULL: a Domain claim alone proves
+			// nothing (see Organization.Domain's doc comment) - only a
+			// verified domain may auto-join self-registering users.
+			err := tx.Where("domain = ? AND domain_verified_at IS NOT NULL", domain).First(&org).Error
 			switch {
 			case err == nil:
 				membershipID, err := newID("mem")
@@ -813,6 +840,13 @@ func (s *Service) CreateOrganization(ctx context.Context, principal *Principal, 
 		record := sdb.Organization{
 			ID: organizationIDValue, Name: name, Slug: slug, Description: description,
 			WebsiteURL: websiteURL, SupportEmail: supportEmail, Domain: domain, CreatedAt: now, UpdatedAt: now,
+		}
+		if domain != nil {
+			token, err := newDomainVerificationToken()
+			if err != nil {
+				return err
+			}
+			record.DomainVerificationToken = &token
 		}
 		if err := tx.Create(&record).Error; err != nil {
 			if isUniqueConstraintError(err) {
@@ -1153,6 +1187,8 @@ func toOrganization(record sdb.Organization) Organization {
 		ShareSkillRepos:              record.ShareSkillRepos,
 		ShareOrganizationPreferences: record.ShareOrganizationPreferences,
 		Domain:                       record.Domain,
+		DomainVerificationToken:      record.DomainVerificationToken,
+		DomainVerifiedAt:             record.DomainVerifiedAt,
 		CreatedAt:                    record.CreatedAt,
 		UpdatedAt:                    record.UpdatedAt,
 	}
@@ -1262,6 +1298,13 @@ func normalizeSlug(slug string) string {
 // normalizeDomain returns nil for an empty domain rather than a pointer to
 // "" - a *string so the DB column stores NULL (a unique index allows any
 // number of NULLs, but would reject two organizations both storing "").
+// newDomainVerificationToken generates the value an organization must
+// publish as a DNS TXT record to prove control of its claimed Domain - see
+// VerifyOrganizationDomain. Same random source as every other token in this
+// package (newToken/sdb.NewToken), just under its own name so call sites
+// read as "generate a domain challenge," not "generate some generic token."
+func newDomainVerificationToken() (string, error) { return newToken() }
+
 func normalizeDomain(domain string) *string {
 	domain = strings.ToLower(strings.TrimSpace(domain))
 	domain = strings.TrimPrefix(domain, "@")
