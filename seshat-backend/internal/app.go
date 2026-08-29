@@ -7,6 +7,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/audit"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/agents"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/automation"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/mcp"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/websearch"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/connector"
@@ -177,6 +178,14 @@ type Dependencies struct {
 	// entry. Deliberately not used for Drive, which keeps its own dedicated
 	// KnowledgeGDrive field/routes (see helps/roadmap.md Phase 3 for why).
 	KnowledgeConnectors map[string]connector.KnowledgeConnector
+	// DesktopPolicies is this device's last-synced desktop policy bundle
+	// (see docs/helps/audit-2026-08-29-openwork-den-comparison.md § 5) -
+	// unlike most fields above, always non-nil (bootstrap.go constructs it
+	// unconditionally, standalone or connected): in standalone mode, or
+	// before this device has ever paired with an organization, it simply
+	// has nothing synced and fails open (allows everything), which is the
+	// correct behavior, not a special case to guard against here.
+	DesktopPolicies *cloudautomation.PolicyStore
 }
 
 // App is the root backend service container.
@@ -270,7 +279,7 @@ func NewApp(deps Dependencies) *App {
 		quotaProvider = quotas.NewLocalProvider(deps.UsageCounterStore)
 	}
 	return &App{
-		Auth: auth.NewService(authProvider, deps.Identity, deps.APIKeyStore, deps.GroupStore, deps.AuthConfig),
+		Auth: auth.NewService(authProvider, deps.Identity, deps.APIKeyStore, deps.GroupStore, deps.AuthConfig, deps.DesktopPolicies),
 		Query: query.NewService(query.ServiceConfig{
 			Runtime:     deps.QueryRuntime,
 			Sessions:    deps.SessionManager,

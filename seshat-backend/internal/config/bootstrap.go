@@ -1050,6 +1050,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		MemoriesProvider:    memoriesProvider,
 		AgentsCloudClient:   agentsCloudClient,
 		QuotaProvider:       quotaProvider,
+		DesktopPolicies:     cloudAutomationPolicyStore,
 		AuthConfig: backendauth.ServiceConfig{
 			EnableSignup:    config.EnableSignup,
 			DefaultUserRole: config.DefaultUserRole,
