@@ -1248,6 +1248,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		TrustedProxyCIDRs:     api.ParseTrustedProxies(config.TrustedProxies),
 		AllowedSkillRepoHosts: api.ParseSkillRepoHosts(config.SkillRepoHosts),
 		ConnectedServerURL:    serverURL,
+		TargetServerURL:       defaultServerURL,
 		SandboxKind:           sandboxKind,
 		TerminalRelay:         terminalRelay,
 		WhatsAppManager:       whatsappManager,

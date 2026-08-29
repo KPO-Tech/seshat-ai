@@ -1464,6 +1464,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/network-diagnostics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Run a live connectivity check against this server's own outbound dependencies
+         * @description Probes the SMTP relay (if configured) and each of this organization's enabled OIDC/SAML providers with a layered DNS/TCP/ TLS/HTTP check, reporting which layer fails and a targeted suggestion - self-service troubleshooting for enterprise IT, see docs/helps/audit-2026-08-29-openwork-den-comparison.md § 6. Requires network_diagnostics.read or organization.manage.
+         */
+        get: operations["runNetworkDiagnostics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/provider-catalog": {
         parameters: {
             query?: never;
@@ -4117,6 +4137,34 @@ export interface components {
             device?: components["schemas"]["Device"];
             /** @description Full device bearer token, shown in full only in this response. */
             token?: string;
+        };
+        /** @description One named layer of a connectivity check (see internal/server/netdiag). */
+        NetworkDiagnosticStep: {
+            /** @enum {string} */
+            name?: "dns" | "tcp" | "tls" | "http";
+            /** @enum {string} */
+            status?: "pass" | "fail" | "skipped";
+            duration_ms?: number;
+            /** @description Resolved IPs, HTTP status code, or an error message - informational, not itself a pass/fail signal. */
+            detail?: string;
+            /** @description Present only on failure - a targeted, human-readable next step. */
+            suggestion?: string;
+            /**
+             * @description Present only on failure - who should act on this suggestion.
+             * @enum {string}
+             */
+            act_on?: "network_admin" | "it_security" | "support";
+        };
+        /** @description One target's full layered check sequence. */
+        NetworkDiagnosticResult: {
+            /** @description e.g. "Seshat Server", "Email delivery (SMTP relay)", or "SSO provider: Okta". */
+            name?: string;
+            target?: string;
+            steps?: components["schemas"]["NetworkDiagnosticStep"][];
+            ok?: boolean;
+        };
+        NetworkDiagnosticsResult: {
+            checks?: components["schemas"]["NetworkDiagnosticResult"][];
         };
         Job: {
             id?: string;
@@ -7242,6 +7290,30 @@ export interface operations {
                         events?: components["schemas"]["ScimSyncEvent"][];
                         total?: number;
                     };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    runNetworkDiagnostics: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Diagnostic checks for this organization's outbound dependencies */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NetworkDiagnosticsResult"];
                 };
             };
             401: components["responses"]["Unauthorized"];

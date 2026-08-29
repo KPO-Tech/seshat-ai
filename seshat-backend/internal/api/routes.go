@@ -199,6 +199,7 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 
 	// Public: needed by the Login/Register screens before any session exists.
 	apiV1.HandleFunc("/system/status", app.handleSystemStatus)
+	apiV1.Handle("/system/network-diagnostics", app.authMiddleware(http.HandlerFunc(app.handleNetworkDiagnostics)))
 
 	apiV1.HandleFunc("/models", handleModelsList)
 	apiV1.HandleFunc("/metrics", app.handleMetricsJSON)

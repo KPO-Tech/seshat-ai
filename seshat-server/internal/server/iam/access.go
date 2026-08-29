@@ -136,6 +136,7 @@ func permissionCatalog() []Permission {
 		{Code: "provider_settings.manage", Name: "Manage Provider Settings", Description: "Create, update and delete LLM provider credentials.", Category: "provider_settings"},
 		{Code: "scim_connections.read", Name: "Read SCIM Connections", Description: "See this organization's SCIM provisioning connection and its recent sync activity (never the bearer token itself).", Category: "scim_connections"},
 		{Code: "scim_connections.manage", Name: "Manage SCIM Connections", Description: "Create, update, delete and rotate the token of this organization's SCIM provisioning connection.", Category: "scim_connections"},
+		{Code: "network_diagnostics.read", Name: "Run Network Diagnostics", Description: "Trigger a live connectivity check (DNS/TCP/TLS/HTTP) against the SMTP relay and this organization's configured SSO providers - a distinct capability from providers.read, since it makes real outbound network calls rather than just reading configuration.", Category: "network_diagnostics"},
 		{Code: "knowledge.read", Name: "Read Knowledge Base", Description: "Inspect corpora, uploaded files and ingestion status.", Category: "knowledge"},
 		{Code: "knowledge.manage", Name: "Manage Knowledge Base", Description: "Create/delete corpora, upload and remove files, retry ingestion.", Category: "knowledge"},
 		{Code: "prospecting.read", Name: "Read Prospecting Results", Description: "List businesses discovered by a prospecting sweep.", Category: "prospecting"},

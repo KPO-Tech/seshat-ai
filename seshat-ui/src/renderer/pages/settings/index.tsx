@@ -10,6 +10,7 @@ import { api } from '@/api/client'
 import { SettingsSidebar, SETTINGS_NAV_CSS, SETTINGS_SHARED_CSS } from './SettingsNav'
 import { SettingsLockedBanner, SETTINGS_LOCKED_BANNER_CSS } from './SettingsLockedBanner'
 import { AppVersionWarningBanner, APP_VERSION_WARNING_BANNER_CSS } from './AppVersionWarningBanner'
+import { NetworkDiagnosticsCard, NETWORK_DIAGNOSTICS_CARD_CSS } from './NetworkDiagnosticsCard'
 import { MemoriesView } from './MemoriesView'
 import { AboutView } from './AboutView'
 import { GeneralView } from './GeneralView'
@@ -309,6 +310,15 @@ export function RuntimeView() {
       </div>
       <div className="sv-section">
         <div className="sv-section-header">
+          <h2>Network diagnostics</h2>
+          <p>Self-service connectivity check for enterprise IT - useful when this device can't reach Seshat Server.</p>
+        </div>
+        <div className="sv-grid">
+          <NetworkDiagnosticsCard />
+        </div>
+      </div>
+      <div className="sv-section">
+        <div className="sv-section-header">
           <h2>Cloud Automation</h2>
           <p>
             Scheduled jobs run through Seshat Server. This machine only executes jobs assigned to it.
@@ -325,4 +335,5 @@ ${SETTINGS_NAV_CSS}
 ${SETTINGS_SHARED_CSS}
 ${SETTINGS_LOCKED_BANNER_CSS}
 ${APP_VERSION_WARNING_BANNER_CSS}
+${NETWORK_DIAGNOSTICS_CARD_CSS}
 `

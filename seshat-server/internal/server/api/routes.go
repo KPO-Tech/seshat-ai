@@ -154,6 +154,8 @@ func (app *App) routes() http.Handler {
 	mux.Handle("POST /api/v1/scim-connections/rotate-token", app.authMiddleware(http.HandlerFunc(app.handleScimConnectionRotateToken)))
 	mux.Handle("GET /api/v1/scim-connections/events", app.authMiddleware(http.HandlerFunc(app.handleScimConnectionEvents)))
 
+	mux.Handle("GET /api/v1/network-diagnostics", app.authMiddleware(http.HandlerFunc(app.handleNetworkDiagnostics)))
+
 	// SCIM protocol — device-protocol pattern (see /api/v1/device/* above):
 	// each handler authenticates itself against ScimConnection.TokenHash via
 	// resolveScimConnectionFromRequest, never app.authMiddleware. The IdP is

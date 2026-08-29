@@ -2501,6 +2501,29 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
+  /api/v1/network-diagnostics:
+    get:
+      operationId: runNetworkDiagnostics
+      tags: [network-diagnostics]
+      summary: Run a live connectivity check against this server's own outbound dependencies
+      description: >-
+        Probes the SMTP relay (if configured) and each of this
+        organization's enabled OIDC/SAML providers with a layered DNS/TCP/
+        TLS/HTTP check, reporting which layer fails and a targeted
+        suggestion - self-service troubleshooting for enterprise IT, see
+        docs/helps/audit-2026-08-29-openwork-den-comparison.md § 6. Requires
+        network_diagnostics.read or organization.manage.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: Diagnostic checks for this organization's outbound dependencies
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NetworkDiagnosticsResult" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
   /api/v1/provider-catalog:
     get:
       operationId: listProviderCatalog
@@ -6302,6 +6325,48 @@ components:
         token:
           type: string
           description: Full device bearer token, shown in full only in this response.
+
+    NetworkDiagnosticStep:
+      type: object
+      description: One named layer of a connectivity check (see internal/server/netdiag).
+      properties:
+        name:
+          type: string
+          enum: [dns, tcp, tls, http]
+        status:
+          type: string
+          enum: [pass, fail, skipped]
+        duration_ms: { type: integer }
+        detail:
+          type: string
+          description: Resolved IPs, HTTP status code, or an error message - informational, not itself a pass/fail signal.
+        suggestion:
+          type: string
+          description: Present only on failure - a targeted, human-readable next step.
+        act_on:
+          type: string
+          enum: [network_admin, it_security, support]
+          description: Present only on failure - who should act on this suggestion.
+
+    NetworkDiagnosticResult:
+      type: object
+      description: One target's full layered check sequence.
+      properties:
+        name:
+          type: string
+          description: 'e.g. "Seshat Server", "Email delivery (SMTP relay)", or "SSO provider: Okta".'
+        target: { type: string }
+        steps:
+          type: array
+          items: { $ref: "#/components/schemas/NetworkDiagnosticStep" }
+        ok: { type: boolean }
+
+    NetworkDiagnosticsResult:
+      type: object
+      properties:
+        checks:
+          type: array
+          items: { $ref: "#/components/schemas/NetworkDiagnosticResult" }
 
     Job:
       type: object

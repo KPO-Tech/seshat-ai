@@ -42,6 +42,7 @@ const PolicyBindingsPage = lazyPage(() => import('@/pages/policyBindings/PolicyB
 const ApplicationsPage = lazyPage(() => import('@/pages/applications/ApplicationsPage').then((module) => ({ default: module.ApplicationsPage })))
 const ProvidersPage = lazyPage(() => import('@/pages/providers/ProvidersPage').then((module) => ({ default: module.ProvidersPage })))
 const ScimSettingsPage = lazyPage(() => import('@/pages/scim/ScimSettingsPage').then((module) => ({ default: module.ScimSettingsPage })))
+const NetworkDiagnosticsPage = lazyPage(() => import('@/pages/networkDiagnostics/NetworkDiagnosticsPage').then((module) => ({ default: module.NetworkDiagnosticsPage })))
 const SessionsPage = lazyPage(() => import('@/pages/sessions/SessionsPage').then((module) => ({ default: module.SessionsPage })))
 const DevicesPage = lazyPage(() => import('@/pages/devices/DevicesPage').then((module) => ({ default: module.DevicesPage })))
 const DesktopPoliciesPage = lazyPage(() => import('@/pages/desktopPolicies/DesktopPoliciesPage').then((module) => ({ default: module.DesktopPoliciesPage })))
@@ -137,6 +138,7 @@ export const router = createBrowserRouter([
               { path: 'integrations/applications', element: renderLazyPage(ApplicationsPage) },
               { path: 'integrations/providers', element: renderLazyPage(ProvidersPage) },
               { path: 'integrations/scim', element: renderLazyPage(ScimSettingsPage) },
+              { path: 'integrations/network-diagnostics', element: renderLazyPage(NetworkDiagnosticsPage) },
               { path: 'prospecting/sweeps', element: renderLazyPage(SweepsPage) },
               { path: 'prospecting/settings', element: renderLazyPage(ProspectingSettingsPage) },
               { path: 'activity/audit', element: renderLazyPage(AuditEventsPage) },

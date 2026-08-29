@@ -441,6 +441,12 @@ export function getSecondaryNavItems(pathname: string, organizationId: string | 
         path: `/orgs/${organizationId}/integrations/scim`,
         matchPrefix: `/orgs/${organizationId}/integrations/scim`,
       },
+      {
+        key: 'org-integrations-network-diagnostics',
+        label: 'Network Diagnostics',
+        path: `/orgs/${organizationId}/integrations/network-diagnostics`,
+        matchPrefix: `/orgs/${organizationId}/integrations/network-diagnostics`,
+      },
     ]
   }
 

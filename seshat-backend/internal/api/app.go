@@ -62,6 +62,14 @@ type App struct {
 	// configured here - seshat-server enforces at most one organization per
 	// user account, so there's no deployment-time value to store.
 	connectedServerURL string
+	// targetServerURL is the seshat-server this build would connect to,
+	// always populated from bootstrap.go's defaultServerURL regardless of
+	// whether serverReachable actually succeeded - unlike
+	// connectedServerURL, this is needed even in standalone mode so the
+	// network diagnostics tool (see internal/netdiag) can explain *why* the
+	// boot-time reachability check failed, rather than having nothing to
+	// probe at all.
+	targetServerURL string
 	// sandboxKind is the bash-tool sandbox backend the query client's SDK
 	// Client actually resolved to at boot (sdk.SandboxKindDocker or
 	// sdk.SandboxKindLocal, as a string) - see bootstrap.go's
@@ -109,6 +117,9 @@ type AppConfig struct {
 	TrustedProxyCIDRs     []*net.IPNet
 	AllowedSkillRepoHosts []string
 	ConnectedServerURL    string
+	// TargetServerURL is always defaultServerURL (bootstrap.go), independent
+	// of ConnectedServerURL - see App.targetServerURL's doc comment.
+	TargetServerURL string
 	// SandboxKind is the bash-tool sandbox backend the query client's SDK
 	// Client actually resolved to at boot - see App.sandboxKind's doc comment.
 	SandboxKind string
@@ -169,6 +180,7 @@ func NewApp(cfg AppConfig) *App {
 		trustedProxyCIDRs:     cfg.TrustedProxyCIDRs,
 		allowedSkillRepoHosts: cfg.AllowedSkillRepoHosts,
 		connectedServerURL:    cfg.ConnectedServerURL,
+		targetServerURL:       cfg.TargetServerURL,
 		sandboxKind:           cfg.SandboxKind,
 		transcribeAudio: func(ctx context.Context, apiKey string, audioData []byte, baseURL string) (*sdk.TranscriptionResult, error) {
 			if baseURL != "" {
