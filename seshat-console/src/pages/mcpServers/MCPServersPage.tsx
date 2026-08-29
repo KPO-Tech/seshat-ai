@@ -16,6 +16,7 @@ import { PageHeader } from '@/components/PageHeader'
 import { ConsoleTable } from '@/components/ConsoleTable'
 import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
 import { monoStack, palette } from '@/theme/tokens'
+import { SmartAddMCPServerDrawer } from './SmartAddMCPServerDrawer'
 
 // "sdk" is deliberately not offered here: it identifies an MCP tool built
 // into the SDK's own binary (see seshat/internal/tools/system/mcp -
@@ -58,6 +59,12 @@ const SELF_HOSTED_MCP_PATH: Partial<Record<string, string>> = {
 export function MCPServersPage() {
   const organizationId = useScopedOrganizationId()
   const [editing, setEditing] = useState<MCPServerConfig | 'new' | null>(null)
+  // Smart-Add (see docs/helps/audit-2026-08-29-openwork-den-comparison.md
+  // § 8) is the default "New MCP server" entry point - the manual drawer
+  // (editing='new') is still reachable via its own "switch to manual setup"
+  // link, kept as a separate piece of state since the two drawers are
+  // mutually exclusive but neither is a subset of the other's fields.
+  const [smartAddOpen, setSmartAddOpen] = useState(false)
   const { data, isLoading, error } = useMCPServerConfigsList(organizationId ?? undefined)
   const createConfig = useCreateMCPServerConfig()
   const updateConfig = useUpdateMCPServerConfig()
@@ -134,7 +141,7 @@ export function MCPServersPage() {
         title="MCP Servers"
         description="Organization-shared MCP server definitions. Secrets are encrypted at rest and never echoed back in list responses. Falls back to this platform's default organization's servers when this organization has none of its own."
         actions={
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing('new')} disabled={!organizationId}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setSmartAddOpen(true)} disabled={!organizationId}>
             New MCP server
           </Button>
         }
@@ -163,6 +170,16 @@ export function MCPServersPage() {
               style={{ padding: '32px 0' }}
             />
           ),
+        }}
+      />
+
+      <SmartAddMCPServerDrawer
+        organizationId={organizationId}
+        open={smartAddOpen}
+        onClose={() => setSmartAddOpen(false)}
+        onSwitchToManual={() => {
+          setSmartAddOpen(false)
+          setEditing('new')
         }}
       />
 

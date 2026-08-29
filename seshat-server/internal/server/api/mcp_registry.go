@@ -35,6 +35,39 @@ type updateMCPServerConfigRequest struct {
 	Icon        string            `json:"icon"`
 }
 
+type probeMCPServerConfigRequest struct {
+	OrganizationID   string `json:"organization_id"`
+	URL              string `json:"url"`
+	CredentialHeader string `json:"credential_header"`
+	CredentialValue  string `json:"credential_value"`
+}
+
+// handleMCPServerConfigsProbe — POST /api/v1/mcp-server-configs/probe. The
+// Smart-Add entry point (see docs/helps/audit-2026-08-29-openwork-den-comparison.md
+// § 8): probes a candidate URL and classifies whether it needs a credential,
+// without creating anything - see mcpregistry.ProbeServerConfig.
+func (app *App) handleMCPServerConfigsProbe(w http.ResponseWriter, r *http.Request) {
+	principal, ok := authPrincipalFromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "missing principal")
+		return
+	}
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var req probeMCPServerConfigRequest
+	if !decodeJSONBody(w, r, &req) {
+		return
+	}
+	result, err := app.backend.MCPRegistry.ProbeServerConfig(r.Context(), principal, req.OrganizationID, req.URL, req.CredentialHeader, req.CredentialValue)
+	if err != nil {
+		writeMCPRegistryError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
 func (app *App) handleMCPServerConfigs(w http.ResponseWriter, r *http.Request) {
 	principal, ok := authPrincipalFromContext(r.Context())
 	if !ok {

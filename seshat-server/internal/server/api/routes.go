@@ -125,6 +125,7 @@ func (app *App) routes() http.Handler {
 	mux.Handle("DELETE /api/v1/web-search-provider-settings/{webSearchProviderSettingID}", app.authMiddleware(http.HandlerFunc(app.handleWebSearchProviderSettingByID)))
 	mux.Handle("GET /api/v1/web-search-org-policy", app.authMiddleware(http.HandlerFunc(app.handleWebSearchOrgPolicy)))
 	mux.Handle("PUT /api/v1/web-search-org-policy", app.authMiddleware(http.HandlerFunc(app.handleWebSearchOrgPolicy)))
+	mux.Handle("POST /api/v1/mcp-server-configs/probe", app.authMiddleware(http.HandlerFunc(app.handleMCPServerConfigsProbe)))
 	mux.Handle("GET /api/v1/mcp-server-configs/resolve", app.authMiddleware(http.HandlerFunc(app.handleMCPServerConfigResolve)))
 	mux.Handle("GET /api/v1/mcp-server-configs", app.authMiddleware(http.HandlerFunc(app.handleMCPServerConfigs)))
 	mux.Handle("POST /api/v1/mcp-server-configs", app.authMiddleware(http.HandlerFunc(app.handleMCPServerConfigs)))

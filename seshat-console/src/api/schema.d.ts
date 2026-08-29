@@ -1770,6 +1770,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/mcp-server-configs/probe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Smart-Add: probe a candidate MCP server URL and classify its auth requirement
+         * @description Sends a real MCP JSON-RPC "initialize" handshake to url (optionally with one credential header attached, to confirm a credential works before saving it), and classifies the result - never creates anything. Requires mcp_registry.manage or organization.manage, same gate as create. Deliberately shallow: a 401/403 always means "supply a credential you already have," this never performs OAuth discovery or Dynamic Client Registration - see docs/helps/audit-2026-08-29-openwork-den-comparison.md § 8.
+         */
+        post: operations["probeMCPServerConfig"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/mcp-server-configs/resolve": {
         parameters: {
             query?: never;
@@ -3782,6 +3802,20 @@ export interface components {
              * @enum {string}
              */
             connector_kind?: "" | "gdrive" | "sharepoint" | "slack" | "outlook" | "teams" | "gmail";
+        };
+        MCPProbeResult: {
+            /**
+             * @description "none": the target answered successfully, nothing more needed. "credential": it responded 401/403 - supply one and re-probe to confirm before saving. "unknown": an ambiguous response or a transport failure - see detail, no credential requirement was confirmed either way.
+             * @enum {string}
+             */
+            auth_mode?: "none" | "credential" | "unknown";
+            /**
+             * @description Best-effort transport guess from the response Content-Type. Only present when auth_mode is "none".
+             * @enum {string}
+             */
+            server_type?: "http" | "sse";
+            /** @description A short human-readable explanation (status code, WWW-Authenticate header, or transport error). */
+            detail?: string;
         };
         /** @description Unlike MCPServerConfig, this includes the decrypted env/headers maps — see the resolveMCPServerConfigs operation. */
         ResolvedMCPServerConfig: {
@@ -7835,6 +7869,39 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             403: components["responses"]["Forbidden"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    probeMCPServerConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    organization_id: string;
+                    url: string;
+                    /** @description e.g. "Authorization" - omit on the first (unauthenticated) probe. */
+                    credential_header?: string;
+                    /** @description e.g. "Bearer sk-..." - omit on the first (unauthenticated) probe. */
+                    credential_value?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Probe classification */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MCPProbeResult"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
     resolveMCPServerConfigs: {

@@ -2999,6 +2999,45 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "409": { $ref: "#/components/responses/Conflict" }
 
+  /api/v1/mcp-server-configs/probe:
+    post:
+      operationId: probeMCPServerConfig
+      tags: [mcp-server-configs]
+      summary: "Smart-Add: probe a candidate MCP server URL and classify its auth requirement"
+      description: >-
+        Sends a real MCP JSON-RPC "initialize" handshake to url (optionally
+        with one credential header attached, to confirm a credential works
+        before saving it), and classifies the result - never creates
+        anything. Requires mcp_registry.manage or organization.manage, same
+        gate as create. Deliberately shallow: a 401/403 always means
+        "supply a credential you already have," this never performs OAuth
+        discovery or Dynamic Client Registration - see
+        docs/helps/audit-2026-08-29-openwork-den-comparison.md § 8.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [organization_id, url]
+              properties:
+                organization_id: { type: string }
+                url: { type: string }
+                credential_header:
+                  type: string
+                  description: e.g. "Authorization" - omit on the first (unauthenticated) probe.
+                credential_value:
+                  type: string
+                  description: e.g. "Bearer sk-..." - omit on the first (unauthenticated) probe.
+      responses:
+        "200":
+          description: Probe classification
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MCPProbeResult" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
   /api/v1/mcp-server-configs/resolve:
     get:
       operationId: resolveMCPServerConfigs
@@ -5955,6 +5994,26 @@ components:
         timeout_secs: { type: integer }
         icon: { type: string }
         connector_kind: { type: string, enum: ["", gdrive, sharepoint, slack, outlook, teams, gmail], description: "When set, this server's headers are personalized per caller at resolve time - see ResolvedMCPServerConfig.connected." }
+
+    MCPProbeResult:
+      type: object
+      properties:
+        auth_mode:
+          type: string
+          enum: [none, credential, unknown]
+          description: >-
+            "none": the target answered successfully, nothing more needed.
+            "credential": it responded 401/403 - supply one and re-probe to
+            confirm before saving. "unknown": an ambiguous response or a
+            transport failure - see detail, no credential requirement was
+            confirmed either way.
+        server_type:
+          type: string
+          enum: [http, sse]
+          description: Best-effort transport guess from the response Content-Type. Only present when auth_mode is "none".
+        detail:
+          type: string
+          description: A short human-readable explanation (status code, WWW-Authenticate header, or transport error).
 
     ResolvedMCPServerConfig:
       type: object

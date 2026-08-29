@@ -6,6 +6,7 @@ export type MCPServerConfig = components['schemas']['MCPServerConfig']
 export type ResolvedMCPServerConfig = components['schemas']['ResolvedMCPServerConfig']
 export type MCPServerConfigInput = components['schemas']['MCPServerConfigInput']
 export type MCPServerConfigUpdateInput = components['schemas']['MCPServerConfigUpdateInput']
+export type MCPProbeResult = components['schemas']['MCPProbeResult']
 
 const LIST_KEY = 'mcp-server-configs'
 const RESOLVED_KEY = 'resolved-mcp-server-configs'
@@ -34,6 +35,19 @@ export function useResolvedMCPServerConfigs(organizationId: string | undefined) 
       })
       if (error) throw error
       return data.mcp_server_configs ?? []
+    },
+  })
+}
+
+// A mutation, not a query: probing triggers a real outbound request from
+// seshat-server to an admin-supplied URL, so it should only ever happen on
+// an explicit step in the Smart-Add flow - never on mount/refetch.
+export function useProbeMCPServerConfig() {
+  return useMutation({
+    mutationFn: async (body: { organization_id: string; url: string; credential_header?: string; credential_value?: string }) => {
+      const { data, error } = await api.POST('/api/v1/mcp-server-configs/probe', { body })
+      if (error) throw error
+      return data
     },
   })
 }
