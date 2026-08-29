@@ -1358,6 +1358,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/scim-connections/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List an organization's SCIM connection's recent protocol activity
+         * @description The "recent activity" feed backing ScimConnection's health fields — most recent first. Requires scim_connections.read/.manage or organization.manage.
+         */
+        get: operations["listScimConnectionEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/provider-catalog": {
         parameters: {
             query?: never;
@@ -3345,10 +3365,19 @@ export interface components {
             /** @example Okta */
             name?: string;
             enabled?: boolean;
-            /** @description When false, /Groups pushes are recorded for visibility but never touch a real team ("metadata only" mode). */
+            /** @description When false, every /Groups write is rejected outright (403) — the connection never agreed to accept group pushes at all. */
             sync_groups?: boolean;
-            /** @description Only has an effect when sync_groups is true. */
+            /** @description Only has an effect when sync_groups is true. false ("metadata only"): a /Groups push is recorded for admin visibility but never creates or modifies a real team. true: a real team is created/updated, fully addressable afterward. */
             auto_create_teams?: boolean;
+            /**
+             * Format: date-time
+             * @description Timestamp of the most recent SCIM protocol operation against this connection, of any kind. Absent if none has ever occurred.
+             */
+            last_sync_at?: string;
+            /** @description Whether that most recent operation succeeded. Absent if none has ever occurred. */
+            last_sync_success?: boolean;
+            /** @description The most recent operation's error message — only present when last_sync_success is false. A later success clears it. */
+            last_error?: string;
         };
         ScimConnectionWithToken: components["schemas"]["ScimConnection"] & {
             /** @description The raw bearer token — shown exactly once, on create or rotate. Never returned by any other operation. */
@@ -3366,6 +3395,19 @@ export interface components {
             enabled: boolean;
             sync_groups?: boolean;
             auto_create_teams?: boolean;
+        };
+        /** @description One SCIM protocol operation against a connection — the "recent activity" feed, and the source health is derived from (see ScimConnection.last_sync_at/last_sync_success). */
+        ScimSyncEvent: {
+            id?: string;
+            /** @example user.create */
+            operation?: string;
+            /** @enum {string} */
+            resource_type?: "User" | "Group";
+            external_id?: string;
+            success?: boolean;
+            error_message?: string;
+            /** Format: date-time */
+            created_at?: string;
         };
         ProviderCatalogModel: {
             /** @example claude-sonnet-4-20250514 */
@@ -6898,6 +6940,35 @@ export interface operations {
             };
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    listScimConnectionEvents: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Recent SCIM sync events */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        events?: components["schemas"]["ScimSyncEvent"][];
+                        total?: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
     listProviderCatalog: {

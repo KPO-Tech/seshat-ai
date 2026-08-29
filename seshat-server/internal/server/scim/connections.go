@@ -13,6 +13,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"gorm.io/gorm"
 
@@ -23,14 +24,26 @@ import (
 // Connection is the caller-facing view of an organization's SCIM
 // connection. Never includes the bearer token - see ConnectionWithToken for
 // the one-time reveal on create/rotate.
+//
+// LastSyncAt/LastSyncSuccess/LastError are Étape 6's "health" fields -
+// deliberately computed from ScimSyncEvent at read time (see withHealth),
+// never stored columns that would need to be kept in sync by hand on every
+// write path. LastSyncAt/LastSyncSuccess are both nil until at least one
+// protocol operation has ever hit this connection. LastError only reflects
+// the MOST RECENT event's error - an older failure followed by a newer
+// success clears it, on the theory that a subsequent success means whatever
+// was wrong has since resolved.
 type Connection struct {
-	ID              string `json:"id"`
-	OrganizationID  string `json:"organization_id"`
-	CreatedByUserID string `json:"created_by_user_id"`
-	Name            string `json:"name"`
-	Enabled         bool   `json:"enabled"`
-	SyncGroups      bool   `json:"sync_groups"`
-	AutoCreateTeams bool   `json:"auto_create_teams"`
+	ID              string     `json:"id"`
+	OrganizationID  string     `json:"organization_id"`
+	CreatedByUserID string     `json:"created_by_user_id"`
+	Name            string     `json:"name"`
+	Enabled         bool       `json:"enabled"`
+	SyncGroups      bool       `json:"sync_groups"`
+	AutoCreateTeams bool       `json:"auto_create_teams"`
+	LastSyncAt      *time.Time `json:"last_sync_at,omitempty"`
+	LastSyncSuccess *bool      `json:"last_sync_success,omitempty"`
+	LastError       string     `json:"last_error,omitempty"`
 }
 
 // ConnectionWithToken is returned only from CreateConnection and
@@ -122,7 +135,33 @@ func (s *Service) GetConnection(ctx context.Context, principal *iam.Principal, o
 		return nil, nil
 	}
 	connection := toConnection(record)
+	if err := s.withHealth(tx, &connection); err != nil {
+		return nil, err
+	}
 	return &connection, nil
+}
+
+// withHealth populates connection.LastSyncAt/LastSyncSuccess/LastError from
+// the single most recent ScimSyncEvent for it, if any. A missing event
+// history (no protocol operation has ever hit this connection) leaves all
+// three fields at their zero value, not an error.
+func (s *Service) withHealth(tx *gorm.DB, connection *Connection) error {
+	var event sdb.ScimSyncEvent
+	err := tx.Where("scim_connection_id = ?", connection.ID).Order("seq_num desc").First(&event).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil
+		}
+		return err
+	}
+	createdAt := event.CreatedAt
+	success := event.Success
+	connection.LastSyncAt = &createdAt
+	connection.LastSyncSuccess = &success
+	if !success {
+		connection.LastError = event.ErrorMessage
+	}
+	return nil
 }
 
 // CreateConnection provisions organizationID's SCIM connection and returns
@@ -291,6 +330,65 @@ func (s *Service) DeleteConnection(ctx context.Context, principal *iam.Principal
 		}
 		return s.iam.AppendAuditEvent(tx, principal, organizationID, "scim_connection.deleted", "scim_connection", record.ID, nil)
 	})
+}
+
+// SyncEvent is the caller-facing view of one ScimSyncEvent row - the
+// "recent activity" feed Étape 6's admin UI reads instead of a separate
+// health-summary table (see the staged plan: health is derived from this
+// journal, not stored redundantly).
+type SyncEvent struct {
+	ID           string    `json:"id"`
+	Operation    string    `json:"operation"`
+	ResourceType string    `json:"resource_type"`
+	ExternalID   string    `json:"external_id,omitempty"`
+	Success      bool      `json:"success"`
+	ErrorMessage string    `json:"error_message,omitempty"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+func toSyncEvent(record sdb.ScimSyncEvent) SyncEvent {
+	return SyncEvent{
+		ID: record.ID, Operation: record.Operation, ResourceType: record.ResourceType,
+		ExternalID: record.ExternalID, Success: record.Success, ErrorMessage: record.ErrorMessage,
+		CreatedAt: record.CreatedAt,
+	}
+}
+
+// ListSyncEvents returns organizationID's SCIM connection's recent activity,
+// most recent first. Requires scim_connections.read/.manage or
+// organization.manage, same gate as GetConnection - this is the connection's
+// own operational log, not something a plain member needs to see.
+func (s *Service) ListSyncEvents(ctx context.Context, principal *iam.Principal, organizationID string, limit, offset int) ([]SyncEvent, int64, error) {
+	if principal == nil {
+		return nil, 0, iam.ErrUnauthorized("authentication required")
+	}
+	organizationID = strings.TrimSpace(organizationID)
+	if organizationID == "" {
+		return nil, 0, iam.ErrInvalidInput("organization_id is required")
+	}
+	tx := s.db.Gorm().WithContext(ctx)
+	if !principal.User.IsAdmin {
+		if err := s.iam.CheckOrganizationPermission(tx, principal, organizationID, "scim_connections.read", "scim_connections.manage", "organization.manage"); err != nil {
+			return nil, 0, err
+		}
+	}
+	connectionRecord, found, err := s.findConnectionTx(tx, organizationID)
+	if err != nil {
+		return nil, 0, err
+	}
+	if !found {
+		return []SyncEvent{}, 0, nil
+	}
+	query := tx.Model(&sdb.ScimSyncEvent{}).Where("scim_connection_id = ?", connectionRecord.ID).Order("seq_num desc")
+	records, total, err := sdb.Page[sdb.ScimSyncEvent](query, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	events := make([]SyncEvent, 0, len(records))
+	for _, record := range records {
+		events = append(events, toSyncEvent(record))
+	}
+	return events, total, nil
 }
 
 func (s *Service) findConnection(ctx context.Context, organizationID string) (sdb.ScimConnection, bool, error) {

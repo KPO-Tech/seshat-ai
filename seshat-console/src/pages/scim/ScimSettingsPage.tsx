@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Button, Drawer, Empty, Form, Input, message, Modal, Popconfirm, Space, Switch, Tag, Typography } from 'antd'
-import { ApiOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, PlusOutlined } from '@ant-design/icons'
+import { ApiOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, PlusOutlined, CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons'
 import {
   useScimConnection,
   useCreateScimConnection,
   useUpdateScimConnection,
   useDeleteScimConnection,
   useRotateScimConnectionToken,
+  useScimSyncEvents,
   type ScimConnection,
   type ScimConnectionInput,
   type ScimConnectionUpdateInput,
@@ -15,6 +16,21 @@ import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
 import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
 import { palette } from '@/theme/tokens'
+
+function StatusBadge({ connection }: { connection: ScimConnection }) {
+  if (connection.last_sync_success === undefined || connection.last_sync_success === null) {
+    return <Tag style={{ margin: 0 }}>No activity yet</Tag>
+  }
+  return connection.last_sync_success ? (
+    <Tag color="green" icon={<CheckCircleFilled />} style={{ margin: 0 }}>
+      Healthy
+    </Tag>
+  ) : (
+    <Tag color="red" icon={<CloseCircleFilled />} style={{ margin: 0 }}>
+      Last operation failed
+    </Tag>
+  )
+}
 
 export function ScimSettingsPage() {
   const organizationId = useScopedOrganizationId()
@@ -72,6 +88,7 @@ export function ScimSettingsPage() {
                 <Tag color={connection.enabled ? 'green' : 'default'} style={{ margin: 0 }}>
                   {connection.enabled ? 'Enabled' : 'Disabled'}
                 </Tag>
+                <StatusBadge connection={connection} />
               </Space>
               <div style={{ marginTop: 6 }}>
                 <Typography.Text style={{ fontSize: 12, color: palette.inkTertiary }}>
@@ -79,9 +96,14 @@ export function ScimSettingsPage() {
                     ? connection.auto_create_teams
                       ? 'Groups pushed by the IdP are synced into real teams.'
                       : 'Groups pushed by the IdP are recorded, but no team is created or modified.'
-                    : 'Group provisioning is off — only users are synced.'}
+                    : 'Group provisioning is off — every /Groups push is rejected.'}
                 </Typography.Text>
               </div>
+              {connection.last_sync_success === false && connection.last_error && (
+                <Typography.Text type="danger" style={{ display: 'block', fontSize: 12, marginTop: 4 }}>
+                  {connection.last_error}
+                </Typography.Text>
+              )}
             </div>
             <Space>
               <Popconfirm
@@ -110,6 +132,8 @@ export function ScimSettingsPage() {
               </Popconfirm>
             </Space>
           </Space>
+
+          <RecentActivity organizationId={organizationId} />
         </div>
       )}
 
@@ -208,7 +232,7 @@ function ScimConnectionFormDrawer({
             <Switch />
           </Form.Item>
         )}
-        <Form.Item name="sync_groups" label="Sync groups" valuePropName="checked" extra="When off, groups pushed by the IdP are ignored entirely.">
+        <Form.Item name="sync_groups" label="Sync groups" valuePropName="checked" extra="When off, the IdP's group pushes are rejected outright rather than silently ignored.">
           <Switch />
         </Form.Item>
         <Form.Item
@@ -221,5 +245,45 @@ function ScimConnectionFormDrawer({
         </Form.Item>
       </Form>
     </Drawer>
+  )
+}
+
+function RecentActivity({ organizationId }: { organizationId: string | null }) {
+  const { data, isLoading } = useScimSyncEvents(organizationId ?? undefined)
+  const events = data?.events ?? []
+
+  return (
+    <div style={{ borderTop: `1px solid ${palette.border}`, marginTop: 16, paddingTop: 16 }}>
+      <Typography.Text style={{ display: 'block', fontSize: 11, fontWeight: 700, color: palette.inkTertiary, marginBottom: 8 }}>
+        RECENT ACTIVITY
+      </Typography.Text>
+      {isLoading ? null : events.length === 0 ? (
+        <Typography.Text style={{ fontSize: 12, color: palette.inkTertiary }}>
+          Nothing has synced yet — this fills in once your IdP starts pushing users or groups.
+        </Typography.Text>
+      ) : (
+        <Space orientation="vertical" size={6} style={{ width: '100%' }}>
+          {events.map((event) => (
+            <Space key={event.id} size={8} align="start" style={{ width: '100%' }}>
+              {event.success ? (
+                <CheckCircleFilled style={{ color: palette.accent, fontSize: 13, marginTop: 2 }} />
+              ) : (
+                <CloseCircleFilled style={{ color: '#d4380d', fontSize: 13, marginTop: 2 }} />
+              )}
+              <div>
+                <Typography.Text style={{ fontSize: 12 }}>
+                  {event.operation} <Typography.Text type="secondary">({event.resource_type})</Typography.Text>
+                  {event.external_id ? <Typography.Text type="secondary"> — {event.external_id}</Typography.Text> : null}
+                </Typography.Text>
+                <Typography.Text style={{ display: 'block', fontSize: 11, color: palette.inkTertiary }}>
+                  {event.created_at ? new Date(event.created_at).toLocaleString() : ''}
+                  {!event.success && event.error_message ? ` — ${event.error_message}` : ''}
+                </Typography.Text>
+              </div>
+            </Space>
+          ))}
+        </Space>
+      )}
+    </div>
   )
 }

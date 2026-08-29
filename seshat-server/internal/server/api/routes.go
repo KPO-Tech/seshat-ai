@@ -144,6 +144,7 @@ func (app *App) routes() http.Handler {
 	mux.Handle("PUT /api/v1/scim-connections", app.authMiddleware(http.HandlerFunc(app.handleScimConnection)))
 	mux.Handle("DELETE /api/v1/scim-connections", app.authMiddleware(http.HandlerFunc(app.handleScimConnection)))
 	mux.Handle("POST /api/v1/scim-connections/rotate-token", app.authMiddleware(http.HandlerFunc(app.handleScimConnectionRotateToken)))
+	mux.Handle("GET /api/v1/scim-connections/events", app.authMiddleware(http.HandlerFunc(app.handleScimConnectionEvents)))
 
 	// SCIM protocol — device-protocol pattern (see /api/v1/device/* above):
 	// each handler authenticates itself against ScimConnection.TokenHash via

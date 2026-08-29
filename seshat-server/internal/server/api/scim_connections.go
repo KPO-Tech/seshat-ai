@@ -89,6 +89,32 @@ func (app *App) handleScimConnection(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleScimConnectionEvents — GET /api/v1/scim-connections/events?organization_id=.
+// The Étape 6 "recent activity" feed - see scim.Service.ListSyncEvents.
+func (app *App) handleScimConnectionEvents(w http.ResponseWriter, r *http.Request) {
+	principal, ok := authPrincipalFromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "missing principal")
+		return
+	}
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	query, err := parseListQuery(r, "created_at", "desc")
+	if err != nil {
+		writeJSONError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	organizationID := strings.TrimSpace(r.URL.Query().Get("organization_id"))
+	events, total, err := app.backend.Scim.ListSyncEvents(r.Context(), principal, organizationID, query.Limit, query.Offset)
+	if err != nil {
+		writeScimConnectionError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"events": events, "total": total})
+}
+
 // handleScimConnectionRotateToken — POST /api/v1/scim-connections/rotate-token?organization_id=.
 // Returns the new raw token - the one and only time it's ever readable
 // again, same contract as create.

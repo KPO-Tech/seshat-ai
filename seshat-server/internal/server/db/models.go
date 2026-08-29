@@ -881,7 +881,7 @@ type ScimConnection struct {
 // activity queries don't need a join.
 type ScimSyncEvent struct {
 	ID               string `gorm:"primaryKey;size:32"`
-	ScimConnectionID string `gorm:"size:32;not null;index"`
+	ScimConnectionID string `gorm:"size:32;not null;index;index:idx_scim_sync_event_connection_seq"`
 	OrganizationID   string `gorm:"size:32;not null;index:idx_scim_sync_event_org_created"`
 	// Operation is e.g. "user.create", "user.patch", "user.delete",
 	// "group.sync". ResourceType is "User" or "Group". ExternalID is the
@@ -892,6 +892,18 @@ type ScimSyncEvent struct {
 	Success      bool      `gorm:"not null"`
 	ErrorMessage string    `gorm:"type:text"`
 	CreatedAt    time.Time `gorm:"index:idx_scim_sync_event_org_created"`
+	// SeqNum is the real sort key for "most recent first" queries - never
+	// CreatedAt alone. Two events recorded in rapid succession (a realistic
+	// case: a bulk group patch right after a user create) can land on the
+	// exact same CreatedAt once rounded through this DB's time-column
+	// precision, which would make ORDER BY created_at pick an arbitrary
+	// winner for "what's the most recent event" - a real correctness bug
+	// for the Étape 6 health check (GetConnection.LastSyncSuccess), not
+	// just a cosmetic ordering nit. Populated from a process-wide,
+	// strictly-increasing in-memory counter (see scim.nextSyncEventSeqNum),
+	// not a DB-level autoincrement column - this table's primary key is a
+	// string, and SQLite only auto-increments a true INTEGER PRIMARY KEY.
+	SeqNum int64 `gorm:"index:idx_scim_sync_event_connection_seq"`
 }
 
 // MCPServerConfig is an organization's shared MCP server definition — a

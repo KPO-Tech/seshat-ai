@@ -2355,6 +2355,38 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/scim-connections/events:
+    get:
+      operationId: listScimConnectionEvents
+      tags: [scim-connections]
+      summary: List an organization's SCIM connection's recent protocol activity
+      description: >-
+        The "recent activity" feed backing ScimConnection's health fields —
+        most recent first. Requires scim_connections.read/.manage or
+        organization.manage.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+        - name: limit
+          in: query
+          schema: { type: integer }
+        - name: offset
+          in: query
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Recent SCIM sync events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items: { $ref: "#/components/schemas/ScimSyncEvent" }
+                  total: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
   /api/v1/provider-catalog:
     get:
       operationId: listProviderCatalog
@@ -5350,10 +5382,24 @@ components:
         enabled: { type: boolean }
         sync_groups:
           type: boolean
-          description: When false, /Groups pushes are recorded for visibility but never touch a real team ("metadata only" mode).
+          description: When false, every /Groups write is rejected outright (403) — the connection never agreed to accept group pushes at all.
         auto_create_teams:
           type: boolean
-          description: Only has an effect when sync_groups is true.
+          description: >-
+            Only has an effect when sync_groups is true. false ("metadata
+            only"): a /Groups push is recorded for admin visibility but
+            never creates or modifies a real team. true: a real team is
+            created/updated, fully addressable afterward.
+        last_sync_at:
+          type: string
+          format: date-time
+          description: Timestamp of the most recent SCIM protocol operation against this connection, of any kind. Absent if none has ever occurred.
+        last_sync_success:
+          type: boolean
+          description: Whether that most recent operation succeeded. Absent if none has ever occurred.
+        last_error:
+          type: string
+          description: The most recent operation's error message — only present when last_sync_success is false. A later success clears it.
 
     ScimConnectionWithToken:
       allOf:
@@ -5381,6 +5427,18 @@ components:
         enabled: { type: boolean }
         sync_groups: { type: boolean }
         auto_create_teams: { type: boolean }
+
+    ScimSyncEvent:
+      type: object
+      description: One SCIM protocol operation against a connection — the "recent activity" feed, and the source health is derived from (see ScimConnection.last_sync_at/last_sync_success).
+      properties:
+        id: { type: string }
+        operation: { type: string, example: user.create }
+        resource_type: { type: string, enum: [User, Group] }
+        external_id: { type: string }
+        success: { type: boolean }
+        error_message: { type: string }
+        created_at: { type: string, format: date-time }
 
     ProviderCatalogModel:
       type: object

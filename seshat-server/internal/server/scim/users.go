@@ -4,10 +4,26 @@ import (
 	"context"
 	"regexp"
 	"strings"
+	"sync/atomic"
+	"time"
+
+	"gorm.io/gorm"
 
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
 )
+
+// scimSyncEventSeqNum is a process-wide, strictly-increasing counter for
+// ScimSyncEvent.SeqNum - see that field's doc comment for why CreatedAt
+// alone isn't a safe "most recent" sort key. Seeded from the current wall
+// clock (nanoseconds) so it starts higher than any row from a previous
+// process run in the overwhelming common case (wall-clock time only moves
+// backward on an actual clock adjustment), then only ever incremented -
+// perfectly monotonic for the lifetime of this process regardless of clock
+// resolution.
+var scimSyncEventSeqNum = time.Now().UnixNano()
+
+func nextSyncEventSeqNum() int64 { return atomic.AddInt64(&scimSyncEventSeqNum, 1) }
 
 const userSchema = "urn:ietf:params:scim:schemas:core:2.0:User"
 
@@ -320,9 +336,39 @@ func (s *Service) recordSyncEvent(ctx context.Context, connection *Connection, o
 	event := sdb.ScimSyncEvent{
 		ID: id, ScimConnectionID: connection.ID, OrganizationID: connection.OrganizationID,
 		Operation: operation, ResourceType: resourceType, ExternalID: externalID, Success: opErr == nil,
+		SeqNum: nextSyncEventSeqNum(),
 	}
 	if opErr != nil {
 		event.ErrorMessage = opErr.Error()
 	}
-	_ = s.db.Gorm().WithContext(ctx).Create(&event).Error
+	db := s.db.Gorm().WithContext(ctx)
+	if err := db.Create(&event).Error; err != nil {
+		return
+	}
+	trimSyncEventHistory(db, connection.ID)
+}
+
+// scimSyncEventRetentionLimit is Étape 1's "simple retention policy" -
+// enough history for a real admin investigation, small enough to never
+// grow unbounded from a chatty IdP re-syncing constantly.
+const scimSyncEventRetentionLimit = 500
+
+// trimSyncEventHistory deletes everything past the most recent
+// scimSyncEventRetentionLimit rows for one connection. Best-effort: a
+// failure here must never surface as if the actual sync operation (already
+// committed above) had failed, so its error is silently dropped.
+func trimSyncEventHistory(db *gorm.DB, connectionID string) {
+	var count int64
+	if err := db.Model(&sdb.ScimSyncEvent{}).Where("scim_connection_id = ?", connectionID).Count(&count).Error; err != nil {
+		return
+	}
+	if count <= scimSyncEventRetentionLimit {
+		return
+	}
+	_ = db.Exec(
+		`DELETE FROM scim_sync_events WHERE scim_connection_id = ? AND id NOT IN (
+			SELECT id FROM scim_sync_events WHERE scim_connection_id = ? ORDER BY seq_num DESC LIMIT ?
+		)`,
+		connectionID, connectionID, scimSyncEventRetentionLimit,
+	).Error
 }
