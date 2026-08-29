@@ -18,6 +18,8 @@ func (app *App) routes() http.Handler {
 	mux.HandleFunc("POST /api/v1/auth/reset-password", rateLimited(app.resetPasswordLimiter, app.handleResetPassword))
 	mux.HandleFunc("GET /api/v1/auth/oidc/{providerID}/start", rateLimited(app.loginLimiter, app.handleOIDCLoginStart))
 	mux.HandleFunc("GET /api/v1/auth/oidc/{providerID}/callback", rateLimited(app.loginLimiter, app.handleOIDCLoginCallback))
+	mux.HandleFunc("GET /api/v1/auth/saml/{providerID}/start", rateLimited(app.loginLimiter, app.handleSAMLLoginStart))
+	mux.HandleFunc("GET /api/v1/auth/saml/{providerID}/metadata", rateLimited(app.loginLimiter, app.handleSAMLMetadata))
 	mux.Handle("GET /api/v1/auth/me", app.authMiddleware(http.HandlerFunc(app.handleMe)))
 	mux.Handle("POST /api/v1/auth/logout", app.authMiddleware(http.HandlerFunc(app.handleLogout)))
 	mux.Handle("GET /api/v1/organizations", app.authMiddleware(http.HandlerFunc(app.handleOrganizations)))
