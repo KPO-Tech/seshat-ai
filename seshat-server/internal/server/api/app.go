@@ -18,6 +18,7 @@ type App struct {
 	forgotPasswordLimiter   *ipRateLimiter
 	resetPasswordLimiter    *ipRateLimiter
 	invitationAcceptLimiter *ipRateLimiter
+	scimLimiter             *ipRateLimiter
 }
 
 type contextKey string
@@ -46,6 +47,15 @@ func CreateRouter(cfg Config, backend *serverapp.App) http.Handler {
 		// missed). The token itself is high-entropy (192 bits) so this is
 		// defense in depth, not the primary safeguard.
 		invitationAcceptLimiter: newIPRateLimiter(rate.Limit(5.0/60.0), 5),
+		// Far more generous than the auth limiters above: unlike login, a
+		// legitimate caller here (an IdP mid initial-directory-sync) can
+		// reasonably burst through hundreds of /Users pushes in a few
+		// seconds, so a login-tight rate would throttle real traffic. This
+		// exists purely to bound a compromised token or a misconfigured IdP
+		// retry-looping (Étape 7 of the staged SCIM plan) - the bearer
+		// token itself, checked inside each handler after this limiter
+		// runs, is the actual authorization boundary.
+		scimLimiter: newIPRateLimiter(rate.Limit(20), 60),
 	}
 	return app.corsMiddleware(app.routes())
 }

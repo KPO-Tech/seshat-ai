@@ -61,6 +61,19 @@ func writeScimErrorFromErr(w http.ResponseWriter, err error) {
 	}
 }
 
+// scimRateLimited is rateLimited's SCIM-formatted counterpart - a 429 on
+// /scim/v2/* must still parse as a SCIM error body, the same reasoning as
+// writeScimErrorFromErr vs. writeControlPlaneError.
+func scimRateLimited(limiter *ipRateLimiter, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !limiter.allow(clientIP(r)) {
+			writeScimError(w, http.StatusTooManyRequests, "too many requests, please slow down")
+			return
+		}
+		next(w, r)
+	}
+}
+
 // resolveScimConnectionFromRequest authenticates one incoming SCIM protocol
 // request: extract the bearer token the same way every other token-
 // authenticated route in this package does (bearerTokenFromRequest, shared
