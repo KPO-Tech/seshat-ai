@@ -7,7 +7,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/scim"
 )
 
-func writeScimError(w http.ResponseWriter, err error) { writeControlPlaneError(w, err) }
+func writeScimConnectionError(w http.ResponseWriter, err error) { writeControlPlaneError(w, err) }
 
 type createScimConnectionRequest struct {
 	OrganizationID  string `json:"organization_id"`
@@ -41,7 +41,7 @@ func (app *App) handleScimConnection(w http.ResponseWriter, r *http.Request) {
 		organizationID := strings.TrimSpace(r.URL.Query().Get("organization_id"))
 		connection, err := app.backend.Scim.GetConnection(r.Context(), principal, organizationID)
 		if err != nil {
-			writeScimError(w, err)
+			writeScimConnectionError(w, err)
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"connection": connection})
@@ -56,7 +56,7 @@ func (app *App) handleScimConnection(w http.ResponseWriter, r *http.Request) {
 			SyncGroups: req.SyncGroups, AutoCreateTeams: req.AutoCreateTeams,
 		})
 		if err != nil {
-			writeScimError(w, err)
+			writeScimConnectionError(w, err)
 			return
 		}
 		writeJSON(w, http.StatusCreated, connection)
@@ -71,7 +71,7 @@ func (app *App) handleScimConnection(w http.ResponseWriter, r *http.Request) {
 			Name: req.Name, Enabled: req.Enabled, SyncGroups: req.SyncGroups, AutoCreateTeams: req.AutoCreateTeams,
 		})
 		if err != nil {
-			writeScimError(w, err)
+			writeScimConnectionError(w, err)
 			return
 		}
 		writeJSON(w, http.StatusOK, connection)
@@ -79,7 +79,7 @@ func (app *App) handleScimConnection(w http.ResponseWriter, r *http.Request) {
 	case http.MethodDelete:
 		organizationID := strings.TrimSpace(r.URL.Query().Get("organization_id"))
 		if err := app.backend.Scim.DeleteConnection(r.Context(), principal, organizationID); err != nil {
-			writeScimError(w, err)
+			writeScimConnectionError(w, err)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -105,7 +105,7 @@ func (app *App) handleScimConnectionRotateToken(w http.ResponseWriter, r *http.R
 	organizationID := strings.TrimSpace(r.URL.Query().Get("organization_id"))
 	connection, err := app.backend.Scim.RotateConnectionToken(r.Context(), principal, organizationID)
 	if err != nil {
-		writeScimError(w, err)
+		writeScimConnectionError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, connection)

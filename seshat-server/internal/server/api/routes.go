@@ -144,6 +144,16 @@ func (app *App) routes() http.Handler {
 	mux.Handle("PUT /api/v1/scim-connections", app.authMiddleware(http.HandlerFunc(app.handleScimConnection)))
 	mux.Handle("DELETE /api/v1/scim-connections", app.authMiddleware(http.HandlerFunc(app.handleScimConnection)))
 	mux.Handle("POST /api/v1/scim-connections/rotate-token", app.authMiddleware(http.HandlerFunc(app.handleScimConnectionRotateToken)))
+
+	// SCIM protocol — device-protocol pattern (see /api/v1/device/* above):
+	// each handler authenticates itself against ScimConnection.TokenHash via
+	// resolveScimConnectionFromRequest, never app.authMiddleware. The IdP is
+	// the caller here, not a human with a session.
+	mux.HandleFunc("GET /scim/v2/ServiceProviderConfig", app.handleScimServiceProviderConfig)
+	mux.HandleFunc("GET /scim/v2/ResourceTypes", app.handleScimResourceTypes)
+	mux.HandleFunc("GET /scim/v2/ResourceTypes/{resourceTypeID}", app.handleScimResourceTypeByID)
+	mux.HandleFunc("GET /scim/v2/Schemas", app.handleScimSchemas)
+	mux.HandleFunc("GET /scim/v2/Schemas/{schemaID}", app.handleScimSchemaByID)
 	mux.Handle("POST /api/v1/provider-settings/detect-models", app.authMiddleware(http.HandlerFunc(app.handleProviderSettingsDetectModels)))
 	mux.Handle("GET /api/v1/provider-settings/{providerSettingID}", app.authMiddleware(http.HandlerFunc(app.handleProviderSettingByID)))
 	mux.Handle("PUT /api/v1/provider-settings/{providerSettingID}", app.authMiddleware(http.HandlerFunc(app.handleProviderSettingByID)))

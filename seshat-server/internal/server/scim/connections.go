@@ -67,6 +67,34 @@ func New(database *sdb.DB, iamService *iam.Service) *Service {
 
 func newID(prefix string) (string, error) { return sdb.NewID(prefix) }
 
+// ResolveConnectionByToken authenticates one incoming SCIM protocol request
+// (GET/POST/PUT/PATCH/DELETE on /scim/v2/*) - the caller here is the IdP
+// itself, not a human with an iam.Principal, so this follows
+// automation.Service.Heartbeat's device-token pattern rather than any of
+// this package's other methods: take the raw bearer token, hash it, look up
+// the connection it belongs to. Rejects with the same "invalid_token" error
+// whether the token is unknown or belongs to a disabled connection - never
+// distinguish the two to a caller that doesn't yet have a valid credential.
+func (s *Service) ResolveConnectionByToken(ctx context.Context, rawToken string) (*Connection, error) {
+	rawToken = strings.TrimSpace(rawToken)
+	if rawToken == "" {
+		return nil, iam.ErrUnauthorized("missing bearer token")
+	}
+	var record sdb.ScimConnection
+	err := s.db.Gorm().WithContext(ctx).Where("token_hash = ?", sdb.HashOpaqueToken(rawToken)).First(&record).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, iam.ErrUnauthorized("invalid bearer token")
+		}
+		return nil, err
+	}
+	if !record.Enabled {
+		return nil, iam.ErrUnauthorized("invalid bearer token")
+	}
+	connection := toConnection(record)
+	return &connection, nil
+}
+
 // GetConnection returns organizationID's SCIM connection, or (nil, nil) if
 // none has been configured yet - "not configured" is an ordinary state for
 // this singleton resource, not an error, mirroring
