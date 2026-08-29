@@ -5,7 +5,7 @@ import { useAgentPresetsList } from '@/api/agentPresets'
 import { useUsableProviderSettingsList } from '@/api/providerSettings'
 import { ProviderIcon } from '@/components/ProviderIcon'
 import { WorkspaceChatMessage } from '@/components/workspace/WorkspaceChatMessage'
-import { getProviderLabel, getProviderModels } from '@/lib/providerCatalog'
+import { useProviderCatalog, getProviderLabel, getProviderModels } from '@/api/providerCatalog'
 import { createWorkspaceChatMessage, createWorkspaceChatSession } from '@/features/workspaceChat/storage'
 import { fetchWorkspaceChatSession, streamWorkspaceChat, type WorkspaceChatSessionHistory } from '@/features/workspaceChat/transport'
 import { clearStoredSessionId, getStoredSessionId, setStoredSessionId } from '@/features/workspaceChat/localSession'
@@ -200,6 +200,7 @@ export function WorkspaceChatPage() {
 
   const providerSettings = useUsableProviderSettingsList(activeOrganizationId)
   const agentPresets = useAgentPresetsList(activeOrganizationId)
+  const providerCatalog = useProviderCatalog()
 
   function stopStreaming() {
     abortControllerRef.current?.abort()
@@ -312,8 +313,8 @@ export function WorkspaceChatPage() {
 
   const selectedProviderSetting = (providerSettings.data ?? []).find((setting) => setting.id === selectedProviderSettingId) ?? null
   const modelOptions = useMemo(
-    () => getProviderModels(selectedProviderSetting?.provider, selectedProviderSetting?.default_model),
-    [selectedProviderSetting?.provider, selectedProviderSetting?.default_model],
+    () => getProviderModels(providerCatalog.data, selectedProviderSetting?.provider, selectedProviderSetting?.default_model),
+    [providerCatalog.data, selectedProviderSetting?.provider, selectedProviderSetting?.default_model],
   )
 
   useEffect(() => {
@@ -368,7 +369,7 @@ export function WorkspaceChatPage() {
     label: (
       <Space size={10} align="center">
         <ProviderIcon provider={setting.provider ?? 'provider'} size={22} />
-        <span>{getProviderLabel(setting.provider)}</span>
+        <span>{getProviderLabel(providerCatalog.data, setting.provider)}</span>
       </Space>
     ),
     value: setting.id!,

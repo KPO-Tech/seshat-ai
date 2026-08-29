@@ -12,39 +12,29 @@ import {
   type ProviderSettingInput,
 } from '@/api/providerSettings'
 import { getErrorMessage } from '@/api/errors'
+import { useProviderCatalog, getProviderModels, type ProviderCatalogEntry } from '@/api/providerCatalog'
 import { AutofillGuard } from '@/components/AutofillGuard'
 import { PageHeader } from '@/components/PageHeader'
 import { ProviderIcon } from '@/components/ProviderIcon'
 import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
-import { getProviderModels } from '@/lib/providerCatalog'
 import { palette, monoStack } from '@/theme/tokens'
 
-const SUPPORTED_PROVIDERS = [
-  { id: 'anthropic', name: 'Anthropic', desc: 'Claude models, coding, reasoning, agents' },
-  { id: 'openai', name: 'OpenAI', desc: 'GPT models, pay-per-use API key' },
-  { id: 'mistral', name: 'Mistral AI', desc: 'Open & efficient European models' },
-  { id: 'gemini', name: 'Google Gemini', desc: 'Massive context windows' },
-  { id: 'z-ai', name: 'Z.ai', desc: 'GLM models' },
-  { id: 'minimax', name: 'MiniMax', desc: 'Agentic, long-context models' },
-  { id: 'openrouter', name: 'OpenRouter', desc: '300+ models through one API key' },
-  { id: 'ollama', name: 'Ollama', desc: 'Run models locally on your own infrastructure' },
-  { id: 'deepseek', name: 'DeepSeek', desc: 'DeepSeek V4 — direct API' },
-  { id: 'opencode', name: 'OpenCode Zen', desc: 'Curated gateway — Claude, Codex, GLM models' },
-  { id: 'kimi', name: 'Kimi (Moonshot AI)', desc: 'Kimi K3, K2.7 Code — long-context agentic coding' },
-]
+// Auth types this page's Add/Edit form knows how to collect: a plain API
+// key (or none, for a local Ollama-style install). "oauth"/"aws"/"gcp"
+// providers from the SDK catalog (Codex, Bedrock, Vertex) need a different
+// setup flow this form doesn't offer yet, so they're filtered out below
+// rather than shown with a form that can't actually configure them.
+const SUPPORTED_AUTH_TYPES = new Set(['api_key', 'none'])
 
-const PROVIDER_DEFAULT_URLS: Record<string, string> = {
-  anthropic: 'https://api.anthropic.com',
-  openai: 'https://api.openai.com/v1',
-  mistral: 'https://api.mistral.ai/v1',
-  gemini: 'https://generativelanguage.googleapis.com/v1beta',
-  'z-ai': 'https://api.z.ai/api/paas/v4',
-  minimax: 'https://api.minimax.io/v1',
-  openrouter: 'https://openrouter.ai/api/v1',
-  ollama: 'http://localhost:11434',
-  deepseek: 'https://api.deepseek.com/v1',
-  opencode: 'https://opencode.ai/zen/v1',
-  kimi: 'https://api.moonshot.ai/v1',
+// Ollama's fixed local default - not "catalog data" in the SDK sense (it
+// never varies by provider release), just a stable fact used for one
+// diagnostic message below.
+const OLLAMA_DEFAULT_URL = 'http://localhost:11434'
+
+function toSupportedProviderEntries(catalog: ProviderCatalogEntry[] | undefined) {
+  return (catalog ?? [])
+    .filter((entry) => SUPPORTED_AUTH_TYPES.has(entry.auth_type ?? ''))
+    .map((entry) => ({ id: entry.name!, name: entry.display_name!, desc: entry.description ?? '' }))
 }
 
 export function ProviderSettingsPage() {
@@ -53,11 +43,13 @@ export function ProviderSettingsPage() {
   const [editing, setEditing] = useState<{ provider: string; setting: ProviderSetting | null } | null>(null)
 
   const { data } = useProviderSettingsList(organizationId ?? undefined)
+  const providerCatalog = useProviderCatalog()
   const createSetting = useCreateProviderSetting()
   const updateSetting = useUpdateProviderSetting()
   const deleteSetting = useDeleteProviderSetting()
   const setDefault = useSetProviderSettingDefault()
 
+  const supportedProviders = useMemo(() => toSupportedProviderEntries(providerCatalog.data), [providerCatalog.data])
   const settingByProvider = new Map((data ?? []).map((setting) => [setting.provider, setting]))
 
   return (
@@ -68,7 +60,7 @@ export function ProviderSettingsPage() {
       />
 
       <Space orientation="vertical" size={12} style={{ width: '100%' }}>
-        {SUPPORTED_PROVIDERS.map((entry) => {
+        {supportedProviders.map((entry) => {
           const setting = settingByProvider.get(entry.id)
           const isConfigured = Boolean(setting)
           const isExpanded = expanded === entry.id
@@ -189,7 +181,7 @@ export function ProviderSettingsPage() {
 
       <ProviderSettingFormDrawer
         provider={editing?.provider ?? null}
-        providerName={SUPPORTED_PROVIDERS.find((p) => p.id === editing?.provider)?.name ?? ''}
+        providerName={supportedProviders.find((p) => p.id === editing?.provider)?.name ?? ''}
         setting={editing?.setting ?? null}
         open={editing !== null}
         onClose={() => setEditing(null)}
@@ -236,7 +228,11 @@ function ProviderSettingFormDrawer({
   const watchedBaseURL = Form.useWatch('base_url', form)
   const isEdit = setting !== null
   const isOllama = provider === 'ollama'
-  const modelOptions = useMemo(() => getProviderModels(provider, setting?.default_model), [provider, setting?.default_model])
+  const providerCatalog = useProviderCatalog()
+  const modelOptions = useMemo(
+    () => getProviderModels(providerCatalog.data, provider, setting?.default_model),
+    [providerCatalog.data, provider, setting?.default_model],
+  )
   const selectedModel = modelOptions.find((model) => model.id === watchedModelId) ?? null
   const supportsStaticCatalog = modelOptions.length > 0
 
@@ -246,9 +242,7 @@ function ProviderSettingFormDrawer({
   useEffect(() => {
     if (!open || !provider) return
     const fallbackModel = setting?.default_model ?? modelOptions[0]?.id ?? ''
-    form.setFieldsValue(
-      setting ?? { provider, default_model: fallbackModel, base_url: PROVIDER_DEFAULT_URLS[provider] ?? '' },
-    )
+    form.setFieldsValue(setting ?? { provider, default_model: fallbackModel, base_url: '' })
     setDetectedModels([])
   }, [open, provider, setting, form, modelOptions])
 
@@ -262,7 +256,7 @@ function ProviderSettingFormDrawer({
           setDetectedModels(models)
           if (models.length === 0) {
             message.warning(
-              `No models found. Check that Ollama is running and reachable at ${watchedBaseURL || PROVIDER_DEFAULT_URLS.ollama}`,
+              `No models found. Check that Ollama is running and reachable at ${watchedBaseURL || OLLAMA_DEFAULT_URL}`,
             )
           } else {
             message.success(`Found ${models.length} model${models.length === 1 ? '' : 's'}`)

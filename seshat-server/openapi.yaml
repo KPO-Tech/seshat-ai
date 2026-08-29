@@ -2230,6 +2230,32 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
 
+  /api/v1/provider-catalog:
+    get:
+      operationId: listProviderCatalog
+      tags: [provider-settings]
+      summary: List the providers/models the connected SDK build supports
+      description: >-
+        Static, non-secret metadata resolved live from the seshat SDK's own
+        registry rather than a hand-maintained copy — seshat-console
+        previously hardcoded its own copy of this list, which had already
+        drifted out of sync with the SDK once. Returned in the SDK's own
+        curated display order. Any authenticated user may read this; it
+        carries no organization-specific data.
+      responses:
+        "200":
+          description: Provider catalog
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  providers:
+                    type: array
+                    items: { $ref: "#/components/schemas/ProviderCatalogEntry" }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
   /api/v1/provider-settings:
     get:
       operationId: listProviderSettings
@@ -5187,6 +5213,28 @@ components:
         is_default:
           type: boolean
           description: Administrative/UI marker for this organization's "main" provider setting - not consumed by job execution.
+
+    ProviderCatalogModel:
+      type: object
+      properties:
+        id: { type: string, example: claude-sonnet-4-20250514 }
+        description: { type: string }
+        context_window: { type: integer }
+        max_output: { type: integer }
+
+    ProviderCatalogEntry:
+      type: object
+      properties:
+        name: { type: string, example: anthropic }
+        display_name: { type: string, example: Anthropic }
+        description: { type: string }
+        auth_type: { type: string, enum: [api_key, oauth, none, aws, gcp] }
+        auth_types:
+          type: array
+          items: { type: string }
+        models:
+          type: array
+          items: { $ref: "#/components/schemas/ProviderCatalogModel" }
 
     ResolvedProviderSetting:
       type: object

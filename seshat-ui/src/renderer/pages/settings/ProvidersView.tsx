@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Plus, Down, Right, Delete, Sync, LinkCloud, Shield, Crown,
 } from '@icon-park/react'
@@ -17,43 +17,24 @@ import {
   pollProviderOAuth,
   disconnectProviderOAuth,
 } from '@/hooks/useProviders'
-import type { ProviderSetting, ProviderModel, OAuthChallenge } from '@/api/types'
+import { useProviderCatalog } from '@/hooks/useProviderCatalog'
+import type { ProviderSetting, ProviderModel, OAuthChallenge, ProviderCatalogEntry } from '@/api/types'
 
-const SUPPORTED_PROVIDERS = [
-  { id: 'anthropic', name: 'Anthropic', desc: 'Claude models — coding, reasoning, agents' },
-  { id: 'openai', name: 'OpenAI', desc: 'GPT-5.5, GPT-5.4-mini — pay-per-use API key' },
-  { id: 'codex', name: 'Codex', desc: 'codex-mini-latest — ChatGPT Pro subscription, OAuth' },
-  { id: 'mistral', name: 'Mistral AI', desc: 'Open & efficient European models' },
-  { id: 'gemini', name: 'Google Gemini', desc: 'Gemini 2.0 — massive context windows' },
-  { id: 'z-ai', name: 'Z.ai', desc: 'GLM models — GLM-4.5, GLM-4.7, GLM-5.1' },
-  { id: 'minimax', name: 'MiniMax', desc: 'M2 series — agentic, long-context' },
-  { id: 'openrouter', name: 'OpenRouter', desc: '300+ models through one API key' },
-  { id: 'ollama', name: 'Ollama', desc: 'Run models locally on your machine' },
-  { id: 'kimi', name: 'Kimi (Moonshot AI)', desc: 'Kimi K3, K2.7 Code — long-context agentic coding' },
-  { id: 'deepseek', name: 'DeepSeek', desc: 'DeepSeek Chat, Reasoner — direct API' },
-  { id: 'opencode', name: 'OpenCode Zen', desc: 'Curated gateway — Claude, Codex, GLM models' },
-  { id: 'workers-ai', name: 'Cloudflare Workers AI', desc: 'Edge inference — needs your account-specific URL' },
-]
+// Auth types this Add Provider form knows how to collect: a plain API key,
+// OAuth (Codex), or none (a local install like Ollama). "aws"/"gcp"
+// providers from the SDK catalog (Bedrock, Vertex) need a different,
+// credential-file-based setup flow this form doesn't offer, so they're
+// filtered out below rather than shown with a form that can't configure
+// them.
+const SUPPORTED_AUTH_TYPES = new Set(['api_key', 'oauth', 'none'])
 
-const PROVIDER_DEFAULT_URLS: Record<string, string> = {
-  anthropic: 'https://api.anthropic.com',
-  openai: 'https://api.openai.com/v1',
-  codex: 'https://chatgpt.com/backend-api/codex',
-  mistral: 'https://api.mistral.ai/v1',
-  gemini: 'https://generativelanguage.googleapis.com/v1beta',
-  'z-ai': 'https://api.z.ai/api/paas/v4',
-  minimax: 'https://api.minimax.io/v1',
-  openrouter: 'https://openrouter.ai/api/v1',
-  ollama: 'http://localhost:11434',
-  kimi: 'https://api.moonshot.ai/v1',
-  deepseek: 'https://api.deepseek.com/v1',
-  opencode: 'https://opencode.ai/zen/v1',
-  'workers-ai': 'https://api.cloudflare.com/client/v4',
+type SelectableProvider = { id: string; name: string; desc: string; authType: string }
+
+function toSelectableProviders(catalog: ProviderCatalogEntry[]): SelectableProvider[] {
+  return catalog
+    .filter((entry) => SUPPORTED_AUTH_TYPES.has(entry.auth_type))
+    .map((entry) => ({ id: entry.name, name: entry.display_name, desc: entry.description ?? '', authType: entry.auth_type }))
 }
-
-const PROVIDER_DISPLAY_ORDER = ['anthropic', 'openai', 'codex', 'mistral', 'gemini', 'z-ai', 'minimax', 'openrouter', 'ollama', 'kimi', 'deepseek', 'opencode', 'workers-ai']
-
-const OAUTH_ONLY_PROVIDERS = new Set(['codex'])
 
 type ProviderConnectionTone = 'connected' | 'pending' | 'error' | 'disconnected'
 
@@ -63,10 +44,12 @@ type ProviderConnectionState = {
   tone: ProviderConnectionTone
 }
 
-function sortProviders(providers: ProviderSetting[]): ProviderSetting[] {
+// order is the catalog's own display order (catalog.map(e => e.name)) -
+// resolved live from the SDK rather than a hardcoded list here.
+function sortProviders(providers: ProviderSetting[], order: string[]): ProviderSetting[] {
   return [...providers].sort((a, b) => {
-    const ai = PROVIDER_DISPLAY_ORDER.indexOf(a.provider)
-    const bi = PROVIDER_DISPLAY_ORDER.indexOf(b.provider)
+    const ai = order.indexOf(a.provider)
+    const bi = order.indexOf(b.provider)
     if (ai === -1 && bi === -1) return a.name.localeCompare(b.name)
     if (ai === -1) return 1
     if (bi === -1) return -1
@@ -119,6 +102,7 @@ function getProviderConnectionState(setting: ProviderSetting): ProviderConnectio
 export function ProvidersView() {
   const { providers, removeProvider, setDefault } = useProvidersStore()
   const { refetch } = useProviders()
+  const { catalog } = useProviderCatalog()
 
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [models, setModels] = useState<Record<string, ProviderModel[]>>({})
@@ -131,7 +115,7 @@ export function ProvidersView() {
   const [addModelFor, setAddModelFor] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
-  const sorted = sortProviders(providers)
+  const sorted = sortProviders(providers, catalog.map((entry) => entry.name))
 
   async function handleExpand(setting: ProviderSetting) {
     const next = expandedId === setting.id ? null : setting.id
@@ -629,16 +613,19 @@ function DetailEntry({ label, value, mono }: { label: string; value: string; mon
 }
 
 function AddProviderModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const { catalog } = useProviderCatalog()
+  const selectableProviders = useMemo(() => toSelectableProviders(catalog), [catalog])
+
   const [isDropOpen, setIsDropOpen] = useState(false)
-  const [selected, setSelected] = useState<typeof SUPPORTED_PROVIDERS[0] | null>(null)
+  const [selected, setSelected] = useState<SelectableProvider | null>(null)
   const [authKind, setAuthKind] = useState<'api_key' | 'oauth'>('api_key')
   const [apiKey, setApiKey] = useState('')
   const [baseUrl, setBaseUrl] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
-  const isOAuthOnly = selected ? OAUTH_ONLY_PROVIDERS.has(selected.id) : false
-  const effectiveAuthKind = selected?.id === 'ollama' ? 'none' : isOAuthOnly ? 'oauth' : authKind
+  const isOAuthOnly = selected?.authType === 'oauth'
+  const effectiveAuthKind = selected?.authType === 'none' ? 'none' : isOAuthOnly ? 'oauth' : authKind
 
   async function handleSubmit() {
     if (!selected) return
@@ -682,14 +669,14 @@ function AddProviderModal({ onClose, onSuccess }: { onClose: () => void; onSucce
               </div>
               {isDropOpen && (
                 <div className="pv-select-dropdown">
-                  {SUPPORTED_PROVIDERS.map((p) => (
+                  {selectableProviders.map((p) => (
                     <div
                       key={p.id}
                       className={`pv-option-row ${selected?.id === p.id ? 'active' : ''}`}
                       onClick={() => {
                         setSelected(p)
-                        setBaseUrl(PROVIDER_DEFAULT_URLS[p.id] ?? '')
-                        setAuthKind(OAUTH_ONLY_PROVIDERS.has(p.id) ? 'oauth' : 'api_key')
+                        setBaseUrl('')
+                        setAuthKind(p.authType === 'oauth' ? 'oauth' : 'api_key')
                         setIsDropOpen(false)
                       }}
                     >
@@ -708,12 +695,12 @@ function AddProviderModal({ onClose, onSuccess }: { onClose: () => void; onSucce
           {isOAuthOnly && (
             <div className="modal-field" style={{ marginBottom: 20 }}>
               <div className="pv-auth-mode-help">
-                Codex uses OAuth — connects via your ChatGPT Pro account. No API key required.
+                {selected?.name} uses OAuth — no API key required, you'll connect an account after saving.
               </div>
             </div>
           )}
 
-          {selected && selected.id !== 'ollama' && effectiveAuthKind === 'api_key' && (
+          {selected && selected.authType !== 'none' && effectiveAuthKind === 'api_key' && (
             <div className="modal-field" style={{ marginBottom: 20 }}>
               <label>API Key *</label>
               <input

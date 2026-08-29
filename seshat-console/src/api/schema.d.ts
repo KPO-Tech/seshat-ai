@@ -1306,6 +1306,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/provider-catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the providers/models the connected SDK build supports
+         * @description Static, non-secret metadata resolved live from the seshat SDK's own registry rather than a hand-maintained copy — seshat-console previously hardcoded its own copy of this list, which had already drifted out of sync with the SDK once. Returned in the SDK's own curated display order. Any authenticated user may read this; it carries no organization-specific data.
+         */
+        get: operations["listProviderCatalog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/provider-settings": {
         parameters: {
             query?: never;
@@ -3264,6 +3284,24 @@ export interface components {
             base_url?: string;
             /** @description Administrative/UI marker for this organization's "main" provider setting - not consumed by job execution. */
             is_default?: boolean;
+        };
+        ProviderCatalogModel: {
+            /** @example claude-sonnet-4-20250514 */
+            id?: string;
+            description?: string;
+            context_window?: number;
+            max_output?: number;
+        };
+        ProviderCatalogEntry: {
+            /** @example anthropic */
+            name?: string;
+            /** @example Anthropic */
+            display_name?: string;
+            description?: string;
+            /** @enum {string} */
+            auth_type?: "api_key" | "oauth" | "none" | "aws" | "gcp";
+            auth_types?: string[];
+            models?: components["schemas"]["ProviderCatalogModel"][];
         };
         /** @description Unlike ProviderSetting, this includes the decrypted api_key — see the resolveProviderSetting operation. */
         ResolvedProviderSetting: {
@@ -6650,6 +6688,30 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    listProviderCatalog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Provider catalog */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        providers?: components["schemas"]["ProviderCatalogEntry"][];
+                        count?: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
         };
     };
     listProviderSettings: {

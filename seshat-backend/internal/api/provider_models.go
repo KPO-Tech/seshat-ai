@@ -1,13 +1,13 @@
 package api
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
 
 	backendaudit "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/audit"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
+	appconfig "github.com/KPO-Tech/seshat/pkg/config"
 	"github.com/KPO-Tech/seshat/pkg/providers"
 )
 
@@ -295,70 +295,67 @@ func (a *App) handleProviderModelsSync(w http.ResponseWriter, r *http.Request, s
 
 // ─── GET /api/v1/models ───────────────────────────────────────────────────────
 
+// providerCatalogModel/providerCatalogEntry mirror seshat-server's
+// GET /provider-catalog response shape (internal/server/api/provider_catalog.go)
+// so seshat-console and seshat-ui can share the same mental model of "the
+// dynamic catalog response" even though the two are separate Go modules.
+type providerCatalogModel struct {
+	ID            string `json:"id"`
+	Description   string `json:"description,omitempty"`
+	ContextWindow int    `json:"context_window,omitempty"`
+	MaxOutput     int    `json:"max_output,omitempty"`
+}
+
+type providerCatalogEntry struct {
+	Name        string                 `json:"name"`
+	DisplayName string                 `json:"display_name"`
+	Description string                 `json:"description,omitempty"`
+	AuthType    string                 `json:"auth_type"`
+	AuthTypes   []string               `json:"auth_types,omitempty"`
+	Models      []providerCatalogModel `json:"models"`
+}
+
+// handleModelsList returns, live from the SDK's own registry rather than a
+// hand-maintained copy, which providers/models this build of seshat
+// supports - seshat-ui previously hardcoded its own copy of this list
+// (ProvidersView.tsx: SUPPORTED_PROVIDERS/PROVIDER_DEFAULT_URLS/
+// PROVIDER_DISPLAY_ORDER), which had already drifted out of sync with the
+// SDK once. Uses pkg/config.AvailableProviders (not the lower-level
+// pkg/providers.AllProvidersInfo) so the response comes back in the SDK's
+// own curated display order - callers don't need their own ordering table.
 func handleModelsList(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	allProviders := providers.AllProvidersInfo()
-
-	type modelInfo struct {
-		ID            string `json:"id"`
-		Name          string `json:"name"`
-		Provider      string `json:"provider"`
-		ContextWindow int    `json:"context_window"`
-		MaxOutput     int    `json:"max_output"`
-		Description   string `json:"description"`
-	}
-
-	type providerInfo struct {
-		Name        string      `json:"name"`
-		DisplayName string      `json:"display_name"`
-		Description string      `json:"description"`
-		AuthType    string      `json:"auth_type"`
-		AuthTypes   []string    `json:"auth_types,omitempty"`
-		Models      []modelInfo `json:"models"`
-	}
-
-	result := struct {
-		Providers  map[string]providerInfo `json:"providers"`
-		TotalCount int                     `json:"total_count"`
-	}{
-		Providers: make(map[string]providerInfo, len(allProviders)),
-	}
-
+	providerInfos := appconfig.AvailableProviders()
+	entries := make([]providerCatalogEntry, 0, len(providerInfos))
 	modelCount := 0
-	for _, info := range allProviders {
-		models := make([]modelInfo, 0, len(info.Models))
+	for _, info := range providerInfos {
+		models := make([]providerCatalogModel, 0, len(info.Models))
 		for _, m := range info.Models {
-			models = append(models, modelInfo{
+			models = append(models, providerCatalogModel{
 				ID:            m.Identifier,
-				Name:          m.Identifier,
-				Provider:      info.Name,
+				Description:   m.Description,
 				ContextWindow: m.ContextWindow,
 				MaxOutput:     m.MaxOutput,
-				Description:   m.Description,
 			})
 			modelCount++
 		}
-		result.Providers[info.Name] = providerInfo{
-			Name:        info.Name,
+		entries = append(entries, providerCatalogEntry{
+			Name:        string(info.Name),
 			DisplayName: info.DisplayName,
 			Description: info.Description,
 			AuthType:    info.AuthType,
 			AuthTypes:   append([]string(nil), info.AuthTypes...),
 			Models:      models,
-		}
+		})
 	}
-	result.TotalCount = modelCount
 
-	jsonBytes, err := json.MarshalIndent(result, "", "  ")
-	if err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(jsonBytes)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"providers":   entries,
+		"count":       len(entries),
+		"total_count": modelCount,
+	})
 }

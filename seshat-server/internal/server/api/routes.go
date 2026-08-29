@@ -138,6 +138,7 @@ func (app *App) routes() http.Handler {
 	mux.Handle("POST /api/v1/provider-settings", app.authMiddleware(http.HandlerFunc(app.handleProviderSettings)))
 	mux.Handle("GET /api/v1/provider-settings/resolve", app.authMiddleware(http.HandlerFunc(app.handleProviderSettingResolve)))
 	mux.Handle("GET /api/v1/provider-settings/usable", app.authMiddleware(http.HandlerFunc(app.handleProviderSettingsUsable)))
+	mux.Handle("GET /api/v1/provider-catalog", app.authMiddleware(http.HandlerFunc(app.handleProviderCatalog)))
 	mux.Handle("POST /api/v1/provider-settings/detect-models", app.authMiddleware(http.HandlerFunc(app.handleProviderSettingsDetectModels)))
 	mux.Handle("GET /api/v1/provider-settings/{providerSettingID}", app.authMiddleware(http.HandlerFunc(app.handleProviderSettingByID)))
 	mux.Handle("PUT /api/v1/provider-settings/{providerSettingID}", app.authMiddleware(http.HandlerFunc(app.handleProviderSettingByID)))

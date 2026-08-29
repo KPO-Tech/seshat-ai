@@ -186,6 +186,26 @@ export type Provider = ProviderSetting & {
   models?: ProviderModel[]
 }
 
+// ProviderCatalogEntry/ProviderCatalogModel mirror GET /api/v1/models -
+// which providers/models this connected seshat-backend build supports,
+// resolved live from the SDK's own registry rather than a hardcoded copy
+// here (see docs/helps/audit-2026-08-29-openwork-den-comparison.md, item 2).
+export type ProviderCatalogModel = {
+  id: string
+  description?: string
+  context_window?: number
+  max_output?: number
+}
+
+export type ProviderCatalogEntry = {
+  name: string
+  display_name: string
+  description?: string
+  auth_type: string
+  auth_types?: string[]
+  models: ProviderCatalogModel[]
+}
+
 export type User = {
   id: string
   email: string
