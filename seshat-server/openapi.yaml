@@ -1402,6 +1402,93 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/desktop-policies/catalog:
+    get:
+      operationId: listDesktopPolicyCatalog
+      tags: [desktop-policies]
+      summary: List the fixed desktop policy catalog
+      description: >
+        Any authenticated member can read this — it's a fixed, code-defined
+        catalog (not organization-specific data), not the per-organization
+        assignment of it.
+      responses:
+        "200":
+          description: Desktop policy catalog
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  desktop_policies:
+                    type: array
+                    items: { $ref: "#/components/schemas/DesktopPolicy" }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/desktop-policy-bindings:
+    get:
+      operationId: listDesktopPolicyBindings
+      tags: [desktop-policies]
+      summary: List desktop policy bindings for an organization
+      description: Requires `desktop_policies.read`, `desktop_policies.manage` or `organization.manage`.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: Desktop policy binding list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  desktop_policy_bindings:
+                    type: array
+                    items: { $ref: "#/components/schemas/DesktopPolicyBinding" }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      operationId: setDesktopPolicyBinding
+      tags: [desktop-policies]
+      summary: Create or update a desktop policy binding
+      description: >
+        Upsert by (organization_id, policy_code, subject_type, subject_id) —
+        posting again for the same subject updates its value in place rather
+        than creating a duplicate. Requires `desktop_policies.manage` or
+        `organization.manage`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DesktopPolicyBindingInput" }
+      responses:
+        "200":
+          description: Desktop policy binding created or updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DesktopPolicyBinding" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/desktop-policy-bindings/{bindingID}:
+    parameters:
+      - name: bindingID
+        in: path
+        required: true
+        schema: { type: string }
+    delete:
+      operationId: deleteDesktopPolicyBinding
+      tags: [desktop-policies]
+      summary: Delete a desktop policy binding
+      description: >
+        The affected subject falls back to the next-most-specific applicable
+        binding, or the catalog default if none remain.
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/sessions:
     get:
       operationId: listSessions
@@ -4868,6 +4955,59 @@ components:
         permission_codes:
           type: array
           items: { type: string }
+
+    DesktopPolicy:
+      type: object
+      description: >
+        One entry from the fixed, code-defined desktop policy catalog - this
+        is not admin-editable data, only its per-organization assignment
+        (DesktopPolicyBinding) is.
+      properties:
+        code: { type: string }
+        admin_description: { type: string }
+        user_blocked_message:
+          type: string
+          description: Shown to the end user when this policy blocks an action.
+        default_value:
+          type: boolean
+          description: Effective value when no DesktopPolicyBinding applies to a given subject at all.
+
+    DesktopPolicyBinding:
+      type: object
+      description: >
+        Assigns a value for one policy_code from the fixed catalog to one
+        subject. Resolution ANDs every applicable binding together with the
+        catalog's own default ("most restrictive wins") - see
+        DesktopPolicyBindingInput's description for the subject vocabulary.
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        policy_code: { type: string }
+        subject_type: { type: string, enum: [org, role, user, group] }
+        subject_id:
+          type: string
+          description: Empty when subject_type is "org".
+        value: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    DesktopPolicyBindingInput:
+      type: object
+      required: [organization_id, policy_code, subject_type, value]
+      properties:
+        organization_id: { type: string }
+        policy_code: { type: string }
+        subject_type:
+          type: string
+          enum: [org, role, user, group]
+          description: >
+            "org" restricts every member of the organization and requires
+            subject_id to be empty; "role"/"user"/"group" narrow the
+            restriction to that specific role code, member, or team.
+        subject_id:
+          type: string
+          description: Required for every subject_type except "org".
+        value: { type: boolean }
 
     AuditEvent:
       type: object

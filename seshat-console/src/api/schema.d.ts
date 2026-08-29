@@ -787,6 +787,72 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/desktop-policies/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the fixed desktop policy catalog
+         * @description Any authenticated member can read this — it's a fixed, code-defined catalog (not organization-specific data), not the per-organization assignment of it.
+         */
+        get: operations["listDesktopPolicyCatalog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/desktop-policy-bindings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List desktop policy bindings for an organization
+         * @description Requires `desktop_policies.read`, `desktop_policies.manage` or `organization.manage`.
+         */
+        get: operations["listDesktopPolicyBindings"];
+        put?: never;
+        /**
+         * Create or update a desktop policy binding
+         * @description Upsert by (organization_id, policy_code, subject_type, subject_id) — posting again for the same subject updates its value in place rather than creating a duplicate. Requires `desktop_policies.manage` or `organization.manage`.
+         */
+        post: operations["setDesktopPolicyBinding"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/desktop-policy-bindings/{bindingID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bindingID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a desktop policy binding
+         * @description The affected subject falls back to the next-most-specific applicable binding, or the catalog default if none remain.
+         */
+        delete: operations["deleteDesktopPolicyBinding"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sessions": {
         parameters: {
             query?: never;
@@ -2922,6 +2988,42 @@ export interface components {
             /** @description ID of the specific resource to scope this binding to. Required when resource_type is set. */
             resource_id?: string;
             permission_codes: string[];
+        };
+        /** @description One entry from the fixed, code-defined desktop policy catalog - this is not admin-editable data, only its per-organization assignment (DesktopPolicyBinding) is. */
+        DesktopPolicy: {
+            code?: string;
+            admin_description?: string;
+            /** @description Shown to the end user when this policy blocks an action. */
+            user_blocked_message?: string;
+            /** @description Effective value when no DesktopPolicyBinding applies to a given subject at all. */
+            default_value?: boolean;
+        };
+        /** @description Assigns a value for one policy_code from the fixed catalog to one subject. Resolution ANDs every applicable binding together with the catalog's own default ("most restrictive wins") - see DesktopPolicyBindingInput's description for the subject vocabulary. */
+        DesktopPolicyBinding: {
+            id?: string;
+            organization_id?: string;
+            policy_code?: string;
+            /** @enum {string} */
+            subject_type?: "org" | "role" | "user" | "group";
+            /** @description Empty when subject_type is "org". */
+            subject_id?: string;
+            value?: boolean;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        DesktopPolicyBindingInput: {
+            organization_id: string;
+            policy_code: string;
+            /**
+             * @description "org" restricts every member of the organization and requires subject_id to be empty; "role"/"user"/"group" narrow the restriction to that specific role code, member, or team.
+             * @enum {string}
+             */
+            subject_type: "org" | "role" | "user" | "group";
+            /** @description Required for every subject_type except "org". */
+            subject_id?: string;
+            value: boolean;
         };
         AuditEvent: {
             id?: string;
@@ -5812,6 +5914,106 @@ export interface operations {
         };
     };
     deletePolicyBinding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bindingID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listDesktopPolicyCatalog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Desktop policy catalog */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        desktop_policies?: components["schemas"]["DesktopPolicy"][];
+                        count?: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    listDesktopPolicyBindings: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Desktop policy binding list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        desktop_policy_bindings?: components["schemas"]["DesktopPolicyBinding"][];
+                        count?: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    setDesktopPolicyBinding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DesktopPolicyBindingInput"];
+            };
+        };
+        responses: {
+            /** @description Desktop policy binding created or updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DesktopPolicyBinding"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteDesktopPolicyBinding: {
         parameters: {
             query?: never;
             header?: never;
