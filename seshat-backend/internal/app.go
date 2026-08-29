@@ -214,6 +214,12 @@ type App struct {
 	ConnectorAccounts       *db.ConnectorAccountStore
 	ActionConnectors        map[string]connector.ActionConnector
 	KnowledgeConnectors     map[string]connector.KnowledgeConnector
+
+	// DesktopPolicies mirrors Dependencies.DesktopPolicies (see its doc
+	// comment) - kept on App too, not just consumed inline while building
+	// Auth above, because the settings-write middleware (internal/api)
+	// needs to read it directly at request time, not just once at boot.
+	DesktopPolicies *cloudautomation.PolicyStore
 }
 
 func NewApp(deps Dependencies) *App {
@@ -319,5 +325,6 @@ func NewApp(deps Dependencies) *App {
 		ActionConnectors:        deps.ActionConnectors,
 		KnowledgeConnectors:     deps.KnowledgeConnectors,
 		Workflows:               workflows.New(settingsService),
+		DesktopPolicies:         deps.DesktopPolicies,
 	}
 }

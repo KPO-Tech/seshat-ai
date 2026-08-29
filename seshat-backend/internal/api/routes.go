@@ -68,8 +68,8 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	// so this is deliberately gated by hard role in every mode, including
 	// standalone — see TestSkillReposRequireAdmin, which pins a non-admin
 	// local user getting 403 here as a requirement, not an oversight.
-	apiV1.Handle("/skills/repos", app.requireRole("admin", http.HandlerFunc(app.handleSkillRepos)))
-	apiV1.Handle("/skills/repos/", app.requireRole("admin", http.HandlerFunc(app.handleSkillRepoByNameDispatch)))
+	apiV1.Handle("/skills/repos", app.requireSettingsWritable(app.requireRole("admin", http.HandlerFunc(app.handleSkillRepos))))
+	apiV1.Handle("/skills/repos/", app.requireSettingsWritable(app.requireRole("admin", http.HandlerFunc(app.handleSkillRepoByNameDispatch))))
 	apiV1.Handle("/skills/", app.authMiddleware(http.HandlerFunc(app.handleSkillsDispatch)))
 
 	// Read-only prerequisite check (Docker, the strix CLI, whether the skill
@@ -85,12 +85,16 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	// this replaced a per-handler noteMCPToken() call that was easy to
 	// forget (and was, in fact, missing from handleMCPTools).
 	apiV1.Handle("/mcp", app.mcpRoute(app.handleMCPList, false))
-	apiV1.Handle("/mcp/config", app.mcpRoute(app.handleMCPConfig, false))
-	apiV1.Handle("/mcp/config/", app.mcpRoute(app.handleMCPConfigDispatch, false))
+	apiV1.Handle("/mcp/config", app.requireSettingsWritable(app.mcpRoute(app.handleMCPConfig, false)))
+	apiV1.Handle("/mcp/config/", app.requireSettingsWritable(app.mcpRoute(app.handleMCPConfigDispatch, false)))
+	// /mcp/reload deliberately NOT wrapped: it re-applies configuration
+	// that's already saved, it doesn't change it - blocking it would only
+	// prevent recovering from a stale runtime state, with no settings-change
+	// benefit.
 	apiV1.Handle("/mcp/reload", app.mcpRoute(app.handleMCPReload, true))
 	apiV1.Handle("/mcp/tools", app.mcpRoute(app.handleMCPTools, false))
 	apiV1.Handle("/mcp/org-catalog", app.mcpRoute(app.handleMCPOrgCatalog, false))
-	apiV1.Handle("/mcp/org-catalog/", app.mcpRoute(app.handleMCPOrgCatalogApprove, true))
+	apiV1.Handle("/mcp/org-catalog/", app.requireSettingsWritable(app.mcpRoute(app.handleMCPOrgCatalogApprove, true)))
 
 	apiV1.Handle("/query", app.authMiddleware(http.HandlerFunc(app.handleQuery)))
 	apiV1.Handle("/transcribe", app.authMiddleware(http.HandlerFunc(app.handleTranscribe)))
@@ -133,8 +137,8 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	apiV1.Handle("/inbox/threads", app.authMiddleware(http.HandlerFunc(app.handleInboxThreads)))
 	apiV1.Handle("/inbox/threads/", app.authMiddleware(http.HandlerFunc(app.handleInboxThreadByID)))
 
-	apiV1.Handle("/knowledge/connectors/gdrive/accounts", app.authMiddleware(http.HandlerFunc(app.handleKnowledgeGDriveAccounts)))
-	apiV1.Handle("/knowledge/connectors/gdrive/accounts/", app.authMiddleware(http.HandlerFunc(app.handleKnowledgeGDriveAccountSync)))
+	apiV1.Handle("/knowledge/connectors/gdrive/accounts", app.requireSettingsWritable(app.authMiddleware(http.HandlerFunc(app.handleKnowledgeGDriveAccounts))))
+	apiV1.Handle("/knowledge/connectors/gdrive/accounts/", app.requireSettingsWritable(app.authMiddleware(http.HandlerFunc(app.handleKnowledgeGDriveAccountSync))))
 	apiV1.Handle("/knowledge/connectors/gdrive/oauth/start", app.authMiddleware(http.HandlerFunc(app.handleKnowledgeGDriveOAuthStart)))
 	// Deliberately unauthenticated - Google's own redirect lands here with no
 	// bearer token; see handleKnowledgeGDriveOAuthCallback's doc comment.
@@ -152,28 +156,28 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	// doc comment.
 	apiV1.HandleFunc("/knowledge/connectors/sharepoint/oauth/callback", app.handleKnowledgeSharePointOAuthCallback)
 
-	apiV1.Handle("/connectors/", app.authMiddleware(http.HandlerFunc(app.handleConnectorsDispatch)))
+	apiV1.Handle("/connectors/", app.requireSettingsWritable(app.authMiddleware(http.HandlerFunc(app.handleConnectorsDispatch))))
 
 	apiV1.Handle("/web/search", app.authMiddleware(http.HandlerFunc(app.handleWebSearch)))
-	apiV1.Handle("/web/search/settings", app.authMiddleware(http.HandlerFunc(app.handleWebSearchSettings)))
+	apiV1.Handle("/web/search/settings", app.requireSettingsWritable(app.authMiddleware(http.HandlerFunc(app.handleWebSearchSettings))))
 	apiV1.Handle("/web/search/logs", app.authMiddleware(http.HandlerFunc(app.handleWebSearchLogs)))
-	apiV1.Handle("/web/search/providers", app.authMiddleware(http.HandlerFunc(app.handleWebSearchProviders)))
-	apiV1.Handle("/web/search/providers/", app.authMiddleware(http.HandlerFunc(app.handleWebSearchProviderByName)))
+	apiV1.Handle("/web/search/providers", app.requireSettingsWritable(app.authMiddleware(http.HandlerFunc(app.handleWebSearchProviders))))
+	apiV1.Handle("/web/search/providers/", app.requireSettingsWritable(app.authMiddleware(http.HandlerFunc(app.handleWebSearchProviderByName))))
 	apiV1.Handle("/web/search/domain-catalog", app.authMiddleware(http.HandlerFunc(app.handleWebSearchDomainCatalog)))
 
 	apiV1.Handle("/audit/logs", app.authMiddleware(http.HandlerFunc(app.handleAuditLogs)))
 	apiV1.Handle("/quotas", app.authMiddleware(http.HandlerFunc(app.handleQuotas)))
 
-	apiV1.Handle("/settings/providers", app.authMiddleware(http.HandlerFunc(app.handleProviderSettings)))
-	apiV1.Handle("/settings/providers/", app.authMiddleware(http.HandlerFunc(app.handleProviderSettingByID)))
-	apiV1.Handle("/settings/embedder", app.authMiddleware(http.HandlerFunc(app.handleEmbedderConfig)))
-	apiV1.Handle("/settings/embedder/", app.authMiddleware(http.HandlerFunc(app.handleEmbedderConfig)))
-	apiV1.Handle("/settings/capability-links", app.authMiddleware(http.HandlerFunc(app.handleCapabilityLinks)))
-	apiV1.Handle("/settings/capability-links/", app.authMiddleware(http.HandlerFunc(app.handleCapabilityLinks)))
-	apiV1.Handle("/settings/docling", app.authMiddleware(http.HandlerFunc(app.handleDoclingConfig)))
-	apiV1.Handle("/settings/docling/", app.authMiddleware(http.HandlerFunc(app.handleDoclingConfig)))
-	apiV1.Handle("/settings/local-stt", app.authMiddleware(http.HandlerFunc(app.handleLocalSTTConfig)))
-	apiV1.Handle("/settings/storage", app.authMiddleware(http.HandlerFunc(app.handleStorageConfig)))
+	apiV1.Handle("/settings/providers", app.requireSettingsWritable(app.authMiddleware(http.HandlerFunc(app.handleProviderSettings))))
+	apiV1.Handle("/settings/providers/", app.requireSettingsWritable(app.authMiddleware(http.HandlerFunc(app.handleProviderSettingByID))))
+	apiV1.Handle("/settings/embedder", app.requireSettingsWritable(app.authMiddleware(http.HandlerFunc(app.handleEmbedderConfig))))
+	apiV1.Handle("/settings/embedder/", app.requireSettingsWritable(app.authMiddleware(http.HandlerFunc(app.handleEmbedderConfig))))
+	apiV1.Handle("/settings/capability-links", app.requireSettingsWritable(app.authMiddleware(http.HandlerFunc(app.handleCapabilityLinks))))
+	apiV1.Handle("/settings/capability-links/", app.requireSettingsWritable(app.authMiddleware(http.HandlerFunc(app.handleCapabilityLinks))))
+	apiV1.Handle("/settings/docling", app.requireSettingsWritable(app.authMiddleware(http.HandlerFunc(app.handleDoclingConfig))))
+	apiV1.Handle("/settings/docling/", app.requireSettingsWritable(app.authMiddleware(http.HandlerFunc(app.handleDoclingConfig))))
+	apiV1.Handle("/settings/local-stt", app.requireSettingsWritable(app.authMiddleware(http.HandlerFunc(app.handleLocalSTTConfig))))
+	apiV1.Handle("/settings/storage", app.requireSettingsWritable(app.authMiddleware(http.HandlerFunc(app.handleStorageConfig))))
 	apiV1.Handle("/memories", app.authMiddleware(http.HandlerFunc(app.handleMemories)))
 	apiV1.Handle("/memories/", app.authMiddleware(http.HandlerFunc(app.handleMemoryByID)))
 

@@ -8,6 +8,7 @@ import { useUIStore } from '@/stores/ui'
 import { useAuthStore } from '@/stores/auth'
 import { api } from '@/api/client'
 import { SettingsSidebar, SETTINGS_NAV_CSS, SETTINGS_SHARED_CSS } from './SettingsNav'
+import { SettingsLockedBanner, SETTINGS_LOCKED_BANNER_CSS } from './SettingsLockedBanner'
 import { MemoriesView } from './MemoriesView'
 import { AboutView } from './AboutView'
 import { GeneralView } from './GeneralView'
@@ -142,6 +143,7 @@ export function Settings() {
 
       <main className={`settings-content ${sidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="settings-content-inner">
+          <SettingsLockedBanner />
           {activeTab === 'general' && <GeneralView />}
           {activeTab === 'account' && <AccountView />}
           {activeTab === 'connections' && <ConnectionsView />}
@@ -319,4 +321,5 @@ export function RuntimeView() {
 const SETTINGS_CSS = `
 ${SETTINGS_NAV_CSS}
 ${SETTINGS_SHARED_CSS}
+${SETTINGS_LOCKED_BANNER_CSS}
 `
