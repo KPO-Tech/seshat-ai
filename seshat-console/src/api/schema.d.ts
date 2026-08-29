@@ -1306,6 +1306,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/scim-connections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get an organization's SCIM connection
+         * @description A singleton per organization_id, like GET /web-search-org-policy — not a path-parameterized collection. Returns `{"connection": null}` (200, not 404) when the organization has not configured SCIM yet; "not configured" is a normal state for this resource. Never includes the bearer token. Requires scim_connections.read/.manage or organization.manage.
+         */
+        get: operations["getScimConnection"];
+        /**
+         * Update an organization's SCIM connection
+         * @description Edits name/enabled/sync options only — never touches the bearer token, use the rotate-token operation for that. 404 if the organization has no SCIM connection configured yet. Requires scim_connections.manage or organization.manage.
+         */
+        put: operations["updateScimConnection"];
+        /**
+         * Create an organization's SCIM connection
+         * @description One connection per organization — a second call for an org that already has one is rejected with 409; delete the existing one or rotate its token instead. Returns the bearer token in the `token` field — the only time it is ever readable again, same "shown once" contract as an Invitation or Device registration token. Requires scim_connections.manage or organization.manage.
+         */
+        post: operations["createScimConnection"];
+        /**
+         * Delete an organization's SCIM connection
+         * @description Any IdP still configured with the old token starts getting 401s immediately. Does not touch previously provisioned users/ memberships/groups — it only stops future pushes from being accepted. Requires scim_connections.manage or organization.manage.
+         */
+        delete: operations["deleteScimConnection"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scim-connections/rotate-token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rotate an organization's SCIM connection bearer token
+         * @description Replaces the bearer token — the previous one stops working immediately, the IdP's configured secret must be updated to match. Returns the new raw token, the one and only time it is readable again. Requires scim_connections.manage or organization.manage.
+         */
+        post: operations["rotateScimConnectionToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/provider-catalog": {
         parameters: {
             query?: never;
@@ -3284,6 +3336,36 @@ export interface components {
             base_url?: string;
             /** @description Administrative/UI marker for this organization's "main" provider setting - not consumed by job execution. */
             is_default?: boolean;
+        };
+        /** @description Never includes the bearer token — see ScimConnectionWithToken for the one-time reveal on create/rotate. */
+        ScimConnection: {
+            id?: string;
+            organization_id?: string;
+            created_by_user_id?: string;
+            /** @example Okta */
+            name?: string;
+            enabled?: boolean;
+            /** @description When false, /Groups pushes are recorded for visibility but never touch a real team ("metadata only" mode). */
+            sync_groups?: boolean;
+            /** @description Only has an effect when sync_groups is true. */
+            auto_create_teams?: boolean;
+        };
+        ScimConnectionWithToken: components["schemas"]["ScimConnection"] & {
+            /** @description The raw bearer token — shown exactly once, on create or rotate. Never returned by any other operation. */
+            token?: string;
+        };
+        ScimConnectionInput: {
+            organization_id: string;
+            /** @example Okta */
+            name: string;
+            sync_groups?: boolean;
+            auto_create_teams?: boolean;
+        };
+        ScimConnectionUpdateInput: {
+            name: string;
+            enabled: boolean;
+            sync_groups?: boolean;
+            auto_create_teams?: boolean;
         };
         ProviderCatalogModel: {
             /** @example claude-sonnet-4-20250514 */
@@ -6688,6 +6770,134 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+        };
+    };
+    getScimConnection: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The organization's SCIM connection, or null */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        connection?: components["schemas"]["ScimConnection"] | null;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    updateScimConnection: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScimConnectionUpdateInput"];
+            };
+        };
+        responses: {
+            /** @description SCIM connection updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScimConnection"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createScimConnection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScimConnectionInput"];
+            };
+        };
+        responses: {
+            /** @description SCIM connection created, with its one-time bearer token */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScimConnectionWithToken"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    deleteScimConnection: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description SCIM connection deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    rotateScimConnectionToken: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Token rotated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScimConnectionWithToken"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     listProviderCatalog: {

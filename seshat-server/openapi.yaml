@@ -75,6 +75,16 @@ tags:
     description: OAuth/OIDC client applications registered with the control plane.
   - name: providers
     description: Upstream identity providers (OIDC/OAuth2/SAML).
+  - name: scim-connections
+    description: >-
+      Per-organization SCIM 2.0 provisioning connection (RFC 7643/7644) — an
+      enterprise IdP (Okta, Entra ID, ...) pushes user/group changes here
+      instead of an admin managing membership by hand. One connection per
+      organization. These are admin-facing management endpoints for the
+      connection itself (name, enabled flag, sync options, bearer token
+      rotation); the SCIM protocol endpoints the IdP actually calls
+      (/scim/v2/Users, /scim/v2/Groups, ...) are a separate, not-yet-built
+      surface (see docs/helps in the seshat-ai repo for the staged plan).
   - name: provider-settings
     description: >-
       Per-organization LLM provider credentials (Anthropic, OpenAI, ...) —
@@ -2229,6 +2239,121 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/scim-connections:
+    get:
+      operationId: getScimConnection
+      tags: [scim-connections]
+      summary: Get an organization's SCIM connection
+      description: >-
+        A singleton per organization_id, like GET /web-search-org-policy —
+        not a path-parameterized collection. Returns `{"connection": null}`
+        (200, not 404) when the organization has not configured SCIM yet;
+        "not configured" is a normal state for this resource. Never
+        includes the bearer token. Requires scim_connections.read/.manage
+        or organization.manage.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: The organization's SCIM connection, or null
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  connection:
+                    oneOf:
+                      - $ref: "#/components/schemas/ScimConnection"
+                      - type: "null"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      operationId: createScimConnection
+      tags: [scim-connections]
+      summary: Create an organization's SCIM connection
+      description: >-
+        One connection per organization — a second call for an org that
+        already has one is rejected with 409; delete the existing one or
+        rotate its token instead. Returns the bearer token in the
+        `token` field — the only time it is ever readable again, same
+        "shown once" contract as an Invitation or Device registration
+        token. Requires scim_connections.manage or organization.manage.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ScimConnectionInput" }
+      responses:
+        "201":
+          description: SCIM connection created, with its one-time bearer token
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ScimConnectionWithToken" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+    put:
+      operationId: updateScimConnection
+      tags: [scim-connections]
+      summary: Update an organization's SCIM connection
+      description: >-
+        Edits name/enabled/sync options only — never touches the bearer
+        token, use the rotate-token operation for that. 404 if the
+        organization has no SCIM connection configured yet. Requires
+        scim_connections.manage or organization.manage.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ScimConnectionUpdateInput" }
+      responses:
+        "200":
+          description: SCIM connection updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ScimConnection" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      operationId: deleteScimConnection
+      tags: [scim-connections]
+      summary: Delete an organization's SCIM connection
+      description: >-
+        Any IdP still configured with the old token starts getting 401s
+        immediately. Does not touch previously provisioned users/
+        memberships/groups — it only stops future pushes from being
+        accepted. Requires scim_connections.manage or organization.manage.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "204": { description: SCIM connection deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/scim-connections/rotate-token:
+    post:
+      operationId: rotateScimConnectionToken
+      tags: [scim-connections]
+      summary: Rotate an organization's SCIM connection bearer token
+      description: >-
+        Replaces the bearer token — the previous one stops working
+        immediately, the IdP's configured secret must be updated to match.
+        Returns the new raw token, the one and only time it is readable
+        again. Requires scim_connections.manage or organization.manage.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: Token rotated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ScimConnectionWithToken" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /api/v1/provider-catalog:
     get:
@@ -5213,6 +5338,49 @@ components:
         is_default:
           type: boolean
           description: Administrative/UI marker for this organization's "main" provider setting - not consumed by job execution.
+
+    ScimConnection:
+      type: object
+      description: Never includes the bearer token — see ScimConnectionWithToken for the one-time reveal on create/rotate.
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        created_by_user_id: { type: string }
+        name: { type: string, example: Okta }
+        enabled: { type: boolean }
+        sync_groups:
+          type: boolean
+          description: When false, /Groups pushes are recorded for visibility but never touch a real team ("metadata only" mode).
+        auto_create_teams:
+          type: boolean
+          description: Only has an effect when sync_groups is true.
+
+    ScimConnectionWithToken:
+      allOf:
+        - $ref: "#/components/schemas/ScimConnection"
+        - type: object
+          properties:
+            token:
+              type: string
+              description: The raw bearer token — shown exactly once, on create or rotate. Never returned by any other operation.
+
+    ScimConnectionInput:
+      type: object
+      required: [organization_id, name]
+      properties:
+        organization_id: { type: string }
+        name: { type: string, example: Okta }
+        sync_groups: { type: boolean }
+        auto_create_teams: { type: boolean }
+
+    ScimConnectionUpdateInput:
+      type: object
+      required: [name, enabled]
+      properties:
+        name: { type: string }
+        enabled: { type: boolean }
+        sync_groups: { type: boolean }
+        auto_create_teams: { type: boolean }
 
     ProviderCatalogModel:
       type: object

@@ -429,6 +429,12 @@ export function getSecondaryNavItems(pathname: string, organizationId: string | 
         path: `/orgs/${organizationId}/integrations/providers`,
         matchPrefix: `/orgs/${organizationId}/integrations/providers`,
       },
+      {
+        key: 'org-integrations-scim',
+        label: 'SCIM Provisioning',
+        path: `/orgs/${organizationId}/integrations/scim`,
+        matchPrefix: `/orgs/${organizationId}/integrations/scim`,
+      },
     ]
   }
 

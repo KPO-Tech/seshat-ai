@@ -41,6 +41,7 @@ const RolesPage = lazyPage(() => import('@/pages/roles/RolesPage').then((module)
 const PolicyBindingsPage = lazyPage(() => import('@/pages/policyBindings/PolicyBindingsPage').then((module) => ({ default: module.PolicyBindingsPage })))
 const ApplicationsPage = lazyPage(() => import('@/pages/applications/ApplicationsPage').then((module) => ({ default: module.ApplicationsPage })))
 const ProvidersPage = lazyPage(() => import('@/pages/providers/ProvidersPage').then((module) => ({ default: module.ProvidersPage })))
+const ScimSettingsPage = lazyPage(() => import('@/pages/scim/ScimSettingsPage').then((module) => ({ default: module.ScimSettingsPage })))
 const SessionsPage = lazyPage(() => import('@/pages/sessions/SessionsPage').then((module) => ({ default: module.SessionsPage })))
 const DevicesPage = lazyPage(() => import('@/pages/devices/DevicesPage').then((module) => ({ default: module.DevicesPage })))
 const JobsPage = lazyPage(() => import('@/pages/jobs/JobsPage').then((module) => ({ default: module.JobsPage })))
@@ -133,6 +134,7 @@ export const router = createBrowserRouter([
               { path: 'knowledge/connectors', element: renderLazyPage(ConnectorsPage) },
               { path: 'integrations/applications', element: renderLazyPage(ApplicationsPage) },
               { path: 'integrations/providers', element: renderLazyPage(ProvidersPage) },
+              { path: 'integrations/scim', element: renderLazyPage(ScimSettingsPage) },
               { path: 'prospecting/sweeps', element: renderLazyPage(SweepsPage) },
               { path: 'prospecting/settings', element: renderLazyPage(ProspectingSettingsPage) },
               { path: 'activity/audit', element: renderLazyPage(AuditEventsPage) },

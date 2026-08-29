@@ -23,6 +23,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/preferences"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/prospecting"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/quotas"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/scim"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/skillregistry"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/websearchsettings"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/workspacechat"
@@ -41,6 +42,7 @@ type App struct {
 	Preferences          *preferences.Service
 	SkillRegistry        *skillregistry.Service
 	WebSearchSettings    *websearchsettings.Service
+	Scim                 *scim.Service
 	MCPRegistry          *mcpregistry.Service
 	Memories             *memories.Service
 	LongTermMemory       *longtermmemory.Service
@@ -153,6 +155,7 @@ func New(cfg serverconfig.Config) (*App, error) {
 		Preferences:          preferences.New(database, iamService),
 		SkillRegistry:        skillregistry.New(database, iamService),
 		WebSearchSettings:    webSearchService,
+		Scim:                 scim.New(database, iamService),
 		MCPRegistry:          mcpRegistryService,
 		Memories:             memories.New(database),
 		LongTermMemory:       longtermmemory.New(database),
