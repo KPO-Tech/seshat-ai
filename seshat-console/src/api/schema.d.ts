@@ -1836,6 +1836,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/hook-configs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List an organization's shared PreToolUse hooks
+         * @description Requires hooks_registry.read/.manage or organization.manage. See HookConfig - desktop-only by design, never resolved/executed by seshat-server's own workspacechat.
+         */
+        get: operations["listHookConfigs"];
+        put?: never;
+        /**
+         * Define a new shared PreToolUse hook for an organization
+         * @description Requires hooks_registry.manage or organization.manage. One hook per (organization, name) pair.
+         */
+        post: operations["createHookConfig"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hook-configs/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Resolve every enabled hook an organization has shared
+         * @description Open to any org member - the point is for a connected seshat-backend device to present each org-defined hook to its own user for explicit local approval before ever running it. Only Enabled hooks are returned.
+         */
+        get: operations["resolveHookConfigs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hook-configs/{hookConfigID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hookConfigID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Update a shared hook */
+        put: operations["updateHookConfig"];
+        post?: never;
+        /** Delete a shared hook */
+        delete: operations["deleteHookConfig"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/knowledge/corpora": {
         parameters: {
             query?: never;
@@ -3802,6 +3866,39 @@ export interface components {
              * @enum {string}
              */
             connector_kind?: "" | "gdrive" | "sharepoint" | "slack" | "outlook" | "teams" | "gmail";
+        };
+        /** @description An org-scoped PreToolUse hook - see docs/helps/audit-2026-08-29-openwork-den-comparison.md § 7. Desktop-only: never resolved or executed by seshat-server's own workspacechat, since the SDK's hook runner executes Command via plain os/exec with no sandboxing. */
+        HookConfig: {
+            id?: string;
+            organization_id?: string;
+            created_by_user_id?: string;
+            /** @example block-rm */
+            name?: string;
+            /** @description Regex against the tool name - empty matches every tool. */
+            matcher?: string;
+            /** @description Shell command executed on the connected device */
+            command?: string;
+            timeout_secs?: number;
+            /** @description A disabled hook is excluded from resolve entirely */
+            enabled?: boolean;
+        };
+        HookConfigInput: {
+            organization_id: string;
+            /** @example block-rm */
+            name: string;
+            matcher?: string;
+            command: string;
+            /** @default 30 */
+            timeout_secs: number;
+            /** @default true */
+            enabled: boolean;
+        };
+        /** @description Unlike creation, organization_id/name are not part of this body - an existing hook's organization and name are fixed. */
+        HookConfigUpdateInput: {
+            matcher?: string;
+            command: string;
+            timeout_secs?: number;
+            enabled?: boolean;
         };
         MCPProbeResult: {
             /**
@@ -7967,6 +8064,137 @@ export interface operations {
             header?: never;
             path: {
                 mcpServerConfigID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listHookConfigs: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Hook config list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        hook_configs?: components["schemas"]["HookConfig"][];
+                        count?: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    createHookConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HookConfigInput"];
+            };
+        };
+        responses: {
+            /** @description Hook config created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HookConfig"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    resolveHookConfigs: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Resolved hook configs */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        hook_configs?: components["schemas"]["HookConfig"][];
+                        count?: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    updateHookConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hookConfigID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HookConfigUpdateInput"];
+            };
+        };
+        responses: {
+            /** @description Updated hook config */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HookConfig"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteHookConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hookConfigID: string;
             };
             cookie?: never;
         };

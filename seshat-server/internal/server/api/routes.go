@@ -131,6 +131,12 @@ func (app *App) routes() http.Handler {
 	mux.Handle("POST /api/v1/mcp-server-configs", app.authMiddleware(http.HandlerFunc(app.handleMCPServerConfigs)))
 	mux.Handle("PUT /api/v1/mcp-server-configs/{mcpServerConfigID}", app.authMiddleware(http.HandlerFunc(app.handleMCPServerConfigByID)))
 	mux.Handle("DELETE /api/v1/mcp-server-configs/{mcpServerConfigID}", app.authMiddleware(http.HandlerFunc(app.handleMCPServerConfigByID)))
+
+	mux.Handle("GET /api/v1/hook-configs/resolve", app.authMiddleware(http.HandlerFunc(app.handleHookConfigResolve)))
+	mux.Handle("GET /api/v1/hook-configs", app.authMiddleware(http.HandlerFunc(app.handleHookConfigs)))
+	mux.Handle("POST /api/v1/hook-configs", app.authMiddleware(http.HandlerFunc(app.handleHookConfigs)))
+	mux.Handle("PUT /api/v1/hook-configs/{hookConfigID}", app.authMiddleware(http.HandlerFunc(app.handleHookConfigByID)))
+	mux.Handle("DELETE /api/v1/hook-configs/{hookConfigID}", app.authMiddleware(http.HandlerFunc(app.handleHookConfigByID)))
 	mux.Handle("GET /api/v1/applications", app.authMiddleware(http.HandlerFunc(app.handleApplications)))
 	mux.Handle("POST /api/v1/applications", app.authMiddleware(http.HandlerFunc(app.handleApplications)))
 	mux.Handle("GET /api/v1/applications/{applicationID}", app.authMiddleware(http.HandlerFunc(app.handleApplicationByID)))

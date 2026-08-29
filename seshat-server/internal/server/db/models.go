@@ -1044,6 +1044,33 @@ type MCPServerConfig struct {
 	UpdatedAt     time.Time
 }
 
+// HookConfig declares one org-scoped PreToolUse hook (see
+// docs/helps/audit-2026-08-29-openwork-den-comparison.md § 7) - a shell
+// command a connected seshat-backend device runs before matching tool
+// calls. Deliberately desktop-only: this table's rows are never resolved by
+// seshat-server's own workspacechat, since the SDK's hook runner executes
+// Command via plain os/exec with no sandboxing (unlike the bash tool's
+// Docker/Landlock confinement) - running an org-configured hook inside
+// seshat-server's shared multi-tenant process would let one organization's
+// admin execute arbitrary shell commands on the host serving every other
+// organization. A connected device only ever runs a hook after its own user
+// explicitly approves it locally (see seshat-backend's hook approval
+// store) - never silently, unlike this table's own creation.
+type HookConfig struct {
+	ID              string `gorm:"primaryKey;size:32"`
+	OrganizationID  string `gorm:"size:32;not null;uniqueIndex:idx_hook_config_org_name;index"`
+	CreatedByUserID string `gorm:"size:32;not null"`
+	Name            string `gorm:"size:255;not null;uniqueIndex:idx_hook_config_org_name"`
+	// Matcher is a regex against the tool name - empty matches every tool,
+	// same convention as the SDK's own hooks.HookConfig.Matcher.
+	Matcher     string `gorm:"size:255;not null;default:''"`
+	Command     string `gorm:"type:text;not null"`
+	TimeoutSecs int    `gorm:"not null;default:30"`
+	Enabled     bool   `gorm:"not null;default:true"`
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
 // UserMemory mirrors seshat-backend's own gUserMemory (internal/db/user_memories.go)
 // — a flat, personal, multi-row-per-user memory list, no organization
 // concept, same trust level as UserPreference.

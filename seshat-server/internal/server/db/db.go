@@ -133,6 +133,7 @@ func (d *DB) Migrate() error {
 		&WebSearchProviderSetting{},
 		&WebSearchOrgPolicy{},
 		&MCPServerConfig{},
+		&HookConfig{},
 		&UserMemory{},
 		&MemoryEntity{},
 		&MemoryObservation{},

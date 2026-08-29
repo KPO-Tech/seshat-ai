@@ -3115,6 +3115,110 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/hook-configs:
+    get:
+      operationId: listHookConfigs
+      tags: [hook-configs]
+      summary: List an organization's shared PreToolUse hooks
+      description: >-
+        Requires hooks_registry.read/.manage or organization.manage. See
+        HookConfig - desktop-only by design, never resolved/executed by
+        seshat-server's own workspacechat.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: Hook config list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hook_configs:
+                    type: array
+                    items: { $ref: "#/components/schemas/HookConfig" }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      operationId: createHookConfig
+      tags: [hook-configs]
+      summary: Define a new shared PreToolUse hook for an organization
+      description: Requires hooks_registry.manage or organization.manage. One hook per (organization, name) pair.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/HookConfigInput" }
+      responses:
+        "201":
+          description: Hook config created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HookConfig" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/hook-configs/resolve:
+    get:
+      operationId: resolveHookConfigs
+      tags: [hook-configs]
+      summary: Resolve every enabled hook an organization has shared
+      description: >-
+        Open to any org member - the point is for a connected seshat-backend
+        device to present each org-defined hook to its own user for explicit
+        local approval before ever running it. Only Enabled hooks are
+        returned.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: Resolved hook configs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hook_configs:
+                    type: array
+                    items: { $ref: "#/components/schemas/HookConfig" }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/hook-configs/{hookConfigID}:
+    parameters:
+      - name: hookConfigID
+        in: path
+        required: true
+        schema: { type: string }
+    put:
+      operationId: updateHookConfig
+      tags: [hook-configs]
+      summary: Update a shared hook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/HookConfigUpdateInput" }
+      responses:
+        "200":
+          description: Updated hook config
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HookConfig" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      operationId: deleteHookConfig
+      tags: [hook-configs]
+      summary: Delete a shared hook
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/knowledge/corpora:
     get:
       operationId: listCorpora
@@ -5994,6 +6098,45 @@ components:
         timeout_secs: { type: integer }
         icon: { type: string }
         connector_kind: { type: string, enum: ["", gdrive, sharepoint, slack, outlook, teams, gmail], description: "When set, this server's headers are personalized per caller at resolve time - see ResolvedMCPServerConfig.connected." }
+
+    HookConfig:
+      type: object
+      description: >-
+        An org-scoped PreToolUse hook - see
+        docs/helps/audit-2026-08-29-openwork-den-comparison.md § 7.
+        Desktop-only: never resolved or executed by seshat-server's own
+        workspacechat, since the SDK's hook runner executes Command via
+        plain os/exec with no sandboxing.
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        created_by_user_id: { type: string }
+        name: { type: string, example: block-rm }
+        matcher: { type: string, description: "Regex against the tool name - empty matches every tool." }
+        command: { type: string, description: Shell command executed on the connected device, after explicit local user approval. }
+        timeout_secs: { type: integer }
+        enabled: { type: boolean, description: A disabled hook is excluded from resolve entirely, not just paused. }
+
+    HookConfigInput:
+      type: object
+      required: [organization_id, name, command]
+      properties:
+        organization_id: { type: string }
+        name: { type: string, example: block-rm }
+        matcher: { type: string }
+        command: { type: string }
+        timeout_secs: { type: integer, default: 30 }
+        enabled: { type: boolean, default: true }
+
+    HookConfigUpdateInput:
+      type: object
+      required: [command]
+      description: Unlike creation, organization_id/name are not part of this body - an existing hook's organization and name are fixed.
+      properties:
+        matcher: { type: string }
+        command: { type: string }
+        timeout_secs: { type: integer }
+        enabled: { type: boolean }
 
     MCPProbeResult:
       type: object

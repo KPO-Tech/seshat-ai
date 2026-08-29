@@ -14,6 +14,7 @@ import (
 	serverconfig "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/config"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/connectors"
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/hookregistry"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/knowledge"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/longtermmemory"
@@ -44,6 +45,7 @@ type App struct {
 	WebSearchSettings    *websearchsettings.Service
 	Scim                 *scim.Service
 	MCPRegistry          *mcpregistry.Service
+	HookRegistry         *hookregistry.Service
 	Memories             *memories.Service
 	LongTermMemory       *longtermmemory.Service
 	AgentRegistry        *agentregistry.Service
@@ -128,6 +130,7 @@ func New(cfg serverconfig.Config) (*App, error) {
 	connectorsService.SetPublicAPIURL(cfg.PublicAPIURL)
 
 	mcpRegistryService := mcpregistry.New(database, iamService)
+	hookRegistryService := hookregistry.New(database, iamService)
 	// Lets a ConnectorKind-tagged MCP server resolve with a per-employee
 	// Bearer token bridged in from their own connected account — see
 	// mcpregistry.Service.SetConnectorTokenResolver's doc comment.
@@ -157,6 +160,7 @@ func New(cfg serverconfig.Config) (*App, error) {
 		WebSearchSettings:    webSearchService,
 		Scim:                 scim.New(database, iamService),
 		MCPRegistry:          mcpRegistryService,
+		HookRegistry:         hookRegistryService,
 		Memories:             memories.New(database),
 		LongTermMemory:       longtermmemory.New(database),
 		AgentRegistry:        agentregistry.New(database, iamService),

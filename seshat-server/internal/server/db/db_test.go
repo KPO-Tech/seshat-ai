@@ -277,3 +277,49 @@ func TestDesktopPolicyBindingSchemaMigratesAndEnforcesUniqueness(t *testing.T) {
 		t.Fatalf("expected an org-wide binding in a different organization to coexist: %v", err)
 	}
 }
+
+// TestHookConfigSchemaMigratesAndEnforcesUniqueness is the hooks/bundle
+// plan's cold-migration check (mirrors the desktop policies one above): a
+// fresh database migrates HookConfig cleanly, and (organization_id, name) is
+// unique - an admin must update an existing hook rather than accumulate two
+// rows under the same name.
+func TestHookConfigSchemaMigratesAndEnforcesUniqueness(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "state.db")
+	database, err := Open(Config{Driver: DriverSQLite, DSN: dbPath})
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer database.Close()
+
+	if err := database.Migrate(); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+
+	org := Organization{ID: "org_1", Name: "Seshat", Slug: "seshat"}
+	if err := database.Gorm().Create(&org).Error; err != nil {
+		t.Fatalf("create organization: %v", err)
+	}
+	user := User{ID: "usr_1", Email: "admin@example.com", DisplayName: "Admin", PasswordHash: "x"}
+	if err := database.Gorm().Create(&user).Error; err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	first := HookConfig{ID: "hookcfg_1", OrganizationID: org.ID, CreatedByUserID: user.ID, Name: "block-rm", Command: "echo test", TimeoutSecs: 30, Enabled: true}
+	if err := database.Gorm().Create(&first).Error; err != nil {
+		t.Fatalf("create hook config: %v", err)
+	}
+
+	duplicate := HookConfig{ID: "hookcfg_2", OrganizationID: org.ID, CreatedByUserID: user.ID, Name: "block-rm", Command: "echo other", TimeoutSecs: 30, Enabled: true}
+	if err := database.Gorm().Create(&duplicate).Error; err == nil {
+		t.Fatal("expected a duplicate (organization_id, name) to violate the unique index")
+	}
+
+	otherOrg := Organization{ID: "org_2", Name: "Other", Slug: "other"}
+	if err := database.Gorm().Create(&otherOrg).Error; err != nil {
+		t.Fatalf("create other organization: %v", err)
+	}
+	sameNameOtherOrg := HookConfig{ID: "hookcfg_3", OrganizationID: otherOrg.ID, CreatedByUserID: user.ID, Name: "block-rm", Command: "echo test", TimeoutSecs: 30, Enabled: true}
+	if err := database.Gorm().Create(&sameNameOtherOrg).Error; err != nil {
+		t.Fatalf("expected the same name in a different organization to coexist: %v", err)
+	}
+}
