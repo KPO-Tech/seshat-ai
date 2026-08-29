@@ -34,6 +34,11 @@ type Status struct {
 	DeviceName        string     `json:"device_name,omitempty"`
 	ConnectedByUserID string     `json:"connected_by_user_id,omitempty"`
 	ConnectedAt       *time.Time `json:"connected_at,omitempty"`
+	// Policies is this device's last-synced desktop policy bundle (see
+	// PolicyStore) - empty (never nil) when never connected/never synced.
+	// A code missing from this map must be treated as allowed, same as
+	// PolicyStore.Allowed's own fail-open default.
+	Policies map[string]bool `json:"policies"`
 }
 
 // Device mirrors seshat-server's Device schema — only the fields this

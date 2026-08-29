@@ -9,6 +9,10 @@ type AutomationStatus = {
   device_name?: string
   connected_by_user_id?: string
   connected_at?: string
+  // This device's last-synced desktop policy bundle - see
+  // hooks/useDesktopPolicies.ts, which is what actually consumes it
+  // elsewhere (ProvidersView.tsx); not displayed on this view.
+  policies?: Record<string, boolean>
 }
 
 type AutomationRun = {

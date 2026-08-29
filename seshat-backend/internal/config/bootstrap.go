@@ -464,6 +464,13 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	var memoriesProvider backendmemories.Provider
 	var agentsCloudClient *cloudagents.Client
 	var quotaProvider backendquotas.Provider
+	// Constructed here (not down in the "Cloud automation" section below,
+	// where the rest of cloudautomation's pieces are wired) because
+	// cloudsettings.NewProvider needs it immediately below - the same
+	// PolicyStore instance is reused later for the automation Service/Worker,
+	// since it's a thin stateless wrapper around the shared *db.DB (safe to
+	// construct once and hand out, unlike the DB itself).
+	cloudAutomationPolicyStore := cloudautomation.NewPolicyStore(database)
 	serverURL := ""
 	if serverReachable(ctx, defaultServerURL) {
 		serverURL = defaultServerURL
@@ -477,7 +484,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		// anyone whose actual membership didn't match it.
 		authProvider = cloudidentity.NewProvider(serverURL, cloudidentity.NewCache(database), identityStore)
 		localSettingsProvider := backendsettings.NewLocalProvider(settingStore, oauthStore, nil)
-		settingsProvider = cloudsettings.NewProvider(serverURL, localSettingsProvider)
+		settingsProvider = cloudsettings.NewProvider(serverURL, localSettingsProvider, cloudAutomationPolicyStore)
 		preferencesProvider = cloudpreferences.NewProvider(serverURL)
 		webSearchCloudClient = cloudwebsearch.NewClient(serverURL)
 		mcpCloudClient = cloudmcp.NewClient(serverURL)
@@ -1152,7 +1159,6 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	// captures backendApp so the cloudautomation package never needs to
 	// import query/settings directly, mirroring the old scheduler's pattern.
 	cloudAutomationStore := cloudautomation.NewStore(database)
-	cloudAutomationPolicyStore := cloudautomation.NewPolicyStore(database)
 	cloudAutomationExecutor := cloudautomation.JobExecutor(func(ctx context.Context, p cloudautomation.ExecParams) (string, error) {
 		principal := &backendauth.Principal{
 			User: backendauth.User{ID: p.UserID},

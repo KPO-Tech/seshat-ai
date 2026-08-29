@@ -8,6 +8,18 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 )
 
+// Desktop policy codes - must match the literal strings seshat-server's
+// iam.desktopPolicyCatalog (internal/server/iam/desktop_policies.go) defines
+// on the other side of the wire. There is no shared Go type across these two
+// separate modules/repos to enforce this at compile time - keep both lists
+// in sync by hand if either changes.
+const (
+	DesktopPolicyAllowCustomProviders      = "allow_custom_providers"
+	DesktopPolicyAllowLocalModels          = "allow_local_models"
+	DesktopPolicyAllowMultipleWorkspaces   = "allow_multiple_workspaces"
+	DesktopPolicyAllowSettingsModification = "allow_settings_modification"
+)
+
 // policyCredentialKey is the single well-known key under which the
 // (singleton) desktop policy bundle is stored via the existing generic
 // encrypted credential store (internal/db/credentials.go) - same pattern as
@@ -69,6 +81,26 @@ func (s *PolicyStore) Allowed(ctx context.Context, code string) bool {
 		return true
 	}
 	return allowed
+}
+
+// All returns the raw last-synced bundle (empty map if never synced) - for
+// callers (the local settings UI) that want to know several codes at once
+// rather than call Allowed per code. A code missing from this map must
+// still be treated as allowed by the caller, exactly like Allowed's own
+// fail-open default for an unknown code.
+func (s *PolicyStore) All(ctx context.Context) map[string]bool {
+	raw, ok, err := s.db.GetCredential(ctx, policyCredentialKey)
+	if err != nil || !ok {
+		return map[string]bool{}
+	}
+	var sp storedPolicies
+	if err := json.Unmarshal([]byte(raw), &sp); err != nil {
+		return map[string]bool{}
+	}
+	if sp.Policies == nil {
+		return map[string]bool{}
+	}
+	return sp.Policies
 }
 
 // Clear removes the stored bundle (e.g. on Disconnect) - a disconnected

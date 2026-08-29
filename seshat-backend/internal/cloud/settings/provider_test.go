@@ -39,7 +39,7 @@ func TestResolveDefaultForUserFallsBackToOrgProvider(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	p := NewProvider(srv.URL, nil)
+	p := NewProvider(srv.URL, nil, nil)
 	principal := principalWithOrg("org_1")
 
 	resolved, err := p.ResolveDefaultForUser(context.Background(), principal)
@@ -58,7 +58,7 @@ func TestResolveDefaultForUserFallsBackToOrgProvider(t *testing.T) {
 }
 
 func TestResolveDefaultForUserReturnsNilWithoutOrganization(t *testing.T) {
-	p := NewProvider("http://unused.invalid", nil)
+	p := NewProvider("http://unused.invalid", nil, nil)
 	principal := &backendauth.Principal{
 		User:        backendauth.User{ID: "usr_2", Email: "admin@example.com"},
 		AuthSession: backendauth.AuthSession{ID: "token456"},

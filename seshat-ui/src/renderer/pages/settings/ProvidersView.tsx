@@ -18,6 +18,7 @@ import {
   disconnectProviderOAuth,
 } from '@/hooks/useProviders'
 import { useProviderCatalog } from '@/hooks/useProviderCatalog'
+import { useDesktopPolicies, isDesktopPolicyAllowed } from '@/hooks/useDesktopPolicies'
 import type { ProviderSetting, ProviderModel, OAuthChallenge, ProviderCatalogEntry } from '@/api/types'
 
 // Auth types this Add Provider form knows how to collect: a plain API key,
@@ -614,7 +615,17 @@ function DetailEntry({ label, value, mono }: { label: string; value: string; mon
 
 function AddProviderModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const { catalog } = useProviderCatalog()
-  const selectableProviders = useMemo(() => toSelectableProviders(catalog), [catalog])
+  const { policies } = useDesktopPolicies()
+  const allowLocalModels = isDesktopPolicyAllowed(policies, 'allow_local_models')
+  const allowCustomProviders = isDesktopPolicyAllowed(policies, 'allow_custom_providers')
+  const selectableProviders = useMemo(() => {
+    const all = toSelectableProviders(catalog)
+    // Ollama is the only local-model entry in the catalog today (see
+    // getProviderConnectionState's own special-case for it) - hidden
+    // outright rather than shown-then-rejected, since there's nothing else
+    // to configure for it if it's blocked.
+    return allowLocalModels ? all : all.filter((p) => p.id !== 'ollama')
+  }, [catalog, allowLocalModels])
 
   const [isDropOpen, setIsDropOpen] = useState(false)
   const [selected, setSelected] = useState<SelectableProvider | null>(null)
@@ -714,13 +725,20 @@ function AddProviderModal({ onClose, onSuccess }: { onClose: () => void; onSucce
           )}
 
           <div className="modal-field">
-            <label>Base URL <span className="modal-label-opt">(editable)</span></label>
+            <label>
+              Base URL{' '}
+              <span className="modal-label-opt">{allowCustomProviders ? '(editable)' : '(locked by your organization)'}</span>
+            </label>
             <input
               type="text"
               placeholder="Select a provider to auto-fill"
               value={baseUrl}
               onChange={(e) => setBaseUrl(e.target.value)}
+              disabled={!allowCustomProviders}
             />
+            {!allowCustomProviders && (
+              <div className="pv-auth-mode-help">Your organization does not allow adding custom providers.</div>
+            )}
           </div>
 
           {error && <div className="modal-error">{error}</div>}

@@ -106,12 +106,16 @@ func (s *Service) Disconnect(ctx context.Context) error {
 }
 
 func (s *Service) Status(ctx context.Context) (*Status, error) {
+	policies := map[string]bool{}
+	if s.policies != nil {
+		policies = s.policies.All(ctx)
+	}
 	conn, err := s.store.Load(ctx)
 	if err != nil {
 		return nil, err
 	}
 	if conn == nil {
-		return &Status{Connected: false}, nil
+		return &Status{Connected: false, Policies: policies}, nil
 	}
 	connectedAt := conn.ConnectedAt
 	return &Status{
@@ -121,6 +125,7 @@ func (s *Service) Status(ctx context.Context) (*Status, error) {
 		DeviceName:        conn.DeviceName,
 		ConnectedByUserID: conn.ConnectedByUserID,
 		ConnectedAt:       &connectedAt,
+		Policies:          policies,
 	}, nil
 }
 

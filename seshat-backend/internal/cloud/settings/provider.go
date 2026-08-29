@@ -5,8 +5,11 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/KPO-Tech/seshat/pkg/providers"
+
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/automation"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/http"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/settings"
 )
@@ -25,12 +28,13 @@ var _ settings.Provider = (*Provider)(nil)
 // operate on the local personal-key store (org/platform settings are managed
 // exclusively via Seshat Console).
 type Provider struct {
-	client *Client
-	local  *settings.LocalProvider
+	client   *Client
+	local    *settings.LocalProvider
+	policies *cloudautomation.PolicyStore
 }
 
-func NewProvider(serverURL string, local *settings.LocalProvider) *Provider {
-	return &Provider{client: NewClient(serverURL), local: local}
+func NewProvider(serverURL string, local *settings.LocalProvider, policies *cloudautomation.PolicyStore) *Provider {
+	return &Provider{client: NewClient(serverURL), local: local, policies: policies}
 }
 
 // ─── List / Get (merges remote read-only entries with real local ones) ───────
@@ -111,7 +115,58 @@ func (p *Provider) Get(ctx context.Context, principal *backendauth.Principal, id
 // ─── Create/Update/Delete/SetDefault: always local ─────────────────────────────
 
 func (p *Provider) Create(ctx context.Context, principal *backendauth.Principal, params settings.CreateSettingParams) (*settings.ProviderSetting, error) {
+	if err := p.checkCreatePolicy(ctx, params.Provider, params.BaseURL); err != nil {
+		return nil, err
+	}
 	return p.local.Create(ctx, principal, params)
+}
+
+// checkCreatePolicy enforces the org's desktop policies for adding a
+// provider - see docs/helps/audit-2026-08-29-openwork-den-comparison.md § 5.
+// A no-op when p.policies is nil (older call sites/tests that never wired
+// one) or when this device has never synced a bundle (PolicyStore.Allowed's
+// own fail-open default already returns true in that case).
+//
+// "Custom provider" here matches this product's own definition (see the
+// catalog entry's admin description): a provider name outside knownProviders
+// entirely (defense in depth - seshat-ui's Add Provider form can't actually
+// submit one, its dropdown is drawn from the same catalog), OR - the
+// realistic, UI-reachable case - a known provider whose base_url has been
+// overridden away from its SDK-defined default (providers.DefaultBaseURL),
+// e.g. pointing "openai" at a self-hosted proxy instead of api.openai.com.
+// An empty base_url is never "custom" - it just means the default applies.
+func (p *Provider) checkCreatePolicy(ctx context.Context, provider, baseURL string) error {
+	if p.policies == nil {
+		return nil
+	}
+	provider = strings.ToLower(strings.TrimSpace(provider))
+	if provider == "ollama" {
+		if !p.policies.Allowed(ctx, cloudautomation.DesktopPolicyAllowLocalModels) {
+			return bkerr.Forbidden("your organization does not allow using local models", nil)
+		}
+		return nil
+	}
+
+	isCustom := !isKnownProvider(provider)
+	if !isCustom {
+		baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
+		if baseURL != "" && !strings.EqualFold(baseURL, strings.TrimRight(providers.DefaultBaseURL(provider), "/")) {
+			isCustom = true
+		}
+	}
+	if isCustom && !p.policies.Allowed(ctx, cloudautomation.DesktopPolicyAllowCustomProviders) {
+		return bkerr.Forbidden("your organization does not allow adding custom providers", nil)
+	}
+	return nil
+}
+
+func isKnownProvider(provider string) bool {
+	for _, known := range knownProviders {
+		if known == provider {
+			return true
+		}
+	}
+	return false
 }
 
 func (p *Provider) Update(ctx context.Context, principal *backendauth.Principal, id string, params settings.UpdateSettingParams) (*settings.ProviderSetting, error) {

@@ -79,6 +79,29 @@ func TestServiceConnectPersistsHeartbeatPolicies(t *testing.T) {
 	}
 }
 
+func TestServiceStatusIncludesPolicies(t *testing.T) {
+	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(Device{
+			ID: "dev_123", Name: "Alice's laptop", Status: "active",
+			Policies: map[string]bool{"allow_custom_providers": false},
+		})
+	}))
+	defer fakeServer.Close()
+
+	service := newTestService(t)
+	if _, err := service.Connect(context.Background(), "usr_1", fakeServer.URL, "device-token-abc"); err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+
+	status, err := service.Status(context.Background())
+	if err != nil {
+		t.Fatalf("status: %v", err)
+	}
+	if status.Policies["allow_custom_providers"] {
+		t.Fatalf("expected Status to surface the synced policy bundle, got %+v", status.Policies)
+	}
+}
+
 func TestServiceDisconnectClearsPolicies(t *testing.T) {
 	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(Device{
