@@ -51,3 +51,38 @@ func (app *App) handleBundlesExport(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", req.Name+".seshatbundle.json"))
 	writeJSON(w, http.StatusOK, manifest)
 }
+
+type importBundleRequest struct {
+	OrganizationID string           `json:"organization_id"`
+	Manifest       bundles.Manifest `json:"manifest"`
+}
+
+// handleBundlesImport — POST /api/v1/bundles/import. Takes a manifest
+// (typically the exact JSON a previous export produced) and creates
+// everything in it for organization_id, tagging every row it actually
+// creates. See bundles.Service.Import for exactly what "success" means
+// here - a response can report some items created and others failed, never
+// silently one or the other.
+func (app *App) handleBundlesImport(w http.ResponseWriter, r *http.Request) {
+	principal, ok := authPrincipalFromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "missing principal")
+		return
+	}
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var req importBundleRequest
+	if !decodeJSONBody(w, r, &req) {
+		return
+	}
+	result, err := app.backend.Bundles.Import(r.Context(), principal, bundles.ImportParams{
+		OrganizationID: req.OrganizationID, Manifest: req.Manifest,
+	})
+	if err != nil {
+		writeBundlesError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
