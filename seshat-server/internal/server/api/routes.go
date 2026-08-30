@@ -137,6 +137,7 @@ func (app *App) routes() http.Handler {
 	mux.Handle("POST /api/v1/hook-configs", app.authMiddleware(http.HandlerFunc(app.handleHookConfigs)))
 	mux.Handle("PUT /api/v1/hook-configs/{hookConfigID}", app.authMiddleware(http.HandlerFunc(app.handleHookConfigByID)))
 	mux.Handle("DELETE /api/v1/hook-configs/{hookConfigID}", app.authMiddleware(http.HandlerFunc(app.handleHookConfigByID)))
+	mux.Handle("POST /api/v1/bundles/export", app.authMiddleware(http.HandlerFunc(app.handleBundlesExport)))
 	mux.Handle("GET /api/v1/applications", app.authMiddleware(http.HandlerFunc(app.handleApplications)))
 	mux.Handle("POST /api/v1/applications", app.authMiddleware(http.HandlerFunc(app.handleApplications)))
 	mux.Handle("GET /api/v1/applications/{applicationID}", app.authMiddleware(http.HandlerFunc(app.handleApplicationByID)))

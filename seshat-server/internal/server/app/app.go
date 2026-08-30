@@ -11,6 +11,7 @@ import (
 
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/agentregistry"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/automation"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/bundles"
 	serverconfig "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/config"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/connectors"
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
@@ -46,6 +47,7 @@ type App struct {
 	Scim                 *scim.Service
 	MCPRegistry          *mcpregistry.Service
 	HookRegistry         *hookregistry.Service
+	Bundles              *bundles.Service
 	Memories             *memories.Service
 	LongTermMemory       *longtermmemory.Service
 	AgentRegistry        *agentregistry.Service
@@ -145,6 +147,10 @@ func New(cfg serverconfig.Config) (*App, error) {
 	webSearchService := websearchsettings.New(database, iamService)
 	workspaceChatService := workspacechat.New(database, iamService, automationService, webSearchService, knowledgeService, mcpRegistryService, cfg.DoclingURL)
 
+	skillRegistryService := skillregistry.New(database, iamService)
+	agentRegistryService := agentregistry.New(database, iamService)
+	bundlesService := bundles.New(database, iamService, skillRegistryService, mcpRegistryService, agentRegistryService, hookRegistryService)
+
 	return &App{
 		DB:                   database,
 		IAM:                  iamService,
@@ -156,14 +162,15 @@ func New(cfg serverconfig.Config) (*App, error) {
 		ConnectorSyncRunner:  connectors.NewRunner(connectorsService, connectors.RunnerConfig{PollInterval: cfg.IngestionPollInterval, MaxPollInterval: cfg.IngestionMaxPollInterval}),
 		Prospecting:          prospecting.New(database, iamService),
 		Preferences:          preferences.New(database, iamService),
-		SkillRegistry:        skillregistry.New(database, iamService),
+		SkillRegistry:        skillRegistryService,
 		WebSearchSettings:    webSearchService,
 		Scim:                 scim.New(database, iamService),
 		MCPRegistry:          mcpRegistryService,
 		HookRegistry:         hookRegistryService,
+		Bundles:              bundlesService,
 		Memories:             memories.New(database),
 		LongTermMemory:       longtermmemory.New(database),
-		AgentRegistry:        agentregistry.New(database, iamService),
+		AgentRegistry:        agentRegistryService,
 		Quotas:               quotas.New(database),
 		WorkspaceChat:        workspaceChatService,
 		WorkspaceChatCleanup: workspacechat.NewCleanup(workspaceChatService, time.Hour),
