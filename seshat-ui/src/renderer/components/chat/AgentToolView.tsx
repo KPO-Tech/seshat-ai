@@ -223,17 +223,32 @@ function AgentToolCard({ tool, sessionId, status }: AgentToolCardProps) {
   // starting the background agent, well before the agent itself is actually done.
   // The outer `status` is only a reasonable proxy before any sub-agent entry exists
   // at all (the brief window right as the tool call is first dispatched).
+  //
+  // The `agent` tool's own `run_in_background: true` mode is a DIFFERENT async
+  // path than spawn_agent: it never emits a second "subagent_finished" event at
+  // all (see the SDK's runAgentBackground - it's designed to be polled via
+  // TaskGet/TaskList, not pushed to), so no sub-agent entry is ever created for
+  // it here, and the fallback above would show "Completed" forever, the instant
+  // the dispatch itself returns - well before the underlying research is done.
+  // Its own result payload flags this case explicitly (`background: true`), so
+  // it can be told apart from a real synchronous completion.
+  const isUntrackedBackgroundDispatch = !subagent
+    && status === 'completed'
+    && tool._result?.metadata?.background === true
+
   const derivedStatus: ToolStatus = subagent
     ? subagent.status === 'failed'
       ? 'failed'
       : subagent.status === 'completed'
         ? 'completed'
         : 'running'
-    : status === 'completed'
-      ? 'completed'
-      : status === 'failed'
-        ? 'failed'
-        : 'running'
+    : isUntrackedBackgroundDispatch
+      ? 'running'
+      : status === 'completed'
+        ? 'completed'
+        : status === 'failed'
+          ? 'failed'
+          : 'running'
 
   const activeTool = subagent?.activeTool
   const turnNumber = subagent?.turnNumber ?? 0
@@ -282,7 +297,9 @@ function AgentToolCard({ tool, sessionId, status }: AgentToolCardProps) {
               ? 'Completed'
               : derivedStatus === 'failed'
                 ? 'Failed'
-                : 'Running…'
+                : isUntrackedBackgroundDispatch
+                  ? 'Running in background…'
+                  : 'Running…'
             }
           </span>
         </div>

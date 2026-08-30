@@ -836,19 +836,35 @@ function handleRuntimeEvent(
         // first one. Without checking that marker, the sub-agent card would flip
         // to "Completed" within milliseconds while the agent keeps running, and
         // the real completion would never arrive to unstick it.
+        //
+        // The `agent` tool's own `run_in_background: true` mode has the exact
+        // same problem, for the exact same reason: it reuses the SAME tool name
+        // as the synchronous path above, so its own dispatch-only "completed"
+        // event looks identical to a real completion at this layer.
+        // metadata.background=true marks that first, premature event; the real
+        // completion arrives as a second tool.progress event carrying
+        // metadata.subagent_finished=true (see notifyAgentTaskCompletion in the
+        // SDK's agent_tool.go) — the same marker spawn_agent already uses, since
+        // both are the same "dispatch now, notify later" shape.
         const isSpawnAgentFinished = progress.tool_name === 'spawn_agent' && progress.metadata?.subagent_finished === true
+        const isUnfinishedBackgroundAgentDispatch = progress.tool_name === 'agent'
+          && progress.metadata?.background === true
+          && progress.metadata?.subagent_finished !== true
         if ((progress.tool_name === 'agent' || isSpawnAgentFinished) && progress.tool_use_id) {
-          const agentResultText = progress.stage === 'completed'
+          const isRealCompletionSignal = !isUnfinishedBackgroundAgentDispatch
+          const agentResultText = isRealCompletionSignal && progress.stage === 'completed'
             ? (typeof progress.metadata?.content === 'string'
                 ? progress.metadata.content
                 : typeof progress.message === 'string' ? progress.message : undefined)
             : undefined
           store.upsertSubagent(sessionId, progress.tool_use_id, {
-            status: progress.stage === 'completed' ? 'completed' : 'failed',
-            endedAt: now,
+            status: isUnfinishedBackgroundAgentDispatch
+              ? 'running'
+              : progress.stage === 'completed' ? 'completed' : 'failed',
+            ...(isRealCompletionSignal ? { endedAt: now } : {}),
             isThinking: false,
             activeTool: null,
-            error: progress.stage === 'failed' ? (progress.message ?? 'Agent failed') : undefined,
+            error: isRealCompletionSignal && progress.stage === 'failed' ? (progress.message ?? 'Agent failed') : undefined,
             result: agentResultText,
           })
         }
