@@ -330,6 +330,13 @@ func backendMigrations() []schemaMigration {
 				return db.gormDB.WithContext(ctx).AutoMigrate(&gConnectorAccount{})
 			},
 		},
+		{
+			ID:    "20260830_043_hook_org_approvals",
+			Scope: migrationScopeBackend,
+			Run: func(ctx context.Context, db *DB) error {
+				return db.gormDB.WithContext(ctx).AutoMigrate(&gHookOrgApproval{})
+			},
+		},
 	}
 }
 

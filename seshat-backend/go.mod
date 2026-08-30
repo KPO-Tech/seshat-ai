@@ -146,3 +146,12 @@ require (
 	modernc.org/memory v1.11.0 // indirect
 	modernc.org/sqlite v1.39.1 // indirect
 )
+
+// TEMPORARY: points at the local seshat SDK checkout (committed on its own
+// `dev` branch, not yet pushed/tagged) so the new Client.ReloadPreToolHooks
+// method - added to support live hook reload for
+// docs/helps/audit-2026-08-29-openwork-den-comparison.md § 7 - can be wired
+// and tested here before a real release. Remove this line and bump the
+// `require` above to the real tagged version once that SDK change is
+// pushed and released.
+replace github.com/KPO-Tech/seshat => ../../seshat

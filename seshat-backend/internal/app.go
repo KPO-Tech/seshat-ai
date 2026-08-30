@@ -8,11 +8,13 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/agents"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/automation"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/hooks"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/mcp"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/websearch"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/connector"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/files"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/hooks"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgeazureblob"
@@ -123,8 +125,18 @@ type Dependencies struct {
 	// here. See internal/cloudmcp's package doc.
 	MCPCloudClient        *cloudmcp.Client
 	MCPOrgServerApprovals *db.MCPOrgServerApprovalStore
-	UserPreferencesStore  *db.UserPreferencesStore
-	AgentDefinitionStore  *db.AgentDefinitionStore
+	// HooksRuntime/HooksCloudClient/HookOrgApprovals mirror the MCP fields
+	// above exactly, for org-shared PreToolUse hooks - see
+	// internal/hooks.Service and
+	// docs/helps/audit-2026-08-29-openwork-den-comparison.md § 7.
+	// HooksRuntime is nil for workflows.Service's own client, which builds
+	// its own sdk.Client per run rather than sharing query's long-lived one
+	// - see internal/workflows/service.go.
+	HooksRuntime         hooks.RuntimeReloader
+	HooksCloudClient     *cloudhooks.Client
+	HookOrgApprovals     *db.HookOrgApprovalStore
+	UserPreferencesStore *db.UserPreferencesStore
+	AgentDefinitionStore *db.AgentDefinitionStore
 	// AgentsCloudClient enriches local agent resolution with a connected
 	// seshat-server's shared preset catalog, once a caller has an
 	// authenticated principal — nil in standalone mode, set only by
@@ -203,6 +215,7 @@ type App struct {
 	Memories    *memories.Service
 	Plans       *plans.Service
 	MCP         *mcp.Service
+	Hooks       *hooks.Service
 	Preferences *preferences.Service
 	Skills      *skills.Service
 	Agents      *agents.Service
@@ -313,6 +326,11 @@ func NewApp(deps Dependencies) *App {
 			Runtime:     deps.MCPRuntime,
 			CloudClient: deps.MCPCloudClient,
 			Approvals:   deps.MCPOrgServerApprovals,
+		}),
+		Hooks: hooks.NewService(hooks.ServiceConfig{
+			Runtime:     deps.HooksRuntime,
+			CloudClient: deps.HooksCloudClient,
+			Approvals:   deps.HookOrgApprovals,
 		}),
 		Preferences: preferencesService,
 		Skills:      skillsService,

@@ -331,6 +331,28 @@ func (r *SDKRuntime) ReloadMCPServers(ctx context.Context, servers []sdk.MCPServ
 	return nil
 }
 
+// ReloadPreToolHooks hot-reloads the shell pre-tool hook set on the base
+// client (see sdk.Client.ReloadPreToolHooks) and also updates baseConfig so
+// any future per-request/provider client built via buildBaseClientConfig
+// (which only ever reads PreToolHooks once, at its own sdk.NewClient call)
+// picks up the same set - mirrors ReloadMCPServers' own two-part update
+// exactly.
+func (r *SDKRuntime) ReloadPreToolHooks(hooks []sdk.PreToolHookConfig) error {
+	if r == nil || r.client == nil {
+		return fmt.Errorf("runtime not configured")
+	}
+	if err := r.client.ReloadPreToolHooks(hooks); err != nil {
+		return err
+	}
+	r.mu.Lock()
+	if r.baseConfig == nil {
+		r.baseConfig = sdk.DefaultClientConfig()
+	}
+	r.baseConfig.PreToolHooks = append([]sdk.PreToolHookConfig(nil), hooks...)
+	r.mu.Unlock()
+	return nil
+}
+
 // MCPResult returns the current MCP integration result from the base client.
 func (r *SDKRuntime) MCPResult() *sdk.MCPIntegrationResult {
 	if r == nil || r.client == nil {

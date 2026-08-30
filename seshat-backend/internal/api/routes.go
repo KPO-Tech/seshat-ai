@@ -96,6 +96,9 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	apiV1.Handle("/mcp/org-catalog", app.mcpRoute(app.handleMCPOrgCatalog, false))
 	apiV1.Handle("/mcp/org-catalog/", app.requireSettingsWritable(app.mcpRoute(app.handleMCPOrgCatalogApprove, true)))
 
+	apiV1.Handle("/hooks/org-catalog", app.hooksRoute(app.handleHooksOrgCatalog, false))
+	apiV1.Handle("/hooks/org-catalog/", app.requireSettingsWritable(app.hooksRoute(app.handleHooksOrgCatalogApprove, true)))
+
 	apiV1.Handle("/query", app.authMiddleware(http.HandlerFunc(app.handleQuery)))
 	apiV1.Handle("/transcribe", app.authMiddleware(http.HandlerFunc(app.handleTranscribe)))
 	apiV1.Handle("/query/stream", app.authMiddleware(http.HandlerFunc(app.handleQueryStream)))

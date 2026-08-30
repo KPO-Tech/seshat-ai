@@ -23,6 +23,7 @@ import (
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/agents"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/automation"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/hooks"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/identity"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/knowledge"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/longterm"
@@ -461,6 +462,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	var preferencesProvider backendpreferences.Provider
 	var webSearchCloudClient *cloudwebsearch.Client
 	var mcpCloudClient *cloudmcp.Client
+	var hooksCloudClient *cloudhooks.Client
 	var memoriesProvider backendmemories.Provider
 	var agentsCloudClient *cloudagents.Client
 	var quotaProvider backendquotas.Provider
@@ -492,6 +494,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		preferencesProvider = cloudpreferences.NewProvider(serverURL)
 		webSearchCloudClient = cloudwebsearch.NewClient(serverURL)
 		mcpCloudClient = cloudmcp.NewClient(serverURL)
+		hooksCloudClient = cloudhooks.NewClient(serverURL)
 		memoriesProvider = cloudmemories.NewProvider(serverURL)
 		agentsCloudClient = cloudagents.NewClient(serverURL)
 		quotaProvider = cloudquotas.NewProvider(serverURL)
@@ -603,6 +606,12 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	if err != nil {
 		_ = cleanup()
 		return nil, nil, fmt.Errorf("init mcp org server approval store: %w", err)
+	}
+
+	hookOrgApprovalStore, err := db.NewHookOrgApprovalStore(database)
+	if err != nil {
+		_ = cleanup()
+		return nil, nil, fmt.Errorf("init hook org approval store: %w", err)
 	}
 
 	agentDefinitionStore, err := db.NewAgentDefinitionStore(database)
@@ -1087,6 +1096,9 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		MCPRuntime:               runtime,
 		MCPCloudClient:           mcpCloudClient,
 		MCPOrgServerApprovals:    mcpOrgServerApprovalStore,
+		HooksRuntime:             runtime,
+		HooksCloudClient:         hooksCloudClient,
+		HookOrgApprovals:         hookOrgApprovalStore,
 		UserPreferencesStore:     userPreferencesStore,
 		AgentDefinitionStore:     agentDefinitionStore,
 		Inbox:                    inboxService,
