@@ -23,7 +23,7 @@ import type { ReactNode } from 'react'
 type WorkspaceTab = 'agents' | 'documents' | 'tools' | 'templates'
 type AgentsView   = 'grid' | 'detail'
 type DetailTab    = 'edit' | 'test'
-type ToolsSubTab  = 'mcp' | 'internal'
+type ToolsSubTab  = 'mcp' | 'internal' | 'hooks'
 
 const PERMISSION_MODE_OPTIONS = [
   { value: '',             label: 'Default' },
@@ -1042,6 +1042,9 @@ function ToolsTab({ embedded = false, sub: controlledSub, onSubChange }: ToolsTa
       <button className={`wk-detail-tab ${sub === 'internal' ? 'active' : ''}`} onClick={() => setSub('internal')}>
         <Tool size={11} /> Internal
       </button>
+      <button className={`wk-detail-tab ${sub === 'hooks' ? 'active' : ''}`} onClick={() => setSub('hooks')}>
+        <Terminal size={11} /> Hooks
+      </button>
     </div>
   )
 
@@ -1049,7 +1052,7 @@ function ToolsTab({ embedded = false, sub: controlledSub, onSubChange }: ToolsTa
     <div className="wk-tools-root">
       {!embedded && <div className="wk-tools-subbar">{tabs}</div>}
       <div className="wk-tools-scroll">
-        {sub === 'mcp' ? <McpSection /> : <InternalToolsSection />}
+        {sub === 'mcp' ? <McpSection /> : sub === 'hooks' ? <HooksSection /> : <InternalToolsSection />}
       </div>
     </div>
   )
@@ -1478,6 +1481,140 @@ function McpOrgCatalogSection({ onApprovalChanged }: { onApprovalChanged: () => 
             )
           })}
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Hooks (org-shared PreToolUse only - no local hook concept) ───────────────
+// Mirrors McpOrgCatalogSection exactly, but there is nothing else to show:
+// unlike MCP servers, a hook is never created locally - the whole section is
+// this one org-catalog approval list. Approval is required per hook, and is
+// even more important to keep explicit than for MCP: a hook fires
+// automatically before *every* matching tool call, not as one discrete,
+// visible action like a stdio server spawn.
+
+type HookOrgCatalogEntry = {
+  id: string
+  name: string
+  matcher?: string
+  command: string
+  timeout_secs: number
+  approved: boolean
+}
+
+function HooksSection() {
+  return <HooksOrgCatalogSection />
+}
+
+function HooksOrgCatalogSection() {
+  const [entries, setEntries] = useState<HookOrgCatalogEntry[]>([])
+  const [loading, setLoading] = useState(true)
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    try {
+      const data = await api.get<{ hook_org_catalog: HookOrgCatalogEntry[]; count: number }>('/hooks/org-catalog')
+      setEntries(data.hook_org_catalog ?? [])
+    } catch {
+      // standalone mode or connectivity issue — just show nothing
+      setEntries([])
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { void load() }, [load])
+
+  const handleApprove = async (entry: HookOrgCatalogEntry) => {
+    setBusyId(entry.id)
+    setError(null)
+    try {
+      await api.post(`/hooks/org-catalog/${entry.id}/approve`, {})
+      setEntries(prev => prev.map(e => e.id === entry.id ? { ...e, approved: true } : e))
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to approve hook')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const handleRevoke = async (entry: HookOrgCatalogEntry) => {
+    setBusyId(entry.id)
+    setError(null)
+    try {
+      await api.delete(`/hooks/org-catalog/${entry.id}/approve`)
+      setEntries(prev => prev.map(e => e.id === entry.id ? { ...e, approved: false } : e))
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to revoke hook')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  if (loading) return null
+
+  return (
+    <div className="sv-card">
+      <div className="sv-card-head">
+        <div className="caps-mcp-header">
+          <div className="sv-card-brand">
+            <div>
+              <div className="sv-brand-name">Organization hooks</div>
+              <div className="sv-brand-sub">Shell commands your organization runs before matching tool calls — approve one to run it here</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="sv-card-body">
+        {error && <div className="caps-error">{error}</div>}
+        {entries.length === 0 ? (
+          <div className="wk-tools-empty">No hooks shared by your organization yet.</div>
+        ) : (
+          <div className="caps-mcp-list">
+            {entries.map(entry => (
+              <div key={entry.id} className={`caps-mcp-card ${entry.approved ? '' : 'disabled'}`}>
+                <div className="caps-mcp-card-main">
+                  <div className="caps-mcp-card-left">
+                    <div className="caps-mcp-icon"><Terminal size={16} /></div>
+                    <div className="caps-mcp-info">
+                      <div className="caps-mcp-title">
+                        <span className="caps-mcp-name">{entry.name}</span>
+                        {entry.matcher && <span className="caps-mcp-type-badge">{entry.matcher}</span>}
+                        <span className="caps-mcp-source-badge">from organization</span>
+                      </div>
+                      <div className="caps-mcp-detail">
+                        <code>{entry.command}</code>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="caps-mcp-actions">
+                    {entry.approved ? (
+                      <button
+                        className="caps-org-mcp-revoke-btn"
+                        onClick={() => handleRevoke(entry)}
+                        disabled={busyId === entry.id}
+                        title="Stop running this hook locally"
+                      >
+                        <CheckOne size={11} /> {busyId === entry.id ? 'Working…' : 'Active'}
+                      </button>
+                    ) : (
+                      <button
+                        className="caps-org-mcp-approve-btn"
+                        onClick={() => handleApprove(entry)}
+                        disabled={busyId === entry.id}
+                        title="This will run a shell command on your machine before matching tool calls"
+                      >
+                        <Lock size={11} /> {busyId === entry.id ? 'Working…' : 'Approve'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
