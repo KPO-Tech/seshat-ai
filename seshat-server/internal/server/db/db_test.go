@@ -323,3 +323,62 @@ func TestHookConfigSchemaMigratesAndEnforcesUniqueness(t *testing.T) {
 		t.Fatalf("expected the same name in a different organization to coexist: %v", err)
 	}
 }
+
+// TestBundleImportSchemaMigratesAndTracksItems is the bundle marketplace
+// plan's cold-migration check: a fresh database migrates BundleImport/
+// BundleImportItem cleanly, and querying items by BundleImportID returns
+// exactly what was tagged - the mechanism "what did this bundle add"/
+// "remove everything this bundle added" depends on.
+func TestBundleImportSchemaMigratesAndTracksItems(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "state.db")
+	database, err := Open(Config{Driver: DriverSQLite, DSN: dbPath})
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer database.Close()
+
+	if err := database.Migrate(); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+
+	org := Organization{ID: "org_1", Name: "Seshat", Slug: "seshat"}
+	if err := database.Gorm().Create(&org).Error; err != nil {
+		t.Fatalf("create organization: %v", err)
+	}
+	user := User{ID: "usr_1", Email: "admin@example.com", DisplayName: "Admin", PasswordHash: "x"}
+	if err := database.Gorm().Create(&user).Error; err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	bundleImport := BundleImport{ID: "bimp_1", OrganizationID: org.ID, BundleName: "Jira Integration", ImportedByUserID: user.ID}
+	if err := database.Gorm().Create(&bundleImport).Error; err != nil {
+		t.Fatalf("create bundle import: %v", err)
+	}
+
+	items := []BundleImportItem{
+		{ID: "bimpi_1", BundleImportID: bundleImport.ID, OrganizationID: org.ID, ResourceType: "mcp_server_config", ResourceID: "mcpsrvcfg_1"},
+		{ID: "bimpi_2", BundleImportID: bundleImport.ID, OrganizationID: org.ID, ResourceType: "agent_preset", ResourceID: "agentpreset_1"},
+	}
+	if err := database.Gorm().Create(&items).Error; err != nil {
+		t.Fatalf("create bundle import items: %v", err)
+	}
+
+	// An unrelated import in the same org must never be conflated with this
+	// one when querying by BundleImportID.
+	otherImport := BundleImport{ID: "bimp_2", OrganizationID: org.ID, BundleName: "Slack Integration", ImportedByUserID: user.ID}
+	if err := database.Gorm().Create(&otherImport).Error; err != nil {
+		t.Fatalf("create other bundle import: %v", err)
+	}
+	otherItem := BundleImportItem{ID: "bimpi_3", BundleImportID: otherImport.ID, OrganizationID: org.ID, ResourceType: "skill_repo", ResourceID: "skillrepo_1"}
+	if err := database.Gorm().Create(&otherItem).Error; err != nil {
+		t.Fatalf("create other bundle import item: %v", err)
+	}
+
+	var found []BundleImportItem
+	if err := database.Gorm().Where("bundle_import_id = ?", bundleImport.ID).Order("id").Find(&found).Error; err != nil {
+		t.Fatalf("query items: %v", err)
+	}
+	if len(found) != 2 {
+		t.Fatalf("expected exactly the 2 items tagged to this bundle import, got %+v", found)
+	}
+}

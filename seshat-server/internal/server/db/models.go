@@ -1071,6 +1071,40 @@ type HookConfig struct {
 	UpdatedAt   time.Time
 }
 
+// BundleImport records one manifest import into an organization (see
+// docs/helps/audit-2026-08-29-openwork-den-comparison.md § 7, sous-chantier
+// B) - a bundle is never itself a stored, editable resource, only a
+// point-in-time import event. Purely for traceability/provenance and for
+// removing everything a bundle brought in as one unit later - the imported
+// rows themselves live in their own normal tables (SkillRepo,
+// MCPServerConfig, AgentPreset, HookConfig), tagged via BundleImportItem
+// below rather than by adding a bundle_id column to each of those four
+// tables (keeps their schemas untouched by a feature that only concerns a
+// minority of their rows).
+type BundleImport struct {
+	ID               string `gorm:"primaryKey;size:32"`
+	OrganizationID   string `gorm:"size:32;not null;index"`
+	BundleName       string `gorm:"size:255;not null"`
+	ImportedByUserID string `gorm:"size:32;not null"`
+	CreatedAt        time.Time
+}
+
+// BundleImportItem tags one row created by a bundle import, in whichever of
+// the four registry tables it landed in. ResourceType is a small fixed
+// vocabulary ("skill_repo" | "mcp_server_config" | "agent_preset" |
+// "hook_config"), not a foreign key - the four tables have nothing in
+// common to join against generically. OrganizationID is denormalized (also
+// on BundleImport) purely so "what did bundle X add to this org" can be
+// queried without a join.
+type BundleImportItem struct {
+	ID             string `gorm:"primaryKey;size:32"`
+	BundleImportID string `gorm:"size:32;not null;index"`
+	OrganizationID string `gorm:"size:32;not null;index"`
+	ResourceType   string `gorm:"size:32;not null"`
+	ResourceID     string `gorm:"size:32;not null"`
+	CreatedAt      time.Time
+}
+
 // UserMemory mirrors seshat-backend's own gUserMemory (internal/db/user_memories.go)
 // — a flat, personal, multi-row-per-user memory list, no organization
 // concept, same trust level as UserPreference.

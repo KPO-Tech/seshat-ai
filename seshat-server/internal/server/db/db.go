@@ -134,6 +134,8 @@ func (d *DB) Migrate() error {
 		&WebSearchOrgPolicy{},
 		&MCPServerConfig{},
 		&HookConfig{},
+		&BundleImport{},
+		&BundleImportItem{},
 		&UserMemory{},
 		&MemoryEntity{},
 		&MemoryObservation{},
