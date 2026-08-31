@@ -337,6 +337,13 @@ func backendMigrations() []schemaMigration {
 				return db.gormDB.WithContext(ctx).AutoMigrate(&gHookOrgApproval{})
 			},
 		},
+		{
+			ID:    "20260831_044_inbox_workflows",
+			Scope: migrationScopeBackend,
+			Run: func(ctx context.Context, db *DB) error {
+				return db.gormDB.WithContext(ctx).AutoMigrate(&gInboxWorkflow{}, &gInboxWorkflowRun{})
+			},
+		},
 	}
 }
 
@@ -423,11 +430,15 @@ func migrateEmbedderConfig(ctx context.Context, db *DB) error {
 }
 
 func migrateUserProfilesAPIKeysGroups(ctx context.Context, db *DB) error {
+	// Local user_groups/group_members tables used to be AutoMigrated here too;
+	// the local Group/GroupPermissions system was removed in favor of
+	// seshat-server's organization-wide Teams (iam.Group). Existing installs
+	// keep those two tables as harmless dead schema - this migration's ID is
+	// already recorded as applied for them, so removing the structs here only
+	// affects fresh installs, which never create the tables at all.
 	return db.gormDB.WithContext(ctx).AutoMigrate(
-		&gUser{},        // add new profile columns (username, bio, avatar_url, last_active_at_unix, settings_json)
-		&gAPIKey{},      // new table
-		&gUserGroup{},   // new table
-		&gGroupMember{}, // new table
+		&gUser{},   // add new profile columns (username, bio, avatar_url, last_active_at_unix, settings_json)
+		&gAPIKey{}, // new table
 	)
 }
 

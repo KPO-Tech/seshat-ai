@@ -212,12 +212,6 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		return nil, nil, fmt.Errorf("init api key store: %w", err)
 	}
 
-	groupStore, err := db.NewGroupStore(database)
-	if err != nil {
-		_ = cleanup()
-		return nil, nil, fmt.Errorf("init group store: %w", err)
-	}
-
 	sessionOwnershipStore, err := db.NewSessionOwnershipStore(database)
 	if err != nil {
 		_ = cleanup()
@@ -263,6 +257,15 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		return nil, nil, fmt.Errorf("init inbox message store: %w", err)
 	}
 	inboxService := inbox.NewService(channelAccountStore, inboxContactStore, inboxThreadStore, inboxMessageStore)
+	inboxWorkflowRows, err := db.NewInboxWorkflowStore(database)
+	if err != nil {
+		_ = cleanup()
+		return nil, nil, fmt.Errorf("init inbox workflow store: %w", err)
+	}
+	inboxService.WithWorkflowStore(inbox.NewWorkflowStore(inboxWorkflowRows))
+	// The executor half (WithWorkflowExecutor) is wired further down, once
+	// backendApp.Query exists - see the comment next to
+	// cloudAutomationExecutor, whose exact pattern it mirrors.
 	// Each channel connector is registered only when its credentials are
 	// actually configured - same pattern as Docling/web search providers
 	// below: an unconfigured channel just doesn't show up as connectable,
@@ -1056,7 +1059,6 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	backendApp := seshat.NewApp(seshat.Dependencies{
 		Identity:            identityStore,
 		APIKeyStore:         apiKeyStore,
-		GroupStore:          groupStore,
 		AuthProvider:        authProvider,
 		SettingsProvider:    settingsProvider,
 		PreferencesProvider: preferencesProvider,
@@ -1200,6 +1202,34 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	cloudAutomationService := cloudautomation.NewService(cloudAutomationStore, cloudAutomationPolicyStore, cloudAutomationVersionStore)
 	fmt.Printf("[API] Cloud automation worker démarré\n")
 
+	// Inbox event-triggered workflows (see internal/inbox.WorkflowExecutor's
+	// doc comment): mirrors cloudAutomationExecutor immediately above almost
+	// verbatim (bare Principal, resolveCloudJobModel, BuildContextInput,
+	// RunPrompt) - the same "no live HTTP request, still needs the real
+	// tooled agent path" problem, just triggered by an inbox message instead
+	// of a claimed cloud job. AgentSlug is the one real difference: a
+	// workflow always runs as a named agent (e.g. "inbox-agent"), where
+	// cloud automation jobs are a bare prompt with no agent identity.
+	inboxService.WithWorkflowExecutor(func(ctx context.Context, ownerID, agentSlug, prompt, modelOverride string) (string, error) {
+		principal := &backendauth.Principal{
+			User: backendauth.User{ID: ownerID},
+		}
+		providerSettingID, modelID := resolveCloudJobModel(ctx, backendApp.Settings, principal, modelOverride)
+		input, _ := backendApp.Query.BuildContextInput(ctx, backendquery.ContextBuildParams{
+			Principal:         principal,
+			Prompt:            prompt,
+			ProviderSettingID: providerSettingID,
+			ModelID:           modelID,
+			AgentSlug:         agentSlug,
+			ExecutionOrigin:   enginetypes.ExecutionOriginAutomation,
+		})
+		result, err := backendApp.Query.RunPrompt(ctx, principal, input)
+		if err != nil {
+			return "", err
+		}
+		return result.Content, nil
+	})
+
 	// Abandoned-session sweep: a session (plus any files attached to it) is
 	// created the instant a file is attached, before the user ever sends a
 	// message (see Home.tsx/Conversation.tsx) - if they change their mind or
@@ -1243,7 +1273,6 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		Backend:               backendApp,
 		DB:                    database,
 		ModelStore:            modelStore,
-		GroupStore:            groupStore,
 		EmbedderStore:         embedderConfigStore,
 		CapabilityLinkStore:   capabilityLinkStore,
 		ProviderSettingStore:  settingStore,

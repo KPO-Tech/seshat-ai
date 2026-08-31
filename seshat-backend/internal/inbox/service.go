@@ -14,12 +14,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"strings"
 	"time"
 
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
+	coreautomation "github.com/EngineerProjects/seshat-ai/seshat-core/automation"
+	"github.com/KPO-Tech/seshat/pkg/automation"
 	"github.com/KPO-Tech/seshat/pkg/storage"
 	"golang.org/x/oauth2"
 )
@@ -53,6 +56,19 @@ func isAuthExpired(err error) bool {
 	return false
 }
 
+// WorkflowExecutor runs prompt as agentSlug on behalf of ownerID and
+// returns the agent's final text response. modelOverride is "provider:model"
+// or empty for the owner's default. Deliberately a plain function type
+// rather than an interface/direct query.Service dependency, so
+// internal/inbox never needs to import internal/query - mirrors
+// internal/cloudautomation.JobExecutor's own closure shape (see that
+// package's doc comment) and internal/config/bootstrap.go's
+// cloudAutomationExecutor, the proven pattern this is copied from: build a
+// bare *backendauth.Principal for ownerID (no AuthSession/roles needed),
+// resolve the model override, then Query.BuildContextInput + Query.RunPrompt
+// with ExecutionOrigin: types.ExecutionOriginAutomation.
+type WorkflowExecutor func(ctx context.Context, ownerID, agentSlug, prompt, modelOverride string) (string, error)
+
 type Service struct {
 	accounts   *db.ChannelAccountStore
 	contacts   *db.InboxContactStore
@@ -60,6 +76,11 @@ type Service struct {
 	messages   *db.InboxMessageStore
 	connectors map[string]Connector
 	artifacts  storage.ArtifactStore
+	// workflows persists TriggerTypeEvent jobs (see WithWorkflowStore) -
+	// nil until bootstrap.go wires it, same nil-tolerant posture as
+	// artifacts/executeWorkflow below.
+	workflows       *WorkflowStore
+	executeWorkflow WorkflowExecutor
 }
 
 func NewService(
@@ -86,6 +107,23 @@ func NewService(
 // graceful-degrade posture files.Service has when its own store is nil.
 func (s *Service) WithArtifactStore(store storage.ArtifactStore) *Service {
 	s.artifacts = store
+	return s
+}
+
+// WithWorkflowStore attaches the local persistence for TriggerTypeEvent
+// workflows (see internal/config/bootstrap.go for how it's built - backed
+// by db.InboxWorkflowStore). Nil-tolerant, same posture as WithArtifactStore.
+func (s *Service) WithWorkflowStore(store *WorkflowStore) *Service {
+	s.workflows = store
+	return s
+}
+
+// WithWorkflowExecutor attaches the closure that actually runs a matched
+// workflow's agent turn - see WorkflowExecutor's doc comment. Nil-tolerant:
+// without it (or WithWorkflowStore), dispatchWorkflows is a no-op, so
+// message ingestion behaves exactly as before this feature existed.
+func (s *Service) WithWorkflowExecutor(fn WorkflowExecutor) *Service {
+	s.executeWorkflow = fn
 	return s
 }
 
@@ -336,7 +374,140 @@ func (s *Service) persistNormalizedMessage(ctx context.Context, accountID string
 	}); err != nil {
 		return fmt.Errorf("create message: %w", err)
 	}
+
+	// Fire in a goroutine - a slow agent turn (or several matching
+	// workflows) must never block message ingestion, the same reasoning
+	// job_scheduler.go's own execute() runs jobs as goroutines off the
+	// ticker rather than inline.
+	go s.dispatchWorkflows(accountID, contact.DisplayName, m, thread.Status)
 	return nil
+}
+
+// dispatchWorkflows fires every active TriggerTypeEvent workflow (see
+// coreautomation.InboxMessageEventType) belonging to accountID's owner
+// whose EventFilter matches this message. Deliberately only inbound
+// messages trigger anything - an agent's own drafted/sent reply later
+// syncing back as an outbound message must not re-fire the same rule.
+// Best-effort: every failure is logged and skipped rather than propagated,
+// since this always runs off the main ingestion path (see the goroutine in
+// persistNormalizedMessage) with nothing left to report an error to.
+func (s *Service) dispatchWorkflows(accountID, senderDisplayName string, m NormalizedMessage, threadStatus string) {
+	if s == nil || s.workflows == nil || s.executeWorkflow == nil || m.Direction != MessageDirectionInbound {
+		return
+	}
+	ctx := context.Background()
+
+	account, err := s.accounts.GetByID(ctx, accountID)
+	if err != nil {
+		log.Printf("[inbox] dispatchWorkflows: load account %s: %v", accountID, err)
+		return
+	}
+
+	jobs, err := s.workflows.ListJobs(ctx, account.UserID)
+	if err != nil {
+		log.Printf("[inbox] dispatchWorkflows: list jobs for %s: %v", account.UserID, err)
+		return
+	}
+
+	sender := senderDisplayName
+	if sender == "" {
+		sender = m.ContactExternalID
+	}
+	event := coreautomation.InboxMessageEvent{
+		Channel:      account.Channel,
+		Sender:       sender,
+		Subject:      m.ThreadSubject,
+		Body:         m.BodyText,
+		ThreadStatus: threadStatus,
+		ReceivedAt:   m.SentAt,
+	}
+	payload := event.Payload()
+	contextText := formatWorkflowEventContext(event)
+
+	for _, job := range jobs {
+		if job.Status != automation.JobStatusActive || !job.Trigger.IsEvent() ||
+			job.Trigger.EventType != coreautomation.InboxMessageEventType {
+			continue
+		}
+		matched, err := coreautomation.EvaluateEventFilter(job.Trigger.EventFilter, payload)
+		if err != nil {
+			log.Printf("[inbox] dispatchWorkflows: workflow %q (%s) has an invalid filter: %v", job.Name, job.ID, err)
+			continue
+		}
+		if !matched {
+			continue
+		}
+		s.runWorkflowAndRecord(ctx, job, contextText)
+	}
+}
+
+// runWorkflowAndRecord runs job's agent turn via s.executeWorkflow (the
+// real, fully-tooled query.Service.RunPrompt path - see WorkflowExecutor's
+// doc comment for why this isn't automation.JobScheduler.RunEvent),
+// records a JobRun, and applies the same RunCount/MaxRuns bookkeeping the
+// SDK's applyRunOutcome does for time-based jobs (reimplemented here since
+// that function is unexported and this job never had a schedule to
+// recompute in the first place - Trigger.IsEvent() jobs never get a
+// NextRunAt, so there's nothing to reschedule, only the MaxRuns check).
+func (s *Service) runWorkflowAndRecord(ctx context.Context, job *automation.Job, contextText string) {
+	run := &automation.JobRun{
+		JobID:     job.ID,
+		StartedAt: time.Now(),
+		Status:    automation.RunStatusRunning,
+	}
+	if err := s.workflows.CreateRun(ctx, run); err != nil {
+		log.Printf("[inbox] runWorkflowAndRecord: create run for workflow %s: %v", job.ID, err)
+		return
+	}
+
+	execCtx := ctx
+	if job.MaxDuration > 0 {
+		var cancel context.CancelFunc
+		execCtx, cancel = context.WithTimeout(ctx, job.MaxDuration)
+		defer cancel()
+	}
+
+	output, execErr := s.executeWorkflow(execCtx, job.OwnerID, job.Agent.Slug, job.Task+"\n\n"+contextText, job.Agent.Model)
+
+	endedAt := time.Now()
+	run.EndedAt = &endedAt
+	run.Output = output
+	if execErr != nil {
+		run.Status = automation.RunStatusError
+		if errors.Is(execErr, context.DeadlineExceeded) {
+			run.Error = fmt.Sprintf("execution timed out after %s", job.MaxDuration)
+		} else {
+			run.Error = execErr.Error()
+		}
+		log.Printf("[inbox] runWorkflowAndRecord: workflow %q (%s) failed: %v", job.Name, job.ID, execErr)
+	} else {
+		run.Status = automation.RunStatusSuccess
+	}
+	if err := s.workflows.UpdateRun(ctx, run); err != nil {
+		log.Printf("[inbox] runWorkflowAndRecord: update run for workflow %s: %v", job.ID, err)
+	}
+
+	job.LastRunAt = &endedAt
+	job.LastRunStatus = string(run.Status)
+	job.RunCount++
+	if job.MaxRuns > 0 && job.RunCount >= job.MaxRuns {
+		job.Status = automation.JobStatusInactive // run-count budget exhausted
+	}
+	job.UpdatedAt = endedAt
+	if err := s.workflows.UpdateJob(ctx, job); err != nil {
+		log.Printf("[inbox] runWorkflowAndRecord: update workflow %s: %v", job.ID, err)
+	}
+}
+
+// formatWorkflowEventContext renders event as the readable text appended
+// below a workflow's Task, so the agent sees exactly what triggered it
+// without needing its own inbox_get_thread round trip just to learn the
+// sender/subject/body already known at dispatch time.
+func formatWorkflowEventContext(event coreautomation.InboxMessageEvent) string {
+	return fmt.Sprintf(
+		"Triggering message:\nChannel: %s\nFrom: %s\nSubject: %s\nBody: %s",
+		event.Channel, event.Sender, event.Subject, event.Body,
+	)
 }
 
 // storeAttachments mints an ID for any attachment missing one, and for any
