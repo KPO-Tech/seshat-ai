@@ -1,12 +1,9 @@
-package automation
+package inbox
 
 import "time"
 
 // InboxMessageEventType identifies the "a new inbox message arrived" event
-// - the first (and so far only) event type this package models. Kept as a
-// named constant rather than a free-form string so both sides of the
-// workspace (seshat-backend, and later seshat-server) agree on the exact
-// value without copy-pasting a string literal.
+// - the first (and so far only) event type a workflow can trigger on.
 const InboxMessageEventType = "inbox.message.received"
 
 // InboxMessageEvent is the canonical shape of an "inbox.message.received"

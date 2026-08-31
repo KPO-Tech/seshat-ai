@@ -14,6 +14,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inboxtool"
+	"github.com/KPO-Tech/seshat/pkg/automation"
 	"github.com/KPO-Tech/seshat/pkg/tools"
 )
 
@@ -59,7 +60,10 @@ func newTestService(t *testing.T, database *db.DB) *inbox.Service {
 	require.NoError(t, err)
 	messages, err := db.NewInboxMessageStore(database)
 	require.NoError(t, err)
-	return inbox.NewService(accounts, contacts, threads, messages)
+	workflowRows, err := db.NewInboxWorkflowStore(database)
+	require.NoError(t, err)
+	return inbox.NewService(accounts, contacts, threads, messages).
+		WithWorkflowStore(inbox.NewWorkflowStore(workflowRows))
 }
 
 func testPrincipal(userID string) *backendauth.Principal {
@@ -364,6 +368,120 @@ func TestSearchContactsTool_OwnershipIsEnforced(t *testing.T) {
 	require.NotNil(t, result.Error, "a stranger must not be able to search another user's contacts")
 }
 
+func TestCreateWorkflowTool_CreatesActiveWorkflow(t *testing.T) {
+	svc := newTestService(t, openTestDB(t))
+	principal := testPrincipal("user-1")
+
+	tool := inboxtool.NewCreateWorkflowTool(svc)
+	result, err := tool.Call(ctxWithPrincipal(principal), tools.CallInput{
+		Parsed: map[string]any{
+			"name":         "Reply to invoices",
+			"event_filter": `$event.subject.toLowerCase().includes("invoice")`,
+			"task":         "Draft a reply asking for the PO number.",
+		},
+	}, nil)
+	require.NoError(t, err)
+	require.Nil(t, result.Error)
+
+	jobs, err := svc.ListWorkflows(context.Background(), principal)
+	require.NoError(t, err)
+	require.Len(t, jobs, 1)
+	require.Equal(t, "Reply to invoices", jobs[0].Name)
+	require.NotEmpty(t, jobs[0].ID, "the tool must surface the store-minted ID, not leave it blank")
+}
+
+func TestCreateWorkflowTool_InvalidFilterReturnsError(t *testing.T) {
+	svc := newTestService(t, openTestDB(t))
+	principal := testPrincipal("user-1")
+
+	tool := inboxtool.NewCreateWorkflowTool(svc)
+	result, err := tool.Call(ctxWithPrincipal(principal), tools.CallInput{
+		Parsed: map[string]any{
+			"name":         "Broken rule",
+			"event_filter": "this is not valid javascript {{{",
+			"task":         "do something",
+		},
+	}, nil)
+	require.NoError(t, err)
+	require.NotNil(t, result.Error, "a malformed filter must fail at creation time, not silently never fire")
+
+	jobs, err := svc.ListWorkflows(context.Background(), principal)
+	require.NoError(t, err)
+	require.Empty(t, jobs)
+}
+
+func TestCreateWorkflowTool_MissingRequiredFieldsReturnsError(t *testing.T) {
+	svc := newTestService(t, openTestDB(t))
+	principal := testPrincipal("user-1")
+
+	tool := inboxtool.NewCreateWorkflowTool(svc)
+	result, err := tool.Call(ctxWithPrincipal(principal), tools.CallInput{
+		Parsed: map[string]any{"name": "No task"},
+	}, nil)
+	require.NoError(t, err)
+	require.NotNil(t, result.Error)
+}
+
+func TestListWorkflowsTool_ReturnsOnlyOwnWorkflows(t *testing.T) {
+	svc := newTestService(t, openTestDB(t))
+	owner := testPrincipal("user-1")
+	stranger := testPrincipal("user-2")
+
+	createTool := inboxtool.NewCreateWorkflowTool(svc)
+	_, err := createTool.Call(ctxWithPrincipal(owner), tools.CallInput{
+		Parsed: map[string]any{"name": "Owner's rule", "task": "do something"},
+	}, nil)
+	require.NoError(t, err)
+
+	listTool := inboxtool.NewListWorkflowsTool(svc)
+	ownerResult, err := listTool.Call(ctxWithPrincipal(owner), tools.CallInput{}, nil)
+	require.NoError(t, err)
+	require.Nil(t, ownerResult.Error)
+	ownerJobs, ok := ownerResult.Data.([]*automation.Job)
+	require.True(t, ok)
+	require.Len(t, ownerJobs, 1)
+
+	strangerResult, err := listTool.Call(ctxWithPrincipal(stranger), tools.CallInput{}, nil)
+	require.NoError(t, err)
+	require.Nil(t, strangerResult.Error)
+	strangerJobs, ok := strangerResult.Data.([]*automation.Job)
+	require.True(t, ok)
+	require.Empty(t, strangerJobs, "a stranger must not see another user's workflows")
+}
+
+func TestDeleteWorkflowTool_RemovesWorkflow(t *testing.T) {
+	svc := newTestService(t, openTestDB(t))
+	principal := testPrincipal("user-1")
+
+	createTool := inboxtool.NewCreateWorkflowTool(svc)
+	createResult, err := createTool.Call(ctxWithPrincipal(principal), tools.CallInput{
+		Parsed: map[string]any{"name": "Temp rule", "task": "do something"},
+	}, nil)
+	require.NoError(t, err)
+	job, ok := createResult.Data.(*automation.Job)
+	require.True(t, ok)
+
+	deleteTool := inboxtool.NewDeleteWorkflowTool(svc)
+	deleteResult, err := deleteTool.Call(ctxWithPrincipal(principal), tools.CallInput{
+		Parsed: map[string]any{"workflow_id": job.ID},
+	}, nil)
+	require.NoError(t, err)
+	require.Nil(t, deleteResult.Error)
+
+	jobs, err := svc.ListWorkflows(context.Background(), principal)
+	require.NoError(t, err)
+	require.Empty(t, jobs)
+}
+
+func TestDeleteWorkflowTool_MissingIDReturnsError(t *testing.T) {
+	svc := newTestService(t, openTestDB(t))
+	principal := testPrincipal("user-1")
+	tool := inboxtool.NewDeleteWorkflowTool(svc)
+	result, err := tool.Call(ctxWithPrincipal(principal), tools.CallInput{Parsed: map[string]any{}}, nil)
+	require.NoError(t, err)
+	require.NotNil(t, result.Error)
+}
+
 var (
 	_ tools.Tool = (*inboxtool.ListThreadsTool)(nil)
 	_ tools.Tool = (*inboxtool.GetThreadTool)(nil)
@@ -372,4 +490,7 @@ var (
 	_ tools.Tool = (*inboxtool.SendReplyTool)(nil)
 	_ tools.Tool = (*inboxtool.ListAccountsTool)(nil)
 	_ tools.Tool = (*inboxtool.SearchContactsTool)(nil)
+	_ tools.Tool = (*inboxtool.CreateWorkflowTool)(nil)
+	_ tools.Tool = (*inboxtool.ListWorkflowsTool)(nil)
+	_ tools.Tool = (*inboxtool.DeleteWorkflowTool)(nil)
 )

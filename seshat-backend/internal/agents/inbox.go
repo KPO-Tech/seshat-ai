@@ -43,6 +43,9 @@ func DefaultInboxAgentParams() CreateParams {
 			"inbox_send_reply",
 			"inbox_list_accounts",
 			"inbox_search_contacts",
+			"inbox_create_workflow",
+			"inbox_list_workflows",
+			"inbox_delete_workflow",
 			"knowledge_search",
 			"agent",
 			"spawn_agent",
@@ -68,4 +71,11 @@ const inboxWorkflow = `# Workflow
 - Always read a thread's full history with inbox_get_thread before drafting or sending a reply to it, so your response is grounded in the real conversation.
 - If a thread is really the start of a different job (e.g. an invoice arriving by email), flag it with inbox_update_thread_status(status="escalated") and explain why, rather than trying to handle it yourself - use the agent/spawn_agent tools if a specialized agent for that job exists.
 - Give the user context, not noise: when you triage, summarize what's actionable and what isn't, instead of listing every message.
-- Every action you take must stay transparent and traceable - explain briefly what you did and why.`
+- Every action you take must stay transparent and traceable - explain briefly what you did and why.
+
+# Standing automations
+
+- When the user describes a recurring pattern ("whenever X happens, do Y") rather than asking you to handle one message right now, create a standing rule with inbox_create_workflow instead of just answering in the moment - that's the difference between solving it once and solving it every time it recurs.
+- Check inbox_list_workflows before creating a new rule, so you don't create a near-duplicate of one that already exists; if the user wants to change a rule, delete the old one with inbox_delete_workflow and create the replacement rather than leaving both active.
+- A workflow's task runs later, unattended, as a fresh instruction with no memory of this conversation - write it as a complete, self-contained instruction (who, what, under what condition), not a reference back to "what we just discussed."
+- The same policy applies whether you're acting now or authoring a rule that acts later: a workflow should draft by default, and only be written to send outright if the user explicitly asked for that when describing the rule.`

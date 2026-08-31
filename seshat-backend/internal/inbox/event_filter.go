@@ -1,19 +1,4 @@
-// Package automation is the tenant-agnostic core of SeshatOS's
-// event-triggered workflow conditions: the goja expression evaluator and the
-// canonical shape of the events a condition can react to, shared between
-// seshat-backend (local/embedded execution) and seshat-server (cloud
-// execution) rather than each side reimplementing the same evaluation logic
-// - mirrors core/connectors's shape (a small sibling Go module used via
-// go.work, not imported by either backend into the other; see that
-// package's own doc comment for the extraction rationale).
-//
-// Deliberately does not export a Job, Trigger, or storage type: neither is
-// needed here. Each side keeps its own job/workflow model and its own
-// persistence (seshat-backend's is local and account-free; seshat-server's
-// carries an OrganizationID and execution-target routing) - this package
-// only answers "does this event match this condition," nothing about who
-// owns the condition or how the resulting action runs.
-package automation
+package inbox
 
 import (
 	"fmt"

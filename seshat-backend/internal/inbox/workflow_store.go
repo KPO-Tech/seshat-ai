@@ -10,11 +10,14 @@ import (
 )
 
 // WorkflowStore adapts db.InboxWorkflowStore (the local, standalone-capable
-// persistence) to the seshat SDK's automation.JobStore interface, so it can
-// back an automation.JobScheduler directly - see
-// internal/config/bootstrap.go for where that scheduler is built, and
-// service.go's dispatchWorkflows for where TriggerTypeEvent jobs actually
-// get evaluated and fired via JobScheduler.RunEvent.
+// persistence) to the seshat SDK's automation.JobStore interface - reused
+// here purely for the Job/Trigger/AgentConfig/JobRun data shapes and their
+// DB round trip, not for automation.JobScheduler's execution (see
+// WorkflowExecutor in service.go for why: JobScheduler.RunEvent can't give
+// the agent seshat-backend's real tools). See service.go's dispatchWorkflows
+// for where TriggerTypeEvent jobs actually get evaluated and fired via
+// WorkflowExecutor, and internal/config/bootstrap.go for the executor
+// closure itself.
 type WorkflowStore struct {
 	rows *db.InboxWorkflowStore
 }

@@ -21,7 +21,6 @@ import (
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
-	coreautomation "github.com/EngineerProjects/seshat-ai/seshat-core/automation"
 	"github.com/KPO-Tech/seshat/pkg/automation"
 	"github.com/KPO-Tech/seshat/pkg/storage"
 	"golang.org/x/oauth2"
@@ -384,7 +383,7 @@ func (s *Service) persistNormalizedMessage(ctx context.Context, accountID string
 }
 
 // dispatchWorkflows fires every active TriggerTypeEvent workflow (see
-// coreautomation.InboxMessageEventType) belonging to accountID's owner
+// InboxMessageEventType) belonging to accountID's owner
 // whose EventFilter matches this message. Deliberately only inbound
 // messages trigger anything - an agent's own drafted/sent reply later
 // syncing back as an outbound message must not re-fire the same rule.
@@ -413,7 +412,7 @@ func (s *Service) dispatchWorkflows(accountID, senderDisplayName string, m Norma
 	if sender == "" {
 		sender = m.ContactExternalID
 	}
-	event := coreautomation.InboxMessageEvent{
+	event := InboxMessageEvent{
 		Channel:      account.Channel,
 		Sender:       sender,
 		Subject:      m.ThreadSubject,
@@ -426,10 +425,10 @@ func (s *Service) dispatchWorkflows(accountID, senderDisplayName string, m Norma
 
 	for _, job := range jobs {
 		if job.Status != automation.JobStatusActive || !job.Trigger.IsEvent() ||
-			job.Trigger.EventType != coreautomation.InboxMessageEventType {
+			job.Trigger.EventType != InboxMessageEventType {
 			continue
 		}
-		matched, err := coreautomation.EvaluateEventFilter(job.Trigger.EventFilter, payload)
+		matched, err := EvaluateEventFilter(job.Trigger.EventFilter, payload)
 		if err != nil {
 			log.Printf("[inbox] dispatchWorkflows: workflow %q (%s) has an invalid filter: %v", job.Name, job.ID, err)
 			continue
@@ -503,7 +502,7 @@ func (s *Service) runWorkflowAndRecord(ctx context.Context, job *automation.Job,
 // below a workflow's Task, so the agent sees exactly what triggered it
 // without needing its own inbox_get_thread round trip just to learn the
 // sender/subject/body already known at dispatch time.
-func formatWorkflowEventContext(event coreautomation.InboxMessageEvent) string {
+func formatWorkflowEventContext(event InboxMessageEvent) string {
 	return fmt.Sprintf(
 		"Triggering message:\nChannel: %s\nFrom: %s\nSubject: %s\nBody: %s",
 		event.Channel, event.Sender, event.Subject, event.Body,

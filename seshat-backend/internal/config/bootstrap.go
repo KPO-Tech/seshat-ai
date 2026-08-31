@@ -1148,6 +1148,9 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 			inboxtool.NewSendReplyTool(backendApp.Inbox),
 			inboxtool.NewListAccountsTool(backendApp.Inbox),
 			inboxtool.NewSearchContactsTool(backendApp.Inbox),
+			inboxtool.NewCreateWorkflowTool(backendApp.Inbox),
+			inboxtool.NewListWorkflowsTool(backendApp.Inbox),
+			inboxtool.NewDeleteWorkflowTool(backendApp.Inbox),
 		}
 		for _, tool := range inboxAgentTools {
 			if err := queryClient.RegisterTool(tool); err != nil {
