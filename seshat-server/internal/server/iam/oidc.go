@@ -28,22 +28,25 @@ const oidcLoginStateTTL = 10 * time.Minute
 // the OAuth2 redirect_uri sent to the identity provider itself, which is
 // always this server's own callback route (see oidcRedirectURL).
 //
-// redirectURI is restricted to loopback (http://localhost or 127.0.0.1) -
-// the only confirmed consumer today is the desktop app's connected mode,
-// which runs its own local callback receiver. There is no pre-registered
-// allowlist to check against otherwise (unlike Application.RedirectURLs, a
-// different and currently-unconsumed concept - see oidc.go's package doc
-// for why this deliberately doesn't route through Application). Loopback
-// redirects don't need one: they're inherently local to the machine the
-// browser is already running on, the standard native-app OAuth pattern
-// (RFC 8252). Broadening this to other destinations (e.g. a future web
-// console) needs its own allowlist design, not a relaxation of this check.
+// redirectURI must be either loopback (http://localhost or 127.0.0.1 - the
+// desktop app's connected mode, which runs its own local callback
+// receiver) or match this server's configured public app URL (the web
+// console - see requireLoopbackOrConsoleRedirectURI,
+// docs/helps/audit-2026-08-29-openwork-den-comparison.md § 9bis). There is
+// no pre-registered allowlist to check against otherwise (unlike
+// Application.RedirectURLs, a different and currently-unconsumed concept -
+// see oidc.go's package doc for why this deliberately doesn't route
+// through Application). Loopback redirects don't need one: they're
+// inherently local to the machine the browser is already running on, the
+// standard native-app OAuth pattern (RFC 8252). The console origin doesn't
+// need a caller-supplied allowlist either: it's pinned to one exact,
+// operator-configured value, not something a caller chooses.
 func (s *Service) BeginOIDCLogin(ctx context.Context, providerID, redirectURI string) (string, error) {
 	providerID = strings.TrimSpace(providerID)
 	if providerID == "" {
 		return "", ErrInvalidInput("provider_id is required")
 	}
-	if err := requireLoopbackRedirectURI(redirectURI); err != nil {
+	if err := s.requireLoopbackOrConsoleRedirectURI(redirectURI); err != nil {
 		return "", err
 	}
 	if s.publicAPIURL == "" {
@@ -116,6 +119,16 @@ func (s *Service) CompleteOIDCLogin(ctx context.Context, providerID, code, state
 	if providerID == "" || code == "" || state == "" {
 		return "", ErrInvalidInput("provider_id, code and state are required")
 	}
+	// A step-up in progress (see step_up_oidc.go) reuses this exact same
+	// callback route rather than a separate one, so no organization ever
+	// needs to register a second redirect_uri with their IdP just to get
+	// step-up - the two kinds of in-flight attempt are told apart by which
+	// state table the value hashes into, checked here before anything else.
+	if isStepUp, err := s.oidcStateIsPendingStepUp(ctx, state); err != nil {
+		return "", err
+	} else if isStepUp {
+		return s.completeOIDCStepUp(ctx, providerID, code, state)
+	}
 	defer func() { s.recordProviderLoginAttempt(providerID, err) }()
 
 	err = s.db.Transaction(func(tx *gorm.DB) error {
@@ -151,69 +164,9 @@ func (s *Service) CompleteOIDCLogin(ctx context.Context, providerID, code, state
 			return ErrInvalidInput("provider is not an enabled OIDC provider")
 		}
 
-		oidcProvider, err := oidc.NewProvider(ctx, record.IssuerURL)
+		email, displayName, err := s.oidcExchangeAndVerifyIdentity(ctx, tx, record, code, loginState.CodeVerifier, loginState.Nonce)
 		if err != nil {
-			return fmt.Errorf("resolve provider endpoints: %w", err)
-		}
-		clientSecret, err := sdb.DecryptSecret(tx, record.OrganizationID, record.ClientSecret)
-		if err != nil {
-			return fmt.Errorf("decrypt provider client secret: %w", err)
-		}
-		oauth2Config := &oauth2.Config{
-			ClientID:     record.ClientID,
-			ClientSecret: clientSecret,
-			Endpoint:     oidcProvider.Endpoint(),
-			RedirectURL:  s.oidcRedirectURL(providerID),
-			Scopes:       oidcScopes(record.Scopes),
-		}
-
-		oauth2Token, err := oauth2Config.Exchange(ctx, code, oauth2.VerifierOption(loginState.CodeVerifier))
-		if err != nil {
-			return ErrUnauthorized("failed to exchange authorization code: " + err.Error())
-		}
-		rawIDToken, ok := oauth2Token.Extra("id_token").(string)
-		if !ok || rawIDToken == "" {
-			return ErrUnauthorized("identity provider did not return an ID token")
-		}
-		idToken, err := oidcProvider.Verifier(&oidc.Config{ClientID: record.ClientID}).Verify(ctx, rawIDToken)
-		if err != nil {
-			return ErrUnauthorized("invalid ID token: " + err.Error())
-		}
-		// go-oidc deliberately does not verify Nonce itself (see IDToken's
-		// doc comment) - this is the caller's responsibility, and it's the
-		// only defense against a replayed authorization response.
-		if idToken.Nonce != loginState.Nonce {
-			return ErrUnauthorized("invalid ID token: nonce mismatch")
-		}
-
-		var claims struct {
-			Email         string `json:"email"`
-			EmailVerified bool   `json:"email_verified"`
-			Name          string `json:"name"`
-		}
-		if err := idToken.Claims(&claims); err != nil {
-			return fmt.Errorf("parse ID token claims: %w", err)
-		}
-		email, displayName := oidcMappedIdentity(record.ClaimMappings, claims.Email, claims.Name, idToken)
-		email = normalizeEmail(email)
-		if email == "" {
-			return ErrUnauthorized("identity provider did not return an email claim")
-		}
-		// An IdP that hasn't verified the email must never be trusted to
-		// auto-link or provision an account: without this check, an
-		// attacker could register the victim's email at a lenient IdP
-		// (never proving they control it) and be treated as that user.
-		// Absent claim (some IdPs omit it) is treated as verified, matching
-		// common OIDC RP practice - only an explicit false is rejected.
-		if !claims.EmailVerified {
-			var hasClaim bool
-			var raw map[string]any
-			if err := idToken.Claims(&raw); err == nil {
-				_, hasClaim = raw["email_verified"]
-			}
-			if hasClaim {
-				return ErrUnauthorized("identity provider has not verified this email address")
-			}
+			return err
 		}
 
 		existing, found, err := findUserByEmail(tx, email)
@@ -289,6 +242,78 @@ func (s *Service) CompleteOIDCLogin(ctx context.Context, providerID, code, state
 		return nil
 	})
 	return result, err
+}
+
+// oidcExchangeAndVerifyIdentity exchanges an authorization code for tokens,
+// verifies the ID token (signature/issuer/audience/expiry via the
+// provider's own verifier, then nonce - go-oidc deliberately doesn't check
+// Nonce itself, see IDToken's doc comment), and extracts a trusted
+// (email_verified) email/display name. Shared by CompleteOIDCLogin and
+// completeOIDCStepUp (step_up_oidc.go) so this security-critical
+// verification exists in exactly one place rather than two copies that
+// could silently drift apart.
+func (s *Service) oidcExchangeAndVerifyIdentity(ctx context.Context, tx *gorm.DB, record sdb.Provider, code, codeVerifier, nonce string) (email, displayName string, err error) {
+	oidcProvider, err := oidc.NewProvider(ctx, record.IssuerURL)
+	if err != nil {
+		return "", "", fmt.Errorf("resolve provider endpoints: %w", err)
+	}
+	clientSecret, err := sdb.DecryptSecret(tx, record.OrganizationID, record.ClientSecret)
+	if err != nil {
+		return "", "", fmt.Errorf("decrypt provider client secret: %w", err)
+	}
+	oauth2Config := &oauth2.Config{
+		ClientID:     record.ClientID,
+		ClientSecret: clientSecret,
+		Endpoint:     oidcProvider.Endpoint(),
+		RedirectURL:  s.oidcRedirectURL(record.ID),
+		Scopes:       oidcScopes(record.Scopes),
+	}
+
+	oauth2Token, err := oauth2Config.Exchange(ctx, code, oauth2.VerifierOption(codeVerifier))
+	if err != nil {
+		return "", "", ErrUnauthorized("failed to exchange authorization code: " + err.Error())
+	}
+	rawIDToken, ok := oauth2Token.Extra("id_token").(string)
+	if !ok || rawIDToken == "" {
+		return "", "", ErrUnauthorized("identity provider did not return an ID token")
+	}
+	idToken, err := oidcProvider.Verifier(&oidc.Config{ClientID: record.ClientID}).Verify(ctx, rawIDToken)
+	if err != nil {
+		return "", "", ErrUnauthorized("invalid ID token: " + err.Error())
+	}
+	if idToken.Nonce != nonce {
+		return "", "", ErrUnauthorized("invalid ID token: nonce mismatch")
+	}
+
+	var claims struct {
+		Email         string `json:"email"`
+		EmailVerified bool   `json:"email_verified"`
+		Name          string `json:"name"`
+	}
+	if err := idToken.Claims(&claims); err != nil {
+		return "", "", fmt.Errorf("parse ID token claims: %w", err)
+	}
+	email, displayName = oidcMappedIdentity(record.ClaimMappings, claims.Email, claims.Name, idToken)
+	email = normalizeEmail(email)
+	if email == "" {
+		return "", "", ErrUnauthorized("identity provider did not return an email claim")
+	}
+	// An IdP that hasn't verified the email must never be trusted: without
+	// this check, an attacker could register the victim's email at a
+	// lenient IdP (never proving they control it) and be treated as that
+	// user. Absent claim (some IdPs omit it) is treated as verified,
+	// matching common OIDC RP practice - only an explicit false is rejected.
+	if !claims.EmailVerified {
+		var hasClaim bool
+		var raw map[string]any
+		if err := idToken.Claims(&raw); err == nil {
+			_, hasClaim = raw["email_verified"]
+		}
+		if hasClaim {
+			return "", "", ErrUnauthorized("identity provider has not verified this email address")
+		}
+	}
+	return email, displayName, nil
 }
 
 // oidcAutoJoinOrganization mirrors Register's domain-matched auto-join

@@ -28,9 +28,11 @@ import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
 import { PlannedFeatureCard, PLANNED_FEATURE_CARD_CSS } from '@/components/ui/PlannedFeatureCard'
 import { streamingToContentBlocks, useSessionStore } from '@/stores/session'
 import { useChat } from '@/hooks/useChat'
+import { useProviders, fetchProviderModels } from '@/hooks/useProviders'
+import { useProvidersStore } from '@/stores/providers'
 import { ChatInput, CHAT_INPUT_CSS } from '@/components/chat/ChatInput'
 import { MessageItem, MESSAGE_ITEM_CSS, isRenderableMessage } from '@/components/chat/MessageItem'
-import type { Corpus, CorpusFile, DoclingConfig, EmbedderConfig, FileItem, IngestionJob, Message as ApiMessage } from '@/api/types'
+import type { Corpus, CorpusFile, DoclingConfig, EmbedderConfig, FileItem, IngestionJob, Message as ApiMessage, ProviderModel, ProviderSetting } from '@/api/types'
 
 type TaggedSearchResult = {
   key: string
@@ -100,6 +102,40 @@ function decodeDataUrlText(dataUrl: string): string {
 
 const EMPTY_DETAIL: CorpusDetail = { files: [], jobs: [], loading: false, error: null }
 
+// Persists the user's chosen provider/model for the Knowledge Agent chat
+// across restarts, same pattern as scheduling's PLANNER_PREFERENCE_KEY - the
+// Knowledge Agent's session is reused indefinitely (see latestKnowledgeSession
+// below), so without this the choice would reset every time the app relaunches.
+const KNOWLEDGE_CHAT_PREFERENCE_KEY = 'seshat.knowledge-chat-preferred-model.v1'
+
+type ChatModelPreference = { providerSettingId: string; modelId: string }
+
+function loadChatModelPreference(): ChatModelPreference | null {
+  try {
+    const raw = localStorage.getItem(KNOWLEDGE_CHAT_PREFERENCE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (parsed && typeof parsed.providerSettingId === 'string' && typeof parsed.modelId === 'string') {
+      return parsed
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+function saveChatModelPreference(pref: ChatModelPreference | null) {
+  try {
+    if (!pref) {
+      localStorage.removeItem(KNOWLEDGE_CHAT_PREFERENCE_KEY)
+      return
+    }
+    localStorage.setItem(KNOWLEDGE_CHAT_PREFERENCE_KEY, JSON.stringify(pref))
+  } catch {
+    // best-effort only
+  }
+}
+
 function buildAgentInstruction(query: string, corpusName?: string): string {
   const scope = corpusName ? `Search only in the "${corpusName}" knowledge base.` : 'Search across the available knowledge bases.'
   return `${query}\n\n(${scope} Use the knowledge_search tool and answer only from retrieved knowledge. Cite sources inline with bracketed numbers like [1], [2] matching the tool results.)`
@@ -156,6 +192,17 @@ export function KnowledgePage() {
   const [embedder, setEmbedder] = useState<EmbedderConfig | null>(null)
   const [docling, setDocling] = useState<DoclingConfig | null>(null)
 
+  // Lets the user pick which provider/model answers Knowledge Agent chat
+  // messages, mirroring Home.tsx's picker - see KNOWLEDGE_CHAT_PREFERENCE_KEY
+  // above for why the choice is persisted rather than reset per session.
+  const { loading: providersLoading } = useProviders()
+  const providers = useProvidersStore((s) => s.providers)
+  const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null)
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(null)
+  const [modelsByProvider, setModelsByProvider] = useState<Record<string, ProviderModel[]>>({})
+  const [loadingModelsFor, setLoadingModelsFor] = useState<string | null>(null)
+  const hasAppliedStoredPreference = useRef(false)
+
   const selectedCorpus = corpora.find((c) => c.id === selectedCorpusId) ?? null
   const totalChunks = corpora.reduce((sum, corpus) => sum + (corpus.chunk_count || 0), 0)
   const activeJobs = detail.jobs.filter(isJobActive).length
@@ -180,6 +227,73 @@ export function KnowledgePage() {
   useEffect(() => {
     if (!sessionId && latestKnowledgeSession) setSessionId(latestKnowledgeSession.id)
   }, [latestKnowledgeSession, sessionId])
+
+  const selectedModels = useMemo(
+    () => (selectedProviderId ? (modelsByProvider[selectedProviderId] ?? []) : []),
+    [selectedProviderId, modelsByProvider],
+  )
+  const hasLoadedSelectedProviderModels = selectedProviderId
+    ? Object.prototype.hasOwnProperty.call(modelsByProvider, selectedProviderId)
+    : false
+
+  // Apply a stored preference once providers have loaded; otherwise fall
+  // back to the organization default, same precedence as scheduling's
+  // PlannerSettingsModal.
+  useEffect(() => {
+    if (hasAppliedStoredPreference.current || providersLoading || providers.length === 0) return
+    hasAppliedStoredPreference.current = true
+    const stored = loadChatModelPreference()
+    const provider = (stored && providers.find((p) => p.id === stored.providerSettingId))
+      ?? providers.find((p) => p.is_default)
+      ?? providers[0]
+    setSelectedProviderId(provider.id)
+    if (stored && stored.providerSettingId === provider.id) setSelectedModelId(stored.modelId)
+  }, [providers, providersLoading])
+
+  useEffect(() => {
+    if (!selectedProviderId) return
+    if (!providers.some((provider) => provider.id === selectedProviderId)) {
+      setSelectedProviderId(null)
+      setSelectedModelId(null)
+    }
+  }, [providers, selectedProviderId])
+
+  useEffect(() => {
+    if (!selectedProviderId || modelsByProvider[selectedProviderId]) return
+    let cancelled = false
+    setLoadingModelsFor(selectedProviderId)
+    fetchProviderModels(selectedProviderId)
+      .then((models) => {
+        if (cancelled) return
+        setModelsByProvider((current) => ({ ...current, [selectedProviderId]: models }))
+      })
+      .catch(() => {
+        if (cancelled) return
+        setModelsByProvider((current) => ({ ...current, [selectedProviderId]: [] }))
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingModelsFor((current) => (current === selectedProviderId ? null : current))
+      })
+    return () => { cancelled = true }
+  }, [modelsByProvider, selectedProviderId])
+
+  useEffect(() => {
+    if (!hasLoadedSelectedProviderModels || selectedModelId || selectedModels.length === 0) return
+    const def = selectedModels.find((m) => m.is_default) ?? selectedModels[0]
+    setSelectedModelId(def.model_id)
+  }, [hasLoadedSelectedProviderModels, selectedModelId, selectedModels])
+
+  useEffect(() => {
+    if (!selectedModelId || !hasLoadedSelectedProviderModels) return
+    if (!selectedModels.some((model) => model.model_id === selectedModelId)) setSelectedModelId(null)
+  }, [hasLoadedSelectedProviderModels, selectedModelId, selectedModels])
+
+  useEffect(() => {
+    if (!hasAppliedStoredPreference.current) return
+    if (selectedProviderId && selectedModelId) {
+      saveChatModelPreference({ providerSettingId: selectedProviderId, modelId: selectedModelId })
+    }
+  }, [selectedProviderId, selectedModelId])
 
   const loadCorpora = useCallback(async () => {
     setCorporaError(null)
@@ -260,9 +374,11 @@ export function KnowledgePage() {
       void sendMessage(prompt, {
         agentSlug: 'knowledge-agent',
         corpusId: selectedCorpusId === 'all' ? undefined : selectedCorpusId,
+        providerSettingId: selectedProviderId,
+        modelId: selectedModelId,
       })
     }
-  }, [pendingPrompt, selectedCorpusId, sendMessage, sessionId])
+  }, [pendingPrompt, selectedCorpusId, sendMessage, sessionId, selectedProviderId, selectedModelId])
 
   useEffect(() => {
     if (!sessionId || !pendingChatMessage) return
@@ -271,8 +387,10 @@ export function KnowledgePage() {
     void sendMessage(prompt, {
       agentSlug: 'knowledge-agent',
       corpusId: selectedCorpusId === 'all' ? undefined : selectedCorpusId,
+      providerSettingId: selectedProviderId,
+      modelId: selectedModelId,
     })
-  }, [pendingChatMessage, selectedCorpusId, sendMessage, sessionId])
+  }, [pendingChatMessage, selectedCorpusId, sendMessage, sessionId, selectedProviderId, selectedModelId])
 
   const assistantText = useMemo(() => {
     if (!session) return ''
@@ -344,6 +462,8 @@ export function KnowledgePage() {
       void sendMessage(instruction, {
         agentSlug: 'knowledge-agent',
         corpusId: selectedCorpusId === 'all' ? undefined : selectedCorpusId,
+        providerSettingId: selectedProviderId,
+        modelId: selectedModelId,
       })
       return
     }
@@ -369,6 +489,8 @@ export function KnowledgePage() {
       void sendMessage(instruction, {
         agentSlug: 'knowledge-agent',
         corpusId: corpusId === 'all' ? undefined : corpusId,
+        providerSettingId: selectedProviderId,
+        modelId: selectedModelId,
       })
       return
     }
@@ -631,6 +753,14 @@ export function KnowledgePage() {
                 onApproveTool={approveKnowledgeTool}
                 onDenyTool={denyKnowledgeTool}
                 onSubmitToolPrompt={submitKnowledgeToolPrompt}
+                providers={providers}
+                selectedProviderId={selectedProviderId}
+                selectedModelId={selectedModelId}
+                selectedModels={selectedModels}
+                hasLoadedSelectedProviderModels={hasLoadedSelectedProviderModels}
+                loadingModelsFor={loadingModelsFor}
+                onProviderSelect={(id) => { setSelectedProviderId(id); setSelectedModelId(null) }}
+                onModelSelect={setSelectedModelId}
               />
             ) : (
               <SearchWorkspace
@@ -857,6 +987,14 @@ function KnowledgeChatWorkspace({
   onApproveTool,
   onDenyTool,
   onSubmitToolPrompt,
+  providers,
+  selectedProviderId,
+  selectedModelId,
+  selectedModels,
+  hasLoadedSelectedProviderModels,
+  loadingModelsFor,
+  onProviderSelect,
+  onModelSelect,
 }: {
   messages: ApiMessage[]
   prompt: string
@@ -870,8 +1008,18 @@ function KnowledgeChatWorkspace({
   onApproveTool: (toolUseId: string, remember?: boolean) => void
   onDenyTool: (toolUseId: string) => void
   onSubmitToolPrompt: (promptId: string, value: unknown) => void
+  providers: ProviderSetting[]
+  selectedProviderId: string | null
+  selectedModelId: string | null
+  selectedModels: ProviderModel[]
+  hasLoadedSelectedProviderModels: boolean
+  loadingModelsFor: string | null
+  onProviderSelect: (id: string) => void
+  onModelSelect: (id: string) => void
 }) {
   const scopeLabel = selectedCorpusId === 'all' ? 'All included knowledge' : selectedCorpus?.name ?? 'Selected collection'
+  const selectedProvider = providers.find((p) => p.id === selectedProviderId) ?? null
+  const selectedModel = selectedModels.find((m) => m.model_id === selectedModelId) ?? null
 
   return (
     <div className="k-chat-page">
@@ -919,8 +1067,24 @@ function KnowledgeChatWorkspace({
           onStop={onStop}
           isStreaming={isStreaming}
           placeholder="Ask the Knowledge Agent..."
-          providerDisabled
-          modelDisabled
+          providerLabel={selectedProvider?.name ?? 'Provider'}
+          modelLabel={selectedModel?.display_name || selectedModel?.model_id || 'Model'}
+          providerOptions={providers.map((provider) => ({ id: provider.id, label: provider.name }))}
+          modelOptions={
+            selectedProviderId && hasLoadedSelectedProviderModels
+              ? selectedModels.map((model) => ({ id: model.model_id, label: model.display_name || model.model_id }))
+              : undefined
+          }
+          selectedProviderId={selectedProviderId}
+          selectedModelId={selectedModelId}
+          onProviderSelect={onProviderSelect}
+          onModelSelect={onModelSelect}
+          providerDisabled={providers.length === 0}
+          modelDisabled={
+            !selectedProviderId ||
+            loadingModelsFor === selectedProviderId ||
+            selectedModels.length === 0
+          }
         />
       </section>
 

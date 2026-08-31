@@ -413,6 +413,9 @@ func (s *Service) DeleteProvider(ctx context.Context, principal *Principal, prov
 		if err := requireOrganizationPermission(tx, principal, record.OrganizationID, "providers.manage", "organization.manage"); err != nil {
 			return err
 		}
+		if err := s.RequireFreshAuth(principal); err != nil {
+			return err
+		}
 		var applications []sdb.Application
 		if err := tx.Where("organization_id = ?", record.OrganizationID).Find(&applications).Error; err != nil {
 			return err

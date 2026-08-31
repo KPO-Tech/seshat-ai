@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button, Drawer, Empty, Form, Input, message, Popconfirm, Space, Tag, Typography } from 'antd'
+import { Button, Drawer, Empty, Form, Input, message, Popconfirm, Space, Typography } from 'antd'
 import type { TableProps } from 'antd'
 import { BookOutlined, DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
 import {
@@ -10,8 +10,10 @@ import {
   type SkillRepo,
 } from '@/api/skillRepos'
 import { getErrorMessage } from '@/api/errors'
+import { useBundleProvenance } from '@/api/bundles'
 import { PageHeader } from '@/components/PageHeader'
 import { ConsoleTable } from '@/components/ConsoleTable'
+import { ProvenanceTag } from '@/components/ProvenanceTag'
 import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
 import { palette } from '@/theme/tokens'
 
@@ -22,6 +24,11 @@ export function SkillReposPage() {
   const createRepo = useCreateSkillRepo()
   const updateRepo = useUpdateSkillRepo()
   const deleteRepo = useDeleteSkillRepo()
+  const provenance = useBundleProvenance(
+    organizationId ?? undefined,
+    'skill_repo',
+    (data ?? []).map((r) => r.id!).filter(Boolean),
+  )
 
   const columns: TableProps<SkillRepo>['columns'] = [
     {
@@ -29,10 +36,7 @@ export function SkillReposPage() {
       key: 'name',
       render: (_, record) => (
         <div>
-          <Space size={8} align="center">
-            <span style={{ fontWeight: 500 }}>{record.name}</span>
-            {record.source === 'platform' && <Tag color="gold">Platform default</Tag>}
-          </Space>
+          <span style={{ fontWeight: 500 }}>{record.name}</span>
           <div>
             <Typography.Text style={{ fontSize: 12, color: palette.inkTertiary }}>{record.url}</Typography.Text>
           </div>
@@ -44,6 +48,18 @@ export function SkillReposPage() {
       dataIndex: 'description',
       key: 'description',
       render: (value: string | undefined) => value || <Typography.Text type="secondary">No description</Typography.Text>,
+    },
+    {
+      title: 'Provenance',
+      key: 'provenance',
+      width: 160,
+      render: (_, record) => (
+        <ProvenanceTag
+          createdByUserId={record.created_by_user_id}
+          source={record.source}
+          provenance={record.id ? provenance.data?.[record.id] : undefined}
+        />
+      ),
     },
     {
       title: '',

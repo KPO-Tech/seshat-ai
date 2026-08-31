@@ -8,8 +8,10 @@ import {
   useDeleteProviderSetting,
   useSetProviderSettingDefault,
   useDetectProviderModels,
+  useProbeProviderSetting,
   type ProviderSetting,
   type ProviderSettingInput,
+  type ProviderProbeResult,
 } from '@/api/providerSettings'
 import { getErrorMessage } from '@/api/errors'
 import { useProviderCatalog, getProviderModels, type ProviderCatalogEntry } from '@/api/providerCatalog'
@@ -30,6 +32,19 @@ const SUPPORTED_AUTH_TYPES = new Set(['api_key', 'none'])
 // never varies by provider release), just a stable fact used for one
 // diagnostic message below.
 const OLLAMA_DEFAULT_URL = 'http://localhost:11434'
+
+const PROBE_STATUS_COLOR: Record<string, string> = {
+  ok: 'green',
+  invalid_credential: 'red',
+  unknown: 'orange',
+  unsupported: 'default',
+}
+const PROBE_STATUS_LABEL: Record<string, string> = {
+  ok: 'Credential accepted',
+  invalid_credential: 'Credential rejected',
+  unknown: 'Could not confirm',
+  unsupported: 'Not testable for this provider',
+}
 
 function toSupportedProviderEntries(catalog: ProviderCatalogEntry[] | undefined) {
   return (catalog ?? [])
@@ -226,6 +241,7 @@ function ProviderSettingFormDrawer({
   const [form] = Form.useForm<Omit<ProviderSettingInput, 'organization_id'>>()
   const watchedModelId = Form.useWatch('default_model', form)
   const watchedBaseURL = Form.useWatch('base_url', form)
+  const watchedApiKey = Form.useWatch('api_key', form)
   const isEdit = setting !== null
   const isOllama = provider === 'ollama'
   const providerCatalog = useProviderCatalog()
@@ -239,12 +255,37 @@ function ProviderSettingFormDrawer({
   const detectModels = useDetectProviderModels()
   const [detectedModels, setDetectedModels] = useState<string[]>([])
 
+  const probeConnection = useProbeProviderSetting()
+  const [probeResult, setProbeResult] = useState<ProviderProbeResult | null>(null)
+
   useEffect(() => {
     if (!open || !provider) return
     const fallbackModel = setting?.default_model ?? modelOptions[0]?.id ?? ''
     form.setFieldsValue(setting ?? { provider, default_model: fallbackModel, base_url: '' })
     setDetectedModels([])
+    setProbeResult(null)
   }, [open, provider, setting, form, modelOptions])
+
+  // A stale probe result from a previous key/URL would be misleading -
+  // clear it as soon as either changes, forcing a fresh test.
+  useEffect(() => {
+    setProbeResult(null)
+  }, [watchedApiKey, watchedBaseURL])
+
+  const handleTestConnection = () => {
+    if (!provider) return
+    if (!watchedApiKey) {
+      message.warning(isEdit ? 'Enter a new key to test it - the saved one is never resent.' : 'Enter an API key first.')
+      return
+    }
+    probeConnection.mutate(
+      { provider, base_url: watchedBaseURL || undefined, api_key: watchedApiKey },
+      {
+        onSuccess: setProbeResult,
+        onError: (error) => message.error(getErrorMessage(error)),
+      },
+    )
+  }
 
   const handleDetectModels = () => {
     if (!provider) return
@@ -355,6 +396,24 @@ function ProviderSettingFormDrawer({
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
             The key is encrypted at rest and never shown again after saving.
           </Typography.Text>
+        )}
+
+        {!isOllama && (
+          <div style={{ marginTop: 12, marginBottom: 16 }}>
+            <Button size="small" loading={probeConnection.isPending} onClick={handleTestConnection}>
+              Test connection
+            </Button>
+            {probeResult && (
+              <div style={{ marginTop: 8 }}>
+                <Tag color={PROBE_STATUS_COLOR[probeResult.status]}>{PROBE_STATUS_LABEL[probeResult.status]}</Tag>
+                {probeResult.status !== 'ok' && (
+                  <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 4 }}>
+                    {probeResult.detail}
+                  </Typography.Text>
+                )}
+              </div>
+            )}
+          </div>
         )}
       </Form>
     </Drawer>

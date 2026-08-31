@@ -270,6 +270,9 @@ func (s *Service) DeleteOrganization(ctx context.Context, principal *Principal, 
 		if err := requireOrganizationPermission(tx, principal, organizationID, "organization.delete"); err != nil {
 			return err
 		}
+		if err := s.RequireFreshAuth(principal); err != nil {
+			return err
+		}
 
 		// Delete dependent tenant-scoped rows before the organization itself.
 		// Ordering matters conceptually even though today's schema does not

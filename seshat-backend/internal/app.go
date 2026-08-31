@@ -43,7 +43,6 @@ import (
 type Dependencies struct {
 	Identity    *db.IdentityStore
 	APIKeyStore *db.APIKeyStore // nil = api keys disabled
-	GroupStore  *db.GroupStore  // nil = groups disabled
 	AuthConfig  auth.ServiceConfig
 	// AuthProvider selects standalone vs connected identity (see ROADMAP.md,
 	// "Direction: seshat-server becomes the multi-tenant backbone"). nil =
@@ -298,7 +297,7 @@ func NewApp(deps Dependencies) *App {
 		quotaProvider = quotas.NewLocalProvider(deps.UsageCounterStore)
 	}
 	return &App{
-		Auth: auth.NewService(authProvider, deps.Identity, deps.APIKeyStore, deps.GroupStore, deps.AuthConfig, deps.DesktopPolicies),
+		Auth: auth.NewService(authProvider, deps.Identity, deps.APIKeyStore, deps.AuthConfig, deps.DesktopPolicies),
 		Query: query.NewService(query.ServiceConfig{
 			Runtime:     deps.QueryRuntime,
 			Sessions:    deps.SessionManager,

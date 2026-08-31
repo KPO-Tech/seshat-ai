@@ -286,6 +286,9 @@ func (s *Service) RotateConnectionToken(ctx context.Context, principal *iam.Prin
 		if err := s.iam.CheckOrganizationPermission(tx, principal, organizationID, "scim_connections.manage", "organization.manage"); err != nil {
 			return err
 		}
+		if err := s.iam.RequireFreshAuth(principal); err != nil {
+			return err
+		}
 		found, err := s.mustFindConnectionTx(tx, organizationID, &record)
 		if err != nil || !found {
 			return err

@@ -94,10 +94,6 @@ func (a *App) handleWebSearchSettings(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	if !a.requireWebSearchPermission(w, r, principal) {
-		return
-	}
-
 	switch r.Method {
 	case http.MethodGet:
 		settings, err := a.backend.WebSearch.GetSettings(r.Context(), principal)
@@ -146,10 +142,6 @@ func (a *App) handleWebSearch(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	if !a.requireWebSearchPermission(w, r, principal) {
-		return
-	}
-
 	var body struct {
 		Query             string   `json:"query"`
 		ProviderSettingID string   `json:"provider_setting_id"`
@@ -235,9 +227,6 @@ func (a *App) handleWebSearchProviders(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	if !a.requireWebSearchPermission(w, r, principal) {
-		return
-	}
 	list, err := a.backend.WebSearch.ListProviders(r.Context(), principal)
 	if err != nil {
 		writeBackendError(w, err)
@@ -261,10 +250,6 @@ func (a *App) handleWebSearchProviderByName(w http.ResponseWriter, r *http.Reque
 		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	if !a.requireWebSearchPermission(w, r, principal) {
-		return
-	}
-
 	// Path: /web/search/providers/{name}  or  /web/search/providers/{name}/test
 	path := r.URL.Path
 	const prefix = "/web/search/providers/"
@@ -338,9 +323,6 @@ func (a *App) handleWebSearchLogs(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	if !a.requireWebSearchPermission(w, r, principal) {
-		return
-	}
 	limit := 50
 	if raw := r.URL.Query().Get("limit"); raw != "" {
 		if value, err := strconv.Atoi(raw); err == nil {
@@ -371,9 +353,6 @@ func (a *App) handleWebSearchDomainCatalog(w http.ResponseWriter, r *http.Reques
 	principal, _ := authPrincipalFromContext(r.Context())
 	if principal == nil {
 		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
-		return
-	}
-	if !a.requireWebSearchPermission(w, r, principal) {
 		return
 	}
 	catalog := webpolicy.DomainCatalog()

@@ -120,6 +120,9 @@ func (s *Service) DeleteUser(ctx context.Context, principal *Principal, userID s
 	if err := requireAdmin(principal); err != nil {
 		return err
 	}
+	if err := s.RequireFreshAuth(principal); err != nil {
+		return err
+	}
 	userID = strings.TrimSpace(userID)
 	if userID == "" {
 		return ErrInvalidInput("user_id is required")

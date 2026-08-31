@@ -21,7 +21,7 @@ func newWorkspacePolicyTestService(t *testing.T, policies *automation.PolicyStor
 		t.Fatalf("NewIdentityStore: %v", err)
 	}
 
-	service := NewService(nil, identity, nil, nil, ServiceConfig{}, policies)
+	service := NewService(nil, identity, nil, ServiceConfig{}, policies)
 	admin := &Principal{
 		User:        User{ID: "usr_admin", Email: "admin@example.com"},
 		AuthSession: AuthSession{ID: "tok"},

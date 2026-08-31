@@ -3,6 +3,7 @@ package scim
 import (
 	"context"
 	"testing"
+	"time"
 )
 
 func TestGetConnectionReturnsNilWhenNotConfigured(t *testing.T) {
@@ -145,6 +146,28 @@ func TestRotateConnectionTokenChangesTheHashAndReturnsANewRawToken(t *testing.T)
 	}
 	if rotated.Token == "" || rotated.Token == created.Token {
 		t.Fatalf("expected a fresh, different raw token after rotation, got %q (was %q)", rotated.Token, created.Token)
+	}
+}
+
+// TestRotateConnectionTokenRequiresFreshAuth proves the step-up gate itself
+// (see docs/helps/audit-2026-08-29-openwork-den-comparison.md § 9) - a
+// principal with full scim_connections.manage permission is still rejected
+// if their session hasn't proven identity recently enough.
+func TestRotateConnectionTokenRequiresFreshAuth(t *testing.T) {
+	env := newTestEnv(t)
+
+	if _, err := env.scim.CreateConnection(context.Background(), env.adminPrincipal, CreateConnectionParams{
+		OrganizationID: env.orgID, Name: "Okta",
+	}); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	// RequireFreshAuth only ever reads the in-memory Session already
+	// attached to Principal (no DB round trip), so the stale session is
+	// simulated by backdating that in-memory field directly.
+	env.adminPrincipal.Session.ReauthenticatedAt = time.Now().UTC().Add(-25 * time.Hour)
+
+	if _, err := env.scim.RotateConnectionToken(context.Background(), env.adminPrincipal, env.orgID); err == nil {
+		t.Fatal("expected a stale session to be denied token rotation")
 	}
 }
 

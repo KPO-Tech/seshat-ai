@@ -26,9 +26,10 @@ const samlAuthRequestTTL = 10 * time.Minute
 // BeginSAMLLogin starts an SP-initiated SAML login against providerID,
 // returning the URL to redirect the caller's browser to (the IdP's own SSO
 // endpoint, per HTTP-Redirect binding). redirectURI is the caller's own
-// final destination once login succeeds - same loopback-only restriction
-// and same reasoning as BeginOIDCLogin's redirectURI (see its doc comment);
-// this is unrelated to any SAML-level URL and never sent to the IdP.
+// final destination once login succeeds - same loopback-or-console
+// restriction and same reasoning as BeginOIDCLogin's redirectURI (see its
+// doc comment); this is unrelated to any SAML-level URL and never sent to
+// the IdP.
 //
 // Deliberately does not sign the AuthnRequest (see the staged SAML plan's
 // design notes in docs/helps/audit-2026-08-29-openwork-den-comparison.md
@@ -41,7 +42,7 @@ func (s *Service) BeginSAMLLogin(ctx context.Context, providerID, redirectURI st
 	if providerID == "" {
 		return "", ErrInvalidInput("provider_id is required")
 	}
-	if err := requireLoopbackRedirectURI(redirectURI); err != nil {
+	if err := s.requireLoopbackOrConsoleRedirectURI(redirectURI); err != nil {
 		return "", err
 	}
 	if s.publicAPIURL == "" {
@@ -110,6 +111,20 @@ func (s *Service) CompleteSAMLLogin(ctx context.Context, providerID, samlRespons
 	samlResponseBase64 = strings.TrimSpace(samlResponseBase64)
 	if providerID == "" || samlResponseBase64 == "" {
 		return "", ErrInvalidInput("provider_id and SAMLResponse are required")
+	}
+	// A step-up in progress (see step_up_saml.go) reuses this exact same ACS
+	// route rather than a separate one - same reasoning as
+	// CompleteOIDCLogin's own pre-check. Unlike OIDC's direct state-hash
+	// lookup, SAML has no cheap way to know in advance which pending
+	// request a response answers (see samlAssertionInResponseTo's own doc
+	// comment) - trySAMLStepUp parses the response once against pending
+	// step-up requests only, and reports "not handled" (never an error) so
+	// this function's own unchanged login path gets a fair, un-short-
+	// circuited attempt at the same response.
+	if redirectURL, handled, err := s.trySAMLStepUp(ctx, providerID, samlResponseBase64); err != nil {
+		return "", err
+	} else if handled {
+		return redirectURL, nil
 	}
 	defer func() { s.recordProviderLoginAttempt(providerID, err) }()
 

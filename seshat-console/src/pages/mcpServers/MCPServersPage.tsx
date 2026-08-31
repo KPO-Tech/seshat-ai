@@ -12,8 +12,10 @@ import {
   type MCPServerConfigUpdateInput,
 } from '@/api/mcpServerConfigs'
 import { getErrorMessage } from '@/api/errors'
+import { useBundleProvenance } from '@/api/bundles'
 import { PageHeader } from '@/components/PageHeader'
 import { ConsoleTable } from '@/components/ConsoleTable'
+import { ProvenanceTag } from '@/components/ProvenanceTag'
 import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
 import { monoStack, palette } from '@/theme/tokens'
 import { SmartAddMCPServerDrawer } from './SmartAddMCPServerDrawer'
@@ -69,6 +71,11 @@ export function MCPServersPage() {
   const createConfig = useCreateMCPServerConfig()
   const updateConfig = useUpdateMCPServerConfig()
   const deleteConfig = useDeleteMCPServerConfig()
+  const provenance = useBundleProvenance(
+    organizationId ?? undefined,
+    'mcp_server_config',
+    (data ?? []).map((r) => r.id!).filter(Boolean),
+  )
 
   const columns: TableProps<MCPServerConfig>['columns'] = [
     {
@@ -112,6 +119,14 @@ export function MCPServersPage() {
       key: 'timeout_secs',
       width: 110,
       render: (value: number | undefined) => `${value ?? 30}s`,
+    },
+    {
+      title: 'Provenance',
+      key: 'provenance',
+      width: 160,
+      render: (_, record) => (
+        <ProvenanceTag createdByUserId={record.created_by_user_id} provenance={record.id ? provenance.data?.[record.id] : undefined} />
+      ),
     },
     {
       title: '',

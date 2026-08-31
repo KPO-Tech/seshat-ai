@@ -120,10 +120,6 @@ func (a *App) handleCorpora(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	if !a.requireKnowledgePermission(w, r, principal) {
-		return
-	}
-
 	switch r.Method {
 	case http.MethodGet:
 		corpora, err := a.backend.Knowledge.ListCorpora(r.Context(), principal)
@@ -202,10 +198,6 @@ func (a *App) handleCorpusByID(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	if !a.requireKnowledgePermission(w, r, principal) {
-		return
-	}
-
 	// Strip prefix to get the rest of the path.
 	rest := strings.TrimPrefix(r.URL.Path, "/corpora/")
 	rest = strings.Trim(rest, "/")
@@ -452,10 +444,6 @@ func (a *App) handleKnowledgeSearch(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	if !a.requireKnowledgePermission(w, r, principal) {
-		return
-	}
-
 	var body struct {
 		Query    string `json:"query"`
 		TopK     int    `json:"top_k"`

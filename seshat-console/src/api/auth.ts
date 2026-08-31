@@ -69,6 +69,19 @@ export function useOrganizationCreationLocked() {
 }
 
 /**
+ * This deployment's org_mode ("single" | "multi"), or undefined while
+ * bootstrap-status hasn't resolved yet. Defaults callers toward "multi"
+ * behavior while unresolved (see call sites) - a deployment is multi-org
+ * far more often than not, and briefly showing a multi-org nav item/label
+ * that then narrows is a much smaller UX cost than a false-single flicker
+ * that would hide navigation a multi-org admin actually needs.
+ */
+export function useOrgMode() {
+  const bootstrapStatus = useBootstrapStatus()
+  return bootstrapStatus.data?.org_mode
+}
+
+/**
  * One-time-only: creates the first platform admin and their organization
  * together. The server itself enforces "only when no users exist yet" —
  * this call fails once bootstrapped, same shape as every other guard in this

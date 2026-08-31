@@ -12,8 +12,10 @@ import {
   type HookConfigUpdateInput,
 } from '@/api/hookConfigs'
 import { getErrorMessage } from '@/api/errors'
+import { useBundleProvenance } from '@/api/bundles'
 import { PageHeader } from '@/components/PageHeader'
 import { ConsoleTable } from '@/components/ConsoleTable'
+import { ProvenanceTag } from '@/components/ProvenanceTag'
 import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
 import { monoStack, palette } from '@/theme/tokens'
 
@@ -24,6 +26,11 @@ export function HooksPage() {
   const createConfig = useCreateHookConfig()
   const updateConfig = useUpdateHookConfig()
   const deleteConfig = useDeleteHookConfig()
+  const provenance = useBundleProvenance(
+    organizationId ?? undefined,
+    'hook_config',
+    (data ?? []).map((r) => r.id!).filter(Boolean),
+  )
 
   const columns: TableProps<HookConfig>['columns'] = [
     {
@@ -61,6 +68,14 @@ export function HooksPage() {
       key: 'timeout_secs',
       width: 100,
       render: (value: number | undefined) => `${value ?? 30}s`,
+    },
+    {
+      title: 'Provenance',
+      key: 'provenance',
+      width: 160,
+      render: (_, record) => (
+        <ProvenanceTag createdByUserId={record.created_by_user_id} provenance={record.id ? provenance.data?.[record.id] : undefined} />
+      ),
     },
     {
       title: '',

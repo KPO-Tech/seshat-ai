@@ -128,6 +128,88 @@ export function ZAiIcon({ size = 36, className }: Props) {
   )
 }
 
+export function DeepSeekIcon({ size = 36, className }: Props) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 36 36" fill="none" className={className}>
+      <rect width="36" height="36" rx="9" fill="#4D6BFE" />
+      <path
+        d="M9 15c2-4 6-6 10-4.5-2 .5-4 2-5 4 2-1 5-1 7 .5-1.5 0-3.5.5-4.5 2 2-.5 4.5 0 6 2-3 1-6.5 1-9-1-3 3.5-8 3-9-3z"
+        fill="white"
+      />
+      <circle cx="12" cy="16" r="1.2" fill="#4D6BFE" />
+    </svg>
+  )
+}
+
+export function OpenCodeIcon({ size = 36, className }: Props) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 36 36" fill="none" className={className}>
+      <rect width="36" height="36" rx="9" fill="#0D1117" />
+      <path
+        d="M14 11 8 18l6 7M22 11l6 7-6 7"
+        stroke="#3FB950"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </svg>
+  )
+}
+
+export function KimiIcon({ size = 36, className }: Props) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 36 36" fill="none" className={className}>
+      <rect width="36" height="36" rx="9" fill="#16171B" />
+      <path
+        d="M21 8a11 11 0 1 0 7 19.5A9 9 0 0 1 21 8z"
+        fill="#E8E8ED"
+      />
+    </svg>
+  )
+}
+
+export function FoundryIcon({ size = 36, className }: Props) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 36 36" fill="none" className={className}>
+      <rect width="36" height="36" rx="9" fill="#0078D4" />
+      <path d="M15 8h6l7 20h-6.2l-1.4-4.4h-5l-1.4 4.4H8L15 8zm1 12h4l-2-6.4L16 20z" fill="white" />
+    </svg>
+  )
+}
+
+export function WorkersAIIcon({ size = 36, className }: Props) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 36 36" fill="none" className={className}>
+      <rect width="36" height="36" rx="9" fill="#F38020" />
+      <path
+        d="M9 22a5 5 0 0 1 1-9.9 6.5 6.5 0 0 1 12.4-1.7A5.5 5.5 0 0 1 27 22H9z"
+        fill="white"
+      />
+    </svg>
+  )
+}
+
+export function BedrockIcon({ size = 36, className }: Props) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 36 36" fill="none" className={className}>
+      <rect width="36" height="36" rx="9" fill="#232F3E" />
+      <path d="M9 24V13l9-5 9 5v11l-9 5-9-5z" stroke="#FF9900" strokeWidth="2" strokeLinejoin="round" fill="none" />
+      <path d="M9 13l9 5 9-5M18 18v11" stroke="#FF9900" strokeWidth="2" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+export function VertexIcon({ size = 36, className }: Props) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 36 36" fill="none" className={className}>
+      <rect width="36" height="36" rx="9" fill="#1A73E8" />
+      <path d="M18 7l9 15.6H9L18 7z" fill="white" />
+      <circle cx="18" cy="24" r="2.4" fill="#1A73E8" />
+    </svg>
+  )
+}
+
 export function CodexIcon({ size = 36, className }: Props) {
   return (
     <svg width={size} height={size} viewBox="0 0 36 36" fill="none" className={className}>
@@ -159,6 +241,13 @@ const ICON_MAP: Record<string, (props: Props) => React.ReactElement> = {
   openrouter: OpenRouterIcon,
   minimax: MiniMaxIcon,
   'z-ai': ZAiIcon,
+  deepseek: DeepSeekIcon,
+  opencode: OpenCodeIcon,
+  kimi: KimiIcon,
+  foundry: FoundryIcon,
+  'workers-ai': WorkersAIIcon,
+  bedrock: BedrockIcon,
+  vertex: VertexIcon,
 }
 
 export function ProviderIcon({ provider, size = 36, className }: Props & { provider: string }) {

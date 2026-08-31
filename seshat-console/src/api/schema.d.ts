@@ -933,6 +933,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/step-up/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Re-prove my identity with my current password
+         * @description Marks the caller's own already-existing session as freshly authenticated (see docs/helps/audit-2026-08-29-openwork-den-comparison.md § 9) - never rotates the password, never issues a new session. Fails the same way a wrong password would for an account that has no password it knows (OIDC/SAML/SCIM-provisioned, never used "forgot password").
+         */
+        post: operations["stepUpWithPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/sso-lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Discover whether an email's domain matches a configured SSO provider
+         * @description Public, unauthenticated - a pre-login discovery step (see docs/helps/audit-2026-08-29-openwork-den-comparison.md § 9bis) so the console's login page can offer "Continue with {IdP}" before the visitor sees a password field. Never errors just because nothing matched - returns an empty object in that case.
+         */
+        post: operations["lookupSSOProvider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/me/preferences": {
         parameters: {
             query?: never;
@@ -1652,6 +1692,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/provider-settings/probe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test an API key against its provider's real endpoint before saving it
+         * @description See docs/helps/audit-2026-08-29-openwork-den-comparison.md § 1. A minimal live GET (a models-list endpoint, never a chat/completion call - no tokens spent) using the exact auth header this provider actually expects. Authenticated only, like detect-models - the credential tested here may not be saved anywhere yet, so there is no organization-scoped permission to check. status is one of ok (credential accepted), invalid_credential (provider returned 401/403), unknown (network error or an unexpected response - never confidently reported as either ok or invalid_credential), or unsupported (this provider isn't a simple-API-key one, e.g. Ollama, Codex, or a cloud-account provider like Bedrock/Vertex).
+         */
+        post: operations["probeProviderSetting"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/web-search-provider-settings": {
         parameters: {
             query?: never;
@@ -1895,6 +1955,66 @@ export interface paths {
         post?: never;
         /** Delete a shared hook */
         delete: operations["deleteHookConfig"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bundles/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Export a chosen selection of skills/MCP servers/hooks/agent presets as one portable manifest
+         * @description Builds the manifest from the current rows of each of the four registries, filtered to the given IDs - each registry's own List method self-gates read permission, degrading to an empty list rather than a 403, so a requested ID absent from that list (nonexistent or inaccessible) is rejected as 404. Never includes MCP server Env/Headers (encrypted secrets) or ConnectorKind (meaningless outside the org). There is no server-side "bundle" record to fetch later - the manifest only ever exists as this response.
+         */
+        post: operations["exportBundle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bundles/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import a manifest's items into an organization
+         * @description Preflights *_registry.manage for every category actually present in the manifest before creating anything - a single missing permission rejects the whole import, nothing created. Each item is then created through its own registry's normal Create method, so a per-item naming conflict is reported in `failed` without aborting the rest of the manifest - never a silent partial import. Every row actually created is tagged into a BundleImport record for later traceability.
+         */
+        post: operations["importBundle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bundles/provenance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Report which of the given resource IDs were created by a bundle import, and by which one
+         * @description Membership-only check - this only ever reveals which of the caller's own already-visible rows (normally exactly the IDs a registry's own List endpoint just returned) came from a bundle import, the third provenance signal alongside a registry's own CreatedByUserID/Source fields. A resource ID absent from the response was never imported via a bundle.
+         */
+        get: operations["resolveBundleProvenance"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2838,6 +2958,11 @@ export interface components {
         Error: {
             error?: {
                 message?: string;
+                /**
+                 * @description Machine-readable discriminator, only ever present for a handful of error kinds a client needs to react to differently than a plain message (currently just "step_up_required" on a 428 - see StepUpRequired). Absent for every other error response.
+                 * @enum {string}
+                 */
+                code?: "step_up_required";
             };
         };
         ListMeta: {
@@ -3900,6 +4025,102 @@ export interface components {
             timeout_secs?: number;
             enabled?: boolean;
         };
+        BundleManifestSkillRepo: {
+            /** @example seshat-skills */
+            name: string;
+            /** @example https://github.com/EngineerProjects/seshat-skills */
+            url: string;
+            description?: string;
+        };
+        /** @description Never carries Env/Headers (encrypted secrets) or connector_kind (org-specific) - see Manifest's own doc comment. */
+        BundleManifestMCPServer: {
+            /** @example internal-jira */
+            name: string;
+            display_name?: string;
+            /** @enum {string} */
+            server_type?: "stdio" | "http" | "sse" | "websocket";
+            command?: string;
+            args?: string[];
+            url?: string;
+            timeout_secs?: number;
+            icon?: string;
+        };
+        BundleManifestHook: {
+            /** @example block-rm */
+            name: string;
+            matcher?: string;
+            /** @description Exported in full - authored source code */
+            command: string;
+            timeout_secs?: number;
+        };
+        BundleManifestAgentPreset: {
+            /** @example researcher */
+            slug: string;
+            name?: string;
+            when_to_use?: string;
+            system_prompt: string;
+            model?: string;
+            tools?: string[];
+            disallowed_tools?: string[];
+            max_turns?: number;
+            permission_mode?: string;
+            isolation?: string;
+            mcp_servers?: string[];
+            icon?: string;
+        };
+        /** @description The portable exported/imported unit - each item is the resource's own definition fields, never a database ID (an ID is only meaningful inside the organization that created it). */
+        BundleManifest: {
+            /** @example Jira Integration */
+            name: string;
+            description?: string;
+            mcp_servers?: components["schemas"]["BundleManifestMCPServer"][];
+            hooks?: components["schemas"]["BundleManifestHook"][];
+            skills?: components["schemas"]["BundleManifestSkillRepo"][];
+            agent_presets?: components["schemas"]["BundleManifestAgentPreset"][];
+        };
+        ExportBundleInput: {
+            organization_id: string;
+            /** @example Jira Integration */
+            name: string;
+            description?: string;
+            skill_repo_ids?: string[];
+            mcp_server_ids?: string[];
+            agent_preset_ids?: string[];
+            hook_config_ids?: string[];
+        };
+        ImportBundleInput: {
+            organization_id: string;
+            manifest: components["schemas"]["BundleManifest"];
+        };
+        BundleImportedItem: {
+            /** @enum {string} */
+            resource_type?: "mcp_server_config" | "hook_config" | "skill_repo" | "agent_preset";
+            resource_id?: string;
+            name?: string;
+        };
+        BundleImportItemError: {
+            /** @enum {string} */
+            resource_type?: "mcp_server_config" | "hook_config" | "skill_repo" | "agent_preset";
+            name?: string;
+            error?: string;
+        };
+        SSOProviderMatch: {
+            provider_id?: string;
+            /** @enum {string} */
+            kind?: "oidc" | "saml";
+            name?: string;
+            organization_name?: string;
+        };
+        BundleProvenanceEntry: {
+            bundle_import_id?: string;
+            bundle_name?: string;
+        };
+        /** @description What an import actually did - never a generic "ok" the caller must guess from. */
+        BundleImportResult: {
+            bundle_import_id?: string;
+            created?: components["schemas"]["BundleImportedItem"][];
+            failed?: components["schemas"]["BundleImportItemError"][];
+        };
         MCPProbeResult: {
             /**
              * @description "none": the target answered successfully, nothing more needed. "credential": it responded 401/403 - supply one and re-probe to confirm before saving. "unknown": an ambiguous response or a transport failure - see detail, no credential requirement was confirmed either way.
@@ -4553,6 +4774,15 @@ export interface components {
         };
         /** @description Rate limit exceeded */
         TooManyRequests: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description Authenticated, but this session hasn't proven fresh identity recently enough for this action - see POST /auth/step-up/password (or /auth/step-up/oidc, /auth/step-up/saml). Distinct from Unauthorized/Forbidden: the body's error.code is "step_up_required", telling a client to prompt for re-auth rather than a login screen or a permission-denied message. */
+        StepUpRequired: {
             headers: {
                 [name: string]: unknown;
             };
@@ -6348,6 +6578,60 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
         };
     };
+    stepUpWithPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    current_password: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Session marked freshly authenticated */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    lookupSSOProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: email */
+                    email: string;
+                };
+            };
+        };
+        responses: {
+            /** @description A matching provider, or an empty object if none matched */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SSOProviderMatch"] | Record<string, never>;
+                };
+            };
+            400: components["responses"]["BadRequest"];
+        };
+    };
     getMyPreferences: {
         parameters: {
             query?: never;
@@ -7731,6 +8015,41 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
         };
     };
+    probeProviderSetting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @example openai */
+                    provider: string;
+                    base_url?: string;
+                    api_key: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Probe result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status?: "ok" | "invalid_credential" | "unknown" | "unsupported";
+                        detail?: string;
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
     listWebSearchProviderSettings: {
         parameters: {
             query?: {
@@ -8209,6 +8528,92 @@ export interface operations {
             };
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    exportBundle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExportBundleInput"];
+            };
+        };
+        responses: {
+            /** @description Portable bundle manifest */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BundleManifest"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    importBundle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportBundleInput"];
+            };
+        };
+        responses: {
+            /** @description Import result - what was created and what failed, explicitly */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BundleImportResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    resolveBundleProvenance: {
+        parameters: {
+            query: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+                resource_type: "mcp_server_config" | "hook_config" | "skill_repo" | "agent_preset";
+                /** @description Comma-separated resource IDs. */
+                resource_ids: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Provenance map, keyed by resource ID */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        provenance?: {
+                            [key: string]: components["schemas"]["BundleProvenanceEntry"];
+                        };
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
     listCorpora: {

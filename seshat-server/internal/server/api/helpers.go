@@ -62,6 +62,15 @@ func writeControlPlaneError(w http.ResponseWriter, err error) {
 		writeJSONError(w, http.StatusConflict, typed.Message)
 	case "not_found":
 		writeJSONError(w, http.StatusNotFound, typed.Message)
+	case "step_up_required":
+		// The only Kind whose response body carries a machine-readable
+		// "code" field - see apperr.StepUpRequired's doc comment. Every
+		// other Kind keeps the plain {"error":{"message":...}} shape
+		// unchanged, so no existing consumer that reads only .error.message
+		// is affected.
+		writeJSON(w, http.StatusPreconditionRequired, map[string]any{
+			"error": map[string]any{"message": typed.Message, "code": "step_up_required"},
+		})
 	default:
 		writeJSONError(w, http.StatusInternalServerError, typed.Message)
 	}

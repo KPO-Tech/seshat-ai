@@ -11,8 +11,10 @@ import {
 } from '@/api/agentPresets'
 import { useMCPServerConfigsList } from '@/api/mcpServerConfigs'
 import { getErrorMessage } from '@/api/errors'
+import { useBundleProvenance } from '@/api/bundles'
 import { PageHeader } from '@/components/PageHeader'
 import { ConsoleTable } from '@/components/ConsoleTable'
+import { ProvenanceTag } from '@/components/ProvenanceTag'
 import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
 import { isolationModeOptions, permissionModeOptions } from '@/lib/runtimeOptions'
 import { monoStack, palette } from '@/theme/tokens'
@@ -24,6 +26,11 @@ export function AgentPresetsPage() {
   const createPreset = useCreateAgentPreset()
   const updatePreset = useUpdateAgentPreset()
   const deletePreset = useDeleteAgentPreset()
+  const provenance = useBundleProvenance(
+    organizationId ?? undefined,
+    'agent_preset',
+    (data ?? []).map((r) => r.id!).filter(Boolean),
+  )
 
   const columns: TableProps<AgentPreset>['columns'] = [
     {
@@ -61,6 +68,14 @@ export function AgentPresetsPage() {
       key: 'enabled',
       width: 110,
       render: (value: boolean | undefined) => (value === false ? <Tag>Disabled</Tag> : <Tag color="green">Enabled</Tag>),
+    },
+    {
+      title: 'Provenance',
+      key: 'provenance',
+      width: 160,
+      render: (_, record) => (
+        <ProvenanceTag createdByUserId={record.created_by_user_id} provenance={record.id ? provenance.data?.[record.id] : undefined} />
+      ),
     },
     {
       title: '',

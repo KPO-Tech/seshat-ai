@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/bundles"
 )
@@ -85,4 +86,33 @@ func (app *App) handleBundlesImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, result)
+}
+
+// handleBundlesProvenance — GET /api/v1/bundles/provenance. Given a
+// resource_type and a comma-separated resource_ids, reports which of those
+// (normally exactly the IDs a registry's own List endpoint just returned to
+// this same caller) were created via a bundle import and by which one - the
+// third provenance signal alongside a registry's own already-present
+// CreatedByUserID and Source fields. See bundles.Service.ResolveProvenance.
+func (app *App) handleBundlesProvenance(w http.ResponseWriter, r *http.Request) {
+	principal, ok := authPrincipalFromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "missing principal")
+		return
+	}
+	organizationID := strings.TrimSpace(r.URL.Query().Get("organization_id"))
+	resourceType := strings.TrimSpace(r.URL.Query().Get("resource_type"))
+	var resourceIDs []string
+	for _, id := range strings.Split(r.URL.Query().Get("resource_ids"), ",") {
+		id = strings.TrimSpace(id)
+		if id != "" {
+			resourceIDs = append(resourceIDs, id)
+		}
+	}
+	provenance, err := app.backend.Bundles.ResolveProvenance(r.Context(), principal, organizationID, resourceType, resourceIDs)
+	if err != nil {
+		writeBundlesError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"provenance": provenance})
 }

@@ -55,13 +55,12 @@ type UpdateWorkspaceParams struct {
 // Service is a thin orchestrator over an injected Provider (Login/Register/
 // Logout/ResolvePrincipal/Users/Organizations — local or remote depending on
 // mode), plus identity-adjacent concerns that always stay local regardless of
-// mode: workspaces, API keys, group-based permission flags, and rich profile
-// fields that have no seshat-server equivalent.
+// mode: workspaces, API keys, and rich profile fields that have no
+// seshat-server equivalent.
 type Service struct {
 	provider Provider
 	identity *db.IdentityStore // workspaces + profile/settings: always local
 	apiKeys  *db.APIKeyStore   // always local
-	groups   *db.GroupStore    // always local, distinct concept from seshat-server's Group
 	config   ServiceConfig
 	// policies is this device's last-synced desktop policy bundle - nil-safe
 	// (a nil *cloudautomation.PolicyStore pointer used via a nil check, not a nil
@@ -70,12 +69,11 @@ type Service struct {
 	policies *cloudautomation.PolicyStore
 }
 
-func NewService(provider Provider, identity *db.IdentityStore, apiKeys *db.APIKeyStore, groups *db.GroupStore, cfg ServiceConfig, policies *cloudautomation.PolicyStore) *Service {
+func NewService(provider Provider, identity *db.IdentityStore, apiKeys *db.APIKeyStore, cfg ServiceConfig, policies *cloudautomation.PolicyStore) *Service {
 	return &Service{
 		provider: provider,
 		identity: identity,
 		apiKeys:  apiKeys,
-		groups:   groups,
 		config:   cfg,
 		policies: policies,
 	}
@@ -490,19 +488,4 @@ func (s *Service) UpdateUserSettings(ctx context.Context, userID string, setting
 		return nil, bkerr.Internal("failed to update settings", err)
 	}
 	return updated, nil
-}
-
-// GetEffectivePermissions returns the union of all group permissions for a
-// user. Always local — seshat-server's Group is a distinct concept (org-scoped
-// policy-binding subject, not a local feature-flag bundle); see
-// helps/seshat-architecture-target.md §2b.
-func (s *Service) GetEffectivePermissions(ctx context.Context, userID string) (db.GroupPermissions, error) {
-	if s == nil || s.groups == nil {
-		return db.DefaultGroupPermissions(), nil
-	}
-	perms, err := s.groups.GetEffectivePermissions(ctx, userID, db.DefaultGroupPermissions())
-	if err != nil {
-		return db.DefaultGroupPermissions(), bkerr.Internal("failed to get permissions", err)
-	}
-	return perms, nil
 }

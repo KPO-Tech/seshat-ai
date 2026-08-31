@@ -7,7 +7,10 @@ import (
 	"strings"
 	"time"
 
+	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/http"
+	cloudknowledge "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/knowledge"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	ragembedder "github.com/KPO-Tech/seshat/pkg/rag/embedder"
 )
@@ -52,31 +55,46 @@ func (a *App) handleEmbedderConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tail := strings.TrimRight(r.URL.Path, "/")
+
+	// POST .../test and .../detect-models are stateless probes against an
+	// explicit or DB-defaulted provider/base_url/model - always local, even
+	// when connected (see handleEmbedderConfigConnected's doc comment for
+	// why plain GET/PUT below don't share this store).
+	if strings.HasSuffix(tail, "/test") || strings.HasSuffix(tail, "/detect-models") {
+		store := a.embedderStore
+		if store == nil {
+			writeBackendError(w, bkerr.Unavailable("embedder config store not available", nil))
+			return
+		}
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		if strings.HasSuffix(tail, "/test") {
+			a.handleEmbedderTest(w, r, store)
+		} else {
+			a.handleEmbedderDetectModels(w, r, store)
+		}
+		return
+	}
+
+	// Once connected to an organization server, the embedder card edits the
+	// organization's real singleton setting (seshat-server's
+	// knowledge.EmbedderSetting, the same one seshat-console's
+	// EmbedderSettingsPage.tsx edits) instead of this device's own local
+	// row - exactly like /corpora already does via internal/knowledge.Backend's
+	// swap in bootstrap.go. This used to always stay local even when
+	// connected, silently duplicating the org's real setting instead of
+	// reading/writing it - see docs/helps/... "Admin Console" architecture item.
+	if a.connectedServerURL != "" {
+		a.handleEmbedderConfigConnected(w, r, principal)
+		return
+	}
+
 	store := a.embedderStore
 	if store == nil {
 		writeBackendError(w, bkerr.Unavailable("embedder config store not available", nil))
-		return
-	}
-
-	tail := strings.TrimRight(r.URL.Path, "/")
-
-	// POST .../test
-	if strings.HasSuffix(tail, "/test") {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		a.handleEmbedderTest(w, r, store)
-		return
-	}
-
-	// POST .../detect-models
-	if strings.HasSuffix(tail, "/detect-models") {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		a.handleEmbedderDetectModels(w, r, store)
 		return
 	}
 
@@ -115,6 +133,80 @@ func (a *App) handleEmbedderConfig(w http.ResponseWriter, r *http.Request) {
 
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+// handleEmbedderConfigConnected serves GET/PUT /api/v1/settings/embedder
+// against seshat-server's org-wide embedder setting once connected. /test
+// and /detect-models stay on the local store above - they're stateless
+// probes, and the caller (KnowledgeView.tsx) already sends explicit
+// provider/base_url/model values from its loaded form state rather than
+// relying on a server-side fallback.
+func (a *App) handleEmbedderConfigConnected(w http.ResponseWriter, r *http.Request, principal *backendauth.Principal) {
+	organizationID := principal.OrganizationID()
+	if organizationID == "" {
+		writeJSONError(w, http.StatusBadRequest, "no organization for this account")
+		return
+	}
+	client := cloudknowledge.NewClient(a.connectedServerURL)
+	token := principal.AuthSession.ID
+
+	switch r.Method {
+	case http.MethodGet:
+		setting, err := client.GetOrgEmbedderSetting(r.Context(), token, organizationID)
+		if err != nil {
+			writeBackendError(w, cloudhttp.Translate(err))
+			return
+		}
+		writeJSON(w, http.StatusOK, orgEmbedderSettingToResponse(setting))
+
+	case http.MethodPut:
+		var body struct {
+			Provider string `json:"provider"`
+			BaseURL  string `json:"base_url"`
+			APIKey   string `json:"api_key"`
+			Model    string `json:"model"`
+		}
+		if !decodeJSONBody(w, r, &body) {
+			return
+		}
+		setting, err := client.SetOrgEmbedderSetting(r.Context(), token, cloudknowledge.SetOrgEmbedderSettingParams{
+			OrganizationID: organizationID,
+			Provider:       body.Provider,
+			Model:          body.Model,
+			BaseURL:        body.BaseURL,
+			APIKey:         body.APIKey,
+		})
+		if err != nil {
+			writeBackendError(w, cloudhttp.Translate(err))
+			return
+		}
+		writeJSON(w, http.StatusOK, orgEmbedderSettingToResponse(setting))
+
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+// orgEmbedderSettingToResponse adapts seshat-server's singleton setting
+// shape onto the same wire contract this endpoint already used locally, so
+// KnowledgeView.tsx needs no changes. The org setting has no has_api_key or
+// enabled concept of its own (it's just used once configured) - Enabled
+// defaults true, and HasAPIKey stays false since seshat-server never
+// echoes back whether a key is stored (only whether it's a request that
+// clears/replaces one) - this only affects the "leave blank to keep
+// current key" hint's accuracy, not the actual save semantics (an empty
+// api_key on PUT already means "keep existing" on seshat-server's side).
+func orgEmbedderSettingToResponse(s *cloudknowledge.OrgEmbedderSetting) embedderConfigResponse {
+	if s == nil {
+		return embedderConfigResponse{Provider: "openai", Enabled: true}
+	}
+	return embedderConfigResponse{
+		Provider:     s.Provider,
+		BaseURL:      s.BaseURL,
+		Model:        s.Model,
+		Enabled:      true,
+		IsConfigured: s.BaseURL != "" && s.Model != "",
 	}
 }
 

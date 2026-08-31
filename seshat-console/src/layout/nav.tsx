@@ -362,6 +362,12 @@ export function getSecondaryNavItems(pathname: string, organizationId: string | 
         matchPrefix: `/orgs/${organizationId}/automation/hooks`,
       },
       {
+        key: 'org-automation-bundles',
+        label: 'Bundles',
+        path: `/orgs/${organizationId}/automation/bundles`,
+        matchPrefix: `/orgs/${organizationId}/automation/bundles`,
+      },
+      {
         key: 'org-automation-jobs',
         label: 'Jobs',
         path: `/orgs/${organizationId}/automation/jobs`,

@@ -8,6 +8,7 @@ import {
   Earth,
   Flashlamp,
   LinkCloud,
+  Lock,
   Peoples,
   Robot,
   Shield,
@@ -20,16 +21,19 @@ import { useUIStore } from '@/stores/ui'
 import { api } from '@/api/client'
 import { WorkspacePage } from '@/pages/workspace'
 import type { AdminOrganization } from '@/api/types'
-import { ProvidersView, PROVIDERS_CSS } from '@/pages/settings/ProvidersView'
+import { PROVIDERS_CSS } from '@/pages/settings/ProvidersView'
+import { AdminProvidersView } from '@/pages/admin/AdminProvidersView'
+import { AdminWebSearchView } from '@/pages/admin/AdminWebSearchView'
+import { AdminTeamsView } from '@/pages/admin/AdminTeamsView'
+import { AdminUsersView } from '@/pages/admin/AdminUsersView'
+import { AdminDesktopPoliciesView } from '@/pages/admin/AdminDesktopPoliciesView'
+import { AdminAgentPresetsView } from '@/pages/admin/AdminAgentPresetsView'
 import { KnowledgeView } from '@/pages/settings/KnowledgeView'
 import { MultimodalView, MULTIMODAL_CSS } from '@/pages/settings/CapabilitiesViews'
-import { WebSearchView } from '@/pages/settings/WebSearchView'
 import { RuntimeView } from '@/pages/settings'
 import {
   AdminAuditView,
-  AdminGroupsView,
   AdminQuotasView,
-  AdminUsersView,
   ADMIN_CSS,
 } from '@/pages/settings/AdminViews'
 import { SETTINGS_SHARED_CSS } from '@/pages/settings/SettingsNav'
@@ -37,8 +41,9 @@ import { SETTINGS_SHARED_CSS } from '@/pages/settings/SettingsNav'
 type AdminTab =
   | 'overview'
   | 'users'
-  | 'groups'
+  | 'teams'
   | 'audit'
+  | 'desktopPolicies'
   | 'quotas'
   | 'agents'
   | 'documents'
@@ -61,9 +66,15 @@ const ADMIN_GROUPS: Array<{ title: string; items: AdminItem[] }> = [
     items: [
       { id: 'overview', label: 'Overview', icon: <Shield size={15} /> },
       { id: 'users', label: 'Users', icon: <User size={15} /> },
-      { id: 'groups', label: 'Groups', icon: <Peoples size={15} /> },
+      { id: 'teams', label: 'Teams', icon: <Peoples size={15} /> },
       { id: 'audit', label: 'Audit Logs', icon: <Info size={15} /> },
-      { id: 'quotas', label: 'Quotas', icon: <Flashlamp size={15} /> },
+      { id: 'desktopPolicies', label: 'Desktop Policies', icon: <Lock size={15} /> },
+    ],
+  },
+  {
+    title: 'Your Account',
+    items: [
+      { id: 'quotas', label: 'My Usage', icon: <Flashlamp size={15} /> },
     ],
   },
   {
@@ -91,12 +102,45 @@ const ADMIN_GROUPS: Array<{ title: string; items: AdminItem[] }> = [
   },
 ]
 
-const WORKSPACE_TABS = new Set<AdminTab>(['agents', 'documents', 'tools'])
+const WORKSPACE_TABS = new Set<AdminTab>(['documents', 'tools'])
 
-// Tabs whose data (users, groups, audit trail, usage quotas) only exists at
-// the organization level — meaningless without a connected seshat-server,
-// unlike Workspace/AI Core/Runtime which configure this local install.
-const ORGANIZATION_TABS = new Set<AdminTab>(['users', 'groups', 'audit', 'quotas'])
+// Tabs whose data only exists at the organization level — meaningless
+// without a connected seshat-server, unlike Workspace/Knowledge/Multimodal/
+// Runtime which configure this local install. Audit Logs is deliberately
+// NOT here despite looking like an organization concept: it always shows
+// something (this device's own local activity log when standalone, the
+// org's real audit trail once connected and admin - see
+// internal/api/audit.go), so gating it behind "requires an organization
+// server" would be actively misleading. Users/Providers/Web Search/Teams
+// all genuinely have nothing to show or configure without a connected
+// organization: Providers/Web Search write straight to seshat-server's
+// organization-wide settings (personal keys stay in Settings, unaffected),
+// and Teams replaced the old local "Groups" tab (a per-device feature-
+// permission bundle with no organization concept at all) with a real proxy
+// onto seshat-server's iam.Group - the same "Teams" store seshat-console's
+// TeamsPage.tsx edits (see docs/helps/... "Admin Console" architecture
+// item). Desktop Policies joined for the same reason: it manages
+// seshat-server's real iam.DesktopPolicyBinding rows (the same ones
+// seshat-console's DesktopPoliciesPage.tsx edits) - there is no local
+// equivalent, only the read-only resolved bundle every device already syncs
+// via /automation/status (see hooks/useDesktopPolicies.ts). Agents joined
+// too: it used to be a WORKSPACE_TABS pass-through showing this device's own
+// personal agents (not an admin concern at all, and already available from
+// the regular Workspace nav, unaffected by this change) - it's now
+// AdminAgentPresetsView, real CRUD on the organization's shared agent
+// preset catalog (seshat-server's agentregistry.AgentPreset, the same store
+// seshat-console's AgentPresetsPage.tsx edits and this device's own Agents
+// view already reads read-only as an enrichment). Quotas is ALSO
+// deliberately not here, for a different reason than Audit Logs: `GET
+// /quotas` (handleQuotas, no admin check at all) always returns the
+// caller's own personal usage counters — seshat-server's own
+// quotas.Service doc comment calls this domain "strictly personal, no
+// organization, no shared setting" (there is no org-aggregate quota concept
+// anywhere in the platform). It used to be miscategorized under
+// "Organization" and gated as if it needed a connected server, which was
+// simply wrong on both counts - it lives under its own "Your Account" group
+// instead now.
+const ORGANIZATION_TABS = new Set<AdminTab>(['users', 'providers', 'websearch', 'teams', 'desktopPolicies', 'agents'])
 
 type SystemStatus = { mode: 'standalone' | 'connected'; server_url?: string }
 
@@ -188,8 +232,9 @@ function OrganizationTabLocked({ onGoToSettings }: { onGoToSettings: () => void 
       <LinkCloud size={23} />
       <h2>This requires an organization server</h2>
       <p>
-        Users, groups, audit logs, and quotas are managed by your organization's Seshat Server.
-        Connect this machine to one in Settings → Cloud Automation to see and manage them.
+        Users, teams, desktop policies, agent presets, organization-wide providers, and the web search policy are
+        managed by your organization's Seshat Server. Connect this machine to one in Settings → Cloud Automation to
+        see and manage them.
       </p>
       <button className="admin-org-locked-cta" onClick={onGoToSettings}>
         <LinkCloud size={11} /> Go to Cloud Automation settings
@@ -201,16 +246,18 @@ function OrganizationTabLocked({ onGoToSettings }: { onGoToSettings: () => void 
 function AdminPanel({ activeTab }: { activeTab: AdminTab }) {
   if (activeTab === 'overview') return <AdminOverview />
   if (activeTab === 'users') return <AdminUsersView />
-  if (activeTab === 'groups') return <AdminGroupsView />
+  if (activeTab === 'teams') return <AdminTeamsView />
   if (activeTab === 'audit') return <AdminAuditView />
+  if (activeTab === 'desktopPolicies') return <AdminDesktopPoliciesView />
+  if (activeTab === 'agents') return <AdminAgentPresetsView />
   if (activeTab === 'quotas') return <AdminQuotasView />
-  if (activeTab === 'providers') return <ProvidersView />
+  if (activeTab === 'providers') return <AdminProvidersView />
   if (activeTab === 'knowledge') return <KnowledgeView />
   if (activeTab === 'multimodal') return <MultimodalView />
-  if (activeTab === 'websearch') return <WebSearchView />
+  if (activeTab === 'websearch') return <AdminWebSearchView />
   if (activeTab === 'runtime') return <RuntimeView />
   if (WORKSPACE_TABS.has(activeTab)) {
-    return <WorkspacePage key={activeTab} initialTab={activeTab as 'agents' | 'documents' | 'tools'} embedded />
+    return <WorkspacePage key={activeTab} initialTab={activeTab as 'documents' | 'tools'} embedded />
   }
   return null
 }
@@ -244,7 +291,8 @@ function AdminOverview() {
         </div>
       </header>
       <div className="admin-overview-grid">
-        <OverviewCard title="Organization" text="Current organization, members, groups, audit logs, and quotas." />
+        <OverviewCard title="Organization" text="Current organization, members, teams, audit logs, and desktop policies." />
+        <OverviewCard title="Your Account" text="Your own usage counters for this device - never a shared or organization-wide setting." />
         <OverviewCard title="Workspace" text="Agents, document collections, and MCP tools managed for the organization." />
         <OverviewCard title="AI Core" text="Provider credentials, knowledge infrastructure, and multimodal capabilities." />
         <OverviewCard title="Runtime" text="Web search policy, cloud automation, and local backend status." />

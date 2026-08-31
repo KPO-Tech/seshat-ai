@@ -3,6 +3,7 @@ package iam
 import (
 	"context"
 	"testing"
+	"time"
 )
 
 func TestDeleteProviderAndApplicationFlow(t *testing.T) {
@@ -66,5 +67,42 @@ func TestDeleteProviderAndApplicationFlow(t *testing.T) {
 	}
 	if _, err := service.GetProvider(context.Background(), principal, provider.ID); err == nil {
 		t.Fatal("expected deleted provider to be missing")
+	}
+}
+
+// TestDeleteProviderRequiresFreshAuth proves the step-up gate itself (see
+// docs/helps/audit-2026-08-29-openwork-den-comparison.md § 9) - deleting a
+// provider is rejected for a stale session even with full permission, and
+// the provider survives untouched.
+func TestDeleteProviderRequiresFreshAuth(t *testing.T) {
+	service := newTestService(t)
+
+	boot, err := service.Bootstrap(context.Background(), BootstrapParams{
+		Email: "admin@example.com", Password: "password123", DisplayName: "Admin",
+		OrganizationName: "Seshat", OrganizationSlug: "seshat",
+	})
+	if err != nil {
+		t.Fatalf("bootstrap: %v", err)
+	}
+	principal, err := service.ResolvePrincipal(context.Background(), boot.Token)
+	if err != nil {
+		t.Fatalf("resolve principal: %v", err)
+	}
+	orgID := boot.Organizations[0].ID
+
+	provider, err := service.CreateProvider(context.Background(), principal, CreateProviderParams{
+		OrganizationID: orgID, Name: "Google Workspace", Slug: "google-workspace",
+		Kind: "oidc", ClientID: "client-id", ClientSecret: "client-secret", IssuerURL: "https://accounts.google.com",
+	})
+	if err != nil {
+		t.Fatalf("create provider: %v", err)
+	}
+	principal.Session.ReauthenticatedAt = time.Now().UTC().Add(-stepUpFreshnessTTL - time.Minute)
+
+	if err := service.DeleteProvider(context.Background(), principal, provider.ID); err == nil {
+		t.Fatal("expected a stale session to be denied provider deletion")
+	}
+	if _, err := service.GetProvider(context.Background(), principal, provider.ID); err != nil {
+		t.Fatalf("expected the provider to still exist after a rejected deletion, got: %v", err)
 	}
 }

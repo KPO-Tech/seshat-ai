@@ -153,6 +153,22 @@ func TestBeginSAMLLoginRejectsNonLoopbackRedirect(t *testing.T) {
 	}
 }
 
+// TestBeginSAMLLoginAcceptsConsoleRedirectWhenConfigured mirrors the OIDC
+// equivalent - see docs/helps/audit-2026-08-29-openwork-den-comparison.md §
+// 9bis.
+func TestBeginSAMLLoginAcceptsConsoleRedirectWhenConfigured(t *testing.T) {
+	env := newSAMLTestEnv(t, nil)
+	const consoleOrigin = "https://console.internal.test"
+	env.service.SetMailer(nil, consoleOrigin)
+
+	if _, err := env.service.BeginSAMLLogin(context.Background(), env.providerID, consoleOrigin+"/auth/sso-callback"); err != nil {
+		t.Fatalf("expected a redirect_uri matching the configured public app URL to be accepted, got: %v", err)
+	}
+	if _, err := env.service.BeginSAMLLogin(context.Background(), env.providerID, "https://attacker.example.com/callback"); err == nil {
+		t.Fatal("expected a redirect_uri outside both loopback and the configured public app URL to still be rejected")
+	}
+}
+
 func TestBeginSAMLLoginRejectsUnknownProvider(t *testing.T) {
 	env := newSAMLTestEnv(t, nil)
 	if _, err := env.service.BeginSAMLLogin(context.Background(), "does-not-exist", "http://localhost:9999/callback"); err == nil {

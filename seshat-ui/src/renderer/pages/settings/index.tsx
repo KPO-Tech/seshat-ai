@@ -65,7 +65,7 @@ export function Settings() {
     system: '/admin?tab=runtime',
     'cloud-automation': '/admin?tab=runtime',
     'admin-users': '/admin?tab=users',
-    'admin-groups': '/admin?tab=groups',
+    'admin-groups': '/admin?tab=teams',
     'admin-organizations': '/admin?tab=organizations',
     'admin-workspaces': '/admin?tab=workspaces',
     'admin-audit': '/admin?tab=audit',

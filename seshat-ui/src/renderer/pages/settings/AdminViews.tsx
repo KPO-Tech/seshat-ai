@@ -1,26 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
-import { User, Sync, Left, Right, Caution } from '@icon-park/react'
+import { Sync, Left, Right, Caution } from '@icon-park/react'
 import { api, ApiError } from '@/api/client'
-import type { AdminGroup, AdminOrganization, AdminWorkspace } from '@/api/types'
+import type { AdminOrganization, AdminWorkspace } from '@/api/types'
 
 function loadErrorMessage(err: unknown, fallback: string): string {
   return err instanceof ApiError ? err.message : fallback
-}
-
-type AdminUser = {
-  id: string
-  email: string
-  display_name: string
-  status: string
-  roles: string[]
-  created_at: number
-}
-
-type UsersPage = {
-  users: AdminUser[]
-  total: number
-  page: number
-  per_page: number
 }
 
 type AuditEntry = {
@@ -54,131 +38,7 @@ type UsageSummary = {
   entries: UsageEntry[]
 }
 
-const PER_PAGE = 30
 const AUDIT_LIMIT = 50
-
-export function AdminUsersView() {
-  const [search, setSearch] = useState('')
-  const [page, setPage] = useState(1)
-  const [data, setData] = useState<UsersPage | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const load = useCallback(async (p: number, q: string) => {
-    setLoading(true)
-    setError(null)
-    try {
-      const params = new URLSearchParams({ page: String(p), per_page: String(PER_PAGE) })
-      if (q) params.set('search', q)
-      const res = await api.get<UsersPage>(`/users?${params}`)
-      setData(res)
-    } catch (err) {
-      setData(null)
-      setError(loadErrorMessage(err, 'Failed to load users.'))
-    } finally { setLoading(false) }
-  }, [])
-
-  useEffect(() => { load(page, search) }, [load, page, search])
-
-  function handleSearch(e: React.ChangeEvent<HTMLInputElement>) {
-    setSearch(e.target.value)
-    setPage(1)
-  }
-
-  const totalPages = data ? Math.ceil(data.total / PER_PAGE) : 1
-
-  return (
-    <div className="adm-root">
-      <style>{ADMIN_CSS}</style>
-      <header className="adm-header">
-        <div>
-          <h1>Users</h1>
-        </div>
-        <input
-          className="adm-search"
-          placeholder="Search by email or name…"
-          value={search}
-          onChange={handleSearch}
-        />
-      </header>
-
-      <div className="adm-table-wrap">
-        <table className="adm-table">
-          <thead>
-            <tr>
-              <th>User</th>
-              <th>Email</th>
-              <th>Status</th>
-              <th>Roles</th>
-              <th>Joined</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={5} className="adm-td-center"><Sync size={13} className="spin" /> Loading…</td></tr>
-            ) : error ? (
-              <tr><td colSpan={5} className="adm-td-center adm-error"><Caution size={13} /> {error}</td></tr>
-            ) : !data?.users.length ? (
-              <tr><td colSpan={5} className="adm-td-center adm-muted">No users found</td></tr>
-            ) : data.users.map((u) => (
-              <tr key={u.id}>
-                <td>
-                  <div className="adm-user-cell">
-                    <div className="adm-avatar"><User size={11} /></div>
-                    <span className="adm-user-name">{u.display_name || '—'}</span>
-                  </div>
-                </td>
-                <td className="adm-mono">{u.email}</td>
-                <td>
-                  <span className={`adm-status-badge ${u.status === 'active' ? 'adm-ok' : 'adm-inactive'}`}>
-                    {u.status}
-                  </span>
-                </td>
-                <td>
-                  <div className="adm-roles">
-                    {(u.roles ?? []).map((r) => (
-                      <span key={r} className="adm-role-chip">{r}</span>
-                    ))}
-                  </div>
-                </td>
-                <td className="adm-muted">{new Date(u.created_at * 1000).toLocaleDateString()}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {data && data.total > PER_PAGE && (
-        <div className="adm-pagination">
-          <button className="adm-page-btn" onClick={() => setPage((p) => p - 1)} disabled={page <= 1}>
-            <Left size={11} />
-          </button>
-          <span className="adm-page-info">Page {page} of {totalPages} ({data.total} users)</span>
-          <button className="adm-page-btn" onClick={() => setPage((p) => p + 1)} disabled={page >= totalPages}>
-            <Right size={11} />
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-export function AdminGroupsView() {
-  return (
-    <AdminResourceTable<AdminGroup>
-      title="Groups"
-      path="/groups"
-      rowsKey="groups"
-      emptyLabel="No groups found"
-      columns={[
-        { key: 'name', label: 'Group', render: (group) => <span className="adm-strong">{group.name}</span> },
-        { key: 'description', label: 'Description', render: (group) => group.description || '—' },
-        { key: 'permissions', label: 'Permissions', render: (group) => Object.keys(group.permissions ?? {}).length ? `${Object.keys(group.permissions).length} rules` : '—' },
-        { key: 'updated_at', label: 'Updated', render: (group) => new Date(group.updated_at).toLocaleDateString() },
-      ]}
-    />
-  )
-}
 
 export function AdminOrganizationsView() {
   return (
@@ -338,12 +198,15 @@ export function AdminQuotasView() {
     <div className="adm-root">
       <header className="adm-header">
         <div>
-          <h1>Usage &amp; Quotas</h1>
+          <h1>My Usage</h1>
         </div>
         <button className="adm-ghost-btn" onClick={load} disabled={loading}>
           <Sync size={11} className={loading ? 'spin' : ''} /> Refresh
         </button>
       </header>
+      <p className="adm-muted" style={{ margin: '-16px 0 4px', fontSize: 12 }}>
+        Your own usage counters on this device - always personal, never a shared or organization-wide setting.
+      </p>
 
       {loading ? (
         <div className="adm-empty"><Sync size={16} className="spin" /> Loading…</div>
@@ -455,6 +318,7 @@ function AdminResourceTable<T extends { id: string }>({
 export const ADMIN_CSS = `
 .adm-root { display: flex; flex-direction: column; gap: var(--space-7); width: 100%; min-width: 0; }
 .adm-header { min-height: 52px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-5); margin-bottom: 0; }
+.adm-header-actions { display: flex; align-items: center; gap: 8px; }
 .adm-header h1 { font-size: var(--font-size-base); font-weight: 700; margin: 0; color: var(--color-text); }
 .adm-header p { display: none; }
 .adm-ghost-btn { background: none; border: 1px solid var(--color-border); color: var(--color-text-secondary); font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 5px; cursor: pointer; padding: 5px 10px; border-radius: 6px; }
@@ -504,6 +368,19 @@ export const ADMIN_CSS = `
 .adm-quota-total { font-size: 24px; font-weight: 800; color: var(--color-text); margin-bottom: 12px; }
 .adm-quota-periods { display: flex; flex-direction: column; gap: 3px; }
 .adm-quota-period-row { display: flex; justify-content: space-between; font-size: 10px; padding: 2px 0; border-top: 1px solid var(--color-border-subtle); }
+
+.adm-primary-btn { background: var(--color-primary); border: none; color: white; font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 5px; cursor: pointer; padding: 6px 12px; border-radius: 6px; }
+.adm-primary-btn:hover { opacity: 0.9; }
+
+.adm-role-select { background: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-text); font-size: 11px; font-weight: 600; padding: 4px 8px; border-radius: 6px; font-family: inherit; }
+.adm-role-select:disabled { opacity: 0.5; cursor: default; }
+.adm-role-select--modal { width: 100%; background: var(--color-surface); border: 1.5px solid var(--color-border); padding: 9px 12px; border-radius: 10px; color: var(--color-text); font-size: var(--font-size-sm); outline: none; font-family: inherit; }
+
+.adm-team-member-list { max-height: 220px; overflow-y: auto; border: 1px solid var(--color-border); border-radius: 7px; display: flex; flex-direction: column; }
+.adm-team-member-row { display: flex; align-items: center; gap: 8px; padding: 7px 10px; font-size: 11px; cursor: pointer; border-bottom: 1px solid var(--color-border-subtle); }
+.adm-team-member-row:last-child { border-bottom: none; }
+.adm-team-member-row:hover { background: var(--color-surface); }
+.adm-team-member-row input { flex-shrink: 0; }
 
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

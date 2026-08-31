@@ -118,7 +118,7 @@ export function useChat(sessionId: string) {
   // Without batching, every SSE token triggers a full store.updateMessage call.
   const syncRafRef = useRef<number | null>(null)
 
-  const sendMessage = useCallback(async (text: string, opts?: { corpusId?: string | null; fileIds?: string[]; attachments?: MessageAttachment[]; agentSlug?: string }) => {
+  const sendMessage = useCallback(async (text: string, opts?: { corpusId?: string | null; fileIds?: string[]; attachments?: MessageAttachment[]; agentSlug?: string; providerSettingId?: string | null; modelId?: string | null }) => {
     const store = useSessionStore.getState()
     if (store.isSessionStreaming(sessionId)) return
 
@@ -200,6 +200,8 @@ export function useChat(sessionId: string) {
             ...(opts?.corpusId ? { corpus_id: opts.corpusId } : {}),
             ...(opts?.fileIds?.length ? { file_ids: opts.fileIds } : {}),
             ...(opts?.agentSlug ? { agent_slug: opts.agentSlug } : {}),
+            ...(opts?.providerSettingId ? { provider_setting_id: opts.providerSettingId } : {}),
+            ...(opts?.modelId ? { model_id: opts.modelId } : {}),
           }
           if (window.nexus?.http) {
             await consumeElectronStream(

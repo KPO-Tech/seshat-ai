@@ -147,6 +147,8 @@ func (d *DB) Migrate() error {
 		&PasswordResetToken{},
 		&OIDCLoginState{},
 		&SAMLAuthRequestState{},
+		&OIDCStepUpState{},
+		&SAMLStepUpState{},
 		&ProspectingSweep{},
 		&ProspectingBusiness{},
 		&ProspectingCache{},

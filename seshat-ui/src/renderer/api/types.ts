@@ -206,6 +206,21 @@ export type ProviderCatalogEntry = {
   models: ProviderCatalogModel[]
 }
 
+// OrgProviderSetting is the organization-wide record backing Admin
+// Console's Providers tab (/admin/provider-settings) - deliberately
+// distinct from ProviderSetting above, which is this device's own personal
+// key (per-user, /settings/providers). Mirrors seshat-server's
+// automation.ProviderSetting exactly; never carries an API key.
+export type OrgProviderSetting = {
+  id: string
+  organization_id: string
+  created_by_user_id: string
+  provider: string
+  default_model: string
+  base_url?: string
+  is_default: boolean
+}
+
 export type User = {
   id: string
   email: string
@@ -428,13 +443,111 @@ export type SessionSearchResult = {
   updated_at: number
 }
 
-export type AdminGroup = {
+// OrgTeam is the organization-wide record backing Admin Console's Teams
+// tab (/admin/teams) - replaced the old local, per-device "Groups" feature-
+// permission bundle. Mirrors seshat-server's iam.Group exactly; membership
+// is a plain list of user IDs, and permissions are assigned separately
+// through policies on seshat-server, not carried on the team itself.
+export type OrgTeam = {
   id: string
+  organization_id: string
   name: string
+  slug: string
   description: string
-  permissions: Record<string, unknown>
+  member_user_ids: string[]
   created_at: string
   updated_at: string
+  scim_external_id?: string
+}
+
+// OrgMembership is the organization-wide record backing Admin Console's
+// Users tab (/admin/memberships) - deliberately NOT built on the platform-
+// wide /users resource, which requires the rare platform super-admin flag a
+// normal org admin never has. Mirrors seshat-server's iam.Membership; role
+// is the one field an org admin can actually change here, same as
+// seshat-console's MembershipsPage.tsx.
+export type OrgMembership = {
+  id: string
+  user_id: string
+  organization_id: string
+  role: string
+  status: string
+  pending_since?: string
+  created_at: string
+  permissions?: string[]
+  user_email?: string
+  user_display_name?: string
+  user_is_admin?: boolean
+  scim_external_id?: string
+}
+
+// OrgRole is the built-in + custom role catalog for an organization
+// (/admin/roles, read-only here) - used only to populate the role picker
+// when editing a membership. Creating/editing roles stays console-only
+// (RolesPage.tsx).
+export type OrgRole = {
+  code: string
+  name: string
+  description?: string
+  permissions?: string[]
+  system: boolean
+}
+
+// DesktopPolicy is one entry from seshat-server's fixed, code-defined
+// desktop policy catalog (/admin/desktop-policies/catalog) - not
+// organization-specific data, just a reference table of what CAN be
+// restricted.
+export type DesktopPolicy = {
+  code: string
+  admin_description: string
+  user_blocked_message: string
+  default_value: boolean
+}
+
+// OrgDesktopPolicyBinding is the organization-wide record backing Admin
+// Console's Desktop Policies tab (/admin/desktop-policy-bindings). These
+// bindings already actively control this exact device's behavior (see
+// hooks/useDesktopPolicies.ts, which reads the resolved bundle and locks
+// Settings/Providers accordingly) - this tab is what finally lets an org
+// admin see and manage them from the desktop app, mirroring
+// seshat-console's DesktopPoliciesPage.tsx.
+export type OrgDesktopPolicyBinding = {
+  id: string
+  organization_id: string
+  policy_code: string
+  subject_type: 'org' | 'role' | 'user' | 'group'
+  subject_id: string
+  value: boolean
+  created_at: string
+  updated_at: string
+}
+
+// OrgAgentPreset is the organization-wide record backing Admin Console's
+// Agents tab (/admin/agent-presets) - deliberately separate from this
+// device's own personal agents (Settings/Workspace → Agents, which also
+// shows this same catalog read-only as an enrichment - see
+// internal/agents.Service.ListOrganizationPresets). Mirrors seshat-server's
+// agentregistry.AgentPreset exactly; the same store seshat-console's
+// AgentPresetsPage.tsx edits.
+export type OrgAgentPreset = {
+  id: string
+  organization_id: string
+  created_by_user_id?: string
+  slug: string
+  name: string
+  when_to_use?: string
+  system_prompt?: string
+  model?: string
+  tools?: string[]
+  disallowed_tools?: string[]
+  max_turns?: number
+  permission_mode?: string
+  isolation?: string
+  mcp_servers?: string[]
+  icon?: string
+  enabled: boolean
+  created_at?: string
+  updated_at?: string
 }
 
 export type AdminOrganization = {

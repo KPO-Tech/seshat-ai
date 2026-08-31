@@ -53,3 +53,28 @@ func (c *Client) GetOrgPolicy(ctx context.Context, token, organizationID string)
 	}
 	return &result, nil
 }
+
+// UpsertOrgPolicyParams is Admin Console's write path for the organization's
+// web-search domain policy - see internal/api/admin_web_search.go. Unlike
+// provider settings, there is no org-wide web-search "provider" concept at
+// all on seshat-server (every web-search provider credential is always
+// personal, per user - see websearch.Service.UpsertProvider); the domain
+// policy is the only thing an admin can configure here.
+type UpsertOrgPolicyParams struct {
+	OrganizationID string
+	AllowedDomains []string
+	BlockedDomains []string
+}
+
+func (c *Client) UpsertOrgPolicy(ctx context.Context, token string, params UpsertOrgPolicyParams) (*OrgPolicy, error) {
+	var result OrgPolicy
+	body := map[string]any{
+		"organization_id": params.OrganizationID,
+		"allowed_domains": params.AllowedDomains,
+		"blocked_domains": params.BlockedDomains,
+	}
+	if _, err := cloudhttp.Do(ctx, c.httpClient, http.MethodPut, c.serverURL+"/api/v1/web-search-org-policy", token, body, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}

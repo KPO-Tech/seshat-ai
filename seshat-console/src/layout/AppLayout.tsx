@@ -3,7 +3,7 @@ import { Avatar, Button, Dropdown, Layout, Menu, Select, Space, Typography } fro
 import { ArrowLeftOutlined, LogoutOutlined, UserOutlined } from '@ant-design/icons'
 import { Outlet, matchPath, useLocation, useNavigate } from 'react-router'
 import { useOrganizationsList } from '@/api/organizations'
-import { useLogout } from '@/api/auth'
+import { useLogout, useOrgMode } from '@/api/auth'
 import {
   getActivePrimaryNavItem,
   getActiveSecondaryNavItem,
@@ -29,6 +29,7 @@ export function AppLayout() {
   const selectedOrganizationId = useWorkspaceOrganizationStore((state) => state.organizationId)
   const setSelectedOrganizationId = useWorkspaceOrganizationStore((state) => state.setOrganizationId)
   const { data: organizationsData } = useOrganizationsList({ sort: 'name', order: 'asc', limit: 200 })
+  const orgMode = useOrgMode()
 
   const organizations = organizationsData?.organizations ?? EMPTY_ORGANIZATIONS
   const routeOrganizationId = matchPath('/orgs/:organizationId/*', location.pathname)?.params.organizationId ?? null
@@ -89,6 +90,14 @@ export function AppLayout() {
   const secondaryNavItems = getSecondaryNavItems(location.pathname, workspaceOrganizationId)
   const activeSecondary = getActiveSecondaryNavItem(location.pathname, secondaryNavItems)
   const isAdmin = Boolean(user?.is_admin)
+  // The "Organizations" list only means anything when more than one can
+  // exist - see docs/helps/audit-2026-08-29-openwork-den-comparison.md,
+  // "org_mode" architecture item. /platform/organizations itself redirects
+  // away in single mode too (RedirectIfOrgModeSingle) - this just keeps it
+  // out of the sidebar in the first place. Assumes multi while org_mode is
+  // still unresolved (see useOrgMode's own doc comment).
+  const visiblePlatformNavItems =
+    orgMode === 'single' ? platformNavItems.filter((item) => item.key !== 'platform-organizations') : platformNavItems
   // A platform admin drilling into one organization gets that organization's
   // full nav as its own focused dashboard (everything Team & Access/AI
   // Config/... already has) instead of it being squeezed in alongside
@@ -124,7 +133,7 @@ export function AppLayout() {
             key: 'platform-group',
             type: 'group' as const,
             label: 'Platform',
-            children: platformNavItems.map((item) => ({ key: item.key, label: item.label, icon: item.icon })),
+            children: visiblePlatformNavItems.map((item) => ({ key: item.key, label: item.label, icon: item.icon })),
           },
         ]
       : []),
@@ -137,7 +146,7 @@ export function AppLayout() {
     ...workspaceNavItems.map((item) => ({ key: item.key, label: item.label, icon: item.icon })),
   ]
 
-  const primaryItems = [...(showPlatformGroup ? platformNavItems : []), ...organizationNavItems, ...workspaceNavItems]
+  const primaryItems = [...(showPlatformGroup ? visiblePlatformNavItems : []), ...organizationNavItems, ...workspaceNavItems]
 
   return (
     <Layout className="console-shell" style={{ height: '100vh', overflow: 'hidden', background: palette.canvas }}>
@@ -158,12 +167,12 @@ export function AppLayout() {
         <div
           className="console-brand"
           style={{
-            padding: '10px 18px',
+            padding: '0 18px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             borderBottom: `1px solid ${palette.borderSubtle}`,
-            minHeight: 56,
+            height: 56,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -187,11 +196,8 @@ export function AppLayout() {
               S
             </div>
             <div>
-              <div style={{ color: palette.ink, fontWeight: 700, fontSize: 14, letterSpacing: '-0.01em', lineHeight: 1.15 }}>
+              <div style={{ color: palette.ink, fontWeight: 700, fontSize: 14, letterSpacing: '-0.01em', lineHeight: 1.2 }}>
                 Seshat Console
-              </div>
-              <div style={{ fontSize: 10.5, color: palette.inkTertiary, letterSpacing: '0.04em', marginTop: 2 }}>
-                CONTROL PLANE
               </div>
             </div>
           </div>
@@ -203,7 +209,10 @@ export function AppLayout() {
               type="text"
               size="small"
               icon={<ArrowLeftOutlined style={{ fontSize: 11 }} />}
-              onClick={() => navigate('/platform/organizations')}
+              // Single mode has no organizations list to go back to (only
+              // one org ever exists) - go to the platform overview instead,
+              // the only other platform-level page still relevant.
+              onClick={() => navigate(orgMode === 'single' ? '/platform/overview' : '/platform/organizations')}
               style={{
                 color: palette.inkSecondary,
                 fontSize: 12,
@@ -214,7 +223,7 @@ export function AppLayout() {
                 background: 'rgba(255, 255, 255, 0.03)',
               }}
             >
-              Back to Organizations
+              {orgMode === 'single' ? 'Back to Platform' : 'Back to Organizations'}
             </Button>
           </div>
         )}
@@ -241,6 +250,7 @@ export function AppLayout() {
             background: palette.surface,
             display: 'grid',
             gridTemplateColumns: 'minmax(220px, 1fr) auto minmax(220px, 1fr)',
+            gridTemplateAreas: '"scope nav session"',
             alignItems: 'center',
             padding: '0 24px',
             borderBottom: `1px solid ${palette.border}`,
@@ -251,7 +261,7 @@ export function AppLayout() {
             gap: 16,
           }}
         >
-          <div className="console-topbar__scope" style={{ minWidth: 0, overflow: 'hidden' }}>
+          <div className="console-topbar__scope" style={{ minWidth: 0, overflow: 'hidden', gridArea: 'scope' }}>
             <Space size={10} align="center" wrap={false} style={{ maxWidth: '100%' }}>
               <span
                 style={{
@@ -279,7 +289,7 @@ export function AppLayout() {
           </div>
 
           {secondaryNavItems.length > 1 && (
-            <nav className="console-subnav-bar" aria-label="Section navigation">
+            <nav className="console-subnav-bar" aria-label="Section navigation" style={{ gridArea: 'nav' }}>
               {secondaryNavItems.map((item) => {
                 const isActive = activeSecondary?.key === item.key
                 return (
@@ -296,7 +306,7 @@ export function AppLayout() {
             </nav>
           )}
 
-          <div className="console-topbar__session">
+          <div className="console-topbar__session" style={{ gridArea: 'session' }}>
             {showWorkspaceOrganizationSwitcher && (
               <Select
                 size="small"

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useCallback, type ReactNode } from 'react
 import { useNavigate } from 'react-router'
 import {
   Plus, Play, PauseOne, Edit, Delete, History, Caution, LinkCloud,
-  CheckOne, Robot, Send, Download, PreviewOpen,
+  CheckOne, Robot, Send, Download, PreviewOpen, Setting,
 } from '@icon-park/react'
 import { api, ApiError } from '@/api/client'
 import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
@@ -109,7 +109,37 @@ function draftScheduleFromRequest(request: string): Pick<JobDraft, 'trigger_type
   return { trigger_type: 'cron', cron_expr: '0 9 * * 1' }
 }
 
-function draftAutomation(request: string, agents: Agent[], providers: ProviderSetting[]): JobDraft {
+// The planner's preferred provider/model is a per-device convenience, not
+// job data - persisted in localStorage rather than sent anywhere, same
+// pattern as other lightweight per-viewer preferences in this app.
+const PLANNER_PREFERENCE_KEY = 'seshat.scheduling-planner-preferred-model.v1'
+
+type PlannerPreference = { providerSettingId: string; modelId: string }
+
+function loadPlannerPreference(): PlannerPreference | null {
+  try {
+    const raw = localStorage.getItem(PLANNER_PREFERENCE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (typeof parsed?.providerSettingId === 'string' && typeof parsed?.modelId === 'string') return parsed
+    return null
+  } catch {
+    return null
+  }
+}
+
+function savePlannerPreference(pref: PlannerPreference | null) {
+  try {
+    if (pref) localStorage.setItem(PLANNER_PREFERENCE_KEY, JSON.stringify(pref))
+    else localStorage.removeItem(PLANNER_PREFERENCE_KEY)
+  } catch {
+    // best-effort only - a private window or blocked storage just means the
+    // planner falls back to the org default provider every time, same as
+    // before this preference existed at all.
+  }
+}
+
+function draftAutomation(request: string, agents: Agent[], providers: ProviderSetting[], preference: PlannerPreference | null): JobDraft {
   const text = request.toLowerCase()
   const selectedAgent =
     agents.find((agent) => text.includes(agent.slug.toLowerCase())) ??
@@ -117,7 +147,8 @@ function draftAutomation(request: string, agents: Agent[], providers: ProviderSe
     agents.find((agent) => agent.slug === 'automation-manager') ??
     agents.find((agent) => agent.source === 'user') ??
     agents[0]
-  const provider = providers.find((item) => item.is_default) ?? providers[0]
+  const preferredProvider = preference ? providers.find((item) => item.id === preference.providerSettingId) : undefined
+  const provider = preferredProvider ?? providers.find((item) => item.is_default) ?? providers[0]
   const schedule = draftScheduleFromRequest(request)
 
   return {
@@ -128,6 +159,7 @@ function draftAutomation(request: string, agents: Agent[], providers: ProviderSe
     prompt: `You are running a scheduled automation.\n\nUser request:\n${request.trim()}\n\nExecute the task carefully, summarize what was done, and include any errors or follow-up needed.`,
     agent_slug: selectedAgent?.slug,
     provider_setting_id: provider?.id,
+    model_id: preferredProvider ? preference?.modelId : undefined,
   }
 }
 
@@ -478,6 +510,8 @@ function AutomationPlannerPanel({ disabled, agents, providers, onDraft }: {
   onDraft: (draft: JobDraft) => void
 }) {
   const [request, setRequest] = useState('')
+  const [showSettings, setShowSettings] = useState(false)
+  const [preference, setPreference] = useState<PlannerPreference | null>(() => loadPlannerPreference())
   const canDraft = request.trim().length > 0 && !disabled
   const suggestions = [
     'Every Monday at 8, send a weekly operations report.',
@@ -487,17 +521,31 @@ function AutomationPlannerPanel({ disabled, agents, providers, onDraft }: {
 
   function handleDraft(value = request) {
     if (!value.trim() || disabled) return
-    onDraft(draftAutomation(value, agents, providers))
+    onDraft(draftAutomation(value, agents, providers, preference))
+  }
+
+  function handlePreferenceSaved(next: PlannerPreference | null) {
+    setPreference(next)
+    savePlannerPreference(next)
+    setShowSettings(false)
   }
 
   return (
     <aside className="sch-planner">
       <div className="sch-planner-head">
         <div className="sch-planner-icon"><Robot size={18} /></div>
-        <div>
+        <div className="sch-planner-head-copy">
           <h2>Automation Planner</h2>
           <p>Draft scheduled jobs with approval.</p>
         </div>
+        <button
+          type="button"
+          className="sch-planner-settings-btn"
+          onClick={() => setShowSettings(true)}
+          title="Choose the provider and model used to draft automations"
+        >
+          <Setting size={15} />
+        </button>
       </div>
 
       <div className="sch-planner-suggestions">
@@ -542,7 +590,100 @@ function AutomationPlannerPanel({ disabled, agents, providers, onDraft }: {
           <Send size={15} />
         </button>
       </div>
+
+      {showSettings && (
+        <PlannerSettingsModal
+          providers={providers}
+          preference={preference}
+          onClose={() => setShowSettings(false)}
+          onSaved={handlePreferenceSaved}
+        />
+      )}
     </aside>
+  )
+}
+
+function PlannerSettingsModal({ providers, preference, onClose, onSaved }: {
+  providers: ProviderSetting[]
+  preference: PlannerPreference | null
+  onClose: () => void
+  onSaved: (next: PlannerPreference | null) => void
+}) {
+  const [providerId, setProviderId] = useState(preference?.providerSettingId ?? '')
+  const [modelId, setModelId] = useState(preference?.modelId ?? '')
+  const [models, setModels] = useState<ProviderModel[]>([])
+  const [loadingModels, setLoadingModels] = useState(false)
+
+  useEffect(() => {
+    if (!providerId) { setModels([]); return }
+    let cancelled = false
+    setLoadingModels(true)
+    fetchProviderModels(providerId)
+      .then((result) => { if (!cancelled) setModels(result) })
+      .catch(() => { if (!cancelled) setModels([]) })
+      .finally(() => { if (!cancelled) setLoadingModels(false) })
+    return () => { cancelled = true }
+  }, [providerId])
+
+  useEffect(() => {
+    if (modelId && models.some((model) => model.model_id === modelId)) return
+    const def = models.find((model) => model.is_default) ?? models[0]
+    setModelId(def?.model_id ?? '')
+  }, [modelId, models])
+
+  function handleSave() {
+    onSaved(providerId && modelId ? { providerSettingId: providerId, modelId } : null)
+  }
+
+  function handleUseDefault() {
+    onSaved(null)
+  }
+
+  return (
+    <div className="sch-modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="sch-planner-settings-modal" role="dialog" aria-modal="true">
+        <div className="sch-modal-header">
+          <div>
+            <h2>Planner model</h2>
+            <p>Provider and model used to draft new automations. Leave unset to use your organization's default.</p>
+          </div>
+          <button className="sch-modal-close" onClick={onClose}><WindowCloseIcon size={13} /></button>
+        </div>
+        <div className="sch-planner-settings-body">
+          <div className="sch-field">
+            <label>Provider</label>
+            <select value={providerId} onChange={(e) => { setProviderId(e.target.value); setModelId('') }}>
+              <option value="">Organization default</option>
+              {providers.map((provider) => (
+                <option key={provider.id} value={provider.id}>{provider.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="sch-field">
+            <label>Model</label>
+            <select
+              value={modelId}
+              onChange={(e) => setModelId(e.target.value)}
+              disabled={!providerId || loadingModels || models.length === 0}
+            >
+              <option value="" disabled>
+                {!providerId ? 'Select a provider first' : loadingModels ? 'Loading models...' : 'Select a model...'}
+              </option>
+              {models.map((model) => (
+                <option key={model.model_id} value={model.model_id}>{model.display_name || model.model_id}</option>
+              ))}
+            </select>
+            {providerId && !loadingModels && models.length === 0 && (
+              <div className="sch-field-hint">No models found for this provider.</div>
+            )}
+          </div>
+        </div>
+        <div className="sch-modal-footer">
+          <button type="button" className="sch-modal-btn-cancel" onClick={handleUseDefault}>Use organization default</button>
+          <button type="button" className="sch-modal-btn-submit" disabled={!providerId || !modelId} onClick={handleSave}>Save</button>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -1253,6 +1394,39 @@ const CSS = `
   display: flex;
   align-items: flex-start;
   gap: 11px;
+}
+.sch-planner-head-copy {
+  flex: 1;
+  min-width: 0;
+}
+.sch-planner-settings-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-subtle);
+  background: transparent;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.sch-planner-settings-btn:hover {
+  background: var(--color-hover);
+  color: var(--color-text);
+}
+.sch-planner-settings-modal {
+  background: var(--color-surface); border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-xl); width: min(420px, calc(100vw - 48px));
+  display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+}
+.sch-planner-settings-body {
+  padding: 15px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
 }
 .sch-planner-icon {
   width: 36px;

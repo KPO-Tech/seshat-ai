@@ -266,8 +266,9 @@ export function WorkspacePage({ initialTab = 'agents', embedded = false }: Works
     }
   }
 
-  const userAgents    = agents.filter(a => a.source === 'user')
-  const builtinAgents = agents.filter(a => a.source !== 'user')
+  const userAgents         = agents.filter(a => a.source === 'user')
+  const organizationAgents = agents.filter(a => a.source === 'organization')
+  const builtinAgents      = agents.filter(a => a.source !== 'user' && a.source !== 'organization')
   const resourceTitle = RESOURCE_TABS.find((item) => item.id === tab)?.label ?? 'Workspace'
 
   function resetDocumentsDetail() {
@@ -395,7 +396,7 @@ export function WorkspacePage({ initialTab = 'agents', embedded = false }: Works
 
           {tab === 'agents' && view === 'grid' && (
             <AgentGrid
-              userAgents={userAgents} builtinAgents={builtinAgents}
+              userAgents={userAgents} organizationAgents={organizationAgents} builtinAgents={builtinAgents}
               loading={loading} error={error}
               onSelect={openAgent} onNew={openNew} onRefresh={loadAgents}
             />
@@ -457,14 +458,14 @@ function PlannedResourceTab() {
   )
 }
 
-function AgentGrid({ userAgents, builtinAgents, loading, error, onSelect, onNew, onRefresh }: {
-  userAgents: Agent[]; builtinAgents: Agent[]
+function AgentGrid({ userAgents, organizationAgents, builtinAgents, loading, error, onSelect, onNew, onRefresh }: {
+  userAgents: Agent[]; organizationAgents: Agent[]; builtinAgents: Agent[]
   loading: boolean; error: string | null
   onSelect: (a: Agent) => void; onNew: () => void; onRefresh: () => void
 }) {
   if (loading) return <div className="wk-center"><LoadingOne size={23} className="spin" /></div>
   if (error)   return <div className="wk-center"><Caution size={18} /><p>{error}</p></div>
-  const allAgents = [...userAgents, ...builtinAgents]
+  const allAgents = [...userAgents, ...organizationAgents, ...builtinAgents]
 
   return (
     <div className="wk-grid-root">
@@ -520,7 +521,9 @@ function AgentGrid({ userAgents, builtinAgents, loading, error, onSelect, onNew,
                 </div>
 
                 <div className="wk-agent-meta">
-                  <span className="wk-agent-chip">{agent.source === 'user' ? 'Private' : 'Built-in'}</span>
+                  <span className="wk-agent-chip">
+                    {agent.source === 'user' ? 'Private' : agent.source === 'organization' ? 'Organization' : 'Built-in'}
+                  </span>
                   <span className="wk-agent-chip">{agent.model || 'Default'}</span>
                   <span className={`wk-agent-health ${agent.enabled ? 'ok' : 'off'}`}>
                     <span />{agent.enabled ? 'Healthy' : 'Disabled'}

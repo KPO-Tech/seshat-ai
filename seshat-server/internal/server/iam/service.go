@@ -91,11 +91,12 @@ type Membership struct {
 }
 
 type Session struct {
-	ID        string    `json:"id"`
-	Token     string    `json:"token,omitempty"`
-	UserID    string    `json:"user_id"`
-	CreatedAt time.Time `json:"created_at"`
-	ExpiresAt time.Time `json:"expires_at"`
+	ID                string    `json:"id"`
+	Token             string    `json:"token,omitempty"`
+	UserID            string    `json:"user_id"`
+	CreatedAt         time.Time `json:"created_at"`
+	ExpiresAt         time.Time `json:"expires_at"`
+	ReauthenticatedAt time.Time `json:"reauthenticated_at"`
 }
 
 // Application models a client application managed by the control plane.
@@ -1038,11 +1039,12 @@ func (s *Service) newSession(userID string, now time.Time) (sdb.Session, string,
 		return sdb.Session{}, "", err
 	}
 	return sdb.Session{
-		Token:     sdb.HashOpaqueToken(rawToken),
-		ID:        sessionID,
-		UserID:    userID,
-		CreatedAt: now,
-		ExpiresAt: now.Add(s.sessionTTL),
+		Token:             sdb.HashOpaqueToken(rawToken),
+		ID:                sessionID,
+		UserID:            userID,
+		CreatedAt:         now,
+		ExpiresAt:         now.Add(s.sessionTTL),
+		ReauthenticatedAt: now,
 	}, rawToken, nil
 }
 
@@ -1212,7 +1214,10 @@ func toMembership(record sdb.Membership) Membership {
 }
 
 func toSession(record sdb.Session) Session {
-	return Session{ID: record.ID, UserID: record.UserID, CreatedAt: record.CreatedAt, ExpiresAt: record.ExpiresAt}
+	return Session{
+		ID: record.ID, UserID: record.UserID, CreatedAt: record.CreatedAt, ExpiresAt: record.ExpiresAt,
+		ReauthenticatedAt: record.ReauthenticatedAt,
+	}
 }
 
 func toApplication(gormDB *gorm.DB, record sdb.Application) Application {
@@ -1421,8 +1426,9 @@ func isUniqueConstraintError(err error) bool {
 // check in the API layer needs no changes.
 type Error = apperr.Error
 
-func ErrInvalidInput(message string) error { return apperr.InvalidInput(message) }
-func ErrUnauthorized(message string) error { return apperr.Unauthorized(message) }
-func ErrForbidden(message string) error    { return apperr.Forbidden(message) }
-func ErrConflict(message string) error     { return apperr.Conflict(message) }
-func ErrNotFound(message string) error     { return apperr.NotFound(message) }
+func ErrInvalidInput(message string) error   { return apperr.InvalidInput(message) }
+func ErrUnauthorized(message string) error   { return apperr.Unauthorized(message) }
+func ErrForbidden(message string) error      { return apperr.Forbidden(message) }
+func ErrConflict(message string) error       { return apperr.Conflict(message) }
+func ErrNotFound(message string) error       { return apperr.NotFound(message) }
+func ErrStepUpRequired(message string) error { return apperr.StepUpRequired(message) }

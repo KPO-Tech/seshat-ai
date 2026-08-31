@@ -1603,6 +1603,64 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
+  /api/v1/auth/step-up/password:
+    post:
+      operationId: stepUpWithPassword
+      tags: [users]
+      summary: Re-prove my identity with my current password
+      description: >-
+        Marks the caller's own already-existing session as freshly
+        authenticated (see docs/helps/audit-2026-08-29-openwork-den-comparison.md
+        § 9) - never rotates the password, never issues a new session.
+        Fails the same way a wrong password would for an account that has
+        no password it knows (OIDC/SAML/SCIM-provisioned, never used
+        "forgot password").
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password]
+              properties:
+                current_password: { type: string }
+      responses:
+        "204":
+          description: Session marked freshly authenticated
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/auth/sso-lookup:
+    post:
+      operationId: lookupSSOProvider
+      tags: [users]
+      summary: Discover whether an email's domain matches a configured SSO provider
+      description: >-
+        Public, unauthenticated - a pre-login discovery step (see
+        docs/helps/audit-2026-08-29-openwork-den-comparison.md § 9bis) so
+        the console's login page can offer "Continue with {IdP}" before the
+        visitor sees a password field. Never errors just because nothing
+        matched - returns an empty object in that case.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        "200":
+          description: A matching provider, or an empty object if none matched
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/SSOProviderMatch"
+                  - type: object
+        "400": { $ref: "#/components/responses/BadRequest" }
+
   /api/v1/users/me/preferences:
     get:
       operationId: getMyPreferences
@@ -2784,6 +2842,47 @@ paths:
               schema: { $ref: "#/components/schemas/DetectedProviderModels" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
+  /api/v1/provider-settings/probe:
+    post:
+      operationId: probeProviderSetting
+      tags: [provider-settings]
+      summary: Test an API key against its provider's real endpoint before saving it
+      description: >-
+        See docs/helps/audit-2026-08-29-openwork-den-comparison.md § 1. A
+        minimal live GET (a models-list endpoint, never a chat/completion
+        call - no tokens spent) using the exact auth header this provider
+        actually expects. Authenticated only, like detect-models - the
+        credential tested here may not be saved anywhere yet, so there is
+        no organization-scoped permission to check. status is one of ok
+        (credential accepted), invalid_credential (provider returned
+        401/403), unknown (network error or an unexpected response - never
+        confidently reported as either ok or invalid_credential), or
+        unsupported (this provider isn't a simple-API-key one, e.g. Ollama,
+        Codex, or a cloud-account provider like Bedrock/Vertex).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, api_key]
+              properties:
+                provider: { type: string, example: openai }
+                base_url: { type: string }
+                api_key: { type: string }
+      responses:
+        "200":
+          description: Probe result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [ok, invalid_credential, unknown, unsupported] }
+                  detail: { type: string }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
   /api/v1/web-search-provider-settings:
     get:
       operationId: listWebSearchProviderSettings
@@ -3218,6 +3317,101 @@ paths:
         "204": { description: Deleted }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/bundles/export:
+    post:
+      operationId: exportBundle
+      tags: [bundles]
+      summary: Export a chosen selection of skills/MCP servers/hooks/agent presets as one portable manifest
+      description: >-
+        Builds the manifest from the current rows of each of the four
+        registries, filtered to the given IDs - each registry's own List
+        method self-gates read permission, degrading to an empty list rather
+        than a 403, so a requested ID absent from that list (nonexistent or
+        inaccessible) is rejected as 404. Never includes MCP server
+        Env/Headers (encrypted secrets) or ConnectorKind (meaningless outside
+        the org). There is no server-side "bundle" record to fetch later -
+        the manifest only ever exists as this response.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExportBundleInput" }
+      responses:
+        "200":
+          description: Portable bundle manifest
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BundleManifest" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/bundles/import:
+    post:
+      operationId: importBundle
+      tags: [bundles]
+      summary: Import a manifest's items into an organization
+      description: >-
+        Preflights *_registry.manage for every category actually present in
+        the manifest before creating anything - a single missing permission
+        rejects the whole import, nothing created. Each item is then created
+        through its own registry's normal Create method, so a per-item
+        naming conflict is reported in `failed` without aborting the rest of
+        the manifest - never a silent partial import. Every row actually
+        created is tagged into a BundleImport record for later traceability.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ImportBundleInput" }
+      responses:
+        "200":
+          description: Import result - what was created and what failed, explicitly
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BundleImportResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/bundles/provenance:
+    get:
+      operationId: resolveBundleProvenance
+      tags: [bundles]
+      summary: Report which of the given resource IDs were created by a bundle import, and by which one
+      description: >-
+        Membership-only check - this only ever reveals which of the caller's
+        own already-visible rows (normally exactly the IDs a registry's own
+        List endpoint just returned) came from a bundle import, the third
+        provenance signal alongside a registry's own CreatedByUserID/Source
+        fields. A resource ID absent from the response was never imported
+        via a bundle.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+        - name: resource_type
+          in: query
+          required: true
+          schema: { type: string, enum: [mcp_server_config, hook_config, skill_repo, agent_preset] }
+        - name: resource_ids
+          in: query
+          required: true
+          description: Comma-separated resource IDs.
+          schema: { type: string }
+      responses:
+        "200":
+          description: Provenance map, keyed by resource ID
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  provenance:
+                    type: object
+                    additionalProperties: { $ref: "#/components/schemas/BundleProvenanceEntry" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
   /api/v1/knowledge/corpora:
     get:
@@ -4766,6 +4960,17 @@ components:
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
+    StepUpRequired:
+      description: >-
+        Authenticated, but this session hasn't proven fresh identity
+        recently enough for this action - see POST
+        /auth/step-up/password (or /auth/step-up/oidc, /auth/step-up/saml).
+        Distinct from Unauthorized/Forbidden: the body's error.code is
+        "step_up_required", telling a client to prompt for re-auth rather
+        than a login screen or a permission-denied message.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
 
   schemas:
     Error:
@@ -4775,6 +4980,15 @@ components:
           type: object
           properties:
             message: { type: string }
+            code:
+              type: string
+              description: >-
+                Machine-readable discriminator, only ever present for a
+                handful of error kinds a client needs to react to
+                differently than a plain message (currently just
+                "step_up_required" on a 428 - see StepUpRequired). Absent
+                for every other error response.
+              enum: [step_up_required]
 
     ListMeta:
       type: object
@@ -6137,6 +6351,124 @@ components:
         command: { type: string }
         timeout_secs: { type: integer }
         enabled: { type: boolean }
+
+    BundleManifestSkillRepo:
+      type: object
+      required: [name, url]
+      properties:
+        name: { type: string, example: seshat-skills }
+        url: { type: string, example: "https://github.com/EngineerProjects/seshat-skills" }
+        description: { type: string }
+
+    BundleManifestMCPServer:
+      type: object
+      description: Never carries Env/Headers (encrypted secrets) or connector_kind (org-specific) - see Manifest's own doc comment.
+      required: [name]
+      properties:
+        name: { type: string, example: internal-jira }
+        display_name: { type: string }
+        server_type: { type: string, enum: [stdio, http, sse, websocket] }
+        command: { type: string }
+        args: { type: array, items: { type: string } }
+        url: { type: string }
+        timeout_secs: { type: integer }
+        icon: { type: string }
+
+    BundleManifestHook:
+      type: object
+      required: [name, command]
+      properties:
+        name: { type: string, example: block-rm }
+        matcher: { type: string }
+        command: { type: string, description: Exported in full - authored source code, not a secret. }
+        timeout_secs: { type: integer }
+
+    BundleManifestAgentPreset:
+      type: object
+      required: [slug, system_prompt]
+      properties:
+        slug: { type: string, example: researcher }
+        name: { type: string }
+        when_to_use: { type: string }
+        system_prompt: { type: string }
+        model: { type: string }
+        tools: { type: array, items: { type: string } }
+        disallowed_tools: { type: array, items: { type: string } }
+        max_turns: { type: integer }
+        permission_mode: { type: string }
+        isolation: { type: string }
+        mcp_servers: { type: array, items: { type: string } }
+        icon: { type: string }
+
+    BundleManifest:
+      type: object
+      description: >-
+        The portable exported/imported unit - each item is the resource's
+        own definition fields, never a database ID (an ID is only meaningful
+        inside the organization that created it).
+      required: [name]
+      properties:
+        name: { type: string, example: Jira Integration }
+        description: { type: string }
+        mcp_servers: { type: array, items: { $ref: "#/components/schemas/BundleManifestMCPServer" } }
+        hooks: { type: array, items: { $ref: "#/components/schemas/BundleManifestHook" } }
+        skills: { type: array, items: { $ref: "#/components/schemas/BundleManifestSkillRepo" } }
+        agent_presets: { type: array, items: { $ref: "#/components/schemas/BundleManifestAgentPreset" } }
+
+    ExportBundleInput:
+      type: object
+      required: [organization_id, name]
+      properties:
+        organization_id: { type: string }
+        name: { type: string, example: Jira Integration }
+        description: { type: string }
+        skill_repo_ids: { type: array, items: { type: string } }
+        mcp_server_ids: { type: array, items: { type: string } }
+        agent_preset_ids: { type: array, items: { type: string } }
+        hook_config_ids: { type: array, items: { type: string } }
+
+    ImportBundleInput:
+      type: object
+      required: [organization_id, manifest]
+      properties:
+        organization_id: { type: string }
+        manifest: { $ref: "#/components/schemas/BundleManifest" }
+
+    BundleImportedItem:
+      type: object
+      properties:
+        resource_type: { type: string, enum: [mcp_server_config, hook_config, skill_repo, agent_preset] }
+        resource_id: { type: string }
+        name: { type: string }
+
+    BundleImportItemError:
+      type: object
+      properties:
+        resource_type: { type: string, enum: [mcp_server_config, hook_config, skill_repo, agent_preset] }
+        name: { type: string }
+        error: { type: string }
+
+    SSOProviderMatch:
+      type: object
+      properties:
+        provider_id: { type: string }
+        kind: { type: string, enum: [oidc, saml] }
+        name: { type: string }
+        organization_name: { type: string }
+
+    BundleProvenanceEntry:
+      type: object
+      properties:
+        bundle_import_id: { type: string }
+        bundle_name: { type: string }
+
+    BundleImportResult:
+      type: object
+      description: What an import actually did - never a generic "ok" the caller must guess from.
+      properties:
+        bundle_import_id: { type: string }
+        created: { type: array, items: { $ref: "#/components/schemas/BundleImportedItem" } }
+        failed: { type: array, items: { $ref: "#/components/schemas/BundleImportItemError" } }
 
     MCPProbeResult:
       type: object

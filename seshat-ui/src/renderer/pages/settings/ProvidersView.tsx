@@ -29,9 +29,9 @@ import type { ProviderSetting, ProviderModel, OAuthChallenge, ProviderCatalogEnt
 // them.
 const SUPPORTED_AUTH_TYPES = new Set(['api_key', 'oauth', 'none'])
 
-type SelectableProvider = { id: string; name: string; desc: string; authType: string }
+export type SelectableProvider = { id: string; name: string; desc: string; authType: string }
 
-function toSelectableProviders(catalog: ProviderCatalogEntry[]): SelectableProvider[] {
+export function toSelectableProviders(catalog: ProviderCatalogEntry[]): SelectableProvider[] {
   return catalog
     .filter((entry) => SUPPORTED_AUTH_TYPES.has(entry.auth_type))
     .map((entry) => ({ id: entry.name, name: entry.display_name, desc: entry.description ?? '', authType: entry.auth_type }))
@@ -45,17 +45,37 @@ type ProviderConnectionState = {
   tone: ProviderConnectionTone
 }
 
-// order is the catalog's own display order (catalog.map(e => e.name)) -
-// resolved live from the SDK rather than a hardcoded list here.
-function sortProviders(providers: ProviderSetting[], order: string[]): ProviderSetting[] {
-  return [...providers].sort((a, b) => {
-    const ai = order.indexOf(a.provider)
-    const bi = order.indexOf(b.provider)
-    if (ai === -1 && bi === -1) return a.name.localeCompare(b.name)
-    if (ai === -1) return 1
-    if (bi === -1) return -1
-    return ai - bi
+// A merged row is either a catalog entry (configured or not) or a
+// configured setting whose provider fell out of the addable catalog (auth
+// type this form can't collect, or a policy-hidden entry like ollama when
+// allow_local_models is off) - that setting still needs to keep showing
+// since it's a real, already-configured resource, just without the
+// "Configure again" entry point a catalog row would normally offer.
+type MergedProviderRow = {
+  id: string
+  catalogEntry: SelectableProvider | null
+  setting: ProviderSetting | null
+}
+
+// buildMergedRows is the seshat-ui counterpart to seshat-console's
+// ProviderSettingsPage: one row per catalog provider (in the catalog's own
+// display order), each carrying its configured ProviderSetting if one
+// exists - rather than only listing already-configured providers behind a
+// separate "Add Provider" picker (see
+// docs/helps/audit-2026-08-29-openwork-den-comparison.md § 1 sibling work
+// on the console side for the same pattern).
+function buildMergedRows(catalog: SelectableProvider[], configured: ProviderSetting[]): MergedProviderRow[] {
+  const configuredByProvider = new Map(configured.map((setting) => [setting.provider, setting]))
+  const seen = new Set<string>()
+  const rows: MergedProviderRow[] = catalog.map((entry) => {
+    seen.add(entry.id)
+    return { id: entry.id, catalogEntry: entry, setting: configuredByProvider.get(entry.id) ?? null }
   })
+  for (const setting of configured) {
+    if (seen.has(setting.provider)) continue
+    rows.push({ id: setting.provider, catalogEntry: null, setting })
+  }
+  return rows
 }
 
 function formatTokens(n: number): string {
@@ -104,6 +124,8 @@ export function ProvidersView() {
   const { providers, removeProvider, setDefault } = useProvidersStore()
   const { refetch } = useProviders()
   const { catalog } = useProviderCatalog()
+  const { policies } = useDesktopPolicies()
+  const allowLocalModels = isDesktopPolicyAllowed(policies, 'allow_local_models')
 
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [models, setModels] = useState<Record<string, ProviderModel[]>>({})
@@ -112,11 +134,23 @@ export function ProvidersView() {
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [settingDefaultId, setSettingDefaultId] = useState<string | null>(null)
-  const [showAddProvider, setShowAddProvider] = useState(false)
+  const [configuring, setConfiguring] = useState<SelectableProvider | null>(null)
   const [addModelFor, setAddModelFor] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
-  const sorted = sortProviders(providers, catalog.map((entry) => entry.name))
+  const addableCatalog = useMemo(() => {
+    const all = toSelectableProviders(catalog)
+    // Ollama is the only local-model entry in the catalog today (see
+    // getProviderConnectionState's own special-case for it) - hidden from
+    // the addable catalog outright when policy disallows it, rather than
+    // shown-then-rejected. An already-configured ollama setting still shows
+    // via buildMergedRows' own fallback below regardless of this filter -
+    // a real existing resource is never hidden just because policy changed
+    // after it was configured.
+    return allowLocalModels ? all : all.filter((p) => p.id !== 'ollama')
+  }, [catalog, allowLocalModels])
+
+  const mergedRows = buildMergedRows(addableCatalog, providers)
 
   async function handleExpand(setting: ProviderSetting) {
     const next = expandedId === setting.id ? null : setting.id
@@ -191,12 +225,8 @@ export function ProvidersView() {
       <header className="pv-header">
         <div className="pv-header-info">
           <h1>Providers</h1>
-          <p>Manage AI provider connections, API keys, OAuth, and available models.</p>
+          <p>Configure AI provider connections, API keys, OAuth, and available models.</p>
         </div>
-        <button className="pv-add-btn" onClick={() => setShowAddProvider(true)}>
-          <Plus size={13} />
-          <span>Add Provider</span>
-        </button>
       </header>
 
       {actionError && (
@@ -206,14 +236,32 @@ export function ProvidersView() {
         </div>
       )}
 
-      {sorted.length === 0 && (
-        <div className="pv-empty">
-          <p>No providers configured. Add one to get started.</p>
-        </div>
-      )}
-
       <div className="pv-list">
-        {sorted.map((setting) => {
+        {mergedRows.map((row) => {
+          if (!row.setting) {
+            const entry = row.catalogEntry!
+            return (
+              <div key={row.id} className="pv-card">
+                <div className="pv-card-header pv-card-header--static">
+                  <div className="pv-brand">
+                    <ProviderIcon provider={entry.id} size={34} />
+                    <div className="pv-meta">
+                      <div className="pv-name">{entry.name}</div>
+                      <div className="pv-id">{entry.desc}</div>
+                    </div>
+                  </div>
+                  <div className="pv-card-controls">
+                    <span className="pv-status-pill disconnected">Not configured</span>
+                    <button className="pv-configure-btn" onClick={() => setConfiguring(entry)}>
+                      Configure
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )
+          }
+
+          const setting = row.setting
           const isExpanded = expandedId === setting.id
           const providerModels = models[setting.id] ?? []
           const isLoading = loadingModels[setting.id]
@@ -405,10 +453,11 @@ export function ProvidersView() {
         })}
       </div>
 
-      {showAddProvider && (
-        <AddProviderModal
-          onClose={() => setShowAddProvider(false)}
-          onSuccess={() => { setShowAddProvider(false); refetch() }}
+      {configuring && (
+        <ConfigureProviderModal
+          provider={configuring}
+          onClose={() => setConfiguring(null)}
+          onSuccess={() => { setConfiguring(null); refetch() }}
         />
       )}
       {addModelFor && (
@@ -613,39 +662,41 @@ function DetailEntry({ label, value, mono }: { label: string; value: string; mon
   )
 }
 
-function AddProviderModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
-  const { catalog } = useProviderCatalog()
+// ConfigureProviderModal is one entry in the full catalog list's own
+// "Configure" button (see ProvidersView's mergedRows) - unlike the old
+// Add Provider flow, provider is already fixed by the row the user
+// clicked, so there's no picker step here.
+function ConfigureProviderModal({
+  provider,
+  onClose,
+  onSuccess,
+}: {
+  provider: SelectableProvider
+  onClose: () => void
+  onSuccess: () => void
+}) {
   const { policies } = useDesktopPolicies()
-  const allowLocalModels = isDesktopPolicyAllowed(policies, 'allow_local_models')
   const allowCustomProviders = isDesktopPolicyAllowed(policies, 'allow_custom_providers')
-  const selectableProviders = useMemo(() => {
-    const all = toSelectableProviders(catalog)
-    // Ollama is the only local-model entry in the catalog today (see
-    // getProviderConnectionState's own special-case for it) - hidden
-    // outright rather than shown-then-rejected, since there's nothing else
-    // to configure for it if it's blocked.
-    return allowLocalModels ? all : all.filter((p) => p.id !== 'ollama')
-  }, [catalog, allowLocalModels])
 
-  const [isDropOpen, setIsDropOpen] = useState(false)
-  const [selected, setSelected] = useState<SelectableProvider | null>(null)
-  const [authKind, setAuthKind] = useState<'api_key' | 'oauth'>('api_key')
+  // Fixed for the lifetime of this modal - provider itself never changes
+  // (unlike the old picker-based Add Provider flow, there's no re-selection
+  // to react to), so this needs no state.
+  const authKind: 'api_key' | 'oauth' = provider.authType === 'oauth' ? 'oauth' : 'api_key'
   const [apiKey, setApiKey] = useState('')
   const [baseUrl, setBaseUrl] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
-  const isOAuthOnly = selected?.authType === 'oauth'
-  const effectiveAuthKind = selected?.authType === 'none' ? 'none' : isOAuthOnly ? 'oauth' : authKind
+  const isOAuthOnly = provider.authType === 'oauth'
+  const effectiveAuthKind = provider.authType === 'none' ? 'none' : isOAuthOnly ? 'oauth' : authKind
 
   async function handleSubmit() {
-    if (!selected) return
     setSubmitting(true)
     setError('')
     try {
       await addProviderSetting({
-        provider: selected.id,
-        name: effectiveAuthKind === 'oauth' ? 'Codex (OAuth)' : selected.name,
+        provider: provider.id,
+        name: effectiveAuthKind === 'oauth' ? `${provider.name} (OAuth)` : provider.name,
         auth_kind: effectiveAuthKind,
         api_key: effectiveAuthKind === 'api_key' ? apiKey || undefined : undefined,
         base_url: baseUrl || undefined,
@@ -662,56 +713,27 @@ function AddProviderModal({ onClose, onSuccess }: { onClose: () => void; onSucce
     <div className="modal-backdrop">
       <div className="modal-shell">
         <header className="modal-header">
-          <h2>Add Provider</h2>
+          <h2>Configure {provider.name}</h2>
           <button className="modal-close-btn" onClick={onClose}><WindowCloseIcon size={16} /></button>
         </header>
         <div className="modal-content">
-          <div className="modal-field" style={{ position: 'relative', zIndex: 100, marginBottom: 24 }}>
-            <label>Provider *</label>
-            <div className={`pv-custom-select ${isDropOpen ? 'open' : ''}`}>
-              <div className="pv-select-box" onClick={() => setIsDropOpen(!isDropOpen)}>
-                {selected ? (
-                  <div className="pv-selected-preview">
-                    <ProviderIcon provider={selected.id} size={20} />
-                    <span>{selected.name}</span>
-                  </div>
-                ) : <span className="pv-select-placeholder">Select a provider</span>}
-                <Down size={13} className={isDropOpen ? 'rotated' : ''} />
-              </div>
-              {isDropOpen && (
-                <div className="pv-select-dropdown">
-                  {selectableProviders.map((p) => (
-                    <div
-                      key={p.id}
-                      className={`pv-option-row ${selected?.id === p.id ? 'active' : ''}`}
-                      onClick={() => {
-                        setSelected(p)
-                        setBaseUrl('')
-                        setAuthKind(p.authType === 'oauth' ? 'oauth' : 'api_key')
-                        setIsDropOpen(false)
-                      }}
-                    >
-                      <ProviderIcon provider={p.id} size={28} />
-                      <div className="pv-option-text">
-                        <div className="pv-option-name">{p.name}</div>
-                        <div className="pv-option-desc">{p.desc}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+          <div className="modal-field pv-configure-provider-preview">
+            <ProviderIcon provider={provider.id} size={28} />
+            <div>
+              <div className="pv-option-name">{provider.name}</div>
+              {provider.desc && <div className="pv-option-desc">{provider.desc}</div>}
             </div>
           </div>
 
           {isOAuthOnly && (
             <div className="modal-field" style={{ marginBottom: 20 }}>
               <div className="pv-auth-mode-help">
-                {selected?.name} uses OAuth — no API key required, you'll connect an account after saving.
+                {provider.name} uses OAuth — no API key required, you'll connect an account after saving.
               </div>
             </div>
           )}
 
-          {selected && selected.authType !== 'none' && effectiveAuthKind === 'api_key' && (
+          {provider.authType !== 'none' && effectiveAuthKind === 'api_key' && (
             <div className="modal-field" style={{ marginBottom: 20 }}>
               <label>API Key *</label>
               <input
@@ -727,11 +749,11 @@ function AddProviderModal({ onClose, onSuccess }: { onClose: () => void; onSucce
           <div className="modal-field">
             <label>
               Base URL{' '}
-              <span className="modal-label-opt">{allowCustomProviders ? '(editable)' : '(locked by your organization)'}</span>
+              <span className="modal-label-opt">{allowCustomProviders ? '(optional)' : '(locked by your organization)'}</span>
             </label>
             <input
               type="text"
-              placeholder="Select a provider to auto-fill"
+              placeholder="Leave empty to use the provider's default"
               value={baseUrl}
               onChange={(e) => setBaseUrl(e.target.value)}
               disabled={!allowCustomProviders}
@@ -747,10 +769,10 @@ function AddProviderModal({ onClose, onSuccess }: { onClose: () => void; onSucce
           <button className="modal-btn-cancel" onClick={onClose}>Cancel</button>
           <button
             className="modal-btn-submit"
-            disabled={!selected || submitting}
+            disabled={submitting}
             onClick={handleSubmit}
           >
-            {submitting ? 'Adding…' : 'Add Provider'}
+            {submitting ? 'Saving…' : 'Save'}
           </button>
         </footer>
       </div>
@@ -852,11 +874,6 @@ export const PROVIDERS_CSS = `
 .pv-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 40px; }
 .pv-header-info h1 { font-size: var(--font-size-base); font-weight: 700; margin: 0 0 4px; color: var(--color-text); }
 .pv-header-info p { color: var(--color-text-muted); margin: 0; font-size: var(--font-size-sm); }
-.pv-add-btn { background: var(--color-primary); color: white; border: none; padding: 7px 14px; border-radius: 8px; display: flex; align-items: center; gap: 7px; font-weight: 600; font-size: var(--font-size-sm); cursor: pointer; flex-shrink: 0; }
-.pv-add-btn:hover { opacity: 0.9; }
-
-.pv-empty { text-align: center; padding: 36px 20px; color: var(--color-text-muted); font-size: var(--font-size-sm); }
-
 .pv-card { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 10px; margin-bottom: 8px; overflow: visible; }
 .pv-card.expanded { border-color: var(--color-primary); box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
 .pv-card.is-default { border-color: rgba(239,124,47,0.35); }
@@ -865,7 +882,11 @@ export const PROVIDERS_CSS = `
 .pv-default-btn { color: var(--color-text-muted); }
 .pv-default-btn:hover { color: var(--color-primary) !important; }
 .pv-card-header { padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; border-radius: 10px; }
+.pv-card-header--static { cursor: default; }
 .pv-card.expanded .pv-card-header { border-radius: 10px 10px 0 0; }
+.pv-configure-btn { background: var(--color-primary); color: white; border: none; padding: 5px 12px; border-radius: 7px; font-weight: 600; font-size: var(--font-size-xs); cursor: pointer; }
+.pv-configure-btn:hover { opacity: 0.9; }
+.pv-configure-provider-preview { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
 .pv-brand { display: flex; align-items: center; gap: 18px; }
 .pv-meta { display: flex; flex-direction: column; gap: 2px; }
 .pv-name { font-weight: 700; font-size: var(--font-size-base); color: var(--color-text); }
@@ -888,6 +909,8 @@ export const PROVIDERS_CSS = `
 .pv-input-group { display: flex; gap: 10px; }
 .pv-input-group input { flex: 1; background: var(--color-surface); border: 1px solid var(--color-border); padding: 7px 10px; border-radius: 8px; color: var(--color-text); font-size: var(--font-size-sm); outline: none; font-family: inherit; min-width: 0; }
 .pv-auth-method { background: var(--color-surface); border: 1px solid var(--color-border); padding: 7px 10px; border-radius: 8px; color: var(--color-text); font-size: var(--font-size-sm); }
+.admin-domain-textarea { width: 100%; background: var(--color-surface); border: 1px solid var(--color-border); padding: 8px 10px; border-radius: 8px; color: var(--color-text); font-size: var(--font-size-sm); font-family: monospace; outline: none; resize: vertical; }
+.admin-domain-textarea:focus { border-color: var(--color-primary); }
 
 .pv-oauth-panel { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 10px; border: 1px solid var(--color-border); background: var(--color-surface); }
 .pv-oauth-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
@@ -936,19 +959,8 @@ export const PROVIDERS_CSS = `
 .pv-detail-value.mono { font-family: monospace; font-size: var(--font-size-2xs); }
 .pv-default-badge { margin-top: 10px; padding: 6px 10px; background: var(--color-primary-subtle); border: 1px solid rgba(239,124,47,0.2); border-radius: 7px; font-size: var(--font-size-2xs); color: var(--color-primary); font-weight: 600; text-align: center; }
 
-.pv-custom-select { border: 1.5px solid var(--color-border); border-radius: 8px; position: relative; background: var(--color-bg); }
-.pv-custom-select.open { border-color: var(--color-primary); }
-.pv-select-box { padding: 7px 10px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; font-weight: 500; min-height: 36px; color: var(--color-text); gap: 8px; }
-.pv-select-placeholder { color: var(--color-text-muted); font-size: var(--font-size-sm); }
-.pv-selected-preview { display: flex; align-items: center; gap: 8px; }
-.pv-selected-preview span { font-weight: 600; font-size: var(--font-size-sm); }
-.pv-select-dropdown { position: absolute; top: calc(100% + 4px); left: -1.5px; right: -1.5px; max-height: 320px; overflow-y: auto; background: var(--color-bg); border: 1.5px solid var(--color-border); border-radius: 8px; box-shadow: var(--shadow-large); z-index: 1000; }
-.pv-option-row { padding: 8px 10px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: background 0.1s; }
-.pv-option-row:hover { background: var(--color-hover); }
-.pv-option-row.active { background: var(--color-primary-subtle); }
 .pv-option-name { font-weight: 700; font-size: var(--font-size-sm); color: var(--color-text); }
 .pv-option-desc { font-size: var(--font-size-2xs); color: var(--color-text-muted); margin-top: 2px; }
-.rotated { transform: rotate(180deg); transition: transform 0.15s; }
 
 .pv-auth-mode-row { display: flex; gap: 10px; }
 .pv-auth-mode-btn { flex: 1; border: 1px solid var(--color-border); background: var(--color-bg); color: var(--color-text-secondary); border-radius: 8px; padding: 7px 10px; font-size: var(--font-size-xs); font-weight: 700; cursor: pointer; font-family: inherit; }

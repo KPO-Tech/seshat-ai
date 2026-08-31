@@ -199,6 +199,19 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	apiV1.Handle("/automation/devices", app.authMiddleware(http.HandlerFunc(app.handleAutomationDevices)))
 	apiV1.Handle("/automation/jobs", app.authMiddleware(http.HandlerFunc(app.handleAutomationJobs)))
 	apiV1.Handle("/automation/jobs/", app.authMiddleware(http.HandlerFunc(app.handleAutomationJobDispatch)))
+	apiV1.Handle("/admin/provider-settings", app.authMiddleware(http.HandlerFunc(app.handleAdminProviderSettings)))
+	apiV1.Handle("/admin/provider-settings/", app.authMiddleware(http.HandlerFunc(app.handleAdminProviderSettingDispatch)))
+	apiV1.Handle("/admin/web-search-org-policy", app.authMiddleware(http.HandlerFunc(app.handleAdminWebSearchOrgPolicy)))
+	apiV1.Handle("/admin/teams", app.authMiddleware(http.HandlerFunc(app.handleAdminTeams)))
+	apiV1.Handle("/admin/teams/", app.authMiddleware(http.HandlerFunc(app.handleAdminTeamDispatch)))
+	apiV1.Handle("/admin/memberships", app.authMiddleware(http.HandlerFunc(app.handleAdminMemberships)))
+	apiV1.Handle("/admin/memberships/", app.authMiddleware(http.HandlerFunc(app.handleAdminMembershipDispatch)))
+	apiV1.Handle("/admin/roles", app.authMiddleware(http.HandlerFunc(app.handleAdminRoles)))
+	apiV1.Handle("/admin/desktop-policies/catalog", app.authMiddleware(http.HandlerFunc(app.handleAdminDesktopPolicyCatalog)))
+	apiV1.Handle("/admin/desktop-policy-bindings", app.authMiddleware(http.HandlerFunc(app.handleAdminDesktopPolicyBindings)))
+	apiV1.Handle("/admin/desktop-policy-bindings/", app.authMiddleware(http.HandlerFunc(app.handleAdminDesktopPolicyBindingDispatch)))
+	apiV1.Handle("/admin/agent-presets", app.authMiddleware(http.HandlerFunc(app.handleAdminAgentPresets)))
+	apiV1.Handle("/admin/agent-presets/", app.authMiddleware(http.HandlerFunc(app.handleAdminAgentPresetDispatch)))
 
 	// Public: needed by the Login/Register screens before any session exists.
 	apiV1.HandleFunc("/system/status", app.handleSystemStatus)
@@ -217,7 +230,6 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	apiV1.Handle("/users", app.authMiddleware(http.HandlerFunc(app.handleListOrCreateUsers)))
 	apiV1.Handle("/users/me", app.authMiddleware(http.HandlerFunc(app.handleUserMe)))
 	apiV1.Handle("/users/me/settings", app.authMiddleware(http.HandlerFunc(app.handleUserMeSettings)))
-	apiV1.Handle("/users/me/permissions", app.authMiddleware(http.HandlerFunc(app.handleUserMePermissions)))
 	apiV1.Handle("/users/me/api-keys", app.authMiddleware(http.HandlerFunc(app.handleUserMeAPIKeys)))
 	apiV1.Handle("/users/me/api-keys/", app.authMiddleware(http.HandlerFunc(app.handleUserMeAPIKeyByID)))
 	apiV1.Handle("/users/me/preferences", app.authMiddleware(http.HandlerFunc(app.handleUserPreferences)))
@@ -227,8 +239,6 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	// own "Default Organization"/"Main Workspace" — see the doc comment above
 	// Organization/Workspace/WorkspaceMembership in internal/db/tenancy.go for
 	// why that schema exists locally at all.
-	apiV1.Handle("/groups", app.authMiddleware(http.HandlerFunc(app.handleGroups)))
-	apiV1.Handle("/groups/", app.authMiddleware(http.HandlerFunc(app.handleGroupByID)))
 	apiV1.Handle("/organizations", app.authMiddleware(http.HandlerFunc(app.handleOrganizations)))
 	apiV1.Handle("/organizations/", app.authMiddleware(http.HandlerFunc(app.handleOrganizationByID)))
 	apiV1.Handle("/workspaces", app.authMiddleware(http.HandlerFunc(app.handleWorkspaces)))

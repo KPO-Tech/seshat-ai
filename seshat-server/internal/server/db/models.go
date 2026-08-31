@@ -140,12 +140,19 @@ type Membership struct {
 // Session is an active bearer-token login. Token stores the SHA-256 hash
 // of the bearer token presented by the client; the raw token is only ever
 // returned once at creation/login time and is never persisted in plaintext.
+// ReauthenticatedAt is the last moment this session proved fresh identity -
+// seeded to CreatedAt at login (see iam.Service.newSession), advanced by a
+// later step-up (see docs/helps/audit-2026-08-29-openwork-den-comparison.md
+// § 9). Never zero: a session's own login always counts as its first proof,
+// mirroring GitHub's "sudo mode" (a recent login already satisfies it, not
+// just an explicit re-auth).
 type Session struct {
-	Token     string `gorm:"primaryKey;size:64"`
-	ID        string `gorm:"uniqueIndex;size:32;not null"`
-	UserID    string `gorm:"size:32;not null;index"`
-	CreatedAt time.Time
-	ExpiresAt time.Time `gorm:"index"`
+	Token             string `gorm:"primaryKey;size:64"`
+	ID                string `gorm:"uniqueIndex;size:32;not null"`
+	UserID            string `gorm:"size:32;not null;index"`
+	CreatedAt         time.Time
+	ExpiresAt         time.Time `gorm:"index"`
+	ReauthenticatedAt time.Time
 }
 
 // PasswordResetToken is a short-lived, single-use opaque token for the
@@ -206,6 +213,47 @@ type OIDCLoginState struct {
 type SAMLAuthRequestState struct {
 	ID          string `gorm:"primaryKey;size:32"`
 	ProviderID  string `gorm:"size:32;not null;index"`
+	RequestID   string `gorm:"uniqueIndex;size:64;not null"`
+	RedirectURI string `gorm:"size:500;not null"`
+	CreatedAt   time.Time
+	ExpiresAt   time.Time
+}
+
+// OIDCStepUpState is OIDCLoginState's counterpart for a step-up re-auth
+// (see docs/helps/audit-2026-08-29-openwork-den-comparison.md § 9) -
+// deliberately a separate table rather than a nullable "purpose" column on
+// OIDCLoginState, since the two carry different context (SessionID/UserID
+// here have no login-time equivalent) and must never be confusable at a
+// glance. SessionID names the EXISTING session to elevate - a step-up never
+// creates a new session, unlike a login. UserID is the identity that must
+// come back from the identity provider for this to succeed; anything else
+// is rejected outright (see iam.completeOIDCStepUp), never auto-linked or
+// provisioned the way a login would. RedirectURI is validated against the
+// server's configured public app URL at creation time (see
+// BeginOIDCStepUp), not loopback-only like OIDCLoginState's - a step-up's
+// only confirmed consumer is a web console, not the desktop app.
+type OIDCStepUpState struct {
+	ID           string `gorm:"primaryKey;size:32"`
+	ProviderID   string `gorm:"size:32;not null;index"`
+	SessionID    string `gorm:"size:32;not null"`
+	UserID       string `gorm:"size:32;not null"`
+	StateHash    string `gorm:"uniqueIndex;size:64;not null"`
+	CodeVerifier string `gorm:"size:255;not null"`
+	Nonce        string `gorm:"size:64;not null"`
+	RedirectURI  string `gorm:"size:500;not null"`
+	CreatedAt    time.Time
+	ExpiresAt    time.Time
+}
+
+// SAMLStepUpState is SAMLAuthRequestState's counterpart for a step-up
+// re-auth - see OIDCStepUpState's doc comment for why this is a separate
+// table rather than a shared one with a "purpose" column, and
+// SAMLAuthRequestState's own doc comment for why RequestID is plaintext.
+type SAMLStepUpState struct {
+	ID          string `gorm:"primaryKey;size:32"`
+	ProviderID  string `gorm:"size:32;not null;index"`
+	SessionID   string `gorm:"size:32;not null"`
+	UserID      string `gorm:"size:32;not null"`
 	RequestID   string `gorm:"uniqueIndex;size:64;not null"`
 	RedirectURI string `gorm:"size:500;not null"`
 	CreatedAt   time.Time

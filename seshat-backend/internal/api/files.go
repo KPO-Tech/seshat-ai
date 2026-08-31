@@ -18,9 +18,6 @@ func (app *App) handleFiles(w http.ResponseWriter, r *http.Request) {
 	principal, _ := authPrincipalFromContext(r.Context())
 	switch r.Method {
 	case http.MethodPost:
-		if !app.requireFileUploadPermission(w, r, principal) {
-			return
-		}
 		app.handleFileUpload(w, r, principal)
 	case http.MethodGet:
 		files, err := app.backend.Files.ListFiles(r.Context(), principal)
@@ -69,9 +66,6 @@ func (app *App) handleFileByID(w http.ResponseWriter, r *http.Request) {
 			}
 			writeJSON(w, http.StatusOK, toFileResponse(*f))
 		case http.MethodDelete:
-			if !app.requireChatDeletePermission(w, r, principal) {
-				return
-			}
 			if err := app.backend.Files.DeleteFile(r.Context(), principal, fileID); err != nil {
 				writeBackendError(w, err)
 				return
@@ -217,9 +211,6 @@ func (app *App) handleSessionFiles(w http.ResponseWriter, r *http.Request, princ
 		writeJSON(w, http.StatusOK, map[string]any{"files": toFileResponses(files), "count": len(files)})
 
 	case http.MethodPost:
-		if !app.requireFileUploadPermission(w, r, p) {
-			return
-		}
 		r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 		if err := r.ParseMultipartForm(32 << 20); err != nil {
 			writeJSONError(w, http.StatusBadRequest, "failed to parse multipart form: "+err.Error())

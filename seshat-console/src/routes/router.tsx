@@ -3,6 +3,7 @@ import { AppLayout } from '@/layout/AppLayout'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
 import { RequireSuperAdmin } from '@/routes/RequireSuperAdmin'
 import { RequireOrganizationManager } from '@/routes/RequireOrganizationManager'
+import { RedirectIfOrgModeSingle } from '@/routes/RedirectIfOrgModeSingle'
 import { LandingRedirect } from '@/routes/LandingRedirect'
 import { lazyPage, renderLazyPage } from '@/routes/lazyPage'
 
@@ -20,6 +21,9 @@ const ForgotPasswordPage = lazyPage(() =>
 )
 const ResetPasswordPage = lazyPage(() =>
   import('@/pages/auth/ResetPasswordPage').then((module) => ({ default: module.ResetPasswordPage })),
+)
+const SSOCallbackPage = lazyPage(() =>
+  import('@/pages/auth/SSOCallbackPage').then((module) => ({ default: module.SSOCallbackPage })),
 )
 const PlatformOverviewPage = lazyPage(() => import('@/pages/dashboard/DashboardPage').then((module) => ({ default: module.DashboardPage })))
 const WorkspaceOverviewPage = lazyPage(() => import('@/pages/workspace/WorkspaceOverviewPage').then((module) => ({ default: module.WorkspaceOverviewPage })))
@@ -47,6 +51,7 @@ const SessionsPage = lazyPage(() => import('@/pages/sessions/SessionsPage').then
 const DevicesPage = lazyPage(() => import('@/pages/devices/DevicesPage').then((module) => ({ default: module.DevicesPage })))
 const DesktopPoliciesPage = lazyPage(() => import('@/pages/desktopPolicies/DesktopPoliciesPage').then((module) => ({ default: module.DesktopPoliciesPage })))
 const HooksPage = lazyPage(() => import('@/pages/hooks/HooksPage').then((module) => ({ default: module.HooksPage })))
+const BundlesPage = lazyPage(() => import('@/pages/bundles/BundlesPage').then((module) => ({ default: module.BundlesPage })))
 const JobsPage = lazyPage(() => import('@/pages/jobs/JobsPage').then((module) => ({ default: module.JobsPage })))
 const RunsPage = lazyPage(() => import('@/pages/runs/RunsPage').then((module) => ({ default: module.RunsPage })))
 const ProviderSettingsPage = lazyPage(() => import('@/pages/providerSettings/ProviderSettingsPage').then((module) => ({ default: module.ProviderSettingsPage })))
@@ -79,6 +84,7 @@ export const router = createBrowserRouter([
   { path: '/accept-invitation', element: renderLazyPage(AcceptInvitationPage) },
   { path: '/forgot-password', element: renderLazyPage(ForgotPasswordPage) },
   { path: '/reset-password', element: renderLazyPage(ResetPasswordPage) },
+  { path: '/auth/sso-callback', element: renderLazyPage(SSOCallbackPage) },
   {
     element: <ProtectedRoute />,
     children: [
@@ -86,7 +92,10 @@ export const router = createBrowserRouter([
         element: <AppLayout />,
         children: [
           { index: true, element: <LandingRedirect /> },
-          { path: '/my-organizations', element: renderLazyPage(MyOrganizationsPage) },
+          {
+            element: <RedirectIfOrgModeSingle />,
+            children: [{ path: '/my-organizations', element: renderLazyPage(MyOrganizationsPage) }],
+          },
           { path: '/workspace', element: <Navigate to="/workspace/overview" replace /> },
           { path: '/workspace/overview', element: renderLazyPage(WorkspaceOverviewPage) },
           { path: '/workspace/chat', element: renderLazyPage(WorkspaceChatPage) },
@@ -105,7 +114,10 @@ export const router = createBrowserRouter([
             children: [
               { path: '/platform', element: <Navigate to="/platform/overview" replace /> },
               { path: '/platform/overview', element: renderLazyPage(PlatformOverviewPage) },
-              { path: '/platform/organizations', element: renderLazyPage(OrganizationsPage) },
+              {
+                element: <RedirectIfOrgModeSingle />,
+                children: [{ path: '/platform/organizations', element: renderLazyPage(OrganizationsPage) }],
+              },
               { path: '/platform/security/sessions', element: renderLazyPage(SessionsPage) },
               { path: '/platform/security/audit', element: renderLazyPage(AuditEventsPage) },
               { path: '/platform/security/system', element: renderLazyPage(SystemStatusPage) },
@@ -132,6 +144,7 @@ export const router = createBrowserRouter([
               { path: 'automation/devices', element: renderLazyPage(DevicesPage) },
               { path: 'automation/desktop-policies', element: renderLazyPage(DesktopPoliciesPage) },
               { path: 'automation/hooks', element: renderLazyPage(HooksPage) },
+              { path: 'automation/bundles', element: renderLazyPage(BundlesPage) },
               { path: 'automation/jobs', element: renderLazyPage(JobsPage) },
               { path: 'automation/runs', element: renderLazyPage(RunsPage) },
               { path: 'knowledge/corpora', element: renderLazyPage(CorporaPage) },

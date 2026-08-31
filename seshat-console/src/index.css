@@ -59,6 +59,15 @@ body {
   gap: 10px;
 }
 
+.console-brand {
+  flex-shrink: 0;
+  height: 56px;
+}
+
+.console-brand__mark {
+  flex: 0 0 auto;
+}
+
 /* Page Header */
 .console-page-header {
   display: flex;
@@ -260,6 +269,24 @@ body {
 }
 
 /* Nav Menu Enhancements */
+.ant-menu-dark.ant-menu-inline .ant-menu-item {
+  height: 56px;
+  line-height: 56px;
+  margin-block: 0;
+  display: flex;
+  align-items: center;
+  padding-inline: 24px !important;
+}
+
+.ant-menu-dark.ant-menu-inline .ant-menu-item .ant-menu-title-content {
+  line-height: 1.2;
+}
+
+.ant-menu-dark.ant-menu-inline .ant-menu-item .ant-menu-item-icon {
+  min-width: 18px;
+  font-size: 16px;
+}
+
 .ant-menu-dark.ant-menu-inline .ant-menu-item-selected {
   background: rgba(239, 124, 47, 0.12) !important;
   color: #ff8f3d !important;
@@ -1025,21 +1052,21 @@ body {
 
   .console-topbar {
     grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "scope session"
+      "nav nav" !important;
     height: auto !important;
     min-height: 54px !important;
     padding-block: 8px !important;
   }
 
   .console-subnav-bar {
-    grid-column: 1 / -1;
-    grid-row: 2;
     justify-content: flex-start;
     order: 3;
     width: 100%;
   }
 
   .console-topbar__session {
-    grid-column: 2;
     justify-self: end;
   }
 

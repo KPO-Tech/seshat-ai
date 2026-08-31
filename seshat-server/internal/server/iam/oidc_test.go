@@ -235,6 +235,31 @@ func TestBeginOIDCLoginRejectsNonLoopbackRedirect(t *testing.T) {
 	}
 }
 
+// TestBeginOIDCLoginAcceptsConsoleRedirectWhenConfigured proves § 9bis's
+// change is purely additive: loopback still always works (see the test
+// above, unaffected by this), and a redirect_uri matching the configured
+// public app URL is now ALSO accepted - the web console's own login flow,
+// not just the desktop app's.
+func TestBeginOIDCLoginAcceptsConsoleRedirectWhenConfigured(t *testing.T) {
+	env := newOIDCTestEnv(t, nil)
+	const consoleOrigin = "https://console.internal.test"
+	env.service.SetMailer(nil, consoleOrigin)
+
+	if _, err := env.service.BeginOIDCLogin(context.Background(), env.providerID, consoleOrigin+"/auth/sso-callback"); err != nil {
+		t.Fatalf("expected a redirect_uri matching the configured public app URL to be accepted, got: %v", err)
+	}
+	if _, err := env.service.BeginOIDCLogin(context.Background(), env.providerID, "https://attacker.example.com/callback"); err == nil {
+		t.Fatal("expected a redirect_uri outside both loopback and the configured public app URL to still be rejected")
+	}
+}
+
+func TestBeginOIDCLoginRejectsConsoleRedirectWhenNotConfigured(t *testing.T) {
+	env := newOIDCTestEnv(t, nil)
+	if _, err := env.service.BeginOIDCLogin(context.Background(), env.providerID, "https://console.internal.test/auth/sso-callback"); err == nil {
+		t.Fatal("expected a console-style redirect_uri to be rejected when no public app URL is configured")
+	}
+}
+
 func TestBeginOIDCLoginRejectsUnknownProvider(t *testing.T) {
 	env := newOIDCTestEnv(t, nil)
 	if _, err := env.service.BeginOIDCLogin(context.Background(), "does-not-exist", "http://localhost:9999/callback"); err == nil {

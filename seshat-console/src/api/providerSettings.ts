@@ -131,3 +131,20 @@ export function useDetectProviderModels() {
     },
   })
 }
+
+export type ProviderProbeResult = { status: 'ok' | 'invalid_credential' | 'unknown' | 'unsupported'; detail: string }
+
+// useProbeProviderSetting — "test connection" before saving (see
+// docs/helps/audit-2026-08-29-openwork-den-comparison.md § 1). Never
+// throws on a rejected credential - the server always answers 200 with a
+// status field, since a "bad key" is an expected, normal outcome here, not
+// a request error.
+export function useProbeProviderSetting() {
+  return useMutation({
+    mutationFn: async (body: { provider: string; base_url?: string; api_key: string }) => {
+      const { data, error } = await api.POST('/api/v1/provider-settings/probe', { body })
+      if (error) throw error
+      return data as ProviderProbeResult
+    },
+  })
+}

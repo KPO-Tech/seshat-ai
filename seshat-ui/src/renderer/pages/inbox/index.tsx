@@ -14,7 +14,6 @@ import {
   Plus,
   Refresh,
   Robot,
-  Save,
   Search,
   Send,
   Setting,
@@ -22,10 +21,13 @@ import {
 import { api, ApiError } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { streamingToContentBlocks, useSessionStore } from '@/stores/session'
-import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
 import { ChatInput, CHAT_INPUT_CSS } from '@/components/chat/ChatInput'
 import { MessageItem, MESSAGE_ITEM_CSS, isRenderableMessage } from '@/components/chat/MessageItem'
 import { useChat } from '@/hooks/useChat'
+import { useProviders, fetchProviderModels } from '@/hooks/useProviders'
+import { useProvidersStore } from '@/stores/providers'
+import { SelectorPill, SelectorMenu } from '@/components/ui/SelectorPill'
+import type { ProviderModel } from '@/api/types'
 
 export type ChannelAccount = {
   id: string
@@ -112,9 +114,50 @@ function displayContact(thread: Thread): string {
   return thread.contact.display_name || thread.contact.external_id || 'Unknown contact'
 }
 
+function channelLabel(channel: string): string {
+  if (channel === 'gmail') return 'Gmail'
+  if (channel === 'whatsapp') return 'WhatsApp'
+  if (channel === 'outlook') return 'Outlook'
+  if (channel === 'teams') return 'Teams'
+  return channel.charAt(0).toUpperCase() + channel.slice(1)
+}
+
+// Persists the user's chosen provider/model for the Inbox Agent chat across
+// restarts, same pattern as the Knowledge Agent chat's preference key - the
+// Inbox Agent's session is reused indefinitely (see latestInboxSession
+// below), so without this the choice would reset every time the app relaunches.
+const INBOX_CHAT_PREFERENCE_KEY = 'seshat.inbox-chat-preferred-model.v1'
+
+type ChatModelPreference = { providerSettingId: string; modelId: string }
+
+function loadChatModelPreference(): ChatModelPreference | null {
+  try {
+    const raw = localStorage.getItem(INBOX_CHAT_PREFERENCE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (parsed && typeof parsed.providerSettingId === 'string' && typeof parsed.modelId === 'string') {
+      return parsed
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+function saveChatModelPreference(pref: ChatModelPreference | null) {
+  try {
+    if (!pref) {
+      localStorage.removeItem(INBOX_CHAT_PREFERENCE_KEY)
+      return
+    }
+    localStorage.setItem(INBOX_CHAT_PREFERENCE_KEY, JSON.stringify(pref))
+  } catch {
+    // best-effort only
+  }
+}
+
 export function InboxPage() {
-  const [view, setView] = useState<'triage' | 'accounts' | 'agent'>('triage')
-  const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [view, setView] = useState<'inbox' | 'accounts'>('inbox')
   const [agentSessionId, setAgentSessionId] = useState<string | null>(null)
   const [agentPrompt, setAgentPrompt] = useState('')
   const [pendingAgentMessage, setPendingAgentMessage] = useState<string | null>(null)
@@ -135,8 +178,7 @@ export function InboxPage() {
   const [messagesLoadingMore, setMessagesLoadingMore] = useState(false)
   const [messagesHasMore, setMessagesHasMore] = useState(false)
   const [messagesOffset, setMessagesOffset] = useState(0)
-  const [replyText, setReplyText] = useState('')
-  const [sending, setSending] = useState(false)
+  const [channelMenuOpen, setChannelMenuOpen] = useState(false)
   const [launchingAgent, setLaunchingAgent] = useState(false)
   const [automationCreating, setAutomationCreating] = useState(false)
   const [automationNotice, setAutomationNotice] = useState<string | null>(null)
@@ -149,11 +191,28 @@ export function InboxPage() {
   const pairAbortRef = useRef<AbortController | null>(null)
   const gmailPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const agentScrollRef = useRef<HTMLDivElement | null>(null)
+  const channelMenuRef = useRef<HTMLDivElement | null>(null)
+
+  // Lets the user pick which provider/model answers Inbox Agent chat
+  // messages, mirroring the Knowledge Agent chat's picker - the choice is
+  // persisted (see INBOX_CHAT_PREFERENCE_KEY above) since the Inbox Agent's
+  // session is reused indefinitely, not reset per visit.
+  const { loading: providersLoading } = useProviders()
+  const providers = useProvidersStore((s) => s.providers)
+  const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null)
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(null)
+  const [modelsByProvider, setModelsByProvider] = useState<Record<string, ProviderModel[]>>({})
+  const [loadingModelsFor, setLoadingModelsFor] = useState<string | null>(null)
+  const hasAppliedStoredPreference = useRef(false)
 
   const connectedAccounts = accounts.filter((a) => a.status === 'connected')
   const syncableAccounts = connectedAccounts.filter((account) => account.channel === 'gmail')
   const accountsInError = accounts.filter((a) => a.status === 'error')
   const openCount = threads.filter((t) => t.status === 'open').length
+  const availableChannels = useMemo(
+    () => Array.from(new Set(accounts.map((a) => a.channel))),
+    [accounts],
+  )
   const filteredThreads = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
     return threads.filter((thread) => {
@@ -187,12 +246,85 @@ export function InboxPage() {
     if (!agentSessionId && latestInboxSession) setAgentSessionId(latestInboxSession.id)
   }, [agentSessionId, latestInboxSession])
 
+  const selectedModels = useMemo(
+    () => (selectedProviderId ? (modelsByProvider[selectedProviderId] ?? []) : []),
+    [selectedProviderId, modelsByProvider],
+  )
+  const hasLoadedSelectedProviderModels = selectedProviderId
+    ? Object.prototype.hasOwnProperty.call(modelsByProvider, selectedProviderId)
+    : false
+
+  useEffect(() => {
+    if (hasAppliedStoredPreference.current || providersLoading || providers.length === 0) return
+    hasAppliedStoredPreference.current = true
+    const stored = loadChatModelPreference()
+    const provider = (stored && providers.find((p) => p.id === stored.providerSettingId))
+      ?? providers.find((p) => p.is_default)
+      ?? providers[0]
+    setSelectedProviderId(provider.id)
+    if (stored && stored.providerSettingId === provider.id) setSelectedModelId(stored.modelId)
+  }, [providers, providersLoading])
+
+  useEffect(() => {
+    if (!selectedProviderId) return
+    if (!providers.some((provider) => provider.id === selectedProviderId)) {
+      setSelectedProviderId(null)
+      setSelectedModelId(null)
+    }
+  }, [providers, selectedProviderId])
+
+  useEffect(() => {
+    if (!selectedProviderId || modelsByProvider[selectedProviderId]) return
+    let cancelled = false
+    setLoadingModelsFor(selectedProviderId)
+    fetchProviderModels(selectedProviderId)
+      .then((models) => {
+        if (cancelled) return
+        setModelsByProvider((current) => ({ ...current, [selectedProviderId]: models }))
+      })
+      .catch(() => {
+        if (cancelled) return
+        setModelsByProvider((current) => ({ ...current, [selectedProviderId]: [] }))
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingModelsFor((current) => (current === selectedProviderId ? null : current))
+      })
+    return () => { cancelled = true }
+  }, [modelsByProvider, selectedProviderId])
+
+  useEffect(() => {
+    if (!hasLoadedSelectedProviderModels || selectedModelId || selectedModels.length === 0) return
+    const def = selectedModels.find((m) => m.is_default) ?? selectedModels[0]
+    setSelectedModelId(def.model_id)
+  }, [hasLoadedSelectedProviderModels, selectedModelId, selectedModels])
+
+  useEffect(() => {
+    if (!selectedModelId || !hasLoadedSelectedProviderModels) return
+    if (!selectedModels.some((model) => model.model_id === selectedModelId)) setSelectedModelId(null)
+  }, [hasLoadedSelectedProviderModels, selectedModelId, selectedModels])
+
+  useEffect(() => {
+    if (!hasAppliedStoredPreference.current) return
+    if (selectedProviderId && selectedModelId) {
+      saveChatModelPreference({ providerSettingId: selectedProviderId, modelId: selectedModelId })
+    }
+  }, [selectedProviderId, selectedModelId])
+
+  useEffect(() => {
+    if (!channelMenuOpen) return
+    const onDown = (e: MouseEvent) => {
+      if (!channelMenuRef.current?.contains(e.target as Node)) setChannelMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [channelMenuOpen])
+
   useEffect(() => {
     if (!agentSessionId || !pendingAgentMessage) return
     const prompt = pendingAgentMessage
     setPendingAgentMessage(null)
-    void sendAgentMessage(prompt, { agentSlug: 'inbox-agent' })
-  }, [agentSessionId, pendingAgentMessage, sendAgentMessage])
+    void sendAgentMessage(prompt, { agentSlug: 'inbox-agent', providerSettingId: selectedProviderId, modelId: selectedModelId })
+  }, [agentSessionId, pendingAgentMessage, sendAgentMessage, selectedProviderId, selectedModelId])
 
   const loadAccounts = useCallback(async () => {
     setAccountsLoading(true)
@@ -269,7 +401,6 @@ export function InboxPage() {
 
   function selectThread(thread: Thread) {
     setSelectedThreadId(thread.id)
-    setReplyText('')
     setError(null)
   }
 
@@ -287,21 +418,6 @@ export function InboxPage() {
   function loadEarlierMessages() {
     if (!selectedThreadId || messagesLoadingMore || !messagesHasMore) return
     void loadThread(selectedThreadId, messagesOffset, true)
-  }
-
-  async function handleReply(send: boolean) {
-    if (!selectedThreadId || !replyText.trim()) return
-    setSending(true)
-    setError(null)
-    try {
-      await api.post(`/inbox/threads/${selectedThreadId}/reply`, { body: replyText.trim(), send })
-      setReplyText('')
-      await refreshCurrentThread()
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Unable to save the reply.')
-    } finally {
-      setSending(false)
-    }
   }
 
   async function handleUpdateStatus(status: string) {
@@ -468,7 +584,6 @@ export function InboxPage() {
     try {
       const id = await ensureInboxAgentSession()
       if (!id) return
-      setView('agent')
       setPendingAgentMessage(buildInboxAgentPrompt(selectedThread, messages))
     } finally {
       setLaunchingAgent(false)
@@ -605,41 +720,116 @@ export function InboxPage() {
             <h1>Inbox</h1>
           </div>
           <div className="ib-view-tabs" role="tablist" aria-label="Inbox sections">
-            <button type="button" className={view === 'triage' ? 'active' : ''} onClick={() => setView('triage')}>
-              <InboxIcon size={13} /> Triage
+            <button type="button" className={view === 'inbox' ? 'active' : ''} onClick={() => setView('inbox')}>
+              <InboxIcon size={13} /> Inbox
             </button>
             <button type="button" className={view === 'accounts' ? 'active' : ''} onClick={() => setView('accounts')}>
               <Mail size={13} /> Accounts
-            </button>
-            <button type="button" className={view === 'agent' ? 'active' : ''} onClick={() => setView('agent')}>
-              <Robot size={13} /> Agent
             </button>
           </div>
           <div className="ib-toolbar-actions">
             <button type="button" className="ib-action-btn" onClick={handleSyncAll} disabled={syncableAccounts.length === 0 || Boolean(syncingAccountId)}>
               {syncingAccountId ? <LoadingOne size={13} className="spin" /> : <Refresh size={13} />} Sync
             </button>
-            <button type="button" className="ib-action-btn" onClick={() => setAdvancedOpen(true)}>
-              <Setting size={13} /> Advanced
-            </button>
           </div>
         </section>
 
-        {view === 'triage' ? (
-          <section className="ib-main ib-main-triage">
+        {view === 'inbox' ? (
+          <section className="ib-main ib-inbox-page">
             {error && <div className="ib-error-banner"><Caution size={13} /> {error}</div>}
             <div className="ib-search-row">
               <div className="ib-searchbox ib-searchbox-large">
                 <Search size={15} />
                 <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search visible threads" />
               </div>
-              <div className="ib-channel-tabs ib-channel-tabs-inline">
-                <button type="button" className={channelFilter === 'all' ? 'active' : ''} onClick={() => setChannelFilter('all')}>All</button>
-                <button type="button" className={channelFilter === 'gmail' ? 'active' : ''} onClick={() => setChannelFilter('gmail')}>Gmail</button>
-                <button type="button" className={channelFilter === 'whatsapp' ? 'active' : ''} onClick={() => setChannelFilter('whatsapp')}>WhatsApp</button>
+              <div className="chat-selector-wrap ib-channel-selector" ref={channelMenuRef}>
+                <SelectorPill
+                  label={channelFilter === 'all' ? 'All channels' : channelLabel(channelFilter)}
+                  icon={<Mail size={12} />}
+                  onClick={() => setChannelMenuOpen((current) => !current)}
+                />
+                {channelMenuOpen && (
+                  <SelectorMenu
+                    options={[
+                      { id: 'all', label: 'All channels' },
+                      ...availableChannels.map((channel) => ({ id: channel, label: channelLabel(channel) })),
+                    ]}
+                    selectedId={channelFilter}
+                    align="right"
+                    onSelect={(id) => {
+                      setChannelFilter(id)
+                      setChannelMenuOpen(false)
+                    }}
+                  />
+                )}
               </div>
+              <button
+                type="button"
+                className="ib-action-btn primary"
+                onClick={handleStartInboxReview}
+                disabled={connectedAccounts.length === 0 || launchingAgent || agentStreaming}
+                title="Ask the Inbox Agent to review every connected channel"
+              >
+                {launchingAgent || agentStreaming ? <LoadingOne size={13} className="spin" /> : <Send size={13} />} Scan inbox
+              </button>
             </div>
-            <div className="ib-thread-shell">
+            <div className="ib-inbox-grid">
+              <section className="ib-agent-panel-card ib-agent-chat-card">
+                <div className="ib-panel-headline">
+                  <Robot size={16} />
+                  <strong>Inbox Agent</strong>
+                </div>
+                <div className="ib-agent-transcript" ref={agentScrollRef}>
+                  {agentMessages.length === 0 ? (
+                    <div className="ib-agent-empty">
+                      <Robot size={30} />
+                      <strong>Inbox Agent ready</strong>
+                      <span>Ask it to review open threads, summarize a selected conversation, or prepare draft replies.</span>
+                    </div>
+                  ) : (
+                    agentMessages.map((message) => (
+                      <MessageItem
+                        key={message.id}
+                        message={message}
+                        sessionId={agentSessionId ?? undefined}
+                        compact
+                        onApproveTool={approveAgentTool}
+                        onDenyTool={denyAgentTool}
+                        onSubmitToolPrompt={submitAgentToolPrompt}
+                      />
+                    ))
+                  )}
+                </div>
+                <ChatInput
+                  value={agentPrompt}
+                  onChange={setAgentPrompt}
+                  onSend={handleSendAgentPrompt}
+                  onStop={() => { void stopAgentMessage() }}
+                  placeholder="Ask the Inbox Agent..."
+                  maxHeight={120}
+                  isStreaming={agentStreaming}
+                  statusText={agentStreaming ? 'Inbox Agent is working' : undefined}
+                  providerLabel={providers.find((p) => p.id === selectedProviderId)?.name ?? 'Provider'}
+                  modelLabel={selectedModels.find((m) => m.model_id === selectedModelId)?.display_name || selectedModelId || 'Model'}
+                  providerOptions={providers.map((provider) => ({ id: provider.id, label: provider.name }))}
+                  modelOptions={
+                    selectedProviderId && hasLoadedSelectedProviderModels
+                      ? selectedModels.map((model) => ({ id: model.model_id, label: model.display_name || model.model_id }))
+                      : undefined
+                  }
+                  selectedProviderId={selectedProviderId}
+                  selectedModelId={selectedModelId}
+                  onProviderSelect={(id) => { setSelectedProviderId(id); setSelectedModelId(null) }}
+                  onModelSelect={setSelectedModelId}
+                  providerDisabled={providers.length === 0}
+                  modelDisabled={
+                    !selectedProviderId ||
+                    loadingModelsFor === selectedProviderId ||
+                    selectedModels.length === 0
+                  }
+                />
+              </section>
+              <div className="ib-thread-shell">
               <div className="ib-thread-list-pane">
                 <div className="ib-status-tabs">
                   {STATUS_TABS.map((tab) => (
@@ -660,11 +850,8 @@ export function InboxPage() {
                       <strong>No inbox connected</strong>
                       <span>Connect a channel to start syncing conversations.</span>
                       <div>
-                        <button type="button" className="ib-action-btn primary" onClick={handleConnectGmail} disabled={gmailConnecting}>
-                          {gmailConnecting ? <LoadingOne size={13} className="spin" /> : <Plus size={13} />} Gmail
-                        </button>
-                        <button type="button" className="ib-action-btn primary" onClick={handleConnectWhatsApp}>
-                          <Plus size={13} /> WhatsApp
+                        <button type="button" className="ib-action-btn primary" onClick={() => setView('accounts')}>
+                          <Mail size={13} /> Go to Accounts
                         </button>
                       </div>
                     </div>
@@ -708,7 +895,7 @@ export function InboxPage() {
                       <>
                         <Message size={36} />
                         <strong>Select a thread</strong>
-                        <span>Read the conversation, review attachments, draft a reply, or mark the thread handled.</span>
+                        <span>Read the conversation, review attachments, or ask the Inbox Agent to draft a reply.</span>
                       </>
                     )}
                   </div>
@@ -770,28 +957,13 @@ export function InboxPage() {
                         </div>
                       ))}
                     </div>
-                    <div className="ib-composer">
-                      <textarea
-                        placeholder="Write a reply..."
-                        value={replyText}
-                        onChange={(e) => setReplyText(e.target.value)}
-                        rows={4}
-                      />
-                      <div className="ib-composer-actions">
-                        <button type="button" onClick={() => handleReply(false)} disabled={sending || !replyText.trim()}>
-                          <Save size={13} /> Save Draft
-                        </button>
-                        <button type="button" className="primary" onClick={() => handleReply(true)} disabled={sending || !replyText.trim()}>
-                          <Send size={13} /> Send
-                        </button>
-                      </div>
-                    </div>
                   </>
                 )}
               </div>
             </div>
+          </div>
           </section>
-        ) : view === 'accounts' ? (
+        ) : (
           <section className="ib-accounts-page">
             {error && <div className="ib-error-banner"><Caution size={13} /> {error}</div>}
             <div className="ib-accounts-topline">
@@ -852,51 +1024,8 @@ export function InboxPage() {
                 ))
               )}
             </div>
-          </section>
-        ) : (
-          <section className="ib-agent-page">
-            {error && <div className="ib-error-banner"><Caution size={13} /> {error}</div>}
-            <div className="ib-agent-grid">
-              <section className="ib-agent-panel-card ib-agent-chat-card">
-                <div className="ib-panel-headline">
-                  <Robot size={16} />
-                  <strong>Agent workspace</strong>
-                </div>
-                <div className="ib-agent-transcript" ref={agentScrollRef}>
-                  {agentMessages.length === 0 ? (
-                    <div className="ib-agent-empty">
-                      <Robot size={30} />
-                      <strong>Inbox Agent ready</strong>
-                      <span>Ask it to review open threads, summarize a selected conversation, or prepare draft replies.</span>
-                    </div>
-                  ) : (
-                    agentMessages.map((message) => (
-                      <MessageItem
-                        key={message.id}
-                        message={message}
-                        sessionId={agentSessionId ?? undefined}
-                        compact
-                        onApproveTool={approveAgentTool}
-                        onDenyTool={denyAgentTool}
-                        onSubmitToolPrompt={submitAgentToolPrompt}
-                      />
-                    ))
-                  )}
-                </div>
-                <ChatInput
-                  value={agentPrompt}
-                  onChange={setAgentPrompt}
-                  onSend={handleSendAgentPrompt}
-                  onStop={() => { void stopAgentMessage() }}
-                  placeholder="Ask the Inbox Agent..."
-                  maxHeight={120}
-                  isStreaming={agentStreaming}
-                  statusText={agentStreaming ? 'Inbox Agent is working' : undefined}
-                  providerDisabled
-                  modelDisabled
-                />
-              </section>
 
+            <div className="ib-accounts-settings-grid">
               <section className="ib-agent-panel-card">
                 <div className="ib-panel-headline">
                   <AlarmClock size={16} />
@@ -922,9 +1051,6 @@ export function InboxPage() {
                   Full 24/7 automation needs backend rules plus server scheduling. The desktop agent can assist while the app is running.
                 </p>
                 {automationNotice && <div className="ib-agent-automation-notice">{automationNotice}</div>}
-                <button type="button" className="ib-action-btn primary" onClick={handleStartInboxReview} disabled={connectedAccounts.length === 0 || launchingAgent || agentStreaming}>
-                  {launchingAgent || agentStreaming ? <LoadingOne size={13} className="spin" /> : <Send size={13} />} Start inbox review
-                </button>
                 {systemStatus?.mode === 'connected' ? (
                   <button type="button" className="ib-action-btn" onClick={handleCreateInboxReviewJob} disabled={automationCreating}>
                     {automationCreating ? <LoadingOne size={13} className="spin" /> : <AlarmClock size={13} />} Create weekday review
@@ -939,38 +1065,35 @@ export function InboxPage() {
 
               <section className="ib-agent-panel-card">
                 <div className="ib-panel-headline">
-                  <Flag size={16} />
-                  <strong>Current scope</strong>
+                  <Setting size={16} />
+                  <strong>Agent Safety</strong>
                 </div>
-                <div className="ib-agent-rule">
-                  <span>Selected thread</span>
-                  <strong>{selectedThread ? displayContact(selectedThread) : 'None'}</strong>
-                </div>
-                <div className="ib-agent-rule">
-                  <span>Connected channels</span>
-                  <strong>{connectedAccounts.length}</strong>
-                </div>
-                <div className="ib-agent-rule">
-                  <span>Visible open threads</span>
-                  <strong>{openCount}</strong>
-                </div>
-                <div className="ib-agent-rule">
-                  <span>Accounts needing action</span>
-                  <strong>{accountsInError.length}</strong>
-                </div>
+                <label className="ib-toggle-row">
+                  <span>
+                    <strong>Draft first</strong>
+                    <small>Replies stay reviewable before sending.</small>
+                  </span>
+                  <input type="checkbox" checked readOnly />
+                </label>
+                <label className="ib-toggle-row">
+                  <span>
+                    <strong>Require approval</strong>
+                    <small>Sending remains gated by confirmation.</small>
+                  </span>
+                  <input type="checkbox" checked readOnly />
+                </label>
+                <label className="ib-toggle-row disabled">
+                  <span>
+                    <strong>Auto triage rules</strong>
+                    <small>Needs backend rules and scheduler support.</small>
+                  </span>
+                  <input type="checkbox" disabled />
+                </label>
               </section>
             </div>
           </section>
         )}
       </main>
-
-      {advancedOpen && (
-        <InboxAdvancedPanel
-          accounts={accounts}
-          connectedCount={connectedAccounts.length}
-          onClose={() => setAdvancedOpen(false)}
-        />
-      )}
 
       {whatsappPairing && (
         <div className="ib-modal-backdrop">
@@ -991,105 +1114,6 @@ export function InboxPage() {
         </div>
       )}
     </div>
-  )
-}
-
-function InboxAdvancedPanel({
-  accounts,
-  connectedCount,
-  onClose,
-}: {
-  accounts: ChannelAccount[]
-  connectedCount: number
-  onClose: () => void
-}) {
-  const gmailCount = accounts.filter((account) => account.channel === 'gmail').length
-  const whatsappCount = accounts.filter((account) => account.channel === 'whatsapp').length
-
-  return (
-    <aside className="ib-advanced-panel" aria-label="Inbox advanced settings">
-      <div className="ib-advanced-head">
-        <div>
-          <h2>Advanced</h2>
-          <span>Inbox settings</span>
-        </div>
-        <button type="button" onClick={onClose} aria-label="Close advanced settings">
-          <WindowCloseIcon size={14} />
-        </button>
-      </div>
-
-      <section className="ib-advanced-section">
-        <h3>Channels</h3>
-        <div className="ib-advanced-row">
-          <span>Connected accounts</span>
-          <strong>{connectedCount}</strong>
-        </div>
-        <div className="ib-advanced-row">
-          <span>Gmail</span>
-          <strong>{gmailCount}</strong>
-        </div>
-        <div className="ib-advanced-row">
-          <span>WhatsApp</span>
-          <strong>{whatsappCount}</strong>
-        </div>
-      </section>
-
-      <section className="ib-advanced-section">
-        <h3>Agent Safety</h3>
-        <label className="ib-toggle-row">
-          <span>
-            <strong>Draft first</strong>
-            <small>Replies stay reviewable before sending.</small>
-          </span>
-          <input type="checkbox" checked readOnly />
-        </label>
-        <label className="ib-toggle-row">
-          <span>
-            <strong>Require approval</strong>
-            <small>Sending remains gated by confirmation.</small>
-          </span>
-          <input type="checkbox" checked readOnly />
-        </label>
-        <label className="ib-toggle-row disabled">
-          <span>
-            <strong>Auto triage rules</strong>
-            <small>Needs backend rules and scheduler support.</small>
-          </span>
-          <input type="checkbox" disabled />
-        </label>
-      </section>
-
-      <section className="ib-advanced-section">
-        <h3>Runtime</h3>
-        <div className="ib-advanced-row">
-          <span>Gmail sync</span>
-          <strong>Manual</strong>
-        </div>
-        <div className="ib-advanced-row">
-          <span>WhatsApp</span>
-          <strong>Live</strong>
-        </div>
-        <div className="ib-advanced-note">
-          Cloud scheduling will belong to Seshat Server when Inbox automation moves to 24/7.
-        </div>
-      </section>
-
-      <section className="ib-advanced-section">
-        <h3>Coming Next</h3>
-        <div className="ib-advanced-row muted">
-          <span>Server search</span>
-          <strong>Needed</strong>
-        </div>
-        <div className="ib-advanced-row muted">
-          <span>Rules</span>
-          <strong>Needed</strong>
-        </div>
-        <div className="ib-advanced-row muted">
-          <span>Signatures</span>
-          <strong>Needed</strong>
-        </div>
-      </section>
-    </aside>
   )
 }
 
@@ -1355,7 +1379,7 @@ ${MESSAGE_ITEM_CSS}
   box-shadow: inset 0 -2px 0 var(--color-cta);
 }
 
-.ib-main-triage {
+.ib-inbox-page {
   flex: 1;
   min-height: 0;
   display: flex;
@@ -1364,9 +1388,17 @@ ${MESSAGE_ITEM_CSS}
   padding: 20px 24px 24px;
 }
 
+.ib-inbox-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(380px, 1fr) minmax(460px, 1.3fr);
+  gap: 14px;
+}
+
 .ib-search-row {
   display: grid;
-  grid-template-columns: minmax(320px, 1fr) auto;
+  grid-template-columns: minmax(320px, 1fr) auto auto;
   gap: 12px;
   align-items: center;
 }
@@ -1380,8 +1412,8 @@ ${MESSAGE_ITEM_CSS}
   font-size: var(--font-size-sm);
 }
 
-.ib-channel-tabs-inline {
-  width: 260px;
+.ib-channel-selector {
+  min-width: 180px;
 }
 
 .ib-accounts-page {
@@ -1424,22 +1456,10 @@ ${MESSAGE_ITEM_CSS}
   align-content: start;
 }
 
-.ib-agent-page {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 26px 28px 40px;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.ib-agent-grid {
-  flex: 1;
-  min-height: 0;
+.ib-accounts-settings-grid {
   display: grid;
-  grid-template-columns: minmax(420px, 1.45fr) minmax(280px, 0.75fr) minmax(260px, 0.7fr);
-  gap: 14px;
+  grid-template-columns: repeat(2, minmax(280px, 1fr));
+  gap: 12px;
 }
 
 .ib-agent-panel-card {
@@ -1735,94 +1755,6 @@ ${MESSAGE_ITEM_CSS}
   font-size: var(--font-size-base);
 }
 
-.ib-advanced-panel {
-  position: absolute;
-  top: 56px;
-  right: 0;
-  bottom: 0;
-  width: min(440px, 34vw);
-  min-width: 360px;
-  z-index: 18;
-  background: var(--color-bg);
-  border-left: 1px solid var(--color-border);
-  box-shadow: -28px 0 48px rgba(0, 0, 0, 0.22);
-  overflow-y: auto;
-}
-
-.ib-advanced-head {
-  min-height: 84px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 18px 22px;
-  border-bottom: 1px solid var(--color-border-subtle);
-}
-
-.ib-advanced-head h2 {
-  margin: 0;
-  font-size: var(--font-size-lg);
-}
-
-.ib-advanced-head span {
-  display: block;
-  margin-top: 5px;
-  color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
-}
-
-.ib-advanced-head button {
-  width: 30px;
-  height: 30px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--color-border);
-  border-radius: 7px;
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-  cursor: pointer;
-}
-
-.ib-advanced-head button:hover {
-  background: var(--color-hover);
-  color: var(--color-text);
-}
-
-.ib-advanced-section {
-  padding: 20px 22px;
-  border-bottom: 1px solid var(--color-border-subtle);
-}
-
-.ib-advanced-section h3 {
-  margin: 0 0 14px;
-  font-size: var(--font-size-base);
-}
-
-.ib-advanced-row {
-  min-height: 38px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 0 12px;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 7px;
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
-  margin-bottom: 8px;
-}
-
-.ib-advanced-row strong {
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-xs);
-}
-
-.ib-advanced-row.muted strong {
-  color: var(--color-text-muted);
-}
-
 .ib-toggle-row {
   min-height: 58px;
   display: flex;
@@ -1860,16 +1792,6 @@ ${MESSAGE_ITEM_CSS}
 
 .ib-toggle-row.disabled {
   opacity: 0.55;
-}
-
-.ib-advanced-note {
-  padding: 11px 12px;
-  border: 1px solid rgba(239, 124, 47, 0.3);
-  border-radius: 7px;
-  background: rgba(239, 124, 47, 0.08);
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-xs);
-  line-height: 1.5;
 }
 
 .ib-dashboard {
@@ -2067,7 +1989,6 @@ ${MESSAGE_ITEM_CSS}
   font-size: 12px;
 }
 
-.ib-channel-tabs,
 .ib-status-tabs {
   display: grid;
   grid-auto-flow: column;
@@ -2077,7 +1998,6 @@ ${MESSAGE_ITEM_CSS}
   overflow: hidden;
 }
 
-.ib-channel-tabs button,
 .ib-status-tabs button {
   min-width: 0;
   height: 32px;
@@ -2090,12 +2010,10 @@ ${MESSAGE_ITEM_CSS}
   cursor: pointer;
 }
 
-.ib-channel-tabs button:last-child,
 .ib-status-tabs button:last-child {
   border-right: 0;
 }
 
-.ib-channel-tabs button.active,
 .ib-status-tabs button.active {
   background: rgba(239, 124, 47, 0.12);
   color: var(--color-text);
@@ -2298,8 +2216,7 @@ ${MESSAGE_ITEM_CSS}
   gap: 6px;
 }
 
-.ib-detail-actions button,
-.ib-composer-actions button {
+.ib-detail-actions button {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -2314,8 +2231,7 @@ ${MESSAGE_ITEM_CSS}
   cursor: pointer;
 }
 
-.ib-detail-actions button:hover,
-.ib-composer-actions button:hover:not(:disabled) {
+.ib-detail-actions button:hover {
   color: var(--color-text);
   background: var(--color-hover);
 }
@@ -2413,49 +2329,6 @@ ${MESSAGE_ITEM_CSS}
 .ib-attachment-size {
   flex-shrink: 0;
   color: var(--color-text-muted);
-}
-
-.ib-composer {
-  flex-shrink: 0;
-  border-top: 1px solid var(--color-border-subtle);
-  padding: 10px 14px;
-}
-
-.ib-composer textarea {
-  width: 100%;
-  resize: vertical;
-  min-height: 84px;
-  max-height: 180px;
-  border: 1px solid var(--color-border);
-  border-radius: 7px;
-  background: var(--color-surface);
-  color: var(--color-text);
-  font-size: 12.5px;
-  padding: 9px 10px;
-  font-family: inherit;
-  outline: none;
-}
-
-.ib-composer textarea:focus {
-  border-color: var(--color-primary);
-}
-
-.ib-composer-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.ib-composer-actions button.primary {
-  background: var(--color-cta);
-  border-color: transparent;
-  color: white;
-}
-
-.ib-composer-actions button:disabled {
-  opacity: 0.5;
-  cursor: default;
 }
 
 .ib-empty {
@@ -2562,27 +2435,17 @@ ${MESSAGE_ITEM_CSS}
 }
 
 /* New Inbox layout overrides */
-.ib-main.ib-main-triage {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 20px 24px 24px;
-}
-
-.ib-main.ib-main-triage .ib-thread-shell {
+.ib-main.ib-inbox-page .ib-thread-shell {
   flex: 1;
   min-height: 0;
 }
 
-.ib-main.ib-main-triage .ib-thread-list-pane,
-.ib-main.ib-main-triage .ib-detail-pane {
+.ib-main.ib-inbox-page .ib-thread-list-pane,
+.ib-main.ib-inbox-page .ib-detail-pane {
   min-height: 0;
 }
 
-.ib-accounts-page .ib-accounts-grid,
-.ib-agent-page .ib-agent-grid {
+.ib-accounts-page .ib-accounts-grid {
   flex: 1;
 }
 
@@ -2591,29 +2454,11 @@ ${MESSAGE_ITEM_CSS}
   grid-column: 1 / -1;
 }
 
-.ib-agent-page {
-  padding-top: 20px;
-}
-
-.ib-searchbox.ib-searchbox-large {
-  height: 40px;
-  max-width: 720px;
-}
-
-.ib-searchbox.ib-searchbox-large input {
-  font-size: var(--font-size-sm);
-}
-
-.ib-channel-tabs.ib-channel-tabs-inline {
-  width: 260px;
-  flex-shrink: 0;
-}
-
-.ib-main.ib-main-triage .ib-thread-list {
+.ib-main.ib-inbox-page .ib-thread-list {
   overflow-x: hidden;
 }
 
-.ib-main.ib-main-triage .ib-empty-connect {
+.ib-main.ib-inbox-page .ib-empty-connect {
   min-height: 100%;
   width: 100%;
   max-width: 100%;
@@ -2623,16 +2468,16 @@ ${MESSAGE_ITEM_CSS}
   overflow: hidden;
 }
 
-.ib-main.ib-main-triage .ib-empty-connect svg {
+.ib-main.ib-inbox-page .ib-empty-connect svg {
   flex-shrink: 0;
 }
 
-.ib-main.ib-main-triage .ib-empty-connect strong,
-.ib-main.ib-main-triage .ib-empty-connect span {
+.ib-main.ib-inbox-page .ib-empty-connect strong,
+.ib-main.ib-inbox-page .ib-empty-connect span {
   max-width: 240px;
 }
 
-.ib-main.ib-main-triage .ib-empty-connect div {
+.ib-main.ib-inbox-page .ib-empty-connect div {
   max-width: 100%;
   display: flex;
   justify-content: center;
@@ -2641,7 +2486,7 @@ ${MESSAGE_ITEM_CSS}
   margin-top: 2px;
 }
 
-.ib-main.ib-main-triage .ib-empty-connect .ib-action-btn {
+.ib-main.ib-inbox-page .ib-empty-connect .ib-action-btn {
   min-width: 104px;
 }
 
@@ -2649,13 +2494,13 @@ ${MESSAGE_ITEM_CSS}
   .ib-search-row {
     grid-template-columns: 1fr;
   }
-  .ib-channel-tabs.ib-channel-tabs-inline {
-    width: 100%;
-  }
   .ib-account-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .ib-agent-grid {
+  .ib-inbox-grid {
+    grid-template-columns: 1fr;
+  }
+  .ib-accounts-settings-grid {
     grid-template-columns: 1fr;
   }
 }
