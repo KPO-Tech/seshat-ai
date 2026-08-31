@@ -3,7 +3,7 @@ package gmail
 import (
 	"golang.org/x/oauth2"
 
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/googleoauth"
+	googleOAuth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/oauth/google"
 	coregmail "github.com/EngineerProjects/seshat-ai/seshat-core/gmail"
 )
 
@@ -16,12 +16,12 @@ var Scopes = coregmail.Scopes
 // at all, the same way other optional integrations (Docling, web search
 // providers) are skipped rather than half-initialized when unconfigured.
 func IsConfigured() bool {
-	return googleoauth.IsConfigured()
+	return googleOAuth.IsConfigured()
 }
 
 // BaseOAuthConfig builds the Gmail OAuth2 client config - see
-// googleoauth.BaseConfig for the shared client-ID/secret sourcing and
+// googleOAuth.BaseConfig for the shared client-ID/secret sourcing and
 // "Desktop app" redirect setup this delegates to.
 func BaseOAuthConfig() (*oauth2.Config, error) {
-	return googleoauth.BaseConfig(Scopes)
+	return googleOAuth.BaseConfig(Scopes)
 }

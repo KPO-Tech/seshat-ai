@@ -1,4 +1,4 @@
-package mcpaction
+package action
 
 import (
 	"context"

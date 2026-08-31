@@ -1,4 +1,4 @@
-package prospectingtool
+package tool
 
 import (
 	"fmt"

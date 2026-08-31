@@ -34,7 +34,7 @@ type oauthState struct {
 	// (Gmail, Drive), which authenticate with a client secret and don't use
 	// PKCE. Populated for Microsoft-backed connectors (SharePoint), whose
 	// Entra ID app registration must be a public/native client - see
-	// internal/microsoftoauth's package doc comment.
+	// internal/oauth/microsoft's package doc comment.
 	codeVerifier string
 }
 
@@ -258,7 +258,7 @@ func (a *App) handleInboxGmailOAuthCallback(w http.ResponseWriter, r *http.Reque
 // across outlook/teams - they differ only in channel string, which
 // package's BaseOAuthConfig/Scopes to use, and the callback URL's channel
 // segment. Unlike Gmail, both need PKCE (Microsoft's public/native client
-// model - see internal/microsoftoauth's package doc comment), so this
+// model - see internal/oauth/microsoft's package doc comment), so this
 // mirrors handleKnowledgeSharePointOAuthStart/Callback's shape, not Gmail's.
 type microsoftInboxChannel struct {
 	channel         string

@@ -17,7 +17,7 @@ import (
 // POST /knowledge/connectors/sharepoint/oauth/start. Unlike Drive/Gmail,
 // this must generate a PKCE code verifier (Microsoft's public/native
 // client model requires it in place of a client secret — see
-// internal/microsoftoauth's package doc comment) and carry it across the
+// internal/oauth/microsoft's package doc comment) and carry it across the
 // redirect round trip via storeOAuthStateWithVerifier.
 func (a *App) handleKnowledgeSharePointOAuthStart(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {

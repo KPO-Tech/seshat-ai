@@ -49,11 +49,11 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge/s3"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge/sharepoint"
 	knowledgeAgentTools "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge/tool"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/mcpaction"
+	mcpAction "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/mcp/action"
 	backendmemories "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/memories"
 	backendpreferences "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/preferences"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/prospecting"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/prospectingtool"
+	prospectingTools "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/prospecting/tool"
 	backendquery "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/query"
 	backendquotas "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/quotas"
 	backendsettings "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/settings"
@@ -1027,13 +1027,13 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	}
 
 	// ActionConnectors: one entry per MCP-backed connector.ActionConnector
-	// (see internal/mcpaction and helps/roadmap.md Phase 3). "demo-crm" is
+	// (see internal/mcp/action and helps/roadmap.md Phase 3). "demo-crm" is
 	// the first concrete instance, not a hardcoded special case - any MCP
 	// server registered under a different name (via the existing generic
 	// /mcp API/Settings UI) can be wrapped the same way by adding another
 	// entry here. Resolution of whether that server is actually configured
 	// happens per-call in Connector.Act, not here.
-	demoCRMConnector := mcpaction.NewConnector(mcpServerStore, "demo-crm")
+	demoCRMConnector := mcpAction.NewConnector(mcpServerStore, "demo-crm")
 	actionConnectors := map[string]connector.ActionConnector{
 		string(demoCRMConnector.Kind()): demoCRMConnector,
 	}
@@ -1164,8 +1164,8 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	// agent can use them via its tool-slug list.
 	if prospectingBackend != nil {
 		prospectingAgentTools := []sdk.Tool{
-			prospectingtool.NewSweepAreaTool(prospectingBackend),
-			prospectingtool.NewListBusinessesTool(prospectingBackend),
+			prospectingTools.NewSweepAreaTool(prospectingBackend),
+			prospectingTools.NewListBusinessesTool(prospectingBackend),
 		}
 		for _, tool := range prospectingAgentTools {
 			if err := queryClient.RegisterTool(tool); err != nil {

@@ -1,4 +1,4 @@
-// Package mcpaction implements connector.ActionConnector by delegating Act
+// Package action implements connector.ActionConnector by delegating Act
 // to a direct MCP tool call - the first real implementation of the
 // ActionConnector contract posed (but never implemented) in Phase 1 of
 // helps/roadmap.md. Generic Knowledge/Action-registry MCP support already
@@ -7,7 +7,7 @@
 // déjà complet" verdict); what didn't exist is a deterministic, app-driven
 // call to a specific tool outside that LLM-mediated path, which is what
 // ActionConnector.Act needs.
-package mcpaction
+package action
 
 import (
 	"context"

@@ -6,7 +6,7 @@ import (
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 )
 
-// Backend is what internal/prospectingtool's agent tools actually depend
+// Backend is what internal/prospecting/tool's agent tools actually depend
 // on — implemented locally by *Service (standalone, per-user) and remotely
 // by internal/cloud/prospecting.RemoteService (connected mode, org-scoped),
 // the same swap pattern internal/knowledge.Backend uses. See

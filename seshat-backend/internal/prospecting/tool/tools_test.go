@@ -1,4 +1,4 @@
-package prospectingtool_test
+package tool_test
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/prospecting"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/prospectingtool"
+	prospectingTools "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/prospecting/tool"
 	"github.com/KPO-Tech/seshat/pkg/tools"
 )
 
@@ -19,7 +19,7 @@ import (
 // (missing principal, missing required input, unknown sweep ownership),
 // none of which ever reach the network. Tests that need SweepArea to
 // actually succeed live in internal/prospecting/service_test.go, which can
-// stub the HTTP transport as a same-package white-box test - prospectingtool
+// stub the HTTP transport as a same-package white-box test - prospectingTools
 // has no such access, so it isn't retested here.
 func newTestService(t *testing.T) *prospecting.Service {
 	t.Helper()
@@ -47,9 +47,9 @@ func ctxWithPrincipal(principal *backendauth.Principal) context.Context {
 }
 
 func TestSweepAreaTool_Definition(t *testing.T) {
-	tool := prospectingtool.NewSweepAreaTool(newTestService(t))
+	tool := prospectingTools.NewSweepAreaTool(newTestService(t))
 	def := tool.Definition()
-	require.Equal(t, prospectingtool.SweepAreaToolName, def.Name)
+	require.Equal(t, prospectingTools.SweepAreaToolName, def.Name)
 	require.Equal(t, "prospecting", def.Category)
 	require.True(t, def.IsReadOnly)
 	require.True(t, def.IsConcurrencySafe)
@@ -62,19 +62,19 @@ func TestSweepAreaTool_IsEnabled(t *testing.T) {
 	// method's doc comment) — a non-nil Backend is enough, since
 	// bootstrap.go only ever sets one when a usable backend actually exists
 	// for the current mode (local env var, or a connected seshat-server).
-	require.False(t, prospectingtool.NewSweepAreaTool(nil).IsEnabled(), "nil backend must never be enabled")
-	require.True(t, prospectingtool.NewSweepAreaTool(newTestService(t)).IsEnabled(), "a non-nil backend must be enabled regardless of the local env var")
+	require.False(t, prospectingTools.NewSweepAreaTool(nil).IsEnabled(), "nil backend must never be enabled")
+	require.True(t, prospectingTools.NewSweepAreaTool(newTestService(t)).IsEnabled(), "a non-nil backend must be enabled regardless of the local env var")
 }
 
 func TestSweepAreaTool_Call_NoPrincipalReturnsError(t *testing.T) {
-	tool := prospectingtool.NewSweepAreaTool(newTestService(t))
+	tool := prospectingTools.NewSweepAreaTool(newTestService(t))
 	result, err := tool.Call(context.Background(), tools.CallInput{Parsed: map[string]any{}}, nil)
 	require.NoError(t, err, "tool-level failures surface via CallResult.Error, not a Go error")
 	require.NotNil(t, result.Error)
 }
 
 func TestSweepAreaTool_Call_MissingAreaReturnsCleanError(t *testing.T) {
-	tool := prospectingtool.NewSweepAreaTool(newTestService(t))
+	tool := prospectingTools.NewSweepAreaTool(newTestService(t))
 	principal := testPrincipal("user-1")
 	result, err := tool.Call(ctxWithPrincipal(principal), tools.CallInput{
 		Parsed: map[string]any{"sectors": []any{"boulangerie"}},
@@ -84,7 +84,7 @@ func TestSweepAreaTool_Call_MissingAreaReturnsCleanError(t *testing.T) {
 }
 
 func TestSweepAreaTool_Call_MissingSectorsReturnsCleanError(t *testing.T) {
-	tool := prospectingtool.NewSweepAreaTool(newTestService(t))
+	tool := prospectingTools.NewSweepAreaTool(newTestService(t))
 	principal := testPrincipal("user-1")
 	result, err := tool.Call(ctxWithPrincipal(principal), tools.CallInput{
 		Parsed: map[string]any{"area": "Lille"},
@@ -94,16 +94,16 @@ func TestSweepAreaTool_Call_MissingSectorsReturnsCleanError(t *testing.T) {
 }
 
 func TestListBusinessesTool_Definition(t *testing.T) {
-	tool := prospectingtool.NewListBusinessesTool(newTestService(t))
+	tool := prospectingTools.NewListBusinessesTool(newTestService(t))
 	def := tool.Definition()
-	require.Equal(t, prospectingtool.ListBusinessesToolName, def.Name)
+	require.Equal(t, prospectingTools.ListBusinessesToolName, def.Name)
 	require.Equal(t, "prospecting", def.Category)
 	require.True(t, def.IsReadOnly)
 	require.False(t, def.RequiresPermission)
 }
 
 func TestListBusinessesTool_Call_MissingSweepIDReturnsCleanError(t *testing.T) {
-	tool := prospectingtool.NewListBusinessesTool(newTestService(t))
+	tool := prospectingTools.NewListBusinessesTool(newTestService(t))
 	principal := testPrincipal("user-1")
 	result, err := tool.Call(ctxWithPrincipal(principal), tools.CallInput{Parsed: map[string]any{}}, nil)
 	require.NoError(t, err)
@@ -111,7 +111,7 @@ func TestListBusinessesTool_Call_MissingSweepIDReturnsCleanError(t *testing.T) {
 }
 
 func TestListBusinessesTool_Call_UnknownSweepReturnsCleanError(t *testing.T) {
-	tool := prospectingtool.NewListBusinessesTool(newTestService(t))
+	tool := prospectingTools.NewListBusinessesTool(newTestService(t))
 	principal := testPrincipal("user-1")
 	result, err := tool.Call(ctxWithPrincipal(principal), tools.CallInput{
 		Parsed: map[string]any{"sweep_id": "does-not-exist"},

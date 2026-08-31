@@ -1,9 +1,9 @@
-// Package googleoauth is the shared OAuth client config every Google-backed
+// Package google is the shared OAuth client config every Google-backed
 // connector uses (Gmail, Google Drive, ...) - extracted from gmail's
 // original oauth.go once a second product needed the exact same
 // client-ID/secret-sourcing and "Desktop app" loopback-redirect setup, to
 // avoid duplicating it per connector.
-package googleoauth
+package google
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
+	oauth2google "golang.org/x/oauth2/google"
 )
 
 // IsConfigured reports whether GOOGLE_OAUTH_CLIENT_ID/SECRET are set - the
@@ -47,7 +47,7 @@ func BaseConfig(scopes []string) (*oauth2.Config, error) {
 	return &oauth2.Config{
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
-		Endpoint:     google.Endpoint,
+		Endpoint:     oauth2google.Endpoint,
 		Scopes:       scopes,
 	}, nil
 }

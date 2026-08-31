@@ -6,7 +6,7 @@
 // reachability scoring, name-similarity matching) to the shared
 // github.com/EngineerProjects/seshat-ai/seshat-core/prospecting module - see that
 // module's own doc comment for why it's a separate sibling package rather
-// than living here or in the seshat runtime. See internal/prospectingtool
+// than living here or in the seshat runtime. See internal/prospecting/tool
 // for the agent-facing tools built on top of this package.
 package prospecting
 
@@ -28,14 +28,14 @@ const (
 )
 
 // GeoPoint and Executive are tenant-agnostic - re-exported here as aliases
-// so existing callers (internal/prospectingtool, this package's own
+// so existing callers (internal/prospecting/tool, this package's own
 // service.go) keep referring to prospecting.GeoPoint/prospecting.Executive
 // without needing to know the logic underneath moved to a shared package.
 type GeoPoint = prospectingcore.GeoPoint
 type Executive = prospectingcore.Executive
 
 // IsConfigured re-exports prospecting-core's check (GOOGLE_PLACES_API_KEY
-// set) so internal/prospectingtool doesn't need to import that module
+// set) so internal/prospecting/tool doesn't need to import that module
 // directly just for this one call.
 var IsConfigured = prospectingcore.IsConfigured
 

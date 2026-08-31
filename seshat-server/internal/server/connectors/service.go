@@ -28,7 +28,7 @@
 // ConnectorAccount has - bridging a connected account's OAuth credentials
 // into a live MCP call (fresh access token per call) needs its own design
 // once a concrete MCP server is chosen - but not from scratch: seshat-backend
-// already proved the exact bridging mechanism in internal/mcpaction/
+// already proved the exact bridging mechanism in internal/mcp/action/
 // connector.go (helps/roadmap.md, Phase 3, 2026-08-15) - a connected
 // account's secret.AccessToken is injected as an Authorization: Bearer
 // header on top of the MCP server's own static config, per call. That

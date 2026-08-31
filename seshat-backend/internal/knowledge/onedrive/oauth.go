@@ -3,7 +3,7 @@ package onedrive
 import (
 	"golang.org/x/oauth2"
 
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/microsoftoauth"
+	microsoftOAuth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/oauth/microsoft"
 	coreconnectors "github.com/EngineerProjects/seshat-ai/seshat-core/connectors"
 )
 
@@ -18,12 +18,12 @@ var Scopes = coreconnectors.OneDriveScopes
 // IsConfigured reports whether the shared Microsoft OAuth client
 // (MICROSOFT_OAUTH_CLIENT_ID) is configured.
 func IsConfigured() bool {
-	return microsoftoauth.IsConfigured()
+	return microsoftOAuth.IsConfigured()
 }
 
 // BaseOAuthConfig builds the OneDrive OAuth2 client config - see
-// microsoftoauth.BaseConfig for the shared client-ID sourcing, PKCE
+// microsoftOAuth.BaseConfig for the shared client-ID sourcing, PKCE
 // requirement, and "organizations" tenant endpoint this delegates to.
 func BaseOAuthConfig() (*oauth2.Config, error) {
-	return microsoftoauth.BaseConfig(Scopes)
+	return microsoftOAuth.BaseConfig(Scopes)
 }

@@ -19,7 +19,7 @@ type connectManualAccountRequest struct {
 	// shape needs more than one static token - e.g. s3 stores the
 	// S3 secret access key here and non-secret bucket/region/endpoint
 	// config in Config (JSON-encoded into ConnectorAccount.Scope). A
-	// single-token connector like mcpaction's simply leaves both empty.
+	// single-token connector like mcp/action's simply leaves both empty.
 	RefreshToken string         `json:"refresh_token"`
 	Config       map[string]any `json:"config"`
 }
@@ -69,7 +69,7 @@ func (a *App) handleConnectorsDispatch(w http.ResponseWriter, r *http.Request) {
 // credential (an API key/bearer token, as most MCP servers use) rather
 // than an authorization-code flow to run. Distinct from Drive/Gmail's
 // OAuth start/callback pair, which this deliberately does not replicate -
-// see internal/mcpaction's doc comment for why a static token fits an
+// see internal/mcp/action's doc comment for why a static token fits an
 // MCP-backed ActionConnector's actual auth shape.
 func (a *App) handleConnectorAccounts(w http.ResponseWriter, r *http.Request, kind string) {
 	if a.backend.ConnectorAccounts == nil {

@@ -1,6 +1,6 @@
-// Package microsoftoauth is the shared OAuth client config every
+// Package microsoft is the shared OAuth client config every
 // Microsoft-Graph-backed connector uses (SharePoint today, possibly Outlook/
-// Teams later) — mirrors internal/googleoauth's role for Google-backed
+// Teams later) — mirrors internal/oauth/google's role for Google-backed
 // connectors, but the flow shape differs in one structural way: Entra ID
 // (Azure AD) requires a "Mobile and desktop applications" app registration
 // to be a true public/native client, which must NOT present a client
@@ -12,7 +12,7 @@
 // AuthCodeURL, and oauth2.VerifierOption(verifier) to Exchange — the exact
 // pattern already used server-side for OIDC logins
 // (seshat-server/internal/server/iam/oidc.go).
-package microsoftoauth
+package microsoft
 
 import (
 	"fmt"
@@ -41,7 +41,7 @@ func IsConfigured() bool {
 
 // BaseConfig builds the Microsoft identity platform OAuth2 client config
 // for the given scopes, with an empty RedirectURL — same convention as
-// googleoauth.BaseConfig, filled in per-request by the caller from the
+// googleOAuth.BaseConfig, filled in per-request by the caller from the
 // incoming request's own host:port.
 func BaseConfig(scopes []string) (*oauth2.Config, error) {
 	clientID := strings.TrimSpace(os.Getenv("MICROSOFT_OAUTH_CLIENT_ID"))

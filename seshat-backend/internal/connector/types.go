@@ -86,7 +86,7 @@ type Account struct {
 // the Discover/Sync logic that produces/consumes them now lives in
 // core/connectors (shared with seshat-server's own connectors package, see
 // ROADMAP.md's "core/connectors" entry) - aliasing keeps every consumer in
-// this module (inbox, gmail, whatsapp, mcpaction, the three
+// this module (inbox, gmail, whatsapp, mcp/action, the three
 // knowledge connectors) working unchanged, with zero conversion code.
 //
 // AccessEntry names one identity or group allowed to see a resource,

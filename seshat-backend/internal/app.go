@@ -180,7 +180,7 @@ type Dependencies struct {
 	// use across every connector kind, not just Drive. ActionConnectors
 	// maps connector.Kind (as a string) to the implementation that should
 	// handle a POST .../accounts/{id}/act call for that kind - see
-	// internal/mcpaction and helps/roadmap.md Phase 3. Both nil = no Action
+	// internal/mcp/action and helps/roadmap.md Phase 3. Both nil = no Action
 	// connector is configured (no routes registered).
 	ConnectorAccounts *db.ConnectorAccountStore
 	ActionConnectors  map[string]connector.ActionConnector
