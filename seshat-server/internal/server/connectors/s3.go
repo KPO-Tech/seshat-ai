@@ -1,6 +1,6 @@
 // S3 connector: implements knowledgeConnector for any S3-compatible object
 // store by wrapping core/connectors.S3Connector - the actual Discover/Sync
-// logic lives there now (shared with seshat-backend's own knowledges3
+// logic lives there now (shared with seshat-backend's own knowledge/s3
 // package), see its doc comment for why. This file only adapts core's
 // plain (config, secret, cursor) signature to this package's
 // knowledgeConnector interface, passing account.Config through as the

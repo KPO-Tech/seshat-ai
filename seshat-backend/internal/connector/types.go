@@ -76,9 +76,9 @@ type Account struct {
 	// JSON-encoded) - the counterpart to Secret for settings that aren't
 	// credentials. Populated by the caller from db.ConnectorAccount.Scope
 	// (a free-text column already repurposed this way, see
-	// internal/knowledges3's doc comment). Empty for connectors that don't
+	// internal/knowledge/s3's doc comment). Empty for connectors that don't
 	// need any (Drive, the MCP-backed Action connector) - added when
-	// knowledges3 needed it, not before, so it stays genuinely optional.
+	// s3 needed it, not before, so it stays genuinely optional.
 	Config string
 }
 
@@ -86,7 +86,7 @@ type Account struct {
 // the Discover/Sync logic that produces/consumes them now lives in
 // core/connectors (shared with seshat-server's own connectors package, see
 // ROADMAP.md's "core/connectors" entry) - aliasing keeps every consumer in
-// this module (inbox, inboxgmail, inboxwhatsapp, mcpaction, the three
+// this module (inbox, gmail, whatsapp, mcpaction, the three
 // knowledge connectors) working unchanged, with zero conversion code.
 //
 // AccessEntry names one identity or group allowed to see a resource,

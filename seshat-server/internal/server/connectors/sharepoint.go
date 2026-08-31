@@ -1,7 +1,7 @@
 // SharePoint connector: implements knowledgeConnector for SharePoint Online
 // (read-only) by wrapping core/connectors.SharePointConnector - the actual
 // Discover/Sync/Graph-client/permission-mapping logic lives there now
-// (shared with seshat-backend's own knowledgesharepoint package), see its
+// (shared with seshat-backend's own knowledge/sharepoint package), see its
 // doc comment for why. This file only adapts core's plain (secret, cursor)
 // signature to this package's knowledgeConnector interface (account is
 // accepted but unused - sharepoint's Discover/Sync never read it, confirmed

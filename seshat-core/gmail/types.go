@@ -5,7 +5,7 @@
 // MIME parsing/translation, reply threading), not raw HTTP.
 //
 // Shared, tenant-agnostic logic used two ways: seshat-backend wraps it in
-// a real inbox.Connector (internal/inboxgmail) for the local Inbox
+// a real inbox.Connector (internal/inbox/gmail) for the local Inbox
 // workflow, and seshat-server wraps it in a small self-hosted MCP server
 // (internal/server/gmailmcp) so the workspace chat agent can call it as a
 // tool, bridged through a per-employee OAuth-connected account the same
@@ -34,7 +34,7 @@ type Attachment struct {
 // Message is one email, already MIME-parsed. Deliberately has no
 // "direction" field - inbound vs. outbound depends on which address is
 // the connected account's own, an inbox-domain concept the caller (e.g.
-// inboxgmail.translateMessage) computes itself from From/To.
+// inbox/gmail.translateMessage) computes itself from From/To.
 type Message struct {
 	ID          string
 	ThreadID    string

@@ -9,7 +9,7 @@ import "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/prompt"
 const InboxAgentSlug = "inbox-agent"
 
 // DefaultInboxAgentParams is the recommended configuration for the Inbox
-// Agent: scoped to exactly the inbox_* tools (see internal/inboxtool) plus
+// Agent: scoped to exactly the inbox_* tools (see internal/inbox/tool) plus
 // knowledge_search (for grounding replies in company knowledge) and the
 // generic agent/spawn_agent delegation tools (for handing a thread off to
 // another agent, e.g. a future Accounting Agent for an invoice email) -
@@ -63,7 +63,7 @@ You are the Inbox Agent. You triage and respond to the user's connected communic
 // inboxWorkflow carries the same policy content this agent has always had -
 // per-tool guidance already lives in each inbox_* tool's own Description
 // (what it does, when to use it, its safety constraints; see
-// internal/inboxtool), so this only needs the cross-cutting policy that
+// internal/inbox/tool), so this only needs the cross-cutting policy that
 // applies regardless of which tool is being called.
 const inboxWorkflow = `# Workflow
 

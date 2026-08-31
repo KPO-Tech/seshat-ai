@@ -86,7 +86,7 @@ type Message struct {
 // ContentType/Size) is always populated by the connector that observed it;
 // StorageKey is set once the bytes are cached in ArtifactStore - either
 // immediately (WhatsApp, which downloads eagerly at ingest, see
-// internal/inboxwhatsapp's package doc) or lazily, on first download
+// internal/inbox/whatsapp's package doc) or lazily, on first download
 // request (Gmail, whose GmailAttachmentID stays valid indefinitely via the
 // API, so eager download would waste bandwidth on attachments nobody ever
 // opens - see Service.OpenAttachment).

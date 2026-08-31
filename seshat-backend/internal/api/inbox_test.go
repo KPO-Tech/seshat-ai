@@ -21,7 +21,7 @@ import (
 
 // fakeInboxConnector lets these HTTP-layer tests seed a thread/message
 // without a real Gmail or WhatsApp connection - the underlying inbox.Service
-// logic itself is already covered by internal/inbox and internal/inboxtool's
+// logic itself is already covered by internal/inbox and internal/inbox/tool's
 // own test suites; these tests only need to prove the routing/serialization
 // layer works.
 type fakeInboxConnector struct {

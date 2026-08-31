@@ -49,7 +49,7 @@ type SearchAllResult struct {
 // CorpusID, if set) concurrently, merges the results, sorts them by score
 // descending, and trims to TopK.
 //
-// Shared by internal/knowledgetool's agent-facing knowledge_search tool and
+// Shared by internal/knowledge/tool's agent-facing knowledge_search tool and
 // internal/api's raw cross-corpus search endpoint, so both surfaces rank
 // results identically - the tool answers with citations drawn from exactly
 // what the raw-results panel already showed the user.

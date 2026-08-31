@@ -37,18 +37,18 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/connector"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inboxgmail"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inboxoutlook"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inboxteams"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inboxtool"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inboxwhatsapp"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox/gmail"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox/outlook"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox/teams"
+	inboxAgentTools "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox/tool"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox/whatsapp"
 	backendknowledge "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgeazureblob"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgegdrive"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgeonedrive"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledges3"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgesharepoint"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgetool"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge/azureblob"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge/gdrive"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge/onedrive"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge/s3"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge/sharepoint"
+	knowledgeAgentTools "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge/tool"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/mcpaction"
 	backendmemories "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/memories"
 	backendpreferences "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/preferences"
@@ -270,13 +270,13 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	// actually configured - same pattern as Docling/web search providers
 	// below: an unconfigured channel just doesn't show up as connectable,
 	// rather than the whole inbox domain failing to start.
-	if inboxgmail.IsConfigured() {
-		gmailOAuthConfig, err := inboxgmail.BaseOAuthConfig()
+	if gmail.IsConfigured() {
+		gmailOAuthConfig, err := gmail.BaseOAuthConfig()
 		if err != nil {
 			_ = cleanup()
 			return nil, nil, fmt.Errorf("init gmail oauth config: %w", err)
 		}
-		inboxService.RegisterConnector(inboxgmail.NewConnector(gmailOAuthConfig))
+		inboxService.RegisterConnector(gmail.NewConnector(gmailOAuthConfig))
 		fmt.Printf("[API] Inbox: connecteur Gmail activé\n")
 
 		// Gmail is poll-based (unlike WhatsApp's persistent push connection),
@@ -297,46 +297,46 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	// (MICROSOFT_OAUTH_CLIENT_ID) with the SharePoint Knowledge connector
 	// below - Graph scopes are additive across grants, so one Entra app
 	// registration covers all three. Same graceful-skip pattern as Gmail.
-	if inboxoutlook.IsConfigured() {
-		outlookOAuthConfig, err := inboxoutlook.BaseOAuthConfig()
+	if outlook.IsConfigured() {
+		outlookOAuthConfig, err := outlook.BaseOAuthConfig()
 		if err != nil {
 			_ = cleanup()
 			return nil, nil, fmt.Errorf("init outlook oauth config: %w", err)
 		}
-		inboxService.RegisterConnector(inboxoutlook.NewConnector(outlookOAuthConfig))
+		inboxService.RegisterConnector(outlook.NewConnector(outlookOAuthConfig))
 		fmt.Printf("[API] Inbox: connecteur Outlook activé\n")
 		go runMicrosoftInboxSyncLoop(inboxService, inbox.ChannelOutlook)
 	}
-	if inboxteams.IsConfigured() {
-		teamsOAuthConfig, err := inboxteams.BaseOAuthConfig()
+	if teams.IsConfigured() {
+		teamsOAuthConfig, err := teams.BaseOAuthConfig()
 		if err != nil {
 			_ = cleanup()
 			return nil, nil, fmt.Errorf("init teams oauth config: %w", err)
 		}
-		inboxService.RegisterConnector(inboxteams.NewConnector(teamsOAuthConfig))
+		inboxService.RegisterConnector(teams.NewConnector(teamsOAuthConfig))
 		fmt.Printf("[API] Inbox: connecteur Teams activé\n")
 		go runMicrosoftInboxSyncLoop(inboxService, inbox.ChannelTeams)
 	}
 
 	// WhatsApp shares this app's own database connection for whatsmeow's
-	// session tables (see inboxwhatsapp.NewManager's doc) - only possible
+	// session tables (see whatsapp.NewManager's doc) - only possible
 	// when the main DB is one whatsmeow's dbutil actually understands
 	// (SQLite or Postgres, not MySQL). On an unsupported driver, WhatsApp
 	// just doesn't register as connectable, same graceful-skip pattern as
 	// every other optional integration here.
-	var whatsappManager *inboxwhatsapp.Manager
+	var whatsappManager *whatsapp.Manager
 	if waDialect, ok := whatsappDialectFor(database.Driver()); ok {
 		sqlDB, err := database.GormDB().DB()
 		if err != nil {
 			_ = cleanup()
 			return nil, nil, fmt.Errorf("get sql.DB for whatsapp manager: %w", err)
 		}
-		whatsappManager, err = inboxwhatsapp.NewManager(ctx, sqlDB, waDialect, inboxService.IngestMessage, inboxService.MarkAccountError)
+		whatsappManager, err = whatsapp.NewManager(ctx, sqlDB, waDialect, inboxService.IngestMessage, inboxService.MarkAccountError)
 		if err != nil {
 			_ = cleanup()
 			return nil, nil, fmt.Errorf("init whatsapp manager: %w", err)
 		}
-		inboxService.RegisterConnector(inboxwhatsapp.NewConnector(whatsappManager))
+		inboxService.RegisterConnector(whatsapp.NewConnector(whatsappManager))
 		fmt.Printf("[API] Inbox: connecteur WhatsApp activé\n")
 
 		// Reconnect every already-paired WhatsApp account so incoming
@@ -353,7 +353,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 					// the Accounts page would show a green tile that will never
 					// sync or send again until the user notices and manually
 					// reconnects. Mirrors the live events.LoggedOut handler in
-					// inboxwhatsapp/manager.go, which marks the same way.
+					// whatsapp/manager.go, which marks the same way.
 					if markErr := inboxService.MarkAccountError(ctx, account.ID, inbox.AccountStatusError, err.Error()); markErr != nil {
 						fmt.Fprintf(os.Stderr, "[API] Avertissement: échec de l'enregistrement de l'erreur de compte WhatsApp pour %s: %v\n", account.DisplayName, markErr)
 					}
@@ -375,34 +375,34 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		_ = cleanup()
 		return nil, nil, fmt.Errorf("init connector account store: %w", err)
 	}
-	var knowledgeGDriveConnector *knowledgegdrive.Connector
-	if knowledgegdrive.IsConfigured() {
-		gdriveOAuthConfig, err := knowledgegdrive.BaseOAuthConfig()
+	var knowledgeGDriveConnector *gdrive.Connector
+	if gdrive.IsConfigured() {
+		gdriveOAuthConfig, err := gdrive.BaseOAuthConfig()
 		if err != nil {
 			_ = cleanup()
 			return nil, nil, fmt.Errorf("init google drive oauth config: %w", err)
 		}
-		knowledgeGDriveConnector = knowledgegdrive.NewConnector(gdriveOAuthConfig)
+		knowledgeGDriveConnector = gdrive.NewConnector(gdriveOAuthConfig)
 		fmt.Printf("[API] Knowledge: connecteur Google Drive activé\n")
 	}
-	var knowledgeSharePointConnector *knowledgesharepoint.Connector
-	if knowledgesharepoint.IsConfigured() {
-		sharepointOAuthConfig, err := knowledgesharepoint.BaseOAuthConfig()
+	var knowledgeSharePointConnector *sharepoint.Connector
+	if sharepoint.IsConfigured() {
+		sharepointOAuthConfig, err := sharepoint.BaseOAuthConfig()
 		if err != nil {
 			_ = cleanup()
 			return nil, nil, fmt.Errorf("init sharepoint oauth config: %w", err)
 		}
-		knowledgeSharePointConnector = knowledgesharepoint.NewConnector(sharepointOAuthConfig)
+		knowledgeSharePointConnector = sharepoint.NewConnector(sharepointOAuthConfig)
 		fmt.Printf("[API] Knowledge: connecteur SharePoint activé\n")
 	}
-	var knowledgeOneDriveConnector *knowledgeonedrive.Connector
-	if knowledgeonedrive.IsConfigured() {
-		onedriveOAuthConfig, err := knowledgeonedrive.BaseOAuthConfig()
+	var knowledgeOneDriveConnector *onedrive.Connector
+	if onedrive.IsConfigured() {
+		onedriveOAuthConfig, err := onedrive.BaseOAuthConfig()
 		if err != nil {
 			_ = cleanup()
 			return nil, nil, fmt.Errorf("init onedrive oauth config: %w", err)
 		}
-		knowledgeOneDriveConnector = knowledgeonedrive.NewConnector(onedriveOAuthConfig)
+		knowledgeOneDriveConnector = onedrive.NewConnector(onedriveOAuthConfig)
 		fmt.Printf("[API] Knowledge: connecteur OneDrive activé\n")
 	}
 
@@ -1043,17 +1043,17 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	// generic POST .../accounts/{id}/sync route (internal/app.go's NewApp
 	// wires this instance's text extractor once knowledgeService exists,
 	// same reasoning as Drive's WithTextExtractor call there).
-	s3Connector := knowledges3.NewConnector()
-	azureBlobConnector := knowledgeazureblob.NewConnector()
+	s3Connector := s3.NewConnector()
+	azureBlobConnector := azureblob.NewConnector()
 	knowledgeConnectors := map[string]connector.KnowledgeConnector{
-		string(knowledges3.Kind):        s3Connector,
-		string(knowledgeazureblob.Kind): azureBlobConnector,
+		string(s3.Kind):        s3Connector,
+		string(azureblob.Kind): azureBlobConnector,
 	}
 	if knowledgeSharePointConnector != nil {
-		knowledgeConnectors[string(knowledgesharepoint.Kind)] = knowledgeSharePointConnector
+		knowledgeConnectors[string(sharepoint.Kind)] = knowledgeSharePointConnector
 	}
 	if knowledgeOneDriveConnector != nil {
-		knowledgeConnectors[string(knowledgeonedrive.Kind)] = knowledgeOneDriveConnector
+		knowledgeConnectors[string(onedrive.Kind)] = knowledgeOneDriveConnector
 	}
 
 	backendApp := seshat.NewApp(seshat.Dependencies{
@@ -1123,13 +1123,13 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 
 	// knowledge_search: lets the Company Assistant (and any other session on
 	// this shared query client) search across every corpus the calling
-	// principal can access, not just one - see internal/knowledgetool's
+	// principal can access, not just one - see internal/knowledge/tool's
 	// package doc. Registered here (not next to sdk.NewClient above) because
 	// it needs the fully-resolved backendApp.Knowledge (local
 	// *knowledge.Service or connected-mode *cloudknowledge.RemoteService),
 	// which only exists after seshat.NewApp runs its own fallback logic.
 	if backendApp.Knowledge != nil {
-		if err := queryClient.RegisterTool(knowledgetool.NewSearchTool(backendApp.Knowledge)); err != nil {
+		if err := queryClient.RegisterTool(knowledgeAgentTools.NewSearchTool(backendApp.Knowledge)); err != nil {
 			fmt.Fprintf(os.Stderr, "[API] Avertissement: knowledge_search tool non enregistré: %v\n", err)
 		}
 	}
@@ -1140,19 +1140,19 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	// active - a tool call against a channel with no connector fails
 	// clearly through inbox.Service, same as any other inbox error.
 	if backendApp.Inbox != nil {
-		inboxAgentTools := []sdk.Tool{
-			inboxtool.NewListThreadsTool(backendApp.Inbox),
-			inboxtool.NewGetThreadTool(backendApp.Inbox),
-			inboxtool.NewUpdateThreadStatusTool(backendApp.Inbox),
-			inboxtool.NewDraftReplyTool(backendApp.Inbox),
-			inboxtool.NewSendReplyTool(backendApp.Inbox),
-			inboxtool.NewListAccountsTool(backendApp.Inbox),
-			inboxtool.NewSearchContactsTool(backendApp.Inbox),
-			inboxtool.NewCreateWorkflowTool(backendApp.Inbox),
-			inboxtool.NewListWorkflowsTool(backendApp.Inbox),
-			inboxtool.NewDeleteWorkflowTool(backendApp.Inbox),
+		toolsToRegister := []sdk.Tool{
+			inboxAgentTools.NewListThreadsTool(backendApp.Inbox),
+			inboxAgentTools.NewGetThreadTool(backendApp.Inbox),
+			inboxAgentTools.NewUpdateThreadStatusTool(backendApp.Inbox),
+			inboxAgentTools.NewDraftReplyTool(backendApp.Inbox),
+			inboxAgentTools.NewSendReplyTool(backendApp.Inbox),
+			inboxAgentTools.NewListAccountsTool(backendApp.Inbox),
+			inboxAgentTools.NewSearchContactsTool(backendApp.Inbox),
+			inboxAgentTools.NewCreateWorkflowTool(backendApp.Inbox),
+			inboxAgentTools.NewListWorkflowsTool(backendApp.Inbox),
+			inboxAgentTools.NewDeleteWorkflowTool(backendApp.Inbox),
 		}
-		for _, tool := range inboxAgentTools {
+		for _, tool := range toolsToRegister {
 			if err := queryClient.RegisterTool(tool); err != nil {
 				fmt.Fprintf(os.Stderr, "[API] Avertissement: tool inbox non enregistré: %v\n", err)
 			}

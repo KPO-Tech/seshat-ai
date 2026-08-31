@@ -74,7 +74,7 @@ func TestEncodeS3AccountConfigRoundTrips(t *testing.T) {
 
 // --- integration tests against a real, disposable MinIO container ---
 //
-// Ported from seshat-backend/internal/knowledges3/connector_test.go - the
+// Ported from seshat-backend/internal/knowledge/s3/connector_test.go - the
 // pure unit tests above already lived on both sides identically, but this
 // live-container coverage only existed in seshat-backend. Since the actual
 // Discover/Sync behavior under test now lives here, this is the more

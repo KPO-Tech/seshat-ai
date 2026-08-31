@@ -16,9 +16,9 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/agents"
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inboxgmail"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inboxoutlook"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inboxteams"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox/gmail"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox/outlook"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox/teams"
 	"golang.org/x/oauth2"
 	oauth2api "google.golang.org/api/oauth2/v2"
 	"google.golang.org/api/option"
@@ -168,7 +168,7 @@ func (a *App) handleInboxGmailOAuthStart(w http.ResponseWriter, r *http.Request)
 		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	cfg, err := inboxgmail.BaseOAuthConfig()
+	cfg, err := gmail.BaseOAuthConfig()
 	if err != nil {
 		writeJSONError(w, http.StatusServiceUnavailable, err.Error())
 		return
@@ -218,7 +218,7 @@ func (a *App) handleInboxGmailOAuthCallback(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	cfg, err := inboxgmail.BaseOAuthConfig()
+	cfg, err := gmail.BaseOAuthConfig()
 	if err != nil {
 		writeOAuthResultPage(w, false, err.Error())
 		return
@@ -243,7 +243,7 @@ func (a *App) handleInboxGmailOAuthCallback(w http.ResponseWriter, r *http.Reque
 		ExternalAccountID: email,
 		AccessToken:       token.AccessToken,
 		RefreshToken:      token.RefreshToken,
-		Scope:             strings.Join(inboxgmail.Scopes, " "),
+		Scope:             strings.Join(gmail.Scopes, " "),
 		ExpiresAt:         token.Expiry,
 	})
 	if err != nil {
@@ -367,28 +367,28 @@ func inboxMicrosoftCallbackURL(r *http.Request, channel string) string {
 // handleInboxOutlookOAuthStart handles POST /inbox/accounts/outlook/oauth/start.
 func (a *App) handleInboxOutlookOAuthStart(w http.ResponseWriter, r *http.Request) {
 	a.handleInboxMicrosoftOAuthStart(w, r, microsoftInboxChannel{
-		channel: inbox.ChannelOutlook, baseOAuthConfig: inboxoutlook.BaseOAuthConfig, scopes: inboxoutlook.Scopes,
+		channel: inbox.ChannelOutlook, baseOAuthConfig: outlook.BaseOAuthConfig, scopes: outlook.Scopes,
 	})
 }
 
 // handleInboxOutlookOAuthCallback handles GET /inbox/accounts/outlook/oauth/callback.
 func (a *App) handleInboxOutlookOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	a.handleInboxMicrosoftOAuthCallback(w, r, microsoftInboxChannel{
-		channel: inbox.ChannelOutlook, baseOAuthConfig: inboxoutlook.BaseOAuthConfig, scopes: inboxoutlook.Scopes,
+		channel: inbox.ChannelOutlook, baseOAuthConfig: outlook.BaseOAuthConfig, scopes: outlook.Scopes,
 	})
 }
 
 // handleInboxTeamsOAuthStart handles POST /inbox/accounts/teams/oauth/start.
 func (a *App) handleInboxTeamsOAuthStart(w http.ResponseWriter, r *http.Request) {
 	a.handleInboxMicrosoftOAuthStart(w, r, microsoftInboxChannel{
-		channel: inbox.ChannelTeams, baseOAuthConfig: inboxteams.BaseOAuthConfig, scopes: inboxteams.Scopes,
+		channel: inbox.ChannelTeams, baseOAuthConfig: teams.BaseOAuthConfig, scopes: teams.Scopes,
 	})
 }
 
 // handleInboxTeamsOAuthCallback handles GET /inbox/accounts/teams/oauth/callback.
 func (a *App) handleInboxTeamsOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	a.handleInboxMicrosoftOAuthCallback(w, r, microsoftInboxChannel{
-		channel: inbox.ChannelTeams, baseOAuthConfig: inboxteams.BaseOAuthConfig, scopes: inboxteams.Scopes,
+		channel: inbox.ChannelTeams, baseOAuthConfig: teams.BaseOAuthConfig, scopes: teams.Scopes,
 	})
 }
 
@@ -501,7 +501,7 @@ func writeOAuthResultPage(w http.ResponseWriter, ok bool, message string) {
 // handleInboxWhatsAppPair handles POST /inbox/accounts/whatsapp/pair - an
 // SSE stream, unlike Gmail's redirect-based flow, because WhatsApp pairing
 // is inherently live: the QR code must be shown to the user and rotates
-// periodically until they scan it (see inboxwhatsapp.Manager.PairNewDevice).
+// periodically until they scan it (see whatsapp.Manager.PairNewDevice).
 // The stream emits "qr" events with each code to render, then a single
 // "done" or "error" event before closing.
 func (a *App) handleInboxWhatsAppPair(w http.ResponseWriter, r *http.Request) {
@@ -570,7 +570,7 @@ func (a *App) handleInboxWhatsAppPair(w http.ResponseWriter, r *http.Request) {
 
 // ─── Threads & messages (human-facing REST surface) ────────────────────────
 //
-// Separate from the inbox_* agent tools (internal/inboxtool) - those exist
+// Separate from the inbox_* agent tools (internal/inbox/tool) - those exist
 // for the Inbox Agent to call from within a chat turn; these exist so the
 // Inbox app page can browse and reply to threads directly, without going
 // through a chat session at all.

@@ -1,7 +1,7 @@
 import { getSecret, setSecret, deleteSecret } from './ipc/secure-store'
 
 // The optional credential-shaped env vars seshat-backend reads via os.Getenv
-// at startup (see internal/inboxgmail/oauth.go, internal/config/bootstrap.go)
+// at startup (see internal/inbox/gmail/oauth.go, internal/config/bootstrap.go)
 // to conditionally wire up a feature - each one gates a specific integration
 // rather than being required for the app to run at all. This list is
 // deliberately scoped to *credentials* a local user would paste in here;

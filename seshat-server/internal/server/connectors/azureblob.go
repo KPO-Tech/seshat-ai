@@ -1,6 +1,6 @@
 // Azure Blob Storage connector: implements knowledgeConnector by wrapping
 // core/connectors.AzureBlobConnector - the actual Discover/Sync logic lives
-// there now (shared with seshat-backend's own knowledgeazureblob package),
+// there now (shared with seshat-backend's own knowledge/azureblob package),
 // see its doc comment for why. This file only adapts core's plain (config,
 // secret, cursor) signature to this package's knowledgeConnector interface,
 // same shape as s3.go.

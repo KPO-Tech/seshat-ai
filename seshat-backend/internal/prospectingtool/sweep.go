@@ -1,5 +1,5 @@
 // Package prospectingtool implements the prospecting feature's SDK tools
-// (via pkg/tools), mirroring internal/inboxtool's pattern: the calling
+// (via pkg/tools), mirroring internal/inbox/tool's pattern: the calling
 // principal comes from context (see internal/auth.FromContext, injected by
 // enrichContextWithAgentPrefs), not a constructor argument, since tools are
 // registered once, globally, on the shared SDK query client - any agent can

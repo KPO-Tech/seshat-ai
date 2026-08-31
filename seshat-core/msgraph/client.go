@@ -5,7 +5,7 @@
 // bring in.
 //
 // This is shared, tenant-agnostic logic used two ways: seshat-backend wraps
-// it in real inbox.Connector implementations (inboxoutlook/inboxteams) for
+// it in real inbox.Connector implementations (inbox/outlook/inbox/teams) for
 // the local Inbox workflow, and seshat-server wraps it in a small
 // self-hosted MCP server (internal/server/msgraphmcp) so the workspace chat
 // agent can call it as a tool, bridged through a per-employee OAuth-

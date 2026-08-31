@@ -1,7 +1,7 @@
 // Package connectors is the tenant-agnostic core of SeshatOS's Knowledge
 // connectors: the Google Drive, SharePoint, and S3-compatible Discover/Sync
-// logic, extracted out of both seshat-backend (internal/knowledgegdrive,
-// internal/knowledgesharepoint, internal/knowledges3) and seshat-server
+// logic, extracted out of both seshat-backend (internal/knowledge/gdrive,
+// internal/knowledge/sharepoint, internal/knowledge/s3) and seshat-server
 // (internal/server/connectors) after both had independently ported the same
 // ~1,700 lines of API-client/permission-mapping/extension-allowlist code -
 // see ROADMAP.md's "core/connectors" entry for the extraction and why it

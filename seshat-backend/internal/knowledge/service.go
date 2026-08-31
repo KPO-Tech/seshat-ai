@@ -708,7 +708,7 @@ func (s *Service) checkFileAccess(principal *backendauth.Principal, fileRecord *
 }
 
 // ExtractText is extractTextWithDocling exported for callers outside this
-// package - specifically Knowledge connectors (e.g. internal/knowledgegdrive)
+// package - specifically Knowledge connectors (e.g. internal/knowledge/gdrive)
 // that download a binary file's raw bytes and need the exact same
 // extraction quality an uploaded file gets, rather than treating raw
 // PDF/DOCX bytes as plain text (which produces unsearchable garbage - see

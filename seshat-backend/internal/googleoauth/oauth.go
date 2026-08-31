@@ -1,5 +1,5 @@
 // Package googleoauth is the shared OAuth client config every Google-backed
-// connector uses (Gmail, Google Drive, ...) - extracted from inboxgmail's
+// connector uses (Gmail, Google Drive, ...) - extracted from gmail's
 // original oauth.go once a second product needed the exact same
 // client-ID/secret-sourcing and "Desktop app" loopback-redirect setup, to
 // avoid duplicating it per connector.

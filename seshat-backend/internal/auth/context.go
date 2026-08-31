@@ -6,7 +6,7 @@ import "context"
 // this value - mirrors internal/api's own authPrincipalContextKey pattern,
 // but lives here (not internal/api) so any internal package can read the
 // current principal without importing internal/api, e.g. an agent tool
-// deep in the query engine's call stack (see internal/knowledgetool).
+// deep in the query engine's call stack (see internal/knowledge/tool).
 type principalContextKeyType struct{}
 
 var principalContextKey = principalContextKeyType{}

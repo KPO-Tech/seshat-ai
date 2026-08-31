@@ -17,11 +17,11 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/hooks"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgeazureblob"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgegdrive"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgeonedrive"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledges3"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledgesharepoint"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge/azureblob"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge/gdrive"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge/onedrive"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge/s3"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge/sharepoint"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/mcp"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/memories"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/metrics"
@@ -172,7 +172,7 @@ type Dependencies struct {
 	// bootstrap.go-owned, env-var-gated pattern as Inbox above - nil = the
 	// Google Drive Knowledge connector is disabled (no routes registered).
 	// See helps/roadmap.md Phase 1.
-	KnowledgeGDrive         *knowledgegdrive.Connector
+	KnowledgeGDrive         *gdrive.Connector
 	KnowledgeGDriveAccounts *db.ConnectorAccountStore
 	// ConnectorAccounts is the same generic, kind-agnostic store as
 	// KnowledgeGDriveAccounts (identical underlying table - see
@@ -185,7 +185,7 @@ type Dependencies struct {
 	ConnectorAccounts *db.ConnectorAccountStore
 	ActionConnectors  map[string]connector.ActionConnector
 	// KnowledgeConnectors mirrors ActionConnectors, for the generic
-	// POST .../accounts/{id}/sync route - internal/knowledges3 is its first
+	// POST .../accounts/{id}/sync route - internal/knowledge/s3 is its first
 	// entry. Deliberately not used for Drive, which keeps its own dedicated
 	// KnowledgeGDrive field/routes (see helps/roadmap.md Phase 3 for why).
 	KnowledgeConnectors map[string]connector.KnowledgeConnector
@@ -221,7 +221,7 @@ type App struct {
 	Workflows   *workflows.Service
 	Inbox       *inbox.Service
 
-	KnowledgeGDrive         *knowledgegdrive.Connector
+	KnowledgeGDrive         *gdrive.Connector
 	KnowledgeGDriveAccounts *db.ConnectorAccountStore
 	ConnectorAccounts       *db.ConnectorAccountStore
 	ActionConnectors        map[string]connector.ActionConnector
@@ -269,7 +269,7 @@ func NewApp(deps Dependencies) *App {
 	// RemoteService isn't wired for connector-driven ingestion in this
 	// phase either.
 	// Same reasoning applies to any generic KnowledgeConnector that needs
-	// Docling-backed extraction - internal/knowledges3 (Phase 3) is the
+	// Docling-backed extraction - internal/knowledge/s3 (Phase 3) is the
 	// first one, resolved by kind rather than a dedicated field since
 	// KnowledgeConnectors is the generic map, not KnowledgeGDrive's
 	// one-off pattern.
@@ -277,16 +277,16 @@ func NewApp(deps Dependencies) *App {
 		if deps.KnowledgeGDrive != nil {
 			deps.KnowledgeGDrive.WithTextExtractor(concreteKnowledge.ExtractText)
 		}
-		if s3Connector, ok := deps.KnowledgeConnectors[string(knowledges3.Kind)].(*knowledges3.Connector); ok {
+		if s3Connector, ok := deps.KnowledgeConnectors[string(s3.Kind)].(*s3.Connector); ok {
 			s3Connector.WithTextExtractor(concreteKnowledge.ExtractText)
 		}
-		if spConnector, ok := deps.KnowledgeConnectors[string(knowledgesharepoint.Kind)].(*knowledgesharepoint.Connector); ok {
+		if spConnector, ok := deps.KnowledgeConnectors[string(sharepoint.Kind)].(*sharepoint.Connector); ok {
 			spConnector.WithTextExtractor(concreteKnowledge.ExtractText)
 		}
-		if azureBlobConnector, ok := deps.KnowledgeConnectors[string(knowledgeazureblob.Kind)].(*knowledgeazureblob.Connector); ok {
+		if azureBlobConnector, ok := deps.KnowledgeConnectors[string(azureblob.Kind)].(*azureblob.Connector); ok {
 			azureBlobConnector.WithTextExtractor(concreteKnowledge.ExtractText)
 		}
-		if oneDriveConnector, ok := deps.KnowledgeConnectors[string(knowledgeonedrive.Kind)].(*knowledgeonedrive.Connector); ok {
+		if oneDriveConnector, ok := deps.KnowledgeConnectors[string(onedrive.Kind)].(*onedrive.Connector); ok {
 			oneDriveConnector.WithTextExtractor(concreteKnowledge.ExtractText)
 		}
 	}

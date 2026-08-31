@@ -1,7 +1,7 @@
 // OneDrive for Business connector: implements knowledgeConnector by
 // wrapping core/connectors.OneDriveConnector - the actual Discover/Sync/
 // Graph-client logic lives there now (shared with seshat-backend's own
-// knowledgeonedrive package), see its doc comment for why. This file only
+// knowledge/onedrive package), see its doc comment for why. This file only
 // adapts core's plain (secret, cursor) signature to this package's
 // knowledgeConnector interface (account is accepted but unused -
 // onedrive's Discover/Sync never read it, same as sharepoint's) and builds

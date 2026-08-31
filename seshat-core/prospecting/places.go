@@ -36,7 +36,7 @@ const (
 
 // IsConfigured reports whether GOOGLE_PLACES_API_KEY is set - callers use
 // this to decide whether to register prospecting tools/routes at all, same
-// convention as inboxgmail.IsConfigured().
+// convention as inbox/gmail.IsConfigured().
 func IsConfigured() bool {
 	return strings.TrimSpace(os.Getenv("GOOGLE_PLACES_API_KEY")) != ""
 }

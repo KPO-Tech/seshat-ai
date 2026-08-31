@@ -10,7 +10,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/artifactpreview"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/automation"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inboxwhatsapp"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox/whatsapp"
 	backendquery "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/query"
 	longterm "github.com/KPO-Tech/seshat/pkg/memory/longterm"
 	"github.com/KPO-Tech/seshat/pkg/sdk"
@@ -96,7 +96,7 @@ type App struct {
 	// complete Google's consent screen.
 	oauthMu         sync.Mutex
 	oauthStates     map[string]oauthState
-	whatsappManager *inboxwhatsapp.Manager
+	whatsappManager *whatsapp.Manager
 }
 
 // AppConfig holds all configuration needed to build an App.
@@ -136,7 +136,7 @@ type AppConfig struct {
 	// (see config/bootstrap.go's whatsappDialectFor) - only the pairing
 	// endpoint needs direct access to it; everything else goes through
 	// Backend.Inbox's channel-agnostic API.
-	WhatsAppManager *inboxwhatsapp.Manager
+	WhatsAppManager *whatsapp.Manager
 }
 
 func NewApp(cfg AppConfig) *App {

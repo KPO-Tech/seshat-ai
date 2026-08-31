@@ -307,7 +307,7 @@ export type Corpus = {
 }
 
 // ConnectorAccount mirrors seshat-backend's connectorAccountResponse
-// (internal/api/knowledgegdrive.go) - the generic, kind-agnostic shape
+// (internal/api/knowledge/gdrive.go) - the generic, kind-agnostic shape
 // shared by every internal/connector implementation (Drive, S3, the
 // MCP-backed Action connector), same as ChannelAccount is for Inbox.
 export type ConnectorAccount = {

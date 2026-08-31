@@ -44,7 +44,7 @@ const authExpiredMessage = "Authorization has expired - reconnect this account t
 // isAuthExpired reports whether err is a dead/revoked OAuth refresh token
 // (Google's "invalid_grant" from the token endpoint) - generic across any
 // oauth2-based connector, not Gmail-specific, so it lives here rather than
-// in internal/inboxgmail. errors.As walks through the %w-wrapping
+// in internal/inbox/gmail. errors.As walks through the %w-wrapping
 // Connector.Sync/Send already do, so this works regardless of how many
 // layers deep the error originated.
 func isAuthExpired(err error) bool {
@@ -517,7 +517,7 @@ func formatWorkflowEventContext(event InboxMessageEvent) string {
 // oversized or unstorable attachment degrades to metadata-only (empty
 // StorageKey, simply not downloadable later) rather than losing the
 // message - the same "skip the one bad thing, keep going" posture
-// inboxgmail's fetchAndTranslate already uses for unparseable messages.
+// gmail's fetchAndTranslate already uses for unparseable messages.
 func (s *Service) storeAttachments(ctx context.Context, atts []Attachment) (string, error) {
 	if len(atts) == 0 {
 		return "[]", nil

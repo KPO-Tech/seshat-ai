@@ -237,7 +237,7 @@ org's knowledge base usable with **no desktop app running anywhere** — the
 goal driving this domain, distinct from Inbox's still-open "org-level OAuth
 app + orchestration only" plan above.
 
-`seshat-backend`'s `internal/connector`/`internal/knowledges3` packages are the
+`seshat-backend`'s `internal/connector`/`internal/knowledge/s3` packages are the
 blueprint, ported and adapted (not imported — see the runtime-boundary rule
 below) to be organization-scoped: `syncAccount`/`syncSecret` carry an
 `OrganizationID`/`CorpusID` instead of a `UserID`, and secrets are encrypted
@@ -264,7 +264,7 @@ special-casing Microsoft's public-client requirement.
 
 `gdrive.go`/`sharepoint.go`/`sharepoint_graph.go` in
 `internal/server/connectors` are the ported Discover/Sync logic (unchanged
-from `seshat-backend`'s `knowledgegdrive`/`knowledgesharepoint`); `oauth.go`
+from `seshat-backend`'s `knowledge/gdrive`/`knowledge/sharepoint`); `oauth.go`
 in the same package owns the app-registration + connect-flow service
 methods (`RegisterOAuthApp`, `BeginConnectorOAuth`, `CompleteConnectorOAuth`).
 `connectorFor` is org-aware (`(ctx, kind, organizationID)`) so it can resolve

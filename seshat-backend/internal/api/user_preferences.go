@@ -53,7 +53,7 @@ func (app *App) enrichContextWithAgentPrefs(ctx context.Context, principal *back
 	// Inject user ID so memory tools can scope operations without an extra DB read.
 	ctx = types.WithAgentUserID(ctx, principal.User.ID)
 	// Inject the full principal too - tools that need org-scoped/permission-
-	// aware access (e.g. internal/knowledgetool's cross-corpus search) need
+	// aware access (e.g. internal/knowledge/tool's cross-corpus search) need
 	// more than a bare user ID, and have no *http.Request to read it from
 	// this deep into the query engine's call stack.
 	ctx = backendauth.WithContext(ctx, principal)

@@ -16,7 +16,7 @@ type connectManualAccountRequest struct {
 	ExternalAccountID string `json:"external_account_id"`
 	AccessToken       string `json:"access_token"`
 	// RefreshToken/Config are optional, for connector kinds whose auth
-	// shape needs more than one static token - e.g. knowledges3 stores the
+	// shape needs more than one static token - e.g. s3 stores the
 	// S3 secret access key here and non-secret bucket/region/endpoint
 	// config in Config (JSON-encoded into ConnectorAccount.Scope). A
 	// single-token connector like mcpaction's simply leaves both empty.
@@ -34,7 +34,7 @@ type connectManualAccountRequest struct {
 //   - POST     /connectors/{kind}/accounts/{id}/act      -> handleConnectorAccountAct
 //   - POST     /connectors/{kind}/accounts/{id}/sync     -> handleConnectorAccountSync
 //
-// The /sync case is knowledges3's route, deliberately generic rather than
+// The /sync case is s3's route, deliberately generic rather than
 // a dedicated /knowledge/connectors/s3/... pair like Drive's - see
 // helps/roadmap.md Phase 3 for why Drive's existing routes aren't migrated
 // to match (working, low-value refactor) while S3 starts on the generic
@@ -278,7 +278,7 @@ func (a *App) handleConnectorAccountAct(w http.ResponseWriter, r *http.Request, 
 
 // handleConnectorAccountSync handles
 // POST /connectors/{kind}/accounts/{accountID}/sync?corpus_id=... - the
-// generic counterpart of handleKnowledgeGDriveAccountSync (knowledgegdrive.go),
+// generic counterpart of handleKnowledgeGDriveAccountSync (gdrive.go),
 // resolving the target connector.KnowledgeConnector by kind from
 // a.backend.KnowledgeConnectors instead of a dedicated field. Same steps:
 // load the account, verify ownership, load the secret, Sync, IngestExternal
