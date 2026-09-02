@@ -77,6 +77,25 @@ type ThreadMessage = {
 
 const THREADS_PAGE_SIZE = 50
 
+// The three channels that connect via the same "POST oauth/start -> open
+// system browser -> poll for a new account" dance (see
+// handleConnectOAuthChannel) - WhatsApp is deliberately not part of this
+// union, it pairs via a QR code stream instead (handleConnectWhatsApp).
+type OAuthChannel = 'gmail' | 'outlook' | 'teams'
+
+// Drives the "+ Connect" drawer - one entry per channel the local Inbox
+// Agent can actually use. Deliberately does not include Slack: that's a
+// workspacechat-only, cloud-agent_action capability (bridged via
+// mcpregistry, never consumed by the local Inbox connector), with its own
+// connect surface in seshat-console - listing it here would imply the
+// Inbox Agent can use it, which it can't.
+const CONNECTABLE_CHANNELS: Array<{ id: OAuthChannel | 'whatsapp'; label: string; description: string }> = [
+  { id: 'gmail', label: 'Gmail', description: 'Sync and reply to a Gmail inbox.' },
+  { id: 'outlook', label: 'Outlook', description: 'Sync and reply to an Outlook Mail inbox.' },
+  { id: 'whatsapp', label: 'WhatsApp', description: 'Pair a WhatsApp account by scanning a QR code.' },
+  { id: 'teams', label: 'Teams', description: 'Sync and reply to Microsoft Teams chats.' },
+]
+
 const STATUS_TABS: Array<{ id: string; label: string }> = [
   { id: 'open', label: 'Open' },
   { id: 'snoozed', label: 'Snoozed' },
@@ -85,7 +104,7 @@ const STATUS_TABS: Array<{ id: string; label: string }> = [
 ]
 
 function channelIcon(channel: string, size = 13) {
-  return channel === 'gmail' ? <Mail size={size} /> : <Message size={size} />
+  return channel === 'gmail' || channel === 'outlook' ? <Mail size={size} /> : <Message size={size} />
 }
 
 function formatAttachmentSize(bytes: number): string {
@@ -186,10 +205,11 @@ export function InboxPage() {
   const [error, setError] = useState<string | null>(null)
   const [syncingAccountId, setSyncingAccountId] = useState<string | null>(null)
 
-  const [gmailConnecting, setGmailConnecting] = useState(false)
+  const [connectorsDrawerOpen, setConnectorsDrawerOpen] = useState(false)
+  const [connectingChannel, setConnectingChannel] = useState<OAuthChannel | null>(null)
   const [whatsappPairing, setWhatsappPairing] = useState<{ qr: string | null; error: string | null } | null>(null)
   const pairAbortRef = useRef<AbortController | null>(null)
-  const gmailPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const oauthPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const agentScrollRef = useRef<HTMLDivElement | null>(null)
   const channelMenuRef = useRef<HTMLDivElement | null>(null)
 
@@ -394,7 +414,7 @@ export function InboxPage() {
 
   useEffect(() => {
     return () => {
-      if (gmailPollRef.current) clearInterval(gmailPollRef.current)
+      if (oauthPollRef.current) clearInterval(oauthPollRef.current)
       pairAbortRef.current?.abort()
     }
   }, [])
@@ -477,11 +497,19 @@ export function InboxPage() {
     }
   }
 
-  async function handleConnectGmail() {
-    setGmailConnecting(true)
+  // Shared by gmail/outlook/teams - all three expose the identical
+  // "POST oauth/start -> open the system browser -> poll /inbox/accounts
+  // for a new row of this channel" shape (see api/inbox.go's
+  // handleInbox{Gmail,Microsoft}OAuthStart). A 503 here (BaseOAuthConfig
+  // failing) means this deployment never configured that channel's OAuth
+  // client - surfaced through the same error banner as any other failure,
+  // not a separate "not configured" state, since that's exactly what the
+  // backend already reports.
+  async function handleConnectOAuthChannel(channel: OAuthChannel) {
+    setConnectingChannel(channel)
     setError(null)
     try {
-      const started = await api.post<{ authorization_url: string }>('/inbox/accounts/gmail/oauth/start')
+      const started = await api.post<{ authorization_url: string }>(`/inbox/accounts/${channel}/oauth/start`)
       if (window.nexus?.openExternal) {
         await window.nexus.openExternal(started.authorization_url)
       } else {
@@ -489,32 +517,33 @@ export function InboxPage() {
       }
       const knownIds = new Set(accounts.map((a) => a.id))
       let attempts = 0
-      if (gmailPollRef.current) clearInterval(gmailPollRef.current)
-      gmailPollRef.current = setInterval(async () => {
+      if (oauthPollRef.current) clearInterval(oauthPollRef.current)
+      oauthPollRef.current = setInterval(async () => {
         attempts++
         try {
           const res = await api.get<{ accounts: ChannelAccount[] }>('/inbox/accounts')
           setAccounts(res.accounts ?? [])
-          const connected = (res.accounts ?? []).some((a) => !knownIds.has(a.id) && a.channel === 'gmail')
+          const connected = (res.accounts ?? []).some((a) => !knownIds.has(a.id) && a.channel === channel)
           if (connected) {
-            if (gmailPollRef.current) clearInterval(gmailPollRef.current)
-            gmailPollRef.current = null
-            setGmailConnecting(false)
+            if (oauthPollRef.current) clearInterval(oauthPollRef.current)
+            oauthPollRef.current = null
+            setConnectingChannel(null)
+            setConnectorsDrawerOpen(false)
             await loadThreads(statusFilter)
             return
           }
         } catch {
           // Keep polling until the attempt budget expires.
         }
-        if (attempts >= 30 && gmailPollRef.current) {
-          clearInterval(gmailPollRef.current)
-          gmailPollRef.current = null
-          setGmailConnecting(false)
+        if (attempts >= 30 && oauthPollRef.current) {
+          clearInterval(oauthPollRef.current)
+          oauthPollRef.current = null
+          setConnectingChannel(null)
         }
       }, 2000)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Unable to start Gmail connection.')
-      setGmailConnecting(false)
+      setError(err instanceof ApiError ? err.message : `Unable to start ${channelLabel(channel)} connection.`)
+      setConnectingChannel(null)
     }
   }
 
@@ -971,11 +1000,8 @@ export function InboxPage() {
               <button type="button" className="ib-action-btn" onClick={loadAccounts} disabled={accountsLoading}>
                 {accountsLoading ? <LoadingOne size={13} className="spin" /> : <Refresh size={13} />} Refresh
               </button>
-              <button type="button" className="ib-action-btn primary" onClick={handleConnectGmail} disabled={gmailConnecting}>
-                {gmailConnecting ? <LoadingOne size={13} className="spin" /> : <Plus size={13} />} Gmail
-              </button>
-              <button type="button" className="ib-action-btn primary" onClick={handleConnectWhatsApp}>
-                <Plus size={13} /> WhatsApp
+              <button type="button" className="ib-action-btn primary" onClick={() => setConnectorsDrawerOpen(true)}>
+                <Plus size={13} /> Connect
               </button>
             </div>
 
@@ -994,7 +1020,7 @@ export function InboxPage() {
                 <div className="ib-account-empty">
                   <InboxIcon size={28} />
                   <strong>No account connected</strong>
-                  <span>Connect Gmail or WhatsApp to start syncing conversations.</span>
+                  <span>Use Connect above to start syncing conversations.</span>
                 </div>
               ) : (
                 accounts.map((account) => (
@@ -1094,6 +1120,53 @@ export function InboxPage() {
           </section>
         )}
       </main>
+
+      {connectorsDrawerOpen && (
+        <div className="ib-drawer-backdrop" role="presentation" onMouseDown={() => setConnectorsDrawerOpen(false)}>
+          <aside
+            className="ib-connectors-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Connect an inbox channel"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <header className="ib-drawer-head">
+              <div>
+                <h2>Connect</h2>
+                <span>Channels the Inbox Agent can sync and reply on</span>
+              </div>
+              <button type="button" onClick={() => setConnectorsDrawerOpen(false)} aria-label="Close">
+                <Close size={14} />
+              </button>
+            </header>
+            <div className="ib-drawer-section">
+              {CONNECTABLE_CHANNELS.map((channel) => {
+                const connectedCount = accounts.filter((a) => a.channel === channel.id).length
+                const isConnecting = channel.id === 'whatsapp' ? Boolean(whatsappPairing) : connectingChannel === channel.id
+                return (
+                  <div key={channel.id} className="ib-connector-row">
+                    <div className="ib-connector-row-icon">{channelIcon(channel.id, 18)}</div>
+                    <div className="ib-connector-row-copy">
+                      <strong>{channel.label}</strong>
+                      <span>{channel.description}</span>
+                      {connectedCount > 0 && <em>{connectedCount} connected</em>}
+                    </div>
+                    <button
+                      type="button"
+                      className="ib-action-btn"
+                      disabled={isConnecting}
+                      onClick={() => (channel.id === 'whatsapp' ? handleConnectWhatsApp() : handleConnectOAuthChannel(channel.id))}
+                    >
+                      {isConnecting ? <LoadingOne size={13} className="spin" /> : <Plus size={13} />}
+                      {connectedCount > 0 ? 'Add another' : 'Connect'}
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          </aside>
+        </div>
+      )}
 
       {whatsappPairing && (
         <div className="ib-modal-backdrop">
@@ -1273,6 +1346,7 @@ ${MESSAGE_ITEM_CSS}
 .ib-content {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -2376,6 +2450,125 @@ ${MESSAGE_ITEM_CSS}
   display: flex;
   gap: 8px;
   margin-top: 4px;
+}
+
+.ib-drawer-backdrop {
+  position: absolute;
+  top: 56px;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.ib-connectors-drawer {
+  width: min(380px, 100%);
+  height: 100%;
+  border-left: 1px solid var(--color-border);
+  background: var(--color-bg);
+  box-shadow: -18px 0 60px rgba(0, 0, 0, 0.26);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.ib-drawer-head {
+  min-height: 68px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.ib-drawer-head h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.ib-drawer-head span {
+  display: block;
+  margin-top: 3px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.ib-drawer-head button {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.ib-drawer-section {
+  padding: 10px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ib-connector-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  background: var(--color-surface);
+}
+
+.ib-connector-row-icon {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--color-bg);
+  color: var(--color-cta);
+}
+
+.ib-connector-row-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ib-connector-row-copy strong {
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+}
+
+.ib-connector-row-copy span {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+}
+
+.ib-connector-row-copy em {
+  font-style: normal;
+  color: var(--color-cta);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+
+.ib-connector-row .ib-action-btn {
+  flex-shrink: 0;
 }
 
 .ib-modal-backdrop {
