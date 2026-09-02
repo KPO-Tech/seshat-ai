@@ -17,7 +17,11 @@ export function Shell() {
   const { pathname } = useLocation()
   
   const isConversation = pathname.startsWith('/conversation/')
-  const sidebarRoutes = ['/', '/workspace', '/apps', '/projects', '/scheduling', '/history']
+  // Scheduling deliberately excluded — its graph editor wants the full
+  // window width to be usable (node palette + canvas + config panel
+  // already competing for space), so it's immersive like a conversation
+  // rather than sharing space with the main nav.
+  const sidebarRoutes = ['/', '/workspace', '/apps', '/projects', '/history']
   const showSidebar = isConversation || sidebarRoutes.includes(pathname)
 
   // Keeps the right-panel column cap responsive to the actual window width
