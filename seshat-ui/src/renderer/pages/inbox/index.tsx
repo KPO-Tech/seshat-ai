@@ -16,7 +16,6 @@ import {
   Robot,
   Search,
   Send,
-  Setting,
 } from '@icon-park/react'
 import { api, ApiError } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
@@ -199,9 +198,6 @@ export function InboxPage() {
   const [messagesOffset, setMessagesOffset] = useState(0)
   const [channelMenuOpen, setChannelMenuOpen] = useState(false)
   const [launchingAgent, setLaunchingAgent] = useState(false)
-  const [automationCreating, setAutomationCreating] = useState(false)
-  const [automationNotice, setAutomationNotice] = useState<string | null>(null)
-  const [systemStatus, setSystemStatus] = useState<{ mode: 'standalone' | 'connected' } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [syncingAccountId, setSyncingAccountId] = useState<string | null>(null)
 
@@ -255,12 +251,6 @@ export function InboxPage() {
     if (!el) return
     el.scrollTop = el.scrollHeight
   }, [agentMessages.length, agentStreaming])
-
-  useEffect(() => {
-    api.get<{ mode: 'standalone' | 'connected' }>('/system/status')
-      .then(setSystemStatus)
-      .catch(() => setSystemStatus(null))
-  }, [])
 
   useEffect(() => {
     if (!agentSessionId && latestInboxSession) setAgentSessionId(latestInboxSession.id)
@@ -709,37 +699,6 @@ export function InboxPage() {
     void handleAgentPromptSubmission(promptId, value)
   }, [handleAgentPromptSubmission])
 
-  async function handleCreateInboxReviewJob() {
-    setAutomationCreating(true)
-    setAutomationNotice(null)
-    setError(null)
-    try {
-      await api.post('/automation/jobs', {
-        name: 'Inbox review',
-        description: 'Review open Inbox threads and prepare triage suggestions.',
-        trigger_type: 'cron',
-        cron_expr: '0 9 * * 1-5',
-        execution_target: 'cloud',
-        prompt: [
-          'Run the Inbox Agent review.',
-          '',
-          'Review connected inbox channels, summarize open threads that need attention, and prepare draft replies when useful.',
-          'Never send messages automatically. Escalate uncertain or sensitive conversations.',
-        ].join('\n'),
-        configuration: {
-          agent_slug: 'inbox-agent',
-          product: 'inbox',
-          mode: 'draft_only',
-        },
-      })
-      setAutomationNotice('Inbox review job created on Seshat Server.')
-    } catch (err) {
-      setAutomationNotice(err instanceof ApiError ? err.message : 'Seshat Server automation is not available.')
-    } finally {
-      setAutomationCreating(false)
-    }
-  }
-
   return (
     <div className="ib-root">
       <style>{INBOX_CSS}</style>
@@ -1049,73 +1008,6 @@ export function InboxPage() {
                   </article>
                 ))
               )}
-            </div>
-
-            <div className="ib-accounts-settings-grid">
-              <section className="ib-agent-panel-card">
-                <div className="ib-panel-headline">
-                  <AlarmClock size={16} />
-                  <strong>Automation</strong>
-                </div>
-                <div className="ib-agent-rule">
-                  <span>Manual review</span>
-                  <strong>{connectedAccounts.length > 0 ? 'Available' : 'Connect inbox'}</strong>
-                </div>
-                <div className="ib-agent-rule">
-                  <span>When new message arrives</span>
-                  <strong>Suggest triage only</strong>
-                </div>
-                <div className="ib-agent-rule">
-                  <span>Recurring review</span>
-                  <strong>Needs Seshat Server</strong>
-                </div>
-                <div className="ib-agent-rule disabled">
-                  <span>Auto send replies</span>
-                  <strong>Disabled</strong>
-                </div>
-                <p className="ib-agent-note">
-                  Full 24/7 automation needs backend rules plus server scheduling. The desktop agent can assist while the app is running.
-                </p>
-                {automationNotice && <div className="ib-agent-automation-notice">{automationNotice}</div>}
-                {systemStatus?.mode === 'connected' ? (
-                  <button type="button" className="ib-action-btn" onClick={handleCreateInboxReviewJob} disabled={automationCreating}>
-                    {automationCreating ? <LoadingOne size={13} className="spin" /> : <AlarmClock size={13} />} Create weekday review
-                  </button>
-                ) : (
-                  <p className="ib-agent-note">
-                    Recurring review jobs run through your organization's Seshat Server. Connect this machine to one in
-                    Settings → Cloud Automation to create one.
-                  </p>
-                )}
-              </section>
-
-              <section className="ib-agent-panel-card">
-                <div className="ib-panel-headline">
-                  <Setting size={16} />
-                  <strong>Agent Safety</strong>
-                </div>
-                <label className="ib-toggle-row">
-                  <span>
-                    <strong>Draft first</strong>
-                    <small>Replies stay reviewable before sending.</small>
-                  </span>
-                  <input type="checkbox" checked readOnly />
-                </label>
-                <label className="ib-toggle-row">
-                  <span>
-                    <strong>Require approval</strong>
-                    <small>Sending remains gated by confirmation.</small>
-                  </span>
-                  <input type="checkbox" checked readOnly />
-                </label>
-                <label className="ib-toggle-row disabled">
-                  <span>
-                    <strong>Auto triage rules</strong>
-                    <small>Needs backend rules and scheduler support.</small>
-                  </span>
-                  <input type="checkbox" disabled />
-                </label>
-              </section>
             </div>
           </section>
         )}
@@ -1530,12 +1422,6 @@ ${MESSAGE_ITEM_CSS}
   align-content: start;
 }
 
-.ib-accounts-settings-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(280px, 1fr));
-  gap: 12px;
-}
-
 .ib-agent-panel-card {
   min-width: 0;
   min-height: 0;
@@ -1614,62 +1500,24 @@ ${MESSAGE_ITEM_CSS}
   line-height: 1.5;
 }
 
-.ib-agent-prompt-box,
-.ib-agent-rule {
+.ib-agent-prompt-box {
   border: 1px solid var(--color-border-subtle);
   border-radius: 7px;
   background: var(--color-surface);
   padding: 12px 14px;
 }
 
-.ib-agent-prompt-box span,
-.ib-agent-rule span {
+.ib-agent-prompt-box span {
   display: block;
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
 }
 
-.ib-agent-prompt-box strong,
-.ib-agent-rule strong {
+.ib-agent-prompt-box strong {
   display: block;
   margin-top: 5px;
   color: var(--color-text);
   font-size: var(--font-size-sm);
-}
-
-.ib-agent-rule {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.ib-agent-rule strong {
-  margin-top: 0;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ib-agent-rule.disabled {
-  opacity: 0.55;
-}
-
-.ib-agent-note {
-  margin-top: auto !important;
-  border-top: 1px solid var(--color-border-subtle);
-  padding-top: 14px;
-}
-
-.ib-agent-automation-notice {
-  border: 1px solid rgba(239, 124, 47, 0.28);
-  border-radius: 7px;
-  background: rgba(239, 124, 47, 0.08);
-  color: var(--color-text-secondary);
-  padding: 10px 12px;
-  font-size: var(--font-size-xs);
-  line-height: 1.45;
 }
 
 .ib-account-card {
@@ -1827,45 +1675,6 @@ ${MESSAGE_ITEM_CSS}
 .ib-account-empty strong {
   color: var(--color-text);
   font-size: var(--font-size-base);
-}
-
-.ib-toggle-row {
-  min-height: 58px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 10px 12px;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 7px;
-  background: var(--color-surface);
-  margin-bottom: 8px;
-}
-
-.ib-toggle-row strong,
-.ib-toggle-row small {
-  display: block;
-}
-
-.ib-toggle-row strong {
-  font-size: var(--font-size-xs);
-}
-
-.ib-toggle-row small {
-  margin-top: 3px;
-  color: var(--color-text-muted);
-  font-size: var(--font-size-2xs);
-  line-height: 1.4;
-}
-
-.ib-toggle-row input {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--color-cta);
-}
-
-.ib-toggle-row.disabled {
-  opacity: 0.55;
 }
 
 .ib-dashboard {
@@ -2691,9 +2500,6 @@ ${MESSAGE_ITEM_CSS}
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .ib-inbox-grid {
-    grid-template-columns: 1fr;
-  }
-  .ib-accounts-settings-grid {
     grid-template-columns: 1fr;
   }
 }
