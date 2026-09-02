@@ -17,8 +17,11 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/mcpbridge"
 )
 
-// NewOutlookHandler serves list_outlook_messages/send_outlook_mail/
-// reply_outlook_mail.
+// NewOutlookHandler serves the full Outlook tool set: list/search/get/
+// get_thread/get_profile for reading, send/reply/create_draft/list_drafts/
+// send_draft/delete_draft for composing, trash/untrash/mark_read/
+// mark_unread/categories for triage, and list/get_attachment - see
+// outlook_tools.go for the exact names.
 func NewOutlookHandler() http.Handler {
 	return mcpbridge.NewHandler("seshat-outlook", buildGraphClient, registerOutlookTools)
 }

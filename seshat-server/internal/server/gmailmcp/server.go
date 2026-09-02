@@ -22,7 +22,10 @@ import (
 // fake Gmail server.
 var extraClientOptions []option.ClientOption
 
-// NewHandler serves list_gmail_messages/send_gmail_mail/reply_gmail_mail.
+// NewHandler serves the full Gmail tool set: list/search/get/get_thread/
+// get_profile for reading, send/reply/create_draft/list_drafts/send_draft/
+// delete_draft for composing, trash/untrash/mark_read/mark_unread/labels
+// for triage, and list/get_attachment - see tools.go for the exact names.
 func NewHandler() http.Handler {
 	return mcpbridge.NewHandler("seshat-gmail", buildGmailClient, registerGmailTools)
 }

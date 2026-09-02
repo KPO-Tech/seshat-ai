@@ -44,4 +44,36 @@ type Message struct {
 	BodyText    string
 	Attachments []Attachment
 	SentAt      time.Time
+	// LabelIds are Gmail's own label IDs (both system, e.g. "UNREAD"/"INBOX"/
+	// "TRASH", and user-created ones) - the raw source Unread and label-
+	// management operations (Client.ModifyLabels et al.) read/write.
+	LabelIds []string
+	// Unread mirrors whether LabelIds contains "UNREAD", computed once at
+	// translation time so callers don't need to know Gmail's label-based
+	// read/unread convention themselves.
+	Unread bool
+}
+
+// Label is a Gmail label (system or user-created) - see
+// Client.ListLabels/CreateLabel/DeleteLabel.
+type Label struct {
+	ID   string
+	Name string
+}
+
+// Draft is a saved-but-unsent message. Gmail's own Drafts.List only ever
+// returns the ID/ThreadID/MessageID triple (no subject/snippet) without a
+// separate per-draft Get call, so that's all this carries - see
+// Client.ListDrafts's doc comment.
+type Draft struct {
+	ID        string
+	MessageID string
+	ThreadID  string
+}
+
+// Profile is the connected account's own mailbox summary.
+type Profile struct {
+	EmailAddress  string
+	MessagesTotal int64
+	ThreadsTotal  int64
 }

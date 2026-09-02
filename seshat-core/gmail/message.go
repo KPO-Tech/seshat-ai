@@ -38,7 +38,18 @@ func translateRawMessage(msg *gmailapi.Message) (Message, error) {
 		BodyText:    bodyText,
 		Attachments: attachments,
 		SentAt:      time.UnixMilli(msg.InternalDate),
+		LabelIds:    msg.LabelIds,
+		Unread:      hasLabel(msg.LabelIds, "UNREAD"),
 	}, nil
+}
+
+func hasLabel(labelIds []string, target string) bool {
+	for _, id := range labelIds {
+		if id == target {
+			return true
+		}
+	}
+	return false
 }
 
 func headerValue(headers []*gmailapi.MessagePartHeader, name string) string {

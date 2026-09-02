@@ -74,6 +74,14 @@ func (c *Client) post(ctx context.Context, url string, body, out any) error {
 	return c.do(ctx, http.MethodPost, url, body, out)
 }
 
+func (c *Client) patch(ctx context.Context, url string, body any) error {
+	return c.do(ctx, http.MethodPatch, url, body, nil)
+}
+
+func (c *Client) delete(ctx context.Context, url string) error {
+	return c.do(ctx, http.MethodDelete, url, nil, nil)
+}
+
 func (c *Client) do(ctx context.Context, method, url string, body, out any) error {
 	var reqBody io.Reader
 	if body != nil {
