@@ -22,6 +22,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	"github.com/KPO-Tech/seshat/pkg/automation"
+	"github.com/KPO-Tech/seshat/pkg/dataflow"
 	"github.com/KPO-Tech/seshat/pkg/storage"
 	"golang.org/x/oauth2"
 )
@@ -80,6 +81,12 @@ type Service struct {
 	// artifacts/executeWorkflow below.
 	workflows       *WorkflowStore
 	executeWorkflow WorkflowExecutor
+	// askWorkflow/nodeRegistry/graphSecrets back Job.Graph execution (see
+	// workflow_graph.go) — all nil-tolerant like executeWorkflow above,
+	// wired by WithWorkflowAsker/WithNodeRegistry/WithDataflowSecrets.
+	askWorkflow  WorkflowAsker
+	nodeRegistry *dataflow.Registry
+	graphSecrets dataflow.SecretResolver
 }
 
 func NewService(
@@ -391,7 +398,12 @@ func (s *Service) persistNormalizedMessage(ctx context.Context, accountID string
 // since this always runs off the main ingestion path (see the goroutine in
 // persistNormalizedMessage) with nothing left to report an error to.
 func (s *Service) dispatchWorkflows(accountID, senderDisplayName string, m NormalizedMessage, threadStatus string) {
-	if s == nil || s.workflows == nil || s.executeWorkflow == nil || m.Direction != MessageDirectionInbound {
+	// A workflow needs one of the two executors below depending on whether
+	// it has a Graph (see runWorkflowAndRecord's dispatch) - bail out only
+	// if neither is configured, not just executeWorkflow, so a deployment
+	// wired for Graph-only workflows (WithWorkflowAsker, no
+	// WithWorkflowExecutor) still dispatches.
+	if s == nil || s.workflows == nil || (s.executeWorkflow == nil && s.askWorkflow == nil) || m.Direction != MessageDirectionInbound {
 		return
 	}
 	ctx := context.Background()
@@ -449,6 +461,10 @@ func (s *Service) dispatchWorkflows(accountID, senderDisplayName string, m Norma
 // recompute in the first place - Trigger.IsEvent() jobs never get a
 // NextRunAt, so there's nothing to reschedule, only the MaxRuns check).
 func (s *Service) runWorkflowAndRecord(ctx context.Context, job *automation.Job, contextText string) {
+	if job.Graph != nil {
+		s.runGraphAndRecord(ctx, job, contextText)
+		return
+	}
 	run := &automation.JobRun{
 		JobID:     job.ID,
 		StartedAt: time.Now(),

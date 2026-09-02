@@ -35,6 +35,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/settings"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/websearch"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/connector"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/dataflowsecrets"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox/gmail"
@@ -58,6 +59,10 @@ import (
 	backendquotas "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/quotas"
 	backendsettings "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/settings"
 	appconfig "github.com/KPO-Tech/seshat/pkg/config"
+	"github.com/KPO-Tech/seshat/pkg/dataflow"
+	dataflowexpr "github.com/KPO-Tech/seshat/pkg/dataflow/expr"
+	dataflownodes "github.com/KPO-Tech/seshat/pkg/dataflow/nodes"
+	dataflowdatabase "github.com/KPO-Tech/seshat/pkg/dataflow/nodes/database"
 	"github.com/KPO-Tech/seshat/pkg/docling"
 	"github.com/KPO-Tech/seshat/pkg/mcp"
 	longterm "github.com/KPO-Tech/seshat/pkg/memory/longterm"
@@ -592,6 +597,8 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		_ = cleanup()
 		return nil, nil, fmt.Errorf("init storage config store: %w", err)
 	}
+
+	dataflowSecretsService := dataflowsecrets.New(database)
 
 	userPreferencesStore, err := db.NewUserPreferencesStore(database)
 	if err != nil {
@@ -1233,6 +1240,45 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		return result.Content, nil
 	})
 
+	// Job.Graph execution (internal/inbox/workflow_graph.go): same
+	// principal/model-resolution/BuildContextInput/RunPrompt pattern as
+	// WithWorkflowExecutor immediately above, but threading QueryInput/
+	// QueryResult's SessionID across repeated calls (sessionID in, new
+	// sessionID out) so multiple "agent"/"subworkflow" nodes fired within
+	// one graph run share conversation context - inbox.WorkflowAsker's own
+	// doc comment for the contract this fulfills.
+	inboxService.WithWorkflowAsker(func(ctx context.Context, ownerID, agentSlug, prompt, modelOverride, sessionID string) (string, string, error) {
+		principal := &backendauth.Principal{
+			User: backendauth.User{ID: ownerID},
+		}
+		providerSettingID, modelID := resolveCloudJobModel(ctx, backendApp.Settings, principal, modelOverride)
+		input, _ := backendApp.Query.BuildContextInput(ctx, backendquery.ContextBuildParams{
+			Principal:         principal,
+			Prompt:            prompt,
+			SessionID:         sessionID,
+			ProviderSettingID: providerSettingID,
+			ModelID:           modelID,
+			AgentSlug:         agentSlug,
+			ExecutionOrigin:   enginetypes.ExecutionOriginAutomation,
+		})
+		result, err := backendApp.Query.RunPrompt(ctx, principal, input)
+		if err != nil {
+			return "", "", err
+		}
+		return result.Content, result.SessionID, nil
+	})
+	// Which node types a Graph can reference - generic (http_request/
+	// filter/if/switch/set/merge/wait, no credentials) plus database
+	// (postgres/mysql/sqlite/redis/mongodb/elasticsearch, credential-
+	// resolving via dataflowSecretsService below). Both come from the SDK;
+	// nothing here is seshat-ai-specific.
+	inboxNodeRegistry := dataflow.NewRegistry()
+	dataflow.RegisterBuiltins(inboxNodeRegistry)
+	dataflownodes.Register(inboxNodeRegistry, dataflowexpr.NewPool(8))
+	dataflowdatabase.Register(inboxNodeRegistry)
+	inboxService.WithNodeRegistry(inboxNodeRegistry)
+	inboxService.WithDataflowSecrets(dataflowSecretsService)
+
 	// Abandoned-session sweep: a session (plus any files attached to it) is
 	// created the instant a file is attached, before the user ever sends a
 	// message (see Home.tsx/Conversation.tsx) - if they change their mind or
@@ -1282,6 +1328,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		DoclingStore:          doclingConfigStore,
 		LocalSTTStore:         localSTTConfigStore,
 		StorageConfigStore:    storageConfigStore,
+		DataflowSecrets:       dataflowSecretsService,
 		LongTermExtractor:     longTermExtractor,
 		CloudAutomation:       cloudAutomationService,
 		RateLimiter:           api.NewRateLimiter(config.RateLimitPerMinute, time.Minute),

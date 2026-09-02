@@ -9,6 +9,7 @@ import (
 	seshat "github.com/EngineerProjects/seshat-ai/seshat-backend/internal"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/artifactpreview"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/automation"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/dataflowsecrets"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox/whatsapp"
 	backendquery "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/query"
@@ -41,6 +42,7 @@ type App struct {
 	doclingStore         *db.DoclingConfigStore
 	localSTTStore        *db.LocalSTTConfigStore
 	storageConfigStore   *db.StorageConfigStore
+	dataflowSecrets      *dataflowsecrets.Service
 	// Long-term memory — kept here because extraction is fire-and-forget
 	// and depends on the extractor which lives outside seshat.App lifecycle
 	longTermExtractor *longterm.Extractor
@@ -110,6 +112,7 @@ type AppConfig struct {
 	DoclingStore          *db.DoclingConfigStore
 	LocalSTTStore         *db.LocalSTTConfigStore
 	StorageConfigStore    *db.StorageConfigStore
+	DataflowSecrets       *dataflowsecrets.Service
 	LongTermExtractor     *longterm.Extractor
 	RateLimiter           *RateLimiter
 	LoginRateLimiter      *RateLimiter
@@ -168,6 +171,7 @@ func NewApp(cfg AppConfig) *App {
 		doclingStore:          cfg.DoclingStore,
 		localSTTStore:         cfg.LocalSTTStore,
 		storageConfigStore:    cfg.StorageConfigStore,
+		dataflowSecrets:       cfg.DataflowSecrets,
 		longTermExtractor:     cfg.LongTermExtractor,
 		rateLimiter:           cfg.RateLimiter,
 		loginRateLimiter:      cfg.LoginRateLimiter,

@@ -8,6 +8,7 @@ import (
 
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/KPO-Tech/seshat/pkg/automation"
+	"github.com/KPO-Tech/seshat/pkg/dataflow"
 )
 
 // CreateWorkflowParams describes a new event-triggered Inbox workflow - see
@@ -21,7 +22,16 @@ type CreateWorkflowParams struct {
 	// inbound message.
 	EventFilter string
 	// Task is the instruction the agent runs when this workflow fires.
-	Task      string
+	// Exactly one of Task or Graph is required - see runWorkflowAndRecord's
+	// dispatch on job.Graph != nil.
+	Task string
+	// Graph, when set, runs as a pkg/dataflow node graph instead of a
+	// single Task prompt on this workflow's firing - see
+	// workflow_graph.go. Requires the Service's NodeRegistry/WorkflowAsker
+	// to be configured (see WithNodeRegistry/WithWorkflowAsker), same
+	// "fails clearly, not silently" posture as automation.Job.Graph's own
+	// SDK-level doc comment.
+	Graph     *dataflow.Definition
 	AgentSlug string
 	// MaxRuns caps how many times this workflow may fire before it goes
 	// inactive; 0 = unlimited.
@@ -31,15 +41,28 @@ type CreateWorkflowParams struct {
 // CreateWorkflow validates and persists a new TriggerTypeEvent workflow
 // owned by principal, active immediately. The filter is compiled once up
 // front (against an empty event) so a malformed condition fails at creation
-// time rather than silently never firing on every future message.
+// time rather than silently never firing on every future message. When
+// Graph is set, it's validated the same way (dataflow.Validate) instead of
+// requiring Task.
 func (s *Service) CreateWorkflow(ctx context.Context, principal *backendauth.Principal, params CreateWorkflowParams) (*automation.Job, error) {
 	if s == nil || s.workflows == nil {
 		return nil, fmt.Errorf("inbox workflows are not enabled")
 	}
 	name := strings.TrimSpace(params.Name)
 	task := strings.TrimSpace(params.Task)
-	if name == "" || task == "" {
-		return nil, fmt.Errorf("name and task are required")
+	if name == "" {
+		return nil, fmt.Errorf("name is required")
+	}
+	if params.Graph == nil && task == "" {
+		return nil, fmt.Errorf("task or graph is required")
+	}
+	if params.Graph != nil {
+		if task != "" {
+			return nil, fmt.Errorf("task and graph are mutually exclusive")
+		}
+		if err := dataflow.Validate(*params.Graph); err != nil {
+			return nil, fmt.Errorf("invalid graph: %w", err)
+		}
 	}
 	filter := strings.TrimSpace(params.EventFilter)
 	if _, err := EvaluateEventFilter(filter, InboxMessageEvent{}.Payload()); err != nil {
@@ -58,6 +81,7 @@ func (s *Service) CreateWorkflow(ctx context.Context, principal *backendauth.Pri
 		},
 		Agent:     automation.AgentConfig{Slug: params.AgentSlug},
 		Task:      task,
+		Graph:     params.Graph,
 		Status:    automation.JobStatusActive,
 		MaxRuns:   params.MaxRuns,
 		CreatedAt: now,

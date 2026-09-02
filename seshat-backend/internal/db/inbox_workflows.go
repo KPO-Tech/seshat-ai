@@ -40,7 +40,11 @@ type gInboxWorkflow struct {
 	AgentMaxTurns   int    `gorm:"column:agent_max_turns;not null;default:0"`
 	AgentSysPrompt  string `gorm:"column:agent_system_prompt;not null;default:''"`
 
-	Task          string `gorm:"column:task;not null;default:''"`
+	Task string `gorm:"column:task;not null;default:''"`
+	// GraphJSON, when non-empty, is a JSON-encoded dataflow.Definition run
+	// instead of Task — see internal/inbox/workflow_graph.go. Empty (the
+	// default) keeps every existing workflow on the plain-Task path.
+	GraphJSON     string `gorm:"column:graph_json;type:text"`
 	Status        string `gorm:"column:status;size:32;not null;default:'active';index"`
 	MaxDurationNs int64  `gorm:"column:max_duration_ns;not null;default:0"`
 	MaxRuns       int    `gorm:"column:max_runs;not null;default:0"`
@@ -93,6 +97,7 @@ type InboxWorkflowRow struct {
 	AgentMaxTurns   int
 	AgentSysPrompt  string
 	Task            string
+	GraphJSON       string
 	Status          string
 	MaxDurationNs   int64
 	MaxRuns         int

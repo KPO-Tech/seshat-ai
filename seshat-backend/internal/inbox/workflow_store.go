@@ -7,6 +7,7 @@ import (
 
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	"github.com/KPO-Tech/seshat/pkg/automation"
+	"github.com/KPO-Tech/seshat/pkg/dataflow"
 )
 
 // WorkflowStore adapts db.InboxWorkflowStore (the local, standalone-capable
@@ -122,6 +123,7 @@ func jobToRow(job *automation.Job) db.InboxWorkflowRow {
 		AgentMaxTurns:   job.Agent.MaxTurns,
 		AgentSysPrompt:  job.Agent.SystemPrompt,
 		Task:            job.Task,
+		GraphJSON:       graphToJSON(job.Graph),
 		Status:          string(job.Status),
 		MaxDurationNs:   int64(job.MaxDuration),
 		MaxRuns:         job.MaxRuns,
@@ -158,6 +160,7 @@ func rowToJob(row db.InboxWorkflowRow) *automation.Job {
 			SystemPrompt: row.AgentSysPrompt,
 		},
 		Task:          row.Task,
+		Graph:         graphFromJSON(row.GraphJSON),
 		Status:        automation.JobStatus(row.Status),
 		MaxDuration:   time.Duration(row.MaxDurationNs),
 		MaxRuns:       row.MaxRuns,
@@ -209,4 +212,23 @@ func stringsFromJSON(s string) []string {
 	}
 	_ = json.Unmarshal([]byte(s), &out)
 	return out
+}
+
+func graphToJSON(g *dataflow.Definition) string {
+	if g == nil {
+		return ""
+	}
+	data, _ := json.Marshal(g)
+	return string(data)
+}
+
+func graphFromJSON(s string) *dataflow.Definition {
+	if s == "" {
+		return nil
+	}
+	var g dataflow.Definition
+	if err := json.Unmarshal([]byte(s), &g); err != nil {
+		return nil
+	}
+	return &g
 }

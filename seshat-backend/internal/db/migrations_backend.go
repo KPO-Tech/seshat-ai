@@ -344,6 +344,17 @@ func backendMigrations() []schemaMigration {
 				return db.gormDB.WithContext(ctx).AutoMigrate(&gInboxWorkflow{}, &gInboxWorkflowRun{})
 			},
 		},
+		{
+			// Adds graph_json to an existing inbox_workflows table -
+			// AutoMigrate only adds missing columns, never drops data, so
+			// this is safe to run against installs that already applied
+			// 20260831_044_inbox_workflows above.
+			ID:    "20260902_045_inbox_workflow_graph",
+			Scope: migrationScopeBackend,
+			Run: func(ctx context.Context, db *DB) error {
+				return db.gormDB.WithContext(ctx).AutoMigrate(&gInboxWorkflow{})
+			},
+		},
 	}
 }
 

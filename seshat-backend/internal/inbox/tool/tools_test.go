@@ -15,6 +15,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox/tool"
 	"github.com/KPO-Tech/seshat/pkg/automation"
+	"github.com/KPO-Tech/seshat/pkg/dataflow"
 	"github.com/KPO-Tech/seshat/pkg/tools"
 )
 
@@ -420,6 +421,106 @@ func TestCreateWorkflowTool_MissingRequiredFieldsReturnsError(t *testing.T) {
 	}, nil)
 	require.NoError(t, err)
 	require.NotNil(t, result.Error)
+}
+
+func TestCreateWorkflowTool_CreatesWorkflowFromGraph(t *testing.T) {
+	svc := newTestService(t, openTestDB(t))
+	principal := testPrincipal("user-1")
+
+	tool := tool.NewCreateWorkflowTool(svc)
+	result, err := tool.Call(ctxWithPrincipal(principal), tools.CallInput{
+		Parsed: map[string]any{
+			"name": "Triage then draft",
+			"graph": map[string]any{
+				"name": "triage-then-draft",
+				"nodes": []any{
+					map[string]any{
+						"id":          "triage",
+						"type":        "agent",
+						"parameters":  map[string]any{"prompt": "Decide if this needs a reply."},
+						"connections": map[string]any{"main": []any{"draft"}},
+					},
+					map[string]any{
+						"id":         "draft",
+						"type":       "agent",
+						"parameters": map[string]any{"prompt": "Draft the reply."},
+					},
+				},
+			},
+		},
+	}, nil)
+	require.NoError(t, err)
+	require.Nil(t, result.Error)
+
+	jobs, err := svc.ListWorkflows(context.Background(), principal)
+	require.NoError(t, err)
+	require.Len(t, jobs, 1)
+	require.Equal(t, "Triage then draft", jobs[0].Name)
+	require.Empty(t, jobs[0].Task, "a graph-based workflow must not also have a Task")
+	require.NotNil(t, jobs[0].Graph)
+	require.Equal(t, "triage-then-draft", jobs[0].Graph.Name)
+	require.Len(t, jobs[0].Graph.Nodes, 2)
+	require.Equal(t, []string{"draft"}, jobs[0].Graph.Nodes[0].Connections["main"])
+}
+
+func TestCreateWorkflowTool_RejectsTaskAndGraphTogether(t *testing.T) {
+	svc := newTestService(t, openTestDB(t))
+	principal := testPrincipal("user-1")
+
+	tool := tool.NewCreateWorkflowTool(svc)
+	result, err := tool.Call(ctxWithPrincipal(principal), tools.CallInput{
+		Parsed: map[string]any{
+			"name": "Conflicting",
+			"task": "do something",
+			"graph": map[string]any{
+				"name":  "g",
+				"nodes": []any{map[string]any{"id": "a", "type": "agent", "parameters": map[string]any{"prompt": "x"}}},
+			},
+		},
+	}, nil)
+	require.NoError(t, err)
+	require.NotNil(t, result.Error)
+}
+
+func TestCreateWorkflowTool_RejectsGraphWithNoNodes(t *testing.T) {
+	svc := newTestService(t, openTestDB(t))
+	principal := testPrincipal("user-1")
+
+	tool := tool.NewCreateWorkflowTool(svc)
+	result, err := tool.Call(ctxWithPrincipal(principal), tools.CallInput{
+		Parsed: map[string]any{
+			"name":  "Empty graph",
+			"graph": map[string]any{"name": "g", "nodes": []any{}},
+		},
+	}, nil)
+	require.NoError(t, err)
+	require.NotNil(t, result.Error)
+
+	jobs, err := svc.ListWorkflows(context.Background(), principal)
+	require.NoError(t, err)
+	require.Empty(t, jobs)
+}
+
+func TestNewCreateWorkflowTool_DescribesRegisteredNodeTypesInGraphSchema(t *testing.T) {
+	svc := newTestService(t, openTestDB(t))
+	registry := dataflow.NewRegistry()
+	dataflow.RegisterBuiltins(registry)
+	svc.WithNodeRegistry(registry)
+
+	def := tool.NewCreateWorkflowTool(svc).Definition()
+	graphSchema, ok := def.InputSchema.Properties["graph"]
+	require.True(t, ok, "expected a \"graph\" property in the input schema")
+	require.Contains(t, graphSchema.Description, "agent:", "expected the live node registry's \"agent\" type to be listed")
+	require.Contains(t, graphSchema.Description, "subworkflow:", "expected the live node registry's \"subworkflow\" type to be listed")
+}
+
+func TestNewCreateWorkflowTool_HandlesNoRegisteredNodeTypes(t *testing.T) {
+	svc := newTestService(t, openTestDB(t)) // no WithNodeRegistry call
+
+	def := tool.NewCreateWorkflowTool(svc).Definition()
+	graphSchema, ok := def.InputSchema.Properties["graph"]
+	require.True(t, ok)
+	require.Contains(t, graphSchema.Description, "\"graph\" is unavailable")
 }
 
 func TestListWorkflowsTool_ReturnsOnlyOwnWorkflows(t *testing.T) {
