@@ -137,3 +137,44 @@ func (c *JobsClient) ListNodeTypes(ctx context.Context, token string) ([]dataflo
 	}
 	return payload.NodeTypes, nil
 }
+
+// DataflowSecret is the org-scoped named secret a graph node's *SecretRef
+// parameter (dsnSecretRef, uriSecretRef, ...) resolves by name at run time -
+// never the value, which seshat-server's dataflowsecrets service treats as
+// write-once/read-never-again (Set/List/Delete only, no update).
+type DataflowSecret struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// ListDataflowSecrets returns organizationID's dataflow secrets (an empty
+// list, not an error, when the caller lacks dataflow_secrets.read/.manage -
+// same convention as ListJobs/ListOrgDevices).
+func (c *JobsClient) ListDataflowSecrets(ctx context.Context, token, organizationID string) ([]DataflowSecret, error) {
+	q := url.Values{"organization_id": {organizationID}}
+	var payload struct {
+		DataflowSecrets []DataflowSecret `json:"dataflow_secrets"`
+	}
+	if _, err := c.do(ctx, http.MethodGet, "/api/v1/dataflow-secrets?"+q.Encode(), token, nil, &payload); err != nil {
+		return nil, err
+	}
+	return payload.DataflowSecrets, nil
+}
+
+func (c *JobsClient) CreateDataflowSecret(ctx context.Context, token, organizationID, name, value string) (*DataflowSecret, error) {
+	body := struct {
+		OrganizationID string `json:"organization_id"`
+		Name           string `json:"name"`
+		Value          string `json:"value"`
+	}{OrganizationID: organizationID, Name: name, Value: value}
+	var secret DataflowSecret
+	if _, err := c.do(ctx, http.MethodPost, "/api/v1/dataflow-secrets", token, body, &secret); err != nil {
+		return nil, err
+	}
+	return &secret, nil
+}
+
+func (c *JobsClient) DeleteDataflowSecret(ctx context.Context, token, id string) error {
+	_, err := c.do(ctx, http.MethodDelete, "/api/v1/dataflow-secrets/"+id, token, nil, nil)
+	return err
+}

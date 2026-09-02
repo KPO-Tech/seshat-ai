@@ -202,6 +202,8 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	apiV1.Handle("/automation/jobs", app.authMiddleware(http.HandlerFunc(app.handleAutomationJobs)))
 	apiV1.Handle("/automation/jobs/", app.authMiddleware(http.HandlerFunc(app.handleAutomationJobDispatch)))
 	apiV1.Handle("/automation/dataflow/node-types", app.authMiddleware(http.HandlerFunc(app.handleAutomationDataflowNodeTypes)))
+	apiV1.Handle("/automation/dataflow-secrets", app.authMiddleware(http.HandlerFunc(app.handleAutomationDataflowSecrets)))
+	apiV1.Handle("/automation/dataflow-secrets/", app.authMiddleware(http.HandlerFunc(app.handleAutomationDataflowSecretDispatch)))
 	apiV1.Handle("/admin/provider-settings", app.authMiddleware(http.HandlerFunc(app.handleAdminProviderSettings)))
 	apiV1.Handle("/admin/provider-settings/", app.authMiddleware(http.HandlerFunc(app.handleAdminProviderSettingDispatch)))
 	apiV1.Handle("/admin/web-search-org-policy", app.authMiddleware(http.HandlerFunc(app.handleAdminWebSearchOrgPolicy)))
