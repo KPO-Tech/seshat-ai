@@ -10,6 +10,8 @@ package cloudautomation
 import (
 	"context"
 	"time"
+
+	"github.com/KPO-Tech/seshat/pkg/dataflow"
 )
 
 // Connection is this machine's pairing to one seshat-server organization,
@@ -106,26 +108,27 @@ type Run struct {
 
 // Job mirrors seshat-server's Job schema (automation.Job / openapi Job).
 type Job struct {
-	ID              string            `json:"id"`
-	OrganizationID  string            `json:"organization_id"`
-	CreatedByUserID string            `json:"created_by_user_id,omitempty"`
-	Name            string            `json:"name"`
-	Description     string            `json:"description,omitempty"`
-	Status          string            `json:"status"`
-	TriggerType     string            `json:"trigger_type"`
-	CronExpr        string            `json:"cron_expr,omitempty"`
-	IntervalSeconds int               `json:"interval_seconds,omitempty"`
-	RunAt           string            `json:"run_at,omitempty"`
-	NextRunAt       string            `json:"next_run_at,omitempty"`
-	LastRunAt       string            `json:"last_run_at,omitempty"`
-	LastRunStatus   string            `json:"last_run_status,omitempty"`
-	ExecutionTarget string            `json:"execution_target"`
-	TargetDeviceID  string            `json:"target_device_id,omitempty"`
-	Prompt          string            `json:"prompt"`
-	ModelOverride   string            `json:"model_override,omitempty"`
-	Configuration   map[string]string `json:"configuration,omitempty"`
-	CreatedAt       string            `json:"created_at,omitempty"`
-	UpdatedAt       string            `json:"updated_at,omitempty"`
+	ID              string               `json:"id"`
+	OrganizationID  string               `json:"organization_id"`
+	CreatedByUserID string               `json:"created_by_user_id,omitempty"`
+	Name            string               `json:"name"`
+	Description     string               `json:"description,omitempty"`
+	Status          string               `json:"status"`
+	TriggerType     string               `json:"trigger_type"`
+	CronExpr        string               `json:"cron_expr,omitempty"`
+	IntervalSeconds int                  `json:"interval_seconds,omitempty"`
+	RunAt           string               `json:"run_at,omitempty"`
+	NextRunAt       string               `json:"next_run_at,omitempty"`
+	LastRunAt       string               `json:"last_run_at,omitempty"`
+	LastRunStatus   string               `json:"last_run_status,omitempty"`
+	ExecutionTarget string               `json:"execution_target"`
+	TargetDeviceID  string               `json:"target_device_id,omitempty"`
+	Prompt          string               `json:"prompt,omitempty"`
+	Graph           *dataflow.Definition `json:"graph,omitempty"`
+	ModelOverride   string               `json:"model_override,omitempty"`
+	Configuration   map[string]string    `json:"configuration,omitempty"`
+	CreatedAt       string               `json:"created_at,omitempty"`
+	UpdatedAt       string               `json:"updated_at,omitempty"`
 }
 
 // JobParams is the shared request shape for creating and updating a job,
@@ -133,17 +136,18 @@ type Job struct {
 // only by OrganizationID, which CreateJob takes as a separate argument here
 // since a job can never move between organizations).
 type JobParams struct {
-	Name            string            `json:"name"`
-	Description     string            `json:"description,omitempty"`
-	TriggerType     string            `json:"trigger_type"`
-	CronExpr        string            `json:"cron_expr,omitempty"`
-	IntervalSeconds int               `json:"interval_seconds,omitempty"`
-	RunAt           string            `json:"run_at,omitempty"`
-	ExecutionTarget string            `json:"execution_target"`
-	TargetDeviceID  string            `json:"target_device_id,omitempty"`
-	Prompt          string            `json:"prompt"`
-	ModelOverride   string            `json:"model_override,omitempty"`
-	Configuration   map[string]string `json:"configuration,omitempty"`
+	Name            string               `json:"name"`
+	Description     string               `json:"description,omitempty"`
+	TriggerType     string               `json:"trigger_type"`
+	CronExpr        string               `json:"cron_expr,omitempty"`
+	IntervalSeconds int                  `json:"interval_seconds,omitempty"`
+	RunAt           string               `json:"run_at,omitempty"`
+	ExecutionTarget string               `json:"execution_target"`
+	TargetDeviceID  string               `json:"target_device_id,omitempty"`
+	Prompt          string               `json:"prompt,omitempty"`
+	Graph           *dataflow.Definition `json:"graph,omitempty"`
+	ModelOverride   string               `json:"model_override,omitempty"`
+	Configuration   map[string]string    `json:"configuration,omitempty"`
 }
 
 // RunJob is the execution payload for a run this device has claimed —

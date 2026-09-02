@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/KPO-Tech/seshat/pkg/dataflow"
+
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/http"
 )
 
@@ -122,4 +124,16 @@ func (c *JobsClient) ListOrgDevices(ctx context.Context, token, organizationID s
 		return nil, err
 	}
 	return payload.Devices, nil
+}
+
+// ListNodeTypes returns the pkg/dataflow node types a Job.Graph on this
+// server can reference, for populating a graph-building UI's node palette.
+func (c *JobsClient) ListNodeTypes(ctx context.Context, token string) ([]dataflow.NodeDescription, error) {
+	var payload struct {
+		NodeTypes []dataflow.NodeDescription `json:"node_types"`
+	}
+	if _, err := c.do(ctx, http.MethodGet, "/api/v1/dataflow/node-types", token, nil, &payload); err != nil {
+		return nil, err
+	}
+	return payload.NodeTypes, nil
 }

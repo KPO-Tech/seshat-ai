@@ -127,6 +127,19 @@ func (s *Service) SetNodeRegistry(registry *dataflow.Registry) {
 	s.nodeRegistry = registry
 }
 
+// NodeTypes lists the node types a Job.Graph on this deployment can
+// reference (see SetNodeRegistry) - nil-safe, returns nil if no registry is
+// configured. Backs GET /api/v1/dataflow/node-types, so a graph-building
+// UI can populate its node palette from whatever's actually registered
+// instead of a hand-maintained list that can drift - mirrors
+// inbox.Service.NodeTypes's exact same reasoning on the seshat-backend side.
+func (s *Service) NodeTypes() []dataflow.NodeDescription {
+	if s == nil || s.nodeRegistry == nil {
+		return nil
+	}
+	return s.nodeRegistry.Types()
+}
+
 // DoclingStatus reports whether this server has a docling-serve instance
 // configured. Platform admin only, read-only - there's no per-organization
 // setting to manage (see SetDoclingURL's doc comment for why). The URL

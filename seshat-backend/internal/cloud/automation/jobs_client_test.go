@@ -39,6 +39,37 @@ func TestJobsClientListJobs(t *testing.T) {
 	}
 }
 
+func TestJobsClientListNodeTypes(t *testing.T) {
+	var gotAuth, gotPath string
+	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth = r.Header.Get("Authorization")
+		gotPath = r.URL.Path
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"node_types": []map[string]string{
+				{"type": "agent", "name": "Agent", "category": "AI"},
+				{"type": "http_request", "name": "HTTP Request", "category": "Network"},
+			},
+			"count": 2,
+		})
+	}))
+	defer fakeServer.Close()
+
+	client := NewJobsClient(fakeServer.URL)
+	nodeTypes, err := client.ListNodeTypes(context.Background(), "user-token")
+	if err != nil {
+		t.Fatalf("list node types: %v", err)
+	}
+	if gotAuth != "Bearer user-token" {
+		t.Fatalf("expected the user's session token as bearer auth, got %q", gotAuth)
+	}
+	if gotPath != "/api/v1/dataflow/node-types" {
+		t.Fatalf("unexpected path: %q", gotPath)
+	}
+	if len(nodeTypes) != 2 || nodeTypes[0].Type != "agent" || nodeTypes[1].Type != "http_request" {
+		t.Fatalf("unexpected node types: %+v", nodeTypes)
+	}
+}
+
 func TestJobsClientCreateJobIncludesOrganizationID(t *testing.T) {
 	var gotBody map[string]any
 	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

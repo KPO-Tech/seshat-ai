@@ -165,6 +165,39 @@ func TestAutomationJobsPropagatesForbidden(t *testing.T) {
 	}
 }
 
+func TestAutomationDataflowNodeTypesList(t *testing.T) {
+	fx := newSecurityTestFixture(t)
+
+	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v1/dataflow/node-types" || r.Method != http.MethodGet {
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"node_types": []map[string]string{{"type": "agent", "name": "Agent", "category": "AI"}},
+			"count":      1,
+		})
+	}))
+	defer fakeServer.Close()
+	fx.app.connectedServerURL = fakeServer.URL
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/automation/dataflow/node-types", nil)
+	req.Header.Set("Authorization", "Bearer "+fx.adminToken)
+	resp := httptest.NewRecorder()
+	fx.router.ServeHTTP(resp, req)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", resp.Code, resp.Body.String())
+	}
+	var body struct {
+		Count int `json:"count"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if body.Count != 1 {
+		t.Fatalf("expected 1 node type, got %d", body.Count)
+	}
+}
+
 func TestAutomationDevicesList(t *testing.T) {
 	fx := newSecurityTestFixture(t)
 

@@ -156,3 +156,25 @@ func (a *App) handleAutomationDevices(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"devices": devices, "count": len(devices)})
 }
+
+// handleAutomationDataflowNodeTypes — GET /api/v1/automation/dataflow/node-types,
+// proxying seshat-server's own node-type catalog so a graph-building UI in
+// seshat-ui can populate its node palette without seshat-ui needing to know
+// seshat-server's API shape directly - same proxy-with-the-caller's-own-
+// token reasoning as every other handler in this file.
+func (a *App) handleAutomationDataflowNodeTypes(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	client, token, _, ok := a.jobsClientForRequest(w, r)
+	if !ok {
+		return
+	}
+	nodeTypes, err := client.ListNodeTypes(r.Context(), token)
+	if err != nil {
+		writeBackendError(w, cloudhttp.Translate(err))
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"node_types": nodeTypes, "count": len(nodeTypes)})
+}
