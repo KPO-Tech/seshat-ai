@@ -24,30 +24,38 @@ export function GraphNode({ id, data, selected }: NodeProps<FlowGraphNode>) {
 
   return (
     <div className={`gf-node ${selected ? 'selected' : ''}`}>
+      {/* No override: React Flow centers a Left/Right handle vertically on
+          the node's own bounding box by default - since .gf-node now wraps
+          only the card (no trailing ports block adding extra height below
+          it), that center lines up exactly with the card's own edge. */}
       <Handle type="target" position={Position.Left} id={INPUT_HANDLE} className="gf-handle gf-handle-target" />
       <div className="gf-node-card">
         <div className="gf-node-icon" style={{ background: tintColor(color), color }}>
-          {resolveNodeIcon(data.dfType, data.category ?? 'Other', 18)}
+          {resolveNodeIcon(data.dfType, data.category ?? 'Other', 16)}
         </div>
         <div className="gf-node-text">
           <div className="gf-node-title">{data.title ?? data.dfType}</div>
           <div className="gf-node-subtitle">{id}</div>
         </div>
       </div>
-      <div className="gf-node-ports">
-        {ports.map((port) => (
-          <div key={port} className="gf-node-port-row">
+      {/* Multi-port nodes (if/switch) get one dot per port, evenly spaced
+          down the card's own right edge - single-'main'-port nodes get one
+          dot dead center, matching the target handle on the left. */}
+      {ports.map((port, i) => {
+        const topPct = ((i + 1) / (ports.length + 1)) * 100
+        return (
+          <div key={port} className="gf-port" style={{ top: `${topPct}%` }}>
             {port !== 'main' && <span className="gf-port-label">{port}</span>}
             <Handle
               type="source"
               position={Position.Right}
               id={port}
               className="gf-handle"
-              style={{ position: 'relative', transform: 'none', top: 0, right: 0, background: color }}
+              style={{ position: 'relative', top: 0, right: 0, transform: 'none', background: color }}
             />
           </div>
-        ))}
-      </div>
+        )
+      })}
     </div>
   )
 }

@@ -4,7 +4,6 @@ import {
   ReactFlowProvider,
   Background,
   Controls,
-  MiniMap,
   useNodesState,
   useEdgesState,
   addEdge,
@@ -209,10 +208,11 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
             onInit={setFlowInstance}
             colorMode={theme}
             fitView
+            fitViewOptions={{ maxZoom: 1 }}
+            proOptions={{ hideAttribution: true }}
           >
             <Background />
             <Controls showInteractive={false} />
-            <MiniMap pannable zoomable />
           </ReactFlow>
 
           <button type="button" className="gf-add-btn" onClick={() => setCreatorOpen(true)} title="Add node">
@@ -432,15 +432,16 @@ const GRAPH_EDITOR_CSS = `
 }
 
 .gf-node {
-  min-width: 190px;
+  position: relative;
+  width: 170px;
   border-radius: 10px;
 }
 
 .gf-node-card {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
+  gap: 8px;
+  padding: 8px 10px;
   border: 1px solid var(--color-border);
   border-radius: 10px;
   background: var(--color-surface);
@@ -454,10 +455,10 @@ const GRAPH_EDITOR_CSS = `
 }
 
 .gf-node-icon {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   flex-shrink: 0;
-  border-radius: 8px;
+  border-radius: 7px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -487,22 +488,28 @@ const GRAPH_EDITOR_CSS = `
   text-overflow: ellipsis;
 }
 
-.gf-node-ports {
-  padding: 5px 0 0;
-}
-
-.gf-node-port-row {
+/* One per output port, absolutely positioned at an even vertical interval
+   along the card's own right edge (set inline via top%) rather than
+   stacked below the card in normal flow - that's what made ports look
+   detached/floating instead of attached to the node. */
+.gf-port {
+  position: absolute;
+  right: -5px;
+  transform: translateY(-50%);
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-  padding: 2px 10px;
-  min-height: 18px;
+  gap: 5px;
+  pointer-events: none;
 }
 
 .gf-port-label {
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   font-size: var(--font-size-2xs);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-subtle);
+  padding: 1px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
 }
 
 .gf-handle {
@@ -511,6 +518,7 @@ const GRAPH_EDITOR_CSS = `
   background: var(--color-cta);
   border: 2px solid var(--color-bg);
   transition: transform 0.1s ease, box-shadow 0.1s ease;
+  pointer-events: all;
 }
 
 .gf-handle:hover {
