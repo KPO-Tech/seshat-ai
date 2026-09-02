@@ -9,6 +9,7 @@ package automation
 import (
 	"context"
 
+	"github.com/KPO-Tech/seshat/pkg/dataflow"
 	sdkrag "github.com/KPO-Tech/seshat/pkg/rag"
 	"github.com/KPO-Tech/seshat/pkg/sdk"
 	sdkstorage "github.com/KPO-Tech/seshat/pkg/storage"
@@ -45,14 +46,24 @@ type MCPResolver interface {
 	ResolveServerConfigsForUser(ctx context.Context, organizationID, userID string) ([]sdk.MCPServerConfig, error)
 }
 
+// DataflowSecretResolver resolves a named secret (e.g. a "postgres" node's
+// dsnSecretRef) scoped to one organization — satisfied by
+// *dataflowsecrets.Service, injected via SetSecretResolver rather than
+// imported directly, same reasoning as RAGResolver/MCPResolver.
+type DataflowSecretResolver interface {
+	ResolveDataflowSecret(ctx context.Context, organizationID, name string) (string, error)
+}
+
 // Service owns devices, scheduled jobs and job runs.
 type Service struct {
-	db         *sdb.DB
-	iam        *iam.Service
-	rag        RAGResolver              // nil until SetRAGResolver is called
-	mcp        MCPResolver              // nil until SetMCPResolver is called
-	doclingURL string                   // empty until SetDoclingURL is called
-	artifacts  sdkstorage.ArtifactStore // nil until SetArtifactStore is called
+	db           *sdb.DB
+	iam          *iam.Service
+	rag          RAGResolver              // nil until SetRAGResolver is called
+	mcp          MCPResolver              // nil until SetMCPResolver is called
+	doclingURL   string                   // empty until SetDoclingURL is called
+	artifacts    sdkstorage.ArtifactStore // nil until SetArtifactStore is called
+	secrets      DataflowSecretResolver   // nil until SetSecretResolver is called
+	nodeRegistry *dataflow.Registry       // nil until SetNodeRegistry is called
 }
 
 func New(database *sdb.DB, iamService *iam.Service) *Service {
@@ -96,6 +107,24 @@ func (s *Service) SetDoclingURL(url string) {
 // jobs on ClientConfig's own local-disk fallback.
 func (s *Service) SetArtifactStore(store sdkstorage.ArtifactStore) {
 	s.artifacts = store
+}
+
+// SetSecretResolver wires in dataflow-secret resolution so a cloud-targeted
+// job whose Graph references a *SecretRef parameter (e.g. a "postgres"
+// node's dsnSecretRef) can resolve it, scoped to the job's own
+// organization. Called once at app startup, after both services exist.
+func (s *Service) SetSecretResolver(r DataflowSecretResolver) {
+	s.secrets = r
+}
+
+// SetNodeRegistry enables Job.Graph execution for cloud-targeted runs by
+// giving executeCloudRun a set of node executors to run against — which
+// node types are available (generic-only vs. also database drivers) is a
+// deployment choice made by whoever builds this Registry (see app.New),
+// not something this package defaults on its own. nil (the default) means
+// a job with a non-nil Graph fails clearly rather than silently no-oping.
+func (s *Service) SetNodeRegistry(registry *dataflow.Registry) {
+	s.nodeRegistry = registry
 }
 
 // DoclingStatus reports whether this server has a docling-serve instance

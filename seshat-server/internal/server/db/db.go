@@ -124,6 +124,7 @@ func (d *DB) Migrate() error {
 		&KnowledgeIngestionJob{},
 		&ConnectorAccount{},
 		&ConnectorSyncJob{},
+		&DataflowSecret{},
 		&ConnectorOAuthApp{},
 		&ConnectorOAuthState{},
 		&EmbedderSetting{},

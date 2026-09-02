@@ -2,6 +2,7 @@ package automation
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -11,10 +12,12 @@ import (
 
 	sdkautomation "github.com/KPO-Tech/seshat/pkg/automation"
 	sdkconfig "github.com/KPO-Tech/seshat/pkg/config"
+	"github.com/KPO-Tech/seshat/pkg/dataflow"
 	sdkproviders "github.com/KPO-Tech/seshat/pkg/providers"
 	sdkrag "github.com/KPO-Tech/seshat/pkg/rag"
 	"github.com/KPO-Tech/seshat/pkg/sdk"
 	sdktypes "github.com/KPO-Tech/seshat/pkg/types"
+	"github.com/KPO-Tech/seshat/pkg/workflow"
 
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
@@ -45,13 +48,115 @@ type jobWorkflow struct {
 	id          string
 	description string
 	prompt      string
+	// graph, when non-nil (job.GraphJSON was set), runs instead of prompt —
+	// see runGraph below. registry/secrets are threaded from Service so a
+	// graph node can resolve org-scoped dataflow secrets and reach the node
+	// types this deployment registered (see Service.nodeRegistry).
+	graph        *dataflow.Definition
+	registry     *dataflow.Registry
+	organization string
+	secrets      DataflowSecretResolver
 }
 
 func (w *jobWorkflow) Name() string        { return w.id }
 func (w *jobWorkflow) Description() string { return w.description }
 func (w *jobWorkflow) Run(ctx context.Context, session *sdk.Session) error {
+	if w.graph != nil {
+		return w.runGraph(ctx, session)
+	}
 	_, err := session.SubmitMessage(ctx, w.prompt)
 	return err
+}
+
+// runGraph mirrors internal/automation.runGraph in the seshat SDK (see its
+// doc comment) — reimplemented here rather than imported because this
+// jobWorkflow adapts a different job model (sdb.ScheduledJob, this
+// package's own cloud-execution path) than the SDK's own Job/JobScheduler,
+// which seshat-server does not use for cloud-targeted runs.
+func (w *jobWorkflow) runGraph(ctx context.Context, session *sdk.Session) error {
+	if w.registry == nil {
+		return fmt.Errorf("job has a Graph but this deployment has no dataflow node registry configured")
+	}
+	var secrets dataflow.SecretResolver
+	if w.secrets != nil {
+		secrets = orgScopedSecretResolver{resolver: w.secrets, organizationID: w.organization}
+	}
+	rt := &dataflow.Runtime{
+		Secrets:     secrets,
+		Agent:       dataflowAgentCaller{session: session},
+		Subworkflow: dataflowSubworkflowRunner{session: session},
+	}
+	result, err := dataflow.Run(ctx, *w.graph, w.registry, rt, nil, dataflow.Options{})
+	if err != nil {
+		return fmt.Errorf("run graph: %w", err)
+	}
+	if !result.Success {
+		for _, id := range result.Order {
+			if r := result.Results[id]; !r.Success && r.Error != "" {
+				return fmt.Errorf("graph %q failed at node %q: %s", w.graph.Name, id, r.Error)
+			}
+		}
+		return fmt.Errorf("graph %q failed", w.graph.Name)
+	}
+	return nil
+}
+
+// orgScopedSecretResolver binds one organization to Service's
+// DataflowSecretResolver, satisfying pkg/dataflow.SecretResolver's
+// narrower (organization-free) Resolve signature — see RunnerConfig.Secrets'
+// doc comment in the SDK for why this per-execution scoping happens at the
+// call site rather than in the interface itself.
+type orgScopedSecretResolver struct {
+	resolver       DataflowSecretResolver
+	organizationID string
+}
+
+func (r orgScopedSecretResolver) Resolve(ctx context.Context, ref string) (string, error) {
+	return r.resolver.ResolveDataflowSecret(ctx, r.organizationID, ref)
+}
+
+// dataflowAgentCaller/dataflowSubworkflowRunner mirror
+// internal/automation's sessionAgentCaller/sessionSubworkflowRunner in the
+// SDK (see its dataflow_adapter.go) — reimplemented here for the same
+// reason as runGraph above: this package's session comes from its own
+// executeCloudRun, not the SDK's JobScheduler.
+type dataflowAgentCaller struct{ session *sdk.Session }
+
+func (a dataflowAgentCaller) Ask(ctx context.Context, _ string, prompt string) (string, error) {
+	resp, err := a.session.SubmitMessage(ctx, prompt)
+	if err != nil {
+		return "", err
+	}
+	return lastAssistantText(resp.Messages), nil
+}
+
+type dataflowSubworkflowRunner struct{ session *sdk.Session }
+
+func (r dataflowSubworkflowRunner) Run(ctx context.Context, def workflow.Definition) (workflow.Result, error) {
+	executor := workflow.ExecutorFunc(func(execCtx context.Context, node workflow.Node, inputs map[string]workflow.NodeResult) (string, error) {
+		resp, err := r.session.SubmitMessage(execCtx, workflow.BuildNodePrompt(node, inputs))
+		if err != nil {
+			return "", err
+		}
+		return lastAssistantText(resp.Messages), nil
+	})
+	return workflow.Run(ctx, def, executor, workflow.Options{})
+}
+
+func lastAssistantText(messages []sdktypes.Message) string {
+	for i := len(messages) - 1; i >= 0; i-- {
+		if messages[i].Role != sdktypes.RoleAssistant {
+			continue
+		}
+		var text string
+		for _, block := range messages[i].Content {
+			if tc, ok := block.(sdktypes.TextContent); ok {
+				text += tc.Text
+			}
+		}
+		return text
+	}
+	return ""
 }
 
 // executeCloudRun runs one queued cloud-targeted run against the org's
@@ -139,6 +244,21 @@ func (s *Service) executeCloudRun(ctx context.Context, runID string) error {
 		}
 	}
 
+	// A job's Graph, when set, needs no LLM tools of its own beyond the
+	// "agent"/"subworkflow" node types (see jobWorkflow.runGraph) — RAG/MCP/
+	// docling/artifacts are still passed through unconditionally below
+	// since a graph's own "agent" nodes reuse this same session and so can
+	// still call rag_search/read_document_url/MCP tools mid-turn, same as
+	// the plain-Prompt path.
+	var graph *dataflow.Definition
+	if strings.TrimSpace(job.GraphJSON) != "" {
+		var def dataflow.Definition
+		if err := json.Unmarshal([]byte(job.GraphJSON), &def); err != nil {
+			return s.markCloudRunFailed(ctx, run.ID, "invalid graph definition: "+err.Error())
+		}
+		graph = &def
+	}
+
 	executor, err := sdkautomation.NewExecutor(sdkautomation.ExecutorConfig{
 		RunnerConfig: sdkautomation.RunnerConfig{
 			Model:          sdkautomation.ModelIdentifier{Provider: sdktypes.APIProvider(provider), Model: model},
@@ -159,7 +279,10 @@ func (s *Service) executeCloudRun(ctx context.Context, runID string) error {
 	}
 	defer executor.Close()
 
-	workflow := &jobWorkflow{id: job.ID, description: job.Description, prompt: job.Prompt}
+	workflow := &jobWorkflow{
+		id: job.ID, description: job.Description, prompt: job.Prompt,
+		graph: graph, registry: s.nodeRegistry, organization: job.OrganizationID, secrets: s.secrets,
+	}
 	result, execErr := executor.Run(ctx, workflow, sdkautomation.Options{})
 
 	if execErr != nil {

@@ -141,6 +141,10 @@ func (app *App) routes() http.Handler {
 	mux.Handle("POST /api/v1/hook-configs", app.authMiddleware(http.HandlerFunc(app.handleHookConfigs)))
 	mux.Handle("PUT /api/v1/hook-configs/{hookConfigID}", app.authMiddleware(http.HandlerFunc(app.handleHookConfigByID)))
 	mux.Handle("DELETE /api/v1/hook-configs/{hookConfigID}", app.authMiddleware(http.HandlerFunc(app.handleHookConfigByID)))
+
+	mux.Handle("GET /api/v1/dataflow-secrets", app.authMiddleware(http.HandlerFunc(app.handleDataflowSecrets)))
+	mux.Handle("POST /api/v1/dataflow-secrets", app.authMiddleware(http.HandlerFunc(app.handleDataflowSecrets)))
+	mux.Handle("DELETE /api/v1/dataflow-secrets/{dataflowSecretID}", app.authMiddleware(http.HandlerFunc(app.handleDataflowSecretByID)))
 	mux.Handle("POST /api/v1/bundles/export", app.authMiddleware(http.HandlerFunc(app.handleBundlesExport)))
 	mux.Handle("POST /api/v1/bundles/import", app.authMiddleware(http.HandlerFunc(app.handleBundlesImport)))
 	mux.Handle("GET /api/v1/bundles/provenance", app.authMiddleware(http.HandlerFunc(app.handleBundlesProvenance)))

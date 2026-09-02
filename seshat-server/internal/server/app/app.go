@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/KPO-Tech/seshat/pkg/dataflow"
+	dataflowexpr "github.com/KPO-Tech/seshat/pkg/dataflow/expr"
+	dataflownodes "github.com/KPO-Tech/seshat/pkg/dataflow/nodes"
+	dataflowdatabase "github.com/KPO-Tech/seshat/pkg/dataflow/nodes/database"
 	sdkdocling "github.com/KPO-Tech/seshat/pkg/docling"
 	sdkstorage "github.com/KPO-Tech/seshat/pkg/storage"
 	sdkvector "github.com/KPO-Tech/seshat/pkg/vector"
@@ -14,6 +18,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/bundles"
 	serverconfig "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/config"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/connectors"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/dataflowsecrets"
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/hookregistry"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
@@ -48,6 +53,7 @@ type App struct {
 	MCPRegistry          *mcpregistry.Service
 	HookRegistry         *hookregistry.Service
 	Bundles              *bundles.Service
+	DataflowSecrets      *dataflowsecrets.Service
 	Memories             *memories.Service
 	LongTermMemory       *longtermmemory.Service
 	AgentRegistry        *agentregistry.Service
@@ -125,6 +131,23 @@ func New(cfg serverconfig.Config) (*App, error) {
 	// not per-tenant, since docling-serve isn't a secret or credential.
 	automationService.SetDoclingURL(cfg.DoclingURL)
 
+	dataflowSecretsService := dataflowsecrets.New(database, iamService)
+	// Lets a cloud-targeted job's Graph resolve org-scoped named secrets
+	// (e.g. a "postgres" node's dsnSecretRef) — see
+	// automation.Service.DataflowSecretResolver's doc comment.
+	automationService.SetSecretResolver(dataflowSecretsService)
+	// Which node types a Graph can reference — generic (http_request/
+	// filter/if/switch/set/merge/wait, no credentials) plus database
+	// (postgres/mysql/sqlite/redis/mongodb/elasticsearch, credential-
+	// resolving). Both come from the SDK; nothing here is seshat-ai-
+	// specific — see automation.Service.SetNodeRegistry's doc comment for
+	// why this is a deployment-level choice rather than a package default.
+	nodeRegistry := dataflow.NewRegistry()
+	dataflow.RegisterBuiltins(nodeRegistry)
+	dataflownodes.Register(nodeRegistry, dataflowexpr.NewPool(8))
+	dataflowdatabase.Register(nodeRegistry)
+	automationService.SetNodeRegistry(nodeRegistry)
+
 	connectorsService := connectors.New(database, iamService, knowledgeService)
 	// Lets gdrive/sharepoint's OAuth connect flow build the fixed,
 	// server-owned callback URL every registered OAuth app targets — see
@@ -168,6 +191,7 @@ func New(cfg serverconfig.Config) (*App, error) {
 		MCPRegistry:          mcpRegistryService,
 		HookRegistry:         hookRegistryService,
 		Bundles:              bundlesService,
+		DataflowSecrets:      dataflowSecretsService,
 		Memories:             memories.New(database),
 		LongTermMemory:       longtermmemory.New(database),
 		AgentRegistry:        agentRegistryService,

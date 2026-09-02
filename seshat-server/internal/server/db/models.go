@@ -495,14 +495,18 @@ type ScheduledJob struct {
 	RunAt           *time.Time
 	NextRunAt       *time.Time `gorm:"index"`
 	LastRunAt       *time.Time
-	LastRunStatus   string            `gorm:"size:32"`
-	ExecutionTarget string            `gorm:"size:16;not null"` // cloud | device
-	TargetDeviceID  string            `gorm:"size:32"`
-	Prompt          string            `gorm:"type:text;not null"`
-	ModelOverride   string            `gorm:"size:128"`
-	Configuration   map[string]string `gorm:"serializer:json;type:text"`
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	LastRunStatus   string `gorm:"size:32"`
+	ExecutionTarget string `gorm:"size:16;not null"` // cloud | device
+	TargetDeviceID  string `gorm:"size:32"`
+	Prompt          string `gorm:"type:text;not null"`
+	// GraphJSON, when non-empty, is a JSON-encoded dataflow.Definition run
+	// instead of Prompt — see automation.executeCloudRun. Empty (the
+	// default) keeps every existing job on the plain-Prompt path unchanged.
+	GraphJSON     string            `gorm:"type:text"`
+	ModelOverride string            `gorm:"size:128"`
+	Configuration map[string]string `gorm:"serializer:json;type:text"`
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 // JobRun is one execution instance of a ScheduledJob.
@@ -651,6 +655,24 @@ type ConnectorSyncJob struct {
 	CompletedAt        *time.Time
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
+}
+
+// DataflowSecret is a named, org-scoped secret a pkg/dataflow graph node
+// resolves by reference (e.g. a "postgres" node's dsnSecretRef) — a
+// deliberately separate table from ConnectorAccount: that one is shaped
+// around OAuth token pairs for synced/agent-action SaaS connectors
+// (AccessToken/RefreshToken/Kind/Purpose/SyncCursor...), none of which fits
+// an arbitrary credential like a database connection string. Reuses the
+// same org-DEK encryption primitive (EncryptSecret/DecryptSecret) rather
+// than inventing a second one.
+type DataflowSecret struct {
+	ID              string `gorm:"primaryKey;size:32"`
+	OrganizationID  string `gorm:"size:32;not null;index:idx_dataflow_secret_org_name,unique,priority:1"`
+	Name            string `gorm:"size:200;not null;index:idx_dataflow_secret_org_name,unique,priority:2"` // the ref a node's *SecretRef parameter points to
+	ValueEncrypted  string `gorm:"type:text;not null"`
+	CreatedByUserID string `gorm:"size:32;not null"`
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 // ConnectorOAuthApp is one organization's registered OAuth app credentials
