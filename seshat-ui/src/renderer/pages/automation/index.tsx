@@ -334,6 +334,8 @@ const AUTOMATION_CSS = `
 .au-root {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-width: 0;
   height: 100%;
   min-height: 0;
 }
