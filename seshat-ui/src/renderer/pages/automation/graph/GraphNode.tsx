@@ -1,5 +1,6 @@
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react'
 import { outputPortsForNode, INPUT_HANDLE } from './convert'
+import { resolveNodeIcon, tintColor } from './nodeIcons'
 
 export type GraphNodeData = {
   dfType: string
@@ -8,6 +9,11 @@ export type GraphNodeData = {
   // catalog (so a new Category added server-side gets a color without a
   // frontend redeploy) and threaded in here rather than looked up per node.
   categoryColor?: string
+  // Both backfilled by GraphEditor from the live catalog once it resolves -
+  // UI-only, never read by convert.ts's flowToDefinition, so they never
+  // leak into the saved DataflowDefinition.
+  title?: string
+  category?: string
 }
 
 export type FlowGraphNode = Node<GraphNodeData, 'dataflow'>
@@ -17,12 +23,17 @@ export function GraphNode({ id, data, selected }: NodeProps<FlowGraphNode>) {
   const color = data.categoryColor ?? 'var(--color-text-muted)'
 
   return (
-    <div className={`gf-node ${selected ? 'selected' : ''}`} style={{ borderColor: selected ? 'var(--color-cta)' : undefined }}>
-      <Handle type="target" position={Position.Left} id={INPUT_HANDLE} className="gf-handle" />
-      <div className="gf-node-head" style={{ borderLeftColor: color }}>
-        <span className="gf-node-type">{data.dfType}</span>
+    <div className={`gf-node ${selected ? 'selected' : ''}`}>
+      <Handle type="target" position={Position.Left} id={INPUT_HANDLE} className="gf-handle gf-handle-target" />
+      <div className="gf-node-card">
+        <div className="gf-node-icon" style={{ background: tintColor(color), color }}>
+          {resolveNodeIcon(data.dfType, data.category ?? 'Other', 18)}
+        </div>
+        <div className="gf-node-text">
+          <div className="gf-node-title">{data.title ?? data.dfType}</div>
+          <div className="gf-node-subtitle">{id}</div>
+        </div>
       </div>
-      <div className="gf-node-id">{id}</div>
       <div className="gf-node-ports">
         {ports.map((port) => (
           <div key={port} className="gf-node-port-row">
@@ -32,7 +43,7 @@ export function GraphNode({ id, data, selected }: NodeProps<FlowGraphNode>) {
               position={Position.Right}
               id={port}
               className="gf-handle"
-              style={{ position: 'relative', transform: 'none', top: 0, right: 0 }}
+              style={{ position: 'relative', transform: 'none', top: 0, right: 0, background: color }}
             />
           </div>
         ))}

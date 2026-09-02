@@ -16,6 +16,7 @@ import '@xyflow/react/dist/style.css'
 import { Close, Delete, Plus } from '@icon-park/react'
 import { definitionToFlow, flowToDefinition, stripUIPosition, INPUT_HANDLE } from './convert'
 import { GRAPH_NODE_TYPES, type FlowGraphNode } from './GraphNode'
+import { NodeCreator } from './NodeCreator'
 import type { DataflowDefinition, NodeDescription } from './types'
 import { useUIStore } from '@/stores/ui'
 
@@ -62,12 +63,19 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
 
   const categories = useMemo(() => Array.from(new Set(nodeTypes.map((n) => n.category))), [nodeTypes])
 
-  // Re-color nodes whenever the catalog resolves (categoryColor needs
-  // `categories`, not known yet on first mount if node types load async).
+  // Re-color and re-label nodes whenever the catalog resolves (categoryColor
+  // needs `categories`, not known yet on first mount if node types load
+  // async; title/category are needed too since a node loaded from a saved
+  // DataflowDefinition only ever carries its raw dfType, never a display
+  // name).
   useEffect(() => {
     if (categories.length === 0) return
     setNodes((current) =>
-      current.map((n) => ({ ...n, data: { ...n.data, categoryColor: categoryColor(catalogCategory(n.data.dfType, nodeTypes), categories) } })),
+      current.map((n) => {
+        const desc = nodeTypes.find((nt) => nt.type === n.data.dfType)
+        const category = desc?.category ?? catalogCategory(n.data.dfType, nodeTypes)
+        return { ...n, data: { ...n.data, categoryColor: categoryColor(category, categories), title: desc?.name, category } }
+      }),
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categories.length])
@@ -128,35 +136,35 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
 
   const onPaneClick = useCallback(() => setSelectedNodeId(null), [])
 
-  const onDragStart = useCallback((event: React.DragEvent, type: string) => {
-    event.dataTransfer.setData('application/x-seshat-node-type', type)
-    event.dataTransfer.effectAllowed = 'move'
-  }, [])
+  const [creatorOpen, setCreatorOpen] = useState(false)
 
-  const onDragOver = useCallback((event: React.DragEvent) => {
-    event.preventDefault()
-    event.dataTransfer.dropEffect = 'move'
-  }, [])
-
-  const onDrop = useCallback(
-    (event: React.DragEvent) => {
-      event.preventDefault()
-      const type = event.dataTransfer.getData('application/x-seshat-node-type')
-      if (!type || !flowInstance || !wrapperRef.current) return
-      const bounds = wrapperRef.current.getBoundingClientRect()
-      const position = flowInstance.screenToFlowPosition({ x: event.clientX - bounds.left, y: event.clientY - bounds.top })
-      const id = nextNodeId(type)
+  const addNodeFromCatalog = useCallback(
+    (desc: NodeDescription) => {
+      const bounds = wrapperRef.current?.getBoundingClientRect()
+      const jitter = nodes.length * 24
+      const screenPoint = bounds
+        ? { x: bounds.width / 2 + jitter, y: bounds.height / 2 + jitter }
+        : { x: 200 + jitter, y: 150 + jitter }
+      const position = flowInstance ? flowInstance.screenToFlowPosition(screenPoint) : screenPoint
+      const id = nextNodeId(desc.type)
       const newNode: FlowGraphNode = {
         id,
         type: 'dataflow',
         position,
-        data: { dfType: type, parameters: {}, categoryColor: categoryColor(catalogCategory(type, nodeTypes), categories) },
+        data: {
+          dfType: desc.type,
+          parameters: {},
+          categoryColor: categoryColor(desc.category, categories),
+          title: desc.name,
+          category: desc.category,
+        },
       }
       const next = [...nodes, newNode]
       setNodes(next)
       emitChange(next, edges)
+      setCreatorOpen(false)
     },
-    [flowInstance, nodes, edges, setNodes, emitChange, nodeTypes, categories],
+    [flowInstance, nodes, edges, setNodes, emitChange, categories],
   )
 
   const selectedNode = selectedNodeId ? nodes.find((n) => n.id === selectedNodeId) : null
@@ -185,32 +193,7 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
     <div className="gf-root">
       <style>{GRAPH_EDITOR_CSS}</style>
       <div className="gf-body">
-        <aside className="gf-palette">
-          {nodeTypesLoading && <div className="gf-palette-empty">Loading node types…</div>}
-          {nodeTypesError && <div className="gf-palette-empty gf-palette-error">{nodeTypesError}</div>}
-          {categories.map((category) => (
-            <div key={category} className="gf-palette-group">
-              <div className="gf-palette-group-label" style={{ color: categoryColor(category, categories) }}>
-                {category}
-              </div>
-              {nodeTypes
-                .filter((n) => n.category === category)
-                .map((n) => (
-                  <div
-                    key={n.type}
-                    className="gf-palette-item"
-                    draggable
-                    onDragStart={(e) => onDragStart(e, n.type)}
-                    title={n.description}
-                  >
-                    {n.name}
-                  </div>
-                ))}
-            </div>
-          ))}
-        </aside>
-
-        <div className="gf-canvas" ref={wrapperRef} onDrop={onDrop} onDragOver={onDragOver}>
+        <div className="gf-canvas" ref={wrapperRef}>
           <ReactFlow<FlowGraphNode>
             nodes={nodes}
             edges={edges}
@@ -231,12 +214,27 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
             <Controls showInteractive={false} />
             <MiniMap pannable zoomable />
           </ReactFlow>
+
+          <button type="button" className="gf-add-btn" onClick={() => setCreatorOpen(true)} title="Add node">
+            <Plus size={16} />
+          </button>
+
           {nodes.length === 0 && (
             <div className="gf-canvas-hint">
               <Plus size={20} />
-              <span>Drag a node type from the left to start building.</span>
+              <span>Click + to add your first node.</span>
             </div>
           )}
+
+          <NodeCreator
+            open={creatorOpen}
+            nodeTypes={nodeTypes}
+            categoryColorOf={(category) => categoryColor(category, categories)}
+            loading={nodeTypesLoading}
+            error={nodeTypesError}
+            onClose={() => setCreatorOpen(false)}
+            onPick={addNodeFromCatalog}
+          />
         </div>
 
         {selectedNode && (
@@ -292,63 +290,39 @@ const GRAPH_EDITOR_CSS = `
 .gf-body {
   flex: 1;
   min-height: 0;
-  display: grid;
-  grid-template-columns: 200px 1fr;
-  gap: 10px;
+  display: flex;
   border: 1px solid var(--color-border);
   border-radius: 8px;
   overflow: hidden;
 }
 
-.gf-palette {
-  overflow-y: auto;
-  padding: 10px;
-  background: var(--color-surface);
-  border-right: 1px solid var(--color-border-subtle);
-}
-
-.gf-palette-empty {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
-  padding: 6px 2px;
-}
-
-.gf-palette-error {
-  color: #ff6b6b;
-}
-
-.gf-palette-group {
-  margin-bottom: 14px;
-}
-
-.gf-palette-group-label {
-  font-size: var(--font-size-2xs);
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: 6px;
-}
-
-.gf-palette-item {
-  padding: 7px 9px;
-  margin-bottom: 5px;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 6px;
-  background: var(--color-bg);
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-xs);
-  cursor: grab;
-  user-select: none;
-}
-
-.gf-palette-item:hover {
-  color: var(--color-text);
-  border-color: var(--color-border);
-}
-
 .gf-canvas {
   position: relative;
+  flex: 1;
   min-width: 0;
+}
+
+.gf-add-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 10;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  box-shadow: var(--shadow-medium);
+  cursor: pointer;
+}
+
+.gf-add-btn:hover {
+  color: var(--color-text);
+  background: var(--color-hover);
 }
 
 .gf-canvas-hint {
@@ -458,34 +432,63 @@ const GRAPH_EDITOR_CSS = `
 }
 
 .gf-node {
-  min-width: 150px;
+  min-width: 190px;
+  border-radius: 10px;
+}
+
+.gf-node-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
   border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-bg);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
-  overflow: hidden;
-}
-
-.gf-node-head {
-  padding: 7px 10px;
-  border-left: 3px solid var(--color-cta);
+  border-radius: 10px;
   background: var(--color-surface);
+  box-shadow: var(--shadow-medium);
+  transition: border-color 0.1s ease, box-shadow 0.1s ease;
 }
 
-.gf-node-type {
+.gf-node.selected .gf-node-card {
+  border-color: var(--color-cta);
+  box-shadow: 0 0 0 2px var(--color-primary-subtle), var(--shadow-medium);
+}
+
+.gf-node-icon {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gf-node-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.gf-node-title {
   color: var(--color-text);
   font-size: var(--font-size-xs);
-  font-weight: 800;
+  font-weight: 750;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.gf-node-id {
-  padding: 4px 10px 0;
+.gf-node-subtitle {
   color: var(--color-text-muted);
   font-size: var(--font-size-2xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .gf-node-ports {
-  padding: 6px 0;
+  padding: 5px 0 0;
 }
 
 .gf-node-port-row {
@@ -506,7 +509,17 @@ const GRAPH_EDITOR_CSS = `
   width: 9px;
   height: 9px;
   background: var(--color-cta);
-  border: 1px solid var(--color-bg);
+  border: 2px solid var(--color-bg);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.gf-handle:hover {
+  transform: scale(1.4);
+  box-shadow: 0 0 0 4px var(--color-primary-subtle);
+}
+
+.gf-handle-target {
+  background: var(--color-text-muted);
 }
 `
 
