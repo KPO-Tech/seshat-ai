@@ -619,7 +619,7 @@ const SIDEBAR_CSS = `
   padding: 6px;
   border-radius: 12px;
   border: 1px solid var(--color-border-subtle);
-  background: rgba(44, 42, 49, 0.98);
+  background: var(--color-menu-bg);
   box-shadow: 0 14px 28px rgba(0, 0, 0, 0.24);
   display: flex;
   flex-direction: column;
@@ -791,7 +791,7 @@ const SIDEBAR_CSS = `
   padding: 6px;
   border-radius: 12px;
   border: 1px solid var(--color-border-subtle);
-  background: rgba(44, 42, 49, 0.98);
+  background: var(--color-menu-bg);
   box-shadow: 0 16px 34px rgba(0, 0, 0, 0.28);
   display: flex;
   flex-direction: column;
