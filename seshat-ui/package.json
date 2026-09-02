@@ -29,6 +29,7 @@
     "@dicebear/core": "^9.4.3",
     "@icon-park/react": "^1.4.2",
     "@tanstack/react-virtual": "^3.13.25",
+    "@xyflow/react": "^12.11.6",
     "chart.js": "^4.5.1",
     "docx-preview": "^0.4.0",
     "electron-updater": "^6.6.2",

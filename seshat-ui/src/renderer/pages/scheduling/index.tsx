@@ -9,6 +9,8 @@ import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
 import type { Agent, ProviderModel, ProviderSetting } from '@/api/types'
 import { fetchProviderModels, useProviders } from '@/hooks/useProviders'
 import { useProvidersStore } from '@/stores/providers'
+import { GraphEditor } from './graph/GraphEditor'
+import type { DataflowDefinition, NodeDescription } from './graph/types'
 
 type JobStatus = 'active' | 'paused'
 type TriggerType = 'cron' | 'interval' | 'once'
@@ -30,6 +32,7 @@ type Job = {
   execution_target: ExecutionTarget
   target_device_id?: string
   prompt: string
+  graph?: DataflowDefinition
   model_override?: string
   configuration?: Record<string, string>
 }
@@ -43,7 +46,8 @@ type JobParams = {
   run_at?: string
   execution_target: ExecutionTarget
   target_device_id?: string
-  prompt: string
+  prompt?: string
+  graph?: DataflowDefinition
   model_override?: string
   configuration?: Record<string, string>
 }
@@ -932,8 +936,23 @@ function JobFormModal({
   const [modelsByProvider, setModelsByProvider] = useState<Record<string, ProviderModel[]>>({})
   const [loadingModelsFor, setLoadingModelsFor] = useState<string | null>(null)
   const [prompt, setPrompt] = useState(job?.prompt ?? draft?.prompt ?? '')
+  const [taskMode, setTaskMode] = useState<'prompt' | 'graph'>(job?.graph ? 'graph' : 'prompt')
+  const [graph, setGraph] = useState<DataflowDefinition | null>(job?.graph ?? null)
+  const [nodeTypes, setNodeTypes] = useState<NodeDescription[]>([])
+  const [nodeTypesLoading, setNodeTypesLoading] = useState(false)
+  const [nodeTypesError, setNodeTypesError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (taskMode !== 'graph' || nodeTypes.length > 0 || nodeTypesLoading) return
+    setNodeTypesLoading(true)
+    setNodeTypesError(null)
+    api.get<{ node_types: NodeDescription[] }>('/automation/dataflow/node-types')
+      .then((res) => setNodeTypes(res.node_types ?? []))
+      .catch((err) => setNodeTypesError(err instanceof ApiError ? err.message : 'Unable to load node types.'))
+      .finally(() => setNodeTypesLoading(false))
+  }, [taskMode, nodeTypes.length, nodeTypesLoading])
   const selectedAgent = agents.find((agent) => agent.slug === agentSlug)
   const availableProviders = useMemo(() => {
     if (executionTarget !== 'cloud') return providers
@@ -961,7 +980,9 @@ function JobFormModal({
     { label: 'Execution target selected', ok: executionTarget === 'cloud' || targetDeviceId.length > 0 },
     { label: 'Agent selected', ok: agentSlug.length > 0 },
     { label: 'Model selected', ok: !!selectedProviderId && !!selectedModelId },
-    { label: 'Prompt is not empty', ok: prompt.trim().length > 0 },
+    taskMode === 'graph'
+      ? { label: 'Graph has at least one node', ok: (graph?.nodes.length ?? 0) > 0 }
+      : { label: 'Prompt is not empty', ok: prompt.trim().length > 0 },
   ]
 
   useEffect(() => {
@@ -1022,7 +1043,8 @@ function JobFormModal({
           ...(selectedProviderId ? { provider_setting_id: selectedProviderId } : {}),
           ...(selectedModelId ? { model_id: selectedModelId } : {}),
         },
-        prompt: prompt.trim(),
+        prompt: taskMode === 'prompt' ? prompt.trim() : undefined,
+        graph: taskMode === 'graph' ? (graph ?? undefined) : undefined,
       }
       if (isEdit) {
         await api.put(`/automation/jobs/${job!.id}`, params)
@@ -1198,8 +1220,26 @@ function JobFormModal({
           )}
 
           <div className="sch-field">
-            <label>Prompt</label>
-            <textarea className="sch-prompt-editor" value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={7} required />
+            <label>Task</label>
+            <div className="sch-task-mode-tabs" role="tablist" aria-label="Task type">
+              <button type="button" className={taskMode === 'prompt' ? 'active' : ''} onClick={() => setTaskMode('prompt')}>
+                Prompt
+              </button>
+              <button type="button" className={taskMode === 'graph' ? 'active' : ''} onClick={() => setTaskMode('graph')}>
+                Graph
+              </button>
+            </div>
+            {taskMode === 'prompt' ? (
+              <textarea className="sch-prompt-editor" value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={7} required />
+            ) : (
+              <GraphEditor
+                value={graph}
+                onChange={setGraph}
+                nodeTypes={nodeTypes}
+                nodeTypesLoading={nodeTypesLoading}
+                nodeTypesError={nodeTypesError}
+              />
+            )}
           </div>
           </div>
 
@@ -1975,6 +2015,27 @@ const CSS = `
   min-height: 150px;
   font-family: var(--font-mono, ui-monospace, monospace);
   line-height: 1.55;
+}
+.sch-task-mode-tabs {
+  display: inline-flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.sch-task-mode-tabs button {
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+.sch-task-mode-tabs button.active {
+  color: var(--color-text);
+  border-color: rgba(239, 124, 47, 0.55);
+  background: rgba(239, 124, 47, 0.12);
 }
 .sch-modal-footer {
   grid-column: 1 / -1;
