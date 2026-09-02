@@ -125,6 +125,7 @@ func (d *DB) Migrate() error {
 		&ConnectorAccount{},
 		&ConnectorSyncJob{},
 		&DataflowSecret{},
+		&ScheduledJobMailCursor{},
 		&ConnectorOAuthApp{},
 		&ConnectorOAuthState{},
 		&EmbedderSetting{},

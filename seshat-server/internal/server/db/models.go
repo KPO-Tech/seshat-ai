@@ -509,6 +509,18 @@ type ScheduledJob struct {
 	UpdatedAt     time.Time
 }
 
+// ScheduledJobMailCursor stores a mail-polling node's incremental sync
+// cursor (e.g. Gmail's historyId, see seshat-core/gmail.Client.Sync) per
+// job, so a periodic (interval-triggered) job polling a mailbox only ever
+// sees messages that arrived since its own last run — one job, one
+// independent view, even if two jobs happen to poll the same mailbox.
+// Empty Cursor is valid and expected on a job's first run (bootstrap sync).
+type ScheduledJobMailCursor struct {
+	ScheduledJobID string `gorm:"primaryKey;size:32"`
+	Cursor         string `gorm:"type:text;not null;default:''"`
+	UpdatedAt      time.Time
+}
+
 // JobRun is one execution instance of a ScheduledJob.
 type JobRun struct {
 	ID               string `gorm:"primaryKey;size:32"`

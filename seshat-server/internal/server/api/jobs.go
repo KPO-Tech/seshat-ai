@@ -5,37 +5,41 @@ import (
 	"strings"
 	"time"
 
+	"github.com/KPO-Tech/seshat/pkg/dataflow"
+
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/automation"
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 )
 
 type createJobRequest struct {
-	OrganizationID  string            `json:"organization_id"`
-	Name            string            `json:"name"`
-	Description     string            `json:"description"`
-	TriggerType     string            `json:"trigger_type"`
-	CronExpr        string            `json:"cron_expr"`
-	IntervalSeconds int               `json:"interval_seconds"`
-	RunAt           *time.Time        `json:"run_at"`
-	ExecutionTarget string            `json:"execution_target"`
-	TargetDeviceID  string            `json:"target_device_id"`
-	Prompt          string            `json:"prompt"`
-	ModelOverride   string            `json:"model_override"`
-	Configuration   map[string]string `json:"configuration"`
+	OrganizationID  string               `json:"organization_id"`
+	Name            string               `json:"name"`
+	Description     string               `json:"description"`
+	TriggerType     string               `json:"trigger_type"`
+	CronExpr        string               `json:"cron_expr"`
+	IntervalSeconds int                  `json:"interval_seconds"`
+	RunAt           *time.Time           `json:"run_at"`
+	ExecutionTarget string               `json:"execution_target"`
+	TargetDeviceID  string               `json:"target_device_id"`
+	Prompt          string               `json:"prompt"`
+	Graph           *dataflow.Definition `json:"graph"`
+	ModelOverride   string               `json:"model_override"`
+	Configuration   map[string]string    `json:"configuration"`
 }
 
 type updateJobRequest struct {
-	Name            string            `json:"name"`
-	Description     string            `json:"description"`
-	TriggerType     string            `json:"trigger_type"`
-	CronExpr        string            `json:"cron_expr"`
-	IntervalSeconds int               `json:"interval_seconds"`
-	RunAt           *time.Time        `json:"run_at"`
-	ExecutionTarget string            `json:"execution_target"`
-	TargetDeviceID  string            `json:"target_device_id"`
-	Prompt          string            `json:"prompt"`
-	ModelOverride   string            `json:"model_override"`
-	Configuration   map[string]string `json:"configuration"`
+	Name            string               `json:"name"`
+	Description     string               `json:"description"`
+	TriggerType     string               `json:"trigger_type"`
+	CronExpr        string               `json:"cron_expr"`
+	IntervalSeconds int                  `json:"interval_seconds"`
+	RunAt           *time.Time           `json:"run_at"`
+	ExecutionTarget string               `json:"execution_target"`
+	TargetDeviceID  string               `json:"target_device_id"`
+	Prompt          string               `json:"prompt"`
+	Graph           *dataflow.Definition `json:"graph"`
+	ModelOverride   string               `json:"model_override"`
+	Configuration   map[string]string    `json:"configuration"`
 }
 
 func (app *App) handleJobs(w http.ResponseWriter, r *http.Request) {
@@ -70,6 +74,7 @@ func (app *App) handleJobs(w http.ResponseWriter, r *http.Request) {
 			ExecutionTarget: req.ExecutionTarget,
 			TargetDeviceID:  req.TargetDeviceID,
 			Prompt:          req.Prompt,
+			Graph:           req.Graph,
 			ModelOverride:   req.ModelOverride,
 			Configuration:   req.Configuration,
 		})
@@ -118,6 +123,7 @@ func (app *App) handleJobByID(w http.ResponseWriter, r *http.Request) {
 			ExecutionTarget: req.ExecutionTarget,
 			TargetDeviceID:  req.TargetDeviceID,
 			Prompt:          req.Prompt,
+			Graph:           req.Graph,
 			ModelOverride:   req.ModelOverride,
 			Configuration:   req.Configuration,
 		})

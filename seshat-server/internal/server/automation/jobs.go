@@ -2,6 +2,7 @@ package automation
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"sort"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/KPO-Tech/seshat/pkg/automation"
+	"github.com/KPO-Tech/seshat/pkg/dataflow"
 
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
@@ -29,26 +31,32 @@ const (
 
 // Job is a scheduled automation definition.
 type Job struct {
-	ID              string            `json:"id"`
-	OrganizationID  string            `json:"organization_id"`
-	CreatedByUserID string            `json:"created_by_user_id"`
-	Name            string            `json:"name"`
-	Description     string            `json:"description"`
-	Status          string            `json:"status"`
-	TriggerType     string            `json:"trigger_type"`
-	CronExpr        string            `json:"cron_expr,omitempty"`
-	IntervalSeconds int               `json:"interval_seconds,omitempty"`
-	RunAt           *time.Time        `json:"run_at,omitempty"`
-	NextRunAt       *time.Time        `json:"next_run_at,omitempty"`
-	LastRunAt       *time.Time        `json:"last_run_at,omitempty"`
-	LastRunStatus   string            `json:"last_run_status,omitempty"`
-	ExecutionTarget string            `json:"execution_target"`
-	TargetDeviceID  string            `json:"target_device_id,omitempty"`
-	Prompt          string            `json:"prompt"`
-	ModelOverride   string            `json:"model_override,omitempty"`
-	Configuration   map[string]string `json:"configuration,omitempty"`
-	CreatedAt       time.Time         `json:"created_at"`
-	UpdatedAt       time.Time         `json:"updated_at"`
+	ID              string     `json:"id"`
+	OrganizationID  string     `json:"organization_id"`
+	CreatedByUserID string     `json:"created_by_user_id"`
+	Name            string     `json:"name"`
+	Description     string     `json:"description"`
+	Status          string     `json:"status"`
+	TriggerType     string     `json:"trigger_type"`
+	CronExpr        string     `json:"cron_expr,omitempty"`
+	IntervalSeconds int        `json:"interval_seconds,omitempty"`
+	RunAt           *time.Time `json:"run_at,omitempty"`
+	NextRunAt       *time.Time `json:"next_run_at,omitempty"`
+	LastRunAt       *time.Time `json:"last_run_at,omitempty"`
+	LastRunStatus   string     `json:"last_run_status,omitempty"`
+	ExecutionTarget string     `json:"execution_target"`
+	TargetDeviceID  string     `json:"target_device_id,omitempty"`
+	Prompt          string     `json:"prompt,omitempty"`
+	// Graph, when set, runs instead of Prompt — mutually exclusive, exactly
+	// one is required. See internal/server/automation/gmail_poll_node.go
+	// for the node type this exists to support (an interval-triggered job
+	// polling a mailbox), and executeCloudRun for how a graph run is seeded
+	// with this job's own id/owner/organization.
+	Graph         *dataflow.Definition `json:"graph,omitempty"`
+	ModelOverride string               `json:"model_override,omitempty"`
+	Configuration map[string]string    `json:"configuration,omitempty"`
+	CreatedAt     time.Time            `json:"created_at"`
+	UpdatedAt     time.Time            `json:"updated_at"`
 }
 
 // jobTriggerParams is the mutable trigger/target/payload shape shared by
@@ -63,37 +71,40 @@ type jobTriggerParams struct {
 	ExecutionTarget string
 	TargetDeviceID  string
 	Prompt          string
+	Graph           *dataflow.Definition
 	ModelOverride   string
 	Configuration   map[string]string
 }
 
 type CreateJobParams struct {
-	OrganizationID  string            `json:"organization_id"`
-	Name            string            `json:"name"`
-	Description     string            `json:"description"`
-	TriggerType     string            `json:"trigger_type"`
-	CronExpr        string            `json:"cron_expr"`
-	IntervalSeconds int               `json:"interval_seconds"`
-	RunAt           *time.Time        `json:"run_at"`
-	ExecutionTarget string            `json:"execution_target"`
-	TargetDeviceID  string            `json:"target_device_id"`
-	Prompt          string            `json:"prompt"`
-	ModelOverride   string            `json:"model_override"`
-	Configuration   map[string]string `json:"configuration"`
+	OrganizationID  string               `json:"organization_id"`
+	Name            string               `json:"name"`
+	Description     string               `json:"description"`
+	TriggerType     string               `json:"trigger_type"`
+	CronExpr        string               `json:"cron_expr"`
+	IntervalSeconds int                  `json:"interval_seconds"`
+	RunAt           *time.Time           `json:"run_at"`
+	ExecutionTarget string               `json:"execution_target"`
+	TargetDeviceID  string               `json:"target_device_id"`
+	Prompt          string               `json:"prompt"`
+	Graph           *dataflow.Definition `json:"graph"`
+	ModelOverride   string               `json:"model_override"`
+	Configuration   map[string]string    `json:"configuration"`
 }
 
 type UpdateJobParams struct {
-	Name            string            `json:"name"`
-	Description     string            `json:"description"`
-	TriggerType     string            `json:"trigger_type"`
-	CronExpr        string            `json:"cron_expr"`
-	IntervalSeconds int               `json:"interval_seconds"`
-	RunAt           *time.Time        `json:"run_at"`
-	ExecutionTarget string            `json:"execution_target"`
-	TargetDeviceID  string            `json:"target_device_id"`
-	Prompt          string            `json:"prompt"`
-	ModelOverride   string            `json:"model_override"`
-	Configuration   map[string]string `json:"configuration"`
+	Name            string               `json:"name"`
+	Description     string               `json:"description"`
+	TriggerType     string               `json:"trigger_type"`
+	CronExpr        string               `json:"cron_expr"`
+	IntervalSeconds int                  `json:"interval_seconds"`
+	RunAt           *time.Time           `json:"run_at"`
+	ExecutionTarget string               `json:"execution_target"`
+	TargetDeviceID  string               `json:"target_device_id"`
+	Prompt          string               `json:"prompt"`
+	Graph           *dataflow.Definition `json:"graph"`
+	ModelOverride   string               `json:"model_override"`
+	Configuration   map[string]string    `json:"configuration"`
 }
 
 // ListJobs returns jobs in an organization the caller can see. Consistent
@@ -180,6 +191,7 @@ func (s *Service) CreateJob(ctx context.Context, principal *iam.Principal, param
 			ExecutionTarget: params.ExecutionTarget,
 			TargetDeviceID:  params.TargetDeviceID,
 			Prompt:          params.Prompt,
+			Graph:           params.Graph,
 			ModelOverride:   params.ModelOverride,
 			Configuration:   params.Configuration,
 		})
@@ -217,6 +229,7 @@ func (s *Service) CreateJob(ctx context.Context, principal *iam.Principal, param
 			ExecutionTarget: trigger.ExecutionTarget,
 			TargetDeviceID:  trigger.TargetDeviceID,
 			Prompt:          trigger.Prompt,
+			GraphJSON:       graphToJSON(trigger.Graph),
 			ModelOverride:   trigger.ModelOverride,
 			Configuration:   trigger.Configuration,
 			CreatedAt:       now,
@@ -286,6 +299,7 @@ func (s *Service) UpdateJob(ctx context.Context, principal *iam.Principal, jobID
 		record.ExecutionTarget = trigger.ExecutionTarget
 		record.TargetDeviceID = trigger.TargetDeviceID
 		record.Prompt = trigger.Prompt
+		record.GraphJSON = graphToJSON(trigger.Graph)
 		record.ModelOverride = trigger.ModelOverride
 		record.Configuration = trigger.Configuration
 		record.UpdatedAt = now
@@ -419,8 +433,19 @@ type normalizedJobTrigger = jobTriggerParams
 func normalizeJobTrigger(input jobTriggerParams) (normalizedJobTrigger, error) {
 	name := strings.TrimSpace(input.Name)
 	prompt := strings.TrimSpace(input.Prompt)
-	if name == "" || prompt == "" {
-		return normalizedJobTrigger{}, ErrInvalidInput("name and prompt are required")
+	if name == "" {
+		return normalizedJobTrigger{}, ErrInvalidInput("name is required")
+	}
+	if prompt == "" && input.Graph == nil {
+		return normalizedJobTrigger{}, ErrInvalidInput("prompt or graph is required")
+	}
+	if prompt != "" && input.Graph != nil {
+		return normalizedJobTrigger{}, ErrInvalidInput("prompt and graph are mutually exclusive")
+	}
+	if input.Graph != nil {
+		if err := dataflow.Validate(*input.Graph); err != nil {
+			return normalizedJobTrigger{}, ErrInvalidInput("invalid graph: " + err.Error())
+		}
 	}
 
 	triggerType := strings.ToLower(strings.TrimSpace(input.TriggerType))
@@ -467,9 +492,32 @@ func normalizeJobTrigger(input jobTriggerParams) (normalizedJobTrigger, error) {
 		ExecutionTarget: executionTarget,
 		TargetDeviceID:  targetDeviceID,
 		Prompt:          prompt,
+		Graph:           input.Graph,
 		ModelOverride:   strings.TrimSpace(input.ModelOverride),
 		Configuration:   input.Configuration,
 	}, nil
+}
+
+// graphToJSON/graphFromJSON mirror the same pattern already used by
+// seshat-backend's inbox workflows (internal/inbox/workflow_store.go) for
+// storing a *dataflow.Definition as a DB text column.
+func graphToJSON(g *dataflow.Definition) string {
+	if g == nil {
+		return ""
+	}
+	data, _ := json.Marshal(g)
+	return string(data)
+}
+
+func graphFromJSON(s string) *dataflow.Definition {
+	if s == "" {
+		return nil
+	}
+	var g dataflow.Definition
+	if err := json.Unmarshal([]byte(s), &g); err != nil {
+		return nil
+	}
+	return &g
 }
 
 func validateTargetDevice(tx *gorm.DB, organizationID, deviceID string) error {
@@ -533,6 +581,7 @@ func toJob(record sdb.ScheduledJob) Job {
 		ExecutionTarget: record.ExecutionTarget,
 		TargetDeviceID:  record.TargetDeviceID,
 		Prompt:          record.Prompt,
+		Graph:           graphFromJSON(record.GraphJSON),
 		ModelOverride:   record.ModelOverride,
 		Configuration:   record.Configuration,
 		CreatedAt:       record.CreatedAt,

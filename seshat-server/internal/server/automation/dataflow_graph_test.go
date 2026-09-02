@@ -89,6 +89,42 @@ func TestJobWorkflowRunGraphFailsClearlyWithoutRegistry(t *testing.T) {
 	}
 }
 
+// capturingNode records the input it was called with, so a test can assert
+// on what runGraph seeded a graph's starting nodes with.
+type capturingNode struct {
+	dataflow.Base
+	gotInput []dataflow.Item
+}
+
+func (n *capturingNode) Execute(_ context.Context, _ *dataflow.Runtime, input []dataflow.Item, _ map[string]any) (dataflow.Output, error) {
+	n.gotInput = input
+	return dataflow.Main(nil), nil
+}
+
+func TestJobWorkflowRunGraphSeedsJobOwnerAndOrganization(t *testing.T) {
+	node := &capturingNode{Base: dataflow.NewBase(dataflow.NodeDescription{Type: "capture"})}
+	registry := dataflow.NewRegistry()
+	registry.Register("capture", node)
+
+	wf := &jobWorkflow{
+		id:           "job-1",
+		organization: "org-1",
+		ownerID:      "user-1",
+		registry:     registry,
+		graph:        &dataflow.Definition{Name: "g", Nodes: []dataflow.Node{{ID: "a", Type: "capture"}}},
+	}
+	if err := wf.runGraph(context.Background(), nil); err != nil {
+		t.Fatalf("runGraph: %v", err)
+	}
+	if len(node.gotInput) != 1 {
+		t.Fatalf("expected the starting node to receive one seeded item, got %d", len(node.gotInput))
+	}
+	got := node.gotInput[0]
+	if got["job_id"] != "job-1" || got["owner_id"] != "user-1" || got["organization_id"] != "org-1" {
+		t.Fatalf("expected job_id/owner_id/organization_id to be seeded, got %+v", got)
+	}
+}
+
 func TestDataflowSubworkflowRunnerExecutesNodes(t *testing.T) {
 	// A nil *sdk.Session is fine here because dataflowSubworkflowRunner never
 	// calls SubmitMessage until Run's ExecutorFunc actually fires for a

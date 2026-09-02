@@ -55,6 +55,7 @@ type jobWorkflow struct {
 	graph        *dataflow.Definition
 	registry     *dataflow.Registry
 	organization string
+	ownerID      string
 	secrets      DataflowSecretResolver
 }
 
@@ -86,7 +87,17 @@ func (w *jobWorkflow) runGraph(ctx context.Context, session *sdk.Session) error 
 		Agent:       dataflowAgentCaller{session: session},
 		Subworkflow: dataflowSubworkflowRunner{session: session},
 	}
-	result, err := dataflow.Run(ctx, *w.graph, w.registry, rt, nil, dataflow.Options{})
+	// Seeds the graph's starting nodes with the run's job/owner/org identity
+	// — the same pattern Inbox's event-triggered graphs already use for
+	// event_context — so a node like "gmail_new_messages" can resolve which
+	// mailbox/cursor to poll without that identity being authored into the
+	// graph definition itself (see GmailPollNode's doc comment).
+	seed := []dataflow.Item{{
+		"job_id":          w.id,
+		"owner_id":        w.ownerID,
+		"organization_id": w.organization,
+	}}
+	result, err := dataflow.Run(ctx, *w.graph, w.registry, rt, seed, dataflow.Options{})
 	if err != nil {
 		return fmt.Errorf("run graph: %w", err)
 	}
@@ -281,7 +292,8 @@ func (s *Service) executeCloudRun(ctx context.Context, runID string) error {
 
 	workflow := &jobWorkflow{
 		id: job.ID, description: job.Description, prompt: job.Prompt,
-		graph: graph, registry: s.nodeRegistry, organization: job.OrganizationID, secrets: s.secrets,
+		graph: graph, registry: s.nodeRegistry, organization: job.OrganizationID,
+		ownerID: job.CreatedByUserID, secrets: s.secrets,
 	}
 	result, execErr := executor.Run(ctx, workflow, sdkautomation.Options{})
 
