@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { Left, Setting, Close, CheckOne } from '@icon-park/react'
+import { Left, Setting, Close, CheckOne, Home, ApplicationOne, DataOne, Help as HelpIcon } from '@icon-park/react'
 import { api, ApiError } from '@/api/client'
 import type { Agent, ProviderModel } from '@/api/types'
 import { fetchProviderModels, useProviders } from '@/hooks/useProviders'
@@ -11,6 +11,21 @@ import type { DataflowDefinition, NodeDescription } from './graph/types'
 type TriggerType = 'cron' | 'interval' | 'once'
 type ExecutionTarget = 'cloud' | 'device'
 type Device = { id: string; name: string; status: string }
+type RailView = 'graph' | 'templates' | 'variables' | 'help'
+
+// Placeholder for the three rail items that don't have a real backend yet
+// (no template library, no instance/project variable store, no docs site
+// to link out to - confirmed none exists anywhere else in this app). Not
+// wired up now on purpose; the rail exists so the shape is there to fill
+// in later without another layout pass.
+function StubPanel({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="au-stub">
+      <h2>{title}</h2>
+      <p>{description}</p>
+    </div>
+  )
+}
 
 type Job = {
   id: string
@@ -43,6 +58,7 @@ export function AutomationPage() {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [railView, setRailView] = useState<RailView>('graph')
 
   const [name, setName] = useState('Untitled automation')
   const [description, setDescription] = useState('')
@@ -214,13 +230,40 @@ export function AutomationPage() {
       </header>
 
       <div className="au-body">
-        {loading ? (
-          <div className="au-loading">Loading…</div>
-        ) : loadError ? (
-          <div className="au-loading au-loading-error">{loadError}</div>
-        ) : (
-          <GraphEditor value={graph} onChange={setGraph} nodeTypes={nodeTypes} nodeTypesLoading={nodeTypesLoading} nodeTypesError={nodeTypesError} />
-        )}
+        <nav className="au-rail">
+          <button type="button" className="au-rail-btn" onClick={() => navigate('/scheduling')} title="Overview">
+            <Home size={16} />
+            <span>Overview</span>
+          </button>
+          <button type="button" className={`au-rail-btn ${railView === 'templates' ? 'active' : ''}`} onClick={() => setRailView('templates')} title="Templates">
+            <ApplicationOne size={16} />
+            <span>Templates</span>
+          </button>
+          <button type="button" className={`au-rail-btn ${railView === 'variables' ? 'active' : ''}`} onClick={() => setRailView('variables')} title="Variables">
+            <DataOne size={16} />
+            <span>Variables</span>
+          </button>
+          <button type="button" className={`au-rail-btn ${railView === 'help' ? 'active' : ''}`} onClick={() => setRailView('help')} title="Help">
+            <HelpIcon size={16} />
+            <span>Help</span>
+          </button>
+        </nav>
+
+        <div className="au-main">
+          {railView === 'templates' ? (
+            <StubPanel title="Templates" description="Browse and start from pre-built automation templates. Coming soon." />
+          ) : railView === 'variables' ? (
+            <StubPanel title="Variables" description="Named values reusable across every automation's expressions. Coming soon." />
+          ) : railView === 'help' ? (
+            <StubPanel title="Help" description="Documentation for building automations is on its way." />
+          ) : loading ? (
+            <div className="au-loading">Loading…</div>
+          ) : loadError ? (
+            <div className="au-loading au-loading-error">{loadError}</div>
+          ) : (
+            <GraphEditor value={graph} onChange={setGraph} nodeTypes={nodeTypes} nodeTypesLoading={nodeTypesLoading} nodeTypesError={nodeTypesError} />
+          )}
+        </div>
 
         {settingsOpen && (
           <aside className="au-settings-drawer">
@@ -417,7 +460,76 @@ const AUTOMATION_CSS = `
 .au-body {
   flex: 1;
   min-height: 0;
+  display: flex;
   position: relative;
+}
+
+.au-rail {
+  flex-shrink: 0;
+  width: 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  padding: 10px 6px;
+  border-right: 1px solid var(--color-border-subtle);
+  background: var(--color-surface);
+}
+
+.au-rail-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 2px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 9px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.au-rail-btn:hover {
+  background: var(--color-hover);
+  color: var(--color-text);
+}
+
+.au-rail-btn.active {
+  color: var(--color-cta);
+  background: var(--color-primary-subtle);
+}
+
+.au-main {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
+.au-stub {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.au-stub h2 {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: 750;
+  color: var(--color-text);
+}
+
+.au-stub p {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  max-width: 340px;
 }
 
 .au-loading {
