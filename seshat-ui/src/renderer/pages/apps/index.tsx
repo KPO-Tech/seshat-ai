@@ -378,6 +378,12 @@ const APPS_CSS = `
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 14px 28px rgba(0, 0, 0, 0.18);
 }
 
+[data-theme='light'] .apps-item-icon,
+[data-theme='light'] .apps-inspector-icon {
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
 .apps-list--list .apps-item-icon {
   width: 42px;
   height: 42px;
@@ -503,6 +509,7 @@ const APPS_CSS = `
   opacity: 0.45;
 }
 
+.knowledge { background: rgba(14, 165, 233, 0.18); color: #7dd3fc; }
 .workflow { background: rgba(249, 115, 22, 0.2); color: #fdba74; }
 .teams { background: rgba(16, 185, 129, 0.17); color: #6ee7b7; }
 .skills { background: rgba(245, 158, 11, 0.18); color: #fbbf24; }
@@ -512,6 +519,20 @@ const APPS_CSS = `
 .images { background: rgba(236, 72, 153, 0.18); color: #f9a8d4; }
 .documents { background: rgba(244, 63, 94, 0.18); color: #fda4af; }
 .browser { background: rgba(100, 116, 139, 0.2); color: #cbd5e1; }
+
+/* Dark-mode-tuned: pale icon glyphs on a translucent wash read fine against
+   the dark surface above but vanish against a white one, so light mode
+   swaps each glyph for a deeper shade of the same hue instead. */
+[data-theme='light'] .knowledge { background: rgba(14, 165, 233, 0.14); color: #0369a1; }
+[data-theme='light'] .workflow { background: rgba(249, 115, 22, 0.14); color: #c2410c; }
+[data-theme='light'] .teams { background: rgba(16, 185, 129, 0.14); color: #047857; }
+[data-theme='light'] .skills { background: rgba(245, 158, 11, 0.14); color: #b45309; }
+[data-theme='light'] .research { background: rgba(124, 58, 237, 0.14); color: #6d28d9; }
+[data-theme='light'] .code { background: rgba(59, 130, 246, 0.14); color: #1d4ed8; }
+[data-theme='light'] .builder { background: rgba(20, 184, 166, 0.14); color: #0f766e; }
+[data-theme='light'] .images { background: rgba(236, 72, 153, 0.14); color: #be185d; }
+[data-theme='light'] .documents { background: rgba(244, 63, 94, 0.14); color: #be123c; }
+[data-theme='light'] .browser { background: rgba(100, 116, 139, 0.16); color: #334155; }
 
 @media (max-width: 1100px) {
   .apps-toolbar {
