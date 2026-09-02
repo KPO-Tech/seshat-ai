@@ -128,7 +128,58 @@ func (c *Connector) FetchAttachment(ctx context.Context, account *inbox.ChannelA
 	return client.FetchAttachment(ctx, externalMessageID, attachmentRef)
 }
 
+// SearchMessages implements inbox.MessageSearcher via coregmail.Client's
+// own search syntax (from:/subject:/is:unread/has:attachment/after:/...).
+func (c *Connector) SearchMessages(ctx context.Context, account *inbox.ChannelAccount, secret inbox.ConnectorSecret, query string, maxResults int) ([]inbox.NormalizedMessage, error) {
+	client, err := c.client(ctx, secret)
+	if err != nil {
+		return nil, fmt.Errorf("build gmail client: %w", err)
+	}
+	messages, err := client.Search(ctx, query, int64(maxResults))
+	if err != nil {
+		return nil, err
+	}
+	normalized := make([]inbox.NormalizedMessage, 0, len(messages))
+	for _, m := range messages {
+		n, err := translateMessage(m, account.ExternalAccountID)
+		if err != nil {
+			// Same per-message skip as Sync - one unusable message
+			// shouldn't fail the whole search.
+			continue
+		}
+		normalized = append(normalized, n)
+	}
+	return normalized, nil
+}
+
+// ArchiveThread implements inbox.ThreadArchiver via Gmail's own thread-level
+// Trash primitive (coregmail.Client.TrashThread) - a single call, unlike
+// Outlook's connector which has to enumerate the conversation itself.
+func (c *Connector) ArchiveThread(ctx context.Context, account *inbox.ChannelAccount, secret inbox.ConnectorSecret, externalThreadID string) error {
+	client, err := c.client(ctx, secret)
+	if err != nil {
+		return fmt.Errorf("build gmail client: %w", err)
+	}
+	return client.TrashThread(ctx, externalThreadID)
+}
+
+// SetThreadRead implements inbox.ThreadReadMarker via Gmail's thread-level
+// UNREAD label toggle (coregmail.Client.MarkThreadRead/MarkThreadUnread).
+func (c *Connector) SetThreadRead(ctx context.Context, account *inbox.ChannelAccount, secret inbox.ConnectorSecret, externalThreadID string, read bool) error {
+	client, err := c.client(ctx, secret)
+	if err != nil {
+		return fmt.Errorf("build gmail client: %w", err)
+	}
+	if read {
+		return client.MarkThreadRead(ctx, externalThreadID)
+	}
+	return client.MarkThreadUnread(ctx, externalThreadID)
+}
+
 var (
 	_ inbox.Connector         = (*Connector)(nil)
 	_ inbox.AttachmentFetcher = (*Connector)(nil)
+	_ inbox.MessageSearcher   = (*Connector)(nil)
+	_ inbox.ThreadArchiver    = (*Connector)(nil)
+	_ inbox.ThreadReadMarker  = (*Connector)(nil)
 )

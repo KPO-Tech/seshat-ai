@@ -190,6 +190,66 @@ func TestLabelsListCreateDelete(t *testing.T) {
 	}
 }
 
+func TestTrashAndUntrashThread(t *testing.T) {
+	var trashed, untrashed bool
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /gmail/v1/users/me/threads/t1/trash", func(w http.ResponseWriter, r *http.Request) {
+		trashed = true
+		writeJSON(w, map[string]any{"id": "t1"})
+	})
+	mux.HandleFunc("POST /gmail/v1/users/me/threads/t1/untrash", func(w http.ResponseWriter, r *http.Request) {
+		untrashed = true
+		writeJSON(w, map[string]any{"id": "t1"})
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	c := newTestClient(t, server)
+	if err := c.TrashThread(context.Background(), "t1"); err != nil {
+		t.Fatalf("TrashThread: %v", err)
+	}
+	if !trashed {
+		t.Fatal("expected the thread trash endpoint to be called")
+	}
+	if err := c.UntrashThread(context.Background(), "t1"); err != nil {
+		t.Fatalf("UntrashThread: %v", err)
+	}
+	if !untrashed {
+		t.Fatal("expected the thread untrash endpoint to be called")
+	}
+}
+
+func TestMarkThreadReadAndUnreadModifyTheUnreadLabel(t *testing.T) {
+	var gotAdd, gotRemove []string
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /gmail/v1/users/me/threads/t1/modify", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			AddLabelIds    []string `json:"addLabelIds"`
+			RemoveLabelIds []string `json:"removeLabelIds"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		gotAdd, gotRemove = body.AddLabelIds, body.RemoveLabelIds
+		writeJSON(w, map[string]any{"id": "t1"})
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	c := newTestClient(t, server)
+	if err := c.MarkThreadRead(context.Background(), "t1"); err != nil {
+		t.Fatalf("MarkThreadRead: %v", err)
+	}
+	if len(gotRemove) != 1 || gotRemove[0] != "UNREAD" {
+		t.Fatalf("expected MarkThreadRead to remove UNREAD, got remove=%v add=%v", gotRemove, gotAdd)
+	}
+
+	if err := c.MarkThreadUnread(context.Background(), "t1"); err != nil {
+		t.Fatalf("MarkThreadUnread: %v", err)
+	}
+	if len(gotAdd) != 1 || gotAdd[0] != "UNREAD" {
+		t.Fatalf("expected MarkThreadUnread to add UNREAD, got remove=%v add=%v", gotRemove, gotAdd)
+	}
+}
+
 func TestGetProfile(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /gmail/v1/users/me/profile", func(w http.ResponseWriter, r *http.Request) {

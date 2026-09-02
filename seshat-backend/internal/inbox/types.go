@@ -189,6 +189,36 @@ type AttachmentFetcher interface {
 	FetchAttachment(ctx context.Context, account *ChannelAccount, secret ConnectorSecret, externalMessageID, attachmentRef string) (data []byte, err error)
 }
 
+// MessageSearcher is implemented by a Connector whose provider supports a
+// live search over the external mailbox, not just what's already synced
+// locally (e.g. Gmail's search operators, Outlook's $search) - Service
+// type-asserts for it the same way OpenAttachment type-asserts for
+// AttachmentFetcher. A found message flows through the same upsert path
+// Sync uses (so it becomes a real, browsable local thread the agent can act
+// on with inbox_get_thread/inbox_archive_thread afterward), but never fires
+// event-triggered workflows - a search hit isn't a newly-arrived message.
+type MessageSearcher interface {
+	SearchMessages(ctx context.Context, account *ChannelAccount, secret ConnectorSecret, query string, maxResults int) ([]NormalizedMessage, error)
+}
+
+// ThreadArchiver is implemented by a Connector whose provider has a
+// removable-from-inbox concept (Gmail Trash, Outlook Deleted Items).
+// ArchiveThread acts on every message in the thread as a unit, addressed by
+// externalThreadID (the same identifier Connector.Send's externalThreadID
+// param already uses) rather than per-message IDs, since Gmail has a real
+// thread-level primitive and Outlook's connector can enumerate the
+// conversation itself. One-way: both providers keep trashed mail for a
+// retention window, but there is no corresponding "unarchive" tool yet.
+type ThreadArchiver interface {
+	ArchiveThread(ctx context.Context, account *ChannelAccount, secret ConnectorSecret, externalThreadID string) error
+}
+
+// ThreadReadMarker is implemented by a Connector whose provider tracks
+// read/unread state, applied to every message in the thread.
+type ThreadReadMarker interface {
+	SetThreadRead(ctx context.Context, account *ChannelAccount, secret ConnectorSecret, externalThreadID string, read bool) error
+}
+
 // ConnectorSecret is the decrypted connection material a Connector needs -
 // never logged, never serialized to an API response.
 type ConnectorSecret struct {

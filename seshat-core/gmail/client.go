@@ -273,6 +273,45 @@ func (c *Client) DeleteLabel(ctx context.Context, id string) error {
 	return nil
 }
 
+// TrashThread moves every message in a thread to Trash in one call - Gmail's
+// own thread-level primitive (Outlook has no equivalent; a caller there
+// must enumerate the conversation's messages and move each individually,
+// see coremsgraph's ListMessagesInConversation).
+func (c *Client) TrashThread(ctx context.Context, threadID string) error {
+	if _, err := c.svc.Users.Threads.Trash("me", threadID).Context(ctx).Do(); err != nil {
+		return fmt.Errorf("trash thread %s: %w", threadID, err)
+	}
+	return nil
+}
+
+// UntrashThread removes every message in a thread from Trash.
+func (c *Client) UntrashThread(ctx context.Context, threadID string) error {
+	if _, err := c.svc.Users.Threads.Untrash("me", threadID).Context(ctx).Do(); err != nil {
+		return fmt.Errorf("untrash thread %s: %w", threadID, err)
+	}
+	return nil
+}
+
+// ModifyThreadLabels adds and/or removes label IDs on every message in a
+// thread in one call - the thread-level counterpart to ModifyLabels.
+func (c *Client) ModifyThreadLabels(ctx context.Context, threadID string, addLabelIds, removeLabelIds []string) error {
+	req := &gmailapi.ModifyThreadRequest{AddLabelIds: addLabelIds, RemoveLabelIds: removeLabelIds}
+	if _, err := c.svc.Users.Threads.Modify("me", threadID, req).Context(ctx).Do(); err != nil {
+		return fmt.Errorf("modify labels on thread %s: %w", threadID, err)
+	}
+	return nil
+}
+
+// MarkThreadRead removes the UNREAD label from every message in a thread.
+func (c *Client) MarkThreadRead(ctx context.Context, threadID string) error {
+	return c.ModifyThreadLabels(ctx, threadID, nil, []string{unreadLabel})
+}
+
+// MarkThreadUnread adds the UNREAD label to every message in a thread.
+func (c *Client) MarkThreadUnread(ctx context.Context, threadID string) error {
+	return c.ModifyThreadLabels(ctx, threadID, []string{unreadLabel}, nil)
+}
+
 // GetProfile returns the connected account's own mailbox summary.
 func (c *Client) GetProfile(ctx context.Context) (Profile, error) {
 	profile, err := c.svc.Users.GetProfile("me").Context(ctx).Do()

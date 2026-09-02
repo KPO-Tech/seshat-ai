@@ -43,6 +43,9 @@ func DefaultInboxAgentParams() CreateParams {
 			"inbox_send_reply",
 			"inbox_list_accounts",
 			"inbox_search_contacts",
+			"inbox_search_messages",
+			"inbox_archive_thread",
+			"inbox_set_thread_read_status",
 			"inbox_create_workflow",
 			"inbox_list_workflows",
 			"inbox_delete_workflow",
@@ -72,6 +75,7 @@ const inboxWorkflow = `# Workflow
 - If a thread is really the start of a different job (e.g. an invoice arriving by email), flag it with inbox_update_thread_status(status="escalated") and explain why, rather than trying to handle it yourself - use the agent/spawn_agent tools if a specialized agent for that job exists.
 - Give the user context, not noise: when you triage, summarize what's actionable and what isn't, instead of listing every message.
 - Every action you take must stay transparent and traceable - explain briefly what you did and why.
+- inbox_list_threads only shows what's already been triaged; reach for inbox_search_messages when the user asks about something specific or older (e.g. "find every email from that newsletter", "did I get an invoice from X last month"). Use inbox_archive_thread to clear out unwanted mail (subscriptions, spam) once identified - confirm with the user first unless they've already told you to handle a specific known category on your own.
 
 # Standing automations
 

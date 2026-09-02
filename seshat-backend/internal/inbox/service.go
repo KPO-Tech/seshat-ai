@@ -304,7 +304,7 @@ func (s *Service) SyncAccount(ctx context.Context, principal *backendauth.Princi
 	}
 
 	for _, m := range normalized {
-		if err := s.persistNormalizedMessage(ctx, account.ID, m); err != nil {
+		if _, err := s.persistNormalizedMessage(ctx, account.ID, m, true); err != nil {
 			return newMessages, bkerr.Internal("persist synced message", err)
 		}
 		newMessages++
@@ -332,13 +332,21 @@ func (s *Service) IngestMessage(ctx context.Context, accountID string, m Normali
 	if s == nil || s.accounts == nil {
 		return bkerr.Unavailable("inbox store not configured", nil)
 	}
-	if err := s.persistNormalizedMessage(ctx, accountID, m); err != nil {
+	if _, err := s.persistNormalizedMessage(ctx, accountID, m, true); err != nil {
 		return bkerr.Internal("ingest message", err)
 	}
 	return nil
 }
 
-func (s *Service) persistNormalizedMessage(ctx context.Context, accountID string, m NormalizedMessage) error {
+// persistNormalizedMessage upserts the contact/thread and creates the
+// message row, returning the upserted thread so callers that need it (e.g.
+// SearchMessages, to hand the agent back real local threads) don't have to
+// re-fetch it. fireWorkflows controls whether event-triggered workflows may
+// fire for this message - true for anything that represents a genuinely new
+// arrival (SyncAccount, IngestMessage), false for a search hit that's just
+// making already-existing external mail locally visible (see
+// MessageSearcher's doc comment).
+func (s *Service) persistNormalizedMessage(ctx context.Context, accountID string, m NormalizedMessage, fireWorkflows bool) (*db.InboxThread, error) {
 	contact, err := s.contacts.Upsert(ctx, db.UpsertContactParams{
 		ChannelAccountID: accountID,
 		ExternalID:       m.ContactExternalID,
@@ -346,7 +354,7 @@ func (s *Service) persistNormalizedMessage(ctx context.Context, accountID string
 		AvatarURL:        m.ContactAvatarURL,
 	})
 	if err != nil {
-		return fmt.Errorf("upsert contact: %w", err)
+		return nil, fmt.Errorf("upsert contact: %w", err)
 	}
 
 	thread, err := s.threads.Upsert(ctx, db.UpsertThreadParams{
@@ -357,7 +365,7 @@ func (s *Service) persistNormalizedMessage(ctx context.Context, accountID string
 		LastMessageAt:    m.SentAt,
 	})
 	if err != nil {
-		return fmt.Errorf("upsert thread: %w", err)
+		return nil, fmt.Errorf("upsert thread: %w", err)
 	}
 
 	senderContactID := ""
@@ -366,7 +374,7 @@ func (s *Service) persistNormalizedMessage(ctx context.Context, accountID string
 	}
 	attachmentsJSON, err := s.storeAttachments(ctx, m.Attachments)
 	if err != nil {
-		return fmt.Errorf("store attachments: %w", err)
+		return nil, fmt.Errorf("store attachments: %w", err)
 	}
 	if _, err := s.messages.Create(ctx, db.CreateMessageParams{
 		ThreadID:          thread.ID,
@@ -378,15 +386,17 @@ func (s *Service) persistNormalizedMessage(ctx context.Context, accountID string
 		AttachmentsJSON:   attachmentsJSON,
 		SentAt:            m.SentAt,
 	}); err != nil {
-		return fmt.Errorf("create message: %w", err)
+		return nil, fmt.Errorf("create message: %w", err)
 	}
 
-	// Fire in a goroutine - a slow agent turn (or several matching
-	// workflows) must never block message ingestion, the same reasoning
-	// job_scheduler.go's own execute() runs jobs as goroutines off the
-	// ticker rather than inline.
-	go s.dispatchWorkflows(accountID, contact.DisplayName, m, thread.Status)
-	return nil
+	if fireWorkflows {
+		// Fire in a goroutine - a slow agent turn (or several matching
+		// workflows) must never block message ingestion, the same reasoning
+		// job_scheduler.go's own execute() runs jobs as goroutines off the
+		// ticker rather than inline.
+		go s.dispatchWorkflows(accountID, contact.DisplayName, m, thread.Status)
+	}
+	return thread, nil
 }
 
 // dispatchWorkflows fires every active TriggerTypeEvent workflow (see
@@ -832,6 +842,153 @@ func (s *Service) SearchContacts(ctx context.Context, principal *backendauth.Pri
 		out = append(out, contactFromDB(r))
 	}
 	return out, nil
+}
+
+// defaultSearchLimit mirrors the per-provider client defaults (Gmail's
+// searchMessageLimit, Outlook's searchMessageLimit) so a tool call that
+// omits limit still gets a bounded result set at this layer too.
+const defaultSearchLimit = 25
+
+// SearchMessages runs a live provider search (see MessageSearcher) against
+// one connected channel account and returns the local threads any matches
+// belong to - each match is upserted through the normal persistence path
+// first (without firing workflows, see persistNormalizedMessage), so a
+// found message becomes a real thread the agent can act on afterward with
+// GetThread/ArchiveThread/SetThreadReadStatus, not just a one-off search
+// result.
+func (s *Service) SearchMessages(ctx context.Context, principal *backendauth.Principal, accountID, query string, limit int) ([]Thread, error) {
+	if strings.TrimSpace(query) == "" {
+		return nil, bkerr.InvalidInput("query is required", nil)
+	}
+	if limit <= 0 {
+		limit = defaultSearchLimit
+	}
+	_, account, err := s.getOwnedAccountRecord(ctx, principal, accountID)
+	if err != nil {
+		return nil, err
+	}
+	conn, ok := s.connectors[account.Channel]
+	if !ok {
+		return nil, bkerr.Unavailable(fmt.Sprintf("no connector registered for channel %q", account.Channel), nil)
+	}
+	searcher, ok := conn.(MessageSearcher)
+	if !ok {
+		return nil, bkerr.Unavailable(fmt.Sprintf("search is not available for channel %q", account.Channel), nil)
+	}
+	secret, err := s.accounts.GetSecret(ctx, account.ID)
+	if err != nil {
+		return nil, bkerr.Internal("load channel account secret", err)
+	}
+
+	normalized, err := searcher.SearchMessages(ctx, account, ConnectorSecret{
+		AccessToken:  secret.AccessToken,
+		RefreshToken: secret.RefreshToken,
+		SessionState: secret.SessionState,
+		ExpiresAt:    secret.ExpiresAt,
+	}, query, limit)
+	if err != nil {
+		if isAuthExpired(err) {
+			_ = s.accounts.UpdateStatus(ctx, account.ID, db.ChannelAccountStatusError, authExpiredMessage)
+		}
+		return nil, bkerr.BadGateway(fmt.Sprintf("search failed for channel %q", account.Channel), err)
+	}
+
+	seen := make(map[string]bool, len(normalized))
+	out := make([]Thread, 0, len(normalized))
+	for _, m := range normalized {
+		dbThread, err := s.persistNormalizedMessage(ctx, account.ID, m, false)
+		if err != nil || dbThread == nil || seen[dbThread.ID] {
+			// A single unpersistable or duplicate-thread hit shouldn't fail
+			// the whole search - skip it and keep going, same convention as
+			// Connector.Sync's own per-message skip.
+			continue
+		}
+		seen[dbThread.ID] = true
+		t, err := s.hydrateThread(ctx, *dbThread)
+		if err != nil {
+			continue
+		}
+		out = append(out, *t)
+	}
+	return out, nil
+}
+
+// ArchiveThread moves every message in a thread to the provider's Trash/
+// Deleted Items (see ThreadArchiver), then marks the local thread handled -
+// the trashed mail needs no further triage attention, the same conclusion
+// UpdateThreadStatus(status="handled") already represents, so this doesn't
+// introduce a separate "archived" status.
+func (s *Service) ArchiveThread(ctx context.Context, principal *backendauth.Principal, threadID string) error {
+	dbThread, err := s.threads.GetByID(ctx, threadID)
+	if err != nil {
+		return bkerr.NotFound("thread not found", err)
+	}
+	_, account, err := s.getOwnedAccountRecord(ctx, principal, dbThread.ChannelAccountID)
+	if err != nil {
+		return err
+	}
+	conn, ok := s.connectors[account.Channel]
+	if !ok {
+		return bkerr.Unavailable(fmt.Sprintf("no connector registered for channel %q", account.Channel), nil)
+	}
+	archiver, ok := conn.(ThreadArchiver)
+	if !ok {
+		return bkerr.Unavailable(fmt.Sprintf("archiving is not available for channel %q", account.Channel), nil)
+	}
+	secret, err := s.accounts.GetSecret(ctx, account.ID)
+	if err != nil {
+		return bkerr.Internal("load channel account secret", err)
+	}
+	if err := archiver.ArchiveThread(ctx, account, ConnectorSecret{
+		AccessToken:  secret.AccessToken,
+		RefreshToken: secret.RefreshToken,
+		SessionState: secret.SessionState,
+		ExpiresAt:    secret.ExpiresAt,
+	}, dbThread.ExternalThreadID); err != nil {
+		if isAuthExpired(err) {
+			_ = s.accounts.UpdateStatus(ctx, account.ID, db.ChannelAccountStatusError, authExpiredMessage)
+		}
+		return bkerr.BadGateway(fmt.Sprintf("archive failed for channel %q", account.Channel), err)
+	}
+	return s.threads.UpdateStatus(ctx, dbThread.ID, ThreadStatusHandled)
+}
+
+// SetThreadReadStatus marks every message in a thread read/unread on the
+// provider itself (see ThreadReadMarker) - a pure passthrough action, like
+// Send; there is no corresponding local read/unread field to update.
+func (s *Service) SetThreadReadStatus(ctx context.Context, principal *backendauth.Principal, threadID string, read bool) error {
+	dbThread, err := s.threads.GetByID(ctx, threadID)
+	if err != nil {
+		return bkerr.NotFound("thread not found", err)
+	}
+	_, account, err := s.getOwnedAccountRecord(ctx, principal, dbThread.ChannelAccountID)
+	if err != nil {
+		return err
+	}
+	conn, ok := s.connectors[account.Channel]
+	if !ok {
+		return bkerr.Unavailable(fmt.Sprintf("no connector registered for channel %q", account.Channel), nil)
+	}
+	marker, ok := conn.(ThreadReadMarker)
+	if !ok {
+		return bkerr.Unavailable(fmt.Sprintf("marking read/unread is not available for channel %q", account.Channel), nil)
+	}
+	secret, err := s.accounts.GetSecret(ctx, account.ID)
+	if err != nil {
+		return bkerr.Internal("load channel account secret", err)
+	}
+	if err := marker.SetThreadRead(ctx, account, ConnectorSecret{
+		AccessToken:  secret.AccessToken,
+		RefreshToken: secret.RefreshToken,
+		SessionState: secret.SessionState,
+		ExpiresAt:    secret.ExpiresAt,
+	}, dbThread.ExternalThreadID, read); err != nil {
+		if isAuthExpired(err) {
+			_ = s.accounts.UpdateStatus(ctx, account.ID, db.ChannelAccountStatusError, authExpiredMessage)
+		}
+		return bkerr.BadGateway(fmt.Sprintf("mark read/unread failed for channel %q", account.Channel), err)
+	}
+	return nil
 }
 
 // ─── helpers ─────────────────────────────────────────────────────────────────

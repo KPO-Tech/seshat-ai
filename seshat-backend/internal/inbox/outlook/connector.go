@@ -132,4 +132,80 @@ func (c *Connector) Send(ctx context.Context, account *inbox.ChannelAccount, sec
 	return "", nil
 }
 
-var _ inbox.Connector = (*Connector)(nil)
+// SearchMessages implements inbox.MessageSearcher via coremsgraph.Client's
+// $search - plain free-text, unlike Gmail there's no from:/is:unread query
+// syntax on this provider.
+func (c *Connector) SearchMessages(ctx context.Context, account *inbox.ChannelAccount, secret inbox.ConnectorSecret, query string, maxResults int) ([]inbox.NormalizedMessage, error) {
+	client, err := c.client(ctx, secret)
+	if err != nil {
+		return nil, fmt.Errorf("build outlook client: %w", err)
+	}
+	messages, err := client.SearchMessages(ctx, query, maxResults)
+	if err != nil {
+		return nil, err
+	}
+	normalized := make([]inbox.NormalizedMessage, 0, len(messages))
+	for _, m := range messages {
+		n, err := translateMessage(m)
+		if err != nil {
+			continue
+		}
+		normalized = append(normalized, n)
+	}
+	return normalized, nil
+}
+
+// ArchiveThread implements inbox.ThreadArchiver. Unlike Gmail (a single
+// thread-level Trash call), Graph conversations aren't independently
+// addressable for bulk actions - this enumerates every message in the
+// conversation and moves each to Deleted Items individually, best-effort
+// (one message's move failing doesn't abort the rest; the last error, if
+// any, is what's returned).
+func (c *Connector) ArchiveThread(ctx context.Context, account *inbox.ChannelAccount, secret inbox.ConnectorSecret, externalThreadID string) error {
+	client, err := c.client(ctx, secret)
+	if err != nil {
+		return fmt.Errorf("build outlook client: %w", err)
+	}
+	messages, err := client.ListMessagesInConversation(ctx, externalThreadID)
+	if err != nil {
+		return fmt.Errorf("list conversation messages: %w", err)
+	}
+	if len(messages) == 0 {
+		return fmt.Errorf("no messages found in conversation %s", externalThreadID)
+	}
+	var lastErr error
+	for _, m := range messages {
+		if _, err := client.TrashMessage(ctx, m.ID); err != nil {
+			lastErr = err
+		}
+	}
+	return lastErr
+}
+
+// SetThreadRead implements inbox.ThreadReadMarker, enumerating the
+// conversation the same way ArchiveThread does (see its own doc comment for
+// why Graph needs per-message calls here, unlike Gmail).
+func (c *Connector) SetThreadRead(ctx context.Context, account *inbox.ChannelAccount, secret inbox.ConnectorSecret, externalThreadID string, read bool) error {
+	client, err := c.client(ctx, secret)
+	if err != nil {
+		return fmt.Errorf("build outlook client: %w", err)
+	}
+	messages, err := client.ListMessagesInConversation(ctx, externalThreadID)
+	if err != nil {
+		return fmt.Errorf("list conversation messages: %w", err)
+	}
+	var lastErr error
+	for _, m := range messages {
+		if err := client.SetMessageRead(ctx, m.ID, read); err != nil {
+			lastErr = err
+		}
+	}
+	return lastErr
+}
+
+var (
+	_ inbox.Connector        = (*Connector)(nil)
+	_ inbox.MessageSearcher  = (*Connector)(nil)
+	_ inbox.ThreadArchiver   = (*Connector)(nil)
+	_ inbox.ThreadReadMarker = (*Connector)(nil)
+)
