@@ -12,10 +12,11 @@ import {
   type ReactFlowInstance,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { Close, Delete, Plus } from '@icon-park/react'
-import { definitionToFlow, flowToDefinition, stripUIPosition, INPUT_HANDLE } from './convert'
+import { Close, Plus } from '@icon-park/react'
+import { definitionToFlow, flowToDefinition, INPUT_HANDLE } from './convert'
 import { GRAPH_NODE_TYPES, type FlowGraphNode } from './GraphNode'
 import { NodeCreator } from './NodeCreator'
+import { ParameterForm } from './ParameterForm'
 import type { DataflowDefinition, NodeDescription } from './types'
 import { useUIStore } from '@/stores/ui'
 
@@ -35,6 +36,22 @@ function nextNodeId(type: string): string {
   return `${type}_${nodeIdCounter}`
 }
 
+// nodeIdCounter is module-scoped (shared across every graph opened this
+// session) but never seeded from a *loaded* graph's own ids - opening a
+// saved graph that already has e.g. "http_request_3" and then adding or
+// duplicating a node could produce a colliding "..._1". Bump the counter to
+// at least the highest numeric suffix already present whenever a graph
+// loads, so freshly generated ids never collide with ones it was saved
+// with.
+function seedNodeIdCounter(nodes: FlowGraphNode[]) {
+  let max = 0
+  for (const n of nodes) {
+    const match = /_(\d+)$/.exec(n.id)
+    if (match) max = Math.max(max, Number(match[1]))
+  }
+  nodeIdCounter = Math.max(nodeIdCounter, max)
+}
+
 type GraphEditorProps = {
   value: DataflowDefinition | null
   onChange: (def: DataflowDefinition) => void
@@ -45,7 +62,11 @@ type GraphEditorProps = {
 
 function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTypesError }: GraphEditorProps) {
   const theme = useUIStore((s) => s.theme)
-  const initial = useMemo(() => definitionToFlow(value ?? { name: 'Untitled graph', nodes: [] }), [])
+  const initial = useMemo(() => {
+    const flow = definitionToFlow(value ?? { name: 'Untitled graph', nodes: [] })
+    seedNodeIdCounter(flow.nodes)
+    return flow
+  }, [])
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowGraphNode>(initial.nodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initial.edges)
   // The job's own name/description (edited in AutomationPage's topbar and
@@ -55,8 +76,6 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
   const graphName = value?.name || 'Untitled graph'
   const graphDescription = value?.description ?? ''
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
-  const [paramsDraft, setParamsDraft] = useState('')
-  const [paramsError, setParamsError] = useState<string | null>(null)
   const [flowInstance, setFlowInstance] = useState<ReactFlowInstance<FlowGraphNode, Edge> | null>(null)
   const wrapperRef = useRef<HTMLDivElement | null>(null)
 
@@ -129,8 +148,6 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
 
   const onNodeClick = useCallback((_: unknown, node: FlowGraphNode) => {
     setSelectedNodeId(node.id)
-    setParamsDraft(JSON.stringify(stripUIPosition(node.data.parameters), null, 2))
-    setParamsError(null)
   }, [])
 
   const onPaneClick = useCallback(() => setSelectedNodeId(null), [])
@@ -168,25 +185,67 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
 
   const selectedNode = selectedNodeId ? nodes.find((n) => n.id === selectedNodeId) : null
 
-  function saveParams() {
+  function saveParams(next: Record<string, unknown>) {
     if (!selectedNode) return
-    let parsed: Record<string, unknown>
-    try {
-      parsed = paramsDraft.trim() === '' ? {} : JSON.parse(paramsDraft)
-    } catch (err) {
-      setParamsError(err instanceof Error ? err.message : 'Invalid JSON')
-      return
-    }
-    const next = nodes.map((n) => (n.id === selectedNode.id ? { ...n, data: { ...n.data, parameters: parsed } } : n))
-    setNodes(next)
-    setParamsError(null)
-    emitChange(next, edges)
+    const nextNodes = nodes.map((n) => (n.id === selectedNode.id ? { ...n, data: { ...n.data, parameters: next } } : n))
+    setNodes(nextNodes)
+    emitChange(nextNodes, edges)
   }
 
   function deleteSelectedNode() {
     if (!selectedNode) return
     onNodesDelete([selectedNode])
   }
+
+  // Connections are edge-derived (flowToDefinition rebuilds `connections`
+  // from `edges` on every save, never stored per-node), so a rename only
+  // needs to touch the one node's id and any edge referencing it - no
+  // deeper remapping. Edge ids themselves (`${source}:${port}->${target}`)
+  // go stale until the graph next reloads; cosmetic only, not worth
+  // recomputing here.
+  function renameNode(oldId: string, newId: string) {
+    if (newId === oldId || nodes.some((n) => n.id === newId)) return
+    const nextNodes = nodes.map((n) => (n.id === oldId ? { ...n, id: newId } : n))
+    const nextEdges = edges.map((e) => ({
+      ...e,
+      source: e.source === oldId ? newId : e.source,
+      target: e.target === oldId ? newId : e.target,
+    }))
+    setNodes(nextNodes)
+    setEdges(nextEdges)
+    setSelectedNodeId(newId)
+    emitChange(nextNodes, nextEdges)
+  }
+
+  function duplicateSelectedNode() {
+    if (!selectedNode) return
+    const id = nextNodeId(selectedNode.data.dfType)
+    const newNode: FlowGraphNode = {
+      ...selectedNode,
+      id,
+      selected: false,
+      position: { x: selectedNode.position.x + 40, y: selectedNode.position.y + 40 },
+      data: { ...selectedNode.data, parameters: JSON.parse(JSON.stringify(selectedNode.data.parameters)) },
+    }
+    const next = [...nodes, newNode]
+    setNodes(next)
+    emitChange(next, edges)
+    setSelectedNodeId(id)
+  }
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'd') return
+      const active = document.activeElement?.tagName
+      if (active === 'INPUT' || active === 'TEXTAREA' || active === 'SELECT') return
+      if (!selectedNodeId) return
+      e.preventDefault()
+      duplicateSelectedNode()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedNodeId, nodes, edges])
 
   return (
     <div className="gf-root">
@@ -241,7 +300,7 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
           <aside className="gf-config-panel">
             <header className="gf-config-head">
               <div>
-                <strong>{selectedNode.id}</strong>
+                <NodeIdEditor key={selectedNode.id} nodeId={selectedNode.id} onRename={(next) => renameNode(selectedNode.id, next)} />
                 <span>{selectedNode.data.dfType}</span>
               </div>
               <button type="button" onClick={() => setSelectedNodeId(null)} aria-label="Close">
@@ -249,23 +308,14 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
               </button>
             </header>
             <div className="gf-config-body">
-              <label className="gf-config-label">Parameters (JSON)</label>
-              <textarea
-                className="gf-config-textarea"
-                value={paramsDraft}
-                onChange={(e) => setParamsDraft(e.target.value)}
-                spellCheck={false}
-                rows={14}
+              <ParameterForm
+                key={selectedNode.id}
+                parameters={selectedNode.data.parameters}
+                properties={nodeTypes.find((nt) => nt.type === selectedNode.data.dfType)?.properties}
+                onSave={saveParams}
+                onDelete={deleteSelectedNode}
+                onDuplicate={duplicateSelectedNode}
               />
-              {paramsError && <div className="gf-config-error">{paramsError}</div>}
-              <div className="gf-config-actions">
-                <button type="button" className="ib-action-btn primary" onClick={saveParams}>
-                  Save parameters
-                </button>
-                <button type="button" className="ib-action-btn" onClick={deleteSelectedNode}>
-                  <Delete size={13} /> Delete node
-                </button>
-              </div>
             </div>
           </aside>
         )}
@@ -276,6 +326,35 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
 
 function catalogCategory(type: string, nodeTypes: NodeDescription[]): string {
   return nodeTypes.find((n) => n.type === type)?.category ?? 'Other'
+}
+
+// Mount with `key={nodeId}` so switching the selected node (or a successful
+// rename, which changes selectedNodeId to the new id) resets the local
+// draft instead of showing stale text.
+function NodeIdEditor({ nodeId, onRename }: { nodeId: string; onRename: (next: string) => void }) {
+  const [draft, setDraft] = useState(nodeId)
+
+  function commit() {
+    const trimmed = draft.trim()
+    if (!trimmed) {
+      setDraft(nodeId)
+      return
+    }
+    onRename(trimmed)
+  }
+
+  return (
+    <input
+      className="gf-id-input"
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur()
+        if (e.key === 'Escape') setDraft(nodeId)
+      }}
+    />
+  )
 }
 
 const GRAPH_EDITOR_CSS = `
@@ -363,9 +442,28 @@ const GRAPH_EDITOR_CSS = `
   border-bottom: 1px solid var(--color-border-subtle);
 }
 
-.gf-config-head strong {
+.gf-id-input {
   display: block;
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 1px 4px;
+  margin: -1px -4px;
+  background: transparent;
+  color: var(--color-text);
   font-size: var(--font-size-sm);
+  font-weight: 700;
+  font-family: inherit;
+}
+
+.gf-id-input:hover {
+  border-color: var(--color-border-subtle);
+}
+
+.gf-id-input:focus {
+  outline: none;
+  border-color: var(--color-cta);
+  background: var(--color-surface);
 }
 
 .gf-config-head span {
@@ -429,6 +527,70 @@ const GRAPH_EDITOR_CSS = `
   display: flex;
   gap: 8px;
   margin-top: 4px;
+}
+
+.gf-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gf-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gf-field-label {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.gf-field-required {
+  color: var(--color-cta);
+  margin-left: 2px;
+}
+
+.gf-field-input {
+  padding: 7px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+}
+
+.gf-field-textarea {
+  font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.gf-field-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: normal;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.gf-field-hint {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+  line-height: 1.4;
+}
+
+.gf-field-error {
+  color: #ff6b6b;
+  font-size: var(--font-size-2xs);
 }
 
 .gf-node {
