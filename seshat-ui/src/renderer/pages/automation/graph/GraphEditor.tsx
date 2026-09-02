@@ -17,6 +17,7 @@ import { Close, Delete, Plus } from '@icon-park/react'
 import { definitionToFlow, flowToDefinition, stripUIPosition, INPUT_HANDLE } from './convert'
 import { GRAPH_NODE_TYPES, type FlowGraphNode } from './GraphNode'
 import type { DataflowDefinition, NodeDescription } from './types'
+import { useUIStore } from '@/stores/ui'
 
 // One color per node-type Category, cycled if the live catalog ever grows a
 // 6th - purely cosmetic grouping, never a correctness signal (the type
@@ -43,6 +44,7 @@ type GraphEditorProps = {
 }
 
 function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTypesError }: GraphEditorProps) {
+  const theme = useUIStore((s) => s.theme)
   const initial = useMemo(() => definitionToFlow(value ?? { name: 'Untitled graph', nodes: [] }), [])
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowGraphNode>(initial.nodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initial.edges)
@@ -237,7 +239,7 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
             onNodeClick={onNodeClick}
             onPaneClick={onPaneClick}
             onInit={setFlowInstance}
-            colorMode="dark"
+            colorMode={theme}
             fitView
           >
             <Background />
