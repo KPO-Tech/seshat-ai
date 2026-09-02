@@ -42,7 +42,7 @@ export function AutomationPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
-  const [settingsOpen, setSettingsOpen] = useState(isNew)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const [name, setName] = useState('Untitled automation')
   const [description, setDescription] = useState('')

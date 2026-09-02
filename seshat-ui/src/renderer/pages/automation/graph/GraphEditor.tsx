@@ -48,8 +48,12 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
   const initial = useMemo(() => definitionToFlow(value ?? { name: 'Untitled graph', nodes: [] }), [])
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowGraphNode>(initial.nodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initial.edges)
-  const [graphName, setGraphName] = useState(value?.name || 'Untitled graph')
-  const [graphDescription, setGraphDescription] = useState(value?.description ?? '')
+  // The job's own name/description (edited in AutomationPage's topbar and
+  // settings drawer) are what the user actually sees and edits - these are
+  // just the values threaded through to the underlying Definition, never
+  // surfaced as their own inputs.
+  const graphName = value?.name || 'Untitled graph'
+  const graphDescription = value?.description ?? ''
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [paramsDraft, setParamsDraft] = useState('')
   const [paramsError, setParamsError] = useState<string | null>(null)
@@ -177,28 +181,9 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
     onNodesDelete([selectedNode])
   }
 
-  function handleNameChange(next: string) {
-    setGraphName(next)
-    emitChange(nodes, edges, next, graphDescription)
-  }
-
-  function handleDescriptionChange(next: string) {
-    setGraphDescription(next)
-    emitChange(nodes, edges, graphName, next)
-  }
-
   return (
     <div className="gf-root">
       <style>{GRAPH_EDITOR_CSS}</style>
-      <div className="gf-meta-row">
-        <input className="gf-name-input" value={graphName} onChange={(e) => handleNameChange(e.target.value)} placeholder="Graph name" />
-        <input
-          className="gf-description-input"
-          value={graphDescription}
-          onChange={(e) => handleDescriptionChange(e.target.value)}
-          placeholder="Description (optional)"
-        />
-      </div>
       <div className="gf-body">
         <aside className="gf-palette">
           {nodeTypesLoading && <div className="gf-palette-empty">Loading node types…</div>}
@@ -302,33 +287,6 @@ const GRAPH_EDITOR_CSS = `
   gap: 10px;
   height: 100%;
   min-height: 0;
-}
-
-.gf-meta-row {
-  display: flex;
-  gap: 10px;
-  flex-shrink: 0;
-}
-
-.gf-name-input,
-.gf-description-input {
-  height: 34px;
-  padding: 0 10px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-size: var(--font-size-sm);
-}
-
-.gf-name-input {
-  width: 240px;
-  font-weight: 700;
-}
-
-.gf-description-input {
-  flex: 1;
-  min-width: 0;
 }
 
 .gf-body {
