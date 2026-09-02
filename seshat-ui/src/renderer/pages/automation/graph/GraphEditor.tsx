@@ -298,7 +298,7 @@ const GRAPH_EDITOR_CSS = `
   display: flex;
   flex-direction: column;
   gap: 10px;
-  height: 640px;
+  height: 100%;
   min-height: 0;
 }
 

@@ -10,6 +10,7 @@ import { Register } from '@/pages/Register'
 import { WorkspacePage } from '@/pages/workspace'
 import { TeamPage } from '@/pages/team'
 import { SchedulingPage } from '@/pages/scheduling'
+import { AutomationPage } from '@/pages/automation'
 import { HistoryPage } from '@/pages/history'
 import { WorkflowsPage } from '@/pages/workflows'
 import { AppsPage } from '@/pages/apps'
@@ -57,6 +58,12 @@ export const router = createHashRouter([
       { path: 'inbox', element: <InboxPage /> },
       { path: 'memories', element: <Navigate to="/" replace /> },
       { path: 'scheduling', element: <SchedulingPage /> },
+      // Automation is the full-screen graph editor for a Graph-mode job -
+      // deep-linked from Scheduling (its own modal stays Prompt-only, see
+      // "Build with a visual graph instead"), not a standalone job list of
+      // its own.
+      { path: 'automation/new', element: <AutomationPage /> },
+      { path: 'automation/:jobId', element: <AutomationPage /> },
       // Scheduled Tasks / Automations were the old local-scheduler routes,
       // retired when automation moved to Seshat Server; kept as redirects
       // for anyone with an old link/shortcut.
