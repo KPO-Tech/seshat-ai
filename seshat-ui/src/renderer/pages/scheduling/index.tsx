@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useCallback, type ReactNode } from 'react
 import { useNavigate } from 'react-router'
 import {
   Plus, Play, PauseOne, Edit, Delete, History, Caution, LinkCloud,
-  CheckOne, Robot, Send, Download, PreviewOpen, Setting,
+  CheckOne, Robot, Send, Download, PreviewOpen, Setting, RelationalGraph,
 } from '@icon-park/react'
 import { api, ApiError } from '@/api/client'
 import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
@@ -331,6 +331,14 @@ export function SchedulingPage() {
 
       <header className="sch-topbar">
         <span className="sch-topbar-title">Scheduling</span>
+        <button
+          className="sch-new-btn sch-new-btn--ghost"
+          onClick={() => navigate('/automation/new')}
+          disabled={systemStatus?.mode !== 'connected'}
+          title="Build a job as a visual graph instead of a single prompt"
+        >
+          <RelationalGraph size={11} /> Automation
+        </button>
         <button className="sch-new-btn" onClick={openCreateForm} disabled={systemStatus?.mode !== 'connected'}>
           <Plus size={11} /> New Job
         </button>
@@ -1278,13 +1286,18 @@ const CSS = `
 .sch-topbar-sep { color: var(--color-text-muted); font-size: var(--font-size-sm); }
 .sch-topbar-title { font-size: var(--font-size-base); font-weight: 700; }
 .sch-new-btn {
-  margin-left: auto;
   display: inline-flex; align-items: center; gap: var(--space-3);
   padding: var(--space-3) var(--space-5); border-radius: var(--radius-sm); border: none;
   background: var(--color-cta); color: white;
   font-size: var(--font-size-2xs); font-weight: 700; cursor: pointer;
 }
 .sch-new-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.sch-new-btn--ghost {
+  margin-left: auto;
+  background: transparent; color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+.sch-new-btn--ghost:hover:not(:disabled) { background: var(--color-hover); color: var(--color-text); }
 
 .sch-body { flex: 1; overflow: hidden; padding: var(--space-8) 22px; }
 .sch-layout {
