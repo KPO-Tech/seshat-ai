@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Copy, Delete } from '@icon-park/react'
 import { stripUIPosition } from './convert'
+import { SecretRefField } from './SecretRefField'
 import type { NodeProperty } from './types'
 
 type Props = {
@@ -121,6 +122,8 @@ export function ParameterForm({ parameters, properties, onSave, onDelete, onDupl
                   <input type="checkbox" checked={!!drafts[p.name]} onChange={(e) => setField(p.name, e.target.checked)} />
                   {p.description}
                 </label>
+              ) : p.type === 'secretRef' ? (
+                <SecretRefField value={(drafts[p.name] as string) ?? ''} onChange={(name) => setField(p.name, name)} />
               ) : p.type === 'options' ? (
                 <select className="gf-field-input" value={(drafts[p.name] as string) ?? ''} onChange={(e) => setField(p.name, e.target.value)}>
                   <option value="" disabled>Select…</option>

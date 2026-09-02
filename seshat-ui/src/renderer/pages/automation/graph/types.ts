@@ -32,7 +32,7 @@ export type NodeDescription = {
 // set - see the SDK's own comments on why those stay JSON) has `properties`
 // undefined/empty; the editor falls back to raw JSON for those, and for any
 // future node type shipped before its schema is written.
-export type NodePropertyType = 'string' | 'text' | 'number' | 'boolean' | 'options' | 'json'
+export type NodePropertyType = 'string' | 'text' | 'number' | 'boolean' | 'options' | 'json' | 'secretRef'
 
 export type NodePropertyOption = {
   label: string

@@ -176,6 +176,16 @@ export function AutomationPage() {
   ]
   const canSave = validationItems.every((item) => item.ok)
 
+  // Device-targeted job execution doesn't wire up a SecretResolver (or even
+  // carry a Graph) at all yet - a node with a secretRef-typed parameter set
+  // would silently have nothing to resolve on a Device-targeted run. This is
+  // informational only, not a validation blocker - fixing device execution
+  // itself is a separate chantier.
+  const usesDeviceIncompatibleSecret = (graph?.nodes ?? []).some((node) => {
+    const props = nodeTypes.find((nt) => nt.type === node.type)?.properties ?? []
+    return props.some((p) => p.type === 'secretRef' && !!node.parameters?.[p.name])
+  })
+
   async function handleSave() {
     if (!canSave || !graph) return
     setSaving(true)
@@ -325,6 +335,9 @@ export function AutomationPage() {
                   <button type="button" className={`au-segment ${executionTarget === 'cloud' ? 'active' : ''}`} onClick={() => setExecutionTarget('cloud')}>Cloud</button>
                   <button type="button" className={`au-segment ${executionTarget === 'device' ? 'active' : ''}`} onClick={() => setExecutionTarget('device')}>Device</button>
                 </div>
+                {executionTarget === 'device' && usesDeviceIncompatibleSecret && (
+                  <div className="au-field-hint au-field-warning">This graph uses database secrets, which currently only run on Cloud execution.</div>
+                )}
               </div>
               {executionTarget === 'device' && (
                 <div className="au-field">
@@ -611,6 +624,10 @@ const AUTOMATION_CSS = `
 .au-field-hint {
   font-size: var(--font-size-2xs);
   color: var(--color-text-muted);
+}
+
+.au-field-warning {
+  color: var(--color-warning, #C58B45);
 }
 
 .au-field input,
