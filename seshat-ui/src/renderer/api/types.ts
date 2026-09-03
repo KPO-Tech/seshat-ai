@@ -221,6 +221,40 @@ export type OrgProviderSetting = {
   is_default: boolean
 }
 
+// ConnectorOAuthApp mirrors seshat-server's connectors.OAuthApp - the
+// client secret is never returned, only whether one is configured. Backs
+// Admin Console's own Connectors tab (/admin/connector-oauth-apps), the
+// desktop-app counterpart of seshat-console's ConnectorsPage.tsx "OAuth
+// apps" modal. Subdomain is only ever set for kind "zendesk" - see
+// connectors.zendeskKind's doc comment on the seshat-server side.
+export type ConnectorOAuthApp = {
+  kind: string
+  client_id: string
+  configured: boolean
+  updated_at: string
+  subdomain?: string
+}
+
+// AdminMCPServerConfig mirrors seshat-server's mcpregistry.MCPServerConfig
+// - never carries Env/Headers (encrypted secrets), only whether the server
+// is configured plus connector_kind. Backs Admin Console's own MCP Servers
+// tab (/admin/mcp-server-configs), the desktop-app counterpart of
+// seshat-console's MCPServersPage.tsx.
+export type AdminMCPServerConfig = {
+  id: string
+  organization_id: string
+  created_by_user_id: string
+  name: string
+  display_name?: string
+  server_type: string
+  command?: string
+  args?: string[]
+  url?: string
+  timeout_secs: number
+  icon?: string
+  connector_kind?: string
+}
+
 export type User = {
   id: string
   email: string

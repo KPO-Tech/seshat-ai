@@ -8,8 +8,10 @@ import {
   Earth,
   Flashlamp,
   LinkCloud,
+  LinkFour,
   Lock,
   Peoples,
+  PlugOne,
   Robot,
   Shield,
   Tool,
@@ -37,6 +39,8 @@ import {
   ADMIN_CSS,
 } from '@/pages/settings/AdminViews'
 import { SETTINGS_SHARED_CSS } from '@/pages/settings/SettingsNav'
+import { AdminConnectorsView } from '@/pages/admin/AdminConnectorsView'
+import { AdminMCPServersView } from '@/pages/admin/AdminMCPServersView'
 
 type AdminTab =
   | 'overview'
@@ -51,6 +55,8 @@ type AdminTab =
   | 'providers'
   | 'knowledge'
   | 'multimodal'
+  | 'connectors'
+  | 'mcpServers'
   | 'websearch'
   | 'runtime'
 
@@ -91,6 +97,8 @@ const ADMIN_GROUPS: Array<{ title: string; items: AdminItem[] }> = [
       { id: 'providers', label: 'Providers', icon: <Browser size={15} /> },
       { id: 'knowledge', label: 'Knowledge', icon: <Book size={15} /> },
       { id: 'multimodal', label: 'Multimodal', icon: <Api size={15} /> },
+      { id: 'connectors', label: 'Connectors', icon: <PlugOne size={15} /> },
+      { id: 'mcpServers', label: 'MCP Servers', icon: <LinkFour size={15} /> },
     ],
   },
   {
@@ -139,8 +147,22 @@ const WORKSPACE_TABS = new Set<AdminTab>(['documents', 'tools'])
 // anywhere in the platform). It used to be miscategorized under
 // "Organization" and gated as if it needed a connected server, which was
 // simply wrong on both counts - it lives under its own "Your Account" group
-// instead now.
-const ORGANIZATION_TABS = new Set<AdminTab>(['users', 'providers', 'websearch', 'teams', 'desktopPolicies', 'agents'])
+// instead now. Connectors and MCP Servers joined for the same reason as
+// Providers: both proxy straight onto seshat-server's own stores
+// (connectors.Service's ConnectorOAuthApp rows, mcpregistry's
+// MCPServerConfig rows) - the exact same ones seshat-console's
+// ConnectorsPage.tsx and MCPServersPage.tsx edit - with nothing local to
+// fall back to.
+const ORGANIZATION_TABS = new Set<AdminTab>([
+  'users',
+  'providers',
+  'websearch',
+  'teams',
+  'desktopPolicies',
+  'agents',
+  'connectors',
+  'mcpServers',
+])
 
 type SystemStatus = { mode: 'standalone' | 'connected'; server_url?: string }
 
@@ -232,9 +254,9 @@ function OrganizationTabLocked({ onGoToSettings }: { onGoToSettings: () => void 
       <LinkCloud size={23} />
       <h2>This requires an organization server</h2>
       <p>
-        Users, teams, desktop policies, agent presets, organization-wide providers, and the web search policy are
-        managed by your organization's Seshat Server. Connect this machine to one in Settings → Cloud Automation to
-        see and manage them.
+        Users, teams, desktop policies, agent presets, organization-wide providers, connectors, MCP servers, and the
+        web search policy are managed by your organization's Seshat Server. Connect this machine to one in Settings →
+        Cloud Automation to see and manage them.
       </p>
       <button className="admin-org-locked-cta" onClick={onGoToSettings}>
         <LinkCloud size={11} /> Go to Cloud Automation settings
@@ -254,6 +276,8 @@ function AdminPanel({ activeTab }: { activeTab: AdminTab }) {
   if (activeTab === 'providers') return <AdminProvidersView />
   if (activeTab === 'knowledge') return <KnowledgeView />
   if (activeTab === 'multimodal') return <MultimodalView />
+  if (activeTab === 'connectors') return <AdminConnectorsView />
+  if (activeTab === 'mcpServers') return <AdminMCPServersView />
   if (activeTab === 'websearch') return <AdminWebSearchView />
   if (activeTab === 'runtime') return <RuntimeView />
   if (WORKSPACE_TABS.has(activeTab)) {

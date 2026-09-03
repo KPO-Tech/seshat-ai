@@ -29,3 +29,28 @@ type ServerConfig struct {
 type resolveResponse struct {
 	MCPServerConfigs []ServerConfig `json:"mcp_server_configs"`
 }
+
+// AdminServerConfig mirrors seshat-server's mcpregistry.MCPServerConfig -
+// the caller-facing admin-list shape, deliberately distinct from
+// ServerConfig above: it never carries Env/Headers (encrypted secrets) at
+// all, only whether the server is configured, plus ConnectorKind. Backs
+// Admin Console's own MCP Servers tab, the desktop-app counterpart of
+// seshat-console's MCPServersPage.tsx.
+type AdminServerConfig struct {
+	ID              string   `json:"id"`
+	OrganizationID  string   `json:"organization_id"`
+	CreatedByUserID string   `json:"created_by_user_id"`
+	Name            string   `json:"name"`
+	DisplayName     string   `json:"display_name,omitempty"`
+	ServerType      string   `json:"server_type"`
+	Command         string   `json:"command,omitempty"`
+	Args            []string `json:"args,omitempty"`
+	URL             string   `json:"url,omitempty"`
+	TimeoutSecs     int      `json:"timeout_secs"`
+	Icon            string   `json:"icon,omitempty"`
+	ConnectorKind   string   `json:"connector_kind,omitempty"`
+}
+
+type adminListResponse struct {
+	MCPServerConfigs []AdminServerConfig `json:"mcp_server_configs"`
+}
