@@ -50,6 +50,18 @@ type JobParams = {
   configuration?: Record<string, string>
 }
 
+type RunNodeTraceEntry = {
+  id: string
+  type: string
+  success: boolean
+  skipped?: boolean
+  error?: string
+  output?: Record<string, unknown>[]
+  started_at?: string
+  ended_at?: string
+  duration_ms?: number
+}
+
 type Run = {
   id: string
   status: RunStatus
@@ -58,6 +70,7 @@ type Run = {
   finished_at?: string
   output_text?: string
   error_text?: string
+  node_trace?: RunNodeTraceEntry[]
 }
 
 type Device = { id: string; name: string; status: string }
@@ -770,6 +783,7 @@ function RunInspectorPanel({ job, runs, tab, onTabChange, onClose, onRunNow, onT
   onTogglePaused: (job: Job) => void
   onEdit: (job: Job) => void
 }) {
+  const [expandedRunId, setExpandedRunId] = useState<string | null>(null)
   if (!job) {
     return (
       <aside className="sch-inspector">
@@ -830,13 +844,37 @@ function RunInspectorPanel({ job, runs, tab, onTabChange, onClose, onRunNow, onT
             />
           ) : (
             <div className="sch-activity-list">
-              {runs.map((item) => (
-                <div key={item.id} className="sch-activity-row">
-                  <span>{formatRunTime(item)}</span>
-                  <strong>{RUN_STATUS_LABEL[item.status]}</strong>
-                  {item.error_text && <p>{item.error_text}</p>}
-                </div>
-              ))}
+              {runs.map((item) => {
+                const hasTrace = (item.node_trace?.length ?? 0) > 0
+                const expanded = expandedRunId === item.id && hasTrace
+                return (
+                  <div key={item.id}>
+                    <div
+                      className={`sch-activity-row ${hasTrace ? 'expandable' : ''}`}
+                      onClick={hasTrace ? () => setExpandedRunId(expanded ? null : item.id) : undefined}
+                    >
+                      <span>{formatRunTime(item)}{hasTrace && <span className="sch-activity-caret">{expanded ? '▾' : '▸'}</span>}</span>
+                      <strong>{RUN_STATUS_LABEL[item.status]}</strong>
+                      {item.error_text && <p>{item.error_text}</p>}
+                    </div>
+                    {expanded && (
+                      <div className="sch-node-trace">
+                        {item.node_trace!.map((node) => (
+                          <div key={node.id} className={`sch-node-trace-row ${node.skipped ? 'skipped' : node.success ? 'success' : 'failed'}`}>
+                            <span className="sch-node-trace-icon">{node.skipped ? '—' : node.success ? <CheckOne size={12} /> : <Caution size={12} />}</span>
+                            <span className="sch-node-trace-id">{node.id}</span>
+                            <span className="sch-node-trace-type">{node.type}</span>
+                            {typeof node.duration_ms === 'number' && <span className="sch-node-trace-duration">{node.duration_ms}ms</span>}
+                            {(node.error || node.output) && (
+                              <p className="sch-node-trace-detail">{node.error || JSON.stringify(node.output).slice(0, 200)}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           )}
         </section>
@@ -1796,6 +1834,39 @@ const CSS = `
   grid-column: 1 / -1;
   color: var(--color-error);
   margin: 0;
+}
+.sch-activity-row.expandable { cursor: pointer; }
+.sch-activity-row.expandable:hover { background: var(--color-hover); }
+.sch-activity-caret { margin-left: 6px; color: var(--color-text-muted); }
+
+.sch-node-trace {
+  padding: 4px 11px 9px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--color-surface);
+}
+.sch-node-trace-row {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--font-size-2xs);
+}
+.sch-node-trace-icon { display: flex; align-items: center; justify-content: center; }
+.sch-node-trace-row.success .sch-node-trace-icon { color: var(--color-success, #57D9A3); }
+.sch-node-trace-row.failed .sch-node-trace-icon { color: var(--color-error); }
+.sch-node-trace-row.skipped .sch-node-trace-icon { color: var(--color-text-muted); }
+.sch-node-trace-id { color: var(--color-text); font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sch-node-trace-type { color: var(--color-text-muted); }
+.sch-node-trace-duration { color: var(--color-text-muted); }
+.sch-node-trace-detail {
+  grid-column: 1 / -1;
+  margin: 0 0 0 24px;
+  color: var(--color-text-secondary);
+  font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 .sch-output-row {
   display: flex;
