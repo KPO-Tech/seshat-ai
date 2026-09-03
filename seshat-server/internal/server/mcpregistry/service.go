@@ -99,20 +99,34 @@ type UpdateServerConfigParams struct {
 	ConnectorKind                    string
 }
 
-// ConnectorTokenResolver resolves a per-employee access token for an
-// MCPServerConfig whose ConnectorKind is set - satisfied by
-// *connectors.Service (connectors.Service.AccessTokenForUser). An
-// interface, not a direct import of connectors, to avoid a cross-import
-// between the two packages - same composition-through-an-interface pattern
-// already used by automation.RAGResolver.
+// ConnectorTokenResolver resolves a per-employee OAuth access token for an
+// MCPServerConfig whose ConnectorKind is set to an OAuth connector kind
+// (gdrive, slack, notion, ...) - satisfied by *connectors.Service
+// (connectors.Service.AccessTokenForUser). An interface, not a direct
+// import of connectors, to avoid a cross-import between the two packages -
+// same composition-through-an-interface pattern already used by
+// automation.RAGResolver.
 type ConnectorTokenResolver interface {
 	AccessTokenForUser(ctx context.Context, organizationID, kind, userID string) (token string, connected bool, err error)
+}
+
+// StaticSecretResolver resolves a per-employee static secret (an API key
+// pasted once, no OAuth redirect) for an MCPServerConfig whose ConnectorKind
+// is set to a static-secret connector kind (stripe, trello, airtable, ...) -
+// satisfied by *connectors.Service (connectors.Service.StaticSecretForUser).
+// Some vendors' own official remote MCP servers authenticate this way
+// instead of OAuth (see connectors/static_agent_account.go's doc comment) -
+// this is that bridging's counterpart to ConnectorTokenResolver above, not a
+// duplicate of it: a kind is handled by exactly one of the two, never both.
+type StaticSecretResolver interface {
+	StaticSecretForUser(ctx context.Context, organizationID, kind, userID string) (secret string, connected bool, err error)
 }
 
 type Service struct {
 	db              *sdb.DB
 	iam             *iam.Service
 	connectorTokens ConnectorTokenResolver
+	staticSecrets   StaticSecretResolver
 }
 
 func New(database *sdb.DB, iamService *iam.Service) *Service {
@@ -120,13 +134,23 @@ func New(database *sdb.DB, iamService *iam.Service) *Service {
 }
 
 // SetConnectorTokenResolver wires the resolver used to bridge a per-employee
-// access token into a ConnectorKind-tagged server's headers - called once at
-// app startup after both services exist, same wiring shape as
-// automation.Service.SetRAGResolver. Nil (the default) means
-// ConnectorKind-tagged servers resolve with no Bearer header injected -
-// harmless, matching "not connected" rather than crashing.
+// OAuth access token into an OAuth-kind ConnectorKind-tagged server's
+// headers - called once at app startup after both services exist, same
+// wiring shape as automation.Service.SetRAGResolver. Nil (the default)
+// means OAuth-kind ConnectorKind-tagged servers resolve with no Bearer
+// header injected - harmless, matching "not connected" rather than
+// crashing.
 func (s *Service) SetConnectorTokenResolver(r ConnectorTokenResolver) {
 	s.connectorTokens = r
+}
+
+// SetStaticSecretResolver is SetConnectorTokenResolver's counterpart for
+// static-secret ConnectorKind-tagged servers (stripe, trello, airtable) -
+// see StaticSecretResolver's own doc comment for why a second resolver
+// exists instead of overloading the first. Nil (the default) means those
+// kinds resolve with no Bearer header injected, same harmless fallback.
+func (s *Service) SetStaticSecretResolver(r StaticSecretResolver) {
+	s.staticSecrets = r
 }
 
 func (s *Service) ListServerConfigs(ctx context.Context, principal *iam.Principal, organizationID string) ([]MCPServerConfig, error) {
@@ -364,13 +388,30 @@ func (s *Service) ResolveServerConfigs(ctx context.Context, principal *iam.Princ
 // target MCP server rejecting an unauthenticated call is the correct,
 // visible failure mode instead of a silent broken one here.
 func (s *Service) injectConnectorToken(ctx context.Context, resolved *ResolvedMCPServerConfig, organizationID, userID string) {
-	if s.connectorTokens == nil {
-		return
+	// A ConnectorKind is handled by exactly one resolver in practice (an
+	// OAuth kind never has a static account, and vice versa - see
+	// StaticSecretResolver's doc comment), but mcpregistry deliberately has
+	// no import of connectors to know which is which for a given kind
+	// string. Trying the OAuth resolver first and falling back to the
+	// static one is how that stays decoupled: for a kind the fallback
+	// doesn't apply to, StaticSecretForUser just finds no account either
+	// and returns connected=false, the same harmless no-op as today.
+	if s.connectorTokens != nil {
+		token, connected, err := s.connectorTokens.AccessTokenForUser(ctx, organizationID, resolved.ConnectorKind, userID)
+		if err == nil && connected && token != "" {
+			s.setBearerHeader(resolved, token)
+			return
+		}
 	}
-	token, connected, err := s.connectorTokens.AccessTokenForUser(ctx, organizationID, resolved.ConnectorKind, userID)
-	if err != nil || !connected || token == "" {
-		return
+	if s.staticSecrets != nil {
+		secret, connected, err := s.staticSecrets.StaticSecretForUser(ctx, organizationID, resolved.ConnectorKind, userID)
+		if err == nil && connected && secret != "" {
+			s.setBearerHeader(resolved, secret)
+		}
 	}
+}
+
+func (s *Service) setBearerHeader(resolved *ResolvedMCPServerConfig, token string) {
 	if resolved.Headers == nil {
 		resolved.Headers = make(map[string]string, 1)
 	}

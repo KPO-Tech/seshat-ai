@@ -397,6 +397,101 @@ func TestResolveServerConfigsToleratesNoResolverWired(t *testing.T) {
 	}
 }
 
+// stubStaticSecretResolver mirrors stubConnectorTokenResolver above, for
+// StaticSecretResolver instead - same fake-not-real-connectors.Service
+// reasoning.
+type stubStaticSecretResolver struct {
+	secretsByUser map[string]string
+	err           error
+	calls         []string
+}
+
+func (r *stubStaticSecretResolver) StaticSecretForUser(ctx context.Context, organizationID, kind, userID string) (string, bool, error) {
+	r.calls = append(r.calls, organizationID+":"+kind+":"+userID)
+	if r.err != nil {
+		return "", false, r.err
+	}
+	secret, ok := r.secretsByUser[userID]
+	if !ok || secret == "" {
+		return "", false, nil
+	}
+	return secret, true, nil
+}
+
+// TestResolveServerConfigsInjectsStaticSecretWhenOAuthResolverFindsNothing
+// proves the fallback this fix adds: a static-secret connector kind
+// (stripe/trello/airtable) has no OAuth account by definition, so the OAuth
+// resolver alone would always leave it unconnected - the static resolver
+// must be consulted too, not instead.
+func TestResolveServerConfigsInjectsStaticSecretWhenOAuthResolverFindsNothing(t *testing.T) {
+	t.Setenv(testEncryptionEnvVar, testEncryptionKey)
+	env := newTestEnv(t)
+
+	if _, err := env.svc.CreateServerConfig(context.Background(), env.adminPrincipal, CreateServerConfigParams{
+		OrganizationID: env.orgID, Name: "stripe-actions", ServerType: "http", URL: "https://mcp.stripe.com",
+		ConnectorKind: "stripe",
+	}); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	oauthStub := &stubConnectorTokenResolver{} // no accounts at all - stripe is never OAuth
+	staticStub := &stubStaticSecretResolver{secretsByUser: map[string]string{
+		env.adminPrincipal.User.ID: "sk_live_admin",
+	}}
+	env.svc.SetConnectorTokenResolver(oauthStub)
+	env.svc.SetStaticSecretResolver(staticStub)
+
+	resolved, err := env.svc.ResolveServerConfigs(context.Background(), env.adminPrincipal, env.orgID)
+	if err != nil || len(resolved) != 1 {
+		t.Fatalf("resolve: %v %+v", err, resolved)
+	}
+	if !resolved[0].Connected {
+		t.Fatalf("expected static-secret fallback to mark this connected, got %+v", resolved[0])
+	}
+	if resolved[0].Headers["Authorization"] != "Bearer sk_live_admin" {
+		t.Fatalf("expected the static secret injected as a Bearer header, got %+v", resolved[0].Headers)
+	}
+	if len(oauthStub.calls) != 1 {
+		t.Fatalf("expected the OAuth resolver to still be tried first (and once), got %v", oauthStub.calls)
+	}
+	if len(staticStub.calls) != 1 {
+		t.Fatalf("expected the static resolver to be tried after the OAuth one came back empty, got %v", staticStub.calls)
+	}
+}
+
+// TestResolveServerConfigsPrefersOAuthOverStaticWhenBothWired proves the two
+// resolvers don't double-inject or fight when a genuinely OAuth kind (never
+// having a static account) is resolved with both wired, as production does.
+func TestResolveServerConfigsPrefersOAuthOverStaticWhenBothWired(t *testing.T) {
+	t.Setenv(testEncryptionEnvVar, testEncryptionKey)
+	env := newTestEnv(t)
+
+	if _, err := env.svc.CreateServerConfig(context.Background(), env.adminPrincipal, CreateServerConfigParams{
+		OrganizationID: env.orgID, Name: "slack-actions", ServerType: "http", URL: "https://mcp.slack.com/mcp",
+		ConnectorKind: "slack",
+	}); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	oauthStub := &stubConnectorTokenResolver{tokensByUser: map[string]string{
+		env.adminPrincipal.User.ID: "oauth-token",
+	}}
+	staticStub := &stubStaticSecretResolver{} // slack is never a static kind - no accounts
+	env.svc.SetConnectorTokenResolver(oauthStub)
+	env.svc.SetStaticSecretResolver(staticStub)
+
+	resolved, err := env.svc.ResolveServerConfigs(context.Background(), env.adminPrincipal, env.orgID)
+	if err != nil || len(resolved) != 1 {
+		t.Fatalf("resolve: %v %+v", err, resolved)
+	}
+	if resolved[0].Headers["Authorization"] != "Bearer oauth-token" {
+		t.Fatalf("expected the OAuth token injected, got %+v", resolved[0].Headers)
+	}
+	if len(staticStub.calls) != 0 {
+		t.Fatalf("expected the static resolver to never be tried once the OAuth one already connected, got %v", staticStub.calls)
+	}
+}
+
 func TestHeadersEncryptionRoundTrip(t *testing.T) {
 	t.Setenv(testEncryptionEnvVar, testEncryptionKey)
 	env := newTestEnv(t)

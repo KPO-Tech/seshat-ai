@@ -37,22 +37,19 @@ const SERVER_TYPE_OPTIONS = [
 // See sdb.MCPServerConfig.ConnectorKind's doc comment - when set, resolving
 // this server injects a per-caller Authorization: Bearer header from that
 // person's own connected agent_action account (Workspace → Connections).
-// The kinds below (past teams/gmail) all have a genuine official, remote,
-// per-user-OAuth MCP server from the vendor itself - researched live and
-// recorded in helps/roadmap.md's "MCP Server Ledger" entry, not guessed.
-// Kinds whose vendor has no such server (Zendesk, Telegram, Discord,
+// The kinds below (past teams/gmail) all have a genuine official, remote MCP
+// server from the vendor itself - researched live and recorded in
+// helps/roadmap.md's "MCP Server Ledger" entry, not guessed. Most
+// personalize via OAuth (mcpregistry's injectConnectorToken →
+// connectors.Service.AccessTokenForUser); Stripe/Trello/Airtable
+// personalize via a static API key the employee pastes once instead
+// (StaticSecretForUser) - their vendor's own MCP server takes a Bearer key
+// directly, no OAuth redirect needed. Both paths are tried automatically at
+// resolve time, so the picker below doesn't need to say which is which.
+// Kinds whose vendor has no such server at all (Zendesk, Telegram, Discord,
 // SendGrid, Mailgun, Postmark) are deliberately not listed here - the
 // dataflow nodes built earlier in this initiative remain the only
-// integration path for those. Stripe/Trello/Airtable are deliberately not
-// listed either, despite being real connector kinds elsewhere (Workspace →
-// Connections) - they're static-secret agent_action accounts (see
-// connectors/static_agent_account.go), and the Bearer-injection path this
-// dropdown feeds (mcpregistry's injectConnectorToken →
-// connectors.Service.AccessTokenForUser) is OAuth-only. Offering them here
-// produced a server that silently never got its header injected - found
-// 2026-09-03 while auditing this page, removed rather than wired up, since
-// bridging a static secret into MCP resolve would need its own resolver
-// path (StaticSecretForUser), not a one-line fix.
+// integration path for those.
 const CONNECTOR_KIND_OPTIONS = [
   { value: '', label: 'None (static config only)' },
   { value: 'gdrive', label: 'Google Drive' },
@@ -71,6 +68,9 @@ const CONNECTOR_KIND_OPTIONS = [
   { value: 'intercom', label: 'Intercom' },
   { value: 'pipedrive', label: 'Pipedrive' },
   { value: 'salesforce', label: 'Salesforce' },
+  { value: 'stripe', label: 'Stripe' },
+  { value: 'trello', label: 'Trello' },
+  { value: 'airtable', label: 'Airtable' },
 ]
 
 // outlook/teams/gmail are self-hosted by this seshat-server itself (see
@@ -105,6 +105,9 @@ const VENDOR_HOSTED_MCP_URL: Partial<Record<string, string>> = {
   asana: 'https://mcp.asana.com/v2/mcp',
   intercom: 'https://mcp.intercom.com/mcp',
   pipedrive: 'https://mcp.pipedrive.ai/mcp',
+  stripe: 'https://mcp.stripe.com',
+  trello: 'https://mcp.trello.com/v1',
+  airtable: 'https://mcp.airtable.com/mcp',
 }
 
 export function MCPServersPage() {

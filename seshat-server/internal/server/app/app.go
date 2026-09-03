@@ -189,6 +189,11 @@ func New(cfg serverconfig.Config) (*App, error) {
 	// Bearer token bridged in from their own connected account — see
 	// mcpregistry.Service.SetConnectorTokenResolver's doc comment.
 	mcpRegistryService.SetConnectorTokenResolver(connectorsService)
+	// Same bridging for static-secret connector kinds (stripe, trello,
+	// airtable, ...) whose own official MCP server takes a pasted API key
+	// instead of OAuth — see mcpregistry.Service.SetStaticSecretResolver's
+	// doc comment.
+	mcpRegistryService.SetStaticSecretResolver(connectorsService)
 	// Lets cloud-targeted job execution bridge its creator's own per-
 	// employee MCP servers/tokens (Slack/Outlook/Teams/Gmail, ...) the same
 	// way workspacechat's interactive sessions already do — see

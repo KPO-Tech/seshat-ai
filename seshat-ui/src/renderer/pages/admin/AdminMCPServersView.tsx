@@ -12,10 +12,16 @@ import type { AdminMCPServerConfig } from '@/api/types'
 
 const SERVER_TYPE_OPTIONS = ['stdio', 'http', 'sse', 'websocket']
 
-// connector_kind options - only the 20 OAuth-based connector kinds have a
-// matching connected-account to bridge in as a per-employee Bearer token
-// (see connectors.oauthConnectorKinds on the seshat-server side) - the 8
-// static kinds have no OAuth token to inject here.
+// connector_kind options - each one has a genuine official MCP server from
+// the vendor itself (see helps/roadmap.md's "MCP Server Ledger"). Most
+// personalize via OAuth (connectors.oauthConnectorKinds on the seshat-server
+// side, bridged through connectors.Service.AccessTokenForUser);
+// Stripe/Trello/Airtable personalize via a static API key the employee
+// pastes once instead (connectors.staticAgentActionKinds, bridged through
+// StaticSecretForUser) - their vendor's own MCP server takes a Bearer key
+// directly, no OAuth redirect needed. mcpregistry's injectConnectorToken
+// tries both automatically at resolve time, so this list doesn't need to
+// say which path a given kind uses.
 const CONNECTOR_KIND_OPTIONS = [
   { value: '', label: 'None (static config only)' },
   { value: 'gdrive', label: 'Google Drive' },
@@ -38,6 +44,9 @@ const CONNECTOR_KIND_OPTIONS = [
   { value: 'pipedrive', label: 'Pipedrive' },
   { value: 'zendesk', label: 'Zendesk' },
   { value: 'salesforce', label: 'Salesforce' },
+  { value: 'stripe', label: 'Stripe' },
+  { value: 'trello', label: 'Trello' },
+  { value: 'airtable', label: 'Airtable' },
 ]
 
 // Same pre-fill convenience as seshat-console's MCPServersPage.tsx
@@ -57,6 +66,9 @@ const VENDOR_HOSTED_MCP_URL: Partial<Record<string, string>> = {
   asana: 'https://mcp.asana.com/v2/mcp',
   intercom: 'https://mcp.intercom.com/mcp',
   pipedrive: 'https://mcp.pipedrive.ai/mcp',
+  stripe: 'https://mcp.stripe.com',
+  trello: 'https://mcp.trello.com/v1',
+  airtable: 'https://mcp.airtable.com/mcp',
 }
 
 // AdminMCPServersView — Admin Console's MCP Servers tab. Every write here

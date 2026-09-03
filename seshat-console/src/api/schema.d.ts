@@ -4015,7 +4015,7 @@ export interface components {
              * @description When set, this server's headers are personalized per caller at resolve time - see ResolvedMCPServerConfig.connected.
              * @enum {string}
              */
-            connector_kind?: "" | "gdrive" | "sharepoint" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "github" | "linear" | "hubspot" | "jira" | "confluence" | "asana" | "intercom" | "pipedrive" | "salesforce";
+            connector_kind?: "" | "gdrive" | "sharepoint" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "github" | "linear" | "hubspot" | "jira" | "confluence" | "asana" | "intercom" | "pipedrive" | "salesforce" | "stripe" | "trello" | "airtable";
         };
         /** @description An org-scoped PreToolUse hook - see docs/helps/audit-2026-08-29-openwork-den-comparison.md § 7. Desktop-only: never resolved or executed by seshat-server's own workspacechat, since the SDK's hook runner executes Command via plain os/exec with no sandboxing. */
         HookConfig: {
@@ -4180,7 +4180,7 @@ export interface components {
             timeout_secs?: number;
             icon?: string;
             /** @enum {string} */
-            connector_kind?: "" | "gdrive" | "sharepoint" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "github" | "linear" | "hubspot" | "jira" | "confluence" | "asana" | "intercom" | "pipedrive" | "salesforce";
+            connector_kind?: "" | "gdrive" | "sharepoint" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "github" | "linear" | "hubspot" | "jira" | "confluence" | "asana" | "intercom" | "pipedrive" | "salesforce" | "stripe" | "trello" | "airtable";
             /** @description Always true when connector_kind is empty. When connector_kind is set, true only if the calling principal has their own connected agent_action ConnectorAccount for that kind - false means this server was returned but has no Bearer header injected (the calling employee hasn't connected their own account yet). */
             connected?: boolean;
         };
@@ -4212,7 +4212,7 @@ export interface components {
              * @description See MCPServerConfig.connector_kind. Empty (default) means static config only.
              * @enum {string}
              */
-            connector_kind?: "" | "gdrive" | "sharepoint" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "github" | "linear" | "hubspot" | "jira" | "confluence" | "asana" | "intercom" | "pipedrive" | "salesforce";
+            connector_kind?: "" | "gdrive" | "sharepoint" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "github" | "linear" | "hubspot" | "jira" | "confluence" | "asana" | "intercom" | "pipedrive" | "salesforce" | "stripe" | "trello" | "airtable";
         };
         MCPServerConfigUpdateInput: {
             display_name?: string;
@@ -4232,7 +4232,7 @@ export interface components {
             timeout_secs?: number;
             icon?: string;
             /** @enum {string} */
-            connector_kind?: "" | "gdrive" | "sharepoint" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "github" | "linear" | "hubspot" | "jira" | "confluence" | "asana" | "intercom" | "pipedrive" | "salesforce";
+            connector_kind?: "" | "gdrive" | "sharepoint" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "github" | "linear" | "hubspot" | "jira" | "confluence" | "asana" | "intercom" | "pipedrive" | "salesforce" | "stripe" | "trello" | "airtable";
         };
         Corpus: {
             id?: string;
