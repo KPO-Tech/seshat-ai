@@ -303,7 +303,13 @@ export const WorkspaceChatMessage = memo(function WorkspaceChatMessage({ message
   const isUser = message.role === 'user'
   const timeLabel = formatMessageTime(message.createdAt)
   const trace = message.trace ?? []
+  // A turn that's still 'draft' but has produced no trace step and no text
+  // yet (only a thinking delta, or nothing at all right after sending) has
+  // no visible sign of activity otherwise - the send button's own spinner
+  // is easy to miss, and there's nothing else on the page that changes.
+  const isGenerating = message.status === 'draft'
   const showDoneMarker = trace.length > 0 && (message.content.length > 0 || message.status !== 'draft')
+  const showGeneratingMarker = isGenerating && !message.content && !showDoneMarker
 
   return (
     <article className={`workspace-thread-message workspace-thread-message--${message.role}`}>
@@ -334,12 +340,19 @@ export const WorkspaceChatMessage = memo(function WorkspaceChatMessage({ message
           ) : null}
         </div>
 
-        {trace.length > 0 ? (
+        {trace.length > 0 || showGeneratingMarker ? (
           <div className="workspace-trace">
             {trace.map((step) => (
               <TraceStepRow key={step.id} step={step} />
             ))}
-            {showDoneMarker ? (
+            {showGeneratingMarker ? (
+              <div className="workspace-trace-step workspace-trace-step--generating">
+                <span className="workspace-trace-step__icon">
+                  <LoadingOutlined />
+                </span>
+                <span className="workspace-trace-step__text">Generating…</span>
+              </div>
+            ) : showDoneMarker ? (
               <div className="workspace-trace-step workspace-trace-step--done">
                 <span className="workspace-trace-step__icon">
                   <CheckCircleOutlined />

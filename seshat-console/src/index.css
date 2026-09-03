@@ -386,6 +386,19 @@ body {
   color: #22c55e;
 }
 
+.workspace-trace-step--generating {
+  animation: workspace-generating-pulse 1.6s ease-in-out infinite;
+}
+
+.workspace-trace-step--generating .workspace-trace-step__icon {
+  color: #D9691E;
+}
+
+@keyframes workspace-generating-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
 .workspace-trace-step--failed .workspace-trace-step__icon {
   color: #DC2626;
 }

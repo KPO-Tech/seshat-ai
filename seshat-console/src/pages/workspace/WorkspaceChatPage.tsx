@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Input, Select, Space, Tooltip, Typography } from 'antd'
-import { ArrowDownOutlined, PlusOutlined, SendOutlined } from '@ant-design/icons'
+import { ArrowDownOutlined, PlusOutlined, SendOutlined, StopFilled } from '@ant-design/icons'
 import { useAgentPresetsList } from '@/api/agentPresets'
 import { useUsableProviderSettingsList } from '@/api/providerSettings'
 import { ProviderIcon } from '@/components/ProviderIcon'
@@ -386,6 +386,26 @@ export function WorkspaceChatPage() {
   const currentTitle = chatSession?.title && chatSession.title !== 'Untitled scenario' ? chatSession.title : 'New chat'
   const hasMessages = Boolean(chatSession && chatSession.messages.length > 0)
 
+  // stopStreaming() alone only tears down the fetch/reducer plumbing - it
+  // never touches isGenerating or the in-flight draft message, which was
+  // fine as long as it only ran on cleanup paths (org switch, unmount,
+  // handleReset - each already resets that state some other way). Wiring
+  // it to a live Stop button needed both of those handled here instead,
+  // otherwise the composer would stay stuck showing a spinner and the
+  // draft message would stay 'draft' (and thus "Generating…") forever.
+  const handleStop = () => {
+    stopStreaming()
+    setIsGenerating(false)
+    setChatSession((current) => {
+      if (!current) return current
+      const lastIndex = current.messages.length - 1
+      if (lastIndex < 0) return current
+      const last = current.messages[lastIndex]
+      if (last.role !== 'assistant' || last.status !== 'draft') return current
+      return replaceLastMessage(current, { ...last, status: 'complete', content: last.content || '_Stopped._' })
+    })
+  }
+
   const handleReset = () => {
     stopStreaming()
     setIsGenerating(false)
@@ -676,14 +696,14 @@ export function WorkspaceChatPage() {
                   size="small"
                 />
 
-                <Tooltip title={isGenerating ? 'Generating…' : 'Send message'}>
+                <Tooltip title={isGenerating ? 'Stop generating' : 'Send message'}>
                   <Button
                     type="primary"
-                    icon={<SendOutlined />}
+                    danger={isGenerating}
+                    icon={isGenerating ? <StopFilled /> : <SendOutlined />}
                     className="workspace-chat-composer__send"
-                    onClick={handleSend}
-                    loading={isGenerating}
-                    disabled={isGenerating || isLoadingHistory || !draftPrompt.trim()}
+                    onClick={isGenerating ? handleStop : handleSend}
+                    disabled={isLoadingHistory || (!isGenerating && !draftPrompt.trim())}
                   />
                 </Tooltip>
               </div>
