@@ -1,0 +1,31 @@
+# Roles
+
+`/orgs/:id/team/roles` — Organization → Team & Access → Roles
+
+## What it's for
+
+Named, reusable bundles of permissions. Four system roles always exist —
+**owner**, **admin**, **member**, **viewer** — and can't be edited,
+renamed, or deleted (no row actions appear for them). An organization
+can also define its own custom roles.
+
+## How to use it
+
+"New role" needs:
+
+- A **code**, used internally — for example when a
+  [policy binding](./policies.mdx) targets this role. Renaming it later
+  cascades everywhere it's referenced, so pick something stable up
+  front.
+- A display **name**.
+- An optional **description** (capped at 200 characters), shown in its
+  own table column.
+- Which **permissions** it grants, picked from a checklist.
+
+## See also
+
+- [Policies](./policies.mdx) — how a role's permissions actually get
+  enforced, and how to grant permissions more narrowly than a whole role
+  at once.
+- [Memberships](./memberships.mdx) — where a role gets assigned to a
+  specific person.

@@ -1,0 +1,32 @@
+# Policies (Policy Bindings)
+
+`/orgs/:id/team/policies` — Organization → Team & Access → Policies
+
+## What it's for
+
+The actual mechanism that grants access. A policy binding attaches a set
+of permissions to a *subject* — a specific user, an entire
+[team](../team-and-access/teams.mdx), or a [role](./roles.mdx) — optionally
+narrowed to one specific resource (a single knowledge corpus or a single
+AI provider setting) instead of applying organization-wide.
+
+## How this relates to Roles
+
+Assigning someone a [Role](./roles.mdx) (via
+[Memberships](./memberships.mdx)) is really just a convenient way to
+grant that role's whole permission bundle at once. A policy binding can
+do the same thing more narrowly — for example, "give this one team read
+access to this one corpus" — without touching anyone's role at all.
+Roles are the coarse, everyday tool; policy bindings are for anything
+that needs to be scoped tighter than "organization-wide."
+
+## How to use it
+
+"New binding" needs:
+
+- A **name**, and an optional **description** (capped at 200 characters,
+  shown directly under the name in the table).
+- A **subject type** (User, Team, or Role) and the specific subject.
+- The **permissions** to grant.
+- An optional **scope** — leave it as "Organization-wide" unless you're
+  restricting this grant to one specific corpus or provider setting.

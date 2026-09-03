@@ -1,0 +1,33 @@
+# Teams
+
+`/orgs/:id/team/teams` — Organization → Team & Access → Teams
+
+## What it's for
+
+Grouping members for policy assignment and general structure. A member
+can belong to any number of teams, or none — teams are optional.
+
+## How to use it
+
+"New team" needs a name and a slug:
+
+- The slug fills in automatically as you type the name, using a
+  lowercase-hyphenated version of it. Edit it yourself if you want
+  something different — once you touch the slug field directly, it stops
+  following the name.
+- Once a team already exists, its slug never auto-changes again, since
+  other things (like [Policy Bindings](./policies.mdx)) may already
+  reference it.
+
+Description is optional, capped at 200 characters, and shown as its own
+column in the list (hover a truncated one for the full text).
+
+Members can be added right in the same form — either when creating the
+team or later via Edit, which reopens the same form with the current
+members pre-filled.
+
+## See also
+
+- [Policies](./policies.mdx) — a team can be the *subject* of a policy
+  binding, granting every member of that team the same permissions at
+  once.
