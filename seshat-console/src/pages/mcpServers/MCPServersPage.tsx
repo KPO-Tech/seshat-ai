@@ -37,28 +37,35 @@ const SERVER_TYPE_OPTIONS = [
 // See sdb.MCPServerConfig.ConnectorKind's doc comment - when set, resolving
 // this server injects a per-caller Authorization: Bearer header from that
 // person's own connected agent_action account (Workspace → Connections).
-// The kinds below (past teams/gmail) all have a genuine official, remote MCP
-// server from the vendor itself - researched live and recorded in
-// helps/roadmap.md's "MCP Server Ledger" entry, not guessed. Most
-// personalize via OAuth (mcpregistry's injectConnectorToken →
-// connectors.Service.AccessTokenForUser); Stripe/Trello/Airtable
-// personalize via a static API key the employee pastes once instead
-// (StaticSecretForUser) - their vendor's own MCP server takes a Bearer key
-// directly, no OAuth redirect needed. Both paths are tried automatically at
-// resolve time, so the picker below doesn't need to say which is which.
-// Kinds whose vendor has no such server at all (Zendesk, Telegram, Discord,
-// SendGrid, Mailgun, Postmark) are deliberately not listed here - the
-// dataflow nodes built earlier in this initiative remain the only
-// integration path for those.
+// Every kind below has a genuine official MCP server from the vendor -
+// researched live and recorded in helps/roadmap.md's "MCP Server Ledger"
+// entry, not guessed. Most personalize via OAuth (mcpregistry's
+// injectConnectorToken → connectors.Service.AccessTokenForUser);
+// Stripe/Trello/Airtable personalize via a static API key the employee
+// pastes once instead (StaticSecretForUser) - their vendor's own MCP
+// server takes a Bearer key directly, no OAuth redirect needed. Both
+// paths are tried automatically at resolve time, so the picker below
+// doesn't need to say which is which.
+// OneDrive/Google Sheets/Google Calendar are real but Developer Preview at
+// the vendor (not GA, no fixed public URL to pre-fill - see
+// VENDOR_HOSTED_MCP_URL below) - listed anyway, same "admin pastes their
+// own" precedent as Salesforce, for an admin with preview access.
+// Kinds whose vendor has no MCP server at all, preview or GA (Zendesk,
+// Telegram, Discord, SendGrid, Mailgun, Postmark) are deliberately not
+// listed here - the dataflow nodes built earlier in this initiative
+// remain the only integration path for those.
 const CONNECTOR_KIND_OPTIONS = [
   { value: '', label: 'None (static config only)' },
   { value: 'gdrive', label: 'Google Drive' },
   { value: 'sharepoint', label: 'SharePoint' },
+  { value: 'onedrive', label: 'OneDrive' },
   { value: 'slack', label: 'Slack' },
   { value: 'outlook', label: 'Outlook' },
   { value: 'teams', label: 'Microsoft Teams' },
   { value: 'gmail', label: 'Gmail' },
   { value: 'notion', label: 'Notion' },
+  { value: 'gsheets', label: 'Google Sheets' },
+  { value: 'gcalendar', label: 'Google Calendar' },
   { value: 'github', label: 'GitHub' },
   { value: 'linear', label: 'Linear' },
   { value: 'hubspot', label: 'HubSpot' },

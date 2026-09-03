@@ -22,6 +22,13 @@ const SERVER_TYPE_OPTIONS = ['stdio', 'http', 'sse', 'websocket']
 // directly, no OAuth redirect needed. mcpregistry's injectConnectorToken
 // tries both automatically at resolve time, so this list doesn't need to
 // say which path a given kind uses.
+// OneDrive/Google Sheets/Google Calendar are real but Developer Preview at
+// the vendor (not GA, no fixed public URL to pre-fill) - listed anyway,
+// same "admin pastes their own" precedent as Salesforce, for an admin with
+// preview access. Zendesk is deliberately NOT listed (removed 2026-09-03,
+// was a real inconsistency with seshat-console's own list) - unlike the
+// three above, it has no MCP server at all, preview or GA; the
+// zendesk_create_ticket dataflow node remains the only integration path.
 const CONNECTOR_KIND_OPTIONS = [
   { value: '', label: 'None (static config only)' },
   { value: 'gdrive', label: 'Google Drive' },
@@ -42,7 +49,6 @@ const CONNECTOR_KIND_OPTIONS = [
   { value: 'hubspot', label: 'HubSpot' },
   { value: 'intercom', label: 'Intercom' },
   { value: 'pipedrive', label: 'Pipedrive' },
-  { value: 'zendesk', label: 'Zendesk' },
   { value: 'salesforce', label: 'Salesforce' },
   { value: 'stripe', label: 'Stripe' },
   { value: 'trello', label: 'Trello' },
