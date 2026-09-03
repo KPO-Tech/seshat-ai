@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -39,6 +40,11 @@ var oauthConnectorKinds = map[string]bool{
 	string(gsheetsKind):    true,
 	string(gcalendarKind):  true,
 	string(jiraKind):       true,
+	string(githubKind):     true,
+	string(asanaKind):      true,
+	string(linearKind):     true,
+	string(hubspotKind):    true,
+	string(intercomKind):   true,
 }
 
 // agentActionOnlyKinds are OAuth connector kinds with no Discover/Sync -
@@ -54,12 +60,17 @@ var agentActionOnlyKinds = map[string]bool{
 	string(gsheetsKind):   true,
 	string(gcalendarKind): true,
 	string(jiraKind):      true,
+	string(githubKind):    true,
+	string(asanaKind):     true,
+	string(linearKind):    true,
+	string(hubspotKind):   true,
+	string(intercomKind):  true,
 }
 
 func validateOAuthKind(kind string) (string, error) {
 	kind = strings.ToLower(strings.TrimSpace(kind))
 	if !oauthConnectorKinds[kind] {
-		return "", ErrInvalidInput(fmt.Sprintf("unsupported oauth connector kind %q (must be one of \"gdrive\", \"sharepoint\", \"onedrive\", \"confluence\", \"slack\", \"outlook\", \"teams\", \"gmail\", \"notion\", \"gsheets\", \"gcalendar\", \"jira\")", kind))
+		return "", ErrInvalidInput(fmt.Sprintf("unsupported oauth connector kind %q (must be one of \"gdrive\", \"sharepoint\", \"onedrive\", \"confluence\", \"slack\", \"outlook\", \"teams\", \"gmail\", \"notion\", \"gsheets\", \"gcalendar\", \"jira\", \"github\", \"asana\", \"linear\", \"hubspot\", \"intercom\")", kind))
 	}
 	return kind, nil
 }
@@ -570,6 +581,33 @@ func connectorOAuthEndpoint(kind string) oauth2.Endpoint {
 			AuthURL:  "https://api.notion.com/v1/oauth/authorize",
 			TokenURL: "https://api.notion.com/v1/oauth/token",
 		}
+	case string(githubKind):
+		return oauth2.Endpoint{
+			AuthURL:  "https://github.com/login/oauth/authorize",
+			TokenURL: "https://github.com/login/oauth/access_token",
+		}
+	case string(asanaKind):
+		return oauth2.Endpoint{
+			AuthURL:  "https://app.asana.com/-/oauth_authorize",
+			TokenURL: "https://app.asana.com/-/oauth_token",
+		}
+	case string(linearKind):
+		return oauth2.Endpoint{
+			AuthURL:  "https://linear.app/oauth/authorize",
+			TokenURL: "https://api.linear.app/oauth/token",
+		}
+	case string(hubspotKind):
+		return oauth2.Endpoint{
+			AuthURL:  "https://app.hubspot.com/oauth/authorize",
+			TokenURL: "https://api.hubapi.com/oauth/v1/token",
+		}
+	case string(intercomKind):
+		// US host only - see intercomKind's doc comment for the EU/AU
+		// limitation.
+		return oauth2.Endpoint{
+			AuthURL:  "https://app.intercom.com/oauth",
+			TokenURL: "https://api.intercom.io/auth/eagle/token",
+		}
 	default:
 		return oauth2.Endpoint{}
 	}
@@ -601,6 +639,16 @@ func connectorOAuthScopes(kind string) []string {
 		return gcalendarScopes
 	case string(jiraKind):
 		return jiraScopes
+	case string(githubKind):
+		return githubScopes
+	case string(asanaKind):
+		return asanaScopes
+	case string(linearKind):
+		return linearScopes
+	case string(hubspotKind):
+		return hubspotScopes
+	case string(intercomKind):
+		return intercomScopes
 	default:
 		return nil
 	}
@@ -621,6 +669,16 @@ func fetchConnectorIdentity(ctx context.Context, kind string, cfg *oauth2.Config
 		return fetchAtlassianAccountEmail(ctx, cfg, token)
 	case string(notionKind):
 		return fetchNotionIdentity(ctx, cfg, token)
+	case string(githubKind):
+		return fetchGitHubIdentity(ctx, cfg, token)
+	case string(asanaKind):
+		return fetchAsanaIdentity(ctx, cfg, token)
+	case string(linearKind):
+		return fetchLinearIdentity(ctx, cfg, token)
+	case string(hubspotKind):
+		return fetchHubSpotIdentity(ctx, cfg, token)
+	case string(intercomKind):
+		return fetchIntercomIdentity(ctx, cfg, token)
 	default:
 		return "", fmt.Errorf("unsupported kind %q", kind)
 	}
@@ -697,6 +755,175 @@ func fetchAtlassianAccountEmail(ctx context.Context, cfg *oauth2.Config, token *
 	}
 	if info.Email == "" {
 		return "", fmt.Errorf("no email in atlassian /me response")
+	}
+	return info.Email, nil
+}
+
+// fetchGitHubIdentity resolves the connected GitHub login (not email -
+// GitHub accounts frequently have no public/verified email at all, unlike
+// every Google/Microsoft/Atlassian account this package already handles -
+// login is GitHub's own stable, always-present identifier). GitHub
+// requires a User-Agent header on every API request (undocumented-looking
+// but real: a request with none is rejected outright) - verified against
+// GitHub's REST API docs before writing this, not discovered by a failing
+// request.
+func fetchGitHubIdentity(ctx context.Context, cfg *oauth2.Config, token *oauth2.Token) (string, error) {
+	client := cfg.Client(ctx, token)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.github.com/user", nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("User-Agent", "seshat-ai")
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		return "", fmt.Errorf("github /user returned %d", resp.StatusCode)
+	}
+	var info struct {
+		Login string `json:"login"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		return "", err
+	}
+	if info.Login == "" {
+		return "", fmt.Errorf("no login in github /user response")
+	}
+	return info.Login, nil
+}
+
+// fetchAsanaIdentity uses the ordinary REST API's GET /users/me (not a
+// special OAuth-only endpoint) - verified against Asana's API reference
+// before writing this, after confirming Asana's OAuth doc page alone
+// documents no identity endpoint at all.
+func fetchAsanaIdentity(ctx context.Context, cfg *oauth2.Config, token *oauth2.Token) (string, error) {
+	client := cfg.Client(ctx, token)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://app.asana.com/api/1.0/users/me", nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		return "", fmt.Errorf("asana /users/me returned %d", resp.StatusCode)
+	}
+	var info struct {
+		Data struct {
+			Email string `json:"email"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		return "", err
+	}
+	if info.Data.Email == "" {
+		return "", fmt.Errorf("no email in asana /users/me response")
+	}
+	return info.Data.Email, nil
+}
+
+// fetchLinearIdentity queries Linear's GraphQL API directly (a plain HTTP
+// POST, not a generated SDK client - no official Go SDK is vendored in
+// this module, matching fetchMicrosoftAccountUPN's own reasoning) for the
+// connected user's email via the viewer field - Linear's API is GraphQL-
+// only, there is no separate REST identity endpoint.
+func fetchLinearIdentity(ctx context.Context, cfg *oauth2.Config, token *oauth2.Token) (string, error) {
+	client := cfg.Client(ctx, token)
+	body, err := json.Marshal(map[string]string{"query": "{ viewer { email } }"})
+	if err != nil {
+		return "", err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.linear.app/graphql", strings.NewReader(string(body)))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		return "", fmt.Errorf("linear graphql returned %d", resp.StatusCode)
+	}
+	var result struct {
+		Data struct {
+			Viewer struct {
+				Email string `json:"email"`
+			} `json:"viewer"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", err
+	}
+	if result.Data.Viewer.Email == "" {
+		return "", fmt.Errorf("no email in linear viewer response")
+	}
+	return result.Data.Viewer.Email, nil
+}
+
+// fetchHubSpotIdentity uses HubSpot's token-introspection endpoint, which
+// (unlike every other identity lookup in this file) takes the access
+// token as a URL path segment rather than a Bearer Authorization header -
+// verified against HubSpot's OAuth docs before writing this, a genuinely
+// different shape from the rest of this file so cfg.Client is
+// deliberately not used here (it would add a Bearer header this endpoint
+// doesn't expect).
+func fetchHubSpotIdentity(ctx context.Context, cfg *oauth2.Config, token *oauth2.Token) (string, error) {
+	requestURL := "https://api.hubapi.com/oauth/v1/access-tokens/" + url.PathEscape(token.AccessToken)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		return "", fmt.Errorf("hubspot access-tokens introspection returned %d", resp.StatusCode)
+	}
+	var info struct {
+		User string `json:"user"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		return "", err
+	}
+	if info.User == "" {
+		return "", fmt.Errorf("no user in hubspot access-tokens introspection response")
+	}
+	return info.User, nil
+}
+
+// fetchIntercomIdentity resolves the connected admin's email via
+// Intercom's /me endpoint.
+func fetchIntercomIdentity(ctx context.Context, cfg *oauth2.Config, token *oauth2.Token) (string, error) {
+	client := cfg.Client(ctx, token)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.intercom.io/me", nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		return "", fmt.Errorf("intercom /me returned %d", resp.StatusCode)
+	}
+	var info struct {
+		Email string `json:"email"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		return "", err
+	}
+	if info.Email == "" {
+		return "", fmt.Errorf("no email in intercom /me response")
 	}
 	return info.Email, nil
 }

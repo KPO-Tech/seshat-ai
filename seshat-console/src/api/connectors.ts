@@ -29,6 +29,11 @@ export type OAuthConnectorKind =
   | 'gsheets'
   | 'gcalendar'
   | 'jira'
+  | 'github'
+  | 'asana'
+  | 'linear'
+  | 'hubspot'
+  | 'intercom'
 
 // StaticConnectorKind lists every kind that authenticates with a single
 // static secret instead of an OAuth2 flow - see connectors.Service's

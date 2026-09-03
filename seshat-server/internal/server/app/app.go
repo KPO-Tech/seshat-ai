@@ -174,6 +174,11 @@ func New(cfg serverconfig.Config) (*App, error) {
 	nodeRegistry.Register("discord_send_message", automation.NewDiscordSendMessageNode(connectorsService))
 	nodeRegistry.Register("trello_create_card", automation.NewTrelloCreateCardNode(connectorsService))
 	nodeRegistry.Register("airtable_create_record", automation.NewAirtableCreateRecordNode(connectorsService))
+	nodeRegistry.Register("github_create_issue", automation.NewGitHubCreateIssueNode(connectorsService))
+	nodeRegistry.Register("asana_create_task", automation.NewAsanaCreateTaskNode(connectorsService))
+	nodeRegistry.Register("linear_create_issue", automation.NewLinearCreateIssueNode(connectorsService))
+	nodeRegistry.Register("hubspot_create_contact", automation.NewHubSpotCreateContactNode(connectorsService))
+	nodeRegistry.Register("intercom_create_contact", automation.NewIntercomCreateContactNode(connectorsService))
 
 	mcpRegistryService := mcpregistry.New(database, iamService)
 	hookRegistryService := hookregistry.New(database, iamService)

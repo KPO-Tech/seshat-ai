@@ -2382,7 +2382,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira";
+                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "github" | "asana" | "linear" | "hubspot" | "intercom";
             };
             cookie?: never;
         };
@@ -2404,7 +2404,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira";
+                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "github" | "asana" | "linear" | "hubspot" | "intercom";
             };
             cookie?: never;
         };
@@ -2426,7 +2426,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira";
+                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "github" | "asana" | "linear" | "hubspot" | "intercom";
             };
             cookie?: never;
         };
@@ -4280,7 +4280,7 @@ export interface components {
             /** @description Set only for a knowledge_sync-purposed account - empty for agent_action. */
             corpus_id?: string;
             /** @enum {string} */
-            kind?: "s3" | "azureblob" | "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "stripe" | "sendgrid" | "mailgun" | "postmark" | "telegram" | "discord" | "trello" | "airtable";
+            kind?: "s3" | "azureblob" | "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "github" | "asana" | "linear" | "hubspot" | "intercom" | "stripe" | "sendgrid" | "mailgun" | "postmark" | "telegram" | "discord" | "trello" | "airtable";
             /**
              * @description knowledge_sync: admin-run, feeds a corpus. agent_action: self-service, one employee's own account for their own future MCP-backed agent actions - see connectors' package doc.
              * @enum {string}
@@ -4374,7 +4374,7 @@ export interface components {
         /** @description The client secret is never returned, only whether one is configured. */
         ConnectorOAuthApp: {
             /** @enum {string} */
-            kind?: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira";
+            kind?: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "github" | "asana" | "linear" | "hubspot" | "intercom";
             client_id?: string;
             configured?: boolean;
             /** Format: date-time */
@@ -9226,7 +9226,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira";
+                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "github" | "asana" | "linear" | "hubspot" | "intercom";
             };
             cookie?: never;
         };
@@ -9254,7 +9254,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira";
+                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "github" | "asana" | "linear" | "hubspot" | "intercom";
             };
             cookie?: never;
         };
@@ -9288,7 +9288,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira";
+                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "github" | "asana" | "linear" | "hubspot" | "intercom";
             };
             cookie?: never;
         };

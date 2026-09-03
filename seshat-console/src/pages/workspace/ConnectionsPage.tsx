@@ -19,6 +19,11 @@ import {
   RobotOutlined,
   LayoutOutlined,
   DatabaseOutlined,
+  GithubOutlined,
+  CheckSquareOutlined,
+  BranchesOutlined,
+  ContactsOutlined,
+  CustomerServiceOutlined,
 } from '@ant-design/icons'
 import { useMyConnectorAccountsList, useDeleteMyConnectorAccount } from '@/api/myConnections'
 import { useBeginConnectorOAuth, useCreateStaticAgentAccount, type ConnectorAccount, type OAuthConnectorKind, type StaticConnectorKind } from '@/api/connectors'
@@ -39,6 +44,11 @@ const OAUTH_CONNECTOR_KINDS: OAuthConnectorKind[] = [
   'gsheets',
   'gcalendar',
   'jira',
+  'github',
+  'asana',
+  'linear',
+  'hubspot',
+  'intercom',
 ]
 
 const KIND_META: Record<OAuthConnectorKind, { label: string; icon: React.ReactNode }> = {
@@ -57,6 +67,11 @@ const KIND_META: Record<OAuthConnectorKind, { label: string; icon: React.ReactNo
   gsheets: { label: 'Google Sheets', icon: <TableOutlined /> },
   gcalendar: { label: 'Google Calendar', icon: <CalendarOutlined /> },
   jira: { label: 'Jira', icon: <ProjectOutlined /> },
+  github: { label: 'GitHub', icon: <GithubOutlined /> },
+  asana: { label: 'Asana', icon: <CheckSquareOutlined /> },
+  linear: { label: 'Linear', icon: <BranchesOutlined /> },
+  hubspot: { label: 'HubSpot', icon: <ContactsOutlined /> },
+  intercom: { label: 'Intercom', icon: <CustomerServiceOutlined /> },
 }
 
 // STATIC_CONNECTOR_KINDS lists every kind that authenticates with a single
