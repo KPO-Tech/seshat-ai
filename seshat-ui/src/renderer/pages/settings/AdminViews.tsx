@@ -7,7 +7,7 @@ function loadErrorMessage(err: unknown, fallback: string): string {
   return err instanceof ApiError ? err.message : fallback
 }
 
-type AuditEntry = {
+export type AuditEntry = {
   id: string
   actor_user_id: string
   action: string
@@ -18,7 +18,7 @@ type AuditEntry = {
   created_at: number
 }
 
-type AuditPage = {
+export type AuditPage = {
   logs: AuditEntry[]
   count: number
   limit: number

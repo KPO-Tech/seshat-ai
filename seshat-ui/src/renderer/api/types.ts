@@ -610,6 +610,24 @@ export type AdminOrganization = {
   status: string
 }
 
+// AdminAutomationJob mirrors seshat-server's automation.Job, proxied via
+// seshat-backend's /automation/jobs (internal/api/automation_jobs.go) - used
+// by Admin Console's Overview for a "Recent jobs" summary and by the
+// scheduled-job builder elsewhere.
+export type AdminAutomationJob = {
+  id: string
+  organization_id: string
+  name: string
+  status: string
+  trigger_type: string
+  execution_target: string
+  target_device_id?: string
+  last_run_at?: string
+  last_run_status?: string
+  next_run_at?: string
+  created_at?: string
+}
+
 export type AdminWorkspace = {
   id: string
   organization_id: string

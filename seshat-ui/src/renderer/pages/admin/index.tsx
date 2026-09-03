@@ -4,6 +4,7 @@ import {
   Api,
   Book,
   Browser,
+  Calendar,
   Computer,
   Earth,
   LinkCloud,
@@ -22,7 +23,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useUIStore } from '@/stores/ui'
 import { api } from '@/api/client'
 import { WorkspacePage } from '@/pages/workspace'
-import type { AdminOrganization } from '@/api/types'
+import type { AdminOrganization, AdminAutomationJob, EmbedderConfig } from '@/api/types'
 import { PROVIDERS_CSS } from '@/pages/settings/ProvidersView'
 import { AdminProvidersView } from '@/pages/admin/AdminProvidersView'
 import { AdminWebSearchView } from '@/pages/admin/AdminWebSearchView'
@@ -36,6 +37,7 @@ import { RuntimeView } from '@/pages/settings'
 import {
   AdminAuditView,
   ADMIN_CSS,
+  type AuditEntry,
 } from '@/pages/settings/AdminViews'
 import { SETTINGS_SHARED_CSS } from '@/pages/settings/SettingsNav'
 import { AdminConnectorsView } from '@/pages/admin/AdminConnectorsView'
@@ -286,8 +288,97 @@ function AdminPanel({ activeTab }: { activeTab: AdminTab }) {
   return null
 }
 
+// useAdminList — shared fetch shape behind every count/list this overview
+// shows: every proxy handler in this app returns `{ <key>: T[], count }`
+// (see admin_memberships.go, automation_jobs.go, knowledge.go, ...), so one
+// hook covers members/invitations/teams/jobs/devices/providers/connectors/
+// audit logs alike. count stays null on failure (e.g. standalone mode,
+// where the connected-only endpoints 400) rather than 0, so a real empty
+// state is never confused with "couldn't check" — see the "—" rendering in
+// StatTile/SetupRow below.
+function useAdminList<T>(path: string, key: string): { items: T[]; count: number | null; loading: boolean } {
+  const [items, setItems] = useState<T[]>([])
+  const [count, setCount] = useState<number | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    api.get<Record<string, unknown>>(path)
+      .then((data) => {
+        if (cancelled) return
+        const list = ((data?.[key] as T[] | undefined) ?? [])
+        setItems(list)
+        setCount(typeof data?.count === 'number' ? (data.count as number) : list.length)
+      })
+      .catch(() => {
+        if (cancelled) return
+        setItems([])
+        setCount(null)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [path, key])
+
+  return { items, count, loading }
+}
+
+function useEmbedderConfig(): { config: EmbedderConfig | null; loading: boolean } {
+  const [config, setConfig] = useState<EmbedderConfig | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    api.get<EmbedderConfig>('/settings/embedder')
+      .then((data) => {
+        if (!cancelled) setConfig(data ?? null)
+      })
+      .catch(() => {
+        if (!cancelled) setConfig(null)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  return { config, loading }
+}
+
+function timeAgo(ms: number): string {
+  const minutes = Math.round((Date.now() - ms) / 60000)
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.round(hours / 24)}d ago`
+}
+
+function jobStatusClass(status?: string): string {
+  if (status === 'completed') return 'adm-ok'
+  if (status === 'running' || status === 'claimed') return 'adm-warn'
+  if (status === 'failed') return 'adm-fail'
+  return 'adm-neutral'
+}
+
+type OverviewAlert = {
+  title: string
+  description: string
+  actionLabel: string
+  action: () => void
+  tone: 'warning' | 'info'
+}
+
 function AdminOverview() {
+  const navigate = useNavigate()
   const [organization, setOrganization] = useState<AdminOrganization | null>(null)
+  const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -303,33 +394,257 @@ function AdminOverview() {
     }
   }, [])
 
+  useEffect(() => {
+    let cancelled = false
+    api.get<SystemStatus>('/system/status')
+      .then((data) => {
+        if (!cancelled) setSystemStatus(data)
+      })
+      .catch(() => {
+        if (!cancelled) setSystemStatus(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const members = useAdminList<unknown>('/admin/memberships', 'memberships')
+  const invites = useAdminList<unknown>('/admin/invitations?status=pending', 'invitations')
+  const teams = useAdminList<unknown>('/admin/teams', 'teams')
+  const jobs = useAdminList<AdminAutomationJob>('/automation/jobs', 'jobs')
+  const devices = useAdminList<unknown>('/automation/devices', 'devices')
+  const providerSettings = useAdminList<unknown>('/admin/provider-settings', 'provider_settings')
+  const connectors = useAdminList<unknown>('/admin/connector-oauth-apps', 'oauth_apps')
+  const auditEvents = useAdminList<AuditEntry>('/audit/logs?limit=6&offset=0', 'logs')
+  const { config: embedderConfig } = useEmbedderConfig()
+
+  const isConnected = systemStatus?.mode === 'connected'
+
+  const alerts: OverviewAlert[] = []
+
+  if (systemStatus && !isConnected) {
+    alerts.push({
+      title: 'Not connected to an organization server',
+      description: 'Users, teams, invitations, providers, connectors, and every other organization feature need a connected Seshat Server before they show real data.',
+      actionLabel: 'Go to Cloud Automation',
+      action: () => navigate('/admin?tab=runtime'),
+      tone: 'warning',
+    })
+  }
+
+  if (isConnected && providerSettings.count === 0) {
+    alerts.push({
+      title: 'No provider credentials configured',
+      description: "Cloud jobs and chat will rely on this platform's default organization's credentials until this organization has its own.",
+      actionLabel: 'Open Providers',
+      action: () => navigate('/admin?tab=providers'),
+      tone: 'warning',
+    })
+  }
+
+  if (embedderConfig && !embedderConfig.is_configured) {
+    alerts.push({
+      title: 'No embedder configured on this device',
+      description: 'Knowledge ingestion and search will fall back to plain-text matching until this device has an embedder set up.',
+      actionLabel: 'Open Knowledge',
+      action: () => navigate('/admin?tab=knowledge'),
+      tone: 'info',
+    })
+  }
+
+  if (isConnected && jobs.count !== null && devices.count !== null && jobs.count > 0 && devices.count === 0) {
+    alerts.push({
+      title: 'Automation has jobs but no devices',
+      description: 'Device-targeted runs need at least one registered desktop to execute locally.',
+      actionLabel: 'Open Runtime',
+      action: () => navigate('/admin?tab=runtime'),
+      tone: 'warning',
+    })
+  }
+
   return (
     <div className="admin-overview">
       <header className="admin-page-head">
         <div>
-          <h1>Admin Console</h1>
+          <h1>{organization?.name || 'Admin Console'}</h1>
         </div>
         <div className="admin-org-chip">
           <span>Organization</span>
           <strong>{organization?.name || 'Current organization'}</strong>
         </div>
       </header>
-      <div className="admin-overview-grid">
-        <OverviewCard title="Organization" text="Current organization, members, invitations, teams, audit logs, and desktop policies." />
-        <OverviewCard title="Workspace" text="Agents, document collections, and MCP tools managed for the organization." />
-        <OverviewCard title="AI Core" text="Provider credentials, knowledge infrastructure, and multimodal capabilities." />
-        <OverviewCard title="Runtime" text="Web search policy, cloud automation, and local backend status." />
+
+      <div className="admin-stat-grid">
+        <StatTile label="Team Members" value={members.count} loading={members.loading} icon={<User size={17} />} sublabel="Active members" />
+        <StatTile label="Pending Invites" value={invites.count} loading={invites.loading} icon={<SendEmail size={17} />} sublabel="Awaiting accept" />
+        <StatTile label="Automation Jobs" value={jobs.count} loading={jobs.loading} icon={<Calendar size={17} />} sublabel="Configured tasks" />
+        <StatTile label="Worker Devices" value={devices.count} loading={devices.loading} icon={<Computer size={17} />} sublabel="Registered runners" />
+        <StatTile label="Teams" value={teams.count} loading={teams.loading} icon={<Peoples size={17} />} sublabel="Member groups" />
+      </div>
+
+      <section className="admin-section-card">
+        <h2>Needs Attention</h2>
+        {alerts.length > 0 ? (
+          <div className="admin-alert-grid">
+            {alerts.map((alert) => (
+              <div key={alert.title} className={`admin-alert admin-alert--${alert.tone}`}>
+                <div className="admin-alert-title">{alert.title}</div>
+                <div className="admin-alert-desc">{alert.description}</div>
+                <button type="button" className="admin-alert-btn" onClick={alert.action}>{alert.actionLabel}</button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="admin-empty">This organization is fully configured and operational.</div>
+        )}
+      </section>
+
+      <div className="admin-detail-grid">
+        <section className="admin-section-card">
+          <h2>Setup Status</h2>
+          <div className="admin-setup-list">
+            <SetupRow
+              label="Organization Connection"
+              ok={isConnected}
+              okText="Connected"
+              badText="Standalone"
+              detail={isConnected ? (systemStatus?.server_url || 'Connected to an organization server.') : 'This device is not connected to an organization server.'}
+            />
+            <SetupRow
+              label="AI Credentials"
+              ok={(providerSettings.count ?? 0) > 0}
+              okText={`${providerSettings.count ?? 0} Configured`}
+              badText="Missing"
+              detail={
+                providerSettings.loading
+                  ? 'Checking provider settings…'
+                  : (providerSettings.count ?? 0) > 0
+                    ? `${providerSettings.count} provider setting(s) active.`
+                    : 'No provider setting configured yet.'
+              }
+            />
+            <SetupRow
+              label="Embedder & Search"
+              ok={Boolean(embedderConfig?.is_configured)}
+              okText="Configured"
+              badText="Not configured"
+              detail={
+                !embedderConfig
+                  ? 'Checking embedder…'
+                  : embedderConfig.is_configured
+                    ? `Model: ${embedderConfig.model || 'configured'} (this device)`
+                    : 'No embedder configured on this device yet.'
+              }
+            />
+            <SetupRow
+              label="Connectors"
+              ok={(connectors.count ?? 0) > 0}
+              okText={`${connectors.count ?? 0} Connected`}
+              badText="None"
+              detail={
+                connectors.loading
+                  ? 'Checking connectors…'
+                  : (connectors.count ?? 0) > 0
+                    ? `${connectors.count} connector app(s) configured.`
+                    : 'No connector apps configured yet.'
+              }
+            />
+          </div>
+        </section>
+
+        <section className="admin-section-card admin-section-card--flush">
+          <h2>Recent Activity</h2>
+          {auditEvents.loading ? (
+            <div className="admin-empty">Loading…</div>
+          ) : auditEvents.items.length ? (
+            auditEvents.items.map((event, index) => (
+              <div key={event.id} className="admin-list-row" style={index === 0 ? { borderTop: 'none' } : undefined}>
+                <div style={{ minWidth: 0 }}>
+                  <span className="admin-mono-tag">{event.action}</span>
+                  <div className="adm-muted" style={{ fontSize: 12, marginTop: 4 }}>
+                    {event.resource_type}
+                    {event.resource_id ? ` · ${event.resource_id}` : ''}
+                  </div>
+                </div>
+                <span className="adm-muted" style={{ fontSize: 11, flexShrink: 0 }}>{timeAgo(event.created_at * 1000)}</span>
+              </div>
+            ))
+          ) : (
+            <div className="admin-empty">No activity yet</div>
+          )}
+        </section>
+
+        <section className="admin-section-card admin-section-card--flush">
+          <h2>Recent Jobs</h2>
+          {jobs.loading ? (
+            <div className="admin-empty">Loading…</div>
+          ) : jobs.items.length ? (
+            jobs.items.slice(0, 6).map((job, index) => (
+              <div key={job.id} className="admin-list-row" style={index === 0 ? { borderTop: 'none' } : undefined}>
+                <div style={{ minWidth: 0 }}>
+                  <div className="adm-strong" style={{ fontSize: 12.5 }}>{job.name}</div>
+                  <div className="adm-muted" style={{ fontSize: 11, marginTop: 2 }}>{job.execution_target}</div>
+                </div>
+                <span className={`adm-status-badge ${jobStatusClass(job.last_run_status || job.status)}`}>
+                  {job.last_run_status || job.status}
+                </span>
+              </div>
+            ))
+          ) : (
+            <div className="admin-empty">No jobs yet</div>
+          )}
+        </section>
       </div>
     </div>
   )
 }
 
-function OverviewCard({ title, text }: { title: string; text: string }) {
+function StatTile({
+  label,
+  value,
+  icon,
+  loading,
+  sublabel,
+}: {
+  label: string
+  value: number | null
+  icon: React.ReactNode
+  loading: boolean
+  sublabel?: string
+}) {
   return (
-    <section className="admin-overview-card">
-      <h2>{title}</h2>
-      <p>{text}</p>
-    </section>
+    <div className="admin-stat-card">
+      <div className="admin-stat-main">
+        <div className="admin-stat-label">{label}</div>
+        <div className="admin-stat-value">{loading ? '···' : value ?? '—'}</div>
+        {sublabel && <div className="admin-stat-sublabel">{sublabel}</div>}
+      </div>
+      <div className="admin-stat-icon">{icon}</div>
+    </div>
+  )
+}
+
+function SetupRow({
+  label,
+  ok,
+  okText,
+  badText,
+  detail,
+}: {
+  label: string
+  ok: boolean
+  okText: string
+  badText: string
+  detail: string
+}) {
+  return (
+    <div className="admin-setup-row">
+      <div className="admin-setup-row-head">
+        <span className="admin-setup-row-label">{label}</span>
+        <span className={`adm-status-badge ${ok ? 'adm-ok' : 'adm-warn'}`}>{ok ? okText : badText}</span>
+      </div>
+      <div className="admin-setup-row-detail">{detail}</div>
+    </div>
   )
 }
 
@@ -562,30 +877,207 @@ const ADMIN_CONSOLE_CSS = `
   font-size: var(--font-size-sm);
 }
 
-.admin-overview-grid {
+.admin-stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: var(--space-7);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-6);
+  margin-bottom: var(--space-8);
 }
 
-.admin-overview-card {
+.admin-stat-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-5);
+  padding: var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+}
+
+.admin-stat-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: 6px;
+}
+
+.admin-stat-value {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+  line-height: 1.1;
+}
+
+.admin-stat-sublabel {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: 6px;
+}
+
+.admin-stat-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-subtle);
+  color: var(--color-cta);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.admin-section-card {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-bg);
   padding: var(--space-7);
+  margin-bottom: var(--space-7);
 }
 
-.admin-overview-card h2 {
-  margin: 0;
-  font-size: var(--font-size-base);
-  font-weight: 700;
-}
-
-.admin-overview-card p {
-  margin: var(--space-3) 0 0;
-  color: var(--color-text-muted);
+.admin-section-card h2 {
+  margin: 0 0 var(--space-6);
   font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.admin-section-card--flush {
+  padding: var(--space-7) 0 0;
+}
+
+.admin-section-card--flush h2 {
+  padding: 0 var(--space-7);
+}
+
+.admin-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-7);
+  align-items: start;
+  margin-bottom: var(--space-8);
+}
+
+.admin-alert-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-5);
+}
+
+.admin-alert {
+  border-radius: var(--radius-sm);
+  padding: var(--space-5);
+  border: 1px solid;
+}
+
+.admin-alert--warning {
+  background: rgba(214, 161, 95, 0.08);
+  border-color: rgba(214, 161, 95, 0.3);
+}
+
+.admin-alert--info {
+  background: rgba(var(--color-info-rgb), 0.08);
+  border-color: rgba(var(--color-info-rgb), 0.3);
+}
+
+.admin-alert-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 4px;
+}
+
+.admin-alert-desc {
+  font-size: 12px;
+  color: var(--color-text-muted);
   line-height: 1.5;
+  margin-bottom: 10px;
+}
+
+.admin-alert-btn {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  font-size: 11px;
+  font-weight: 650;
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.admin-alert-btn:hover {
+  background: var(--color-hover);
+}
+
+.admin-empty {
+  padding: var(--space-8) 0;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.admin-setup-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.admin-setup-row {
+  padding: var(--space-5);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface);
+}
+
+.admin-setup-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: 4px;
+}
+
+.admin-setup-row-label {
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--color-text);
+}
+
+.admin-setup-row-detail {
+  font-size: 11.5px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.admin-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  padding: var(--space-5) var(--space-7);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.admin-mono-tag {
+  display: inline-block;
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+@media (max-width: 1100px) {
+  .admin-detail-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .admin-locked {
