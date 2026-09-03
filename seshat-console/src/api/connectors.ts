@@ -33,7 +33,7 @@ export type OAuthConnectorKind =
 // StaticConnectorKind lists every kind that authenticates with a single
 // static secret instead of an OAuth2 flow - see connectors.Service's
 // staticAgentActionKinds (seshat-server/internal/server/connectors/static_agent_account.go).
-export type StaticConnectorKind = 'stripe'
+export type StaticConnectorKind = 'stripe' | 'sendgrid' | 'mailgun' | 'postmark' | 'telegram' | 'discord' | 'trello' | 'airtable'
 
 export function useConnectorAccountsList(organizationId: string | undefined) {
   return useQuery({

@@ -167,6 +167,13 @@ func New(cfg serverconfig.Config) (*App, error) {
 	nodeRegistry.Register("gsheets_append_row", automation.NewGSheetsAppendRowNode(connectorsService))
 	nodeRegistry.Register("gcalendar_create_event", automation.NewGCalendarCreateEventNode(connectorsService))
 	nodeRegistry.Register("jira_create_issue", automation.NewJiraCreateIssueNode(connectorsService))
+	nodeRegistry.Register("sendgrid_send_email", automation.NewSendGridSendEmailNode(connectorsService))
+	nodeRegistry.Register("mailgun_send_email", automation.NewMailgunSendEmailNode(connectorsService))
+	nodeRegistry.Register("postmark_send_email", automation.NewPostmarkSendEmailNode(connectorsService))
+	nodeRegistry.Register("telegram_send_message", automation.NewTelegramSendMessageNode(connectorsService))
+	nodeRegistry.Register("discord_send_message", automation.NewDiscordSendMessageNode(connectorsService))
+	nodeRegistry.Register("trello_create_card", automation.NewTrelloCreateCardNode(connectorsService))
+	nodeRegistry.Register("airtable_create_record", automation.NewAirtableCreateRecordNode(connectorsService))
 
 	mcpRegistryService := mcpregistry.New(database, iamService)
 	hookRegistryService := hookregistry.New(database, iamService)

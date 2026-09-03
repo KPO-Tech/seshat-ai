@@ -1,6 +1,25 @@
 import { useState } from 'react'
 import { Alert, Button, Card, Input, Popconfirm, Space, Tag, Typography, message } from 'antd'
-import { DeleteOutlined, GoogleOutlined, WindowsOutlined, SlackOutlined, MailOutlined, TeamOutlined, BookOutlined, FileTextOutlined, DollarOutlined, TableOutlined, CalendarOutlined, ProjectOutlined } from '@ant-design/icons'
+import {
+  DeleteOutlined,
+  GoogleOutlined,
+  WindowsOutlined,
+  SlackOutlined,
+  MailOutlined,
+  TeamOutlined,
+  BookOutlined,
+  FileTextOutlined,
+  DollarOutlined,
+  TableOutlined,
+  CalendarOutlined,
+  ProjectOutlined,
+  ThunderboltOutlined,
+  NotificationOutlined,
+  SendOutlined,
+  RobotOutlined,
+  LayoutOutlined,
+  DatabaseOutlined,
+} from '@ant-design/icons'
 import { useMyConnectorAccountsList, useDeleteMyConnectorAccount } from '@/api/myConnections'
 import { useBeginConnectorOAuth, useCreateStaticAgentAccount, type ConnectorAccount, type OAuthConnectorKind, type StaticConnectorKind } from '@/api/connectors'
 import { getErrorMessage } from '@/api/errors'
@@ -43,10 +62,20 @@ const KIND_META: Record<OAuthConnectorKind, { label: string; icon: React.ReactNo
 // STATIC_CONNECTOR_KINDS lists every kind that authenticates with a single
 // static secret pasted in-page instead of an OAuth2 redirect - see
 // StaticConnectorKind's doc comment (src/api/connectors.ts).
-const STATIC_CONNECTOR_KINDS: StaticConnectorKind[] = ['stripe']
+const STATIC_CONNECTOR_KINDS: StaticConnectorKind[] = ['stripe', 'sendgrid', 'mailgun', 'postmark', 'telegram', 'discord', 'trello', 'airtable']
 
 const STATIC_KIND_META: Record<StaticConnectorKind, { label: string; icon: React.ReactNode; secretLabel: string; secretPlaceholder: string }> = {
   stripe: { label: 'Stripe', icon: <DollarOutlined />, secretLabel: 'Secret key', secretPlaceholder: 'sk_live_...' },
+  sendgrid: { label: 'SendGrid', icon: <MailOutlined />, secretLabel: 'API key', secretPlaceholder: 'SG....' },
+  mailgun: { label: 'Mailgun', icon: <ThunderboltOutlined />, secretLabel: 'API key', secretPlaceholder: 'key-...' },
+  postmark: { label: 'Postmark', icon: <NotificationOutlined />, secretLabel: 'Server token', secretPlaceholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' },
+  telegram: { label: 'Telegram', icon: <SendOutlined />, secretLabel: 'Bot token', secretPlaceholder: '123456789:AA...' },
+  discord: { label: 'Discord', icon: <RobotOutlined />, secretLabel: 'Bot token', secretPlaceholder: 'Bot token from the Developer Portal' },
+  // Trello's API needs both an API key and a token (see TrelloCreateCardNode's
+  // doc comment) - the connect form asks for both, colon-separated, since
+  // this connected-account schema stores exactly one secret string.
+  trello: { label: 'Trello', icon: <LayoutOutlined />, secretLabel: 'API Key:Token', secretPlaceholder: 'apikey:apitoken' },
+  airtable: { label: 'Airtable', icon: <DatabaseOutlined />, secretLabel: 'Personal Access Token', secretPlaceholder: 'pat...' },
 }
 
 export function ConnectionsPage() {

@@ -16,18 +16,25 @@ import (
 // single static secret (an API key/token) rather than an OAuth2 flow, for
 // self-service agent_action use - the agent_action counterpart to s3/
 // azureblob's static credentials, which are both knowledge_sync/admin-only
-// and go through CreateS3Account/CreateAzureBlobAccount instead. Stripe is
-// the first; batch 3 of the connectors initiative adds SendGrid/Mailgun/
-// Postmark/Telegram/Discord/Trello/Airtable here with no further backend
-// changes needed beyond this map entry.
+// and go through CreateS3Account/CreateAzureBlobAccount instead. Stripe was
+// the first; SendGrid/Mailgun/Postmark/Telegram/Discord/Trello/Airtable
+// (batch 3 of the connectors initiative) needed no backend change beyond
+// this map entry each, confirming the pattern.
 var staticAgentActionKinds = map[string]bool{
-	"stripe": true,
+	"stripe":   true,
+	"sendgrid": true,
+	"mailgun":  true,
+	"postmark": true,
+	"telegram": true,
+	"discord":  true,
+	"trello":   true,
+	"airtable": true,
 }
 
 func validateStaticAgentKind(kind string) (string, error) {
 	kind = strings.ToLower(strings.TrimSpace(kind))
 	if !staticAgentActionKinds[kind] {
-		return "", ErrInvalidInput(fmt.Sprintf("unsupported static connector kind %q (must be one of \"stripe\")", kind))
+		return "", ErrInvalidInput(fmt.Sprintf("unsupported static connector kind %q (must be one of \"stripe\", \"sendgrid\", \"mailgun\", \"postmark\", \"telegram\", \"discord\", \"trello\", \"airtable\")", kind))
 	}
 	return kind, nil
 }

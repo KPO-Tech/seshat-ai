@@ -4051,7 +4051,7 @@ paths:
       - name: kind
         in: path
         required: true
-        schema: { type: string, enum: [stripe] }
+        schema: { type: string, enum: [stripe, sendgrid, mailgun, postmark, telegram, discord, trello, airtable] }
     post:
       operationId: createStaticAgentAccount
       tags: [connectors]
@@ -6643,7 +6643,7 @@ components:
         id: { type: string }
         organization_id: { type: string }
         corpus_id: { type: string, description: "Set only for a knowledge_sync-purposed account - empty for agent_action." }
-        kind: { type: string, enum: [s3, azureblob, gdrive, sharepoint, onedrive, confluence, slack, outlook, teams, gmail, notion, gsheets, gcalendar, jira, stripe] }
+        kind: { type: string, enum: [s3, azureblob, gdrive, sharepoint, onedrive, confluence, slack, outlook, teams, gmail, notion, gsheets, gcalendar, jira, stripe, sendgrid, mailgun, postmark, telegram, discord, trello, airtable] }
         purpose: { type: string, enum: [knowledge_sync, agent_action], description: "knowledge_sync: admin-run, feeds a corpus. agent_action: self-service, one employee's own account for their own future MCP-backed agent actions - see connectors' package doc." }
         display_name: { type: string }
         external_account_id: { type: string }

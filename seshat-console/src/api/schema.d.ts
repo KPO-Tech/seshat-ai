@@ -2448,7 +2448,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                kind: "stripe";
+                kind: "stripe" | "sendgrid" | "mailgun" | "postmark" | "telegram" | "discord" | "trello" | "airtable";
             };
             cookie?: never;
         };
@@ -4280,7 +4280,7 @@ export interface components {
             /** @description Set only for a knowledge_sync-purposed account - empty for agent_action. */
             corpus_id?: string;
             /** @enum {string} */
-            kind?: "s3" | "azureblob" | "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "stripe";
+            kind?: "s3" | "azureblob" | "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "stripe" | "sendgrid" | "mailgun" | "postmark" | "telegram" | "discord" | "trello" | "airtable";
             /**
              * @description knowledge_sync: admin-run, feeds a corpus. agent_action: self-service, one employee's own account for their own future MCP-backed agent actions - see connectors' package doc.
              * @enum {string}
@@ -9310,7 +9310,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                kind: "stripe";
+                kind: "stripe" | "sendgrid" | "mailgun" | "postmark" | "telegram" | "discord" | "trello" | "airtable";
             };
             cookie?: never;
         };
