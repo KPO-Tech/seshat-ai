@@ -1,0 +1,32 @@
+# Provider Settings
+
+`/orgs/:id/ai/provider-settings` — Organization → AI Core → Providers
+
+## What it's for
+
+This organization's own LLM API credentials — the models its agents and
+chat sessions actually run on. Configuring one here overrides the
+platform's shared default for that provider; leaving a provider
+unconfigured means this organization's traffic falls back to the
+platform default's credentials for it, if one exists.
+
+## How to use it
+
+Each card is one supported provider (OpenAI, Anthropic, Mistral, Ollama,
+...). "Configure" opens a form for the base URL (optional — leave empty
+for the provider's own default), the default model, and the API key.
+"Test connection" confirms the key actually works before saving. For
+Ollama specifically, "Detect models" probes the base URL directly instead
+of picking from a static list, since a self-hosted instance's models
+aren't known in advance.
+
+A configured provider can be set as this organization's default (crown
+icon) — the one new agent runs pick when nothing overrides it.
+
+## See also
+
+- [Embedder](./embedder.mdx) — the equivalent concept for RAG embeddings,
+  a separate setting from chat/completion models.
+- [MCP Servers](../mcp-servers.mdx) — providers configure *which models*
+  an agent can think with; MCP servers configure *which tools* it can
+  call.

@@ -1,0 +1,30 @@
+# Embedder
+
+`/orgs/:id/ai/embedder` — Organization → AI Core → Providers → Embedder
+
+## What it's for
+
+The one embedding model this organization uses to turn documents into
+vectors for RAG ingestion and search (see [Knowledge](../knowledge.mdx)).
+Unconfigured, ingestion and search fall back to the platform default
+embedder, if one exists.
+
+Only one embedder can ever be active at a time — not a preference, a
+hard constraint. A corpus's vectors are all produced by whichever
+embedder was active when each file was ingested; switching embedders
+after documents already exist would silently mix incompatible vector
+dimensions in the same corpus. Changing embedders means re-ingesting
+every file that needs to stay searchable under the new one.
+
+## How to use it
+
+Pick a vendor (Mistral, OpenAI, Ollama, or "Other OpenAI-compatible") —
+picking one pre-fills its base URL and a sensible default model. "Detect
+models" probes the base URL for what's actually available, most useful
+for a self-hosted Ollama instance. The API key is optional for Ollama,
+required everywhere else.
+
+## See also
+
+- [Provider Settings](./provider-settings.mdx) — the equivalent setting
+  for chat/completion models, a separate credential from this one.
