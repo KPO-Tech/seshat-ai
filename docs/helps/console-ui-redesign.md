@@ -41,10 +41,11 @@ tokens.css wins and console should be brought back in line, not the reverse.
   Prospecting under Integrations). New groups (`nav.tsx`
   `organizationNavGroups`/`getOrganizationNavItems`):
   - **Organization**: Overview, Team & Access, Activity
-  - **AI & Knowledge**: Providers (renamed from "AI Config" now that MCP
-    Servers moved out), Knowledge, MCP Servers (own top-level route now,
-    `/orgs/:id/mcp-servers`, was a hidden `ai/mcp-servers` sub-tab),
-    Agents & Skills
+  - **AI Core** (renamed from "AI & Knowledge" 2026-09-03, matching
+    seshat-ui's Admin Console group of the same name): Providers (renamed
+    from "AI Config" now that MCP Servers moved out), Knowledge, MCP
+    Servers (own top-level route now, `/orgs/:id/mcp-servers`, was a hidden
+    `ai/mcp-servers` sub-tab), Agents & Skills
   - **Automation**: its own single-item group (Devices/Desktop
     Policies/Hooks/Bundles/Jobs/Runs still live under it as secondary
     tabs) — matches seshat-ui's own precedent of a single-item group
@@ -81,7 +82,7 @@ its own state) stay as tables — the pattern doesn't fit those.
 |---|---|---|---|
 | Connectors (OAuth apps) | `/orgs/:id/connectors` | Done | Moved out of a 480px modal onto the page as `pv-list`; kind list narrowed 20 → 4 (only the knowledge_sync-capable ones: gdrive/sharepoint/onedrive/confluence — the other 16 are agent_action-only, self-service-connected from Workspace, had no business here). Monochrome icons (no brand tint), matching seshat-ui's version. Nav location moved from under Knowledge to its own Integrations-group item 2026-09-03 (see Foundation section above). |
 | Connectors (connected sources table) | same route | Not started | Stays a table on purpose — real per-instance data (corpus, sync status, last synced, sync history), not a fixed kind catalog. |
-| AI & Knowledge → Providers | `/orgs/:id/ai/provider-settings` | Done | Same `pv-list`/`pv-card` grid chrome. Kept the existing colored `ProviderIcon` set (OpenAI green, Anthropic orange, ...) rather than flattening to monochrome — deliberate exception, those are an already-considered brand-icon set, unlike the connector glyphs the pv-* pattern was built around. Expand-for-details (default model/base URL) preserved via `.pv-card.expanded { grid-column: 1 / -1 }`. |
+| AI Core → Providers | `/orgs/:id/ai/provider-settings` | Done | Same `pv-list`/`pv-card` grid chrome. Kept the existing colored `ProviderIcon` set (OpenAI green, Anthropic orange, ...) rather than flattening to monochrome — deliberate exception, those are an already-considered brand-icon set, unlike the connector glyphs the pv-* pattern was built around. Expand-for-details (default model/base URL) preserved via `.pv-card.expanded { grid-column: 1 / -1 }`. |
 | Workspace → Connections (self-service, per-employee) | `/orgs/:id/workspace/connections` | Done (own pattern) | NOT the pv-* pattern — this one already has its own `wsc-*` card grid (2026-09-03, pre-dates this doc), grouped by category, WITH colored brand icons (deliberately kept, per-service recognizability matters more here than in an admin catalog). |
 | Team & Access → Memberships | `/orgs/:id/team/memberships` | Done | Mirrors seshat-ui's Admin Console "Users" page: dropped the 4 redundant StatTile cards (Members/Teams/Pending Invites/Roles - the table below already shows all of it) and the "Organization access" Card wrapper, table goes straight under the page header. Avatar + name + email + an inline-editable `RoleSelect` right in the Role column (no more Edit-button-opens-a-drawer round trip) + a status pill (reusing the existing `.status-badge`/`.status-dot` classes) + Joined date + a delete icon. The edit-drawer's "change an existing member's role" branch is gone along with the Edit button - the drawer (`AddMemberDrawer`, renamed from `MembershipFormDrawer`) now only handles adding a new member. |
 | Team & Access → Teams | `/orgs/:id/team/teams` | Done | Description shown as its own truncated+tooltip column (wasn't visible at all before) with a char-limited (200) counted `Input.TextArea` in the form. Slug now auto-follows Name while creating (slugified live) until the admin edits Slug directly themselves - never on an existing team, its slug may already be referenced elsewhere. |

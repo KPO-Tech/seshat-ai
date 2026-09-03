@@ -203,12 +203,19 @@ export interface OrganizationNavGroup {
 // belong to a theme the way the others do, and forcing it into one would
 // leave that group's label describing only part of its children.
 // Automation gets its own single-item group rather than going unlabeled -
-// same precedent as seshat-ui's Admin Console, where "Your Account" is
-// also a single-item group (My Usage) - a real feature area shouldn't lose
-// its label just because it happens to only have one primary nav entry.
+// a real feature area shouldn't lose its label just because it happens to
+// only have one primary nav entry.
+// "AI & Knowledge" renamed to "AI Core" 2026-09-03, matching seshat-ui's
+// Admin Console group of the same name (Providers/Knowledge/MCP Servers/...)
+// on purpose - the two apps' sidebars are meant to read as one design
+// system, not two. The self-service Workspace item below (own top-level
+// nav.tsx entry, not part of this group) stays separate on purpose too: it
+// needs no organization.manage permission, unlike everything here, and
+// folding it under an admin-config group like this one would misrepresent
+// that.
 export const organizationNavGroups: OrganizationNavGroup[] = [
   { label: 'Organization', keys: ['org-overview', 'org-team', 'org-activity'] },
-  { label: 'AI & Knowledge', keys: ['org-providers', 'org-knowledge', 'org-mcp-servers', 'org-agents'] },
+  { label: 'AI Core', keys: ['org-providers', 'org-knowledge', 'org-mcp-servers', 'org-agents'] },
   { label: 'Automation', keys: ['org-automation'] },
   { label: 'Integrations', keys: ['org-connectors', 'org-integrations', 'org-prospecting'] },
 ]
