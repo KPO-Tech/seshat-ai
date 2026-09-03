@@ -104,7 +104,6 @@ export function ApplicationsPage() { const organizationId = useScopedOrganizatio
   return (
     <div>
       <PageHeader
-        title="Applications"
         description="OAuth2/OIDC client applications registered for this organization."
         actions={ <Space>
             <Input.Search

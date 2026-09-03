@@ -74,7 +74,6 @@ export function ChatSessionsPage() {
   return (
     <div>
       <PageHeader
-        title="Chat Sessions"
         description="Workspace Chat activity across this organization's members - metadata only, not message content."
       />
 

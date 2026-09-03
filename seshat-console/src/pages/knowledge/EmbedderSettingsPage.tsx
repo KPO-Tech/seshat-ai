@@ -106,7 +106,6 @@ export function EmbedderSettingsPage() {
   return (
     <div>
       <PageHeader
-        title="Embedder Settings"
         description="The embedder this organization uses for RAG ingestion and search. Falls back to this platform's default organization's embedder when not set."
       />
 

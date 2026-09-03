@@ -35,7 +35,6 @@ export function QuotaUsagePage() {
   return (
     <div>
       <PageHeader
-        title="Usage Counters"
         description="Personal usage counters attached to your account. These are informational only and never become platform-wide defaults or shared organization settings."
       />
 

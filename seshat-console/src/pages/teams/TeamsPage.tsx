@@ -98,7 +98,6 @@ export function TeamsPage() { const organizationId = useScopedOrganizationId()
   return (
     <div>
       <PageHeader
-        title="Teams"
         description="Organize members into teams for policy assignment and day-to-day structure. A member can be on any number of teams, or none."
         actions={ <Space>
             <Input.Search

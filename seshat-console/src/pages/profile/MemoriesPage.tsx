@@ -76,7 +76,6 @@ export function MemoriesPage() {
   return (
     <div>
       <PageHeader
-        title="Memories"
         description="Flat personal memories: facts, instructions, preferences and context specific to you."
         actions={
           <Space>

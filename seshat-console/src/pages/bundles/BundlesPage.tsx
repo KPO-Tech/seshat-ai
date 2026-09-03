@@ -38,7 +38,6 @@ export function BundlesPage() {
   return (
     <div>
       <PageHeader
-        title="Bundles"
         description="Package a selection of MCP servers, hooks, skills, and agent presets into one portable manifest file, or import a manifest someone shared with you."
       />
       <Tabs

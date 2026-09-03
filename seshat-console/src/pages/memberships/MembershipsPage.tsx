@@ -152,7 +152,6 @@ export function MembershipsPage() {
   return (
     <div>
       <PageHeader
-        title="Team members"
         description="Direct access to this organization, with each member's effective role."
         actions={
           <Space>

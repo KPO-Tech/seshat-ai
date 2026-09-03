@@ -93,17 +93,9 @@ body {
   flex: 1 1 320px;
 }
 
-.console-page-header__title {
-  font-size: 20px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  color: #1E1C1A;
-  margin: 0;
-}
-
 .console-page-header__description {
   display: block;
-  margin-top: 6px;
+  margin: 0;
   font-size: 13.5px;
   line-height: 1.6;
   max-width: 76ch;

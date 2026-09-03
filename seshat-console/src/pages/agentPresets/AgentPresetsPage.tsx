@@ -102,7 +102,6 @@ export function AgentPresetsPage() {
   return (
     <div>
       <PageHeader
-        title="Agent Presets"
         description="Organization-level agent personas and execution defaults that connected backends can resolve alongside their local preset catalog."
         actions={
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing('new')} disabled={!organizationId}>

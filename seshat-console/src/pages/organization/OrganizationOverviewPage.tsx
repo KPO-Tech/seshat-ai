@@ -143,7 +143,6 @@ export function OrganizationOverviewPage() {
   return (
     <div>
       <PageHeader
-        title={organization?.name ?? 'Organization Overview'}
         description={organization?.description || 'Team management, model providers, knowledge corpora, and automations.'}
         actions={
           <Button

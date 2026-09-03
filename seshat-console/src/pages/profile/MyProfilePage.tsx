@@ -71,7 +71,7 @@ export function MyProfilePage() {
 
   return (
     <div>
-      <PageHeader title="My Profile" description="Your account and organization access." />
+      <PageHeader description="Your account and organization access." />
 
       <Card style={{ marginBottom: 24 }}>
         <Space align="start" size={20}>

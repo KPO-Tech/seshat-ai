@@ -84,7 +84,6 @@ export function RolesPage() { const organizationId = useScopedOrganizationId()
   return (
     <div>
       <PageHeader
-        title="Roles"
         description="System roles (owner/admin/member/viewer) plus custom roles defined for an organization."
         actions={ <Space>
             <Button

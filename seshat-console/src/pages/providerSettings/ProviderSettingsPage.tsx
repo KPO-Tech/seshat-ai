@@ -70,7 +70,6 @@ export function ProviderSettingsPage() {
   return (
     <div>
       <PageHeader
-        title="Provider Settings"
         description="This organization's own LLM credentials. They override this platform's default organization's credentials when present."
       />
 

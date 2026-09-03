@@ -104,7 +104,7 @@ export function CorpusDetailPage() {
   if (corpusError) {
     return (
       <div>
-        <PageHeader title="Corpus" description="" />
+        <PageHeader />
         <Alert
           type="error"
           showIcon
@@ -238,8 +238,7 @@ export function CorpusDetailPage() {
   return (
     <div>
       <PageHeader
-        title={corpus?.name ?? 'Corpus'}
-        description={corpus?.description || `${corpus?.chunk_count ?? 0} chunks ingested`}
+        description={`${corpus?.name ?? 'Corpus'}${corpus?.description ? ` — ${corpus.description}` : ''} (${corpus?.chunk_count ?? 0} chunks ingested)`}
         actions={
           <Space>
             <Button icon={<ArrowLeftOutlined />} onClick={() => corporaPath && navigate(corporaPath)} disabled={!corporaPath}>

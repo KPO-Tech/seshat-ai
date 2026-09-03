@@ -91,7 +91,6 @@ export function SkillReposPage() {
   return (
     <div>
       <PageHeader
-        title="Skill Repos"
         description="Organization-curated skill repository URLs that connected backends can merge into their local catalog. Falls back to this platform's default organization's repos when this organization has none of its own."
         actions={
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing('new')} disabled={!organizationId}>

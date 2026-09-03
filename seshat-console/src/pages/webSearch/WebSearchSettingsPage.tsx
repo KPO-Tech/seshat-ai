@@ -55,7 +55,6 @@ export function WebSearchSettingsPage() {
   return (
     <div>
       <PageHeader
-        title="Web Search Settings"
         description="This organization's own web-search credentials. They override this platform's default web-search credentials when present."
       />
 

@@ -268,7 +268,6 @@ export function OrganizationsPage() {
   return (
     <div>
       <PageHeader
-        title="Organizations"
         description="Create and manage the companies that use your Seshat platform."
         actions={
           <Space>

@@ -202,7 +202,6 @@ export function ConnectorsPage() {
   return (
     <div>
       <PageHeader
-        title="Connectors"
         description="External sources synced automatically into a Knowledge corpus."
         actions={
           <Button

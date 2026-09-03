@@ -91,7 +91,6 @@ export function DesktopPoliciesPage() {
   return (
     <div>
       <PageHeader
-        title="Desktop Policies"
         description="Restrict what the desktop app allows on a device - custom providers, local models, multiple workspaces, and settings changes. Every policy is allowed by default; assigning a binding can only restrict further, never loosen it."
         actions={ <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing('new')} disabled={!organizationId}>
             New binding

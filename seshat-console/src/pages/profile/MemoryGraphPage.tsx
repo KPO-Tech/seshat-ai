@@ -30,7 +30,6 @@ export function MemoryGraphPage() {
   return (
     <div>
       <PageHeader
-        title="Memory Graph"
         description="Your personal entity graph and long-term relationship memory. This data stays user-scoped and is never shared as an org or platform default."
       />
 

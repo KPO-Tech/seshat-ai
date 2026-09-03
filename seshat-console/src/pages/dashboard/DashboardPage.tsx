@@ -36,7 +36,6 @@ export function DashboardPage() {
   return (
     <div>
       <PageHeader
-        title="Platform Overview"
         description="Real-time deployment metrics, active sessions, and cross-organization telemetry."
         badge={
           <span

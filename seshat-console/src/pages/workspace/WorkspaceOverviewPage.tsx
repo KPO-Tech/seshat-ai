@@ -16,7 +16,6 @@ export function WorkspaceOverviewPage() {
   return (
     <div>
       <PageHeader
-        title="Personal Workspace"
         description="Your personal interaction environment for real-time assistant execution, model testing, and third-party account connections."
       />
 

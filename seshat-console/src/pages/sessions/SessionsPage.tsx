@@ -47,7 +47,6 @@ export function SessionsPage() { const [page, setPage] = useState(1)
   return (
     <div>
       <PageHeader
-        title="Sessions"
         description="Active platform sessions."
       />
 

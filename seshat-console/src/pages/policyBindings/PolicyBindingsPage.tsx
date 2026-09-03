@@ -113,7 +113,6 @@ export function PolicyBindingsPage() { const organizationId = useScopedOrganizat
   return (
     <div>
       <PageHeader
-        title="Policy Bindings"
         description="Grants a set of permissions to a user, team or role."
         actions={ <Space>
             <Input.Search

@@ -38,7 +38,6 @@ export function OrganizationPreferencesPage() {
   return (
     <div>
       <PageHeader
-        title="Preferences"
         description="Defaults members inherit until they set their own."
       />
 
