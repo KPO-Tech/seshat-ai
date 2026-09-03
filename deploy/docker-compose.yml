@@ -207,7 +207,8 @@ services:
 
   seshat-console:
     build:
-      context: ../seshat-console
+      context: ..
+      dockerfile: seshat-console/Dockerfile
     restart: unless-stopped
     mem_limit: 256m
     depends_on:
