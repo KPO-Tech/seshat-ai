@@ -452,16 +452,6 @@ function OAuthAppFormDrawer({
         >
           <Input.Password autoComplete="new-password" placeholder={existing?.configured ? 'Unchanged' : undefined} />
         </Form.Item>
-        {kind === 'zendesk' && (
-          <Form.Item
-            name="subdomain"
-            label="Zendesk subdomain"
-            extra='The org&apos;s own Zendesk account subdomain, e.g. "acme" for acme.zendesk.com - Zendesk&apos;s OAuth endpoints are hosted per-account, unlike every other provider here.'
-            rules={[{ required: true, message: 'Required' }]}
-          >
-            <Input placeholder="acme" />
-          </Form.Item>
-        )}
       </Form>
     </Drawer>
   )

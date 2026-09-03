@@ -1,0 +1,36 @@
+# Connectors
+
+`/orgs/:id/connectors` — Organization → Integrations → Connectors
+
+## What it's for
+
+External sources synced automatically into a
+[Knowledge](../ai-core/knowledge.mdx) corpus — this page is
+knowledge_sync-only. It has two distinct pieces: **OAuth apps** (register
+this organization's own Google/Microsoft/Atlassian app once, so every
+account connected afterward reuses it) and **Connected sources** (the
+actual accounts, each syncing into one specific corpus).
+
+## How to use it
+
+A connector needs a corpus to sync into — create one under Knowledge →
+Corpora first; "New connector" stays disabled until one exists. Two
+families of kind: S3-compatible/Azure Blob take static credentials
+(access key, account key) entered directly; Google Drive/SharePoint/
+OneDrive/Confluence go through OAuth, which needs that vendor's app
+registered under "OAuth apps" first, then "Connect with..." opens the
+real consent flow in a new tab.
+
+Per connected source: "Sync now" queues an immediate sync outside its
+normal interval, the history icon shows every past attempt (including
+failures and their error), and disconnecting only removes the
+connection — already-ingested files stay in the corpus.
+
+## See also
+
+- [Knowledge](../ai-core/knowledge.mdx) — the corpora a connector syncs
+  into.
+- Workspace → Connections (self-service, not yet documented here) — the
+  counterpart for the other 16 connector kinds (Slack, Notion, Jira,
+  ...), used as agent tools rather than document sync, connected
+  per-employee instead of registered here.
