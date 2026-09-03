@@ -23,21 +23,22 @@ const (
 
 // Run is one execution instance of a Job.
 type Run struct {
-	ID               string            `json:"id"`
-	JobID            string            `json:"job_id"`
-	OrganizationID   string            `json:"organization_id"`
-	ExecutionTarget  string            `json:"execution_target"`
-	AssignedDeviceID string            `json:"assigned_device_id,omitempty"`
-	Status           string            `json:"status"`
-	QueuedAt         time.Time         `json:"queued_at"`
-	ClaimedAt        *time.Time        `json:"claimed_at,omitempty"`
-	StartedAt        *time.Time        `json:"started_at,omitempty"`
-	LastHeartbeatAt  *time.Time        `json:"last_heartbeat_at,omitempty"`
-	FinishedAt       *time.Time        `json:"finished_at,omitempty"`
-	ExitReason       string            `json:"exit_reason,omitempty"`
-	OutputText       string            `json:"output_text,omitempty"`
-	ErrorText        string            `json:"error_text,omitempty"`
-	Metadata         map[string]string `json:"metadata,omitempty"`
+	ID               string               `json:"id"`
+	JobID            string               `json:"job_id"`
+	OrganizationID   string               `json:"organization_id"`
+	ExecutionTarget  string               `json:"execution_target"`
+	AssignedDeviceID string               `json:"assigned_device_id,omitempty"`
+	Status           string               `json:"status"`
+	QueuedAt         time.Time            `json:"queued_at"`
+	ClaimedAt        *time.Time           `json:"claimed_at,omitempty"`
+	StartedAt        *time.Time           `json:"started_at,omitempty"`
+	LastHeartbeatAt  *time.Time           `json:"last_heartbeat_at,omitempty"`
+	FinishedAt       *time.Time           `json:"finished_at,omitempty"`
+	ExitReason       string               `json:"exit_reason,omitempty"`
+	OutputText       string               `json:"output_text,omitempty"`
+	ErrorText        string               `json:"error_text,omitempty"`
+	Metadata         map[string]string    `json:"metadata,omitempty"`
+	NodeTrace        []sdb.NodeTraceEntry `json:"node_trace,omitempty"`
 }
 
 type ListRunsParams struct {
@@ -541,5 +542,6 @@ func toRun(record sdb.JobRun) Run {
 		OutputText:       record.OutputText,
 		ErrorText:        record.ErrorText,
 		Metadata:         record.Metadata,
+		NodeTrace:        record.NodeTrace,
 	}
 }

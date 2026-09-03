@@ -538,6 +538,27 @@ type JobRun struct {
 	OutputText       string            `gorm:"type:text"`
 	ErrorText        string            `gorm:"type:text"`
 	Metadata         map[string]string `gorm:"serializer:json;type:text"`
+	// NodeTrace is per-node execution detail for a Graph-based run - which
+	// node ran, in what order, what it produced or failed with. Populated
+	// from the dataflow engine's own Result.Results/Order (see
+	// automation.jobWorkflow.runGraph); nil for plain-Prompt jobs and for
+	// runs recorded before this field existed.
+	NodeTrace []NodeTraceEntry `gorm:"serializer:json;type:text"`
+}
+
+// NodeTraceEntry is one node's recorded outcome within a JobRun.NodeTrace -
+// mirrors github.com/KPO-Tech/seshat/pkg/dataflow's NodeResult (Duration
+// converted to milliseconds here for a human-readable trace).
+type NodeTraceEntry struct {
+	ID         string           `json:"id"`
+	Type       string           `json:"type"`
+	Success    bool             `json:"success"`
+	Skipped    bool             `json:"skipped,omitempty"`
+	Error      string           `json:"error,omitempty"`
+	Output     []map[string]any `json:"output,omitempty"`
+	StartedAt  time.Time        `json:"started_at"`
+	EndedAt    time.Time        `json:"ended_at"`
+	DurationMS int64            `json:"duration_ms,omitempty"`
 }
 
 // ProviderSetting holds one organization's credentials for one LLM provider

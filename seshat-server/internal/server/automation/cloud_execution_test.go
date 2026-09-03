@@ -3,6 +3,9 @@ package automation
 import (
 	"context"
 	"testing"
+	"time"
+
+	"github.com/KPO-Tech/seshat/pkg/dataflow"
 
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 )
@@ -95,7 +98,7 @@ func TestFinishCloudRunDoesNotOverwriteACancelledRun(t *testing.T) {
 		t.Fatalf("cancel run: %v", err)
 	}
 
-	if err := env.automation.finishCloudRun(context.Background(), run.ID, RunStatusCompleted, "late result", ""); err != nil {
+	if err := env.automation.finishCloudRun(context.Background(), run.ID, RunStatusCompleted, "late result", "", nil); err != nil {
 		t.Fatalf("finishCloudRun on cancelled run: %v", err)
 	}
 
@@ -200,5 +203,72 @@ func TestExecuteCloudRunIsANoOpForNonQueuedOrNonCloudRuns(t *testing.T) {
 	// A run ID that doesn't exist is a silent no-op, not an error.
 	if err := env.automation.executeCloudRun(context.Background(), "does-not-exist"); err != nil {
 		t.Fatalf("executeCloudRun on a missing run id: %v", err)
+	}
+}
+
+// buildNodeTrace converts the dataflow engine's own Result - already
+// computed by dataflow.Run - into the DB-persisted shape. This tests only
+// that conversion (order preserved, fields mapped, Duration -> ms, Item ->
+// map[string]any), not the engine's own skip/fail semantics, which belong
+// to and are already covered by the SDK's own test suite.
+func TestBuildNodeTrace(t *testing.T) {
+	started := time.Date(2026, 9, 3, 12, 0, 0, 0, time.UTC)
+	ended := started.Add(250 * time.Millisecond)
+
+	result := dataflow.Result{
+		Order: []string{"fetch", "transform", "notify"},
+		Results: map[string]dataflow.NodeResult{
+			"fetch": {
+				ID: "fetch", Type: "http_request", Success: false,
+				Error: "connection refused", StartedAt: started, EndedAt: ended, Duration: 250 * time.Millisecond,
+			},
+			"transform": {
+				ID: "transform", Type: "set", Skipped: true,
+				Error: `upstream node "fetch" failed`, StartedAt: started, EndedAt: started,
+			},
+			"notify": {
+				ID: "notify", Type: "agent", Success: true,
+				Output:    []dataflow.Item{{"text": "done"}},
+				StartedAt: started, EndedAt: ended, Duration: 250 * time.Millisecond,
+			},
+		},
+	}
+
+	trace := buildNodeTrace(result)
+	if len(trace) != 3 {
+		t.Fatalf("expected 3 trace entries, got %d", len(trace))
+	}
+
+	// Order must follow result.Order, not map iteration order.
+	if trace[0].ID != "fetch" || trace[1].ID != "transform" || trace[2].ID != "notify" {
+		t.Fatalf("expected trace order fetch/transform/notify, got %s/%s/%s", trace[0].ID, trace[1].ID, trace[2].ID)
+	}
+
+	fetch := trace[0]
+	if fetch.Success || fetch.Skipped || fetch.Error != "connection refused" {
+		t.Fatalf("expected fetch to be a plain failure, got %+v", fetch)
+	}
+	if fetch.DurationMS != 250 {
+		t.Fatalf("expected fetch duration 250ms, got %d", fetch.DurationMS)
+	}
+
+	transform := trace[1]
+	if transform.Success || !transform.Skipped {
+		t.Fatalf("expected transform to be skipped, not a plain failure, got %+v", transform)
+	}
+
+	notify := trace[2]
+	if !notify.Success || notify.Skipped {
+		t.Fatalf("expected notify to have succeeded independently, got %+v", notify)
+	}
+	if len(notify.Output) != 1 || notify.Output[0]["text"] != "done" {
+		t.Fatalf("expected notify output [{text: done}], got %+v", notify.Output)
+	}
+
+	// A node id in Order with no matching Results entry must be skipped
+	// over, not panic - defensive against the engine ever changing.
+	result.Order = append(result.Order, "ghost")
+	if got := buildNodeTrace(result); len(got) != 3 {
+		t.Fatalf("expected a dangling Order entry to be ignored, got %d entries", len(got))
 	}
 }

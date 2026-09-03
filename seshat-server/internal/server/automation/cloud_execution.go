@@ -57,6 +57,12 @@ type jobWorkflow struct {
 	organization string
 	ownerID      string
 	secrets      DataflowSecretResolver
+	// nodeTrace is populated by runGraph as a side effect (dataflow.Run's
+	// own Result is otherwise discarded once success/failure is checked) -
+	// executeCloudRun reads it directly off this struct after Run returns,
+	// regardless of outcome, rather than threading it through Run's fixed
+	// (ctx, session) error signature.
+	nodeTrace []sdb.NodeTraceEntry
 }
 
 func (w *jobWorkflow) Name() string        { return w.id }
@@ -101,6 +107,7 @@ func (w *jobWorkflow) runGraph(ctx context.Context, session *sdk.Session) error 
 	if err != nil {
 		return fmt.Errorf("run graph: %w", err)
 	}
+	w.nodeTrace = buildNodeTrace(result)
 	if !result.Success {
 		for _, id := range result.Order {
 			if r := result.Results[id]; !r.Success && r.Error != "" {
@@ -110,6 +117,36 @@ func (w *jobWorkflow) runGraph(ctx context.Context, session *sdk.Session) error 
 		return fmt.Errorf("graph %q failed", w.graph.Name)
 	}
 	return nil
+}
+
+// buildNodeTrace converts the dataflow engine's own Result (already
+// computed by dataflow.Run, otherwise discarded once success/failure is
+// checked) into the DB-persisted shape - iterates Order so the trace
+// reflects actual execution order rather than map iteration order.
+func buildNodeTrace(result dataflow.Result) []sdb.NodeTraceEntry {
+	trace := make([]sdb.NodeTraceEntry, 0, len(result.Order))
+	for _, id := range result.Order {
+		r, ok := result.Results[id]
+		if !ok {
+			continue
+		}
+		output := make([]map[string]any, len(r.Output))
+		for i, item := range r.Output {
+			output[i] = map[string]any(item)
+		}
+		trace = append(trace, sdb.NodeTraceEntry{
+			ID:         r.ID,
+			Type:       r.Type,
+			Success:    r.Success,
+			Skipped:    r.Skipped,
+			Error:      r.Error,
+			Output:     output,
+			StartedAt:  r.StartedAt,
+			EndedAt:    r.EndedAt,
+			DurationMS: r.Duration.Milliseconds(),
+		})
+	}
+	return trace
 }
 
 // orgScopedSecretResolver binds one organization to Service's
@@ -298,12 +335,12 @@ func (s *Service) executeCloudRun(ctx context.Context, runID string) error {
 	result, execErr := executor.Run(ctx, workflow, sdkautomation.Options{})
 
 	if execErr != nil {
-		return s.finishCloudRun(ctx, run.ID, RunStatusFailed, result.Output, execErr.Error())
+		return s.finishCloudRun(ctx, run.ID, RunStatusFailed, result.Output, execErr.Error(), workflow.nodeTrace)
 	}
-	return s.finishCloudRun(ctx, run.ID, RunStatusCompleted, result.Output, "")
+	return s.finishCloudRun(ctx, run.ID, RunStatusCompleted, result.Output, "", workflow.nodeTrace)
 }
 
-func (s *Service) finishCloudRun(ctx context.Context, runID, status, outputText, errorText string) error {
+func (s *Service) finishCloudRun(ctx context.Context, runID, status, outputText, errorText string, nodeTrace []sdb.NodeTraceEntry) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		tx = tx.WithContext(ctx)
 		var record sdb.JobRun
@@ -325,9 +362,10 @@ func (s *Service) finishCloudRun(ctx context.Context, runID, status, outputText,
 		if errorText != "" {
 			record.ExitReason = errorText
 		}
+		record.NodeTrace = nodeTrace
 		result := tx.Model(&sdb.JobRun{}).
 			Where("id = ? AND status = ?", record.ID, RunStatusRunning).
-			Updates(map[string]any{"status": record.Status, "finished_at": record.FinishedAt, "output_text": record.OutputText, "error_text": record.ErrorText, "exit_reason": record.ExitReason})
+			Updates(map[string]any{"status": record.Status, "finished_at": record.FinishedAt, "output_text": record.OutputText, "error_text": record.ErrorText, "exit_reason": record.ExitReason, "node_trace": record.NodeTrace})
 		if result.Error != nil {
 			return result.Error
 		}
@@ -339,7 +377,7 @@ func (s *Service) finishCloudRun(ctx context.Context, runID, status, outputText,
 }
 
 func (s *Service) markCloudRunFailed(ctx context.Context, runID, reason string) error {
-	return s.finishCloudRun(ctx, runID, RunStatusFailed, "", reason)
+	return s.finishCloudRun(ctx, runID, RunStatusFailed, "", reason, nil)
 }
 
 // resolveProviderCredentials implements the hybrid BYOK/managed model: an
