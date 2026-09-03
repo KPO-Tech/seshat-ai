@@ -19,7 +19,7 @@ import { AutofillGuard } from '@/components/AutofillGuard'
 import { PageHeader } from '@/components/PageHeader'
 import { ProviderIcon } from '@/components/ProviderIcon'
 import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
-import { palette, monoStack } from '@/theme/tokens'
+import { monoStack } from '@/theme/tokens'
 
 // Auth types this page's Add/Edit form knows how to collect: a plain API
 // key (or none, for a local Ollama-style install). "oauth"/"aws"/"gcp"
@@ -74,52 +74,37 @@ export function ProviderSettingsPage() {
         description="This organization's own LLM credentials. They override this platform's default organization's credentials when present."
       />
 
-      <Space orientation="vertical" size={12} style={{ width: '100%' }}>
+      <div className="pv-list">
         {supportedProviders.map((entry) => {
           const setting = settingByProvider.get(entry.id)
           const isConfigured = Boolean(setting)
           const isExpanded = expanded === entry.id
 
           return (
-            <div
-              key={entry.id}
-              style={{
-                border: `1px solid ${isExpanded ? palette.accent : palette.border}`,
-                borderRadius: 12,
-                background: palette.surface,
-              }}
-            >
+            <div key={entry.id} className={`pv-card ${isExpanded ? 'expanded' : ''}`}>
               <div
+                className="pv-card-header"
                 onClick={() => isConfigured && setExpanded(isExpanded ? null : entry.id)}
-                style={{
-                  padding: '14px 18px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 16,
-                  cursor: isConfigured ? 'pointer' : 'default',
-                }}
+                style={{ cursor: isConfigured ? 'pointer' : 'default' }}
               >
-                <Space size={14} align="start">
-                  <ProviderIcon provider={entry.id} size={36} />
-                  <div>
+                <div className="pv-brand">
+                  <ProviderIcon provider={entry.id} size={30} />
+                  <div className="pv-meta">
                     <Space size={8} align="center">
-                      <Typography.Text strong>{entry.name}</Typography.Text>
+                      <span className="pv-name">{entry.name}</span>
                       {setting?.is_default && (
                         <Tag color="gold" icon={<CrownOutlined />} style={{ margin: 0 }}>
                           Default
                         </Tag>
                       )}
                     </Space>
-                    <Typography.Text style={{ display: 'block', fontSize: 12, color: palette.inkTertiary }}>
-                      {entry.desc}
-                    </Typography.Text>
+                    <span className="pv-id">{entry.desc}</span>
                   </div>
-                </Space>
-                <Space size={10} onClick={(event) => event.stopPropagation()}>
-                  <Tag color={isConfigured ? 'green' : 'default'} style={{ margin: 0 }}>
+                </div>
+                <div className="pv-card-controls" onClick={(event) => event.stopPropagation()}>
+                  <span className={`pv-status-pill ${isConfigured ? 'connected' : 'disconnected'}`}>
                     {isConfigured ? 'Connected' : 'Not configured'}
-                  </Tag>
+                  </span>
                   {isConfigured ? (
                     <>
                       {!setting!.is_default && (
@@ -133,15 +118,19 @@ export function ProviderSettingsPage() {
                             )
                           }
                         >
-                          <Button size="small" icon={<CrownOutlined />} aria-label={`Set ${entry.name} as default`} />
+                          <button type="button" className="pv-icon-btn" aria-label={`Set ${entry.name} as default`}>
+                            <CrownOutlined />
+                          </button>
                         </Popconfirm>
                       )}
-                      <Button
-                        size="small"
-                        icon={<EditOutlined />}
+                      <button
+                        type="button"
+                        className="pv-icon-btn"
                         onClick={() => setEditing({ provider: entry.id, setting: setting! })}
                         aria-label={`Edit ${entry.name} credential`}
-                      />
+                      >
+                        <EditOutlined />
+                      </button>
                       <Popconfirm
                         title={`Remove the ${entry.name} credential?`}
                         description="Cloud jobs configured for this provider will fall back to this platform's default organization's credentials (if any) or start failing at execution time."
@@ -149,40 +138,40 @@ export function ProviderSettingsPage() {
                           deleteSetting.mutate(setting!.id!, { onError: (error) => message.error(getErrorMessage(error)) })
                         }
                       >
-                        <Button size="small" danger icon={<DeleteOutlined />} aria-label={`Delete ${entry.name} credential`} />
+                        <button type="button" className="pv-icon-btn" aria-label={`Delete ${entry.name} credential`}>
+                          <DeleteOutlined />
+                        </button>
                       </Popconfirm>
-                      <Button
-                        size="small"
-                        icon={isExpanded ? <DownOutlined /> : <RightOutlined />}
+                      <button
+                        type="button"
+                        className="pv-icon-btn"
                         onClick={() => setExpanded(isExpanded ? null : entry.id)}
                         aria-label={isExpanded ? `Collapse ${entry.name} details` : `Expand ${entry.name} details`}
-                      />
+                      >
+                        {isExpanded ? <DownOutlined /> : <RightOutlined />}
+                      </button>
                     </>
                   ) : (
-                    <Button
-                      size="small"
-                      type="primary"
+                    <button
+                      type="button"
+                      className="pv-configure-btn"
                       disabled={!organizationId}
                       onClick={() => setEditing({ provider: entry.id, setting: null })}
                     >
                       Configure
-                    </Button>
+                    </button>
                   )}
-                </Space>
+                </div>
               </div>
 
               {isConfigured && isExpanded && (
-                <div style={{ borderTop: `1px solid ${palette.border}`, padding: '14px 18px', display: 'flex', gap: 32, flexWrap: 'wrap' }}>
+                <div className="pv-card-detail">
                   <div>
-                    <Typography.Text style={{ display: 'block', fontSize: 11, fontWeight: 700, color: palette.inkTertiary }}>
-                      DEFAULT MODEL
-                    </Typography.Text>
+                    <span className="pv-card-detail__label">DEFAULT MODEL</span>
                     <Typography.Text style={{ fontFamily: monoStack, fontSize: 13 }}>{setting!.default_model}</Typography.Text>
                   </div>
                   <div>
-                    <Typography.Text style={{ display: 'block', fontSize: 11, fontWeight: 700, color: palette.inkTertiary }}>
-                      BASE URL
-                    </Typography.Text>
+                    <span className="pv-card-detail__label">BASE URL</span>
                     <Typography.Text style={{ fontFamily: monoStack, fontSize: 13 }}>
                       {setting!.base_url || 'Provider default'}
                     </Typography.Text>
@@ -192,7 +181,7 @@ export function ProviderSettingsPage() {
             </div>
           )
         })}
-      </Space>
+      </div>
 
       <ProviderSettingFormDrawer
         provider={editing?.provider ?? null}

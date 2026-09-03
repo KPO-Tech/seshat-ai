@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Alert, Button, Drawer, Empty, Form, Input, Modal, Popconfirm, Select, Space, Tag, Typography, message } from 'antd'
 import type { TableProps } from 'antd'
-import { CloudUploadOutlined, DeleteOutlined, EditOutlined, HistoryOutlined, PlusOutlined, SettingOutlined, SyncOutlined } from '@ant-design/icons'
+import { CloudUploadOutlined, DeleteOutlined, EditOutlined, HistoryOutlined, PlusOutlined, SyncOutlined, WindowsOutlined } from '@ant-design/icons'
+import { siGoogledrive, siConfluence } from 'simple-icons'
 import {
   useConnectorAccountsList,
   useCreateConnectorAccount,
@@ -49,82 +50,51 @@ const CONNECTOR_KINDS = [
   { value: 'confluence', label: 'Confluence' },
 ]
 
-// The OAuth Apps modal is purpose-agnostic (RegisterOAuthApp doesn't care
-// whether a kind is knowledge_sync-only or agent_action-only) even though
-// this page's own table is knowledge_sync-only (see the accounts filter
-// below) - most of these kinds (everything past teams/gmail) are
-// agent_action-only, self-service-connected from Workspace → Connections,
-// never created here, but an org admin still needs somewhere to register
-// their client_id/secret once per organization, and this modal is that
-// one place for every OAuth-based kind regardless of purpose - see
-// connectors.RegisterOAuthApp's doc comment. Known UI-label mismatch (this
-// page is titled/scoped as Knowledge), not relocated yet - see
-// helps/roadmap.md. Must stay in sync with every OAuth kind added across
-// the connectors initiative (notion/gsheets/gcalendar/jira through
-// pipedrive/zendesk/salesforce) - this list was missed for several
-// batches (only the original 8 kinds were ever listed here), a real gap
-// fixed alongside the pipedrive/zendesk/salesforce work: without an entry
-// here, an org admin has no way to register that kind's OAuth app at all,
-// so a self-service "Connect" click on Workspace → Connections would
-// always fail with "no {kind} oauth app is registered for this
-// organization" - not caught earlier because no live OAuth app was ever
-// registered/tested for these kinds in this environment.
-const OAUTH_CONNECTOR_KINDS = [
-  'gdrive',
-  'sharepoint',
-  'onedrive',
-  'confluence',
-  'slack',
-  'outlook',
-  'teams',
-  'gmail',
-  'notion',
-  'gsheets',
-  'gcalendar',
-  'jira',
-  'github',
-  'asana',
-  'linear',
-  'hubspot',
-  'intercom',
-  'pipedrive',
-  'zendesk',
-  'salesforce',
-] as const
+// Only the 4 knowledge_sync-capable OAuth kinds - this page (and this
+// modal, RegisterOAuthApp's own generic reach notwithstanding) is titled
+// and scoped as Knowledge, so it has no business listing the 16
+// agent_action-only kinds (Slack, Notion, Jira, Salesforce, ...) that get
+// self-service-connected from Workspace → Connections instead. Those
+// register their org-wide OAuth app via seshat-ui's own Admin Console
+// (AdminConnectorsView.tsx) or seshat-server's API directly, not here.
+const OAUTH_CONNECTOR_KINDS = ['gdrive', 'sharepoint', 'onedrive', 'confluence'] as const
 
 // The only two kinds with a static, editable config (see connectors.
 // Service.UpdateAccount's own doc comment) - every OAuth-based kind has no
 // static config here, only a live token, so there's nothing to edit.
 const STATIC_CONFIG_KINDS = new Set(['s3', 'azureblob'])
 
+// Monochrome by design (currentColor, no brand tint) - matches seshat-ui's
+// AdminConnectorsView.tsx, the pattern this page's OAuth-apps section was
+// rebuilt to mirror. SharePoint/OneDrive have no simple-icons entry at all
+// (Microsoft's own product sub-brands are absent from that library),
+// same fallback already used in ConnectionsPage.tsx/nodeIcons.tsx.
+function BrandIcon({ icon }: { icon: { path: string; title: string } }) {
+  return (
+    <svg viewBox="0 0 24 24" width="1em" height="1em" role="img" aria-label={icon.title} style={{ display: 'inline-block' }}>
+      <path d={icon.path} fill="currentColor" />
+    </svg>
+  )
+}
+
 const OAUTH_APP_LABELS: Record<string, string> = {
   gdrive: 'Google',
   sharepoint: 'Microsoft',
   onedrive: 'Microsoft',
   confluence: 'Atlassian',
-  slack: 'Slack',
-  outlook: 'Microsoft',
-  gmail: 'Google',
-  teams: 'Microsoft',
-  notion: 'Notion',
-  gsheets: 'Google',
-  gcalendar: 'Google',
-  jira: 'Atlassian',
-  github: 'GitHub',
-  asana: 'Asana',
-  linear: 'Linear',
-  hubspot: 'HubSpot',
-  intercom: 'Intercom',
-  pipedrive: 'Pipedrive',
-  zendesk: 'Zendesk',
-  salesforce: 'Salesforce',
+}
+
+const OAUTH_APP_ICONS: Record<string, React.ReactNode> = {
+  gdrive: <BrandIcon icon={siGoogledrive} />,
+  sharepoint: <WindowsOutlined />,
+  onedrive: <WindowsOutlined />,
+  confluence: <BrandIcon icon={siConfluence} />,
 }
 
 export function ConnectorsPage() {
   const organizationId = useScopedOrganizationId()
   const [creating, setCreating] = useState(false)
   const [editingAccount, setEditingAccount] = useState<ConnectorAccount | null>(null)
-  const [managingOAuthApps, setManagingOAuthApps] = useState(false)
   const [historyAccount, setHistoryAccount] = useState<ConnectorAccount | null>(null)
 
   const { data: allAccounts, isLoading, error } = useConnectorAccountsList(organizationId ?? undefined)
@@ -235,21 +205,18 @@ export function ConnectorsPage() {
         title="Connectors"
         description="External sources synced automatically into a Knowledge corpus."
         actions={
-          <Space>
-            <Button icon={<SettingOutlined />} onClick={() => setManagingOAuthApps(true)} disabled={!organizationId}>
-              OAuth apps
-            </Button>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => setCreating(true)}
-              disabled={!organizationId || corpusOptions.length === 0}
-            >
-              New connector
-            </Button>
-          </Space>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => setCreating(true)}
+            disabled={!organizationId || corpusOptions.length === 0}
+          >
+            New connector
+          </Button>
         }
       />
+
+      <OAuthAppsSection organizationId={organizationId ?? undefined} apps={oauthApps ?? []} />
 
       {organizationId && corpusOptions.length === 0 && !isLoading && (
         <Alert
@@ -260,6 +227,10 @@ export function ConnectorsPage() {
           style={{ marginBottom: 16 }}
         />
       )}
+
+      <Typography.Title level={5} style={{ margin: '0 0 12px', color: palette.ink }}>
+        Connected sources
+      </Typography.Title>
 
       <ConsoleTable<ConnectorAccount>
         rowKey="id"
@@ -316,8 +287,6 @@ export function ConnectorsPage() {
         submittingUpdate={updateAccount.isPending}
       />
 
-      <OAuthAppsModal open={managingOAuthApps} organizationId={organizationId ?? undefined} apps={oauthApps ?? []} onClose={() => setManagingOAuthApps(false)} />
-
       <SyncHistoryModal account={historyAccount} onClose={() => setHistoryAccount(null)} />
     </div>
   )
@@ -365,67 +334,57 @@ function SyncHistoryModal({ account, onClose }: { account: ConnectorAccount | nu
 // in a Drawer that only opens for the row being edited - same collapsed-
 // row-plus-drawer pattern as Embedder/Prospecting Settings, replacing 8
 // always-open Client ID/secret forms stacked in one modal.
-function OAuthAppsModal({
-  open,
-  organizationId,
-  apps,
-  onClose,
-}: {
-  open: boolean
-  organizationId: string | undefined
-  apps: ConnectorOAuthApp[]
-  onClose: () => void
-}) {
+// Card grid mirroring seshat-ui's AdminConnectorsView.tsx (pv-* classes,
+// PROVIDERS_CSS) - a fixed catalog of kinds, each either configured or
+// not, no per-instance data - unlike the Connected sources table below,
+// which lists real connected accounts (multiple per kind, each with its
+// own corpus/status/sync history). Shown inline on the page instead of
+// behind a modal, same reasoning as seshat-ui's version: it's a short,
+// infrequently-touched setup step, not worth an extra click to reach.
+function OAuthAppsSection({ organizationId, apps }: { organizationId: string | undefined; apps: ConnectorOAuthApp[] }) {
   const [editingKind, setEditingKind] = useState<OAuthConnectorKind | null>(null)
 
   return (
-    <Modal open={open} onCancel={onClose} footer={null} centered title="OAuth apps" width={480} destroyOnHidden>
-      <Typography.Paragraph type="secondary" style={{ marginTop: -8 }}>
+    <div style={{ marginBottom: 28 }}>
+      <Typography.Title level={5} style={{ margin: '0 0 4px', color: palette.ink }}>
+        OAuth apps
+      </Typography.Title>
+      <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
         Register this organization's own OAuth app once per provider - every account this org connects afterward reuses it.
       </Typography.Paragraph>
-      <Space orientation="vertical" size={8} style={{ width: '100%' }}>
+      <div className="pv-list">
         {OAUTH_CONNECTOR_KINDS.map((kind) => {
           const existing = apps.find((a) => a.kind === kind)
           const configured = Boolean(existing?.configured)
           return (
-            <div
-              key={kind}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 12,
-                padding: '10px 14px',
-                border: `1px solid ${palette.border}`,
-                borderRadius: 10,
-                background: palette.surface,
-              }}
-            >
-              <div>
-                <Typography.Text strong>{OAUTH_APP_LABELS[kind]}</Typography.Text>
-                <Typography.Text style={{ display: 'block', fontSize: 12, color: palette.inkTertiary }}>{kind}</Typography.Text>
+            <div key={kind} className="pv-card">
+              <div className="pv-card-header">
+                <div className="pv-brand">
+                  <span className="pv-icon">{OAUTH_APP_ICONS[kind]}</span>
+                  <div className="pv-meta">
+                    <div className="pv-name">{OAUTH_APP_LABELS[kind]}</div>
+                    <div className="pv-id">{kind}</div>
+                  </div>
+                </div>
+                <div className="pv-card-controls">
+                  <span className={`pv-status-pill ${configured ? 'connected' : 'disconnected'}`}>
+                    {configured ? 'Configured' : 'Not configured'}
+                  </span>
+                  {configured ? (
+                    <button type="button" className="pv-icon-btn" onClick={() => setEditingKind(kind)} aria-label={`Edit ${OAUTH_APP_LABELS[kind]} app`}>
+                      <EditOutlined />
+                    </button>
+                  ) : (
+                    <button type="button" className="pv-configure-btn" onClick={() => setEditingKind(kind)}>
+                      Configure
+                    </button>
+                  )}
+                </div>
               </div>
-              <Space size={8}>
-                <Tag color={configured ? 'green' : 'default'} style={{ margin: 0 }}>
-                  {configured ? 'Configured' : 'Not configured'}
-                </Tag>
-                {configured ? (
-                  <Button
-                    size="small"
-                    icon={<EditOutlined />}
-                    onClick={() => setEditingKind(kind)}
-                    aria-label={`Edit ${OAUTH_APP_LABELS[kind]} app`}
-                  />
-                ) : (
-                  <Button size="small" type="primary" onClick={() => setEditingKind(kind)}>
-                    Configure
-                  </Button>
-                )}
-              </Space>
             </div>
           )
         })}
-      </Space>
+      </div>
 
       <OAuthAppFormDrawer
         kind={editingKind}
@@ -433,7 +392,7 @@ function OAuthAppsModal({
         existing={editingKind ? apps.find((a) => a.kind === editingKind) : undefined}
         onClose={() => setEditingKind(null)}
       />
-    </Modal>
+    </div>
   )
 }
 

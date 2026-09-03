@@ -96,8 +96,8 @@ export const consoleTheme: ThemeConfig = {
       darkItemSelectedBg: palette.sidebarActiveBg,
       darkItemSelectedColor: palette.sidebarActiveText,
       darkGroupTitleColor: palette.sidebarTextMuted,
-      itemBorderRadius: 8,
-      itemMarginInline: 10,
+      itemBorderRadius: 6,
+      itemMarginInline: 8,
     },
     Card: {
       colorBgContainer: palette.surface,

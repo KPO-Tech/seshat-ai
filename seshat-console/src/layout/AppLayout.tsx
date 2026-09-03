@@ -162,7 +162,7 @@ export function AppLayout() {
     <Layout className="console-shell" style={{ height: '100vh', overflow: 'hidden', background: palette.canvas }}>
       <Sider
         theme="dark"
-        width={264}
+        width={244}
         style={{
           height: '100vh',
           overflowX: 'hidden',

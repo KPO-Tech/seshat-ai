@@ -268,14 +268,17 @@ body {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-/* Nav Menu Enhancements */
+/* Nav Menu Enhancements - matched to seshat-ui's Admin Console rail
+   (admin-nav-item: height 30px, padding 0 8px, font-size 12px) so the two
+   apps' sidebars read as one design system instead of two densities. */
 .ant-menu-dark.ant-menu-inline .ant-menu-item {
-  height: 56px;
-  line-height: 56px;
+  height: 32px;
+  line-height: 32px;
   margin-block: 0;
   display: flex;
   align-items: center;
-  padding-inline: 24px !important;
+  padding-inline: 12px !important;
+  font-size: 12.5px;
 }
 
 .ant-menu-dark.ant-menu-inline .ant-menu-item .ant-menu-title-content {
@@ -283,8 +286,8 @@ body {
 }
 
 .ant-menu-dark.ant-menu-inline .ant-menu-item .ant-menu-item-icon {
-  min-width: 18px;
-  font-size: 16px;
+  min-width: 15px;
+  font-size: 14px;
 }
 
 .ant-menu-dark.ant-menu-inline .ant-menu-item-selected {
@@ -298,8 +301,8 @@ body {
   content: '';
   position: absolute;
   left: 0;
-  top: 6px;
-  bottom: 6px;
+  top: 4px;
+  bottom: 4px;
   width: 3px;
   border-radius: 0 3px 3px 0;
   background: #ef7c2f;
@@ -309,8 +312,9 @@ body {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   font-weight: 700;
-  padding-left: 20px !important;
-  margin-top: 14px;
+  font-size: 10.5px;
+  padding-left: 12px !important;
+  margin-top: 10px;
 }
 
 /* Subnav Modern Pills */
@@ -623,6 +627,151 @@ body {
 
 .workspace-chat-markdown tr:last-child td {
   border-bottom: 0;
+}
+
+/* Provider/Connector catalog cards - mirrors seshat-ui's Admin Console
+   pv-* pattern (AdminConnectorsView.tsx/AdminProvidersView.tsx, PROVIDERS_CSS)
+   exactly, so the same "fixed catalog of kinds, each configured or not"
+   concept looks identical in both apps. Monochrome icons by design - no
+   brand tint, same as seshat-ui's version. */
+.pv-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 8px;
+}
+
+.pv-card {
+  background: #1c1b22;
+  border: 1px solid #26242e;
+  border-radius: 10px;
+}
+
+.pv-card.expanded {
+  grid-column: 1 / -1;
+  border-color: #ef7c2f;
+}
+
+.pv-card-detail {
+  border-top: 1px solid #26242e;
+  padding: 14px 16px;
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.pv-card-detail__label {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #8a8379;
+  margin-bottom: 2px;
+}
+
+.pv-card-header {
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pv-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.pv-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: #b8b0a5;
+  flex-shrink: 0;
+}
+
+.pv-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pv-name {
+  font-weight: 700;
+  font-size: 13px;
+  color: #f5f2ec;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pv-id {
+  font-size: 10.5px;
+  color: #8a8379;
+}
+
+.pv-card-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.pv-status-pill {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.pv-status-pill.connected {
+  background: rgba(34, 197, 94, 0.12);
+  color: #22c55e;
+}
+
+.pv-status-pill.disconnected {
+  background: rgba(255, 255, 255, 0.04);
+  color: #8a8379;
+  border: 1px solid #32303c;
+}
+
+.pv-configure-btn {
+  background: #ef7c2f;
+  color: #131217;
+  border: none;
+  padding: 5px 12px;
+  border-radius: 7px;
+  font-weight: 700;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.pv-configure-btn:hover {
+  background: #ff8f3d;
+}
+
+.pv-icon-btn {
+  background: none;
+  border: none;
+  padding: 5px;
+  border-radius: 6px;
+  color: #b8b0a5;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.pv-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #f5f2ec;
 }
 
 /* Connections Page (Workspace) */
