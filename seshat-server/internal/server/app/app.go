@@ -153,11 +153,15 @@ func New(cfg serverconfig.Config) (*App, error) {
 	// server-owned callback URL every registered OAuth app targets — see
 	// connectors.Service.SetPublicAPIURL's doc comment.
 	connectorsService.SetPublicAPIURL(cfg.PublicAPIURL)
-	// "gmail_new_messages" needs a real connector-token resolver
-	// (*connectors.Service satisfies automation.ConnectorTokenResolver
-	// structurally), so it's registered here rather than alongside the
-	// generic/database nodes above, which need no such dependency.
+	// "gmail_new_messages" and the send-action nodes below all need a real
+	// connector-token resolver (*connectors.Service satisfies
+	// automation.ConnectorTokenResolver structurally), so they're registered
+	// here rather than alongside the generic/database nodes above, which
+	// need no such dependency.
 	nodeRegistry.Register("gmail_new_messages", automation.NewGmailPollNode(database, connectorsService))
+	nodeRegistry.Register("gmail_send_email", automation.NewGmailSendNode(connectorsService))
+	nodeRegistry.Register("outlook_send_email", automation.NewOutlookSendNode(connectorsService))
+	nodeRegistry.Register("teams_send_message", automation.NewTeamsSendNode(connectorsService))
 
 	mcpRegistryService := mcpregistry.New(database, iamService)
 	hookRegistryService := hookregistry.New(database, iamService)
