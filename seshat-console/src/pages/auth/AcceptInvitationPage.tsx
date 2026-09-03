@@ -89,7 +89,7 @@ export function AcceptInvitationPage() {
 
   const onAccept = () => {
     acceptInvitation.mutate(token, {
-      onSuccess: async () => {
+      onSuccess: async (membership) => {
         const { data } = await api.GET('/api/v1/auth/me')
         if (data?.user) {
           useAuthStore.getState().setSession({
@@ -100,7 +100,10 @@ export function AcceptInvitationPage() {
           })
         }
         message.success(`Joined ${preview.organization_name}`)
-        window.location.href = '/workspace'
+        // Workspace requires an org id in its URL now - the mutation's own
+        // response (the membership just created) already has it, no need to
+        // wait on or search through the refreshed session above for it.
+        window.location.href = membership?.organization_id ? `/orgs/${membership.organization_id}/workspace` : '/'
       },
       onError: (error) => message.error(getErrorMessage(error)),
     })

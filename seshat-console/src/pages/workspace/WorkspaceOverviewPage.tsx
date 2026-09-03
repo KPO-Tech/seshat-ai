@@ -1,6 +1,6 @@
 import { ApartmentOutlined, CrownOutlined, MessageOutlined, LinkOutlined, ArrowRightOutlined } from '@ant-design/icons'
 import { Card, Typography, Button } from 'antd'
-import { useNavigate } from 'react-router'
+import { useNavigate, useParams } from 'react-router'
 import { PageHeader } from '@/components/PageHeader'
 import { StatTile } from '@/components/StatTile'
 import { useAuthStore } from '@/store/auth'
@@ -8,6 +8,7 @@ import { palette } from '@/theme/tokens'
 
 export function WorkspaceOverviewPage() {
   const navigate = useNavigate()
+  const { organizationId } = useParams<{ organizationId: string }>()
   const user = useAuthStore((state) => state.user)
   const organizations = useAuthStore((state) => state.organizations)
   const memberships = useAuthStore((state) => state.memberships)
@@ -62,7 +63,7 @@ export function WorkspaceOverviewPage() {
           hoverable
           className="stat-card"
           styles={{ body: { padding: '24px 22px' } }}
-          onClick={() => navigate('/workspace/chat')}
+          onClick={() => navigate(`/orgs/${organizationId}/workspace/chat`)}
           style={{ cursor: 'pointer', borderRadius: 14 }}
         >
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
@@ -101,7 +102,7 @@ export function WorkspaceOverviewPage() {
           hoverable
           className="stat-card"
           styles={{ body: { padding: '24px 22px' } }}
-          onClick={() => navigate('/workspace/connections')}
+          onClick={() => navigate(`/orgs/${organizationId}/workspace/connections`)}
           style={{ cursor: 'pointer', borderRadius: 14 }}
         >
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>

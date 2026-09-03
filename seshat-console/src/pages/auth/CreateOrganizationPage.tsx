@@ -59,7 +59,13 @@ export function CreateOrganizationPage() {
               memberships: data.memberships ?? [],
             })
           }
-          navigate(org?.id ? `/orgs/${org.id}/overview` : '/workspace', { replace: true })
+          // Fallback only matters if the create call somehow returned no org
+          // id (shouldn't happen in practice) - Workspace requires an org id
+          // in its URL now, so there's nowhere workspace-shaped to send this
+          // user without one; let LandingRedirect (mounted at "/") work out
+          // where they belong from their refreshed session instead of
+          // guessing here.
+          navigate(org?.id ? `/orgs/${org.id}/overview` : '/', { replace: true })
         },
         onError: (error) => {
           setPendingOrg({ name, slug })

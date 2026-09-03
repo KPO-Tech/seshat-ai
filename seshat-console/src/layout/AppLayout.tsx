@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Avatar, Button, Dropdown, Layout, Menu, Select, Space, Typography } from 'antd'
+import { Avatar, Button, Dropdown, Layout, Menu, Space, Typography } from 'antd'
 import { ArrowLeftOutlined, LogoutOutlined, UserOutlined } from '@ant-design/icons'
 import { Outlet, matchPath, useLocation, useNavigate } from 'react-router'
 import { useOrganizationsList } from '@/api/organizations'
@@ -8,11 +8,11 @@ import {
   getActivePrimaryNavItem,
   getActiveSecondaryNavItem,
   getOrganizationNavItems,
+  getOrganizationWorkspaceNavItem,
   getScopeTagLabel,
   getSecondaryNavItems,
   organizationNavGroups,
   platformNavItems,
-  workspaceNavItems,
 } from '@/layout/nav'
 import { useAuthStore } from '@/store/auth'
 import { useWorkspaceOrganizationStore } from '@/store/workspaceOrganization'
@@ -25,6 +25,7 @@ export function AppLayout() {
   const location = useLocation()
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
+  const memberships = useAuthStore((state) => state.memberships)
   const logout = useLogout()
   const selectedOrganizationId = useWorkspaceOrganizationStore((state) => state.organizationId)
   const setSelectedOrganizationId = useWorkspaceOrganizationStore((state) => state.setOrganizationId)
@@ -60,44 +61,39 @@ export function AppLayout() {
   ])
 
   const workspaceOrganizationId = routeOrganizationId ?? selectedOrganizationId ?? fallbackOrganizationId
-  const inOrganizationRoute = Boolean(routeOrganizationId)
-  // /workspace/* (Chat, Connections) has no org id in its URL - it reads
-  // workspaceOrganizationId from the store directly - so a multi-org admin
-  // needs a way to see/change which org those pages act on. The sidebar
-  // picker that used to cover this was removed for /platform/* and
-  // /orgs/:id/* (both already show the org unambiguously elsewhere), but
-  // Workspace never had an equivalent, so it's restored here specifically -
-  // in the header, not the sidebar, and only when there's more than one org
-  // to pick between (a single-org member already gets the right one from
-  // the store's own fallback effect above, a picker would just be noise).
-  const isWorkspaceRoute = location.pathname.startsWith('/workspace/')
-  const showWorkspaceOrganizationSwitcher = isWorkspaceRoute && organizations.length > 1
-  // The org sidebar/header should stay put while browsing that org's own
-  // Workspace, not just while literally under /orgs/:id/* - Workspace has no
-  // org id in its URL (see above) but is still conceptually "this org, just
-  // your personal corner of it", not a different place entirely. Previously
-  // this was gated on inOrganizationRoute alone, so clicking "Workspace"
-  // from inside an org wiped the whole org nav (and, for a platform admin,
-  // brought the unrelated Platform group back) - it read as leaving the
-  // organization rather than staying in it. Not extended to /platform/* or
-  // /me/* - those genuinely aren't scoped to any one org, unlike Workspace.
-  const inOrganizationContext = inOrganizationRoute || (isWorkspaceRoute && Boolean(workspaceOrganizationId))
   // The generic "Organization" scope tag alone doesn't say WHICH one when
   // there's more than one on the platform (a platform admin browsing several
   // orgs in a row has no sidebar picker to glance at any more - switching
   // orgs happens via /platform/organizations' own "Open" action) - so every
   // org-scoped page's header names it explicitly, not just the Overview page.
-  // Covers Workspace too now, for the same reason as inOrganizationContext.
-  const contextOrganizationName =
-    inOrganizationContext && workspaceOrganizationId
-      ? (organizations.find((organization) => organization.id === workspaceOrganizationId)?.name ?? null)
-      : null
-  const organizationNavItems =
-    inOrganizationContext && workspaceOrganizationId ? getOrganizationNavItems(workspaceOrganizationId) : []
+  const routeOrganizationName = routeOrganizationId
+    ? (organizations.find((organization) => organization.id === routeOrganizationId)?.name ?? null)
+    : null
+  // The org group/sidebar should only take over once you're actually inside
+  // an organization's routes (routeOrganizationId) — not whenever there
+  // happens to be a fallback-selected org, which used to make "Organization"
+  // (and hiding "Platform" below) leak into pages like /platform/overview
+  // that have nothing to do with any single org. Workspace (/orgs/:id/
+  // workspace/*) is a real org route like any other, so it's covered here
+  // for free - no special-casing needed the way it once was when it lived
+  // at a top-level, org-agnostic /workspace/* URL.
+  const inOrganizationRoute = Boolean(routeOrganizationId)
+  const isAdmin = Boolean(user?.is_admin)
+  // /orgs/:id/* beyond Workspace is gated behind organization.manage
+  // (RequireOrganizationManager, routes.tsx) - a plain member who isn't a
+  // manager can still reach their own org's Workspace (the router carves it
+  // out of that guard on purpose, matching the 403 page's own "Go to my
+  // workspace" escape hatch), but showing them Team & Access/AI Config/...
+  // links they'd immediately 403 on would be actively misleading. Mirrors
+  // RequireOrganizationManager's own check exactly, not a new policy.
+  const canManageRouteOrganization = Boolean(
+    routeOrganizationId && (isAdmin || memberships.some((m) => m.organization_id === routeOrganizationId && m.permissions?.includes('organization.manage'))),
+  )
+  const organizationNavItems = canManageRouteOrganization && routeOrganizationId ? getOrganizationNavItems(routeOrganizationId) : []
+  const organizationWorkspaceItem = inOrganizationRoute && workspaceOrganizationId ? getOrganizationWorkspaceNavItem(workspaceOrganizationId) : null
   const activePrimary = getActivePrimaryNavItem(location.pathname, workspaceOrganizationId)
   const secondaryNavItems = getSecondaryNavItems(location.pathname, workspaceOrganizationId)
   const activeSecondary = getActiveSecondaryNavItem(location.pathname, secondaryNavItems)
-  const isAdmin = Boolean(user?.is_admin)
   // The "Organizations" list only means anything when more than one can
   // exist - see docs/helps/audit-2026-08-29-openwork-den-comparison.md,
   // "org_mode" architecture item. /platform/organizations itself redirects
@@ -106,12 +102,12 @@ export function AppLayout() {
   // still unresolved (see useOrgMode's own doc comment).
   const visiblePlatformNavItems =
     orgMode === 'single' ? platformNavItems.filter((item) => item.key !== 'platform-organizations') : platformNavItems
-  // A platform admin drilling into one organization (or its Workspace) gets
-  // that organization's full nav as its own focused dashboard (everything
-  // Team & Access/AI Config/... already has) instead of it being squeezed in
-  // alongside Platform - same shape a single-org admin already sees, plus
-  // the "Back to Organizations" escape hatch below.
-  const showPlatformGroup = isAdmin && !inOrganizationContext
+  // A platform admin drilling into one organization gets that organization's
+  // full nav as its own focused dashboard (everything Team & Access/AI
+  // Config/... already has) instead of it being squeezed in alongside
+  // Platform - same shape a single-org admin already sees, plus the "Back
+  // to Organizations" escape hatch below.
+  const showPlatformGroup = isAdmin && !inOrganizationRoute
 
   // Overview/Preferences render as plain items (no group label) bracketing
   // the three themed groups below - see organizationNavGroups' own comment
@@ -150,11 +146,17 @@ export function AppLayout() {
       : []),
     ...organizationGroupMenuItems,
     ...ungroupedOrganizationItems.slice(1).map((item) => ({ key: item.key, label: item.label, icon: item.icon })),
-    ...(showPlatformGroup || organizationNavItems.length > 0 ? [{ key: 'workspace-divider', type: 'divider' as const }] : []),
-    ...workspaceNavItems.map((item) => ({ key: item.key, label: item.label, icon: item.icon })),
+    ...(organizationWorkspaceItem && (showPlatformGroup || organizationNavItems.length > 0)
+      ? [{ key: 'workspace-divider', type: 'divider' as const }]
+      : []),
+    ...(organizationWorkspaceItem ? [{ key: organizationWorkspaceItem.key, label: organizationWorkspaceItem.label, icon: organizationWorkspaceItem.icon }] : []),
   ]
 
-  const primaryItems = [...(showPlatformGroup ? visiblePlatformNavItems : []), ...organizationNavItems, ...workspaceNavItems]
+  const primaryItems = [
+    ...(showPlatformGroup ? visiblePlatformNavItems : []),
+    ...organizationNavItems,
+    ...(organizationWorkspaceItem ? [organizationWorkspaceItem] : []),
+  ]
 
   return (
     <Layout className="console-shell" style={{ height: '100vh', overflow: 'hidden', background: palette.canvas }}>
@@ -211,7 +213,7 @@ export function AppLayout() {
           </div>
         </div>
 
-        {isAdmin && inOrganizationContext && (
+        {isAdmin && inOrganizationRoute && (
           <div style={{ padding: '4px 14px 8px' }}>
             <Button
               type="text"
@@ -287,7 +289,7 @@ export function AppLayout() {
                   flexShrink: 0,
                 }}
               >
-                {contextOrganizationName ? contextOrganizationName : getScopeTagLabel(location.pathname)}
+                {routeOrganizationName ? routeOrganizationName : getScopeTagLabel(location.pathname)}
               </span>
               <Typography.Text style={{ color: palette.inkTertiary, fontSize: 13 }}>/</Typography.Text>
               <Typography.Text strong style={{ fontSize: 14.5, color: palette.ink }} ellipsis>
@@ -315,17 +317,6 @@ export function AppLayout() {
           )}
 
           <div className="console-topbar__session" style={{ gridArea: 'session' }}>
-            {showWorkspaceOrganizationSwitcher && (
-              <Select
-                size="small"
-                value={workspaceOrganizationId ?? undefined}
-                onChange={(nextOrganizationId) => setSelectedOrganizationId(nextOrganizationId)}
-                options={organizations.map((organization) => ({ value: organization.id, label: organization.name }))}
-                style={{ minWidth: 170, flexShrink: 0 }}
-                aria-label="Active organization for Workspace"
-              />
-            )}
-
             <Dropdown
               trigger={['click']}
               menu={{

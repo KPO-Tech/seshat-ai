@@ -59,15 +59,22 @@ export const platformNavItems: NavItem[] = [
   },
 ]
 
-export const workspaceNavItems: NavItem[] = [
-  {
-    key: 'workspace-home',
+// Workspace (Chat, Connections) is a self-service area of a specific
+// organization, not a platform-wide personal space - a member's Workspace
+// for org A is a completely different set of connected accounts than their
+// Workspace for org B, and the backend requires an organization_id on every
+// connector account/chat session. Kept as its own function (rather than
+// folded into getOrganizationNavItems) so AppLayout can place it visually
+// apart from the org's admin pages - same org, but "your own corner of it".
+export function getOrganizationWorkspaceNavItem(organizationId: string): NavItem {
+  return {
+    key: 'org-workspace',
     label: 'Workspace',
-    path: '/workspace/overview',
-    matchPrefix: '/workspace/',
+    path: `/orgs/${organizationId}/workspace/overview`,
+    matchPrefix: `/orgs/${organizationId}/workspace/`,
     icon: <ExperimentOutlined />,
-  },
-]
+  }
+}
 
 export const accountNavItems: NavItem[] = [
   {
@@ -171,29 +178,6 @@ export const organizationNavGroups: OrganizationNavGroup[] = [
 ]
 
 export function getSecondaryNavItems(pathname: string, organizationId: string | null): SecondaryNavItem[] {
-  if (pathname.startsWith('/workspace/')) {
-    return [
-      {
-        key: 'workspace-overview',
-        label: 'Overview',
-        path: '/workspace/overview',
-        matchPrefix: '/workspace/overview',
-      },
-      {
-        key: 'workspace-chat',
-        label: 'Chat',
-        path: '/workspace/chat',
-        matchPrefix: '/workspace/chat',
-      },
-      {
-        key: 'workspace-connections',
-        label: 'Connections',
-        path: '/workspace/connections',
-        matchPrefix: '/workspace/connections',
-      },
-    ]
-  }
-
   if (pathname.startsWith('/me/')) {
     return [
       {
@@ -259,6 +243,29 @@ export function getSecondaryNavItems(pathname: string, organizationId: string | 
   }
 
   if (!organizationId) return []
+
+  if (pathname.startsWith(`/orgs/${organizationId}/workspace/`)) {
+    return [
+      {
+        key: 'workspace-overview',
+        label: 'Overview',
+        path: `/orgs/${organizationId}/workspace/overview`,
+        matchPrefix: `/orgs/${organizationId}/workspace/overview`,
+      },
+      {
+        key: 'workspace-chat',
+        label: 'Chat',
+        path: `/orgs/${organizationId}/workspace/chat`,
+        matchPrefix: `/orgs/${organizationId}/workspace/chat`,
+      },
+      {
+        key: 'workspace-connections',
+        label: 'Connections',
+        path: `/orgs/${organizationId}/workspace/connections`,
+        matchPrefix: `/orgs/${organizationId}/workspace/connections`,
+      },
+    ]
+  }
 
   if (pathname.startsWith(`/orgs/${organizationId}/team/`)) {
     return [
@@ -467,7 +474,8 @@ export function getSecondaryNavItems(pathname: string, organizationId: string | 
 
 export function getActivePrimaryNavItem(pathname: string, organizationId: string | null) {
   const orgItems = organizationId ? getOrganizationNavItems(organizationId) : []
-  return [...platformNavItems, ...workspaceNavItems, ...accountNavItems, ...orgItems].find((item) => matchesPath(pathname, item))
+  const workspaceItem = organizationId ? [getOrganizationWorkspaceNavItem(organizationId)] : []
+  return [...platformNavItems, ...accountNavItems, ...orgItems, ...workspaceItem].find((item) => matchesPath(pathname, item))
 }
 
 export function getActiveSecondaryNavItem(pathname: string, items: SecondaryNavItem[]) {
@@ -476,14 +484,12 @@ export function getActiveSecondaryNavItem(pathname: string, items: SecondaryNavI
 
 export function getScopeLabel(pathname: string, organizationName: string | null) {
   if (pathname.startsWith('/orgs/')) return organizationName ?? 'Organization'
-  if (pathname.startsWith('/workspace/')) return 'Personal'
   if (pathname.startsWith('/me/')) return 'Personal'
   return 'Platform'
 }
 
 export function getScopeTagLabel(pathname: string) {
   if (pathname.startsWith('/orgs/')) return 'Organization'
-  if (pathname.startsWith('/workspace/')) return 'Personal'
   if (pathname.startsWith('/me/')) return 'Personal'
   return 'Platform'
 }
