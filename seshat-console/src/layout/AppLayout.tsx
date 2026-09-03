@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Avatar, Button, Dropdown, Layout, Menu, Space, Typography } from 'antd'
-import { HomeOutlined, LogoutOutlined, UserOutlined } from '@ant-design/icons'
+import { HomeOutlined, LogoutOutlined, ThunderboltOutlined, UserOutlined } from '@ant-design/icons'
 import { Outlet, matchPath, useLocation, useNavigate } from 'react-router'
 import { useOrganizationsList } from '@/api/organizations'
 import { useLogout, useOrgMode } from '@/api/auth'
@@ -173,41 +173,27 @@ export function AppLayout() {
           flexDirection: 'column',
         }}
       >
-        {/* Brand Header */}
+        {/* Brand Header - no separator below, sized to match seshat-ui's
+            Admin Console rail head (admin-rail-head: 30px) rather than
+            standing apart as its own taller block. No real logo yet, so a
+            plain icon (no colored container chip) stands in for one, same
+            treatment as seshat-ui's own "Admin Console" mark. */}
         <div
           className="console-brand"
           style={{
-            padding: '0 14px',
+            padding: '0 12px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            borderBottom: `1px solid ${palette.borderSubtle}`,
-            height: 56,
+            height: 30,
+            marginTop: 10,
+            marginBottom: 4,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-            <div
-              className="console-brand__mark"
-              style={{
-                width: 26,
-                height: 26,
-                borderRadius: 7,
-                background: palette.accent,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 13,
-                fontWeight: 800,
-                color: '#1E1C1A',
-                flexShrink: 0,
-              }}
-            >
-              S
-            </div>
-            <div>
-              <div style={{ color: palette.ink, fontWeight: 700, fontSize: 14, letterSpacing: '-0.01em', lineHeight: 1.2 }}>
-                Seshat Console
-              </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <ThunderboltOutlined style={{ fontSize: 15, color: palette.accent, flexShrink: 0 }} />
+            <div style={{ color: palette.ink, fontWeight: 700, fontSize: 13.5, letterSpacing: '-0.01em', lineHeight: 1.2 }}>
+              Seshat Console
             </div>
           </div>
 
