@@ -1,8 +1,35 @@
 import { useEffect, useState } from 'react'
 import { Alert, Button, Drawer, Empty, Form, Input, Modal, Popconfirm, Select, Space, Tag, Typography, message } from 'antd'
 import type { TableProps } from 'antd'
-import { CloudUploadOutlined, DeleteOutlined, EditOutlined, HistoryOutlined, PlusOutlined, SyncOutlined, WindowsOutlined } from '@ant-design/icons'
-import { siGoogledrive, siConfluence } from 'simple-icons'
+import {
+  CloudOutlined,
+  CloudUploadOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  FunnelPlotOutlined,
+  HistoryOutlined,
+  MailOutlined,
+  PlusOutlined,
+  SlackOutlined,
+  SyncOutlined,
+  TeamOutlined,
+  WindowsOutlined,
+} from '@ant-design/icons'
+import {
+  siGoogledrive,
+  siConfluence,
+  siGmail,
+  siNotion,
+  siGooglesheets,
+  siGooglecalendar,
+  siJira,
+  siGithub,
+  siAsana,
+  siLinear,
+  siHubspot,
+  siIntercom,
+  siZendesk,
+} from 'simple-icons'
 import {
   useConnectorAccountsList,
   useCreateConnectorAccount,
@@ -50,14 +77,47 @@ const CONNECTOR_KINDS = [
   { value: 'confluence', label: 'Confluence' },
 ]
 
-// Only the 4 knowledge_sync-capable OAuth kinds - this page (and this
-// modal, RegisterOAuthApp's own generic reach notwithstanding) is titled
-// and scoped as Knowledge, so it has no business listing the 16
-// agent_action-only kinds (Slack, Notion, Jira, Salesforce, ...) that get
-// self-service-connected from Workspace → Connections instead. Those
-// register their org-wide OAuth app via seshat-ui's own Admin Console
-// (AdminConnectorsView.tsx) or seshat-server's API directly, not here.
-const OAUTH_CONNECTOR_KINDS = ['gdrive', 'sharepoint', 'onedrive', 'confluence'] as const
+// The 4 knowledge_sync-capable OAuth kinds - the only ones the "New
+// connector" modal below can create a *knowledge_sync* account for (it
+// needs a corpus_id, which the other 16 kinds' accounts never have).
+// Deliberately a separate, narrower list from ALL_OAUTH_KINDS below: this
+// one gates what "New connector" offers, that one gates what "OAuth
+// apps" registers - registering an app and using it for knowledge_sync
+// are two different questions.
+const KNOWLEDGE_SYNC_OAUTH_KINDS = ['gdrive', 'sharepoint', 'onedrive', 'confluence'] as const
+
+// Every OAuth connector kind (see connectors.oauthConnectorKinds on the
+// seshat-server side) - registering an app here is what makes "Connect"
+// possible at all for that kind, everywhere it's used: a knowledge_sync
+// account further down this same page for the 4 kinds above, or a
+// self-service agent_action account from Workspace → Connections for the
+// other 16 (Slack, Notion, Jira, Salesforce, ...). Previously this section
+// only listed the 4 knowledge_sync kinds, silently pushing anyone who
+// needed to register one of the other 16 out to seshat-ui's Admin Console
+// or the API directly - widened 2026-09-03 so a web-console-only admin
+// isn't stuck needing the desktop app just for this.
+const ALL_OAUTH_KINDS: OAuthConnectorKind[] = [
+  'gdrive',
+  'sharepoint',
+  'onedrive',
+  'confluence',
+  'slack',
+  'outlook',
+  'teams',
+  'gmail',
+  'notion',
+  'gsheets',
+  'gcalendar',
+  'jira',
+  'github',
+  'asana',
+  'linear',
+  'hubspot',
+  'intercom',
+  'pipedrive',
+  'zendesk',
+  'salesforce',
+]
 
 // The only two kinds with a static, editable config (see connectors.
 // Service.UpdateAccount's own doc comment) - every OAuth-based kind has no
@@ -77,18 +137,60 @@ function BrandIcon({ icon }: { icon: { path: string; title: string } }) {
   )
 }
 
-const OAUTH_APP_LABELS: Record<string, string> = {
-  gdrive: 'Google',
-  sharepoint: 'Microsoft',
-  onedrive: 'Microsoft',
-  confluence: 'Atlassian',
+// Per-kind, not per-vendor - ConnectorOAuthApp stores one row per kind
+// (resolveOAuthApp is keyed by kind, not by vendor), so e.g. Google Drive
+// and Gmail are two separate app registrations even though both are
+// "Google" - matches seshat-ui's AdminConnectorsView.tsx one-card-per-kind
+// convention exactly, not the old vendor-grouped labels this section used
+// when it only had 4 cards to show.
+const OAUTH_APP_LABELS: Record<OAuthConnectorKind, string> = {
+  gdrive: 'Google Drive',
+  sharepoint: 'SharePoint',
+  onedrive: 'OneDrive',
+  confluence: 'Confluence',
+  slack: 'Slack',
+  outlook: 'Outlook',
+  teams: 'Microsoft Teams',
+  gmail: 'Gmail',
+  notion: 'Notion',
+  gsheets: 'Google Sheets',
+  gcalendar: 'Google Calendar',
+  jira: 'Jira',
+  github: 'GitHub',
+  asana: 'Asana',
+  linear: 'Linear',
+  hubspot: 'HubSpot',
+  intercom: 'Intercom',
+  pipedrive: 'Pipedrive',
+  zendesk: 'Zendesk',
+  salesforce: 'Salesforce',
 }
 
-const OAUTH_APP_ICONS: Record<string, React.ReactNode> = {
+// Same simple-icons/antd-icon choices already vetted in seshat-ui's
+// AdminConnectorsView.tsx (7 of these 20 have no simple-icons entry at
+// all - Microsoft's own sub-brands, Pipedrive, Salesforce - those keep a
+// topically-close antd icon instead of a fabricated logo).
+const OAUTH_APP_ICONS: Record<OAuthConnectorKind, React.ReactNode> = {
   gdrive: <BrandIcon icon={siGoogledrive} />,
   sharepoint: <WindowsOutlined />,
   onedrive: <WindowsOutlined />,
   confluence: <BrandIcon icon={siConfluence} />,
+  slack: <SlackOutlined />,
+  outlook: <MailOutlined />,
+  teams: <TeamOutlined />,
+  gmail: <BrandIcon icon={siGmail} />,
+  notion: <BrandIcon icon={siNotion} />,
+  gsheets: <BrandIcon icon={siGooglesheets} />,
+  gcalendar: <BrandIcon icon={siGooglecalendar} />,
+  jira: <BrandIcon icon={siJira} />,
+  github: <BrandIcon icon={siGithub} />,
+  asana: <BrandIcon icon={siAsana} />,
+  linear: <BrandIcon icon={siLinear} />,
+  hubspot: <BrandIcon icon={siHubspot} />,
+  intercom: <BrandIcon icon={siIntercom} />,
+  pipedrive: <FunnelPlotOutlined />,
+  zendesk: <BrandIcon icon={siZendesk} />,
+  salesforce: <CloudOutlined />,
 }
 
 export function ConnectorsPage() {
@@ -322,11 +424,16 @@ function SyncHistoryModal({ account, onClose }: { account: ConnectorAccount | nu
   )
 }
 
-// OAuthAppsModal lets an org admin register the Google/Microsoft OAuth app
-// credentials gdrive/sharepoint connectors need, once per organization -
-// see connectors.ConnectorOAuthApp's doc comment for why this is separate
+// OAuthAppsSection lets an org admin register any of the 20 OAuth
+// connector kinds' app credentials, once per organization - see
+// connectors.ConnectorOAuthApp's doc comment for why this is separate
 // from the per-account connect flow (one app registration serves every
-// account an org later connects for that kind).
+// account an org later connects for that kind, whether it ends up used
+// for knowledge_sync further down this page or self-service agent_action
+// from Workspace → Connections for the other 16 kinds). Not scoped to
+// Knowledge alone despite this page's own name - the alternative left a
+// web-console-only admin with no way to register the other 16 kinds at
+// all short of switching to seshat-ui's desktop Admin Console.
 // Each provider renders as a compact summary row (name/kind, a Configured/
 // Not configured Tag, Configure/Edit) with the Client ID/secret form living
 // in a Drawer that only opens for the row being edited - same collapsed-
@@ -351,7 +458,7 @@ function OAuthAppsSection({ organizationId, apps }: { organizationId: string | u
         Register this organization's own OAuth app once per provider - every account this org connects afterward reuses it.
       </Typography.Paragraph>
       <div className="pv-list">
-        {OAUTH_CONNECTOR_KINDS.map((kind) => {
+        {ALL_OAUTH_KINDS.map((kind) => {
           const existing = apps.find((a) => a.kind === kind)
           const configured = Boolean(existing?.configured)
           return (
@@ -452,6 +559,16 @@ function OAuthAppFormDrawer({
         >
           <Input.Password autoComplete="new-password" placeholder={existing?.configured ? 'Unchanged' : undefined} />
         </Form.Item>
+        {kind === 'zendesk' && (
+          <Form.Item
+            name="subdomain"
+            label="Zendesk subdomain"
+            extra='This org&apos;s own Zendesk account subdomain, e.g. "acme" for acme.zendesk.com - Zendesk&apos;s OAuth endpoints are hosted per-account, unlike every other provider here.'
+            rules={[{ required: true, message: 'Required' }]}
+          >
+            <Input placeholder="acme" />
+          </Form.Item>
+        )}
       </Form>
     </Drawer>
   )
@@ -507,7 +624,7 @@ function ConnectorFormDrawer({
     form.setFieldsValue({ kind: 's3', sync_interval_seconds: 3600, region: 'us-east-1' })
   }, [open, editingAccount, form])
 
-  const isOAuthKind = !isEditing && OAUTH_CONNECTOR_KINDS.includes(kind as (typeof OAUTH_CONNECTOR_KINDS)[number])
+  const isOAuthKind = !isEditing && KNOWLEDGE_SYNC_OAUTH_KINDS.includes(kind as (typeof KNOWLEDGE_SYNC_OAUTH_KINDS)[number])
   const oauthConfigured = configuredOAuthKinds.has(kind)
 
   return (
@@ -524,7 +641,7 @@ function ConnectorFormDrawer({
           </Button>
         ) : isOAuthKind ? (
           <Button type="primary" loading={beginOAuth.isPending} disabled={!oauthConfigured} onClick={() => form.submit()}>
-            Connect with {OAUTH_APP_LABELS[kind]}
+            Connect with {OAUTH_APP_LABELS[kind as OAuthConnectorKind]}
           </Button>
         ) : (
           <Button type="primary" loading={submittingStaticAccount} onClick={() => form.submit()}>
@@ -586,8 +703,8 @@ function ConnectorFormDrawer({
           <Alert
             type="warning"
             showIcon
-            message={`No ${OAUTH_APP_LABELS[kind]} app registered`}
-            description={`Register this organization's ${OAUTH_APP_LABELS[kind]} OAuth app via "OAuth apps" before connecting a ${kind} account.`}
+            message={`No ${OAUTH_APP_LABELS[kind as OAuthConnectorKind]} app registered`}
+            description={`Register this organization's ${OAUTH_APP_LABELS[kind as OAuthConnectorKind]} OAuth app via "OAuth apps" before connecting a ${kind} account.`}
             style={{ marginBottom: 16 }}
           />
         )}
