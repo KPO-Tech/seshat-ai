@@ -15,7 +15,9 @@ export type AuditEntry = {
   resource_id?: string
   ip_address?: string
   status: string
-  created_at: number
+  // ISO-8601 (Go's time.Time marshals to RFC3339, not a Unix number) - see
+  // internal/audit/types.go and internal/cloud/audit/client.go.
+  created_at: string
 }
 
 export type AuditPage = {
@@ -135,7 +137,7 @@ export function AdminAuditView() {
               <tr><td colSpan={6} className="adm-td-center adm-muted">No logs found</td></tr>
             ) : data.logs.map((e) => (
               <tr key={e.id}>
-                <td className="adm-muted adm-nowrap">{new Date(e.created_at * 1000).toLocaleString()}</td>
+                <td className="adm-muted adm-nowrap">{new Date(e.created_at).toLocaleString()}</td>
                 <td className="adm-mono adm-truncate" title={e.actor_user_id}>{e.actor_user_id}</td>
                 <td className="adm-mono">{e.action}</td>
                 <td className="adm-muted">

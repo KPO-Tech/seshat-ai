@@ -162,15 +162,17 @@ export function AppLayout() {
         width={244}
         style={{
           height: '100vh',
-          overflowX: 'hidden',
-          overflowY: 'auto',
+          overflow: 'hidden',
           background: palette.sidebarBg,
           borderRight: `1px solid ${palette.border}`,
           display: 'flex',
           flexDirection: 'column',
         }}
       >
-        {/* Brand Header - no separator below, sized to match seshat-ui's
+        {/* Brand Header - fixed at the top of the sider (flexShrink: 0) so it
+            never scrolls out of view once the Menu below grows past the
+            sider's own height; only the Menu's own wrapper scrolls (see
+            overflowY below). No separator below, sized to match seshat-ui's
             Admin Console rail head (admin-rail-head: 30px) rather than
             standing apart as its own taller block. No real logo yet, so a
             plain icon (no colored container chip) stands in for one, same
@@ -185,6 +187,7 @@ export function AppLayout() {
             height: 30,
             marginTop: 10,
             marginBottom: 4,
+            flexShrink: 0,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -220,7 +223,7 @@ export function AppLayout() {
           )}
         </div>
 
-        <div style={{ flex: 1, paddingBottom: 16 }}>
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingBottom: 16 }}>
           <Menu
             theme="light"
             mode="inline"

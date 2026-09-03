@@ -247,7 +247,7 @@ export function OrganizationOverviewPage() {
           alignItems: 'stretch',
         }}
       >
-        <Card title="Setup Status" style={{ height: '100%' }}>
+        <Card title="Setup Status">
           <Space direction="vertical" size={14} style={{ width: '100%' }}>
             <div style={{ padding: '8px 12px', background: 'rgba(30, 28, 26, 0.02)', borderRadius: 8, border: `1px solid ${palette.borderSubtle}` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 4 }}>
@@ -311,7 +311,7 @@ export function OrganizationOverviewPage() {
           </Space>
         </Card>
 
-        <Card title="Recent Activity" style={{ height: '100%' }} styles={{ body: { padding: 0 } }}>
+        <Card title="Recent Activity" styles={{ body: { padding: 0 } }}>
           {auditEvents.isLoading ? (
             <div style={{ padding: 20 }}>
               <Skeleton active paragraph={{ rows: 4 }} />
@@ -348,7 +348,7 @@ export function OrganizationOverviewPage() {
           )}
         </Card>
 
-        <Card title="Recent runs" style={{ height: '100%' }} styles={{ body: { padding: 0 } }}>
+        <Card title="Recent runs" styles={{ body: { padding: 0 } }}>
           {runs.isLoading ? (
             <div style={{ padding: 20 }}>
               <Skeleton active paragraph={{ rows: 4 }} />

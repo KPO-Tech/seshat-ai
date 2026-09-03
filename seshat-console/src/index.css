@@ -268,6 +268,22 @@ body {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+/* Setup Status / Recent Activity / Recent runs share one fixed height
+   regardless of content - an empty "No runs yet" card stays the same size
+   as a full one, and a longer list scrolls inside its own card instead of
+   growing it (and the other two) taller. */
+.organization-overview-detail-grid .ant-card {
+  height: 400px;
+  display: flex;
+  flex-direction: column;
+}
+
+.organization-overview-detail-grid .ant-card-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
 /* Nav Menu Enhancements - matched to seshat-ui's Admin Console rail
    (admin-nav-item: height 30px, padding 0 8px, font-size 12px) so the two
    apps' sidebars read as one design system instead of two densities. */

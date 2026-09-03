@@ -351,8 +351,8 @@ function useEmbedderConfig(): { config: EmbedderConfig | null; loading: boolean 
   return { config, loading }
 }
 
-function timeAgo(ms: number): string {
-  const minutes = Math.round((Date.now() - ms) / 60000)
+function timeAgo(iso: string): string {
+  const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60000)
   if (minutes < 1) return 'just now'
   if (minutes < 60) return `${minutes}m ago`
   const hours = Math.round(minutes / 60)
@@ -554,45 +554,49 @@ function AdminOverview() {
 
         <section className="admin-section-card admin-section-card--flush">
           <h2>Recent Activity</h2>
-          {auditEvents.loading ? (
-            <div className="admin-empty">Loading…</div>
-          ) : auditEvents.items.length ? (
-            auditEvents.items.map((event, index) => (
-              <div key={event.id} className="admin-list-row" style={index === 0 ? { borderTop: 'none' } : undefined}>
-                <div style={{ minWidth: 0 }}>
-                  <span className="admin-mono-tag">{event.action}</span>
-                  <div className="adm-muted" style={{ fontSize: 12, marginTop: 4 }}>
-                    {event.resource_type}
-                    {event.resource_id ? ` · ${event.resource_id}` : ''}
+          <div className="admin-section-card-body">
+            {auditEvents.loading ? (
+              <div className="admin-empty">Loading…</div>
+            ) : auditEvents.items.length ? (
+              auditEvents.items.map((event, index) => (
+                <div key={event.id} className="admin-list-row" style={index === 0 ? { borderTop: 'none' } : undefined}>
+                  <div style={{ minWidth: 0 }}>
+                    <span className="admin-mono-tag">{event.action}</span>
+                    <div className="adm-muted" style={{ fontSize: 12, marginTop: 4 }}>
+                      {event.resource_type}
+                      {event.resource_id ? ` · ${event.resource_id}` : ''}
+                    </div>
                   </div>
+                  <span className="adm-muted" style={{ fontSize: 11, flexShrink: 0 }}>{timeAgo(event.created_at)}</span>
                 </div>
-                <span className="adm-muted" style={{ fontSize: 11, flexShrink: 0 }}>{timeAgo(event.created_at * 1000)}</span>
-              </div>
-            ))
-          ) : (
-            <div className="admin-empty">No activity yet</div>
-          )}
+              ))
+            ) : (
+              <div className="admin-empty">No activity yet</div>
+            )}
+          </div>
         </section>
 
         <section className="admin-section-card admin-section-card--flush">
           <h2>Recent Jobs</h2>
-          {jobs.loading ? (
-            <div className="admin-empty">Loading…</div>
-          ) : jobs.items.length ? (
-            jobs.items.slice(0, 6).map((job, index) => (
-              <div key={job.id} className="admin-list-row" style={index === 0 ? { borderTop: 'none' } : undefined}>
-                <div style={{ minWidth: 0 }}>
-                  <div className="adm-strong" style={{ fontSize: 12.5 }}>{job.name}</div>
-                  <div className="adm-muted" style={{ fontSize: 11, marginTop: 2 }}>{job.execution_target}</div>
+          <div className="admin-section-card-body">
+            {jobs.loading ? (
+              <div className="admin-empty">Loading…</div>
+            ) : jobs.items.length ? (
+              jobs.items.slice(0, 6).map((job, index) => (
+                <div key={job.id} className="admin-list-row" style={index === 0 ? { borderTop: 'none' } : undefined}>
+                  <div style={{ minWidth: 0 }}>
+                    <div className="adm-strong" style={{ fontSize: 12.5 }}>{job.name}</div>
+                    <div className="adm-muted" style={{ fontSize: 11, marginTop: 2 }}>{job.execution_target}</div>
+                  </div>
+                  <span className={`adm-status-badge ${jobStatusClass(job.last_run_status || job.status)}`}>
+                    {job.last_run_status || job.status}
+                  </span>
                 </div>
-                <span className={`adm-status-badge ${jobStatusClass(job.last_run_status || job.status)}`}>
-                  {job.last_run_status || job.status}
-                </span>
-              </div>
-            ))
-          ) : (
-            <div className="admin-empty">No jobs yet</div>
-          )}
+              ))
+            ) : (
+              <div className="admin-empty">No jobs yet</div>
+            )}
+          </div>
         </section>
       </div>
     </div>
@@ -661,19 +665,24 @@ const ADMIN_CONSOLE_CSS = `
 }
 
 .admin-rail {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   min-height: 0;
-  overflow-y: auto;
+  overflow: hidden;
   border-right: 1px solid var(--color-border-subtle);
   background: var(--color-bg);
-  padding: var(--space-7) var(--space-5);
 }
 
+/* Fixed at the top of the rail — the nav list below scrolls on its own
+   (.admin-nav), so "Admin Console" never scrolls out of view. */
 .admin-rail-head {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: var(--space-4);
   height: 30px;
+  margin: var(--space-7) var(--space-5) 0;
   padding: 0 var(--space-4);
   color: var(--color-text);
   font-size: var(--font-size-base);
@@ -681,10 +690,14 @@ const ADMIN_CONSOLE_CSS = `
 }
 
 .admin-nav {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: var(--space-7);
   margin-top: var(--space-7);
+  padding: 0 var(--space-5) var(--space-7);
 }
 
 .admin-nav-group {
@@ -954,12 +967,34 @@ const ADMIN_CONSOLE_CSS = `
   padding: 0 var(--space-7);
 }
 
+/* The three detail cards (Setup Status / Recent Activity / Recent Jobs)
+   share one fixed height regardless of content — an empty "No jobs yet"
+   card stays the same size as a full one, and a longer list scrolls inside
+   its own card instead of growing it. */
 .admin-detail-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-7);
-  align-items: start;
   margin-bottom: var(--space-8);
+}
+
+.admin-detail-grid .admin-section-card {
+  display: flex;
+  flex-direction: column;
+  height: 400px;
+  margin-bottom: 0;
+  overflow: hidden;
+}
+
+.admin-detail-grid .admin-section-card h2 {
+  flex-shrink: 0;
+}
+
+.admin-detail-grid .admin-setup-list,
+.admin-section-card-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .admin-alert-grid {
