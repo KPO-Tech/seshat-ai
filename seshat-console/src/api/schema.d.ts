@@ -3952,6 +3952,14 @@ export interface components {
             summary?: string;
             /** @description The tool's input query, when it has one (e.g. web_search). */
             query?: string;
+            /** @description The tool's full input arguments, as sent to the tool. Present once the call starts. */
+            input?: {
+                [key: string]: unknown;
+            };
+            /** @description The tool's raw output content, once it completes (truncated for very large results). Absent for pending/running stages. */
+            result?: string;
+            /** @description How long the tool call took to run, in milliseconds. Present once completed or failed. */
+            duration_ms?: number;
             web_search?: components["schemas"]["WorkspaceChatWebSearchTrace"];
         };
         WorkspaceChatWebSearchTrace: {

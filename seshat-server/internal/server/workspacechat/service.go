@@ -113,12 +113,15 @@ type Event struct {
 }
 
 type ToolProgressEvent struct {
-	Name      string          `json:"name"`
-	ToolUseID string          `json:"tool_use_id"`
-	Stage     string          `json:"stage"` // pending | running | completed | failed
-	Summary   string          `json:"summary,omitempty"`
-	Query     string          `json:"query,omitempty"`
-	WebSearch *WebSearchTrace `json:"web_search,omitempty"`
+	Name       string          `json:"name"`
+	ToolUseID  string          `json:"tool_use_id"`
+	Stage      string          `json:"stage"` // pending | running | completed | failed
+	Summary    string          `json:"summary,omitempty"`
+	Query      string          `json:"query,omitempty"`
+	Input      map[string]any  `json:"input,omitempty"`
+	Result     string          `json:"result,omitempty"`
+	DurationMs int64           `json:"duration_ms,omitempty"`
+	WebSearch  *WebSearchTrace `json:"web_search,omitempty"`
 }
 
 type WebSearchTrace struct {
@@ -535,6 +538,14 @@ func (s *Service) evictStaleLocked() {
 	}
 }
 
+// resultTruncateLimit caps how much of a tool's raw output rides on the
+// wire/gets persisted per event - generous enough to show a real bash/RAG/
+// MCP result in full most of the time, without letting one pathological
+// tool call (e.g. a huge file read) blow up an SSE frame or a
+// WorkspaceChatMessageRecord row. Summary keeps its own, much shorter
+// truncate(400) for the always-visible collapsed line.
+const resultTruncateLimit = 8000
+
 func toToolProgressEvent(progress sdk.ToolProgress) *ToolProgressEvent {
 	event := &ToolProgressEvent{
 		Name:      progress.ToolName,
@@ -545,13 +556,18 @@ func toToolProgressEvent(progress sdk.ToolProgress) *ToolProgressEvent {
 	if progress.Metadata == nil {
 		return event
 	}
-	if query, ok := progress.Metadata["tool_input"].(map[string]any); ok {
-		if q, ok := query["query"].(string); ok {
+	if input, ok := progress.Metadata["tool_input"].(map[string]any); ok {
+		event.Input = input
+		if q, ok := input["query"].(string); ok {
 			event.Query = q
 		}
 	}
 	if content, ok := progress.Metadata["content"].(string); ok && content != "" {
 		event.Summary = truncate(content, 400)
+		event.Result = truncate(content, resultTruncateLimit)
+	}
+	if duration, ok := progress.Metadata["execution_duration_ms"].(int64); ok {
+		event.DurationMs = duration
 	}
 	return event
 }

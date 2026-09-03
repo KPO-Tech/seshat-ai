@@ -6281,6 +6281,16 @@ components:
         query:
           type: string
           description: The tool's input query, when it has one (e.g. web_search).
+        input:
+          type: object
+          additionalProperties: true
+          description: The tool's full input arguments, as sent to the tool. Present once the call starts.
+        result:
+          type: string
+          description: The tool's raw output content, once it completes (truncated for very large results). Absent for pending/running stages.
+        duration_ms:
+          type: integer
+          description: How long the tool call took to run, in milliseconds. Present once completed or failed.
         web_search:
           $ref: "#/components/schemas/WorkspaceChatWebSearchTrace"
 

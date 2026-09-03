@@ -19,6 +19,9 @@ export interface WorkspaceTraceStep {
   toolName?: string
   query?: string
   summary?: string
+  input?: Record<string, unknown>
+  result?: string
+  durationMs?: number
   webSearch?: WorkspaceChatWebSearchTrace
 }
 

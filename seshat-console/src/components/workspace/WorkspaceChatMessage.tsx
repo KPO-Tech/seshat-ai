@@ -1,15 +1,24 @@
 import { memo, useState } from 'react'
 import { Typography, Tooltip } from 'antd'
 import {
+  ApiOutlined,
   CheckCircleOutlined,
   CheckOutlined,
   ClockCircleOutlined,
+  CodeOutlined,
   CopyOutlined,
   DatabaseOutlined,
+  EditOutlined,
+  ExclamationCircleOutlined,
   FileSearchOutlined,
+  FileTextOutlined,
+  FolderOutlined,
   GlobalOutlined,
   LoadingOutlined,
+  RightOutlined,
   RobotOutlined,
+  SearchOutlined,
+  ToolOutlined,
   UserOutlined,
 } from '@ant-design/icons'
 import ReactMarkdown from 'react-markdown'
@@ -46,8 +55,14 @@ function formatMessageTime(value: string) {
   }).format(date)
 }
 
+// Category-based, not per-literal-tool-name: an org's MCP servers can add
+// arbitrary "mcp__<server>__<tool>" names at runtime (see
+// ConnectorsPage.tsx/MCPServersPage.tsx's registry), so anything not
+// explicitly known below still gets a sensible icon instead of falling
+// through to one generic default for every unrecognized tool.
 function toolIcon(toolName: string | undefined) {
-  switch (toolName) {
+  const name = toolName ?? ''
+  switch (name) {
     case 'web_search':
       return <GlobalOutlined />
     case 'rag_search':
@@ -55,8 +70,68 @@ function toolIcon(toolName: string | undefined) {
       return <DatabaseOutlined />
     case 'read_document_url':
       return <FileSearchOutlined />
-    default:
-      return <DatabaseOutlined />
+    case 'bash':
+      return <CodeOutlined />
+  }
+  if (name.startsWith('mcp__')) return <ApiOutlined />
+  if (name.startsWith('read') || name === 'glob' || name === 'grep') return <FileTextOutlined />
+  if (name.startsWith('write') || name.startsWith('edit') || name.startsWith('patch')) return <EditOutlined />
+  if (name.includes('search')) return <SearchOutlined />
+  if (name.includes('list') || name.includes('directory')) return <FolderOutlined />
+  return <ToolOutlined />
+}
+
+// Human label for a tool, favoring the query it ran (web_search, rag_search)
+// over its raw wire name - "mcp__slack__send_message" reads as "slack →
+// send message", every other tool name has its underscores/casing cleaned
+// up ("read_document_url" → "Read document url").
+function toolLabel(step: WorkspaceTraceStep): string {
+  if (step.query) return step.query
+  const name = step.toolName ?? 'tool'
+  if (name.startsWith('mcp__')) {
+    const parts = name.split('__')
+    if (parts.length >= 3) return `${parts[1]} → ${humanizeToolName(parts.slice(2).join('_'))}`
+  }
+  return humanizeToolName(name)
+}
+
+function humanizeToolName(name: string) {
+  const spaced = name.replace(/_/g, ' ').trim()
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1)
+}
+
+function formatDuration(ms: number | undefined) {
+  if (!ms || ms <= 0) return ''
+  if (ms < 1000) return `${ms}ms`
+  return `${(ms / 1000).toFixed(1)}s`
+}
+
+function CopyIconButton({ content, className }: { content: string; className?: string }) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <Tooltip title={copied ? 'Copied!' : 'Copy'}>
+      <button
+        type="button"
+        className={className}
+        onClick={(e) => {
+          e.stopPropagation()
+          navigator.clipboard.writeText(content)
+          setCopied(true)
+          setTimeout(() => setCopied(false), 2000)
+        }}
+      >
+        {copied ? <CheckOutlined /> : <CopyOutlined />}
+      </button>
+    </Tooltip>
+  )
+}
+
+function prettyPrintInput(input: Record<string, unknown> | undefined): string | null {
+  if (!input || Object.keys(input).length === 0) return null
+  try {
+    return JSON.stringify(input, null, 2)
+  } catch {
+    return null
   }
 }
 
@@ -128,6 +203,9 @@ function CodeBlock({ children, className }: { children?: React.ReactNode; classN
 }
 
 function TraceStepRow({ step }: { step: WorkspaceTraceStep }) {
+  const failed = step.status === 'failed'
+  const [open, setOpen] = useState(failed)
+
   if (step.kind === 'thinking') {
     if (!step.content) return null
     return (
@@ -142,20 +220,39 @@ function TraceStepRow({ step }: { step: WorkspaceTraceStep }) {
 
   const isRunning = step.status === 'pending' || step.status === 'running'
   const resultCount = step.webSearch?.count ?? 0
+  const hasWebSearchResults = Boolean(step.webSearch?.results?.length)
+  const inputJSON = prettyPrintInput(step.input)
+  // A tool denied before it ever ran (permission/hook/policy) carries no
+  // "content" at all server-side, only a human-readable Message - falling
+  // back to summary here is the only way that denial reason ever reaches
+  // the user, since the header line no longer echoes raw summary text the
+  // way the pre-registry version of this component did.
+  const resultText = step.result || (failed ? step.summary : undefined)
+  const hasResult = Boolean(resultText)
+  const expandable = hasWebSearchResults || Boolean(inputJSON) || hasResult
+  const duration = formatDuration(step.durationMs)
 
   return (
-    <div className="workspace-trace-step">
-      <span className="workspace-trace-step__icon">{isRunning ? <LoadingOutlined /> : toolIcon(step.toolName)}</span>
+    <div className={`workspace-trace-step${failed ? ' workspace-trace-step--failed' : ''}${expandable ? ' workspace-trace-step--expandable' : ''}`}>
+      <span className="workspace-trace-step__icon">
+        {isRunning ? <LoadingOutlined /> : failed ? <ExclamationCircleOutlined /> : toolIcon(step.toolName)}
+      </span>
       <div className="workspace-trace-step__body">
-        <div className="workspace-trace-step__header">
-          <span className="workspace-trace-step__text">{step.query || step.summary || step.toolName}</span>
+        <div className="workspace-trace-step__header" onClick={() => expandable && setOpen((v) => !v)}>
+          <span className="workspace-trace-step__text">{toolLabel(step)}</span>
+          {failed ? <span className="workspace-trace-step__error-badge">failed</span> : null}
+          {!isRunning && duration ? <span className="workspace-trace-step__duration">{duration}</span> : null}
           {step.webSearch && resultCount > 0 ? (
             <span className="workspace-trace-step__count">{resultCount} results</span>
           ) : null}
+          {expandable ? (
+            <RightOutlined className={`workspace-trace-step__chevron${open ? ' workspace-trace-step__chevron--open' : ''}`} />
+          ) : null}
         </div>
-        {step.webSearch && step.webSearch.results && step.webSearch.results.length > 0 ? (
+
+        {open && hasWebSearchResults ? (
           <div className="workspace-trace-results">
-            {step.webSearch.results.slice(0, 6).map((result, index) => {
+            {step.webSearch!.results!.slice(0, 6).map((result, index) => {
               const domain = getDomain(result.url)
               return (
                 <a
@@ -171,6 +268,29 @@ function TraceStepRow({ step }: { step: WorkspaceTraceStep }) {
                 </a>
               )
             })}
+          </div>
+        ) : null}
+
+        {open && (inputJSON || hasResult) ? (
+          <div className="workspace-trace-body">
+            {inputJSON ? (
+              <div>
+                <div className="workspace-trace-section__label">Arguments</div>
+                <pre className="workspace-trace-pre">
+                  <CopyIconButton content={inputJSON} className="workspace-trace-copy" />
+                  {inputJSON}
+                </pre>
+              </div>
+            ) : null}
+            {hasResult ? (
+              <div>
+                <div className="workspace-trace-section__label">{failed ? 'Error' : 'Result'}</div>
+                <pre className={`workspace-trace-pre${failed ? ' workspace-trace-pre--error' : ''}`}>
+                  <CopyIconButton content={resultText!} className="workspace-trace-copy" />
+                  {resultText}
+                </pre>
+              </div>
+            ) : null}
           </div>
         ) : null}
       </div>

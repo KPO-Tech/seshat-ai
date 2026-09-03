@@ -70,6 +70,9 @@ function applyEventToSession(
         toolName: tool.name,
         query: tool.query,
         summary: tool.summary,
+        input: tool.input,
+        result: tool.result,
+        durationMs: tool.duration_ms,
         webSearch: tool.web_search,
       }
       const nextTrace = index >= 0 ? trace.map((step, i) => (i === index ? { ...step, ...updatedStep } : step)) : [...trace, updatedStep]
