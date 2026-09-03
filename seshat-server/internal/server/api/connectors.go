@@ -266,6 +266,9 @@ type registerOAuthAppRequest struct {
 	OrganizationID string `json:"organization_id"`
 	ClientID       string `json:"client_id"`
 	ClientSecret   string `json:"client_secret"`
+	// Subdomain is required for kind "zendesk" only - see
+	// connectors.RegisterOAuthAppParams.Subdomain's doc comment.
+	Subdomain string `json:"subdomain"`
 }
 
 func (app *App) handleConnectorOAuthApps(w http.ResponseWriter, r *http.Request) {
@@ -307,6 +310,7 @@ func (app *App) handleConnectorOAuthAppByKind(w http.ResponseWriter, r *http.Req
 		Kind:           kind,
 		ClientID:       req.ClientID,
 		ClientSecret:   req.ClientSecret,
+		Subdomain:      req.Subdomain,
 	})
 	if err != nil {
 		writeKnowledgeError(w, err)

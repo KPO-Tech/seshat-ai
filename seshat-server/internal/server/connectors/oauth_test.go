@@ -119,7 +119,7 @@ func setUpFakeConnectorOAuth(t *testing.T, env testEnv) (setIdentity func(string
 	t.Helper()
 	tokenServer := fakeOAuthTokenServer(t)
 	identity := "unset@example.com"
-	env.connectors.oauthEndpointOverride = func(kind string) oauth2.Endpoint {
+	env.connectors.oauthEndpointOverride = func(kind, subdomain string) oauth2.Endpoint {
 		return oauth2.Endpoint{AuthURL: tokenServer.URL + "/authorize", TokenURL: tokenServer.URL + "/token"}
 	}
 	env.connectors.identityOverride = func(ctx context.Context, kind string, cfg *oauth2.Config, token *oauth2.Token) (string, error) {
@@ -475,7 +475,7 @@ func TestCompleteConnectorOAuthSlackResolvesIdentityAndToken(t *testing.T) {
 	env := newTestEnv(t)
 	member := env.addMember(t)
 	tokenServer := fakeOAuthTokenServer(t)
-	env.connectors.oauthEndpointOverride = func(kind string) oauth2.Endpoint {
+	env.connectors.oauthEndpointOverride = func(kind, subdomain string) oauth2.Endpoint {
 		return oauth2.Endpoint{AuthURL: tokenServer.URL + "/authorize", TokenURL: tokenServer.URL + "/token"}
 	}
 	env.connectors.identityOverride = func(ctx context.Context, kind string, cfg *oauth2.Config, token *oauth2.Token) (string, error) {

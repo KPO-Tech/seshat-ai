@@ -34,6 +34,9 @@ export type OAuthConnectorKind =
   | 'linear'
   | 'hubspot'
   | 'intercom'
+  | 'pipedrive'
+  | 'zendesk'
+  | 'salesforce'
 
 // StaticConnectorKind lists every kind that authenticates with a single
 // static secret instead of an OAuth2 flow - see connectors.Service's

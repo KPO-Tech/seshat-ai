@@ -179,6 +179,9 @@ func New(cfg serverconfig.Config) (*App, error) {
 	nodeRegistry.Register("linear_create_issue", automation.NewLinearCreateIssueNode(connectorsService))
 	nodeRegistry.Register("hubspot_create_contact", automation.NewHubSpotCreateContactNode(connectorsService))
 	nodeRegistry.Register("intercom_create_contact", automation.NewIntercomCreateContactNode(connectorsService))
+	nodeRegistry.Register("pipedrive_create_deal", automation.NewPipedriveCreateDealNode(connectorsService, connectorsService))
+	nodeRegistry.Register("salesforce_create_record", automation.NewSalesforceCreateRecordNode(connectorsService, connectorsService))
+	nodeRegistry.Register("zendesk_create_ticket", automation.NewZendeskCreateTicketNode(connectorsService, connectorsService))
 
 	mcpRegistryService := mcpregistry.New(database, iamService)
 	hookRegistryService := hookregistry.New(database, iamService)

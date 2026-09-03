@@ -52,14 +52,45 @@ const CONNECTOR_KINDS = [
 // The OAuth Apps modal is purpose-agnostic (RegisterOAuthApp doesn't care
 // whether a kind is knowledge_sync-only or agent_action-only) even though
 // this page's own table is knowledge_sync-only (see the accounts filter
-// below) - slack/outlook/teams are agent_action-only, self-service-
-// connected from Workspace → Connections, never created here, but an org
-// admin still needs somewhere to register their client_id/secret once per
-// organization, and this modal is that one place for every OAuth-based
-// kind regardless of purpose - see connectors.RegisterOAuthApp's doc
-// comment. Known UI-label mismatch (this page is titled/scoped as
-// Knowledge), not relocated yet - see helps/roadmap.md.
-const OAUTH_CONNECTOR_KINDS = ['gdrive', 'sharepoint', 'onedrive', 'confluence', 'slack', 'outlook', 'teams', 'gmail'] as const
+// below) - most of these kinds (everything past teams/gmail) are
+// agent_action-only, self-service-connected from Workspace → Connections,
+// never created here, but an org admin still needs somewhere to register
+// their client_id/secret once per organization, and this modal is that
+// one place for every OAuth-based kind regardless of purpose - see
+// connectors.RegisterOAuthApp's doc comment. Known UI-label mismatch (this
+// page is titled/scoped as Knowledge), not relocated yet - see
+// helps/roadmap.md. Must stay in sync with every OAuth kind added across
+// the connectors initiative (notion/gsheets/gcalendar/jira through
+// pipedrive/zendesk/salesforce) - this list was missed for several
+// batches (only the original 8 kinds were ever listed here), a real gap
+// fixed alongside the pipedrive/zendesk/salesforce work: without an entry
+// here, an org admin has no way to register that kind's OAuth app at all,
+// so a self-service "Connect" click on Workspace → Connections would
+// always fail with "no {kind} oauth app is registered for this
+// organization" - not caught earlier because no live OAuth app was ever
+// registered/tested for these kinds in this environment.
+const OAUTH_CONNECTOR_KINDS = [
+  'gdrive',
+  'sharepoint',
+  'onedrive',
+  'confluence',
+  'slack',
+  'outlook',
+  'teams',
+  'gmail',
+  'notion',
+  'gsheets',
+  'gcalendar',
+  'jira',
+  'github',
+  'asana',
+  'linear',
+  'hubspot',
+  'intercom',
+  'pipedrive',
+  'zendesk',
+  'salesforce',
+] as const
 
 // The only two kinds with a static, editable config (see connectors.
 // Service.UpdateAccount's own doc comment) - every OAuth-based kind has no
@@ -75,6 +106,18 @@ const OAUTH_APP_LABELS: Record<string, string> = {
   outlook: 'Microsoft',
   gmail: 'Google',
   teams: 'Microsoft',
+  notion: 'Notion',
+  gsheets: 'Google',
+  gcalendar: 'Google',
+  jira: 'Atlassian',
+  github: 'GitHub',
+  asana: 'Asana',
+  linear: 'Linear',
+  hubspot: 'HubSpot',
+  intercom: 'Intercom',
+  pipedrive: 'Pipedrive',
+  zendesk: 'Zendesk',
+  salesforce: 'Salesforce',
 }
 
 export function ConnectorsPage() {
@@ -409,7 +452,7 @@ function OAuthAppFormDrawer({
   const [form] = Form.useForm<ConnectorOAuthAppInput>()
 
   useEffect(() => {
-    if (kind) form.setFieldsValue({ client_id: existing?.client_id ?? '' })
+    if (kind) form.setFieldsValue({ client_id: existing?.client_id ?? '', subdomain: existing?.subdomain ?? '' })
   }, [kind, existing, form])
 
   return (
@@ -452,6 +495,16 @@ function OAuthAppFormDrawer({
         >
           <Input.Password autoComplete="new-password" placeholder={existing?.configured ? 'Unchanged' : undefined} />
         </Form.Item>
+        {kind === 'zendesk' && (
+          <Form.Item
+            name="subdomain"
+            label="Zendesk subdomain"
+            extra='The org&apos;s own Zendesk account subdomain, e.g. "acme" for acme.zendesk.com - Zendesk&apos;s OAuth endpoints are hosted per-account, unlike every other provider here.'
+            rules={[{ required: true, message: 'Required' }]}
+          >
+            <Input placeholder="acme" />
+          </Form.Item>
+        )}
       </Form>
     </Drawer>
   )

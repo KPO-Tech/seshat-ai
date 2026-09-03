@@ -36,6 +36,26 @@ type StaticSecretResolver interface {
 	StaticSecretForUser(ctx context.Context, organizationID, kind, userID string) (string, bool, error)
 }
 
+// AccountConfigResolver resolves userID's own connected account's non-
+// secret per-account config for kind (JSON, e.g. {"api_domain":"..."} for
+// pipedrive, {"instance_url":"..."} for salesforce) - the counterpart to
+// ConnectorTokenResolver for kinds whose REST API host is dynamic per
+// account rather than fixed, satisfied by
+// *connectors.Service.AccountConfigForUser. See connectors.pipedriveKind/
+// salesforceKind's doc comments for why this exists.
+type AccountConfigResolver interface {
+	AccountConfigForUser(ctx context.Context, organizationID, kind, userID string) (string, bool, error)
+}
+
+// OAuthAppSubdomainResolver resolves organizationID's registered Zendesk
+// subdomain for kind - an org-level lookup (not per-employee, unlike every
+// other resolver in this file), satisfied by
+// *connectors.Service.OAuthAppSubdomain. See connectors.zendeskKind's doc
+// comment for why Zendesk alone needs this.
+type OAuthAppSubdomainResolver interface {
+	OAuthAppSubdomain(ctx context.Context, organizationID, kind string) (string, error)
+}
+
 // GmailPollNode is the "gmail_new_messages" node type: a starting node
 // (no incoming connections) for an interval-triggered ScheduledJob's Graph
 // that polls its owner's connected Gmail account for messages received

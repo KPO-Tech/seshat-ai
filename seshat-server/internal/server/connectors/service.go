@@ -125,7 +125,7 @@ type Service struct {
 	// the OAuth token exchange and identity lookup at a fake httptest.Server
 	// instead of the real Google/Microsoft endpoints - both nil in
 	// production. See oauth.go's oauthConfigFor/CompleteConnectorOAuth.
-	oauthEndpointOverride func(kind string) oauth2.Endpoint
+	oauthEndpointOverride func(kind, subdomain string) oauth2.Endpoint
 	identityOverride      func(ctx context.Context, kind string, cfg *oauth2.Config, token *oauth2.Token) (string, error)
 }
 
@@ -635,6 +635,63 @@ func (s *Service) AccessTokenForUser(ctx context.Context, organizationID, kind, 
 		return "", false, fmt.Errorf("refresh access token: %w", err)
 	}
 	return fresh.AccessToken, true, nil
+}
+
+// AccountConfigForUser resolves userID's own agent_action-purposed
+// ConnectorAccount.Config for kind in organizationID - the counterpart to
+// AccessTokenForUser for kinds that also need a non-secret, per-account
+// piece of config alongside the token (pipedrive's api_domain,
+// salesforce's instance_url - see their doc comments). Config is plaintext
+// (opaque non-secret JSON, same field s3/azureblob already use for their
+// own config), so unlike AccessTokenForUser there is nothing to decrypt.
+// connected=false (no error) means either no connected account, or one
+// with no config captured (every kind but pipedrive/salesforce) - same
+// "unavailable for this user, not a failure" convention AccessTokenForUser
+// already documents.
+func (s *Service) AccountConfigForUser(ctx context.Context, organizationID, kind, userID string) (string, bool, error) {
+	organizationID = strings.TrimSpace(organizationID)
+	kind = strings.TrimSpace(kind)
+	userID = strings.TrimSpace(userID)
+	if organizationID == "" || kind == "" || userID == "" {
+		return "", false, nil
+	}
+	var account sdb.ConnectorAccount
+	err := s.db.Gorm().WithContext(ctx).
+		Where("organization_id = ? AND kind = ? AND purpose = ? AND created_by_user_id = ?", organizationID, kind, PurposeAgentAction, userID).
+		First(&account).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return "", false, nil
+		}
+		return "", false, err
+	}
+	if account.Status != StatusConnected || account.Config == "" {
+		return "", false, nil
+	}
+	return account.Config, true, nil
+}
+
+// OAuthAppSubdomain returns organizationID's registered Zendesk subdomain
+// (sdb.ConnectorOAuthApp.Subdomain - see its doc comment), empty if no
+// OAuth app is registered for kind yet. Unlike AccessTokenForUser/
+// AccountConfigForUser this reads the org-level ConnectorOAuthApp row, not
+// a per-employee ConnectorAccount - the subdomain is the same for every
+// employee who connects a "zendesk" account in this organization.
+func (s *Service) OAuthAppSubdomain(ctx context.Context, organizationID, kind string) (string, error) {
+	organizationID = strings.TrimSpace(organizationID)
+	kind = strings.TrimSpace(kind)
+	if organizationID == "" || kind == "" {
+		return "", nil
+	}
+	var app sdb.ConnectorOAuthApp
+	err := s.db.Gorm().WithContext(ctx).Where("organization_id = ? AND kind = ?", organizationID, kind).First(&app).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return "", nil
+		}
+		return "", err
+	}
+	return app.Subdomain, nil
 }
 
 // ListMyAccounts returns organizationID's agent_action-purposed connector

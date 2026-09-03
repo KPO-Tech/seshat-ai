@@ -24,6 +24,8 @@ import {
   BranchesOutlined,
   ContactsOutlined,
   CustomerServiceOutlined,
+  FunnelPlotOutlined,
+  CloudOutlined,
 } from '@ant-design/icons'
 import { useMyConnectorAccountsList, useDeleteMyConnectorAccount } from '@/api/myConnections'
 import { useBeginConnectorOAuth, useCreateStaticAgentAccount, type ConnectorAccount, type OAuthConnectorKind, type StaticConnectorKind } from '@/api/connectors'
@@ -49,6 +51,9 @@ const OAUTH_CONNECTOR_KINDS: OAuthConnectorKind[] = [
   'linear',
   'hubspot',
   'intercom',
+  'pipedrive',
+  'zendesk',
+  'salesforce',
 ]
 
 const KIND_META: Record<OAuthConnectorKind, { label: string; icon: React.ReactNode }> = {
@@ -72,6 +77,9 @@ const KIND_META: Record<OAuthConnectorKind, { label: string; icon: React.ReactNo
   linear: { label: 'Linear', icon: <BranchesOutlined /> },
   hubspot: { label: 'HubSpot', icon: <ContactsOutlined /> },
   intercom: { label: 'Intercom', icon: <CustomerServiceOutlined /> },
+  pipedrive: { label: 'Pipedrive', icon: <FunnelPlotOutlined /> },
+  zendesk: { label: 'Zendesk', icon: <CustomerServiceOutlined /> },
+  salesforce: { label: 'Salesforce', icon: <CloudOutlined /> },
 }
 
 // STATIC_CONNECTOR_KINDS lists every kind that authenticates with a single

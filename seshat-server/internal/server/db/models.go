@@ -723,8 +723,14 @@ type ConnectorOAuthApp struct {
 	Kind                  string `gorm:"size:32;not null;uniqueIndex:idx_connector_oauth_app_org_kind"` // "gdrive" | "sharepoint"
 	ClientID              string `gorm:"size:255;not null"`
 	ClientSecretEncrypted string `gorm:"type:text;not null"` // sdb.EncryptSecret, per-organization DEK
-	CreatedAt             time.Time
-	UpdatedAt             time.Time
+	// Subdomain is empty for every kind except "zendesk" - Zendesk's OAuth
+	// authorize/token endpoints (and its REST API) are hosted per-account at
+	// https://{subdomain}.zendesk.com, unlike every other provider this
+	// package wires, whose authorize/token hosts are fixed - see
+	// connectors.zendeskKind's doc comment.
+	Subdomain string `gorm:"size:255"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 // ConnectorOAuthState is one in-flight "connect an account" OAuth attempt,

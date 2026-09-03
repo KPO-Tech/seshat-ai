@@ -2382,7 +2382,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "github" | "asana" | "linear" | "hubspot" | "intercom";
+                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "github" | "asana" | "linear" | "hubspot" | "intercom" | "pipedrive" | "zendesk" | "salesforce";
             };
             cookie?: never;
         };
@@ -2404,7 +2404,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "github" | "asana" | "linear" | "hubspot" | "intercom";
+                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "github" | "asana" | "linear" | "hubspot" | "intercom" | "pipedrive" | "zendesk" | "salesforce";
             };
             cookie?: never;
         };
@@ -2426,7 +2426,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "github" | "asana" | "linear" | "hubspot" | "intercom";
+                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "github" | "asana" | "linear" | "hubspot" | "intercom" | "pipedrive" | "zendesk" | "salesforce";
             };
             cookie?: never;
         };
@@ -4280,7 +4280,7 @@ export interface components {
             /** @description Set only for a knowledge_sync-purposed account - empty for agent_action. */
             corpus_id?: string;
             /** @enum {string} */
-            kind?: "s3" | "azureblob" | "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "github" | "asana" | "linear" | "hubspot" | "intercom" | "stripe" | "sendgrid" | "mailgun" | "postmark" | "telegram" | "discord" | "trello" | "airtable";
+            kind?: "s3" | "azureblob" | "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "github" | "asana" | "linear" | "hubspot" | "intercom" | "pipedrive" | "zendesk" | "salesforce" | "stripe" | "sendgrid" | "mailgun" | "postmark" | "telegram" | "discord" | "trello" | "airtable";
             /**
              * @description knowledge_sync: admin-run, feeds a corpus. agent_action: self-service, one employee's own account for their own future MCP-backed agent actions - see connectors' package doc.
              * @enum {string}
@@ -4374,17 +4374,21 @@ export interface components {
         /** @description The client secret is never returned, only whether one is configured. */
         ConnectorOAuthApp: {
             /** @enum {string} */
-            kind?: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "github" | "asana" | "linear" | "hubspot" | "intercom";
+            kind?: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "github" | "asana" | "linear" | "hubspot" | "intercom" | "pipedrive" | "zendesk" | "salesforce";
             client_id?: string;
             configured?: boolean;
             /** Format: date-time */
             updated_at?: string;
+            /** @description Only ever set for kind "zendesk" - the org's own Zendesk account subdomain. */
+            subdomain?: string;
         };
         ConnectorOAuthAppInput: {
             organization_id: string;
             client_id: string;
             /** @description Required the first time an app is registered for this (organization, kind); omit on a later update to keep the existing one. */
             client_secret?: string;
+            /** @description Required for kind "zendesk" only - the org's own Zendesk account subdomain (e.g. "acme" for acme.zendesk.com). Rejected for every other kind. */
+            subdomain?: string;
         };
         /** @description purpose=knowledge_sync (default, omit to get this) requires corpus_id and knowledge.manage/organization.manage. purpose= agent_action is self-service (any org member, no special permission) - corpus_id must be omitted, rejected if present. */
         BeginConnectorOAuthInput: {
@@ -9226,7 +9230,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "github" | "asana" | "linear" | "hubspot" | "intercom";
+                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "github" | "asana" | "linear" | "hubspot" | "intercom" | "pipedrive" | "zendesk" | "salesforce";
             };
             cookie?: never;
         };
@@ -9254,7 +9258,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "github" | "asana" | "linear" | "hubspot" | "intercom";
+                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "github" | "asana" | "linear" | "hubspot" | "intercom" | "pipedrive" | "zendesk" | "salesforce";
             };
             cookie?: never;
         };
@@ -9288,7 +9292,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "github" | "asana" | "linear" | "hubspot" | "intercom";
+                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "github" | "asana" | "linear" | "hubspot" | "intercom" | "pipedrive" | "zendesk" | "salesforce";
             };
             cookie?: never;
         };

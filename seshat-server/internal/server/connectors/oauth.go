@@ -45,6 +45,9 @@ var oauthConnectorKinds = map[string]bool{
 	string(linearKind):     true,
 	string(hubspotKind):    true,
 	string(intercomKind):   true,
+	string(pipedriveKind):  true,
+	string(zendeskKind):    true,
+	string(salesforceKind): true,
 }
 
 // agentActionOnlyKinds are OAuth connector kinds with no Discover/Sync -
@@ -52,25 +55,28 @@ var oauthConnectorKinds = map[string]bool{
 // connect, never an admin-run knowledge_sync source. Checked in
 // BeginConnectorOAuth.
 var agentActionOnlyKinds = map[string]bool{
-	string(slackKind):     true,
-	string(outlookKind):   true,
-	string(teamsKind):     true,
-	string(gmailKind):     true,
-	string(notionKind):    true,
-	string(gsheetsKind):   true,
-	string(gcalendarKind): true,
-	string(jiraKind):      true,
-	string(githubKind):    true,
-	string(asanaKind):     true,
-	string(linearKind):    true,
-	string(hubspotKind):   true,
-	string(intercomKind):  true,
+	string(slackKind):      true,
+	string(outlookKind):    true,
+	string(teamsKind):      true,
+	string(gmailKind):      true,
+	string(notionKind):     true,
+	string(gsheetsKind):    true,
+	string(gcalendarKind):  true,
+	string(jiraKind):       true,
+	string(githubKind):     true,
+	string(asanaKind):      true,
+	string(linearKind):     true,
+	string(hubspotKind):    true,
+	string(intercomKind):   true,
+	string(pipedriveKind):  true,
+	string(zendeskKind):    true,
+	string(salesforceKind): true,
 }
 
 func validateOAuthKind(kind string) (string, error) {
 	kind = strings.ToLower(strings.TrimSpace(kind))
 	if !oauthConnectorKinds[kind] {
-		return "", ErrInvalidInput(fmt.Sprintf("unsupported oauth connector kind %q (must be one of \"gdrive\", \"sharepoint\", \"onedrive\", \"confluence\", \"slack\", \"outlook\", \"teams\", \"gmail\", \"notion\", \"gsheets\", \"gcalendar\", \"jira\", \"github\", \"asana\", \"linear\", \"hubspot\", \"intercom\")", kind))
+		return "", ErrInvalidInput(fmt.Sprintf("unsupported oauth connector kind %q (must be one of \"gdrive\", \"sharepoint\", \"onedrive\", \"confluence\", \"slack\", \"outlook\", \"teams\", \"gmail\", \"notion\", \"gsheets\", \"gcalendar\", \"jira\", \"github\", \"asana\", \"linear\", \"hubspot\", \"intercom\", \"pipedrive\", \"zendesk\", \"salesforce\")", kind))
 	}
 	return kind, nil
 }
@@ -92,6 +98,9 @@ type OAuthApp struct {
 	ClientID   string    `json:"client_id"`
 	Configured bool      `json:"configured"`
 	UpdatedAt  time.Time `json:"updated_at"`
+	// Subdomain is only ever set for kind "zendesk" - see
+	// sdb.ConnectorOAuthApp.Subdomain's doc comment.
+	Subdomain string `json:"subdomain,omitempty"`
 }
 
 // RegisterOAuthAppParams registers or updates one organization's OAuth app
@@ -103,6 +112,10 @@ type RegisterOAuthAppParams struct {
 	Kind           string
 	ClientID       string
 	ClientSecret   string
+	// Subdomain is required for kind "zendesk" only (rejected as invalid
+	// input for every other kind) - see sdb.ConnectorOAuthApp.Subdomain's
+	// doc comment.
+	Subdomain string
 }
 
 // RegisterOAuthApp requires knowledge.manage or organization.manage.
@@ -118,6 +131,10 @@ func (s *Service) RegisterOAuthApp(ctx context.Context, principal *iam.Principal
 	clientID := strings.TrimSpace(params.ClientID)
 	if organizationID == "" || clientID == "" {
 		return nil, ErrInvalidInput("organization_id and client_id are required")
+	}
+	subdomain := strings.ToLower(strings.TrimSpace(params.Subdomain))
+	if kind == string(zendeskKind) && subdomain == "" {
+		return nil, ErrInvalidInput("subdomain is required when registering a zendesk oauth app")
 	}
 	if !principal.User.IsAdmin {
 		if err := s.iam.CheckOrganizationPermission(s.db.Gorm().WithContext(ctx), principal, organizationID, "knowledge.manage", "organization.manage"); err != nil {
@@ -143,6 +160,9 @@ func (s *Service) RegisterOAuthApp(ctx context.Context, principal *iam.Principal
 			record = sdb.ConnectorOAuthApp{ID: id, OrganizationID: organizationID, Kind: kind}
 		}
 		record.ClientID = clientID
+		if subdomain != "" {
+			record.Subdomain = subdomain
+		}
 		if strings.TrimSpace(params.ClientSecret) != "" {
 			enc, encErr := sdb.EncryptSecret(tx, organizationID, params.ClientSecret)
 			if encErr != nil {
@@ -192,7 +212,7 @@ func (s *Service) ListOAuthApps(ctx context.Context, principal *iam.Principal, o
 }
 
 func toOAuthApp(r sdb.ConnectorOAuthApp) OAuthApp {
-	return OAuthApp{Kind: r.Kind, ClientID: r.ClientID, Configured: r.ClientSecretEncrypted != "", UpdatedAt: r.UpdatedAt}
+	return OAuthApp{Kind: r.Kind, ClientID: r.ClientID, Configured: r.ClientSecretEncrypted != "", UpdatedAt: r.UpdatedAt, Subdomain: r.Subdomain}
 }
 
 // ─── Connect flow ────────────────────────────────────────────────────────
@@ -398,7 +418,7 @@ func (s *Service) CompleteConnectorOAuth(ctx context.Context, kind, code, state 
 		oauthCfg := &oauth2.Config{
 			ClientID:     app.ClientID,
 			ClientSecret: clientSecret,
-			Endpoint:     s.resolveOAuthEndpoint(kind),
+			Endpoint:     s.resolveOAuthEndpoint(kind, app.Subdomain),
 			RedirectURL:  s.connectorOAuthRedirectURL(kind),
 			Scopes:       connectorOAuthScopes(kind),
 		}
@@ -416,6 +436,11 @@ func (s *Service) CompleteConnectorOAuth(ctx context.Context, kind, code, state 
 		if displayName == "" {
 			displayName = externalID
 		}
+		// oauthAccountConfig captures the non-secret, per-account API host
+		// pipedrive/salesforce return in the token exchange response itself
+		// (api_domain/instance_url) - see pipedriveKind/salesforceKind's doc
+		// comments. Empty (and therefore untouched) for every other kind.
+		config := oauthAccountConfig(kind, token)
 		scope := strings.Join(connectorOAuthScopes(kind), " ")
 		accessEnc, err := sdb.EncryptSecret(tx, oauthState.OrganizationID, token.AccessToken)
 		if err != nil {
@@ -448,6 +473,7 @@ func (s *Service) CompleteConnectorOAuth(ctx context.Context, kind, code, state 
 				"expires_at":              token.Expiry,
 				"status":                  StatusConnected,
 				"last_error":              "",
+				"config":                  config,
 			}
 			if err := tx.Model(&sdb.ConnectorAccount{}).Where("id = ?", account.ID).Updates(updates).Error; err != nil {
 				return err
@@ -472,6 +498,7 @@ func (s *Service) CompleteConnectorOAuth(ctx context.Context, kind, code, state 
 				Scope:                 scope,
 				ExpiresAt:             &token.Expiry,
 				SyncIntervalSeconds:   oauthState.SyncIntervalSeconds,
+				Config:                config,
 			}
 			// NextSyncAt (and therefore ever being picked up by
 			// ReapDueAccounts) only makes sense for a knowledge_sync account -
@@ -498,6 +525,33 @@ func (s *Service) CompleteConnectorOAuth(ctx context.Context, kind, code, state 
 	return &result, nil
 }
 
+// oauthAccountConfig extracts the one field pipedrive/salesforce need
+// persisted onto ConnectorAccount.Config as JSON (api_domain/instance_url
+// respectively, both present directly in the token exchange response via
+// oauth2.Token.Extra - no extra network round trip) - empty string (a
+// no-op update/create field) for every other kind. See
+// pipedriveKind/salesforceKind's doc comments.
+func oauthAccountConfig(kind string, token *oauth2.Token) string {
+	var field string
+	switch kind {
+	case string(pipedriveKind):
+		field = "api_domain"
+	case string(salesforceKind):
+		field = "instance_url"
+	default:
+		return ""
+	}
+	value, _ := token.Extra(field).(string)
+	if value == "" {
+		return ""
+	}
+	encoded, err := json.Marshal(map[string]string{field: value})
+	if err != nil {
+		return ""
+	}
+	return string(encoded)
+}
+
 // oauthConfigFor resolves organizationID's registered OAuth app for kind
 // into a ready-to-use *oauth2.Config - shared by BeginConnectorOAuth,
 // CompleteConnectorOAuth, and connectorFor (which needs one to build a
@@ -518,7 +572,7 @@ func (s *Service) oauthConfigFor(ctx context.Context, organizationID, kind strin
 	return &oauth2.Config{
 		ClientID:     app.ClientID,
 		ClientSecret: clientSecret,
-		Endpoint:     s.resolveOAuthEndpoint(kind),
+		Endpoint:     s.resolveOAuthEndpoint(kind, app.Subdomain),
 		RedirectURL:  s.connectorOAuthRedirectURL(kind),
 		Scopes:       connectorOAuthScopes(kind),
 	}, nil
@@ -526,11 +580,13 @@ func (s *Service) oauthConfigFor(ctx context.Context, organizationID, kind strin
 
 // resolveOAuthEndpoint returns the test override when set, else the real
 // provider endpoint - see Service.oauthEndpointOverride's doc comment.
-func (s *Service) resolveOAuthEndpoint(kind string) oauth2.Endpoint {
+// subdomain is only meaningful for kind "zendesk" (see zendeskKind's doc
+// comment), ignored by every other kind.
+func (s *Service) resolveOAuthEndpoint(kind, subdomain string) oauth2.Endpoint {
 	if s.oauthEndpointOverride != nil {
-		return s.oauthEndpointOverride(kind)
+		return s.oauthEndpointOverride(kind, subdomain)
 	}
-	return connectorOAuthEndpoint(kind)
+	return connectorOAuthEndpoint(kind, subdomain)
 }
 
 // resolveIdentity returns the test override when set, else the real
@@ -549,7 +605,10 @@ func (s *Service) connectorOAuthRedirectURL(kind string) string {
 	return fmt.Sprintf("%s/api/v1/connectors/%s/oauth/callback", s.publicAPIURL, kind)
 }
 
-func connectorOAuthEndpoint(kind string) oauth2.Endpoint {
+// subdomain is only meaningful for kind "zendesk" (see zendeskKind's doc
+// comment) - Zendesk's authorize/token hosts are per-account, unlike every
+// other kind's fixed host, so this is the one case that actually reads it.
+func connectorOAuthEndpoint(kind, subdomain string) oauth2.Endpoint {
 	switch kind {
 	case string(gdriveKind), string(gmailKind), string(gsheetsKind), string(gcalendarKind):
 		return google.Endpoint
@@ -608,6 +667,26 @@ func connectorOAuthEndpoint(kind string) oauth2.Endpoint {
 			AuthURL:  "https://app.intercom.com/oauth",
 			TokenURL: "https://api.intercom.io/auth/eagle/token",
 		}
+	case string(pipedriveKind):
+		return oauth2.Endpoint{
+			AuthURL:  "https://oauth.pipedrive.com/oauth/authorize",
+			TokenURL: "https://oauth.pipedrive.com/oauth/token",
+		}
+	case string(salesforceKind):
+		return oauth2.Endpoint{
+			AuthURL:  "https://login.salesforce.com/services/oauth2/authorize",
+			TokenURL: "https://login.salesforce.com/services/oauth2/token",
+		}
+	case string(zendeskKind):
+		// Per-account host, unlike every other kind - see zendeskKind's doc
+		// comment. subdomain is validated non-empty at RegisterOAuthApp time
+		// for this kind (the only place it can ever be empty here is a stale/
+		// pre-migration row, in which case an empty host simply fails the
+		// request cleanly rather than panicking).
+		return oauth2.Endpoint{
+			AuthURL:  fmt.Sprintf("https://%s.zendesk.com/oauth/authorizations/new", subdomain),
+			TokenURL: fmt.Sprintf("https://%s.zendesk.com/oauth/tokens", subdomain),
+		}
 	default:
 		return oauth2.Endpoint{}
 	}
@@ -649,6 +728,12 @@ func connectorOAuthScopes(kind string) []string {
 		return hubspotScopes
 	case string(intercomKind):
 		return intercomScopes
+	case string(pipedriveKind):
+		return pipedriveScopes
+	case string(zendeskKind):
+		return zendeskScopes
+	case string(salesforceKind):
+		return salesforceScopes
 	default:
 		return nil
 	}
@@ -679,6 +764,12 @@ func fetchConnectorIdentity(ctx context.Context, kind string, cfg *oauth2.Config
 		return fetchHubSpotIdentity(ctx, cfg, token)
 	case string(intercomKind):
 		return fetchIntercomIdentity(ctx, cfg, token)
+	case string(pipedriveKind):
+		return fetchPipedriveIdentity(ctx, cfg, token)
+	case string(zendeskKind):
+		return fetchZendeskIdentity(ctx, cfg, token)
+	case string(salesforceKind):
+		return fetchSalesforceIdentity(ctx, cfg, token)
 	default:
 		return "", fmt.Errorf("unsupported kind %q", kind)
 	}
@@ -924,6 +1015,109 @@ func fetchIntercomIdentity(ctx context.Context, cfg *oauth2.Config, token *oauth
 	}
 	if info.Email == "" {
 		return "", fmt.Errorf("no email in intercom /me response")
+	}
+	return info.Email, nil
+}
+
+// fetchPipedriveIdentity reads api_domain straight off the token response
+// (token.Extra, populated by oauth2.Config.Exchange from the raw JSON body
+// - see pipedriveKind's doc comment) rather than a second network call, and
+// uses it as the base for the one GET this needs.
+func fetchPipedriveIdentity(ctx context.Context, cfg *oauth2.Config, token *oauth2.Token) (string, error) {
+	apiDomain, _ := token.Extra("api_domain").(string)
+	if apiDomain == "" {
+		return "", fmt.Errorf("no api_domain in pipedrive token response")
+	}
+	client := cfg.Client(ctx, token)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiDomain+"/v1/users/me", nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		return "", fmt.Errorf("pipedrive /users/me returned %d", resp.StatusCode)
+	}
+	var info struct {
+		Data struct {
+			Email string `json:"email"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		return "", err
+	}
+	if info.Data.Email == "" {
+		return "", fmt.Errorf("no email in pipedrive /users/me response")
+	}
+	return info.Data.Email, nil
+}
+
+// fetchZendeskIdentity derives the account's subdomain host from cfg's own
+// TokenURL (built by connectorOAuthEndpoint from
+// sdb.ConnectorOAuthApp.Subdomain - see zendeskKind's doc comment) rather
+// than taking a redundant extra parameter through resolveIdentity/
+// fetchConnectorIdentity's shared signature.
+func fetchZendeskIdentity(ctx context.Context, cfg *oauth2.Config, token *oauth2.Token) (string, error) {
+	tokenURL, err := url.Parse(cfg.Endpoint.TokenURL)
+	if err != nil {
+		return "", fmt.Errorf("parse zendesk token url: %w", err)
+	}
+	client := cfg.Client(ctx, token)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, tokenURL.Scheme+"://"+tokenURL.Host+"/api/v2/users/me.json", nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		return "", fmt.Errorf("zendesk /users/me.json returned %d", resp.StatusCode)
+	}
+	var info struct {
+		User struct {
+			Email string `json:"email"`
+		} `json:"user"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		return "", err
+	}
+	if info.User.Email == "" {
+		return "", fmt.Errorf("no email in zendesk /users/me.json response")
+	}
+	return info.User.Email, nil
+}
+
+// fetchSalesforceIdentity uses the fixed OIDC userinfo endpoint (not a
+// per-org host - Salesforce's login host resolves it for any valid
+// production-org token) - verified against Salesforce's OAuth/OIDC docs
+// before writing this.
+func fetchSalesforceIdentity(ctx context.Context, cfg *oauth2.Config, token *oauth2.Token) (string, error) {
+	client := cfg.Client(ctx, token)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://login.salesforce.com/services/oauth2/userinfo", nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		return "", fmt.Errorf("salesforce userinfo returned %d", resp.StatusCode)
+	}
+	var info struct {
+		Email string `json:"email"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		return "", err
+	}
+	if info.Email == "" {
+		return "", fmt.Errorf("no email in salesforce userinfo response")
 	}
 	return info.Email, nil
 }
