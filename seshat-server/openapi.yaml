@@ -6352,7 +6352,7 @@ components:
         url: { type: string, description: Only meaningful for server_type=http/sse/websocket. }
         timeout_secs: { type: integer }
         icon: { type: string }
-        connector_kind: { type: string, enum: ["", gdrive, sharepoint, slack, outlook, teams, gmail, notion, github, linear, hubspot, jira, confluence, asana, intercom, pipedrive, salesforce, stripe, trello, airtable], description: "When set, this server's headers are personalized per caller at resolve time - see ResolvedMCPServerConfig.connected." }
+        connector_kind: { type: string, enum: ["", gdrive, sharepoint, slack, outlook, teams, gmail, notion, github, linear, hubspot, jira, confluence, asana, intercom, pipedrive, salesforce], description: "When set, this server's headers are personalized per caller at resolve time - see ResolvedMCPServerConfig.connected." }
 
     HookConfig:
       type: object
@@ -6548,7 +6548,7 @@ components:
         headers: { type: object, additionalProperties: { type: string }, description: "May include an Authorization: Bearer entry personalized for the calling principal when connector_kind is set - see connected." }
         timeout_secs: { type: integer }
         icon: { type: string }
-        connector_kind: { type: string, enum: ["", gdrive, sharepoint, slack, outlook, teams, gmail, notion, github, linear, hubspot, jira, confluence, asana, intercom, pipedrive, salesforce, stripe, trello, airtable] }
+        connector_kind: { type: string, enum: ["", gdrive, sharepoint, slack, outlook, teams, gmail, notion, github, linear, hubspot, jira, confluence, asana, intercom, pipedrive, salesforce] }
         connected: { type: boolean, description: "Always true when connector_kind is empty. When connector_kind is set, true only if the calling principal has their own connected agent_action ConnectorAccount for that kind - false means this server was returned but has no Bearer header injected (the calling employee hasn't connected their own account yet)." }
 
     MCPServerConfigInput:
@@ -6572,7 +6572,7 @@ components:
           description: Encrypted at rest. Optional on create.
         timeout_secs: { type: integer, default: 30 }
         icon: { type: string }
-        connector_kind: { type: string, enum: ["", gdrive, sharepoint, slack, outlook, teams, gmail, notion, github, linear, hubspot, jira, confluence, asana, intercom, pipedrive, salesforce, stripe, trello, airtable], description: "See MCPServerConfig.connector_kind. Empty (default) means static config only." }
+        connector_kind: { type: string, enum: ["", gdrive, sharepoint, slack, outlook, teams, gmail, notion, github, linear, hubspot, jira, confluence, asana, intercom, pipedrive, salesforce], description: "See MCPServerConfig.connector_kind. Empty (default) means static config only." }
 
     # Distinct from MCPServerConfigInput: the update handler's request
     # struct has neither organization_id nor name (an existing config's
@@ -6596,7 +6596,7 @@ components:
           description: Omit to keep the existing stored headers unchanged.
         timeout_secs: { type: integer }
         icon: { type: string }
-        connector_kind: { type: string, enum: ["", gdrive, sharepoint, slack, outlook, teams, gmail, notion, github, linear, hubspot, jira, confluence, asana, intercom, pipedrive, salesforce, stripe, trello, airtable] }
+        connector_kind: { type: string, enum: ["", gdrive, sharepoint, slack, outlook, teams, gmail, notion, github, linear, hubspot, jira, confluence, asana, intercom, pipedrive, salesforce] }
 
     Corpus:
       type: object

@@ -43,7 +43,16 @@ const SERVER_TYPE_OPTIONS = [
 // Kinds whose vendor has no such server (Zendesk, Telegram, Discord,
 // SendGrid, Mailgun, Postmark) are deliberately not listed here - the
 // dataflow nodes built earlier in this initiative remain the only
-// integration path for those.
+// integration path for those. Stripe/Trello/Airtable are deliberately not
+// listed either, despite being real connector kinds elsewhere (Workspace →
+// Connections) - they're static-secret agent_action accounts (see
+// connectors/static_agent_account.go), and the Bearer-injection path this
+// dropdown feeds (mcpregistry's injectConnectorToken →
+// connectors.Service.AccessTokenForUser) is OAuth-only. Offering them here
+// produced a server that silently never got its header injected - found
+// 2026-09-03 while auditing this page, removed rather than wired up, since
+// bridging a static secret into MCP resolve would need its own resolver
+// path (StaticSecretForUser), not a one-line fix.
 const CONNECTOR_KIND_OPTIONS = [
   { value: '', label: 'None (static config only)' },
   { value: 'gdrive', label: 'Google Drive' },
@@ -62,9 +71,6 @@ const CONNECTOR_KIND_OPTIONS = [
   { value: 'intercom', label: 'Intercom' },
   { value: 'pipedrive', label: 'Pipedrive' },
   { value: 'salesforce', label: 'Salesforce' },
-  { value: 'stripe', label: 'Stripe' },
-  { value: 'trello', label: 'Trello' },
-  { value: 'airtable', label: 'Airtable' },
 ]
 
 // outlook/teams/gmail are self-hosted by this seshat-server itself (see
@@ -99,9 +105,6 @@ const VENDOR_HOSTED_MCP_URL: Partial<Record<string, string>> = {
   asana: 'https://mcp.asana.com/v2/mcp',
   intercom: 'https://mcp.intercom.com/mcp',
   pipedrive: 'https://mcp.pipedrive.ai/mcp',
-  stripe: 'https://mcp.stripe.com',
-  trello: 'https://mcp.trello.com/v1',
-  airtable: 'https://mcp.airtable.com/mcp',
 }
 
 export function MCPServersPage() {
