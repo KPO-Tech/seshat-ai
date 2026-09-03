@@ -21,6 +21,7 @@ import { UserSelect } from '@/components/UserSelect'
 import { palette } from '@/theme/tokens'
 
 const PAGE_SIZE = 20
+const DESCRIPTION_MAX_LENGTH = 200
 
 // "group" is the wire value (matches the backend's SubjectType enum) - the
 // console calls this concept "Team", see docs/seshat-console-target-ia.md.
@@ -213,7 +214,7 @@ function PolicyBindingFormDrawer({ binding,
           <Input />
         </Form.Item>
         <Form.Item name="description" label="Description">
-          <Input.TextArea rows={2} />
+          <Input.TextArea rows={2} maxLength={DESCRIPTION_MAX_LENGTH} showCount />
         </Form.Item>
         <Form.Item name="subject_type" label="Subject type" rules={[{ required: true }]}>
           <Select

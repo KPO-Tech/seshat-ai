@@ -249,7 +249,7 @@ export function OrganizationOverviewPage() {
       >
         <Card title="Setup Status" style={{ height: '100%' }}>
           <Space direction="vertical" size={14} style={{ width: '100%' }}>
-            <div style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 8, border: `1px solid ${palette.borderSubtle}` }}>
+            <div style={{ padding: '8px 12px', background: 'rgba(30, 28, 26, 0.02)', borderRadius: 8, border: `1px solid ${palette.borderSubtle}` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 4 }}>
                 <Typography.Text strong>Profile & Branding</Typography.Text>
                 <Tag color={profile.isReady ? 'green' : 'orange'} style={{ margin: 0, borderRadius: 6 }}>
@@ -261,7 +261,7 @@ export function OrganizationOverviewPage() {
               </Typography.Text>
             </div>
 
-            <div style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 8, border: `1px solid ${palette.borderSubtle}` }}>
+            <div style={{ padding: '8px 12px', background: 'rgba(30, 28, 26, 0.02)', borderRadius: 8, border: `1px solid ${palette.borderSubtle}` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 4 }}>
                 <Typography.Text strong>AI Credentials</Typography.Text>
                 <Tag color={providerSettings.data?.length ? 'green' : 'orange'} style={{ margin: 0, borderRadius: 6 }}>
@@ -277,7 +277,7 @@ export function OrganizationOverviewPage() {
               </Typography.Text>
             </div>
 
-            <div style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 8, border: `1px solid ${palette.borderSubtle}` }}>
+            <div style={{ padding: '8px 12px', background: 'rgba(30, 28, 26, 0.02)', borderRadius: 8, border: `1px solid ${palette.borderSubtle}` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 4 }}>
                 <Typography.Text strong>Embedder & Search</Typography.Text>
                 <Tag color={embedder.data ? 'green' : 'default'} style={{ margin: 0, borderRadius: 6 }}>
@@ -293,7 +293,7 @@ export function OrganizationOverviewPage() {
               </Typography.Text>
             </div>
 
-            <div style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 8, border: `1px solid ${palette.borderSubtle}` }}>
+            <div style={{ padding: '8px 12px', background: 'rgba(30, 28, 26, 0.02)', borderRadius: 8, border: `1px solid ${palette.borderSubtle}` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 4 }}>
                 <Typography.Text strong>Integrations & Apps</Typography.Text>
                 <Tag color={(applications.data?.total ?? 0) > 0 ? 'green' : 'default'} style={{ margin: 0, borderRadius: 6 }}>
