@@ -2,36 +2,57 @@ import { useState } from 'react'
 import { Alert, Button, Card, Input, Popconfirm, Space, Tag, Typography, message } from 'antd'
 import {
   DeleteOutlined,
-  GoogleOutlined,
   WindowsOutlined,
   SlackOutlined,
   MailOutlined,
   TeamOutlined,
-  BookOutlined,
-  FileTextOutlined,
-  DollarOutlined,
-  TableOutlined,
-  CalendarOutlined,
-  ProjectOutlined,
-  ThunderboltOutlined,
   NotificationOutlined,
-  SendOutlined,
-  RobotOutlined,
-  LayoutOutlined,
-  DatabaseOutlined,
-  GithubOutlined,
-  CheckSquareOutlined,
-  BranchesOutlined,
-  ContactsOutlined,
-  CustomerServiceOutlined,
   FunnelPlotOutlined,
   CloudOutlined,
 } from '@ant-design/icons'
+import {
+  siGoogledrive,
+  siConfluence,
+  siGmail,
+  siNotion,
+  siGooglesheets,
+  siGooglecalendar,
+  siJira,
+  siGithub,
+  siAsana,
+  siLinear,
+  siHubspot,
+  siIntercom,
+  siZendesk,
+  siStripe,
+  siMailgun,
+  siTelegram,
+  siDiscord,
+  siTrello,
+  siAirtable,
+} from 'simple-icons'
 import { useMyConnectorAccountsList, useDeleteMyConnectorAccount } from '@/api/myConnections'
 import { useBeginConnectorOAuth, useCreateStaticAgentAccount, type ConnectorAccount, type OAuthConnectorKind, type StaticConnectorKind } from '@/api/connectors'
 import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
 import { useWorkspaceOrganizationStore } from '@/store/workspaceOrganization'
+
+// Real vendor logos: simple-icons (CC0-1.0, public-domain icon path data -
+// https://simpleicons.org), same source and same "no .hex fill, tint stays
+// under the app's own theming" reasoning already vetted for seshat-ui's
+// automation node picker (graph/nodeIcons.tsx). Roughly a third of the
+// kinds below have no entry in this library at all - checked against the
+// installed package's real exports, not assumed: Microsoft's own product
+// sub-brands (SharePoint, OneDrive, Outlook, Teams) and a few SaaS vendors
+// (Pipedrive, Salesforce, SendGrid, Postmark) are absent. Those keep an
+// existing antd icon instead of a fabricated logo.
+function BrandIcon({ icon }: { icon: { path: string; title: string } }) {
+  return (
+    <svg viewBox="0 0 24 24" width="1em" height="1em" role="img" aria-label={icon.title} style={{ display: 'inline-block' }}>
+      <path d={icon.path} fill="currentColor" />
+    </svg>
+  )
+}
 
 const OAUTH_CONNECTOR_KINDS: OAuthConnectorKind[] = [
   'gdrive',
@@ -57,28 +78,31 @@ const OAUTH_CONNECTOR_KINDS: OAuthConnectorKind[] = [
 ]
 
 const KIND_META: Record<OAuthConnectorKind, { label: string; icon: React.ReactNode }> = {
-  gdrive: { label: 'Google Drive', icon: <GoogleOutlined /> },
+  gdrive: { label: 'Google Drive', icon: <BrandIcon icon={siGoogledrive} /> },
+  // SharePoint/OneDrive/Outlook/Teams have no entry in simple-icons -
+  // Microsoft's own product sub-brands are absent from that library
+  // entirely (verified against its real export list, not assumed) - the
+  // Windows/Mail/Team glyphs below are the closest existing antd icons,
+  // not fabricated logos.
   sharepoint: { label: 'SharePoint', icon: <WindowsOutlined /> },
   onedrive: { label: 'OneDrive', icon: <WindowsOutlined /> },
-  confluence: { label: 'Confluence', icon: <BookOutlined /> },
+  confluence: { label: 'Confluence', icon: <BrandIcon icon={siConfluence} /> },
   slack: { label: 'Slack', icon: <SlackOutlined /> },
   outlook: { label: 'Outlook', icon: <MailOutlined /> },
   teams: { label: 'Microsoft Teams', icon: <TeamOutlined /> },
-  gmail: { label: 'Gmail', icon: <GoogleOutlined /> },
-  // No Notion/Sheets/Calendar/Jira-branded glyph in @ant-design/icons - a
-  // semantically-close generic icon stands in as a placeholder until one is
-  // worth adding as a custom asset, same call made for Notion.
-  notion: { label: 'Notion', icon: <FileTextOutlined /> },
-  gsheets: { label: 'Google Sheets', icon: <TableOutlined /> },
-  gcalendar: { label: 'Google Calendar', icon: <CalendarOutlined /> },
-  jira: { label: 'Jira', icon: <ProjectOutlined /> },
-  github: { label: 'GitHub', icon: <GithubOutlined /> },
-  asana: { label: 'Asana', icon: <CheckSquareOutlined /> },
-  linear: { label: 'Linear', icon: <BranchesOutlined /> },
-  hubspot: { label: 'HubSpot', icon: <ContactsOutlined /> },
-  intercom: { label: 'Intercom', icon: <CustomerServiceOutlined /> },
+  gmail: { label: 'Gmail', icon: <BrandIcon icon={siGmail} /> },
+  notion: { label: 'Notion', icon: <BrandIcon icon={siNotion} /> },
+  gsheets: { label: 'Google Sheets', icon: <BrandIcon icon={siGooglesheets} /> },
+  gcalendar: { label: 'Google Calendar', icon: <BrandIcon icon={siGooglecalendar} /> },
+  jira: { label: 'Jira', icon: <BrandIcon icon={siJira} /> },
+  github: { label: 'GitHub', icon: <BrandIcon icon={siGithub} /> },
+  asana: { label: 'Asana', icon: <BrandIcon icon={siAsana} /> },
+  linear: { label: 'Linear', icon: <BrandIcon icon={siLinear} /> },
+  hubspot: { label: 'HubSpot', icon: <BrandIcon icon={siHubspot} /> },
+  intercom: { label: 'Intercom', icon: <BrandIcon icon={siIntercom} /> },
+  // Pipedrive/Salesforce also have no simple-icons entry.
   pipedrive: { label: 'Pipedrive', icon: <FunnelPlotOutlined /> },
-  zendesk: { label: 'Zendesk', icon: <CustomerServiceOutlined /> },
+  zendesk: { label: 'Zendesk', icon: <BrandIcon icon={siZendesk} /> },
   salesforce: { label: 'Salesforce', icon: <CloudOutlined /> },
 }
 
@@ -88,17 +112,18 @@ const KIND_META: Record<OAuthConnectorKind, { label: string; icon: React.ReactNo
 const STATIC_CONNECTOR_KINDS: StaticConnectorKind[] = ['stripe', 'sendgrid', 'mailgun', 'postmark', 'telegram', 'discord', 'trello', 'airtable']
 
 const STATIC_KIND_META: Record<StaticConnectorKind, { label: string; icon: React.ReactNode; secretLabel: string; secretPlaceholder: string }> = {
-  stripe: { label: 'Stripe', icon: <DollarOutlined />, secretLabel: 'Secret key', secretPlaceholder: 'sk_live_...' },
+  stripe: { label: 'Stripe', icon: <BrandIcon icon={siStripe} />, secretLabel: 'Secret key', secretPlaceholder: 'sk_live_...' },
+  // SendGrid/Postmark have no simple-icons entry.
   sendgrid: { label: 'SendGrid', icon: <MailOutlined />, secretLabel: 'API key', secretPlaceholder: 'SG....' },
-  mailgun: { label: 'Mailgun', icon: <ThunderboltOutlined />, secretLabel: 'API key', secretPlaceholder: 'key-...' },
+  mailgun: { label: 'Mailgun', icon: <BrandIcon icon={siMailgun} />, secretLabel: 'API key', secretPlaceholder: 'key-...' },
   postmark: { label: 'Postmark', icon: <NotificationOutlined />, secretLabel: 'Server token', secretPlaceholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' },
-  telegram: { label: 'Telegram', icon: <SendOutlined />, secretLabel: 'Bot token', secretPlaceholder: '123456789:AA...' },
-  discord: { label: 'Discord', icon: <RobotOutlined />, secretLabel: 'Bot token', secretPlaceholder: 'Bot token from the Developer Portal' },
+  telegram: { label: 'Telegram', icon: <BrandIcon icon={siTelegram} />, secretLabel: 'Bot token', secretPlaceholder: '123456789:AA...' },
+  discord: { label: 'Discord', icon: <BrandIcon icon={siDiscord} />, secretLabel: 'Bot token', secretPlaceholder: 'Bot token from the Developer Portal' },
   // Trello's API needs both an API key and a token (see TrelloCreateCardNode's
   // doc comment) - the connect form asks for both, colon-separated, since
   // this connected-account schema stores exactly one secret string.
-  trello: { label: 'Trello', icon: <LayoutOutlined />, secretLabel: 'API Key:Token', secretPlaceholder: 'apikey:apitoken' },
-  airtable: { label: 'Airtable', icon: <DatabaseOutlined />, secretLabel: 'Personal Access Token', secretPlaceholder: 'pat...' },
+  trello: { label: 'Trello', icon: <BrandIcon icon={siTrello} />, secretLabel: 'API Key:Token', secretPlaceholder: 'apikey:apitoken' },
+  airtable: { label: 'Airtable', icon: <BrandIcon icon={siAirtable} />, secretLabel: 'Personal Access Token', secretPlaceholder: 'pat...' },
 }
 
 export function ConnectionsPage() {
