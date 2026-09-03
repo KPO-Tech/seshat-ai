@@ -185,8 +185,12 @@ export function ConnectionsPage() {
     <div className="wsc-root">
       <div className="wsc-head">
         <div className="wsc-head__copy">
-          <h1>Connections</h1>
-          <p>Connect your own accounts so the workspace agent can act on your behalf, with your own permissions - separate from any Knowledge source an admin has set up.</p>
+          <h1>
+            Connections:{' '}
+            <span className="wsc-head__desc">
+              Connect your own accounts so the workspace agent can act on your behalf, with your own permissions - separate from any Knowledge source an admin has set up.
+            </span>
+          </h1>
         </div>
         <div className="wsc-search">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>

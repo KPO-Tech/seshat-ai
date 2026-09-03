@@ -145,6 +145,7 @@ export function ConnectorsPage() {
   const [creating, setCreating] = useState(false)
   const [editingAccount, setEditingAccount] = useState<ConnectorAccount | null>(null)
   const [historyAccount, setHistoryAccount] = useState<ConnectorAccount | null>(null)
+  const [search, setSearch] = useState('')
 
   const { data: allAccounts, isLoading, error } = useConnectorAccountsList(organizationId ?? undefined)
   // ListAccounts returns every account regardless of purpose - a member's
@@ -161,6 +162,11 @@ export function ConnectorsPage() {
 
   const corpusOptions = (corpora?.corpora ?? []).map((c) => ({ value: c.id!, label: c.name ?? c.id! }))
   const configuredOAuthKinds = new Set<string>((oauthApps ?? []).filter((a) => a.configured && a.kind).map((a) => a.kind!))
+
+  const searchTerm = search.trim().toLowerCase()
+  const filteredAccounts = searchTerm
+    ? accounts.filter((a) => a.display_name?.toLowerCase().includes(searchTerm) || a.kind?.toLowerCase().includes(searchTerm))
+    : accounts
 
   const columns: TableProps<ConnectorAccount>['columns'] = [
     {
@@ -252,20 +258,29 @@ export function ConnectorsPage() {
     <div>
       <PageHeader
         actions={
-          <Tooltip title={corpusOptions.length === 0 ? 'Create a corpus first (Knowledge → Corpora) - a connector needs one to sync into.' : undefined}>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => setCreating(true)}
-              disabled={!organizationId || corpusOptions.length === 0}
-            >
-              New connector
-            </Button>
-          </Tooltip>
+          <Space>
+            <Input.Search
+              placeholder="Search connectors"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              allowClear
+              style={{ width: 240 }}
+            />
+            <Tooltip title={corpusOptions.length === 0 ? 'Create a corpus first (Knowledge → Corpora) - a connector needs one to sync into.' : undefined}>
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => setCreating(true)}
+                disabled={!organizationId || corpusOptions.length === 0}
+              >
+                New connector
+              </Button>
+            </Tooltip>
+          </Space>
         }
       />
 
-      <OAuthAppsSection organizationId={organizationId ?? undefined} apps={oauthApps ?? []} />
+      <OAuthAppsSection organizationId={organizationId ?? undefined} apps={oauthApps ?? []} search={searchTerm} />
 
       <Typography.Title level={5} style={{ margin: '0 0 12px', color: palette.ink }}>
         Connected sources
@@ -274,7 +289,7 @@ export function ConnectorsPage() {
       <ConsoleTable<ConnectorAccount>
         rowKey="id"
         columns={columns}
-        dataSource={accounts ?? []}
+        dataSource={filteredAccounts}
         loading={isLoading}
         queryError={error}
         pagination={false}
@@ -385,22 +400,37 @@ function SyncHistoryModal({ account, onClose }: { account: ConnectorAccount | nu
 // own corpus/status/sync history). Shown inline on the page instead of
 // behind a modal, same reasoning as seshat-ui's version: it's a short,
 // infrequently-touched setup step, not worth an extra click to reach.
-function OAuthAppsSection({ organizationId, apps }: { organizationId: string | undefined; apps: ConnectorOAuthApp[] }) {
+function OAuthAppsSection({
+  organizationId,
+  apps,
+  search,
+}: {
+  organizationId: string | undefined
+  apps: ConnectorOAuthApp[]
+  search: string
+}) {
   const [editingKind, setEditingKind] = useState<OAuthConnectorKind | null>(null)
+
+  const kinds = search
+    ? OAUTH_CONNECTOR_KINDS.filter((kind) => CONNECTOR_KIND_LABELS[kind].toLowerCase().includes(search) || kind.toLowerCase().includes(search))
+    : OAUTH_CONNECTOR_KINDS
 
   return (
     <div style={{ marginBottom: 28 }}>
-      <Typography.Title level={5} style={{ margin: '0 0 4px', color: palette.ink }}>
-        OAuth apps
+      <Typography.Title level={5} style={{ margin: '0 0 12px', color: palette.ink, fontWeight: 600 }}>
+        OAuth apps:{' '}
+        <Typography.Text type="secondary" style={{ fontSize: 14, fontWeight: 400 }}>
+          Register this organization's own OAuth app once per provider - every account this org connects afterward reuses it.
+        </Typography.Text>
       </Typography.Title>
-      <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
-        Register this organization's own OAuth app once per provider - every account this org connects afterward reuses it.
-      </Typography.Paragraph>
-      <div className="pv-list">
-        {OAUTH_CONNECTOR_KINDS.map((kind) => {
-          const existing = apps.find((a) => a.kind === kind)
-          const configured = Boolean(existing?.configured)
-          return (
+      {kinds.length === 0 ? (
+        <Empty description="No providers match your search" style={{ padding: '24px 0' }} />
+      ) : (
+        <div className="pv-list">
+          {kinds.map((kind) => {
+            const existing = apps.find((a) => a.kind === kind)
+            const configured = Boolean(existing?.configured)
+            return (
             <div key={kind} className="pv-card">
               <div className="pv-card-header">
                 <div className="pv-brand">
@@ -426,9 +456,10 @@ function OAuthAppsSection({ organizationId, apps }: { organizationId: string | u
                 </div>
               </div>
             </div>
-          )
-        })}
-      </div>
+            )
+          })}
+        </div>
+      )}
 
       <OAuthAppFormDrawer
         kind={editingKind}

@@ -30,9 +30,9 @@ kinds (Stripe, Telegram, Trello, ...) never appear here at all - they
 have no app to register; the connecting employee pastes their own
 secret directly.
 
-**Connected sources**: needs a corpus to sync into - create one under
-Knowledge → Corpora first, "New connector" stays disabled until one
-exists. S3-compatible/Azure Blob take static credentials entered
+**Connected sources**: needs a corpus to sync into - **create one under
+Knowledge → Corpora first, or "New connector" stays disabled** (hovering
+it explains why, but it's easy to miss). S3-compatible/Azure Blob take static credentials entered
 directly; the 4 OAuth kinds need that kind's app registered above first,
 then "Connect with..." opens the real consent flow in a new tab. Per
 source: "Sync now" queues an immediate sync outside its normal interval,

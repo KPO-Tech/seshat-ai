@@ -386,6 +386,43 @@ body {
   color: #22c55e;
 }
 
+.workspace-trace-step--failed .workspace-trace-step__icon {
+  color: #DC2626;
+}
+
+.workspace-trace-step--expandable .workspace-trace-step__header {
+  cursor: pointer;
+  user-select: none;
+}
+
+.workspace-trace-step__chevron {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: #938C84;
+  transition: transform 0.15s ease;
+  margin-left: 4px;
+}
+
+.workspace-trace-step__chevron--open {
+  transform: rotate(90deg);
+}
+
+.workspace-trace-step__duration {
+  flex-shrink: 0;
+  font-size: 11.5px;
+  color: #938C84;
+}
+
+.workspace-trace-step__error-badge {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: #DC2626;
+  background: rgba(220, 38, 38, 0.08);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
 .workspace-trace-step__text {
   color: #746F69;
   font-size: 13px;
@@ -474,6 +511,65 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.workspace-trace-body {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.workspace-trace-section__label {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #938C84;
+  margin-bottom: 5px;
+}
+
+.workspace-trace-pre {
+  position: relative;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #F3EEE8;
+  border: 1px solid #DDD5CC;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #1E1C1A;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.workspace-trace-pre--error {
+  background: rgba(220, 38, 38, 0.05);
+  border-color: rgba(220, 38, 38, 0.25);
+  color: #991B1B;
+}
+
+.workspace-trace-copy {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #938C84;
+  display: inline-flex;
+  align-items: center;
+  padding: 3px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.workspace-trace-copy:hover {
+  background: rgba(30, 28, 26, 0.06);
+  color: #1E1C1A;
 }
 
 /* Chat Markdown Formatting */
@@ -782,19 +878,23 @@ body {
   margin-bottom: 22px;
 }
 
+.wsc-head__copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .wsc-head__copy h1 {
-  margin: 0 0 6px;
+  margin: 0;
   font-size: 20px;
   font-weight: 700;
   letter-spacing: -0.02em;
   color: #1E1C1A;
 }
 
-.wsc-head__copy p {
-  margin: 0;
-  max-width: 62ch;
+.wsc-head__desc {
   font-size: 13.5px;
-  line-height: 1.55;
+  font-weight: 400;
+  letter-spacing: normal;
   color: #746F69;
 }
 
