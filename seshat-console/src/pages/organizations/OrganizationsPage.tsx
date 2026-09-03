@@ -197,6 +197,7 @@ export function OrganizationsPage() {
                       { key: 'share_web_search_settings', label: 'Web search settings' },
                       { key: 'share_mcp_servers', label: 'MCP servers' },
                       { key: 'share_skill_repos', label: 'Skill repos' },
+                      { key: 'share_connector_apps', label: 'Connector OAuth apps' },
                     ] as const
                   ).map((domain) => (
                     <div key={domain.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

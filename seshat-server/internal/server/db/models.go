@@ -31,19 +31,26 @@ type Organization struct {
 	// checks it. Lets a platform admin flag an organization as retired
 	// without deleting it.
 	IsActive bool `gorm:"not null;default:true"`
-	// The four Share* flags only matter while this organization holds
-	// IsDefault - they let a platform admin share, say, this org's MCP
-	// servers with every other organization while keeping its own LLM
-	// provider credentials private to itself, instead of the all-or-nothing
-	// behavior of IsDefault alone. Default true so flipping IsDefault on
-	// keeps today's existing all-shared behavior until an admin opts a
-	// domain out (see iam.Service.DefaultOrganizationIDForDomain).
+	// The Share* flags only matter while this organization holds IsDefault -
+	// they let a platform admin share, say, this org's MCP servers with
+	// every other organization while keeping its own LLM provider
+	// credentials private to itself, instead of the all-or-nothing behavior
+	// of IsDefault alone. Default true so flipping IsDefault on keeps
+	// today's existing all-shared behavior until an admin opts a domain out
+	// (see iam.Service.DefaultOrganizationIDForDomain).
 	ShareProviderSettings        bool `gorm:"not null;default:true"`
 	ShareEmbedderSettings        bool `gorm:"not null;default:true"`
 	ShareWebSearchSettings       bool `gorm:"not null;default:true"`
 	ShareMCPServers              bool `gorm:"not null;default:true"`
 	ShareSkillRepos              bool `gorm:"not null;default:true"`
 	ShareOrganizationPreferences bool `gorm:"not null;default:true"`
+	// ShareConnectorApps lets an organization with no ConnectorOAuthApp row
+	// of its own for a given kind fall back to this organization's row
+	// instead of failing outright - see connectors.Service.oauthConfigFor's
+	// doc comment. An org that already registered its own app for a kind
+	// always uses that row unchanged; this fallback only ever activates for
+	// an org with none.
+	ShareConnectorApps bool `gorm:"not null;default:true"`
 	// Domain is the organization's own email domain (e.g. "acmecorp.com"),
 	// used by self-service registration to auto-join a new user to this org
 	// as a pending member. A *string (not string) so an org without a

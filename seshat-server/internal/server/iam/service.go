@@ -49,6 +49,7 @@ type Organization struct {
 	ShareMCPServers              bool    `json:"share_mcp_servers"`
 	ShareSkillRepos              bool    `json:"share_skill_repos"`
 	ShareOrganizationPreferences bool    `json:"share_organization_preferences"`
+	ShareConnectorApps           bool    `json:"share_connector_apps"`
 	Domain                       *string `json:"domain,omitempty"`
 	// DomainVerificationToken is the TXT record value to publish - only
 	// meaningful (and only ever seen) by callers who can already read this
@@ -1196,6 +1197,7 @@ func toOrganization(record sdb.Organization) Organization {
 		ShareMCPServers:              record.ShareMCPServers,
 		ShareSkillRepos:              record.ShareSkillRepos,
 		ShareOrganizationPreferences: record.ShareOrganizationPreferences,
+		ShareConnectorApps:           record.ShareConnectorApps,
 		Domain:                       record.Domain,
 		DomainVerificationToken:      record.DomainVerificationToken,
 		DomainVerifiedAt:             record.DomainVerifiedAt,

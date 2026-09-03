@@ -202,7 +202,7 @@ func TestResolveProviderSettingHonorsShareProviderSettingsOptOut(t *testing.T) {
 		t.Fatalf("create provider setting on the default org: %v", err)
 	}
 	shareProviderSettings := false
-	if _, err := env.iam.SetOrganizationSharedDomains(context.Background(), env.adminPrincipal, defaultOrg.ID, &shareProviderSettings, nil, nil, nil, nil, nil); err != nil {
+	if _, err := env.iam.SetOrganizationSharedDomains(context.Background(), env.adminPrincipal, defaultOrg.ID, &shareProviderSettings, nil, nil, nil, nil, nil, nil); err != nil {
 		t.Fatalf("opt out of sharing provider settings: %v", err)
 	}
 

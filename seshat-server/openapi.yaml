@@ -5060,7 +5060,7 @@ components:
         support_email: { type: string, format: email }
         is_default:
           type: boolean
-          description: Whether this organization's own ProviderSetting/EmbedderSetting/WebSearchProviderSetting/MCPServerConfig rows are used as the platform-wide fallback for organizations with no config of their own. At most one organization holds this at a time.
+          description: Whether this organization's own ProviderSetting/EmbedderSetting/WebSearchProviderSetting/MCPServerConfig/ConnectorOAuthApp rows are used as the platform-wide fallback for organizations with no config of their own. At most one organization holds this at a time.
         is_active:
           type: boolean
           description: Administrative/visual flag only - not enforced on any request path yet.
@@ -5082,6 +5082,9 @@ components:
         share_organization_preferences:
           type: boolean
           description: Only meaningful while is_default is true - whether this organization's preference defaults are shared as the platform-wide fallback.
+        share_connector_apps:
+          type: boolean
+          description: Only meaningful while is_default is true - whether this organization's connector OAuth apps (client_id/secret registered per kind) are shared as the platform-wide fallback for organizations with no app of their own for a given kind.
         domain:
           type: string
           description: >-
@@ -5139,6 +5142,7 @@ components:
         share_mcp_servers: { type: boolean }
         share_skill_repos: { type: boolean }
         share_organization_preferences: { type: boolean }
+        share_connector_apps: { type: boolean }
 
     Membership:
       type: object

@@ -128,6 +128,7 @@ const (
 	SharedDomainMCPServers              SharedDomain = "mcp_servers"
 	SharedDomainSkillRepos              SharedDomain = "skill_repos"
 	SharedDomainOrganizationPreferences SharedDomain = "organization_preferences"
+	SharedDomainConnectorApps           SharedDomain = "connector_apps"
 )
 
 // DefaultOrganizationIDForDomain returns the id of the organization
@@ -160,6 +161,8 @@ func (s *Service) DefaultOrganizationIDForDomain(tx *gorm.DB, domain SharedDomai
 		shared = org.ShareSkillRepos
 	case SharedDomainOrganizationPreferences:
 		shared = org.ShareOrganizationPreferences
+	case SharedDomainConnectorApps:
+		shared = org.ShareConnectorApps
 	}
 	if !shared {
 		return "", false, nil
@@ -174,7 +177,7 @@ func (s *Service) DefaultOrganizationIDForDomain(tx *gorm.DB, domain SharedDomai
 // of another organization's credentials, not something an org's own admin
 // should decide unilaterally. A nil pointer leaves that domain's flag
 // unchanged.
-func (s *Service) SetOrganizationSharedDomains(ctx context.Context, principal *Principal, organizationID string, shareProviderSettings, shareEmbedderSettings, shareWebSearchSettings, shareMCPServers, shareSkillRepos, shareOrganizationPreferences *bool) (*Organization, error) {
+func (s *Service) SetOrganizationSharedDomains(ctx context.Context, principal *Principal, organizationID string, shareProviderSettings, shareEmbedderSettings, shareWebSearchSettings, shareMCPServers, shareSkillRepos, shareOrganizationPreferences, shareConnectorApps *bool) (*Organization, error) {
 	if err := requireAdmin(principal); err != nil {
 		return nil, err
 	}
@@ -212,6 +215,9 @@ func (s *Service) SetOrganizationSharedDomains(ctx context.Context, principal *P
 		if shareOrganizationPreferences != nil {
 			record.ShareOrganizationPreferences = *shareOrganizationPreferences
 		}
+		if shareConnectorApps != nil {
+			record.ShareConnectorApps = *shareConnectorApps
+		}
 		record.UpdatedAt = time.Now().UTC()
 		if err := tx.Save(&record).Error; err != nil {
 			return err
@@ -224,6 +230,7 @@ func (s *Service) SetOrganizationSharedDomains(ctx context.Context, principal *P
 			"share_mcp_servers":              boolString(record.ShareMCPServers),
 			"share_skill_repos":              boolString(record.ShareSkillRepos),
 			"share_organization_preferences": boolString(record.ShareOrganizationPreferences),
+			"share_connector_apps":           boolString(record.ShareConnectorApps),
 		}); err != nil {
 			return err
 		}

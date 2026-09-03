@@ -3016,7 +3016,7 @@ export interface components {
             website_url?: string;
             /** Format: email */
             support_email?: string;
-            /** @description Whether this organization's own ProviderSetting/EmbedderSetting/WebSearchProviderSetting/MCPServerConfig rows are used as the platform-wide fallback for organizations with no config of their own. At most one organization holds this at a time. */
+            /** @description Whether this organization's own ProviderSetting/EmbedderSetting/WebSearchProviderSetting/MCPServerConfig/ConnectorOAuthApp rows are used as the platform-wide fallback for organizations with no config of their own. At most one organization holds this at a time. */
             is_default?: boolean;
             /** @description Administrative/visual flag only - not enforced on any request path yet. */
             is_active?: boolean;
@@ -3032,6 +3032,8 @@ export interface components {
             share_skill_repos?: boolean;
             /** @description Only meaningful while is_default is true - whether this organization's preference defaults are shared as the platform-wide fallback. */
             share_organization_preferences?: boolean;
+            /** @description Only meaningful while is_default is true - whether this organization's connector OAuth apps (client_id/secret registered per kind) are shared as the platform-wide fallback for organizations with no app of their own for a given kind. */
+            share_connector_apps?: boolean;
             /** @description This organization's own email domain (e.g. "acmecorp.com"), if set. Self-service registration (POST /auth/register) auto-joins a new user to this organization as a pending member when their email matches — but only once domain_verified_at is set; a claimed-but-unverified domain grants no auto-join. At most one organization holds a given domain. */
             domain?: string;
             /** @description The value to publish as a DNS TXT record at _seshat-challenge.<domain> (as "seshat-verification=<token>") to prove ownership — see POST .../verify-domain. Regenerated whenever domain changes to a new value. Absent once verified or when no domain is set. */
@@ -3066,6 +3068,7 @@ export interface components {
             share_mcp_servers?: boolean;
             share_skill_repos?: boolean;
             share_organization_preferences?: boolean;
+            share_connector_apps?: boolean;
         };
         Membership: {
             id?: string;

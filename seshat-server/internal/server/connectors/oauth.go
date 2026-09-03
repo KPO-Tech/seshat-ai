@@ -404,14 +404,13 @@ func (s *Service) CompleteConnectorOAuth(ctx context.Context, kind, code, state 
 			return ErrUnauthorized("this authorization link has expired or was already used - please try connecting again")
 		}
 
-		var app sdb.ConnectorOAuthApp
-		if err := tx.Where("organization_id = ? AND kind = ?", oauthState.OrganizationID, kind).First(&app).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return ErrInvalidInput("oauth app is no longer configured for this organization")
-			}
+		app, err := s.resolveOAuthApp(tx, oauthState.OrganizationID, kind)
+		if err != nil {
 			return err
 		}
-		clientSecret, err := sdb.DecryptSecret(tx, oauthState.OrganizationID, app.ClientSecretEncrypted)
+		// app.OrganizationID, not oauthState.OrganizationID - see
+		// oauthConfigFor's identical comment on this same DecryptSecret call.
+		clientSecret, err := sdb.DecryptSecret(tx, app.OrganizationID, app.ClientSecretEncrypted)
 		if err != nil {
 			return fmt.Errorf("decrypt oauth app client secret: %w", err)
 		}
@@ -558,14 +557,16 @@ func oauthAccountConfig(kind string, token *oauth2.Token) string {
 // gdrive/sharepoint connector for a sync job).
 func (s *Service) oauthConfigFor(ctx context.Context, organizationID, kind string) (*oauth2.Config, error) {
 	tx := s.db.Gorm().WithContext(ctx)
-	var app sdb.ConnectorOAuthApp
-	if err := tx.Where("organization_id = ? AND kind = ?", organizationID, kind).First(&app).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrInvalidInput(fmt.Sprintf("no %s oauth app is registered for this organization", kind))
-		}
+	app, err := s.resolveOAuthApp(tx, organizationID, kind)
+	if err != nil {
 		return nil, err
 	}
-	clientSecret, err := sdb.DecryptSecret(tx, organizationID, app.ClientSecretEncrypted)
+	// Decrypt with app.OrganizationID, not the requesting organizationID -
+	// these differ exactly when resolveOAuthApp fell back to the platform
+	// default's row, and a secret is only ever readable with the DEK of the
+	// organization that actually owns it (see sdb.DecryptSecret's doc
+	// comment).
+	clientSecret, err := sdb.DecryptSecret(tx, app.OrganizationID, app.ClientSecretEncrypted)
 	if err != nil {
 		return nil, fmt.Errorf("decrypt oauth app client secret: %w", err)
 	}
@@ -576,6 +577,40 @@ func (s *Service) oauthConfigFor(ctx context.Context, organizationID, kind strin
 		RedirectURL:  s.connectorOAuthRedirectURL(kind),
 		Scopes:       connectorOAuthScopes(kind),
 	}, nil
+}
+
+// resolveOAuthApp finds organizationID's own ConnectorOAuthApp row for
+// kind, falling back to the platform-default organization's row (see
+// iam.Service.DefaultOrganizationIDForDomain, SharedDomainConnectorApps)
+// only when organizationID has none of its own - never the reverse, an
+// organization that registered its own app always uses it regardless of
+// what any default organization has configured. Shared by oauthConfigFor
+// and CompleteConnectorOAuth so the fallback logic exists in exactly one
+// place.
+func (s *Service) resolveOAuthApp(tx *gorm.DB, organizationID, kind string) (sdb.ConnectorOAuthApp, error) {
+	var app sdb.ConnectorOAuthApp
+	err := tx.Where("organization_id = ? AND kind = ?", organizationID, kind).First(&app).Error
+	if err == nil {
+		return app, nil
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return sdb.ConnectorOAuthApp{}, err
+	}
+
+	defaultOrgID, found, ferr := s.iam.DefaultOrganizationIDForDomain(tx, iam.SharedDomainConnectorApps)
+	if ferr != nil {
+		return sdb.ConnectorOAuthApp{}, ferr
+	}
+	if !found || defaultOrgID == organizationID {
+		return sdb.ConnectorOAuthApp{}, ErrInvalidInput(fmt.Sprintf("no %s oauth app is registered for this organization", kind))
+	}
+	if err := tx.Where("organization_id = ? AND kind = ?", defaultOrgID, kind).First(&app).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return sdb.ConnectorOAuthApp{}, ErrInvalidInput(fmt.Sprintf("no %s oauth app is registered for this organization", kind))
+		}
+		return sdb.ConnectorOAuthApp{}, err
+	}
+	return app, nil
 }
 
 // resolveOAuthEndpoint returns the test override when set, else the real

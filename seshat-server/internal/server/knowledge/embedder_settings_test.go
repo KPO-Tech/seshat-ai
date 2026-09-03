@@ -220,7 +220,7 @@ func TestResolveEmbedderConfigHonorsShareEmbedderSettingsOptOut(t *testing.T) {
 		t.Fatalf("set embedder on the default org: %v", err)
 	}
 	shareEmbedderSettings := false
-	if _, err := env.iam.SetOrganizationSharedDomains(context.Background(), env.adminPrincipal, defaultOrg.ID, nil, &shareEmbedderSettings, nil, nil, nil, nil); err != nil {
+	if _, err := env.iam.SetOrganizationSharedDomains(context.Background(), env.adminPrincipal, defaultOrg.ID, nil, &shareEmbedderSettings, nil, nil, nil, nil, nil); err != nil {
 		t.Fatalf("opt out of sharing embedder settings: %v", err)
 	}
 
