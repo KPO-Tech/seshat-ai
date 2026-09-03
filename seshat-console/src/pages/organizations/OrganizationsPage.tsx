@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Avatar, Button, Card, Empty, Input, message, Popconfirm, Popover, Space, Switch, Tag, Tooltip, Typography } from 'antd'
+import { Avatar, Button, Empty, Input, message, Popconfirm, Popover, Space, Switch, Tag, Tooltip, Typography } from 'antd'
 import type { TableProps } from 'antd'
 import {
   ApartmentOutlined,
@@ -11,7 +11,6 @@ import {
   PlusOutlined,
   RightOutlined,
   ShareAltOutlined,
-  WarningOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router'
 import {
@@ -28,7 +27,6 @@ import { useOrganizationCreationLocked } from '@/api/auth'
 import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
 import { ConsoleTable } from '@/components/ConsoleTable'
-import { StatTile } from '@/components/StatTile'
 import { OrganizationFormDrawer } from '@/components/OrganizationFormDrawer'
 import { presentDateTime, presentText } from '@/lib/present'
 import { getOrganizationChecklist } from '@/lib/organizationProfile'
@@ -62,9 +60,6 @@ export function OrganizationsPage() {
   const setSharedDomains = useSetOrganizationSharedDomains()
 
   const organizations = data?.organizations ?? []
-  const defaultOrg = organizations.find((org) => org.is_default)
-  const inactiveCount = organizations.filter((org) => org.is_active === false).length
-  const organizationsNeedingAttention = organizations.filter((org) => !getOrganizationChecklist(org).isReady).length
 
   const handleTableChange: TableProps<Organization>['onChange'] = (_pagination, _filters, sorter) => {
     const single = Array.isArray(sorter) ? sorter[0] : sorter
@@ -300,38 +295,18 @@ export function OrganizationsPage() {
         }
       />
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: 16,
-          marginBottom: 24,
-        }}
-      >
-        <StatTile label="Organizations" value={data?.total} loading={isLoading} icon={<ApartmentOutlined />} />
-        <StatTile label="Default org" value={defaultOrg?.name ?? 'None set'} loading={isLoading} icon={<CrownOutlined />} />
-        <StatTile label="Inactive" value={inactiveCount} loading={isLoading} icon={<PauseCircleOutlined />} />
-        <StatTile
-          label="Need details"
-          value={organizationsNeedingAttention}
-          loading={isLoading}
-          icon={<WarningOutlined />}
-        />
-      </div>
-
-      <Card title="All organizations" styles={{ body: { padding: 0 } }}>
-        <ConsoleTable<Organization>
-          rowKey="id"
-          columns={columns}
-          dataSource={organizations}
-          loading={isLoading || isFetching}
-          queryError={error}
-          onChange={handleTableChange}
-          onRow={(record) => ({
-            onClick: () => navigate(`/orgs/${record.id}/overview`),
-            style: { cursor: 'pointer' },
-          })}
-          locale={{
+      <ConsoleTable<Organization>
+        rowKey="id"
+        columns={columns}
+        dataSource={organizations}
+        loading={isLoading || isFetching}
+        queryError={error}
+        onChange={handleTableChange}
+        onRow={(record) => ({
+          onClick: () => navigate(`/orgs/${record.id}/overview`),
+          style: { cursor: 'pointer' },
+        })}
+        locale={{
             emptyText: (
               <Empty
                 image={<ApartmentOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}
@@ -348,7 +323,6 @@ export function OrganizationsPage() {
             showTotal: (total) => `${total} organizations`,
           }}
         />
-      </Card>
 
       <OrganizationFormDrawer
         organization={editing === 'new' ? null : editing}
