@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router'
 import {
-  Api, Brain, CloudStorage, ColorFilter, Computer, Earth, Info, SunOne, Moon, Setting, User, LinkOne,
+  Api, Brain, CloudStorage, ColorFilter, Computer, Earth, Flashlamp, Info, SunOne, Moon, Setting, User, LinkOne,
   Book, Terminal, Voice,
 } from '@icon-park/react'
 import { useUIStore } from '@/stores/ui'
@@ -16,6 +16,7 @@ import { AboutView } from './AboutView'
 import { GeneralView } from './GeneralView'
 import { CloudAutomationView } from './CloudAutomationView'
 import { AccountView, ConnectionsView } from './AccountView'
+import { AdminQuotasView, ADMIN_CSS } from './AdminViews'
 import { ProvidersView } from './ProvidersView'
 import { WebSearchView } from './WebSearchView'
 import { KnowledgeView } from './KnowledgeView'
@@ -28,7 +29,7 @@ import { ConnectorsView } from './ConnectorsView'
 import type { TabId } from './SettingsNav'
 
 const ALLOWED_TABS: TabId[] = [
-  'general', 'account', 'connections', 'memories', 'appearance',
+  'general', 'account', 'connections', 'memories', 'appearance', 'usage',
   'providers', 'remote', 'knowledge', 'multimodal',
   'mcp', 'connectors', 'environment', 'storage', 'about',
 ]
@@ -69,7 +70,6 @@ export function Settings() {
     'admin-organizations': '/admin?tab=organizations',
     'admin-workspaces': '/admin?tab=workspaces',
     'admin-audit': '/admin?tab=audit',
-    'admin-quotas': '/admin?tab=quotas',
   }
 
   // Admin tabs are hidden from the sidebar for non-admins, but that alone is
@@ -91,6 +91,7 @@ export function Settings() {
         { id: 'connections' as TabId, label: 'Connections', icon: <LinkOne size={16} /> },
         { id: 'memories' as TabId, label: 'Memories', icon: <Brain size={16} /> },
         { id: 'appearance' as TabId, label: 'Appearance', icon: <ColorFilter size={16} /> },
+        { id: 'usage' as TabId, label: 'Usage', icon: <Flashlamp size={16} /> },
       ],
     },
     {
@@ -133,6 +134,7 @@ export function Settings() {
   return (
     <div className="settings-root">
       <style>{SETTINGS_CSS}</style>
+      {requestedTab === 'admin-quotas' && <Navigate to="/settings?tab=usage" replace />}
       {requestedTab && adminRedirects[requestedTab] && isAdmin && <Navigate to={adminRedirects[requestedTab]} replace />}
 
       <SettingsSidebar
@@ -152,6 +154,7 @@ export function Settings() {
           {activeTab === 'connections' && <ConnectionsView />}
           {activeTab === 'memories' && <MemoriesView />}
           {activeTab === 'appearance' && <AppearanceView />}
+          {activeTab === 'usage' && <AdminQuotasView />}
           {activeTab === 'providers' && <ProvidersView />}
           {activeTab === 'remote' && <WebSearchView />}
           {activeTab === 'knowledge' && <KnowledgeView />}
@@ -336,4 +339,5 @@ ${SETTINGS_SHARED_CSS}
 ${SETTINGS_LOCKED_BANNER_CSS}
 ${APP_VERSION_WARNING_BANNER_CSS}
 ${NETWORK_DIAGNOSTICS_CARD_CSS}
+${ADMIN_CSS}
 `

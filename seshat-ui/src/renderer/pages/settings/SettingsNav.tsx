@@ -1,12 +1,15 @@
 import { NexusLogo } from '@/components/NexusLogo'
 
 // Concrete TabId for the Settings page — exported for use in settings/index.tsx.
-// Admin-only tabs (users/groups/organizations/workspaces/audit/quotas) live
+// Admin-only tabs (users/groups/organizations/workspaces/audit) live
 // exclusively in the Admin Console now (pages/admin/index.tsx's own AdminTab
 // union) — old ?tab=admin-users style URLs still redirect there via
 // settings/index.tsx's plain-string adminRedirects table, which doesn't need
-// these in TabId.
-export type TabId = 'general' | 'account' | 'connections' | 'memories' | 'appearance' | 'providers' | 'remote' | 'knowledge' | 'multimodal' | 'mcp' | 'connectors' | 'environment' | 'storage' | 'about'
+// these in TabId. 'usage' is the one exception: it reuses the Admin
+// Console's AdminQuotasView component, but `GET /quotas` has no admin gate
+// and is always the caller's own personal counters — it belongs here, not
+// behind Admin Console's `isAdmin` wall.
+export type TabId = 'general' | 'account' | 'connections' | 'memories' | 'appearance' | 'usage' | 'providers' | 'remote' | 'knowledge' | 'multimodal' | 'mcp' | 'connectors' | 'environment' | 'storage' | 'about'
 
 // ─── Generic nav item ─────────────────────────────────────────────────────────
 

@@ -6,7 +6,6 @@ import {
   Browser,
   Computer,
   Earth,
-  Flashlamp,
   LinkCloud,
   LinkFour,
   Lock,
@@ -36,7 +35,6 @@ import { MultimodalView, MULTIMODAL_CSS } from '@/pages/settings/CapabilitiesVie
 import { RuntimeView } from '@/pages/settings'
 import {
   AdminAuditView,
-  AdminQuotasView,
   ADMIN_CSS,
 } from '@/pages/settings/AdminViews'
 import { SETTINGS_SHARED_CSS } from '@/pages/settings/SettingsNav'
@@ -51,7 +49,6 @@ type AdminTab =
   | 'invitations'
   | 'audit'
   | 'desktopPolicies'
-  | 'quotas'
   | 'agents'
   | 'documents'
   | 'tools'
@@ -79,12 +76,6 @@ const ADMIN_GROUPS: Array<{ title: string; items: AdminItem[] }> = [
       { id: 'invitations', label: 'Invitations', icon: <SendEmail size={15} /> },
       { id: 'audit', label: 'Audit Logs', icon: <Info size={15} /> },
       { id: 'desktopPolicies', label: 'Desktop Policies', icon: <Lock size={15} /> },
-    ],
-  },
-  {
-    title: 'Your Account',
-    items: [
-      { id: 'quotas', label: 'My Usage', icon: <Flashlamp size={15} /> },
     ],
   },
   {
@@ -146,16 +137,16 @@ const WORKSPACE_TABS = new Set<AdminTab>(['documents', 'tools'])
 // same reason as Teams: it proxies onto seshat-server's real iam.Invitation
 // store (the same one seshat-console's InvitationsPage.tsx edits) - a
 // pending/accepted/revoked/expired invite by email has no meaning without an
-// organization to invite someone into. Quotas is ALSO
-// deliberately not here, for a different reason than Audit Logs: `GET
-// /quotas` (handleQuotas, no admin check at all) always returns the
-// caller's own personal usage counters — seshat-server's own
-// quotas.Service doc comment calls this domain "strictly personal, no
-// organization, no shared setting" (there is no org-aggregate quota concept
-// anywhere in the platform). It used to be miscategorized under
-// "Organization" and gated as if it needed a connected server, which was
-// simply wrong on both counts - it lives under its own "Your Account" group
-// instead now. Connectors and MCP Servers joined for the same reason as
+// organization to invite someone into. Quotas ("My Usage") is NOT in this
+// console at all anymore, for the same reason Audit Logs almost wasn't:
+// `GET /quotas` (handleQuotas, no admin check at all) always returns the
+// caller's own personal usage counters — seshat-server's own quotas.Service
+// doc comment calls this domain "strictly personal, no organization, no
+// shared setting". Living inside "Admin Console" (gated behind `isAdmin`
+// below) meant a non-admin member had no way to see their own usage at all;
+// it moved to the regular Settings page instead (PERSONAL group, "Usage"
+// tab - see settings/index.tsx), reachable by everyone. Connectors and MCP
+// Servers joined for the same reason as
 // Providers: both proxy straight onto seshat-server's own stores
 // (connectors.Service's ConnectorOAuthApp rows, mcpregistry's
 // MCPServerConfig rows) - the exact same ones seshat-console's
@@ -282,7 +273,6 @@ function AdminPanel({ activeTab }: { activeTab: AdminTab }) {
   if (activeTab === 'audit') return <AdminAuditView />
   if (activeTab === 'desktopPolicies') return <AdminDesktopPoliciesView />
   if (activeTab === 'agents') return <AdminAgentPresetsView />
-  if (activeTab === 'quotas') return <AdminQuotasView />
   if (activeTab === 'providers') return <AdminProvidersView />
   if (activeTab === 'knowledge') return <KnowledgeView />
   if (activeTab === 'multimodal') return <MultimodalView />
@@ -325,8 +315,7 @@ function AdminOverview() {
         </div>
       </header>
       <div className="admin-overview-grid">
-        <OverviewCard title="Organization" text="Current organization, members, teams, audit logs, and desktop policies." />
-        <OverviewCard title="Your Account" text="Your own usage counters for this device - never a shared or organization-wide setting." />
+        <OverviewCard title="Organization" text="Current organization, members, invitations, teams, audit logs, and desktop policies." />
         <OverviewCard title="Workspace" text="Agents, document collections, and MCP tools managed for the organization." />
         <OverviewCard title="AI Core" text="Provider credentials, knowledge infrastructure, and multimodal capabilities." />
         <OverviewCard title="Runtime" text="Web search policy, cloud automation, and local backend status." />
