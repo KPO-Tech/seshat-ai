@@ -111,6 +111,46 @@ const STATIC_KIND_SECRETS: Record<StaticConnectorKind, { label: string; placehol
 
 const STATIC_KIND_SET = new Set<AnyConnectorKind>(Object.keys(STATIC_KIND_SECRETS) as StaticConnectorKind[])
 
+// Each brand's real mark color (simple-icons' own .hex where the mark is
+// legible on a dark card - Notion and GitHub's actual brand hex is near-
+// black, so those two use the app's ink color instead; the 8 kinds with no
+// simple-icons entry get a representative color for their real brand
+// instead of inheriting the card's plain ink). Matches the approved mockup
+// this page was built from (docs/helps/roadmap.md, "Connections page
+// redesign") - without this every icon rendered the same flat off-white,
+// since BrandIcon's <path> uses currentColor and the card chip never set
+// one per kind.
+const KIND_COLOR: Record<AnyConnectorKind, string> = {
+  gdrive: '#4285F4',
+  sharepoint: '#0364B8',
+  onedrive: '#0364B8',
+  confluence: '#2684FF',
+  notion: '#F5F2EC',
+  gsheets: '#0F9D58',
+  gcalendar: '#4285F4',
+  airtable: '#FCB400',
+  slack: '#4A154B',
+  outlook: '#0078D4',
+  teams: '#5059C9',
+  gmail: '#EA4335',
+  telegram: '#26A5E4',
+  discord: '#5865F2',
+  jira: '#0052CC',
+  github: '#F5F2EC',
+  asana: '#F06A6A',
+  linear: '#5E6AD2',
+  trello: '#0079BF',
+  hubspot: '#FF7A59',
+  intercom: '#1F8DED',
+  pipedrive: '#F17E22',
+  zendesk: '#03363D',
+  salesforce: '#00A1E0',
+  stripe: '#635BFF',
+  sendgrid: '#51A9E3',
+  mailgun: '#C02128',
+  postmark: '#FFD43B',
+}
+
 // Grouped the same way a marketplace catalog would be, so a related set of
 // services (e.g. every ticketing/CRM tool) is easy to scan together instead
 // of hunting through one flat list of 28 - see the approved mockup this
@@ -251,7 +291,7 @@ function OAuthConnectionCard({
   return (
     <div className={`wsc-card ${account ? 'wsc-card--connected' : ''}`}>
       <div className="wsc-card__head">
-        <div className="wsc-card__icon">{meta.icon}</div>
+        <div className="wsc-card__icon" style={{ color: KIND_COLOR[kind] }}>{meta.icon}</div>
         <div className="wsc-card__name">{meta.label}</div>
       </div>
       <div className="wsc-card__body">{account && <ConnectionCardAccount account={account} label={meta.label} />}</div>
@@ -325,7 +365,7 @@ function StaticConnectionCard({
   return (
     <div className={`wsc-card ${account ? 'wsc-card--connected' : ''}`}>
       <div className="wsc-card__head">
-        <div className="wsc-card__icon">{meta.icon}</div>
+        <div className="wsc-card__icon" style={{ color: KIND_COLOR[kind] }}>{meta.icon}</div>
         <div className="wsc-card__name">{meta.label}</div>
       </div>
       <div className="wsc-card__body">{account && <ConnectionCardAccount account={account} label={meta.label} />}</div>
