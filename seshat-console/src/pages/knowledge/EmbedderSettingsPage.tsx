@@ -105,9 +105,7 @@ export function EmbedderSettingsPage() {
 
   return (
     <div>
-      <PageHeader
-        description="The embedder this organization uses for RAG ingestion and search. Falls back to this platform's default organization's embedder when not set."
-      />
+      <PageHeader />
 
       <Space orientation="vertical" size={16} style={{ width: '100%' }}>
         <Alert

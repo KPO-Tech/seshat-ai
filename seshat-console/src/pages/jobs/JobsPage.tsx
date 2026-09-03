@@ -122,7 +122,6 @@ export function JobsPage() { const organizationId = useScopedOrganizationId()
   return (
     <div>
       <PageHeader
-        description={deviceIdFilter ? 'Jobs targeting this device.' : 'Scheduled and on-demand automations.'}
         actions={ <Space>
             {deviceIdFilter && <Button onClick={() => setSearchParams({})}>Clear device filter</Button>}
             <Button

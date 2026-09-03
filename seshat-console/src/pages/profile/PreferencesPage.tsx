@@ -28,7 +28,6 @@ export function PreferencesPage() {
   return (
     <div>
       <PageHeader
-        description="Personal defaults for how Seshat should interact with you. These settings are never promoted as platform or organization defaults."
         actions={
           <Button type="primary" icon={<SaveOutlined />} loading={updatePreferences.isPending} onClick={() => form.submit()}>
             Save

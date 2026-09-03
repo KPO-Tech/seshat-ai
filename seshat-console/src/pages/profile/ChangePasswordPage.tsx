@@ -36,7 +36,7 @@ export function ChangePasswordPage() {
 
   return (
     <div>
-      <PageHeader description="Change your own password." />
+      <PageHeader />
       <Card style={{ maxWidth: 480 }}>
         <Form<ChangePasswordFormValues>
           form={form}

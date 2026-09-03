@@ -29,9 +29,7 @@ export function MemoryGraphPage() {
 
   return (
     <div>
-      <PageHeader
-        description="Your personal entity graph and long-term relationship memory. This data stays user-scoped and is never shared as an org or platform default."
-      />
+      <PageHeader />
 
       <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', marginBottom: 24 }}>
         <Card title="Search graph">

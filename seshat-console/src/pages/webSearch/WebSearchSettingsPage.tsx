@@ -54,9 +54,7 @@ export function WebSearchSettingsPage() {
 
   return (
     <div>
-      <PageHeader
-        description="This organization's own web-search credentials. They override this platform's default web-search credentials when present."
-      />
+      <PageHeader />
 
       <Space orientation="vertical" size={12} style={{ width: '100%' }}>
         {SUPPORTED_PROVIDERS.map((entry) => {

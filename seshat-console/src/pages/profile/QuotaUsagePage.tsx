@@ -34,9 +34,7 @@ export function QuotaUsagePage() {
 
   return (
     <div>
-      <PageHeader
-        description="Personal usage counters attached to your account. These are informational only and never become platform-wide defaults or shared organization settings."
-      />
+      <PageHeader />
 
       <Card style={{ marginBottom: 24 }}>
         <Space orientation="vertical" size={6}>

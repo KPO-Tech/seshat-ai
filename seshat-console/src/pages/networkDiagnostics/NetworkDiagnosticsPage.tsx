@@ -45,7 +45,6 @@ export function NetworkDiagnosticsPage() {
   return (
     <div>
       <PageHeader
-        description="Check this server's own connectivity to its outbound dependencies - the SMTP relay and any configured SSO providers."
         actions={
           <Button
             type="primary"

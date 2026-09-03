@@ -48,9 +48,6 @@ export function AuditEventsPage() { const { organizationId } = useParams<{ organ
   return (
     <div>
       <PageHeader
-        description={ organizationId
-            ? 'Recent changes in this organization.'
-            : 'Recent changes across the platform.' }
         actions={ <Input
             placeholder="Filter by action (e.g. login.succeeded)"
             allowClear

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { Alert, Button, Card, Empty, Input, message, Modal, Popconfirm, Space, Tag, Upload } from 'antd'
+import { Alert, Button, Card, Empty, Input, message, Modal, Popconfirm, Space, Tag, Typography, Upload } from 'antd'
 import type { TableProps, UploadProps } from 'antd'
 import {
   ArrowLeftOutlined,
@@ -26,6 +26,7 @@ import {
 } from '@/api/knowledge'
 import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
+import { palette } from '@/theme/tokens'
 import { ConsoleTable } from '@/components/ConsoleTable'
 import { CorpusFormDrawer } from '@/components/knowledge/CorpusFormDrawer'
 import { SearchTestCard } from '@/components/knowledge/SearchTestCard'
@@ -238,7 +239,6 @@ export function CorpusDetailPage() {
   return (
     <div>
       <PageHeader
-        description={`${corpus?.name ?? 'Corpus'}${corpus?.description ? ` — ${corpus.description}` : ''} (${corpus?.chunk_count ?? 0} chunks ingested)`}
         actions={
           <Space>
             <Button icon={<ArrowLeftOutlined />} onClick={() => corporaPath && navigate(corporaPath)} disabled={!corporaPath}>
@@ -269,6 +269,19 @@ export function CorpusDetailPage() {
           </Space>
         }
       />
+
+      {/* The corpus's own name/description - unlike every other page's
+          PageHeader description (removed 2026-09-03, pure boilerplate), this
+          is the one piece of identifying info nothing else on screen shows:
+          the breadcrumb/subnav above only ever say "Knowledge"/"Corpora". */}
+      <div style={{ marginBottom: 20 }}>
+        <Typography.Title level={4} style={{ margin: 0 }}>
+          {corpus?.name ?? 'Corpus'}
+        </Typography.Title>
+        <Typography.Text style={{ color: palette.inkSecondary, fontSize: 13.5 }}>
+          {corpus?.description || `${corpus?.chunk_count ?? 0} chunks ingested`}
+        </Typography.Text>
+      </div>
 
       <Space orientation="vertical" size={20} style={{ width: '100%' }}>
         <Card

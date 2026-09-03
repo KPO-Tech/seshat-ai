@@ -88,20 +88,6 @@ body {
   flex: 0 1 auto;
 }
 
-.console-page-header__meta {
-  min-width: 0;
-  flex: 1 1 320px;
-}
-
-.console-page-header__description {
-  display: block;
-  margin: 0;
-  font-size: 13.5px;
-  line-height: 1.6;
-  max-width: 76ch;
-  color: #746F69;
-}
-
 .console-page-header__actions {
   min-width: 0;
   flex: 1 1 280px;

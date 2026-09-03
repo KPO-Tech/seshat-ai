@@ -78,7 +78,6 @@ export function DevicesPage() { const organizationId = useScopedOrganizationId()
   return (
     <div>
       <PageHeader
-        description="Machines registered to run device-targeted jobs for this organization."
         actions={ <Space>
             <Button
               type="primary"

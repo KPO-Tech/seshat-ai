@@ -42,7 +42,6 @@ export function CorporaPage() {
   return (
     <div>
       <PageHeader
-        description="RAG document collections. Upload files, watch ingestion, and search."
         actions={
           <Space>
             <Input.Search

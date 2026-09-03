@@ -63,7 +63,7 @@ export function MyOrganizationsPage() {
 
   return (
     <div>
-      <PageHeader description="Organizations you're a member of." />
+      <PageHeader />
 
       <ConsoleTable<Organization>
         rowKey="id"

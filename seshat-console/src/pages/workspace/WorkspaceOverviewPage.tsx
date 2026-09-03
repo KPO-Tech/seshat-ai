@@ -15,9 +15,7 @@ export function WorkspaceOverviewPage() {
 
   return (
     <div>
-      <PageHeader
-        description="Your personal interaction environment for real-time assistant execution, model testing, and third-party account connections."
-      />
+      <PageHeader />
 
       <div
         style={{

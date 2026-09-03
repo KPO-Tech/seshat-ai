@@ -24,7 +24,7 @@ export function ProspectingSettingsPage() {
 
   return (
     <div>
-      <PageHeader description="Google Places credentials for this organization's business-discovery sweeps." />
+      <PageHeader />
 
       <div
         style={{

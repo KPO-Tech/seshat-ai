@@ -45,9 +45,7 @@ export function ScimSettingsPage() {
 
   return (
     <div>
-      <PageHeader
-        description="Let an enterprise identity provider (Okta, Entra ID, ...) create, update and deactivate members automatically instead of managing them by hand here."
-      />
+      <PageHeader />
 
       {error ? (
         <Typography.Text type="danger">{getErrorMessage(error)}</Typography.Text>

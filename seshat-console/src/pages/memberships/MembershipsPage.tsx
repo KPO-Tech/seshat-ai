@@ -152,7 +152,6 @@ export function MembershipsPage() {
   return (
     <div>
       <PageHeader
-        description="Direct access to this organization, with each member's effective role."
         actions={
           <Space>
             <Button onClick={() => navigate(`/orgs/${organizationId}/team/teams`)}>Teams</Button>

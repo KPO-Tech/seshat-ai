@@ -37,9 +37,7 @@ import { palette } from '@/theme/tokens'
 export function BundlesPage() {
   return (
     <div>
-      <PageHeader
-        description="Package a selection of MCP servers, hooks, skills, and agent presets into one portable manifest file, or import a manifest someone shared with you."
-      />
+      <PageHeader />
       <Tabs
         defaultActiveKey="export"
         items={[

@@ -86,7 +86,6 @@ export function SweepsPage() {
   return (
     <div>
       <PageHeader
-        description="Business-discovery sweeps over an area."
         actions={
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)} disabled={!organizationId}>
             New sweep

@@ -73,7 +73,6 @@ export function RunsPage() { const organizationId = useScopedOrganizationId()
   return (
     <div>
       <PageHeader
-        description={jobIdFilter ? `Executions of job ${jobIdFilter}.` : 'Every job execution across this organization.'}
         actions={ <Space>
             {jobIdFilter && (
               <Button onClick={() => setSearchParams({})}>Clear job filter</Button>

@@ -72,7 +72,6 @@ export function InvitationsPage() { const organizationId = useScopedOrganization
   return (
     <div>
       <PageHeader
-        description="Pending, accepted, revoked and expired invites to join an organization."
         actions={
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
             <Segmented

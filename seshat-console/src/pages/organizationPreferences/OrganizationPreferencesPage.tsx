@@ -37,9 +37,7 @@ export function OrganizationPreferencesPage() {
 
   return (
     <div>
-      <PageHeader
-        description="Defaults members inherit until they set their own."
-      />
+      <PageHeader />
 
       <Card loading={isLoading}>
         {!data && !isLoading && (

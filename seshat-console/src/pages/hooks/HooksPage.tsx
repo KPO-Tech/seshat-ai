@@ -102,7 +102,6 @@ export function HooksPage() {
   return (
     <div>
       <PageHeader
-        description="Shell commands that run before matching tool calls on a connected desktop device. Desktop-only - never executed by the shared server."
         actions={
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing('new')} disabled={!organizationId}>
             New hook

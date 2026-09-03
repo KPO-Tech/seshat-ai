@@ -73,9 +73,7 @@ export function ChatSessionsPage() {
 
   return (
     <div>
-      <PageHeader
-        description="Workspace Chat activity across this organization's members - metadata only, not message content."
-      />
+      <PageHeader />
 
       <ConsoleTable<WorkspaceChatSessionSummary>
         rowKey="id"

@@ -46,9 +46,7 @@ export function SessionsPage() { const [page, setPage] = useState(1)
 
   return (
     <div>
-      <PageHeader
-        description="Active platform sessions."
-      />
+      <PageHeader />
 
       <ConsoleTable<SessionInfo>
         rowKey="id"
