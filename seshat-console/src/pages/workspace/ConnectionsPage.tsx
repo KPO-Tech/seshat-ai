@@ -1,7 +1,6 @@
-import { useState } from 'react'
-import { Alert, Button, Card, Input, Popconfirm, Space, Tag, Typography, message } from 'antd'
+import { useMemo, useState } from 'react'
+import { Alert, Popconfirm, message } from 'antd'
 import {
-  DeleteOutlined,
   WindowsOutlined,
   SlackOutlined,
   MailOutlined,
@@ -34,7 +33,6 @@ import {
 import { useMyConnectorAccountsList, useDeleteMyConnectorAccount } from '@/api/myConnections'
 import { useBeginConnectorOAuth, useCreateStaticAgentAccount, type ConnectorAccount, type OAuthConnectorKind, type StaticConnectorKind } from '@/api/connectors'
 import { getErrorMessage } from '@/api/errors'
-import { PageHeader } from '@/components/PageHeader'
 import { useWorkspaceOrganizationStore } from '@/store/workspaceOrganization'
 
 // Real vendor logos: simple-icons (CC0-1.0, public-domain icon path data -
@@ -54,30 +52,9 @@ function BrandIcon({ icon }: { icon: { path: string; title: string } }) {
   )
 }
 
-const OAUTH_CONNECTOR_KINDS: OAuthConnectorKind[] = [
-  'gdrive',
-  'sharepoint',
-  'onedrive',
-  'confluence',
-  'slack',
-  'outlook',
-  'teams',
-  'gmail',
-  'notion',
-  'gsheets',
-  'gcalendar',
-  'jira',
-  'github',
-  'asana',
-  'linear',
-  'hubspot',
-  'intercom',
-  'pipedrive',
-  'zendesk',
-  'salesforce',
-]
+type AnyConnectorKind = OAuthConnectorKind | StaticConnectorKind
 
-const KIND_META: Record<OAuthConnectorKind, { label: string; icon: React.ReactNode }> = {
+const KIND_META: Record<AnyConnectorKind, { label: string; icon: React.ReactNode }> = {
   gdrive: { label: 'Google Drive', icon: <BrandIcon icon={siGoogledrive} /> },
   // SharePoint/OneDrive/Outlook/Teams have no entry in simple-icons -
   // Microsoft's own product sub-brands are absent from that library
@@ -104,38 +81,72 @@ const KIND_META: Record<OAuthConnectorKind, { label: string; icon: React.ReactNo
   pipedrive: { label: 'Pipedrive', icon: <FunnelPlotOutlined /> },
   zendesk: { label: 'Zendesk', icon: <BrandIcon icon={siZendesk} /> },
   salesforce: { label: 'Salesforce', icon: <CloudOutlined /> },
-}
-
-// STATIC_CONNECTOR_KINDS lists every kind that authenticates with a single
-// static secret pasted in-page instead of an OAuth2 redirect - see
-// StaticConnectorKind's doc comment (src/api/connectors.ts).
-const STATIC_CONNECTOR_KINDS: StaticConnectorKind[] = ['stripe', 'sendgrid', 'mailgun', 'postmark', 'telegram', 'discord', 'trello', 'airtable']
-
-const STATIC_KIND_META: Record<StaticConnectorKind, { label: string; icon: React.ReactNode; secretLabel: string; secretPlaceholder: string }> = {
-  stripe: { label: 'Stripe', icon: <BrandIcon icon={siStripe} />, secretLabel: 'Secret key', secretPlaceholder: 'sk_live_...' },
+  stripe: { label: 'Stripe', icon: <BrandIcon icon={siStripe} /> },
   // SendGrid/Postmark have no simple-icons entry.
-  sendgrid: { label: 'SendGrid', icon: <MailOutlined />, secretLabel: 'API key', secretPlaceholder: 'SG....' },
-  mailgun: { label: 'Mailgun', icon: <BrandIcon icon={siMailgun} />, secretLabel: 'API key', secretPlaceholder: 'key-...' },
-  postmark: { label: 'Postmark', icon: <NotificationOutlined />, secretLabel: 'Server token', secretPlaceholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' },
-  telegram: { label: 'Telegram', icon: <BrandIcon icon={siTelegram} />, secretLabel: 'Bot token', secretPlaceholder: '123456789:AA...' },
-  discord: { label: 'Discord', icon: <BrandIcon icon={siDiscord} />, secretLabel: 'Bot token', secretPlaceholder: 'Bot token from the Developer Portal' },
-  // Trello's API needs both an API key and a token (see TrelloCreateCardNode's
-  // doc comment) - the connect form asks for both, colon-separated, since
-  // this connected-account schema stores exactly one secret string.
-  trello: { label: 'Trello', icon: <BrandIcon icon={siTrello} />, secretLabel: 'API Key:Token', secretPlaceholder: 'apikey:apitoken' },
-  airtable: { label: 'Airtable', icon: <BrandIcon icon={siAirtable} />, secretLabel: 'Personal Access Token', secretPlaceholder: 'pat...' },
+  sendgrid: { label: 'SendGrid', icon: <MailOutlined /> },
+  mailgun: { label: 'Mailgun', icon: <BrandIcon icon={siMailgun} /> },
+  postmark: { label: 'Postmark', icon: <NotificationOutlined /> },
+  telegram: { label: 'Telegram', icon: <BrandIcon icon={siTelegram} /> },
+  discord: { label: 'Discord', icon: <BrandIcon icon={siDiscord} /> },
+  trello: { label: 'Trello', icon: <BrandIcon icon={siTrello} /> },
+  airtable: { label: 'Airtable', icon: <BrandIcon icon={siAirtable} /> },
 }
+
+// STATIC_KIND_SECRETS lists every kind that authenticates with a single
+// static secret pasted in-page instead of an OAuth2 redirect - see
+// StaticConnectorKind's doc comment (src/api/connectors.ts). Trello's API
+// needs both an API key and a token (see TrelloCreateCardNode's doc
+// comment) - the connect form asks for both, colon-separated, since this
+// connected-account schema stores exactly one secret string.
+const STATIC_KIND_SECRETS: Record<StaticConnectorKind, { label: string; placeholder: string }> = {
+  stripe: { label: 'Secret key', placeholder: 'sk_live_...' },
+  sendgrid: { label: 'API key', placeholder: 'SG....' },
+  mailgun: { label: 'API key', placeholder: 'key-...' },
+  postmark: { label: 'Server token', placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' },
+  telegram: { label: 'Bot token', placeholder: '123456789:AA...' },
+  discord: { label: 'Bot token', placeholder: 'Bot token from the Developer Portal' },
+  trello: { label: 'API Key:Token', placeholder: 'apikey:apitoken' },
+  airtable: { label: 'Personal Access Token', placeholder: 'pat...' },
+}
+
+const STATIC_KIND_SET = new Set<AnyConnectorKind>(Object.keys(STATIC_KIND_SECRETS) as StaticConnectorKind[])
+
+// Grouped the same way a marketplace catalog would be, so a related set of
+// services (e.g. every ticketing/CRM tool) is easy to scan together instead
+// of hunting through one flat list of 28 - see the approved mockup this
+// mirrors (docs/helps/roadmap.md, "Connections page redesign").
+const CONNECTOR_CATEGORIES: Array<{ label: string; kinds: AnyConnectorKind[] }> = [
+  { label: 'Storage & Files', kinds: ['gdrive', 'sharepoint', 'onedrive'] },
+  { label: 'Productivity', kinds: ['confluence', 'notion', 'gsheets', 'gcalendar', 'airtable'] },
+  { label: 'Communication', kinds: ['slack', 'outlook', 'teams', 'gmail', 'telegram', 'discord'] },
+  { label: 'Project & Issue Tracking', kinds: ['jira', 'github', 'asana', 'linear', 'trello'] },
+  { label: 'CRM & Support', kinds: ['hubspot', 'intercom', 'pipedrive', 'zendesk', 'salesforce'] },
+  { label: 'Payments & Messaging APIs', kinds: ['stripe', 'sendgrid', 'mailgun', 'postmark'] },
+]
+
+const TOTAL_KIND_COUNT = CONNECTOR_CATEGORIES.reduce((sum, category) => sum + category.kinds.length, 0)
 
 export function ConnectionsPage() {
   const organizationId = useWorkspaceOrganizationStore((state) => state.organizationId)
   const { data: accounts, isLoading, error } = useMyConnectorAccountsList(organizationId ?? undefined)
+  const [search, setSearch] = useState('')
+
+  const accountByKind = useMemo(() => new Map((accounts ?? []).map((account) => [account.kind as AnyConnectorKind, account])), [accounts])
+  const connectedCount = accounts?.filter((account) => account.status === 'connected').length ?? 0
+  const query = search.trim().toLowerCase()
 
   return (
-    <div>
-      <PageHeader
-        title="Connections"
-        description="Connect your own Google Drive or SharePoint account so the workspace agent can act on your behalf, with your own permissions - separate from any Knowledge source an admin has set up."
-      />
+    <div className="wsc-root">
+      <div className="wsc-head">
+        <div className="wsc-head__copy">
+          <h1>Connections</h1>
+          <p>Connect your own accounts so the workspace agent can act on your behalf, with your own permissions - separate from any Knowledge source an admin has set up.</p>
+        </div>
+        <div className="wsc-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+          <input type="text" placeholder="Search connections…" value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
+      </div>
 
       {!organizationId ? (
         <Alert
@@ -149,41 +160,88 @@ export function ConnectionsPage() {
           {error && (
             <Alert type="warning" showIcon message="Couldn't load your connections" description={getErrorMessage(error)} style={{ marginBottom: 16 }} />
           )}
-          <Space orientation="vertical" size={16} style={{ width: '100%' }}>
-            {OAUTH_CONNECTOR_KINDS.map((kind) => (
-              <MyConnectionCard
-                key={kind}
-                kind={kind}
-                organizationId={organizationId}
-                loading={isLoading}
-                account={(accounts ?? []).find((a) => a.kind === kind)}
-              />
-            ))}
-            {STATIC_CONNECTOR_KINDS.map((kind) => (
-              <MyStaticConnectionCard
-                key={kind}
-                kind={kind}
-                organizationId={organizationId}
-                loading={isLoading}
-                account={(accounts ?? []).find((a) => a.kind === kind)}
-              />
-            ))}
-          </Space>
+
+          <div className="wsc-summary">
+            <div>
+              <div className="wsc-summary__num">
+                {connectedCount}
+                <span> / {TOTAL_KIND_COUNT}</span>
+              </div>
+              <div className="wsc-summary__label">Connected</div>
+            </div>
+            <div className="wsc-summary__divider" />
+            <div className="wsc-summary__bar">
+              <div className="wsc-summary__bar-fill" style={{ width: `${TOTAL_KIND_COUNT ? (connectedCount / TOTAL_KIND_COUNT) * 100 : 0}%` }} />
+            </div>
+            <div className="wsc-summary__hint">Reconnecting an account never affects anyone else on the team</div>
+          </div>
+
+          {CONNECTOR_CATEGORIES.map((category) => {
+            const kinds = query ? category.kinds.filter((kind) => KIND_META[kind].label.toLowerCase().includes(query)) : category.kinds
+            if (kinds.length === 0) return null
+            return (
+              <section className="wsc-section" key={category.label}>
+                <h2 className="wsc-section__title">
+                  {category.label} <span className="wsc-section__count">{kinds.length}</span>
+                </h2>
+                <div className={`wsc-grid ${isLoading ? 'wsc-grid--loading' : ''}`}>
+                  {kinds.map((kind) =>
+                    STATIC_KIND_SET.has(kind) ? (
+                      <StaticConnectionCard
+                        key={kind}
+                        kind={kind as StaticConnectorKind}
+                        organizationId={organizationId}
+                        account={accountByKind.get(kind)}
+                      />
+                    ) : (
+                      <OAuthConnectionCard
+                        key={kind}
+                        kind={kind as OAuthConnectorKind}
+                        organizationId={organizationId}
+                        account={accountByKind.get(kind)}
+                      />
+                    ),
+                  )}
+                </div>
+              </section>
+            )
+          })}
         </>
       )}
     </div>
   )
 }
 
-function MyConnectionCard({
+function ConnectionCardAccount({ account, label }: { account: ConnectorAccount; label: string }) {
+  return (
+    <div className="wsc-card__account">
+      <span className="wsc-card__dot" />
+      <span className="wsc-card__account-id">{account.display_name || account.external_account_id || label}</span>
+    </div>
+  )
+}
+
+function DisconnectButton({ onConfirm, disabled }: { onConfirm: () => void; disabled: boolean }) {
+  return (
+    <Popconfirm
+      title="Disconnect this account?"
+      description="The workspace agent will no longer be able to act through it."
+      onConfirm={onConfirm}
+    >
+      <button type="button" className="wsc-btn-disconnect" disabled={disabled}>
+        Disconnect
+      </button>
+    </Popconfirm>
+  )
+}
+
+function OAuthConnectionCard({
   kind,
   organizationId,
-  loading,
   account,
 }: {
   kind: OAuthConnectorKind
   organizationId: string
-  loading: boolean
   account: ConnectorAccount | undefined
 }) {
   const beginOAuth = useBeginConnectorOAuth()
@@ -191,131 +249,113 @@ function MyConnectionCard({
   const meta = KIND_META[kind]
 
   return (
-    <Card size="small" title={<Space>{meta.icon}{meta.label}</Space>} loading={loading}>
-      {account ? (
-        <Space align="center" style={{ width: '100%', justifyContent: 'space-between' }}>
-          <Space direction="vertical" size={0}>
-            <Typography.Text strong>{account.display_name || account.external_account_id}</Typography.Text>
-            <Tag color={account.status === 'connected' ? 'success' : 'error'}>{account.status}</Tag>
-          </Space>
-          <Popconfirm
-            title="Disconnect this account?"
-            description="The workspace agent will no longer be able to act through it."
-            onConfirm={() =>
-              deleteAccount.mutate(account.id!, { onError: (error) => message.error(getErrorMessage(error)) })
+    <div className={`wsc-card ${account ? 'wsc-card--connected' : ''}`}>
+      <div className="wsc-card__head">
+        <div className="wsc-card__icon">{meta.icon}</div>
+        <div className="wsc-card__name">{meta.label}</div>
+      </div>
+      <div className="wsc-card__body">{account && <ConnectionCardAccount account={account} label={meta.label} />}</div>
+      <div className="wsc-card__actions">
+        {account ? (
+          <DisconnectButton
+            disabled={deleteAccount.isPending}
+            onConfirm={() => deleteAccount.mutate(account.id!, { onError: (error) => message.error(getErrorMessage(error)) })}
+          />
+        ) : (
+          <button
+            type="button"
+            className="wsc-btn-connect"
+            disabled={beginOAuth.isPending}
+            onClick={() =>
+              beginOAuth.mutate(
+                { kind, body: { organization_id: organizationId, purpose: 'agent_action' } },
+                {
+                  onSuccess: (authorizationUrl) => {
+                    window.open(authorizationUrl, '_blank', 'noopener,noreferrer')
+                    message.info('Complete the connection in the new tab - it will show up here once done.')
+                  },
+                  onError: (error) => message.error(getErrorMessage(error)),
+                },
+              )
             }
           >
-            <Button danger icon={<DeleteOutlined />} loading={deleteAccount.isPending}>
-              Disconnect
-            </Button>
-          </Popconfirm>
-        </Space>
-      ) : (
-        <Button
-          type="primary"
-          loading={beginOAuth.isPending}
-          onClick={() =>
-            beginOAuth.mutate(
-              { kind, body: { organization_id: organizationId, purpose: 'agent_action' } },
-              {
-                onSuccess: (authorizationUrl) => {
-                  window.open(authorizationUrl, '_blank', 'noopener,noreferrer')
-                  message.info('Complete the connection in the new tab - it will show up here once done.')
-                },
-                onError: (error) => message.error(getErrorMessage(error)),
-              },
-            )
-          }
-        >
-          Connect with {meta.label}
-        </Button>
-      )}
-    </Card>
+            {beginOAuth.isPending ? 'Connecting…' : 'Connect'}
+          </button>
+        )}
+      </div>
+    </div>
   )
 }
 
-// The synchronous, no-redirect counterpart to MyConnectionCard, for a kind
-// that authenticates with a single static secret instead of an OAuth2 flow.
-// Disconnect reuses useDeleteMyConnectorAccount unchanged - a static
-// account is still just a ConnectorAccount row.
-function MyStaticConnectionCard({
+// The synchronous, no-redirect counterpart to OAuthConnectionCard, for a
+// kind that authenticates with a single static secret. The secret input
+// stays hidden behind "Connect" until clicked, instead of always showing a
+// password box for a service the user hasn't touched yet.
+function StaticConnectionCard({
   kind,
   organizationId,
-  loading,
   account,
 }: {
   kind: StaticConnectorKind
   organizationId: string
-  loading: boolean
   account: ConnectorAccount | undefined
 }) {
+  const [connecting, setConnecting] = useState(false)
   const [secret, setSecret] = useState('')
   const createAccount = useCreateStaticAgentAccount()
   const deleteAccount = useDeleteMyConnectorAccount()
-  const meta = STATIC_KIND_META[kind]
+  const meta = KIND_META[kind]
+  const secretMeta = STATIC_KIND_SECRETS[kind]
+
+  function submit() {
+    if (!secret.trim()) return
+    createAccount.mutate(
+      { kind, body: { organization_id: organizationId, secret: secret.trim() } },
+      {
+        onSuccess: () => {
+          setSecret('')
+          setConnecting(false)
+          message.success(`${meta.label} connected.`)
+        },
+        onError: (error) => message.error(getErrorMessage(error)),
+      },
+    )
+  }
 
   return (
-    <Card size="small" title={<Space>{meta.icon}{meta.label}</Space>} loading={loading}>
-      {account ? (
-        <Space align="center" style={{ width: '100%', justifyContent: 'space-between' }}>
-          <Space direction="vertical" size={0}>
-            <Typography.Text strong>{account.display_name || meta.label}</Typography.Text>
-            <Tag color={account.status === 'connected' ? 'success' : 'error'}>{account.status}</Tag>
-          </Space>
-          <Popconfirm
-            title="Disconnect this account?"
-            description="The workspace agent will no longer be able to act through it."
-            onConfirm={() =>
-              deleteAccount.mutate(account.id!, { onError: (error) => message.error(getErrorMessage(error)) })
-            }
-          >
-            <Button danger icon={<DeleteOutlined />} loading={deleteAccount.isPending}>
-              Disconnect
-            </Button>
-          </Popconfirm>
-        </Space>
-      ) : (
-        <Space.Compact style={{ width: '100%' }}>
-          <Input.Password
-            placeholder={meta.secretPlaceholder}
-            aria-label={meta.secretLabel}
-            value={secret}
-            onChange={(e) => setSecret(e.target.value)}
-            onPressEnter={() => {
-              if (!secret.trim()) return
-              createAccount.mutate(
-                { kind, body: { organization_id: organizationId, secret: secret.trim() } },
-                {
-                  onSuccess: () => {
-                    setSecret('')
-                    message.success(`${meta.label} connected.`)
-                  },
-                  onError: (error) => message.error(getErrorMessage(error)),
-                },
-              )
-            }}
+    <div className={`wsc-card ${account ? 'wsc-card--connected' : ''}`}>
+      <div className="wsc-card__head">
+        <div className="wsc-card__icon">{meta.icon}</div>
+        <div className="wsc-card__name">{meta.label}</div>
+      </div>
+      <div className="wsc-card__body">{account && <ConnectionCardAccount account={account} label={meta.label} />}</div>
+      <div className="wsc-card__actions">
+        {account ? (
+          <DisconnectButton
+            disabled={deleteAccount.isPending}
+            onConfirm={() => deleteAccount.mutate(account.id!, { onError: (error) => message.error(getErrorMessage(error)) })}
           />
-          <Button
-            type="primary"
-            loading={createAccount.isPending}
-            disabled={!secret.trim()}
-            onClick={() =>
-              createAccount.mutate(
-                { kind, body: { organization_id: organizationId, secret: secret.trim() } },
-                {
-                  onSuccess: () => {
-                    setSecret('')
-                    message.success(`${meta.label} connected.`)
-                  },
-                  onError: (error) => message.error(getErrorMessage(error)),
-                },
-              )
-            }
-          >
+        ) : connecting ? (
+          <div className="wsc-secret-form">
+            <input
+              type="password"
+              placeholder={secretMeta.placeholder}
+              aria-label={secretMeta.label}
+              value={secret}
+              autoFocus
+              onChange={(e) => setSecret(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && submit()}
+            />
+            <button type="button" disabled={!secret.trim() || createAccount.isPending} onClick={submit}>
+              {createAccount.isPending ? '…' : 'Add'}
+            </button>
+          </div>
+        ) : (
+          <button type="button" className="wsc-btn-connect" onClick={() => setConnecting(true)}>
             Connect
-          </Button>
-        </Space.Compact>
-      )}
-    </Card>
+          </button>
+        )}
+      </div>
+    </div>
   )
 }
