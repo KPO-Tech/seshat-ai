@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Alert, Button, Drawer, Empty, Form, Input, InputNumber, message, Popconfirm, Select, Space, Tag, Typography } from 'antd'
+import { Button, Drawer, Empty, Form, Input, InputNumber, message, Popconfirm, Select, Space, Tag, Typography } from 'antd'
 import type { TableProps } from 'antd'
 import { ApiOutlined, DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
 import {
@@ -202,21 +202,11 @@ export function MCPServersPage() {
   return (
     <div>
       <PageHeader
-        title="MCP Servers"
-        description="Organization-shared MCP server definitions. Secrets are encrypted at rest and never echoed back in list responses. Falls back to this platform's default organization's servers when this organization has none of its own."
         actions={
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setSmartAddOpen(true)} disabled={!organizationId}>
             New MCP server
           </Button>
         }
-      />
-
-      <Alert
-        showIcon
-        type="info"
-        style={{ marginBottom: 20 }}
-        title="Connected backends resolve these configs locally"
-        description={`Entries available to connected devices: ${data?.length ?? 0}. stdio servers still require explicit user approval on the desktop before they can run locally.`}
       />
 
       <ConsoleTable<MCPServerConfig>
