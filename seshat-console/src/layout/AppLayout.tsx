@@ -109,12 +109,12 @@ export function AppLayout() {
   // to Organizations" escape hatch below.
   const showPlatformGroup = isAdmin && !inOrganizationRoute
 
-  // Overview/Preferences render as plain items (no group label) bracketing
-  // the three themed groups below - see organizationNavGroups' own comment
-  // for why those two don't belong to any theme. Any key not claimed by a
-  // group (there should only ever be these two) surfaces itself here too,
-  // so a new org nav item is never silently dropped from the sidebar just
-  // because nobody remembered to add it to a group.
+  // Preferences renders as a plain item (no group label) after the three
+  // themed groups below - see organizationNavGroups' own comment for why
+  // it doesn't belong to any theme. Any key not claimed by a group
+  // (normally just this one) surfaces itself here too, so a new org nav
+  // item is never silently dropped from the sidebar just because nobody
+  // remembered to add it to a group.
   const organizationNavItemsByKey = new Map(organizationNavItems.map((item) => [item.key, item]))
   const groupedOrganizationKeys = new Set(organizationNavGroups.flatMap((group) => group.keys))
   const ungroupedOrganizationItems = organizationNavItems.filter((item) => !groupedOrganizationKeys.has(item.key))
@@ -141,11 +141,8 @@ export function AppLayout() {
           },
         ]
       : []),
-    ...(ungroupedOrganizationItems[0]
-      ? [{ key: ungroupedOrganizationItems[0].key, label: ungroupedOrganizationItems[0].label, icon: ungroupedOrganizationItems[0].icon }]
-      : []),
     ...organizationGroupMenuItems,
-    ...ungroupedOrganizationItems.slice(1).map((item) => ({ key: item.key, label: item.label, icon: item.icon })),
+    ...ungroupedOrganizationItems.map((item) => ({ key: item.key, label: item.label, icon: item.icon })),
     ...(organizationWorkspaceItem && (showPlatformGroup || organizationNavItems.length > 0)
       ? [{ key: 'workspace-divider', type: 'divider' as const }]
       : []),

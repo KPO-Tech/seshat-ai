@@ -166,13 +166,15 @@ export interface OrganizationNavGroup {
   keys: string[]
 }
 
-// Overview and Preferences deliberately sit outside any labeled group (kept
-// as the first/last plain items instead) - a dashboard and a catch-all
-// settings page don't belong to a theme the way the other 8 do, and forcing
-// them into one would leave that group's label describing only half its
-// children.
+// Preferences deliberately sits outside any labeled group (kept as a plain
+// item after the groups instead) - a catch-all settings page doesn't
+// belong to a theme the way the others do, and forcing it into one would
+// leave that group's label describing only part of its children. Overview
+// joined Access & Governance on purpose (2026-09-03): as the org's summary
+// dashboard it reads naturally alongside who has access and what they've
+// done, not as its own untitled category of one.
 export const organizationNavGroups: OrganizationNavGroup[] = [
-  { label: 'Access & Governance', keys: ['org-team', 'org-activity'] },
+  { label: 'Access & Governance', keys: ['org-overview', 'org-team', 'org-activity'] },
   { label: 'AI & Automation', keys: ['org-ai', 'org-agents', 'org-automation', 'org-knowledge'] },
   { label: 'Integrations', keys: ['org-integrations', 'org-prospecting'] },
 ]
