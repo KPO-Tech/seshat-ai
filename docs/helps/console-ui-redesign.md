@@ -12,6 +12,17 @@ seshat-console's `src/theme/tokens.ts` `palette` object is value-for-value
 matched to that file's `[data-theme='light']` block — when the two drift,
 tokens.css wins and console should be brought back in line, not the reverse.
 
+**Connector-kind source of truth**: `shared/connector-catalog` (npm package
+`@seshat/connector-catalog`, wired in via a `file:` dependency in both apps'
+`package.json` - no workspace conversion needed). Kind lists, labels, and MCP
+endpoint pre-fills all live there now, not hand-copied per file - see that
+package's own doc comment. Consumed by seshat-console's `ConnectorsPage.tsx`/
+`MCPServersPage.tsx`/`ConnectionsPage.tsx` and seshat-ui's
+`AdminConnectorsView.tsx`/`AdminMCPServersView.tsx`. Icon *rendering* stays
+local to each app (different icon libraries) - only add a new brand icon
+mapping to the shared package if simple-icons gains an entry for a kind that
+didn't have one before.
+
 ## Foundation (app-wide)
 
 - [x] **Light theme** (2026-09-03) — `theme/tokens.ts`'s `palette` rewritten
