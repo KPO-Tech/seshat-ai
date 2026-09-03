@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Alert, Button, Drawer, Empty, Form, Input, Modal, Popconfirm, Select, Space, Tag, Typography, message } from 'antd'
+import { Alert, Button, Drawer, Empty, Form, Input, Modal, Popconfirm, Select, Space, Tag, Tooltip, Typography, message } from 'antd'
 import type { TableProps } from 'antd'
 import {
   CloudOutlined,
@@ -30,6 +30,7 @@ import {
   siIntercom,
   siZendesk,
 } from 'simple-icons'
+import { OAUTH_CONNECTOR_KINDS, KNOWLEDGE_SYNC_OAUTH_KINDS, CONNECTOR_KIND_LABELS } from '@seshat/connector-catalog'
 import {
   useConnectorAccountsList,
   useCreateConnectorAccount,
@@ -77,52 +78,18 @@ const CONNECTOR_KINDS = [
   { value: 'confluence', label: 'Confluence' },
 ]
 
-// The 4 knowledge_sync-capable OAuth kinds - the only ones the "New
-// connector" modal below can create a *knowledge_sync* account for (it
-// needs a corpus_id, which the other 16 kinds' accounts never have).
-// Deliberately a separate, narrower list from ALL_OAUTH_KINDS below: this
-// one gates what "New connector" offers, that one gates what "OAuth
-// apps" registers - registering an app and using it for knowledge_sync
-// are two different questions.
-const KNOWLEDGE_SYNC_OAUTH_KINDS = ['gdrive', 'sharepoint', 'onedrive', 'confluence'] as const
-
-// Every OAuth connector kind (see connectors.oauthConnectorKinds on the
-// seshat-server side) - registering an app here is what makes "Connect"
-// possible at all for that kind, everywhere it's used: a knowledge_sync
-// account further down this same page for the 4 kinds above, or a
-// self-service agent_action account from Workspace → Connections for the
-// other 16 (Slack, Notion, Jira, Salesforce, ...). Previously this section
-// only listed the 4 knowledge_sync kinds, silently pushing anyone who
-// needed to register one of the other 16 out to seshat-ui's Admin Console
-// or the API directly - widened 2026-09-03 so a web-console-only admin
-// isn't stuck needing the desktop app just for this.
-const ALL_OAUTH_KINDS: OAuthConnectorKind[] = [
-  'gdrive',
-  'sharepoint',
-  'onedrive',
-  'confluence',
-  'slack',
-  'outlook',
-  'teams',
-  'gmail',
-  'notion',
-  'gsheets',
-  'gcalendar',
-  'jira',
-  'github',
-  'asana',
-  'linear',
-  'hubspot',
-  'intercom',
-  'pipedrive',
-  'zendesk',
-  'salesforce',
-]
-
 // The only two kinds with a static, editable config (see connectors.
 // Service.UpdateAccount's own doc comment) - every OAuth-based kind has no
 // static config here, only a live token, so there's nothing to edit.
 const STATIC_CONFIG_KINDS = new Set(['s3', 'azureblob'])
+
+// KNOWLEDGE_SYNC_OAUTH_KINDS (4) gates what the "New connector" modal
+// below can create a *knowledge_sync* account for - it needs a corpus_id,
+// which the other 16 kinds' accounts never have. OAUTH_CONNECTOR_KINDS
+// (all 20) gates what the "OAuth apps" section registers - registering an
+// app and using it for knowledge_sync are two different questions. Both
+// imported from @seshat/connector-catalog rather than hand-copied here -
+// see that package's own doc comment for why.
 
 // Monochrome by design (currentColor, no brand tint) - matches seshat-ui's
 // AdminConnectorsView.tsx, the pattern this page's OAuth-apps section was
@@ -141,30 +108,10 @@ function BrandIcon({ icon }: { icon: { path: string; title: string } }) {
 // (resolveOAuthApp is keyed by kind, not by vendor), so e.g. Google Drive
 // and Gmail are two separate app registrations even though both are
 // "Google" - matches seshat-ui's AdminConnectorsView.tsx one-card-per-kind
-// convention exactly, not the old vendor-grouped labels this section used
-// when it only had 4 cards to show.
-const OAUTH_APP_LABELS: Record<OAuthConnectorKind, string> = {
-  gdrive: 'Google Drive',
-  sharepoint: 'SharePoint',
-  onedrive: 'OneDrive',
-  confluence: 'Confluence',
-  slack: 'Slack',
-  outlook: 'Outlook',
-  teams: 'Microsoft Teams',
-  gmail: 'Gmail',
-  notion: 'Notion',
-  gsheets: 'Google Sheets',
-  gcalendar: 'Google Calendar',
-  jira: 'Jira',
-  github: 'GitHub',
-  asana: 'Asana',
-  linear: 'Linear',
-  hubspot: 'HubSpot',
-  intercom: 'Intercom',
-  pipedrive: 'Pipedrive',
-  zendesk: 'Zendesk',
-  salesforce: 'Salesforce',
-}
+// convention exactly. Labels come from @seshat/connector-catalog now, not
+// hand-copied - kept as its own alias here since call sites below already
+// read OAUTH_APP_LABELS.
+const OAUTH_APP_LABELS = CONNECTOR_KIND_LABELS
 
 // Same simple-icons/antd-icon choices already vetted in seshat-ui's
 // AdminConnectorsView.tsx (7 of these 20 have no simple-icons entry at
@@ -305,28 +252,20 @@ export function ConnectorsPage() {
     <div>
       <PageHeader
         actions={
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => setCreating(true)}
-            disabled={!organizationId || corpusOptions.length === 0}
-          >
-            New connector
-          </Button>
+          <Tooltip title={corpusOptions.length === 0 ? 'Create a corpus first (Knowledge → Corpora) - a connector needs one to sync into.' : undefined}>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => setCreating(true)}
+              disabled={!organizationId || corpusOptions.length === 0}
+            >
+              New connector
+            </Button>
+          </Tooltip>
         }
       />
 
       <OAuthAppsSection organizationId={organizationId ?? undefined} apps={oauthApps ?? []} />
-
-      {organizationId && corpusOptions.length === 0 && !isLoading && (
-        <Alert
-          type="info"
-          showIcon
-          message="Create a corpus first"
-          description="A connector syncs into an existing corpus - create one under Knowledge → Corpora before connecting a source."
-          style={{ marginBottom: 16 }}
-        />
-      )}
 
       <Typography.Title level={5} style={{ margin: '0 0 12px', color: palette.ink }}>
         Connected sources
@@ -458,7 +397,7 @@ function OAuthAppsSection({ organizationId, apps }: { organizationId: string | u
         Register this organization's own OAuth app once per provider - every account this org connects afterward reuses it.
       </Typography.Paragraph>
       <div className="pv-list">
-        {ALL_OAUTH_KINDS.map((kind) => {
+        {OAUTH_CONNECTOR_KINDS.map((kind) => {
           const existing = apps.find((a) => a.kind === kind)
           const configured = Boolean(existing?.configured)
           return (
@@ -624,7 +563,7 @@ function ConnectorFormDrawer({
     form.setFieldsValue({ kind: 's3', sync_interval_seconds: 3600, region: 'us-east-1' })
   }, [open, editingAccount, form])
 
-  const isOAuthKind = !isEditing && KNOWLEDGE_SYNC_OAUTH_KINDS.includes(kind as (typeof KNOWLEDGE_SYNC_OAUTH_KINDS)[number])
+  const isOAuthKind = !isEditing && KNOWLEDGE_SYNC_OAUTH_KINDS.includes(kind as OAuthConnectorKind)
   const oauthConfigured = configuredOAuthKinds.has(kind)
 
   return (

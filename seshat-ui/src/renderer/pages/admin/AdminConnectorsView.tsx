@@ -16,6 +16,7 @@ import {
   siZendesk,
 } from 'simple-icons'
 import { Windows, Mail, MessageOne, Wechat, CooperativeHandshake, CloudStorage } from '@icon-park/react'
+import { OAUTH_CONNECTOR_KINDS, CONNECTOR_KIND_LABELS } from '@seshat/connector-catalog'
 import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
 import { useAdminConnectorOAuthApps, registerAdminConnectorOAuthApp } from '@/hooks/useAdminConnectorOAuthApps'
 import type { ConnectorOAuthApp } from '@/api/types'
@@ -35,33 +36,43 @@ function BrandIcon({ icon, size = 20 }: { icon: { path: string; title: string };
   )
 }
 
-// Only the 20 OAuth-based connector kinds - the 8 static kinds (Stripe,
-// SendGrid, ...) have no app to register here at all; their one secret is
-// pasted directly by the connecting employee (Workspace → Connections),
-// never by an org admin - see connectors.oauthConnectorKinds vs
-// staticAgentActionKinds on the seshat-server side.
-const OAUTH_KINDS: Array<{ kind: string; label: string; icon: React.ReactNode }> = [
-  { kind: 'gdrive', label: 'Google Drive', icon: <BrandIcon icon={siGoogledrive} /> },
-  { kind: 'sharepoint', label: 'SharePoint', icon: <Windows size={20} /> },
-  { kind: 'onedrive', label: 'OneDrive', icon: <Windows size={20} /> },
-  { kind: 'confluence', label: 'Confluence', icon: <BrandIcon icon={siConfluence} /> },
-  { kind: 'slack', label: 'Slack', icon: <Wechat size={20} /> },
-  { kind: 'outlook', label: 'Outlook', icon: <Mail size={20} /> },
-  { kind: 'teams', label: 'Microsoft Teams', icon: <MessageOne size={20} /> },
-  { kind: 'gmail', label: 'Gmail', icon: <BrandIcon icon={siGmail} /> },
-  { kind: 'notion', label: 'Notion', icon: <BrandIcon icon={siNotion} /> },
-  { kind: 'gsheets', label: 'Google Sheets', icon: <BrandIcon icon={siGooglesheets} /> },
-  { kind: 'gcalendar', label: 'Google Calendar', icon: <BrandIcon icon={siGooglecalendar} /> },
-  { kind: 'jira', label: 'Jira', icon: <BrandIcon icon={siJira} /> },
-  { kind: 'github', label: 'GitHub', icon: <BrandIcon icon={siGithub} /> },
-  { kind: 'asana', label: 'Asana', icon: <BrandIcon icon={siAsana} /> },
-  { kind: 'linear', label: 'Linear', icon: <BrandIcon icon={siLinear} /> },
-  { kind: 'hubspot', label: 'HubSpot', icon: <BrandIcon icon={siHubspot} /> },
-  { kind: 'intercom', label: 'Intercom', icon: <BrandIcon icon={siIntercom} /> },
-  { kind: 'pipedrive', label: 'Pipedrive', icon: <CooperativeHandshake size={20} /> },
-  { kind: 'zendesk', label: 'Zendesk', icon: <BrandIcon icon={siZendesk} /> },
-  { kind: 'salesforce', label: 'Salesforce', icon: <CloudStorage size={20} /> },
-]
+// The kind set and labels come from @seshat/connector-catalog now (single
+// source of truth shared with seshat-console) - only the icon choice is
+// still made here, since seshat-ui renders via @icon-park/react while
+// seshat-console uses @ant-design/icons, two unrelated libraries. The 8
+// static kinds (Stripe, SendGrid, ...) have no app to register here at
+// all; their one secret is pasted directly by the connecting employee
+// (Workspace → Connections), never by an org admin - see
+// connectors.oauthConnectorKinds vs staticAgentActionKinds on the
+// seshat-server side.
+const KIND_ICON: Partial<Record<string, React.ReactNode>> = {
+  gdrive: <BrandIcon icon={siGoogledrive} />,
+  sharepoint: <Windows size={20} />,
+  onedrive: <Windows size={20} />,
+  confluence: <BrandIcon icon={siConfluence} />,
+  slack: <Wechat size={20} />,
+  outlook: <Mail size={20} />,
+  teams: <MessageOne size={20} />,
+  gmail: <BrandIcon icon={siGmail} />,
+  notion: <BrandIcon icon={siNotion} />,
+  gsheets: <BrandIcon icon={siGooglesheets} />,
+  gcalendar: <BrandIcon icon={siGooglecalendar} />,
+  jira: <BrandIcon icon={siJira} />,
+  github: <BrandIcon icon={siGithub} />,
+  asana: <BrandIcon icon={siAsana} />,
+  linear: <BrandIcon icon={siLinear} />,
+  hubspot: <BrandIcon icon={siHubspot} />,
+  intercom: <BrandIcon icon={siIntercom} />,
+  pipedrive: <CooperativeHandshake size={20} />,
+  zendesk: <BrandIcon icon={siZendesk} />,
+  salesforce: <CloudStorage size={20} />,
+}
+
+const OAUTH_KINDS: Array<{ kind: string; label: string; icon: React.ReactNode }> = OAUTH_CONNECTOR_KINDS.map((kind) => ({
+  kind,
+  label: CONNECTOR_KIND_LABELS[kind],
+  icon: KIND_ICON[kind],
+}))
 
 // AdminConnectorsView — Admin Console's Connectors tab. Every write here
 // goes to /admin/connector-oauth-apps, which seshat-backend forwards

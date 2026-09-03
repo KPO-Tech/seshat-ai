@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Delete, Edit, Plus } from '@icon-park/react'
+import {
+  MCP_BRIDGEABLE_OAUTH_KINDS,
+  MCP_BRIDGEABLE_STATIC_KINDS,
+  CONNECTOR_KIND_LABELS,
+  VENDOR_HOSTED_MCP_URL,
+} from '@seshat/connector-catalog'
 import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
 import {
   useAdminMCPServerConfigs,
@@ -21,61 +27,23 @@ const SERVER_TYPE_OPTIONS = ['stdio', 'http', 'sse', 'websocket']
 // StaticSecretForUser) - their vendor's own MCP server takes a Bearer key
 // directly, no OAuth redirect needed. mcpregistry's injectConnectorToken
 // tries both automatically at resolve time, so this list doesn't need to
-// say which path a given kind uses.
-// OneDrive/Google Sheets/Google Calendar are real but Developer Preview at
-// the vendor (not GA, no fixed public URL to pre-fill) - listed anyway,
-// same "admin pastes their own" precedent as Salesforce, for an admin with
-// preview access. Zendesk is deliberately NOT listed (removed 2026-09-03,
-// was a real inconsistency with seshat-console's own list) - unlike the
-// three above, it has no MCP server at all, preview or GA; the
-// zendesk_create_ticket dataflow node remains the only integration path.
+// say which path a given kind uses. The kind set, labels, and
+// VENDOR_HOSTED_MCP_URL pre-fills all come from @seshat/connector-catalog
+// now (single source of truth shared with seshat-console) rather than
+// being hand-copied here - that copy had silently drifted from
+// seshat-console's own (missing Confluence's URL pre-fill despite Jira
+// and Confluence sharing the same Atlassian Rovo endpoint, and briefly
+// listing Zendesk when seshat-console's own list didn't).
+const LABEL_OVERRIDES: Partial<Record<string, string>> = {
+  jira: 'Jira (Atlassian Rovo)',
+  confluence: 'Confluence (Atlassian Rovo)',
+}
+
 const CONNECTOR_KIND_OPTIONS = [
   { value: '', label: 'None (static config only)' },
-  { value: 'gdrive', label: 'Google Drive' },
-  { value: 'sharepoint', label: 'SharePoint' },
-  { value: 'onedrive', label: 'OneDrive' },
-  { value: 'confluence', label: 'Confluence' },
-  { value: 'slack', label: 'Slack' },
-  { value: 'outlook', label: 'Outlook' },
-  { value: 'teams', label: 'Microsoft Teams' },
-  { value: 'gmail', label: 'Gmail' },
-  { value: 'notion', label: 'Notion' },
-  { value: 'gsheets', label: 'Google Sheets' },
-  { value: 'gcalendar', label: 'Google Calendar' },
-  { value: 'jira', label: 'Jira (Atlassian Rovo)' },
-  { value: 'github', label: 'GitHub' },
-  { value: 'asana', label: 'Asana' },
-  { value: 'linear', label: 'Linear' },
-  { value: 'hubspot', label: 'HubSpot' },
-  { value: 'intercom', label: 'Intercom' },
-  { value: 'pipedrive', label: 'Pipedrive' },
-  { value: 'salesforce', label: 'Salesforce' },
-  { value: 'stripe', label: 'Stripe' },
-  { value: 'trello', label: 'Trello' },
-  { value: 'airtable', label: 'Airtable' },
+  ...MCP_BRIDGEABLE_OAUTH_KINDS.map((kind) => ({ value: kind, label: LABEL_OVERRIDES[kind] ?? CONNECTOR_KIND_LABELS[kind] })),
+  ...MCP_BRIDGEABLE_STATIC_KINDS.map((kind) => ({ value: kind, label: CONNECTOR_KIND_LABELS[kind] })),
 ]
-
-// Same pre-fill convenience as seshat-console's MCPServersPage.tsx
-// (VENDOR_HOSTED_MCP_URL/SELF_HOSTED_MCP_PATH) - picking a connector_kind
-// with a known official endpoint fills url + server_type automatically.
-// gmail/outlook/teams are self-hosted by this org's own seshat-server
-// (internal/mcp/*), a relative path rather than an absolute vendor URL -
-// left blank here since there's no fixed origin to prefix it with from the
-// desktop app; the admin fills those three in manually.
-const VENDOR_HOSTED_MCP_URL: Partial<Record<string, string>> = {
-  slack: 'https://mcp.slack.com/mcp',
-  notion: 'https://mcp.notion.com/mcp',
-  github: 'https://api.githubcopilot.com/mcp/',
-  linear: 'https://mcp.linear.app/mcp',
-  hubspot: 'https://mcp.hubspot.com',
-  jira: 'https://mcp.atlassian.com/v2/mcp',
-  asana: 'https://mcp.asana.com/v2/mcp',
-  intercom: 'https://mcp.intercom.com/mcp',
-  pipedrive: 'https://mcp.pipedrive.ai/mcp',
-  stripe: 'https://mcp.stripe.com',
-  trello: 'https://mcp.trello.com/v1',
-  airtable: 'https://mcp.airtable.com/mcp',
-}
 
 // AdminMCPServersView — Admin Console's MCP Servers tab. Every write here
 // goes to /admin/mcp-server-configs, which seshat-backend forwards
@@ -306,7 +274,7 @@ function MCPServerFormModal({
               onChange={(e) => {
                 const value = e.target.value
                 setConnectorKind(value)
-                const vendorURL = VENDOR_HOSTED_MCP_URL[value]
+                const vendorURL = VENDOR_HOSTED_MCP_URL[value as keyof typeof VENDOR_HOSTED_MCP_URL]
                 if (vendorURL && !url) {
                   setUrl(vendorURL)
                   setServerType('http')

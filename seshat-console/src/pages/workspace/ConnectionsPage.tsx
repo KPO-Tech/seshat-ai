@@ -30,6 +30,7 @@ import {
   siTrello,
   siAirtable,
 } from 'simple-icons'
+import { CONNECTOR_KIND_LABELS } from '@seshat/connector-catalog'
 import { useMyConnectorAccountsList, useDeleteMyConnectorAccount } from '@/api/myConnections'
 import { useBeginConnectorOAuth, useCreateStaticAgentAccount, type ConnectorAccount, type OAuthConnectorKind, type StaticConnectorKind } from '@/api/connectors'
 import { getErrorMessage } from '@/api/errors'
@@ -54,42 +55,47 @@ function BrandIcon({ icon }: { icon: { path: string; title: string } }) {
 
 type AnyConnectorKind = OAuthConnectorKind | StaticConnectorKind
 
+// Labels come from @seshat/connector-catalog now (single source of truth
+// shared with the OAuth-apps/MCP-servers pickers and with seshat-ui) -
+// only the icon choice is still made here, since simple-icons/antd-icon
+// rendering is app-specific (seshat-ui uses @icon-park/react instead, an
+// unrelated library, not worth unifying just for this).
 const KIND_META: Record<AnyConnectorKind, { label: string; icon: React.ReactNode }> = {
-  gdrive: { label: 'Google Drive', icon: <BrandIcon icon={siGoogledrive} /> },
+  gdrive: { label: CONNECTOR_KIND_LABELS.gdrive, icon: <BrandIcon icon={siGoogledrive} /> },
   // SharePoint/OneDrive/Outlook/Teams have no entry in simple-icons -
   // Microsoft's own product sub-brands are absent from that library
   // entirely (verified against its real export list, not assumed) - the
   // Windows/Mail/Team glyphs below are the closest existing antd icons,
   // not fabricated logos.
-  sharepoint: { label: 'SharePoint', icon: <WindowsOutlined /> },
-  onedrive: { label: 'OneDrive', icon: <WindowsOutlined /> },
-  confluence: { label: 'Confluence', icon: <BrandIcon icon={siConfluence} /> },
-  slack: { label: 'Slack', icon: <SlackOutlined /> },
-  outlook: { label: 'Outlook', icon: <MailOutlined /> },
-  teams: { label: 'Microsoft Teams', icon: <TeamOutlined /> },
-  gmail: { label: 'Gmail', icon: <BrandIcon icon={siGmail} /> },
-  notion: { label: 'Notion', icon: <BrandIcon icon={siNotion} /> },
-  gsheets: { label: 'Google Sheets', icon: <BrandIcon icon={siGooglesheets} /> },
-  gcalendar: { label: 'Google Calendar', icon: <BrandIcon icon={siGooglecalendar} /> },
-  jira: { label: 'Jira', icon: <BrandIcon icon={siJira} /> },
-  github: { label: 'GitHub', icon: <BrandIcon icon={siGithub} /> },
-  asana: { label: 'Asana', icon: <BrandIcon icon={siAsana} /> },
-  linear: { label: 'Linear', icon: <BrandIcon icon={siLinear} /> },
-  hubspot: { label: 'HubSpot', icon: <BrandIcon icon={siHubspot} /> },
-  intercom: { label: 'Intercom', icon: <BrandIcon icon={siIntercom} /> },
+  sharepoint: { label: CONNECTOR_KIND_LABELS.sharepoint, icon: <WindowsOutlined /> },
+  onedrive: { label: CONNECTOR_KIND_LABELS.onedrive, icon: <WindowsOutlined /> },
+  confluence: { label: CONNECTOR_KIND_LABELS.confluence, icon: <BrandIcon icon={siConfluence} /> },
+  slack: { label: CONNECTOR_KIND_LABELS.slack, icon: <SlackOutlined /> },
+  outlook: { label: CONNECTOR_KIND_LABELS.outlook, icon: <MailOutlined /> },
+  teams: { label: CONNECTOR_KIND_LABELS.teams, icon: <TeamOutlined /> },
+  gmail: { label: CONNECTOR_KIND_LABELS.gmail, icon: <BrandIcon icon={siGmail} /> },
+  notion: { label: CONNECTOR_KIND_LABELS.notion, icon: <BrandIcon icon={siNotion} /> },
+  gsheets: { label: CONNECTOR_KIND_LABELS.gsheets, icon: <BrandIcon icon={siGooglesheets} /> },
+  gcalendar: { label: CONNECTOR_KIND_LABELS.gcalendar, icon: <BrandIcon icon={siGooglecalendar} /> },
+  jira: { label: CONNECTOR_KIND_LABELS.jira, icon: <BrandIcon icon={siJira} /> },
+  github: { label: CONNECTOR_KIND_LABELS.github, icon: <BrandIcon icon={siGithub} /> },
+  asana: { label: CONNECTOR_KIND_LABELS.asana, icon: <BrandIcon icon={siAsana} /> },
+  linear: { label: CONNECTOR_KIND_LABELS.linear, icon: <BrandIcon icon={siLinear} /> },
+  hubspot: { label: CONNECTOR_KIND_LABELS.hubspot, icon: <BrandIcon icon={siHubspot} /> },
+  intercom: { label: CONNECTOR_KIND_LABELS.intercom, icon: <BrandIcon icon={siIntercom} /> },
   // Pipedrive/Salesforce also have no simple-icons entry.
-  pipedrive: { label: 'Pipedrive', icon: <FunnelPlotOutlined /> },
-  zendesk: { label: 'Zendesk', icon: <BrandIcon icon={siZendesk} /> },
-  salesforce: { label: 'Salesforce', icon: <CloudOutlined /> },
-  stripe: { label: 'Stripe', icon: <BrandIcon icon={siStripe} /> },
+  pipedrive: { label: CONNECTOR_KIND_LABELS.pipedrive, icon: <FunnelPlotOutlined /> },
+  zendesk: { label: CONNECTOR_KIND_LABELS.zendesk, icon: <BrandIcon icon={siZendesk} /> },
+  salesforce: { label: CONNECTOR_KIND_LABELS.salesforce, icon: <CloudOutlined /> },
+  stripe: { label: CONNECTOR_KIND_LABELS.stripe, icon: <BrandIcon icon={siStripe} /> },
   // SendGrid/Postmark have no simple-icons entry.
-  sendgrid: { label: 'SendGrid', icon: <MailOutlined /> },
-  mailgun: { label: 'Mailgun', icon: <BrandIcon icon={siMailgun} /> },
-  postmark: { label: 'Postmark', icon: <NotificationOutlined /> },
-  telegram: { label: 'Telegram', icon: <BrandIcon icon={siTelegram} /> },
-  discord: { label: 'Discord', icon: <BrandIcon icon={siDiscord} /> },
-  trello: { label: 'Trello', icon: <BrandIcon icon={siTrello} /> },
-  airtable: { label: 'Airtable', icon: <BrandIcon icon={siAirtable} /> },
+  sendgrid: { label: CONNECTOR_KIND_LABELS.sendgrid, icon: <MailOutlined /> },
+  mailgun: { label: CONNECTOR_KIND_LABELS.mailgun, icon: <BrandIcon icon={siMailgun} /> },
+  postmark: { label: CONNECTOR_KIND_LABELS.postmark, icon: <NotificationOutlined /> },
+  telegram: { label: CONNECTOR_KIND_LABELS.telegram, icon: <BrandIcon icon={siTelegram} /> },
+  discord: { label: CONNECTOR_KIND_LABELS.discord, icon: <BrandIcon icon={siDiscord} /> },
+  trello: { label: CONNECTOR_KIND_LABELS.trello, icon: <BrandIcon icon={siTrello} /> },
+  airtable: { label: CONNECTOR_KIND_LABELS.airtable, icon: <BrandIcon icon={siAirtable} /> },
 }
 
 // STATIC_KIND_SECRETS lists every kind that authenticates with a single

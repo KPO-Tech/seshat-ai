@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/api/client'
 import type { components, operations } from '@/api/schema'
+import type { OAuthConnectorKind, StaticConnectorKind } from '@seshat/connector-catalog'
+
+export type { OAuthConnectorKind, StaticConnectorKind }
 
 export type ConnectorAccount = components['schemas']['ConnectorAccount']
 export type ConnectorAccountInput = components['schemas']['ConnectorAccountInput']
@@ -15,33 +18,6 @@ const ACCOUNTS_KEY = 'connector-accounts'
 const SYNC_JOBS_KEY = 'connector-sync-jobs'
 const OAUTH_APPS_KEY = 'connector-oauth-apps'
 const MY_ACCOUNTS_KEY = 'my-connector-accounts'
-
-export type OAuthConnectorKind =
-  | 'gdrive'
-  | 'sharepoint'
-  | 'onedrive'
-  | 'confluence'
-  | 'slack'
-  | 'outlook'
-  | 'teams'
-  | 'gmail'
-  | 'notion'
-  | 'gsheets'
-  | 'gcalendar'
-  | 'jira'
-  | 'github'
-  | 'asana'
-  | 'linear'
-  | 'hubspot'
-  | 'intercom'
-  | 'pipedrive'
-  | 'zendesk'
-  | 'salesforce'
-
-// StaticConnectorKind lists every kind that authenticates with a single
-// static secret instead of an OAuth2 flow - see connectors.Service's
-// staticAgentActionKinds (seshat-server/internal/server/connectors/static_agent_account.go).
-export type StaticConnectorKind = 'stripe' | 'sendgrid' | 'mailgun' | 'postmark' | 'telegram' | 'discord' | 'trello' | 'airtable'
 
 export function useConnectorAccountsList(organizationId: string | undefined) {
   return useQuery({

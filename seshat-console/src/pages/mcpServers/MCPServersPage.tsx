@@ -19,6 +19,15 @@ import { ProvenanceTag } from '@/components/ProvenanceTag'
 import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
 import { monoStack, palette } from '@/theme/tokens'
 import { SmartAddMCPServerDrawer } from './SmartAddMCPServerDrawer'
+import {
+  MCP_BRIDGEABLE_OAUTH_KINDS,
+  MCP_BRIDGEABLE_STATIC_KINDS,
+  CONNECTOR_KIND_LABELS,
+  SELF_HOSTED_MCP_PATH,
+  VENDOR_HOSTED_MCP_URL,
+  type OAuthConnectorKind,
+  type AnyConnectorKind,
+} from '@seshat/connector-catalog'
 
 // "sdk" is deliberately not offered here: it identifies an MCP tool built
 // into the SDK's own binary (see seshat/internal/tools/system/mcp -
@@ -37,85 +46,21 @@ const SERVER_TYPE_OPTIONS = [
 // See sdb.MCPServerConfig.ConnectorKind's doc comment - when set, resolving
 // this server injects a per-caller Authorization: Bearer header from that
 // person's own connected agent_action account (Workspace → Connections).
-// Every kind below has a genuine official MCP server from the vendor -
-// researched live and recorded in helps/roadmap.md's "MCP Server Ledger"
-// entry, not guessed. Most personalize via OAuth (mcpregistry's
-// injectConnectorToken → connectors.Service.AccessTokenForUser);
-// Stripe/Trello/Airtable personalize via a static API key the employee
-// pastes once instead (StaticSecretForUser) - their vendor's own MCP
-// server takes a Bearer key directly, no OAuth redirect needed. Both
-// paths are tried automatically at resolve time, so the picker below
-// doesn't need to say which is which.
-// OneDrive/Google Sheets/Google Calendar are real but Developer Preview at
-// the vendor (not GA, no fixed public URL to pre-fill - see
-// VENDOR_HOSTED_MCP_URL below) - listed anyway, same "admin pastes their
-// own" precedent as Salesforce, for an admin with preview access.
-// Kinds whose vendor has no MCP server at all, preview or GA (Zendesk,
-// Telegram, Discord, SendGrid, Mailgun, Postmark) are deliberately not
-// listed here - the dataflow nodes built earlier in this initiative
-// remain the only integration path for those.
+// The kind set, labels, and SELF_HOSTED_MCP_PATH/VENDOR_HOSTED_MCP_URL
+// pre-fills all come from @seshat/connector-catalog now (single source of
+// truth shared with seshat-ui, see that package's own doc comment for
+// why) rather than being hand-copied here - only the Atlassian Rovo label
+// annotation below is specific to this picker.
+const LABEL_OVERRIDES: Partial<Record<string, string>> = {
+  jira: 'Jira (Atlassian Rovo)',
+  confluence: 'Confluence (Atlassian Rovo)',
+}
+
 const CONNECTOR_KIND_OPTIONS = [
   { value: '', label: 'None (static config only)' },
-  { value: 'gdrive', label: 'Google Drive' },
-  { value: 'sharepoint', label: 'SharePoint' },
-  { value: 'onedrive', label: 'OneDrive' },
-  { value: 'slack', label: 'Slack' },
-  { value: 'outlook', label: 'Outlook' },
-  { value: 'teams', label: 'Microsoft Teams' },
-  { value: 'gmail', label: 'Gmail' },
-  { value: 'notion', label: 'Notion' },
-  { value: 'gsheets', label: 'Google Sheets' },
-  { value: 'gcalendar', label: 'Google Calendar' },
-  { value: 'github', label: 'GitHub' },
-  { value: 'linear', label: 'Linear' },
-  { value: 'hubspot', label: 'HubSpot' },
-  { value: 'jira', label: 'Jira (Atlassian Rovo)' },
-  { value: 'confluence', label: 'Confluence (Atlassian Rovo)' },
-  { value: 'asana', label: 'Asana' },
-  { value: 'intercom', label: 'Intercom' },
-  { value: 'pipedrive', label: 'Pipedrive' },
-  { value: 'salesforce', label: 'Salesforce' },
-  { value: 'stripe', label: 'Stripe' },
-  { value: 'trello', label: 'Trello' },
-  { value: 'airtable', label: 'Airtable' },
+  ...MCP_BRIDGEABLE_OAUTH_KINDS.map((kind) => ({ value: kind, label: LABEL_OVERRIDES[kind] ?? CONNECTOR_KIND_LABELS[kind] })),
+  ...MCP_BRIDGEABLE_STATIC_KINDS.map((kind) => ({ value: kind, label: CONNECTOR_KIND_LABELS[kind] })),
 ]
-
-// outlook/teams/gmail are self-hosted by this seshat-server itself (see
-// internal/server/msgraphmcp, internal/server/gmailmcp) rather than a
-// third-party service like Slack's public https://mcp.slack.com/mcp - an
-// admin has no way to already know this URL, so picking one of these kinds
-// pre-fills (not force-locks) the url/server_type fields below.
-const SELF_HOSTED_MCP_PATH: Partial<Record<string, string>> = {
-  outlook: '/internal/mcp/outlook',
-  teams: '/internal/mcp/teams',
-  gmail: '/internal/mcp/gmail',
-}
-
-// Vendor-hosted remote MCP endpoints for the kinds above - same pre-fill
-// convenience as SELF_HOSTED_MCP_PATH, but an absolute external URL rather
-// than a path on this server's own origin. Every URL here was confirmed
-// directly against the vendor's own docs (not guessed from a naming
-// convention) - see helps/roadmap.md. Salesforce has no fixed URL - its
-// Hosted MCP Server is provisioned per org via an External Client App, so
-// it's deliberately left out of this map; the admin pastes their own.
-// Pipedrive's URL (mcp.pipedrive.ai, not .com) was confirmed from a single
-// source - worth a quick re-check against Pipedrive's own docs if it ever
-// stops resolving.
-const VENDOR_HOSTED_MCP_URL: Partial<Record<string, string>> = {
-  slack: 'https://mcp.slack.com/mcp',
-  notion: 'https://mcp.notion.com/mcp',
-  github: 'https://api.githubcopilot.com/mcp/',
-  linear: 'https://mcp.linear.app/mcp',
-  hubspot: 'https://mcp.hubspot.com',
-  jira: 'https://mcp.atlassian.com/v2/mcp',
-  confluence: 'https://mcp.atlassian.com/v2/mcp',
-  asana: 'https://mcp.asana.com/v2/mcp',
-  intercom: 'https://mcp.intercom.com/mcp',
-  pipedrive: 'https://mcp.pipedrive.ai/mcp',
-  stripe: 'https://mcp.stripe.com',
-  trello: 'https://mcp.trello.com/v1',
-  airtable: 'https://mcp.airtable.com/mcp',
-}
 
 export function MCPServersPage() {
   const organizationId = useScopedOrganizationId()
@@ -400,12 +345,12 @@ function MCPServerFormDrawer({
             options={CONNECTOR_KIND_OPTIONS}
             onChange={(value: string) => {
               if (form.getFieldValue('url')) return
-              const selfHostedPath = SELF_HOSTED_MCP_PATH[value]
+              const selfHostedPath = SELF_HOSTED_MCP_PATH[value as OAuthConnectorKind]
               if (selfHostedPath) {
                 form.setFieldsValue({ url: window.location.origin + selfHostedPath, server_type: 'http' })
                 return
               }
-              const vendorURL = VENDOR_HOSTED_MCP_URL[value]
+              const vendorURL = VENDOR_HOSTED_MCP_URL[value as AnyConnectorKind]
               if (vendorURL) {
                 form.setFieldsValue({ url: vendorURL, server_type: 'http' })
               }

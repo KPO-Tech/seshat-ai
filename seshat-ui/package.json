@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@arco-design/web-react": "^2.66.1",
+    "@seshat/connector-catalog": "file:../shared/connector-catalog",
     "@dicebear/collection": "^9.4.3",
     "@dicebear/core": "^9.4.3",
     "@icon-park/react": "^1.4.2",
