@@ -69,8 +69,16 @@ export const consoleTheme: ThemeConfig = {
     borderRadius: 8,
     borderRadiusLG: 12,
     borderRadiusSM: 6,
-    fontSize: 14,
-    controlHeight: 36,
+    // Matched to seshat-ui's own scale (styles/tokens.css: --font-size-base
+    // 13px, .app-control height 30px) - antd's defaults (14px/36-40px) read
+    // noticeably roomier than the desktop app once the two sit side by
+    // side. This only reaches antd's own components (Button, Input,
+    // Select, Table, Menu, ...) - hand-styled dimensions elsewhere in this
+    // app (AppLayout.tsx's sidebar/topbar, the console-page-header/
+    // console-table rules in index.css) aren't derived from this token and
+    // need their own pass if the goal is matching seshat-ui everywhere.
+    fontSize: 13,
+    controlHeight: 30,
     wireframe: false,
   },
   components: {
