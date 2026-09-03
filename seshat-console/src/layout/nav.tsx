@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import {
   ApartmentOutlined,
+  ApiOutlined,
   AppstoreOutlined,
   CompassOutlined,
   DashboardOutlined,
@@ -13,6 +14,7 @@ import {
   SettingOutlined,
   SlidersOutlined,
   TeamOutlined,
+  ToolOutlined,
   UserOutlined,
 } from '@ant-design/icons'
 
@@ -103,11 +105,11 @@ export function getOrganizationNavItems(organizationId: string): NavItem[] {
       icon: <TeamOutlined />,
     },
     {
-      key: 'org-ai',
-      label: 'AI Config',
-      path: `/orgs/${organizationId}/ai/provider-settings`,
-      matchPrefix: `/orgs/${organizationId}/ai/`,
-      icon: <SettingOutlined />,
+      key: 'org-activity',
+      label: 'Activity',
+      path: `/orgs/${organizationId}/activity/audit`,
+      matchPrefix: `/orgs/${organizationId}/activity/`,
+      icon: <FileSearchOutlined />,
     },
     {
       key: 'org-preferences',
@@ -115,6 +117,33 @@ export function getOrganizationNavItems(organizationId: string): NavItem[] {
       path: `/orgs/${organizationId}/preferences`,
       matchPrefix: `/orgs/${organizationId}/preferences`,
       icon: <SlidersOutlined />,
+    },
+    // Everything AI-shaped: which models/embedders/search this org uses,
+    // what it knows (Knowledge), what tools its agents can reach (MCP
+    // Servers), and the agent/skill presets built from all of that.
+    // Renamed from "AI Config" now that MCP Servers moved out to its own
+    // item (previously a hidden sub-tab here) - what remains (provider
+    // settings/embedder/web search) really is just "which providers".
+    {
+      key: 'org-providers',
+      label: 'Providers',
+      path: `/orgs/${organizationId}/ai/provider-settings`,
+      matchPrefix: `/orgs/${organizationId}/ai/`,
+      icon: <SettingOutlined />,
+    },
+    {
+      key: 'org-knowledge',
+      label: 'Knowledge',
+      path: `/orgs/${organizationId}/knowledge/corpora`,
+      matchPrefix: `/orgs/${organizationId}/knowledge/`,
+      icon: <DatabaseOutlined />,
+    },
+    {
+      key: 'org-mcp-servers',
+      label: 'MCP Servers',
+      path: `/orgs/${organizationId}/mcp-servers`,
+      matchPrefix: `/orgs/${organizationId}/mcp-servers`,
+      icon: <ToolOutlined />,
     },
     {
       key: 'org-agents',
@@ -130,12 +159,19 @@ export function getOrganizationNavItems(organizationId: string): NavItem[] {
       matchPrefix: `/orgs/${organizationId}/automation/`,
       icon: <ScheduleOutlined />,
     },
+    // Every external system this org connects with, in either direction:
+    // Connectors and Identity Providers/SCIM pull this org's own data in
+    // from (or authenticate members against) outside systems, Applications
+    // is the reverse - other systems authenticating against this org.
+    // Connectors moved here from Knowledge (2026-09-03) - syncing into a
+    // Knowledge corpus is one thing a connected account can be used for,
+    // not what a connector *is*; it's an external-system connection first.
     {
-      key: 'org-knowledge',
-      label: 'Knowledge',
-      path: `/orgs/${organizationId}/knowledge/corpora`,
-      matchPrefix: `/orgs/${organizationId}/knowledge/`,
-      icon: <DatabaseOutlined />,
+      key: 'org-connectors',
+      label: 'Connectors',
+      path: `/orgs/${organizationId}/connectors`,
+      matchPrefix: `/orgs/${organizationId}/connectors`,
+      icon: <ApiOutlined />,
     },
     {
       key: 'org-integrations',
@@ -151,13 +187,6 @@ export function getOrganizationNavItems(organizationId: string): NavItem[] {
       matchPrefix: `/orgs/${organizationId}/prospecting/`,
       icon: <CompassOutlined />,
     },
-    {
-      key: 'org-activity',
-      label: 'Activity',
-      path: `/orgs/${organizationId}/activity/audit`,
-      matchPrefix: `/orgs/${organizationId}/activity/`,
-      icon: <FileSearchOutlined />,
-    },
   ]
 }
 
@@ -166,17 +195,22 @@ export interface OrganizationNavGroup {
   keys: string[]
 }
 
+// Rebuilt from scratch 2026-09-03, not just relabeled - the old shape
+// (Connectors under Knowledge, MCP Servers hidden inside AI Config,
+// Prospecting under Integrations) mixed several unrelated themes together.
 // Preferences deliberately sits outside any labeled group (kept as a plain
 // item after the groups instead) - a catch-all settings page doesn't
 // belong to a theme the way the others do, and forcing it into one would
-// leave that group's label describing only part of its children. Overview
-// joined Access & Governance on purpose (2026-09-03): as the org's summary
-// dashboard it reads naturally alongside who has access and what they've
-// done, not as its own untitled category of one.
+// leave that group's label describing only part of its children.
+// Automation gets its own single-item group rather than going unlabeled -
+// same precedent as seshat-ui's Admin Console, where "Your Account" is
+// also a single-item group (My Usage) - a real feature area shouldn't lose
+// its label just because it happens to only have one primary nav entry.
 export const organizationNavGroups: OrganizationNavGroup[] = [
-  { label: 'Access & Governance', keys: ['org-overview', 'org-team', 'org-activity'] },
-  { label: 'AI & Automation', keys: ['org-ai', 'org-agents', 'org-automation', 'org-knowledge'] },
-  { label: 'Integrations', keys: ['org-integrations', 'org-prospecting'] },
+  { label: 'Organization', keys: ['org-overview', 'org-team', 'org-activity'] },
+  { label: 'AI & Knowledge', keys: ['org-providers', 'org-knowledge', 'org-mcp-servers', 'org-agents'] },
+  { label: 'Automation', keys: ['org-automation'] },
+  { label: 'Integrations', keys: ['org-connectors', 'org-integrations', 'org-prospecting'] },
 ]
 
 export function getSecondaryNavItems(pathname: string, organizationId: string | null): SecondaryNavItem[] {
@@ -324,12 +358,6 @@ export function getSecondaryNavItems(pathname: string, organizationId: string | 
         path: `/orgs/${organizationId}/ai/web-search`,
         matchPrefix: `/orgs/${organizationId}/ai/web-search`,
       },
-      {
-        key: 'org-ai-mcp',
-        label: 'MCP Servers',
-        path: `/orgs/${organizationId}/ai/mcp-servers`,
-        matchPrefix: `/orgs/${organizationId}/ai/mcp-servers`,
-      },
     ]
   }
 
@@ -398,12 +426,6 @@ export function getSecondaryNavItems(pathname: string, organizationId: string | 
         label: 'Corpora',
         path: `/orgs/${organizationId}/knowledge/corpora`,
         matchPrefix: `/orgs/${organizationId}/knowledge/corpora`,
-      },
-      {
-        key: 'org-knowledge-connectors',
-        label: 'Connectors',
-        path: `/orgs/${organizationId}/knowledge/connectors`,
-        matchPrefix: `/orgs/${organizationId}/knowledge/connectors`,
       },
     ]
   }

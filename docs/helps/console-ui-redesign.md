@@ -35,10 +35,36 @@ tokens.css wins and console should be brought back in line, not the reverse.
   replaced with a discrete `HomeOutlined` icon button, same position, same
   gating (`isAdmin && inOrganizationRoute` — a platform superadmin only;
   a regular org member/admin has nowhere else to go, so they never see it).
-- [ ] **Sidebar nav structure** (labels, grouping, route names) —
-  deliberately NOT touched this round per explicit instruction. A
-  separate, later pass.
-- [ ] Font-size/control-height already matched to seshat-ui in an earlier
+- [x] **Sidebar nav structure** (2026-09-03) — rebuilt from scratch, not
+  just relabeled. Old shape mixed unrelated themes (Connectors nested
+  under Knowledge, MCP Servers hidden as an "AI Config" sub-tab,
+  Prospecting under Integrations). New groups (`nav.tsx`
+  `organizationNavGroups`/`getOrganizationNavItems`):
+  - **Organization**: Overview, Team & Access, Activity
+  - **AI & Knowledge**: Providers (renamed from "AI Config" now that MCP
+    Servers moved out), Knowledge, MCP Servers (own top-level route now,
+    `/orgs/:id/mcp-servers`, was a hidden `ai/mcp-servers` sub-tab),
+    Agents & Skills
+  - **Automation**: its own single-item group (Devices/Desktop
+    Policies/Hooks/Bundles/Jobs/Runs still live under it as secondary
+    tabs) — matches seshat-ui's own precedent of a single-item group
+    ("Your Account" → "My Usage"), rather than losing its label just
+    because it's one primary nav entry
+  - **Integrations**: Connectors (moved out of Knowledge, own top-level
+    route now, `/orgs/:id/connectors` — file also moved,
+    `pages/knowledge/ConnectorsPage.tsx` → `pages/connectors/
+    ConnectorsPage.tsx`), Integrations (Applications/Identity
+    Providers/SCIM/Network Diagnostics), Prospecting
+  - **Preferences** stays the sole ungrouped plain item, after the groups
+
+  The unifying idea for Integrations: every external system this org
+  connects *with*, in either direction — Connectors/Identity
+  Providers/SCIM pull the org's own data in or authenticate members
+  against outside systems, Applications is the reverse (other systems
+  authenticating against this org). Connectors moved out of Knowledge
+  because syncing into a corpus is one *use* of a connected account, not
+  what a connector fundamentally *is*.
+- [x] Font-size/control-height already matched to seshat-ui in an earlier
   pass (13px base, 30px controls) — done before this doc existed, listed
   here for completeness.
 
@@ -53,8 +79,8 @@ its own state) stay as tables — the pattern doesn't fit those.
 
 | Page | Route | Status | Notes |
 |---|---|---|---|
-| Knowledge → Connectors (OAuth apps) | `/orgs/:id/knowledge/connectors` | Done | Moved out of a 480px modal onto the page as `pv-list`; kind list narrowed 20 → 4 (only the knowledge_sync-capable ones: gdrive/sharepoint/onedrive/confluence — the other 16 are agent_action-only, self-service-connected from Workspace, had no business here). Monochrome icons (no brand tint), matching seshat-ui's version. |
-| Knowledge → Connectors (connected sources table) | same route | Not started | Stays a table on purpose — real per-instance data (corpus, sync status, last synced, sync history), not a fixed kind catalog. |
+| Connectors (OAuth apps) | `/orgs/:id/connectors` | Done | Moved out of a 480px modal onto the page as `pv-list`; kind list narrowed 20 → 4 (only the knowledge_sync-capable ones: gdrive/sharepoint/onedrive/confluence — the other 16 are agent_action-only, self-service-connected from Workspace, had no business here). Monochrome icons (no brand tint), matching seshat-ui's version. Nav location moved from under Knowledge to its own Integrations-group item 2026-09-03 (see Foundation section above). |
+| Connectors (connected sources table) | same route | Not started | Stays a table on purpose — real per-instance data (corpus, sync status, last synced, sync history), not a fixed kind catalog. |
 | AI Config → Provider Settings | `/orgs/:id/ai/provider-settings` | Done | Same `pv-list`/`pv-card` grid chrome. Kept the existing colored `ProviderIcon` set (OpenAI green, Anthropic orange, ...) rather than flattening to monochrome — deliberate exception, those are an already-considered brand-icon set, unlike the connector glyphs the pv-* pattern was built around. Expand-for-details (default model/base URL) preserved via `.pv-card.expanded { grid-column: 1 / -1 }`. |
 | Workspace → Connections (self-service, per-employee) | `/orgs/:id/workspace/connections` | Done (own pattern) | NOT the pv-* pattern — this one already has its own `wsc-*` card grid (2026-09-03, pre-dates this doc), grouped by category, WITH colored brand icons (deliberately kept, per-service recognizability matters more here than in an admin catalog). |
 | Team & Access (memberships/teams/invitations/roles/policies) | `/orgs/:id/team/*` | Not started | Currently `ConsoleTable`-based (per the screenshot that kicked off this conversation). Real per-instance data (a member row, a team row) — likely stays a table, not a candidate for pv-*, but worth a density/light-mode pass. |

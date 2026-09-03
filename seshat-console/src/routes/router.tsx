@@ -63,7 +63,7 @@ const ChatSessionsPage = lazyPage(() => import('@/pages/chatSessions/ChatSession
 const CorporaPage = lazyPage(() => import('@/pages/knowledge/CorporaPage').then((module) => ({ default: module.CorporaPage })))
 const CorpusDetailPage = lazyPage(() => import('@/pages/knowledge/CorpusDetailPage').then((module) => ({ default: module.CorpusDetailPage })))
 const EmbedderSettingsPage = lazyPage(() => import('@/pages/knowledge/EmbedderSettingsPage').then((module) => ({ default: module.EmbedderSettingsPage })))
-const ConnectorsPage = lazyPage(() => import('@/pages/knowledge/ConnectorsPage').then((module) => ({ default: module.ConnectorsPage })))
+const ConnectorsPage = lazyPage(() => import('@/pages/connectors/ConnectorsPage').then((module) => ({ default: module.ConnectorsPage })))
 const SweepsPage = lazyPage(() => import('@/pages/prospecting/SweepsPage').then((module) => ({ default: module.SweepsPage })))
 const ProspectingSettingsPage = lazyPage(() =>
   import('@/pages/prospecting/ProspectingSettingsPage').then((module) => ({ default: module.ProspectingSettingsPage })),
@@ -151,7 +151,7 @@ export const router = createBrowserRouter([
                   { path: 'ai/provider-settings', element: renderLazyPage(ProviderSettingsPage) },
                   { path: 'ai/embedder', element: renderLazyPage(EmbedderSettingsPage) },
                   { path: 'ai/web-search', element: renderLazyPage(WebSearchSettingsPage) },
-                  { path: 'ai/mcp-servers', element: renderLazyPage(MCPServersPage) },
+                  { path: 'mcp-servers', element: renderLazyPage(MCPServersPage) },
                   { path: 'preferences', element: renderLazyPage(OrganizationPreferencesPage) },
                   { path: 'catalog/agent-presets', element: renderLazyPage(AgentPresetsPage) },
                   { path: 'catalog/skill-repos', element: renderLazyPage(SkillReposPage) },
@@ -163,7 +163,7 @@ export const router = createBrowserRouter([
                   { path: 'automation/runs', element: renderLazyPage(RunsPage) },
                   { path: 'knowledge/corpora', element: renderLazyPage(CorporaPage) },
                   { path: 'knowledge/corpora/:corpusId', element: renderLazyPage(CorpusDetailPage) },
-                  { path: 'knowledge/connectors', element: renderLazyPage(ConnectorsPage) },
+                  { path: 'connectors', element: renderLazyPage(ConnectorsPage) },
                   { path: 'integrations/applications', element: renderLazyPage(ApplicationsPage) },
                   { path: 'integrations/providers', element: renderLazyPage(ProvidersPage) },
                   { path: 'integrations/scim', element: renderLazyPage(ScimSettingsPage) },
