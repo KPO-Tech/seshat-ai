@@ -123,7 +123,7 @@ export function DashboardPage() {
                       fontFamily: monoStack,
                       fontSize: 11.5,
                       margin: 0,
-                      background: 'rgba(255, 255, 255, 0.04)',
+                      background: 'rgba(30, 28, 26, 0.04)',
                       border: `1px solid ${palette.borderSubtle}`,
                       color: palette.inkSecondary,
                       borderRadius: 6,

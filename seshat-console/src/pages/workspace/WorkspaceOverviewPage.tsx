@@ -111,9 +111,9 @@ export function WorkspaceOverviewPage() {
                 width: 44,
                 height: 44,
                 borderRadius: 10,
-                background: 'rgba(59, 130, 246, 0.12)',
-                border: '1px solid rgba(59, 130, 246, 0.28)',
-                color: '#60A5FA',
+                background: palette.infoSoft,
+                border: `1px solid ${palette.info}44`,
+                color: palette.info,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -130,7 +130,7 @@ export function WorkspaceOverviewPage() {
               <div style={{ fontSize: 13, color: palette.inkSecondary, lineHeight: 1.5, marginBottom: 14 }}>
                 Manage personal OAuth tokens and third-party tool authorisations.
               </div>
-              <Button type="link" style={{ padding: 0, color: '#60A5FA', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <Button type="link" style={{ padding: 0, color: palette.info, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 View Connections <ArrowRightOutlined style={{ fontSize: 11 }} />
               </Button>
             </div>

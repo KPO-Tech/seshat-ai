@@ -76,7 +76,7 @@ function CodeBlock({ children, className }: { children?: React.ReactNode; classN
       style={{
         margin: '16px 0',
         borderRadius: 10,
-        background: '#141318',
+        background: palette.surfaceElevated,
         border: `1px solid ${palette.border}`,
         overflow: 'hidden',
       }}
@@ -87,7 +87,7 @@ function CodeBlock({ children, className }: { children?: React.ReactNode; classN
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '6px 14px',
-          background: '#18171e',
+          background: palette.surface,
           borderBottom: `1px solid ${palette.borderSubtle}`,
           fontSize: 12,
           color: palette.inkTertiary,
@@ -119,7 +119,7 @@ function CodeBlock({ children, className }: { children?: React.ReactNode; classN
         </Tooltip>
       </div>
       <div style={{ padding: '14px 16px', overflowX: 'auto' }}>
-        <code style={{ background: 'transparent', border: 'none', padding: 0, color: '#e8e2d8' }} className={className}>
+        <code style={{ background: 'transparent', border: 'none', padding: 0, color: palette.ink }} className={className}>
           {children}
         </code>
       </div>
@@ -197,7 +197,7 @@ export const WorkspaceChatMessage = memo(function WorkspaceChatMessage({ message
               width: 22,
               height: 22,
               borderRadius: 6,
-              background: isUser ? 'rgba(255, 255, 255, 0.08)' : palette.accentSoft,
+              background: isUser ? 'rgba(30, 28, 26, 0.06)' : palette.accentSoft,
               color: isUser ? palette.inkSecondary : palette.accentHover,
               fontSize: 12,
             }}

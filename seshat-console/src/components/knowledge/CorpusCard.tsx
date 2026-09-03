@@ -26,7 +26,7 @@ export function CorpusCard({ corpus }: { corpus: Corpus }) {
           style={{
             padding: 8,
             borderRadius: 12,
-            background: 'rgba(255, 255, 255, 0.02)',
+            background: 'rgba(30, 28, 26, 0.02)',
             border: `1px solid ${palette.borderSubtle}`,
             display: 'inline-flex',
           }}
@@ -42,7 +42,7 @@ export function CorpusCard({ corpus }: { corpus: Corpus }) {
               display: 'inline-block',
               padding: '2px 8px',
               borderRadius: 6,
-              background: 'rgba(255, 255, 255, 0.04)',
+              background: 'rgba(30, 28, 26, 0.04)',
               border: `1px solid ${palette.borderSubtle}`,
               fontSize: 11.5,
               color: palette.inkSecondary,

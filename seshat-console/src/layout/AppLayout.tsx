@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Avatar, Button, Dropdown, Layout, Menu, Space, Typography } from 'antd'
-import { ArrowLeftOutlined, LogoutOutlined, UserOutlined } from '@ant-design/icons'
+import { HomeOutlined, LogoutOutlined, UserOutlined } from '@ant-design/icons'
 import { Outlet, matchPath, useLocation, useNavigate } from 'react-router'
 import { useOrganizationsList } from '@/api/organizations'
 import { useLogout, useOrgMode } from '@/api/auth'
@@ -161,7 +161,7 @@ export function AppLayout() {
   return (
     <Layout className="console-shell" style={{ height: '100vh', overflow: 'hidden', background: palette.canvas }}>
       <Sider
-        theme="dark"
+        theme="light"
         width={244}
         style={{
           height: '100vh',
@@ -177,7 +177,7 @@ export function AppLayout() {
         <div
           className="console-brand"
           style={{
-            padding: '0 18px',
+            padding: '0 14px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -185,21 +185,20 @@ export function AppLayout() {
             height: 56,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
             <div
               className="console-brand__mark"
               style={{
-                width: 34,
-                height: 34,
-                borderRadius: 8,
-                background: 'linear-gradient(135deg, #FF8F3D 0%, #EF7C2F 100%)',
-                boxShadow: '0 2px 8px rgba(239, 124, 47, 0.35)',
+                width: 26,
+                height: 26,
+                borderRadius: 7,
+                background: palette.accent,
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: 800,
-                color: '#131217',
+                color: '#1E1C1A',
                 flexShrink: 0,
               }}
             >
@@ -211,36 +210,36 @@ export function AppLayout() {
               </div>
             </div>
           </div>
-        </div>
 
-        {isAdmin && inOrganizationRoute && (
-          <div style={{ padding: '4px 14px 8px' }}>
+          {/* A regular organization member/admin has nowhere else to go -
+              their one organization is the whole console for them. Only a
+              platform superadmin, who can be looking at any organization,
+              gets this escape hatch back to the platform level. */}
+          {isAdmin && inOrganizationRoute && (
             <Button
               type="text"
-              size="small"
-              icon={<ArrowLeftOutlined style={{ fontSize: 11 }} />}
+              icon={<HomeOutlined style={{ fontSize: 14 }} />}
               // Single mode has no organizations list to go back to (only
               // one org ever exists) - go to the platform overview instead,
               // the only other platform-level page still relevant.
               onClick={() => navigate(orgMode === 'single' ? '/platform/overview' : '/platform/organizations')}
+              title={orgMode === 'single' ? 'Back to Platform' : 'Back to Organizations'}
+              aria-label={orgMode === 'single' ? 'Back to Platform' : 'Back to Organizations'}
               style={{
+                width: 28,
+                height: 28,
+                minWidth: 28,
+                padding: 0,
                 color: palette.inkSecondary,
-                fontSize: 12,
-                paddingInline: 8,
-                width: '100%',
-                justifyContent: 'flex-start',
-                borderRadius: 6,
-                background: 'rgba(255, 255, 255, 0.03)',
+                flexShrink: 0,
               }}
-            >
-              {orgMode === 'single' ? 'Back to Platform' : 'Back to Organizations'}
-            </Button>
-          </div>
-        )}
+            />
+          )}
+        </div>
 
         <div style={{ flex: 1, paddingBottom: 16 }}>
           <Menu
-            theme="dark"
+            theme="light"
             mode="inline"
             selectedKeys={activePrimary ? [activePrimary.key] : []}
             items={menuItems}
@@ -354,7 +353,7 @@ export function AppLayout() {
                   flexShrink: 0,
                   padding: '4px 10px',
                   borderRadius: 8,
-                  background: 'rgba(255, 255, 255, 0.03)',
+                  background: 'rgba(30, 28, 26, 0.03)',
                   border: `1px solid ${palette.borderSubtle}`,
                   transition: 'background 0.15s ease',
                 }}

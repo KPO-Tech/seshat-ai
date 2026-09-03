@@ -67,7 +67,7 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
                 justifyContent: 'center',
                 fontSize: 18,
                 fontWeight: 800,
-                color: '#131217',
+                color: '#1E1C1A',
               }}
             >
               S
@@ -142,7 +142,7 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
             border: `1px solid ${palette.border}`,
             borderRadius: 16,
             padding: '36px 36px 32px',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.45)',
+            boxShadow: '0 8px 32px rgba(30, 28, 26, 0.1)',
           }}
         >
           {children}
