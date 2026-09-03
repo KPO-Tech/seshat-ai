@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Input, Select, Space, Tooltip, Typography } from 'antd'
-import { ArrowDownOutlined, DownOutlined, PlusOutlined, SendOutlined } from '@ant-design/icons'
+import { ArrowDownOutlined, PlusOutlined, SendOutlined } from '@ant-design/icons'
 import { useAgentPresetsList } from '@/api/agentPresets'
 import { useUsableProviderSettingsList } from '@/api/providerSettings'
 import { ProviderIcon } from '@/components/ProviderIcon'
@@ -478,30 +478,36 @@ export function WorkspaceChatPage() {
       })
   }
 
+  // This page's real job is pre-rollout validation, not day-to-day
+  // productivity - an admin uses it to confirm a provider/MCP server/
+  // connector/corpus is actually reachable before an employee ever sees it
+  // via seshat-desktop. Starters reflect that: one per thing that can be
+  // misconfigured (Providers, MCP Servers, Connectors, Knowledge), each
+  // prompt phrased so the model's own reply is the pass/fail signal.
   const STARTER_PROMPTS = [
     {
-      icon: '🔍',
-      label: 'Search Knowledge Base',
-      sub: 'Query internal documents and corpora',
-      prompt: 'Search the knowledge base for recent documents and give me a summary.',
+      icon: '🔌',
+      label: 'Test this provider',
+      sub: 'Confirm the selected LLM responds',
+      prompt: 'Reply with a short hello and tell me exactly which model you are, to confirm this provider is wired up correctly.',
     },
     {
-      icon: '⚡',
-      label: 'Check Automation Status',
-      sub: 'Overview of recent runs and jobs',
-      prompt: 'What is the current status of recent automation runs and device workers?',
+      icon: '🛠️',
+      label: 'Test MCP servers',
+      sub: 'Confirm registered MCP tools are reachable',
+      prompt: 'List every tool and MCP server currently available to you, then call one of them to confirm it actually works end-to-end.',
     },
     {
-      icon: '📊',
-      label: 'Summarize Recent Activity',
-      sub: 'Audit events and platform actions',
-      prompt: 'Provide a high-level summary of the latest audit and configuration events.',
+      icon: '🔗',
+      label: 'Test a connector',
+      sub: 'Confirm an OAuth-connected account works',
+      prompt: 'Run a web search for today\'s date and summarize one result, to confirm the web search connector is working.',
     },
     {
-      icon: '🛡️',
-      label: 'Review Access & Roles',
-      sub: 'Organization permissions and memberships',
-      prompt: 'Explain the configured roles and active policies in this organization.',
+      icon: '📚',
+      label: 'Test knowledge search',
+      sub: 'Confirm RAG retrieval from a corpus',
+      prompt: 'Search the knowledge base for anything indexed and quote a short snippet back to me, to confirm RAG retrieval is working.',
     },
   ]
 
@@ -513,10 +519,7 @@ export function WorkspaceChatPage() {
     <div className="workspace-chat-page">
       <div className="workspace-chat-page__inner">
         <div className="workspace-chat-topbar">
-          <button className="workspace-chat-title" type="button">
-            <span>{currentTitle}</span>
-            <DownOutlined />
-          </button>
+          <span className="workspace-chat-title">{currentTitle}</span>
 
           <Space size={10} wrap>
             {agentOptions.length > 0 ? (
@@ -530,15 +533,17 @@ export function WorkspaceChatPage() {
                 popupMatchSelectWidth={false}
               />
             ) : null}
-            <Button
-              type="default"
-              icon={<PlusOutlined />}
-              onClick={handleReset}
-              className="workspace-chat-topbar__action"
-              style={{ borderRadius: 8 }}
-            >
-              New chat
-            </Button>
+            {hasMessages ? (
+              <Button
+                type="text"
+                size="small"
+                icon={<PlusOutlined />}
+                onClick={handleReset}
+                className="workspace-chat-topbar__action"
+              >
+                New chat
+              </Button>
+            ) : null}
           </Space>
         </div>
 
@@ -562,7 +567,7 @@ export function WorkspaceChatPage() {
                 How can I help you today?
               </Typography.Title>
               <Typography.Text className="workspace-chat-empty__copy">
-                Search organization knowledge, run automated workflows, or query tools in real time.
+                Validate a provider, MCP server, connector or knowledge corpus here before your team uses it in Seshat Desktop.
               </Typography.Text>
 
               <div className="workspace-prompt-chips">
@@ -602,7 +607,7 @@ export function WorkspaceChatPage() {
           <div className="workspace-chat-composer">
             <Input.TextArea
               value={draftPrompt}
-              autoSize={{ minRows: 2, maxRows: 8 }}
+              autoSize={{ minRows: 1, maxRows: 8 }}
               variant="borderless"
               placeholder="Ask anything or request an action..."
               className="workspace-chat-composer__input"
@@ -618,7 +623,7 @@ export function WorkspaceChatPage() {
 
             <div className="workspace-chat-composer__toolbar">
               <div className="workspace-chat-composer__tools">
-                <Tooltip title="Attach files">
+                <Tooltip title="Attach files (coming soon)">
                   <Button
                     type="text"
                     icon={<PlusOutlined />}
@@ -626,9 +631,6 @@ export function WorkspaceChatPage() {
                     aria-label="Attach files"
                   />
                 </Tooltip>
-                <div className="workspace-chat-composer__hint">
-                  Press <kbd>Enter</kbd> to send
-                </div>
               </div>
 
               <div className="workspace-chat-composer__selectors">
@@ -643,6 +645,8 @@ export function WorkspaceChatPage() {
                   className="workspace-chat-select workspace-chat-select--composer workspace-chat-select--provider"
                   popupMatchSelectWidth={false}
                   disabled={isGenerating}
+                  variant="borderless"
+                  size="small"
                 />
                 <Select
                   value={selectedModelId ?? undefined}
@@ -668,6 +672,8 @@ export function WorkspaceChatPage() {
                   popupMatchSelectWidth={280}
                   className="workspace-chat-select workspace-chat-select--composer"
                   disabled={modelOptions.length === 0 || isGenerating}
+                  variant="borderless"
+                  size="small"
                 />
 
                 <Tooltip title={isGenerating ? 'Generating…' : 'Send message'}>

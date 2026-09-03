@@ -1233,29 +1233,10 @@ body {
 }
 
 .workspace-chat-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  border: 1px solid rgba(30, 28, 26, 0.08);
-  border-radius: 8px;
-  background: #FFFFFF;
   color: #1E1C1A;
   font-size: 14px;
   font-weight: 600;
   letter-spacing: -0.01em;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.workspace-chat-title:hover {
-  background: #F3EEE8;
-  border-color: rgba(239, 124, 47, 0.3);
-}
-
-.workspace-chat-title .anticon {
-  color: #938C84;
-  font-size: 12px;
 }
 
 .workspace-chat-topbar__action {
@@ -1266,11 +1247,18 @@ body {
   flex: 1;
   width: 100%;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
-/* Modern Chat Empty State */
+/* Modern Chat Empty State - fills the real space between the topbar and
+   the composer (not a fixed 48vh guess) so the welcome content centers in
+   whatever room is actually available and the composer sits right after
+   it, instead of leaving a dead gap below the prompt cards. */
 .workspace-chat-empty {
-  min-height: 48vh;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1446,9 +1434,9 @@ body {
 .workspace-chat-composer {
   background: #FFFFFF;
   border: 1px solid #DDD5CC;
-  border-radius: 18px;
-  padding: 14px 16px 12px;
-  box-shadow: 0 16px 40px rgba(30, 28, 26, 0.10);
+  border-radius: 20px;
+  padding: 12px 14px 8px;
+  box-shadow: 0 12px 32px rgba(30, 28, 26, 0.08);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -1471,13 +1459,12 @@ body {
 }
 
 .workspace-chat-composer__toolbar {
-  margin-top: 12px;
+  margin-top: 6px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  border-top: 1px solid rgba(30, 28, 26, 0.04);
-  padding-top: 10px;
+  padding-top: 6px;
 }
 
 .workspace-chat-composer__tools {
@@ -1488,12 +1475,12 @@ body {
 }
 
 .workspace-chat-composer__attach {
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  color: #746F69;
-  background: rgba(30, 28, 26, 0.05);
-  border: 1px solid rgba(30, 28, 26, 0.08);
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  color: #938C84;
+  background: transparent;
+  border: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1502,23 +1489,7 @@ body {
 
 .workspace-chat-composer__attach:hover {
   color: #D9691E !important;
-  background: rgba(239, 124, 47, 0.1) !important;
-  border-color: rgba(239, 124, 47, 0.24) !important;
-}
-
-.workspace-chat-composer__hint {
-  font-size: 11.5px;
-  color: #938C84;
-  white-space: nowrap;
-}
-
-.workspace-chat-composer__hint kbd {
-  background: rgba(30, 28, 26, 0.06);
-  padding: 2px 5px;
-  border-radius: 4px;
-  font-family: inherit;
-  font-size: 11px;
-  color: #746F69;
+  background: rgba(239, 124, 47, 0.08) !important;
 }
 
 .workspace-chat-composer__selectors {
@@ -1538,13 +1509,13 @@ body {
 }
 
 .workspace-chat-select--composer {
-  width: 94px;
-  min-width: 94px;
+  width: 84px;
+  min-width: 84px;
 }
 
 .workspace-chat-select--provider {
-  width: 112px;
-  min-width: 112px;
+  width: 100px;
+  min-width: 100px;
 }
 
 .workspace-chat-select .ant-select-selector {
@@ -1557,6 +1528,12 @@ body {
 
 .workspace-chat-select--top .ant-select-selector {
   min-height: 36px !important;
+}
+
+.workspace-chat-select--composer.ant-select-borderless:hover,
+.workspace-chat-select--provider.ant-select-borderless:hover {
+  background: rgba(30, 28, 26, 0.05) !important;
+  border-radius: 7px !important;
 }
 
 .workspace-chat-select--composer .ant-select-selector {
