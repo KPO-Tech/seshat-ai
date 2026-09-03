@@ -1,13 +1,26 @@
 import { useState } from 'react'
 import { Alert, Button, Card, Input, Popconfirm, Space, Tag, Typography, message } from 'antd'
-import { DeleteOutlined, GoogleOutlined, WindowsOutlined, SlackOutlined, MailOutlined, TeamOutlined, BookOutlined, FileTextOutlined, DollarOutlined } from '@ant-design/icons'
+import { DeleteOutlined, GoogleOutlined, WindowsOutlined, SlackOutlined, MailOutlined, TeamOutlined, BookOutlined, FileTextOutlined, DollarOutlined, TableOutlined, CalendarOutlined, ProjectOutlined } from '@ant-design/icons'
 import { useMyConnectorAccountsList, useDeleteMyConnectorAccount } from '@/api/myConnections'
 import { useBeginConnectorOAuth, useCreateStaticAgentAccount, type ConnectorAccount, type OAuthConnectorKind, type StaticConnectorKind } from '@/api/connectors'
 import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
 import { useWorkspaceOrganizationStore } from '@/store/workspaceOrganization'
 
-const OAUTH_CONNECTOR_KINDS: OAuthConnectorKind[] = ['gdrive', 'sharepoint', 'onedrive', 'confluence', 'slack', 'outlook', 'teams', 'gmail', 'notion']
+const OAUTH_CONNECTOR_KINDS: OAuthConnectorKind[] = [
+  'gdrive',
+  'sharepoint',
+  'onedrive',
+  'confluence',
+  'slack',
+  'outlook',
+  'teams',
+  'gmail',
+  'notion',
+  'gsheets',
+  'gcalendar',
+  'jira',
+]
 
 const KIND_META: Record<OAuthConnectorKind, { label: string; icon: React.ReactNode }> = {
   gdrive: { label: 'Google Drive', icon: <GoogleOutlined /> },
@@ -18,9 +31,13 @@ const KIND_META: Record<OAuthConnectorKind, { label: string; icon: React.ReactNo
   outlook: { label: 'Outlook', icon: <MailOutlined /> },
   teams: { label: 'Microsoft Teams', icon: <TeamOutlined /> },
   gmail: { label: 'Gmail', icon: <GoogleOutlined /> },
-  // No Notion-branded glyph in @ant-design/icons - a plain document icon
-  // stands in as a placeholder until one is worth adding as a custom asset.
+  // No Notion/Sheets/Calendar/Jira-branded glyph in @ant-design/icons - a
+  // semantically-close generic icon stands in as a placeholder until one is
+  // worth adding as a custom asset, same call made for Notion.
   notion: { label: 'Notion', icon: <FileTextOutlined /> },
+  gsheets: { label: 'Google Sheets', icon: <TableOutlined /> },
+  gcalendar: { label: 'Google Calendar', icon: <CalendarOutlined /> },
+  jira: { label: 'Jira', icon: <ProjectOutlined /> },
 }
 
 // STATIC_CONNECTOR_KINDS lists every kind that authenticates with a single

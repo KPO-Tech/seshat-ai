@@ -164,6 +164,9 @@ func New(cfg serverconfig.Config) (*App, error) {
 	nodeRegistry.Register("teams_send_message", automation.NewTeamsSendNode(connectorsService))
 	nodeRegistry.Register("notion_create_page", automation.NewNotionCreatePageNode(connectorsService))
 	nodeRegistry.Register("stripe_create_customer", automation.NewStripeCreateCustomerNode(connectorsService))
+	nodeRegistry.Register("gsheets_append_row", automation.NewGSheetsAppendRowNode(connectorsService))
+	nodeRegistry.Register("gcalendar_create_event", automation.NewGCalendarCreateEventNode(connectorsService))
+	nodeRegistry.Register("jira_create_issue", automation.NewJiraCreateIssueNode(connectorsService))
 
 	mcpRegistryService := mcpregistry.New(database, iamService)
 	hookRegistryService := hookregistry.New(database, iamService)

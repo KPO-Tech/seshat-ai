@@ -16,7 +16,19 @@ const SYNC_JOBS_KEY = 'connector-sync-jobs'
 const OAUTH_APPS_KEY = 'connector-oauth-apps'
 const MY_ACCOUNTS_KEY = 'my-connector-accounts'
 
-export type OAuthConnectorKind = 'gdrive' | 'sharepoint' | 'onedrive' | 'confluence' | 'slack' | 'outlook' | 'teams' | 'gmail' | 'notion'
+export type OAuthConnectorKind =
+  | 'gdrive'
+  | 'sharepoint'
+  | 'onedrive'
+  | 'confluence'
+  | 'slack'
+  | 'outlook'
+  | 'teams'
+  | 'gmail'
+  | 'notion'
+  | 'gsheets'
+  | 'gcalendar'
+  | 'jira'
 
 // StaticConnectorKind lists every kind that authenticates with a single
 // static secret instead of an OAuth2 flow - see connectors.Service's

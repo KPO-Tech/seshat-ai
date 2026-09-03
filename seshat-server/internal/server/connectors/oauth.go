@@ -36,6 +36,9 @@ var oauthConnectorKinds = map[string]bool{
 	string(teamsKind):      true,
 	string(gmailKind):      true,
 	string(notionKind):     true,
+	string(gsheetsKind):    true,
+	string(gcalendarKind):  true,
+	string(jiraKind):       true,
 }
 
 // agentActionOnlyKinds are OAuth connector kinds with no Discover/Sync -
@@ -43,17 +46,20 @@ var oauthConnectorKinds = map[string]bool{
 // connect, never an admin-run knowledge_sync source. Checked in
 // BeginConnectorOAuth.
 var agentActionOnlyKinds = map[string]bool{
-	string(slackKind):   true,
-	string(outlookKind): true,
-	string(teamsKind):   true,
-	string(gmailKind):   true,
-	string(notionKind):  true,
+	string(slackKind):     true,
+	string(outlookKind):   true,
+	string(teamsKind):     true,
+	string(gmailKind):     true,
+	string(notionKind):    true,
+	string(gsheetsKind):   true,
+	string(gcalendarKind): true,
+	string(jiraKind):      true,
 }
 
 func validateOAuthKind(kind string) (string, error) {
 	kind = strings.ToLower(strings.TrimSpace(kind))
 	if !oauthConnectorKinds[kind] {
-		return "", ErrInvalidInput(fmt.Sprintf("unsupported oauth connector kind %q (must be one of \"gdrive\", \"sharepoint\", \"onedrive\", \"confluence\", \"slack\", \"outlook\", \"teams\", \"gmail\", \"notion\")", kind))
+		return "", ErrInvalidInput(fmt.Sprintf("unsupported oauth connector kind %q (must be one of \"gdrive\", \"sharepoint\", \"onedrive\", \"confluence\", \"slack\", \"outlook\", \"teams\", \"gmail\", \"notion\", \"gsheets\", \"gcalendar\", \"jira\")", kind))
 	}
 	return kind, nil
 }
@@ -315,13 +321,13 @@ func (s *Service) BeginConnectorOAuth(ctx context.Context, principal *iam.Princi
 	}
 
 	authOpts := []oauth2.AuthCodeOption{oauth2.S256ChallengeOption(verifier)}
-	if kind == string(gdriveKind) {
+	if kind == string(gdriveKind) || kind == string(gsheetsKind) || kind == string(gcalendarKind) {
 		// Google only issues a refresh token on the first consent unless
 		// these are set - without them a reconnect after a revoked/expired
 		// refresh token silently gets no new one.
 		authOpts = append(authOpts, oauth2.AccessTypeOffline, oauth2.SetAuthURLParam("prompt", "consent"))
 	}
-	if kind == string(confluenceKind) {
+	if kind == string(confluenceKind) || kind == string(jiraKind) {
 		// Atlassian's authorize endpoint requires an explicit audience and,
 		// like Google, only issues a refresh token when prompt=consent is
 		// set - verified live against Atlassian's OAuth 2.0 (3LO) docs.
@@ -534,7 +540,7 @@ func (s *Service) connectorOAuthRedirectURL(kind string) string {
 
 func connectorOAuthEndpoint(kind string) oauth2.Endpoint {
 	switch kind {
-	case string(gdriveKind), string(gmailKind):
+	case string(gdriveKind), string(gmailKind), string(gsheetsKind), string(gcalendarKind):
 		return google.Endpoint
 	case string(sharepointKind), string(onedriveKind), string(outlookKind), string(teamsKind):
 		// "organizations" tenant - any work/school (Entra ID) account across
@@ -554,7 +560,7 @@ func connectorOAuthEndpoint(kind string) oauth2.Endpoint {
 			AuthURL:  "https://slack.com/oauth/v2_user/authorize",
 			TokenURL: "https://slack.com/api/oauth.v2.user.access",
 		}
-	case string(confluenceKind):
+	case string(confluenceKind), string(jiraKind):
 		return oauth2.Endpoint{
 			AuthURL:  "https://auth.atlassian.com/authorize",
 			TokenURL: "https://auth.atlassian.com/oauth/token",
@@ -589,6 +595,12 @@ func connectorOAuthScopes(kind string) []string {
 		return gmailScopes
 	case string(notionKind):
 		return notionScopes
+	case string(gsheetsKind):
+		return gsheetsScopes
+	case string(gcalendarKind):
+		return gcalendarScopes
+	case string(jiraKind):
+		return jiraScopes
 	default:
 		return nil
 	}
@@ -599,13 +611,13 @@ func connectorOAuthScopes(kind string) []string {
 // for Microsoft (its work/school tenant equivalent of an email address).
 func fetchConnectorIdentity(ctx context.Context, kind string, cfg *oauth2.Config, token *oauth2.Token) (string, error) {
 	switch kind {
-	case string(gdriveKind), string(gmailKind):
+	case string(gdriveKind), string(gmailKind), string(gsheetsKind), string(gcalendarKind):
 		return fetchGoogleAccountEmail(ctx, cfg, token)
 	case string(sharepointKind), string(onedriveKind), string(outlookKind), string(teamsKind):
 		return fetchMicrosoftAccountUPN(ctx, cfg, token)
 	case string(slackKind):
 		return fetchSlackTeamAndUserID(ctx, cfg, token)
-	case string(confluenceKind):
+	case string(confluenceKind), string(jiraKind):
 		return fetchAtlassianAccountEmail(ctx, cfg, token)
 	case string(notionKind):
 		return fetchNotionIdentity(ctx, cfg, token)
