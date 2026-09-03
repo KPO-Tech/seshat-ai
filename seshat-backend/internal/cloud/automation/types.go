@@ -90,20 +90,37 @@ type registerDeviceResult struct {
 // Run mirrors seshat-server's Run schema — tracking fields only, never the
 // execution payload (see RunJob).
 type Run struct {
-	ID               string `json:"id"`
-	JobID            string `json:"job_id"`
-	OrganizationID   string `json:"organization_id,omitempty"`
-	ExecutionTarget  string `json:"execution_target,omitempty"`
-	AssignedDeviceID string `json:"assigned_device_id,omitempty"`
-	Status           string `json:"status"`
-	QueuedAt         string `json:"queued_at,omitempty"`
-	ClaimedAt        string `json:"claimed_at,omitempty"`
-	StartedAt        string `json:"started_at,omitempty"`
-	LastHeartbeatAt  string `json:"last_heartbeat_at,omitempty"`
-	FinishedAt       string `json:"finished_at,omitempty"`
-	ExitReason       string `json:"exit_reason,omitempty"`
-	OutputText       string `json:"output_text,omitempty"`
-	ErrorText        string `json:"error_text,omitempty"`
+	ID               string           `json:"id"`
+	JobID            string           `json:"job_id"`
+	OrganizationID   string           `json:"organization_id,omitempty"`
+	ExecutionTarget  string           `json:"execution_target,omitempty"`
+	AssignedDeviceID string           `json:"assigned_device_id,omitempty"`
+	Status           string           `json:"status"`
+	QueuedAt         string           `json:"queued_at,omitempty"`
+	ClaimedAt        string           `json:"claimed_at,omitempty"`
+	StartedAt        string           `json:"started_at,omitempty"`
+	LastHeartbeatAt  string           `json:"last_heartbeat_at,omitempty"`
+	FinishedAt       string           `json:"finished_at,omitempty"`
+	ExitReason       string           `json:"exit_reason,omitempty"`
+	OutputText       string           `json:"output_text,omitempty"`
+	ErrorText        string           `json:"error_text,omitempty"`
+	NodeTrace        []NodeTraceEntry `json:"node_trace,omitempty"`
+}
+
+// NodeTraceEntry mirrors seshat-server's automation.NodeTraceEntry (via
+// sdb.NodeTraceEntry) - one node's recorded outcome within a Run.NodeTrace.
+// Plain passthrough, nothing here interprets it beyond decoding/re-encoding
+// JSON.
+type NodeTraceEntry struct {
+	ID         string           `json:"id"`
+	Type       string           `json:"type"`
+	Success    bool             `json:"success"`
+	Skipped    bool             `json:"skipped,omitempty"`
+	Error      string           `json:"error,omitempty"`
+	Output     []map[string]any `json:"output,omitempty"`
+	StartedAt  string           `json:"started_at,omitempty"`
+	EndedAt    string           `json:"ended_at,omitempty"`
+	DurationMS int64            `json:"duration_ms,omitempty"`
 }
 
 // Job mirrors seshat-server's Job schema (automation.Job / openapi Job).
