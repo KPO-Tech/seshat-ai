@@ -350,8 +350,14 @@ export const ADMIN_CSS = `
 .adm-status-badge { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
 .adm-ok { background: rgba(111,183,123,0.12); color: var(--color-success); }
 .adm-fail { background: rgba(201,107,92,0.1); color: var(--color-error); }
+.adm-warn { background: rgba(214,161,95,0.12); color: var(--color-warning); }
 .adm-inactive { background: var(--color-surface); color: var(--color-text-muted); }
 .adm-neutral { background: var(--color-surface); color: var(--color-text-muted); }
+
+.adm-filter-tabs { display: flex; align-items: center; gap: 4px; }
+.adm-filter-tab { background: transparent; border: 1px solid transparent; color: var(--color-text-muted); font-size: 11px; font-weight: 650; padding: 5px 10px; border-radius: 6px; cursor: pointer; }
+.adm-filter-tab:hover { background: var(--color-hover); color: var(--color-text); }
+.adm-filter-tab.active { background: var(--color-primary-subtle); color: var(--color-cta); }
 
 .adm-pagination { display: flex; align-items: center; justify-content: center; gap: 11px; padding: 8px 0; }
 .adm-page-btn { background: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-text); padding: 4px 8px; border-radius: 5px; cursor: pointer; display: flex; align-items: center; }

@@ -13,6 +13,7 @@ import {
   Peoples,
   PlugOne,
   Robot,
+  SendEmail,
   Shield,
   Tool,
   User,
@@ -41,11 +42,13 @@ import {
 import { SETTINGS_SHARED_CSS } from '@/pages/settings/SettingsNav'
 import { AdminConnectorsView } from '@/pages/admin/AdminConnectorsView'
 import { AdminMCPServersView } from '@/pages/admin/AdminMCPServersView'
+import { AdminInvitationsView } from '@/pages/admin/AdminInvitationsView'
 
 type AdminTab =
   | 'overview'
   | 'users'
   | 'teams'
+  | 'invitations'
   | 'audit'
   | 'desktopPolicies'
   | 'quotas'
@@ -73,6 +76,7 @@ const ADMIN_GROUPS: Array<{ title: string; items: AdminItem[] }> = [
       { id: 'overview', label: 'Overview', icon: <Shield size={15} /> },
       { id: 'users', label: 'Users', icon: <User size={15} /> },
       { id: 'teams', label: 'Teams', icon: <Peoples size={15} /> },
+      { id: 'invitations', label: 'Invitations', icon: <SendEmail size={15} /> },
       { id: 'audit', label: 'Audit Logs', icon: <Info size={15} /> },
       { id: 'desktopPolicies', label: 'Desktop Policies', icon: <Lock size={15} /> },
     ],
@@ -138,7 +142,11 @@ const WORKSPACE_TABS = new Set<AdminTab>(['documents', 'tools'])
 // AdminAgentPresetsView, real CRUD on the organization's shared agent
 // preset catalog (seshat-server's agentregistry.AgentPreset, the same store
 // seshat-console's AgentPresetsPage.tsx edits and this device's own Agents
-// view already reads read-only as an enrichment). Quotas is ALSO
+// view already reads read-only as an enrichment). Invitations joined for the
+// same reason as Teams: it proxies onto seshat-server's real iam.Invitation
+// store (the same one seshat-console's InvitationsPage.tsx edits) - a
+// pending/accepted/revoked/expired invite by email has no meaning without an
+// organization to invite someone into. Quotas is ALSO
 // deliberately not here, for a different reason than Audit Logs: `GET
 // /quotas` (handleQuotas, no admin check at all) always returns the
 // caller's own personal usage counters — seshat-server's own
@@ -158,6 +166,7 @@ const ORGANIZATION_TABS = new Set<AdminTab>([
   'providers',
   'websearch',
   'teams',
+  'invitations',
   'desktopPolicies',
   'agents',
   'connectors',
@@ -254,9 +263,9 @@ function OrganizationTabLocked({ onGoToSettings }: { onGoToSettings: () => void 
       <LinkCloud size={23} />
       <h2>This requires an organization server</h2>
       <p>
-        Users, teams, desktop policies, agent presets, organization-wide providers, connectors, MCP servers, and the
-        web search policy are managed by your organization's Seshat Server. Connect this machine to one in Settings →
-        Cloud Automation to see and manage them.
+        Users, teams, invitations, desktop policies, agent presets, organization-wide providers, connectors, MCP
+        servers, and the web search policy are managed by your organization's Seshat Server. Connect this machine to
+        one in Settings → Cloud Automation to see and manage them.
       </p>
       <button className="admin-org-locked-cta" onClick={onGoToSettings}>
         <LinkCloud size={11} /> Go to Cloud Automation settings
@@ -269,6 +278,7 @@ function AdminPanel({ activeTab }: { activeTab: AdminTab }) {
   if (activeTab === 'overview') return <AdminOverview />
   if (activeTab === 'users') return <AdminUsersView />
   if (activeTab === 'teams') return <AdminTeamsView />
+  if (activeTab === 'invitations') return <AdminInvitationsView />
   if (activeTab === 'audit') return <AdminAuditView />
   if (activeTab === 'desktopPolicies') return <AdminDesktopPoliciesView />
   if (activeTab === 'agents') return <AdminAgentPresetsView />

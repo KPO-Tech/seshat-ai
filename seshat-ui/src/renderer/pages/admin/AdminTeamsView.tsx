@@ -105,6 +105,15 @@ export function AdminTeamsView() {
 
 type OrgMember = { id: string; email: string; display_name: string }
 
+const DESCRIPTION_MAX_LENGTH = 200
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
 function TeamFormModal({
   team,
   onClose,
@@ -116,6 +125,11 @@ function TeamFormModal({
 }) {
   const [name, setName] = useState(team?.name ?? '')
   const [slug, setSlug] = useState(team?.slug ?? '')
+  // Slug auto-follows Name while creating a new team, until the admin edits
+  // Slug directly - same pattern as seshat-console's TeamsPage.tsx. Never
+  // active while editing an existing team, since its slug may already be
+  // referenced elsewhere.
+  const [slugTouched, setSlugTouched] = useState(Boolean(team))
   const [description, setDescription] = useState(team?.description ?? '')
   const [memberIds, setMemberIds] = useState<string[]>(team?.member_user_ids ?? [])
   const [memberSearch, setMemberSearch] = useState('')
@@ -175,7 +189,16 @@ function TeamFormModal({
         <div className="modal-content">
           <div className="modal-field" style={{ marginBottom: 20 }}>
             <label>Name</label>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => {
+                const value = e.target.value
+                setName(value)
+                if (!slugTouched) setSlug(slugify(value))
+              }}
+              autoFocus
+            />
           </div>
 
           <div className="modal-field" style={{ marginBottom: 20 }}>
@@ -184,13 +207,24 @@ function TeamFormModal({
               type="text"
               placeholder="lowercase-with-hyphens"
               value={slug}
-              onChange={(e) => setSlug(e.target.value)}
+              onChange={(e) => {
+                setSlug(e.target.value)
+                setSlugTouched(true)
+              }}
             />
           </div>
 
           <div className="modal-field" style={{ marginBottom: 20 }}>
             <label>Description <span className="modal-label-opt">(optional)</span></label>
-            <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} />
+            <textarea
+              rows={2}
+              maxLength={DESCRIPTION_MAX_LENGTH}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+            <div className="adm-muted" style={{ fontSize: 10, textAlign: 'right', marginTop: 4 }}>
+              {description.length}/{DESCRIPTION_MAX_LENGTH}
+            </div>
           </div>
 
           <div className="modal-field">

@@ -527,6 +527,24 @@ export type OrgRole = {
   system: boolean
 }
 
+// OrgInvitation is the organization-wide record backing Admin Console's
+// Invitations tab (/admin/invitations) - a promise of access by email that
+// hasn't been accepted yet, distinct from OrgMembership (someone who already
+// has access). Mirrors seshat-server's iam.Invitation; token is only ever
+// populated in the response right after creating an invitation.
+export type OrgInvitation = {
+  id: string
+  organization_id: string
+  email: string
+  role: string
+  status: 'pending' | 'accepted' | 'revoked' | 'expired'
+  token?: string
+  created_at: string
+  expires_at?: string
+  accepted_at?: string
+  revoked_at?: string
+}
+
 // DesktopPolicy is one entry from seshat-server's fixed, code-defined
 // desktop policy catalog (/admin/desktop-policies/catalog) - not
 // organization-specific data, just a reference table of what CAN be

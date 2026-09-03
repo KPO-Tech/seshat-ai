@@ -216,6 +216,8 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	apiV1.Handle("/admin/memberships", app.authMiddleware(http.HandlerFunc(app.handleAdminMemberships)))
 	apiV1.Handle("/admin/memberships/", app.authMiddleware(http.HandlerFunc(app.handleAdminMembershipDispatch)))
 	apiV1.Handle("/admin/roles", app.authMiddleware(http.HandlerFunc(app.handleAdminRoles)))
+	apiV1.Handle("/admin/invitations", app.authMiddleware(http.HandlerFunc(app.handleAdminInvitations)))
+	apiV1.Handle("/admin/invitations/", app.authMiddleware(http.HandlerFunc(app.handleAdminInvitationRevoke)))
 	apiV1.Handle("/admin/desktop-policies/catalog", app.authMiddleware(http.HandlerFunc(app.handleAdminDesktopPolicyCatalog)))
 	apiV1.Handle("/admin/desktop-policy-bindings", app.authMiddleware(http.HandlerFunc(app.handleAdminDesktopPolicyBindings)))
 	apiV1.Handle("/admin/desktop-policy-bindings/", app.authMiddleware(http.HandlerFunc(app.handleAdminDesktopPolicyBindingDispatch)))
