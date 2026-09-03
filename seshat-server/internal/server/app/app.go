@@ -162,6 +162,8 @@ func New(cfg serverconfig.Config) (*App, error) {
 	nodeRegistry.Register("gmail_send_email", automation.NewGmailSendNode(connectorsService))
 	nodeRegistry.Register("outlook_send_email", automation.NewOutlookSendNode(connectorsService))
 	nodeRegistry.Register("teams_send_message", automation.NewTeamsSendNode(connectorsService))
+	nodeRegistry.Register("notion_create_page", automation.NewNotionCreatePageNode(connectorsService))
+	nodeRegistry.Register("stripe_create_customer", automation.NewStripeCreateCustomerNode(connectorsService))
 
 	mcpRegistryService := mcpregistry.New(database, iamService)
 	hookRegistryService := hookregistry.New(database, iamService)

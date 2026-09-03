@@ -91,9 +91,9 @@ const (
 	StatusDisconnected = "disconnected"
 
 	// PurposeKnowledgeSync and PurposeAgentAction are ConnectorAccount.Purpose
-	// values - see its doc comment (db/models.go). Every account created
-	// anywhere in this package today is PurposeKnowledgeSync; nothing yet
-	// creates a PurposeAgentAction row (schema prepared, not wired up).
+	// values - see its doc comment (db/models.go). agentActionOnlyKinds
+	// (oauth.go) and staticAgentActionKinds (static_agent_account.go) list
+	// every kind that creates PurposeAgentAction rows today.
 	PurposeKnowledgeSync = "knowledge_sync"
 	PurposeAgentAction   = "agent_action"
 

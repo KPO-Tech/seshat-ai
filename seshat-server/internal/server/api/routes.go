@@ -244,6 +244,7 @@ func (app *App) routes() http.Handler {
 	mux.Handle("GET /api/v1/connectors/oauth-apps", app.authMiddleware(http.HandlerFunc(app.handleConnectorOAuthApps)))
 	mux.Handle("PUT /api/v1/connectors/oauth-apps/{kind}", app.authMiddleware(http.HandlerFunc(app.handleConnectorOAuthAppByKind)))
 	mux.Handle("POST /api/v1/connectors/{kind}/oauth/start", app.authMiddleware(http.HandlerFunc(app.handleConnectorOAuthStart)))
+	mux.Handle("POST /api/v1/connectors/{kind}/static-account", app.authMiddleware(http.HandlerFunc(app.handleConnectorStaticAccount)))
 	// Public, unauthenticated: the identity provider's redirect carries no
 	// bearer token — trust comes from the single-use signed state instead,
 	// same as the OIDC login callback above.

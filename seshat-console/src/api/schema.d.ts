@@ -2382,7 +2382,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail";
+                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion";
             };
             cookie?: never;
         };
@@ -2404,7 +2404,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail";
+                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion";
             };
             cookie?: never;
         };
@@ -2426,7 +2426,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail";
+                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion";
             };
             cookie?: never;
         };
@@ -2437,6 +2437,28 @@ export interface paths {
         get: operations["completeConnectorOAuth"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/{kind}/static-account": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "stripe";
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Connect a static-secret account (e.g. Stripe) for self-service agent_action use
+         * @description The synchronous, no-redirect counterpart to the OAuth start/callback pair, for a kind that authenticates with a single static secret instead of an OAuth2 flow. Only requires organization membership, no corpus_id, same as an agent_action OAuth connect. Resubmitting for a kind the caller already connected overwrites the existing secret in place (key rotation) rather than creating a second account.
+         */
+        post: operations["createStaticAgentAccount"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4258,7 +4280,7 @@ export interface components {
             /** @description Set only for a knowledge_sync-purposed account - empty for agent_action. */
             corpus_id?: string;
             /** @enum {string} */
-            kind?: "s3" | "azureblob" | "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail";
+            kind?: "s3" | "azureblob" | "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "stripe";
             /**
              * @description knowledge_sync: admin-run, feeds a corpus. agent_action: self-service, one employee's own account for their own future MCP-backed agent actions - see connectors' package doc.
              * @enum {string}
@@ -4352,7 +4374,7 @@ export interface components {
         /** @description The client secret is never returned, only whether one is configured. */
         ConnectorOAuthApp: {
             /** @enum {string} */
-            kind?: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail";
+            kind?: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion";
             client_id?: string;
             configured?: boolean;
             /** Format: date-time */
@@ -9204,7 +9226,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail";
+                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion";
             };
             cookie?: never;
         };
@@ -9232,7 +9254,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail";
+                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion";
             };
             cookie?: never;
         };
@@ -9266,7 +9288,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail";
+                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion";
             };
             cookie?: never;
         };
@@ -9281,6 +9303,39 @@ export interface operations {
                     "text/html": string;
                 };
             };
+        };
+    };
+    createStaticAgentAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "stripe";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    organization_id: string;
+                    display_name?: string;
+                    /** @description Never returned by any endpoint once stored. */
+                    secret: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The created/updated connector account */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorAccount"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
         };
     };
     getEmbedderSetting: {

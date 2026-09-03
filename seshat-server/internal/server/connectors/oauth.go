@@ -35,6 +35,7 @@ var oauthConnectorKinds = map[string]bool{
 	string(outlookKind):    true,
 	string(teamsKind):      true,
 	string(gmailKind):      true,
+	string(notionKind):     true,
 }
 
 // agentActionOnlyKinds are OAuth connector kinds with no Discover/Sync -
@@ -46,12 +47,13 @@ var agentActionOnlyKinds = map[string]bool{
 	string(outlookKind): true,
 	string(teamsKind):   true,
 	string(gmailKind):   true,
+	string(notionKind):  true,
 }
 
 func validateOAuthKind(kind string) (string, error) {
 	kind = strings.ToLower(strings.TrimSpace(kind))
 	if !oauthConnectorKinds[kind] {
-		return "", ErrInvalidInput(fmt.Sprintf("unsupported oauth connector kind %q (must be one of \"gdrive\", \"sharepoint\", \"onedrive\", \"confluence\", \"slack\", \"outlook\", \"teams\", \"gmail\")", kind))
+		return "", ErrInvalidInput(fmt.Sprintf("unsupported oauth connector kind %q (must be one of \"gdrive\", \"sharepoint\", \"onedrive\", \"confluence\", \"slack\", \"outlook\", \"teams\", \"gmail\", \"notion\")", kind))
 	}
 	return kind, nil
 }
@@ -557,6 +559,11 @@ func connectorOAuthEndpoint(kind string) oauth2.Endpoint {
 			AuthURL:  "https://auth.atlassian.com/authorize",
 			TokenURL: "https://auth.atlassian.com/oauth/token",
 		}
+	case string(notionKind):
+		return oauth2.Endpoint{
+			AuthURL:  "https://api.notion.com/v1/oauth/authorize",
+			TokenURL: "https://api.notion.com/v1/oauth/token",
+		}
 	default:
 		return oauth2.Endpoint{}
 	}
@@ -580,6 +587,8 @@ func connectorOAuthScopes(kind string) []string {
 		return teamsScopes
 	case string(gmailKind):
 		return gmailScopes
+	case string(notionKind):
+		return notionScopes
 	default:
 		return nil
 	}
@@ -598,6 +607,8 @@ func fetchConnectorIdentity(ctx context.Context, kind string, cfg *oauth2.Config
 		return fetchSlackTeamAndUserID(ctx, cfg, token)
 	case string(confluenceKind):
 		return fetchAtlassianAccountEmail(ctx, cfg, token)
+	case string(notionKind):
+		return fetchNotionIdentity(ctx, cfg, token)
 	default:
 		return "", fmt.Errorf("unsupported kind %q", kind)
 	}

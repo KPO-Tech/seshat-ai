@@ -358,6 +358,46 @@ func (app *App) handleConnectorOAuthStart(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusOK, map[string]any{"authorization_url": authorizationURL})
 }
 
+// createStaticAgentAccountRequest is the body for POST
+// /api/v1/connectors/{kind}/static-account - the self-service, no-redirect
+// counterpart to the OAuth start/callback pair, for a static-secret kind
+// (see connectors.staticAgentActionKinds). Generic on {kind} the same way
+// the OAuth routes are - batch 3 of the connectors initiative needs no new
+// route, just a new entry in that map.
+type createStaticAgentAccountRequest struct {
+	OrganizationID string `json:"organization_id"`
+	DisplayName    string `json:"display_name"`
+	Secret         string `json:"secret"`
+}
+
+func (app *App) handleConnectorStaticAccount(w http.ResponseWriter, r *http.Request) {
+	principal, ok := authPrincipalFromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "missing principal")
+		return
+	}
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	kind := strings.TrimSpace(r.PathValue("kind"))
+	var req createStaticAgentAccountRequest
+	if !decodeJSONBody(w, r, &req) {
+		return
+	}
+	account, err := app.backend.Connectors.CreateStaticAgentAccount(r.Context(), principal, connectors.CreateStaticAgentAccountParams{
+		OrganizationID: req.OrganizationID,
+		Kind:           kind,
+		DisplayName:    req.DisplayName,
+		Secret:         req.Secret,
+	})
+	if err != nil {
+		writeKnowledgeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, account)
+}
+
 // handleConnectorOAuthCallback handles the identity provider's redirect
 // back after the user grants (or denies) access - public, unauthenticated
 // (the redirect carries no bearer token), trust comes from the single-use

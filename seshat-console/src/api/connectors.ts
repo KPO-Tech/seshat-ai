@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/api/client'
-import type { components } from '@/api/schema'
+import type { components, operations } from '@/api/schema'
 
 export type ConnectorAccount = components['schemas']['ConnectorAccount']
 export type ConnectorAccountInput = components['schemas']['ConnectorAccountInput']
@@ -9,12 +9,19 @@ export type ConnectorSyncJob = components['schemas']['ConnectorSyncJob']
 export type ConnectorOAuthApp = components['schemas']['ConnectorOAuthApp']
 export type ConnectorOAuthAppInput = components['schemas']['ConnectorOAuthAppInput']
 export type BeginConnectorOAuthInput = components['schemas']['BeginConnectorOAuthInput']
+export type CreateStaticAgentAccountInput = operations['createStaticAgentAccount']['requestBody']['content']['application/json']
 
 const ACCOUNTS_KEY = 'connector-accounts'
 const SYNC_JOBS_KEY = 'connector-sync-jobs'
 const OAUTH_APPS_KEY = 'connector-oauth-apps'
+const MY_ACCOUNTS_KEY = 'my-connector-accounts'
 
-export type OAuthConnectorKind = 'gdrive' | 'sharepoint' | 'onedrive' | 'confluence' | 'slack' | 'outlook' | 'teams' | 'gmail'
+export type OAuthConnectorKind = 'gdrive' | 'sharepoint' | 'onedrive' | 'confluence' | 'slack' | 'outlook' | 'teams' | 'gmail' | 'notion'
+
+// StaticConnectorKind lists every kind that authenticates with a single
+// static secret instead of an OAuth2 flow - see connectors.Service's
+// staticAgentActionKinds (seshat-server/internal/server/connectors/static_agent_account.go).
+export type StaticConnectorKind = 'stripe'
 
 export function useConnectorAccountsList(organizationId: string | undefined) {
   return useQuery({
@@ -147,5 +154,24 @@ export function useBeginConnectorOAuth() {
       if (error) throw error
       return data.authorization_url!
     },
+  })
+}
+
+// The synchronous, no-redirect counterpart to useBeginConnectorOAuth - the
+// created/updated ConnectorAccount comes back directly in the response
+// (no callback round trip), so this can invalidate MY_ACCOUNTS_KEY itself
+// instead of relying on useMyConnectorAccountsList's poll.
+export function useCreateStaticAgentAccount() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ kind, body }: { kind: StaticConnectorKind; body: CreateStaticAgentAccountInput }) => {
+      const { data, error } = await api.POST('/api/v1/connectors/{kind}/static-account', {
+        params: { path: { kind } },
+        body,
+      })
+      if (error) throw error
+      return data as ConnectorAccount
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [MY_ACCOUNTS_KEY] }),
   })
 }

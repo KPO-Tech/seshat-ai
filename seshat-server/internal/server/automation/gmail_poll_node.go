@@ -25,6 +25,17 @@ type ConnectorTokenResolver interface {
 	AccessTokenForUser(ctx context.Context, organizationID, kind, userID string) (string, bool, error)
 }
 
+// StaticSecretResolver resolves a static API key/token for userID's
+// connected account of the given kind (e.g. a Stripe secret key) - the
+// static-credential counterpart to ConnectorTokenResolver, satisfied by
+// *connectors.Service.StaticSecretForUser. Kept as its own interface rather
+// than folded into ConnectorTokenResolver since a static secret needs no
+// OAuth refresh semantics at all - same one-interface-per-capability
+// reasoning as RAGResolver/MCPResolver.
+type StaticSecretResolver interface {
+	StaticSecretForUser(ctx context.Context, organizationID, kind, userID string) (string, bool, error)
+}
+
 // GmailPollNode is the "gmail_new_messages" node type: a starting node
 // (no incoming connections) for an interval-triggered ScheduledJob's Graph
 // that polls its owner's connected Gmail account for messages received
