@@ -215,7 +215,10 @@ export function SchedulingPage() {
   const loadJobs = useCallback(async () => {
     try {
       const result = await api.get<{ jobs: Job[] }>('/automation/jobs')
-      setJobs(result.jobs ?? [])
+      // Graph jobs live exclusively in Automation's own Overview now - this
+      // list is Prompt-only, matching Scheduling and Automation being two
+      // separate homes instead of one list with a "graph" badge on some rows.
+      setJobs((result.jobs ?? []).filter((job) => !job.graph))
       setForbidden(false)
       setLoadError(null)
     } catch (err) {
@@ -316,10 +319,6 @@ export function SchedulingPage() {
   }
 
   function openEditForm(job: Job) {
-    if (job.graph) {
-      navigate(`/automation/${job.id}`)
-      return
-    }
     setEditingJob(job)
     setDraft(null)
     setShowForm(true)
@@ -346,9 +345,9 @@ export function SchedulingPage() {
         <span className="sch-topbar-title">Scheduling</span>
         <button
           className="sch-new-btn sch-new-btn--ghost"
-          onClick={() => navigate('/automation/new')}
+          onClick={() => navigate('/automation')}
           disabled={systemStatus?.mode !== 'connected'}
-          title="Build a job as a visual graph instead of a single prompt"
+          title="Build automations as visual graphs instead of single prompts"
         >
           <RelationalGraph size={11} /> Automation
         </button>
@@ -408,7 +407,6 @@ export function SchedulingPage() {
                           <span className="sch-job-name">{job.name}</span>
                           <span className={`sch-badge sch-badge--${job.status}`}>{job.status}</span>
                           <span className="sch-badge sch-badge--target">{job.execution_target}</span>
-                          {job.graph && <span className="sch-badge sch-badge--graph">graph</span>}
                         </div>
                         {job.description && <div className="sch-job-desc">{job.description}</div>}
                         <div className="sch-job-meta">
@@ -1255,7 +1253,7 @@ function JobFormModal({
             <label>Prompt</label>
             <textarea className="sch-prompt-editor" value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={7} required />
             {!isEdit && (
-              <button type="button" className="sch-graph-link" onClick={() => navigate('/automation/new')}>
+              <button type="button" className="sch-graph-link" onClick={() => navigate('/automation')}>
                 Build with a visual graph instead →
               </button>
             )}
@@ -1403,7 +1401,6 @@ const CSS = `
 .sch-badge--active { background: rgba(var(--color-success-rgb), 0.12); color: var(--color-success); }
 .sch-badge--paused { background: rgba(148, 163, 184, 0.15); color: var(--color-text-muted); }
 .sch-badge--target { background: rgba(239, 124, 47, 0.1); color: var(--color-accent); }
-.sch-badge--graph { background: rgba(76, 154, 255, 0.14); color: #4C9AFF; }
 .sch-badge--run-completed { background: rgba(var(--color-success-rgb), 0.12); color: var(--color-success); }
 .sch-badge--run-failed { background: rgba(var(--color-error-rgb), 0.1); color: var(--color-error); }
 .sch-badge--run-cancelled { background: rgba(148, 163, 184, 0.15); color: var(--color-text-muted); }

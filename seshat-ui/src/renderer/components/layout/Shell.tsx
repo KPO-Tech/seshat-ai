@@ -17,10 +17,14 @@ export function Shell() {
   const { pathname } = useLocation()
   
   const isConversation = pathname.startsWith('/conversation/')
-  // Automation (the graph editor, /automation/new or /automation/:jobId) is
-  // immersive for the same reason a conversation is — the canvas needs the
-  // window, not a fixed-width column sharing space with the main nav.
-  const isAutomation = pathname.startsWith('/automation/')
+  // Automation (its own Overview at /automation, or the graph editor at
+  // /automation/new or /automation/:jobId) is immersive for the same reason
+  // a conversation is — the canvas needs the window, not a fixed-width
+  // column sharing space with the main nav. The bare /automation route
+  // already gets no sidebar below (not in sidebarRoutes either way) - this
+  // flag exists for the /automation/* children, which startsWith('/') alone
+  // wouldn't cover without the trailing segment.
+  const isAutomation = pathname === '/automation' || pathname.startsWith('/automation/')
   const sidebarRoutes = ['/', '/workspace', '/apps', '/projects', '/history']
   const showSidebar = isConversation || (!isAutomation && sidebarRoutes.includes(pathname))
 

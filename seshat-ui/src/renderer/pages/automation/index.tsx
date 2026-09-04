@@ -1,6 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
-import { Left, Setting, Close, CheckOne, Home, ApplicationOne, DataOne, Help as HelpIcon } from '@icon-park/react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useNavigate, useParams, useLocation } from 'react-router'
+import {
+  Left, Setting, Close, CheckOne, Home, ApplicationOne, DataOne, Help as HelpIcon,
+  Plus, Play, PauseOne, Edit as EditIcon, Delete as DeleteIcon, LoadingOne,
+} from '@icon-park/react'
 import { api, ApiError } from '@/api/client'
 import type { Agent, ProviderModel } from '@/api/types'
 import { fetchProviderModels, useProviders } from '@/hooks/useProviders'
@@ -10,8 +13,24 @@ import type { DataflowDefinition, NodeDescription } from './graph/types'
 
 type TriggerType = 'cron' | 'interval' | 'once'
 type ExecutionTarget = 'cloud' | 'device'
+type JobStatus = 'active' | 'paused'
+type RunStatus = 'queued' | 'claimed' | 'running' | 'completed' | 'failed' | 'cancelled'
 type Device = { id: string; name: string; status: string }
-type RailView = 'graph' | 'templates' | 'variables' | 'help'
+type RailView = 'overview' | 'graph' | 'templates' | 'variables' | 'help'
+
+const RUN_STATUS_LABEL: Record<RunStatus, string> = {
+  queued: 'Queued', claimed: 'Claimed', running: 'Running',
+  completed: 'Completed', failed: 'Failed', cancelled: 'Cancelled',
+}
+
+function describeTrigger(job: Job): string {
+  switch (job.trigger_type) {
+    case 'cron': return job.cron_expr ? `cron ${job.cron_expr}` : 'cron'
+    case 'interval': return job.interval_seconds ? `every ${job.interval_seconds}s` : 'interval'
+    case 'once': return job.run_at ? `once at ${new Date(job.run_at).toLocaleString()}` : 'once'
+    default: return job.trigger_type
+  }
+}
 
 // Placeholder for the three rail items that don't have a real backend yet
 // (no template library, no instance/project variable store, no docs site
@@ -31,10 +50,14 @@ type Job = {
   id: string
   name: string
   description?: string
+  status: JobStatus
   trigger_type: TriggerType
   cron_expr?: string
   interval_seconds?: number
   run_at?: string
+  next_run_at?: string
+  last_run_at?: string
+  last_run_status?: RunStatus
   execution_target: ExecutionTarget
   target_device_id?: string
   graph?: DataflowDefinition
@@ -42,23 +65,36 @@ type Job = {
   configuration?: Record<string, string>
 }
 
-// This page only ever creates/edits jobs whose task is a Graph - Scheduling's
-// own compact modal remains the entry point for the simpler Prompt case (see
-// its "Build with a visual graph instead" link). Kept as two entry points on
-// purpose rather than one form trying to serve both: the canvas needs the
-// window, a prompt textarea doesn't, and cramming both into one shell would
-// have made the simple case worse to make room for the complex one.
+// Automation is its own home, separate from Scheduling, though both are
+// thin UIs over the same ScheduledJob list/API - Scheduling manages Prompt
+// jobs, this page manages Graph jobs exclusively (see isOverview/isNew
+// below for how one component covers the list AND the editor). Kept as two
+// separate pages rather than one shared form: the canvas needs the window, a
+// prompt textarea doesn't, and cramming both into one shell would have made
+// the simple case worse to make room for the complex one.
 export function AutomationPage() {
   const { jobId } = useParams()
   const navigate = useNavigate()
-  const isNew = !jobId
+  const location = useLocation()
+  // The bare /automation route (no :jobId segment) is Overview - the list of
+  // built automations, Automation's own home instead of a dead-end back to
+  // Scheduling. /automation/new and /automation/:jobId are the graph editor.
+  const isOverview = !jobId && location.pathname === '/automation'
+  const isNew = !jobId && !isOverview
 
   const [loading, setLoading] = useState(!isNew)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [railView, setRailView] = useState<RailView>('graph')
+  const [railView, setRailView] = useState<RailView>(isOverview ? 'overview' : 'graph')
+
+  const [jobs, setJobs] = useState<Job[]>([])
+  const [jobsLoading, setJobsLoading] = useState(true)
+  const [jobsError, setJobsError] = useState<string | null>(null)
+  const [runningJobId, setRunningJobId] = useState<string | null>(null)
+  const [pausingJobId, setPausingJobId] = useState<string | null>(null)
+  const [deletingJobId, setDeletingJobId] = useState<string | null>(null)
 
   const [name, setName] = useState('Untitled automation')
   const [description, setDescription] = useState('')
@@ -93,10 +129,76 @@ export function AutomationPage() {
   const selectedModels = useMemo(() => (selectedProviderId ? (modelsByProvider[selectedProviderId] ?? []) : []), [modelsByProvider, selectedProviderId])
   const modelOverride = selectedProvider && selectedModelId ? `${selectedProvider.provider}:${selectedModelId}` : ''
 
+  // Reset the rail to match the route whenever it changes - e.g. navigating
+  // from Overview to a specific job (or "New automation") should land on the
+  // canvas, not leave a stub panel showing from the previous context.
+  useEffect(() => {
+    setRailView(isOverview ? 'overview' : 'graph')
+  }, [isOverview])
+
+  const loadJobs = useCallback(async () => {
+    setJobsLoading(true)
+    try {
+      const result = await api.get<{ jobs: Job[] }>('/automation/jobs')
+      // Automation Overview is graph jobs' only home now - Scheduling's own
+      // list is Prompt-only, mirroring that page's own filter.
+      setJobs((result.jobs ?? []).filter((job) => !!job.graph))
+      setJobsError(null)
+    } catch (err) {
+      setJobsError(err instanceof ApiError ? err.message : 'Failed to load automations.')
+    } finally {
+      setJobsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (isOverview) void loadJobs()
+  }, [isOverview, loadJobs])
+
+  async function handleRunNow(job: Job) {
+    setRunningJobId(job.id)
+    try {
+      await api.post(`/automation/jobs/${job.id}/run`, {})
+      await loadJobs()
+    } catch (err) {
+      setJobsError(err instanceof ApiError ? err.message : 'Failed to trigger this automation.')
+    } finally {
+      setRunningJobId(null)
+    }
+  }
+
+  async function handleTogglePaused(job: Job) {
+    setPausingJobId(job.id)
+    try {
+      const action = job.status === 'active' ? 'pause' : 'resume'
+      await api.post(`/automation/jobs/${job.id}/${action}`, {})
+      await loadJobs()
+    } catch (err) {
+      setJobsError(err instanceof ApiError ? err.message : 'Failed to update this automation.')
+    } finally {
+      setPausingJobId(null)
+    }
+  }
+
+  async function handleDeleteJob(job: Job) {
+    if (!window.confirm(`Delete "${job.name}"? This cannot be undone.`)) return
+    setDeletingJobId(job.id)
+    try {
+      await api.delete(`/automation/jobs/${job.id}`)
+      await loadJobs()
+    } catch (err) {
+      setJobsError(err instanceof ApiError ? err.message : 'Failed to delete this automation.')
+    } finally {
+      setDeletingJobId(null)
+    }
+  }
+
   // Load agents/devices/node types once - independent of whether this is a
   // new or existing job, unlike Scheduling's page-level fetch which this
-  // page doesn't share (separate route, own mount).
+  // page doesn't share (separate route, own mount). Skipped entirely on
+  // Overview, which needs none of this.
   useEffect(() => {
+    if (isOverview) return
     api.get<{ agents: Agent[] }>('/agents').then((r) => setAgents((r.agents ?? []).filter((a) => a.enabled !== false))).catch(() => {})
     api.get<{ devices: Device[] }>('/automation/devices').then((r) => setDevices(r.devices ?? [])).catch(() => {})
     setNodeTypesLoading(true)
@@ -104,7 +206,7 @@ export function AutomationPage() {
       .then((res) => setNodeTypes(res.node_types ?? []))
       .catch((err) => setNodeTypesError(err instanceof ApiError ? err.message : 'Unable to load node types.'))
       .finally(() => setNodeTypesLoading(false))
-  }, [])
+  }, [isOverview])
 
   // Load the existing job when editing - redirects back if it turns out to
   // be a Prompt job (this page is graph-only; Scheduling's modal owns that
@@ -135,15 +237,14 @@ export function AutomationPage() {
       .finally(() => setLoading(false))
   }, [jobId, isNew, navigate])
 
+  // Provider/Model are optional (see validationItems' comment) - only
+  // reconciles an already-chosen selection that's become invalid (e.g.
+  // switching Execution target dropped it from availableProviders), never
+  // auto-picks a default into an empty field the user deliberately left
+  // unset.
   useEffect(() => {
-    if (!selectedProviderId && availableProviders.length > 0) {
-      const def = availableProviders.find((p) => p.is_default) ?? availableProviders[0]
-      setSelectedProviderId(def.id)
-      return
-    }
     if (selectedProviderId && availableProviders.length > 0 && !availableProviders.some((p) => p.id === selectedProviderId)) {
-      const def = availableProviders.find((p) => p.is_default) ?? availableProviders[0]
-      setSelectedProviderId(def.id)
+      setSelectedProviderId('')
       setSelectedModelId('')
     }
   }, [availableProviders, selectedProviderId])
@@ -166,12 +267,16 @@ export function AutomationPage() {
     setSelectedModelId(def?.model_id ?? '')
   }, [modelsByProvider, selectedModelId, selectedModels, selectedProviderId])
 
+  // Agent/Provider/Model are deliberately NOT required here: a graph node of
+  // type "agent" carries its own optional `agent` parameter and falls back
+  // to these only when unset (see pkg/dataflow's agentNode) - a graph with
+  // no agent node at all (e.g. Gmail poll -> Postgres insert) has no use for
+  // any of the three, so blocking every graph on picking them was a bug, not
+  // a real requirement.
   const validationItems = [
     { label: 'Name is valid', ok: name.trim().length > 0 },
     { label: 'Schedule configured', ok: triggerType === 'cron' ? cronExpr.trim().length > 0 : triggerType === 'interval' ? intervalSeconds >= 60 : runAt.length > 0 },
     { label: 'Execution target selected', ok: executionTarget === 'cloud' || targetDeviceId.length > 0 },
-    { label: 'Agent selected', ok: agentSlug.length > 0 },
-    { label: 'Model selected', ok: !!selectedProviderId && !!selectedModelId },
     { label: 'Graph has at least one node', ok: (graph?.nodes.length ?? 0) > 0 },
   ]
   const canSave = validationItems.every((item) => item.ok)
@@ -213,7 +318,7 @@ export function AutomationPage() {
       } else {
         await api.put(`/automation/jobs/${jobId}`, params)
       }
-      navigate('/scheduling')
+      navigate('/automation')
     } catch (err) {
       setSaveError(err instanceof ApiError ? err.message : 'Failed to save this automation.')
     } finally {
@@ -225,23 +330,35 @@ export function AutomationPage() {
     <div className="au-root">
       <style>{AUTOMATION_CSS}</style>
       <header className="au-topbar">
-        <button type="button" className="au-icon-btn" onClick={() => navigate('/scheduling')} title="Back to Scheduling">
+        <button type="button" className="au-icon-btn" onClick={() => navigate(isOverview ? '/scheduling' : '/automation')} title={isOverview ? 'Back to Scheduling' : 'Back to Automation'}>
           <Left size={15} />
         </button>
-        <input className="au-name-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Untitled automation" />
+        {isOverview ? (
+          <span className="au-topbar-title">Automation</span>
+        ) : (
+          <input className="au-name-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Untitled automation" />
+        )}
         <div className="au-topbar-spacer" />
         {saveError && <span className="au-topbar-error">{saveError}</span>}
-        <button type="button" className={`au-icon-btn ${settingsOpen ? 'active' : ''}`} onClick={() => setSettingsOpen((o) => !o)} title="Job settings">
-          <Setting size={15} />
-        </button>
-        <button type="button" className="au-save-btn" onClick={() => void handleSave()} disabled={saving || !canSave} title={!canSave ? 'Finish job settings before saving' : undefined}>
-          {saving ? 'Saving…' : isNew ? 'Create job' : 'Save changes'}
-        </button>
+        {isOverview ? (
+          <button type="button" className="au-save-btn" onClick={() => navigate('/automation/new')}>
+            <Plus size={14} /> New automation
+          </button>
+        ) : (
+          <>
+            <button type="button" className={`au-icon-btn ${settingsOpen ? 'active' : ''}`} onClick={() => setSettingsOpen((o) => !o)} title="Job settings">
+              <Setting size={15} />
+            </button>
+            <button type="button" className="au-save-btn" onClick={() => void handleSave()} disabled={saving || !canSave} title={!canSave ? 'Finish job settings before saving' : undefined}>
+              {saving ? 'Saving…' : isNew ? 'Create job' : 'Save changes'}
+            </button>
+          </>
+        )}
       </header>
 
       <div className="au-body">
         <nav className="au-rail">
-          <button type="button" className="au-rail-btn" onClick={() => navigate('/scheduling')} title="Overview">
+          <button type="button" className={`au-rail-btn ${railView === 'overview' ? 'active' : ''}`} onClick={() => navigate('/automation')} title="Overview">
             <Home size={16} />
             <span>Overview</span>
           </button>
@@ -260,7 +377,21 @@ export function AutomationPage() {
         </nav>
 
         <div className="au-main">
-          {railView === 'templates' ? (
+          {railView === 'overview' ? (
+            <AutomationOverviewPanel
+              jobs={jobs}
+              loading={jobsLoading}
+              error={jobsError}
+              onOpen={(id) => navigate(`/automation/${id}`)}
+              onNew={() => navigate('/automation/new')}
+              onRun={(job) => void handleRunNow(job)}
+              onTogglePaused={(job) => void handleTogglePaused(job)}
+              onDelete={(job) => void handleDeleteJob(job)}
+              runningJobId={runningJobId}
+              pausingJobId={pausingJobId}
+              deletingJobId={deletingJobId}
+            />
+          ) : railView === 'templates' ? (
             <StubPanel title="Templates" description="Browse and start from pre-built automation templates. Coming soon." />
           ) : railView === 'variables' ? (
             <StubPanel title="Variables" description="Named values reusable across every automation's expressions. Coming soon." />
@@ -275,7 +406,7 @@ export function AutomationPage() {
           )}
         </div>
 
-        {settingsOpen && (
+        {settingsOpen && !isOverview && (
           <aside className="au-settings-drawer">
             <header className="au-drawer-head">
               <strong>Job settings</strong>
@@ -288,9 +419,9 @@ export function AutomationPage() {
               </div>
 
               <div className="au-field">
-                <label>Agent</label>
-                <select value={agentSlug} onChange={(e) => setAgentSlug(e.target.value)} required>
-                  <option value="" disabled>Select an agent...</option>
+                <label>Default agent <span className="au-field-hint">(optional)</span></label>
+                <select value={agentSlug} onChange={(e) => setAgentSlug(e.target.value)}>
+                  <option value="">None - only used by agent nodes with none set</option>
                   {agents.map((a) => (
                     <option key={a.slug} value={a.slug}>{a.name || a.slug} ({a.source})</option>
                   ))}
@@ -352,18 +483,18 @@ export function AutomationPage() {
               )}
 
               <div className="au-field">
-                <label>Provider</label>
-                <select value={selectedProviderId} onChange={(e) => { setSelectedProviderId(e.target.value); setSelectedModelId('') }} disabled={providersLoading || availableProviders.length === 0} required>
-                  <option value="" disabled>{providersLoading ? 'Loading providers...' : 'Select a provider...'}</option>
+                <label>Provider <span className="au-field-hint">(optional)</span></label>
+                <select value={selectedProviderId} onChange={(e) => { setSelectedProviderId(e.target.value); setSelectedModelId('') }} disabled={providersLoading || availableProviders.length === 0}>
+                  <option value="">{providersLoading ? 'Loading providers...' : 'None - defaults to agent nodes\' own resolution'}</option>
                   {availableProviders.map((p) => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
                 </select>
               </div>
               <div className="au-field">
-                <label>Model</label>
-                <select value={selectedModelId} onChange={(e) => setSelectedModelId(e.target.value)} disabled={!selectedProviderId || loadingModelsFor === selectedProviderId || selectedModels.length === 0} required>
-                  <option value="" disabled>{loadingModelsFor === selectedProviderId ? 'Loading models...' : 'Select a model...'}</option>
+                <label>Model <span className="au-field-hint">(optional)</span></label>
+                <select value={selectedModelId} onChange={(e) => setSelectedModelId(e.target.value)} disabled={!selectedProviderId || loadingModelsFor === selectedProviderId || selectedModels.length === 0}>
+                  <option value="">{loadingModelsFor === selectedProviderId ? 'Loading models...' : 'None'}</option>
                   {selectedModels.map((m) => (
                     <option key={m.model_id} value={m.model_id}>{m.display_name || m.model_id}</option>
                   ))}
@@ -382,6 +513,92 @@ export function AutomationPage() {
           </aside>
         )}
       </div>
+    </div>
+  )
+}
+
+// ─── Overview ───────────────────────────────────────────────────────────────
+// Automation's own home - every graph-based job, with the run/pause/delete
+// actions Scheduling's list used to offer them before they moved here
+// exclusively. Deliberately no run-inspector/node-trace drill-down yet
+// (that stayed behind on Scheduling's RunInspectorPanel) - a fast-follow if
+// this page needs it too, not ported in this pass.
+function AutomationOverviewPanel({
+  jobs, loading, error, onOpen, onNew, onRun, onTogglePaused, onDelete,
+  runningJobId, pausingJobId, deletingJobId,
+}: {
+  jobs: Job[]
+  loading: boolean
+  error: string | null
+  onOpen: (id: string) => void
+  onNew: () => void
+  onRun: (job: Job) => void
+  onTogglePaused: (job: Job) => void
+  onDelete: (job: Job) => void
+  runningJobId: string | null
+  pausingJobId: string | null
+  deletingJobId: string | null
+}) {
+  if (loading) return <div className="au-loading">Loading…</div>
+  if (error) return <div className="au-loading au-loading-error">{error}</div>
+
+  if (jobs.length === 0) {
+    return (
+      <div className="au-stub">
+        <h2>No automations yet</h2>
+        <p>Build a visual graph workflow - connectors, branching logic, database steps - and it'll show up here.</p>
+        <button type="button" className="au-save-btn" onClick={onNew} style={{ marginTop: 8 }}>
+          <Plus size={14} /> New automation
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="au-overview">
+      {jobs.map((job) => (
+        <div key={job.id} className="au-overview-row" onClick={() => onOpen(job.id)} role="button" tabIndex={0}>
+          <div className="au-overview-main">
+            <div className="au-overview-name-row">
+              <span className="au-overview-name">{job.name}</span>
+              <span className={`au-overview-badge au-overview-badge--${job.status}`}>{job.status}</span>
+              <span className="au-overview-badge au-overview-badge--target">{job.execution_target}</span>
+            </div>
+            {job.description && <div className="au-overview-desc">{job.description}</div>}
+            <div className="au-overview-meta">
+              <span>{describeTrigger(job)}</span>
+              {job.next_run_at && <span>next: {new Date(job.next_run_at).toLocaleString()}</span>}
+              {job.last_run_status && <span>last: {RUN_STATUS_LABEL[job.last_run_status] ?? job.last_run_status}</span>}
+            </div>
+          </div>
+          <div className="au-overview-actions">
+            <button
+              type="button" className="au-icon-btn" title="Run now"
+              onClick={(e) => { e.stopPropagation(); onRun(job) }}
+              disabled={runningJobId === job.id}
+            >
+              {runningJobId === job.id ? <LoadingOne size={13} className="spin" /> : <Play size={13} />}
+            </button>
+            <button
+              type="button" className="au-icon-btn" title={job.status === 'active' ? 'Pause' : 'Resume'}
+              onClick={(e) => { e.stopPropagation(); onTogglePaused(job) }}
+              disabled={pausingJobId === job.id}
+            >
+              {pausingJobId === job.id ? <LoadingOne size={13} className="spin" /> : <PauseOne size={13} />}
+            </button>
+            <button type="button" className="au-icon-btn" title="Edit" onClick={(e) => { e.stopPropagation(); onOpen(job.id) }}>
+              <EditIcon size={13} />
+            </button>
+            <button
+              type="button" className="au-icon-btn" title="Delete"
+              onClick={(e) => { e.stopPropagation(); onDelete(job) }}
+              disabled={deletingJobId === job.id}
+            >
+              {deletingJobId === job.id ? <LoadingOne size={13} className="spin" /> : <DeleteIcon size={13} />}
+            </button>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
@@ -463,6 +680,15 @@ const AUTOMATION_CSS = `
   font-size: var(--font-size-sm);
   font-weight: 700;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.au-topbar-title {
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  color: var(--color-text);
 }
 
 .au-save-btn:disabled {
@@ -683,5 +909,91 @@ const AUTOMATION_CSS = `
 
 .au-validation-row.ok {
   color: var(--color-success, #57D9A3);
+}
+
+/* Overview */
+.au-overview {
+  height: 100%;
+  overflow-y: auto;
+  padding: 18px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.au-overview-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md, 10px);
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.au-overview-row:hover {
+  border-color: var(--color-border);
+}
+
+.au-overview-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.au-overview-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.au-overview-name {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.au-overview-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.au-overview-badge--active { background: rgba(var(--color-success-rgb), 0.12); color: var(--color-success); }
+.au-overview-badge--paused { background: rgba(148, 163, 184, 0.15); color: var(--color-text-muted); }
+.au-overview-badge--target { background: rgba(239, 124, 47, 0.1); color: var(--color-accent); }
+
+.au-overview-desc {
+  font-size: var(--font-size-2xs);
+  color: var(--color-text-secondary);
+}
+
+.au-overview-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--font-size-2xs);
+  color: var(--color-text-muted);
+}
+
+.au-overview-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.spin {
+  animation: au-spin 0.8s linear infinite;
+}
+@keyframes au-spin {
+  to { transform: rotate(360deg); }
 }
 `

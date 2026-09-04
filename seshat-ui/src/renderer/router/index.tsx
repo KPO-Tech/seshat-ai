@@ -1,4 +1,4 @@
-import { createHashRouter, Navigate } from 'react-router'
+import { createHashRouter, Navigate, useLocation } from 'react-router'
 import { Shell } from '@/components/layout/Shell'
 import { AuthGuard } from '@/components/auth/AuthGuard'
 import { Home } from '@/pages/Home'
@@ -19,6 +19,18 @@ import { KnowledgePage } from '@/pages/knowledge'
 import { InboxPage } from '@/pages/inbox'
 import { CompanionPage } from '@/pages/companion'
 import { AdminConsolePage } from '@/pages/admin'
+
+// AutomationPage covers Overview (/automation), a new job (/automation/new)
+// and editing one (/automation/:jobId) in one component - none of these are
+// separate mounts by default under react-router (same element reference), so
+// without a key that changes per route, navigating Overview -> a job ->
+// "New automation" would carry over the previous job's local state (name,
+// graph, ...) instead of resetting it. Keying on the full path forces a
+// clean remount on every one of those transitions.
+function AutomationRoute() {
+  const location = useLocation()
+  return <AutomationPage key={location.pathname} />
+}
 
 export const router = createHashRouter([
   {
@@ -60,17 +72,19 @@ export const router = createHashRouter([
       { path: 'companion', element: <CompanionPage /> },
       { path: 'memories', element: <Navigate to="/" replace /> },
       { path: 'scheduling', element: <SchedulingPage /> },
-      // Automation is the full-screen graph editor for a Graph-mode job -
-      // deep-linked from Scheduling (its own modal stays Prompt-only, see
-      // "Build with a visual graph instead"), not a standalone job list of
-      // its own.
-      { path: 'automation/new', element: <AutomationPage /> },
-      { path: 'automation/:jobId', element: <AutomationPage /> },
-      // Scheduled Tasks / Automations were the old local-scheduler routes,
-      // retired when automation moved to Seshat Server; kept as redirects
-      // for anyone with an old link/shortcut.
+      // Automation is its own home now, separate from Scheduling - bare
+      // /automation is its Overview (every graph-based job), /automation/new
+      // and /automation/:jobId are the full-screen graph editor. Both pages
+      // share the same ScheduledJob backend/list endpoint, just filtered to
+      // opposite halves (Scheduling: prompt jobs, Automation: graph jobs) -
+      // no separate backend entity, see AutomationPage's own doc comment.
+      { path: 'automation', element: <AutomationRoute /> },
+      { path: 'automation/new', element: <AutomationRoute /> },
+      { path: 'automation/:jobId', element: <AutomationRoute /> },
+      // Scheduled Tasks was the old local-scheduler route, retired when
+      // automation moved to Seshat Server; kept as a redirect for anyone
+      // with an old link/shortcut.
       { path: 'scheduled-tasks', element: <Navigate to="/scheduling" replace /> },
-      { path: 'automation', element: <Navigate to="/scheduling" replace /> },
     ],
   },
   { path: '*', element: <Navigate to="/" replace /> },
