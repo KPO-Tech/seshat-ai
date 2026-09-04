@@ -86,6 +86,7 @@ export function AutomationPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [deletingThisJob, setDeletingThisJob] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [railView, setRailView] = useState<RailView>(isOverview ? 'overview' : 'graph')
 
@@ -260,7 +261,7 @@ export function AutomationPage() {
   // rather than each button individually. Overview never gets dirty (none
   // of the tracked fields above are touched there), so this is a no-op on
   // that route.
-  const blocker = useBlocker(isDirty && !saving)
+  const blocker = useBlocker(isDirty && !saving && !deletingThisJob)
   useEffect(() => {
     if (blocker.state !== 'blocked') return
     if (window.confirm('You have unsaved changes. Leave without saving?')) {
@@ -356,6 +357,27 @@ export function AutomationPage() {
       setSaveError(err instanceof ApiError ? err.message : 'Failed to save this automation.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  // The only other way to delete a job was Overview's list - nothing inside
+  // the editor itself, so deleting one meant backing out unsaved and finding
+  // it in the list first. isDirty is cleared before navigating away since
+  // there is nothing left to protect once the job itself is gone (otherwise
+  // useBlocker's confirm would immediately re-ask on the way out).
+  async function handleDeleteThisJob() {
+    if (!jobId) return
+    if (!window.confirm(`Delete "${name || jobId}"? This cannot be undone.`)) return
+    setDeletingThisJob(true)
+    setSaveError(null)
+    try {
+      await api.delete(`/automation/jobs/${jobId}`)
+      setIsDirty(false)
+      navigate('/automation')
+    } catch (err) {
+      setSaveError(err instanceof ApiError ? err.message : 'Failed to delete this automation.')
+    } finally {
+      setDeletingThisJob(false)
     }
   }
 
@@ -557,6 +579,15 @@ export function AutomationPage() {
                   </div>
                 ))}
               </div>
+
+              {!isNew && (
+                <div className="au-danger-zone">
+                  <button type="button" className="au-danger-btn" onClick={() => void handleDeleteThisJob()} disabled={deletingThisJob}>
+                    {deletingThisJob ? <LoadingOne size={13} className="spin" /> : <DeleteIcon size={13} />}
+                    Delete this automation
+                  </button>
+                </div>
+              )}
             </div>
           </aside>
         )}
@@ -963,6 +994,37 @@ const AUTOMATION_CSS = `
 
 .au-validation-row.ok {
   color: var(--color-success, #57D9A3);
+}
+
+.au-danger-zone {
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.au-danger-btn {
+  width: 100%;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 107, 107, 0.4);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: #ff6b6b;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.au-danger-btn:hover:not(:disabled) {
+  background: rgba(255, 107, 107, 0.1);
+}
+
+.au-danger-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 /* Overview */
