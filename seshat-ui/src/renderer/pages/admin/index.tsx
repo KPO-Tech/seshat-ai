@@ -772,7 +772,10 @@ const ADMIN_CONSOLE_CSS = `
      this rule had the same latent bug. */
   min-height: 0;
   overflow-y: auto;
-  padding: var(--space-8);
+  /* No top padding here - the sticky header below relies on sitting
+     flush against this scroller's own top edge (see its comment). Top
+     spacing instead comes from the header's own bottom margin. */
+  padding: 0 var(--space-8) var(--space-8);
 }
 
 .admin-content > .sv-view,
@@ -789,8 +792,15 @@ const ADMIN_CONSOLE_CSS = `
   min-height: 52px;
   align-items: center;
   border-bottom: 1px solid var(--color-border-subtle);
-  margin: calc(var(--space-8) * -1) calc(var(--space-8) * -1) var(--space-7);
   padding: 0 var(--space-8);
+  /* Bleed to the scroller's left/right edges past its own padding - no
+     top margin needed to match, since the scroller above has no top
+     padding either (see that rule's comment: a sticky element's "stuck"
+     position clamps to its scroll container's padding edge, so a
+     negative top margin trying to bleed past that edge just gets fought
+     by the browser, snapping the header down and leaving a gap above it
+     the instant it sticks - simplest fix is to not need one). */
+  margin: 0 calc(var(--space-8) * -1) var(--space-7);
   /* These headers live inside the same element that scrolls (.sv-view /
      .pv-root / .adm-root / .admin-overview have overflow-y: auto on
      themselves, not a separate wrapper) - without sticking the header to
