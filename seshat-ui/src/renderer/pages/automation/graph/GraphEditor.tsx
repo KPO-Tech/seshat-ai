@@ -529,6 +529,44 @@ const GRAPH_EDITOR_CSS = `
   margin-top: 4px;
 }
 
+/* Save/Duplicate/Delete (ParameterForm) and Save/Cancel (SecretRefField's
+   inline secret-creation form) both use this - previously they carried
+   .ib-action-btn, a class that only existed in Inbox's own <style> block
+   and was never loaded here, so these buttons rendered with no styling at
+   all (bare browser defaults) despite being fully wired. */
+.gf-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.gf-action-btn:hover:not(:disabled) {
+  background: var(--color-hover);
+  color: var(--color-text);
+}
+
+.gf-action-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.gf-action-btn.primary {
+  background: var(--color-cta);
+  border-color: transparent;
+  color: white;
+}
+
 .gf-form {
   display: flex;
   flex-direction: column;

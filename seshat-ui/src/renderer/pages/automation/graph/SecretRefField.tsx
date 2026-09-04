@@ -91,10 +91,10 @@ export function SecretRefField({ value, onChange }: Props) {
               <input placeholder="Value" type="password" value={newValue} onChange={(e) => setNewValue(e.target.value)} />
               {createError && <div className="gf-secret-error">{createError}</div>}
               <div className="gf-secret-create-actions">
-                <button type="button" className="ib-action-btn primary" onClick={() => void createSecret()} disabled={saving}>
+                <button type="button" className="gf-action-btn primary" onClick={() => void createSecret()} disabled={saving}>
                   {saving ? 'Saving…' : 'Save'}
                 </button>
-                <button type="button" className="ib-action-btn" onClick={() => setCreating(false)}>Cancel</button>
+                <button type="button" className="gf-action-btn" onClick={() => setCreating(false)}>Cancel</button>
               </div>
             </div>
           ) : (

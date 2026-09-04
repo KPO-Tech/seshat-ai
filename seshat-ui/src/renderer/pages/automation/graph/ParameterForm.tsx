@@ -166,13 +166,13 @@ export function ParameterForm({ parameters, properties, onSave, onDelete, onDupl
         </>
       )}
       <div className="gf-config-actions">
-        <button type="button" className="ib-action-btn primary" onClick={hasSchema ? saveForm : saveJson}>
+        <button type="button" className="gf-action-btn primary" onClick={hasSchema ? saveForm : saveJson}>
           Save parameters
         </button>
-        <button type="button" className="ib-action-btn" onClick={onDuplicate} title="Duplicate node (Ctrl+D)">
+        <button type="button" className="gf-action-btn" onClick={onDuplicate} title="Duplicate node (Ctrl+D)">
           <Copy size={13} /> Duplicate
         </button>
-        <button type="button" className="ib-action-btn" onClick={onDelete}>
+        <button type="button" className="gf-action-btn" onClick={onDelete}>
           <Delete size={13} /> Delete node
         </button>
       </div>
