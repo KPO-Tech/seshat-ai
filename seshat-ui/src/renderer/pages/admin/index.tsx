@@ -762,6 +762,15 @@ const ADMIN_CONSOLE_CSS = `
 .admin-locked {
   flex: 1;
   min-width: 0;
+  /* A flex item's default min-height is 'auto' (grow to fit content, never
+     shrink below it), not 0 - without this, overflow-y:auto above never
+     actually engages, since the item just keeps growing past the window
+     instead of clipping+scrolling. That silently hid whatever content
+     didn't fit (e.g. Multimodal's "no provider configured" note, cut off
+     with no way to scroll to it) on any admin page with enough content to
+     exceed the window height - not just Multimodal, every page sharing
+     this rule had the same latent bug. */
+  min-height: 0;
   overflow-y: auto;
   padding: var(--space-8);
 }
