@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"time"
 
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/workspacechat"
@@ -36,6 +37,24 @@ func (app *App) handleWorkspaceChatStream(w http.ResponseWriter, r *http.Request
 	if !decodeJSONBody(w, r, &req) {
 		return
 	}
+
+	// config.Config's WriteTimeout (15s) is sized for this API's normal
+	// short request/response endpoints - correct everywhere else, but a
+	// real multi-tool-call agentic turn on this one streaming endpoint
+	// routinely runs well past that, and http.Server enforces WriteTimeout
+	// for the whole request/response regardless of how many chunks got
+	// flushed along the way (it's not an idle timer - see net/http's own
+	// doc comment on Server.WriteTimeout). Past 15s the connection was
+	// getting force-closed mid-stream with no error event ever written -
+	// reported live as the chat looking "stuck" on both Mistral and
+	// Z.ai (confirmed via a direct curl straight to this server, bypassing
+	// the console's nginx entirely, so this was never an nginx timeout).
+	// A zero time.Time passed to SetWriteDeadline means "no deadline" (see
+	// its own doc comment) - this disables the limit for this one
+	// long-lived response instead of raising WriteTimeout server-wide,
+	// which would have weakened every other endpoint's protection against
+	// a genuinely hung handler.
+	_ = http.NewResponseController(w).SetWriteDeadline(time.Time{})
 
 	flusher, canFlush := w.(http.Flusher)
 	encoder := json.NewEncoder(w)
