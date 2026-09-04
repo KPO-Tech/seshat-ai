@@ -784,12 +784,24 @@ const ADMIN_CONSOLE_CSS = `
 
 .admin-content .sv-view-header,
 .admin-content .pv-header,
-.admin-content .adm-header {
+.admin-content .adm-header,
+.admin-page-head {
   min-height: 52px;
   align-items: center;
   border-bottom: 1px solid var(--color-border-subtle);
   margin: calc(var(--space-8) * -1) calc(var(--space-8) * -1) var(--space-7);
   padding: 0 var(--space-8);
+  /* These headers live inside the same element that scrolls (.sv-view /
+     .pv-root / .adm-root / .admin-overview have overflow-y: auto on
+     themselves, not a separate wrapper) - without sticking the header to
+     that scroller's own top, it scrolls away with the rest of the page,
+     e.g. "Multimodal" disappearing as soon as you scroll past the first
+     card. background matches the page so content scrolling underneath
+     doesn't show through, and z-index keeps it above that content. */
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--color-bg);
 }
 
 .admin-content .sv-header-info h1,
