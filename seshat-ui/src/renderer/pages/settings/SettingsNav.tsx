@@ -253,6 +253,17 @@ export const SETTINGS_SHARED_CSS = `
   border-radius: 12px;
   overflow: hidden;
   transition: border-color 0.2s;
+  /* .sv-view is a column flex container and .sv-card sits directly in it
+     (e.g. Multimodal's two cards) - combined with this card's own
+     overflow: hidden, a flex item's automatic minimum size no longer
+     applies (it only kicks in with overflow: visible), so without this
+     the card is free to shrink below its own content height when space
+     is tight. It would then just clip itself via that same overflow:
+     hidden instead of pushing .sv-view taller and letting the ancestor's
+     overflow-y: auto scrollbar engage - silently hiding content with no
+     way to reach it, same failure mode as the missing min-height: 0 fix
+     one level up, just one level lower in the tree. */
+  flex-shrink: 0;
 }
 .sv-card:focus-within { border-color: var(--color-primary); }
 
