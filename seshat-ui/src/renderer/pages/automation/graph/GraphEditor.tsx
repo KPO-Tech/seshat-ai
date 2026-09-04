@@ -13,7 +13,7 @@ import {
   type ReactFlowInstance,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { Close, Plus } from '@icon-park/react'
+import { Close, Plus, Undo as UndoIcon, Redo as RedoIcon } from '@icon-park/react'
 import { definitionToFlow, flowToDefinition, INPUT_HANDLE } from './convert'
 import { GRAPH_NODE_TYPES, type FlowGraphNode } from './GraphNode'
 import { NodeCreator } from './NodeCreator'
@@ -53,6 +53,8 @@ function seedNodeIdCounter(nodes: FlowGraphNode[]) {
   nodeIdCounter = Math.max(nodeIdCounter, max)
 }
 
+type FlowState = { nodes: FlowGraphNode[]; edges: Edge[] }
+
 type GraphEditorProps = {
   value: DataflowDefinition | null
   onChange: (def: DataflowDefinition) => void
@@ -80,6 +82,13 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
   const [flowInstance, setFlowInstance] = useState<ReactFlowInstance<FlowGraphNode, Edge> | null>(null)
   const wrapperRef = useRef<HTMLDivElement | null>(null)
 
+  // Undo/redo history. Plain refs, not state, since the stacks themselves
+  // never need to drive a render directly - historyTick exists purely to
+  // force one so the Undo/Redo buttons' disabled state stays in sync.
+  const historyPast = useRef<FlowState[]>([])
+  const historyFuture = useRef<FlowState[]>([])
+  const [, setHistoryTick] = useState(0)
+
   const categories = useMemo(() => Array.from(new Set(nodeTypes.map((n) => n.category))), [nodeTypes])
 
   // Re-color and re-label nodes whenever the catalog resolves (categoryColor
@@ -99,12 +108,50 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categories.length])
 
+  // Every mutation in this file funnels through emitChange, so it's the one
+  // choke point where a history snapshot can be pushed for free instead of
+  // instrumenting every individual handler (add/delete/move/duplicate/
+  // rename node, connect/reconnect/delete edge, save parameters). Captures
+  // `nodes`/`edges` as they still are at call time (the caller's own
+  // setNodes/setEdges have been scheduled but not yet applied to this
+  // closure), i.e. exactly the pre-change state undo should restore.
   const emitChange = useCallback(
     (nextNodes: FlowGraphNode[], nextEdges: Edge[], name?: string, description?: string) => {
+      historyPast.current = [...historyPast.current, { nodes, edges }].slice(-50)
+      historyFuture.current = []
+      setHistoryTick((t) => t + 1)
       onChange(flowToDefinition(name ?? graphName, description ?? graphDescription, nextNodes, nextEdges))
     },
-    [onChange, graphName, graphDescription],
+    [onChange, graphName, graphDescription, nodes, edges],
   )
+
+  // Undo/redo apply a snapshot directly (setNodes/setEdges + onChange) and
+  // bypass emitChange entirely - going through it would push a new history
+  // entry for the undo/redo action itself, corrupting the stack.
+  function undo() {
+    const previous = historyPast.current.at(-1)
+    if (!previous) return
+    historyPast.current = historyPast.current.slice(0, -1)
+    historyFuture.current = [{ nodes, edges }, ...historyFuture.current]
+    setNodes(previous.nodes)
+    setEdges(previous.edges)
+    onChange(flowToDefinition(graphName, graphDescription, previous.nodes, previous.edges))
+    setHistoryTick((t) => t + 1)
+  }
+
+  function redo() {
+    const next = historyFuture.current[0]
+    if (!next) return
+    historyFuture.current = historyFuture.current.slice(1)
+    historyPast.current = [...historyPast.current, { nodes, edges }]
+    setNodes(next.nodes)
+    setEdges(next.edges)
+    onChange(flowToDefinition(graphName, graphDescription, next.nodes, next.edges))
+    setHistoryTick((t) => t + 1)
+  }
+
+  const canUndo = historyPast.current.length > 0
+  const canRedo = historyFuture.current.length > 0
 
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -256,12 +303,28 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'd') return
       const active = document.activeElement?.tagName
       if (active === 'INPUT' || active === 'TEXTAREA' || active === 'SELECT') return
-      if (!selectedNodeId) return
-      e.preventDefault()
-      duplicateSelectedNode()
+      if (!(e.ctrlKey || e.metaKey)) return
+      const key = e.key.toLowerCase()
+
+      if (key === 'd') {
+        if (!selectedNodeId) return
+        e.preventDefault()
+        duplicateSelectedNode()
+        return
+      }
+      // Ctrl+Z / Cmd+Shift+Z (Mac redo convention) undo; Ctrl+Shift+Z and
+      // Ctrl+Y (the two conventions in real use on Windows/Linux) redo.
+      if (key === 'z' && !e.shiftKey) {
+        e.preventDefault()
+        undo()
+        return
+      }
+      if ((key === 'z' && e.shiftKey) || key === 'y') {
+        e.preventDefault()
+        redo()
+      }
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
@@ -303,6 +366,15 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
           <button type="button" className="gf-add-btn" onClick={() => setCreatorOpen(true)} title="Add node">
             <Plus size={16} />
           </button>
+
+          <div className="gf-history-controls">
+            <button type="button" className="gf-history-btn" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">
+              <UndoIcon size={15} />
+            </button>
+            <button type="button" className="gf-history-btn" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)">
+              <RedoIcon size={15} />
+            </button>
+          </div>
 
           {nodes.length === 0 && (
             <div className="gf-canvas-hint">
@@ -442,6 +514,39 @@ const GRAPH_EDITOR_CSS = `
 .gf-add-btn:hover {
   color: var(--color-text);
   background: var(--color-hover);
+}
+
+.gf-history-controls {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 10;
+  display: flex;
+  gap: 6px;
+}
+
+.gf-history-btn {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  box-shadow: var(--shadow-medium);
+  cursor: pointer;
+}
+
+.gf-history-btn:hover:not(:disabled) {
+  color: var(--color-text);
+  background: var(--color-hover);
+}
+
+.gf-history-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 .gf-canvas-hint {
