@@ -29,10 +29,10 @@ function OpenAIIcon({ size = 36 }: IconProps) {
 function CodexIcon({ size = 36 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 36 36" fill="none">
-      <rect width="36" height="36" rx="9" fill="#0B6B5C" />
-      <path d="M12 11 6 18l6 7" stroke="white" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
-      <path d="m24 11 6 7-6 7" stroke="white" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
-      <path d="m20.5 9-5 18" stroke="#9FF5DE" strokeWidth={2.4} strokeLinecap="round" />
+      <rect width="36" height="36" rx="9" fill="#0D1117" />
+      <path d="M10 14l-4 4 4 4" stroke="#3FB950" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M26 14l4 4-4 4" stroke="#3FB950" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M21 10l-6 16" stroke="#58A6FF" strokeWidth={2} strokeLinecap="round" />
     </svg>
   )
 }
@@ -57,18 +57,12 @@ function MistralIcon({ size = 36 }: IconProps) {
 function DeepSeekIcon({ size = 36 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 36 36" fill="none">
-      <rect width="36" height="36" rx="9" fill="#2563EB" />
+      <rect width="36" height="36" rx="9" fill="#4D6BFE" />
       <path
-        d="M8 19c0-5.2 4.1-9.5 9.5-9.5 4.9 0 8.9 3.5 9.4 8.1l3.1.8-3.3 2.4c-.9 3.7-4.3 6.7-9.2 6.7C12.1 27.5 8 24.2 8 19Z"
+        d="M9 15c2-4 6-6 10-4.5-2 .5-4 2-5 4 2-1 5-1 7 .5-1.5 0-3.5.5-4.5 2 2-.5 4.5 0 6 2-3 1-6.5 1-9-1-3 3.5-8 3-9-3z"
         fill="white"
       />
-      <path
-        d="M13.5 18.4c1.4 1.7 3.2 2.5 5.4 2.5 2 0 3.8-.6 5.3-1.9"
-        stroke="#2563EB"
-        strokeWidth={2}
-        strokeLinecap="round"
-      />
-      <circle cx="14.2" cy="15.6" r="1.4" fill="#2563EB" />
+      <circle cx="12" cy="16" r="1.2" fill="#4D6BFE" />
     </svg>
   )
 }
@@ -85,10 +79,8 @@ function GeminiIcon({ size = 36 }: IconProps) {
 function KimiIcon({ size = 36 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 36 36" fill="none">
-      <rect width="36" height="36" rx="9" fill="#111827" />
-      <circle cx="18" cy="18" r="11" fill="#F5F2EC" />
-      <circle cx="15.5" cy="15.5" r="11" fill="#111827" />
-      <path d="M12 24V12M12 18l8-6M15.4 17.1 24 24" stroke="#F5F2EC" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+      <rect width="36" height="36" rx="9" fill="#16171B" />
+      <path d="M21 8a11 11 0 1 0 7 19.5A9 9 0 0 1 21 8z" fill="#E8E8ED" />
     </svg>
   )
 }
@@ -109,11 +101,8 @@ function OllamaIcon({ size = 36 }: IconProps) {
 function OpenCodeZenIcon({ size = 36 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 36 36" fill="none">
-      <rect width="36" height="36" rx="9" fill="#7C3AED" />
-      <path d="M11 13c2.1-2.2 4.4-3.3 7-3.3s4.9 1.1 7 3.3" stroke="white" strokeWidth={2.2} strokeLinecap="round" />
-      <path d="M11 23c2.1 2.2 4.4 3.3 7 3.3s4.9-1.1 7-3.3" stroke="white" strokeWidth={2.2} strokeLinecap="round" />
-      <path d="M10 18h16" stroke="#D8B4FE" strokeWidth={2.2} strokeLinecap="round" />
-      <path d="m15 14-3.8 4 3.8 4M21 14l3.8 4-3.8 4" stroke="white" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+      <rect width="36" height="36" rx="9" fill="#0D1117" />
+      <path d="M14 11 8 18l6 7M22 11l6 7-6 7" stroke="#3FB950" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
@@ -132,9 +121,7 @@ function WorkersAIIcon({ size = 36 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 36 36" fill="none">
       <rect width="36" height="36" rx="9" fill="#F38020" />
-      <path d="M9 22.5c.7-3.5 3.1-5.6 6.4-5.6 2.4 0 4.2.9 5.4 2.7 1-.7 2.1-1 3.3-1 2.4 0 4 1.4 4.9 3.9H9Z" fill="white" />
-      <path d="M11.8 16.8c1.3-3 3.6-4.7 6.8-4.7 3.5 0 6 1.9 7.3 5.4-.6-.2-1.2-.3-1.9-.3-1.1 0-2.1.3-3 .8-1.4-1.6-3.2-2.4-5.6-2.4-1.3 0-2.5.4-3.6 1.2Z" fill="#FFF3E6" />
-      <path d="M13 24h10M16 27h7" stroke="#7C2D12" strokeWidth={2} strokeLinecap="round" />
+      <path d="M9 22a5 5 0 0 1 1-9.9 6.5 6.5 0 0 1 12.4-1.7A5.5 5.5 0 0 1 27 22H9z" fill="white" />
     </svg>
   )
 }
