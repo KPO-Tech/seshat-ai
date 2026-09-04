@@ -1299,3 +1299,41 @@ type WorkspaceChatMessageRecord struct {
 	EventsJSON string `gorm:"type:text"`
 	CreatedAt  time.Time
 }
+
+// WorkspaceChatSDKSessionMetadata and WorkspaceChatSDKTranscriptEntry are
+// the persistence layer for the seshat SDK's own sdk.SessionBackend
+// interface (see internal/server/workspacechat's sdksessionstore.go) - what
+// lets an sdk.Client resume a chat's actual LLM-side conversation memory
+// (client.LoadSession) instead of always starting empty (client.CreateSession)
+// whenever a fresh sdk.Client is needed for an existing WorkspaceChatSession
+// (a server restart, workspacechat's own 2h idle eviction, or a
+// mid-conversation provider/model switch each force one). Deliberately
+// separate from WorkspaceChatMessageRecord/EventsJSON above: that's an
+// already-durable UI-replay log in this server's own simplified Event
+// shape, never fed back into the LLM; these two tables store the SDK's own
+// richer Message/ContentBlock representation (tool_use/tool_result/
+// thinking blocks, not just the flattened trace this server's Event
+// records), the same thing the SDK's own reference SQLite backend
+// (internal/runtime/state/sqlite_backend.go in the seshat module) stores -
+// this mirrors its two-table shape directly, just against this server's
+// shared DB. Keyed by SDKSessionID = the exact same string as
+// WorkspaceChatSession.ID (see resumeOrCreateSDKSession) - one row per
+// conversation, not a separate ID space to reconcile.
+type WorkspaceChatSDKSessionMetadata struct {
+	SDKSessionID string    `gorm:"column:sdk_session_id;primaryKey;size:64"`
+	Status       string    `gorm:"column:status;size:16;not null"`
+	MetadataJSON string    `gorm:"column:metadata_json;type:text;not null"`
+	CreatedAt    time.Time `gorm:"column:created_at"`
+	UpdatedAt    time.Time `gorm:"column:updated_at;index"`
+}
+
+// EntryIndex is the transcript's own ordering, explicit rather than relying
+// on row-insertion order or a timestamp - matches the SDK's own SQLite
+// backend exactly (append = current row count as the next start index,
+// replace = delete-then-reinsert from 0), which is load-bearing: transcript
+// order is conversation order, which is what gets replayed back to the LLM.
+type WorkspaceChatSDKTranscriptEntry struct {
+	SDKSessionID string `gorm:"column:sdk_session_id;primaryKey;size:64;index:idx_workspace_chat_sdk_transcript_session"`
+	EntryIndex   int    `gorm:"column:entry_index;primaryKey"`
+	EntryJSON    string `gorm:"column:entry_json;type:text;not null"`
+}

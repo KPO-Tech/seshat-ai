@@ -146,6 +146,8 @@ func (d *DB) Migrate() error {
 		&UsageCounter{},
 		&WorkspaceChatSession{},
 		&WorkspaceChatMessageRecord{},
+		&WorkspaceChatSDKSessionMetadata{},
+		&WorkspaceChatSDKTranscriptEntry{},
 		&PasswordResetToken{},
 		&OIDCLoginState{},
 		&SAMLAuthRequestState{},

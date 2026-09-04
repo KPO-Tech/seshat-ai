@@ -60,6 +60,7 @@ type Service struct {
 	knowledge   *knowledge.Service
 	mcpRegistry *mcpregistry.Service
 	doclingURL  string
+	sdkSessions *sdkSessionBackend
 
 	mu       sync.Mutex
 	sessions map[string]*chatSession
@@ -77,7 +78,8 @@ func New(database *sdb.DB, iamService *iam.Service, automationService *automatio
 	return &Service{
 		db: database, iam: iamService, automation: automationService,
 		webSearch: webSearchService, knowledge: knowledgeService, mcpRegistry: mcpRegistryService, doclingURL: doclingURL,
-		sessions: make(map[string]*chatSession),
+		sdkSessions: newSDKSessionBackend(database),
+		sessions:    make(map[string]*chatSession),
 	}
 }
 
@@ -396,8 +398,14 @@ func (s *Service) GetSession(ctx context.Context, principal *iam.Principal, sess
 }
 
 // purgeExpiredSessions deletes every session (and its messages) untouched
-// for longer than sessionRetention. Called periodically by Cleanup.
+// for longer than sessionRetention. Called periodically by Cleanup. Also
+// deletes the same IDs' rows from sdkSessions (the SDK's own conversation
+// memory, see sdksessionstore.go) - without this, that data would outlive
+// the WorkspaceChatSession/WorkspaceChatMessageRecord rows it exists to
+// keep in sync with, accumulating forever for conversations the UI (and
+// GetSession's own retention-window check) already treat as gone.
 func (s *Service) purgeExpiredSessions(ctx context.Context) {
+	var expiredIDs []string
 	err := s.db.Gorm().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		cutoff := time.Now().UTC().Add(-sessionRetention)
 		var expired []sdb.WorkspaceChatSession
@@ -407,17 +415,21 @@ func (s *Service) purgeExpiredSessions(ctx context.Context) {
 		if len(expired) == 0 {
 			return nil
 		}
-		ids := make([]string, len(expired))
+		expiredIDs = make([]string, len(expired))
 		for i, session := range expired {
-			ids[i] = session.ID
+			expiredIDs[i] = session.ID
 		}
-		if err := tx.Where("session_id IN ?", ids).Delete(&sdb.WorkspaceChatMessageRecord{}).Error; err != nil {
+		if err := tx.Where("session_id IN ?", expiredIDs).Delete(&sdb.WorkspaceChatMessageRecord{}).Error; err != nil {
 			return err
 		}
-		return tx.Where("id IN ?", ids).Delete(&sdb.WorkspaceChatSession{}).Error
+		return tx.Where("id IN ?", expiredIDs).Delete(&sdb.WorkspaceChatSession{}).Error
 	})
 	if err != nil {
 		log.Printf("[workspacechat] purge expired sessions failed: %v", err)
+		return
+	}
+	if err := s.sdkSessions.deleteSessions(expiredIDs); err != nil {
+		log.Printf("[workspacechat] purge expired SDK session state failed: %v", err)
 	}
 }
 
@@ -481,7 +493,7 @@ func (s *Service) getOrCreateSession(ctx context.Context, principal *iam.Princip
 		PermissionMode:         sdk.PermissionModeBypass,
 		MaxTokens:              4096,
 		AutoCompact:            true,
-		PersistSessions:        false,
+		SessionBackend:         s.sdkSessions,
 		DisableTitleGeneration: true,
 		EnableMemory:           false,
 		EnableHooks:            false,
@@ -506,7 +518,7 @@ func (s *Service) getOrCreateSession(ctx context.Context, principal *iam.Princip
 	if err != nil {
 		return nil, err
 	}
-	sdkSession, err := client.CreateSession(ctx)
+	sdkSession, err := s.resumeOrCreateSDKSession(ctx, client, params.SessionID)
 	if err != nil {
 		client.Close()
 		return nil, err
@@ -523,6 +535,24 @@ func (s *Service) getOrCreateSession(ctx context.Context, principal *iam.Princip
 	}
 	s.evictStaleLocked()
 	return sdkSession, nil
+}
+
+// resumeOrCreateSDKSession restores sessionID's prior conversation via
+// sdkSessions (client.LoadSession) before ever starting an empty one - this
+// is what makes multi-turn context survive a server restart, an idle
+// eviction, or a provider/model switch instead of silently starting over
+// each time (see sdksessionstore.go's own doc comment). It never calls
+// client.CreateSession (which cannot be told to use a caller-supplied ID -
+// see that same doc comment) - ensureSessionExists seeds a fresh, empty
+// metadata row on a genuine first turn so LoadSession always has something
+// to find, whether that's real prior history or an empty session it just
+// created a moment ago.
+func (s *Service) resumeOrCreateSDKSession(ctx context.Context, client *sdk.Client, sessionID string) (*sdk.Session, error) {
+	sdkSessionID := sdk.SessionID(sessionID)
+	if err := s.sdkSessions.ensureSessionExists(sdkSessionID); err != nil {
+		return nil, err
+	}
+	return client.LoadSession(ctx, sdkSessionID)
 }
 
 // evictStaleLocked closes and drops any session untouched for longer than
