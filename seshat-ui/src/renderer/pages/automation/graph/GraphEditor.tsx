@@ -20,6 +20,8 @@ import { NodeCreator } from './NodeCreator'
 import { ParameterForm } from './ParameterForm'
 import type { DataflowDefinition, NodeDescription } from './types'
 import { useUIStore } from '@/stores/ui'
+import { api } from '@/api/client'
+import type { Agent } from '@/api/types'
 
 // One color per node-type Category, cycled if the live catalog ever grows a
 // 6th - purely cosmetic grouping, never a correctness signal (the type
@@ -90,6 +92,16 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
   const [, setHistoryTick] = useState(0)
 
   const categories = useMemo(() => Array.from(new Set(nodeTypes.map((n) => n.category))), [nodeTypes])
+
+  // For the "agent" node type's own `agent` parameter - lets ParameterForm
+  // render a real picker (name + persona) instead of a free-typed slug, the
+  // same /agents list AutomationPage's own "Default agent" dropdown already
+  // uses. Fetched once here rather than threaded down from AutomationPage,
+  // since only the config panel (a GraphEditor concern) needs it.
+  const [agents, setAgents] = useState<Agent[]>([])
+  useEffect(() => {
+    api.get<{ agents: Agent[] }>('/agents').then((r) => setAgents((r.agents ?? []).filter((a) => a.enabled !== false))).catch(() => {})
+  }, [])
 
   // Re-color and re-label nodes whenever the catalog resolves (categoryColor
   // needs `categories`, not known yet on first mount if node types load
@@ -409,8 +421,10 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
             <div className="gf-config-body">
               <ParameterForm
                 key={selectedNode.id}
+                nodeType={selectedNode.data.dfType}
                 parameters={selectedNode.data.parameters}
                 properties={nodeTypes.find((nt) => nt.type === selectedNode.data.dfType)?.properties}
+                agents={agents}
                 onSave={saveParams}
                 onDelete={deleteSelectedNode}
                 onDuplicate={duplicateSelectedNode}
@@ -568,13 +582,17 @@ const GRAPH_EDITOR_CSS = `
   top: 0;
   right: 0;
   bottom: 0;
-  width: 300px;
+  width: 340px;
   border-left: 1px solid var(--color-border);
   background: var(--color-bg);
   box-shadow: -14px 0 40px rgba(0, 0, 0, 0.22);
   display: flex;
   flex-direction: column;
-  z-index: 5;
+  /* Higher than the canvas's own "+" add-node button and undo/redo
+     controls (both z-index: 10, top-right/top-left of the canvas) - this
+     panel's own close button sits at its top-right corner, exactly where
+     the "+" button lives, and was rendering underneath it (unclickable). */
+  z-index: 15;
 }
 
 .gf-config-head {
@@ -676,8 +694,18 @@ const GRAPH_EDITOR_CSS = `
 
 .gf-config-actions {
   display: flex;
+  flex-direction: column;
   gap: 8px;
   margin-top: 4px;
+}
+
+.gf-config-actions-row {
+  display: flex;
+  gap: 8px;
+}
+
+.gf-config-actions-row .gf-action-btn {
+  flex: 1;
 }
 
 /* Save/Duplicate/Delete (ParameterForm) and Save/Cancel (SecretRefField's
