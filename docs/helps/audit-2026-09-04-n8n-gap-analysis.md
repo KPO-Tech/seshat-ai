@@ -151,7 +151,7 @@ Ces éléments existent bien dans n8n (pas des suppositions), mais notre propre 
 
 Suite directe : l'utilisateur soupçonnait que des opérations de base manquaient ("la suppression des nœuds, ...") et a demandé un audit du code réel, pas une comparaison à n8n. Trouvé en lisant directement `seshat-ui/src/renderer/pages/automation/graph/*.tsx` — pas des suppositions, code cité précisément. Ces items passent **avant** le Tier 1 (corrections/petites lacunes sur ce qui existe déjà, pas de nouvelle architecture).
 
-### 0.1 BUG confirmé — boutons Delete/Duplicate/Save non stylés (quasi invisibles)
+### 0.1 [x] Fait (2026-09-04, `58904ec`) — boutons Delete/Duplicate/Save non stylés (quasi invisibles)
 `ParameterForm.tsx` (lignes 169/172/175) et `SecretRefField.tsx` (lignes 94/97) utilisent `className="ib-action-btn"` — une classe qui n'existe **que** dans le `<style>` de la page Inbox (`pages/inbox/index.tsx`), jamais chargée par la page Automation. Résultat : les boutons "Save parameters"/"Duplicate"/"Delete node" (et "Save"/"Cancel" dans le formulaire de création de secret) sont **fonctionnellement câblés** (`onClick` correct, testé en lisant `deleteSelectedNode`/`onNodesDelete`) mais s'affichent en boutons par défaut du navigateur, sans le style du reste de l'éditeur — facile à ne pas remarquer ou à prendre pour un élément cassé/absent. **C'est très probablement l'explication de "je n'arrive pas à supprimer un nœud"** : le bouton existe et marche, mais ne ressemble à rien.
 **Fix** : remplacer `ib-action-btn` par une vraie classe scoped à l'éditeur (ex. `.gf-action-btn`), stylée dans `GRAPH_EDITOR_CSS` (déjà chargé sur toute la page). Petit, rapide, à faire en premier.
 
