@@ -157,6 +157,45 @@ function ZAiIcon({ size = 36 }: IconProps) {
   )
 }
 
+// Foundry/Bedrock/Vertex were missing from this map entirely - not just a
+// style mismatch like the other icons below, but a real gap: Foundry is
+// one of the 13 providers this page actually renders (its "Azure AI
+// Foundry" card fell through to GenericProviderIcon's plain gray circle
+// instead of a branded icon), and Bedrock/Vertex are one filter-condition
+// change away from showing up here too (both apps currently exclude them
+// via the same oauth/aws/gcp authType filter - see ProviderSettingsPage.tsx).
+// Copied from seshat-ui's own ProviderIcon.tsx (components/ui/ProviderIcon.tsx)
+// for exact visual parity between the two apps' Admin Consoles, matching
+// the same reasoning shared/connector-catalog was built for.
+function FoundryIcon({ size = 36 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 36 36" fill="none">
+      <rect width="36" height="36" rx="9" fill="#0078D4" />
+      <path d="M15 8h6l7 20h-6.2l-1.4-4.4h-5l-1.4 4.4H8L15 8zm1 12h4l-2-6.4L16 20z" fill="white" />
+    </svg>
+  )
+}
+
+function BedrockIcon({ size = 36 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 36 36" fill="none">
+      <rect width="36" height="36" rx="9" fill="#232F3E" />
+      <path d="M9 24V13l9-5 9 5v11l-9 5-9-5z" stroke="#FF9900" strokeWidth={2} strokeLinejoin="round" fill="none" />
+      <path d="M9 13l9 5 9-5M18 18v11" stroke="#FF9900" strokeWidth={2} strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function VertexIcon({ size = 36 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 36 36" fill="none">
+      <rect width="36" height="36" rx="9" fill="#1A73E8" />
+      <path d="M18 7l9 15.6H9L18 7z" fill="white" />
+      <circle cx="18" cy="24" r="2.4" fill="#1A73E8" />
+    </svg>
+  )
+}
+
 function GenericProviderIcon({ size = 36 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 36 36" fill="none">
@@ -180,7 +219,10 @@ const ICON_MAP: Record<string, (props: IconProps) => ReactElement> = {
   deepseek: DeepSeekIcon,
   opencode: OpenCodeZenIcon,
   kimi: KimiIcon,
+  foundry: FoundryIcon,
   'workers-ai': WorkersAIIcon,
+  bedrock: BedrockIcon,
+  vertex: VertexIcon,
 }
 
 export function ProviderIcon({ provider, size = 36 }: IconProps & { provider: string }) {
