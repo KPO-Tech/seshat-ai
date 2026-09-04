@@ -159,7 +159,7 @@ Suite directe : l'utilisateur soupçonnait que des opérations de base manquaien
 `GraphEditor.tsx`'s `renameNode()` (ligne 206) fait `if (newId === oldId || nodes.some(n => n.id === newId)) return` — sort sans rien faire en cas de collision, mais `NodeIdEditor`'s `draft` local garde le texte tapé (rejeté) affiché dans le champ, sans aucun message d'erreur. Donne l'impression que le renommage a marché (ou plante) alors qu'il a juste été ignoré.
 **Fix** : petit — afficher une erreur inline (même pattern que les autres champs invalides) et/ou reverter visuellement `draft` à l'ancien id.
 
-### 0.3 Aucune confirmation avant de perdre du travail non sauvegardé
+### 0.3 [x] Fait (2026-09-04, `51ca0da`) — aucune confirmation avant de perdre du travail non sauvegardé
 Quitter l'éditeur (nouveau job jamais sauvegardé, ou modifications sur un job existant) via le bouton retour, le rail, ou en fermant l'appli ne prévient jamais — tout est perdu silencieusement. Aucun garde `beforeunload`/confirmation de navigation nulle part dans `AutomationPage`.
 **Fix** : moyen — nécessite de suivre un état "dirty" (comparer le brouillon local à ce qui a été chargé/sauvegardé) puis un `window.confirm` ou une vraie modale avant de naviguer.
 
