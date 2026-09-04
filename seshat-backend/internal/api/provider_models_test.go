@@ -13,12 +13,12 @@ import (
 // GET /provider-catalog shape (an ordered array, same field names) so both
 // frontends can share one mental model of the response.
 func TestModelsListReturnsTheLiveSDKCatalog(t *testing.T) {
-	app, _ := newAuditTestApp(t)
-	router := CreateRouter(defaultAPIConfig, app)
+	fx := newSecurityTestFixture(t)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/models", nil)
+	req.Header.Set("Authorization", "Bearer "+fx.memberToken)
 	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
+	fx.router.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected success, got %d: %s", rec.Code, rec.Body.String())
 	}
@@ -54,13 +54,29 @@ func TestModelsListReturnsTheLiveSDKCatalog(t *testing.T) {
 }
 
 func TestModelsListRejectsNonGET(t *testing.T) {
-	app, _ := newAuditTestApp(t)
-	router := CreateRouter(defaultAPIConfig, app)
+	fx := newSecurityTestFixture(t)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/models", nil)
+	req.Header.Set("Authorization", "Bearer "+fx.memberToken)
 	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
+	fx.router.ServeHTTP(rec, req)
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("expected 405, got %d", rec.Code)
+	}
+}
+
+// TestModelsListRequiresAuthentication is a regression test for this route
+// having been reachable with no Authorization header at all until this was
+// found and fixed - every other non-public route in routes.go goes through
+// app.authMiddleware; this one was a bare apiV1.HandleFunc, the one
+// inconsistency in an otherwise consistent file.
+func TestModelsListRequiresAuthentication(t *testing.T) {
+	fx := newSecurityTestFixture(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/models", nil)
+	rec := httptest.NewRecorder()
+	fx.router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 with no Authorization header, got %d: %s", rec.Code, rec.Body.String())
 	}
 }

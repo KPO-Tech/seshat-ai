@@ -228,7 +228,7 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	apiV1.HandleFunc("/system/status", app.handleSystemStatus)
 	apiV1.Handle("/system/network-diagnostics", app.authMiddleware(http.HandlerFunc(app.handleNetworkDiagnostics)))
 
-	apiV1.HandleFunc("/models", handleModelsList)
+	apiV1.Handle("/models", app.authMiddleware(http.HandlerFunc(handleModelsList)))
 	apiV1.HandleFunc("/metrics", app.handleMetricsJSON)
 	apiV1.HandleFunc("/desktop/handshake", app.handleDesktopHandshake)
 
