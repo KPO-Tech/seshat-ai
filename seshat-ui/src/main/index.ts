@@ -33,6 +33,12 @@ function createWindow() {
     show: false,
     autoHideMenuBar: true,
     frame: false,
+    // Windows 11's DWM rounds a frameless window's corners by default -
+    // this is the dedicated Electron option to opt out and get square
+    // corners on the window itself, independent of any border-radius in
+    // the app's own CSS. No-op on platforms without that compositor
+    // behavior (macOS/Linux), safe to always set.
+    roundedCorners: false,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       nodeIntegration: false,

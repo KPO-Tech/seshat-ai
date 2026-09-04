@@ -810,7 +810,13 @@ const AUTOMATION_CSS = `
   box-shadow: -18px 0 60px rgba(0, 0, 0, 0.26);
   display: flex;
   flex-direction: column;
-  z-index: 8;
+  /* Higher than the canvas's own "+" add-node button (.gf-add-btn,
+     z-index: 10, top-right of the canvas) - both sit in the same
+     stacking context (.gf-canvas is position: relative with no z-index
+     of its own, so it doesn't isolate one), and the drawer's top-right
+     corner lands exactly where that button sits. The drawer should
+     cover it while open, not the other way around. */
+  z-index: 15;
 }
 
 .au-drawer-head {
