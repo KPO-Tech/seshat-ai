@@ -54,10 +54,6 @@ export function AdminAgentPresetsView() {
           <Plus size={12} /> New preset
         </button>
       </header>
-      <p className="adm-muted" style={{ margin: '-16px 0 4px', fontSize: 12 }}>
-        Organization-level agent presets - specialized personas your whole team can use, resolved alongside each
-        device's own personal agents and the built-in registry.
-      </p>
 
       {(error || actionError) && (
         <div className="pv-action-error">
