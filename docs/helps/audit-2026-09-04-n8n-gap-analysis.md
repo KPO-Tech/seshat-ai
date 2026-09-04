@@ -167,7 +167,7 @@ Quitter l'éditeur (nouveau job jamais sauvegardé, ou modifications sur un job 
 Seule l'Overview (la liste) permet de supprimer un job — il faut quitter l'éditeur pour ça, aucune option "Delete this automation" dans le canevas/topbar.
 **Fix** : petit — ajouter l'action dans le drawer Job settings ou la topbar, réutilisant l'endpoint déjà utilisé par Overview.
 
-### 0.5 Pas de reconnexion d'arête par glisser-déposer
+### 0.5 [x] Fait (2026-09-04, `2f2a4fd`) — pas de reconnexion d'arête par glisser-déposer
 Pour changer la cible d'une connexion existante, il faut la supprimer (sélection + Backspace, ou clic) puis en retracer une nouvelle depuis zéro — React Flow supporte le "reconnect" par glisser d'une extrémité d'arête existante (`reconnectable`/`onReconnect`) mais ce n'est pas branché dans `GraphEditor.tsx`.
 **Fix** : petit — ajouter `onReconnect` (React Flow gère déjà la mécanique de drag, juste besoin du handler pour mettre à jour `edges`/appeler `emitChange`).
 
