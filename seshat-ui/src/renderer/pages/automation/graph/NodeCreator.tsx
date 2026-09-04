@@ -52,7 +52,6 @@ export function NodeCreator({ open, nodeTypes, categoryColorOf, loading, error, 
         key={n.type}
         type="button"
         className="gfc-item"
-        title={n.description}
         onMouseDown={(e) => { e.preventDefault(); onPick(n) }}
       >
         <span className="gfc-item-icon" style={{ background: tintColor(color), color }}>

@@ -20,8 +20,6 @@ import { NodeCreator } from './NodeCreator'
 import { ParameterForm } from './ParameterForm'
 import type { DataflowDefinition, NodeDescription } from './types'
 import { useUIStore } from '@/stores/ui'
-import { api } from '@/api/client'
-import type { Agent } from '@/api/types'
 
 // One color per node-type Category, cycled if the live catalog ever grows a
 // 6th - purely cosmetic grouping, never a correctness signal (the type
@@ -92,16 +90,6 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
   const [, setHistoryTick] = useState(0)
 
   const categories = useMemo(() => Array.from(new Set(nodeTypes.map((n) => n.category))), [nodeTypes])
-
-  // For the "agent" node type's own `agent` parameter - lets ParameterForm
-  // render a real picker (name + persona) instead of a free-typed slug, the
-  // same /agents list AutomationPage's own "Default agent" dropdown already
-  // uses. Fetched once here rather than threaded down from AutomationPage,
-  // since only the config panel (a GraphEditor concern) needs it.
-  const [agents, setAgents] = useState<Agent[]>([])
-  useEffect(() => {
-    api.get<{ agents: Agent[] }>('/agents').then((r) => setAgents((r.agents ?? []).filter((a) => a.enabled !== false))).catch(() => {})
-  }, [])
 
   // Re-color and re-label nodes whenever the catalog resolves (categoryColor
   // needs `categories`, not known yet on first mount if node types load
@@ -369,11 +357,10 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
             // "Suppr"), pressing the forward Delete key did nothing.
             deleteKeyCode={['Backspace', 'Delete']}
             fitView
-            fitViewOptions={{ maxZoom: 1 }}
             proOptions={{ hideAttribution: true }}
           >
             <Background />
-            <Controls showInteractive={false} />
+            <Controls showInteractive={false} orientation="horizontal" />
           </ReactFlow>
 
           <button type="button" className="gf-add-btn" onClick={() => setCreatorOpen(true)} title="Add node">
@@ -424,7 +411,6 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
                 nodeType={selectedNode.data.dfType}
                 parameters={selectedNode.data.parameters}
                 properties={nodeTypes.find((nt) => nt.type === selectedNode.data.dfType)?.properties}
-                agents={agents}
                 onSave={saveParams}
                 onDelete={deleteSelectedNode}
                 onDuplicate={duplicateSelectedNode}

@@ -406,6 +406,26 @@ export function AutomationPage() {
     }
   }
 
+  // "Run now" was previously only reachable from Overview/Scheduling's list,
+  // on an already-saved job - never from within the editor itself while
+  // actively building it (flagged explicitly on the user's own priority
+  // list). Only meaningful once the job actually exists server-side, so
+  // hidden entirely for isNew rather than shown-but-disabled.
+  const [runningThisJob, setRunningThisJob] = useState(false)
+  const [runError, setRunError] = useState<string | null>(null)
+  async function handleRunThisJob() {
+    if (!jobId) return
+    setRunningThisJob(true)
+    setRunError(null)
+    try {
+      await api.post(`/automation/jobs/${jobId}/run`, {})
+    } catch (err) {
+      setRunError(err instanceof ApiError ? err.message : 'Failed to trigger this automation.')
+    } finally {
+      setRunningThisJob(false)
+    }
+  }
+
   return (
     <div className="au-root">
       <style>{AUTOMATION_CSS}</style>
@@ -419,13 +439,18 @@ export function AutomationPage() {
           <input className="au-name-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Untitled automation" />
         )}
         <div className="au-topbar-spacer" />
-        {saveError && <span className="au-topbar-error">{saveError}</span>}
+        {(saveError || runError) && <span className="au-topbar-error">{saveError || runError}</span>}
         {isOverview ? (
           <button type="button" className="au-save-btn" onClick={() => navigate('/automation/new')}>
             <Plus size={14} /> New automation
           </button>
         ) : (
           <>
+            {!isNew && (
+              <button type="button" className="au-icon-btn" onClick={() => void handleRunThisJob()} disabled={runningThisJob} title="Run now">
+                {runningThisJob ? <LoadingOne size={15} className="spin" /> : <Play size={15} />}
+              </button>
+            )}
             <button type="button" className={`au-icon-btn ${settingsOpen ? 'active' : ''}`} onClick={() => setSettingsOpen((o) => !o)} title="Job settings">
               <Setting size={15} />
             </button>

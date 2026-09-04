@@ -2,14 +2,13 @@ import { useState } from 'react'
 import { Copy, Delete } from '@icon-park/react'
 import { stripUIPosition } from './convert'
 import { SecretRefField } from './SecretRefField'
+import { AgentPickerField } from './AgentPickerField'
 import type { NodeProperty } from './types'
-import type { Agent } from '@/api/types'
 
 type Props = {
   nodeType: string
   parameters: Record<string, unknown>
   properties: NodeProperty[] | undefined
-  agents?: Agent[]
   onSave: (next: Record<string, unknown>) => void
   onDelete: () => void
   onDuplicate: () => void
@@ -33,7 +32,7 @@ function passesDisplayIf(prop: NodeProperty, drafts: Record<string, string | boo
 // the SDK's own comments - and any future type shipped before its schema
 // is written). Consumers should mount this with `key={nodeId}` so switching
 // the selected node resets the local draft instead of merging stale state.
-export function ParameterForm({ nodeType, parameters, properties, agents, onSave, onDelete, onDuplicate }: Props) {
+export function ParameterForm({ nodeType, parameters, properties, onSave, onDelete, onDuplicate }: Props) {
   const clean = stripUIPosition(parameters)
   const hasSchema = !!properties && properties.length > 0
 
@@ -127,20 +126,14 @@ export function ParameterForm({ nodeType, parameters, properties, agents, onSave
                 </label>
               ) : p.type === 'secretRef' ? (
                 <SecretRefField value={(drafts[p.name] as string) ?? ''} onChange={(name) => setField(p.name, name)} />
-              ) : nodeType === 'agent' && p.name === 'agent' && agents ? (
+              ) : nodeType === 'agent' && p.name === 'agent' ? (
                 // The SDK's own schema leaves this a plain string (a valid
                 // slug is only known per-tenant at runtime, which a
                 // stateless Description() can't express) - the authoring UI
-                // is where a real picker belongs instead, same /agents list
-                // AutomationPage's own "Default agent" dropdown already uses.
-                // Provider/model aren't separate fields here on purpose:
-                // they're already fixed on whichever agent persona is
-                // picked (shown below) - picking a different provider/model
-                // means picking a different agent, not a new field.
-                <select className="gf-field-input" value={(drafts[p.name] as string) ?? ''} onChange={(e) => setField(p.name, e.target.value)}>
-                  <option value="">None - uses the workflow's default agent</option>
-                  {agents.map((a) => <option key={a.slug} value={a.slug}>{a.name || a.slug} ({a.source})</option>)}
-                </select>
+                // is where a real picker belongs instead. AgentPickerField
+                // also lets a new agent be configured (name/provider/model)
+                // inline, without leaving this panel to go to Companion.
+                <AgentPickerField value={(drafts[p.name] as string) ?? ''} onChange={(v) => setField(p.name, v)} />
               ) : p.type === 'options' ? (
                 <select className="gf-field-input" value={(drafts[p.name] as string) ?? ''} onChange={(e) => setField(p.name, e.target.value)}>
                   <option value="" disabled>Select…</option>
@@ -164,11 +157,7 @@ export function ParameterForm({ nodeType, parameters, properties, agents, onSave
                   placeholder={p.placeholder}
                 />
               )}
-              {p.type !== 'boolean' && p.description && <div className="gf-field-hint">{p.description}</div>}
-              {nodeType === 'agent' && p.name === 'agent' && agents && drafts[p.name] && (() => {
-                const picked = agents.find((a) => a.slug === drafts[p.name])
-                return picked && <div className="gf-field-hint">{picked.model || 'Default model'} / {picked.permission_mode || 'default permissions'}</div>
-              })()}
+              {p.type !== 'boolean' && !(nodeType === 'agent' && p.name === 'agent') && p.description && <div className="gf-field-hint">{p.description}</div>}
               {errors[p.name] && <div className="gf-field-error">{errors[p.name]}</div>}
             </div>
           ))}
