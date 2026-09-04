@@ -163,7 +163,7 @@ Suite directe : l'utilisateur soupçonnait que des opérations de base manquaien
 Quitter l'éditeur (nouveau job jamais sauvegardé, ou modifications sur un job existant) via le bouton retour, le rail, ou en fermant l'appli ne prévient jamais — tout est perdu silencieusement. Aucun garde `beforeunload`/confirmation de navigation nulle part dans `AutomationPage`.
 **Fix** : moyen — nécessite de suivre un état "dirty" (comparer le brouillon local à ce qui a été chargé/sauvegardé) puis un `window.confirm` ou une vraie modale avant de naviguer.
 
-### 0.4 Pas de suppression du job depuis l'éditeur lui-même
+### 0.4 [x] Fait (2026-09-04, `c6ce91e`) — pas de suppression du job depuis l'éditeur lui-même
 Seule l'Overview (la liste) permet de supprimer un job — il faut quitter l'éditeur pour ça, aucune option "Delete this automation" dans le canevas/topbar.
 **Fix** : petit — ajouter l'action dans le drawer Job settings ou la topbar, réutilisant l'endpoint déjà utilisé par Overview.
 
