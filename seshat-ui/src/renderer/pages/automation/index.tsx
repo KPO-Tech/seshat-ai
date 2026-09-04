@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams, useLocation } from 'react-router'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate, useParams, useLocation, useBlocker } from 'react-router'
 import {
   Left, Setting, Close, CheckOne, Home, ApplicationOne, DataOne, Help as HelpIcon,
   Plus, Play, PauseOne, Edit as EditIcon, Delete as DeleteIcon, LoadingOne,
@@ -115,6 +115,14 @@ export function AutomationPage() {
   const [nodeTypesLoading, setNodeTypesLoading] = useState(true)
   const [nodeTypesError, setNodeTypesError] = useState<string | null>(null)
 
+  // Unsaved-changes guard: starts armed so the initial hydration (either the
+  // blank-new-job defaults below, or the "load existing job" effect's
+  // set*() calls once its fetch resolves) never counts as a user edit - only
+  // re-armed there, never here, so the very next real edit after that is
+  // exactly the one that should count.
+  const [isDirty, setIsDirty] = useState(false)
+  const skipDirtyRef = useRef(true)
+
   const [agents, setAgents] = useState<Agent[]>([])
   const [devices, setDevices] = useState<Device[]>([])
   const { loading: providersLoading } = useProviders()
@@ -220,6 +228,10 @@ export function AutomationPage() {
           navigate('/scheduling', { replace: true })
           return
         }
+        // Re-arm right before hydrating from the fetched job, so the dirty
+        // effect's next firing (caused by these very set*() calls) is
+        // skipped instead of mistaking "just finished loading" for an edit.
+        skipDirtyRef.current = true
         setName(job.name)
         setDescription(job.description ?? '')
         setTriggerType(job.trigger_type)
@@ -236,6 +248,27 @@ export function AutomationPage() {
       .catch((err) => setLoadError(err instanceof ApiError ? err.message : 'Unable to load this job.'))
       .finally(() => setLoading(false))
   }, [jobId, isNew, navigate])
+
+  useEffect(() => {
+    if (skipDirtyRef.current) { skipDirtyRef.current = false; return }
+    setIsDirty(true)
+  }, [name, description, triggerType, cronExpr, intervalSeconds, runAt, executionTarget, targetDeviceId, agentSlug, selectedProviderId, selectedModelId, graph])
+
+  // Blocks any in-app navigation away from an unsaved new/edited job -
+  // covers the rail's Overview button, the topbar back arrow, and browser
+  // back/forward alike, since useBlocker intercepts the router itself
+  // rather than each button individually. Overview never gets dirty (none
+  // of the tracked fields above are touched there), so this is a no-op on
+  // that route.
+  const blocker = useBlocker(isDirty && !saving)
+  useEffect(() => {
+    if (blocker.state !== 'blocked') return
+    if (window.confirm('You have unsaved changes. Leave without saving?')) {
+      blocker.proceed()
+    } else {
+      blocker.reset()
+    }
+  }, [blocker])
 
   // Provider/Model are optional (see validationItems' comment) - only
   // reconciles an already-chosen selection that's become invalid (e.g.
