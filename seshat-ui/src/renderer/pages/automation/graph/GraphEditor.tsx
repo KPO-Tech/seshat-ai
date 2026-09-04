@@ -102,7 +102,7 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
       current.map((n) => {
         const desc = nodeTypes.find((nt) => nt.type === n.data.dfType)
         const category = desc?.category ?? catalogCategory(n.data.dfType, nodeTypes)
-        return { ...n, data: { ...n.data, categoryColor: categoryColor(category, categories), title: desc?.name, category } }
+        return { ...n, data: { ...n.data, categoryColor: categoryColor(category, categories), title: desc?.name, category, isTrigger: desc?.isTrigger } }
       }),
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -236,6 +236,7 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
           categoryColor: categoryColor(desc.category, categories),
           title: desc.name,
           category: desc.category,
+          isTrigger: desc.isTrigger,
         },
       }
       const next = [...nodes, newNode]
@@ -797,6 +798,13 @@ const GRAPH_EDITOR_CSS = `
   background: var(--color-surface);
   box-shadow: var(--shadow-medium);
   transition: border-color 0.1s ease, box-shadow 0.1s ease;
+}
+
+/* Trigger nodes have no input handle (nothing connects into a graph's own
+   entry point) - a fully rounded left edge makes that visually obvious
+   instead of just quietly missing a handle other nodes have. */
+.gf-node.trigger .gf-node-card {
+  border-radius: 999px 10px 10px 999px;
 }
 
 .gf-node.selected .gf-node-card {

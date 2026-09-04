@@ -9,7 +9,8 @@ import type { Agent, ProviderModel } from '@/api/types'
 import { fetchProviderModels, useProviders } from '@/hooks/useProviders'
 import { useProvidersStore } from '@/stores/providers'
 import { GraphEditor } from './graph/GraphEditor'
-import type { DataflowDefinition, NodeDescription } from './graph/types'
+import type { DataflowDefinition, DataflowNode, NodeDescription } from './graph/types'
+import { UI_POSITION_KEY } from './graph/types'
 
 type TriggerType = 'cron' | 'interval' | 'once'
 type ExecutionTarget = 'cloud' | 'device'
@@ -21,6 +22,25 @@ type RailView = 'overview' | 'graph' | 'templates' | 'variables' | 'help'
 const RUN_STATUS_LABEL: Record<RunStatus, string> = {
   queued: 'Queued', claimed: 'Claimed', running: 'Running',
   completed: 'Completed', failed: 'Failed', cancelled: 'Cancelled',
+}
+
+// One-time, client-side-only upgrade for a graph job saved before schedule
+// triggers became a canvas node (see docs/helps/audit-2026-09-04-n8n-gap-
+// analysis.md, Tier 1.1): synthesizes a schedule_trigger node from the job's
+// legacy trigger_type/cron_expr/etc columns and injects it into the loaded
+// graph so the canvas immediately shows what triggers it, instead of the
+// user finding a graph that looks trigger-less. Not persisted until they
+// save. Unconnected on purpose - the old graph's real root node(s) already
+// ran under the old model (the scheduler decided *when* to fire from those
+// same legacy columns, independent of any node in the graph), so leaving
+// this new node unwired changes nothing about how the job actually behaves;
+// wiring it to something is left to the user, not guessed at automatically.
+function synthesizeScheduleTriggerNode(job: Job): DataflowNode {
+  const parameters: Record<string, unknown> = { mode: job.trigger_type, [UI_POSITION_KEY]: { x: -280, y: 0 } }
+  if (job.trigger_type === 'cron') parameters.cronExpr = job.cron_expr ?? ''
+  if (job.trigger_type === 'interval') parameters.intervalSeconds = job.interval_seconds ?? 3600
+  if (job.trigger_type === 'once' && job.run_at) parameters.runAt = job.run_at
+  return { id: 'schedule_trigger_legacy', type: 'schedule_trigger', parameters }
 }
 
 function describeTrigger(job: Job): string {
@@ -99,10 +119,6 @@ export function AutomationPage() {
 
   const [name, setName] = useState('Untitled automation')
   const [description, setDescription] = useState('')
-  const [triggerType, setTriggerType] = useState<TriggerType>('cron')
-  const [cronExpr, setCronExpr] = useState('0 0 * * *')
-  const [intervalSeconds, setIntervalSeconds] = useState(3600)
-  const [runAt, setRunAt] = useState('')
   const [executionTarget, setExecutionTarget] = useState<ExecutionTarget>('cloud')
   const [targetDeviceId, setTargetDeviceId] = useState('')
   const [agentSlug, setAgentSlug] = useState('')
@@ -235,16 +251,13 @@ export function AutomationPage() {
         skipDirtyRef.current = true
         setName(job.name)
         setDescription(job.description ?? '')
-        setTriggerType(job.trigger_type)
-        setCronExpr(job.cron_expr ?? '0 0 * * *')
-        setIntervalSeconds(job.interval_seconds ?? 3600)
-        setRunAt(job.run_at ? job.run_at.slice(0, 16) : '')
         setExecutionTarget(job.execution_target)
         setTargetDeviceId(job.target_device_id ?? '')
         setAgentSlug(job.configuration?.agent_slug ?? '')
         setSelectedProviderId(job.configuration?.provider_setting_id ?? '')
         setSelectedModelId(job.configuration?.model_id ?? '')
-        setGraph(job.graph)
+        const hasTriggerNode = job.graph.nodes.some((n) => n.type === 'schedule_trigger')
+        setGraph(hasTriggerNode ? job.graph : { ...job.graph, nodes: [synthesizeScheduleTriggerNode(job), ...job.graph.nodes] })
       })
       .catch((err) => setLoadError(err instanceof ApiError ? err.message : 'Unable to load this job.'))
       .finally(() => setLoading(false))
@@ -253,7 +266,7 @@ export function AutomationPage() {
   useEffect(() => {
     if (skipDirtyRef.current) { skipDirtyRef.current = false; return }
     setIsDirty(true)
-  }, [name, description, triggerType, cronExpr, intervalSeconds, runAt, executionTarget, targetDeviceId, agentSlug, selectedProviderId, selectedModelId, graph])
+  }, [name, description, executionTarget, targetDeviceId, agentSlug, selectedProviderId, selectedModelId, graph])
 
   // Blocks any in-app navigation away from an unsaved new/edited job -
   // covers the rail's Overview button, the topbar back arrow, and browser
@@ -307,9 +320,13 @@ export function AutomationPage() {
   // no agent node at all (e.g. Gmail poll -> Postgres insert) has no use for
   // any of the three, so blocking every graph on picking them was a bug, not
   // a real requirement.
+  // "Schedule configured" is gone - the trigger is a node on the canvas now
+  // (schedule_trigger), not a Job Settings field. Checked generically via
+  // the live catalog's isTrigger flag rather than a hardcoded type string,
+  // so a future trigger type (webhook, event) needs no change here.
   const validationItems = [
     { label: 'Name is valid', ok: name.trim().length > 0 },
-    { label: 'Schedule configured', ok: triggerType === 'cron' ? cronExpr.trim().length > 0 : triggerType === 'interval' ? intervalSeconds >= 60 : runAt.length > 0 },
+    { label: 'Graph has a trigger node', ok: (graph?.nodes ?? []).some((n) => nodeTypes.find((nt) => nt.type === n.type)?.isTrigger) },
     { label: 'Execution target selected', ok: executionTarget === 'cloud' || targetDeviceId.length > 0 },
     { label: 'Graph has at least one node', ok: (graph?.nodes.length ?? 0) > 0 },
   ]
@@ -333,10 +350,11 @@ export function AutomationPage() {
       const params = {
         name: name.trim(),
         description: description.trim() || undefined,
-        trigger_type: triggerType,
-        cron_expr: triggerType === 'cron' ? cronExpr.trim() : undefined,
-        interval_seconds: triggerType === 'interval' ? intervalSeconds : undefined,
-        run_at: triggerType === 'once' && runAt ? new Date(runAt).toISOString() : undefined,
+        // No trigger_type/cron_expr/interval_seconds/run_at here anymore -
+        // the graph's own schedule_trigger node (required by canSave above)
+        // is the trigger config now; the server derives these same columns
+        // from it (normalizeJobTrigger, seshat-server/internal/server/
+        // automation/jobs.go).
         execution_target: executionTarget,
         target_device_id: executionTarget === 'device' ? targetDeviceId : undefined,
         model_override: executionTarget === 'cloud' ? modelOverride : undefined,
@@ -500,35 +518,6 @@ export function AutomationPage() {
                   <div className="au-field-hint">{selectedAgent.model || 'Default model'} / {selectedAgent.permission_mode || 'default permissions'}</div>
                 )}
               </div>
-
-              <div className="au-field">
-                <label>Trigger</label>
-                <div className="au-segmented">
-                  {(['cron', 'interval', 'once'] as TriggerType[]).map((type) => (
-                    <button key={type} type="button" className={`au-segment ${triggerType === type ? 'active' : ''}`} onClick={() => setTriggerType(type)}>
-                      {type === 'cron' ? 'Cron' : type === 'interval' ? 'Interval' : 'Once'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {triggerType === 'cron' && (
-                <div className="au-field">
-                  <label>Cron expression</label>
-                  <input value={cronExpr} onChange={(e) => setCronExpr(e.target.value)} placeholder="0 0 * * *" required />
-                </div>
-              )}
-              {triggerType === 'interval' && (
-                <div className="au-field">
-                  <label>Interval (seconds)</label>
-                  <input type="number" min={60} value={intervalSeconds} onChange={(e) => setIntervalSeconds(Number(e.target.value))} required />
-                </div>
-              )}
-              {triggerType === 'once' && (
-                <div className="au-field">
-                  <label>Run at</label>
-                  <input type="datetime-local" value={runAt} onChange={(e) => setRunAt(e.target.value)} required />
-                </div>
-              )}
 
               <div className="au-field">
                 <label>Execution target</label>

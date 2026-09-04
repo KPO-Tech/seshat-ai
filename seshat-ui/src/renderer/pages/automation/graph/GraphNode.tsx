@@ -14,6 +14,10 @@ export type GraphNodeData = {
   // leak into the saved DataflowDefinition.
   title?: string
   category?: string
+  // Also backfilled from the live catalog (NodeDescription.isTrigger) - a
+  // trigger node is a graph's own entry point, so it gets no input handle
+  // (nothing should ever connect into it) and a distinct rounded-left shape.
+  isTrigger?: boolean
 }
 
 export type FlowGraphNode = Node<GraphNodeData, 'dataflow'>
@@ -23,12 +27,14 @@ export function GraphNode({ id, data, selected }: NodeProps<FlowGraphNode>) {
   const color = data.categoryColor ?? 'var(--color-text-muted)'
 
   return (
-    <div className={`gf-node ${selected ? 'selected' : ''}`}>
+    <div className={`gf-node ${data.isTrigger ? 'trigger' : ''} ${selected ? 'selected' : ''}`}>
       {/* No override: React Flow centers a Left/Right handle vertically on
           the node's own bounding box by default - since .gf-node now wraps
           only the card (no trailing ports block adding extra height below
           it), that center lines up exactly with the card's own edge. */}
-      <Handle type="target" position={Position.Left} id={INPUT_HANDLE} className="gf-handle gf-handle-target" />
+      {!data.isTrigger && (
+        <Handle type="target" position={Position.Left} id={INPUT_HANDLE} className="gf-handle gf-handle-target" />
+      )}
       <div className="gf-node-card">
         <div className="gf-node-icon" style={{ background: tintColor(color), color }}>
           {resolveNodeIcon(data.dfType, data.category ?? 'Other', 16)}

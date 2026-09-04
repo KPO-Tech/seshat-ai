@@ -23,6 +23,11 @@ export type NodeDescription = {
   description: string
   category: string
   properties?: NodeProperty[]
+  // A trigger node (e.g. schedule_trigger) is a graph's entry point and its
+  // own activation config, not a data transform - the editor renders it
+  // without an input handle and groups it separately, without hardcoding a
+  // type-name list. See pkg/dataflow's NodeDescription.IsTrigger.
+  isTrigger?: boolean
 }
 
 // Mirrors github.com/KPO-Tech/seshat/pkg/dataflow's NodeProperty family
