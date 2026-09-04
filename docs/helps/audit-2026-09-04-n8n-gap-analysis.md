@@ -155,7 +155,7 @@ Suite directe : l'utilisateur soupçonnait que des opérations de base manquaien
 `ParameterForm.tsx` (lignes 169/172/175) et `SecretRefField.tsx` (lignes 94/97) utilisent `className="ib-action-btn"` — une classe qui n'existe **que** dans le `<style>` de la page Inbox (`pages/inbox/index.tsx`), jamais chargée par la page Automation. Résultat : les boutons "Save parameters"/"Duplicate"/"Delete node" (et "Save"/"Cancel" dans le formulaire de création de secret) sont **fonctionnellement câblés** (`onClick` correct, testé en lisant `deleteSelectedNode`/`onNodesDelete`) mais s'affichent en boutons par défaut du navigateur, sans le style du reste de l'éditeur — facile à ne pas remarquer ou à prendre pour un élément cassé/absent. **C'est très probablement l'explication de "je n'arrive pas à supprimer un nœud"** : le bouton existe et marche, mais ne ressemble à rien.
 **Fix** : remplacer `ib-action-btn` par une vraie classe scoped à l'éditeur (ex. `.gf-action-btn`), stylée dans `GRAPH_EDITOR_CSS` (déjà chargé sur toute la page). Petit, rapide, à faire en premier.
 
-### 0.2 BUG confirmé — renommer un nœud vers un ID déjà pris échoue silencieusement
+### 0.2 [x] Fait (2026-09-04, `5f83844`) — renommer un nœud vers un ID déjà pris échoue silencieusement
 `GraphEditor.tsx`'s `renameNode()` (ligne 206) fait `if (newId === oldId || nodes.some(n => n.id === newId)) return` — sort sans rien faire en cas de collision, mais `NodeIdEditor`'s `draft` local garde le texte tapé (rejeté) affiché dans le champ, sans aucun message d'erreur. Donne l'impression que le renommage a marché (ou plante) alors qu'il a juste été ignoré.
 **Fix** : petit — afficher une erreur inline (même pattern que les autres champs invalides) et/ou reverter visuellement `draft` à l'ancien id.
 
@@ -175,6 +175,9 @@ Pour changer la cible d'une connexion existante, il faut la supprimer (sélectio
 Aucun historique d'actions (ajout/suppression/déplacement de nœud, édition de paramètre) — une suppression accidentelle d'un nœud entièrement configuré est irrécupérable une fois qu'elle arrive (à part ne pas sauvegarder et recharger la page, perdant alors TOUT le reste du travail en cours). Ni React Flow ni le state React local (`useNodesState`/`useEdgesState`) ne gardent d'historique. Ce point n'était pas non plus ressorti dans l'audit n8n ci-dessus (nos agents de recherche ne l'ont pas creusé) — n8n a bien un vrai undo/redo (Ctrl+Z) au niveau du store du workflow, à vérifier plus précisément si ce chantier devient prioritaire.
 **Fix** : moyen-gros — nécessite une vraie pile d'historique (snapshots de `nodes`/`edges`, ou un store type Zundo/temporal) plutôt qu'un correctif ponctuel.
 **Filet de sécurité immédiat, sans construire tout un undo/redo** : au minimum, ajouter une confirmation avant `deleteSelectedNode()`/`onNodesDelete` (comme Overview le fait déjà pour supprimer un job entier) — n'empêche pas toutes les pertes accidentelles mais couvre le cas le plus fréquent (clic malheureux sur "Delete node").
+
+### 0.7 [x] Fait (2026-09-04, `5f83844`) — la touche "Suppr" (Delete) ne supprimait rien
+Trouvé en testant en direct, pas dans la lecture de code initiale. `<ReactFlow>` n'avait aucun `deleteKeyCode` explicite — la valeur par défaut de la librairie est `'Backspace'` **seul**, qui n'inclut pas la touche Delete/Suppr (une touche physique distincte sur la plupart des claviers non-Mac). Corrigé avec `deleteKeyCode={['Backspace', 'Delete']}`.
 
 ---
 
