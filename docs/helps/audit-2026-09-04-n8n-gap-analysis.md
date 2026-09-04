@@ -144,3 +144,37 @@ Ces éléments existent bien dans n8n (pas des suppositions), mais notre propre 
 5. **Tier 5**, jamais sans une demande client concrète.
 
 À confirmer avec l'utilisateur avant de commencer l'exécution item par item : est-ce que cet ordre convient, ou faut-il réordonner selon d'autres priorités produit (par exemple, si un template concret est déjà prévu à court terme, 3.3 remonterait avant la fin du Tier 2).
+
+---
+
+## Tier 0 — Bugs et lacunes UX confirmés dans le code actuel (2026-09-04)
+
+Suite directe : l'utilisateur soupçonnait que des opérations de base manquaient ("la suppression des nœuds, ...") et a demandé un audit du code réel, pas une comparaison à n8n. Trouvé en lisant directement `seshat-ui/src/renderer/pages/automation/graph/*.tsx` — pas des suppositions, code cité précisément. Ces items passent **avant** le Tier 1 (corrections/petites lacunes sur ce qui existe déjà, pas de nouvelle architecture).
+
+### 0.1 BUG confirmé — boutons Delete/Duplicate/Save non stylés (quasi invisibles)
+`ParameterForm.tsx` (lignes 169/172/175) et `SecretRefField.tsx` (lignes 94/97) utilisent `className="ib-action-btn"` — une classe qui n'existe **que** dans le `<style>` de la page Inbox (`pages/inbox/index.tsx`), jamais chargée par la page Automation. Résultat : les boutons "Save parameters"/"Duplicate"/"Delete node" (et "Save"/"Cancel" dans le formulaire de création de secret) sont **fonctionnellement câblés** (`onClick` correct, testé en lisant `deleteSelectedNode`/`onNodesDelete`) mais s'affichent en boutons par défaut du navigateur, sans le style du reste de l'éditeur — facile à ne pas remarquer ou à prendre pour un élément cassé/absent. **C'est très probablement l'explication de "je n'arrive pas à supprimer un nœud"** : le bouton existe et marche, mais ne ressemble à rien.
+**Fix** : remplacer `ib-action-btn` par une vraie classe scoped à l'éditeur (ex. `.gf-action-btn`), stylée dans `GRAPH_EDITOR_CSS` (déjà chargé sur toute la page). Petit, rapide, à faire en premier.
+
+### 0.2 BUG confirmé — renommer un nœud vers un ID déjà pris échoue silencieusement
+`GraphEditor.tsx`'s `renameNode()` (ligne 206) fait `if (newId === oldId || nodes.some(n => n.id === newId)) return` — sort sans rien faire en cas de collision, mais `NodeIdEditor`'s `draft` local garde le texte tapé (rejeté) affiché dans le champ, sans aucun message d'erreur. Donne l'impression que le renommage a marché (ou plante) alors qu'il a juste été ignoré.
+**Fix** : petit — afficher une erreur inline (même pattern que les autres champs invalides) et/ou reverter visuellement `draft` à l'ancien id.
+
+### 0.3 Aucune confirmation avant de perdre du travail non sauvegardé
+Quitter l'éditeur (nouveau job jamais sauvegardé, ou modifications sur un job existant) via le bouton retour, le rail, ou en fermant l'appli ne prévient jamais — tout est perdu silencieusement. Aucun garde `beforeunload`/confirmation de navigation nulle part dans `AutomationPage`.
+**Fix** : moyen — nécessite de suivre un état "dirty" (comparer le brouillon local à ce qui a été chargé/sauvegardé) puis un `window.confirm` ou une vraie modale avant de naviguer.
+
+### 0.4 Pas de suppression du job depuis l'éditeur lui-même
+Seule l'Overview (la liste) permet de supprimer un job — il faut quitter l'éditeur pour ça, aucune option "Delete this automation" dans le canevas/topbar.
+**Fix** : petit — ajouter l'action dans le drawer Job settings ou la topbar, réutilisant l'endpoint déjà utilisé par Overview.
+
+### 0.5 Pas de reconnexion d'arête par glisser-déposer
+Pour changer la cible d'une connexion existante, il faut la supprimer (sélection + Backspace, ou clic) puis en retracer une nouvelle depuis zéro — React Flow supporte le "reconnect" par glisser d'une extrémité d'arête existante (`reconnectable`/`onReconnect`) mais ce n'est pas branché dans `GraphEditor.tsx`.
+**Fix** : petit — ajouter `onReconnect` (React Flow gère déjà la mécanique de drag, juste besoin du handler pour mettre à jour `edges`/appeler `emitChange`).
+
+### 0.6 Pas d'annuler/refaire (undo/redo) — ni sur le canevas, ni sur le formulaire de nœud
+Aucun historique d'actions (ajout/suppression/déplacement de nœud, édition de paramètre) — une suppression accidentelle d'un nœud entièrement configuré est irrécupérable une fois qu'elle arrive (à part ne pas sauvegarder et recharger la page, perdant alors TOUT le reste du travail en cours). Ni React Flow ni le state React local (`useNodesState`/`useEdgesState`) ne gardent d'historique. Ce point n'était pas non plus ressorti dans l'audit n8n ci-dessus (nos agents de recherche ne l'ont pas creusé) — n8n a bien un vrai undo/redo (Ctrl+Z) au niveau du store du workflow, à vérifier plus précisément si ce chantier devient prioritaire.
+**Fix** : moyen-gros — nécessite une vraie pile d'historique (snapshots de `nodes`/`edges`, ou un store type Zundo/temporal) plutôt qu'un correctif ponctuel.
+**Filet de sécurité immédiat, sans construire tout un undo/redo** : au minimum, ajouter une confirmation avant `deleteSelectedNode()`/`onNodesDelete` (comme Overview le fait déjà pour supprimer un job entier) — n'empêche pas toutes les pertes accidentelles mais couvre le cas le plus fréquent (clic malheureux sur "Delete node").
+
+---
+
