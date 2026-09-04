@@ -10,6 +10,7 @@ import {
   Time,
   Workbench,
   Mail,
+  SmilingFace,
 } from '@icon-park/react'
 import { StatusBadge, STATUS_BADGE_CSS } from '@/components/ui/StatusBadge'
 
@@ -73,6 +74,17 @@ const APPS: AppEntry[] = [
     icon: <Peoples size={32} />,
     tone: 'teams',
     highlights: ['Task boards', 'Agent handoffs', 'Collaborative execution'],
+  },
+  {
+    id: 'companion',
+    title: 'Companion',
+    description: 'Create and manage your own custom agents, each with an illustrated face you pick or generate.',
+    route: '/companion',
+    status: 'ready',
+    category: 'agentic',
+    icon: <SmilingFace size={32} />,
+    tone: 'companion',
+    highlights: ['Illustrated avatars', 'Custom system prompts', 'Your own agent roster'],
   },
 ]
 
@@ -519,6 +531,7 @@ const APPS_CSS = `
 .images { background: rgba(236, 72, 153, 0.18); color: #f9a8d4; }
 .documents { background: rgba(244, 63, 94, 0.18); color: #fda4af; }
 .browser { background: rgba(100, 116, 139, 0.2); color: #cbd5e1; }
+.companion { background: rgba(99, 102, 241, 0.18); color: #a5b4fc; }
 
 /* Dark-mode-tuned: pale icon glyphs on a translucent wash read fine against
    the dark surface above but vanish against a white one, so light mode
@@ -533,6 +546,7 @@ const APPS_CSS = `
 [data-theme='light'] .images { background: rgba(236, 72, 153, 0.14); color: #be185d; }
 [data-theme='light'] .documents { background: rgba(244, 63, 94, 0.14); color: #be123c; }
 [data-theme='light'] .browser { background: rgba(100, 116, 139, 0.16); color: #334155; }
+[data-theme='light'] .companion { background: rgba(99, 102, 241, 0.14); color: #4338ca; }
 
 @media (max-width: 1100px) {
   .apps-toolbar {

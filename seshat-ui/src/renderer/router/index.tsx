@@ -17,6 +17,7 @@ import { AppsPage } from '@/pages/apps'
 import { ProjectsPage } from '@/pages/projects'
 import { KnowledgePage } from '@/pages/knowledge'
 import { InboxPage } from '@/pages/inbox'
+import { CompanionPage } from '@/pages/companion'
 import { AdminConsolePage } from '@/pages/admin'
 
 export const router = createHashRouter([
@@ -56,6 +57,7 @@ export const router = createHashRouter([
       { path: 'agents', element: <Navigate to="/workspace" replace /> },
       { path: 'knowledge', element: <KnowledgePage /> },
       { path: 'inbox', element: <InboxPage /> },
+      { path: 'companion', element: <CompanionPage /> },
       { path: 'memories', element: <Navigate to="/" replace /> },
       { path: 'scheduling', element: <SchedulingPage /> },
       // Automation is the full-screen graph editor for a Graph-mode job -
