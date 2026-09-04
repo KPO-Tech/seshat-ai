@@ -358,7 +358,22 @@ export function AutomationPage() {
 
       <div className="au-body">
         <nav className="au-rail">
-          <button type="button" className={`au-rail-btn ${railView === 'overview' ? 'active' : ''}`} onClick={() => navigate('/automation')} title="Overview">
+          <button
+            type="button"
+            className={`au-rail-btn ${railView === 'overview' ? 'active' : ''}`}
+            onClick={() => {
+              // Templates/Variables/Help never navigate, just flip railView
+              // locally - Overview needs to match when we're already on
+              // /automation (e.g. coming back from Templates). Navigating to
+              // the current route is a no-op (no location change), so the
+              // isOverview-driven reset effect never re-fires and railView
+              // would stay stuck on whatever panel was open. Only navigate
+              // when actually leaving the editor route.
+              setRailView('overview')
+              if (!isOverview) navigate('/automation')
+            }}
+            title="Overview"
+          >
             <Home size={16} />
             <span>Overview</span>
           </button>
