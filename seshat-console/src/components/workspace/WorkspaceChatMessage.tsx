@@ -23,7 +23,7 @@ import {
 } from '@ant-design/icons'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import type { WorkspaceChatMessage as WorkspaceChatMessageModel, WorkspaceTraceStep } from '@/features/workspaceChat/types'
+import type { WorkspaceChatBlock, WorkspaceChatMessage as WorkspaceChatMessageModel } from '@/features/workspaceChat/types'
 import { palette } from '@/theme/tokens'
 
 function getDomain(url: string | undefined): string {
@@ -85,9 +85,9 @@ function toolIcon(toolName: string | undefined) {
 // over its raw wire name - "mcp__slack__send_message" reads as "slack →
 // send message", every other tool name has its underscores/casing cleaned
 // up ("read_document_url" → "Read document url").
-function toolLabel(step: WorkspaceTraceStep): string {
-  if (step.query) return step.query
-  const name = step.toolName ?? 'tool'
+function toolLabel(block: WorkspaceChatBlock): string {
+  if (block.query) return block.query
+  const name = block.toolName ?? 'tool'
   if (name.startsWith('mcp__')) {
     const parts = name.split('__')
     if (parts.length >= 3) return `${parts[1]} → ${humanizeToolName(parts.slice(2).join('_'))}`
@@ -202,47 +202,96 @@ function CodeBlock({ children, className }: { children?: React.ReactNode; classN
   )
 }
 
-function TraceStepRow({ step }: { step: WorkspaceTraceStep }) {
-  const failed = step.status === 'failed'
+// Shared by user bubbles and every 'text' block of an assistant turn - a
+// turn can have several of these interleaved with thinking/tool blocks
+// (see the module doc comment on WorkspaceChatBlock), so this can't stay
+// a one-per-message singleton the way it used to be.
+function Markdown({ content }: { content: string }) {
+  const sealed = sealOpenFences(content)
+  if (!sealed) return null
+  return (
+    <div className="workspace-chat-markdown workspace-chat-markdown--message">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          a({ children, href, ...props }) {
+            return (
+              <a href={href} target="_blank" rel="noreferrer" {...props}>
+                {children}
+              </a>
+            )
+          },
+          table({ children }) {
+            return (
+              <div className="workspace-chat-markdown__table">
+                <table>{children}</table>
+              </div>
+            )
+          },
+          pre({ children }) {
+            return <>{children}</>
+          },
+          code({ className, children, ...props }) {
+            const match = /language-(\w+)/.exec(className || '')
+            const isInline = !match && typeof children === 'string' && !children.includes('\n')
+            if (isInline) {
+              return (
+                <code className={className} {...props}>
+                  {children}
+                </code>
+              )
+            }
+            return <CodeBlock className={className}>{children}</CodeBlock>
+          },
+        }}
+      >
+        {sealed}
+      </ReactMarkdown>
+    </div>
+  )
+}
+
+function ThinkingBlockRow({ block }: { block: WorkspaceChatBlock }) {
+  if (!block.content) return null
+  return (
+    <div className="workspace-trace-step">
+      <span className="workspace-trace-step__icon">
+        <ClockCircleOutlined />
+      </span>
+      <span className="workspace-trace-step__text">{block.content}</span>
+    </div>
+  )
+}
+
+function ToolBlockRow({ block }: { block: WorkspaceChatBlock }) {
+  const failed = block.status === 'failed'
   const [open, setOpen] = useState(failed)
 
-  if (step.kind === 'thinking') {
-    if (!step.content) return null
-    return (
-      <div className="workspace-trace-step">
-        <span className="workspace-trace-step__icon">
-          <ClockCircleOutlined />
-        </span>
-        <span className="workspace-trace-step__text">{step.content}</span>
-      </div>
-    )
-  }
-
-  const isRunning = step.status === 'pending' || step.status === 'running'
-  const resultCount = step.webSearch?.count ?? 0
-  const hasWebSearchResults = Boolean(step.webSearch?.results?.length)
-  const inputJSON = prettyPrintInput(step.input)
+  const isRunning = block.status === 'pending' || block.status === 'running'
+  const resultCount = block.webSearch?.count ?? 0
+  const hasWebSearchResults = Boolean(block.webSearch?.results?.length)
+  const inputJSON = prettyPrintInput(block.input)
   // A tool denied before it ever ran (permission/hook/policy) carries no
   // "content" at all server-side, only a human-readable Message - falling
   // back to summary here is the only way that denial reason ever reaches
   // the user, since the header line no longer echoes raw summary text the
   // way the pre-registry version of this component did.
-  const resultText = step.result || (failed ? step.summary : undefined)
+  const resultText = block.result || (failed ? block.summary : undefined)
   const hasResult = Boolean(resultText)
   const expandable = hasWebSearchResults || Boolean(inputJSON) || hasResult
-  const duration = formatDuration(step.durationMs)
+  const duration = formatDuration(block.durationMs)
 
   return (
     <div className={`workspace-trace-step${failed ? ' workspace-trace-step--failed' : ''}${expandable ? ' workspace-trace-step--expandable' : ''}`}>
       <span className="workspace-trace-step__icon">
-        {isRunning ? <LoadingOutlined /> : failed ? <ExclamationCircleOutlined /> : toolIcon(step.toolName)}
+        {isRunning ? <LoadingOutlined /> : failed ? <ExclamationCircleOutlined /> : toolIcon(block.toolName)}
       </span>
       <div className="workspace-trace-step__body">
         <div className="workspace-trace-step__header" onClick={() => expandable && setOpen((v) => !v)}>
-          <span className="workspace-trace-step__text">{toolLabel(step)}</span>
+          <span className="workspace-trace-step__text">{toolLabel(block)}</span>
           {failed ? <span className="workspace-trace-step__error-badge">failed</span> : null}
           {!isRunning && duration ? <span className="workspace-trace-step__duration">{duration}</span> : null}
-          {step.webSearch && resultCount > 0 ? (
+          {block.webSearch && resultCount > 0 ? (
             <span className="workspace-trace-step__count">{resultCount} results</span>
           ) : null}
           {expandable ? (
@@ -252,7 +301,7 @@ function TraceStepRow({ step }: { step: WorkspaceTraceStep }) {
 
         {open && hasWebSearchResults ? (
           <div className="workspace-trace-results">
-            {step.webSearch!.results!.slice(0, 6).map((result, index) => {
+            {block.webSearch!.results!.slice(0, 6).map((result, index) => {
               const domain = getDomain(result.url)
               return (
                 <a
@@ -299,17 +348,23 @@ function TraceStepRow({ step }: { step: WorkspaceTraceStep }) {
 }
 
 export const WorkspaceChatMessage = memo(function WorkspaceChatMessage({ message }: { message: WorkspaceChatMessageModel }) {
-  const content = sealOpenFences(message.content)
   const isUser = message.role === 'user'
   const timeLabel = formatMessageTime(message.createdAt)
-  const trace = message.trace ?? []
-  // A turn that's still 'draft' but has produced no trace step and no text
-  // yet (only a thinking delta, or nothing at all right after sending) has
-  // no visible sign of activity otherwise - the send button's own spinner
-  // is easy to miss, and there's nothing else on the page that changes.
-  const isGenerating = message.status === 'draft'
-  const showDoneMarker = trace.length > 0 && (message.content.length > 0 || message.status !== 'draft')
-  const showGeneratingMarker = isGenerating && !message.content && !showDoneMarker
+  const blocks = message.blocks ?? []
+  // A turn that's still 'draft' and hasn't produced a trailing text block
+  // yet (only thinking/tool activity so far, or nothing at all right after
+  // sending) has no visible sign of activity otherwise - the send button's
+  // own spinner is a small icon, easy to miss entirely. Once text starts
+  // streaming the growing text itself is enough signal, so the marker
+  // steps aside rather than trailing every block regardless of position -
+  // that was the whole bug this replaced: blocks now render in the exact
+  // order they were generated (thinking/tool/text can interleave any
+  // number of times in one turn), so a marker fixed to "after all trace,
+  // before all text" no longer means anything.
+  const isDraft = message.status === 'draft'
+  const lastBlock = blocks[blocks.length - 1]
+  const showGeneratingMarker = isDraft && (!lastBlock || lastBlock.kind !== 'text')
+  const showDoneMarker = !isDraft && blocks.length > 0 && lastBlock?.kind !== 'text'
 
   return (
     <article className={`workspace-thread-message workspace-thread-message--${message.role}`}>
@@ -340,11 +395,19 @@ export const WorkspaceChatMessage = memo(function WorkspaceChatMessage({ message
           ) : null}
         </div>
 
-        {trace.length > 0 || showGeneratingMarker ? (
+        {isUser ? (
+          <Markdown content={message.content} />
+        ) : (
           <div className="workspace-trace">
-            {trace.map((step) => (
-              <TraceStepRow key={step.id} step={step} />
-            ))}
+            {blocks.map((block) =>
+              block.kind === 'thinking' ? (
+                <ThinkingBlockRow key={block.id} block={block} />
+              ) : block.kind === 'tool' ? (
+                <ToolBlockRow key={block.id} block={block} />
+              ) : (
+                <Markdown key={block.id} content={block.content ?? ''} />
+              ),
+            )}
             {showGeneratingMarker ? (
               <div className="workspace-trace-step workspace-trace-step--generating">
                 <span className="workspace-trace-step__icon">
@@ -361,50 +424,8 @@ export const WorkspaceChatMessage = memo(function WorkspaceChatMessage({ message
               </div>
             ) : null}
           </div>
-        ) : null}
-
-        {content ? (
-          <div className="workspace-chat-markdown workspace-chat-markdown--message">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                a({ children, href, ...props }) {
-                  return (
-                    <a href={href} target="_blank" rel="noreferrer" {...props}>
-                      {children}
-                    </a>
-                  )
-                },
-                table({ children }) {
-                  return (
-                    <div className="workspace-chat-markdown__table">
-                      <table>{children}</table>
-                    </div>
-                  )
-                },
-                pre({ children }) {
-                  return <>{children}</>
-                },
-                code({ className, children, ...props }) {
-                  const match = /language-(\w+)/.exec(className || '')
-                  const isInline = !match && typeof children === 'string' && !children.includes('\n')
-                  if (isInline) {
-                    return (
-                      <code className={className} {...props}>
-                        {children}
-                      </code>
-                    )
-                  }
-                  return <CodeBlock className={className}>{children}</CodeBlock>
-                },
-              }}
-            >
-              {content}
-            </ReactMarkdown>
-          </div>
-        ) : null}
+        )}
       </div>
     </article>
   )
 })
-

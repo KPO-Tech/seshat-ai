@@ -9,7 +9,7 @@ import { useProviderCatalog, getProviderLabel, getProviderModels } from '@/api/p
 import { createWorkspaceChatMessage, createWorkspaceChatSession } from '@/features/workspaceChat/storage'
 import { fetchWorkspaceChatSession, streamWorkspaceChat, type WorkspaceChatSessionHistory } from '@/features/workspaceChat/transport'
 import { clearStoredSessionId, getStoredSessionId, setStoredSessionId } from '@/features/workspaceChat/localSession'
-import type { WorkspaceChatEvent, WorkspaceChatSession, WorkspaceTraceStep } from '@/features/workspaceChat/types'
+import type { WorkspaceChatBlock, WorkspaceChatEvent, WorkspaceChatSession, WorkspaceTraceStatus } from '@/features/workspaceChat/types'
 import { useAuthStore } from '@/store/auth'
 import { useWorkspaceOrganizationStore } from '@/store/workspaceOrganization'
 import { palette } from '@/theme/tokens'
@@ -25,48 +25,69 @@ function generateID(prefix: string) {
 // message of a session, returning a new session object - events arrive
 // fast enough during generation that this needs to stay a cheap,
 // allocation-light immutable update, not a deep clone.
+//
+// Blocks are appended in the exact order events arrive, which is what
+// makes the rendered order match the real generation order (see
+// WorkspaceChatBlock's doc comment). activeThinkingIdRef/activeTextIdRef
+// track "the block currently being appended to" for their own kind -
+// each is cleared whenever a *different* kind of event arrives, so a
+// tool_progress or a switch back to thinking always starts a fresh text
+// block afterward instead of resuming one from before the interruption.
 function applyEventToSession(
   session: WorkspaceChatSession,
   event: WorkspaceChatEvent,
   activeThinkingIdRef: { current: string | null },
+  activeTextIdRef: { current: string | null },
 ): WorkspaceChatSession {
   const messages = session.messages
   const lastIndex = messages.length - 1
   if (lastIndex < 0 || messages[lastIndex].role !== 'assistant') return session
   const last = messages[lastIndex]
-  const trace = last.trace ?? []
+  const blocks = last.blocks ?? []
 
   switch (event.type) {
     case 'thinking_delta': {
       const delta = event.delta ?? ''
       if (!delta) return session
+      activeTextIdRef.current = null
       const activeId = activeThinkingIdRef.current
-      const activeIndex = activeId ? trace.findIndex((step) => step.id === activeId) : -1
-      let nextTrace: WorkspaceTraceStep[]
+      const activeIndex = activeId ? blocks.findIndex((block) => block.id === activeId) : -1
+      let nextBlocks: WorkspaceChatBlock[]
       if (activeIndex >= 0) {
-        nextTrace = trace.map((step, index) => (index === activeIndex ? { ...step, content: (step.content ?? '') + delta } : step))
+        nextBlocks = blocks.map((block, index) => (index === activeIndex ? { ...block, content: (block.content ?? '') + delta } : block))
       } else {
-        const newStep: WorkspaceTraceStep = { id: generateID('trace'), kind: 'thinking', status: 'completed', content: delta }
-        activeThinkingIdRef.current = newStep.id
-        nextTrace = [...trace, newStep]
+        const newBlock: WorkspaceChatBlock = { id: generateID('block'), kind: 'thinking', content: delta }
+        activeThinkingIdRef.current = newBlock.id
+        nextBlocks = [...blocks, newBlock]
       }
-      return replaceLastMessage(session, { ...last, trace: nextTrace })
+      return replaceLastMessage(session, { ...last, blocks: nextBlocks })
     }
     case 'text_delta': {
-      activeThinkingIdRef.current = null
       const delta = event.delta ?? ''
       if (!delta) return session
-      return replaceLastMessage(session, { ...last, content: last.content + delta })
+      activeThinkingIdRef.current = null
+      const activeId = activeTextIdRef.current
+      const activeIndex = activeId ? blocks.findIndex((block) => block.id === activeId) : -1
+      let nextBlocks: WorkspaceChatBlock[]
+      if (activeIndex >= 0) {
+        nextBlocks = blocks.map((block, index) => (index === activeIndex ? { ...block, content: (block.content ?? '') + delta } : block))
+      } else {
+        const newBlock: WorkspaceChatBlock = { id: generateID('block'), kind: 'text', content: delta }
+        activeTextIdRef.current = newBlock.id
+        nextBlocks = [...blocks, newBlock]
+      }
+      return replaceLastMessage(session, { ...last, blocks: nextBlocks })
     }
     case 'tool_progress': {
       activeThinkingIdRef.current = null
+      activeTextIdRef.current = null
       const tool = event.tool
       if (!tool) return session
-      const index = trace.findIndex((step) => step.id === tool.tool_use_id)
-      const updatedStep: WorkspaceTraceStep = {
-        id: tool.tool_use_id || generateID('trace'),
+      const index = blocks.findIndex((block) => block.kind === 'tool' && block.id === tool.tool_use_id)
+      const updatedBlock: WorkspaceChatBlock = {
+        id: tool.tool_use_id || generateID('block'),
         kind: 'tool',
-        status: (tool.stage as WorkspaceTraceStep['status']) ?? 'running',
+        status: (tool.stage as WorkspaceTraceStatus) ?? 'running',
         toolName: tool.name,
         query: tool.query,
         summary: tool.summary,
@@ -75,18 +96,18 @@ function applyEventToSession(
         durationMs: tool.duration_ms,
         webSearch: tool.web_search,
       }
-      const nextTrace = index >= 0 ? trace.map((step, i) => (i === index ? { ...step, ...updatedStep } : step)) : [...trace, updatedStep]
-      return replaceLastMessage(session, { ...last, trace: nextTrace })
+      const nextBlocks = index >= 0 ? blocks.map((block, i) => (i === index ? { ...block, ...updatedBlock } : block)) : [...blocks, updatedBlock]
+      return replaceLastMessage(session, { ...last, blocks: nextBlocks })
     }
     case 'done': {
       return replaceLastMessage(session, { ...last, status: 'complete' })
     }
     case 'error': {
-      return replaceLastMessage(session, {
-        ...last,
-        status: 'error',
-        content: last.content || event.message || 'Something went wrong.',
-      })
+      const hasText = blocks.some((block) => block.kind === 'text' && block.content)
+      const nextBlocks = hasText
+        ? blocks
+        : [...blocks, { id: generateID('block'), kind: 'text' as const, content: event.message || 'Something went wrong.' }]
+      return replaceLastMessage(session, { ...last, status: 'error', blocks: nextBlocks })
     }
     default:
       return session
@@ -104,6 +125,7 @@ function replaceLastMessage(session: WorkspaceChatSession, updated: WorkspaceCha
 // trace to how it looked live, instead of duplicating that logic server-side.
 function buildSessionFromHistory(history: WorkspaceChatSessionHistory, organizationId: string): WorkspaceChatSession {
   const activeThinkingIdRef = { current: null as string | null }
+  const activeTextIdRef = { current: null as string | null }
   const historyMessages = history.messages ?? []
   const fallbackTimestamp = new Date().toISOString()
 
@@ -143,6 +165,7 @@ function buildSessionFromHistory(history: WorkspaceChatSessionHistory, organizat
     }
 
     activeThinkingIdRef.current = null
+    activeTextIdRef.current = null
     session = {
       ...session,
       messages: [
@@ -153,12 +176,12 @@ function buildSessionFromHistory(history: WorkspaceChatSessionHistory, organizat
           content: '',
           createdAt: historyMessage.created_at ?? fallbackTimestamp,
           status: 'draft',
-          trace: [],
+          blocks: [],
         },
       ],
     }
     for (const event of historyMessage.events ?? []) {
-      session = applyEventToSession(session, event, activeThinkingIdRef)
+      session = applyEventToSession(session, event, activeThinkingIdRef, activeTextIdRef)
     }
     // A successful turn never persists a "done" event (see
     // workspacechat.Service.StreamChat) - an error event already flips
@@ -198,6 +221,7 @@ export function WorkspaceChatPage() {
 
   const abortControllerRef = useRef<AbortController | null>(null)
   const activeThinkingIdRef = useRef<string | null>(null)
+  const activeTextIdRef = useRef<string | null>(null)
   const pendingEventsRef = useRef<WorkspaceChatEvent[]>([])
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -214,6 +238,7 @@ export function WorkspaceChatPage() {
     }
     pendingEventsRef.current = []
     activeThinkingIdRef.current = null
+    activeTextIdRef.current = null
   }
 
   // Streamed text/thinking deltas can arrive many times a second. Applying
@@ -238,7 +263,7 @@ export function WorkspaceChatPage() {
       if (!current) return current
       let next = current
       for (const event of events) {
-        next = applyEventToSession(next, event, activeThinkingIdRef)
+        next = applyEventToSession(next, event, activeThinkingIdRef, activeTextIdRef)
       }
       return next
     })
@@ -402,7 +427,10 @@ export function WorkspaceChatPage() {
       if (lastIndex < 0) return current
       const last = current.messages[lastIndex]
       if (last.role !== 'assistant' || last.status !== 'draft') return current
-      return replaceLastMessage(current, { ...last, status: 'complete', content: last.content || '_Stopped._' })
+      const blocks = last.blocks ?? []
+      const hasText = blocks.some((block) => block.kind === 'text' && block.content)
+      const nextBlocks = hasText ? blocks : [...blocks, { id: generateID('block'), kind: 'text' as const, content: '_Stopped._' }]
+      return replaceLastMessage(current, { ...last, status: 'complete', blocks: nextBlocks })
     })
   }
 
@@ -440,10 +468,11 @@ export function WorkspaceChatPage() {
     setComposerError(null)
     setDraftPrompt('')
     activeThinkingIdRef.current = null
+    activeTextIdRef.current = null
 
     const userMessage = createWorkspaceChatMessage({ role: 'user', content, status: 'complete' })
     const assistantMessage = createWorkspaceChatMessage({ role: 'assistant', content: '', status: 'draft' })
-    assistantMessage.trace = []
+    assistantMessage.blocks = []
 
     // Read straight from this render's chatSession rather than a variable
     // assigned inside the setChatSession updater below - React doesn't
