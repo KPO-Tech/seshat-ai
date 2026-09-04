@@ -104,7 +104,7 @@ func TestListSessionsExcludesExpiredSessions(t *testing.T) {
 	env.chat.persistTurn(context.Background(), env.adminPrincipal, StreamChatParams{SessionID: "sess-stale", OrganizationID: env.orgID, Message: "hi"}, "hello", nil)
 
 	stale := time.Now().UTC().Add(-sessionRetention - time.Hour)
-	if err := env.db.Gorm().Model(&sdb.WorkspaceChatSession{}).Where("id = ?", "sess-stale").Update("updated_at", stale).Error; err != nil {
+	if err := env.db.Gorm().Model(&sdb.WorkspaceChatSession{}).Where("id = ?", "sess-stale").Update("created_at", stale).Error; err != nil {
 		t.Fatalf("backdate session: %v", err)
 	}
 

@@ -202,7 +202,7 @@ func TestGetSessionExpiresPastRetentionWindow(t *testing.T) {
 	env.chat.persistTurn(context.Background(), env.adminPrincipal, StreamChatParams{SessionID: "sess-1", Message: "hi"}, "hello", nil)
 
 	stale := time.Now().UTC().Add(-sessionRetention - time.Hour)
-	if err := env.db.Gorm().Model(&sdb.WorkspaceChatSession{}).Where("id = ?", "sess-1").Update("updated_at", stale).Error; err != nil {
+	if err := env.db.Gorm().Model(&sdb.WorkspaceChatSession{}).Where("id = ?", "sess-1").Update("created_at", stale).Error; err != nil {
 		t.Fatalf("backdate session: %v", err)
 	}
 
@@ -217,7 +217,7 @@ func TestPurgeExpiredSessionsDeletesOnlyStaleOnes(t *testing.T) {
 	env.chat.persistTurn(context.Background(), env.adminPrincipal, StreamChatParams{SessionID: "stale", Message: "hi"}, "hello", nil)
 
 	stale := time.Now().UTC().Add(-sessionRetention - time.Hour)
-	if err := env.db.Gorm().Model(&sdb.WorkspaceChatSession{}).Where("id = ?", "stale").Update("updated_at", stale).Error; err != nil {
+	if err := env.db.Gorm().Model(&sdb.WorkspaceChatSession{}).Where("id = ?", "stale").Update("created_at", stale).Error; err != nil {
 		t.Fatalf("backdate stale session: %v", err)
 	}
 
@@ -240,11 +240,52 @@ func TestPurgeExpiredSessionsDeletesOnlyStaleOnes(t *testing.T) {
 	}
 }
 
+// TestPurgeExpiredSessionsIgnoresRecentActivity is the one test that
+// actually distinguishes sessionRetention's current creation-based cutoff
+// from the activity-based ("resets every time you use it") window it used
+// to be - every other retention test in this file only ever backdates
+// CreatedAt, which a reader can't tell apart from "this constant is just
+// measured differently" without also seeing a session that was created
+// long ago but is still being actively used today, and confirming it gets
+// purged anyway. Matches the explicit ask this replaced the old behavior
+// for: a validation/testing surface shouldn't be able to dodge its own
+// retention window by staying in one long-running conversation.
+func TestPurgeExpiredSessionsIgnoresRecentActivity(t *testing.T) {
+	env := newTestEnv(t)
+	env.chat.persistTurn(context.Background(), env.adminPrincipal, StreamChatParams{SessionID: "old-but-active", Message: "first message, long ago"}, "hello", nil)
+
+	oldCreation := time.Now().UTC().Add(-sessionRetention - time.Hour)
+	if err := env.db.Gorm().Model(&sdb.WorkspaceChatSession{}).Where("id = ?", "old-but-active").Update("created_at", oldCreation).Error; err != nil {
+		t.Fatalf("backdate creation: %v", err)
+	}
+
+	// Simulate continued use right up to now, well inside the retention
+	// window if it were still measured from UpdatedAt like before.
+	env.chat.persistTurn(context.Background(), env.adminPrincipal, StreamChatParams{SessionID: "old-but-active", Message: "still chatting today"}, "still here", nil)
+	var session sdb.WorkspaceChatSession
+	if err := env.db.Gorm().Where("id = ?", "old-but-active").First(&session).Error; err != nil {
+		t.Fatalf("reload session: %v", err)
+	}
+	if session.UpdatedAt.Before(time.Now().UTC().Add(-time.Minute)) {
+		t.Fatalf("expected the second persistTurn to have just refreshed UpdatedAt, got %v", session.UpdatedAt)
+	}
+
+	env.chat.purgeExpiredSessions(context.Background())
+
+	var remaining []sdb.WorkspaceChatSession
+	if err := env.db.Gorm().Where("id = ?", "old-but-active").Find(&remaining).Error; err != nil {
+		t.Fatalf("query survivors: %v", err)
+	}
+	if len(remaining) != 0 {
+		t.Fatalf("expected a session created past the retention window to be purged even with fresh UpdatedAt, but it survived: %+v", remaining)
+	}
+}
+
 func TestCleanupStartStop(t *testing.T) {
 	env := newTestEnv(t)
 	env.chat.persistTurn(context.Background(), env.adminPrincipal, StreamChatParams{SessionID: "stale", Message: "hi"}, "hello", nil)
 	stale := time.Now().UTC().Add(-sessionRetention - time.Hour)
-	if err := env.db.Gorm().Model(&sdb.WorkspaceChatSession{}).Where("id = ?", "stale").Update("updated_at", stale).Error; err != nil {
+	if err := env.db.Gorm().Model(&sdb.WorkspaceChatSession{}).Where("id = ?", "stale").Update("created_at", stale).Error; err != nil {
 		t.Fatalf("backdate stale session: %v", err)
 	}
 

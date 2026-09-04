@@ -34,19 +34,24 @@ import (
 
 // sessionIdleTimeout is how long an unused chat session keeps its
 // underlying sdk.Client (and the LLM-side conversation history it holds in
-// memory) alive. Deliberately much shorter than sessionRetention — by the
-// time a persisted conversation is old enough to be purged, its in-memory
-// SDK client has always already been evicted here, so the two mechanisms
-// never need to coordinate.
+// memory) alive - this one does reset on activity (see chatSession.lastUsed),
+// since it's purely about evicting an idle in-memory SDK client, not the
+// conversation's own lifetime (see sessionRetention below, which does not
+// reset on activity). Deliberately much shorter than sessionRetention - by
+// the time a persisted conversation is old enough to be purged, its
+// in-memory SDK client has always already been evicted here, so the two
+// mechanisms never need to coordinate.
 const sessionIdleTimeout = 2 * time.Hour
 
 // sessionRetention is how long a persisted conversation (see persistTurn,
-// GetSession, and Cleanup) is kept before it's treated as gone. This is a
-// personal experimentation surface, not a durable conversation store — see
-// workspaceChat/transport.ts's own note that "persistent conversation
-// sessions are optional, not required": bluntly deleting everything past a
-// fixed window is deliberately simpler than any per-conversation retention
-// policy.
+// GetSession, and Cleanup) is kept before it's treated as gone - counted
+// from CreatedAt, not from its last message. This is a personal
+// experimentation/validation surface (see workspaceChat/transport.ts's own
+// note that "persistent conversation sessions are optional, not required"),
+// not something meant to accumulate as a long-lived record: a session kept
+// alive indefinitely by continued use would defeat the point of a fixed
+// cutoff, so this window always expires the same fixed 48h after creation
+// regardless of how recently it was used.
 const sessionRetention = 48 * time.Hour
 
 // Service owns the in-memory registry of live chat sessions (one
@@ -299,9 +304,11 @@ var sessionSearchColumns = []string{"workspace_chat_sessions.title", "users.emai
 // GetSession uses, since this exposes other people's session metadata (not
 // message content - see handleListWorkspaceChatSessions's own doc comment
 // on why message bodies stay out of this endpoint). Sessions past
-// sessionRetention are excluded, matching GetSession/purgeExpiredSessions'
-// own "gone once past the window" convention - the row may not even be
-// purged from the DB yet, but it's already meaningless to list.
+// sessionRetention (counted from CreatedAt, not UpdatedAt - see that
+// constant's own doc comment) are excluded, matching GetSession/
+// purgeExpiredSessions' own "gone once past the window" convention - the
+// row may not even be purged from the DB yet, but it's already meaningless
+// to list.
 func (s *Service) ListSessions(ctx context.Context, principal *iam.Principal, organizationID string, listParams sdb.ListParams) ([]SessionSummary, int64, error) {
 	if principal == nil {
 		return nil, 0, apperr.Unauthorized("authentication required")
@@ -325,7 +332,7 @@ func (s *Service) ListSessions(ctx context.Context, principal *iam.Principal, or
 			"workspace_chat_sessions.updated_at AS updated_at, "+
 			"(SELECT COUNT(*) FROM workspace_chat_message_records WHERE workspace_chat_message_records.session_id = workspace_chat_sessions.id) AS message_count").
 		Joins("JOIN users ON users.id = workspace_chat_sessions.user_id").
-		Where("workspace_chat_sessions.organization_id = ? AND workspace_chat_sessions.updated_at > ?", organizationID, cutoff)
+		Where("workspace_chat_sessions.organization_id = ? AND workspace_chat_sessions.created_at > ?", organizationID, cutoff)
 
 	sortField, err := sdb.ResolveSortField(sessionSortFields, listParams.Sort)
 	if err != nil {
@@ -353,10 +360,11 @@ type HistoryMessage struct {
 }
 
 // GetSession loads a persisted conversation, scoped to its owner - a 404
-// covers both "never existed" and "past the 48h retention window" (the
-// query filters on updated_at itself, not a separate purge having already
-// run), so the console can't tell the two apart and just starts fresh
-// either way.
+// covers both "never existed" and "past the 48h retention window, counted
+// from creation" (the query filters on created_at itself, not a separate
+// purge having already run - see sessionRetention's own doc comment on why
+// this is a fixed cutoff rather than one continued use resets), so the
+// console can't tell the two apart and just starts fresh either way.
 func (s *Service) GetSession(ctx context.Context, principal *iam.Principal, sessionID string) (*SessionHistory, error) {
 	if principal == nil {
 		return nil, apperr.Unauthorized("authentication required")
@@ -369,7 +377,7 @@ func (s *Service) GetSession(ctx context.Context, principal *iam.Principal, sess
 	tx := s.db.Gorm().WithContext(ctx)
 	var session sdb.WorkspaceChatSession
 	cutoff := time.Now().UTC().Add(-sessionRetention)
-	err := tx.Where("id = ? AND user_id = ? AND updated_at > ?", sessionID, principal.User.ID, cutoff).First(&session).Error
+	err := tx.Where("id = ? AND user_id = ? AND created_at > ?", sessionID, principal.User.ID, cutoff).First(&session).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, apperr.NotFound("session not found")
@@ -397,19 +405,21 @@ func (s *Service) GetSession(ctx context.Context, principal *iam.Principal, sess
 	return &SessionHistory{ID: session.ID, Title: session.Title, Messages: messages}, nil
 }
 
-// purgeExpiredSessions deletes every session (and its messages) untouched
-// for longer than sessionRetention. Called periodically by Cleanup. Also
-// deletes the same IDs' rows from sdkSessions (the SDK's own conversation
-// memory, see sdksessionstore.go) - without this, that data would outlive
-// the WorkspaceChatSession/WorkspaceChatMessageRecord rows it exists to
-// keep in sync with, accumulating forever for conversations the UI (and
+// purgeExpiredSessions deletes every session (and its messages) created
+// more than sessionRetention ago, regardless of how recently it was used
+// (see that constant's own doc comment on why this is a fixed cutoff, not
+// an inactivity window). Called periodically by Cleanup. Also deletes the
+// same IDs' rows from sdkSessions (the SDK's own conversation memory, see
+// sdksessionstore.go) - without this, that data would outlive the
+// WorkspaceChatSession/WorkspaceChatMessageRecord rows it exists to keep
+// in sync with, accumulating forever for conversations the UI (and
 // GetSession's own retention-window check) already treat as gone.
 func (s *Service) purgeExpiredSessions(ctx context.Context) {
 	var expiredIDs []string
 	err := s.db.Gorm().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		cutoff := time.Now().UTC().Add(-sessionRetention)
 		var expired []sdb.WorkspaceChatSession
-		if err := tx.Where("updated_at < ?", cutoff).Find(&expired).Error; err != nil {
+		if err := tx.Where("created_at < ?", cutoff).Find(&expired).Error; err != nil {
 			return err
 		}
 		if len(expired) == 0 {
