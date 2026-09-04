@@ -203,8 +203,12 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
   // deeper remapping. Edge ids themselves (`${source}:${port}->${target}`)
   // go stale until the graph next reloads; cosmetic only, not worth
   // recomputing here.
-  function renameNode(oldId: string, newId: string) {
-    if (newId === oldId || nodes.some((n) => n.id === newId)) return
+  // Returns true on success, or an error message on failure, so NodeIdEditor
+  // can tell a real collision apart from a no-op (typing back the same id)
+  // instead of both silently doing nothing with no feedback.
+  function renameNode(oldId: string, newId: string): true | string {
+    if (newId === oldId) return true
+    if (nodes.some((n) => n.id === newId)) return `"${newId}" is already used by another node`
     const nextNodes = nodes.map((n) => (n.id === oldId ? { ...n, id: newId } : n))
     const nextEdges = edges.map((e) => ({
       ...e,
@@ -215,6 +219,7 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
     setEdges(nextEdges)
     setSelectedNodeId(newId)
     emitChange(nextNodes, nextEdges)
+    return true
   }
 
   function duplicateSelectedNode() {
@@ -266,6 +271,10 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
             onPaneClick={onPaneClick}
             onInit={setFlowInstance}
             colorMode={theme}
+            // React Flow's own default is 'Backspace' only - on a keyboard
+            // with both keys (most non-Mac layouts, including French
+            // "Suppr"), pressing the forward Delete key did nothing.
+            deleteKeyCode={['Backspace', 'Delete']}
             fitView
             fitViewOptions={{ maxZoom: 1 }}
             proOptions={{ hideAttribution: true }}
@@ -331,27 +340,41 @@ function catalogCategory(type: string, nodeTypes: NodeDescription[]): string {
 // Mount with `key={nodeId}` so switching the selected node (or a successful
 // rename, which changes selectedNodeId to the new id) resets the local
 // draft instead of showing stale text.
-function NodeIdEditor({ nodeId, onRename }: { nodeId: string; onRename: (next: string) => void }) {
+function NodeIdEditor({ nodeId, onRename }: { nodeId: string; onRename: (next: string) => string | true }) {
   const [draft, setDraft] = useState(nodeId)
+  const [error, setError] = useState<string | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   function commit() {
     const trimmed = draft.trim()
-    if (!trimmed) {
+    if (!trimmed || trimmed === nodeId) {
       setDraft(nodeId)
+      setError(null)
       return
     }
-    onRename(trimmed)
+    const result = onRename(trimmed)
+    if (result === true) {
+      setError(null)
+      return
+    }
+    // Rejected (collision) - keep the attempted text visible with a red
+    // outline and refocus, rather than silently reverting or doing nothing,
+    // so the user can see exactly what failed and fix it inline.
+    setError(result)
+    requestAnimationFrame(() => inputRef.current?.select())
   }
 
   return (
     <input
-      className="gf-id-input"
+      ref={inputRef}
+      className={`gf-id-input${error ? ' error' : ''}`}
       value={draft}
-      onChange={(e) => setDraft(e.target.value)}
+      title={error ?? undefined}
+      onChange={(e) => { setDraft(e.target.value); setError(null) }}
       onBlur={commit}
       onKeyDown={(e) => {
         if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur()
-        if (e.key === 'Escape') setDraft(nodeId)
+        if (e.key === 'Escape') { setDraft(nodeId); setError(null); e.currentTarget.blur() }
       }}
     />
   )
@@ -463,6 +486,11 @@ const GRAPH_EDITOR_CSS = `
 .gf-id-input:focus {
   outline: none;
   border-color: var(--color-cta);
+  background: var(--color-surface);
+}
+
+.gf-id-input.error {
+  border-color: #ff6b6b;
   background: var(--color-surface);
 }
 
