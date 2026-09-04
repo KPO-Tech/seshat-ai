@@ -7,6 +7,7 @@ import {
   useNodesState,
   useEdgesState,
   addEdge,
+  reconnectEdge,
   type Connection,
   type Edge,
   type ReactFlowInstance,
@@ -109,6 +110,21 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
     (connection: Connection) => {
       setEdges((eds) => {
         const next = addEdge({ ...connection, targetHandle: INPUT_HANDLE }, eds)
+        emitChange(nodes, next)
+        return next
+      })
+    },
+    [nodes, setEdges, emitChange],
+  )
+
+  // Dragging an existing edge's endpoint onto a different node/port rewires
+  // it in place - without this, the only way to move a connection was
+  // delete it and draw a brand new one from scratch. Providing this handler
+  // is also what makes edges reconnectable at all (off by default otherwise).
+  const onReconnect = useCallback(
+    (oldEdge: Edge, connection: Connection) => {
+      setEdges((eds) => {
+        const next = reconnectEdge(oldEdge, { ...connection, targetHandle: INPUT_HANDLE }, eds)
         emitChange(nodes, next)
         return next
       })
@@ -264,6 +280,7 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            onReconnect={onReconnect}
             onNodeDragStop={onNodeDragStop}
             onNodesDelete={onNodesDelete}
             onEdgesDelete={onEdgesDelete}
