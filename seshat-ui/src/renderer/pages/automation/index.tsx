@@ -263,18 +263,25 @@ export function AutomationPage() {
       .finally(() => setLoading(false))
   }, [jobId, isNew, navigate])
 
+  // Reported live: this fired on Overview itself (e.g. clicking "New
+  // automation" from an untouched, empty Overview immediately prompted
+  // "unsaved changes") - Overview was never supposed to be trackable at all
+  // (nothing there is a draft field), so `if (isOverview) return` here makes
+  // that structurally impossible instead of just assumed, whatever the
+  // precise trigger was.
   useEffect(() => {
+    if (isOverview) return
     if (skipDirtyRef.current) { skipDirtyRef.current = false; return }
     setIsDirty(true)
-  }, [name, description, executionTarget, targetDeviceId, agentSlug, selectedProviderId, selectedModelId, graph])
+  }, [isOverview, name, description, executionTarget, targetDeviceId, agentSlug, selectedProviderId, selectedModelId, graph])
 
   // Blocks any in-app navigation away from an unsaved new/edited job -
-  // covers the rail's Overview button, the topbar back arrow, and browser
-  // back/forward alike, since useBlocker intercepts the router itself
-  // rather than each button individually. Overview never gets dirty (none
-  // of the tracked fields above are touched there), so this is a no-op on
-  // that route.
-  const blocker = useBlocker(isDirty && !saving && !deletingThisJob)
+  // covers the topbar back arrow and browser back/forward alike, since
+  // useBlocker intercepts the router itself rather than each button
+  // individually. Explicitly excludes Overview (see the effect above) as a
+  // second, independent guard - even if isDirty were ever true there for
+  // some other reason, the blocker itself still can't arm.
+  const blocker = useBlocker(!isOverview && isDirty && !saving && !deletingThisJob)
   useEffect(() => {
     if (blocker.state !== 'blocked') return
     if (window.confirm('You have unsaved changes. Leave without saving?')) {
