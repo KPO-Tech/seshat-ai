@@ -5,6 +5,7 @@ import { SecretRefField } from './SecretRefField'
 import { AgentPickerField } from './AgentPickerField'
 import { WebhookLastCall } from './WebhookLastCall'
 import { ExpressionField, type SiblingNode } from './ExpressionField'
+import { PinnedOutputField } from './PinnedOutputField'
 import { NEXUS_BASE } from '@/api/client'
 import type { NodeProperty } from './types'
 
@@ -22,6 +23,9 @@ type Props = {
   // $node('id') for each one without ParameterForm needing to know
   // anything about expressions itself.
   siblingNodes: SiblingNode[]
+  // Node-level, not a parameter - see PinnedOutputField.
+  pinnedOutput: Record<string, unknown>[] | undefined
+  onPinnedOutputChange: (next: Record<string, unknown>[] | undefined) => void
   onSave: (next: Record<string, unknown>) => void
   onDelete: () => void
   onDuplicate: () => void
@@ -65,7 +69,7 @@ function passesDisplayIf(prop: NodeProperty, drafts: Record<string, string | boo
 // the SDK's own comments - and any future type shipped before its schema
 // is written). Consumers should mount this with `key={nodeId}` so switching
 // the selected node resets the local draft instead of merging stale state.
-export function ParameterForm({ nodeType, nodeId, parameters, properties, jobId, webhookToken, siblingNodes, onSave, onDelete, onDuplicate }: Props) {
+export function ParameterForm({ nodeType, nodeId, parameters, properties, jobId, webhookToken, siblingNodes, pinnedOutput, onPinnedOutputChange, onSave, onDelete, onDuplicate }: Props) {
   const clean = stripUIPosition(parameters)
   const hasSchema = !!properties && properties.length > 0
 
@@ -144,6 +148,7 @@ export function ParameterForm({ nodeType, nodeId, parameters, properties, jobId,
 
   return (
     <>
+      <PinnedOutputField nodeId={nodeId} jobId={jobId} value={pinnedOutput} onChange={onPinnedOutputChange} />
       {hasSchema ? (
         <div className="gf-form">
           {properties!.filter((p) => passesDisplayIf(p, drafts)).map((p) => (

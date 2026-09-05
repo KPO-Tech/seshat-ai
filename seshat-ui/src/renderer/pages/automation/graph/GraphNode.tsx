@@ -1,4 +1,5 @@
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react'
+import { Pin } from '@icon-park/react'
 import { outputPortsForNode, INPUT_HANDLE } from './convert'
 import { resolveNodeIcon, tintColor } from './nodeIcons'
 
@@ -18,6 +19,11 @@ export type GraphNodeData = {
   // trigger node is a graph's own entry point, so it gets no input handle
   // (nothing should ever connect into it) and a distinct rounded-left shape.
   isTrigger?: boolean
+  // Real, save-relevant data (unlike title/category above) - round-trips
+  // through convert.ts's flowToDefinition into the saved DataflowDefinition's
+  // top-level pinned_data map (Tier 2.3). Present (even as []) means pinned;
+  // undefined means not pinned.
+  pinnedOutput?: Record<string, unknown>[]
 }
 
 export type FlowGraphNode = Node<GraphNodeData, 'dataflow'>
@@ -36,6 +42,11 @@ export function GraphNode({ id, data, selected }: NodeProps<FlowGraphNode>) {
         <Handle type="target" position={Position.Left} id={INPUT_HANDLE} className="gf-handle gf-handle-target" />
       )}
       <div className="gf-node-card">
+        {data.pinnedOutput && (
+          <div className="gf-node-pin-badge" title="Output pinned - this node won't actually run">
+            <Pin theme="filled" size={10} />
+          </div>
+        )}
         <div className="gf-node-icon" style={{ background: tintColor(color), color }}>
           {resolveNodeIcon(data.dfType, data.category ?? 'Other', 16)}
         </div>

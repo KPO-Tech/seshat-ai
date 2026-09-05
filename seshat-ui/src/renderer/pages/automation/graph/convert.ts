@@ -51,7 +51,7 @@ export function definitionToFlow(def: DataflowDefinition): { nodes: FlowGraphNod
     id: n.id,
     type: 'dataflow',
     position: nodePosition(n, i),
-    data: { dfType: n.type, parameters: n.parameters ?? {} },
+    data: { dfType: n.type, parameters: n.parameters ?? {}, pinnedOutput: def.pinned_data?.[n.id] },
   }))
 
   const edges: Edge[] = []
@@ -72,6 +72,11 @@ export function definitionToFlow(def: DataflowDefinition): { nodes: FlowGraphNod
 }
 
 export function flowToDefinition(name: string, description: string, nodes: FlowGraphNode[], edges: Edge[]): DataflowDefinition {
+  const pinnedData: Record<string, Record<string, unknown>[]> = {}
+  for (const n of nodes) {
+    if (n.data.pinnedOutput !== undefined) pinnedData[n.id] = n.data.pinnedOutput
+  }
+
   return {
     name,
     description: description || undefined,
@@ -94,5 +99,6 @@ export function flowToDefinition(name: string, description: string, nodes: FlowG
         connections: Object.keys(connections).length > 0 ? connections : undefined,
       }
     }),
+    pinned_data: Object.keys(pinnedData).length > 0 ? pinnedData : undefined,
   }
 }

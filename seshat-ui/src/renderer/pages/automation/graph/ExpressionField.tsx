@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, ApiError } from '@/api/client'
+import { fetchLatestNodeTrace } from './runHistory'
 
 export type SiblingNode = { id: string; type: string }
 
@@ -26,26 +27,6 @@ function isAlwaysExpressionField(nodeType: string, propName: string): boolean {
 
 function isActiveExpression(nodeType: string, propName: string, value: string): boolean {
   return isAlwaysExpressionField(nodeType, propName) || value.trim().startsWith('=')
-}
-
-type RunNodeTraceInput = { id: string; input?: Record<string, unknown>[] }
-type RunSummary = { id: string; node_trace?: RunNodeTraceInput[] }
-
-// Looks up the most recent real run's recorded input for this exact node -
-// see JobRun.NodeTrace (Tier 1.3) - so the preview panel's sample $json can
-// default to genuine historical data instead of an empty object. One-shot,
-// not polled (unlike WebhookLastCall's 4s interval - this seeds an editable
-// textarea once, it isn't meant to stay live). Silently falls back to "{}"
-// on any failure - a missing/failed history lookup shouldn't block preview,
-// it should just leave the user with a blank sample to fill in themselves.
-async function fetchLatestNodeInput(jobId: string, nodeId: string): Promise<Record<string, unknown> | null> {
-  try {
-    const res = await api.get<{ runs: RunSummary[] }>(`/jobs/${jobId}/runs?limit=1`)
-    const trace = res.runs?.[0]?.node_trace?.find((n) => n.id === nodeId)
-    return trace?.input?.[0] ?? null
-  } catch {
-    return null
-  }
 }
 
 // Wraps a string/text NodeProperty's plain <input>/<textarea> (kept exactly
@@ -98,7 +79,8 @@ export function ExpressionField({ nodeType, propName, value, onChange, placehold
     if (next && !sampleSeeded) {
       setSampleSeeded(true)
       if (jobId) {
-        void fetchLatestNodeInput(jobId, nodeId).then((seed) => {
+        void fetchLatestNodeTrace(jobId, nodeId).then((trace) => {
+          const seed = trace?.input?.[0]
           if (seed) setSampleItem(JSON.stringify(seed, null, 2))
         })
       }

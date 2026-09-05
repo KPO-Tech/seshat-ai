@@ -15,6 +15,12 @@ export type DataflowDefinition = {
   name: string
   description?: string
   nodes: DataflowNode[]
+  // Freezes a node's output to a fixed set of items instead of actually
+  // running it, keyed by node ID - mirrors the SDK's
+  // Definition.PinnedData (Tier 2.3). Kept at this top level (not inside a
+  // node's own `parameters`) since "frozen test output" is a different
+  // concept from real node configuration.
+  pinned_data?: Record<string, Record<string, unknown>[]>
 }
 
 export type NodeDescription = {

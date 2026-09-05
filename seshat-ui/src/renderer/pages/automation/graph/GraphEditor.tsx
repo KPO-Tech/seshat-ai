@@ -261,6 +261,13 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
     emitChange(nextNodes, edges)
   }
 
+  function savePinnedOutput(next: Record<string, unknown>[] | undefined) {
+    if (!selectedNode) return
+    const nextNodes = nodes.map((n) => (n.id === selectedNode.id ? { ...n, data: { ...n.data, pinnedOutput: next } } : n))
+    setNodes(nextNodes)
+    emitChange(nextNodes, edges)
+  }
+
   function deleteSelectedNode() {
     if (!selectedNode) return
     onNodesDelete([selectedNode])
@@ -426,6 +433,8 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
                 jobId={jobId}
                 webhookToken={webhookToken}
                 siblingNodes={nodes.filter((n) => n.id !== selectedNode.id).map((n) => ({ id: n.id, type: n.data.dfType }))}
+                pinnedOutput={selectedNode.data.pinnedOutput}
+                onPinnedOutputChange={savePinnedOutput}
                 onSave={saveParams}
                 onDelete={deleteSelectedNode}
                 onDuplicate={duplicateSelectedNode}
@@ -873,6 +882,26 @@ const GRAPH_EDITOR_CSS = `
 .gf-node.selected .gf-node-card {
   border-color: var(--color-cta);
   box-shadow: 0 0 0 2px var(--color-primary-subtle), var(--shadow-medium);
+}
+
+/* Floats at the card's own top-right corner (positioned against .gf-node,
+   the nearest positioned ancestor) rather than inline in the card's flex
+   row, so it reads as a status badge on the node, not a fourth piece of
+   its regular content. */
+.gf-node-pin-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--color-cta);
+  color: var(--color-bg);
+  border: 2px solid var(--color-bg);
+  z-index: 1;
 }
 
 .gf-node-icon {
