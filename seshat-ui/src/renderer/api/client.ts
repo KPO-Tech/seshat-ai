@@ -29,6 +29,11 @@ function extractErrorMessage(text: string, status: number): string {
   if (status === 401) return 'Session expirée. Reconnectez-vous.'
   try {
     const json = JSON.parse(text)
+    // seshat-server's standard error shape is {"error":{"message":"..."}}
+    // (see api.writeJSONError) - json.error is an object here, not a
+    // string, so it must be unwrapped one level or every server-side error
+    // renders as the literal text "[object Object]".
+    if (json.error && typeof json.error === 'object') return json.error.message ?? text
     return json.error ?? json.message ?? text
   } catch {
     return text || `HTTP ${status}`
@@ -38,7 +43,10 @@ function extractErrorMessage(text: string, status: number): string {
 function bridgeErrorMessage(payload: BridgeResponse): string {
   if (payload.status === 401) return 'Session expirée. Reconnectez-vous.'
   if (payload.data && typeof payload.data === 'object') {
-    const data = payload.data as { error?: string; message?: string }
+    const data = payload.data as { error?: string | { message?: string }; message?: string }
+    // Same {"error":{"message":"..."}} shape as extractErrorMessage above -
+    // the IPC bridge forwards the server's JSON body as-is.
+    if (data.error && typeof data.error === 'object') return data.error.message ?? payload.text ?? `HTTP ${payload.status}`
     if (data.error) return data.error
     if (data.message) return data.message
   }
