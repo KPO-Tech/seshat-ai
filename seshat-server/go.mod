@@ -7,7 +7,7 @@ require (
 	github.com/EngineerProjects/seshat-ai/seshat-core/gmail v0.0.0-00010101000000-000000000000
 	github.com/EngineerProjects/seshat-ai/seshat-core/msgraph v0.0.0-00010101000000-000000000000
 	github.com/EngineerProjects/seshat-ai/seshat-core/prospecting v0.0.0-00010101000000-000000000000
-	github.com/KPO-Tech/seshat v1.2.28
+	github.com/KPO-Tech/seshat v1.2.29
 	github.com/coreos/go-oidc/v3 v3.20.0
 	github.com/crewjam/saml v0.5.1
 	github.com/glebarez/sqlite v1.11.0
