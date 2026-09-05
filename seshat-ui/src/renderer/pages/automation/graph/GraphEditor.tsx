@@ -420,10 +420,12 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
               <ParameterForm
                 key={selectedNode.id}
                 nodeType={selectedNode.data.dfType}
+                nodeId={selectedNode.id}
                 parameters={selectedNode.data.parameters}
                 properties={nodeTypes.find((nt) => nt.type === selectedNode.data.dfType)?.properties}
                 jobId={jobId}
                 webhookToken={webhookToken}
+                siblingNodes={nodes.filter((n) => n.id !== selectedNode.id).map((n) => ({ id: n.id, type: n.data.dfType }))}
                 onSave={saveParams}
                 onDelete={deleteSelectedNode}
                 onDuplicate={duplicateSelectedNode}

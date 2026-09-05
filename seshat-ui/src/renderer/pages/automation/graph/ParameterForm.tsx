@@ -4,11 +4,13 @@ import { stripUIPosition } from './convert'
 import { SecretRefField } from './SecretRefField'
 import { AgentPickerField } from './AgentPickerField'
 import { WebhookLastCall } from './WebhookLastCall'
+import { ExpressionField, type SiblingNode } from './ExpressionField'
 import { NEXUS_BASE } from '@/api/client'
 import type { NodeProperty } from './types'
 
 type Props = {
   nodeType: string
+  nodeId: string
   parameters: Record<string, unknown>
   properties: NodeProperty[] | undefined
   // Only known once the job has been saved - see the webhook_trigger URL
@@ -16,6 +18,10 @@ type Props = {
   // server-side on first save, not something a NodeProperty can express).
   jobId?: string
   webhookToken?: string
+  // Every other node on the same graph - lets ExpressionField offer
+  // $node('id') for each one without ParameterForm needing to know
+  // anything about expressions itself.
+  siblingNodes: SiblingNode[]
   onSave: (next: Record<string, unknown>) => void
   onDelete: () => void
   onDuplicate: () => void
@@ -59,7 +65,7 @@ function passesDisplayIf(prop: NodeProperty, drafts: Record<string, string | boo
 // the SDK's own comments - and any future type shipped before its schema
 // is written). Consumers should mount this with `key={nodeId}` so switching
 // the selected node resets the local draft instead of merging stale state.
-export function ParameterForm({ nodeType, parameters, properties, jobId, webhookToken, onSave, onDelete, onDuplicate }: Props) {
+export function ParameterForm({ nodeType, nodeId, parameters, properties, jobId, webhookToken, siblingNodes, onSave, onDelete, onDuplicate }: Props) {
   const clean = stripUIPosition(parameters)
   const hasSchema = !!properties && properties.length > 0
 
@@ -166,19 +172,31 @@ export function ParameterForm({ nodeType, parameters, properties, jobId, webhook
                   <option value="" disabled>Select…</option>
                   {(p.options ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
-              ) : p.type === 'text' || p.type === 'json' ? (
+              ) : p.type === 'json' ? (
                 <textarea
                   className="gf-field-input gf-field-textarea"
                   value={(drafts[p.name] as string) ?? ''}
                   onChange={(e) => setField(p.name, e.target.value)}
                   placeholder={p.placeholder}
                   spellCheck={false}
-                  rows={p.type === 'json' ? 5 : 3}
+                  rows={5}
+                />
+              ) : p.type === 'text' || p.type === 'string' ? (
+                <ExpressionField
+                  nodeType={nodeType}
+                  propName={p.name}
+                  value={(drafts[p.name] as string) ?? ''}
+                  onChange={(v) => setField(p.name, v)}
+                  placeholder={p.placeholder}
+                  multiline={p.type === 'text'}
+                  nodeId={nodeId}
+                  siblingNodes={siblingNodes}
+                  jobId={jobId}
                 />
               ) : (
                 <input
                   className="gf-field-input"
-                  type={p.type === 'number' ? 'number' : 'text'}
+                  type="number"
                   value={(drafts[p.name] as string) ?? ''}
                   onChange={(e) => setField(p.name, e.target.value)}
                   placeholder={p.placeholder}
