@@ -234,7 +234,7 @@ func (sch *Scheduler) queueAndReschedule(ctx context.Context, job sdb.ScheduledJ
 		}
 		job.NextRunAt = next
 		job.UpdatedAt = now
-		_, err := queueRunForJob(tx, job, now)
+		_, err := queueRunForJob(tx, job, now, "")
 		return err
 	})
 }

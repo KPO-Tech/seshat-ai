@@ -46,7 +46,13 @@ type Job struct {
 	LastRunStatus   string     `json:"last_run_status,omitempty"`
 	ExecutionTarget string     `json:"execution_target"`
 	TargetDeviceID  string     `json:"target_device_id,omitempty"`
-	Prompt          string     `json:"prompt,omitempty"`
+	// WebhookToken is the raw token a caller uses at POST /api/v1/webhooks/
+	// {token} to start a run of this job - present only once a
+	// webhook_trigger node has been saved on Graph. The client builds the
+	// full URL by prefixing its own known API base URL.
+	WebhookToken  string `json:"webhook_token,omitempty"`
+	WebhookMethod string `json:"webhook_method,omitempty"`
+	Prompt        string `json:"prompt,omitempty"`
 	// Graph, when set, runs instead of Prompt — mutually exclusive, exactly
 	// one is required. See internal/server/automation/gmail_poll_node.go
 	// for the node type this exists to support (an interval-triggered job
@@ -181,7 +187,7 @@ func (s *Service) CreateJob(ctx context.Context, principal *iam.Principal, param
 			return err
 		}
 
-		trigger, err := normalizeJobTrigger(jobTriggerParams{
+		trigger, webhook, err := normalizeJobTrigger(jobTriggerParams{
 			Name:            params.Name,
 			Description:     params.Description,
 			TriggerType:     params.TriggerType,
@@ -228,12 +234,20 @@ func (s *Service) CreateJob(ctx context.Context, principal *iam.Principal, param
 			NextRunAt:       nextRunAt,
 			ExecutionTarget: trigger.ExecutionTarget,
 			TargetDeviceID:  trigger.TargetDeviceID,
+			WebhookMethod:   webhook.Method,
 			Prompt:          trigger.Prompt,
 			GraphJSON:       graphToJSON(trigger.Graph),
 			ModelOverride:   trigger.ModelOverride,
 			Configuration:   trigger.Configuration,
 			CreatedAt:       now,
 			UpdatedAt:       now,
+		}
+		if webhook.Method != "" {
+			token, err := newToken()
+			if err != nil {
+				return err
+			}
+			record.WebhookToken = &token
 		}
 		if err := tx.Create(&record).Error; err != nil {
 			return err
@@ -273,7 +287,7 @@ func (s *Service) UpdateJob(ctx context.Context, principal *iam.Principal, jobID
 			return err
 		}
 
-		trigger, err := normalizeJobTrigger(jobTriggerParams(params))
+		trigger, webhook, err := normalizeJobTrigger(jobTriggerParams(params))
 		if err != nil {
 			return err
 		}
@@ -302,6 +316,23 @@ func (s *Service) UpdateJob(ctx context.Context, principal *iam.Principal, jobID
 		record.GraphJSON = graphToJSON(trigger.Graph)
 		record.ModelOverride = trigger.ModelOverride
 		record.Configuration = trigger.Configuration
+		record.WebhookMethod = webhook.Method
+		switch {
+		case webhook.Method == "":
+			// The graph no longer has a webhook_trigger node - revoke the
+			// URL rather than leaving a stale, unlisted one still live.
+			record.WebhookToken = nil
+		case record.WebhookToken == nil:
+			// First time a webhook_trigger node is saved on this job.
+			token, err := newToken()
+			if err != nil {
+				return err
+			}
+			record.WebhookToken = &token
+		default:
+			// Already has a token from an earlier save - keep it stable
+			// across edits, same as any other webhook/API-key URL.
+		}
 		record.UpdatedAt = now
 		if err := tx.Save(&record).Error; err != nil {
 			return err
@@ -413,7 +444,7 @@ func (s *Service) TriggerJobNow(ctx context.Context, principal *iam.Principal, j
 		if err := s.iam.CheckOrganizationPermission(tx, principal, record.OrganizationID, "jobs.manage", "organization.manage"); err != nil {
 			return err
 		}
-		created, err := queueRunForJob(tx, record, time.Now().UTC())
+		created, err := queueRunForJob(tx, record, time.Now().UTC(), "")
 		if err != nil {
 			return err
 		}
@@ -427,24 +458,75 @@ func (s *Service) TriggerJobNow(ctx context.Context, principal *iam.Principal, j
 	return run, err
 }
 
+// ErrWebhookMethodMismatch is a sentinel (not an apperr.Error, since none of
+// its existing Kinds map to HTTP 405) that api.handleWebhookTrigger checks
+// for with errors.Is to answer Method Not Allowed itself, rather than
+// growing apperr's shared taxonomy for this one endpoint's own nuance.
+var ErrWebhookMethodMismatch = errors.New("method does not match this webhook's configured method")
+
+// TriggerJobByWebhook queues a run for the job whose webhook_trigger node
+// was saved with this token (see webhookTriggerFromGraph/normalizeJobTrigger)
+// — the external-HTTP-call counterpart to TriggerJobNow. Deliberately no
+// principal/permission check: an unguessable 192-bit token is the trust
+// boundary here, the same posture as handleConnectorOAuthCallback's signed
+// state param. payload is JSON-encoded request body/headers/query, merged
+// into the graph's seed under a "webhook" key (see jobWorkflow.runGraph).
+func (s *Service) TriggerJobByWebhook(ctx context.Context, token, method, payload string) (*Run, error) {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return nil, ErrNotFound("webhook not found")
+	}
+	var run *Run
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		tx = tx.WithContext(ctx)
+		var record sdb.ScheduledJob
+		if err := tx.First(&record, "webhook_token = ?", token).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrNotFound("webhook not found")
+			}
+			return err
+		}
+		if record.Status != JobStatusActive {
+			return ErrConflict("this automation is paused")
+		}
+		if !strings.EqualFold(record.WebhookMethod, method) {
+			return ErrWebhookMethodMismatch
+		}
+		created, err := queueRunForJob(tx, record, time.Now().UTC(), payload)
+		if err != nil {
+			return err
+		}
+		if err := s.iam.AppendAuditEvent(tx, nil, record.OrganizationID, "job.triggered_by_webhook", "job", record.ID, map[string]string{"run_id": created.ID}); err != nil {
+			return err
+		}
+		converted := toRun(created)
+		run = &converted
+		return nil
+	})
+	return run, err
+}
+
 // normalizedJobTrigger is jobTriggerParams after validation/defaulting.
 type normalizedJobTrigger = jobTriggerParams
 
-func normalizeJobTrigger(input jobTriggerParams) (normalizedJobTrigger, error) {
+func normalizeJobTrigger(input jobTriggerParams) (normalizedJobTrigger, extractedWebhookTrigger, error) {
 	name := strings.TrimSpace(input.Name)
 	prompt := strings.TrimSpace(input.Prompt)
 	if name == "" {
-		return normalizedJobTrigger{}, ErrInvalidInput("name is required")
+		return normalizedJobTrigger{}, extractedWebhookTrigger{}, ErrInvalidInput("name is required")
 	}
 	if prompt == "" && input.Graph == nil {
-		return normalizedJobTrigger{}, ErrInvalidInput("prompt or graph is required")
+		return normalizedJobTrigger{}, extractedWebhookTrigger{}, ErrInvalidInput("prompt or graph is required")
 	}
 	if prompt != "" && input.Graph != nil {
-		return normalizedJobTrigger{}, ErrInvalidInput("prompt and graph are mutually exclusive")
+		return normalizedJobTrigger{}, extractedWebhookTrigger{}, ErrInvalidInput("prompt and graph are mutually exclusive")
 	}
+
+	hasGraphSchedule := false
+	var webhook extractedWebhookTrigger
 	if input.Graph != nil {
 		if err := dataflow.Validate(*input.Graph); err != nil {
-			return normalizedJobTrigger{}, ErrInvalidInput("invalid graph: " + err.Error())
+			return normalizedJobTrigger{}, extractedWebhookTrigger{}, ErrInvalidInput("invalid graph: " + err.Error())
 		}
 		// A schedule_trigger node on the graph is the trigger config now,
 		// not a separate Job Settings field (see docs/helps/audit-2026-09-04-
@@ -454,31 +536,55 @@ func normalizeJobTrigger(input jobTriggerParams) (normalizedJobTrigger, error) {
 		// this falls through to validating input.TriggerType etc as sent,
 		// exactly today's behavior - no migration needed for existing jobs.
 		if trig, ok, err := scheduleTriggerFromGraph(*input.Graph); err != nil {
-			return normalizedJobTrigger{}, ErrInvalidInput("invalid schedule_trigger node: " + err.Error())
+			return normalizedJobTrigger{}, extractedWebhookTrigger{}, ErrInvalidInput("invalid schedule_trigger node: " + err.Error())
 		} else if ok {
+			hasGraphSchedule = true
 			input.TriggerType = trig.TriggerType
 			input.CronExpr = trig.CronExpr
 			input.IntervalSeconds = trig.IntervalSeconds
 			input.RunAt = trig.RunAt
 		}
+		// A webhook_trigger node (Tier 1.2) is an independent entry point,
+		// not a replacement for a schedule_trigger - a graph can carry both,
+		// each starting its own run (see docs/helps/audit-2026-09-04-n8n-gap-
+		// analysis.md's Tier 1 note: n8n itself never combines triggers with
+		// AND/OR, each just starts its own execution). webhook.Method is ""
+		// when the graph has no such node; the caller (CreateJob/UpdateJob)
+		// uses that to decide whether to mint/keep/clear a WebhookToken.
+		if wtrig, ok, err := webhookTriggerFromGraph(*input.Graph); err != nil {
+			return normalizedJobTrigger{}, extractedWebhookTrigger{}, ErrInvalidInput("invalid webhook_trigger node: " + err.Error())
+		} else if ok {
+			webhook = wtrig
+		}
 	}
 
 	triggerType := strings.ToLower(strings.TrimSpace(input.TriggerType))
-	switch triggerType {
-	case TriggerTypeCron:
-		if strings.TrimSpace(input.CronExpr) == "" {
-			return normalizedJobTrigger{}, ErrInvalidInput("cron_expr is required for a cron trigger")
+	if webhook.Method != "" && !hasGraphSchedule {
+		// Purely event-driven via the webhook - no polling fields required
+		// or meaningful. Leaving TriggerType empty keeps this job out of
+		// Scheduler.tick()'s polling query entirely (it only selects rows
+		// with a set NextRunAt - see computeNextRunAt).
+		triggerType = ""
+		input.CronExpr = ""
+		input.IntervalSeconds = 0
+		input.RunAt = nil
+	} else {
+		switch triggerType {
+		case TriggerTypeCron:
+			if strings.TrimSpace(input.CronExpr) == "" {
+				return normalizedJobTrigger{}, extractedWebhookTrigger{}, ErrInvalidInput("cron_expr is required for a cron trigger")
+			}
+		case TriggerTypeInterval:
+			if input.IntervalSeconds <= 0 {
+				return normalizedJobTrigger{}, extractedWebhookTrigger{}, ErrInvalidInput("interval_seconds must be positive for an interval trigger")
+			}
+		case TriggerTypeOnce:
+			if input.RunAt == nil {
+				return normalizedJobTrigger{}, extractedWebhookTrigger{}, ErrInvalidInput("run_at is required for a once trigger")
+			}
+		default:
+			return normalizedJobTrigger{}, extractedWebhookTrigger{}, ErrInvalidInput("unsupported trigger_type")
 		}
-	case TriggerTypeInterval:
-		if input.IntervalSeconds <= 0 {
-			return normalizedJobTrigger{}, ErrInvalidInput("interval_seconds must be positive for an interval trigger")
-		}
-	case TriggerTypeOnce:
-		if input.RunAt == nil {
-			return normalizedJobTrigger{}, ErrInvalidInput("run_at is required for a once trigger")
-		}
-	default:
-		return normalizedJobTrigger{}, ErrInvalidInput("unsupported trigger_type")
 	}
 
 	executionTarget := strings.ToLower(strings.TrimSpace(input.ExecutionTarget))
@@ -487,14 +593,14 @@ func normalizeJobTrigger(input jobTriggerParams) (normalizedJobTrigger, error) {
 	case ExecutionTargetCloud:
 		targetDeviceID = ""
 		if _, _, err := parseModelOverride(input.ModelOverride); err != nil {
-			return normalizedJobTrigger{}, err
+			return normalizedJobTrigger{}, extractedWebhookTrigger{}, err
 		}
 	case ExecutionTargetDevice:
 		if targetDeviceID == "" {
-			return normalizedJobTrigger{}, ErrInvalidInput("target_device_id is required when execution_target is device")
+			return normalizedJobTrigger{}, extractedWebhookTrigger{}, ErrInvalidInput("target_device_id is required when execution_target is device")
 		}
 	default:
-		return normalizedJobTrigger{}, ErrInvalidInput("unsupported execution_target")
+		return normalizedJobTrigger{}, extractedWebhookTrigger{}, ErrInvalidInput("unsupported execution_target")
 	}
 
 	return normalizedJobTrigger{
@@ -510,7 +616,7 @@ func normalizeJobTrigger(input jobTriggerParams) (normalizedJobTrigger, error) {
 		Graph:           input.Graph,
 		ModelOverride:   strings.TrimSpace(input.ModelOverride),
 		Configuration:   input.Configuration,
-	}, nil
+	}, webhook, nil
 }
 
 // extractedScheduleTrigger is what scheduleTriggerFromGraph reads off a
@@ -568,6 +674,40 @@ func scheduleTriggerFromGraph(def dataflow.Definition) (extractedScheduleTrigger
 	return extractedScheduleTrigger{}, false, nil
 }
 
+// extractedWebhookTrigger is what webhookTriggerFromGraph reads off a
+// webhook_trigger node's Parameters. An empty Method means "no such node" -
+// checked by callers instead of a separate ok bool, since the node itself
+// (github.com/KPO-Tech/seshat/pkg/dataflow/nodes.WebhookTrigger) never
+// produces an empty Method when it matches.
+type extractedWebhookTrigger struct {
+	Method string
+}
+
+// webhookTriggerFromGraph scans def for the first webhook_trigger node and
+// reads its configured HTTP method, defaulting to POST like the node type
+// itself does. First-match only, same scope decision as
+// scheduleTriggerFromGraph. Unlike a schedule trigger, a webhook trigger
+// doesn't replace anything on the job - see normalizeJobTrigger's caller
+// comment for why a graph can carry both at once.
+func webhookTriggerFromGraph(def dataflow.Definition) (extractedWebhookTrigger, bool, error) {
+	for _, node := range def.Nodes {
+		if node.Type != "webhook_trigger" {
+			continue
+		}
+		method := strings.ToUpper(strings.TrimSpace(dataflow.StringParam(node.Parameters, "method", "")))
+		if method == "" {
+			method = "POST" // matches nodes.WebhookTrigger's own Description() default
+		}
+		switch method {
+		case "GET", "POST", "PUT", "PATCH", "DELETE":
+			return extractedWebhookTrigger{Method: method}, true, nil
+		default:
+			return extractedWebhookTrigger{}, false, errors.New(`method must be one of "GET", "POST", "PUT", "PATCH", "DELETE"`)
+		}
+	}
+	return extractedWebhookTrigger{}, false, nil
+}
+
 // graphToJSON/graphFromJSON mirror the same pattern already used by
 // seshat-backend's inbox workflows (internal/inbox/workflow_store.go) for
 // storing a *dataflow.Definition as a DB text column.
@@ -611,6 +751,12 @@ func validateTargetDevice(tx *gorm.DB, organizationID, deviceID string) error {
 // rather than reimplementing cron parsing — the same code path
 // seshat-automation itself runs on.
 func computeNextRunAt(trigger normalizedJobTrigger, from time.Time) (*time.Time, error) {
+	if trigger.TriggerType == "" {
+		// Purely event-driven (a webhook_trigger node with no accompanying
+		// schedule_trigger, see normalizeJobTrigger) - never polled, so
+		// there's no "next" run to compute.
+		return nil, nil
+	}
 	var schedule automation.Schedule
 	switch trigger.TriggerType {
 	case TriggerTypeCron:
@@ -634,6 +780,10 @@ func computeNextRunAt(trigger normalizedJobTrigger, from time.Time) (*time.Time,
 }
 
 func toJob(record sdb.ScheduledJob) Job {
+	webhookToken := ""
+	if record.WebhookToken != nil {
+		webhookToken = *record.WebhookToken
+	}
 	return Job{
 		ID:              record.ID,
 		OrganizationID:  record.OrganizationID,
@@ -650,6 +800,8 @@ func toJob(record sdb.ScheduledJob) Job {
 		LastRunStatus:   record.LastRunStatus,
 		ExecutionTarget: record.ExecutionTarget,
 		TargetDeviceID:  record.TargetDeviceID,
+		WebhookToken:    webhookToken,
+		WebhookMethod:   record.WebhookMethod,
 		Prompt:          record.Prompt,
 		Graph:           graphFromJSON(record.GraphJSON),
 		ModelOverride:   record.ModelOverride,

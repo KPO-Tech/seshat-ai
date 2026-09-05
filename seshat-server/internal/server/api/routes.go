@@ -175,6 +175,13 @@ func (app *App) routes() http.Handler {
 
 	mux.Handle("GET /api/v1/network-diagnostics", app.authMiddleware(http.HandlerFunc(app.handleNetworkDiagnostics)))
 
+	// Webhook trigger (Tier 1.2, see docs/helps/audit-2026-09-04-n8n-gap-
+	// analysis.md) — same posture as the OAuth callback below: unauthenticated
+	// because the caller is an external service, not a person with a
+	// session. The unguessable per-job token in the path is the trust
+	// boundary (see automation.TriggerJobByWebhook).
+	mux.HandleFunc("/api/v1/webhooks/{token}", app.handleWebhookTrigger)
+
 	// SCIM protocol — device-protocol pattern (see /api/v1/device/* above):
 	// each handler authenticates itself against ScimConnection.TokenHash via
 	// resolveScimConnectionFromRequest, never app.authMiddleware. The IdP is

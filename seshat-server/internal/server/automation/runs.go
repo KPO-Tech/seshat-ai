@@ -474,7 +474,12 @@ func isTerminalRunStatus(status string) bool {
 // stay queued for the scheduler's own executeQueuedCloudRuns pass to pick
 // up (see cloud_execution.go) — never executed synchronously here, since an
 // LLM call is slow and this runs inside a DB transaction.
-func queueRunForJob(tx *gorm.DB, job sdb.ScheduledJob, now time.Time) (sdb.JobRun, error) {
+//
+// payload is JSON-encoded external data to merge into the graph's seed
+// input under a "webhook" key (see cloud_execution.go) — empty for every
+// caller except the webhook trigger handler, which passes the incoming
+// request's body/headers/query.
+func queueRunForJob(tx *gorm.DB, job sdb.ScheduledJob, now time.Time, payload string) (sdb.JobRun, error) {
 	if job.ExecutionTarget == ExecutionTargetDevice {
 		if err := validateTargetDevice(tx, job.OrganizationID, job.TargetDeviceID); err != nil {
 			return sdb.JobRun{}, err
@@ -492,6 +497,7 @@ func queueRunForJob(tx *gorm.DB, job sdb.ScheduledJob, now time.Time) (sdb.JobRu
 		AssignedDeviceID: job.TargetDeviceID,
 		Status:           RunStatusQueued,
 		QueuedAt:         now,
+		TriggerPayload:   payload,
 	}
 	if err := tx.Create(&run).Error; err != nil {
 		return sdb.JobRun{}, err

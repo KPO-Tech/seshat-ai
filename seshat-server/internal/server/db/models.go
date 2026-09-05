@@ -505,7 +505,16 @@ type ScheduledJob struct {
 	LastRunStatus   string `gorm:"size:32"`
 	ExecutionTarget string `gorm:"size:16;not null"` // cloud | device
 	TargetDeviceID  string `gorm:"size:32"`
-	Prompt          string `gorm:"type:text;not null"`
+	// WebhookToken, when set, lets an external HTTP call at
+	// POST /api/v1/webhooks/{token} start a run of this job - see
+	// automation.webhookTriggerFromGraph and api.handleWebhookTrigger.
+	// Generated once (crypto-random, see db.NewToken) the first time a
+	// webhook_trigger node is saved on this job's graph, then kept stable
+	// across edits; independent of TriggerType/NextRunAt, so a job can have
+	// both a schedule and a webhook trigger as two separate entry points.
+	WebhookToken  *string `gorm:"size:64;uniqueIndex"`
+	WebhookMethod string  `gorm:"size:16"`
+	Prompt        string  `gorm:"type:text;not null"`
 	// GraphJSON, when non-empty, is a JSON-encoded dataflow.Definition run
 	// instead of Prompt — see automation.executeCloudRun. Empty (the
 	// default) keeps every existing job on the plain-Prompt path unchanged.
@@ -545,6 +554,12 @@ type JobRun struct {
 	OutputText       string            `gorm:"type:text"`
 	ErrorText        string            `gorm:"type:text"`
 	Metadata         map[string]string `gorm:"serializer:json;type:text"`
+	// TriggerPayload is JSON-encoded external data that started this run -
+	// currently only set for webhook-triggered runs ({"body":...,
+	// "headers":...,"query":...}), empty for schedule/manual runs. Merged
+	// into the graph's seed input under a "webhook" key - see
+	// automation.executeCloudRun.
+	TriggerPayload string `gorm:"type:text"`
 	// NodeTrace is per-node execution detail for a Graph-based run - which
 	// node ran, in what order, what it produced or failed with. Populated
 	// from the dataflow engine's own Result.Results/Order (see

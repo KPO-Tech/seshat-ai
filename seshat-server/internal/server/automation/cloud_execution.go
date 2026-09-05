@@ -57,6 +57,11 @@ type jobWorkflow struct {
 	organization string
 	ownerID      string
 	secrets      DataflowSecretResolver
+	// triggerPayload is JSON-encoded external data (currently only set for
+	// webhook-triggered runs - see JobRun.TriggerPayload) merged into the
+	// graph's seed under a "webhook" key by runGraph below. Empty for every
+	// other trigger, which changes nothing about their existing seed.
+	triggerPayload string
 	// nodeTrace is populated by runGraph as a side effect (dataflow.Run's
 	// own Result is otherwise discarded once success/failure is checked) -
 	// executeCloudRun reads it directly off this struct after Run returns,
@@ -98,11 +103,18 @@ func (w *jobWorkflow) runGraph(ctx context.Context, session *sdk.Session) error 
 	// event_context — so a node like "gmail_new_messages" can resolve which
 	// mailbox/cursor to poll without that identity being authored into the
 	// graph definition itself (see GmailPollNode's doc comment).
-	seed := []dataflow.Item{{
+	seedItem := dataflow.Item{
 		"job_id":          w.id,
 		"owner_id":        w.ownerID,
 		"organization_id": w.organization,
-	}}
+	}
+	if w.triggerPayload != "" {
+		var webhookPayload any
+		if err := json.Unmarshal([]byte(w.triggerPayload), &webhookPayload); err == nil {
+			seedItem["webhook"] = webhookPayload
+		}
+	}
+	seed := []dataflow.Item{seedItem}
 	result, err := dataflow.Run(ctx, *w.graph, w.registry, rt, seed, dataflow.Options{})
 	if err != nil {
 		return fmt.Errorf("run graph: %w", err)
@@ -331,6 +343,7 @@ func (s *Service) executeCloudRun(ctx context.Context, runID string) error {
 		id: job.ID, description: job.Description, prompt: job.Prompt,
 		graph: graph, registry: s.nodeRegistry, organization: job.OrganizationID,
 		ownerID: job.CreatedByUserID, secrets: s.secrets,
+		triggerPayload: run.TriggerPayload,
 	}
 	result, execErr := executor.Run(ctx, workflow, sdkautomation.Options{})
 
