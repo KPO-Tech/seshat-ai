@@ -38,7 +38,35 @@ func (app *App) handleWebhookTrigger(w http.ResponseWriter, r *http.Request) {
 		writeAutomationError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusAccepted, map[string]string{"run_id": run.ID})
+	writeWebhookRunResult(w, run)
+}
+
+// writeWebhookRunResult maps whatever state TriggerJobByWebhook's run came
+// back in to an HTTP response - it doesn't need to know which responseMode
+// produced that state. "immediate" mode always returns queued (unchanged,
+// 202). "whenFinished" mode returns whatever the run's actual status is
+// once TriggerJobByWebhook stops waiting: completed/failed if it finished
+// in time, or still running/queued if resolveWebhookSyncTimeout elapsed
+// first - the caller gets a run_id to poll via GET .../runs either way.
+func writeWebhookRunResult(w http.ResponseWriter, run *automation.Run) {
+	switch run.Status {
+	case automation.RunStatusCompleted:
+		writeJSON(w, http.StatusOK, map[string]any{
+			"run_id": run.ID, "status": run.Status,
+			"output_text": run.OutputText, "node_trace": run.NodeTrace,
+		})
+	case automation.RunStatusFailed:
+		writeJSON(w, http.StatusInternalServerError, map[string]any{
+			"run_id": run.ID, "status": run.Status, "error": run.ErrorText,
+		})
+	case automation.RunStatusQueued:
+		writeJSON(w, http.StatusAccepted, map[string]string{"run_id": run.ID, "status": run.Status})
+	default:
+		// running/claimed/cancelled - "whenFinished" timed out before the
+		// run reached a terminal state (execution itself is unaffected, it
+		// keeps going in the background).
+		writeJSON(w, http.StatusGatewayTimeout, map[string]string{"run_id": run.ID, "status": run.Status})
+	}
 }
 
 // webhookPayloadJSON captures the incoming request as

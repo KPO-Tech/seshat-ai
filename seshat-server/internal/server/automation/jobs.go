@@ -50,9 +50,10 @@ type Job struct {
 	// {token} to start a run of this job - present only once a
 	// webhook_trigger node has been saved on Graph. The client builds the
 	// full URL by prefixing its own known API base URL.
-	WebhookToken  string `json:"webhook_token,omitempty"`
-	WebhookMethod string `json:"webhook_method,omitempty"`
-	Prompt        string `json:"prompt,omitempty"`
+	WebhookToken        string `json:"webhook_token,omitempty"`
+	WebhookMethod       string `json:"webhook_method,omitempty"`
+	WebhookResponseMode string `json:"webhook_response_mode,omitempty"`
+	Prompt              string `json:"prompt,omitempty"`
 	// Graph, when set, runs instead of Prompt — mutually exclusive, exactly
 	// one is required. See internal/server/automation/gmail_poll_node.go
 	// for the node type this exists to support (an interval-triggered job
@@ -221,26 +222,27 @@ func (s *Service) CreateJob(ctx context.Context, principal *iam.Principal, param
 			return err
 		}
 		record := sdb.ScheduledJob{
-			ID:              jobIDValue,
-			OrganizationID:  organizationID,
-			CreatedByUserID: principal.User.ID,
-			Name:            trigger.Name,
-			Description:     trigger.Description,
-			Status:          JobStatusActive,
-			TriggerType:     trigger.TriggerType,
-			CronExpr:        trigger.CronExpr,
-			IntervalSeconds: trigger.IntervalSeconds,
-			RunAt:           trigger.RunAt,
-			NextRunAt:       nextRunAt,
-			ExecutionTarget: trigger.ExecutionTarget,
-			TargetDeviceID:  trigger.TargetDeviceID,
-			WebhookMethod:   webhook.Method,
-			Prompt:          trigger.Prompt,
-			GraphJSON:       graphToJSON(trigger.Graph),
-			ModelOverride:   trigger.ModelOverride,
-			Configuration:   trigger.Configuration,
-			CreatedAt:       now,
-			UpdatedAt:       now,
+			ID:                  jobIDValue,
+			OrganizationID:      organizationID,
+			CreatedByUserID:     principal.User.ID,
+			Name:                trigger.Name,
+			Description:         trigger.Description,
+			Status:              JobStatusActive,
+			TriggerType:         trigger.TriggerType,
+			CronExpr:            trigger.CronExpr,
+			IntervalSeconds:     trigger.IntervalSeconds,
+			RunAt:               trigger.RunAt,
+			NextRunAt:           nextRunAt,
+			ExecutionTarget:     trigger.ExecutionTarget,
+			TargetDeviceID:      trigger.TargetDeviceID,
+			WebhookMethod:       webhook.Method,
+			WebhookResponseMode: webhook.ResponseMode,
+			Prompt:              trigger.Prompt,
+			GraphJSON:           graphToJSON(trigger.Graph),
+			ModelOverride:       trigger.ModelOverride,
+			Configuration:       trigger.Configuration,
+			CreatedAt:           now,
+			UpdatedAt:           now,
 		}
 		if webhook.Method != "" {
 			token, err := newToken()
@@ -317,6 +319,7 @@ func (s *Service) UpdateJob(ctx context.Context, principal *iam.Principal, jobID
 		record.ModelOverride = trigger.ModelOverride
 		record.Configuration = trigger.Configuration
 		record.WebhookMethod = webhook.Method
+		record.WebhookResponseMode = webhook.ResponseMode
 		switch {
 		case webhook.Method == "":
 			// The graph no longer has a webhook_trigger node - revoke the
@@ -476,10 +479,10 @@ func (s *Service) TriggerJobByWebhook(ctx context.Context, token, method, payloa
 	if token == "" {
 		return nil, ErrNotFound("webhook not found")
 	}
-	var run *Run
+	var created sdb.JobRun
+	var record sdb.ScheduledJob
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		tx = tx.WithContext(ctx)
-		var record sdb.ScheduledJob
 		if err := tx.First(&record, "webhook_token = ?", token).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return ErrNotFound("webhook not found")
@@ -492,18 +495,57 @@ func (s *Service) TriggerJobByWebhook(ctx context.Context, token, method, payloa
 		if !strings.EqualFold(record.WebhookMethod, method) {
 			return ErrWebhookMethodMismatch
 		}
-		created, err := queueRunForJob(tx, record, time.Now().UTC(), payload)
+		var err error
+		created, err = queueRunForJob(tx, record, time.Now().UTC(), payload)
 		if err != nil {
 			return err
 		}
-		if err := s.iam.AppendAuditEvent(tx, nil, record.OrganizationID, "job.triggered_by_webhook", "job", record.ID, map[string]string{"run_id": created.ID}); err != nil {
-			return err
-		}
-		converted := toRun(created)
-		run = &converted
-		return nil
+		return s.iam.AppendAuditEvent(tx, nil, record.OrganizationID, "job.triggered_by_webhook", "job", record.ID, map[string]string{"run_id": created.ID})
 	})
-	return run, err
+	if err != nil {
+		return nil, err
+	}
+
+	if record.WebhookResponseMode != WebhookResponseModeWhenFinished {
+		run := toRun(created)
+		return &run, nil
+	}
+	return s.waitForWebhookRun(ctx, created.ID), nil
+}
+
+// waitForWebhookRun implements "whenFinished": the run was already queued
+// (same audit trail/statuses as any other run) by the caller, but nothing
+// executes it until either the scheduler's own tick eventually picks it up
+// (up to ~30s later, see Scheduler.tick) or - what actually happens here -
+// this call runs it immediately itself. execution is handed a context
+// detached from the incoming HTTP request (context.WithoutCancel) so it
+// keeps going to completion even if this function gives up waiting once
+// resolveWebhookSyncTimeout elapses; executeCloudRun's own claim step
+// (UPDATE ... WHERE status = 'queued') is what makes it safe for the
+// scheduler's tick to also race for the same run without double-executing
+// it - the same mechanism that already protects against concurrent
+// scheduler instances.
+func (s *Service) waitForWebhookRun(ctx context.Context, runID string) *Run {
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_ = s.executeCloudRun(context.WithoutCancel(ctx), runID)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(s.resolveWebhookSyncTimeout()):
+		// Still running - fall through and report whatever state it's in;
+		// execution itself is unaffected, it keeps going in the background.
+	}
+
+	var final sdb.JobRun
+	if err := s.db.Gorm().First(&final, "id = ?", runID).Error; err != nil {
+		run := toRun(sdb.JobRun{ID: runID, Status: RunStatusQueued})
+		return &run
+	}
+	run := toRun(final)
+	return &run
 }
 
 // normalizedJobTrigger is jobTriggerParams after validation/defaulting.
@@ -599,6 +641,12 @@ func normalizeJobTrigger(input jobTriggerParams) (normalizedJobTrigger, extracte
 		if targetDeviceID == "" {
 			return normalizedJobTrigger{}, extractedWebhookTrigger{}, ErrInvalidInput("target_device_id is required when execution_target is device")
 		}
+		if webhook.ResponseMode == WebhookResponseModeWhenFinished {
+			// A device-targeted run waits for a device to poll in whenever
+			// it next comes online - no bound a synchronous HTTP caller
+			// could wait on (see TriggerJobByWebhook's cloud-only path).
+			return normalizedJobTrigger{}, extractedWebhookTrigger{}, ErrInvalidInput(`webhook responseMode "whenFinished" requires execution_target "cloud"`)
+		}
 	default:
 		return normalizedJobTrigger{}, extractedWebhookTrigger{}, ErrInvalidInput("unsupported execution_target")
 	}
@@ -680,15 +728,23 @@ func scheduleTriggerFromGraph(def dataflow.Definition) (extractedScheduleTrigger
 // (github.com/KPO-Tech/seshat/pkg/dataflow/nodes.WebhookTrigger) never
 // produces an empty Method when it matches.
 type extractedWebhookTrigger struct {
-	Method string
+	Method       string
+	ResponseMode string
 }
 
+const (
+	WebhookResponseModeImmediate    = "immediate"
+	WebhookResponseModeWhenFinished = "whenFinished"
+)
+
 // webhookTriggerFromGraph scans def for the first webhook_trigger node and
-// reads its configured HTTP method, defaulting to POST like the node type
-// itself does. First-match only, same scope decision as
-// scheduleTriggerFromGraph. Unlike a schedule trigger, a webhook trigger
-// doesn't replace anything on the job - see normalizeJobTrigger's caller
-// comment for why a graph can carry both at once.
+// reads its configured HTTP method and response mode, defaulting to POST/
+// immediate like the node type itself does (see
+// github.com/KPO-Tech/seshat/pkg/dataflow/nodes.WebhookTrigger). First-match
+// only, same scope decision as scheduleTriggerFromGraph. Unlike a schedule
+// trigger, a webhook trigger doesn't replace anything on the job - see
+// normalizeJobTrigger's caller comment for why a graph can carry both at
+// once.
 func webhookTriggerFromGraph(def dataflow.Definition) (extractedWebhookTrigger, bool, error) {
 	for _, node := range def.Nodes {
 		if node.Type != "webhook_trigger" {
@@ -700,10 +756,19 @@ func webhookTriggerFromGraph(def dataflow.Definition) (extractedWebhookTrigger, 
 		}
 		switch method {
 		case "GET", "POST", "PUT", "PATCH", "DELETE":
-			return extractedWebhookTrigger{Method: method}, true, nil
 		default:
 			return extractedWebhookTrigger{}, false, errors.New(`method must be one of "GET", "POST", "PUT", "PATCH", "DELETE"`)
 		}
+
+		mode := strings.TrimSpace(dataflow.StringParam(node.Parameters, "responseMode", ""))
+		if mode == "" {
+			mode = WebhookResponseModeImmediate
+		}
+		if mode != WebhookResponseModeImmediate && mode != WebhookResponseModeWhenFinished {
+			return extractedWebhookTrigger{}, false, errors.New(`responseMode must be one of "immediate", "whenFinished"`)
+		}
+
+		return extractedWebhookTrigger{Method: method, ResponseMode: mode}, true, nil
 	}
 	return extractedWebhookTrigger{}, false, nil
 }
@@ -785,28 +850,29 @@ func toJob(record sdb.ScheduledJob) Job {
 		webhookToken = *record.WebhookToken
 	}
 	return Job{
-		ID:              record.ID,
-		OrganizationID:  record.OrganizationID,
-		CreatedByUserID: record.CreatedByUserID,
-		Name:            record.Name,
-		Description:     record.Description,
-		Status:          record.Status,
-		TriggerType:     record.TriggerType,
-		CronExpr:        record.CronExpr,
-		IntervalSeconds: record.IntervalSeconds,
-		RunAt:           record.RunAt,
-		NextRunAt:       record.NextRunAt,
-		LastRunAt:       record.LastRunAt,
-		LastRunStatus:   record.LastRunStatus,
-		ExecutionTarget: record.ExecutionTarget,
-		TargetDeviceID:  record.TargetDeviceID,
-		WebhookToken:    webhookToken,
-		WebhookMethod:   record.WebhookMethod,
-		Prompt:          record.Prompt,
-		Graph:           graphFromJSON(record.GraphJSON),
-		ModelOverride:   record.ModelOverride,
-		Configuration:   record.Configuration,
-		CreatedAt:       record.CreatedAt,
-		UpdatedAt:       record.UpdatedAt,
+		ID:                  record.ID,
+		OrganizationID:      record.OrganizationID,
+		CreatedByUserID:     record.CreatedByUserID,
+		Name:                record.Name,
+		Description:         record.Description,
+		Status:              record.Status,
+		TriggerType:         record.TriggerType,
+		CronExpr:            record.CronExpr,
+		IntervalSeconds:     record.IntervalSeconds,
+		RunAt:               record.RunAt,
+		NextRunAt:           record.NextRunAt,
+		LastRunAt:           record.LastRunAt,
+		LastRunStatus:       record.LastRunStatus,
+		ExecutionTarget:     record.ExecutionTarget,
+		TargetDeviceID:      record.TargetDeviceID,
+		WebhookToken:        webhookToken,
+		WebhookMethod:       record.WebhookMethod,
+		WebhookResponseMode: record.WebhookResponseMode,
+		Prompt:              record.Prompt,
+		Graph:               graphFromJSON(record.GraphJSON),
+		ModelOverride:       record.ModelOverride,
+		Configuration:       record.Configuration,
+		CreatedAt:           record.CreatedAt,
+		UpdatedAt:           record.UpdatedAt,
 	}
 }

@@ -8,6 +8,7 @@ package automation
 
 import (
 	"context"
+	"time"
 
 	"github.com/KPO-Tech/seshat/pkg/dataflow"
 	sdkrag "github.com/KPO-Tech/seshat/pkg/rag"
@@ -64,10 +65,34 @@ type Service struct {
 	artifacts    sdkstorage.ArtifactStore // nil until SetArtifactStore is called
 	secrets      DataflowSecretResolver   // nil until SetSecretResolver is called
 	nodeRegistry *dataflow.Registry       // nil until SetNodeRegistry is called
+	// webhookSyncTimeout bounds how long TriggerJobByWebhook's "whenFinished"
+	// response mode waits for a run to complete before answering with
+	// whatever state it's in (see that function). Zero means "use
+	// defaultWebhookSyncTimeout" - tests override via SetWebhookSyncTimeout,
+	// production never needs to.
+	webhookSyncTimeout time.Duration
 }
+
+// defaultWebhookSyncTimeout is comfortably under the ~60s timeout most
+// reverse proxies/load balancers default to.
+const defaultWebhookSyncTimeout = 55 * time.Second
 
 func New(database *sdb.DB, iamService *iam.Service) *Service {
 	return &Service{db: database, iam: iamService}
+}
+
+// SetWebhookSyncTimeout overrides how long a "whenFinished" webhook call
+// waits for its run to complete (see TriggerJobByWebhook). Tests use this to
+// force the timeout branch deterministically; production leaves it unset.
+func (s *Service) SetWebhookSyncTimeout(d time.Duration) {
+	s.webhookSyncTimeout = d
+}
+
+func (s *Service) resolveWebhookSyncTimeout() time.Duration {
+	if s.webhookSyncTimeout > 0 {
+		return s.webhookSyncTimeout
+	}
+	return defaultWebhookSyncTimeout
 }
 
 // SetRAGResolver wires in the knowledge domain's embedder resolution so

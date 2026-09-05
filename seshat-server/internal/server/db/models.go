@@ -512,9 +512,10 @@ type ScheduledJob struct {
 	// webhook_trigger node is saved on this job's graph, then kept stable
 	// across edits; independent of TriggerType/NextRunAt, so a job can have
 	// both a schedule and a webhook trigger as two separate entry points.
-	WebhookToken  *string `gorm:"size:64;uniqueIndex"`
-	WebhookMethod string  `gorm:"size:16"`
-	Prompt        string  `gorm:"type:text;not null"`
+	WebhookToken        *string `gorm:"size:64;uniqueIndex"`
+	WebhookMethod       string  `gorm:"size:16"`
+	WebhookResponseMode string  `gorm:"size:16"` // immediate | whenFinished, see automation.TriggerJobByWebhook
+	Prompt              string  `gorm:"type:text;not null"`
 	// GraphJSON, when non-empty, is a JSON-encoded dataflow.Definition run
 	// instead of Prompt — see automation.executeCloudRun. Empty (the
 	// default) keeps every existing job on the plain-Prompt path unchanged.

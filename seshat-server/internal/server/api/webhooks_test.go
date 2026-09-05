@@ -87,6 +87,54 @@ func TestWebhookTriggerWrongMethodReturns405(t *testing.T) {
 	}
 }
 
+// TestWebhookTriggerWhenFinishedReturnsResultSynchronously proves the
+// responseMode="whenFinished" path end to end over HTTP: no ProviderSetting
+// is configured in this test environment, so executeCloudRun fails fast
+// (same fixture cloud_execution_test.go and the Service-level webhook tests
+// already rely on for a fast, deterministic terminal state) - the HTTP
+// response itself must carry that terminal state, not a bare run_id.
+func TestWebhookTriggerWhenFinishedReturnsResultSynchronously(t *testing.T) {
+	handler, _, token, orgID, _ := newTestServerRouter(t)
+	body, _ := json.Marshal(map[string]any{
+		"organization_id": orgID, "name": "Sync webhook", "execution_target": "cloud",
+		"model_override": "anthropic:claude-sonnet-5",
+		"graph": map[string]any{
+			"name": "webhook graph",
+			"nodes": []map[string]any{
+				{"id": "trigger", "type": "webhook_trigger",
+					"parameters":  map[string]any{"method": "POST", "responseMode": "whenFinished"},
+					"connections": map[string]any{"main": []string{"step"}}},
+				{"id": "step", "type": "http_request", "parameters": map[string]any{"url": "https://example.com", "method": "GET"}},
+			},
+		},
+	})
+	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/jobs", bytes.NewReader(body))
+	createReq.Header.Set("Authorization", "Bearer "+token)
+	createRec := httptest.NewRecorder()
+	handler.ServeHTTP(createRec, createReq)
+	if createRec.Code != http.StatusCreated {
+		t.Fatalf("expected job creation success, got %d: %s", createRec.Code, createRec.Body.String())
+	}
+	var job automation.Job
+	if err := json.NewDecoder(createRec.Body).Decode(&job); err != nil {
+		t.Fatalf("decode created job: %v", err)
+	}
+
+	callReq := httptest.NewRequest(http.MethodPost, "/api/v1/webhooks/"+job.WebhookToken, nil)
+	callRec := httptest.NewRecorder()
+	handler.ServeHTTP(callRec, callReq)
+	if callRec.Code != http.StatusOK && callRec.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 200 (completed) or 500 (failed) - a terminal state either way, got %d: %s", callRec.Code, callRec.Body.String())
+	}
+	var result map[string]any
+	if err := json.NewDecoder(callRec.Body).Decode(&result); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if status, _ := result["status"].(string); status != "completed" && status != "failed" {
+		t.Fatalf("expected a terminal status in the response body, got %v", result["status"])
+	}
+}
+
 func TestWebhookTriggerPausedJobReturns409(t *testing.T) {
 	handler, backend, token, orgID, principal := newTestServerRouter(t)
 	job := createJobWithWebhookTriggerOverHTTP(t, handler, token, orgID)

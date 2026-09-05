@@ -3,6 +3,7 @@ package automation
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/KPO-Tech/seshat/pkg/dataflow"
 )
@@ -11,6 +12,23 @@ func graphWithWebhookTrigger(method string) *dataflow.Definition {
 	params := map[string]any{}
 	if method != "" {
 		params["method"] = method
+	}
+	return &dataflow.Definition{
+		Name: "webhook graph",
+		Nodes: []dataflow.Node{
+			{ID: "trigger", Type: "webhook_trigger", Parameters: params, Connections: map[string][]string{"main": {"step"}}},
+			{ID: "step", Type: "http_request", Parameters: map[string]any{"url": "https://example.com", "method": "GET"}},
+		},
+	}
+}
+
+func graphWithWebhookTriggerMode(method, responseMode string) *dataflow.Definition {
+	params := map[string]any{}
+	if method != "" {
+		params["method"] = method
+	}
+	if responseMode != "" {
+		params["responseMode"] = responseMode
 	}
 	return &dataflow.Definition{
 		Name: "webhook graph",
@@ -207,5 +225,97 @@ func TestTriggerJobByWebhookRejectsPausedJob(t *testing.T) {
 	}
 	if _, err := env.automation.TriggerJobByWebhook(context.Background(), job.WebhookToken, "POST", ""); err == nil {
 		t.Fatal("expected an error for a paused job's webhook")
+	}
+}
+
+func TestWebhookTriggerFromGraphResponseModeDefaultsToImmediate(t *testing.T) {
+	trig, ok, err := webhookTriggerFromGraph(*graphWithWebhookTriggerMode("POST", ""))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !ok || trig.ResponseMode != WebhookResponseModeImmediate {
+		t.Fatalf("unexpected extracted trigger: %+v ok=%v", trig, ok)
+	}
+}
+
+func TestWebhookTriggerFromGraphExplicitResponseMode(t *testing.T) {
+	trig, ok, err := webhookTriggerFromGraph(*graphWithWebhookTriggerMode("POST", WebhookResponseModeWhenFinished))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !ok || trig.ResponseMode != WebhookResponseModeWhenFinished {
+		t.Fatalf("unexpected extracted trigger: %+v ok=%v", trig, ok)
+	}
+}
+
+func TestWebhookTriggerFromGraphRejectsUnknownResponseMode(t *testing.T) {
+	if _, _, err := webhookTriggerFromGraph(*graphWithWebhookTriggerMode("POST", "streaming")); err == nil {
+		t.Fatal("expected an error for an unsupported responseMode")
+	}
+}
+
+func TestCreateJobRejectsWhenFinishedWithDeviceTarget(t *testing.T) {
+	env := newTestEnv(t)
+	device, err := env.automation.RegisterDevice(context.Background(), env.adminPrincipal, RegisterDeviceParams{OrganizationID: env.orgID, Name: "Worker"})
+	if err != nil {
+		t.Fatalf("register device: %v", err)
+	}
+	_, err = env.automation.CreateJob(context.Background(), env.adminPrincipal, CreateJobParams{
+		OrganizationID: env.orgID, Name: "Bad combo",
+		ExecutionTarget: ExecutionTargetDevice, TargetDeviceID: device.Device.ID,
+		Graph: graphWithWebhookTriggerMode("POST", WebhookResponseModeWhenFinished),
+	})
+	if err == nil {
+		t.Fatal(`expected an error for responseMode "whenFinished" with a device execution target`)
+	}
+}
+
+// TestTriggerJobByWebhookWhenFinishedWaitsForCompletion proves the wait-for-
+// completion path itself works, not just its timeout edge: this job has no
+// ProviderSetting configured, so executeCloudRun fails fast (a few
+// milliseconds, see cloud_execution_test.go's own use of this exact
+// fixture) - with the default (55s) timeout, the call must still return the
+// terminal "failed" state synchronously, not "queued".
+func TestTriggerJobByWebhookWhenFinishedWaitsForCompletion(t *testing.T) {
+	env := newTestEnv(t)
+	job, err := env.automation.CreateJob(context.Background(), env.adminPrincipal, CreateJobParams{
+		OrganizationID: env.orgID, Name: "Sync webhook",
+		ExecutionTarget: ExecutionTargetCloud, ModelOverride: "anthropic:claude-sonnet-5",
+		Graph: graphWithWebhookTriggerMode("POST", WebhookResponseModeWhenFinished),
+	})
+	if err != nil {
+		t.Fatalf("create job: %v", err)
+	}
+
+	run, err := env.automation.TriggerJobByWebhook(context.Background(), job.WebhookToken, "POST", "")
+	if err != nil {
+		t.Fatalf("trigger job by webhook: %v", err)
+	}
+	if run.Status != RunStatusFailed && run.Status != RunStatusCompleted {
+		t.Fatalf(`expected a terminal status ("failed" here, no provider configured), got %q`, run.Status)
+	}
+}
+
+// TestTriggerJobByWebhookWhenFinishedRespectsTimeout proves the timeout
+// branch: with the wait bounded to ~0, the call must return promptly
+// instead of blocking, whatever state the run happens to be in yet.
+func TestTriggerJobByWebhookWhenFinishedRespectsTimeout(t *testing.T) {
+	env := newTestEnv(t)
+	env.automation.SetWebhookSyncTimeout(1 * time.Nanosecond)
+	job, err := env.automation.CreateJob(context.Background(), env.adminPrincipal, CreateJobParams{
+		OrganizationID: env.orgID, Name: "Sync webhook timeout",
+		ExecutionTarget: ExecutionTargetCloud, ModelOverride: "anthropic:claude-sonnet-5",
+		Graph: graphWithWebhookTriggerMode("POST", WebhookResponseModeWhenFinished),
+	})
+	if err != nil {
+		t.Fatalf("create job: %v", err)
+	}
+
+	started := time.Now()
+	if _, err := env.automation.TriggerJobByWebhook(context.Background(), job.WebhookToken, "POST", ""); err != nil {
+		t.Fatalf("trigger job by webhook: %v", err)
+	}
+	if elapsed := time.Since(started); elapsed > 2*time.Second {
+		t.Fatalf("expected the call to return promptly once the timeout elapsed, took %s", elapsed)
 	}
 }
