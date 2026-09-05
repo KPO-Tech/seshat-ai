@@ -345,6 +345,17 @@ export function AutomationPage() {
     { label: 'Graph has a trigger node', ok: (graph?.nodes ?? []).some((n) => nodeTypes.find((nt) => nt.type === n.type)?.isTrigger) },
     { label: 'Execution target selected', ok: executionTarget === 'cloud' || targetDeviceId.length > 0 },
     { label: 'Graph has at least one node', ok: (graph?.nodes.length ?? 0) > 0 },
+    // A "when finished" webhook holds the HTTP response open until the run
+    // completes - a device-targeted run has no bound on when a device next
+    // comes online to claim it, so there's nothing a synchronous caller
+    // could wait on (see seshat-server's matching CreateJob/UpdateJob
+    // rejection - this just catches the same mistake before a round trip).
+    {
+      label: 'Webhook response mode matches execution target',
+      ok: executionTarget !== 'device' || !(graph?.nodes ?? []).some(
+        (n) => n.type === 'webhook_trigger' && n.parameters?.responseMode === 'whenFinished',
+      ),
+    },
   ]
   const canSave = validationItems.every((item) => item.ok)
 
