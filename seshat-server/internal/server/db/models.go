@@ -585,7 +585,10 @@ type NodeTraceEntry struct {
 	Type    string `json:"type"`
 	Success bool   `json:"success"`
 	Skipped bool   `json:"skipped,omitempty"`
-	Error   string `json:"error,omitempty"`
+	// Pinned is true when this node's output came from the graph's own
+	// Definition.PinnedData (Tier 2.3) rather than a real Execute call.
+	Pinned bool   `json:"pinned,omitempty"`
+	Error  string `json:"error,omitempty"`
 	// Input/InputSource are exactly what this node received and, index for
 	// index, which upstream node/port each item came from (Tier 1.3, see
 	// docs/helps/audit-2026-09-04-n8n-gap-analysis.md) - the foundation

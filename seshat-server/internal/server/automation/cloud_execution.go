@@ -168,6 +168,7 @@ func buildNodeTrace(result dataflow.Result) []sdb.NodeTraceEntry {
 			Type:         r.Type,
 			Success:      r.Success,
 			Skipped:      r.Skipped,
+			Pinned:       r.Pinned,
 			Error:        r.Error,
 			Input:        itemsToMaps(r.Input),
 			InputSource:  inputSource,
