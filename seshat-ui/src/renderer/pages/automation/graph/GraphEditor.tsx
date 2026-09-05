@@ -362,7 +362,7 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
             // that means a single huge node on load. Capping how far IN it's
             // allowed to go keeps the initial view small/zoomed-out; it can
             // never prevent zooming out to see everything, only zooming in.
-            fitViewOptions={{ maxZoom: 0.75 }}
+            fitViewOptions={{ maxZoom: 0.85 }}
             proOptions={{ hideAttribution: true }}
           >
             <Background />
@@ -490,7 +490,6 @@ const GRAPH_EDITOR_CSS = `
   min-height: 0;
   display: flex;
   border: 1px solid var(--color-border);
-  border-radius: 8px;
   overflow: hidden;
 }
 
