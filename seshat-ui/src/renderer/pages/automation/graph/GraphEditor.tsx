@@ -357,6 +357,12 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
             // "Suppr"), pressing the forward Delete key did nothing.
             deleteKeyCode={['Backspace', 'Delete']}
             fitView
+            // Uncapped, fitView zooms in as far as it takes to fill the
+            // viewport with however few nodes exist - for a 1-2 node graph
+            // that means a single huge node on load. Capping how far IN it's
+            // allowed to go keeps the initial view small/zoomed-out; it can
+            // never prevent zooming out to see everything, only zooming in.
+            fitViewOptions={{ maxZoom: 0.75 }}
             proOptions={{ hideAttribution: true }}
           >
             <Background />
