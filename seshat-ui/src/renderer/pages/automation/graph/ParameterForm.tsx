@@ -157,7 +157,7 @@ export function ParameterForm({ nodeType, parameters, properties, onSave, onDele
                   placeholder={p.placeholder}
                 />
               )}
-              {p.type !== 'boolean' && !(nodeType === 'agent' && p.name === 'agent') && p.description && <div className="gf-field-hint">{p.description}</div>}
+              {p.type !== 'boolean' && !(nodeType === 'agent' && (p.name === 'agent' || p.name === 'prompt')) && p.description && <div className="gf-field-hint">{p.description}</div>}
               {errors[p.name] && <div className="gf-field-error">{errors[p.name]}</div>}
             </div>
           ))}

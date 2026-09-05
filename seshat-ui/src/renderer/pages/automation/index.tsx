@@ -446,11 +446,14 @@ export function AutomationPage() {
           </button>
         ) : (
           <>
-            {!isNew && (
-              <button type="button" className="au-icon-btn" onClick={() => void handleRunThisJob()} disabled={runningThisJob} title="Run now">
-                {runningThisJob ? <LoadingOne size={15} className="spin" /> : <Play size={15} />}
-              </button>
-            )}
+            <button
+              type="button" className="au-icon-btn"
+              onClick={() => void handleRunThisJob()}
+              disabled={runningThisJob || isNew}
+              title={isNew ? 'Save this automation before running it' : 'Run now'}
+            >
+              {runningThisJob ? <LoadingOne size={15} className="spin" /> : <Play size={15} />}
+            </button>
             <button type="button" className={`au-icon-btn ${settingsOpen ? 'active' : ''}`} onClick={() => setSettingsOpen((o) => !o)} title="Job settings">
               <Setting size={15} />
             </button>
