@@ -30,15 +30,22 @@ const (
 )
 
 type Config struct {
-	Port                     int
-	ReadTimeout              time.Duration
-	WriteTimeout             time.Duration
-	IdleTimeout              time.Duration
-	DB                       sdb.Config
-	SessionTTL               time.Duration
-	CORSAllowedOrigins       []string
-	SchedulerInterval        time.Duration
-	StaleRunTimeout          time.Duration
+	Port               int
+	ReadTimeout        time.Duration
+	WriteTimeout       time.Duration
+	IdleTimeout        time.Duration
+	DB                 sdb.Config
+	SessionTTL         time.Duration
+	CORSAllowedOrigins []string
+	SchedulerInterval  time.Duration
+	StaleRunTimeout    time.Duration
+	// JobRunMaxAge/JobRunMaxCountPerJob bound automation.JobRunPurge (Tier
+	// 1.4, see docs/helps/audit-2026-09-04-n8n-gap-analysis.md) - either set
+	// to 0 disables that criterion. Only completed/failed/cancelled runs are
+	// ever eligible, regardless of age/count.
+	JobRunMaxAge             time.Duration
+	JobRunMaxCountPerJob     int
+	JobRunPurgeInterval      time.Duration
 	Storage                  sdkstorage.Config
 	IngestionPollInterval    time.Duration
 	IngestionMaxPollInterval time.Duration
@@ -111,6 +118,9 @@ func LoadFromEnv() Config {
 		CORSAllowedOrigins:           corsAllowedOriginsFromEnv(),
 		SchedulerInterval:            envDuration("SESHAT_SERVER_SCHEDULER_INTERVAL", 30*time.Second),
 		StaleRunTimeout:              envDuration("SESHAT_SERVER_STALE_RUN_TIMEOUT", 10*time.Minute),
+		JobRunMaxAge:                 envDurationAllowZero("SESHAT_SERVER_JOB_RUN_MAX_AGE", 336*time.Hour),
+		JobRunMaxCountPerJob:         envIntAllowZero("SESHAT_SERVER_JOB_RUN_MAX_COUNT_PER_JOB", 10000),
+		JobRunPurgeInterval:          envDuration("SESHAT_SERVER_JOB_RUN_PURGE_INTERVAL", time.Hour),
 		Storage:                      storageConfigFromEnv(),
 		IngestionPollInterval:        envDuration("SESHAT_SERVER_INGESTION_POLL_INTERVAL", 500*time.Millisecond),
 		IngestionMaxPollInterval:     envDuration("SESHAT_SERVER_INGESTION_MAX_POLL_INTERVAL", 5*time.Second),
@@ -263,6 +273,29 @@ func envInt(key string, fallback int) int {
 func envDuration(key string, fallback time.Duration) time.Duration {
 	if raw := os.Getenv(key); raw != "" {
 		if parsed, err := time.ParseDuration(raw); err == nil && parsed > 0 {
+			return parsed
+		}
+	}
+	return fallback
+}
+
+// envIntAllowZero/envDurationAllowZero are envInt/envDuration but also
+// accept an explicit "0" - unlike those settings (where zero would be a
+// busy-loop or a no-op, so an unparseable/zero value falls back to a safe
+// default instead), a purge criterion's zero is a legitimate, intentional
+// "disabled" that operators must be able to set without a redeploy.
+func envIntAllowZero(key string, fallback int) int {
+	if raw := os.Getenv(key); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed >= 0 {
+			return parsed
+		}
+	}
+	return fallback
+}
+
+func envDurationAllowZero(key string, fallback time.Duration) time.Duration {
+	if raw := os.Getenv(key); raw != "" {
+		if parsed, err := time.ParseDuration(raw); err == nil && parsed >= 0 {
 			return parsed
 		}
 	}

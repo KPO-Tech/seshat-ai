@@ -61,6 +61,7 @@ type App struct {
 	WorkspaceChat        *workspacechat.Service
 	WorkspaceChatCleanup *workspacechat.Cleanup
 	MembershipExpiry     *iam.MembershipExpiry
+	JobRunPurge          *automation.JobRunPurge
 }
 
 func New(cfg serverconfig.Config) (*App, error) {
@@ -233,5 +234,6 @@ func New(cfg serverconfig.Config) (*App, error) {
 		WorkspaceChat:        workspaceChatService,
 		WorkspaceChatCleanup: workspacechat.NewCleanup(workspaceChatService, time.Hour),
 		MembershipExpiry:     iam.NewMembershipExpiry(iamService, cfg.MembershipConfirmationWindow, time.Hour),
+		JobRunPurge:          automation.NewJobRunPurge(automationService, cfg.JobRunMaxAge, cfg.JobRunMaxCountPerJob, cfg.JobRunPurgeInterval),
 	}, nil
 }

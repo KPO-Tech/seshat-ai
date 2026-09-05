@@ -39,6 +39,9 @@ func main() {
 	app.MembershipExpiry.Start()
 	defer app.MembershipExpiry.Stop()
 
+	app.JobRunPurge.Start()
+	defer app.JobRunPurge.Stop()
+
 	router := serverapi.CreateRouter(serverapi.Config{
 		Port:               cfg.Port,
 		ReadTimeout:        cfg.ReadTimeout,

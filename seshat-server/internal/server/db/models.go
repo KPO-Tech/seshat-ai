@@ -540,13 +540,13 @@ type ScheduledJobMailCursor struct {
 
 // JobRun is one execution instance of a ScheduledJob.
 type JobRun struct {
-	ID               string `gorm:"primaryKey;size:32"`
-	JobID            string `gorm:"size:32;not null;index"`
-	OrganizationID   string `gorm:"size:32;not null;index"`
-	ExecutionTarget  string `gorm:"size:16;not null"`
-	AssignedDeviceID string `gorm:"size:32;index"`
-	Status           string `gorm:"size:32;not null;index"` // queued | claimed | running | completed | failed | cancelled
-	QueuedAt         time.Time
+	ID               string    `gorm:"primaryKey;size:32"`
+	JobID            string    `gorm:"size:32;not null;index"`
+	OrganizationID   string    `gorm:"size:32;not null;index"`
+	ExecutionTarget  string    `gorm:"size:16;not null"`
+	AssignedDeviceID string    `gorm:"size:32;index"`
+	Status           string    `gorm:"size:32;not null;index"` // queued | claimed | running | completed | failed | cancelled
+	QueuedAt         time.Time `gorm:"index"`
 	ClaimedAt        *time.Time
 	StartedAt        *time.Time
 	LastHeartbeatAt  *time.Time
