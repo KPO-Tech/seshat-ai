@@ -228,8 +228,11 @@ func TestBuildNodeTrace(t *testing.T) {
 			},
 			"notify": {
 				ID: "notify", Type: "agent", Success: true,
-				Output:    []dataflow.Item{{"text": "done"}},
-				StartedAt: started, EndedAt: ended, Duration: 250 * time.Millisecond,
+				Input:        []dataflow.Item{{"from": "fetch"}, {"from": "transform"}},
+				InputSource:  []dataflow.ItemSource{{Node: "fetch", Port: "main"}, {Node: "transform", Port: "main"}},
+				Output:       []dataflow.Item{{"text": "done"}},
+				OutputByPort: map[string][]dataflow.Item{"main": {{"text": "done"}}},
+				StartedAt:    started, EndedAt: ended, Duration: 250 * time.Millisecond,
 			},
 		},
 	}
@@ -263,6 +266,17 @@ func TestBuildNodeTrace(t *testing.T) {
 	}
 	if len(notify.Output) != 1 || notify.Output[0]["text"] != "done" {
 		t.Fatalf("expected notify output [{text: done}], got %+v", notify.Output)
+	}
+	if len(notify.Input) != 2 || notify.Input[0]["from"] != "fetch" || notify.Input[1]["from"] != "transform" {
+		t.Fatalf("expected notify's Input to survive the conversion, got %+v", notify.Input)
+	}
+	if len(notify.InputSource) != 2 ||
+		notify.InputSource[0] != (sdb.NodeItemSource{Node: "fetch", Port: "main"}) ||
+		notify.InputSource[1] != (sdb.NodeItemSource{Node: "transform", Port: "main"}) {
+		t.Fatalf("expected notify's InputSource to survive the conversion, got %+v", notify.InputSource)
+	}
+	if got := notify.OutputByPort["main"]; len(got) != 1 || got[0]["text"] != "done" {
+		t.Fatalf("expected notify's OutputByPort[main] to survive the conversion, got %+v", notify.OutputByPort)
 	}
 
 	// A node id in Order with no matching Results entry must be skipped

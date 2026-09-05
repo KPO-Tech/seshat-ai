@@ -142,23 +142,51 @@ func buildNodeTrace(result dataflow.Result) []sdb.NodeTraceEntry {
 		if !ok {
 			continue
 		}
-		output := make([]map[string]any, len(r.Output))
-		for i, item := range r.Output {
-			output[i] = map[string]any(item)
+		var outputByPort map[string][]map[string]any
+		if len(r.OutputByPort) > 0 {
+			outputByPort = make(map[string][]map[string]any, len(r.OutputByPort))
+			for port, items := range r.OutputByPort {
+				outputByPort[port] = itemsToMaps(items)
+			}
+		}
+		var inputSource []sdb.NodeItemSource
+		if len(r.InputSource) > 0 {
+			inputSource = make([]sdb.NodeItemSource, len(r.InputSource))
+			for i, s := range r.InputSource {
+				inputSource[i] = sdb.NodeItemSource{Node: s.Node, Port: s.Port}
+			}
 		}
 		trace = append(trace, sdb.NodeTraceEntry{
-			ID:         r.ID,
-			Type:       r.Type,
-			Success:    r.Success,
-			Skipped:    r.Skipped,
-			Error:      r.Error,
-			Output:     output,
-			StartedAt:  r.StartedAt,
-			EndedAt:    r.EndedAt,
-			DurationMS: r.Duration.Milliseconds(),
+			ID:           r.ID,
+			Type:         r.Type,
+			Success:      r.Success,
+			Skipped:      r.Skipped,
+			Error:        r.Error,
+			Input:        itemsToMaps(r.Input),
+			InputSource:  inputSource,
+			Output:       itemsToMaps(r.Output),
+			OutputByPort: outputByPort,
+			StartedAt:    r.StartedAt,
+			EndedAt:      r.EndedAt,
+			DurationMS:   r.Duration.Milliseconds(),
 		})
 	}
 	return trace
+}
+
+// itemsToMaps converts a dataflow.Item slice ([]map[string]any under the
+// hood) to the plain []map[string]any shape sdb.NodeTraceEntry persists -
+// nil in, nil out, so an empty/absent field stays omitted (`omitempty`)
+// rather than becoming an allocated empty slice.
+func itemsToMaps(items []dataflow.Item) []map[string]any {
+	if items == nil {
+		return nil
+	}
+	out := make([]map[string]any, len(items))
+	for i, item := range items {
+		out[i] = map[string]any(item)
+	}
+	return out
 }
 
 // orgScopedSecretResolver binds one organization to Service's

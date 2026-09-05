@@ -569,19 +569,34 @@ type JobRun struct {
 	NodeTrace []NodeTraceEntry `gorm:"serializer:json;type:text"`
 }
 
+// NodeItemSource mirrors github.com/KPO-Tech/seshat/pkg/dataflow's
+// ItemSource - which upstream node/port produced one received input item. A
+// zero value (Node == "") means the item came from the run's own seed input.
+type NodeItemSource struct {
+	Node string `json:"node,omitempty"`
+	Port string `json:"port,omitempty"`
+}
+
 // NodeTraceEntry is one node's recorded outcome within a JobRun.NodeTrace -
 // mirrors github.com/KPO-Tech/seshat/pkg/dataflow's NodeResult (Duration
 // converted to milliseconds here for a human-readable trace).
 type NodeTraceEntry struct {
-	ID         string           `json:"id"`
-	Type       string           `json:"type"`
-	Success    bool             `json:"success"`
-	Skipped    bool             `json:"skipped,omitempty"`
-	Error      string           `json:"error,omitempty"`
-	Output     []map[string]any `json:"output,omitempty"`
-	StartedAt  time.Time        `json:"started_at"`
-	EndedAt    time.Time        `json:"ended_at"`
-	DurationMS int64            `json:"duration_ms,omitempty"`
+	ID      string `json:"id"`
+	Type    string `json:"type"`
+	Success bool   `json:"success"`
+	Skipped bool   `json:"skipped,omitempty"`
+	Error   string `json:"error,omitempty"`
+	// Input/InputSource are exactly what this node received and, index for
+	// index, which upstream node/port each item came from (Tier 1.3, see
+	// docs/helps/audit-2026-09-04-n8n-gap-analysis.md) - the foundation
+	// Tier 2's pinned data/dirty-node/replay features will read from.
+	Input        []map[string]any            `json:"input,omitempty"`
+	InputSource  []NodeItemSource            `json:"input_source,omitempty"`
+	Output       []map[string]any            `json:"output,omitempty"`
+	OutputByPort map[string][]map[string]any `json:"output_by_port,omitempty"`
+	StartedAt    time.Time                   `json:"started_at"`
+	EndedAt      time.Time                   `json:"ended_at"`
+	DurationMS   int64                       `json:"duration_ms,omitempty"`
 }
 
 // ProviderSetting holds one organization's credentials for one LLM provider
