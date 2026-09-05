@@ -1,17 +1,43 @@
 import { useState } from 'react'
-import { Copy, Delete } from '@icon-park/react'
+import { Copy, CheckOne, Delete } from '@icon-park/react'
 import { stripUIPosition } from './convert'
 import { SecretRefField } from './SecretRefField'
 import { AgentPickerField } from './AgentPickerField'
+import { NEXUS_BASE } from '@/api/client'
 import type { NodeProperty } from './types'
 
 type Props = {
   nodeType: string
   parameters: Record<string, unknown>
   properties: NodeProperty[] | undefined
+  // Only known once the job has been saved - see the webhook_trigger URL
+  // block below for why (a webhook needs a stable per-job token, minted
+  // server-side on first save, not something a NodeProperty can express).
+  jobId?: string
+  webhookToken?: string
   onSave: (next: Record<string, unknown>) => void
   onDelete: () => void
   onDuplicate: () => void
+}
+
+// The only copy-to-clipboard precedent in this codebase (pages/workflows/
+// index.tsx's "Copy" button) - same copied-state-with-timeout + icon swap.
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <button
+      type="button"
+      className="gf-action-btn"
+      onClick={() => {
+        void navigator.clipboard.writeText(text)
+        setCopied(true)
+        window.setTimeout(() => setCopied(false), 1200)
+      }}
+    >
+      {copied ? <CheckOne size={13} /> : <Copy size={13} />}
+      {copied ? 'Copied' : 'Copy'}
+    </button>
+  )
 }
 
 function toDraftString(value: unknown, type: NodeProperty['type']): string {
@@ -32,7 +58,7 @@ function passesDisplayIf(prop: NodeProperty, drafts: Record<string, string | boo
 // the SDK's own comments - and any future type shipped before its schema
 // is written). Consumers should mount this with `key={nodeId}` so switching
 // the selected node resets the local draft instead of merging stale state.
-export function ParameterForm({ nodeType, parameters, properties, onSave, onDelete, onDuplicate }: Props) {
+export function ParameterForm({ nodeType, parameters, properties, jobId, webhookToken, onSave, onDelete, onDuplicate }: Props) {
   const clean = stripUIPosition(parameters)
   const hasSchema = !!properties && properties.length > 0
 
@@ -161,6 +187,19 @@ export function ParameterForm({ nodeType, parameters, properties, onSave, onDele
               {errors[p.name] && <div className="gf-field-error">{errors[p.name]}</div>}
             </div>
           ))}
+          {nodeType === 'webhook_trigger' && (
+            <div className="gf-field">
+              <label className="gf-field-label">Webhook URL</label>
+              {jobId && webhookToken ? (
+                <div className="gf-webhook-url-row">
+                  <code className="gf-webhook-url">{`${NEXUS_BASE}/webhooks/${webhookToken}`}</code>
+                  <CopyButton text={`${NEXUS_BASE}/webhooks/${webhookToken}`} />
+                </div>
+              ) : (
+                <div className="gf-field-hint">Save this automation to get your webhook URL.</div>
+              )}
+            </div>
+          )}
         </div>
       ) : (
         <>

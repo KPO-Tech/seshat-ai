@@ -61,9 +61,14 @@ type GraphEditorProps = {
   nodeTypes: NodeDescription[]
   nodeTypesLoading?: boolean
   nodeTypesError?: string | null
+  // Only known once the job has been saved (a webhook needs a stable
+  // per-job token, minted server-side on first save - see
+  // ParameterForm.tsx's webhook_trigger branch for where these surface).
+  jobId?: string
+  webhookToken?: string
 }
 
-function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTypesError }: GraphEditorProps) {
+function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTypesError, jobId, webhookToken }: GraphEditorProps) {
   const theme = useUIStore((s) => s.theme)
   const initial = useMemo(() => {
     const flow = definitionToFlow(value ?? { name: 'Untitled graph', nodes: [] })
@@ -417,6 +422,8 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
                 nodeType={selectedNode.data.dfType}
                 parameters={selectedNode.data.parameters}
                 properties={nodeTypes.find((nt) => nt.type === selectedNode.data.dfType)?.properties}
+                jobId={jobId}
+                webhookToken={webhookToken}
                 onSave={saveParams}
                 onDelete={deleteSelectedNode}
                 onDuplicate={duplicateSelectedNode}
@@ -794,6 +801,25 @@ const GRAPH_EDITOR_CSS = `
   color: var(--color-text-muted);
   font-size: var(--font-size-2xs);
   line-height: 1.4;
+}
+
+.gf-webhook-url-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gf-webhook-url {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 11px;
+  overflow-x: auto;
+  white-space: nowrap;
 }
 
 .gf-field-error {

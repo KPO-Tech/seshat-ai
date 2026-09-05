@@ -80,6 +80,8 @@ type Job = {
   last_run_status?: RunStatus
   execution_target: ExecutionTarget
   target_device_id?: string
+  webhook_token?: string
+  webhook_method?: string
   graph?: DataflowDefinition
   model_override?: string
   configuration?: Record<string, string>
@@ -128,6 +130,7 @@ export function AutomationPage() {
   const [loadingModelsFor, setLoadingModelsFor] = useState<string | null>(null)
 
   const [graph, setGraph] = useState<DataflowDefinition | null>(null)
+  const [webhookToken, setWebhookToken] = useState('')
   const [nodeTypes, setNodeTypes] = useState<NodeDescription[]>([])
   const [nodeTypesLoading, setNodeTypesLoading] = useState(true)
   const [nodeTypesError, setNodeTypesError] = useState<string | null>(null)
@@ -256,8 +259,14 @@ export function AutomationPage() {
         setAgentSlug(job.configuration?.agent_slug ?? '')
         setSelectedProviderId(job.configuration?.provider_setting_id ?? '')
         setSelectedModelId(job.configuration?.model_id ?? '')
-        const hasTriggerNode = job.graph.nodes.some((n) => n.type === 'schedule_trigger')
+        // Only a MISSING schedule_trigger needs synthesizing (a legacy job
+        // saved before Tier 1.1, still carrying trigger_type/cron_expr/etc
+        // as plain columns) - a webhook_trigger node is a different, newer
+        // trigger type (Tier 1.2) that never had those legacy columns to
+        // synthesize from, so it must not be treated as "missing a trigger."
+        const hasTriggerNode = job.graph.nodes.some((n) => n.type === 'schedule_trigger' || n.type === 'webhook_trigger')
         setGraph(hasTriggerNode ? job.graph : { ...job.graph, nodes: [synthesizeScheduleTriggerNode(job), ...job.graph.nodes] })
+        setWebhookToken(job.webhook_token ?? '')
       })
       .catch((err) => setLoadError(err instanceof ApiError ? err.message : 'Unable to load this job.'))
       .finally(() => setLoading(false))
@@ -525,7 +534,7 @@ export function AutomationPage() {
           ) : loadError ? (
             <div className="au-loading au-loading-error">{loadError}</div>
           ) : (
-            <GraphEditor value={graph} onChange={setGraph} nodeTypes={nodeTypes} nodeTypesLoading={nodeTypesLoading} nodeTypesError={nodeTypesError} />
+            <GraphEditor value={graph} onChange={setGraph} nodeTypes={nodeTypes} nodeTypesLoading={nodeTypesLoading} nodeTypesError={nodeTypesError} jobId={jobId} webhookToken={webhookToken} />
           )}
         </div>
 
