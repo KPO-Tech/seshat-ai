@@ -57,6 +57,12 @@ type jobWorkflow struct {
 	organization string
 	ownerID      string
 	secrets      DataflowSecretResolver
+	// exprEval, when non-nil, is threaded onto the Runtime built by runGraph
+	// below so a Graph node calling dataflow.ResolveParam/ResolveValue
+	// (http_request's url/body/headers, or any future opt-in) gets real
+	// expression resolution instead of literal-only params - see
+	// Service.SetExpressionEvaluator's doc comment.
+	exprEval dataflow.ExpressionEvaluator
 	// triggerPayload is JSON-encoded external data (currently only set for
 	// webhook-triggered runs - see JobRun.TriggerPayload) merged into the
 	// graph's seed under a "webhook" key by runGraph below. Empty for every
@@ -97,6 +103,7 @@ func (w *jobWorkflow) runGraph(ctx context.Context, session *sdk.Session) error 
 		Secrets:     secrets,
 		Agent:       dataflowAgentCaller{session: session},
 		Subworkflow: dataflowSubworkflowRunner{session: session},
+		Expr:        w.exprEval,
 	}
 	// Seeds the graph's starting nodes with the run's job/owner/org identity
 	// — the same pattern Inbox's event-triggered graphs already use for
@@ -372,6 +379,7 @@ func (s *Service) executeCloudRun(ctx context.Context, runID string) error {
 		graph: graph, registry: s.nodeRegistry, organization: job.OrganizationID,
 		ownerID: job.CreatedByUserID, secrets: s.secrets,
 		triggerPayload: run.TriggerPayload,
+		exprEval:       s.exprEval,
 	}
 	result, execErr := executor.Run(ctx, workflow, sdkautomation.Options{})
 

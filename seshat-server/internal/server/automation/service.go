@@ -59,12 +59,13 @@ type DataflowSecretResolver interface {
 type Service struct {
 	db           *sdb.DB
 	iam          *iam.Service
-	rag          RAGResolver              // nil until SetRAGResolver is called
-	mcp          MCPResolver              // nil until SetMCPResolver is called
-	doclingURL   string                   // empty until SetDoclingURL is called
-	artifacts    sdkstorage.ArtifactStore // nil until SetArtifactStore is called
-	secrets      DataflowSecretResolver   // nil until SetSecretResolver is called
-	nodeRegistry *dataflow.Registry       // nil until SetNodeRegistry is called
+	rag          RAGResolver                  // nil until SetRAGResolver is called
+	mcp          MCPResolver                  // nil until SetMCPResolver is called
+	doclingURL   string                       // empty until SetDoclingURL is called
+	artifacts    sdkstorage.ArtifactStore     // nil until SetArtifactStore is called
+	secrets      DataflowSecretResolver       // nil until SetSecretResolver is called
+	nodeRegistry *dataflow.Registry           // nil until SetNodeRegistry is called
+	exprEval     dataflow.ExpressionEvaluator // nil until SetExpressionEvaluator is called
 	// webhookSyncTimeout bounds how long TriggerJobByWebhook's "whenFinished"
 	// response mode waits for a run to complete before answering with
 	// whatever state it's in (see that function). Zero means "use
@@ -150,6 +151,19 @@ func (s *Service) SetSecretResolver(r DataflowSecretResolver) {
 // a job with a non-nil Graph fails clearly rather than silently no-oping.
 func (s *Service) SetNodeRegistry(registry *dataflow.Registry) {
 	s.nodeRegistry = registry
+}
+
+// SetExpressionEvaluator wires in expression resolution (dataflow.
+// ResolveParam/ResolveValue) for cloud-targeted Job.Graph execution — an
+// http_request node's "=..." url/body/header, or any other node type that
+// opts into ResolveParam, then works the same way filter/if/switch/set
+// already did. Called once at app startup, after both services exist — see
+// app.New, which passes the very same *dataflowexpr.Pool it already gives
+// SetNodeRegistry's own dataflownodes.Register call, so both share one
+// expression engine. nil (the default) means Graph nodes see their "="
+// parameters unresolved (literal), not an error — see dataflow.ResolveValue.
+func (s *Service) SetExpressionEvaluator(e dataflow.ExpressionEvaluator) {
+	s.exprEval = e
 }
 
 // NodeTypes lists the node types a Job.Graph on this deployment can

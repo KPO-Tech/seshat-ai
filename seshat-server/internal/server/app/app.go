@@ -145,9 +145,15 @@ func New(cfg serverconfig.Config) (*App, error) {
 	// why this is a deployment-level choice rather than a package default.
 	nodeRegistry := dataflow.NewRegistry()
 	dataflow.RegisterBuiltins(nodeRegistry)
-	dataflownodes.Register(nodeRegistry, dataflowexpr.NewPool(8))
+	exprPool := dataflowexpr.NewPool(8)
+	dataflownodes.Register(nodeRegistry, exprPool)
 	dataflowdatabase.Register(nodeRegistry)
 	automationService.SetNodeRegistry(nodeRegistry)
+	// Reuses the same pool filter/if/switch/set already got above so a
+	// Graph's every node type (http_request included) shares one
+	// expression engine - see automation.Service.SetExpressionEvaluator's
+	// doc comment.
+	automationService.SetExpressionEvaluator(exprPool)
 
 	connectorsService := connectors.New(database, iamService, knowledgeService)
 	// Lets gdrive/sharepoint's OAuth connect flow build the fixed,
