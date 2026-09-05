@@ -9,16 +9,15 @@ type Props = {
   onChange: (slug: string) => void
 }
 
-const NEW_AGENT = '__new__'
-
 function toSlug(name: string): string {
   return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 }
 
-// Plain select + an inline (not popup) create form when "+ Create new agent"
-// is picked - no hidden menu, no hover affordance to discover. Everything
-// the field can do is visible in the normal document flow, same as every
-// other field in this panel.
+// Plain select to pick an existing agent, plus an always-visible "+ New
+// agent" link right below it (not an option buried inside the select's own
+// dropdown list, which nothing marks as different from the rest of the
+// list at rest) that reveals the create form inline, in the normal document
+// flow - nothing here requires opening anything to discover it exists.
 export function AgentPickerField({ value, onChange }: Props) {
   const [agents, setAgents] = useState<Agent[]>([])
   const [loading, setLoading] = useState(true)
@@ -52,15 +51,6 @@ export function AgentPickerField({ value, onChange }: Props) {
       .finally(() => setLoadingModelsFor((c) => (c === providerId ? null : c)))
   }, [providerId, modelsByProvider])
 
-  function handleSelect(v: string) {
-    if (v === NEW_AGENT) {
-      setCreating(true)
-      return
-    }
-    setCreating(false)
-    onChange(v)
-  }
-
   async function createAgent() {
     const name = newName.trim()
     if (!name) {
@@ -92,15 +82,20 @@ export function AgentPickerField({ value, onChange }: Props) {
       <style>{AGENT_FIELD_CSS}</style>
       <select
         className="gf-field-input"
-        value={creating ? NEW_AGENT : value}
-        onChange={(e) => handleSelect(e.target.value)}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
         disabled={loading}
       >
         <option value="">{loading ? 'Loading agents…' : "None - uses the workflow's default agent"}</option>
         {agents.map((a) => <option key={a.slug} value={a.slug}>{a.name || a.slug} ({a.source})</option>)}
-        <option value={NEW_AGENT}>+ Create new agent</option>
       </select>
       {listError && <div className="gf-field-error">{listError}</div>}
+
+      {!creating && (
+        <button type="button" className="gf-agent-new-link" onClick={() => setCreating(true)}>
+          + New agent
+        </button>
+      )}
 
       {creating && (
         <div className="gf-agent-create">
@@ -137,6 +132,22 @@ const AGENT_FIELD_CSS = `
 .gf-agent-field input {
   width: 100%;
   box-sizing: border-box;
+}
+
+.gf-agent-new-link {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-cta);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.gf-agent-new-link:hover {
+  text-decoration: underline;
 }
 
 .gf-agent-create {
