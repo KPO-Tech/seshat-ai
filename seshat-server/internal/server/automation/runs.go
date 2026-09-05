@@ -39,6 +39,13 @@ type Run struct {
 	ErrorText        string               `json:"error_text,omitempty"`
 	Metadata         map[string]string    `json:"metadata,omitempty"`
 	NodeTrace        []sdb.NodeTraceEntry `json:"node_trace,omitempty"`
+	// TriggerPayload is JSON-encoded external data that started this run -
+	// currently only non-empty for webhook-triggered runs (see
+	// JobRun.TriggerPayload) - exposed so the editor can show what actually
+	// arrived on a job's webhook, the closest equivalent to n8n's "listen
+	// for test event" without needing its separate test/production
+	// infrastructure (our URL is already live once the job is saved).
+	TriggerPayload string `json:"trigger_payload,omitempty"`
 }
 
 type ListRunsParams struct {
@@ -549,5 +556,6 @@ func toRun(record sdb.JobRun) Run {
 		ErrorText:        record.ErrorText,
 		Metadata:         record.Metadata,
 		NodeTrace:        record.NodeTrace,
+		TriggerPayload:   record.TriggerPayload,
 	}
 }

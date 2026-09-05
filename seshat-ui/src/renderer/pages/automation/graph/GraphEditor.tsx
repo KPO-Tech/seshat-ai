@@ -822,6 +822,22 @@ const GRAPH_EDITOR_CSS = `
   white-space: nowrap;
 }
 
+.gf-webhook-payload {
+  margin: 0;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  max-height: 220px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .gf-field-error {
   color: #ff6b6b;
   font-size: var(--font-size-2xs);

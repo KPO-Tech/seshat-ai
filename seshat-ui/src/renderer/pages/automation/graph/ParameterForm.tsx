@@ -3,6 +3,7 @@ import { Copy, CheckOne, Delete } from '@icon-park/react'
 import { stripUIPosition } from './convert'
 import { SecretRefField } from './SecretRefField'
 import { AgentPickerField } from './AgentPickerField'
+import { WebhookLastCall } from './WebhookLastCall'
 import { NEXUS_BASE } from '@/api/client'
 import type { NodeProperty } from './types'
 
@@ -200,6 +201,7 @@ export function ParameterForm({ nodeType, parameters, properties, jobId, webhook
               )}
             </div>
           )}
+          {nodeType === 'webhook_trigger' && <WebhookLastCall jobId={jobId} />}
         </div>
       ) : (
         <>
