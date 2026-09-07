@@ -145,6 +145,10 @@ func (app *App) routes() http.Handler {
 	mux.Handle("GET /api/v1/dataflow-secrets", app.authMiddleware(http.HandlerFunc(app.handleDataflowSecrets)))
 	mux.Handle("POST /api/v1/dataflow-secrets", app.authMiddleware(http.HandlerFunc(app.handleDataflowSecrets)))
 	mux.Handle("DELETE /api/v1/dataflow-secrets/{dataflowSecretID}", app.authMiddleware(http.HandlerFunc(app.handleDataflowSecretByID)))
+	mux.Handle("GET /api/v1/variables", app.authMiddleware(http.HandlerFunc(app.handleVariables)))
+	mux.Handle("POST /api/v1/variables", app.authMiddleware(http.HandlerFunc(app.handleVariables)))
+	mux.Handle("PUT /api/v1/variables/{variableID}", app.authMiddleware(http.HandlerFunc(app.handleVariableByID)))
+	mux.Handle("DELETE /api/v1/variables/{variableID}", app.authMiddleware(http.HandlerFunc(app.handleVariableByID)))
 	mux.Handle("GET /api/v1/dataflow/node-types", app.authMiddleware(http.HandlerFunc(app.handleDataflowNodeTypes)))
 	mux.Handle("POST /api/v1/dataflow/preview-expression", app.authMiddleware(http.HandlerFunc(app.handleDataflowPreviewExpression)))
 	mux.Handle("POST /api/v1/dataflow/test-run", app.authMiddleware(http.HandlerFunc(app.handleDataflowTestRun)))
@@ -225,6 +229,8 @@ func (app *App) routes() http.Handler {
 	mux.Handle("DELETE /api/v1/knowledge/corpora/{corpusID}", app.authMiddleware(http.HandlerFunc(app.handleCorpusByID)))
 	mux.Handle("GET /api/v1/knowledge/corpora/{corpusID}/files", app.authMiddleware(http.HandlerFunc(app.handleCorpusFiles)))
 	mux.Handle("POST /api/v1/knowledge/corpora/{corpusID}/files", app.authMiddleware(http.HandlerFunc(app.handleCorpusFiles)))
+	mux.Handle("GET /api/v1/knowledge/corpora/{corpusID}/files/{fileID}/segments", app.authMiddleware(http.HandlerFunc(app.handleCorpusFileSegments)))
+	mux.Handle("PUT /api/v1/knowledge/corpora/{corpusID}/files/{fileID}", app.authMiddleware(http.HandlerFunc(app.handleCorpusFileByID)))
 	mux.Handle("DELETE /api/v1/knowledge/corpora/{corpusID}/files/{fileID}", app.authMiddleware(http.HandlerFunc(app.handleCorpusFileByID)))
 	// Re-triggers ingestion for an already-uploaded file — used to upgrade a
 	// file ingested vectorless to real vectors once an embedder is
@@ -236,6 +242,8 @@ func (app *App) routes() http.Handler {
 	mux.Handle("GET /api/v1/knowledge/corpora/{corpusID}/ingestion-jobs/{jobID}", app.authMiddleware(http.HandlerFunc(app.handleCorpusIngestionJobByID)))
 	mux.Handle("POST /api/v1/knowledge/corpora/{corpusID}/ingestion-jobs/{jobID}/retry", app.authMiddleware(http.HandlerFunc(app.handleCorpusIngestionJobRetry)))
 	mux.Handle("POST /api/v1/knowledge/corpora/{corpusID}/search", app.authMiddleware(http.HandlerFunc(app.handleCorpusSearch)))
+	mux.Handle("GET /api/v1/knowledge/corpora/{corpusID}/search-stats", app.authMiddleware(http.HandlerFunc(app.handleCorpusSearchStats)))
+	mux.Handle("POST /api/v1/knowledge/search-feedback", app.authMiddleware(http.HandlerFunc(app.handleKnowledgeSearchFeedback)))
 
 	// Connectors — organization-scoped external-account connections (S3
 	// today, Knowledge-purposed) synced fully server-side. Deliberately not

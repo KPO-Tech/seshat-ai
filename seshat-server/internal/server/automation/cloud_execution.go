@@ -57,6 +57,10 @@ type jobWorkflow struct {
 	organization string
 	ownerID      string
 	secrets      DataflowSecretResolver
+	// variables, when non-nil, resolves the job's whole organization's
+	// $vars.NAME set (Tier 3.2) before runGraph below builds the Runtime -
+	// see Service.SetVariablesResolver's doc comment.
+	variables DataflowVariableResolver
 	// exprEval, when non-nil, is threaded onto the Runtime built by runGraph
 	// below so a Graph node calling dataflow.ResolveParam/ResolveValue
 	// (http_request's url/body/headers, or any future opt-in) gets real
@@ -99,11 +103,20 @@ func (w *jobWorkflow) runGraph(ctx context.Context, session *sdk.Session) error 
 	if w.secrets != nil {
 		secrets = orgScopedSecretResolver{resolver: w.secrets, organizationID: w.organization}
 	}
+	var vars map[string]string
+	if w.variables != nil {
+		var err error
+		vars, err = w.variables.ResolveAll(ctx, w.organization)
+		if err != nil {
+			return fmt.Errorf("resolve variables: %w", err)
+		}
+	}
 	rt := &dataflow.Runtime{
 		Secrets:     secrets,
 		Agent:       dataflowAgentCaller{session: session},
 		Subworkflow: dataflowSubworkflowRunner{session: session},
 		Expr:        w.exprEval,
+		Vars:        vars,
 	}
 	// Seeds the graph's starting nodes with the run's job/owner/org identity
 	// — the same pattern Inbox's event-triggered graphs already use for
@@ -378,7 +391,7 @@ func (s *Service) executeCloudRun(ctx context.Context, runID string) error {
 	workflow := &jobWorkflow{
 		id: job.ID, description: job.Description, prompt: job.Prompt,
 		graph: graph, registry: s.nodeRegistry, organization: job.OrganizationID,
-		ownerID: job.CreatedByUserID, secrets: s.secrets,
+		ownerID: job.CreatedByUserID, secrets: s.secrets, variables: s.variables,
 		triggerPayload: run.TriggerPayload,
 		exprEval:       s.exprEval,
 	}

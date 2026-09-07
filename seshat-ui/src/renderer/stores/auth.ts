@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { useSessionStore } from '@/stores/session'
+import { useOrganizationStore } from '@/stores/organization'
 import type { User } from '@/api/types'
 
 type SessionSnapshot = {
@@ -32,6 +33,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     const previousUserId = get().user?.id
     if (previousUserId !== session.user.id) {
       useSessionStore.getState().resetAll()
+      useOrganizationStore.getState().reset()
     }
     set({
       token,
@@ -48,6 +50,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       })
     }
     useSessionStore.getState().resetAll()
+    useOrganizationStore.getState().reset()
     set({ token: null, user: null, roles: [], isAuthenticated: false })
   },
 }))

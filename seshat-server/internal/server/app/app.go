@@ -19,6 +19,7 @@ import (
 	serverconfig "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/config"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/connectors"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/dataflowsecrets"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/dataflowvariables"
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/hookregistry"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
@@ -54,6 +55,7 @@ type App struct {
 	HookRegistry         *hookregistry.Service
 	Bundles              *bundles.Service
 	DataflowSecrets      *dataflowsecrets.Service
+	Variables            *dataflowvariables.Service
 	Memories             *memories.Service
 	LongTermMemory       *longtermmemory.Service
 	AgentRegistry        *agentregistry.Service
@@ -110,7 +112,8 @@ func New(cfg serverconfig.Config) (*App, error) {
 	// knowledge.Service.resolveEmbedderConfig), not configured here. Until
 	// an embedder is set up for a given organization, Ingest/Search return
 	// a clear "not configured" error; corpus/file management works either way.
-	knowledgeService := knowledge.New(database, iamService, artifactStore, vectorStore)
+	knowledgeService := knowledge.New(database, iamService, artifactStore, vectorStore).
+		WithChunkProfile(cfg.KnowledgeChunkProfile)
 	if cfg.DoclingURL != "" {
 		// Converts PDF/DOCX/PPTX/XLSX/audio/images to markdown before
 		// chunking. Optional — plain-text/markdown/JSON ingest fine without it.
@@ -137,6 +140,12 @@ func New(cfg serverconfig.Config) (*App, error) {
 	// (e.g. a "postgres" node's dsnSecretRef) — see
 	// automation.Service.DataflowSecretResolver's doc comment.
 	automationService.SetSecretResolver(dataflowSecretsService)
+
+	dataflowVariablesService := dataflowvariables.New(database, iamService)
+	// Lets a cloud-targeted job's Graph (and expression preview) resolve
+	// org-scoped named variables ($vars.NAME, Tier 3.2) - see
+	// automation.Service.DataflowVariableResolver's doc comment.
+	automationService.SetVariablesResolver(dataflowVariablesService)
 	// Which node types a Graph can reference — generic (http_request/
 	// filter/if/switch/set/merge/wait, no credentials) plus database
 	// (postgres/mysql/sqlite/redis/mongodb/elasticsearch, credential-
@@ -233,6 +242,7 @@ func New(cfg serverconfig.Config) (*App, error) {
 		HookRegistry:         hookRegistryService,
 		Bundles:              bundlesService,
 		DataflowSecrets:      dataflowSecretsService,
+		Variables:            dataflowVariablesService,
 		Memories:             memories.New(database),
 		LongTermMemory:       longtermmemory.New(database),
 		AgentRegistry:        agentRegistryService,

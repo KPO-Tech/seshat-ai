@@ -14,6 +14,11 @@ type Props = {
   nodeId: string
   siblingNodes: SiblingNode[]
   jobId?: string
+  // Tier 3.2 - the effective organization id (see ParameterForm's own doc
+  // comment) so the live preview resolves $vars.NAME against real values,
+  // and the org-scoped variable names to offer as insert chips.
+  organizationId?: string
+  variableNames: string[]
 }
 
 // filter/if's own "expression" parameter is JS in its entirety - no leading
@@ -39,7 +44,7 @@ function isActiveExpression(nodeType: string, propName: string, value: string): 
 // resolves it against real or sample data via POST /dataflow/preview-
 // expression - the same bindings ($json/$itemIndex/$now/$today/$node) a
 // real Graph run gives dataflow.ResolveValue.
-export function ExpressionField({ nodeType, propName, value, onChange, placeholder, multiline, nodeId, siblingNodes, jobId }: Props) {
+export function ExpressionField({ nodeType, propName, value, onChange, placeholder, multiline, nodeId, siblingNodes, jobId, organizationId, variableNames }: Props) {
   const alwaysExpr = isAlwaysExpressionField(nodeType, propName)
   const active = isActiveExpression(nodeType, propName, value)
   const fieldRef = useRef<HTMLTextAreaElement & HTMLInputElement>(null)
@@ -106,7 +111,7 @@ export function ExpressionField({ nodeType, propName, value, onChange, placehold
 
     const timer = window.setTimeout(() => {
       setPreviewing(true)
-      api.post<{ value: unknown }>('/dataflow/preview-expression', { expression: source, item, item_index: itemIndex })
+      api.post<{ value: unknown }>('/dataflow/preview-expression', { expression: source, item, item_index: itemIndex, organization_id: organizationId })
         .then((res) => {
           setResult(typeof res.value === 'string' ? res.value : JSON.stringify(res.value, null, 2))
           setPreviewError(null)
@@ -118,7 +123,7 @@ export function ExpressionField({ nodeType, propName, value, onChange, placehold
         .finally(() => setPreviewing(false))
     }, 400)
     return () => window.clearTimeout(timer)
-  }, [previewOpen, value, sampleItem, itemIndex, alwaysExpr])
+  }, [previewOpen, value, sampleItem, itemIndex, alwaysExpr, organizationId])
 
   return (
     <div className="gf-expr-field">
@@ -153,6 +158,11 @@ export function ExpressionField({ nodeType, propName, value, onChange, placehold
         {siblingNodes.map((n) => (
           <button key={n.id} type="button" className="gf-expr-chip" onClick={() => insertSnippet(`$node('${n.id}')`)}>
             $node('{n.id}')
+          </button>
+        ))}
+        {variableNames.map((name) => (
+          <button key={name} type="button" className="gf-expr-chip" onClick={() => insertSnippet(`$vars.${name}`)}>
+            $vars.{name}
           </button>
         ))}
       </div>

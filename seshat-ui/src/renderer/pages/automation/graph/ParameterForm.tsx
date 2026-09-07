@@ -21,6 +21,16 @@ type Props = {
   // server-side on first save, not something a NodeProperty can express).
   jobId?: string
   webhookToken?: string
+  // The effective organization id (a saved job's own, or the caller's
+  // current/default one before that - see automation/index.tsx) - lets
+  // ExpressionField's preview resolve $vars.NAME (Tier 3.2) correctly, and
+  // is passed through unconditionally (unlike jobId/webhookToken, this is
+  // available even for a never-saved job).
+  organizationId?: string
+  // The organization's own Variables, by name only (never the value here -
+  // ExpressionField just needs names for its chips) - see
+  // GraphEditor.tsx's own fetch, alongside nodeTypes.
+  variableNames: string[]
   // Every other node on the same graph - lets ExpressionField offer
   // $node('id') for each one without ParameterForm needing to know
   // anything about expressions itself.
@@ -77,7 +87,7 @@ function passesDisplayIf(prop: NodeProperty, drafts: Record<string, string | boo
 // the SDK's own comments - and any future type shipped before its schema
 // is written). Consumers should mount this with `key={nodeId}` so switching
 // the selected node resets the local draft instead of merging stale state.
-export function ParameterForm({ nodeType, nodeId, parameters, properties, jobId, webhookToken, siblingNodes, pinnedOutput, onPinnedOutputChange, canTestNode, testStatus, testResult, testStale, onTestNode, onSave, onDelete, onDuplicate }: Props) {
+export function ParameterForm({ nodeType, nodeId, parameters, properties, jobId, webhookToken, organizationId, variableNames, siblingNodes, pinnedOutput, onPinnedOutputChange, canTestNode, testStatus, testResult, testStale, onTestNode, onSave, onDelete, onDuplicate }: Props) {
   const clean = stripUIPosition(parameters)
   const hasSchema = !!properties && properties.length > 0
 
@@ -206,6 +216,8 @@ export function ParameterForm({ nodeType, nodeId, parameters, properties, jobId,
                   nodeId={nodeId}
                   siblingNodes={siblingNodes}
                   jobId={jobId}
+                  organizationId={organizationId}
+                  variableNames={variableNames}
                 />
               ) : (
                 <input

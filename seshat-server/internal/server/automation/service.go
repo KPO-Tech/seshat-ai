@@ -55,6 +55,17 @@ type DataflowSecretResolver interface {
 	ResolveDataflowSecret(ctx context.Context, organizationID, name string) (string, error)
 }
 
+// DataflowVariableResolver resolves an organization's whole set of named
+// variables ($vars.NAME, Tier 3.2) — satisfied by *dataflowvariables.Service,
+// injected via SetVariablesResolver rather than imported directly, same
+// reasoning as DataflowSecretResolver. Unlike DataflowSecretResolver's
+// per-name Resolve, this returns everything at once: a Variable isn't
+// secret, so there's no cost to resolving the whole set eagerly before a run
+// starts (see pkg/dataflow's Runtime.Vars doc comment).
+type DataflowVariableResolver interface {
+	ResolveAll(ctx context.Context, organizationID string) (map[string]string, error)
+}
+
 // Service owns devices, scheduled jobs and job runs.
 type Service struct {
 	db           *sdb.DB
@@ -64,6 +75,7 @@ type Service struct {
 	doclingURL   string                       // empty until SetDoclingURL is called
 	artifacts    sdkstorage.ArtifactStore     // nil until SetArtifactStore is called
 	secrets      DataflowSecretResolver       // nil until SetSecretResolver is called
+	variables    DataflowVariableResolver     // nil until SetVariablesResolver is called
 	nodeRegistry *dataflow.Registry           // nil until SetNodeRegistry is called
 	exprEval     dataflow.ExpressionEvaluator // nil until SetExpressionEvaluator is called
 	// webhookSyncTimeout bounds how long TriggerJobByWebhook's "whenFinished"
@@ -141,6 +153,14 @@ func (s *Service) SetArtifactStore(store sdkstorage.ArtifactStore) {
 // organization. Called once at app startup, after both services exist.
 func (s *Service) SetSecretResolver(r DataflowSecretResolver) {
 	s.secrets = r
+}
+
+// SetVariablesResolver wires in dataflow-variable resolution so a
+// cloud-targeted job's Graph (and expression preview) can resolve
+// $vars.NAME, scoped to the job's own organization. Called once at app
+// startup, after both services exist.
+func (s *Service) SetVariablesResolver(r DataflowVariableResolver) {
+	s.variables = r
 }
 
 // SetNodeRegistry enables Job.Graph execution for cloud-targeted runs by

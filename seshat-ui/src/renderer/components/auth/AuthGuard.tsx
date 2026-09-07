@@ -3,7 +3,9 @@ import { Navigate } from 'react-router'
 import { LoadingOne } from '@icon-park/react'
 import { api, ApiError } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
+import { useOrganizationStore } from '@/stores/organization'
 import { useInactivityTimeout } from '@/hooks/useInactivityTimeout'
+import type { Organization } from '@/api/types'
 
 type Status = 'checking' | 'ok' | 'invalid'
 
@@ -32,8 +34,16 @@ export function AuthGuard({ children }: { children: ReactNode }) {
       }
 
       try {
-        await api.get('/auth/me')
-        if (!cancelled) setStatus('ok')
+        // Also the one place useOrganizationStore's "current organization"
+        // gets (re)populated - this call already runs on every app session
+        // start (fresh login and restored session alike), so no separate
+        // fetch is needed anywhere else. See useOrganizationStore's own doc
+        // comment for why there's no switcher yet.
+        const me = await api.get<{ organizations?: Organization[] }>('/auth/me')
+        if (!cancelled) {
+          useOrganizationStore.getState().setOrganizations(me.organizations ?? [])
+          setStatus('ok')
+        }
       } catch (error) {
         if (cancelled) return
         if (!(error instanceof ApiError)) {

@@ -2,6 +2,7 @@ package automation
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/KPO-Tech/seshat/pkg/dataflow"
@@ -42,7 +43,15 @@ func (s *Service) TestRunGraph(ctx context.Context, principal *iam.Principal, or
 	if s.secrets != nil {
 		secrets = orgScopedSecretResolver{resolver: s.secrets, organizationID: organizationID}
 	}
-	rt := &dataflow.Runtime{Secrets: secrets, Expr: s.exprEval}
+	var vars map[string]string
+	if s.variables != nil {
+		var err error
+		vars, err = s.variables.ResolveAll(ctx, organizationID)
+		if err != nil {
+			return dataflow.Result{}, fmt.Errorf("resolve variables: %w", err)
+		}
+	}
+	rt := &dataflow.Runtime{Secrets: secrets, Expr: s.exprEval, Vars: vars}
 
 	items := make([]dataflow.Item, len(seed))
 	for i, m := range seed {

@@ -759,6 +759,22 @@ type DataflowSecret struct {
 	UpdatedAt       time.Time
 }
 
+// DataflowVariable is an org-scoped named value (Tier 3.2's "Variables") a
+// graph expression resolves as $vars.NAME (see pkg/dataflow's Runtime.Vars).
+// Unlike DataflowSecret, the value is plain config, not a credential - no
+// encryption, and it's safe to include in a list/read response. A settings
+// page's values change over time, so (also unlike DataflowSecret) this
+// supports in-place update rather than delete+recreate only.
+type DataflowVariable struct {
+	ID              string `gorm:"primaryKey;size:32"`
+	OrganizationID  string `gorm:"size:32;not null;index:idx_dataflow_variable_org_name,unique,priority:1"`
+	Name            string `gorm:"size:200;not null;index:idx_dataflow_variable_org_name,unique,priority:2"` // referenced as $vars.<Name> - must be a valid JS identifier, see dataflowvariables.Service
+	Value           string `gorm:"type:text;not null"`
+	CreatedByUserID string `gorm:"size:32;not null"`
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
 // ConnectorOAuthApp is one organization's registered OAuth app credentials
 // for an OAuth-based connector kind (gdrive, sharepoint) - the org-scoped
 // counterpart of Provider's ClientID/ClientSecret, but for connector

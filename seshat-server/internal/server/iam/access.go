@@ -148,6 +148,8 @@ func permissionCatalog() []Permission {
 		{Code: "mcp_registry.manage", Name: "Manage MCP Registry", Description: "Create, update and delete the organization's shared MCP server definitions. Reading/resolving them (to load locally) only requires org membership — execution always happens on the member's own machine, never here.", Category: "mcp_registry"},
 		{Code: "dataflow_secrets.read", Name: "Read Dataflow Secrets", Description: "See which named secrets are configured for dataflow graph nodes (never the decrypted value itself).", Category: "dataflow_secrets"},
 		{Code: "dataflow_secrets.manage", Name: "Manage Dataflow Secrets", Description: "Create, update and delete named secrets that dataflow graph nodes (e.g. a database DSN) resolve by reference.", Category: "dataflow_secrets"},
+		{Code: "variables.read", Name: "Read Variables", Description: "See the named values ($vars.NAME) configured for use in any automation's expressions.", Category: "variables"},
+		{Code: "variables.manage", Name: "Manage Variables", Description: "Create, update and delete named values ($vars.NAME) usable in any automation's expressions.", Category: "variables"},
 	}
 	sort.Slice(permissions, func(i, j int) bool { return permissions[i].Code < permissions[j].Code })
 	return permissions

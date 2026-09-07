@@ -3,9 +3,10 @@ package api
 import "net/http"
 
 type previewExpressionRequest struct {
-	Expression string         `json:"expression"`
-	Item       map[string]any `json:"item"`
-	ItemIndex  int            `json:"item_index"`
+	Expression     string         `json:"expression"`
+	Item           map[string]any `json:"item"`
+	ItemIndex      int            `json:"item_index"`
+	OrganizationID string         `json:"organization_id"`
 }
 
 // handleDataflowPreviewExpression — POST /api/v1/dataflow/preview-expression.
@@ -13,17 +14,22 @@ type previewExpressionRequest struct {
 // authoring a node's expression, instead of only finding out it's wrong once
 // the graph actually runs — see automation.Service.PreviewExpression's doc
 // comment for the bindings this evaluates against. Any authenticated
-// principal can call this, same reasoning as handleDataflowNodeTypes: it's a
-// pure JS sandbox evaluation against caller-supplied sample data, nothing
-// tenant-scoped or secret is touched. A bad expression is an expected,
-// routine outcome while typing, not a server error - reported as 400, not
-// 500.
+// principal can call this with organization_id empty, same reasoning as
+// handleDataflowNodeTypes: it's a pure JS sandbox evaluation against
+// caller-supplied sample data, nothing tenant-scoped or secret is touched.
+// organization_id is optional (empty keeps that same posture, $vars just
+// resolves to {}) but when set is checked against the caller's own
+// permissions inside PreviewExpression itself, since resolving $vars means
+// touching a real organization's configured values. A bad expression is an
+// expected, routine outcome while typing, not a server error - reported as
+// 400, not 500.
 func (app *App) handleDataflowPreviewExpression(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	if _, ok := authPrincipalFromContext(r.Context()); !ok {
+	principal, ok := authPrincipalFromContext(r.Context())
+	if !ok {
 		writeJSONError(w, http.StatusUnauthorized, "missing principal")
 		return
 	}
@@ -35,7 +41,7 @@ func (app *App) handleDataflowPreviewExpression(w http.ResponseWriter, r *http.R
 		writeJSONError(w, http.StatusBadRequest, "expression is required")
 		return
 	}
-	value, err := app.backend.Automation.PreviewExpression(r.Context(), req.Expression, req.Item, req.ItemIndex)
+	value, err := app.backend.Automation.PreviewExpression(r.Context(), principal, req.OrganizationID, req.Expression, req.Item, req.ItemIndex)
 	if err != nil {
 		writeJSONError(w, http.StatusBadRequest, err.Error())
 		return

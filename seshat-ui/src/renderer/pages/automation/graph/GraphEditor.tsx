@@ -79,9 +79,13 @@ type GraphEditorProps = {
   // (see ParameterForm.tsx), same precondition Scheduling's whole-graph
   // "Run now" already has.
   organizationId?: string
+  // The organization's own Variables (Tier 3.2), by name only - threaded
+  // straight through to ParameterForm/ExpressionField for the $vars.NAME
+  // insert chips. Fetched once by AutomationPage alongside nodeTypes.
+  variableNames?: string[]
 }
 
-function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTypesError, jobId, webhookToken, organizationId }: GraphEditorProps) {
+function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTypesError, jobId, webhookToken, organizationId, variableNames }: GraphEditorProps) {
   const theme = useUIStore((s) => s.theme)
   const initial = useMemo(() => {
     const flow = definitionToFlow(value ?? { name: 'Untitled graph', nodes: [] })
@@ -518,6 +522,8 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
                 properties={nodeTypes.find((nt) => nt.type === selectedNode.data.dfType)?.properties}
                 jobId={jobId}
                 webhookToken={webhookToken}
+                organizationId={organizationId}
+                variableNames={variableNames ?? []}
                 siblingNodes={nodes.filter((n) => n.id !== selectedNode.id).map((n) => ({ id: n.id, type: n.data.dfType }))}
                 pinnedOutput={selectedNode.data.pinnedOutput}
                 onPinnedOutputChange={savePinnedOutput}

@@ -120,6 +120,17 @@ export type Run = {
   graph_snapshot?: DataflowDefinition
 }
 
+// Mirrors dataflowvariables.Variable (seshat-server) - an org-scoped named
+// value (Tier 3.2's "Variables"), referenced as $vars.NAME in any
+// expression. Value is included (unlike a dataflow secret's own CRUD
+// shape) since a Variable isn't a credential - safe to show in a list.
+export type Variable = {
+  id: string
+  organization_id: string
+  name: string
+  value: string
+}
+
 // UI-only position, stashed inside a node's own `parameters` under this
 // reserved key so canvas layout round-trips through the plain
 // DataflowDefinition JSON without needing a backend schema change - every

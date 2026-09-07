@@ -8,8 +8,10 @@ import { api, ApiError } from '@/api/client'
 import type { Agent, ProviderModel } from '@/api/types'
 import { fetchProviderModels, useProviders } from '@/hooks/useProviders'
 import { useProvidersStore } from '@/stores/providers'
+import { useOrganizationStore } from '@/stores/organization'
 import { GraphEditor } from './graph/GraphEditor'
 import { RunsPanel } from './graph/RunsPanel'
+import { VariablesPanel } from './graph/VariablesPanel'
 import type { DataflowDefinition, DataflowNode, NodeDescription, RunStatus } from './graph/types'
 import { UI_POSITION_KEY, RUN_STATUS_LABEL } from './graph/types'
 
@@ -130,10 +132,18 @@ export function AutomationPage() {
 
   const [graph, setGraph] = useState<DataflowDefinition | null>(null)
   const [webhookToken, setWebhookToken] = useState('')
-  const [organizationId, setOrganizationId] = useState('')
+  const currentOrganizationId = useOrganizationStore((s) => s.currentOrganizationId)
+  // The *effective* org id: a saved job's own organization_id once loaded
+  // (set below), or the caller's current/default organization before that -
+  // Variables/preview/job-creation all need an organization id even for a
+  // job that isn't saved yet, unlike "test this node"/the webhook panel,
+  // which stay correctly gated on jobId being present too regardless of
+  // this value (see GraphEditor's own canTestNode).
+  const [organizationId, setOrganizationId] = useState(() => currentOrganizationId ?? '')
   const [nodeTypes, setNodeTypes] = useState<NodeDescription[]>([])
   const [nodeTypesLoading, setNodeTypesLoading] = useState(true)
   const [nodeTypesError, setNodeTypesError] = useState<string | null>(null)
+  const [variableNames, setVariableNames] = useState<string[]>([])
 
   // Unsaved-changes guard: starts armed so the initial hydration (either the
   // blank-new-job defaults below, or the "load existing job" effect's
@@ -165,9 +175,15 @@ export function AutomationPage() {
   }, [isOverview])
 
   const loadJobs = useCallback(async () => {
+    if (!currentOrganizationId) return
     setJobsLoading(true)
     try {
-      const result = await api.get<{ jobs: Job[] }>('/automation/jobs')
+      // Real bugs, fixed alongside Tier 3.2's organization-context work
+      // (see docs/helps/audit-2026-09-04-n8n-gap-analysis.md): this call
+      // used the wrong URL prefix (/automation/jobs instead of /jobs) and
+      // never sent organization_id, so it 404'd/errored before there was
+      // any "current organization" to send.
+      const result = await api.get<{ jobs: Job[] }>(`/jobs?organization_id=${encodeURIComponent(currentOrganizationId)}`)
       // Automation Overview is graph jobs' only home now - Scheduling's own
       // list is Prompt-only, mirroring that page's own filter.
       setJobs((result.jobs ?? []).filter((job) => !!job.graph))
@@ -177,7 +193,7 @@ export function AutomationPage() {
     } finally {
       setJobsLoading(false)
     }
-  }, [])
+  }, [currentOrganizationId])
 
   useEffect(() => {
     if (isOverview) void loadJobs()
@@ -186,7 +202,7 @@ export function AutomationPage() {
   async function handleRunNow(job: Job) {
     setRunningJobId(job.id)
     try {
-      await api.post(`/automation/jobs/${job.id}/run`, {})
+      await api.post(`/jobs/${job.id}/run`, {})
       await loadJobs()
     } catch (err) {
       setJobsError(err instanceof ApiError ? err.message : 'Failed to trigger this automation.')
@@ -199,7 +215,7 @@ export function AutomationPage() {
     setPausingJobId(job.id)
     try {
       const action = job.status === 'active' ? 'pause' : 'resume'
-      await api.post(`/automation/jobs/${job.id}/${action}`, {})
+      await api.post(`/jobs/${job.id}/${action}`, {})
       await loadJobs()
     } catch (err) {
       setJobsError(err instanceof ApiError ? err.message : 'Failed to update this automation.')
@@ -212,7 +228,7 @@ export function AutomationPage() {
     if (!window.confirm(`Delete "${job.name}"? This cannot be undone.`)) return
     setDeletingJobId(job.id)
     try {
-      await api.delete(`/automation/jobs/${job.id}`)
+      await api.delete(`/jobs/${job.id}`)
       await loadJobs()
     } catch (err) {
       setJobsError(err instanceof ApiError ? err.message : 'Failed to delete this automation.')
@@ -228,13 +244,21 @@ export function AutomationPage() {
   useEffect(() => {
     if (isOverview) return
     api.get<{ agents: Agent[] }>('/agents').then((r) => setAgents((r.agents ?? []).filter((a) => a.enabled !== false))).catch(() => {})
-    api.get<{ devices: Device[] }>('/automation/devices').then((r) => setDevices(r.devices ?? [])).catch(() => {})
+    api.get<{ devices: Device[] }>('/devices').then((r) => setDevices(r.devices ?? [])).catch(() => {})
     setNodeTypesLoading(true)
-    api.get<{ node_types: NodeDescription[] }>('/automation/dataflow/node-types')
+    api.get<{ node_types: NodeDescription[] }>('/dataflow/node-types')
       .then((res) => setNodeTypes(res.node_types ?? []))
       .catch((err) => setNodeTypesError(err instanceof ApiError ? err.message : 'Unable to load node types.'))
       .finally(() => setNodeTypesLoading(false))
-  }, [isOverview])
+    // Tier 3.2 - names only, for ExpressionField's $vars.NAME chips (see
+    // GraphEditor.tsx). Uses the effective org id, which is already
+    // available even for a never-saved job (unlike jobId/webhookToken).
+    if (organizationId) {
+      api.get<{ variables: { name: string }[] }>(`/variables?organization_id=${encodeURIComponent(organizationId)}`)
+        .then((res) => setVariableNames((res.variables ?? []).map((v) => v.name)))
+        .catch(() => {})
+    }
+  }, [isOverview, organizationId])
 
   // Load the existing job when editing - redirects back if it turns out to
   // be a Prompt job (this page is graph-only; Scheduling's modal owns that
@@ -242,7 +266,7 @@ export function AutomationPage() {
   useEffect(() => {
     if (isNew || !jobId) return
     setLoading(true)
-    api.get<Job>(`/automation/jobs/${jobId}`)
+    api.get<Job>(`/jobs/${jobId}`)
       .then((job) => {
         if (!job.graph) {
           navigate('/scheduling', { replace: true })
@@ -386,6 +410,11 @@ export function AutomationPage() {
         execution_target: executionTarget,
         target_device_id: executionTarget === 'device' ? targetDeviceId : undefined,
         model_override: executionTarget === 'cloud' ? modelOverride : undefined,
+        // Required for CreateJob (UpdateJob ignores it, resolving org from
+        // the existing job instead) - a real, previously-missing bug, fixed
+        // alongside Tier 3.2's organization-context work (see
+        // docs/helps/audit-2026-09-04-n8n-gap-analysis.md).
+        organization_id: organizationId,
         configuration: {
           ...(agentSlug ? { agent_slug: agentSlug } : {}),
           ...(selectedProviderId ? { provider_setting_id: selectedProviderId } : {}),
@@ -393,10 +422,12 @@ export function AutomationPage() {
         },
         graph: { ...graph, name: name.trim() || graph.name },
       }
+      // Also fixed here: both calls used the wrong URL prefix
+      // (/automation/jobs instead of /jobs).
       if (isNew) {
-        await api.post('/automation/jobs', params)
+        await api.post('/jobs', params)
       } else {
-        await api.put(`/automation/jobs/${jobId}`, params)
+        await api.put(`/jobs/${jobId}`, params)
       }
       navigate('/automation')
     } catch (err) {
@@ -417,7 +448,7 @@ export function AutomationPage() {
     setDeletingThisJob(true)
     setSaveError(null)
     try {
-      await api.delete(`/automation/jobs/${jobId}`)
+      await api.delete(`/jobs/${jobId}`)
       setIsDirty(false)
       navigate('/automation')
     } catch (err) {
@@ -439,7 +470,7 @@ export function AutomationPage() {
     setRunningThisJob(true)
     setRunError(null)
     try {
-      await api.post(`/automation/jobs/${jobId}/run`, {})
+      await api.post(`/jobs/${jobId}/run`, {})
     } catch (err) {
       setRunError(err instanceof ApiError ? err.message : 'Failed to trigger this automation.')
     } finally {
@@ -546,7 +577,7 @@ export function AutomationPage() {
           ) : railView === 'templates' ? (
             <StubPanel title="Templates" description="Browse and start from pre-built automation templates. Coming soon." />
           ) : railView === 'variables' ? (
-            <StubPanel title="Variables" description="Named values reusable across every automation's expressions. Coming soon." />
+            <VariablesPanel />
           ) : railView === 'help' ? (
             <StubPanel title="Help" description="Documentation for building automations is on its way." />
           ) : loading ? (
@@ -554,7 +585,7 @@ export function AutomationPage() {
           ) : loadError ? (
             <div className="au-loading au-loading-error">{loadError}</div>
           ) : (
-            <GraphEditor value={graph} onChange={setGraph} nodeTypes={nodeTypes} nodeTypesLoading={nodeTypesLoading} nodeTypesError={nodeTypesError} jobId={jobId} webhookToken={webhookToken} organizationId={organizationId} />
+            <GraphEditor value={graph} onChange={setGraph} nodeTypes={nodeTypes} nodeTypesLoading={nodeTypesLoading} nodeTypesError={nodeTypesError} jobId={jobId} webhookToken={webhookToken} organizationId={organizationId} variableNames={variableNames} />
           )}
         </div>
 
