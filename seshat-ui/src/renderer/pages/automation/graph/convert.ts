@@ -71,6 +71,30 @@ export function definitionToFlow(def: DataflowDefinition): { nodes: FlowGraphNod
   return { nodes, edges }
 }
 
+// ancestorClosure returns targetId plus every node that (transitively) feeds
+// into it, and the edges connecting them - the sub-graph "test this node"
+// (Tier 2.4) actually runs, so testing a downstream node replays its real
+// upstream chain (pin costly upstream nodes first - Tier 2.3 - to skip
+// re-running them for real). Plain backward BFS over the edges already held
+// client-side; no engine internals needed.
+export function ancestorClosure(nodes: FlowGraphNode[], edges: Edge[], targetId: string): { nodes: FlowGraphNode[]; edges: Edge[] } {
+  const included = new Set<string>([targetId])
+  const queue = [targetId]
+  while (queue.length > 0) {
+    const current = queue.pop()!
+    for (const edge of edges) {
+      if (edge.target === current && !included.has(edge.source)) {
+        included.add(edge.source)
+        queue.push(edge.source)
+      }
+    }
+  }
+  return {
+    nodes: nodes.filter((n) => included.has(n.id)),
+    edges: edges.filter((e) => included.has(e.source) && included.has(e.target)),
+  }
+}
+
 export function flowToDefinition(name: string, description: string, nodes: FlowGraphNode[], edges: Edge[]): DataflowDefinition {
   const pinnedData: Record<string, Record<string, unknown>[]> = {}
   for (const n of nodes) {

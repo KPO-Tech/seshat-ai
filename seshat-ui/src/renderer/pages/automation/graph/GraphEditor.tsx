@@ -14,12 +14,15 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { Close, Plus, Undo as UndoIcon, Redo as RedoIcon } from '@icon-park/react'
-import { definitionToFlow, flowToDefinition, INPUT_HANDLE } from './convert'
-import { GRAPH_NODE_TYPES, type FlowGraphNode } from './GraphNode'
+import { definitionToFlow, flowToDefinition, ancestorClosure, INPUT_HANDLE } from './convert'
+import { GRAPH_NODE_TYPES, type FlowGraphNode, type TestStatus, type TestRunNodeResult } from './GraphNode'
 import { NodeCreator } from './NodeCreator'
 import { ParameterForm } from './ParameterForm'
 import type { DataflowDefinition, NodeDescription } from './types'
 import { useUIStore } from '@/stores/ui'
+import { api, ApiError } from '@/api/client'
+
+type TestRunResponse = { success: boolean; results: Record<string, TestRunNodeResult> }
 
 // One color per node-type Category, cycled if the live catalog ever grows a
 // 6th - purely cosmetic grouping, never a correctness signal (the type
@@ -66,9 +69,15 @@ type GraphEditorProps = {
   // ParameterForm.tsx's webhook_trigger branch for where these surface).
   jobId?: string
   webhookToken?: string
+  // Same "only known once saved" reasoning as jobId - lets "test this node"
+  // (Tier 2.4) scope secret/expression resolution the same way a real run
+  // would. Absent for a never-saved job, which just hides the test action
+  // (see ParameterForm.tsx), same precondition Scheduling's whole-graph
+  // "Run now" already has.
+  organizationId?: string
 }
 
-function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTypesError, jobId, webhookToken }: GraphEditorProps) {
+function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTypesError, jobId, webhookToken, organizationId }: GraphEditorProps) {
   const theme = useUIStore((s) => s.theme)
   const initial = useMemo(() => {
     const flow = definitionToFlow(value ?? { name: 'Untitled graph', nodes: [] })
@@ -273,6 +282,63 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
     onNodesDelete([selectedNode])
   }
 
+  // Purely local UI state (never through emitChange/onChange - a test run
+  // changes nothing about the saved graph, so it must not trip the "you
+  // have unsaved changes" prompt or mark the job dirty).
+  function setNodeTestStatus(ids: string[], status: TestStatus, patch?: Partial<Record<string, { result?: TestRunNodeResult; snapshot?: string }>>) {
+    setNodes((current) => current.map((n) => (ids.includes(n.id) ? {
+      ...n,
+      data: { ...n.data, testStatus: status, testResult: patch?.[n.id]?.result ?? n.data.testResult, testSnapshot: patch?.[n.id]?.snapshot ?? n.data.testSnapshot },
+    } : n)))
+  }
+
+  // "Dirty" (n8n's CanvasNodeDirtiness, collapsed to one boolean - see the
+  // Tier 2.4 plan) is exactly "would re-sending the same ancestor-closure
+  // sub-graph produce different JSON than what was actually tested" - a
+  // param edit, a rewired connection, or a pin change anywhere in the
+  // node's own upstream chain all change that serialization, so this one
+  // comparison catches every case n8n's own 4-reason enum does.
+  function isNodeTestStale(node: FlowGraphNode): boolean {
+    if (!node.data.testSnapshot) return false
+    return nodeTestSnapshot(node.id) !== node.data.testSnapshot
+  }
+
+  // Runs nodeId's own ancestor closure (Tier 2.4) - the real upstream chain
+  // feeding it, so testing a node reflects genuine upstream data (pin any
+  // costly upstream node first - Tier 2.3 - to skip re-running it for
+  // real). Only available once the job is saved (jobId/organizationId both
+  // set) - see ParameterForm.tsx, the same precondition Scheduling's
+  // whole-graph "Run now" already has.
+  async function testNode(nodeId: string) {
+    if (!jobId || !organizationId) return
+    const closure = ancestorClosure(nodes, edges, nodeId)
+    const closureIds = closure.nodes.map((n) => n.id)
+    const def = flowToDefinition('test', '', closure.nodes, closure.edges)
+
+    setNodeTestStatus(closureIds, 'running')
+    try {
+      const res = await api.post<TestRunResponse>('/dataflow/test-run', { organization_id: organizationId, graph: def, seed: [{}] })
+      setNodes((current) => current.map((n) => {
+        if (!closureIds.includes(n.id)) return n
+        const r = res.results[n.id]
+        // Each node's own snapshot must match what isNodeTestStale will
+        // later recompute for THAT node specifically (its own ancestor
+        // closure, not the target's) - an upstream node like a trigger has
+        // a smaller closure than the node that was actually clicked, so a
+        // shared snapshot string here would make it look stale immediately.
+        return { ...n, data: { ...n.data, testStatus: r?.success ? 'success' : 'error', testResult: r, testSnapshot: nodeTestSnapshot(n.id) } }
+      }))
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Unable to test this node.'
+      setNodeTestStatus([nodeId], 'error', { [nodeId]: { result: { success: false, error: message } } })
+    }
+  }
+
+  function nodeTestSnapshot(nodeId: string): string {
+    const closure = ancestorClosure(nodes, edges, nodeId)
+    return JSON.stringify(flowToDefinition('test', '', closure.nodes, closure.edges))
+  }
+
   // Connections are edge-derived (flowToDefinition rebuilds `connections`
   // from `edges` on every save, never stored per-node), so a rename only
   // needs to touch the one node's id and any edge referencing it - no
@@ -344,13 +410,18 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedNodeId, nodes, edges])
 
+  // Display-only: injects each node's current staleness (see
+  // isNodeTestStale) into a copy of `nodes` for rendering - never fed back
+  // into React Flow's own onNodesChange/setNodes state.
+  const nodesForCanvas = nodes.map((n) => (n.data.testStatus ? { ...n, data: { ...n.data, isStale: isNodeTestStale(n) } } : n))
+
   return (
     <div className="gf-root">
       <style>{GRAPH_EDITOR_CSS}</style>
       <div className="gf-body">
         <div className="gf-canvas" ref={wrapperRef}>
           <ReactFlow<FlowGraphNode>
-            nodes={nodes}
+            nodes={nodesForCanvas}
             edges={edges}
             nodeTypes={GRAPH_NODE_TYPES}
             onNodesChange={onNodesChange}
@@ -435,6 +506,11 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
                 siblingNodes={nodes.filter((n) => n.id !== selectedNode.id).map((n) => ({ id: n.id, type: n.data.dfType }))}
                 pinnedOutput={selectedNode.data.pinnedOutput}
                 onPinnedOutputChange={savePinnedOutput}
+                canTestNode={!!jobId && !!organizationId}
+                testStatus={selectedNode.data.testStatus}
+                testResult={selectedNode.data.testResult}
+                testStale={isNodeTestStale(selectedNode)}
+                onTestNode={() => void testNode(selectedNode.id)}
                 onSave={saveParams}
                 onDelete={deleteSelectedNode}
                 onDuplicate={duplicateSelectedNode}
@@ -902,6 +978,45 @@ const GRAPH_EDITOR_CSS = `
   color: var(--color-bg);
   border: 2px solid var(--color-bg);
   z-index: 1;
+}
+
+/* Bottom-right, mirroring the pin badge's top-right corner so a node that
+   is both pinned and tested never has the two overlap. */
+.gf-node-test-badge {
+  position: absolute;
+  bottom: -6px;
+  right: -6px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 2px solid var(--color-bg);
+  color: var(--color-bg);
+  z-index: 1;
+}
+
+.gf-node-test-badge.running {
+  background: var(--color-text-muted);
+  animation: gf-test-pulse 1s ease-in-out infinite;
+}
+
+.gf-node-test-badge.success {
+  background: #2ecc71;
+}
+
+.gf-node-test-badge.success.stale {
+  background: var(--color-text-muted);
+}
+
+.gf-node-test-badge.error {
+  background: #ff6b6b;
+}
+
+@keyframes gf-test-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.05); }
 }
 
 .gf-node-icon {

@@ -1,7 +1,10 @@
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react'
-import { Pin } from '@icon-park/react'
+import { Pin, CheckOne, CloseOne, Loading } from '@icon-park/react'
 import { outputPortsForNode, INPUT_HANDLE } from './convert'
 import { resolveNodeIcon, tintColor } from './nodeIcons'
+
+export type TestStatus = 'running' | 'success' | 'error'
+export type TestRunNodeResult = { success: boolean; error?: string; output?: Record<string, unknown>[]; duration?: number }
 
 export type GraphNodeData = {
   dfType: string
@@ -24,6 +27,16 @@ export type GraphNodeData = {
   // top-level pinned_data map (Tier 2.3). Present (even as []) means pinned;
   // undefined means not pinned.
   pinnedOutput?: Record<string, unknown>[]
+  // Ephemeral "test this node" state (Tier 2.4) - UI-only like title/
+  // category above, never read by flowToDefinition, reset on reload. See
+  // GraphEditor.tsx's testNode/isNodeTestStale.
+  testStatus?: TestStatus
+  testResult?: TestRunNodeResult
+  testSnapshot?: string
+  // Derived purely for rendering (see GraphEditor.tsx's isNodeTestStale) -
+  // recomputed into a display-only copy of `nodes` each render, never part
+  // of the state React Flow's own onNodesChange manages.
+  isStale?: boolean
 }
 
 export type FlowGraphNode = Node<GraphNodeData, 'dataflow'>
@@ -45,6 +58,19 @@ export function GraphNode({ id, data, selected }: NodeProps<FlowGraphNode>) {
         {data.pinnedOutput && (
           <div className="gf-node-pin-badge" title="Output pinned - this node won't actually run">
             <Pin theme="filled" size={10} />
+          </div>
+        )}
+        {data.testStatus && (
+          <div
+            className={`gf-node-test-badge ${data.testStatus}${data.isStale ? ' stale' : ''}`}
+            title={
+              data.testStatus === 'running' ? 'Testing…'
+                : data.testStatus === 'error' ? (data.testResult?.error ?? 'Test failed')
+                : data.isStale ? 'Tested, but something changed since - retest'
+                : 'Tested successfully'
+            }
+          >
+            {data.testStatus === 'running' ? <Loading size={10} /> : data.testStatus === 'error' ? <CloseOne theme="filled" size={10} /> : <CheckOne theme="filled" size={10} />}
           </div>
         )}
         <div className="gf-node-icon" style={{ background: tintColor(color), color }}>

@@ -68,6 +68,10 @@ function StubPanel({ title, description }: { title: string; description: string 
 
 type Job = {
   id: string
+  // The server always returns this - kept here so "test this node" (Tier
+  // 2.4) can scope secret/expression resolution the same way a real run
+  // would, without needing its own separate "current organization" concept.
+  organization_id?: string
   name: string
   description?: string
   status: JobStatus
@@ -131,6 +135,7 @@ export function AutomationPage() {
 
   const [graph, setGraph] = useState<DataflowDefinition | null>(null)
   const [webhookToken, setWebhookToken] = useState('')
+  const [organizationId, setOrganizationId] = useState('')
   const [nodeTypes, setNodeTypes] = useState<NodeDescription[]>([])
   const [nodeTypesLoading, setNodeTypesLoading] = useState(true)
   const [nodeTypesError, setNodeTypesError] = useState<string | null>(null)
@@ -267,6 +272,7 @@ export function AutomationPage() {
         const hasTriggerNode = job.graph.nodes.some((n) => n.type === 'schedule_trigger' || n.type === 'webhook_trigger')
         setGraph(hasTriggerNode ? job.graph : { ...job.graph, nodes: [synthesizeScheduleTriggerNode(job), ...job.graph.nodes] })
         setWebhookToken(job.webhook_token ?? '')
+        setOrganizationId(job.organization_id ?? '')
       })
       .catch((err) => setLoadError(err instanceof ApiError ? err.message : 'Unable to load this job.'))
       .finally(() => setLoading(false))
@@ -545,7 +551,7 @@ export function AutomationPage() {
           ) : loadError ? (
             <div className="au-loading au-loading-error">{loadError}</div>
           ) : (
-            <GraphEditor value={graph} onChange={setGraph} nodeTypes={nodeTypes} nodeTypesLoading={nodeTypesLoading} nodeTypesError={nodeTypesError} jobId={jobId} webhookToken={webhookToken} />
+            <GraphEditor value={graph} onChange={setGraph} nodeTypes={nodeTypes} nodeTypesLoading={nodeTypesLoading} nodeTypesError={nodeTypesError} jobId={jobId} webhookToken={webhookToken} organizationId={organizationId} />
           )}
         </div>
 
