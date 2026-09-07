@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useCallback, type ReactNode } from 'react
 import { useNavigate } from 'react-router'
 import {
   Plus, Play, PauseOne, Edit, Delete, History, Caution, LinkCloud,
-  CheckOne, Robot, Send, Download, PreviewOpen, Setting, RelationalGraph,
+  CheckOne, Robot, Send, Download, PreviewOpen, Setting,
 } from '@icon-park/react'
 import { api, ApiError } from '@/api/client'
 import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
@@ -343,14 +343,6 @@ export function SchedulingPage() {
 
       <header className="sch-topbar">
         <span className="sch-topbar-title">Scheduling</span>
-        <button
-          className="sch-new-btn sch-new-btn--ghost"
-          onClick={() => navigate('/automation')}
-          disabled={systemStatus?.mode !== 'connected'}
-          title="Build automations as visual graphs instead of single prompts"
-        >
-          <RelationalGraph size={11} /> Automation
-        </button>
         <button className="sch-new-btn" onClick={openCreateForm} disabled={systemStatus?.mode !== 'connected'}>
           <Plus size={11} /> New Job
         </button>
@@ -968,7 +960,6 @@ function JobFormModal({
   onClose: () => void
   onSaved: () => void
 }) {
-  const navigate = useNavigate()
   const isEdit = !!job
   const [name, setName] = useState(job?.name ?? draft?.name ?? '')
   const [description, setDescription] = useState(job?.description ?? draft?.description ?? '')
@@ -1252,11 +1243,6 @@ function JobFormModal({
           <div className="sch-field">
             <label>Prompt</label>
             <textarea className="sch-prompt-editor" value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={7} required />
-            {!isEdit && (
-              <button type="button" className="sch-graph-link" onClick={() => navigate('/automation')}>
-                Build with a visual graph instead →
-              </button>
-            )}
           </div>
           </div>
 
@@ -1323,17 +1309,12 @@ const CSS = `
 .sch-topbar-title { font-size: var(--font-size-base); font-weight: 700; }
 .sch-new-btn {
   display: inline-flex; align-items: center; gap: var(--space-3);
+  margin-left: auto;
   padding: var(--space-3) var(--space-5); border-radius: var(--radius-sm); border: none;
   background: var(--color-cta); color: white;
   font-size: var(--font-size-2xs); font-weight: 700; cursor: pointer;
 }
 .sch-new-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.sch-new-btn--ghost {
-  margin-left: auto;
-  background: transparent; color: var(--color-text-secondary);
-  border: 1px solid var(--color-border);
-}
-.sch-new-btn--ghost:hover:not(:disabled) { background: var(--color-hover); color: var(--color-text); }
 
 .sch-body { flex: 1; overflow: hidden; padding: var(--space-8) 22px; }
 .sch-layout {
@@ -2070,20 +2051,6 @@ const CSS = `
   min-height: 150px;
   font-family: var(--font-mono, ui-monospace, monospace);
   line-height: 1.55;
-}
-.sch-graph-link {
-  align-self: flex-start;
-  margin-top: 6px;
-  padding: 0;
-  border: none;
-  background: none;
-  color: var(--color-cta);
-  font-size: var(--font-size-xs);
-  font-weight: 700;
-  cursor: pointer;
-}
-.sch-graph-link:hover {
-  text-decoration: underline;
 }
 .sch-modal-footer {
   grid-column: 1 / -1;
