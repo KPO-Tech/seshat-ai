@@ -15,6 +15,7 @@ import {
 import '@xyflow/react/dist/style.css'
 import { Close, Plus, Undo as UndoIcon, Redo as RedoIcon } from '@icon-park/react'
 import { definitionToFlow, flowToDefinition, ancestorClosure, INPUT_HANDLE } from './convert'
+import { missingRequiredFields } from './validation'
 import { GRAPH_NODE_TYPES, type FlowGraphNode, type TestStatus, type TestRunNodeResult } from './GraphNode'
 import { NodeCreator } from './NodeCreator'
 import { ParameterForm } from './ParameterForm'
@@ -413,7 +414,18 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
   // Display-only: injects each node's current staleness (see
   // isNodeTestStale) into a copy of `nodes` for rendering - never fed back
   // into React Flow's own onNodesChange/setNodes state.
-  const nodesForCanvas = nodes.map((n) => (n.data.testStatus ? { ...n, data: { ...n.data, isStale: isNodeTestStale(n) } } : n))
+  const nodesForCanvas = nodes.map((n) => {
+    const warnings = missingRequiredFields(nodeTypes.find((nt) => nt.type === n.data.dfType)?.properties, n.data.parameters)
+    if (!n.data.testStatus && warnings.length === 0) return n
+    return {
+      ...n,
+      data: {
+        ...n.data,
+        ...(n.data.testStatus ? { isStale: isNodeTestStale(n) } : {}),
+        validationWarnings: warnings,
+      },
+    }
+  })
 
   return (
     <div className="gf-root">
@@ -1017,6 +1029,25 @@ const GRAPH_EDITOR_CSS = `
 @keyframes gf-test-pulse {
   0%, 100% { opacity: 0.5; transform: scale(0.9); }
   50% { opacity: 1; transform: scale(1.05); }
+}
+
+/* Top-left, the one corner the pin (top-right) and test-status (bottom-
+   right) badges don't already use - distinct from both, per the doc's own
+   "a badge distinct from the execution-error badge" framing (Tier 2.5). */
+.gf-node-validation-badge {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #f5a623;
+  color: var(--color-bg);
+  border: 2px solid var(--color-bg);
+  z-index: 1;
 }
 
 .gf-node-icon {

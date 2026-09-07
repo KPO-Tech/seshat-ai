@@ -1,5 +1,5 @@
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react'
-import { Pin, CheckOne, CloseOne, Loading } from '@icon-park/react'
+import { Pin, CheckOne, CloseOne, Loading, Attention } from '@icon-park/react'
 import { outputPortsForNode, INPUT_HANDLE } from './convert'
 import { resolveNodeIcon, tintColor } from './nodeIcons'
 
@@ -37,6 +37,10 @@ export type GraphNodeData = {
   // recomputed into a display-only copy of `nodes` each render, never part
   // of the state React Flow's own onNodesChange manages.
   isStale?: boolean
+  // Static validation (Tier 2.5) - also derived purely for rendering, from
+  // the node-types catalog's own NodeProperty.required (see validation.ts's
+  // missingRequiredFields). Empty/undefined means nothing missing.
+  validationWarnings?: string[]
 }
 
 export type FlowGraphNode = Node<GraphNodeData, 'dataflow'>
@@ -55,6 +59,11 @@ export function GraphNode({ id, data, selected }: NodeProps<FlowGraphNode>) {
         <Handle type="target" position={Position.Left} id={INPUT_HANDLE} className="gf-handle gf-handle-target" />
       )}
       <div className="gf-node-card">
+        {!!data.validationWarnings?.length && (
+          <div className="gf-node-validation-badge" title={`Missing required field${data.validationWarnings.length > 1 ? 's' : ''}: ${data.validationWarnings.join(', ')}`}>
+            <Attention theme="filled" size={10} />
+          </div>
+        )}
         {data.pinnedOutput && (
           <div className="gf-node-pin-badge" title="Output pinned - this node won't actually run">
             <Pin theme="filled" size={10} />
