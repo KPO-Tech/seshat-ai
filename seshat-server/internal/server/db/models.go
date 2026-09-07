@@ -567,6 +567,16 @@ type JobRun struct {
 	// automation.jobWorkflow.runGraph); nil for plain-Prompt jobs and for
 	// runs recorded before this field existed.
 	NodeTrace []NodeTraceEntry `gorm:"serializer:json;type:text"`
+	// GraphSnapshot is the job's own GraphJSON exactly as it was at the
+	// moment this run was queued (see automation.queueRunForJob) - empty for
+	// plain-Prompt jobs, same as GraphJSON itself. NodeTrace entries are
+	// matched to canvas nodes by ID; without freezing the graph's own shape
+	// alongside them, replaying a run after the job's graph was edited
+	// (nodes renamed/added/removed) would show today's structure with
+	// yesterday's data misattributed onto it. Empty for runs recorded before
+	// this field existed - replay falls back to the job's current live graph
+	// for those.
+	GraphSnapshot string `gorm:"type:text"`
 }
 
 // NodeItemSource mirrors github.com/KPO-Tech/seshat/pkg/dataflow's

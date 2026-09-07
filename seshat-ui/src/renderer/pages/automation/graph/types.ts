@@ -67,6 +67,59 @@ export type NodeProperty = {
   displayIf?: DisplayCondition
 }
 
+// Shared with automation/index.tsx (which owns RunStatus for a job's own
+// last_run_status too) - defined here, a leaf module, rather than in
+// index.tsx itself, so RunsPanel.tsx/GraphReplayViewer.tsx can import it
+// without an index.tsx -> graph/RunsPanel.tsx -> index.tsx import cycle.
+export type RunStatus = 'queued' | 'claimed' | 'running' | 'completed' | 'failed' | 'cancelled'
+
+export const RUN_STATUS_LABEL: Record<RunStatus, string> = {
+  queued: 'Queued', claimed: 'Claimed', running: 'Running',
+  completed: 'Completed', failed: 'Failed', cancelled: 'Cancelled',
+}
+
+// Mirrors github.com/EngineerProjects/seshat-ai/seshat-server's
+// sdb.NodeTraceEntry JSON shape exactly (snake_case, as the API returns it,
+// no camelCase remapping - same convention scheduling/index.tsx's own local
+// RunNodeTraceEntry already follows for the flat Activities log). Real
+// per-node execution detail for one past run (Tier 1.3), read-only - what
+// Tier 2.6 replay renders in place of a node's live parameters.
+export type NodeTraceEntry = {
+  id: string
+  type: string
+  success: boolean
+  skipped?: boolean
+  pinned?: boolean
+  error?: string
+  input?: Record<string, unknown>[]
+  input_source?: { node?: string; port?: string }[]
+  output?: Record<string, unknown>[]
+  output_by_port?: Record<string, Record<string, unknown>[]>
+  started_at: string
+  ended_at: string
+  duration_ms?: number
+}
+
+// Mirrors automation.Run (seshat-server/internal/server/automation/runs.go)
+// - one execution instance of a job, as returned by GET /jobs/{id}/runs and
+// GET /runs/{id}. Only the fields Tier 2.6's Runs list/replay actually use;
+// see JobRun for the full set if a future feature needs more of it.
+export type Run = {
+  id: string
+  status: RunStatus
+  queued_at: string
+  started_at?: string
+  finished_at?: string
+  error_text?: string
+  node_trace?: NodeTraceEntry[]
+  // The job's graph exactly as it was when this run was queued (see
+  // sdb.JobRun.GraphSnapshot) - what replay draws the canvas from, instead
+  // of the job's current live graph, so an edit made after the run doesn't
+  // misattribute node_trace onto today's shape. Absent for Prompt jobs and
+  // for runs recorded before this field existed.
+  graph_snapshot?: DataflowDefinition
+}
+
 // UI-only position, stashed inside a node's own `parameters` under this
 // reserved key so canvas layout round-trips through the plain
 // DataflowDefinition JSON without needing a backend schema change - every

@@ -1,9 +1,13 @@
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react'
-import { Pin, CheckOne, CloseOne, Loading, Attention } from '@icon-park/react'
+import { Pin, CheckOne, CloseOne, Loading, Attention, Reduce } from '@icon-park/react'
 import { outputPortsForNode, INPUT_HANDLE } from './convert'
 import { resolveNodeIcon, tintColor } from './nodeIcons'
 
-export type TestStatus = 'running' | 'success' | 'error'
+// 'skipped' covers an if/switch branch not taken - reachable from a real
+// past run's NodeTraceEntry.skipped (Tier 2.6 replay) and, in principle,
+// from "test this node" (Tier 2.4) too, since testing a downstream node
+// replays its real upstream chain which can itself branch.
+export type TestStatus = 'running' | 'success' | 'error' | 'skipped'
 export type TestRunNodeResult = { success: boolean; error?: string; output?: Record<string, unknown>[]; duration?: number }
 
 export type GraphNodeData = {
@@ -29,7 +33,13 @@ export type GraphNodeData = {
   pinnedOutput?: Record<string, unknown>[]
   // Ephemeral "test this node" state (Tier 2.4) - UI-only like title/
   // category above, never read by flowToDefinition, reset on reload. See
-  // GraphEditor.tsx's testNode/isNodeTestStale.
+  // GraphEditor.tsx's testNode/isNodeTestStale. Also reused, unchanged, by
+  // GraphReplayViewer.tsx (Tier 2.6) to show a past run's real recorded
+  // outcome instead of a live browser-side test - same badge, same tooltip
+  // logic, just a different producer feeding the same two fields, since the
+  // two concepts render identically (a node either ran successfully,
+  // failed, or was skipped, whether that happened just now in the editor or
+  // for real in a past scheduled run).
   testStatus?: TestStatus
   testResult?: TestRunNodeResult
   testSnapshot?: string
@@ -75,11 +85,15 @@ export function GraphNode({ id, data, selected }: NodeProps<FlowGraphNode>) {
             title={
               data.testStatus === 'running' ? 'Testing…'
                 : data.testStatus === 'error' ? (data.testResult?.error ?? 'Test failed')
+                : data.testStatus === 'skipped' ? 'Skipped - this branch was not taken'
                 : data.isStale ? 'Tested, but something changed since - retest'
                 : 'Tested successfully'
             }
           >
-            {data.testStatus === 'running' ? <Loading size={10} /> : data.testStatus === 'error' ? <CloseOne theme="filled" size={10} /> : <CheckOne theme="filled" size={10} />}
+            {data.testStatus === 'running' ? <Loading size={10} />
+              : data.testStatus === 'error' ? <CloseOne theme="filled" size={10} />
+              : data.testStatus === 'skipped' ? <Reduce theme="filled" size={10} />
+              : <CheckOne theme="filled" size={10} />}
           </div>
         )}
         <div className="gf-node-icon" style={{ background: tintColor(color), color }}>

@@ -30,7 +30,10 @@ type TestRunResponse = { success: boolean; results: Record<string, TestRunNodeRe
 // string is what actually matters to the backend).
 const CATEGORY_COLORS = ['#EF7C2F', '#4C9AFF', '#57D9A3', '#B197FC', '#FF8ED4', '#FFC53D']
 
-function categoryColor(category: string, allCategories: string[]): string {
+// Exported alongside GRAPH_EDITOR_CSS for GraphReplayViewer.tsx (Tier 2.6)
+// to reuse verbatim - same reasoning: a 7th category added to CATEGORY_
+// COLORS later should never need updating in two places.
+export function categoryColor(category: string, allCategories: string[]): string {
   const idx = allCategories.indexOf(category)
   return CATEGORY_COLORS[idx % CATEGORY_COLORS.length] ?? CATEGORY_COLORS[0]
 }
@@ -582,7 +585,12 @@ function NodeIdEditor({ nodeId, onRename }: { nodeId: string; onRename: (next: s
   )
 }
 
-const GRAPH_EDITOR_CSS = `
+// Exported so GraphReplayViewer.tsx (Tier 2.6) can reuse the exact same
+// canvas/node-card/side-panel styling for its own read-only view of a past
+// run, instead of duplicating ~550 lines of CSS that would inevitably drift
+// from this one. Unused selectors (e.g. the NodeCreator/undo-redo chrome
+// replay never renders) are harmless dead weight, not a bug.
+export const GRAPH_EDITOR_CSS = `
 .gf-root {
   display: flex;
   flex-direction: column;
@@ -1024,6 +1032,10 @@ const GRAPH_EDITOR_CSS = `
 
 .gf-node-test-badge.error {
   background: #ff6b6b;
+}
+
+.gf-node-test-badge.skipped {
+  background: var(--color-text-muted);
 }
 
 @keyframes gf-test-pulse {

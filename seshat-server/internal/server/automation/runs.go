@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/KPO-Tech/seshat/pkg/dataflow"
 	"gorm.io/gorm"
 
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
@@ -39,6 +40,12 @@ type Run struct {
 	ErrorText        string               `json:"error_text,omitempty"`
 	Metadata         map[string]string    `json:"metadata,omitempty"`
 	NodeTrace        []sdb.NodeTraceEntry `json:"node_trace,omitempty"`
+	// GraphSnapshot is the graph exactly as it was when this run was queued
+	// (see sdb.JobRun.GraphSnapshot) - what the replay view (Tier 2.6) draws
+	// the canvas from, instead of the job's current live graph, so an edit
+	// made after the run doesn't misattribute NodeTrace onto today's shape.
+	// nil for Prompt jobs and for runs recorded before this field existed.
+	GraphSnapshot *dataflow.Definition `json:"graph_snapshot,omitempty"`
 	// TriggerPayload is JSON-encoded external data that started this run -
 	// currently only non-empty for webhook-triggered runs (see
 	// JobRun.TriggerPayload) - exposed so the editor can show what actually
@@ -505,6 +512,7 @@ func queueRunForJob(tx *gorm.DB, job sdb.ScheduledJob, now time.Time, payload st
 		Status:           RunStatusQueued,
 		QueuedAt:         now,
 		TriggerPayload:   payload,
+		GraphSnapshot:    job.GraphJSON,
 	}
 	if err := tx.Create(&run).Error; err != nil {
 		return sdb.JobRun{}, err
@@ -556,6 +564,7 @@ func toRun(record sdb.JobRun) Run {
 		ErrorText:        record.ErrorText,
 		Metadata:         record.Metadata,
 		NodeTrace:        record.NodeTrace,
+		GraphSnapshot:    graphFromJSON(record.GraphSnapshot),
 		TriggerPayload:   record.TriggerPayload,
 	}
 }

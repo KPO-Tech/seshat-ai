@@ -2,27 +2,22 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useLocation, useBlocker } from 'react-router'
 import {
   Left, Setting, Close, CheckOne, Home, ApplicationOne, DataOne, Help as HelpIcon,
-  Plus, Play, PauseOne, Edit as EditIcon, Delete as DeleteIcon, LoadingOne,
+  Plus, Play, PauseOne, Edit as EditIcon, Delete as DeleteIcon, LoadingOne, History,
 } from '@icon-park/react'
 import { api, ApiError } from '@/api/client'
 import type { Agent, ProviderModel } from '@/api/types'
 import { fetchProviderModels, useProviders } from '@/hooks/useProviders'
 import { useProvidersStore } from '@/stores/providers'
 import { GraphEditor } from './graph/GraphEditor'
-import type { DataflowDefinition, DataflowNode, NodeDescription } from './graph/types'
-import { UI_POSITION_KEY } from './graph/types'
+import { RunsPanel } from './graph/RunsPanel'
+import type { DataflowDefinition, DataflowNode, NodeDescription, RunStatus } from './graph/types'
+import { UI_POSITION_KEY, RUN_STATUS_LABEL } from './graph/types'
 
 type TriggerType = 'cron' | 'interval' | 'once'
 type ExecutionTarget = 'cloud' | 'device'
 type JobStatus = 'active' | 'paused'
-type RunStatus = 'queued' | 'claimed' | 'running' | 'completed' | 'failed' | 'cancelled'
 type Device = { id: string; name: string; status: string }
-type RailView = 'overview' | 'graph' | 'templates' | 'variables' | 'help'
-
-const RUN_STATUS_LABEL: Record<RunStatus, string> = {
-  queued: 'Queued', claimed: 'Claimed', running: 'Running',
-  completed: 'Completed', failed: 'Failed', cancelled: 'Cancelled',
-}
+type RailView = 'overview' | 'graph' | 'runs' | 'templates' | 'variables' | 'help'
 
 // One-time, client-side-only upgrade for a graph job saved before schedule
 // triggers became a canvas node (see docs/helps/audit-2026-09-04-n8n-gap-
@@ -511,6 +506,12 @@ export function AutomationPage() {
             <Home size={16} />
             <span>Overview</span>
           </button>
+          {!isOverview && jobId && (
+            <button type="button" className={`au-rail-btn ${railView === 'runs' ? 'active' : ''}`} onClick={() => setRailView('runs')} title="Runs">
+              <History size={16} />
+              <span>Runs</span>
+            </button>
+          )}
           <button type="button" className={`au-rail-btn ${railView === 'templates' ? 'active' : ''}`} onClick={() => setRailView('templates')} title="Templates">
             <ApplicationOne size={16} />
             <span>Templates</span>
@@ -540,6 +541,8 @@ export function AutomationPage() {
               pausingJobId={pausingJobId}
               deletingJobId={deletingJobId}
             />
+          ) : railView === 'runs' && jobId ? (
+            <RunsPanel jobId={jobId} graph={graph} nodeTypes={nodeTypes} />
           ) : railView === 'templates' ? (
             <StubPanel title="Templates" description="Browse and start from pre-built automation templates. Coming soon." />
           ) : railView === 'variables' ? (
@@ -1135,6 +1138,13 @@ const AUTOMATION_CSS = `
 .au-overview-badge--active { background: rgba(var(--color-success-rgb), 0.12); color: var(--color-success); }
 .au-overview-badge--paused { background: rgba(148, 163, 184, 0.15); color: var(--color-text-muted); }
 .au-overview-badge--target { background: rgba(239, 124, 47, 0.1); color: var(--color-accent); }
+
+/* Run status pills (RunsPanel, Tier 2.6) - same badge shape, one modifier
+   per RunStatus value. */
+.au-overview-badge--completed { background: rgba(var(--color-success-rgb), 0.12); color: var(--color-success); }
+.au-overview-badge--failed { background: rgba(255, 107, 107, 0.12); color: #ff6b6b; }
+.au-overview-badge--running, .au-overview-badge--claimed { background: rgba(239, 124, 47, 0.1); color: var(--color-accent); }
+.au-overview-badge--queued, .au-overview-badge--cancelled { background: rgba(148, 163, 184, 0.15); color: var(--color-text-muted); }
 
 .au-overview-desc {
   font-size: var(--font-size-2xs);
