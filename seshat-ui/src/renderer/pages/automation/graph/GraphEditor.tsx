@@ -19,6 +19,7 @@ import { missingRequiredFields } from './validation'
 import { GRAPH_NODE_TYPES, type FlowGraphNode, type TestStatus, type TestRunNodeResult } from './GraphNode'
 import { NodeCreator } from './NodeCreator'
 import { ParameterForm } from './ParameterForm'
+import type { RetrySettingsValue } from './RetrySettingsField'
 import type { DataflowDefinition, NodeDescription } from './types'
 import { useUIStore } from '@/stores/ui'
 import { api, ApiError } from '@/api/client'
@@ -285,6 +286,13 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
     emitChange(nextNodes, edges)
   }
 
+  function saveRetrySettings(next: RetrySettingsValue) {
+    if (!selectedNode) return
+    const nextNodes = nodes.map((n) => (n.id === selectedNode.id ? { ...n, data: { ...n.data, ...next } } : n))
+    setNodes(nextNodes)
+    emitChange(nextNodes, edges)
+  }
+
   function deleteSelectedNode() {
     if (!selectedNode) return
     onNodesDelete([selectedNode])
@@ -527,6 +535,13 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
                 siblingNodes={nodes.filter((n) => n.id !== selectedNode.id).map((n) => ({ id: n.id, type: n.data.dfType }))}
                 pinnedOutput={selectedNode.data.pinnedOutput}
                 onPinnedOutputChange={savePinnedOutput}
+                retrySettings={{
+                  retryOnFail: selectedNode.data.retryOnFail,
+                  maxTries: selectedNode.data.maxTries,
+                  waitBetweenTriesMs: selectedNode.data.waitBetweenTriesMs,
+                  onError: selectedNode.data.onError,
+                }}
+                onRetrySettingsChange={saveRetrySettings}
                 canTestNode={!!jobId && !!organizationId}
                 testStatus={selectedNode.data.testStatus}
                 testResult={selectedNode.data.testResult}

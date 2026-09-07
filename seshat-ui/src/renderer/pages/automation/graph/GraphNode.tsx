@@ -2,6 +2,7 @@ import { Handle, Position, type NodeProps, type Node } from '@xyflow/react'
 import { Pin, CheckOne, CloseOne, Loading, Attention, Reduce } from '@icon-park/react'
 import { outputPortsForNode, INPUT_HANDLE } from './convert'
 import { resolveNodeIcon, tintColor } from './nodeIcons'
+import type { OnErrorMode } from './types'
 
 // 'skipped' covers an if/switch branch not taken - reachable from a real
 // past run's NodeTraceEntry.skipped (Tier 2.6 replay) and, in principle,
@@ -51,12 +52,19 @@ export type GraphNodeData = {
   // the node-types catalog's own NodeProperty.required (see validation.ts's
   // missingRequiredFields). Empty/undefined means nothing missing.
   validationWarnings?: string[]
+  // Retry/OnError (Tier 3.1) - real, save-relevant config like
+  // pinnedOutput above, round-tripped by convert.ts as Node siblings (not
+  // inside parameters) - see RetrySettingsField.tsx.
+  retryOnFail?: boolean
+  maxTries?: number
+  waitBetweenTriesMs?: number
+  onError?: OnErrorMode
 }
 
 export type FlowGraphNode = Node<GraphNodeData, 'dataflow'>
 
 export function GraphNode({ id, data, selected }: NodeProps<FlowGraphNode>) {
-  const ports = outputPortsForNode(data.dfType, data.parameters)
+  const ports = outputPortsForNode(data.dfType, data.parameters, data.onError)
   const color = data.categoryColor ?? 'var(--color-text-muted)'
 
   return (

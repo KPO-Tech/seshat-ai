@@ -12,34 +12,36 @@ import (
 )
 
 type createJobRequest struct {
-	OrganizationID  string               `json:"organization_id"`
-	Name            string               `json:"name"`
-	Description     string               `json:"description"`
-	TriggerType     string               `json:"trigger_type"`
-	CronExpr        string               `json:"cron_expr"`
-	IntervalSeconds int                  `json:"interval_seconds"`
-	RunAt           *time.Time           `json:"run_at"`
-	ExecutionTarget string               `json:"execution_target"`
-	TargetDeviceID  string               `json:"target_device_id"`
-	Prompt          string               `json:"prompt"`
-	Graph           *dataflow.Definition `json:"graph"`
-	ModelOverride   string               `json:"model_override"`
-	Configuration   map[string]string    `json:"configuration"`
+	OrganizationID     string               `json:"organization_id"`
+	Name               string               `json:"name"`
+	Description        string               `json:"description"`
+	TriggerType        string               `json:"trigger_type"`
+	CronExpr           string               `json:"cron_expr"`
+	IntervalSeconds    int                  `json:"interval_seconds"`
+	RunAt              *time.Time           `json:"run_at"`
+	ExecutionTarget    string               `json:"execution_target"`
+	TargetDeviceID     string               `json:"target_device_id"`
+	Prompt             string               `json:"prompt"`
+	Graph              *dataflow.Definition `json:"graph"`
+	ModelOverride      string               `json:"model_override"`
+	Configuration      map[string]string    `json:"configuration"`
+	ErrorWorkflowJobID string               `json:"error_workflow_job_id"`
 }
 
 type updateJobRequest struct {
-	Name            string               `json:"name"`
-	Description     string               `json:"description"`
-	TriggerType     string               `json:"trigger_type"`
-	CronExpr        string               `json:"cron_expr"`
-	IntervalSeconds int                  `json:"interval_seconds"`
-	RunAt           *time.Time           `json:"run_at"`
-	ExecutionTarget string               `json:"execution_target"`
-	TargetDeviceID  string               `json:"target_device_id"`
-	Prompt          string               `json:"prompt"`
-	Graph           *dataflow.Definition `json:"graph"`
-	ModelOverride   string               `json:"model_override"`
-	Configuration   map[string]string    `json:"configuration"`
+	Name               string               `json:"name"`
+	Description        string               `json:"description"`
+	TriggerType        string               `json:"trigger_type"`
+	CronExpr           string               `json:"cron_expr"`
+	IntervalSeconds    int                  `json:"interval_seconds"`
+	RunAt              *time.Time           `json:"run_at"`
+	ExecutionTarget    string               `json:"execution_target"`
+	TargetDeviceID     string               `json:"target_device_id"`
+	Prompt             string               `json:"prompt"`
+	Graph              *dataflow.Definition `json:"graph"`
+	ModelOverride      string               `json:"model_override"`
+	Configuration      map[string]string    `json:"configuration"`
+	ErrorWorkflowJobID string               `json:"error_workflow_job_id"`
 }
 
 func (app *App) handleJobs(w http.ResponseWriter, r *http.Request) {
@@ -64,19 +66,20 @@ func (app *App) handleJobs(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		job, err := app.backend.Automation.CreateJob(r.Context(), principal, automation.CreateJobParams{
-			OrganizationID:  req.OrganizationID,
-			Name:            req.Name,
-			Description:     req.Description,
-			TriggerType:     req.TriggerType,
-			CronExpr:        req.CronExpr,
-			IntervalSeconds: req.IntervalSeconds,
-			RunAt:           req.RunAt,
-			ExecutionTarget: req.ExecutionTarget,
-			TargetDeviceID:  req.TargetDeviceID,
-			Prompt:          req.Prompt,
-			Graph:           req.Graph,
-			ModelOverride:   req.ModelOverride,
-			Configuration:   req.Configuration,
+			OrganizationID:     req.OrganizationID,
+			Name:               req.Name,
+			Description:        req.Description,
+			TriggerType:        req.TriggerType,
+			CronExpr:           req.CronExpr,
+			IntervalSeconds:    req.IntervalSeconds,
+			RunAt:              req.RunAt,
+			ExecutionTarget:    req.ExecutionTarget,
+			TargetDeviceID:     req.TargetDeviceID,
+			Prompt:             req.Prompt,
+			Graph:              req.Graph,
+			ModelOverride:      req.ModelOverride,
+			Configuration:      req.Configuration,
+			ErrorWorkflowJobID: req.ErrorWorkflowJobID,
 		})
 		if err != nil {
 			writeAutomationError(w, err)
@@ -114,18 +117,19 @@ func (app *App) handleJobByID(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		job, err := app.backend.Automation.UpdateJob(r.Context(), principal, jobID, automation.UpdateJobParams{
-			Name:            req.Name,
-			Description:     req.Description,
-			TriggerType:     req.TriggerType,
-			CronExpr:        req.CronExpr,
-			IntervalSeconds: req.IntervalSeconds,
-			RunAt:           req.RunAt,
-			ExecutionTarget: req.ExecutionTarget,
-			TargetDeviceID:  req.TargetDeviceID,
-			Prompt:          req.Prompt,
-			Graph:           req.Graph,
-			ModelOverride:   req.ModelOverride,
-			Configuration:   req.Configuration,
+			Name:               req.Name,
+			Description:        req.Description,
+			TriggerType:        req.TriggerType,
+			CronExpr:           req.CronExpr,
+			IntervalSeconds:    req.IntervalSeconds,
+			RunAt:              req.RunAt,
+			ExecutionTarget:    req.ExecutionTarget,
+			TargetDeviceID:     req.TargetDeviceID,
+			Prompt:             req.Prompt,
+			Graph:              req.Graph,
+			ModelOverride:      req.ModelOverride,
+			Configuration:      req.Configuration,
+			ErrorWorkflowJobID: req.ErrorWorkflowJobID,
 		})
 		if err != nil {
 			writeAutomationError(w, err)

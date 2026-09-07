@@ -2,6 +2,7 @@ package automation
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -69,6 +70,115 @@ func TestExecuteCloudRunDoesNotStartACancelledQueuedRun(t *testing.T) {
 	}
 	if reloaded.StartedAt != nil {
 		t.Fatalf("expected cancelled run not to be marked started, got %v", reloaded.StartedAt)
+	}
+}
+
+// TestFinishCloudRunTriggersConfiguredErrorWorkflow is Tier 3.1's core
+// case: a failing job with ErrorWorkflowJobID set queues a real run for
+// that other job, carrying the failure details.
+func TestFinishCloudRunTriggersConfiguredErrorWorkflow(t *testing.T) {
+	env := newTestEnv(t)
+	errorJob, err := env.automation.CreateJob(context.Background(), env.adminPrincipal, CreateJobParams{
+		OrganizationID: env.orgID, Name: "Error handler", TriggerType: TriggerTypeInterval,
+		IntervalSeconds: 3600, ExecutionTarget: ExecutionTargetCloud, ModelOverride: "anthropic:claude-sonnet-5",
+		Prompt: "Handle the failure.",
+	})
+	if err != nil {
+		t.Fatalf("create error job: %v", err)
+	}
+	job, err := env.automation.CreateJob(context.Background(), env.adminPrincipal, CreateJobParams{
+		OrganizationID: env.orgID, Name: "Main job", TriggerType: TriggerTypeInterval,
+		IntervalSeconds: 3600, ExecutionTarget: ExecutionTargetCloud, ModelOverride: "anthropic:claude-sonnet-5",
+		Prompt: "Do work.", ErrorWorkflowJobID: errorJob.ID,
+	})
+	if err != nil {
+		t.Fatalf("create job: %v", err)
+	}
+	run, err := env.automation.TriggerJobNow(context.Background(), env.adminPrincipal, job.ID)
+	if err != nil {
+		t.Fatalf("trigger job now: %v", err)
+	}
+
+	// No provider_settings configured anywhere in this test env -
+	// executeCloudRun fails cleanly before ever reaching the SDK, same
+	// precondition every other test in this file relies on.
+	if err := env.automation.executeCloudRun(context.Background(), run.ID); err != nil {
+		t.Fatalf("executeCloudRun: %v", err)
+	}
+
+	reloaded, err := env.automation.GetRun(context.Background(), env.adminPrincipal, run.ID)
+	if err != nil {
+		t.Fatalf("get run: %v", err)
+	}
+	if reloaded.Status != RunStatusFailed {
+		t.Fatalf("expected the run to fail, got %s", reloaded.Status)
+	}
+
+	errorRuns, _, err := env.automation.ListRuns(context.Background(), env.adminPrincipal, ListRunsParams{OrganizationID: env.orgID, JobID: errorJob.ID}, sdb.ListParams{Sort: "queued_at", Order: "desc", Limit: 10})
+	if err != nil {
+		t.Fatalf("list error job runs: %v", err)
+	}
+	if len(errorRuns) != 1 {
+		t.Fatalf("expected exactly one run queued for the error workflow, got %d: %+v", len(errorRuns), errorRuns)
+	}
+	if !strings.Contains(errorRuns[0].TriggerPayload, `"job_id":"`+job.ID+`"`) {
+		t.Fatalf("expected the error workflow's run to carry the failing job's id, got %q", errorRuns[0].TriggerPayload)
+	}
+	if !strings.Contains(errorRuns[0].TriggerPayload, `"run_id":"`+run.ID+`"`) {
+		t.Fatalf("expected the error workflow's run to carry the failing run's id, got %q", errorRuns[0].TriggerPayload)
+	}
+}
+
+// TestFinishCloudRunDoesNotCascadeAnErrorWorkflowsOwnFailure is the
+// anti-loop guard: a run whose own TriggerPayload already carries the
+// error_trigger marker (meaning it was itself an error-workflow run) must
+// not queue yet another cascading run, even if it has its own
+// ErrorWorkflowJobID configured.
+func TestFinishCloudRunDoesNotCascadeAnErrorWorkflowsOwnFailure(t *testing.T) {
+	env := newTestEnv(t)
+	errorJob, err := env.automation.CreateJob(context.Background(), env.adminPrincipal, CreateJobParams{
+		OrganizationID: env.orgID, Name: "Error handler", TriggerType: TriggerTypeInterval,
+		IntervalSeconds: 3600, ExecutionTarget: ExecutionTargetCloud, ModelOverride: "anthropic:claude-sonnet-5",
+		Prompt: "Handle the failure.",
+	})
+	if err != nil {
+		t.Fatalf("create error job: %v", err)
+	}
+	job, err := env.automation.CreateJob(context.Background(), env.adminPrincipal, CreateJobParams{
+		OrganizationID: env.orgID, Name: "Main job", TriggerType: TriggerTypeInterval,
+		IntervalSeconds: 3600, ExecutionTarget: ExecutionTargetCloud, ModelOverride: "anthropic:claude-sonnet-5",
+		Prompt: "Do work.", ErrorWorkflowJobID: errorJob.ID,
+	})
+	if err != nil {
+		t.Fatalf("create job: %v", err)
+	}
+
+	// Simulate a run of `job` that was itself already triggered by some
+	// other job's failure - TriggerJobNow never produces this shape, so
+	// it's constructed directly, matching this run's real eventual DB shape.
+	runID, err := newID("run")
+	if err != nil {
+		t.Fatalf("new run id: %v", err)
+	}
+	run := sdb.JobRun{
+		ID: runID, JobID: job.ID, OrganizationID: env.orgID, ExecutionTarget: ExecutionTargetCloud,
+		Status: RunStatusRunning, QueuedAt: time.Now().UTC(),
+		TriggerPayload: `{"error_trigger":{"job_id":"some-other-job","run_id":"some-other-run","error":"upstream boom"}}`,
+	}
+	if err := env.db.Gorm().Create(&run).Error; err != nil {
+		t.Fatalf("seed run: %v", err)
+	}
+
+	if err := env.automation.finishCloudRun(context.Background(), run.ID, RunStatusFailed, "", "boom", nil); err != nil {
+		t.Fatalf("finishCloudRun: %v", err)
+	}
+
+	errorRuns, _, err := env.automation.ListRuns(context.Background(), env.adminPrincipal, ListRunsParams{OrganizationID: env.orgID, JobID: errorJob.ID}, sdb.ListParams{Sort: "queued_at", Order: "desc", Limit: 10})
+	if err != nil {
+		t.Fatalf("list error job runs: %v", err)
+	}
+	if len(errorRuns) != 0 {
+		t.Fatalf("expected no cascading run to be queued for an already-error-triggered failure, got %d: %+v", len(errorRuns), errorRuns)
 	}
 }
 

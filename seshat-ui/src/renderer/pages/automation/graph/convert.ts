@@ -1,6 +1,6 @@
 import type { Edge } from '@xyflow/react'
 import type { FlowGraphNode } from './GraphNode'
-import type { DataflowDefinition, DataflowNode, UIPosition } from './types'
+import type { DataflowDefinition, DataflowNode, OnErrorMode, UIPosition } from './types'
 import { UI_POSITION_KEY } from './types'
 
 export const INPUT_HANDLE = 'in'
@@ -10,16 +10,24 @@ export const INPUT_HANDLE = 'in'
 // pkg/dataflow ships that emit on anything but "main" (see
 // pkg/dataflow/nodes/logic.go), and switch's own port set comes straight
 // from its casesOrder parameter, so a palette/canvas never needs updating
-// just because the user edited a switch node's cases.
-export function outputPortsForNode(type: string, parameters: Record<string, unknown> | undefined): string[] {
-  if (type === 'if') return ['true', 'false']
-  if (type === 'switch') {
+// just because the user edited a switch node's cases. onError is the one
+// exception to "port set is purely type-driven" - any node type gains a
+// second "error" port once its own onError is set to continueErrorOutput
+// (Tier 3.1), since retry/error-handling is cross-cutting engine behavior,
+// not a property of the node type itself.
+export function outputPortsForNode(type: string, parameters: Record<string, unknown> | undefined, onError?: OnErrorMode): string[] {
+  let ports: string[]
+  if (type === 'if') {
+    ports = ['true', 'false']
+  } else if (type === 'switch') {
     const order = Array.isArray(parameters?.casesOrder)
       ? (parameters!.casesOrder as unknown[]).filter((v): v is string => typeof v === 'string')
       : []
-    return [...order, 'default']
+    ports = [...order, 'default']
+  } else {
+    ports = ['main']
   }
-  return ['main']
+  return onError === 'continueErrorOutput' ? [...ports, 'error'] : ports
 }
 
 function nodePosition(node: DataflowNode, index: number): UIPosition {
@@ -51,7 +59,15 @@ export function definitionToFlow(def: DataflowDefinition): { nodes: FlowGraphNod
     id: n.id,
     type: 'dataflow',
     position: nodePosition(n, i),
-    data: { dfType: n.type, parameters: n.parameters ?? {}, pinnedOutput: def.pinned_data?.[n.id] },
+    data: {
+      dfType: n.type,
+      parameters: n.parameters ?? {},
+      pinnedOutput: def.pinned_data?.[n.id],
+      retryOnFail: n.retry_on_fail,
+      maxTries: n.max_tries,
+      waitBetweenTriesMs: n.wait_between_tries_ms,
+      onError: n.on_error,
+    },
   }))
 
   const edges: Edge[] = []
@@ -121,6 +137,10 @@ export function flowToDefinition(name: string, description: string, nodes: FlowG
         type: (n.data?.dfType as string) ?? 'unknown',
         parameters,
         connections: Object.keys(connections).length > 0 ? connections : undefined,
+        retry_on_fail: n.data.retryOnFail || undefined,
+        max_tries: n.data.maxTries,
+        wait_between_tries_ms: n.data.waitBetweenTriesMs,
+        on_error: n.data.onError,
       }
     }),
     pinned_data: Object.keys(pinnedData).length > 0 ? pinnedData : undefined,

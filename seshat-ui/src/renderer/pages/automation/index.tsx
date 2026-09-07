@@ -86,6 +86,10 @@ type Job = {
   graph?: DataflowDefinition
   model_override?: string
   configuration?: Record<string, string>
+  // Tier 3.1 - another job in the same organization to run automatically
+  // when this one's own run fails (n8n's "Error Workflow"). Undefined/empty
+  // means none configured.
+  error_workflow_job_id?: string
 }
 
 // Automation is its own home, separate from Scheduling, though both are
@@ -132,6 +136,12 @@ export function AutomationPage() {
 
   const [graph, setGraph] = useState<DataflowDefinition | null>(null)
   const [webhookToken, setWebhookToken] = useState('')
+  // Tier 3.1's "Error Workflow" - '' means none configured. otherJobs is a
+  // separate fetch/state from Overview's own `jobs` (that one only loads
+  // `if (isOverview)`), scoped to organizationId and excluding this job's
+  // own id, so the two lists' loading/error handling stay independent.
+  const [errorWorkflowJobId, setErrorWorkflowJobId] = useState('')
+  const [otherJobs, setOtherJobs] = useState<Job[]>([])
   const currentOrganizationId = useOrganizationStore((s) => s.currentOrganizationId)
   // The *effective* org id: a saved job's own organization_id once loaded
   // (set below), or the caller's current/default organization before that -
@@ -257,8 +267,12 @@ export function AutomationPage() {
       api.get<{ variables: { name: string }[] }>(`/variables?organization_id=${encodeURIComponent(organizationId)}`)
         .then((res) => setVariableNames((res.variables ?? []).map((v) => v.name)))
         .catch(() => {})
+      // Tier 3.1 - candidates for this job's own "Error workflow" setting.
+      api.get<{ jobs: Job[] }>(`/jobs?organization_id=${encodeURIComponent(organizationId)}`)
+        .then((res) => setOtherJobs((res.jobs ?? []).filter((j) => j.id !== jobId)))
+        .catch(() => {})
     }
-  }, [isOverview, organizationId])
+  }, [isOverview, organizationId, jobId])
 
   // Load the existing job when editing - redirects back if it turns out to
   // be a Prompt job (this page is graph-only; Scheduling's modal owns that
@@ -292,6 +306,7 @@ export function AutomationPage() {
         setGraph(hasTriggerNode ? job.graph : { ...job.graph, nodes: [synthesizeScheduleTriggerNode(job), ...job.graph.nodes] })
         setWebhookToken(job.webhook_token ?? '')
         setOrganizationId(job.organization_id ?? '')
+        setErrorWorkflowJobId(job.error_workflow_job_id ?? '')
       })
       .catch((err) => setLoadError(err instanceof ApiError ? err.message : 'Unable to load this job.'))
       .finally(() => setLoading(false))
@@ -307,7 +322,7 @@ export function AutomationPage() {
     if (isOverview) return
     if (skipDirtyRef.current) { skipDirtyRef.current = false; return }
     setIsDirty(true)
-  }, [isOverview, name, description, executionTarget, targetDeviceId, agentSlug, selectedProviderId, selectedModelId, graph])
+  }, [isOverview, name, description, executionTarget, targetDeviceId, agentSlug, selectedProviderId, selectedModelId, graph, errorWorkflowJobId])
 
   // Blocks any in-app navigation away from an unsaved new/edited job -
   // covers the topbar back arrow and browser back/forward alike, since
@@ -415,6 +430,7 @@ export function AutomationPage() {
         // alongside Tier 3.2's organization-context work (see
         // docs/helps/audit-2026-09-04-n8n-gap-analysis.md).
         organization_id: organizationId,
+        error_workflow_job_id: errorWorkflowJobId,
         configuration: {
           ...(agentSlug ? { agent_slug: agentSlug } : {}),
           ...(selectedProviderId ? { provider_setting_id: selectedProviderId } : {}),
@@ -653,6 +669,17 @@ export function AutomationPage() {
                     <option key={m.model_id} value={m.model_id}>{m.display_name || m.model_id}</option>
                   ))}
                 </select>
+              </div>
+
+              <div className="au-field">
+                <label>Error workflow <span className="au-field-hint">(optional)</span></label>
+                <select value={errorWorkflowJobId} onChange={(e) => setErrorWorkflowJobId(e.target.value)}>
+                  <option value="">None - a failed run just stops</option>
+                  {otherJobs.map((j) => (
+                    <option key={j.id} value={j.id}>{j.name}</option>
+                  ))}
+                </select>
+                <div className="au-field-hint">Runs this other automation automatically whenever this one's own run fails.</div>
               </div>
 
               <div className="au-validation-list">

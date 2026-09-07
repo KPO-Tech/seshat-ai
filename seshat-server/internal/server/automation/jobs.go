@@ -62,8 +62,12 @@ type Job struct {
 	Graph         *dataflow.Definition `json:"graph,omitempty"`
 	ModelOverride string               `json:"model_override,omitempty"`
 	Configuration map[string]string    `json:"configuration,omitempty"`
-	CreatedAt     time.Time            `json:"created_at"`
-	UpdatedAt     time.Time            `json:"updated_at"`
+	// ErrorWorkflowJobID (Tier 3.1) is another job in this organization to
+	// queue a run for whenever this job's own run fails - see
+	// Service.triggerErrorWorkflowIfConfigured.
+	ErrorWorkflowJobID *string   `json:"error_workflow_job_id,omitempty"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
 }
 
 // jobTriggerParams is the mutable trigger/target/payload shape shared by
@@ -97,6 +101,9 @@ type CreateJobParams struct {
 	Graph           *dataflow.Definition `json:"graph"`
 	ModelOverride   string               `json:"model_override"`
 	Configuration   map[string]string    `json:"configuration"`
+	// ErrorWorkflowJobID (Tier 3.1) is error-handling config, not a trigger
+	// concern - kept separate from jobTriggerParams (see normalizeErrorWorkflowJobID).
+	ErrorWorkflowJobID string `json:"error_workflow_job_id"`
 }
 
 type UpdateJobParams struct {
@@ -112,6 +119,9 @@ type UpdateJobParams struct {
 	Graph           *dataflow.Definition `json:"graph"`
 	ModelOverride   string               `json:"model_override"`
 	Configuration   map[string]string    `json:"configuration"`
+	// See CreateJobParams.ErrorWorkflowJobID's doc comment. Empty clears any
+	// existing setting.
+	ErrorWorkflowJobID string `json:"error_workflow_job_id"`
 }
 
 // ListJobs returns jobs in an organization the caller can see. Consistent
@@ -210,6 +220,12 @@ func (s *Service) CreateJob(ctx context.Context, principal *iam.Principal, param
 				return err
 			}
 		}
+		// A brand-new job's own ID doesn't exist yet, so there's no
+		// self-reference to guard against here the way UpdateJob does.
+		errorWorkflowJobID, err := normalizeErrorWorkflowJobID(tx, organizationID, "", params.ErrorWorkflowJobID)
+		if err != nil {
+			return err
+		}
 
 		now := time.Now().UTC()
 		nextRunAt, err := computeNextRunAt(trigger, now)
@@ -241,6 +257,7 @@ func (s *Service) CreateJob(ctx context.Context, principal *iam.Principal, param
 			GraphJSON:           graphToJSON(trigger.Graph),
 			ModelOverride:       trigger.ModelOverride,
 			Configuration:       trigger.Configuration,
+			ErrorWorkflowJobID:  errorWorkflowJobID,
 			CreatedAt:           now,
 			UpdatedAt:           now,
 		}
@@ -289,7 +306,20 @@ func (s *Service) UpdateJob(ctx context.Context, principal *iam.Principal, jobID
 			return err
 		}
 
-		trigger, webhook, err := normalizeJobTrigger(jobTriggerParams(params))
+		trigger, webhook, err := normalizeJobTrigger(jobTriggerParams{
+			Name:            params.Name,
+			Description:     params.Description,
+			TriggerType:     params.TriggerType,
+			CronExpr:        params.CronExpr,
+			IntervalSeconds: params.IntervalSeconds,
+			RunAt:           params.RunAt,
+			ExecutionTarget: params.ExecutionTarget,
+			TargetDeviceID:  params.TargetDeviceID,
+			Prompt:          params.Prompt,
+			Graph:           params.Graph,
+			ModelOverride:   params.ModelOverride,
+			Configuration:   params.Configuration,
+		})
 		if err != nil {
 			return err
 		}
@@ -297,6 +327,10 @@ func (s *Service) UpdateJob(ctx context.Context, principal *iam.Principal, jobID
 			if err := validateTargetDevice(tx, record.OrganizationID, trigger.TargetDeviceID); err != nil {
 				return err
 			}
+		}
+		errorWorkflowJobID, err := normalizeErrorWorkflowJobID(tx, record.OrganizationID, record.ID, params.ErrorWorkflowJobID)
+		if err != nil {
+			return err
 		}
 
 		now := time.Now().UTC()
@@ -320,6 +354,7 @@ func (s *Service) UpdateJob(ctx context.Context, principal *iam.Principal, jobID
 		record.Configuration = trigger.Configuration
 		record.WebhookMethod = webhook.Method
 		record.WebhookResponseMode = webhook.ResponseMode
+		record.ErrorWorkflowJobID = errorWorkflowJobID
 		switch {
 		case webhook.Method == "":
 			// The graph no longer has a webhook_trigger node - revoke the
@@ -546,6 +581,32 @@ func (s *Service) waitForWebhookRun(ctx context.Context, runID string) *Run {
 	}
 	run := toRun(final)
 	return &run
+}
+
+// normalizeErrorWorkflowJobID validates a job's Tier 3.1 "Error Workflow"
+// setting: empty clears it (nil), otherwise it must reference a real job in
+// the same organization and must not be the job's own ID (selfJobID is ""
+// for a not-yet-created job, which can never collide). This is only a
+// structural safeguard - the real anti-loop guard against an error workflow
+// cascading into itself (or a longer cycle) is the TriggerPayload marker
+// check in Service.triggerErrorWorkflowIfConfigured, since a same-org cycle
+// through several jobs would still pass this simple check.
+func normalizeErrorWorkflowJobID(tx *gorm.DB, organizationID, selfJobID, raw string) (*string, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil, nil
+	}
+	if raw == selfJobID {
+		return nil, ErrInvalidInput("a job cannot be its own error workflow")
+	}
+	var count int64
+	if err := tx.Model(&sdb.ScheduledJob{}).Where("id = ? AND organization_id = ?", raw, organizationID).Count(&count).Error; err != nil {
+		return nil, err
+	}
+	if count == 0 {
+		return nil, ErrInvalidInput("error_workflow_job_id does not reference a job in this organization")
+	}
+	return &raw, nil
 }
 
 // normalizedJobTrigger is jobTriggerParams after validation/defaulting.
@@ -872,6 +933,7 @@ func toJob(record sdb.ScheduledJob) Job {
 		Graph:               graphFromJSON(record.GraphJSON),
 		ModelOverride:       record.ModelOverride,
 		Configuration:       record.Configuration,
+		ErrorWorkflowJobID:  record.ErrorWorkflowJobID,
 		CreatedAt:           record.CreatedAt,
 		UpdatedAt:           record.UpdatedAt,
 	}

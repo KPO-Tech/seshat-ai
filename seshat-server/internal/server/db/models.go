@@ -522,8 +522,15 @@ type ScheduledJob struct {
 	GraphJSON     string            `gorm:"type:text"`
 	ModelOverride string            `gorm:"size:128"`
 	Configuration map[string]string `gorm:"serializer:json;type:text"`
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	// ErrorWorkflowJobID, when set, is another ScheduledJob in the same
+	// organization to queue a run for whenever THIS job's own run fails
+	// (Tier 3.1's "Error Workflow") - see automation.Service.
+	// triggerErrorWorkflowIfConfigured. No DB-level FK, app-level integrity
+	// like every other ID reference on this model. nil (the default) means
+	// no error workflow is configured.
+	ErrorWorkflowJobID *string `gorm:"size:32"`
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
 }
 
 // ScheduledJobMailCursor stores a mail-polling node's incremental sync

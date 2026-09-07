@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -129,9 +130,19 @@ func (w *jobWorkflow) runGraph(ctx context.Context, session *sdk.Session) error 
 		"organization_id": w.organization,
 	}
 	if w.triggerPayload != "" {
-		var webhookPayload any
-		if err := json.Unmarshal([]byte(w.triggerPayload), &webhookPayload); err == nil {
-			seedItem["webhook"] = webhookPayload
+		var raw map[string]any
+		if err := json.Unmarshal([]byte(w.triggerPayload), &raw); err == nil {
+			if errorTrigger, ok := raw["error_trigger"]; ok {
+				// Tier 3.1's Error Workflow - the only place TriggerPayload
+				// is ever stored wrapped under a key like this (a webhook's
+				// own TriggerPayload is the unwrapped {body,headers,query}
+				// object itself) - see triggerErrorWorkflowIfConfigured,
+				// which builds this shape, and its own doc comment for why
+				// the wrapper exists (an unambiguous anti-loop marker).
+				seedItem["error_trigger"] = errorTrigger
+			} else {
+				seedItem["webhook"] = raw
+			}
 		}
 	}
 	seed := []dataflow.Item{seedItem}
@@ -404,9 +415,10 @@ func (s *Service) executeCloudRun(ctx context.Context, runID string) error {
 }
 
 func (s *Service) finishCloudRun(ctx context.Context, runID, status, outputText, errorText string, nodeTrace []sdb.NodeTraceEntry) error {
-	return s.db.Transaction(func(tx *gorm.DB) error {
+	var record sdb.JobRun
+	var applied bool
+	err := s.db.Transaction(func(tx *gorm.DB) error {
 		tx = tx.WithContext(ctx)
-		var record sdb.JobRun
 		if err := tx.First(&record, "id = ?", runID).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return nil
@@ -435,8 +447,78 @@ func (s *Service) finishCloudRun(ctx context.Context, runID, status, outputText,
 		if result.RowsAffected == 0 {
 			return nil
 		}
+		applied = true
 		return reflectRunOutcomeOnJob(tx, record)
 	})
+	if err != nil {
+		return err
+	}
+	// Tier 3.1's Error Workflow - deliberately outside the transaction
+	// above (a failure to queue it must never roll back the failure record
+	// that just committed) and only when this call actually just applied a
+	// failed status (not e.g. a no-op on an already-cancelled run).
+	if applied && status == RunStatusFailed {
+		s.triggerErrorWorkflowIfConfigured(ctx, record, errorText)
+	}
+	return nil
+}
+
+// triggerErrorWorkflowIfConfigured queues a run for the failing job's
+// configured "Error Workflow" (Tier 3.1), if any - best-effort: any failure
+// here (job lookup, queueing) is only logged, never propagated, since the
+// original run's own failure is already durably committed by the time this
+// runs (see finishCloudRun). Anti-loop guard: a run whose own
+// TriggerPayload already carries the error_trigger marker (meaning THIS run
+// was itself an error-workflow run) never triggers another one - a
+// same-organization cycle through several jobs would still pass
+// normalizeErrorWorkflowJobID's simple self-reference check at save time,
+// so this marker at trigger time is the real guard.
+func (s *Service) triggerErrorWorkflowIfConfigured(ctx context.Context, run sdb.JobRun, errorText string) {
+	if strings.Contains(run.TriggerPayload, `"error_trigger"`) {
+		return
+	}
+	tx := s.db.Gorm().WithContext(ctx)
+	var job sdb.ScheduledJob
+	if err := tx.First(&job, "id = ?", run.JobID).Error; err != nil {
+		return
+	}
+	if job.ErrorWorkflowJobID == nil || *job.ErrorWorkflowJobID == "" {
+		return
+	}
+	var errorJob sdb.ScheduledJob
+	if err := tx.First(&errorJob, "id = ? AND organization_id = ?", *job.ErrorWorkflowJobID, job.OrganizationID).Error; err != nil {
+		log.Printf("[automation] error workflow lookup failed for job %s: %v", job.ID, err)
+		return
+	}
+	payload, err := json.Marshal(map[string]any{
+		"error_trigger": map[string]any{
+			"job_id": job.ID, "job_name": job.Name, "run_id": run.ID, "error": errorText, "last_node_executed": lastFailedNodeID(run.NodeTrace),
+		},
+	})
+	if err != nil {
+		log.Printf("[automation] failed to build error workflow payload for job %s: %v", job.ID, err)
+		return
+	}
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		_, err := queueRunForJob(tx, errorJob, time.Now().UTC(), string(payload))
+		return err
+	})
+	if err != nil {
+		log.Printf("[automation] failed to queue error workflow run for job %s: %v", job.ID, err)
+	}
+}
+
+// lastFailedNodeID returns the id of the last node in trace order that
+// didn't succeed, mirroring n8n's own execution.lastNodeExecuted - "" if
+// trace is empty (a failure that happened before the graph ever ran, e.g.
+// no provider credentials configured).
+func lastFailedNodeID(trace []sdb.NodeTraceEntry) string {
+	for i := len(trace) - 1; i >= 0; i-- {
+		if !trace[i].Success {
+			return trace[i].ID
+		}
+	}
+	return ""
 }
 
 func (s *Service) markCloudRunFailed(ctx context.Context, runID, reason string) error {

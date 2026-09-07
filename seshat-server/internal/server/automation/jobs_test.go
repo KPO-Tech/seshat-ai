@@ -116,6 +116,99 @@ func TestCreateJobValidatesExecutionTarget(t *testing.T) {
 	}
 }
 
+// TestCreateJobValidatesErrorWorkflowJobID covers Tier 3.1's "Error
+// Workflow" job-level setting: it must reference a real job in the same
+// organization.
+func TestCreateJobValidatesErrorWorkflowJobID(t *testing.T) {
+	env := newTestEnv(t)
+
+	if _, err := env.automation.CreateJob(context.Background(), env.adminPrincipal, CreateJobParams{
+		OrganizationID: env.orgID, Name: "Main job", TriggerType: TriggerTypeInterval,
+		IntervalSeconds: 60, ExecutionTarget: ExecutionTargetCloud, ModelOverride: "anthropic:claude-sonnet-5",
+		Prompt: "Do work.", ErrorWorkflowJobID: "job-does-not-exist",
+	}); err == nil {
+		t.Fatal("expected an error_workflow_job_id that doesn't reference a real job to be rejected")
+	}
+
+	errorJob, err := env.automation.CreateJob(context.Background(), env.adminPrincipal, CreateJobParams{
+		OrganizationID: env.orgID, Name: "Error handler", TriggerType: TriggerTypeInterval,
+		IntervalSeconds: 60, ExecutionTarget: ExecutionTargetCloud, ModelOverride: "anthropic:claude-sonnet-5",
+		Prompt: "Handle the failure.",
+	})
+	if err != nil {
+		t.Fatalf("create error job: %v", err)
+	}
+
+	job, err := env.automation.CreateJob(context.Background(), env.adminPrincipal, CreateJobParams{
+		OrganizationID: env.orgID, Name: "Main job", TriggerType: TriggerTypeInterval,
+		IntervalSeconds: 60, ExecutionTarget: ExecutionTargetCloud, ModelOverride: "anthropic:claude-sonnet-5",
+		Prompt: "Do work.", ErrorWorkflowJobID: errorJob.ID,
+	})
+	if err != nil {
+		t.Fatalf("expected a valid error_workflow_job_id to be accepted: %v", err)
+	}
+	if job.ErrorWorkflowJobID == nil || *job.ErrorWorkflowJobID != errorJob.ID {
+		t.Fatalf("expected ErrorWorkflowJobID to round-trip, got %#v", job.ErrorWorkflowJobID)
+	}
+}
+
+// TestUpdateJobRejectsErrorWorkflowJobIDSelfReference covers the structural
+// self-reference guard on normalizeErrorWorkflowJobID - the real anti-loop
+// guard against a longer cascade is TriggerPayload's marker at trigger
+// time (see cloud_execution_test.go), but a job pointing directly at
+// itself is caught here immediately, at save time.
+func TestUpdateJobRejectsErrorWorkflowJobIDSelfReference(t *testing.T) {
+	env := newTestEnv(t)
+	job, err := env.automation.CreateJob(context.Background(), env.adminPrincipal, CreateJobParams{
+		OrganizationID: env.orgID, Name: "Main job", TriggerType: TriggerTypeInterval,
+		IntervalSeconds: 60, ExecutionTarget: ExecutionTargetCloud, ModelOverride: "anthropic:claude-sonnet-5",
+		Prompt: "Do work.",
+	})
+	if err != nil {
+		t.Fatalf("create job: %v", err)
+	}
+	if _, err := env.automation.UpdateJob(context.Background(), env.adminPrincipal, job.ID, UpdateJobParams{
+		Name: job.Name, TriggerType: TriggerTypeInterval, IntervalSeconds: 60,
+		ExecutionTarget: ExecutionTargetCloud, ModelOverride: "anthropic:claude-sonnet-5",
+		Prompt: "Do work.", ErrorWorkflowJobID: job.ID,
+	}); err == nil {
+		t.Fatal("expected a job referencing itself as its own error workflow to be rejected")
+	}
+}
+
+// TestUpdateJobClearsErrorWorkflowJobID proves an empty value clears an
+// already-configured setting rather than being ignored.
+func TestUpdateJobClearsErrorWorkflowJobID(t *testing.T) {
+	env := newTestEnv(t)
+	errorJob, err := env.automation.CreateJob(context.Background(), env.adminPrincipal, CreateJobParams{
+		OrganizationID: env.orgID, Name: "Error handler", TriggerType: TriggerTypeInterval,
+		IntervalSeconds: 60, ExecutionTarget: ExecutionTargetCloud, ModelOverride: "anthropic:claude-sonnet-5",
+		Prompt: "Handle the failure.",
+	})
+	if err != nil {
+		t.Fatalf("create error job: %v", err)
+	}
+	job, err := env.automation.CreateJob(context.Background(), env.adminPrincipal, CreateJobParams{
+		OrganizationID: env.orgID, Name: "Main job", TriggerType: TriggerTypeInterval,
+		IntervalSeconds: 60, ExecutionTarget: ExecutionTargetCloud, ModelOverride: "anthropic:claude-sonnet-5",
+		Prompt: "Do work.", ErrorWorkflowJobID: errorJob.ID,
+	})
+	if err != nil {
+		t.Fatalf("create job: %v", err)
+	}
+	updated, err := env.automation.UpdateJob(context.Background(), env.adminPrincipal, job.ID, UpdateJobParams{
+		Name: job.Name, TriggerType: TriggerTypeInterval, IntervalSeconds: 60,
+		ExecutionTarget: ExecutionTargetCloud, ModelOverride: "anthropic:claude-sonnet-5",
+		Prompt: "Do work.", ErrorWorkflowJobID: "",
+	})
+	if err != nil {
+		t.Fatalf("update job: %v", err)
+	}
+	if updated.ErrorWorkflowJobID != nil {
+		t.Fatalf("expected an empty error_workflow_job_id to clear the setting, got %#v", updated.ErrorWorkflowJobID)
+	}
+}
+
 func TestJobManagementRequiresPermission(t *testing.T) {
 	env := newTestEnv(t)
 	viewerPrincipal := env.addMember(t, "viewer")

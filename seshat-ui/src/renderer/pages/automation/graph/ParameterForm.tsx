@@ -7,6 +7,7 @@ import { WebhookLastCall } from './WebhookLastCall'
 import { ExpressionField, type SiblingNode } from './ExpressionField'
 import { PinnedOutputField } from './PinnedOutputField'
 import { TestNodeField } from './TestNodeField'
+import { RetrySettingsField, type RetrySettingsValue } from './RetrySettingsField'
 import type { TestStatus, TestRunNodeResult } from './GraphNode'
 import { NEXUS_BASE } from '@/api/client'
 import type { NodeProperty } from './types'
@@ -38,6 +39,9 @@ type Props = {
   // Node-level, not a parameter - see PinnedOutputField.
   pinnedOutput: Record<string, unknown>[] | undefined
   onPinnedOutputChange: (next: Record<string, unknown>[] | undefined) => void
+  // Node-level, not a parameter - see RetrySettingsField (Tier 3.1).
+  retrySettings: RetrySettingsValue
+  onRetrySettingsChange: (next: RetrySettingsValue) => void
   // "Test this node" (Tier 2.4) - see TestNodeField.
   canTestNode: boolean
   testStatus: TestStatus | undefined
@@ -87,7 +91,7 @@ function passesDisplayIf(prop: NodeProperty, drafts: Record<string, string | boo
 // the SDK's own comments - and any future type shipped before its schema
 // is written). Consumers should mount this with `key={nodeId}` so switching
 // the selected node resets the local draft instead of merging stale state.
-export function ParameterForm({ nodeType, nodeId, parameters, properties, jobId, webhookToken, organizationId, variableNames, siblingNodes, pinnedOutput, onPinnedOutputChange, canTestNode, testStatus, testResult, testStale, onTestNode, onSave, onDelete, onDuplicate }: Props) {
+export function ParameterForm({ nodeType, nodeId, parameters, properties, jobId, webhookToken, organizationId, variableNames, siblingNodes, pinnedOutput, onPinnedOutputChange, retrySettings, onRetrySettingsChange, canTestNode, testStatus, testResult, testStale, onTestNode, onSave, onDelete, onDuplicate }: Props) {
   const clean = stripUIPosition(parameters)
   const hasSchema = !!properties && properties.length > 0
 
@@ -167,6 +171,7 @@ export function ParameterForm({ nodeType, nodeId, parameters, properties, jobId,
   return (
     <>
       <PinnedOutputField nodeId={nodeId} jobId={jobId} value={pinnedOutput} onChange={onPinnedOutputChange} />
+      <RetrySettingsField value={retrySettings} onChange={onRetrySettingsChange} />
       <TestNodeField canTest={canTestNode} status={testStatus} result={testResult} stale={testStale} onTest={onTestNode} />
       {hasSchema ? (
         <div className="gf-form">

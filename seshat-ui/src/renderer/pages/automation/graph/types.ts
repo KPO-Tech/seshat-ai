@@ -4,11 +4,24 @@
 // API unchanged; GraphEditor converts between this and React Flow's own
 // node/edge model (see convert.ts).
 
+// OnErrorMode mirrors the SDK's Node.OnError string values (Tier 3.1) -
+// "" (absent) means today's default (stop the run) and is never sent
+// explicitly, only the two opt-in modes below are.
+export type OnErrorMode = 'continueRegularOutput' | 'continueErrorOutput'
+
 export type DataflowNode = {
   id: string
   type: string
   parameters?: Record<string, unknown>
   connections?: Record<string, string[]>
+  // Retry/OnError (Tier 3.1) - real production behavior, so these are
+  // siblings of parameters/connections here too, matching the SDK's own
+  // Node shape exactly (see pkg/dataflow's types.go) rather than a
+  // PinnedData-style side map.
+  retry_on_fail?: boolean
+  max_tries?: number
+  wait_between_tries_ms?: number
+  on_error?: OnErrorMode
 }
 
 export type DataflowDefinition = {
