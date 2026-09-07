@@ -8,6 +8,7 @@ import {
   Right,
   Delete,
   Edit,
+  Time,
   History,
   Shield,
   SunOne,
@@ -211,6 +212,15 @@ export function Sidebar() {
           />
           {!inProjectContext && (
             <>
+              {connected && (
+                <SidebarItem
+                  icon={<Time theme="outline" size={16} />}
+                  label="Scheduling"
+                  collapsed={collapsed}
+                  active={pathname === '/scheduling'}
+                  onClick={() => navigate('/scheduling')}
+                />
+              )}
               <SidebarItem
                 icon={<Browser theme="outline" size={16} />}
                 label="Apps"

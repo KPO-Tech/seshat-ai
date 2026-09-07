@@ -31,10 +31,9 @@ type AppEntry = {
   icon: React.ReactNode
   tone: string
   highlights: string[]
-  // Same gate Sidebar.tsx's own former "Scheduling" nav item had - cloud-
-  // scheduled jobs need a real connected seshat-server, not just this
-  // desktop app running standalone/local. Moved here verbatim rather than
-  // relaxed, per the "nothing changes except location" ask.
+  // Same gate Sidebar.tsx's own "Scheduling" nav item has - saved
+  // automations need a real connected seshat-server, not just this desktop
+  // app running standalone/local.
   requiresConnected?: boolean
 }
 
@@ -97,8 +96,8 @@ const APPS: AppEntry[] = [
   {
     id: 'automation',
     title: 'Automation',
-    description: 'Build and schedule graph-based workflows - triggers, HTTP calls, data transforms, and agent steps, with pinned test data and per-node testing.',
-    route: '/scheduling',
+    description: 'Build graph-based workflows - triggers, HTTP calls, data transforms, and agent steps, with pinned test data and per-node testing.',
+    route: '/automation',
     status: 'ready',
     category: 'agentic',
     icon: <Robot size={32} />,
