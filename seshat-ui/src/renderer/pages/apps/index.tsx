@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 import {
   Book,
@@ -8,15 +8,18 @@ import {
   Peoples,
   PlayOne,
   Time,
+  Robot,
   Workbench,
   Mail,
   SmilingFace,
 } from '@icon-park/react'
 import { StatusBadge, STATUS_BADGE_CSS } from '@/components/ui/StatusBadge'
+import { api } from '@/api/client'
 
 type AppStatus = 'ready' | 'planned'
 type AppCategory = 'all' | 'core' | 'agentic'
 type ViewMode = 'grid' | 'list'
+type SystemStatus = { mode: 'standalone' | 'connected'; server_url?: string }
 
 type AppEntry = {
   id: string
@@ -28,6 +31,11 @@ type AppEntry = {
   icon: React.ReactNode
   tone: string
   highlights: string[]
+  // Same gate Sidebar.tsx's own former "Scheduling" nav item had - cloud-
+  // scheduled jobs need a real connected seshat-server, not just this
+  // desktop app running standalone/local. Moved here verbatim rather than
+  // relaxed, per the "nothing changes except location" ask.
+  requiresConnected?: boolean
 }
 
 const APPS: AppEntry[] = [
@@ -86,6 +94,18 @@ const APPS: AppEntry[] = [
     tone: 'companion',
     highlights: ['Illustrated avatars', 'Custom system prompts', 'Your own agent roster'],
   },
+  {
+    id: 'automation',
+    title: 'Automation',
+    description: 'Build and schedule graph-based workflows - triggers, HTTP calls, data transforms, and agent steps, with pinned test data and per-node testing.',
+    route: '/scheduling',
+    status: 'ready',
+    category: 'agentic',
+    icon: <Robot size={32} />,
+    tone: 'workflow',
+    highlights: ['Visual graph editor', 'Cron/interval/webhook triggers', 'Test nodes before you save'],
+    requiresConnected: true,
+  },
 ]
 
 const FILTERS: Array<{ id: AppCategory; label: string }> = [
@@ -99,10 +119,18 @@ export function AppsPage() {
   const [category, setCategory] = useState<AppCategory>('all')
   const [selectedId, setSelectedId] = useState('knowledge')
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
-  const selected = APPS.find((app) => app.id === selectedId) ?? APPS[0]
+  const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null)
+
+  useEffect(() => {
+    api.get<SystemStatus>('/system/status').then(setSystemStatus).catch(() => setSystemStatus(null))
+  }, [])
+  const connected = systemStatus?.mode === 'connected'
+
+  const apps = useMemo(() => APPS.filter((app) => !app.requiresConnected || connected), [connected])
+  const selected = apps.find((app) => app.id === selectedId) ?? apps[0]
   const visibleApps = useMemo(
-    () => APPS.filter((app) => category === 'all' || app.category === category),
-    [category],
+    () => apps.filter((app) => category === 'all' || app.category === category),
+    [apps, category],
   )
 
   function select(app: AppEntry) {
