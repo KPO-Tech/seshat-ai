@@ -529,8 +529,12 @@ type ScheduledJob struct {
 	// like every other ID reference on this model. nil (the default) means
 	// no error workflow is configured.
 	ErrorWorkflowJobID *string `gorm:"size:32"`
-	CreatedAt          time.Time
-	UpdatedAt          time.Time
+	// Tags (Tier 3.4) - free-text labels for organizing Overview's flat job
+	// list once an organization has more than a handful of automations. Same
+	// JSON-serializer convention as Corpus.Tags. nil/empty means untagged.
+	Tags      []string `gorm:"serializer:json;type:text"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 // ScheduledJobMailCursor stores a mail-polling node's incremental sync

@@ -74,6 +74,11 @@ export function AutomationPage() {
 
   const [name, setName] = useState('Untitled automation')
   const [description, setDescription] = useState('')
+  // Tier 3.4 - kept as a single comma-separated draft string, matching this
+  // form's other plain-<input> fields, rather than a chip/pill editor this
+  // codebase has no precedent for. Parsed to string[] only at save time
+  // (see handleSave).
+  const [tags, setTags] = useState('')
   const [executionTarget, setExecutionTarget] = useState<ExecutionTarget>('cloud')
   const [targetDeviceId, setTargetDeviceId] = useState('')
   const [agentSlug, setAgentSlug] = useState('')
@@ -259,6 +264,7 @@ export function AutomationPage() {
         skipDirtyRef.current = true
         setName(job.name)
         setDescription(job.description ?? '')
+        setTags((job.tags ?? []).join(', '))
         setExecutionTarget(job.execution_target)
         setTargetDeviceId(job.target_device_id ?? '')
         setAgentSlug(job.configuration?.agent_slug ?? '')
@@ -318,7 +324,7 @@ export function AutomationPage() {
     if (isOverview) return
     if (skipDirtyRef.current) { skipDirtyRef.current = false; return }
     setIsDirty(true)
-  }, [isOverview, name, description, executionTarget, targetDeviceId, agentSlug, selectedProviderId, selectedModelId, graph, errorWorkflowJobId])
+  }, [isOverview, name, description, executionTarget, targetDeviceId, agentSlug, selectedProviderId, selectedModelId, graph, errorWorkflowJobId, tags])
 
   // Blocks any in-app navigation away from an unsaved new/edited job -
   // covers the topbar back arrow and browser back/forward alike, since
@@ -427,6 +433,7 @@ export function AutomationPage() {
         // docs/helps/audit-2026-09-04-n8n-gap-analysis.md).
         organization_id: organizationId,
         error_workflow_job_id: errorWorkflowJobId,
+        tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
         configuration: {
           ...(agentSlug ? { agent_slug: agentSlug } : {}),
           ...(selectedProviderId ? { provider_setting_id: selectedProviderId } : {}),
@@ -610,6 +617,12 @@ export function AutomationPage() {
               <div className="au-field">
                 <label>Description (optional)</label>
                 <input value={description} onChange={(e) => setDescription(e.target.value)} />
+              </div>
+
+              <div className="au-field">
+                <label>Tags <span className="au-field-hint">(optional)</span></label>
+                <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="finance, reporting" />
+                <div className="au-field-hint">Comma-separated - used to search and filter Overview.</div>
               </div>
 
               <div className="au-field">

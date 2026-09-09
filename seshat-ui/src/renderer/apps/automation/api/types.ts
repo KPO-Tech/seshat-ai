@@ -29,6 +29,11 @@ export type AutomationJob = {
   model_override?: string
   configuration?: Record<string, string>
   error_workflow_job_id?: string
+  // Tier 3.4 - free-text labels for Overview's search/filter.
+  tags?: string[]
+  // Already returned by the API (automation.Job.UpdatedAt) - just never
+  // modeled here until Overview needed to show it (Tier 3.4).
+  updated_at?: string
 }
 
 // Tier 3.3 - a Seshat-authored starting point for a new automation (see

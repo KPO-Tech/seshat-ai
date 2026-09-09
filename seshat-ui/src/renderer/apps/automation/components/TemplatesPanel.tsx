@@ -82,7 +82,7 @@ export function TemplatesPanel({ nodeTypes }: Props) {
             spellCheck={false}
           />
         </div>
-        <select className="au-var-input" value={category} onChange={(e) => setCategory(e.target.value)}>
+        <select className="au-templates-category-select" value={category} onChange={(e) => setCategory(e.target.value)}>
           <option value="">All categories</option>
           {categories.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
@@ -186,6 +186,16 @@ const TEMPLATES_PANEL_CSS = `
   background: none;
   border: none;
   outline: none;
+  color: var(--color-text);
+  font-size: var(--font-size-xs);
+}
+
+.au-templates-category-select {
+  height: 32px;
+  padding: 0 9px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
   color: var(--color-text);
   font-size: var(--font-size-xs);
 }

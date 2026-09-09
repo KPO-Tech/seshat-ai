@@ -26,6 +26,7 @@ type createJobRequest struct {
 	ModelOverride      string               `json:"model_override"`
 	Configuration      map[string]string    `json:"configuration"`
 	ErrorWorkflowJobID string               `json:"error_workflow_job_id"`
+	Tags               []string             `json:"tags"`
 }
 
 type updateJobRequest struct {
@@ -42,6 +43,7 @@ type updateJobRequest struct {
 	ModelOverride      string               `json:"model_override"`
 	Configuration      map[string]string    `json:"configuration"`
 	ErrorWorkflowJobID string               `json:"error_workflow_job_id"`
+	Tags               []string             `json:"tags"`
 }
 
 func (app *App) handleJobs(w http.ResponseWriter, r *http.Request) {
@@ -80,6 +82,7 @@ func (app *App) handleJobs(w http.ResponseWriter, r *http.Request) {
 			ModelOverride:      req.ModelOverride,
 			Configuration:      req.Configuration,
 			ErrorWorkflowJobID: req.ErrorWorkflowJobID,
+			Tags:               req.Tags,
 		})
 		if err != nil {
 			writeAutomationError(w, err)
@@ -130,6 +133,7 @@ func (app *App) handleJobByID(w http.ResponseWriter, r *http.Request) {
 			ModelOverride:      req.ModelOverride,
 			Configuration:      req.Configuration,
 			ErrorWorkflowJobID: req.ErrorWorkflowJobID,
+			Tags:               req.Tags,
 		})
 		if err != nil {
 			writeAutomationError(w, err)

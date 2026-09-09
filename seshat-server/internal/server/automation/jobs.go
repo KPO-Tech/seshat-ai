@@ -65,9 +65,11 @@ type Job struct {
 	// ErrorWorkflowJobID (Tier 3.1) is another job in this organization to
 	// queue a run for whenever this job's own run fails - see
 	// Service.triggerErrorWorkflowIfConfigured.
-	ErrorWorkflowJobID *string   `json:"error_workflow_job_id,omitempty"`
-	CreatedAt          time.Time `json:"created_at"`
-	UpdatedAt          time.Time `json:"updated_at"`
+	ErrorWorkflowJobID *string `json:"error_workflow_job_id,omitempty"`
+	// Tags (Tier 3.4) - free-text labels for Overview's search/filter.
+	Tags      []string  `json:"tags,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // jobTriggerParams is the mutable trigger/target/payload shape shared by
@@ -104,6 +106,10 @@ type CreateJobParams struct {
 	// ErrorWorkflowJobID (Tier 3.1) is error-handling config, not a trigger
 	// concern - kept separate from jobTriggerParams (see normalizeErrorWorkflowJobID).
 	ErrorWorkflowJobID string `json:"error_workflow_job_id"`
+	// Tags (Tier 3.4) - free-text labels for Overview's search/filter, also
+	// kept separate from jobTriggerParams since they're organizational
+	// metadata, not trigger config.
+	Tags []string `json:"tags"`
 }
 
 type UpdateJobParams struct {
@@ -122,6 +128,9 @@ type UpdateJobParams struct {
 	// See CreateJobParams.ErrorWorkflowJobID's doc comment. Empty clears any
 	// existing setting.
 	ErrorWorkflowJobID string `json:"error_workflow_job_id"`
+	// See CreateJobParams.Tags's doc comment. Empty/omitted clears any
+	// existing tags.
+	Tags []string `json:"tags"`
 }
 
 // ListJobs returns jobs in an organization the caller can see. Consistent
@@ -258,6 +267,7 @@ func (s *Service) CreateJob(ctx context.Context, principal *iam.Principal, param
 			ModelOverride:       trigger.ModelOverride,
 			Configuration:       trigger.Configuration,
 			ErrorWorkflowJobID:  errorWorkflowJobID,
+			Tags:                normalizeTags(params.Tags),
 			CreatedAt:           now,
 			UpdatedAt:           now,
 		}
@@ -355,6 +365,7 @@ func (s *Service) UpdateJob(ctx context.Context, principal *iam.Principal, jobID
 		record.WebhookMethod = webhook.Method
 		record.WebhookResponseMode = webhook.ResponseMode
 		record.ErrorWorkflowJobID = errorWorkflowJobID
+		record.Tags = normalizeTags(params.Tags)
 		switch {
 		case webhook.Method == "":
 			// The graph no longer has a webhook_trigger node - revoke the
@@ -607,6 +618,35 @@ func normalizeErrorWorkflowJobID(tx *gorm.DB, organizationID, selfJobID, raw str
 		return nil, ErrInvalidInput("error_workflow_job_id does not reference a job in this organization")
 	}
 	return &raw, nil
+}
+
+// normalizeTags trims each tag, drops empties, and de-duplicates
+// case-insensitively (keeping the first-seen casing) - a job's free-text
+// Tier 3.4 labels. nil/empty in means nil out (untagged), never an empty
+// non-nil slice, so a job that predates this field and one explicitly
+// cleared of tags round-trip identically.
+func normalizeTags(raw []string) []string {
+	if len(raw) == 0 {
+		return nil
+	}
+	seen := make(map[string]bool, len(raw))
+	out := make([]string, 0, len(raw))
+	for _, tag := range raw {
+		tag = strings.TrimSpace(tag)
+		if tag == "" {
+			continue
+		}
+		key := strings.ToLower(tag)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, tag)
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 // normalizedJobTrigger is jobTriggerParams after validation/defaulting.
@@ -934,6 +974,7 @@ func toJob(record sdb.ScheduledJob) Job {
 		ModelOverride:       record.ModelOverride,
 		Configuration:       record.Configuration,
 		ErrorWorkflowJobID:  record.ErrorWorkflowJobID,
+		Tags:                record.Tags,
 		CreatedAt:           record.CreatedAt,
 		UpdatedAt:           record.UpdatedAt,
 	}

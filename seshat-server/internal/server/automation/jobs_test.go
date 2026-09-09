@@ -209,6 +209,72 @@ func TestUpdateJobClearsErrorWorkflowJobID(t *testing.T) {
 	}
 }
 
+func TestCreateJobNormalizesTags(t *testing.T) {
+	env := newTestEnv(t)
+	job, err := env.automation.CreateJob(context.Background(), env.adminPrincipal, CreateJobParams{
+		OrganizationID: env.orgID, Name: "Tagged job", TriggerType: TriggerTypeInterval,
+		IntervalSeconds: 60, ExecutionTarget: ExecutionTargetCloud, ModelOverride: "anthropic:claude-sonnet-5",
+		Prompt: "Do work.", Tags: []string{" Finance ", "finance", "", "Reporting"},
+	})
+	if err != nil {
+		t.Fatalf("create job: %v", err)
+	}
+	if len(job.Tags) != 2 || job.Tags[0] != "Finance" || job.Tags[1] != "Reporting" {
+		t.Fatalf("expected tags to be trimmed, deduplicated case-insensitively and emptied entries dropped, got %#v", job.Tags)
+	}
+}
+
+func TestCreateJobWithoutTagsLeavesThemNil(t *testing.T) {
+	env := newTestEnv(t)
+	job, err := env.automation.CreateJob(context.Background(), env.adminPrincipal, CreateJobParams{
+		OrganizationID: env.orgID, Name: "Untagged job", TriggerType: TriggerTypeInterval,
+		IntervalSeconds: 60, ExecutionTarget: ExecutionTargetCloud, ModelOverride: "anthropic:claude-sonnet-5",
+		Prompt: "Do work.",
+	})
+	if err != nil {
+		t.Fatalf("create job: %v", err)
+	}
+	if job.Tags != nil {
+		t.Fatalf("expected no tags to stay nil, got %#v", job.Tags)
+	}
+}
+
+func TestUpdateJobReplacesAndClearsTags(t *testing.T) {
+	env := newTestEnv(t)
+	job, err := env.automation.CreateJob(context.Background(), env.adminPrincipal, CreateJobParams{
+		OrganizationID: env.orgID, Name: "Job", TriggerType: TriggerTypeInterval,
+		IntervalSeconds: 60, ExecutionTarget: ExecutionTargetCloud, ModelOverride: "anthropic:claude-sonnet-5",
+		Prompt: "Do work.", Tags: []string{"Finance"},
+	})
+	if err != nil {
+		t.Fatalf("create job: %v", err)
+	}
+
+	updated, err := env.automation.UpdateJob(context.Background(), env.adminPrincipal, job.ID, UpdateJobParams{
+		Name: job.Name, TriggerType: TriggerTypeInterval, IntervalSeconds: 60,
+		ExecutionTarget: ExecutionTargetCloud, ModelOverride: "anthropic:claude-sonnet-5",
+		Prompt: "Do work.", Tags: []string{"Support", "Urgent"},
+	})
+	if err != nil {
+		t.Fatalf("update job: %v", err)
+	}
+	if len(updated.Tags) != 2 || updated.Tags[0] != "Support" || updated.Tags[1] != "Urgent" {
+		t.Fatalf("expected tags to be replaced, got %#v", updated.Tags)
+	}
+
+	cleared, err := env.automation.UpdateJob(context.Background(), env.adminPrincipal, job.ID, UpdateJobParams{
+		Name: job.Name, TriggerType: TriggerTypeInterval, IntervalSeconds: 60,
+		ExecutionTarget: ExecutionTargetCloud, ModelOverride: "anthropic:claude-sonnet-5",
+		Prompt: "Do work.",
+	})
+	if err != nil {
+		t.Fatalf("clear tags: %v", err)
+	}
+	if cleared.Tags != nil {
+		t.Fatalf("expected omitted tags on update to clear existing ones, got %#v", cleared.Tags)
+	}
+}
+
 func TestJobManagementRequiresPermission(t *testing.T) {
 	env := newTestEnv(t)
 	viewerPrincipal := env.addMember(t, "viewer")
