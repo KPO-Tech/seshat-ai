@@ -36,8 +36,8 @@ export const TOOL_BLOCK_CSS = `
    directly attached to its body - see common.tsx's HeaderCard. ── */
 .tb-hcard {
   border: 1px solid var(--color-border-subtle);
-  border-radius: 7px;
-  background: color-mix(in srgb, var(--color-surface) 76%, var(--color-bg));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-bg) 72%, white);
   overflow: hidden;
 }
 
@@ -45,12 +45,13 @@ export const TOOL_BLOCK_CSS = `
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 8px;
-  font-size: 10px;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  color: var(--color-text-secondary);
+  padding: 7px 10px;
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 650;
+  color: var(--color-text);
   border-bottom: 1px solid var(--color-border-subtle);
-  background: color-mix(in srgb, var(--color-surface-elevated) 54%, transparent);
+  background: color-mix(in srgb, var(--color-surface-elevated) 70%, var(--color-bg));
   white-space: nowrap;
   overflow: hidden;
 }
@@ -65,13 +66,13 @@ export const TOOL_BLOCK_CSS = `
   flex-shrink: 0;
   margin-left: auto;
   padding-left: 8px;
-  font-family: inherit;
   color: var(--color-text-disabled);
-  font-size: 9.5px;
+  font-size: 10px;
+  font-weight: 500;
 }
 
 .tb-hcard-body {
-  padding: 4px;
+  padding: 0;
 }
 
 .tb-code-highlight {
@@ -377,8 +378,8 @@ export const TOOL_BLOCK_CSS = `
 .tb-links {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  max-height: 290px;
+  gap: 0;
+  max-height: 220px;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--color-border-subtle) transparent;
@@ -393,63 +394,71 @@ export const TOOL_BLOCK_CSS = `
 
 .tb-link-item {
   display: flex;
-  align-items: flex-start;
-  gap: 7px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  padding: 6px 7px;
+  align-items: center;
+  gap: 10px;
+  border: none;
+  border-bottom: 1px solid var(--color-border-subtle);
+  border-radius: 0;
+  padding: 8px 10px;
   text-decoration: none;
   background: transparent;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 
+.tb-link-item:last-child {
+  border-bottom: none;
+}
+
 .tb-link-item:hover {
-  background: var(--color-hover);
-  border-color: rgba(239, 124, 47, 0.24);
+  background: color-mix(in srgb, var(--color-accent) 7%, transparent);
 }
 
 .tb-link-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-accent) 88%, black);
   font-size: 10px;
   font-weight: 700;
-  color: var(--color-text-muted);
+  color: white;
   flex-shrink: 0;
-  padding-top: 1px;
 }
 
 .tb-link-copy {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 0;
+  flex: 1 1 auto;
   min-width: 0;
 }
 
 .tb-link-title {
-  font-size: 11.5px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--color-text);
-  line-height: 1.4;
-}
-
-.tb-link-url {
-  font-size: 10px;
-  color: var(--color-accent);
-  line-height: 1.4;
-  word-break: break-all;
-}
-
-.tb-link-snippet {
-  font-size: 10px;
-  line-height: 1.4;
-  color: var(--color-text-muted);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  line-height: 1.35;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tb-link-domain {
+  flex: 0 0 auto;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--color-text-muted);
 }
 
 .tb-links-more {
-  padding: 4px 7px 2px 24px;
-  font-size: 10px;
+  padding: 7px 10px 8px 39px;
+  border-top: 1px solid var(--color-border-subtle);
+  font-size: 11px;
   color: var(--color-text-muted);
 }
 

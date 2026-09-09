@@ -45,7 +45,7 @@ export const ToolBlock = memo(function ToolBlock({ tool, sessionId, onSubmitProm
     <>
       <style>{TOOL_BLOCK_CSS}</style>
       <style>{TOOL_LINE_CSS}</style>
-      <ToolLineItem tool={tool} onSubmitPrompt={onSubmitPrompt} />
+      <ToolLineItem tool={tool} sessionId={sessionId} onSubmitPrompt={onSubmitPrompt} />
     </>
   )
 })

@@ -27,7 +27,7 @@ export function WebSearchToolView({ tool, result, sessionId }: ToolViewProps) {
     <HeaderCard
       header={
         <>
-          <span title={query}>{query || 'Web Search'}</span>
+          <span>{Math.min(hits.length || resultCount || 0, 5) || 'No'} selected result{Math.min(hits.length || resultCount || 0, 5) === 1 ? '' : 's'}</span>
           {stat && <span className="tb-hcard-header-stat">{stat}</span>}
         </>
       }
@@ -48,12 +48,11 @@ export function WebSearchToolView({ tool, result, sessionId }: ToolViewProps) {
                 openInAppBrowser(hit.url, sessionId)
               }}
             >
-              <span className="tb-link-index">{index + 1}.</span>
+              <span className="tb-link-index">{sourceInitial(hit.title || hit.url)}</span>
               <span className="tb-link-copy">
                 <span className="tb-link-title">{hit.title || hit.url}</span>
-                <span className="tb-link-url">{hit.url}</span>
-                {hit.snippet && <span className="tb-link-snippet">{hit.snippet}</span>}
               </span>
+              <span className="tb-link-domain">{domainLabel(hit.url)}</span>
             </a>
           ))}
           {hits.length > 5 && (
@@ -69,4 +68,17 @@ export function WebSearchToolView({ tool, result, sessionId }: ToolViewProps) {
       )}
     </HeaderCard>
   )
+}
+
+function domainLabel(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return url
+  }
+}
+
+function sourceInitial(value: string): string {
+  const first = value.trim().charAt(0)
+  return first ? first.toUpperCase() : 'S'
 }

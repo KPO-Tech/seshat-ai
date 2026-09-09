@@ -58,6 +58,7 @@ export function QuietToolGroup({ items, sessionId, revealThinking = false, onSub
             <ToolLineItem
               key={tool.id}
               tool={tool}
+              sessionId={sessionId}
               onSubmitPrompt={onSubmitPrompt}
             />
           )

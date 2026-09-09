@@ -4,8 +4,9 @@ import { api } from '@/api/client'
 import { useUIStore } from '@/stores/ui'
 import type { ToolUseBlock } from '@/api/types'
 import { DiffView, resolveDiffRows } from './DiffView'
+import { fmtDuration } from './helpers'
 import { summarizeQuietGroup, toolResultSubtitle, toolStatus } from './quietGroupPhrase'
-import { categoryIcon, isEditTool, isWriteTool, renderToolBody } from './toolDisplay'
+import { categoryIcon, isEditTool, isWriteTool, renderToolBody, toolLabel } from './toolDisplay'
 import type { ToolBlockProps } from './types'
 
 // The single terse, foldable line used for every non-silent tool call,
@@ -13,16 +14,20 @@ import type { ToolBlockProps } from './types'
 // simultaneous neighbor) or nested inside a shared group (QuietToolGroup,
 // 2+ tools running back-to-back with no text between them) - both surfaces
 // render the exact same row so they can never visually drift apart.
-export function ToolLineItem({ tool, onSubmitPrompt }: {
+export function ToolLineItem({ tool, sessionId, onSubmitPrompt }: {
   tool: ToolUseBlock
+  sessionId?: string
   onSubmitPrompt?: ToolBlockProps['onSubmitPrompt']
 }) {
-  const expanded = useUIStore((s) => s.toolExpansion[tool.id] ?? false)
+  const isPreviewTool = tool.name === 'web_search' || tool.name === 'web_fetch' || tool.name === 'read_url' || tool.name === 'read_document_url'
+  const expanded = useUIStore((s) => s.toolExpansion[tool.id] ?? isPreviewTool)
   const setToolExpansion = useUIStore((s) => s.setToolExpansion)
   const status = toolStatus(tool)
   const isRunning = status === 'running' || status === 'pending'
   const isError = status === 'failed'
-  const label = summarizeQuietGroup([tool])
+  const label = isPreviewTool ? toolLabel(tool.name) : summarizeQuietGroup([tool])
+  const detail = isPreviewTool ? previewDetail(tool) : ''
+  const meta = isPreviewTool ? previewMeta(tool) : ''
   const isDiffTool = isEditTool(tool.name) || isWriteTool(tool.name)
   // The label above already reads "Wrote foo.py +12 -3" - a "12 lines"
   // subtitle under it for a diff tool is pure repetition (and once
@@ -41,7 +46,7 @@ export function ToolLineItem({ tool, onSubmitPrompt }: {
       {/* A real <button> for copy can't nest inside another <button>, so the
           row itself is a div with button semantics instead. */}
       <div
-        className="qtg-item-line"
+        className={`qtg-item-line${isPreviewTool ? ' qtg-item-line--preview' : ''}`}
         role="button"
         tabIndex={0}
         onClick={toggle}
@@ -58,7 +63,9 @@ export function ToolLineItem({ tool, onSubmitPrompt }: {
           )}
         </span>
         <span className="qtg-item-label">{label}</span>
+        {detail && <span className="qtg-item-detail" title={detail}>{detail}</span>}
         {isError && <span className="qtg-item-status qtg-item-status--failed">failed</span>}
+        {meta && <span className="qtg-item-meta">{meta}</span>}
         <button
           type="button"
           className="qtg-item-copy"
@@ -72,7 +79,7 @@ export function ToolLineItem({ tool, onSubmitPrompt }: {
         </span>
       </div>
 
-      {subtitle && !isError && (
+      {subtitle && !isError && !isPreviewTool && (
         <div className={`qtg-item-subtitle${isError ? ' qtg-item-subtitle--error' : ''}`}>{subtitle}</div>
       )}
 
@@ -86,12 +93,38 @@ export function ToolLineItem({ tool, onSubmitPrompt }: {
           {isDiffTool ? (
             <DiffContent tool={tool} />
           ) : (
-            renderToolBody({ tool, result: tool._result, status }, onSubmitPrompt)
+            renderToolBody({ tool, result: tool._result, status, sessionId }, onSubmitPrompt)
           )}
         </div>
       )}
     </div>
   )
+}
+
+function previewDetail(tool: ToolUseBlock): string {
+  if (tool.name === 'web_search') {
+    return typeof tool.input.query === 'string' ? tool.input.query : ''
+  }
+  const url = typeof tool.input.url === 'string' ? tool.input.url : ''
+  if (!url) return ''
+  try {
+    return new URL(url).hostname
+  } catch {
+    return url
+  }
+}
+
+function previewMeta(tool: ToolUseBlock): string {
+  const result = tool._result
+  const parts: string[] = []
+  const provider = result?.metadata?.provider != null ? String(result.metadata.provider) : ''
+  const resultCount = result?.metadata?.result_count != null ? Number(result.metadata.result_count) : NaN
+  if (provider) parts.push(provider)
+  if (Number.isFinite(resultCount) && resultCount > 0) {
+    parts.push(`${resultCount} result${resultCount === 1 ? '' : 's'}`)
+  }
+  if (result?.durationMs != null) parts.push(fmtDuration(result.durationMs))
+  return parts.join('  *  ')
 }
 
 function DiffContent({ tool }: { tool: ToolUseBlock }) {
@@ -171,10 +204,10 @@ export const TOOL_LINE_CSS = `
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: transparent;
-  border: none;
+  background: color-mix(in srgb, var(--color-surface) 70%, transparent);
+  border: 1px solid var(--color-border-subtle);
   border-radius: 6px;
-  padding: 3px 5px 3px 0;
+  padding: 6px 8px;
   cursor: pointer;
   color: var(--color-text-muted);
   text-align: left;
@@ -183,9 +216,15 @@ export const TOOL_LINE_CSS = `
   line-height: 1.35;
 }
 
+.qtg-item-line--preview {
+  min-height: 40px;
+  background: color-mix(in srgb, var(--color-surface-elevated) 58%, var(--color-bg));
+}
+
 .qtg-item-line:hover {
   color: var(--color-text-secondary);
-  background: color-mix(in srgb, var(--color-surface) 42%, transparent);
+  background: color-mix(in srgb, var(--color-surface-elevated) 74%, var(--color-bg));
+  border-color: color-mix(in srgb, var(--color-accent) 20%, var(--color-border-subtle));
 }
 
 .qtg-icon {
@@ -251,13 +290,30 @@ export const TOOL_LINE_CSS = `
 }
 
 .qtg-item-label {
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
   color: var(--color-text-secondary);
   font-weight: 500;
+}
+
+.qtg-item-detail {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.qtg-item-meta {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--color-text-muted);
+  font-size: 10px;
 }
 
 .qtg-item-status {
@@ -308,6 +364,7 @@ export const TOOL_LINE_CSS = `
 .qtg-item-subtitle--error { color: var(--color-error); opacity: 0.85; }
 
 .qtg-item-body {
-  padding: 4px 0 7px 22px;
+  padding: 0;
+  margin-top: 0;
 }
 `
