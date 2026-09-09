@@ -19,6 +19,7 @@ import (
 	"github.com/KPO-Tech/seshat/pkg/docling"
 	"github.com/KPO-Tech/seshat/pkg/officetext"
 	"github.com/KPO-Tech/seshat/pkg/pdftext"
+	"github.com/KPO-Tech/seshat/pkg/textquality"
 )
 
 // NativeExtensions lists formats converted locally, no docling-serve needed.
@@ -83,7 +84,7 @@ func Convert(ctx context.Context, filePath string, doclingClient *docling.Client
 
 	if NativeExtensions[ext] {
 		if data, err := os.ReadFile(filePath); err == nil {
-			if md, ok, extractErr := officetext.Extract(filePath, data); ok && extractErr == nil {
+			if md, ok, sparse, extractErr := officetext.Extract(filePath, data); ok && extractErr == nil && !sparse && !textquality.IsGarbledText(md) {
 				return Result{Markdown: md, Source: SourceNative}, true, nil
 			}
 		}
@@ -120,7 +121,7 @@ func ConvertBytes(ctx context.Context, data []byte, filename string, doclingClie
 	ext := strings.ToLower(filepath.Ext(filename))
 
 	if NativeExtensions[ext] {
-		if md, ok, extractErr := officetext.Extract(filename, data); ok && extractErr == nil {
+		if md, ok, sparse, extractErr := officetext.Extract(filename, data); ok && extractErr == nil && !sparse && !textquality.IsGarbledText(md) {
 			return Result{Markdown: md, Source: SourceNative}, true, nil
 		}
 	}
