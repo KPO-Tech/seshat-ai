@@ -25,6 +25,11 @@ export type NodeDescription = {
   category: string
   properties?: NodeProperty[]
   isTrigger?: boolean
+  // Tier 3.5 - set by the SDK's Registry.Types() via a type assertion when
+  // the node type's executor implements TestableExecutor (a SQL Ping, a
+  // Redis PING, ...). Lets the editor show a "Test connection" affordance
+  // without hardcoding a type-name list.
+  isTestable?: boolean
 }
 
 export type NodePropertyType = 'string' | 'text' | 'number' | 'boolean' | 'options' | 'json' | 'secretRef'

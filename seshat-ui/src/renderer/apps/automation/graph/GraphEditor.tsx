@@ -528,6 +528,7 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
                 nodeId={selectedNode.id}
                 parameters={selectedNode.data.parameters}
                 properties={nodeTypes.find((nt) => nt.type === selectedNode.data.dfType)?.properties}
+                isTestable={nodeTypes.find((nt) => nt.type === selectedNode.data.dfType)?.isTestable}
                 jobId={jobId}
                 webhookToken={webhookToken}
                 organizationId={organizationId}

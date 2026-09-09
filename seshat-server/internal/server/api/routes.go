@@ -152,6 +152,7 @@ func (app *App) routes() http.Handler {
 	mux.Handle("GET /api/v1/dataflow/node-types", app.authMiddleware(http.HandlerFunc(app.handleDataflowNodeTypes)))
 	mux.Handle("POST /api/v1/dataflow/preview-expression", app.authMiddleware(http.HandlerFunc(app.handleDataflowPreviewExpression)))
 	mux.Handle("POST /api/v1/dataflow/test-run", app.authMiddleware(http.HandlerFunc(app.handleDataflowTestRun)))
+	mux.Handle("POST /api/v1/dataflow/test-connection", app.authMiddleware(http.HandlerFunc(app.handleDataflowTestConnection)))
 	mux.Handle("POST /api/v1/bundles/export", app.authMiddleware(http.HandlerFunc(app.handleBundlesExport)))
 	mux.Handle("POST /api/v1/bundles/import", app.authMiddleware(http.HandlerFunc(app.handleBundlesImport)))
 	mux.Handle("GET /api/v1/bundles/provenance", app.authMiddleware(http.HandlerFunc(app.handleBundlesProvenance)))

@@ -8,6 +8,7 @@ import { ExpressionField, type SiblingNode } from './ExpressionField'
 import { PinnedOutputField } from './PinnedOutputField'
 import { TestNodeField } from './TestNodeField'
 import { RetrySettingsField, type RetrySettingsValue } from './RetrySettingsField'
+import { ConnectionTestField } from './ConnectionTestField'
 import type { TestStatus, TestRunNodeResult } from './GraphNode'
 import { NEXUS_BASE } from '@/api/client'
 import type { NodeProperty } from './types'
@@ -17,6 +18,11 @@ type Props = {
   nodeId: string
   parameters: Record<string, unknown>
   properties: NodeProperty[] | undefined
+  // From the live node-types catalog (NodeDescription.isTestable, Tier 3.5)
+  // - shows a "Test connection" affordance for node types whose executor
+  // implements the SDK's TestableExecutor. Catalog metadata, like
+  // `properties` itself - never persisted onto the node's own data.
+  isTestable?: boolean
   // Only known once the job has been saved - see the webhook_trigger URL
   // block below for why (a webhook needs a stable per-job token, minted
   // server-side on first save, not something a NodeProperty can express).
@@ -85,13 +91,56 @@ function passesDisplayIf(prop: NodeProperty, drafts: Record<string, string | boo
   return prop.displayIf.equals.includes(typeof current === 'boolean' ? String(current) : (current ?? ''))
 }
 
+// Shared by saveForm and ConnectionTestField's getParams - the same
+// per-property coercion (boolean/number/json/string) either needs, so the
+// logic lives in exactly one place. Errors are only fatal for an actual
+// save; a connection test tolerates an unrelated required field being
+// empty (e.g. a SQL node's query) since it only reads its own secretRef.
+function buildParamsFromDrafts(properties: NodeProperty[], parameters: Record<string, unknown>, drafts: Record<string, string | boolean>): { params: Record<string, unknown>; errors: Record<string, string> } {
+  const errors: Record<string, string> = {}
+  const next: Record<string, unknown> = { ...parameters }
+
+  for (const p of properties) {
+    if (!passesDisplayIf(p, drafts)) continue
+    const raw = drafts[p.name]
+
+    if (p.type === 'boolean') {
+      next[p.name] = !!raw
+      continue
+    }
+
+    const text = typeof raw === 'string' ? raw : ''
+    if (text.trim() === '') {
+      if (p.required) errors[p.name] = 'Required'
+      else delete next[p.name]
+      continue
+    }
+
+    if (p.type === 'number') {
+      const n = Number(text)
+      if (Number.isNaN(n)) errors[p.name] = 'Must be a number'
+      else next[p.name] = n
+    } else if (p.type === 'json') {
+      try {
+        next[p.name] = JSON.parse(text)
+      } catch (err) {
+        errors[p.name] = err instanceof Error ? err.message : 'Invalid JSON'
+      }
+    } else {
+      next[p.name] = text
+    }
+  }
+
+  return { params: next, errors }
+}
+
 // Real per-field form for node types whose Properties schema (from the SDK,
 // see pkg/dataflow/node.go) covers their parameters - falls back to raw
 // JSON for any node type without one (subworkflow/set, deliberately - see
 // the SDK's own comments - and any future type shipped before its schema
 // is written). Consumers should mount this with `key={nodeId}` so switching
 // the selected node resets the local draft instead of merging stale state.
-export function ParameterForm({ nodeType, nodeId, parameters, properties, jobId, webhookToken, organizationId, variableNames, siblingNodes, pinnedOutput, onPinnedOutputChange, retrySettings, onRetrySettingsChange, canTestNode, testStatus, testResult, testStale, onTestNode, onSave, onDelete, onDuplicate }: Props) {
+export function ParameterForm({ nodeType, nodeId, parameters, properties, isTestable, jobId, webhookToken, organizationId, variableNames, siblingNodes, pinnedOutput, onPinnedOutputChange, retrySettings, onRetrySettingsChange, canTestNode, testStatus, testResult, testStale, onTestNode, onSave, onDelete, onDuplicate }: Props) {
   const clean = stripUIPosition(parameters)
   const hasSchema = !!properties && properties.length > 0
 
@@ -114,40 +163,7 @@ export function ParameterForm({ nodeType, nodeId, parameters, properties, jobId,
 
   function saveForm() {
     if (!properties) return
-    const nextErrors: Record<string, string> = {}
-    const next: Record<string, unknown> = { ...parameters }
-
-    for (const p of properties) {
-      if (!passesDisplayIf(p, drafts)) continue
-      const raw = drafts[p.name]
-
-      if (p.type === 'boolean') {
-        next[p.name] = !!raw
-        continue
-      }
-
-      const text = typeof raw === 'string' ? raw : ''
-      if (text.trim() === '') {
-        if (p.required) nextErrors[p.name] = 'Required'
-        else delete next[p.name]
-        continue
-      }
-
-      if (p.type === 'number') {
-        const n = Number(text)
-        if (Number.isNaN(n)) nextErrors[p.name] = 'Must be a number'
-        else next[p.name] = n
-      } else if (p.type === 'json') {
-        try {
-          next[p.name] = JSON.parse(text)
-        } catch (err) {
-          nextErrors[p.name] = err instanceof Error ? err.message : 'Invalid JSON'
-        }
-      } else {
-        next[p.name] = text
-      }
-    }
-
+    const { params: next, errors: nextErrors } = buildParamsFromDrafts(properties, parameters, drafts)
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors)
       return
@@ -237,6 +253,13 @@ export function ParameterForm({ nodeType, nodeId, parameters, properties, jobId,
               {errors[p.name] && <div className="gf-field-error">{errors[p.name]}</div>}
             </div>
           ))}
+          {isTestable && (
+            <ConnectionTestField
+              organizationId={organizationId}
+              nodeType={nodeType}
+              getParams={() => buildParamsFromDrafts(properties!, parameters, drafts).params}
+            />
+          )}
           {nodeType === 'webhook_trigger' && (
             <div className="gf-field">
               <label className="gf-field-label">Webhook URL</label>
