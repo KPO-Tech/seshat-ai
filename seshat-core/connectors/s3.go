@@ -260,13 +260,15 @@ func (c *S3Connector) syncOneObject(ctx context.Context, cl *s3.Client, cfg S3Ac
 	text := string(data)
 	if c.extractText != nil {
 		text = c.extractText(ctx, data, contentType, path.Base(key))
-		if strings.TrimSpace(text) == "" {
-			return SyncItem{}, false
-		}
+	}
+	if strings.TrimSpace(text) == "" && len(data) == 0 {
+		return SyncItem{}, false
 	}
 
 	return SyncItem{
 		ResourceRef: objectToS3ResourceRef(obj),
+		Data:        data,
+		ContentType: contentType,
 		Text:        text,
 		// No per-object ACL: S3-compatible providers don't have a portable,
 		// reliable per-object permission model across implementations - nil

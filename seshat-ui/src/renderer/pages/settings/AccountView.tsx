@@ -5,7 +5,7 @@ import { Caution, Close, Delete, LinkOne, LoadingOne, Logout, Mail, Message, Plu
 import { api, ApiError } from '@/api/client'
 import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
 import { useAuthStore } from '@/stores/auth'
-import { consumeWhatsAppPairStream, type ChannelAccount } from '../inbox'
+import { consumeWhatsAppPairStream, type ChannelAccount } from '@/apps/inbox'
 
 export function AccountView() {
   const { logout, user } = useAuthStore()

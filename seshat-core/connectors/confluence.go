@@ -200,6 +200,8 @@ func (c *ConfluenceConnector) syncOnePage(ctx context.Context, cl *confluenceCli
 	}
 	return SyncItem{
 		ResourceRef: ResourceRef{ID: item.Content.ID, Name: title, Kind: "file", Modified: modified},
+		Data:        []byte(html),
+		ContentType: "text/html",
 		Text:        text,
 		// No per-page ACL: Confluence's space+page permission model isn't
 		// portably mappable the way Drive/SharePoint's is - nil falls back

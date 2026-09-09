@@ -84,6 +84,11 @@ type DonePayload = {
   usage?: TokenUsage
 }
 
+type SessionTitledPayload = {
+  session_id?: string
+  title?: string
+}
+
 const MAX_RETRIES = 3
 const RETRY_BASE_MS = 1000
 
@@ -128,11 +133,6 @@ export function useChat(sessionId: string) {
 
     const assistantMessageId = crypto.randomUUID()
     const currentSession = store.sessions.find((session) => session.id === sessionId)
-    // The title is left as "Untitled conversation" here rather than derived
-    // from the prompt - the SDK generates a real short AI title in the
-    // background once this turn completes (see pollForGeneratedTitle below
-    // and seshat-backend's OnSessionTitled wiring), so this is genuinely
-    // the session's very first message only when it's still untitled.
     const isFirstMessage = Boolean(currentSession && currentSession.messages.length === 0 && isUntitledSessionTitle(currentSession.title))
     store.updateSession(sessionId, { updatedAt: nowIso })
     store.addMessage(sessionId, {
@@ -224,6 +224,11 @@ export function useChat(sessionId: string) {
                 receivedServerActivity = true
                 handleStreamChunk(sessionId, streamEvent, store, scheduleSync)
               },
+              (titleEvent) => {
+                if (titleEvent.session_id === sessionId && titleEvent.title) {
+                  store.updateSession(sessionId, { title: titleEvent.title })
+                }
+              },
             )
           } else {
             const res = await fetch(`http://127.0.0.1:8090/api/v1/query/stream`, {
@@ -304,6 +309,14 @@ export function useChat(sessionId: string) {
                   }
 
                   receivedServerActivity = true
+
+                  if (eventName === 'session_titled') {
+                    const titleEvent = parsed as SessionTitledPayload
+                    if (titleEvent.session_id === sessionId && titleEvent.title) {
+                      store.updateSession(sessionId, { title: titleEvent.title })
+                    }
+                    continue
+                  }
 
                   if (eventName === 'runtime') {
                     handleRuntimeEvent(sessionId, parsed as RuntimeEventPayload, store, (tool) => {
@@ -390,7 +403,7 @@ export function useChat(sessionId: string) {
       }
       const errMsg = error instanceof Error ? error.message : 'Unable to reach the backend.'
       const partial = streamingToContentBlocks(useSessionStore.getState().getStreaming(sessionId))
-      const content = [...partial, { type: 'text' as const, text: `> Connection error\n\n${errMsg}` }]
+      const content = [...partial, { type: 'text' as const, text: `> ${errorHeading(errMsg)}\n\n${errMsg}` }]
       store.updateMessage(sessionId, assistantMessageId, (message) => ({ ...message, content }))
       store.clearStreaming(sessionId)
     } finally {
@@ -454,6 +467,7 @@ async function consumeElectronStream(
   onDone: (payload: DonePayload) => void,
   onRuntime: (payload: RuntimeEventPayload) => void,
   onChunk: (payload: StreamEvent) => void,
+  onSessionTitled: (payload: SessionTitledPayload) => void,
 ) {
   if (!window.nexus?.http) {
     throw new Error('Electron HTTP bridge is unavailable')
@@ -499,6 +513,10 @@ async function consumeElectronStream(
         onRuntime(data as RuntimeEventPayload)
         return
       }
+      if (name === 'session_titled') {
+        onSessionTitled(data as SessionTitledPayload)
+        return
+      }
       onChunk(data as StreamEvent)
     })
 
@@ -520,6 +538,20 @@ async function consumeElectronStream(
       onAbort()
     }
   })
+}
+
+function errorHeading(message: string): string {
+  const lower = message.toLowerCase()
+  if (lower.includes('rate_limit') || lower.includes('rate limit') || lower.includes('raw_status_code":429')) {
+    return 'Provider rate limit'
+  }
+  if (lower.includes('tier_not_allowed') || lower.includes('not available in your subscription') || lower.includes('raw_status_code":403')) {
+    return 'Provider access error'
+  }
+  if (lower.includes('timeout') || lower.includes('failed to send request') || lower.includes('failed to reach')) {
+    return 'Connection error'
+  }
+  return 'Provider error'
 }
 
 function handleStreamChunk(

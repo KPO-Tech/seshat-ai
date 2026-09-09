@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"mime"
+	"net/http"
+	"path/filepath"
 	"strings"
 
 	"gorm.io/gorm"
@@ -11,13 +14,15 @@ import (
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 )
 
-// ExtractText converts data to plain-text/markdown using the same
-// extraction path background ingestion uses (docling for binary formats,
-// falling back to plain-text detection) - exported so a Knowledge connector
-// (see internal/server/connectors) can extract synced content
-// identically to an uploaded file, without duplicating the extraction logic.
+// ExtractText extracts only cheap/plain text for connector implementations
+// that still hand text to IngestFromConnector. Uploaded files and queued
+// ingestion now send original bytes into sdkrag.Service so the runtime owns
+// document-aware Docling chunking. Passing connector bytes end-to-end is a
+// follow-up interface change across internal/server/connectors.
 func (s *Service) ExtractText(ctx context.Context, data []byte, contentType, filename string) string {
-	return s.extractTextWithDocling(ctx, data, contentType, filename)
+	_ = ctx
+	_ = filename
+	return extractText(data, contentType)
 }
 
 // IngestFromConnector upserts a CorpusFile for one item pulled in by a
@@ -32,7 +37,7 @@ func (s *Service) ExtractText(ctx context.Context, data []byte, contentType, fil
 // Upserts by (corpus_id, connector_account_id, external_resource_id) so a
 // re-sync of an unchanged-but-rediscovered resource replaces its content in
 // place instead of duplicating the CorpusFile.
-func (s *Service) IngestFromConnector(ctx context.Context, organizationID, corpusID, connectorAccountID, externalResourceID, createdByUserID, filename, text string) (*CorpusFile, error) {
+func (s *Service) IngestFromConnector(ctx context.Context, organizationID, corpusID, connectorAccountID, externalResourceID, createdByUserID, filename, contentType string, data []byte, text string) (*CorpusFile, error) {
 	if s.artifacts == nil {
 		return nil, ErrInvalidInput("artifact storage is not configured on this server")
 	}
@@ -40,10 +45,13 @@ func (s *Service) IngestFromConnector(ctx context.Context, organizationID, corpu
 	if filename == "" {
 		return nil, ErrInvalidInput("filename is required")
 	}
-	if strings.TrimSpace(text) == "" {
+	if len(data) == 0 {
+		data = []byte(text)
+	}
+	if len(data) == 0 && strings.TrimSpace(text) == "" {
 		return nil, ErrInvalidInput("connector item has no extractable text content")
 	}
-	data := []byte(text)
+	contentType = normalizeConnectorContentType(contentType, filename, data)
 
 	var existing sdb.CorpusFile
 	hasExisting := true
@@ -68,7 +76,7 @@ func (s *Service) IngestFromConnector(ctx context.Context, organizationID, corpu
 	// Deterministic key so a re-sync overwrites the same blob in place
 	// rather than leaking one per sync, same reasoning as UploadFile's.
 	storageKey := fmt.Sprintf("knowledge/%s/%s", corpusID, fileID)
-	if _, err := s.artifacts.Put(ctx, storageKey, data, "text/plain"); err != nil {
+	if _, err := s.artifacts.Put(ctx, storageKey, data, contentType); err != nil {
 		return nil, ErrInvalidInput("store connector content: " + err.Error())
 	}
 
@@ -79,7 +87,7 @@ func (s *Service) IngestFromConnector(ctx context.Context, organizationID, corpu
 		if hasExisting {
 			updates := map[string]any{
 				"filename":     filename,
-				"content_type": "text/plain",
+				"content_type": contentType,
 				"storage_key":  storageKey,
 				"size":         int64(len(data)),
 				"status":       CorpusFileStatusPending,
@@ -95,7 +103,7 @@ func (s *Service) IngestFromConnector(ctx context.Context, organizationID, corpu
 			OrganizationID:     organizationID,
 			CreatedByUserID:    createdByUserID,
 			Filename:           filename,
-			ContentType:        "text/plain",
+			ContentType:        contentType,
 			StorageKey:         storageKey,
 			Size:               int64(len(data)),
 			Status:             CorpusFileStatusPending,
@@ -117,4 +125,20 @@ func (s *Service) IngestFromConnector(ctx context.Context, organizationID, corpu
 
 	result := toCorpusFile(record)
 	return &result, nil
+}
+
+func normalizeConnectorContentType(contentType, filename string, data []byte) string {
+	contentType = strings.TrimSpace(contentType)
+	if contentType != "" {
+		return contentType
+	}
+	if ext := strings.ToLower(filepath.Ext(filename)); ext != "" {
+		if detected := mime.TypeByExtension(ext); detected != "" {
+			return detected
+		}
+	}
+	if len(data) > 0 {
+		return http.DetectContentType(data)
+	}
+	return "text/plain; charset=utf-8"
 }

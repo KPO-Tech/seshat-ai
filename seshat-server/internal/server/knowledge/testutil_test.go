@@ -171,14 +171,15 @@ func startFakeDoclingServer(t *testing.T, markdownContent string) *httptest.Serv
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	mux.HandleFunc("POST /v1/convert/file", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("POST /v1/chunk/hybrid/file", func(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"status": "success",
-			"document": map[string]any{
-				"md_content": markdownContent,
-				"pages":      []any{},
-				"pictures":   []any{},
-			},
+			"chunks": []map[string]any{{
+				"filename":     "document",
+				"chunk_index":  0,
+				"text":         markdownContent,
+				"raw_text":     markdownContent,
+				"page_numbers": []int{1},
+			}},
 		})
 	})
 	server := httptest.NewServer(mux)

@@ -470,7 +470,21 @@ func (r *SDKRuntime) buildClientConfig(ctx context.Context, providerCfg RuntimeP
 	cfg.APIKey = providerCfg.Secret
 	cfg.Model = sdk.ModelIdentifier{Provider: provider, Model: modelID}
 	cfg.ProviderConfig = providerConfig
+	cfg.MaxTokens = InteractiveMaxTokensForModel(cfg.Model)
 	return cfg
+}
+
+// InteractiveMaxTokensForModel returns the model's generated-output budget. It
+// prefers the provider catalog when available, then falls back to the runtime's
+// public context-window registry for custom or provider-resolved model names.
+func InteractiveMaxTokensForModel(model sdk.ModelIdentifier) int {
+	if info, ok := providers.GetModelInfo(model.Provider, model.Model); ok && info.MaxOutput > 0 {
+		return info.MaxOutput
+	}
+	if window := types.GetContextWindow(types.ModelIdentifier(model)); window.MaxOutputTokens > 0 {
+		return window.MaxOutputTokens
+	}
+	return 4096
 }
 
 func cloneClientConfig(src *sdk.ClientConfig) *sdk.ClientConfig {

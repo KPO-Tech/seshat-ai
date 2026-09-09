@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"gorm.io/gorm"
@@ -98,6 +99,115 @@ func (s *Service) ListFiles(ctx context.Context, principal *iam.Principal, corpu
 	return files, nil
 }
 
+func (s *Service) UpdateFile(ctx context.Context, principal *iam.Principal, corpusID, fileID string, params UpdateCorpusFileParams) (*CorpusFile, error) {
+	corpus, err := s.mustLoadCorpus(ctx, principal, corpusID, "knowledge.manage", "organization.manage")
+	if err != nil {
+		return nil, err
+	}
+	fileID = strings.TrimSpace(fileID)
+	if fileID == "" {
+		return nil, ErrInvalidInput("file_id is required")
+	}
+	filename := strings.TrimSpace(params.Filename)
+
+	var file sdb.CorpusFile
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		tx = tx.WithContext(ctx)
+		if err := tx.First(&file, "id = ? AND corpus_id = ?", fileID, corpus.ID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrNotFound("corpus file not found")
+			}
+			return err
+		}
+		file.Tags = normalizeTags(params.Tags)
+		file.Metadata = normalizeMetadata(params.Metadata)
+		if filename != "" {
+			file.Filename = filename
+		}
+		if err := tx.Save(&file).Error; err != nil {
+			return err
+		}
+		return s.iam.AppendAuditEvent(tx, principal, corpus.OrganizationID, "corpus_file.updated", "corpus_file", file.ID, map[string]string{"corpus_id": corpus.ID, "filename": file.Filename})
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := toCorpusFile(file)
+	return &result, nil
+}
+
+// ListFileSegments returns the indexed chunks for one file. This reads from
+// the vector store instead of duplicating segment rows in the product DB.
+func (s *Service) ListFileSegments(ctx context.Context, principal *iam.Principal, corpusID, fileID string) (*FileSegmentsResponse, error) {
+	corpus, err := s.mustLoadCorpus(ctx, principal, corpusID, "knowledge.read", "knowledge.manage", "organization.manage")
+	if err != nil {
+		return nil, err
+	}
+	fileID = strings.TrimSpace(fileID)
+	if fileID == "" {
+		return nil, ErrInvalidInput("file_id is required")
+	}
+
+	var file sdb.CorpusFile
+	if err := s.db.Gorm().WithContext(ctx).First(&file, "id = ? AND corpus_id = ?", fileID, corpus.ID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrNotFound("corpus file not found")
+		}
+		return nil, err
+	}
+
+	if file.ChunkCount <= 0 {
+		return &FileSegmentsResponse{CorpusID: corpus.ID, File: toCorpusFile(file), Count: 0, Segments: []CorpusSegment{}}, nil
+	}
+
+	artifactKey := ragArtifactKey(corpus.ID, file.ID)
+	keys := make([]string, 0, file.ChunkCount)
+	for i := 0; i < file.ChunkCount; i++ {
+		keys = append(keys, fmt.Sprintf("%s#chunk-%d", artifactKey, i))
+	}
+
+	records, err := s.vectors.Get(ctx, corpus.ID, keys)
+	if err != nil {
+		return nil, ErrInvalidInput("list indexed segments: " + err.Error())
+	}
+
+	segments := make([]CorpusSegment, 0, len(records))
+	for _, record := range records {
+		metadata := copyMetadata(record.Metadata)
+		position := intFromMetadata(metadata, "position")
+		if fileIDFromRAGMetadata(corpus.ID, record.Key, metadata) != file.ID {
+			continue
+		}
+		segments = append(segments, CorpusSegment{
+			Key:       record.Key,
+			Text:      record.Text,
+			Position:  position,
+			Metadata:  metadata,
+			TextChars: len([]rune(record.Text)),
+			Citation: SearchCitation{
+				CorpusID:     corpus.ID,
+				CorpusFileID: file.ID,
+				Filename:     file.Filename,
+				Position:     position,
+				ArtifactKey:  metadata["artifact_key"],
+			},
+		})
+	}
+	sort.SliceStable(segments, func(i, j int) bool {
+		if segments[i].Position == segments[j].Position {
+			return segments[i].Key < segments[j].Key
+		}
+		return segments[i].Position < segments[j].Position
+	})
+
+	return &FileSegmentsResponse{
+		CorpusID: corpus.ID,
+		File:     toCorpusFile(file),
+		Count:    len(segments),
+		Segments: segments,
+	}, nil
+}
+
 // DetachFile removes a file from its corpus: its vector chunks (if any were
 // ingested), its CorpusFile record, and adjusts the corpus's chunk total.
 // Requires knowledge.manage or organization.manage.
@@ -119,7 +229,7 @@ func (s *Service) DetachFile(ctx context.Context, principal *iam.Principal, corp
 		if ragService, ok, err := s.ragServiceFor(ctx, corpus.OrganizationID); err != nil {
 			return err
 		} else if ok {
-			artifactKey := fmt.Sprintf("%s#file-%s", corpus.ID, file.ID)
+			artifactKey := ragArtifactKey(corpus.ID, file.ID)
 			if err := ragService.DeleteFileChunks(ctx, corpus.ID, artifactKey, 0, file.ChunkCount); err != nil {
 				return ErrInvalidInput("delete file vectors: " + err.Error())
 			}

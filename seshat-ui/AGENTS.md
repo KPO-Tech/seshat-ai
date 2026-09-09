@@ -82,18 +82,22 @@ seshat-ui/
 │       │   ├── chat.ts        ← message normalization, status helpers
 │       │   ├── plan.ts        ← plan parsing helpers
 │       │   └── sessionTitle.ts ← auto-title generation from prompt
-│       ├── pages/
+│       ├── apps/              ← product platforms inside SeshatOS
+│       │   ├── knowledge/     ← Knowledge-to-Action platform
+│       │   ├── automation/    ← visual automation/dataflow platform
+│       │   ├── workflows/     ← agent workflow composition platform
+│       │   ├── inbox/         ← connected mailbox/triage platform
+│       │   ├── scheduling/    ← scheduled execution platform
+│       │   ├── skills-creator/← skills catalog/editing platform
+│       │   ├── team/          ← team/multi-agent platform
+│       │   ├── admin/         ← administration platform
+│       │   └── workspace/     ← workspace agents/MCP/tools platform
+│       ├── pages/             ← global SeshatOS pages only
 │       │   ├── Home.tsx       ← new-chat landing
-│       │   ├── Conversation.tsx ← active session view
+│       │   ├── Conversation.tsx ← global active session view
 │       │   ├── Login.tsx / Register.tsx
-│       │   ├── scheduling/index.tsx ← SchedulingPage (formerly ScheduledTasks.tsx; old /scheduled-tasks, /automation routes redirect here)
-│       │   ├── settings/      ← admin + per-user settings views
-│       │   │   ├── index.tsx, SettingsNav.tsx
-│       │   │   ├── AdminViews.tsx, GeneralView.tsx, ProvidersView.tsx
-│       │   │   ├── CapabilitiesViews.tsx, KnowledgeView.tsx
-│       │   │   ├── MemoriesView.tsx, WebSearchView.tsx, AboutView.tsx
-│       │   ├── skills-creator/index.tsx
-│       │   └── user-settings/index.tsx
+│       │   ├── app-launcher/index.tsx
+│       │   └── settings/      ← user/global settings views
 │       ├── router/index.tsx   ← createHashRouter — all routes
 │       ├── stores/
 │       │   ├── auth.ts        ← auth state (token, user, roles)
@@ -319,9 +323,19 @@ Add to `src/renderer/router/index.tsx` under the `Shell` parent:
 { path: 'my-feature', element: <MyFeaturePage /> },
 ```
 
-### 2. New page component
+For a platform app, mount only the app entrypoint in the root router:
 
-Create `src/renderer/pages/MyFeaturePage.tsx`. Pages own:
+```tsx
+{ path: 'my-platform/*', element: <MyPlatformApp /> },
+```
+
+and keep its internal routes inside `src/renderer/apps/my-platform/routes.tsx`.
+
+### 2. New page or app component
+
+Create global pages under `src/renderer/pages/`.
+
+Create product platforms under `src/renderer/apps/<app-name>/`. App folders own:
 - Local state (hooks)
 - Layout (`<style>` + divs)
 - Data fetching (SWR or `api.*` calls)

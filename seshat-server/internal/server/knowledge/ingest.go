@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -12,9 +14,7 @@ import (
 
 	"gorm.io/gorm"
 
-	sdkpdfsmart "github.com/KPO-Tech/seshat/pkg/pdfsmart"
 	sdkrag "github.com/KPO-Tech/seshat/pkg/rag"
-	sdktextquality "github.com/KPO-Tech/seshat/pkg/textquality"
 
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
@@ -135,16 +135,29 @@ func (s *Service) RetryIngestionJob(ctx context.Context, principal *iam.Principa
 	record.NextRunAt = &now
 	record.LastError = ""
 	if err := s.db.Gorm().WithContext(ctx).Model(&sdb.KnowledgeIngestionJob{}).Where("id = ?", record.ID).
-		Updates(map[string]any{"status": record.Status, "next_run_at": record.NextRunAt, "last_error": ""}).Error; err != nil {
+		Updates(map[string]any{
+			"status":              record.Status,
+			"next_run_at":         record.NextRunAt,
+			"last_error":          "",
+			"failure_stage":       "",
+			"started_at":          nil,
+			"completed_at":        nil,
+			"read_duration_ms":    0,
+			"extract_duration_ms": 0,
+			"ingest_duration_ms":  0,
+			"total_duration_ms":   0,
+		}).Error; err != nil {
 		return nil, err
 	}
 	job := toIngestionJob(record)
 	return &job, nil
 }
 
-// Search embeds the query and returns the top-K matching chunks from the
-// corpus. Requires knowledge.read/knowledge.manage or organization.manage.
-func (s *Service) Search(ctx context.Context, principal *iam.Principal, params SearchParams) (*sdkrag.SearchResponse, error) {
+// Search returns the top-K matching chunks from the corpus, enriched with
+// corpus-file context for product/UI citation surfaces. Requires
+// knowledge.read/knowledge.manage or organization.manage.
+func (s *Service) Search(ctx context.Context, principal *iam.Principal, params SearchParams) (*SearchResponse, error) {
+	startedAt := time.Now()
 	corpus, err := s.mustLoadCorpus(ctx, principal, params.CorpusID, "knowledge.read", "knowledge.manage", "organization.manage")
 	if err != nil {
 		return nil, err
@@ -160,6 +173,10 @@ func (s *Service) Search(ctx context.Context, principal *iam.Principal, params S
 	if query == "" {
 		return nil, ErrInvalidInput("query is required")
 	}
+	mode, hybridWeight, err := normalizeSearchMode(params.Mode)
+	if err != nil {
+		return nil, err
+	}
 	topK := params.TopK
 	if topK <= 0 {
 		topK = 5
@@ -168,12 +185,150 @@ func (s *Service) Search(ctx context.Context, principal *iam.Principal, params S
 		CorpusID:     corpus.ID,
 		Query:        query,
 		TopK:         topK,
-		HybridWeight: defaultHybridSearchWeight,
+		HybridWeight: hybridWeight,
 	})
 	if err != nil {
 		return nil, ErrInvalidInput("search corpus: " + err.Error())
 	}
-	return &resp, nil
+	enriched, err := s.enrichSearchResponse(ctx, *corpus, query, mode, topK, resp.Results)
+	if err != nil {
+		return nil, err
+	}
+	event, err := s.recordSearchEvent(ctx, principal, *corpus, enriched, time.Since(startedAt))
+	if err != nil {
+		return nil, err
+	}
+	if event != nil {
+		enriched.SearchID = event.ID
+	}
+	return enriched, nil
+}
+
+func normalizeSearchMode(mode string) (string, float32, error) {
+	switch strings.ToLower(strings.TrimSpace(mode)) {
+	case "", SearchModeHybrid, "blend":
+		return SearchModeHybrid, defaultHybridSearchWeight, nil
+	case SearchModeKeyword, "keywords":
+		return SearchModeKeyword, 1, nil
+	case SearchModeVector, "embedding":
+		return SearchModeVector, 0, nil
+	default:
+		return "", 0, ErrInvalidInput("search mode must be keyword, vector or hybrid")
+	}
+}
+
+func (s *Service) enrichSearchResponse(ctx context.Context, corpus sdb.Corpus, query, mode string, topK int, raw []sdkrag.SearchResult) (*SearchResponse, error) {
+	files, err := s.searchFilesByResult(ctx, corpus.ID, raw)
+	if err != nil {
+		return nil, err
+	}
+	results := make([]SearchResult, 0, len(raw))
+	for _, hit := range raw {
+		metadata := copyMetadata(hit.Metadata)
+		fileID := fileIDFromRAGMetadata(corpus.ID, hit.Key, metadata)
+		position := intFromMetadata(metadata, "position")
+		result := SearchResult{
+			Key:      hit.Key,
+			Text:     hit.Text,
+			Score:    hit.Score,
+			Position: position,
+			Metadata: metadata,
+			Citation: &SearchCitation{
+				CorpusID:    corpus.ID,
+				Position:    position,
+				ArtifactKey: metadata["artifact_key"],
+			},
+		}
+		if file, ok := files[fileID]; ok {
+			result.CorpusFileID = file.ID
+			result.Filename = file.Filename
+			result.ContentType = file.ContentType
+			result.Source = "upload"
+			result.Tags = cloneStringSlice(file.Tags)
+			result.FileMetadata = cloneStringMap(file.Metadata)
+			if file.ConnectorAccountID != nil {
+				result.Source = "connector"
+				result.ConnectorAccountID = file.ConnectorAccountID
+				result.ExternalResourceID = file.ExternalResourceID
+			}
+			result.Citation.CorpusFileID = file.ID
+			result.Citation.Filename = file.Filename
+		} else if filename := strings.TrimSpace(metadata["filename"]); filename != "" {
+			result.Filename = filename
+			result.Citation.Filename = filename
+		}
+		results = append(results, result)
+	}
+	return &SearchResponse{CorpusID: corpus.ID, Query: query, Mode: mode, TopK: topK, Results: results}, nil
+}
+
+func (s *Service) searchFilesByResult(ctx context.Context, corpusID string, raw []sdkrag.SearchResult) (map[string]sdb.CorpusFile, error) {
+	ids := make([]string, 0, len(raw))
+	seen := map[string]bool{}
+	for _, hit := range raw {
+		id := fileIDFromRAGMetadata(corpusID, hit.Key, hit.Metadata)
+		if id == "" || seen[id] {
+			continue
+		}
+		seen[id] = true
+		ids = append(ids, id)
+	}
+	if len(ids) == 0 {
+		return map[string]sdb.CorpusFile{}, nil
+	}
+	var records []sdb.CorpusFile
+	if err := s.db.Gorm().WithContext(ctx).Where("corpus_id = ? AND id IN ?", corpusID, ids).Find(&records).Error; err != nil {
+		return nil, err
+	}
+	files := make(map[string]sdb.CorpusFile, len(records))
+	for _, record := range records {
+		files[record.ID] = record
+	}
+	return files, nil
+}
+
+func fileIDFromRAGMetadata(corpusID, key string, metadata map[string]string) string {
+	if metadata != nil {
+		if artifactKey := strings.TrimSpace(metadata["artifact_key"]); artifactKey != "" {
+			if id := fileIDFromArtifactKey(corpusID, artifactKey); id != "" {
+				return id
+			}
+		}
+	}
+	if beforeChunk, _, ok := strings.Cut(key, "#chunk-"); ok {
+		return fileIDFromArtifactKey(corpusID, beforeChunk)
+	}
+	return ""
+}
+
+func fileIDFromArtifactKey(corpusID, artifactKey string) string {
+	prefix := fmt.Sprintf("rag/%s/file-", corpusID)
+	if !strings.HasPrefix(artifactKey, prefix) {
+		return ""
+	}
+	return strings.TrimSpace(strings.TrimPrefix(artifactKey, prefix))
+}
+
+func copyMetadata(metadata map[string]string) map[string]string {
+	if len(metadata) == 0 {
+		return nil
+	}
+	copied := make(map[string]string, len(metadata))
+	for key, value := range metadata {
+		copied[key] = value
+	}
+	return copied
+}
+
+func intFromMetadata(metadata map[string]string, key string) int {
+	if metadata == nil {
+		return 0
+	}
+	value, err := strconv.Atoi(strings.TrimSpace(metadata[key]))
+	if err != nil {
+		return 0
+	}
+	return value
 }
 
 // ─── Ingestion worker (called by Runner; see runner.go) ──────────────────
@@ -233,50 +388,75 @@ func (s *Service) claimNextIngestionJob(ctx context.Context) (sdb.KnowledgeInges
 }
 
 func (s *Service) processIngestionJob(ctx context.Context, job sdb.KnowledgeIngestionJob) {
+	started := time.Now()
+	metrics := ingestionRunMetrics{}
+	fail := func(stage, reason string) {
+		metrics.TotalDuration = time.Since(started)
+		s.markIngestionJobFailed(ctx, job, stage, reason, metrics)
+	}
+
 	// ragServiceFor's bool return is always true when err is nil (a vector
 	// store is required at construction, an embedder is not — see its own
 	// doc comment); vectorless ingestion is deliberate, not a fallback for
 	// this case failing.
 	ragService, _, err := s.ragServiceFor(ctx, job.OrganizationID)
 	if err != nil {
-		s.markIngestionJobFailed(ctx, job, "resolve embedder: "+err.Error())
+		fail("resolve_embedder", "resolve embedder: "+err.Error())
 		return
 	}
 
 	var file sdb.CorpusFile
 	if err := s.db.Gorm().WithContext(ctx).First(&file, "id = ?", job.CorpusFileID).Error; err != nil {
-		s.markIngestionJobFailed(ctx, job, "corpus file no longer exists")
+		fail("load_file", "corpus file no longer exists")
 		return
 	}
+	metrics.ContentType = file.ContentType
+	metrics.FileSize = file.Size
+	metrics.ChunkProfile = string(s.chunkProfile.Name)
 
+	readStarted := time.Now()
 	data, err := s.artifacts.Get(ctx, file.StorageKey)
+	metrics.ReadDuration = time.Since(readStarted)
 	if err != nil {
 		s.failCorpusFile(ctx, file)
-		s.markIngestionJobFailed(ctx, job, "read file blob: "+err.Error())
+		fail("read_blob", "read file blob: "+err.Error())
 		return
 	}
+	metrics.SourceBytes = int64(len(data))
+	if metrics.FileSize == 0 {
+		metrics.FileSize = int64(len(data))
+	}
 
-	text := s.extractTextWithDocling(ctx, data, file.ContentType, file.Filename)
-	if strings.TrimSpace(text) == "" {
+	extractStarted := time.Now()
+	text := extractText(data, file.ContentType)
+	originalData := s.dataForRAGChunking(data, file.Filename)
+	metrics.ExtractDuration = time.Since(extractStarted)
+	metrics.TextChars = len([]rune(text))
+	metrics.UsedDocling = len(originalData) > 0
+	if strings.TrimSpace(text) == "" && len(originalData) == 0 {
 		s.failCorpusFile(ctx, file)
-		s.markIngestionJobFailed(ctx, job, "file has no extractable text content")
+		fail("extract_text", "file has no extractable text content")
 		return
 	}
 
 	// Deterministic per-file key (not the storage key) so chunk keys stay
 	// stable across corpora even if a future feature reuses blobs.
-	ragFileKey := fmt.Sprintf("file-%s", file.ID)
+	ragFileKey := ragFileID(file.ID)
+	ingestStarted := time.Now()
 	result, err := ragService.Ingest(ctx, sdkrag.IngestRequest{
 		CorpusID: job.CorpusID,
 		FileID:   ragFileKey,
 		Filename: file.Filename,
 		Text:     text,
+		Data:     originalData,
 	})
+	metrics.IngestDuration = time.Since(ingestStarted)
 	if err != nil {
 		s.failCorpusFile(ctx, file)
-		s.markIngestionJobFailed(ctx, job, "ingest chunks: "+err.Error())
+		fail("rag_ingest", "ingest chunks: "+err.Error())
 		return
 	}
+	metrics.TotalDuration = time.Since(started)
 
 	now := time.Now().UTC()
 	err = s.db.Transaction(func(tx *gorm.DB) error {
@@ -292,11 +472,16 @@ func (s *Service) processIngestionJob(ctx context.Context, job sdb.KnowledgeInge
 				return err
 			}
 		}
-		return tx.Model(&sdb.KnowledgeIngestionJob{}).Where("id = ?", job.ID).
-			Updates(map[string]any{"status": IngestionJobStatusCompleted, "completed_at": now, "chunk_count": result.Chunks}).Error
+		updates := ingestionMetricUpdates(metrics)
+		updates["status"] = IngestionJobStatusCompleted
+		updates["completed_at"] = now
+		updates["chunk_count"] = result.Chunks
+		updates["last_error"] = ""
+		updates["failure_stage"] = ""
+		return tx.Model(&sdb.KnowledgeIngestionJob{}).Where("id = ?", job.ID).Updates(updates).Error
 	})
 	if err != nil {
-		s.markIngestionJobFailed(ctx, job, "record ingestion result: "+err.Error())
+		fail("record_result", "record ingestion result: "+err.Error())
 	}
 }
 
@@ -305,7 +490,7 @@ func (s *Service) failCorpusFile(ctx context.Context, file sdb.CorpusFile) {
 		Update("status", CorpusFileStatusFailed).Error
 }
 
-func (s *Service) markIngestionJobFailed(ctx context.Context, job sdb.KnowledgeIngestionJob, reason string) {
+func (s *Service) markIngestionJobFailed(ctx context.Context, job sdb.KnowledgeIngestionJob, stage, reason string, metrics ingestionRunMetrics) {
 	attempts := job.AttemptCount + 1
 	status := IngestionJobStatusFailed
 	var nextRunAt *time.Time
@@ -314,54 +499,63 @@ func (s *Service) markIngestionJobFailed(ctx context.Context, job sdb.KnowledgeI
 		at := time.Now().UTC().Add(defaultIngestionRetryDelay)
 		nextRunAt = &at
 	}
-	_ = s.db.Gorm().WithContext(ctx).Model(&sdb.KnowledgeIngestionJob{}).Where("id = ?", job.ID).
-		Updates(map[string]any{"status": status, "attempt_count": attempts, "last_error": reason, "next_run_at": nextRunAt}).Error
+	updates := ingestionMetricUpdates(metrics)
+	updates["status"] = status
+	updates["attempt_count"] = attempts
+	updates["last_error"] = reason
+	updates["failure_stage"] = stage
+	updates["next_run_at"] = nextRunAt
+	_ = s.db.Gorm().WithContext(ctx).Model(&sdb.KnowledgeIngestionJob{}).Where("id = ?", job.ID).Updates(updates).Error
 }
 
-// extractTextWithDocling always routes binary formats (PDF, DOCX/PPTX/XLSX,
-// audio, images, HTML, LaTeX - see doclingIngestExtensions) through docling,
-// then falls back to plain-text extraction for everything else.
-//
-// Deliberately skips the native/dependency-free extraction shortcut used
-// elsewhere (e.g. seshat-backend's ephemeral chat-attachment path): a
-// corpus document lives in the knowledge base permanently and gets
-// searched forever, so a page docling would have caught — a table whose
-// row/column structure a plain-text extractor would scramble, a diagram, a
-// scanned page — but a cheap text-density check missed is a silent,
-// permanent loss. That's a cost worth avoiding entirely for RAG ingestion,
-// even at the price of always paying docling's per-page layout-detection
-// pass (see its standard PDF pipeline).
-//
-// PDFs get one exception: sdkpdfsmart.Convert first, which extracts
-// natively page by page and only sends the individual pages that actually
-// need it (an embedded image, or a sparse/garbled native text layer)
-// through docling - not the whole document. Its own safety contract makes
-// this exactly as safe as sending the whole document: ok is false if even
-// one page that needed docling couldn't get usable text from it, in which
-// case this falls through to the existing whole-document path below
-// rather than accept a partial result.
-func (s *Service) extractTextWithDocling(ctx context.Context, data []byte, contentType, filename string) string {
-	ext := strings.ToLower(filepath.Ext(filename))
+type ingestionRunMetrics struct {
+	ContentType     string
+	FileSize        int64
+	TextChars       int
+	SourceBytes     int64
+	ChunkProfile    string
+	UsedDocling     bool
+	ReadDuration    time.Duration
+	ExtractDuration time.Duration
+	IngestDuration  time.Duration
+	TotalDuration   time.Duration
+}
 
-	if ext == ".pdf" {
-		if result, ok, err := sdkpdfsmart.Convert(ctx, data, s.doclingClient); err == nil && ok {
-			return result.Markdown
-		}
+func ingestionMetricUpdates(metrics ingestionRunMetrics) map[string]any {
+	return map[string]any{
+		"content_type":        metrics.ContentType,
+		"file_size":           metrics.FileSize,
+		"text_chars":          metrics.TextChars,
+		"source_bytes":        metrics.SourceBytes,
+		"chunk_profile":       metrics.ChunkProfile,
+		"used_docling":        metrics.UsedDocling,
+		"read_duration_ms":    durationMillis(metrics.ReadDuration),
+		"extract_duration_ms": durationMillis(metrics.ExtractDuration),
+		"ingest_duration_ms":  durationMillis(metrics.IngestDuration),
+		"total_duration_ms":   durationMillis(metrics.TotalDuration),
 	}
+}
 
-	if s.doclingClient != nil && doclingIngestExtensions[ext] && s.doclingClient.IsAvailable(ctx) {
-		result, err := s.doclingClient.ConvertBytes(ctx, data, filename)
-		if err == nil && strings.TrimSpace(result.Markdown) != "" && !sdktextquality.IsGarbledText(result.Markdown) {
-			return result.Markdown
-		}
-		// Docling failed, returned empty, or produced text that looks like
-		// broken extraction (see sdktextquality.IsGarbledText — a rare but
-		// real failure mode, e.g. a broken embedded font docling couldn't
-		// OCR around) — fall through to plain-text extraction, which for a
-		// binary format will itself correctly reject the raw bytes and
-		// fail the ingestion job rather than index garbage.
+func durationMillis(d time.Duration) int64 {
+	if d <= 0 {
+		return 0
 	}
-	return extractText(data, contentType)
+	return int64(math.Ceil(float64(d) / float64(time.Millisecond)))
+}
+
+func (s *Service) dataForRAGChunking(data []byte, filename string) []byte {
+	if s.chunker != nil && doclingIngestExtensions[strings.ToLower(filepath.Ext(filename))] {
+		return data
+	}
+	return nil
+}
+
+func ragFileID(fileID string) string {
+	return fmt.Sprintf("file-%s", fileID)
+}
+
+func ragArtifactKey(corpusID, fileID string) string {
+	return sdkrag.ArtifactKey(corpusID, ragFileID(fileID))
 }
 
 // extractText attempts to extract UTF-8 text from the blob. Plain-text,

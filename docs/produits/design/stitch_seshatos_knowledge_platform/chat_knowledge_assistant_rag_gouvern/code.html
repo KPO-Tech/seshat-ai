@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Plus+Jakarta+Sans:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-secondary-container": "#007353", "surface-variant": "#dae2fd", "background": "#faf8ff", "on-primary": "#ffffff", "surface-container-highest": "#dae2fd", "inverse-surface": "#283044", "surface-dim": "#d2d9f4", "on-background": "#131b2e", "inverse-primary": "#b7c4ff", "tertiary-container": "#712ae2", "secondary": "#006c4e", "on-error-container": "#93000a", "on-tertiary-fixed": "#25005a", "primary": "#0037b0", "surface-tint": "#2151da", "on-tertiary": "#ffffff", "error-container": "#ffdad6", "secondary-container": "#97f5cc", "on-tertiary-fixed-variant": "#5a00c6", "surface": "#faf8ff", "secondary-fixed-dim": "#7bd8b1", "on-tertiary-container": "#dfccff", "tertiary-fixed": "#eaddff", "on-primary-fixed-variant": "#0039b5", "surface-bright": "#faf8ff", "on-secondary-fixed": "#002115", "tertiary-fixed-dim": "#d2bbff", "on-primary-fixed": "#001551", "primary-container": "#1d4ed8", "on-surface-variant": "#434655", "surface-container-low": "#f2f3ff", "surface-container": "#eaedff", "on-primary-container": "#cad3ff", "error": "#ba1a1a", "primary-fixed": "#dce1ff", "primary-fixed-dim": "#b7c4ff", "outline": "#747686", "on-surface": "#131b2e", "surface-container-high": "#e2e7ff", "tertiary": "#5700c0", "on-secondary-fixed-variant": "#00513a", "surface-container-lowest": "#ffffff", "on-error": "#ffffff", "outline-variant": "#c4c5d7", "inverse-on-surface": "#eef0ff", "on-secondary": "#ffffff", "secondary-fixed": "#97f5cc" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "density-input-h": "2rem", "space-2xs": "0.125rem", "space-3xl": "3rem", "gutter-app": "1rem", "space-xl": "1.5rem", "space-2xl": "2rem", "density-table-row-h": "2.25rem", "sidebar-width": "17.5rem", "space-sm": "0.5rem", "space-lg": "1rem", "space-md": "0.75rem", "space-xs": "0.25rem" }, "fontFamily": { "body-lg": ["Inter"], "label-md": ["Inter"], "data-mono-md": ["JetBrains Mono"], "headline-md": ["Plus Jakarta Sans"], "headline-xl": ["Plus Jakarta Sans"], "body-sm": ["Inter"], "headline-lg": ["Plus Jakarta Sans"], "headline-sm": ["Plus Jakarta Sans"], "body-md": ["Inter"], "data-mono-sm": ["JetBrains Mono"], "label-sm": ["Inter"] }, "fontSize": { "body-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "-0.011em", "fontWeight": "400" }], "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "500" }], "data-mono-md": ["13px", { "lineHeight": "18px", "letterSpacing": "-0.01em", "fontWeight": "400" }], "headline-md": ["18px", { "lineHeight": "26px", "letterSpacing": "-0.015em", "fontWeight": "600" }], "headline-xl": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.025em", "fontWeight": "700" }], "body-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0em", "fontWeight": "400" }], "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600" }], "headline-sm": ["15px", { "lineHeight": "22px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "body-md": ["14px", { "lineHeight": "20px", "letterSpacing": "-0.006em", "fontWeight": "400" }], "data-mono-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0em", "fontWeight": "500" }], "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.025em", "fontWeight": "600" }] } } } }</script></head><body class="bg-background font-body-md text-body-md text-on-surface min-h-screen"><aside class="fixed left-0 top-0 h-full w-[17.5rem] bg-surface-container-low border-r border-outline-variant/30 z-50 flex flex-col justify-between select-none"><div class="flex flex-col flex-1 overflow-y-auto"><div class="h-16 px-space-lg flex items-center gap-space-sm border-b border-outline-variant/20 bg-surface-container-lowest"><img alt="SeshatOS Geometric Glyph Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1VmZs8sohnfr1vFLB9IDYmCMmeG9T8lUAf8BfhvjQAYUVZZipLU5lSpSH6P5b7HZODnjn9WQa677hfC6rJIlJPCTDcgZDjm_Zu_iFVuXd1aQ4y2yG3XsMP2S2sYKqlkz6dGhPHLXs7hf9xwuVKcQ4yaW8H3PTAyHafeG95tbiJPs63WBSMUmKvovYaZgar_R9m7VKygDZn5DjF9NBXIGCbZ3CKxpmQu2RwKQiR2tw-MY_9YY-QAmAULlmuk"/><div class="flex items-center gap-space-xs"><span class="font-headline-sm text-headline-sm text-on-surface tracking-tight font-semibold">SeshatOS</span><span class="px-1.5 py-0.5 rounded-lg bg-surface-container-high text-primary font-data-mono-sm text-data-mono-sm uppercase">Knowledge</span></div></div><div class="px-space-md py-space-sm border-b border-outline-variant/20 bg-surface-container/40"><div class="flex items-center justify-between"><span class="font-label-sm text-label-sm text-on-surface-variant truncate font-medium">Acme Global Corp</span><span class="px-1 rounded bg-secondary-container text-on-secondary-container font-data-mono-sm text-data-mono-sm">PROD</span></div><div class="flex items-center gap-1.5 mt-1"><span class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span><span class="font-data-mono-sm text-data-mono-sm text-secondary font-medium truncate">All Connectors Syncing</span></div></div><nav class="flex-1 px-space-sm py-space-md space-y-space-md" data-active-classes="bg-primary-container text-on-primary font-medium rounded-lg"><div class="space-y-space-2xs"><div class="px-space-sm py-1 font-label-sm text-label-sm uppercase tracking-wider text-outline font-semibold">Discover</div><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="overview" href="#"><span class="material-symbols-outlined text-[18px]">dashboard</span><span class="font-body-md text-body-md">Overview</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="discover" href="#"><span class="material-symbols-outlined text-[18px]">explore</span><span class="font-body-md text-body-md">Discover</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="knowledge-graph" href="#"><span class="material-symbols-outlined text-[18px]">hub</span><span class="font-body-md text-body-md">Knowledge Graph</span></a></div><div class="space-y-space-2xs"><div class="px-space-sm py-1 font-label-sm text-label-sm uppercase tracking-wider text-outline font-semibold">Ask</div><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="search" href="#"><span class="material-symbols-outlined text-[18px]">manage_search</span><span class="font-body-md text-body-md">Search</span></a><a aria-current="page" class="flex items-center gap-space-sm px-space-sm py-1.5 transition-colors bg-primary-container text-on-primary font-medium rounded-lg" data-path="chat-knowledge" href="#"><span class="material-symbols-outlined text-[18px]">forum</span><span class="font-body-md text-body-md">Chat Knowledge</span></a></div><div class="space-y-space-2xs"><div class="px-space-sm py-1 font-label-sm text-label-sm uppercase tracking-wider text-outline font-semibold">Act</div><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="actions" href="#"><span class="material-symbols-outlined text-[18px]">bolt</span><span class="font-body-md text-body-md">Actions</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="sources" href="#"><span class="material-symbols-outlined text-[18px]">account_tree</span><span class="font-body-md text-body-md">Sources</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="collections" href="#"><span class="material-symbols-outlined text-[18px]">folder_copy</span><span class="font-body-md text-body-md">Collections</span></a></div></nav></div><div class="p-space-sm border-t border-outline-variant/30 bg-surface-container-lowest"><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="audit-logs" href="#"><span class="material-symbols-outlined text-[18px]">verified_user</span><span class="font-body-md text-body-md">Audit &amp; Compliance</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="help-documentation" href="#"><span class="material-symbols-outlined text-[18px]">help_center</span><span class="font-body-md text-body-md">Help Center</span></a></div></aside><div class="pl-[17.5rem] flex flex-col min-h-screen"><header class="fixed top-0 left-[17.5rem] right-0 h-16 bg-surface-container-lowest/90 backdrop-blur-md border-b border-outline-variant/30 z-40 flex items-center justify-between px-space-xl"><div class="flex items-center gap-space-md w-full max-w-lg"><button class="flex items-center justify-between w-full h-density-input-h px-space-md rounded-lg bg-surface-container-low border border-outline-variant/50 text-on-surface-variant hover:border-outline hover:bg-surface-container transition-all group" type="button"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-outline text-[18px] group-hover:text-on-surface">search</span><span class="font-body-sm text-body-sm text-outline group-hover:text-on-surface">Search knowledge entities, facts, sources...</span></div><div class="flex items-center gap-1 font-data-mono-sm text-data-mono-sm px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant border border-outline-variant/50"><kbd>⌘</kbd><kbd>K</kbd></div></button></div><div class="flex items-center gap-space-lg"><div class="flex items-center gap-space-sm"><button class="relative p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" title="3 Governance Alerts" type="button"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1 right-1 flex items-center justify-center w-4 h-4 rounded-full bg-error text-on-error font-data-mono-sm text-data-mono-sm">3</span></button><a class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="audit-logs" href="#" title="Audit Logs"><span class="material-symbols-outlined text-[20px]">history_toggle_off</span></a></div><div class="h-6 w-px bg-outline-variant/40"></div><div class="flex items-center gap-space-sm"><img alt="Profile" class="w-8 h-8 rounded-full object-cover ring-1 ring-outline-variant/50" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBGFqXlFUN1Js5y5dnc5mabMSlMmelH7xyY_k-QvDQMJbr2JkvYwTT4-Tyt9VCaIdZ5rkafDNU7rlFhmq0VCQpGj_rLLDYPZ4IDx-wzcZ2QLG3-gsnRJimnTLfalpE5_YZzVxwSRyf2cGqqnkYuGTeS1yShsBFygh1KEOYbiLAvC8YLhJZyYits5e5JGokQJD6S_dU9TZJL9Z-1RFFhtnqvrmiaVObg6S3EVBeynIY1AvjqDRAxsOdBpA"/><div class="flex flex-col text-left"><span class="font-body-sm text-body-sm font-semibold text-on-surface leading-tight">Éléonore de Vance</span><span class="font-label-sm text-label-sm text-on-surface-variant leading-tight">Knowledge Lead &amp; Admin</span></div></div></div></header><main class="w-full pt-16 bg-background flex-1"><div class="flex flex-col w-full">
+<!-- Top Governance & RAG Context Matrix Bar -->
+<section class="w-full bg-surface-container-low px-space-xl py-space-sm shadow-sm">
+<div class="flex flex-wrap items-center justify-between gap-space-md">
+<!-- Left: Corpus Scope & Index Depth -->
+<div class="flex items-center gap-space-md min-w-0">
+<div class="flex items-center gap-space-xs px-2.5 py-1 rounded-lg bg-surface-container-lowest text-on-surface shadow-sm">
+<span class="material-symbols-outlined text-primary text-[18px]">library_books</span>
+<div class="flex flex-col">
+<div class="flex items-center gap-1.5">
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Corpus Actif</span>
+<span class="material-symbols-outlined text-[13px] text-outline">expand_more</span>
+</div>
+<span class="font-body-sm text-body-sm font-semibold text-on-surface truncate">Juridique, RH &amp; Politiques Générales</span>
+</div>
+</div>
+<div class="hidden xl:flex items-center gap-1.5 px-2 py-1 rounded-md bg-surface-container text-on-surface-variant font-data-mono-sm text-data-mono-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span>14,200 docs vectorisés</span>
+</div>
+<div class="h-6 w-px bg-surface-variant hidden sm:block"></div>
+<!-- Mode de Raisonnement Protocol Pill -->
+<div class="flex items-center gap-space-xs px-2.5 py-1 rounded-lg bg-surface-container-highest text-primary">
+<span class="material-symbols-outlined text-[16px] text-primary">verified</span>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Protocole Raisonnement</span>
+<span class="font-data-mono-sm text-data-mono-sm font-semibold text-primary">Strict RAG · Citations Obligatoires</span>
+</div>
+</div>
+</div>
+<!-- Right: Confidence & Epistemic Audit Meter -->
+<div class="flex items-center gap-space-md">
+<div class="flex items-center gap-space-sm bg-surface-container-lowest px-3 py-1.5 rounded-xl shadow-sm">
+<div class="flex items-center justify-center w-6 h-6 rounded-full bg-secondary-container text-on-secondary-container">
+<span class="material-symbols-outlined text-[16px]">verified_user</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-1.5">
+<span class="font-label-sm text-label-sm font-semibold text-secondary">Niveau de Confiance : 96%</span>
+<span class="px-1 py-0.2 rounded bg-secondary-container text-on-secondary-container font-data-mono-sm text-[10px] uppercase font-bold">Formel</span>
+</div>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">0 hallucination détectée · P=0.992</span>
+</div>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1.5 rounded-lg bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition-colors" title="Paramètres RAG &amp; Seuil de similarité" type="button">
+<span class="material-symbols-outlined text-[18px]">tune</span>
+</button>
+<button class="p-1.5 rounded-lg bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition-colors" title="Historique des Sessions conversationnelles" type="button">
+<span class="material-symbols-outlined text-[18px]">history</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Main Multi-Panel Workspace: 65% Conversation Stream + 35% Dynamic Source Inspector -->
+<div class="flex flex-col lg:flex-row w-full flex-1 gap-space-lg p-space-lg max-w-[1680px] mx-auto">
+<!-- LEFT PANEL: Conversation Stream (65%) -->
+<div class="flex flex-col flex-1 lg:w-[65%] min-w-0 space-y-space-lg">
+<!-- Query + Response Dialogue Matrix -->
+<div class="flex flex-col space-y-space-lg flex-1">
+<!-- User Intent Query Bubble -->
+<div class="flex items-start gap-space-md self-end max-w-[92%]">
+<div class="flex flex-col items-end space-y-1">
+<div class="bg-primary text-on-primary p-space-md rounded-2xl rounded-tr-none shadow-md">
+<p class="font-body-md text-body-md leading-relaxed text-on-primary">
+                Quelle est la procédure exacte en cas d'exercice du droit à l'effacement (RGPD) par un client B2B et quel est le délai limite de notification à la CNIL ?
+              </p>
+</div>
+<div class="flex items-center gap-2 pr-1 font-data-mono-sm text-data-mono-sm text-outline">
+<span>Éléonore de Vance</span>
+<span>·</span>
+<span>11:42:08 CET</span>
+<span>·</span>
+<span class="inline-flex items-center text-secondary">
+<span class="material-symbols-outlined text-[12px] mr-0.5">lock</span>Chiffré E2E
+              </span>
+</div>
+</div>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center text-primary font-semibold text-label-md shadow-sm">
+            ED
+          </div>
+</div>
+<!-- Assistant Knowledge Response Card -->
+<div class="flex items-start gap-space-md max-w-full">
+<!-- SeshatOS Monogram Glyph -->
+<div class="w-8 h-8 rounded-full bg-primary-container text-on-primary flex items-center justify-center shrink-0 shadow-sm">
+<span class="material-symbols-outlined text-[18px]">smart_toy</span>
+</div>
+<div class="flex flex-col space-y-space-md flex-1 min-w-0">
+<!-- Reasoning Diagnostics Pipeline Bar -->
+<div class="bg-surface-container-low rounded-xl p-space-sm shadow-sm transition-all hover:bg-surface-container">
+<div class="flex items-center justify-between cursor-pointer" onclick="document.getElementById('reasoning-steps').classList.toggle('hidden');">
+<div class="flex items-center gap-2 text-on-surface-variant font-data-mono-sm text-data-mono-sm">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="font-semibold text-on-surface">3 sources consultées</span>
+<span class="text-outline">·</span>
+<span>2 passages corroborés</span>
+<span class="text-outline">·</span>
+<span class="text-secondary font-medium">0 contradiction détectée</span>
+</div>
+<div class="flex items-center gap-1 text-primary font-label-sm text-label-sm font-semibold">
+<span>Trace épistémique</span>
+<span class="material-symbols-outlined text-[16px]">expand_more</span>
+</div>
+</div>
+<!-- Collapsible Detailed Diagnostics Matrix -->
+<div class="hidden mt-space-sm pt-space-sm bg-surface-container-lowest rounded-lg p-space-sm space-y-2 font-data-mono-sm text-data-mono-sm" id="reasoning-steps">
+<div class="flex items-center justify-between text-on-surface-variant">
+<span class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-[14px]">search_check</span>
+                    Vector Embedding Match: Cosine Sim 0.942 [SOP-RGPD-14]
+                  </span>
+<span class="text-secondary">Corroboré</span>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant">
+<span class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-[14px]">psychology</span>
+                    Cross-Validation DPA: Délai max 72h confirmé (Art. 33 RGPD)
+                  </span>
+<span class="text-secondary">Conforme</span>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant">
+<span class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-outline text-[14px]">sync_alt</span>
+                    Extraction clause d'exception : L123-22 Code de Commerce
+                  </span>
+<span class="text-on-surface font-semibold">Réserve injectée</span>
+</div>
+</div>
+</div>
+<!-- Structured RAG Generated Synthesis -->
+<div class="bg-surface-container-lowest p-space-xl rounded-2xl shadow-sm space-y-space-md">
+<div class="flex items-center justify-between pb-space-sm bg-surface-container-lowest">
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded-full bg-primary text-on-primary font-data-mono-sm text-[10px] tracking-wide uppercase font-bold">RAG Certifié</span>
+<span class="font-headline-sm text-headline-sm font-semibold text-on-surface">Protocole de Traitement de l'Effacement B2B</span>
+</div>
+<span class="font-data-mono-sm text-data-mono-sm text-outline">Latence 320ms · 418 tokens</span>
+</div>
+<div class="space-y-space-sm text-on-surface font-body-md text-body-md leading-relaxed">
+<p>
+                  En conformité avec la réglementation européenne et les procédures internes de l'organisation, la mise en œuvre du droit à l'effacement (Article 17 du RGPD) pour un compte ou contact B2B suit un cheminement critique en 3 étapes impératives :
+                </p>
+<!-- Process Sequence -->
+<div class="space-y-space-sm pt-space-xs">
+<div class="p-space-sm rounded-xl bg-surface-container-low flex items-start gap-space-sm">
+<span class="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-on-primary font-data-mono-sm text-data-mono-sm font-bold shrink-0">1</span>
+<div class="flex-1">
+<span class="font-semibold text-on-surface">Réception et qualification de la demande sous 48h ouvrées :</span>
+<p class="text-on-surface-variant mt-0.5">
+                        L'Officier à la Protection des Données (DPO) ou le référent délégué doit vérifier l'identité du demandeur ainsi que l'absence de litige en cours
+                        <button class="inline-flex items-center gap-1 px-1.5 py-0.5 mx-1 rounded bg-surface-variant text-primary font-data-mono-sm text-data-mono-sm font-semibold hover:bg-primary hover:text-on-primary transition-all" onclick="highlightCitation(1)" type="button">
+<span class="material-symbols-outlined text-[12px]">link</span>Doc 1: SOP-RGPD-14 §3.2
+                        </button>.
+                      </p>
+</div>
+</div>
+<div class="p-space-sm rounded-xl bg-surface-container-low flex items-start gap-space-sm">
+<span class="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-on-primary font-data-mono-sm text-data-mono-sm font-bold shrink-0">2</span>
+<div class="flex-1">
+<span class="font-semibold text-on-surface">Gel immédiat &amp; purge applicative des bases primaires :</span>
+<p class="text-on-surface-variant mt-0.5">
+                        Exécution du script de pseudonymisation irréversible sur CRM Salesforce et Data Warehouse Snowflake sous 30 jours calendaires maximum
+                        <button class="inline-flex items-center gap-1 px-1.5 py-0.5 mx-1 rounded bg-surface-variant text-primary font-data-mono-sm text-data-mono-sm font-semibold hover:bg-primary hover:text-on-primary transition-all" onclick="highlightCitation(2)" type="button">
+<span class="material-symbols-outlined text-[12px]">link</span>Doc 2: DPA Client Template v3
+                        </button>. Les sauvegardes en froid (glacier storage) sont écrasées par roulement cyclique sous 90 jours.
+                      </p>
+</div>
+</div>
+<div class="p-space-sm rounded-xl bg-surface-container-low flex items-start gap-space-sm">
+<span class="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-on-primary font-data-mono-sm text-data-mono-sm font-bold shrink-0">3</span>
+<div class="flex-1">
+<span class="font-semibold text-on-surface">Délai limite de notification CNIL (si violation corrélée) :</span>
+<p class="text-on-surface-variant mt-0.5">
+                        Dans l'hypothèse stricte où la demande d'effacement ferait suite à un incident de sécurité ou une violation de données personnelles avérée (Data Breach), la notification officielle auprès de la <strong>CNIL</strong> doit intervenir au plus tard dans les <strong>72 heures</strong> après en avoir pris connaissance (Art. 33 RGPD).
+                      </p>
+</div>
+</div>
+</div>
+<!-- Epistemic Boundaries & Legal Reserve Notice Box -->
+<div class="mt-space-md p-space-md rounded-xl bg-surface-container-high">
+<div class="flex items-start gap-space-sm">
+<span class="material-symbols-outlined text-primary text-[20px] shrink-0 mt-0.5">gavel</span>
+<div class="space-y-1">
+<span class="font-headline-sm text-body-md font-bold text-on-surface">Limites de la réponse &amp; Réserves de conformité</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-normal">
+<strong>Attention légale impérative :</strong> cette procédure ne s'applique pas aux pièces comptables, factures et logs transactionnels soumis à l'obligation légale de conservation décennale (<span class="font-data-mono-sm text-data-mono-sm font-semibold">Art. L123-22 du Code de Commerce</span>). Les coordonnées associées doivent être archivées en cloisonnement restreint et exclues de la suppression standard.
+                      </p>
+</div>
+</div>
+</div>
+</div>
+<!-- Contextual Action Bar -->
+<div class="pt-space-md flex flex-wrap items-center justify-between gap-space-sm">
+<div class="flex flex-wrap items-center gap-space-xs">
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-on-primary hover:bg-primary-container font-label-md text-label-md transition-all shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px]">task_alt</span>
+<span>Transformer en Action / Tâche</span>
+</button>
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high font-label-md text-label-md transition-all" type="button">
+<span class="material-symbols-outlined text-[16px]">account_tree</span>
+<span>Générer un plan de conformité</span>
+</button>
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high font-label-md text-label-md transition-all" type="button">
+<span class="material-symbols-outlined text-[16px]">picture_as_pdf</span>
+<span>Exporter vers PDF audité</span>
+</button>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors" title="Copier la réponse" type="button">
+<span class="material-symbols-outlined text-[18px]">content_copy</span>
+</button>
+<button class="flex items-center gap-1 px-2 py-1 rounded-lg text-error hover:bg-error-container transition-colors font-label-sm text-label-sm" type="button">
+<span class="material-symbols-outlined text-[16px]">flag</span>
+<span>Signaler une réserve</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- BOTTOM COMPONENT: Conversational Input Console with Prompt Suggestions -->
+<div class="w-full space-y-space-sm pt-space-xs sticky bottom-4">
+<!-- Dynamic Prompt Accelerator Suggestions -->
+<div class="flex items-center gap-space-xs overflow-x-auto pb-1 select-none">
+<span class="font-data-mono-sm text-data-mono-sm text-outline uppercase tracking-wider shrink-0 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">auto_awesome</span>Suggestions:
+          </span>
+<button class="shrink-0 px-2.5 py-1 rounded-full bg-surface-container text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface font-body-sm text-body-sm transition-colors" type="button">
+            Résumer les obligations contractuelles
+          </button>
+<button class="shrink-0 px-2.5 py-1 rounded-full bg-surface-container text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface font-body-sm text-body-sm transition-colors" type="button">
+            Comparer avec la norme ISO 27001 (§A.18)
+          </button>
+<button class="shrink-0 px-2.5 py-1 rounded-full bg-surface-container text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface font-body-sm text-body-sm transition-colors" type="button">
+            Générer un ticket d'action Jira / Compliance
+          </button>
+</div>
+<!-- Rich Input Box Card -->
+<div class="bg-surface-container-lowest rounded-2xl shadow-xl p-space-sm space-y-space-xs">
+<!-- Textarea area -->
+<div class="relative w-full">
+<textarea class="w-full bg-transparent resize-none p-2 text-on-surface placeholder:text-outline font-body-md text-body-md focus:outline-none" placeholder="Interroger le Knowledge Graph ou poser une question avec preuve formelle..." rows="2"></textarea>
+</div>
+<!-- Bottom Utility Tray -->
+<div class="flex flex-wrap items-center justify-between gap-space-sm pt-space-xs">
+<div class="flex flex-wrap items-center gap-1.5">
+<!-- Scope Chip Tag -->
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-surface-container-high text-on-surface font-data-mono-sm text-data-mono-sm">
+<span class="material-symbols-outlined text-[14px] text-primary">folder_open</span>
+                Corpus : Juridique &amp; RH
+                <button class="hover:text-error ml-1" type="button"><span class="material-symbols-outlined text-[12px]">close</span></button>
+</span>
+<!-- Exhaustive Deep Search Toggle -->
+<label class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-surface-container text-on-surface cursor-pointer hover:bg-surface-container-high transition-colors">
+<input checked="" class="w-3.5 h-3.5 rounded accent-primary" type="checkbox"/>
+<span class="font-label-sm text-label-sm font-medium">Recherche exhaustive (Graph RAG)</span>
+</label>
+<button class="p-1 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors" title="Joindre un document ou schéma" type="button">
+<span class="material-symbols-outlined text-[18px]">attach_file</span>
+</button>
+</div>
+<div class="flex items-center gap-space-sm">
+<span class="font-data-mono-sm text-data-mono-sm text-outline hidden md:inline">⌘ + Return pour soumettre</span>
+<button class="flex items-center justify-center w-9 h-9 rounded-xl bg-primary text-on-primary hover:bg-primary-container transition-all shadow-md" type="button">
+<span class="material-symbols-outlined text-[18px]">arrow_upward</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- RIGHT PANEL: Source Inspector & Citations Verification Workbench (35%) -->
+<div class="flex flex-col lg:w-[35%] space-y-space-md">
+<!-- Panel Header -->
+<div class="bg-surface-container-lowest p-space-md rounded-2xl shadow-sm flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary text-[22px]">fact_check</span>
+<div>
+<h2 class="font-headline-sm text-headline-sm font-bold text-on-surface">Sources &amp; Preuves d'Audit</h2>
+<span class="font-data-mono-sm text-data-mono-sm text-outline">Indexation sémantique multi-vecteurs</span>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded bg-secondary-container text-on-secondary-container font-data-mono-sm text-data-mono-sm font-semibold">
+          2 Références Actives
+        </span>
+</div>
+<!-- Corpus Document Visualizer Card 1 (Doc 1) -->
+<div class="bg-surface-container-lowest rounded-2xl shadow-sm p-space-md space-y-space-sm transition-all" id="citation-card-1">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-space-xs">
+<span class="flex items-center justify-center w-6 h-6 rounded bg-primary text-on-primary font-data-mono-sm text-data-mono-sm font-bold">1</span>
+<div>
+<h3 class="font-label-md text-label-md font-bold text-on-surface leading-tight">SOP-RGPD-14 : Gestion des droits des personnes</h3>
+<span class="font-data-mono-sm text-data-mono-sm text-outline">Section 3.2 · Page 12 / 48</span>
+</div>
+</div>
+<span class="px-1.5 py-0.5 rounded bg-secondary-container text-on-secondary-container font-data-mono-sm text-data-mono-sm flex items-center gap-1 font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>Validé
+          </span>
+</div>
+<!-- Similarity Matrix Meter -->
+<div class="p-2 rounded-lg bg-surface-container-low flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-on-surface-variant font-medium">Similarité Cosinus</span>
+<div class="flex items-center gap-2">
+<div class="w-24 h-1.5 rounded-full bg-surface-variant overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 94%;"></div>
+</div>
+<span class="font-data-mono-sm text-data-mono-sm font-bold text-primary">0.94</span>
+</div>
+</div>
+<!-- Quoted Exact Excerpt snippet -->
+<div class="p-space-sm rounded-xl bg-surface-container text-on-surface font-body-sm text-body-sm leading-relaxed relative">
+<span class="text-outline uppercase font-data-mono-sm text-[10px] block mb-1">Extrait indexé verbatim :</span>
+<p class="italic text-on-surface-variant">
+            “Toute demande émanant d'un tiers corporatif doit être traitée sous quarante-huit (48) heures afin d'instruire la recevabilité légale avant déclenchement des scripts de suppression Snowflake.”
+          </p>
+</div>
+<!-- Source Micro-Metadata -->
+<div class="grid grid-cols-2 gap-space-xs pt-1 font-data-mono-sm text-data-mono-sm text-outline">
+<div>SHA256: <span class="text-on-surface">d9e3f...882a</span></div>
+<div>Validé par: <span class="text-on-surface">Pôle Juridique</span></div>
+<div>Dernière modif: <span class="text-on-surface">14 Jan 2025</span></div>
+<div>Classification: <span class="text-secondary font-semibold">C3 - Interne</span></div>
+</div>
+<!-- Quick Access Actions -->
+<div class="pt-space-xs flex items-center gap-space-xs">
+<button class="flex-1 flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high font-label-sm text-label-sm transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">hub</span>
+<span>Voir dans Knowledge Graph</span>
+</button>
+<button class="flex-1 flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high font-label-sm text-label-sm transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">history</span>
+<span>Historique versions</span>
+</button>
+</div>
+</div>
+<!-- Corpus Document Visualizer Card 2 (Doc 2) -->
+<div class="bg-surface-container-lowest rounded-2xl shadow-sm p-space-md space-y-space-sm transition-all" id="citation-card-2">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-space-xs">
+<span class="flex items-center justify-center w-6 h-6 rounded bg-primary text-on-primary font-data-mono-sm text-data-mono-sm font-bold">2</span>
+<div>
+<h3 class="font-label-md text-label-md font-bold text-on-surface leading-tight">DPA Client Template v3 (Contrat Cadre)</h3>
+<span class="font-data-mono-sm text-data-mono-sm text-outline">Annexe Sécurité · Clause 8.4 · Page 29</span>
+</div>
+</div>
+<span class="px-1.5 py-0.5 rounded bg-secondary-container text-on-secondary-container font-data-mono-sm text-data-mono-sm flex items-center gap-1 font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>Conforme
+          </span>
+</div>
+<!-- Similarity Matrix Meter -->
+<div class="p-2 rounded-lg bg-surface-container-low flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-on-surface-variant font-medium">Similarité Cosinus</span>
+<div class="flex items-center gap-2">
+<div class="w-24 h-1.5 rounded-full bg-surface-variant overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 88%;"></div>
+</div>
+<span class="font-data-mono-sm text-data-mono-sm font-bold text-primary">0.88</span>
+</div>
+</div>
+<!-- Quoted Exact Excerpt snippet -->
+<div class="p-space-sm rounded-xl bg-surface-container text-on-surface font-body-sm text-body-sm leading-relaxed">
+<span class="text-outline uppercase font-data-mono-sm text-[10px] block mb-1">Extrait contractuel pertinent :</span>
+<p class="italic text-on-surface-variant">
+            “Le prestataire garantit la répercussion de la demande d'effacement sur l'ensemble de ses sous-traitants ultérieurs dans un délai n'excédant pas 30 jours, avec fourniture d'un certificat de destruction numérique.”
+          </p>
+</div>
+<!-- Quick Access Actions -->
+<div class="pt-space-xs flex items-center gap-space-xs">
+<button class="flex-1 flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high font-label-sm text-label-sm transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+<span>Consulter le PDF</span>
+</button>
+<button class="flex-1 flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high font-label-sm text-label-sm transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">share</span>
+<span>Partager l'extrait</span>
+</button>
+</div>
+</div>
+<!-- Graph Context Relationship Mini-Bento Card -->
+<div class="bg-surface-container-low rounded-2xl p-space-md space-y-space-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm font-semibold text-on-surface uppercase tracking-wider">Topologie des Entités Liées</span>
+<span class="font-data-mono-sm text-data-mono-sm text-primary font-bold">Neo4j Cluster</span>
+</div>
+<!-- Interactive Node Graph Mini Visualizer -->
+<div class="h-32 w-full rounded-xl bg-surface-container-lowest p-space-sm flex items-center justify-center relative overflow-hidden shadow-inner">
+<svg class="w-full h-full text-outline-variant" fill="none" viewbox="0 0 280 100">
+<!-- Connection links -->
+<line stroke="currentColor" stroke-dasharray="3 3" stroke-width="2" x1="50" x2="140" y1="50" y2="30"></line>
+<line stroke="currentColor" stroke-width="2" x1="140" x2="230" y1="30" y2="50"></line>
+<line stroke="currentColor" stroke-width="2" x1="140" x2="140" y1="30" y2="85"></line>
+<!-- Nodes -->
+<circle cx="50" cy="50" fill="#1D4ED8" r="16"></circle>
+<text fill="#FFFFFF" font-family="JetBrains Mono" font-size="9" text-anchor="middle" x="50" y="53">RGPD</text>
+<circle cx="140" cy="30" fill="#006C4E" r="18"></circle>
+<text fill="#FFFFFF" font-family="JetBrains Mono" font-size="9" text-anchor="middle" x="140" y="33">Art. 17</text>
+<circle cx="230" cy="50" fill="#5700C0" r="16"></circle>
+<text fill="#FFFFFF" font-family="JetBrains Mono" font-size="9" text-anchor="middle" x="230" y="53">CNIL</text>
+<circle cx="140" cy="85" fill="#DAE2FD" r="12"></circle>
+<text fill="#131B2E" font-family="JetBrains Mono" font-size="8" text-anchor="middle" x="140" y="88">L123-22</text>
+</svg>
+<div class="absolute bottom-1 right-2 text-outline font-data-mono-sm text-[10px]">
+            4 nœuds · 3 relations actives
+          </div>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+          Entités interconnectées : <span class="font-semibold text-on-surface">Droit à l'Oubli</span>, <span class="font-semibold text-on-surface">Autorité de Contrôle (CNIL)</span>, <span class="font-semibold text-on-surface">Snowflake DWH</span>.
+        </p>
+</div>
+</div>
+</div>
+<!-- Interactive Citation Connector Handler Script -->
+<script>
+    function highlightCitation(id) {
+      const card = document.getElementById('citation-card-' + id);
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        card.classList.remove('bg-surface-container-lowest');
+        card.classList.add('bg-primary-container', 'text-on-primary');
+        setTimeout(() => {
+          card.classList.remove('bg-primary-container', 'text-on-primary');
+          card.classList.add('bg-surface-container-lowest');
+        }, 1200);
+      }
+    }
+  </script>
+</div></main></div></body></html>

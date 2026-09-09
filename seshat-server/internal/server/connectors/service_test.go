@@ -149,6 +149,62 @@ func TestCreateS3AccountSyncIngestsIntoCorpus(t *testing.T) {
 	}
 }
 
+func TestConnectorSyncPassesSourceBytesAndContentTypeToKnowledge(t *testing.T) {
+	env := newTestEnv(t)
+	env.knowledge.WithDocling(nil)
+
+	corpus, err := env.knowledge.CreateCorpus(context.Background(), env.adminPrincipal, knowledge.CreateCorpusParams{
+		OrganizationID: env.orgID, Name: "Binary Vendor Docs",
+	})
+	if err != nil {
+		t.Fatalf("create corpus: %v", err)
+	}
+
+	account, err := env.connectors.CreateS3Account(context.Background(), env.adminPrincipal, CreateS3AccountParams{
+		OrganizationID:  env.orgID,
+		CorpusID:        corpus.ID,
+		DisplayName:     "Vendor Bucket",
+		Bucket:          "vendor-docs",
+		Endpoint:        "https://s3.example.com",
+		AccessKeyID:     "AKIA_FAKE",
+		SecretAccessKey: "fake-secret",
+	})
+	if err != nil {
+		t.Fatalf("create s3 account: %v", err)
+	}
+
+	pdfBytes := []byte{0x25, 0x50, 0x44, 0x46, 0x00, 0x01, 0x02}
+	env.connectors.connectorOverrides = map[string]knowledgeConnector{
+		"s3": &fakeConnector{
+			items: []syncItem{{
+				ResourceRef: resourceRef{ID: "docs/policy.pdf", Name: "policy.pdf"},
+				Data:        pdfBytes,
+				ContentType: "application/pdf",
+			}},
+			nextCursor: "cursor-1",
+		},
+	}
+
+	if _, err := env.connectors.TriggerSync(context.Background(), env.adminPrincipal, account.ID); err != nil {
+		t.Fatalf("trigger sync: %v", err)
+	}
+	processed, err := env.connectors.ProcessNextConnectorSyncJob(context.Background())
+	if err != nil || !processed {
+		t.Fatalf("process sync job: processed=%v err=%v", processed, err)
+	}
+
+	files, err := env.knowledge.ListFiles(context.Background(), env.adminPrincipal, corpus.ID)
+	if err != nil {
+		t.Fatalf("list corpus files: %v", err)
+	}
+	if len(files) != 1 {
+		t.Fatalf("expected 1 corpus file from the synced item, got %d", len(files))
+	}
+	if files[0].ContentType != "application/pdf" || files[0].Size != int64(len(pdfBytes)) {
+		t.Fatalf("expected source bytes metadata to be preserved, got %+v", files[0])
+	}
+}
+
 func TestCreateS3AccountValidation(t *testing.T) {
 	env := newTestEnv(t)
 	corpus, err := env.knowledge.CreateCorpus(context.Background(), env.adminPrincipal, knowledge.CreateCorpusParams{

@@ -28,6 +28,8 @@ github.com/KPO-Tech/seshat v1.2.36 h1:QLQJ3fQ26ySmnXKNFcjJJF/Sjhfyd0i6adpBlYfo6K
 github.com/KPO-Tech/seshat v1.2.36/go.mod h1:EhaTimb7ptxjJYZaLBvup7r4cp/GRzjzXcsoKaCjfLk=
 github.com/KPO-Tech/seshat v1.2.37 h1:TydIjcfGA7SUxoBpTmiX0gEaSSSCGvux1nB1TqJBAoQ=
 github.com/KPO-Tech/seshat v1.2.37/go.mod h1:EhaTimb7ptxjJYZaLBvup7r4cp/GRzjzXcsoKaCjfLk=
+github.com/KPO-Tech/seshat v1.2.38 h1:GYKzcNd0vvsJOV8aIGWnBSXvtrRIhJEaSM2sQd5oHRA=
+github.com/KPO-Tech/seshat v1.2.38/go.mod h1:EhaTimb7ptxjJYZaLBvup7r4cp/GRzjzXcsoKaCjfLk=
 github.com/Knetic/govaluate v3.0.0+incompatible h1:7o6+MAPhYTCF0+fdvoz1xDedhRb4f6s9Tn1Tt7/WTEg=
 github.com/Knetic/govaluate v3.0.0+incompatible/go.mod h1:r7JcOSlj0wfOMncg0iLm8Leh48TZaKVeNIfJntJ2wa0=
 github.com/Masterminds/semver/v3 v3.5.0 h1:kQceYJfbupGfZOKZQg0kou0DgAKhzDg2NZPAwZ/2OOE=
@@ -251,6 +253,8 @@ github.com/modelcontextprotocol/go-sdk v1.7.0 h1:yqjY2dsbKAC0LSuWZVBMrHgiG8ukXv6
 github.com/modelcontextprotocol/go-sdk v1.7.0/go.mod h1:dL7u98E/zjJTGzEq+j30jQ8K2k1mb6LeAH4inEcSGts=
 github.com/ncruces/go-strftime v1.0.0 h1:HMFp8mLCTPp341M/ZnA4qaf7ZlsbTc+miZjCLOFAw7w=
 github.com/ncruces/go-strftime v1.0.0/go.mod h1:Fwc5htZGVVkseilnfgOVb9mKy6w1naJmn9CehxcKcls=
+github.com/opensearch-project/opensearch-go/v5 v5.0.0-rc6 h1:sQV1jt10PaFA7xLx2HvgQ6LrLhFxe+aKNL+2LzJeA4U=
+github.com/opensearch-project/opensearch-go/v5 v5.0.0-rc6/go.mod h1:AXzjbjWmwPJ/0cubDPf1fzePiHL7M8dLFe8acTyQOaI=
 github.com/pdfcpu/pdfcpu v0.13.0 h1:7maI7K0w4pJsgX9u7eeCsK4+An/+xEVkJwAwyd7/n3M=
 github.com/pdfcpu/pdfcpu v0.13.0/go.mod h1:Pz8elxcY3MHc3W65HeeDbuSBvsq+OK+enMVdBsvKCj4=
 github.com/pelletier/go-toml/v2 v2.3.1 h1:MYEvvGnQjeNkRF1qUuGolNtNExTDwct51yp7olPtrEc=
@@ -280,6 +284,8 @@ github.com/rogpeppe/go-internal v1.6.1/go.mod h1:xXDCJY+GAPziupqXw64V24skbSoqbTE
 github.com/rogpeppe/go-internal v1.8.0/go.mod h1:WmiCO8CzOY8rg0OYDC4/i/2WRWAB6poM+XZ2dLUbcbE=
 github.com/rogpeppe/go-internal v1.14.1 h1:UQB4HGPB6osV0SQTLymcB4TgvyWu6ZyliaW0tI/otEQ=
 github.com/rogpeppe/go-internal v1.14.1/go.mod h1:MaRKkUm5W0goXpeCfT7UZI6fk/L7L7so1lCWt35ZSgc=
+github.com/rs/dnscache v0.0.0-20230804202142-fc85eb664529 h1:18kd+8ZUlt/ARXhljq+14TwAoKa61q6dX8jtwOf6DH8=
+github.com/rs/dnscache v0.0.0-20230804202142-fc85eb664529/go.mod h1:qe5TWALJ8/a1Lqznoc5BDHpYX/8HU60Hm2AwRmqzxqA=
 github.com/russellhaering/goxmldsig v1.4.0 h1:8UcDh/xGyQiyrW+Fq5t8f+l2DLB1+zlhYzkPUJ7Qhys=
 github.com/russellhaering/goxmldsig v1.4.0/go.mod h1:gM4MDENBQf7M+V824SGfyIUVFWydB7n0KkEubVJl+Tw=
 github.com/sagikazarmark/locafero v0.11.0 h1:1iurJgmM9G3PA/I+wWYIOw/5SyBtxapeHDcg+AAIFXc=

@@ -20,6 +20,7 @@ Thumbs.db
 .nexus/
 .seshat/
 .claude/
+.worktrees/
 .gemini/
 private/
 graphify-out/

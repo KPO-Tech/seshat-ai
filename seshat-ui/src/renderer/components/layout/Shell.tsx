@@ -27,7 +27,7 @@ export function Shell() {
   // flag exists for the /automation/* children, which startsWith('/') alone
   // wouldn't cover without the trailing segment.
   const isAutomation = pathname === '/automation' || pathname.startsWith('/automation/')
-  const sidebarRoutes = ['/', '/workspace', '/apps', '/projects', '/history', '/scheduling']
+  const sidebarRoutes = ['/', '/apps', '/projects', '/history', '/scheduling']
   const showSidebar = isConversation || (!isAutomation && sidebarRoutes.includes(pathname))
 
   // Keeps the right-panel column cap responsive to the actual window width

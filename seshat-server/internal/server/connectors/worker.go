@@ -140,7 +140,7 @@ func (s *Service) processSyncJob(ctx context.Context, job sdb.ConnectorSyncJob) 
 
 	synced := 0
 	for _, item := range items {
-		if _, err := s.knowledge.IngestFromConnector(ctx, account.OrganizationID, job.CorpusID, account.ID, item.ID, account.CreatedByUserID, item.Name, item.Text); err != nil {
+		if _, err := s.knowledge.IngestFromConnector(ctx, account.OrganizationID, job.CorpusID, account.ID, item.ID, account.CreatedByUserID, item.Name, item.ContentType, item.Data, item.Text); err != nil {
 			continue // one bad item shouldn't fail the whole sync
 		}
 		synced++

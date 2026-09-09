@@ -242,33 +242,37 @@ func (c *GDriveConnector) syncOneFile(ctx context.Context, srv *drive.Service, f
 	if f.Size > maxGDriveFileBytes {
 		return SyncItem{}, false
 	}
-	text, ok := c.downloadText(ctx, srv, f)
+	text, data, contentType, ok := c.downloadText(ctx, srv, f)
 	if !ok {
 		return SyncItem{}, false
 	}
 	return SyncItem{
 		ResourceRef:   gdriveFileToResourceRef(f),
+		Data:          data,
+		ContentType:   contentType,
 		Text:          text,
 		AccessControl: c.fetchAccessControl(ctx, srv, f.Id),
 	}, true
 }
 
-func (c *GDriveConnector) downloadText(ctx context.Context, srv *drive.Service, f *drive.File) (string, bool) {
+func (c *GDriveConnector) downloadText(ctx context.Context, srv *drive.Service, f *drive.File) (string, []byte, string, bool) {
 	exportMime, exported := gdriveExportMimeTypes[f.MimeType]
 	var resp *http.Response
 	var err error
+	contentType := f.MimeType
 	if exported {
 		resp, err = srv.Files.Export(f.Id, exportMime).Context(ctx).Download()
+		contentType = exportMime
 	} else {
 		resp, err = srv.Files.Get(f.Id).Context(ctx).Download()
 	}
 	if err != nil || resp == nil {
-		return "", false
+		return "", nil, "", false
 	}
 	defer resp.Body.Close()
 	data, err := io.ReadAll(io.LimitReader(resp.Body, maxGDriveFileBytes))
 	if err != nil || len(data) == 0 {
-		return "", false
+		return "", nil, "", false
 	}
 	// Google-native exports are already plain text - no extraction needed.
 	// Everything else downloaded raw (PDF, DOCX, images, ...) needs the same
@@ -276,12 +280,9 @@ func (c *GDriveConnector) downloadText(ctx context.Context, srv *drive.Service, 
 	// ingested as unsearchable noise.
 	if !exported && c.extractText != nil {
 		text := c.extractText(ctx, data, f.MimeType, f.Name)
-		if strings.TrimSpace(text) == "" {
-			return "", false
-		}
-		return text, true
+		return text, data, contentType, true
 	}
-	return string(data), true
+	return string(data), data, contentType, true
 }
 
 // fetchAccessControl maps Drive's per-file permissions to prefixed identity

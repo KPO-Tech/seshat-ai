@@ -7,7 +7,7 @@ require (
 	github.com/EngineerProjects/seshat-ai/seshat-core/gmail v0.0.0-00010101000000-000000000000
 	github.com/EngineerProjects/seshat-ai/seshat-core/msgraph v0.0.0-00010101000000-000000000000
 	github.com/EngineerProjects/seshat-ai/seshat-core/prospecting v0.0.0-00010101000000-000000000000
-	github.com/KPO-Tech/seshat v1.2.37
+	github.com/KPO-Tech/seshat v1.2.38
 	github.com/coreos/go-oidc/v3 v3.20.0
 	github.com/crewjam/saml v0.5.1
 	github.com/glebarez/sqlite v1.11.0
@@ -40,8 +40,10 @@ require (
 	github.com/klauspost/compress v1.18.6 // indirect
 	github.com/lib/pq v1.12.3 // indirect
 	github.com/mattermost/xml-roundtrip-validator v0.1.0 // indirect
+	github.com/opensearch-project/opensearch-go/v5 v5.0.0-rc6 // indirect
 	github.com/redis/go-redis/v9 v9.22.0 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
+	github.com/rs/dnscache v0.0.0-20230804202142-fc85eb664529 // indirect
 	github.com/russellhaering/goxmldsig v1.4.0 // indirect
 	github.com/segmentio/asm v1.1.3 // indirect
 	github.com/segmentio/encoding v0.5.4 // indirect

@@ -1,0 +1,440 @@
+.au-root {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+}
+
+.au-topbar {
+  flex-shrink: 0;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.au-icon-btn {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.au-icon-btn.active {
+  color: var(--color-text);
+  border-color: rgba(239, 124, 47, 0.55);
+  background: rgba(239, 124, 47, 0.12);
+}
+
+.au-name-input {
+  width: 260px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+  font-weight: 700;
+}
+
+.au-name-input:hover,
+.au-name-input:focus {
+  border-color: var(--color-border);
+  background: var(--color-bg);
+}
+
+.au-topbar-spacer {
+  flex: 1;
+}
+
+.au-topbar-error {
+  color: #ff6b6b;
+  font-size: var(--font-size-xs);
+}
+
+.au-save-btn {
+  height: 32px;
+  padding: 0 16px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-cta);
+  color: white;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.au-topbar-title {
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.au-save-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.au-empty-action {
+  margin-top: 8px;
+}
+
+.au-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  position: relative;
+}
+
+.au-rail {
+  flex-shrink: 0;
+  width: 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  padding: 10px 6px;
+  border-right: 1px solid var(--color-border-subtle);
+  background: var(--color-surface);
+}
+
+.au-rail-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 2px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 9px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.au-rail-btn:hover {
+  background: var(--color-hover);
+  color: var(--color-text);
+}
+
+.au-rail-btn.active {
+  color: var(--color-cta);
+  background: var(--color-primary-subtle);
+}
+
+.au-main {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
+.au-stub {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.au-stub h2 {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: 750;
+  color: var(--color-text);
+}
+
+.au-stub p {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  max-width: 340px;
+}
+
+.au-loading {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.au-loading-error {
+  color: #ff6b6b;
+}
+
+.au-settings-drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 320px;
+  border-left: 1px solid var(--color-border);
+  background: var(--color-bg);
+  box-shadow: -18px 0 60px rgba(0, 0, 0, 0.26);
+  display: flex;
+  flex-direction: column;
+  /* Higher than the canvas's own "+" add-node button (.gf-add-btn,
+     z-index: 10, top-right of the canvas) - both sit in the same
+     stacking context (.gf-canvas is position: relative with no z-index
+     of its own, so it doesn't isolate one), and the drawer's top-right
+     corner lands exactly where that button sits. The drawer should
+     cover it while open, not the other way around. */
+  z-index: 15;
+}
+
+.au-drawer-head {
+  min-height: 52px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.au-drawer-head strong {
+  font-size: var(--font-size-sm);
+}
+
+.au-drawer-head button {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.au-drawer-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.au-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.au-field label {
+  font-size: var(--font-size-2xs);
+  font-weight: 700;
+  color: var(--color-text-secondary);
+}
+
+.au-field-hint {
+  font-size: var(--font-size-2xs);
+  color: var(--color-text-muted);
+}
+
+.au-field-warning {
+  color: var(--color-warning, #C58B45);
+}
+
+.au-field input,
+.au-field select {
+  height: 32px;
+  padding: 0 9px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: var(--font-size-xs);
+}
+
+.au-segmented {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.au-segment {
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.au-segment.active {
+  color: var(--color-text);
+  border-color: rgba(239, 124, 47, 0.55);
+  background: rgba(239, 124, 47, 0.12);
+}
+
+.au-validation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.au-validation-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+}
+
+.au-validation-row.ok {
+  color: var(--color-success, #57D9A3);
+}
+
+.au-danger-zone {
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.au-danger-btn {
+  width: 100%;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 107, 107, 0.4);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: #ff6b6b;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.au-danger-btn:hover:not(:disabled) {
+  background: rgba(255, 107, 107, 0.1);
+}
+
+.au-danger-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Overview */
+.au-overview {
+  height: 100%;
+  overflow-y: auto;
+  padding: 18px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.au-overview-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md, 10px);
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.au-overview-row:hover {
+  border-color: var(--color-border);
+}
+
+.au-overview-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.au-overview-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.au-overview-name {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.au-overview-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.au-overview-badge--active { background: rgba(var(--color-success-rgb), 0.12); color: var(--color-success); }
+.au-overview-badge--paused { background: rgba(148, 163, 184, 0.15); color: var(--color-text-muted); }
+.au-overview-badge--target { background: rgba(239, 124, 47, 0.1); color: var(--color-accent); }
+
+/* Run status pills (RunsPanel, Tier 2.6) - same badge shape, one modifier
+   per RunStatus value. */
+.au-overview-badge--completed { background: rgba(var(--color-success-rgb), 0.12); color: var(--color-success); }
+.au-overview-badge--failed { background: rgba(255, 107, 107, 0.12); color: #ff6b6b; }
+.au-overview-badge--running, .au-overview-badge--claimed { background: rgba(239, 124, 47, 0.1); color: var(--color-accent); }
+.au-overview-badge--queued, .au-overview-badge--cancelled { background: rgba(148, 163, 184, 0.15); color: var(--color-text-muted); }
+
+.au-overview-desc {
+  font-size: var(--font-size-2xs);
+  color: var(--color-text-secondary);
+}
+
+.au-overview-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--font-size-2xs);
+  color: var(--color-text-muted);
+}
+
+.au-overview-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.spin {
+  animation: au-spin 0.8s linear infinite;
+}
+@keyframes au-spin {
+  to { transform: rotate(360deg); }
+}

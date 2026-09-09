@@ -12,6 +12,7 @@ import type { QuietGroupItem } from './MessageItem'
 type Props = {
   items: QuietGroupItem[]
   sessionId?: string
+  revealThinking?: boolean
   onSubmitPrompt?: ToolBlockProps['onSubmitPrompt']
 }
 
@@ -21,7 +22,7 @@ type Props = {
 // summary someone has to click to see anything. Each step keeps its own
 // expand-for-details affordance (ToolLineItem/SilentToolView/thinking below)
 // - only the outer "collapse the whole run into one line" behavior is gone.
-export function QuietToolGroup({ items, sessionId, onSubmitPrompt }: Props) {
+export function QuietToolGroup({ items, sessionId, revealThinking = false, onSubmitPrompt }: Props) {
   return (
     <div className="qtg-root">
       <style>{QUIET_GROUP_CSS}</style>
@@ -33,7 +34,7 @@ export function QuietToolGroup({ items, sessionId, onSubmitPrompt }: Props) {
       <div className="qtg-items">
         {items.map((item) => {
           if (item.kind === 'thinking') {
-            return <ThinkingGroupItem key={item.thinkingId} thinkingId={item.thinkingId} thinking={item.thinking} sessionId={sessionId} />
+            return <ThinkingGroupItem key={item.thinkingId} thinkingId={item.thinkingId} thinking={item.thinking} sessionId={sessionId} revealThinking={revealThinking} />
           }
           const tool = item.tool
           const status = toolStatus(tool)
@@ -70,8 +71,19 @@ export function QuietToolGroup({ items, sessionId, onSubmitPrompt }: Props) {
 // groupable tool calls (see groupBlocks in MessageItem.tsx) - same row shape
 // as ToolLineItem so it sits on the same timeline, closed by default since
 // it's reasoning the run doesn't need to justify itself.
-function ThinkingGroupItem({ thinkingId, thinking, sessionId }: { thinkingId: string; thinking: string; sessionId?: string }) {
-  const expanded = useUIStore((s) => s.thinkingExpansion[thinkingId] ?? false)
+function ThinkingGroupItem({
+  thinkingId,
+  thinking,
+  sessionId,
+  revealThinking = false,
+}: {
+  thinkingId: string
+  thinking: string
+  sessionId?: string
+  revealThinking?: boolean
+}) {
+  const storedExpansion = useUIStore((s) => s.thinkingExpansion[thinkingId])
+  const expanded = storedExpansion ?? revealThinking
   const setThinkingExpansion = useUIStore((s) => s.setThinkingExpansion)
 
   function toggle() {

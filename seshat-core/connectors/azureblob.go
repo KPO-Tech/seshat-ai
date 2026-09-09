@@ -261,13 +261,15 @@ func (c *AzureBlobConnector) syncOneBlob(ctx context.Context, cl *azblob.Client,
 	text := string(data)
 	if c.extractText != nil {
 		text = c.extractText(ctx, data, contentType, path.Base(entry.Name))
-		if strings.TrimSpace(text) == "" {
-			return SyncItem{}, false
-		}
+	}
+	if strings.TrimSpace(text) == "" && len(data) == 0 {
+		return SyncItem{}, false
 	}
 
 	return SyncItem{
 		ResourceRef: blobEntryToResourceRef(entry),
+		Data:        data,
+		ContentType: contentType,
 		Text:        text,
 		// No per-blob ACL: Azure Blob's container-level access model isn't
 		// a portable per-object permission system - nil falls back to the

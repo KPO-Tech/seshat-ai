@@ -225,7 +225,7 @@ export function Sidebar() {
                 icon={<Browser theme="outline" size={16} />}
                 label="Apps"
                 collapsed={collapsed}
-                active={pathname.startsWith('/apps') || pathname.startsWith('/workflows') || pathname.startsWith('/teams')}
+                active={pathname.startsWith('/apps') || pathname.startsWith('/automation') || pathname.startsWith('/teams')}
                 onClick={() => navigate('/apps')}
               />
               <SidebarItem

@@ -2,7 +2,7 @@ import { NexusLogo } from '@/components/NexusLogo'
 
 // Concrete TabId for the Settings page — exported for use in settings/index.tsx.
 // Admin-only tabs (users/groups/organizations/workspaces/audit) live
-// exclusively in the Admin Console now (pages/admin/index.tsx's own AdminTab
+// exclusively in the Admin Console now (apps/admin/index.tsx's own AdminTab
 // union) — old ?tab=admin-users style URLs still redirect there via
 // settings/index.tsx's plain-string adminRedirects table, which doesn't need
 // these in TabId. 'usage' is the one exception: it reuses the Admin

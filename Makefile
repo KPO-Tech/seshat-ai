@@ -64,6 +64,7 @@ SESHAT_VERSION    := v1.0.2
 DEPLOY_DIR        := $(ROOT)/deploy
 GO_BUILD_CACHE    := $(ROOT)/.cache/go-build
 GOLANGCI_CACHE    := $(ROOT)/.cache/golangci-lint
+DOCKER_COMPOSE    := $(shell $(SHELL) -c 'docker compose version >/dev/null 2>&1 && echo "docker compose" || echo docker-compose')
 
 # UI package manager: prefer bun (faster, what CI/most contributors use), but
 # fall back to npm when bun isn't installed - e.g. a fresh Windows machine.
@@ -87,7 +88,7 @@ UI_PKG_MGR := $(shell $(SHELL) -c 'command -v bun >/dev/null 2>&1 && echo bun ||
         website-install website-build website-dev \
         install-python start-docling \
         logs logs-last logs-docling \
-        deploy-env deploy-up deploy-up-core deploy-up-docs deploy-up-search deploy-up-s3 deploy-up-full deploy-up-tls deploy-smoke-core \
+        deploy-env deploy-up deploy-up-core deploy-up-docs deploy-up-knowledge deploy-up-search deploy-up-s3 deploy-up-full deploy-up-tls deploy-smoke-core \
         deploy-build deploy-pull deploy-down deploy-logs deploy-ps \
         clean clean-all
 
@@ -185,51 +186,56 @@ deploy-env:
 	fi
 
 deploy-up: deploy-env ## Build and start the default deploy stack
-	@cd $(DEPLOY_DIR) && DEPLOY_DOCLING_URL= docker compose --profile search up --build -d
+	@cd $(DEPLOY_DIR) && DEPLOY_DOCLING_URL= $(DOCKER_COMPOSE) --profile search up --build -d
 	@printf "\033[32m[deploy]\033[0m ready: console http://localhost:%s  api http://localhost:%s  searxng http://localhost:%s  mailpit http://localhost:%s\n" \
 	  "$${SESHAT_CONSOLE_PORT:-3000}" "$${SESHAT_SERVER_PORT:-8081}" "$${SEARXNG_PORT:-8080}" "$${MAILPIT_WEB_PORT:-8025}"
 
 deploy-up-docs: deploy-env ## Build and start default stack + Docling document conversion
-	@cd $(DEPLOY_DIR) && DEPLOY_DOCLING_URL=http://docling:5001 docker compose --profile search --profile docs up --build -d
+	@cd $(DEPLOY_DIR) && DEPLOY_DOCLING_URL=http://docling:5001 $(DOCKER_COMPOSE) --profile search --profile docs up --build -d
 	@printf "\033[32m[deploy]\033[0m docs stack ready: console http://localhost:%s  api http://localhost:%s  searxng http://localhost:%s  docling http://localhost:%s\n" \
 	  "$${SESHAT_CONSOLE_PORT:-3000}" "$${SESHAT_SERVER_PORT:-8081}" "$${SEARXNG_PORT:-8080}" "$${DOCLING_PORT:-5001}"
+
+deploy-up-knowledge: deploy-env ## Build and start default stack + OpenSearch Knowledge/RAG validation
+	@cd $(DEPLOY_DIR) && DEPLOY_DOCLING_URL= SESHAT_SERVER_VECTOR_STORE=opensearch SESHAT_SERVER_OPENSEARCH_ADDRESSES=http://opensearch:9200 $(DOCKER_COMPOSE) --profile search --profile knowledge up --build -d
+	@printf "\033[32m[deploy]\033[0m knowledge stack ready: console http://localhost:%s  api http://localhost:%s  searxng http://localhost:%s  opensearch http://localhost:%s\n" \
+	  "$${SESHAT_CONSOLE_PORT:-3000}" "$${SESHAT_SERVER_PORT:-8081}" "$${SEARXNG_PORT:-8080}" "$${OPENSEARCH_PORT:-9200}"
 
 deploy-up-search: deploy-up ## Alias for deploy-up
 
 deploy-up-core: deploy-env ## Build and start only Postgres + server + console + Mailpit
-	@cd $(DEPLOY_DIR) && DEPLOY_DOCLING_URL= docker compose up --build -d
+	@cd $(DEPLOY_DIR) && DEPLOY_DOCLING_URL= $(DOCKER_COMPOSE) up --build -d
 	@printf "\033[32m[deploy]\033[0m core ready: console http://localhost:%s  api http://localhost:%s  mailpit http://localhost:%s\n" \
 	  "$${SESHAT_CONSOLE_PORT:-3000}" "$${SESHAT_SERVER_PORT:-8081}" "$${MAILPIT_WEB_PORT:-8025}"
 
 deploy-up-s3: deploy-env ## Build and start default stack + MinIO S3 storage testing
-	@cd $(DEPLOY_DIR) && DEPLOY_DOCLING_URL= docker compose --profile search --profile s3 up --build -d
+	@cd $(DEPLOY_DIR) && DEPLOY_DOCLING_URL= $(DOCKER_COMPOSE) --profile search --profile s3 up --build -d
 	@printf "\033[32m[deploy]\033[0m s3 stack ready: console http://localhost:%s  api http://localhost:%s  searxng http://localhost:%s  minio http://localhost:%s\n" \
 	  "$${SESHAT_CONSOLE_PORT:-3000}" "$${SESHAT_SERVER_PORT:-8081}" "$${SEARXNG_PORT:-8080}" "$${MINIO_CONSOLE_PORT:-9001}"
 
 deploy-up-full: deploy-env ## Build and start every deploy service
-	@cd $(DEPLOY_DIR) && DEPLOY_DOCLING_URL=http://docling:5001 docker compose --profile full up --build -d
-	@printf "\033[32m[deploy]\033[0m full stack ready: console http://localhost:%s  api http://localhost:%s  docling http://localhost:%s  searxng http://localhost:%s  minio http://localhost:%s  mailpit http://localhost:%s\n" \
-	  "$${SESHAT_CONSOLE_PORT:-3000}" "$${SESHAT_SERVER_PORT:-8081}" "$${DOCLING_PORT:-5001}" "$${SEARXNG_PORT:-8080}" "$${MINIO_CONSOLE_PORT:-9001}" "$${MAILPIT_WEB_PORT:-8025}"
+	@cd $(DEPLOY_DIR) && DEPLOY_DOCLING_URL=http://docling:5001 SESHAT_SERVER_VECTOR_STORE=opensearch SESHAT_SERVER_OPENSEARCH_ADDRESSES=http://opensearch:9200 $(DOCKER_COMPOSE) --profile full up --build -d
+	@printf "\033[32m[deploy]\033[0m full stack ready: console http://localhost:%s  api http://localhost:%s  docling http://localhost:%s  opensearch http://localhost:%s  searxng http://localhost:%s  minio http://localhost:%s  mailpit http://localhost:%s\n" \
+	  "$${SESHAT_CONSOLE_PORT:-3000}" "$${SESHAT_SERVER_PORT:-8081}" "$${DOCLING_PORT:-5001}" "$${OPENSEARCH_PORT:-9200}" "$${SEARXNG_PORT:-8080}" "$${MINIO_CONSOLE_PORT:-9001}" "$${MAILPIT_WEB_PORT:-8025}"
 
 deploy-up-tls: deploy-env ## Build and start the core stack behind Caddy TLS termination
-	@cd $(DEPLOY_DIR) && DEPLOY_DOCLING_URL= docker compose --profile tls up --build -d
+	@cd $(DEPLOY_DIR) && DEPLOY_DOCLING_URL= $(DOCKER_COMPOSE) --profile tls up --build -d
 	@printf "\033[32m[deploy]\033[0m tls stack ready: https://%s  (self-signed for localhost - see deploy/README.md)\n" \
 	  "$${SESHAT_PUBLIC_DOMAIN:-localhost}"
 
 deploy-build: deploy-env ## Build deploy images without starting containers
-	@cd $(DEPLOY_DIR) && docker compose --profile full build
+	@cd $(DEPLOY_DIR) && $(DOCKER_COMPOSE) --profile full build
 
 deploy-pull: deploy-env ## Pull deploy images, including optional profile services
-	@cd $(DEPLOY_DIR) && docker compose --profile full pull
+	@cd $(DEPLOY_DIR) && $(DOCKER_COMPOSE) --profile full pull
 
 deploy-down: ## Stop the deploy stack (add ARGS=-v to also wipe the Postgres volume)
-	@cd $(DEPLOY_DIR) && docker compose down $(ARGS)
+	@cd $(DEPLOY_DIR) && $(DOCKER_COMPOSE) down $(ARGS)
 
 deploy-logs: ## Tail logs from every deploy stack container
-	@cd $(DEPLOY_DIR) && docker compose logs -f
+	@cd $(DEPLOY_DIR) && $(DOCKER_COMPOSE) logs -f
 
 deploy-ps: ## Show deploy stack container status
-	@cd $(DEPLOY_DIR) && docker compose ps
+	@cd $(DEPLOY_DIR) && $(DOCKER_COMPOSE) ps
 
 deploy-smoke-core: ## Start core compose stack, check API/console, then clean up
 	@bash scripts/smoke-compose-core.sh

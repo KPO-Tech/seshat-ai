@@ -222,11 +222,12 @@ func graphSyncOneItem(ctx context.Context, graph *spGraphClient, driveID string,
 		return SyncItem{}, false
 	}
 	text := graphExtractedText(ctx, data, item.Name, extract)
-	if strings.TrimSpace(text) == "" {
+	if strings.TrimSpace(text) == "" && len(data) == 0 {
 		return SyncItem{}, false
 	}
 	return SyncItem{
 		ResourceRef:   spDriveItemToResourceRef(driveID, item),
+		Data:          data,
 		Text:          text,
 		AccessControl: graphFetchAccessControl(ctx, graph, driveID, item.ID),
 	}, true

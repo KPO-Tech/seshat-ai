@@ -68,7 +68,7 @@ export function Settings() {
     'admin-users': '/admin?tab=users',
     'admin-groups': '/admin?tab=teams',
     'admin-organizations': '/admin?tab=organizations',
-    'admin-workspaces': '/admin?tab=workspaces',
+    'admin-workspaces': '/admin?tab=workspace',
     'admin-audit': '/admin?tab=audit',
   }
 

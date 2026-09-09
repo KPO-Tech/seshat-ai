@@ -1,5 +1,5 @@
 import { SETTINGS_SHARED_CSS } from './SettingsNav'
-import { McpPanel, WORKSPACE_PAGE_CSS } from '../workspace'
+import { McpPanel, WORKSPACE_PAGE_CSS } from '@/apps/admin/workspace'
 
 export function McpView() {
   return (

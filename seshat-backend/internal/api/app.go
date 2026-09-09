@@ -50,6 +50,7 @@ type App struct {
 	loginRateLimiter  *RateLimiter
 	permBroker        *backendquery.PermissionBroker
 	promptBroker      *backendquery.PromptBroker
+	titleBroker       *backendquery.TitleBroker
 	// terminalRelay is shared with the SDKRuntime constructed in bootstrap.go
 	// (via SDKRuntime.SetTerminalRelay) — both need the same instance so a
 	// terminal registered here is visible to bash-tool calls there.
@@ -135,6 +136,7 @@ type AppConfig struct {
 	// standalone instance (matching prior behavior) when nil, e.g. in tests
 	// that construct an App without a full bootstrap.
 	TerminalRelay *backendquery.TerminalRelay
+	TitleBroker   *backendquery.TitleBroker
 	// WhatsAppManager is nil when the WhatsApp connector isn't registered
 	// (see config/bootstrap.go's whatsappDialectFor) - only the pairing
 	// endpoint needs direct access to it; everything else goes through
@@ -146,6 +148,10 @@ func NewApp(cfg AppConfig) *App {
 	terminalRelay := cfg.TerminalRelay
 	if terminalRelay == nil {
 		terminalRelay = backendquery.NewTerminalRelay()
+	}
+	titleBroker := cfg.TitleBroker
+	if titleBroker == nil {
+		titleBroker = backendquery.NewTitleBroker()
 	}
 	artifactPreviews := artifactpreview.NewStore()
 	// Best-effort periodic cleanup of expired previews - Get() already
@@ -178,6 +184,7 @@ func NewApp(cfg AppConfig) *App {
 		cloudAutomation:       cfg.CloudAutomation,
 		permBroker:            backendquery.NewPermissionBroker(),
 		promptBroker:          backendquery.NewPromptBroker(),
+		titleBroker:           titleBroker,
 		terminalRelay:         terminalRelay,
 		artifactPreviews:      artifactPreviews,
 		enableSignup:          cfg.EnableSignup,

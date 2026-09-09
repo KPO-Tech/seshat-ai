@@ -100,20 +100,26 @@ func TestIngestionRejectsGarbledDoclingOutputAndFailsCleanly(t *testing.T) {
 	if len(files) != 1 || files[0].Status != CorpusFileStatusFailed {
 		t.Fatalf("expected garbled docling output to fail ingestion rather than be indexed, got %+v", files)
 	}
+	jobs, err := env.knowledge.ListIngestionJobs(context.Background(), env.adminPrincipal, corpus.ID)
+	if err != nil {
+		t.Fatalf("list ingestion jobs: %v", err)
+	}
+	if len(jobs) != 1 || jobs[0].Phase != IngestionJobPhasePending || jobs[0].FailureStage != "rag_ingest" {
+		t.Fatalf("expected failed docling job to expose phase/stage, got %+v", jobs)
+	}
+	if jobs[0].UsedDocling != true || jobs[0].TotalDurationMS == 0 {
+		t.Fatalf("expected failed docling job to expose metrics, got %+v", jobs[0])
+	}
 }
 
-// A PDF with a real text layer and no embedded images is now extracted
-// page by page via sdkpdfsmart.Convert, natively - not sent to docling at
-// all. This is the whole point of pdfsmart: most PDFs are mostly prose,
-// and paying docling's per-page layout-detection pass for every page of a
-// document that has nothing for it to find is wasted work. The fake
-// docling server here returns clearly distinguishable content, so finding
-// the PDF's own native text (not docling's fake markdown) proves docling
-// was correctly skipped.
-func TestIngestionExtractsTextLayerPDFNativelyViaPdfsmart(t *testing.T) {
+// Corpus ingestion now delegates document-aware chunking to the seshat
+// runtime's DoclingChunker. Even PDFs with a usable text layer go through
+// the same package-level RAG path so seshat-server does not maintain a
+// second, divergent extraction pipeline.
+func TestIngestionUsesRuntimeDoclingChunkerForTextLayerPDF(t *testing.T) {
 	env := newTestEnv(t)
 	env.configurePlatformEmbedder(t)
-	env.configureDocling(t, "# This came from docling, not native extraction")
+	env.configureDocling(t, "# This came from the runtime docling chunker")
 
 	corpus, err := env.knowledge.CreateCorpus(context.Background(), env.adminPrincipal, CreateCorpusParams{
 		OrganizationID: env.orgID, Name: "Native Extraction Test",
@@ -151,12 +157,63 @@ func TestIngestionExtractsTextLayerPDFNativelyViaPdfsmart(t *testing.T) {
 		t.Fatalf("search: %v", err)
 	}
 	if len(resp.Results) == 0 {
-		t.Fatal("expected search to find the natively-extracted content")
+		t.Fatal("expected search to find the runtime docling content")
 	}
+	found := false
 	for _, r := range resp.Results {
-		if strings.Contains(r.Text, "came from docling") {
-			t.Fatalf("expected native extraction to win for a text-layer PDF with no images, but docling's fake output was ingested: %+v", r)
+		if strings.Contains(r.Text, "runtime docling chunker") {
+			found = true
 		}
+	}
+	if !found {
+		t.Fatalf("expected a runtime docling chunk to be indexed, got %+v", resp.Results)
+	}
+}
+
+func TestConnectorIngestionUsesRuntimeDoclingChunkerForBinaryData(t *testing.T) {
+	env := newTestEnv(t)
+	env.configurePlatformEmbedder(t)
+	env.configureDocling(t, "# Connector PDF\n\nEnterprise SLA is 99.9%.")
+
+	corpus, err := env.knowledge.CreateCorpus(context.Background(), env.adminPrincipal, CreateCorpusParams{
+		OrganizationID: env.orgID, Name: "Connector Docling Test",
+	})
+	if err != nil {
+		t.Fatalf("create corpus: %v", err)
+	}
+
+	if _, err := env.knowledge.IngestFromConnector(
+		context.Background(),
+		env.orgID,
+		corpus.ID,
+		"conn_fake",
+		"remote/policy.pdf",
+		env.adminPrincipal.User.ID,
+		"policy.pdf",
+		"application/pdf",
+		[]byte{0x25, 0x50, 0x44, 0x46, 0x00, 0x01, 0x02},
+		"",
+	); err != nil {
+		t.Fatalf("ingest connector item: %v", err)
+	}
+
+	processed, err := env.knowledge.ProcessNextIngestionJob(context.Background())
+	if err != nil {
+		t.Fatalf("process ingestion job: %v", err)
+	}
+	if !processed {
+		t.Fatal("expected a queued job to be processed")
+	}
+
+	resp, err := env.knowledge.Search(context.Background(), env.adminPrincipal, SearchParams{CorpusID: corpus.ID, Query: "Enterprise SLA"})
+	if err != nil {
+		t.Fatalf("search: %v", err)
+	}
+	if len(resp.Results) == 0 {
+		t.Fatal("expected search to find docling content from connector bytes")
+	}
+	if resp.Results[0].Source != "connector" || resp.Results[0].ContentType != "application/pdf" {
+		t.Fatalf("expected connector PDF metadata to survive ingestion, got %+v", resp.Results[0])
 	}
 }
 

@@ -103,8 +103,19 @@ export function isRenderableMessage(message: Message): boolean {
 
 // ThinkingBlock isolates its own Zustand subscription so toggling one thinking
 // block does NOT trigger re-renders in sibling MessageItems.
-function ThinkingBlock({ thinkingId, thinking, sessionId }: { thinkingId: string; thinking: string; sessionId?: string }) {
-  const expanded = useUIStore((s) => s.thinkingExpansion[thinkingId] ?? false)
+function ThinkingBlock({
+  thinkingId,
+  thinking,
+  sessionId,
+  revealThinking = false,
+}: {
+  thinkingId: string
+  thinking: string
+  sessionId?: string
+  revealThinking?: boolean
+}) {
+  const storedExpansion = useUIStore((s) => s.thinkingExpansion[thinkingId])
+  const expanded = storedExpansion ?? revealThinking
   const setThinkingExpansion = useUIStore((s) => s.setThinkingExpansion)
   return (
     <div className="msg-thinking">
@@ -140,6 +151,7 @@ type Props = {
   message: Message
   sessionId?: string
   compact?: boolean
+  revealThinking?: boolean
   onApproveTool?: (toolUseId: string, remember?: boolean) => void
   onDenyTool?: (toolUseId: string) => void
   onSubmitToolPrompt?: (promptId: string, value: unknown) => void
@@ -279,7 +291,7 @@ async function fetchOfficeThumbnail(fileId: string): Promise<string | null> {
   return extractOfficeThumbnail(bytes.buffer)
 }
 
-export const MessageItem = memo(function MessageItem({ message, sessionId, compact = false, onApproveTool, onDenyTool, onSubmitToolPrompt }: Props) {
+export const MessageItem = memo(function MessageItem({ message, sessionId, compact = false, revealThinking = false, onApproveTool, onDenyTool, onSubmitToolPrompt }: Props) {
   const isUser = message.role === 'user'
   const attachments = messageAttachments(message)
   const openLightbox = useUIStore((s) => s.openLightbox)
@@ -446,6 +458,7 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
                 key={firstToolId || `${message.id ?? 'msg'}-quiet-${i}`}
                 items={item.items}
                 sessionId={sessionId}
+                revealThinking={revealThinking}
                 onSubmitPrompt={onSubmitToolPrompt}
               />
             )
@@ -461,7 +474,7 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
           }
           if (block.type === 'thinking') {
             const thinkingId = `${message.id ?? 'msg'}-thinking-${item.index}`
-            return <ThinkingBlock key={thinkingId} thinkingId={thinkingId} thinking={block.thinking} sessionId={sessionId} />
+            return <ThinkingBlock key={thinkingId} thinkingId={thinkingId} thinking={block.thinking} sessionId={sessionId} revealThinking={revealThinking} />
           }
           if (block.type === 'tool_use') {
             const key = block.id || `${message.id ?? 'msg'}-tool-${item.index}`

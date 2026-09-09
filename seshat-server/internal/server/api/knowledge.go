@@ -16,19 +16,38 @@ import (
 const maxUploadBytes = 25 << 20
 
 type createCorpusRequest struct {
-	OrganizationID string `json:"organization_id"`
-	Name           string `json:"name"`
-	Description    string `json:"description"`
+	OrganizationID string            `json:"organization_id"`
+	Name           string            `json:"name"`
+	Description    string            `json:"description"`
+	Tags           []string          `json:"tags"`
+	Metadata       map[string]string `json:"metadata"`
 }
 
 type updateCorpusRequest struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	Name        string            `json:"name"`
+	Description string            `json:"description"`
+	Tags        []string          `json:"tags"`
+	Metadata    map[string]string `json:"metadata"`
 }
 
 type searchCorpusRequest struct {
 	Query string `json:"query"`
 	TopK  int    `json:"top_k"`
+	Mode  string `json:"mode"`
+}
+
+type updateCorpusFileRequest struct {
+	Filename string            `json:"filename"`
+	Tags     []string          `json:"tags"`
+	Metadata map[string]string `json:"metadata"`
+}
+
+type submitSearchFeedbackRequest struct {
+	SearchEventID string `json:"search_event_id"`
+	ResultKey     string `json:"result_key"`
+	CorpusFileID  string `json:"corpus_file_id"`
+	Rating        string `json:"rating"`
+	Comment       string `json:"comment"`
 }
 
 func (app *App) handleCorpora(w http.ResponseWriter, r *http.Request) {
@@ -67,6 +86,8 @@ func (app *App) handleCorpora(w http.ResponseWriter, r *http.Request) {
 			OrganizationID: req.OrganizationID,
 			Name:           req.Name,
 			Description:    req.Description,
+			Tags:           req.Tags,
+			Metadata:       req.Metadata,
 		})
 		if err != nil {
 			writeKnowledgeError(w, err)
@@ -106,6 +127,8 @@ func (app *App) handleCorpusByID(w http.ResponseWriter, r *http.Request) {
 		corpus, err := app.backend.Knowledge.UpdateCorpus(r.Context(), principal, corpusID, knowledge.UpdateCorpusParams{
 			Name:        req.Name,
 			Description: req.Description,
+			Tags:        req.Tags,
+			Metadata:    req.Metadata,
 		})
 		if err != nil {
 			writeKnowledgeError(w, err)
@@ -186,6 +209,21 @@ func (app *App) handleCorpusFileByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch r.Method {
+	case http.MethodPut:
+		var req updateCorpusFileRequest
+		if !decodeJSONBody(w, r, &req) {
+			return
+		}
+		file, err := app.backend.Knowledge.UpdateFile(r.Context(), principal, corpusID, fileID, knowledge.UpdateCorpusFileParams{
+			Filename: req.Filename,
+			Tags:     req.Tags,
+			Metadata: req.Metadata,
+		})
+		if err != nil {
+			writeKnowledgeError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, file)
 	case http.MethodDelete:
 		if err := app.backend.Knowledge.DetachFile(r.Context(), principal, corpusID, fileID); err != nil {
 			writeKnowledgeError(w, err)
@@ -202,6 +240,30 @@ func (app *App) handleCorpusFileByID(w http.ResponseWriter, r *http.Request) {
 // real vectors after an embedder gets configured, or to retry one that
 // never got a job at all. Returns the existing job unchanged if one is
 // already queued/running for this file (see Service.enqueueIngestionJob).
+func (app *App) handleCorpusFileSegments(w http.ResponseWriter, r *http.Request) {
+	principal, ok := authPrincipalFromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "missing principal")
+		return
+	}
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	corpusID := strings.TrimSpace(r.PathValue("corpusID"))
+	fileID := strings.TrimSpace(r.PathValue("fileID"))
+	if corpusID == "" || fileID == "" {
+		writeJSONError(w, http.StatusBadRequest, "missing corpus or file id")
+		return
+	}
+	resp, err := app.backend.Knowledge.ListFileSegments(r.Context(), principal, corpusID, fileID)
+	if err != nil {
+		writeKnowledgeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
 func (app *App) handleCorpusFileIngest(w http.ResponseWriter, r *http.Request) {
 	principal, ok := authPrincipalFromContext(r.Context())
 	if !ok {
@@ -324,10 +386,62 @@ func (app *App) handleCorpusSearch(w http.ResponseWriter, r *http.Request) {
 		CorpusID: corpusID,
 		Query:    req.Query,
 		TopK:     req.TopK,
+		Mode:     req.Mode,
 	})
 	if err != nil {
 		writeKnowledgeError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, resp)
+}
+
+func (app *App) handleCorpusSearchStats(w http.ResponseWriter, r *http.Request) {
+	principal, ok := authPrincipalFromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "missing principal")
+		return
+	}
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	corpusID := strings.TrimSpace(r.PathValue("corpusID"))
+	if corpusID == "" {
+		writeJSONError(w, http.StatusBadRequest, "missing corpus id")
+		return
+	}
+	stats, err := app.backend.Knowledge.GetSearchStats(r.Context(), principal, corpusID)
+	if err != nil {
+		writeKnowledgeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, stats)
+}
+
+func (app *App) handleKnowledgeSearchFeedback(w http.ResponseWriter, r *http.Request) {
+	principal, ok := authPrincipalFromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "missing principal")
+		return
+	}
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	var req submitSearchFeedbackRequest
+	if !decodeJSONBody(w, r, &req) {
+		return
+	}
+	feedback, err := app.backend.Knowledge.SubmitSearchFeedback(r.Context(), principal, knowledge.SubmitSearchFeedbackParams{
+		SearchEventID: req.SearchEventID,
+		ResultKey:     req.ResultKey,
+		CorpusFileID:  req.CorpusFileID,
+		Rating:        req.Rating,
+		Comment:       req.Comment,
+	})
+	if err != nil {
+		writeKnowledgeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, feedback)
 }

@@ -373,7 +373,9 @@ La fonctionnalité est maintenant complète bout en bout : l'Inbox Agent peut cr
 
 **Suivi explicite, pas cette passe** : étendre le modèle `Job` de `seshat-server` avec le même concept de déclencheur événementiel, et comprendre/construire le vrai mécanisme de dispatch `execution_target=device` (schéma déjà présent, aucun dispatch réel trouvé dans `cloud_execution.go`).
 
-## Automatisation façon n8n + polling cloud Gmail + complétude Gmail/Outlook + tools locaux Inbox (2026-09-02)
+## Agent Workflows + dataflow visuel + polling cloud Gmail + complétude Gmail/Outlook + tools locaux Inbox (2026-09-02, recadré 2026-09-06)
+
+**Recadrage produit (2026-09-06)** : ce chantier ne doit plus être compris comme "automatisation façon n8n" au sens produit. Les primitives empruntées aux workflow builders restent utiles pour consolider le socle technique, mais le produit vise des **Agent Workflows** : des agents métier gouvernés, connectés à des tools, plateformes et sources de connaissance, capables d'exécuter des processus auditables et de produire un ROI mesurable. Voir `docs/produits/agent-workflows.md`.
 
 Suite directe du chantier ci-dessus : la question posée par l'utilisateur (« l'Inbox doit-il rester local, même pour une entreprise qui veut que ça tourne même ordinateur éteint ? ») a déclenché un pivot architectural, pas juste une extension. Décidée avec l'utilisateur : **construire les deux briques**, pas remplacer l'une par l'autre — le DAG multi-agents existant (`pkg/workflow`, un appel LLM par nœud) reste pour le jugement/la rédaction en chaîne, un **nouveau moteur déterministe** façon n8n (inspiré de `m9m`, licence MIT, code copié où pertinent) s'ajoute pour les règles fixes/transformations/actions déterministes, et un nœud `subworkflow` les fait composer plutôt que fusionner. Placement tranché : dans le SDK `seshat` (`pkg/`), pas `seshat-core` — le moteur et les nœuds génériques sont produit-agnostiques comme `pkg/workflow` l'est déjà ; seule la résolution de secrets multi-tenant vit dans `seshat-ai`.
 
@@ -643,4 +645,3 @@ Suite directe de la question de l'utilisateur : est-ce que tout ça (connecteurs
 ## Audit n8n complet → TODO priorisé (2026-09-04)
 
 Suite directe de la discussion sur la place de "Job settings" dans l'éditeur Automation (Agent/Provider/Model par nœud plutôt que global, cron comme nœud plutôt que colonne DB) : l'utilisateur a demandé une analyse complète et exhaustive du code de n8n (frontend + backend, pas juste le catalogue de connecteurs déjà couvert), pour lister tout ce qui manque avant de traiter les items un par un, proprement, plutôt que de construire sans direction. Le résultat complet (4 agents de recherche parallèles, un par domaine — moteur/nœuds, scheduling/webhooks/queue, frontend éditeur, plateforme/entreprise) vit dans **`docs/helps/audit-2026-09-04-n8n-gap-analysis.md`** — pas dupliqué ici, ce fichier-ci reste le journal daté, l'audit est le référentiel de travail à cocher au fur et à mesure.
-

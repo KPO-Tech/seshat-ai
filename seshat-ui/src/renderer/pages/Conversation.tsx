@@ -735,6 +735,7 @@ export function Conversation() {
           {rowVirtualizer.getVirtualItems().map((virtualRow) => {
             const msg = visibleMessages[virtualRow.index]
             const i = virtualRow.index
+            const revealThinking = isStreaming && msg.role === 'assistant' && i === visibleMessages.length - 1
             return (
               <div
                 key={virtualRow.key}
@@ -747,6 +748,7 @@ export function Conversation() {
                   message={msg}
                   sessionId={id}
                   compact={msg.role === 'assistant' && i > 0 && visibleMessages[i - 1]?.role === 'assistant'}
+                  revealThinking={revealThinking}
                   onApproveTool={onApproveTool}
                   onDenyTool={onDenyTool}
                   onSubmitToolPrompt={onSubmitToolPrompt}

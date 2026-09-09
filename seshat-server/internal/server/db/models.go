@@ -646,12 +646,14 @@ type ProviderSetting struct {
 // as the vector-store namespace (seshat/pkg/rag.SearchRequest.CorpusID), so
 // no separate namespace field is needed.
 type Corpus struct {
-	ID              string `gorm:"primaryKey;size:32"`
-	OrganizationID  string `gorm:"size:32;not null;index"`
-	CreatedByUserID string `gorm:"size:32;not null"`
-	Name            string `gorm:"size:255;not null"`
-	Description     string `gorm:"size:1000"`
-	ChunkCount      int    `gorm:"not null;default:0"`
+	ID              string            `gorm:"primaryKey;size:32"`
+	OrganizationID  string            `gorm:"size:32;not null;index"`
+	CreatedByUserID string            `gorm:"size:32;not null"`
+	Name            string            `gorm:"size:255;not null"`
+	Description     string            `gorm:"size:1000"`
+	Tags            []string          `gorm:"serializer:json;type:text"`
+	Metadata        map[string]string `gorm:"serializer:json;type:text"`
+	ChunkCount      int               `gorm:"not null;default:0"`
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 }
@@ -660,16 +662,18 @@ type Corpus struct {
 // its ingestion lifecycle. OrganizationID is denormalized from the parent
 // Corpus so listing/authorization doesn't require a join.
 type CorpusFile struct {
-	ID              string `gorm:"primaryKey;size:32"`
-	CorpusID        string `gorm:"size:32;not null;index"`
-	OrganizationID  string `gorm:"size:32;not null;index"`
-	CreatedByUserID string `gorm:"size:32;not null"`
-	Filename        string `gorm:"size:500;not null"`
-	ContentType     string `gorm:"size:255"`
-	StorageKey      string `gorm:"size:500;not null"` // seshat/pkg/storage.ArtifactStore key
-	Size            int64  `gorm:"not null"`
-	Status          string `gorm:"size:32;not null;index"` // pending | ingested | failed
-	ChunkCount      int    `gorm:"not null;default:0"`
+	ID              string            `gorm:"primaryKey;size:32"`
+	CorpusID        string            `gorm:"size:32;not null;index"`
+	OrganizationID  string            `gorm:"size:32;not null;index"`
+	CreatedByUserID string            `gorm:"size:32;not null"`
+	Filename        string            `gorm:"size:500;not null"`
+	ContentType     string            `gorm:"size:255"`
+	StorageKey      string            `gorm:"size:500;not null"` // seshat/pkg/storage.ArtifactStore key
+	Size            int64             `gorm:"not null"`
+	Tags            []string          `gorm:"serializer:json;type:text"`
+	Metadata        map[string]string `gorm:"serializer:json;type:text"`
+	Status          string            `gorm:"size:32;not null;index"` // pending | ingested | failed
+	ChunkCount      int               `gorm:"not null;default:0"`
 	IngestedAt      *time.Time
 	// ConnectorAccountID/ExternalResourceID are set only for files pulled in
 	// by a knowledge connector sync (nil/"" for a manual upload) - together
@@ -679,6 +683,40 @@ type CorpusFile struct {
 	ExternalResourceID string  `gorm:"size:1000"`
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
+}
+
+// KnowledgeSearchEvent records one user search against a corpus. It is a
+// product analytics row, not an audit/security event: it helps improve search
+// quality, identify empty-result queries, and later compute Knowledge ROI.
+type KnowledgeSearchEvent struct {
+	ID               string   `gorm:"primaryKey;size:32"`
+	OrganizationID   string   `gorm:"size:32;not null;index"`
+	CorpusID         string   `gorm:"size:32;not null;index"`
+	UserID           string   `gorm:"size:32;not null;index"`
+	Query            string   `gorm:"type:text;not null"`
+	Mode             string   `gorm:"size:32;not null;index"`
+	TopK             int      `gorm:"not null"`
+	ResultCount      int      `gorm:"not null;index"`
+	LatencyMillis    int64    `gorm:"not null;default:0"`
+	TopResultKeys    []string `gorm:"serializer:json;type:text"`
+	TopResultFileIDs []string `gorm:"serializer:json;type:text"`
+	CreatedAt        time.Time
+}
+
+// KnowledgeSearchFeedback records explicit user feedback for a search event or
+// one specific result. Ratings are intentionally simple for the MVP:
+// "useful" or "not_useful".
+type KnowledgeSearchFeedback struct {
+	ID             string `gorm:"primaryKey;size:32"`
+	SearchEventID  string `gorm:"size:32;not null;index"`
+	OrganizationID string `gorm:"size:32;not null;index"`
+	CorpusID       string `gorm:"size:32;not null;index"`
+	UserID         string `gorm:"size:32;not null;index"`
+	ResultKey      string `gorm:"size:1000"`
+	CorpusFileID   string `gorm:"size:32;index"`
+	Rating         string `gorm:"size:32;not null;index"`
+	Comment        string `gorm:"type:text"`
+	CreatedAt      time.Time
 }
 
 // ConnectorAccount is one connected external account (an S3 bucket, a
@@ -839,21 +877,32 @@ type ConnectorOAuthState struct {
 // claimNextIngestionJob), safe to run on more than one seshat-server
 // process concurrently.
 type KnowledgeIngestionJob struct {
-	ID             string `gorm:"primaryKey;size:32"`
-	CorpusID       string `gorm:"size:32;not null;index"`
-	CorpusFileID   string `gorm:"size:32;not null;index"`
-	OrganizationID string `gorm:"size:32;not null;index"`
-	Filename       string `gorm:"size:500;not null"`
-	Status         string `gorm:"size:32;not null;index"` // queued | running | completed | failed
-	AttemptCount   int    `gorm:"not null;default:0"`
-	MaxAttempts    int    `gorm:"not null;default:3"`
-	ChunkCount     int    `gorm:"not null;default:0"`
-	LastError      string `gorm:"type:text"`
-	NextRunAt      *time.Time
-	StartedAt      *time.Time
-	CompletedAt    *time.Time
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID                string `gorm:"primaryKey;size:32"`
+	CorpusID          string `gorm:"size:32;not null;index"`
+	CorpusFileID      string `gorm:"size:32;not null;index"`
+	OrganizationID    string `gorm:"size:32;not null;index"`
+	Filename          string `gorm:"size:500;not null"`
+	Status            string `gorm:"size:32;not null;index"` // queued | running | completed | failed
+	AttemptCount      int    `gorm:"not null;default:0"`
+	MaxAttempts       int    `gorm:"not null;default:3"`
+	ChunkCount        int    `gorm:"not null;default:0"`
+	LastError         string `gorm:"type:text"`
+	FailureStage      string `gorm:"size:64"`
+	ContentType       string `gorm:"size:255"`
+	FileSize          int64  `gorm:"not null;default:0"`
+	TextChars         int    `gorm:"not null;default:0"`
+	SourceBytes       int64  `gorm:"not null;default:0"`
+	ChunkProfile      string `gorm:"size:32"`
+	UsedDocling       bool   `gorm:"not null;default:false"`
+	ReadDurationMS    int64  `gorm:"not null;default:0"`
+	ExtractDurationMS int64  `gorm:"not null;default:0"`
+	IngestDurationMS  int64  `gorm:"not null;default:0"`
+	TotalDurationMS   int64  `gorm:"not null;default:0"`
+	NextRunAt         *time.Time
+	StartedAt         *time.Time
+	CompletedAt       *time.Time
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 // EmbedderSetting is an organization's embedder configuration for RAG

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	sdkrag "github.com/KPO-Tech/seshat/pkg/rag"
 	sdkstorage "github.com/KPO-Tech/seshat/pkg/storage"
 	sdkvector "github.com/KPO-Tech/seshat/pkg/vector"
 
@@ -55,6 +56,11 @@ type Config struct {
 	// before chunking. Empty disables it — plain-text/markdown/JSON files
 	// still ingest fine either way.
 	DoclingURL string
+	// KnowledgeChunkProfile controls the document chunk size used by the
+	// Knowledge RAG ingestion pipeline. Defaults to the runtime's medium
+	// profile, which preserves the previous 768-token Docling setting while
+	// making the strategy explicit and auditable.
+	KnowledgeChunkProfile sdkrag.ChunkProfile
 	// MembershipConfirmationWindow is how long a self-registered "pending"
 	// membership (see iam.Service.Register) stays fully usable before
 	// iam.Service.BlockExpiredPendingMemberships blocks it unconfirmed.
@@ -126,6 +132,7 @@ func LoadFromEnv() Config {
 		IngestionMaxPollInterval:     envDuration("SESHAT_SERVER_INGESTION_MAX_POLL_INTERVAL", 5*time.Second),
 		Vector:                       vectorConfigFromEnv(),
 		DoclingURL:                   strings.TrimSpace(os.Getenv("SESHAT_SERVER_DOCLING_URL")),
+		KnowledgeChunkProfile:        knowledgeChunkProfileFromEnv(),
 		MembershipConfirmationWindow: envDuration("SESHAT_SERVER_MEMBERSHIP_CONFIRMATION_WINDOW", 60*24*time.Hour),
 		BootstrapAdminEmail:          strings.TrimSpace(os.Getenv("SESHAT_SERVER_BOOTSTRAP_ADMIN_EMAIL")),
 		BootstrapAdminPassword:       strings.TrimSpace(os.Getenv("SESHAT_SERVER_BOOTSTRAP_ADMIN_PASSWORD")),
@@ -138,6 +145,27 @@ func LoadFromEnv() Config {
 		PublicAPIURL:                 publicAPIURLFromEnv(port),
 		OrgMode:                      orgModeFromEnv(),
 	}
+}
+
+func knowledgeChunkProfileFromEnv() sdkrag.ChunkProfile {
+	name := sdkrag.ChunkProfileName(strings.ToLower(strings.TrimSpace(os.Getenv("SESHAT_SERVER_KNOWLEDGE_CHUNK_PROFILE"))))
+	profile, ok := sdkrag.RecommendedChunkProfile(name)
+	if !ok {
+		profile = sdkrag.DefaultChunkProfile()
+	}
+	maxTokens := envIntAllowZero("SESHAT_SERVER_KNOWLEDGE_CHUNK_MAX_TOKENS", 0)
+	overlapTokens := envIntAllowZero("SESHAT_SERVER_KNOWLEDGE_CHUNK_OVERLAP_TOKENS", 0)
+	if maxTokens == 0 && overlapTokens == 0 && name != sdkrag.ChunkProfileCustom {
+		return profile
+	}
+	if maxTokens == 0 {
+		maxTokens = profile.MaxTokens
+	}
+	custom, err := sdkrag.NewCustomChunkProfile(maxTokens, overlapTokens)
+	if err != nil {
+		return profile
+	}
+	return custom
 }
 
 // orgModeFromEnv defaults to OrgModeMulti when unset. A non-empty value is
@@ -223,9 +251,9 @@ func storageConfigFromEnv() sdkstorage.Config {
 // GORM connection into the runtime's own low-level DB handle is follow-up
 // work, not done here.
 func vectorConfigFromEnv() sdkvector.Config {
-	backend := sdkvector.Backend(strings.ToLower(strings.TrimSpace(os.Getenv("SESHAT_SERVER_VECTOR_BACKEND"))))
-	if backend == "" {
-		backend = sdkvector.BackendHNSW
+	storeKind := vectorStoreKindFromEnv()
+	if storeKind == "" {
+		storeKind = sdkvector.StoreHNSW
 	}
 	hnswDir := os.Getenv("SESHAT_SERVER_VECTOR_HNSW_DIR")
 	if hnswDir == "" {
@@ -235,7 +263,29 @@ func vectorConfigFromEnv() sdkvector.Config {
 		}
 		hnswDir = filepath.Join(runtimeRoot, "server", "vectors")
 	}
-	return sdkvector.Config{Backend: backend, HNSWDir: hnswDir}
+	return sdkvector.Config{
+		StoreKind:                    storeKind,
+		Backend:                      storeKind,
+		HNSWDir:                      hnswDir,
+		Dim:                          envIntAllowZero("SESHAT_SERVER_VECTOR_DIM", 0),
+		OpenSearchAddresses:          envCSV("SESHAT_SERVER_OPENSEARCH_ADDRESSES"),
+		OpenSearchUsername:           strings.TrimSpace(os.Getenv("SESHAT_SERVER_OPENSEARCH_USERNAME")),
+		OpenSearchPassword:           strings.TrimSpace(os.Getenv("SESHAT_SERVER_OPENSEARCH_PASSWORD")),
+		OpenSearchAPIKey:             strings.TrimSpace(os.Getenv("SESHAT_SERVER_OPENSEARCH_API_KEY")),
+		OpenSearchIndexPrefix:        strings.TrimSpace(os.Getenv("SESHAT_SERVER_OPENSEARCH_INDEX_PREFIX")),
+		OpenSearchCreateIndex:        envBoolPointer("SESHAT_SERVER_OPENSEARCH_CREATE_INDEX"),
+		OpenSearchKNN:                envBool("SESHAT_SERVER_OPENSEARCH_KNN", false),
+		OpenSearchInsecureSkipVerify: envBool("SESHAT_SERVER_OPENSEARCH_INSECURE_SKIP_VERIFY", false),
+		OpenSearchBulkSize:           envIntAllowZero("SESHAT_SERVER_OPENSEARCH_BULK_SIZE", 0),
+	}
+}
+
+func vectorStoreKindFromEnv() sdkvector.StoreKind {
+	raw := strings.TrimSpace(os.Getenv("SESHAT_SERVER_VECTOR_STORE"))
+	if raw == "" {
+		raw = strings.TrimSpace(os.Getenv("SESHAT_SERVER_VECTOR_BACKEND"))
+	}
+	return sdkvector.StoreKind(strings.ToLower(raw))
 }
 
 func dbConfigFromEnv() sdb.Config {
@@ -300,4 +350,40 @@ func envDurationAllowZero(key string, fallback time.Duration) time.Duration {
 		}
 	}
 	return fallback
+}
+
+func envBool(key string, fallback bool) bool {
+	if raw := strings.TrimSpace(os.Getenv(key)); raw != "" {
+		if parsed, err := strconv.ParseBool(raw); err == nil {
+			return parsed
+		}
+	}
+	return fallback
+}
+
+func envBoolPointer(key string) *bool {
+	raw := strings.TrimSpace(os.Getenv(key))
+	if raw == "" {
+		return nil
+	}
+	parsed, err := strconv.ParseBool(raw)
+	if err != nil {
+		return nil
+	}
+	return &parsed
+}
+
+func envCSV(key string) []string {
+	raw := strings.TrimSpace(os.Getenv(key))
+	if raw == "" {
+		return nil
+	}
+	values := make([]string, 0)
+	for _, value := range strings.Split(raw, ",") {
+		value = strings.TrimSpace(value)
+		if value != "" {
+			values = append(values, value)
+		}
+	}
+	return values
 }

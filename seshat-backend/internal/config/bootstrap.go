@@ -824,10 +824,13 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		browserRemoteControlURL = discoverElectronBrowserRemoteControlURL(ctx)
 	}
 
+	titleBroker := backendquery.NewTitleBroker()
+	defaultModel := appconfig.ParseModelIdentifier(config.Model)
 	queryClientConfig := &sdk.ClientConfig{
 		APIKey:            config.APIKey,
-		Model:             appconfig.ParseModelIdentifier(config.Model),
+		Model:             defaultModel,
 		PermissionMode:    sdk.PermissionModeNever,
+		MaxTokens:         backendquery.InteractiveMaxTokensForModel(defaultModel),
 		AutoCompact:       true,
 		PersistSessions:   true,
 		SessionSQLitePath: appconfig.EffectiveSessionDBPath(config),
@@ -868,6 +871,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 			if err := sessionOwnershipStore.UpdateTitle(context.Background(), id.String(), title); err != nil {
 				fmt.Fprintf(os.Stderr, "[API] session %s auto-title: %v\n", id, err)
 			}
+			titleBroker.Notify(id.String(), title)
 		},
 	}
 	queryClient, err := sdk.NewClient(queryClientConfig)
@@ -1345,6 +1349,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		TargetServerURL:       defaultServerURL,
 		SandboxKind:           sandboxKind,
 		TerminalRelay:         terminalRelay,
+		TitleBroker:           titleBroker,
 		WhatsAppManager:       whatsappManager,
 	})
 

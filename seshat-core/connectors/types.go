@@ -73,6 +73,8 @@ type ResourceRef struct {
 // plus the access control list it should carry.
 type SyncItem struct {
 	ResourceRef
+	Data          []byte
+	ContentType   string
 	Text          string
 	AccessControl []AccessEntry
 }

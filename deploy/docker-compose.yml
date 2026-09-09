@@ -44,8 +44,11 @@ services:
   # localhost from outside Docker.
   docling:
     profiles: ["docs", "full"]
-    image: quay.io/docling-project/docling-serve-cpu:latest
+    image: quay.io/docling-project/docling-serve-cpu:${DOCLING_VERSION:-latest}
     restart: unless-stopped
+    depends_on:
+      docling-redis:
+        condition: service_started
     # The heaviest service by far (PyTorch + layout/OCR models) and the one
     # most likely to run away with host RAM on a large/scanned PDF — without
     # a cap, an oversized document can starve the whole host (Docker
@@ -57,6 +60,16 @@ services:
     # the stack plus the host OS and browser - raise it if you have more
     # RAM and hit legitimate OOM kills on large documents.
     mem_limit: 3g
+    environment: &docling-environment
+      DOCLING_SERVE_ENG_KIND: rq
+      DOCLING_SERVE_ENG_RQ_REDIS_URL: redis://docling-redis:6379/0
+      DOCLING_SERVE_ENG_RQ_REDIS_MAX_CONNECTIONS: ${DOCLING_SERVE_ENG_RQ_REDIS_MAX_CONNECTIONS:-50}
+      DOCLING_DEVICE: ${DOCLING_DEVICE:-cpu}
+      DOCLING_NUM_THREADS: ${DOCLING_NUM_THREADS:-4}
+      DOCLING_PERF_PAGE_BATCH_SIZE: ${DOCLING_PERF_PAGE_BATCH_SIZE:-}
+      DOCLING_PERF_ELEMENTS_BATCH_SIZE: ${DOCLING_PERF_ELEMENTS_BATCH_SIZE:-}
+      DOCLING_SERVE_LOAD_MODELS_AT_BOOT: ${DOCLING_SERVE_LOAD_MODELS_AT_BOOT:-false}
+      DOCLING_SERVE_OPTIONS_CACHE_SIZE: ${DOCLING_SERVE_OPTIONS_CACHE_SIZE:-32}
     ports:
       - "${DOCLING_PORT:-5001}:5001"
     healthcheck:
@@ -68,6 +81,63 @@ services:
       timeout: 5s
       retries: 15
       start_period: 90s
+
+  docling-worker:
+    profiles: ["docs", "full"]
+    image: quay.io/docling-project/docling-serve-cpu:${DOCLING_VERSION:-latest}
+    restart: unless-stopped
+    command: ["docling-serve", "rq-worker"]
+    depends_on:
+      docling-redis:
+        condition: service_started
+    mem_limit: ${DOCLING_WORKER_MEM_LIMIT:-3g}
+    environment: *docling-environment
+
+  docling-redis:
+    profiles: ["docs", "full"]
+    image: redis:7-alpine
+    restart: unless-stopped
+    mem_limit: 256m
+    volumes:
+      - docling-redis-data:/data
+
+  # OpenSearch is the target vector/search engine for enterprise Knowledge
+  # validation. It is profile-gated because it is heavier than the core
+  # control-plane stack and is not wired into seshat-server by default yet.
+  #
+  # Security is disabled here intentionally for local development and engine
+  # integration testing only. Do not expose this service beyond localhost or
+  # reuse this exact configuration in production.
+  opensearch:
+    profiles: ["knowledge", "full"]
+    image: opensearchproject/opensearch:${OPENSEARCH_VERSION:-latest}
+    restart: unless-stopped
+    mem_limit: 2g
+    environment:
+      cluster.name: seshat-knowledge
+      node.name: seshat-opensearch
+      discovery.type: single-node
+      bootstrap.memory_lock: "true"
+      OPENSEARCH_JAVA_OPTS: ${OPENSEARCH_JAVA_OPTS:--Xms512m -Xmx512m}
+      DISABLE_SECURITY_PLUGIN: "true"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    ports:
+      - "${OPENSEARCH_PORT:-9200}:9200"
+      - "${OPENSEARCH_PERF_PORT:-9600}:9600"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200 >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
 
   # Optional S3-compatible object storage for knowledge-base corpus files,
   # as an alternative to the default local-disk storage. Not wired up by
@@ -157,6 +227,24 @@ services:
       # `make deploy-up-docs` / `make deploy-up-full`, or set this explicitly
       # in deploy/.env, to point at the optional docling service.
       SESHAT_SERVER_DOCLING_URL: ${DEPLOY_DOCLING_URL:-}
+      SESHAT_SERVER_KNOWLEDGE_CHUNK_PROFILE: ${SESHAT_SERVER_KNOWLEDGE_CHUNK_PROFILE:-medium}
+      SESHAT_SERVER_KNOWLEDGE_CHUNK_MAX_TOKENS: ${SESHAT_SERVER_KNOWLEDGE_CHUNK_MAX_TOKENS:-}
+      SESHAT_SERVER_KNOWLEDGE_CHUNK_OVERLAP_TOKENS: ${SESHAT_SERVER_KNOWLEDGE_CHUNK_OVERLAP_TOKENS:-}
+      # Knowledge vector store. Empty/unset defaults to embedded HNSW in
+      # seshat-server today. SESHAT_SERVER_VECTOR_STORE is the primary name;
+      # SESHAT_SERVER_VECTOR_BACKEND remains a legacy alias in config.go.
+      SESHAT_SERVER_VECTOR_STORE: ${SESHAT_SERVER_VECTOR_STORE:-}
+      SESHAT_SERVER_VECTOR_DIM: ${SESHAT_SERVER_VECTOR_DIM:-}
+      SESHAT_SERVER_VECTOR_HNSW_DIR: ${SESHAT_SERVER_VECTOR_HNSW_DIR:-}
+      SESHAT_SERVER_OPENSEARCH_ADDRESSES: ${SESHAT_SERVER_OPENSEARCH_ADDRESSES:-http://opensearch:9200}
+      SESHAT_SERVER_OPENSEARCH_USERNAME: ${SESHAT_SERVER_OPENSEARCH_USERNAME:-}
+      SESHAT_SERVER_OPENSEARCH_PASSWORD: ${SESHAT_SERVER_OPENSEARCH_PASSWORD:-}
+      SESHAT_SERVER_OPENSEARCH_API_KEY: ${SESHAT_SERVER_OPENSEARCH_API_KEY:-}
+      SESHAT_SERVER_OPENSEARCH_INDEX_PREFIX: ${SESHAT_SERVER_OPENSEARCH_INDEX_PREFIX:-seshat-knowledge}
+      SESHAT_SERVER_OPENSEARCH_CREATE_INDEX: ${SESHAT_SERVER_OPENSEARCH_CREATE_INDEX:-true}
+      SESHAT_SERVER_OPENSEARCH_KNN: ${SESHAT_SERVER_OPENSEARCH_KNN:-false}
+      SESHAT_SERVER_OPENSEARCH_INSECURE_SKIP_VERIFY: ${SESHAT_SERVER_OPENSEARCH_INSECURE_SKIP_VERIFY:-false}
+      SESHAT_SERVER_OPENSEARCH_BULK_SIZE: ${SESHAT_SERVER_OPENSEARCH_BULK_SIZE:-}
       # Corpus file storage. Empty/unset SESHAT_SERVER_STORAGE_PROVIDER
       # defaults to local disk (today's behavior, unchanged) — set it to
       # "s3" in .env to point at the minio service above instead.
@@ -307,6 +395,8 @@ services:
 volumes:
   postgres-data:
   seshat-server-artifacts:
+  docling-redis-data:
+  opensearch-data:
   minio-data:
   searxng-redis-data:
   searxng-data:

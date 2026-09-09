@@ -12,7 +12,8 @@ pieces:
 
 Heavy or optional services are behind Docker Compose profiles:
 
-- `docs`: Docling document conversion
+- `docs`: Docling document conversion with Redis queue + scalable workers
+- `knowledge`: OpenSearch vector/search engine for Knowledge/RAG validation
 - `search`: SearXNG web search, included by `make deploy-up`
 - `s3`: MinIO S3-compatible storage testing
 - `tls`: Caddy TLS termination in front of `seshat-console` — see "TLS" below
@@ -29,6 +30,7 @@ From the repo root:
 make deploy-up         # default stack: no Docling, no MinIO
 make deploy-up-core    # smallest core: no Docling, no MinIO, no SearXNG
 make deploy-up-docs    # default + Docling
+make deploy-up-knowledge # default + OpenSearch, seshat-server uses OpenSearch
 make deploy-up-search  # alias for deploy-up
 make deploy-up-s3      # default + MinIO
 make deploy-up-tls     # core stack behind Caddy TLS termination
@@ -49,8 +51,15 @@ Direct Docker Compose usage from this directory still works:
 cp .env.example .env
 docker compose up --build
 docker compose --profile search up --build
+SESHAT_SERVER_VECTOR_STORE=opensearch SESHAT_SERVER_OPENSEARCH_ADDRESSES=http://opensearch:9200 docker compose --profile search --profile knowledge up --build
 DEPLOY_DOCLING_URL=http://docling:5001 docker compose --profile search --profile docs up --build
 DEPLOY_DOCLING_URL=http://docling:5001 docker compose --profile full up --build
+```
+
+Scale Docling workers when document extraction becomes the bottleneck:
+
+```bash
+DEPLOY_DOCLING_URL=http://docling:5001 docker compose --profile search --profile docs up --build --scale docling-worker=3
 ```
 
 ## URLs
@@ -61,8 +70,31 @@ DEPLOY_DOCLING_URL=http://docling:5001 docker compose --profile full up --build
 - Mailpit: http://localhost:8025
 - SearXNG: http://localhost:8080 with `make deploy-up`
 - Docling: http://localhost:5001 with `make deploy-up-docs` or `make deploy-up-full`
+- OpenSearch: http://localhost:9200 with `make deploy-up-knowledge` or `make deploy-up-full`
 - MinIO console: http://localhost:9001 with `make deploy-up-s3` or `make deploy-up-full`
 - MinIO S3 API: http://localhost:9000 with `make deploy-up-s3` or `make deploy-up-full`
+
+Knowledge vector storage defaults to embedded HNSW. Use
+`SESHAT_SERVER_VECTOR_STORE` for the server-side store selection; the older
+`SESHAT_SERVER_VECTOR_BACKEND` name remains accepted as a compatibility alias.
+`make deploy-up-knowledge` and `make deploy-up-full` set
+`SESHAT_SERVER_VECTOR_STORE=opensearch` for that run and point the server at
+the bundled OpenSearch service.
+
+Knowledge document chunking defaults to
+`SESHAT_SERVER_KNOWLEDGE_CHUNK_PROFILE=medium` (`768` tokens). Use `small`,
+`large`, `structured`, or `SESHAT_SERVER_KNOWLEDGE_CHUNK_MAX_TOKENS` plus
+`SESHAT_SERVER_KNOWLEDGE_CHUNK_OVERLAP_TOKENS` for a custom deployment profile.
+
+Docling in the `docs`/`full` profile is configured in distributed mode:
+`docling` exposes the HTTP API, `docling-redis` holds the conversion queue,
+and `docling-worker` performs the heavy extraction/chunking work. Keep
+`DEPLOY_DOCLING_URL=http://docling:5001` for `seshat-server`; scale only the
+worker service when you need more throughput. Tune worker behavior with
+`DOCLING_WORKER_MEM_LIMIT`, `DOCLING_NUM_THREADS`,
+`DOCLING_PERF_PAGE_BATCH_SIZE`, `DOCLING_PERF_ELEMENTS_BATCH_SIZE`,
+`DOCLING_SERVE_LOAD_MODELS_AT_BOOT`, and
+`DOCLING_SERVE_OPTIONS_CACHE_SIZE`.
 
 ## TLS
 
@@ -96,11 +128,16 @@ published ports — separate from `SESHAT_CONSOLE_PORT`, which still reaches
 - `seshat-console/Dockerfile`: Node build stage (`npm ci && npm run build`),
   then static files served by `nginx:1.27-alpine`. The nginx config also
   reverse-proxies `/api/*` to the `seshat-server` container.
-- `docling` (`docs`/`full` profile): official
-  `quay.io/docling-project/docling-serve-cpu` image. It converts binary
-  documents and media to markdown for knowledge ingestion. It is heavy
-  (PyTorch + layout/OCR models), so it no longer blocks default
+- `docling` + `docling-worker` + `docling-redis` (`docs`/`full` profile):
+  official `quay.io/docling-project/docling-serve-cpu` image with Redis/RQ
+  execution. The API container receives conversion requests, Redis queues
+  them, and workers perform the heavy extraction/chunking work. The workers
+  are heavy (PyTorch + layout/OCR models), so this no longer blocks default
   `make deploy-up`.
+- `opensearch` (`knowledge`/`full` profile): local OpenSearch single-node
+  instance used to validate Seshat's enterprise Knowledge/RAG vector store
+  integration. Security is disabled in this local compose profile; keep it
+  bound to localhost and do not use this exact configuration in production.
 - `searxng` + `searxng-redis` (`search`/`full` profile): self-hosted search
   and Valkey cache for testing the SearXNG web-search provider locally.
 - `minio` + `minio-createbucket` (`s3`/`full` profile): S3-compatible storage
