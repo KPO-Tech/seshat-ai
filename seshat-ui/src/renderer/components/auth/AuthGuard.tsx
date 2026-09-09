@@ -19,6 +19,56 @@ export function AuthGuard({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false
 
+    // /auth/me is also the one place useOrganizationStore's "current
+    // organization" gets (re)populated (see that store's own doc comment
+    // for why there's no switcher yet). A network error or 5xx here stays
+    // "optimistic" (status 'ok', not bounced to /login) since it isn't a
+    // statement about session validity - a transient blip while the local
+    // backend is still starting up shouldn't log the user out. But nothing
+    // ever retried after that single attempt: a user who lands here during
+    // exactly that startup window got stuck with an empty organization
+    // store for the rest of the session, with every org-scoped feature
+    // (Variables, Automation's Overview/job list) hanging forever on empty
+    // organizationId and no way to recover short of restarting the app.
+    // fetchMe retries a handful of times with backoff specifically for
+    // those two transient cases; a real answer (401, or any other 4xx)
+    // still resolves immediately, same as before.
+    async function fetchMe(attempt: number): Promise<void> {
+      try {
+        const me = await api.get<{ organizations?: Organization[] }>('/auth/me')
+        if (!cancelled) {
+          useOrganizationStore.getState().setOrganizations(me.organizations ?? [])
+          setStatus('ok')
+        }
+      } catch (error) {
+        if (cancelled) return
+        if (error instanceof ApiError) {
+          if (error.status === 401) {
+            // The backend explicitly said the session is invalid/expired.
+            logout()
+            setStatus('invalid')
+            return
+          }
+          if (error.status < 500) {
+            // Any other real HTTP response (403, 404, ...) is unexpected
+            // for this endpoint and — unlike a network failure or a 5xx —
+            // is an actual answer from the backend. Don't fail open on it.
+            setStatus('invalid')
+            return
+          }
+        }
+        // Network failure (no ApiError at all) or a 5xx: retry with
+        // backoff a few times before settling. Still fails open to 'ok'
+        // once attempts run out, preserving the original "don't bounce to
+        // /login over local-backend startup timing" behavior - the goal
+        // here is only to stop giving up after a single try during that
+        // same startup window.
+        setStatus('ok')
+        if (attempt >= 5) return
+        setTimeout(() => { if (!cancelled) void fetchMe(attempt + 1) }, Math.min(1000 * 2 ** attempt, 15000))
+      }
+    }
+
     async function validate() {
       if (window.nexus?.auth) {
         const restored = await window.nexus.auth.restoreSession().catch(() => null)
@@ -32,45 +82,7 @@ export function AuthGuard({ children }: { children: ReactNode }) {
         setStatus('invalid')
         return
       }
-
-      try {
-        // Also the one place useOrganizationStore's "current organization"
-        // gets (re)populated - this call already runs on every app session
-        // start (fresh login and restored session alike), so no separate
-        // fetch is needed anywhere else. See useOrganizationStore's own doc
-        // comment for why there's no switcher yet.
-        const me = await api.get<{ organizations?: Organization[] }>('/auth/me')
-        if (!cancelled) {
-          useOrganizationStore.getState().setOrganizations(me.organizations ?? [])
-          setStatus('ok')
-        }
-      } catch (error) {
-        if (cancelled) return
-        if (!(error instanceof ApiError)) {
-          // No HTTP response reached us at all (network drop, backend not up
-          // yet) — not an auth decision either way. Stay optimistic rather
-          // than bouncing the user to /login over a transient connectivity
-          // blip to the local backend.
-          setStatus('ok')
-          return
-        }
-        if (error.status === 401) {
-          // The backend explicitly said the session is invalid/expired.
-          logout()
-          setStatus('invalid')
-          return
-        }
-        if (error.status >= 500) {
-          // The backend is up but erroring server-side — not a statement
-          // about this session's validity, so don't treat it as one.
-          setStatus('ok')
-          return
-        }
-        // Any other real HTTP response (403, 404, ...) is unexpected for
-        // this endpoint and — unlike a network failure or a 5xx — is an
-        // actual answer from the backend. Don't fail open on it.
-        setStatus('invalid')
-      }
+      await fetchMe(0)
     }
 
     void validate()
