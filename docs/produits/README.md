@@ -6,16 +6,44 @@ Les documents de `docs/project/strategy/` gardent la vision globale, le modèle 
 
 Le principe directeur est simple : chaque produit doit pouvoir être expliqué par le problème métier qu'il résout, pas par la liste de fonctionnalités techniques qu'il expose.
 
+## Structure du dossier
+
+```text
+docs/produits/
+  general.md              cadrage transverse du portefeuille SeshatOS
+  chat/                   le chat principal (ne dépend d'aucune plateforme)
+  platforms/
+    automation/           Agent Workflows
+    knowledge/            Knowledge-to-Action
+    inbox/                (réservé — design à venir)
+```
+
+Chaque plateforme a son propre sous-dossier sous `platforms/`, à l'image de `seshat-ui/src/renderer/apps/<plateforme>/` côté code — même principe : une fois qu'une plateforme grossit, son cadrage produit, son design et ses analyses techniques doivent rester ensemble et séparés des autres, pas mélangés dans un seul tas de fichiers plats.
+
+Un sous-dossier de plateforme peut contenir :
+
+- le document de cadrage produit (rôle, positionnement, cas d'usage) ;
+- `<plateforme>-app-pages.md` : structure de l'app en pages/fonctionnalités, pensé pour un passage de design (Stitch) ;
+- `design/` : exports Stitch, mockups, logos ;
+- `presentations/` : briefs commerciaux/PDF si le produit en a un ;
+- des analyses techniques ponctuelles (`<plateforme>-xxx.md`).
+
+`chat/` reste au même niveau que `platforms/`, pas dedans : le chat principal est une page globale de SeshatOS, pas une plateforme au sens de `apps/README.md` (une plateforme a sa propre navigation, ses propres API, son propre état — le chat n'a rien de tout ça, il consomme les capacités des plateformes sans en être une).
+
 ## Produits documentés
 
 | Produit | Statut du document | Rôle |
 |---|---|---|
 | [Cadrage général](./general.md) | Premier cadrage | Vision globale du portefeuille produit SeshatOS et activation des applications par organisation. |
-| [MVP Knowledge-to-Action](./mvp-knowledge-to-action.md) | Premier cadrage | Premier périmètre vendable : documentation intelligente, Knowledge Intelligence, ASK/DISCOVER/ACT. |
-| [Application Knowledge - Pages et fonctionnalités](./knowledge-app-pages.md) | Cadrage fonctionnel | Structure de l'app Knowledge comme plateforme : pages, utilisateurs, fonctionnalités, ASK/DISCOVER/ACT. |
-| [Knowledge - Sources open source retenues](./knowledge-sources-retenues.md) | Références | Projets open source à étudier pour améliorer le RAG, la recherche, le graph et la plateforme Knowledge. |
-| [Knowledge RAG - Améliorations retenues](./knowledge-rag-improvements.md) | Analyse technique | Première analyse OpenSearch Go et piste d'intégration dans le moteur RAG/vector de Seshat. |
-| [Agent Workflows](./agent-workflows.md) | Premier cadrage | Orchestrer des agents métier gouvernés qui utilisent outils, connaissance et plateformes pour exécuter des processus mesurables. |
+| [Chat principal - Audit UI](./chat/seshatos-main-chat-ui-audit.md) | Audit | Chat principal SeshatOS - ne dépend d'aucune plateforme spécifique. |
+| [Agent Workflows](./platforms/automation/agent-workflows.md) | Premier cadrage | Orchestrer des agents métier gouvernés qui utilisent outils, connaissance et plateformes pour exécuter des processus mesurables. |
+| [Application Automation - Pages et fonctionnalités](./platforms/automation/automation-app-pages.md) | Cadrage fonctionnel | Structure de l'app Automation comme plateforme : pages, utilisateurs, fonctionnalités, cycle build/run/prove. |
+| [MVP Knowledge-to-Action](./platforms/knowledge/mvp-knowledge-to-action.md) | Premier cadrage | Premier périmètre vendable : documentation intelligente, Knowledge Intelligence, ASK/DISCOVER/ACT. |
+| [Application Knowledge - Pages et fonctionnalités](./platforms/knowledge/knowledge-app-pages.md) | Cadrage fonctionnel | Structure de l'app Knowledge comme plateforme : pages, utilisateurs, fonctionnalités, ASK/DISCOVER/ACT. |
+| [Knowledge - Sources open source retenues](./platforms/knowledge/knowledge-sources-retenues.md) | Références | Projets open source à étudier pour améliorer le RAG, la recherche, le graph et la plateforme Knowledge. |
+| [Knowledge RAG - Améliorations retenues](./platforms/knowledge/knowledge-rag-improvements.md) | Analyse technique | Première analyse OpenSearch Go et piste d'intégration dans le moteur RAG/vector de Seshat. |
+| [Knowledge - Analyse backend MaxKB](./platforms/knowledge/knowledge-maxkb-backend-analysis.md) | Analyse technique | Étude du backend MaxKB comme référence d'architecture Knowledge. |
+| [Knowledge - Roadmap produit](./platforms/knowledge/knowledge-roadmap.md) | Suivi | Progression et décisions de cadrage du chantier Knowledge MVP. |
 
 ## Règle de positionnement
 
@@ -30,3 +58,9 @@ Les primitives inspirées des workflow builders restent utiles : canevas, trigge
 Pour l'application Knowledge, la priorité retenue est de consolider d'abord le moteur RAG et la qualité de recherche, en s'inspirant des sources open source retenues.
 
 Les pages de l'application seront ensuite travaillées progressivement, en utilisant les maquettes Stitch comme direction de design à adapter à SeshatOS.
+
+## Progression Automation
+
+Le socle technique (triggers, webhooks, expressions, variables, retry/error handling, replay, tests de credentials) se consolide en suivant `docs/helps/audit-2026-09-04-n8n-gap-analysis.md` — une référence technique, pas une roadmap produit.
+
+En parallèle, `platforms/automation/automation-app-pages.md` sert de base à un passage de design Stitch, comme cela a été fait pour Knowledge, pour que le design réel de la plateforme soit prêt une fois le socle technique terminé.

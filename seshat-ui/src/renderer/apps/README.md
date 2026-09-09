@@ -55,3 +55,8 @@ apps/<app-name>/
 Keep shared primitives in `components/`, shared API plumbing in `api/`, and
 shared cross-cutting helpers in `lib/`. Do not place app-specific business UI
 inside global folders unless it is deliberately reusable across platforms.
+
+`admin/` and `team/` deliberately stay flat instead of following this shape.
+`admin/` is a configuration console for platform administrators, not a
+growing product surface, so splitting it into `api/`/`components/`/`pages/`
+adds no value — this is a deliberate exception, not a pending migration.

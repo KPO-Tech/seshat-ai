@@ -1,6 +1,6 @@
-# Agent Instructions — Nexus UI
+# Agent Instructions — seshat-ui (SeshatOS Desktop Client)
 
-This file provides guidance for AI agents working on `seshat-ui`, the Electron + React desktop client for Nexus. Read it before making any changes.
+This file provides guidance for AI agents working on `seshat-ui`, the Electron + React desktop client for SeshatOS. Read it before making any changes.
 
 ---
 
@@ -82,16 +82,15 @@ seshat-ui/
 │       │   ├── chat.ts        ← message normalization, status helpers
 │       │   ├── plan.ts        ← plan parsing helpers
 │       │   └── sessionTitle.ts ← auto-title generation from prompt
-│       ├── apps/              ← product platforms inside SeshatOS
+│       ├── apps/              ← product platforms inside SeshatOS (see apps/README.md)
+│       │   ├── admin/         ← org/platform administration + Workspace Console
+│       │   ├── automation/    ← Agent Workflows: visual, governed agent/dataflow execution
+│       │   ├── companion/     ← custom agent roster and companion surfaces
+│       │   ├── inbox/         ← connected mailbox and message triage
 │       │   ├── knowledge/     ← Knowledge-to-Action platform
-│       │   ├── automation/    ← visual automation/dataflow platform
-│       │   ├── workflows/     ← agent workflow composition platform
-│       │   ├── inbox/         ← connected mailbox/triage platform
-│       │   ├── scheduling/    ← scheduled execution platform
-│       │   ├── skills-creator/← skills catalog/editing platform
-│       │   ├── team/          ← team/multi-agent platform
-│       │   ├── admin/         ← administration platform
-│       │   └── workspace/     ← workspace agents/MCP/tools platform
+│       │   ├── scheduling/    ← scheduled execution, recurring tasks, future calendar/plugins
+│       │   ├── skills-creator/← skills catalog, editing, import, publishing
+│       │   └── team/          ← teams and future multi-agent collaboration
 │       ├── pages/             ← global SeshatOS pages only
 │       │   ├── Home.tsx       ← new-chat landing
 │       │   ├── Conversation.tsx ← global active session view
@@ -111,13 +110,26 @@ seshat-ui/
 │       │   └── shared.css     ← auth-page layout utilities
 │       └── types/
 │           ├── electron.d.ts  ← window.nexus type declarations
-│           └── assets.d.ts    ← SVG/PNG module declarations
+│           ├── assets.d.ts    ← SVG/PNG module declarations
+│           └── dataflow.ts    ← shared wire-format dataflow types (nodes, runs, node
+│                                 traces) consumed by Automation and Scheduling alike —
+│                                 lives here, not inside `apps/automation/`, so neither
+│                                 app imports the other's internals
 ├── public/                    ← static assets (logos, icons)
 ├── electron.vite.config.ts
 ├── uno.config.ts
 ├── tsconfig.json
 └── package.json
 ```
+
+`admin/` and `team/` deliberately stay flat (no `api/`/`components/`/`pages/` split) —
+admin is a config console for platform administrators, not a growing product
+surface, so it doesn't need the full app shape; not an oversight.
+
+The old `apps/workflows/` YAML-DAG prototype was absorbed into `automation/` —
+`/workflows/*` just redirects to `/automation` now. `apps/workspace/` never
+existed as a top-level app either — Workspace lives nested under
+`admin/workspace/`.
 
 ---
 

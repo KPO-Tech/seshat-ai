@@ -267,7 +267,7 @@ Ordre recommande cote `seshat/` :
 
 - [x] Cloner MaxKB dans `D:\Documents\PROJECTS\ai\helps\MaxKB`.
 - [x] Lire la structure backend : `apps/knowledge`, `apps/application`, `apps/chat`, workflow nodes, recherche et modeles.
-- [x] Noter l'analyse backend dans `docs/produits/details/knowledge-maxkb-backend-analysis.md`.
+- [x] Noter l'analyse backend dans `docs/produits/platforms/knowledge/knowledge-maxkb-backend-analysis.md`.
 - [~] Transformer cette analyse en premiers changements `seshat-server` : recherche enrichie, resultats sources/citations, documents/segments exposables, tags/metadata, feedback/stats.
 - [x] Premier changement issu de l'analyse MaxKB : Search Knowledge renvoie deja des resultats enrichis avec fichier source, type de source, citation et mode de recherche.
 - [x] Deuxieme changement issu de l'analyse MaxKB : exposer proprement les documents/segments indexes et leurs metadata pour preparer la page Sources/Segments.
