@@ -94,7 +94,7 @@ function ThinkingGroupItem({
   return (
     <div className="qtg-item">
       <div
-        className="qtg-item-line qtg-item-line--thinking"
+        className={`qtg-item-line qtg-item-line--thinking${expanded ? ' qtg-item-line--open' : ''}`}
         role="button"
         tabIndex={0}
         onClick={toggle}
@@ -131,10 +131,29 @@ const QUIET_GROUP_CSS = `
 }
 
 .qtg-item-line--thinking .qtg-item-label--thinking {
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.qtg-item-line--thinking {
+  min-height: 40px;
+}
+
+.qtg-item-line--thinking .qtg-chevron {
+  margin-left: auto;
+}
+
+.qtg-item-line--open {
+  border-radius: 6px 6px 0 0;
 }
 
 .qtg-item-body--thinking {
+  padding: 9px 12px 10px 39px;
+  border: 1px solid var(--color-border-subtle);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  background: color-mix(in srgb, var(--color-bg) 72%, white);
   font-size: 11px;
   font-style: normal;
   color: var(--color-text-muted);

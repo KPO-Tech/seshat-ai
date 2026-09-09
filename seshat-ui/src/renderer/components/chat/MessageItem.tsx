@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useState } from 'react'
-import { Copy, Down } from '@icon-park/react'
+import { Copy, Down, Time } from '@icon-park/react'
 import { MarkdownView } from '@/components/MarkdownView'
 import { AttachmentTypeIcon } from '@/components/AttachmentTypeIcon'
 import { NexusLogo } from '@/components/NexusLogo'
@@ -121,13 +121,16 @@ function ThinkingBlock({
   return (
     <div className="msg-thinking">
       <button
-        className="msg-thinking-toggle"
+        className={`msg-thinking-toggle${expanded ? ' open' : ''}`}
         type="button"
         onClick={() => setThinkingExpansion(thinkingId, !expanded)}
         aria-expanded={expanded}
       >
         <span className={`msg-thinking-chevron${expanded ? ' open' : ''}`}>
           <Down size={10} />
+        </span>
+        <span className="msg-thinking-icon">
+          <Time size={12} />
         </span>
         <span className="msg-thinking-label">Thinking</span>
       </button>
@@ -685,38 +688,59 @@ export const MESSAGE_ITEM_CSS = `
 }
 
 .msg-thinking {
-  margin: 1px 0 5px;
+  margin: 4px 0 8px;
 }
 
 .msg-thinking-toggle {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 6px;
-  background: transparent;
-  border: none;
+  gap: 8px;
+  width: 100%;
+  min-height: 40px;
+  background: color-mix(in srgb, var(--color-surface-elevated) 58%, var(--color-bg));
+  border: 1px solid var(--color-border-subtle);
   border-radius: 6px;
-  padding: 3px 5px 3px 0;
+  padding: 7px 10px;
   cursor: pointer;
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
+  text-align: left;
 }
 
 .msg-thinking-toggle:hover {
-  color: var(--color-text-secondary);
-  background: color-mix(in srgb, var(--color-surface) 42%, transparent);
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--color-surface-elevated) 74%, var(--color-bg));
+  border-color: color-mix(in srgb, var(--color-accent) 20%, var(--color-border-subtle));
+}
+
+.msg-thinking-toggle.open {
+  border-radius: 6px 6px 0 0;
 }
 
 .msg-thinking-label {
-  font-size: var(--font-size-2xs);
+  font-size: 12px;
   color: inherit;
   font-style: normal;
-  font-weight: 500;
+  font-weight: 650;
+}
+
+.msg-thinking-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 19px;
+  height: 19px;
+  border-radius: 5px;
+  color: var(--color-text-muted);
+  background: color-mix(in srgb, var(--color-surface) 68%, transparent);
 }
 
 .msg-thinking-chevron {
   display: inline-flex;
   color: inherit;
-  opacity: 0.7;
+  opacity: 0.55;
   transition: transform 0.15s ease;
+  margin-left: auto;
+  order: 3;
 }
 
 .msg-thinking-chevron.open {
@@ -724,9 +748,12 @@ export const MESSAGE_ITEM_CSS = `
 }
 
 .msg-thinking-body {
-  margin-top: 4px;
-  padding: 6px 0 7px 22px;
-  border-left: none;
+  margin-top: 0;
+  padding: 9px 12px 10px 39px;
+  border: 1px solid var(--color-border-subtle);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  background: color-mix(in srgb, var(--color-bg) 72%, white);
   font-size: 11px;
   font-style: normal;
   color: var(--color-text-muted);
