@@ -150,9 +150,9 @@ func storageConfigFromEnv() sdkstorage.Config {
 // GORM connection into the runtime's own low-level DB handle is follow-up
 // work, not done here.
 func vectorConfigFromEnv() sdkvector.Config {
-	backend := sdkvector.Backend(strings.ToLower(strings.TrimSpace(os.Getenv("SESHAT_SERVER_VECTOR_BACKEND"))))
-	if backend == "" {
-		backend = sdkvector.BackendHNSW
+	storeKind := sdkvector.StoreKind(strings.ToLower(strings.TrimSpace(os.Getenv("SESHAT_SERVER_VECTOR_BACKEND"))))
+	if storeKind == "" {
+		storeKind = sdkvector.StoreHNSW
 	}
 	hnswDir := os.Getenv("SESHAT_SERVER_VECTOR_HNSW_DIR")
 	if hnswDir == "" {
@@ -162,7 +162,7 @@ func vectorConfigFromEnv() sdkvector.Config {
 		}
 		hnswDir = filepath.Join(runtimeRoot, "server", "vectors")
 	}
-	return sdkvector.Config{Backend: backend, HNSWDir: hnswDir}
+	return sdkvector.Config{StoreKind: storeKind, HNSWDir: hnswDir}
 }
 
 func dbConfigFromEnv() sdb.Config {

@@ -405,6 +405,31 @@ func (app *App) handleQueryStream(w http.ResponseWriter, r *http.Request) {
 		AgentSlug:          req.AgentSlug,
 		Principal:          principal,
 	})
+	if app.titleBroker != nil {
+		titleCh, unsubscribeTitle := app.titleBroker.Subscribe(streamInput.SessionID)
+		defer unsubscribeTitle()
+		titleRelayDone := make(chan struct{})
+		defer close(titleRelayDone)
+		go func() {
+			for {
+				select {
+				case <-titleRelayDone:
+					return
+				case title, ok := <-titleCh:
+					if !ok {
+						return
+					}
+					data, err := json.Marshal(map[string]string{
+						"session_id": streamInput.SessionID,
+						"title":      title,
+					})
+					if err == nil {
+						writeSSE("session_titled", data)
+					}
+				}
+			}
+		}()
+	}
 	// Inject the event emitter and the user's sub-agent depth preference.
 	baseCtx := app.enrichContextWithAgentPrefs(r.Context(), principal)
 	streamCtx, streamSpan := otel.Tracer("seshat").Start(baseCtx, "query.stream",

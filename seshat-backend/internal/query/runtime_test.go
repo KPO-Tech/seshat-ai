@@ -82,3 +82,23 @@ func TestSDKRuntimeClientForInputReturnsFreshProviderOverrideClients(t *testing.
 		t.Fatal("expected provider override client to reuse the shared session store")
 	}
 }
+
+func TestInteractiveMaxTokensForModelUsesProviderCatalog(t *testing.T) {
+	got := InteractiveMaxTokensForModel(sdk.ModelIdentifier{
+		Provider: "z-ai",
+		Model:    "glm-5.1",
+	})
+	if got != 128000 {
+		t.Fatalf("expected provider catalog max output, got %d", got)
+	}
+}
+
+func TestInteractiveMaxTokensForModelFallsBackForUnknownModels(t *testing.T) {
+	got := InteractiveMaxTokensForModel(sdk.ModelIdentifier{
+		Provider: "ollama",
+		Model:    "local-model-not-in-provider-catalog",
+	})
+	if got != 4096 {
+		t.Fatalf("expected context registry fallback max output, got %d", got)
+	}
+}

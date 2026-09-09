@@ -378,8 +378,9 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		fmt.Printf("[API] Artifact store initialisé: %s\n", storage.GetProviderType())
 	}
 
+	vectorStoreKind := vector.StoreKind(config.VectorStore)
 	vectorDatabase := database
-	if vector.Backend(config.VectorBackend) == vector.BackendPgVector && strings.TrimSpace(config.PgVectorDSN) != "" {
+	if vectorStoreKind == vector.StorePgVector && strings.TrimSpace(config.PgVectorDSN) != "" {
 		vectorDB, err := db.Open(ctx, db.Config{
 			Driver:      db.DriverPostgres,
 			DSN:         strings.TrimSpace(config.PgVectorDSN),
@@ -425,7 +426,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 			}
 		}
 		vectorCfg := vector.Config{
-			Backend:                    vector.Backend(config.VectorBackend),
+			StoreKind:                  vectorStoreKind,
 			DB:                         vector.NewDBHandle(string(vectorDatabase.Driver()), vectorDatabase.DSN()),
 			Dim:                        vectorDim,
 			QdrantHost:                 config.QdrantHost,
@@ -444,7 +445,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		}
 		if vs, err := vector.NewStore(ctx, vectorCfg); err == nil {
 			ragService = rag.NewService(artifactStore, vs, embedder, nil)
-			backendName := string(vectorCfg.Backend)
+			backendName := string(vectorCfg.StoreKind)
 			if backendName == "" {
 				backendName = "sqlite"
 			}
@@ -477,9 +478,12 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		fmt.Printf("[API] MCP: %d server(s) chargés depuis la DB\n", len(dbServers))
 	}
 
+	titleBroker := backendquery.NewTitleBroker()
+	defaultModel := appconfig.ParseModelIdentifier(config.Model)
 	queryClientConfig := &sdk.ClientConfig{
 		APIKey:                  config.APIKey,
-		Model:                   appconfig.ParseModelIdentifier(config.Model),
+		Model:                   defaultModel,
+		MaxTokens:               backendquery.InteractiveMaxTokensForModel(defaultModel),
 		PermissionMode:          sdk.PermissionModeNever,
 		AutoCompact:             true,
 		PersistSessions:         true,
@@ -513,6 +517,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 			if err := sessionOwnershipStore.UpdateTitle(context.Background(), id.String(), title); err != nil {
 				fmt.Fprintf(os.Stderr, "[API] session %s auto-title: %v\n", id, err)
 			}
+			titleBroker.Notify(id.String(), title)
 		},
 	}
 	queryClient, err := sdk.NewClient(queryClientConfig)
@@ -809,6 +814,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		AllowedSkillRepoHosts: api.ParseSkillRepoHosts(config.SkillRepoHosts),
 		ConnectedServerURL:    serverURL,
 		TerminalRelay:         terminalRelay,
+		TitleBroker:           titleBroker,
 	})
 
 	knowledgeRunner := backendknowledge.NewRunner(backendApp.Knowledge, backendknowledge.RunnerConfig{
