@@ -15,3 +15,18 @@ type OAuthApp struct {
 	UpdatedAt  string `json:"updated_at"`
 	Subdomain  string `json:"subdomain,omitempty"`
 }
+
+// ConnectorAccount mirrors the subset of seshat-server's
+// connectors.ConnectorAccount the self-service "Workspace → Connections"
+// tab needs - not the full DTO (corpus_id/sync fields/s3-only fields are
+// knowledge_sync-only concerns, irrelevant to an agent_action account).
+type ConnectorAccount struct {
+	ID                string `json:"id"`
+	Kind              string `json:"kind"`
+	DisplayName       string `json:"display_name"`
+	ExternalAccountID string `json:"external_account_id,omitempty"`
+	Status            string `json:"status"`
+	LastError         string `json:"last_error,omitempty"`
+	CreatedAt         string `json:"created_at"`
+	UpdatedAt         string `json:"updated_at"`
+}

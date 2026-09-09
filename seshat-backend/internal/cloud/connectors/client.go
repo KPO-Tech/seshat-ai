@@ -70,3 +70,86 @@ func (c *Client) RegisterOAuthApp(ctx context.Context, token string, params Regi
 	}
 	return &app, nil
 }
+
+// ─── Self-service connections ("Workspace → Connections") ───────────────
+//
+// Distinct from the OAuth-app-registry methods above: those back Admin
+// Console's org-wide "bring your own OAuth app" registration step; these
+// back any employee's own per-account connect/disconnect against whichever
+// app the organization already registered - the exact same
+// connectors.Service.{ListMyAccounts,BeginConnectorOAuth(agent_action),
+// CreateStaticAgentAccount,DeleteMyAccount} methods seshat-server already
+// exposes and tests, just not yet reachable through this desktop backend.
+
+// ListMyAccounts lists the calling employee's own connected accounts -
+// GET /api/v1/connectors/my-accounts.
+func (c *Client) ListMyAccounts(ctx context.Context, token, organizationID string) ([]ConnectorAccount, error) {
+	q := url.Values{"organization_id": {organizationID}}
+	var payload struct {
+		ConnectorAccounts []ConnectorAccount `json:"connector_accounts"`
+	}
+	if _, err := cloudhttp.Do(ctx, c.httpClient, http.MethodGet, c.serverURL+"/api/v1/connectors/my-accounts?"+q.Encode(), token, nil, &payload); err != nil {
+		return nil, err
+	}
+	return payload.ConnectorAccounts, nil
+}
+
+// DeleteMyAccount disconnects one of the calling employee's own accounts -
+// DELETE /api/v1/connectors/my-accounts/{accountID}.
+func (c *Client) DeleteMyAccount(ctx context.Context, token, accountID string) error {
+	requestURL := c.serverURL + "/api/v1/connectors/my-accounts/" + url.PathEscape(accountID)
+	_, err := cloudhttp.Do(ctx, c.httpClient, http.MethodDelete, requestURL, token, nil, nil)
+	return err
+}
+
+type BeginOAuthParams struct {
+	OrganizationID string
+	Kind           string
+	// Purpose is always "agent_action" for this self-service flow - see
+	// connectors.PurposeAgentAction on the seshat-server side.
+	Purpose     string
+	DisplayName string
+}
+
+// BeginOAuth starts a self-service "connect my own account" OAuth flow for
+// kind, returning the URL to open in the OS browser -
+// POST /api/v1/connectors/{kind}/oauth/start.
+func (c *Client) BeginOAuth(ctx context.Context, token string, params BeginOAuthParams) (string, error) {
+	body := map[string]any{
+		"organization_id": params.OrganizationID,
+		"purpose":         params.Purpose,
+		"display_name":    params.DisplayName,
+	}
+	var payload struct {
+		AuthorizationURL string `json:"authorization_url"`
+	}
+	requestURL := c.serverURL + "/api/v1/connectors/" + url.PathEscape(params.Kind) + "/oauth/start"
+	if _, err := cloudhttp.Do(ctx, c.httpClient, http.MethodPost, requestURL, token, body, &payload); err != nil {
+		return "", err
+	}
+	return payload.AuthorizationURL, nil
+}
+
+type CreateStaticAccountParams struct {
+	OrganizationID string
+	Kind           string
+	DisplayName    string
+	Secret         string
+}
+
+// CreateStaticAccount connects a static-secret kind (Stripe, SendGrid, ...)
+// with a pasted API key, no redirect - POST
+// /api/v1/connectors/{kind}/static-account.
+func (c *Client) CreateStaticAccount(ctx context.Context, token string, params CreateStaticAccountParams) (*ConnectorAccount, error) {
+	var account ConnectorAccount
+	body := map[string]any{
+		"organization_id": params.OrganizationID,
+		"display_name":    params.DisplayName,
+		"secret":          params.Secret,
+	}
+	requestURL := c.serverURL + "/api/v1/connectors/" + url.PathEscape(params.Kind) + "/static-account"
+	if _, err := cloudhttp.Do(ctx, c.httpClient, http.MethodPost, requestURL, token, body, &account); err != nil {
+		return nil, err
+	}
+	return &account, nil
+}

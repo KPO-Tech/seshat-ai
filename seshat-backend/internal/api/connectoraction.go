@@ -43,12 +43,34 @@ type connectManualAccountRequest struct {
 // GET .../gdrive/accounts, but DELETE is only ever this generic route,
 // even for Drive accounts: ConnectorAccountStore.Delete is already
 // kind-agnostic, so there was nothing Drive-specific to build.
+//
+// Also dispatches Workspace → Connections' self-service routes
+// (connectors_myaccounts.go) - a second, unrelated system (a cloud
+// forward to seshat-server's connectors.Service, vs. this file's own local
+// ConnectorAccounts store) that happens to need the same /connectors/
+// prefix, since only one handler can own it in this router:
+//   - GET    /connectors/my-accounts             -> handleMyConnectorAccounts
+//   - DELETE /connectors/my-accounts/{id}         -> handleMyConnectorAccountByID
+//   - POST   /connectors/{kind}/oauth/start       -> handleConnectorOAuthStart
+//   - POST   /connectors/{kind}/static-account    -> handleConnectorStaticAccount
+//
+// "my-accounts" is never a real connector kind (checked against
+// @seshat/connector-catalog's full list), so checking for it ahead of the
+// kind-based cases below is unambiguous.
 func (a *App) handleConnectorsDispatch(w http.ResponseWriter, r *http.Request) {
 	trimmed := strings.Trim(strings.TrimPrefix(r.URL.Path, "/connectors/"), "/")
 	parts := strings.Split(trimmed, "/")
 	kind := parts[0]
 
 	switch {
+	case trimmed == "my-accounts":
+		a.handleMyConnectorAccounts(w, r)
+	case len(parts) == 2 && parts[0] == "my-accounts":
+		a.handleMyConnectorAccountByID(w, r, parts[1])
+	case len(parts) == 3 && parts[1] == "oauth" && parts[2] == "start":
+		a.handleConnectorOAuthStart(w, r, kind)
+	case len(parts) == 2 && parts[1] == "static-account":
+		a.handleConnectorStaticAccount(w, r, kind)
 	case len(parts) == 2 && parts[1] == "accounts":
 		a.handleConnectorAccounts(w, r, kind)
 	case len(parts) == 3 && parts[1] == "accounts":

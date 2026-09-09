@@ -3,6 +3,7 @@ import {
   Left, Robot, Plus, Edit, Delete, Sync, Close, CheckOne,
   Caution, LoadingOne, Brain, Lightning, Send, Book, Tool, FileText,
   More, Star, Attention, Down, Upload, Check, Terminal, Globe, Api, Lock, Search,
+  Connection,
 } from '@icon-park/react'
 import { api } from '@/api/client'
 import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
@@ -13,6 +14,7 @@ import { NexusLogo } from '@/components/NexusLogo'
 import { listToolCatalog, type ToolCatalogEntry } from '@/components/chat/tool-block/toolDisplay'
 import { SETTINGS_SHARED_CSS } from '@/pages/settings/SettingsNav'
 import { PlannedFeatureCard, PLANNED_FEATURE_CARD_CSS } from '@/components/ui/PlannedFeatureCard'
+import { WorkspaceConnectionsTab } from './WorkspaceConnectionsTab'
 import {
   AgentAvatar as Avatar, AvatarPicker, AVATAR_CSS,
   parseAvatarIcon, encodeAvatarIcon, randomSeed,
@@ -22,7 +24,7 @@ import type { ReactNode } from 'react'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-type WorkspaceTab = 'agents' | 'documents' | 'tools' | 'templates'
+type WorkspaceTab = 'agents' | 'documents' | 'tools' | 'templates' | 'connections'
 type AgentsView   = 'grid' | 'detail'
 type DetailTab    = 'edit' | 'test'
 type ToolsSubTab  = 'mcp' | 'internal' | 'hooks'
@@ -301,6 +303,8 @@ export function WorkspacePage({ initialTab = 'agents', embedded = false }: Works
 
           {tab === 'templates' && view === 'grid' && <PlannedResourceTab />}
 
+          {tab === 'connections' && view === 'grid' && <WorkspaceConnectionsTab />}
+
           {tab === 'agents' && view === 'grid' && (
             <AgentGrid
               userAgents={userAgents} organizationAgents={organizationAgents} builtinAgents={builtinAgents}
@@ -329,6 +333,7 @@ const RESOURCE_TABS: Array<{ id: WorkspaceTab; label: string; icon: React.ReactN
   { id: 'documents', label: 'Documents', icon: <Book size={15} theme="outline" /> },
   { id: 'tools', label: 'Tools & MCP', icon: <Tool size={15} theme="outline" /> },
   { id: 'templates', label: 'Templates', icon: <FileText size={15} theme="outline" /> },
+  { id: 'connections', label: 'Connections', icon: <Connection size={15} theme="outline" /> },
 ]
 
 function ResourceTabs({ tab, onTabChange }: {
