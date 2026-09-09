@@ -1,7 +1,7 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useLocation, useSearchParams, useBlocker } from 'react-router'
 import {
-  Left, Setting, Close, CheckOne, Home, ApplicationOne, DataOne, Help as HelpIcon,
+  Left, Setting, Close, CheckOne, Home, List, ApplicationOne, DataOne, Help as HelpIcon,
   Plus, Play, Delete as DeleteIcon, LoadingOne, History,
 } from '@icon-park/react'
 import { api, ApiError } from '@/api/client'
@@ -16,6 +16,7 @@ import type { DataflowDefinition, DataflowNode, NodeDescription } from '../graph
 import { UI_POSITION_KEY } from '../graph/types'
 import type { AutomationJob as Job, AutomationTemplate, Device, ExecutionTarget, RailView } from '../api/types'
 import { AutomationOverviewPanel } from '../components/AutomationOverviewPanel'
+import { AutomationProjectsPanel } from '../components/AutomationProjectsPanel'
 import { TemplatesPanel } from '../components/TemplatesPanel'
 import { StubPanel } from '../components/StubPanel'
 import '../styles/automation.css'
@@ -63,7 +64,15 @@ export function AutomationPage() {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [deletingThisJob, setDeletingThisJob] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [railView, setRailView] = useState<RailView>(isOverview ? 'overview' : 'graph')
+  // A job route can carry ?tab=runs&runId=<id> - Overview's Attention/
+  // Activity rows deep-link straight into a run's replay this way (see the
+  // template-seeding effect below for the precedent: a query param, not
+  // router location state, since a query param survives a refresh). Read
+  // once at mount, matching that same precedent.
+  const [railView, setRailView] = useState<RailView>(() => {
+    if (isOverview) return 'overview'
+    return searchParams.get('tab') === 'runs' ? 'runs' : 'graph'
+  })
 
   const [jobs, setJobs] = useState<Job[]>([])
   const [jobsLoading, setJobsLoading] = useState(true)
@@ -132,9 +141,16 @@ export function AutomationPage() {
 
   // Reset the rail to match the route whenever it changes - e.g. navigating
   // from Overview to a specific job (or "New automation") should land on the
-  // canvas, not leave a stub panel showing from the previous context.
+  // canvas, not leave a stub panel showing from the previous context. Kept
+  // consistent with the railView initializer above (same isOverview/tab
+  // logic) as a backstop - in practice this component always remounts on a
+  // pathname change (see routes.tsx's key={location.pathname}), so the
+  // initializer already covers every real navigation; this only matters if
+  // that ever stops being true.
   useEffect(() => {
-    setRailView(isOverview ? 'overview' : 'graph')
+    if (isOverview) { setRailView('overview'); return }
+    setRailView(searchParams.get('tab') === 'runs' ? 'runs' : 'graph')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOverview])
 
   const loadJobs = useCallback(async () => {
@@ -158,9 +174,12 @@ export function AutomationPage() {
     }
   }, [currentOrganizationId])
 
+  // Only Projects needs the raw job list now - Overview gets its own
+  // aggregate stats from GET /automation/overview (AutomationOverviewPanel),
+  // so a plain visit to the dashboard shouldn't pay for fetching every job.
   useEffect(() => {
-    if (isOverview) void loadJobs()
-  }, [isOverview, loadJobs])
+    if (isOverview && railView === 'projects') void loadJobs()
+  }, [isOverview, railView, loadJobs])
 
   async function handleRunNow(job: Job) {
     setRunningJobId(job.id)
@@ -555,6 +574,18 @@ export function AutomationPage() {
             <Home size={16} />
             <span>Overview</span>
           </button>
+          <button
+            type="button"
+            className={`au-rail-btn ${railView === 'projects' ? 'active' : ''}`}
+            onClick={() => {
+              setRailView('projects')
+              if (!isOverview) navigate('/automation')
+            }}
+            title="Projects"
+          >
+            <List size={16} />
+            <span>Projects</span>
+          </button>
           {!isOverview && jobId && (
             <button type="button" className={`au-rail-btn ${railView === 'runs' ? 'active' : ''}`} onClick={() => setRailView('runs')} title="Runs">
               <History size={16} />
@@ -578,6 +609,13 @@ export function AutomationPage() {
         <div className="au-main">
           {railView === 'overview' ? (
             <AutomationOverviewPanel
+              organizationId={currentOrganizationId ?? ''}
+              onNew={() => navigate('/automation/new')}
+              onOpenJob={(id) => navigate(`/automation/${id}`)}
+              onOpenRun={(id, runId) => navigate(`/automation/${id}?tab=runs&runId=${encodeURIComponent(runId)}`)}
+            />
+          ) : railView === 'projects' ? (
+            <AutomationProjectsPanel
               jobs={jobs}
               loading={jobsLoading}
               error={jobsError}
@@ -591,7 +629,7 @@ export function AutomationPage() {
               deletingJobId={deletingJobId}
             />
           ) : railView === 'runs' && jobId ? (
-            <RunsPanel jobId={jobId} graph={graph} nodeTypes={nodeTypes} />
+            <RunsPanel jobId={jobId} graph={graph} nodeTypes={nodeTypes} initialRunId={searchParams.get('runId') ?? undefined} />
           ) : railView === 'templates' ? (
             <TemplatesPanel nodeTypes={nodeTypes} />
           ) : railView === 'variables' ? (
@@ -622,7 +660,7 @@ export function AutomationPage() {
               <div className="au-field">
                 <label>Tags <span className="au-field-hint">(optional)</span></label>
                 <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="finance, reporting" />
-                <div className="au-field-hint">Comma-separated - used to search and filter Overview.</div>
+                <div className="au-field-hint">Comma-separated - used to search and filter Projects.</div>
               </div>
 
               <div className="au-field">

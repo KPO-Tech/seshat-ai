@@ -6,7 +6,7 @@ export type TriggerType = 'cron' | 'interval' | 'once'
 export type ExecutionTarget = 'cloud' | 'device'
 export type JobStatus = 'active' | 'paused'
 export type Device = { id: string; name: string; status: string }
-export type RailView = 'overview' | 'graph' | 'runs' | 'templates' | 'variables' | 'help'
+export type RailView = 'overview' | 'projects' | 'graph' | 'runs' | 'templates' | 'variables' | 'help'
 
 export type AutomationJob = {
   id: string
@@ -29,10 +29,10 @@ export type AutomationJob = {
   model_override?: string
   configuration?: Record<string, string>
   error_workflow_job_id?: string
-  // Tier 3.4 - free-text labels for Overview's search/filter.
+  // Tier 3.4 - free-text labels for Projects' search/filter.
   tags?: string[]
   // Already returned by the API (automation.Job.UpdatedAt) - just never
-  // modeled here until Overview needed to show it (Tier 3.4).
+  // modeled here until Projects needed to show it (Tier 3.4).
   updated_at?: string
 }
 

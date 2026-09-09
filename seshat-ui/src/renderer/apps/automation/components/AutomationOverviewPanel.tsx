@@ -1,198 +1,266 @@
-import { useMemo, useState } from 'react'
-import { Delete as DeleteIcon, Edit as EditIcon, LoadingOne, PauseOne, Play, Plus, Search } from '@icon-park/react'
-import type { AutomationJob as Job } from '../api/types'
+import { useEffect, useState } from 'react'
+import { Attention, Plus } from '@icon-park/react'
+import { api, ApiError } from '@/api/client'
 import { RUN_STATUS_LABEL } from '../graph/types'
+import type { Overview, AttentionItem, RecentActivityItem } from '../api/overview'
 
-function describeTrigger(job: Job): string {
-  switch (job.trigger_type) {
-    case 'cron': return job.cron_expr ? `cron ${job.cron_expr}` : 'cron'
-    case 'interval': return job.interval_seconds ? `every ${job.interval_seconds}s` : 'interval'
-    case 'once': return job.run_at ? `once at ${new Date(job.run_at).toLocaleString()}` : 'once'
-    default: return job.trigger_type
-  }
-}
-
-// Tier 3.4 - a bridge toward the "Project" reorganization
-// (docs/produits/platforms/automation/automation-app-pages.md) without
-// introducing that concept yet: free-text tags + search over today's still-
-// flat list, entirely client-side over the jobs already fetched by
-// AutomationPage - same weight as TemplatesPanel's own filtering, no new
-// backend calls.
+// Automation's real "Overview" (Phase 1 of docs/produits/platforms/
+// automation/automation-app-pages.md's rollout, §6) - a KPI/attention/
+// activity dashboard, not the job list (that's AutomationProjectsPanel now).
+// Every number here is backed by a real query on seshat-server
+// (automation.Service.GetOverview) - no fabricated "time saved"/ROI figure,
+// since no such concept exists in the backend yet (see overview.go's own
+// doc comments on what's deliberately out of scope this phase).
 export function AutomationOverviewPanel({
-  jobs, loading, error, onOpen, onNew, onRun, onTogglePaused, onDelete,
-  runningJobId, pausingJobId, deletingJobId,
+  organizationId, onNew, onOpenJob, onOpenRun,
 }: {
-  jobs: Job[]
-  loading: boolean
-  error: string | null
-  onOpen: (id: string) => void
+  organizationId: string
   onNew: () => void
-  onRun: (job: Job) => void
-  onTogglePaused: (job: Job) => void
-  onDelete: (job: Job) => void
-  runningJobId: string | null
-  pausingJobId: string | null
-  deletingJobId: string | null
+  onOpenJob: (jobId: string) => void
+  onOpenRun: (jobId: string, runId: string) => void
 }) {
-  const [search, setSearch] = useState('')
-  const [tag, setTag] = useState('')
+  const [overview, setOverview] = useState<Overview | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
-  const tags = useMemo(() => [...new Set(jobs.flatMap((j) => j.tags ?? []))].sort(), [jobs])
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    return jobs.filter((j) =>
-      (!tag || (j.tags ?? []).includes(tag))
-      && (!q || j.name.toLowerCase().includes(q) || (j.description ?? '').toLowerCase().includes(q) || (j.tags ?? []).some((t) => t.toLowerCase().includes(q))),
-    )
-  }, [jobs, search, tag])
+  useEffect(() => {
+    if (!organizationId) return
+    let cancelled = false
+    setOverview(null)
+    setError(null)
+    api.get<Overview>(`/automation/overview?organization_id=${encodeURIComponent(organizationId)}`)
+      .then((res) => { if (!cancelled) setOverview(res) })
+      .catch((err) => { if (!cancelled) setError(err instanceof ApiError ? err.message : 'Failed to load overview.') })
+    return () => { cancelled = true }
+  }, [organizationId])
 
-  if (loading) return <div className="au-loading">Loading...</div>
   if (error) return <div className="au-loading au-loading-error">{error}</div>
+  if (!overview) return <div className="au-loading">Loading…</div>
 
-  if (jobs.length === 0) {
-    return (
-      <div className="au-stub">
-        <h2>No automations yet</h2>
-        <p>Build a visual graph workflow - connectors, branching logic, database steps - and it'll show up here.</p>
-        <button type="button" className="au-save-btn au-empty-action" onClick={onNew}>
-          <Plus size={14} /> New automation
-        </button>
-      </div>
-    )
-  }
+  const { stats, attention, recent_activity: activity } = overview
 
   return (
-    <div className="au-overview">
-      <style>{OVERVIEW_FILTER_CSS}</style>
-      <div className="au-overview-toolbar">
-        <div className="au-overview-search-row">
-          <Search size={14} className="au-overview-search-icon" />
-          <input
-            className="au-overview-search"
-            placeholder="Search automations…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            spellCheck={false}
-          />
-        </div>
-        {tags.length > 0 && (
-          <select className="au-overview-tag-select" value={tag} onChange={(e) => setTag(e.target.value)}>
-            <option value="">All tags</option>
-            {tags.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
-        )}
+    <div className="au-dash">
+      <style>{OVERVIEW_DASH_CSS}</style>
+
+      <div className="au-dash-kpis">
+        <KpiCard
+          label="Active Projects"
+          value={stats.active_projects}
+          hint={stats.new_projects_this_month > 0 ? `+${stats.new_projects_this_month} this month` : undefined}
+        />
+        <KpiCard label="Executions" value={stats.executions_window} hint={`Last ${stats.window_days} days`} />
+        <KpiCard
+          label="Success Rate"
+          value={stats.success_rate_percent != null ? `${stats.success_rate_percent.toFixed(1)}%` : '—'}
+          hint={stats.success_rate_percent != null ? undefined : 'No finished runs yet'}
+        />
       </div>
 
-      {filtered.length === 0 ? (
-        <div className="au-stub">
-          <h2>No matches</h2>
-          <p>Try a different search or tag.</p>
-        </div>
-      ) : (
-        filtered.map((job) => (
-          <div key={job.id} className="au-overview-row" onClick={() => onOpen(job.id)} role="button" tabIndex={0}>
-            <div className="au-overview-main">
-              <div className="au-overview-name-row">
-                <span className="au-overview-name">{job.name}</span>
-                <span className={`au-overview-badge au-overview-badge--${job.status}`}>{job.status}</span>
-                <span className="au-overview-badge au-overview-badge--target">{job.execution_target}</span>
-              </div>
-              {job.description && <div className="au-overview-desc">{job.description}</div>}
-              {!!job.tags?.length && (
-                <div className="au-overview-tags">
-                  {job.tags.map((t) => <span key={t} className="au-overview-badge au-overview-badge--tag">{t}</span>)}
-                </div>
-              )}
-              <div className="au-overview-meta">
-                <span>{describeTrigger(job)}</span>
-                {job.next_run_at && <span>next: {new Date(job.next_run_at).toLocaleString()}</span>}
-                {job.last_run_status && <span>last: {RUN_STATUS_LABEL[job.last_run_status] ?? job.last_run_status}</span>}
-                {job.updated_at && <span>modified: {new Date(job.updated_at).toLocaleString()}</span>}
-              </div>
-            </div>
-            <div className="au-overview-actions">
-              <button
-                type="button" className="au-icon-btn" title="Run now"
-                onClick={(e) => { e.stopPropagation(); onRun(job) }}
-                disabled={runningJobId === job.id}
-              >
-                {runningJobId === job.id ? <LoadingOne size={13} className="spin" /> : <Play size={13} />}
-              </button>
-              <button
-                type="button" className="au-icon-btn" title={job.status === 'active' ? 'Pause' : 'Resume'}
-                onClick={(e) => { e.stopPropagation(); onTogglePaused(job) }}
-                disabled={pausingJobId === job.id}
-              >
-                {pausingJobId === job.id ? <LoadingOne size={13} className="spin" /> : <PauseOne size={13} />}
-              </button>
-              <button type="button" className="au-icon-btn" title="Edit" onClick={(e) => { e.stopPropagation(); onOpen(job.id) }}>
-                <EditIcon size={13} />
-              </button>
-              <button
-                type="button" className="au-icon-btn" title="Delete"
-                onClick={(e) => { e.stopPropagation(); onDelete(job) }}
-                disabled={deletingJobId === job.id}
-              >
-                {deletingJobId === job.id ? <LoadingOne size={13} className="spin" /> : <DeleteIcon size={13} />}
-              </button>
-            </div>
-          </div>
-        ))
-      )}
+      <section className="au-dash-section">
+        <header className="au-dash-section-head">
+          <Attention size={14} />
+          <h3>Attention required</h3>
+        </header>
+        {attention.length === 0 ? (
+          <div className="au-dash-empty">Nothing needs attention right now.</div>
+        ) : (
+          attention.map((item) => <AttentionRow key={`${item.kind}-${item.job_id}`} item={item} onOpenJob={onOpenJob} onOpenRun={onOpenRun} />)
+        )}
+      </section>
+
+      <section className="au-dash-section">
+        <header className="au-dash-section-head">
+          <h3>Recent activity</h3>
+        </header>
+        {activity.length === 0 ? (
+          <div className="au-dash-empty">No executions yet.</div>
+        ) : (
+          activity.map((run) => <ActivityRow key={run.run_id} run={run} onOpenRun={onOpenRun} />)
+        )}
+      </section>
+
+      <section className="au-dash-impact">
+        <span className="au-dash-impact-label">Last {stats.window_days} days</span>
+        <span>{stats.completed_window.toLocaleString()} tasks automated</span>
+        {stats.failure_rate_percent != null && <span>{stats.failure_rate_percent.toFixed(1)}% failure rate</span>}
+      </section>
+
+      <button type="button" className="au-save-btn au-dash-new-btn" onClick={onNew}>
+        <Plus size={14} /> New Project
+      </button>
     </div>
   )
 }
 
-const OVERVIEW_FILTER_CSS = `
-.au-overview-toolbar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 4px;
+function KpiCard({ label, value, hint }: { label: string; value: number | string; hint?: string }) {
+  return (
+    <div className="au-dash-kpi">
+      <span className="au-dash-kpi-label">{label}</span>
+      <span className="au-dash-kpi-value">{typeof value === 'number' ? value.toLocaleString() : value}</span>
+      {hint && <span className="au-dash-kpi-hint">{hint}</span>}
+    </div>
+  )
 }
 
-.au-overview-search-row {
-  flex: 1;
+function AttentionRow({ item, onOpenJob, onOpenRun }: {
+  item: AttentionItem
+  onOpenJob: (jobId: string) => void
+  onOpenRun: (jobId: string, runId: string) => void
+}) {
+  return (
+    <div
+      className="au-dash-row au-dash-row--attention"
+      onClick={() => (item.last_run_id ? onOpenRun(item.job_id, item.last_run_id) : onOpenJob(item.job_id))}
+      role="button"
+      tabIndex={0}
+    >
+      <div className="au-dash-row-main">
+        <span className="au-overview-name">{item.job_name}</span>
+        <span className="au-dash-row-detail">{item.message}</span>
+      </div>
+      <span className="au-dash-row-action">View execution →</span>
+    </div>
+  )
+}
+
+function ActivityRow({ run, onOpenRun }: { run: RecentActivityItem; onOpenRun: (jobId: string, runId: string) => void }) {
+  return (
+    <div className="au-dash-row" onClick={() => onOpenRun(run.job_id, run.run_id)} role="button" tabIndex={0}>
+      <div className="au-dash-row-main">
+        <span className={`au-overview-badge au-overview-badge--${run.status}`}>{RUN_STATUS_LABEL[run.status]}</span>
+        <span className="au-overview-name">{run.job_name}</span>
+      </div>
+      <span className="au-dash-row-detail">{new Date(run.queued_at).toLocaleString()}</span>
+    </div>
+  )
+}
+
+const OVERVIEW_DASH_CSS = `
+.au-dash {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.au-dash-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.au-dash-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.au-dash-kpi-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.au-dash-kpi-value {
+  font-size: var(--font-size-3xl);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.au-dash-kpi-hint {
+  font-size: var(--font-size-2xs);
+  color: var(--color-text-muted);
+}
+
+.au-dash-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.au-dash-section-head {
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 0 10px;
-  height: 32px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-bg);
-}
-
-.au-overview-search-icon { color: var(--color-text-muted); flex-shrink: 0; }
-
-.au-overview-search {
-  flex: 1;
-  height: 100%;
-  background: none;
-  border: none;
-  outline: none;
-  color: var(--color-text);
-  font-size: var(--font-size-xs);
-}
-
-.au-overview-tag-select {
-  height: 32px;
-  padding: 0 9px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-size: var(--font-size-xs);
-}
-
-.au-overview-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 2px;
-}
-
-.au-overview-badge--tag {
-  background: var(--color-surface-elevated);
+  gap: 6px;
   color: var(--color-text-secondary);
+}
+
+.au-dash-section-head h3 {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.au-dash-empty {
+  padding: 14px 16px;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.au-dash-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+.au-dash-row + .au-dash-row {
+  margin-top: 6px;
+}
+
+.au-dash-row:hover {
+  background: var(--color-surface-elevated);
+}
+
+.au-dash-row--attention {
+  border-color: rgba(255, 107, 107, 0.3);
+}
+
+.au-dash-row-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.au-dash-row-detail {
+  flex-shrink: 0;
+  font-size: var(--font-size-2xs);
+  color: var(--color-text-muted);
+}
+
+.au-dash-row-action {
+  flex-shrink: 0;
+  font-size: var(--font-size-2xs);
+  color: var(--color-primary);
+}
+
+.au-dash-impact {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-elevated);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.au-dash-impact-label {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.au-dash-new-btn {
+  align-self: flex-start;
 }
 `

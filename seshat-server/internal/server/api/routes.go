@@ -321,6 +321,9 @@ func (app *App) routes() http.Handler {
 	mux.Handle("POST /api/v1/jobs/{jobID}/run", app.authMiddleware(http.HandlerFunc(app.handleJobRunNow)))
 	mux.Handle("GET /api/v1/jobs/{jobID}/runs", app.authMiddleware(http.HandlerFunc(app.handleJobRuns)))
 
+	// Automation Overview — the dashboard's aggregate stats/attention/activity.
+	mux.Handle("GET /api/v1/automation/overview", app.authMiddleware(http.HandlerFunc(app.handleAutomationOverview)))
+
 	// Runs — admin/observability surface, user-authenticated.
 	mux.Handle("GET /api/v1/runs", app.authMiddleware(http.HandlerFunc(app.handleRuns)))
 	mux.Handle("GET /api/v1/runs/{runID}", app.authMiddleware(http.HandlerFunc(app.handleRunByID)))

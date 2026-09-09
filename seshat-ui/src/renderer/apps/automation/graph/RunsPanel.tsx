@@ -12,6 +12,11 @@ type Props = {
   // doc comment), never for a run that has its own snapshot.
   graph: DataflowDefinition | null
   nodeTypes: NodeDescription[]
+  // Deep-link from Overview's Attention/Activity rows ("View execution →") -
+  // once the runs fetch resolves, auto-select this run instead of requiring
+  // a manual click. Silently ignored if the id isn't found (e.g. stale link
+  // to a since-deleted run).
+  initialRunId?: string
 }
 
 function formatRunTime(run: Run): string {
@@ -29,7 +34,7 @@ function runDurationMs(run: Run): number | null {
 // drill-down yet... a fast-follow if this page needs it too") - Tier 2.6.
 // One-shot fetch, no polling (same precedent as runHistory.ts's own
 // one-shot lookup) - a run list is glanced at, not watched live.
-export function RunsPanel({ jobId, graph, nodeTypes }: Props) {
+export function RunsPanel({ jobId, graph, nodeTypes, initialRunId }: Props) {
   const [runs, setRuns] = useState<Run[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selectedRun, setSelectedRun] = useState<Run | null>(null)
@@ -42,7 +47,13 @@ export function RunsPanel({ jobId, graph, nodeTypes }: Props) {
     api
       .get<{ runs: Run[] }>(`/jobs/${jobId}/runs?limit=50`)
       .then((res) => {
-        if (!cancelled) setRuns(res.runs ?? [])
+        if (cancelled) return
+        const fetched = res.runs ?? []
+        setRuns(fetched)
+        if (initialRunId) {
+          const match = fetched.find((r) => r.id === initialRunId)
+          if (match) setSelectedRun(match)
+        }
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof ApiError ? err.message : 'Failed to load runs.')
@@ -50,7 +61,7 @@ export function RunsPanel({ jobId, graph, nodeTypes }: Props) {
     return () => {
       cancelled = true
     }
-  }, [jobId])
+  }, [jobId, initialRunId])
 
   if (selectedRun) {
     const usingFallbackGraph = !selectedRun.graph_snapshot
