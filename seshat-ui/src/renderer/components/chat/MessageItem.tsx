@@ -2,6 +2,7 @@ import { memo, useEffect, useRef, useState } from 'react'
 import { Copy, Down } from '@icon-park/react'
 import { MarkdownView } from '@/components/MarkdownView'
 import { AttachmentTypeIcon } from '@/components/AttachmentTypeIcon'
+import { NexusLogo } from '@/components/NexusLogo'
 import { api } from '@/api/client'
 import { extractOfficeThumbnail } from '@/lib/officeThumbnail'
 import { useUIStore } from '@/stores/ui'
@@ -152,6 +153,10 @@ type Props = {
   sessionId?: string
   compact?: boolean
   revealThinking?: boolean
+  liveActivity?: {
+    label: string
+    detail?: string
+  }
   onApproveTool?: (toolUseId: string, remember?: boolean) => void
   onDenyTool?: (toolUseId: string) => void
   onSubmitToolPrompt?: (promptId: string, value: unknown) => void
@@ -291,7 +296,18 @@ async function fetchOfficeThumbnail(fileId: string): Promise<string | null> {
   return extractOfficeThumbnail(bytes.buffer)
 }
 
-export const MessageItem = memo(function MessageItem({ message, sessionId, compact = false, revealThinking = false, onApproveTool, onDenyTool, onSubmitToolPrompt }: Props) {
+function LiveActivityBlock({ label, detail }: { label: string; detail?: string }) {
+  return (
+    <div className="msg-live-activity" aria-live="polite">
+      <NexusLogo size={16} className="msg-live-activity-logo" />
+      <span className="msg-live-activity-text" key={`${label}-${detail ?? ''}`}>
+        {label}{detail ? ` - ${detail}` : '...'}
+      </span>
+    </div>
+  )
+}
+
+export const MessageItem = memo(function MessageItem({ message, sessionId, compact = false, revealThinking = false, liveActivity, onApproveTool, onDenyTool, onSubmitToolPrompt }: Props) {
   const isUser = message.role === 'user'
   const attachments = messageAttachments(message)
   const openLightbox = useUIStore((s) => s.openLightbox)
@@ -362,7 +378,7 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
     if (block.type === 'tool_use') return !HIDDEN_TOOLS.has(block.name)
     return false
   })
-  if (visibleBlocks.length === 0 && attachments.length === 0) return null
+  if (visibleBlocks.length === 0 && attachments.length === 0 && !liveActivity) return null
 
   const copyText = message.content
     .map((block) => {
@@ -502,6 +518,8 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
           }
           return null
         })}
+
+        {liveActivity && <LiveActivityBlock label={liveActivity.label} detail={liveActivity.detail} />}
 
         {copyText && (
           <div className="msg-footer">
@@ -736,6 +754,41 @@ export const MESSAGE_ITEM_CSS = `
 
 .tb-thinking-md p { margin: 0 0 var(--space-3); }
 .tb-thinking-md p:last-child { margin-bottom: 0; }
+
+.msg-live-activity {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 2px 0 0;
+  color: var(--color-text-secondary);
+  min-width: 0;
+}
+
+.msg-live-activity-logo {
+  flex-shrink: 0;
+  animation: msg-live-activity-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes msg-live-activity-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(0.88); }
+  50%      { opacity: 1;   transform: scale(1); }
+}
+
+.msg-live-activity-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 500;
+  color: inherit;
+  animation: msg-live-activity-fade 0.25s ease;
+}
+
+@keyframes msg-live-activity-fade {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 
 .msg-footer {
   display: flex;

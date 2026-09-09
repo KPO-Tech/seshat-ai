@@ -19,7 +19,6 @@ import { serializeConversationMarkdown, conversationFileName } from '@/lib/conve
 import { UNTITLED_SESSION_TITLE } from '@/lib/sessionTitle'
 import { renderPDFPagePreviews } from '@/lib/pdfPreview'
 import { extractOfficeThumbnail } from '@/lib/officeThumbnail'
-import { NexusLogo } from '@/components/NexusLogo'
 import type { AgentState } from '@/stores/session'
 
 function attachmentCategory(file: File): ChatAttachment['category'] {
@@ -117,24 +116,13 @@ function agentActivityPhrase(state: AgentState, thinkingWord: string): string {
   return 'Working'
 }
 
-// Compact status line docked just above the input - not a banner: no
-// background/border/card, just a small pulsing mark and a line of text,
-// left-aligned with the input box itself. Lives outside the scrollable
-// transcript (see the call site) so it stays put at the bottom regardless
-// of scroll position, the same way it never moves horizontally here either.
-function AgentStatusIndicator({ state }: { state: AgentState }) {
+function useLiveActivityForAgent(state: AgentState): { label: string; detail?: string } {
   const isPureThinking = state.isThinking && !state.activeTool
   const thinkingWord = useRotatingWord(THINKING_WORDS, isPureThinking)
-  const phrase = agentActivityPhrase(state, thinkingWord)
-  const detail = state.activeTool?.message
-  return (
-    <div className="conv-status-row">
-      <NexusLogo size={16} className="conv-status-logo" />
-      <span className="conv-status-text" key={phrase}>
-        {phrase}{detail ? ` - ${detail}` : '...'}
-      </span>
-    </div>
-  )
+  return {
+    label: agentActivityPhrase(state, thinkingWord),
+    detail: state.activeTool?.message,
+  }
 }
 
 export function Conversation() {
@@ -274,6 +262,7 @@ export function Conversation() {
   const pendingAskUser = streaming.find(
     (b) => b.type === 'tool_use' && b.name === 'ask_user_question' && b._prompt
   ) ?? null
+  const liveActivity = useLiveActivityForAgent(agentState)
   const [inputValue, setInputValue] = useState('')
   const [selectedCorpusId, setSelectedCorpusId] = useState<string | null>(null)
   const [attachments, setAttachments] = useState<ChatAttachment[]>([])
@@ -529,7 +518,10 @@ export function Conversation() {
   // conversation re-renders this component before navigate('/') takes
   // effect) - every hook below must still run the same way regardless, so
   // the "session not found" return sits after all of them, not before.
-  const visibleMessages = session ? session.messages.filter(isRenderableMessage) : []
+  const visibleMessages = session ? session.messages.filter((message, index) => (
+    isRenderableMessage(message) ||
+    (isStreaming && !pendingPermission && !pendingAskUser && message.role === 'assistant' && index === session.messages.length - 1)
+  )) : []
 
   // Stable callbacks - identity won't change between renders so React.memo on
   // MessageItem can actually skip re-renders.
@@ -736,6 +728,7 @@ export function Conversation() {
             const msg = visibleMessages[virtualRow.index]
             const i = virtualRow.index
             const revealThinking = isStreaming && msg.role === 'assistant' && i === visibleMessages.length - 1
+            const showLiveActivity = revealThinking && !pendingPermission && !pendingAskUser
             return (
               <div
                 key={virtualRow.key}
@@ -749,6 +742,7 @@ export function Conversation() {
                   sessionId={id}
                   compact={msg.role === 'assistant' && i > 0 && visibleMessages[i - 1]?.role === 'assistant'}
                   revealThinking={revealThinking}
+                  liveActivity={showLiveActivity ? liveActivity : undefined}
                   onApproveTool={onApproveTool}
                   onDenyTool={onDenyTool}
                   onSubmitToolPrompt={onSubmitToolPrompt}
@@ -758,20 +752,6 @@ export function Conversation() {
           })}
         </div>
       </div>
-
-      {/* Live agent status - tool-aware, shown in the transcript while a turn
-           is running. Hidden once a permission or ask_user_question is
-           pending: at that point the agent isn't "thinking" anymore, it's
-           blocked on the user's own decision - showing both left the status
-           looking stuck ("SeshatOS is thinking...") long after the real ball
-           was in the user's court. */}
-      {isStreaming && !pendingPermission && !pendingAskUser && (
-        <div className="conv-status-wrap">
-          <div className="conv-status-inner">
-            <AgentStatusIndicator state={agentState} />
-          </div>
-        </div>
-      )}
 
       {/* Plan artifact card - shown above input only while a plan is
            pending review. Once it's validated/rejected, the tool call's own
@@ -897,50 +877,6 @@ ${MESSAGE_ITEM_CSS}
   margin: 0 auto;
   padding: 0 18px;
   box-sizing: border-box;
-}
-
-/* Docked above the input, outside the scrollable transcript - see the call
-   site's conv-status-wrap/conv-status-inner. Deliberately no background/
-   border/card here: a single slim line, not a banner. */
-.conv-status-wrap {
-  padding: 0 18px 10px;
-  flex-shrink: 0;
-}
-
-.conv-status-inner {
-  max-width: 1000px;
-  margin: 0 auto;
-}
-
-.conv-status-row {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.conv-status-logo {
-  flex-shrink: 0;
-  animation: conv-status-pulse 1.8s ease-in-out infinite;
-}
-
-@keyframes conv-status-pulse {
-  0%, 100% { opacity: 0.5; transform: scale(0.88); }
-  50%      { opacity: 1;   transform: scale(1); }
-}
-
-.conv-status-text {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  animation: conv-status-fade 0.25s ease;
-}
-
-@keyframes conv-status-fade {
-  from { opacity: 0; transform: translateY(2px); }
-  to   { opacity: 1; transform: translateY(0); }
 }
 
 .conv-input-area {
