@@ -120,14 +120,14 @@ const QUIET_GROUP_CSS = `
 .qtg-root {
   display: flex;
   flex-direction: column;
-  margin: 1px 0 4px;
+  margin: 0;
 }
 
 .qtg-items {
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  margin: 2px 0 5px;
+  gap: 6px;
+  margin: 0;
 }
 
 .qtg-item-line--thinking .qtg-item-label--thinking {

@@ -386,7 +386,6 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
   const copyText = message.content
     .map((block) => {
       if (block.type === 'text') return block.text
-      if (block.type === 'thinking') return block.thinking
       return ''
     })
     .filter(Boolean)
@@ -567,7 +566,7 @@ export const MESSAGE_ITEM_CSS = `
 .msg-content {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   flex: 1;
   min-width: 0;
 }
@@ -688,7 +687,7 @@ export const MESSAGE_ITEM_CSS = `
 }
 
 .msg-thinking {
-  margin: 4px 0 8px;
+  margin: 0;
 }
 
 .msg-thinking-toggle {
@@ -727,11 +726,7 @@ export const MESSAGE_ITEM_CSS = `
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 19px;
-  height: 19px;
-  border-radius: 5px;
   color: var(--color-text-muted);
-  background: color-mix(in srgb, var(--color-surface) 68%, transparent);
 }
 
 .msg-thinking-chevron {

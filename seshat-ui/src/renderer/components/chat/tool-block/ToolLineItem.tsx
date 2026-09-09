@@ -46,7 +46,7 @@ export function ToolLineItem({ tool, sessionId, onSubmitPrompt }: {
       {/* A real <button> for copy can't nest inside another <button>, so the
           row itself is a div with button semantics instead. */}
       <div
-        className={`qtg-item-line${isPreviewTool ? ' qtg-item-line--preview' : ''}`}
+        className={`qtg-item-line${isPreviewTool ? ' qtg-item-line--preview' : ''}${expanded ? ' qtg-item-line--open' : ''}`}
         role="button"
         tabIndex={0}
         onClick={toggle}
@@ -221,6 +221,10 @@ export const TOOL_LINE_CSS = `
   background: color-mix(in srgb, var(--color-surface-elevated) 58%, var(--color-bg));
 }
 
+.qtg-item-line--open {
+  border-radius: 6px 6px 0 0;
+}
+
 .qtg-item-line:hover {
   color: var(--color-text-secondary);
   background: color-mix(in srgb, var(--color-surface-elevated) 74%, var(--color-bg));
@@ -231,8 +235,8 @@ export const TOOL_LINE_CSS = `
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   flex-shrink: 0;
 }
 
@@ -250,10 +254,6 @@ export const TOOL_LINE_CSS = `
   justify-content: center;
   color: var(--color-text-muted);
   flex-shrink: 0;
-  width: 16px;
-  height: 16px;
-  border-radius: 5px;
-  background: color-mix(in srgb, var(--color-surface) 68%, transparent);
 }
 
 /* A touch brighter than the default muted gray - not red, the badge
@@ -366,5 +366,10 @@ export const TOOL_LINE_CSS = `
 .qtg-item-body {
   padding: 0;
   margin-top: 0;
+}
+
+.qtg-item-body > .tb-hcard:first-child {
+  border-top: none;
+  border-radius: 0 0 6px 6px;
 }
 `

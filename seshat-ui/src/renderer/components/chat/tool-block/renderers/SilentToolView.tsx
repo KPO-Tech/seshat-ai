@@ -10,7 +10,7 @@ const CSS = `
 .tb-sl {
   display: flex;
   flex-direction: column;
-  margin: 0 0 2px;
+  margin: 0;
 }
 
 .tb-sl-line {
@@ -40,8 +40,8 @@ const CSS = `
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   flex-shrink: 0;
 }
 
@@ -79,8 +79,13 @@ const CSS = `
 }
 
 .tb-sl-body {
-  margin-top: 4px;
+  margin-top: 0;
   padding-left: 22px;
+}
+
+.tb-sl-body > .tb-hcard:first-child {
+  border-top: none;
+  border-radius: 0 0 6px 6px;
 }
 
 .tb-sl-status {
