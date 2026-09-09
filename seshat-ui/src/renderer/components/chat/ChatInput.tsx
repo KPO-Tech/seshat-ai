@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
-import { Plus, FolderClose, AtSign, Voice, Send, CheckCorrect, LoadingOne, Browser } from '@icon-park/react'
+import { Plus, FolderClose, AtSign, Voice, Send, CheckCorrect, LoadingOne, Browser, SettingTwo } from '@icon-park/react'
 import { AttachmentTypeIcon } from '@/components/AttachmentTypeIcon'
 import { api, ApiError } from '@/api/client'
 import type { Corpus } from '@/api/types'
@@ -76,6 +76,7 @@ type Props = {
   maxHeight?: number
   isStreaming?: boolean
   statusText?: string
+  showInlineStatus?: boolean
   selectedCorpusId?: string | null
   onCorpusChange?: (id: string | null) => void
   projectPath?: string
@@ -113,6 +114,7 @@ export function ChatInput({
   maxHeight = 160,
   isStreaming = false,
   statusText,
+  showInlineStatus = true,
   selectedCorpusId,
   onCorpusChange,
   projectPath,
@@ -142,6 +144,7 @@ export function ChatInput({
   const [openSelector, setOpenSelector] = useState<'provider' | 'model' | null>(null)
   const hasProviderMenu = !!providerOptions?.length && !!onProviderSelect
   const hasModelMenu = !!modelOptions?.length && !!onModelSelect
+  const showProviderSelector = Boolean(hasProviderMenu || onProviderClick || providerLabel !== 'Provider')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [skills, setSkills] = useState<SkillOption[]>([])
   const [slashIdx, setSlashIdx] = useState(0)
@@ -491,9 +494,10 @@ export function ChatInput({
         </div>
       )}
 
-      {(attachmentError || modelError) && (
+      {(attachmentError || modelError || recordError) && (
         <div className="chat-input-notices" aria-live="polite">
           {attachmentError && <div className="chat-input-notice">{attachmentError}</div>}
+          {recordError && <div className="chat-input-notice">{recordError}</div>}
           {modelError && (
             <div className="chat-input-notice">
               <span>{modelError}</span>
@@ -518,7 +522,7 @@ export function ChatInput({
         rows={1}
       />
 
-      <div className="chat-input-footer">
+      <div className="chat-input-footer" ref={selectorsRef}>
         <div className="chat-input-tools-left">
           <button
             className={`chat-tool-circle${isUploadingAttachments ? ' chat-tool-circle-loading' : ''}`}
@@ -596,56 +600,10 @@ export function ChatInput({
               </div>
             )}
           </div>
-          <button
-            className={`chat-tool-icon${recordingState === 'recording' ? ' chat-tool-icon-recording' : ''}`}
-            type="button"
-            title={
-              recordingState === 'recording'
-                ? 'Stop recording'
-                : recordingState === 'transcribing'
-                  ? 'Transcribing...'
-                  : 'Record a voice message'
-            }
-            disabled={recordingState === 'transcribing'}
-            onClick={() => void handleMicClick()}
-          >
-            {recordingState === 'transcribing'
-              ? <LoadingOne size={13} className="chat-status-spin" />
-              : <Voice size={13} />}
-          </button>
-          {recordError && <span className="chat-record-error">{recordError}</span>}
-          {isStreaming && (
-            <div className="chat-status-inline" aria-live="polite">
-              <LoadingOne size={14} className="chat-status-spin" />
-              <span>{statusText || 'Running...'}</span>
-            </div>
-          )}
-        </div>
-
-        <div className="chat-input-tools-right" ref={selectorsRef}>
-          <div className="chat-selector-wrap">
-            <SelectorPill
-              label={providerLabel}
-              icon={<Browser size={12} />}
-              onClick={handleProviderTrigger}
-              disabled={providerDisabled}
-            />
-            {openSelector === 'provider' && providerOptions && onProviderSelect && (
-              <SelectorMenu
-                placement="up"
-                options={providerOptions}
-                selectedId={selectedProviderId}
-                onSelect={(id) => {
-                  setOpenSelector(null)
-                  onProviderSelect(id)
-                }}
-              />
-            )}
-          </div>
-          <div className="chat-selector-wrap">
+          <div className="chat-model-selector-wrap">
             <SelectorPill
               label={modelLabel}
-              icon={<CheckCorrect size={12} />}
+              icon={hasModelMenu ? <CheckCorrect size={12} /> : <SettingTwo size={12} />}
               onClick={handleModelTrigger}
               disabled={modelDisabled}
             />
@@ -661,6 +619,53 @@ export function ChatInput({
               />
             )}
           </div>
+          {showInlineStatus && isStreaming && (
+            <div className="chat-status-inline" aria-live="polite">
+              <LoadingOne size={14} className="chat-status-spin" />
+              <span>{statusText || 'Running...'}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="chat-input-tools-right">
+          {showProviderSelector && (
+            <div className="chat-selector-wrap">
+              <SelectorPill
+                label={providerLabel}
+                icon={<Browser size={12} />}
+                onClick={handleProviderTrigger}
+                disabled={providerDisabled}
+              />
+              {openSelector === 'provider' && providerOptions && onProviderSelect && (
+                <SelectorMenu
+                  placement="up"
+                  options={providerOptions}
+                  selectedId={selectedProviderId}
+                  onSelect={(id) => {
+                    setOpenSelector(null)
+                    onProviderSelect(id)
+                  }}
+                />
+              )}
+            </div>
+          )}
+          <button
+            className={`chat-tool-icon chat-tool-icon-mic${recordingState === 'recording' ? ' chat-tool-icon-recording' : ''}`}
+            type="button"
+            title={
+              recordingState === 'recording'
+                ? 'Stop recording'
+                : recordingState === 'transcribing'
+                  ? 'Transcribing...'
+                  : 'Record a voice message'
+            }
+            disabled={recordingState === 'transcribing'}
+            onClick={() => void handleMicClick()}
+          >
+            {recordingState === 'transcribing'
+              ? <LoadingOne size={13} className="chat-status-spin" />
+              : <Voice size={13} />}
+          </button>
           {isStreaming ? (
             <button className="chat-stop-btn" onClick={onStop} type="button" title="Stop">
               <WindowCloseIcon size={14} />
@@ -685,6 +690,29 @@ ${SELECTOR_PILL_CSS}
 
 .chat-selector-wrap {
   position: relative;
+}
+
+.chat-model-selector-wrap {
+  position: relative;
+  min-width: 0;
+  max-width: min(240px, 32vw);
+}
+
+.chat-model-selector-wrap .selector-pill {
+  height: 28px;
+  max-width: 100%;
+  padding: 0 9px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-surface) 74%, var(--color-bg));
+}
+
+.chat-model-selector-wrap .selector-pill:hover {
+  background: color-mix(in srgb, var(--color-surface) 88%, var(--color-primary) 5%);
+  border-color: color-mix(in srgb, var(--color-primary) 24%, var(--color-border-subtle));
+}
+
+.chat-model-selector-wrap .selector-menu {
+  min-width: 330px;
 }
 
 /* Slash-command dropdown */
@@ -722,12 +750,18 @@ ${SELECTOR_PILL_CSS}
 }
 
 .chat-input-wrapper {
-  background: var(--color-bg);
-  border-radius: 14px;
+  background: color-mix(in srgb, var(--color-surface) 92%, var(--color-bg));
+  border-radius: 18px;
   padding: 12px 14px 10px;
   position: relative; /* anchors slash dropdown */
-  border: 1px solid var(--color-border);
-  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.16);
+  border: 1px solid var(--color-border-subtle);
+  box-shadow: 0 14px 34px rgba(31, 27, 23, 0.09);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.chat-input-wrapper:focus-within {
+  border-color: color-mix(in srgb, var(--color-primary) 42%, var(--color-border-subtle));
+  box-shadow: 0 18px 42px rgba(31, 27, 23, 0.12), 0 0 0 2px color-mix(in srgb, var(--color-primary) 14%, transparent);
 }
 
 .chat-input-textarea {
@@ -1025,6 +1059,7 @@ ${SELECTOR_PILL_CSS}
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   margin-top: 10px;
 }
 
@@ -1033,12 +1068,15 @@ ${SELECTOR_PILL_CSS}
   align-items: center;
   gap: 6px;
   min-width: 0;
+  flex: 1;
 }
 
 .chat-input-tools-right {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+  flex-shrink: 0;
 }
 
 .chat-tool-circle {
@@ -1110,6 +1148,18 @@ ${SELECTOR_PILL_CSS}
   background: var(--color-hover);
 }
 
+.chat-tool-icon-mic {
+  width: 24px;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+}
+
+.chat-tool-icon-mic:hover {
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+
 .chat-workspace-control {
   display: flex;
   align-items: center;
@@ -1141,7 +1191,7 @@ ${SELECTOR_PILL_CSS}
 }
 
 .chat-send-btn {
-  background: var(--color-surface);
+  background: color-mix(in srgb, var(--color-surface) 82%, var(--color-bg));
   color: var(--color-text-muted);
   width: 30px;
   height: 30px;
@@ -1155,9 +1205,14 @@ ${SELECTOR_PILL_CSS}
 }
 
 .chat-send-btn.active {
-  background: var(--color-text);
-  color: var(--color-bg);
+  background: var(--color-primary);
+  color: white;
   cursor: pointer;
+}
+
+.chat-send-btn.active:hover {
+  background: var(--color-primary-hover);
+  transform: translateY(-1px);
 }
 
 .chat-stop-btn {

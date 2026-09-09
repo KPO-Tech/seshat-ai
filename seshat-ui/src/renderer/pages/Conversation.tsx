@@ -6,13 +6,14 @@ import { useUIStore, buildRightPanelId } from '@/stores/ui'
 import { ChatTopBar, CHAT_TOP_BAR_CSS } from '@/components/chat/ChatTopBar'
 import { ChatInput, CHAT_INPUT_CSS, type ChatAttachment } from '@/components/chat/ChatInput'
 import { MessageItem, MESSAGE_ITEM_CSS, isRenderableMessage } from '@/components/chat/MessageItem'
+import { ProviderIcon } from '@/components/ui/ProviderIcon'
 import { PlanArtifactCard } from '@/components/chat/plan/PlanArtifactCard'
 import { AskUserPanel } from '@/components/chat/AskUserPanel'
 import { useChat } from '@/hooks/useChat'
 import { useProviders, fetchProviderModels } from '@/hooks/useProviders'
 import { useProvidersStore } from '@/stores/providers'
 import { api } from '@/api/client'
-import type { Session, ProviderModel } from '@/api/types'
+import type { Session, ProviderModel, ProviderSetting } from '@/api/types'
 import { normalizeSessionMessages } from '@/lib/chat'
 import { deleteSession } from '@/lib/deleteSession'
 import { serializeConversationMarkdown, conversationFileName } from '@/lib/conversationExport'
@@ -116,6 +117,49 @@ function agentActivityPhrase(state: AgentState, thinkingWord: string): string {
   return 'Working'
 }
 
+type ModelChoice = {
+  id: string
+  providerId: string
+  providerName: string
+  providerKind: string
+  model: ProviderModel
+}
+
+function modelChoiceId(providerId: string, modelId: string): string {
+  return `${providerId}::${modelId}`
+}
+
+function splitModelChoiceId(id: string): { providerId: string; modelId: string } | null {
+  const separator = id.indexOf('::')
+  if (separator <= 0 || separator === id.length - 2) return null
+  return {
+    providerId: id.slice(0, separator),
+    modelId: id.slice(separator + 2),
+  }
+}
+
+function providerInitials(name: string, kind: string): string {
+  const source = name.trim() || kind.trim() || 'AI'
+  const parts = source.split(/[\s._-]+/).filter(Boolean)
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+  return source.slice(0, 2).toUpperCase()
+}
+
+function providerDisplayName(name: string, kind: string): string {
+  const displayName = name.trim()
+  const providerKind = kind.trim()
+  if (!displayName) return providerKind
+  if (!providerKind) return displayName
+  if (displayName.toLowerCase() === providerKind.toLowerCase()) return displayName
+  return displayName
+}
+
+function isChatProviderUsable(provider: ProviderSetting): boolean {
+  if (provider.provider === 'ollama') return true
+  if (provider.auth_kind === 'oauth') return provider.connection_status === 'connected'
+  return provider.has_api_key || provider.connection_status === 'ready'
+}
+
 function useLiveActivityForAgent(state: AgentState): { label: string; detail?: string } {
   const isPureThinking = state.isThinking && !state.activeTool
   const thinkingWord = useRotatingWord(THINKING_WORDS, isPureThinking)
@@ -152,9 +196,10 @@ export function Conversation() {
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null)
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null)
   const [modelsByProvider, setModelsByProvider] = useState<Record<string, ProviderModel[]>>({})
-  const [loadingModelsFor, setLoadingModelsFor] = useState<string | null>(null)
+  const [loadingModelProviderIds, setLoadingModelProviderIds] = useState<string[]>([])
   const [modelLoadError, setModelLoadError] = useState<string | null>(null)
   const [modelRetryNonce, setModelRetryNonce] = useState(0)
+  const chatProviders = useMemo(() => providers.filter(isChatProviderUsable), [providers])
 
   // Init from session once it's available (handles direct URL navigation)
   useEffect(() => {
@@ -163,72 +208,94 @@ export function Conversation() {
     if (!selectedModelId && session.modelId) setSelectedModelId(session.modelId)
   }, [session?.providerSettingId, session?.modelId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Load models when provider changes
+  // Load every provider's models so the composer can expose one model picker
+  // instead of asking the user to choose a provider first. The selected
+  // option still carries providerId internally, so the backend receives the
+  // same provider_setting_id + model_id pair as before.
   useEffect(() => {
-    if (!selectedProviderId || (modelsByProvider[selectedProviderId] !== undefined && !modelLoadError)) return
+    const missing = chatProviders.filter((provider) => modelsByProvider[provider.id] === undefined)
+    if (missing.length === 0) return
     let cancelled = false
-    setLoadingModelsFor(selectedProviderId)
     setModelLoadError(null)
-    fetchProviderModels(selectedProviderId)
-      .then((models) => {
-        if (cancelled) return
-        setModelsByProvider((c) => ({ ...c, [selectedProviderId]: models }))
-      })
-      .catch(() => {
-        if (cancelled) return
-        setModelsByProvider((c) => ({ ...c, [selectedProviderId]: [] }))
-        setModelLoadError('Models unavailable for this provider. Check the provider settings and try again.')
-      })
-      .finally(() => { if (!cancelled) setLoadingModelsFor((c) => (c === selectedProviderId ? null : c)) })
-    return () => { cancelled = true }
-  }, [selectedProviderId, modelRetryNonce]) // eslint-disable-line react-hooks/exhaustive-deps
+    const missingIds = missing.map((provider) => provider.id)
+    setLoadingModelProviderIds((current) => Array.from(new Set([...current, ...missingIds])))
 
-  const selectedModels = useMemo(
-    () => (selectedProviderId ? (modelsByProvider[selectedProviderId] ?? []) : []),
-    [selectedProviderId, modelsByProvider],
-  )
+    for (const provider of missing) {
+      fetchProviderModels(provider.id)
+        .then((models) => {
+          if (cancelled) return
+          setModelsByProvider((current) => ({ ...current, [provider.id]: models }))
+        })
+        .catch(() => {
+          if (cancelled) return
+          setModelsByProvider((current) => ({ ...current, [provider.id]: [] }))
+          setModelLoadError('Some model catalogs are unavailable. Check provider settings and retry.')
+        })
+        .finally(() => {
+          if (cancelled) return
+          setLoadingModelProviderIds((current) => current.filter((id) => id !== provider.id))
+        })
+    }
+    return () => { cancelled = true }
+  }, [chatProviders, modelsByProvider, modelRetryNonce])
+
+  const allModelChoices = useMemo<ModelChoice[]>(() => {
+    return chatProviders.flatMap((provider) => (modelsByProvider[provider.id] ?? []).map((model) => ({
+      id: modelChoiceId(provider.id, model.model_id),
+      providerId: provider.id,
+      providerName: provider.name,
+      providerKind: provider.provider,
+      model,
+    })))
+  }, [chatProviders, modelsByProvider])
+
+  const selectedModelChoiceId = selectedProviderId && selectedModelId
+    ? modelChoiceId(selectedProviderId, selectedModelId)
+    : null
+
+  const selectedModelChoice = selectedModelChoiceId
+    ? allModelChoices.find((choice) => choice.id === selectedModelChoiceId) ?? null
+    : null
 
   // Auto-select first model when the list loads and current selection isn't in it
   useEffect(() => {
-    const loaded = selectedProviderId && Object.prototype.hasOwnProperty.call(modelsByProvider, selectedProviderId)
-    if (!loaded || selectedModels.length === 0) return
-    if (selectedModelId && selectedModels.some((m) => m.model_id === selectedModelId)) return
-    const def = selectedModels.find((m) => m.is_default) ?? selectedModels[0]
-    setSelectedModelId(def.model_id)
-  }, [selectedModels, selectedProviderId, modelsByProvider]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (allModelChoices.length === 0) return
+    if (selectedModelChoice) return
+    const sessionChoice = session?.providerSettingId && session?.modelId
+      ? allModelChoices.find((choice) => choice.providerId === session.providerSettingId && choice.model.model_id === session.modelId)
+      : null
+    const def = sessionChoice
+      ?? allModelChoices.find((choice) => choice.model.is_default)
+      ?? allModelChoices[0]
+    setSelectedProviderId(def.providerId)
+    setSelectedModelId(def.model.model_id)
+  }, [allModelChoices, selectedModelChoice, session?.providerSettingId, session?.modelId])
 
-  const handleProviderSelect = useCallback((providerId: string) => {
-    setSelectedProviderId(providerId)
-    setSelectedModelId(null)
+  const handleModelSelect = useCallback((choiceId: string) => {
+    const choice = splitModelChoiceId(choiceId)
+    if (!choice) return
+    const provider = providers.find((p) => p.id === choice.providerId)
+    const model = modelsByProvider[choice.providerId]?.find((m) => m.model_id === choice.modelId)
+    setSelectedProviderId(choice.providerId)
+    setSelectedModelId(choice.modelId)
     setModelLoadError(null)
-    const label = providers.find((p) => p.id === providerId)?.name
+    const label = model?.display_name || choice.modelId
     if (id) {
-      void api.patch(`/sessions/${id}`, { provider_setting_id: providerId }).catch(() => {})
-      updateSession(id, { providerSettingId: providerId, providerLabel: label, modelId: undefined, modelLabel: undefined })
+      void api.patch(`/sessions/${id}`, { provider_setting_id: choice.providerId, model_id: choice.modelId }).catch(() => {})
+      updateSession(id, {
+        providerSettingId: choice.providerId,
+        providerLabel: provider?.name,
+        modelId: choice.modelId,
+        modelLabel: label,
+      })
     }
-  }, [id, providers, updateSession])
-
-  const handleModelSelect = useCallback((modelId: string) => {
-    setSelectedModelId(modelId)
-    setModelLoadError(null)
-    const models = selectedProviderId ? (modelsByProvider[selectedProviderId] ?? []) : []
-    const label = models.find((m) => m.model_id === modelId)?.display_name || modelId
-    if (id && selectedProviderId) {
-      void api.patch(`/sessions/${id}`, { provider_setting_id: selectedProviderId, model_id: modelId }).catch(() => {})
-      updateSession(id, { modelId, modelLabel: label })
-    }
-  }, [id, selectedProviderId, modelsByProvider, updateSession])
+  }, [id, providers, modelsByProvider, updateSession])
 
   const handleModelRetry = useCallback(() => {
-    if (!selectedProviderId) return
     setModelLoadError(null)
-    setModelsByProvider((current) => {
-      const next = { ...current }
-      delete next[selectedProviderId]
-      return next
-    })
+    setModelsByProvider({})
     setModelRetryNonce((current) => current + 1)
-  }, [selectedProviderId])
+  }, [])
 
   const handlePermissionModeSelect = useCallback((mode: import('@/stores/ui').UIPermissionMode) => {
     setPermissionMode(mode)
@@ -793,12 +860,18 @@ export function Conversation() {
                 .map(sentAttachment)
               setInputValue('')
               setAttachments([])
-              void sendMessage(prompt, { corpusId: selectedCorpusId, fileIds, attachments: sentAttachments })
+              void sendMessage(prompt, {
+                corpusId: selectedCorpusId,
+                fileIds,
+                attachments: sentAttachments,
+                providerSettingId: selectedProviderId,
+                modelId: selectedModelId,
+              })
             }}
             onStop={() => { void stopMessage() }}
             placeholder="Message SeshatOS..."
             isStreaming={isStreaming}
-            statusText={agentState.activeTool?.message || (isStreaming ? 'SeshatOS is running...' : undefined)}
+            showInlineStatus={false}
             selectedCorpusId={selectedCorpusId}
             onCorpusChange={setSelectedCorpusId}
             projectPath={session.projectPath}
@@ -808,23 +881,21 @@ export function Conversation() {
             onRemoveAttachment={handleRemoveAttachment}
             isUploadingAttachments={uploadingAttachments}
             attachmentError={attachmentError}
-            providerLabel={providers.find((p) => p.id === selectedProviderId)?.name || session.providerLabel || 'Provider'}
             modelLabel={
               modelLoadError
                 ? 'Models unavailable'
-                : selectedModels.find((m) => m.model_id === selectedModelId)?.display_name || session.modelLabel || 'Model'
+                : selectedModelChoice?.model.display_name || selectedModelChoice?.model.model_id || session.modelLabel || 'Model'
             }
-            providerOptions={providers.map((p) => ({ id: p.id, label: p.name }))}
-            modelOptions={
-              !modelLoadError && selectedProviderId && Object.prototype.hasOwnProperty.call(modelsByProvider, selectedProviderId)
-                ? selectedModels.map((m) => ({ id: m.model_id, label: m.display_name || m.model_id }))
-                : undefined
-            }
-            selectedProviderId={selectedProviderId}
-            selectedModelId={selectedModelId}
-            onProviderSelect={handleProviderSelect}
+            modelOptions={!modelLoadError ? allModelChoices.map((choice) => ({
+              id: choice.id,
+              label: choice.model.display_name || choice.model.model_id,
+              description: providerDisplayName(choice.providerName, choice.providerKind),
+              icon: <ProviderIcon provider={choice.providerKind} size={17} />,
+              prefix: providerInitials(choice.providerName, choice.providerKind),
+            })) : undefined}
+            selectedModelId={selectedModelChoiceId}
             onModelSelect={handleModelSelect}
-            modelDisabled={loadingModelsFor === selectedProviderId}
+            modelDisabled={loadingModelProviderIds.length > 0 && allModelChoices.length === 0}
             modelError={modelLoadError}
             onModelRetry={handleModelRetry}
           />
@@ -843,16 +914,16 @@ ${MESSAGE_ITEM_CSS}
   flex: 1;
   display: flex;
   flex-direction: column;
-  background-color: var(--color-bg);
+  background-color: color-mix(in srgb, var(--color-bg) 68%, var(--color-surface));
   min-height: 0;
   overflow: hidden;
 }
 
 .conv-top-bar {
-  padding: 8px 16px;
+  padding: 5px 16px;
   flex-shrink: 0;
   border-bottom: 1px solid var(--color-border-subtle);
-  background: var(--color-bg);
+  background: color-mix(in srgb, var(--color-bg) 78%, var(--color-surface));
 }
 
 .conv-messages {
@@ -881,7 +952,11 @@ ${MESSAGE_ITEM_CSS}
 
 .conv-input-area {
   padding: 0 16px 14px;
-  background: linear-gradient(to top, var(--color-bg) 70%, transparent);
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--color-bg) 66%, var(--color-surface)) 72%,
+    transparent
+  );
   flex-shrink: 0;
 }
 

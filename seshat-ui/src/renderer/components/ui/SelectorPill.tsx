@@ -23,6 +23,8 @@ export type SelectorOption = {
   label: string
   disabled?: boolean
   description?: string
+  icon?: ReactNode
+  prefix?: string
 }
 
 type SelectorMenuProps = {
@@ -49,12 +51,21 @@ export function SelectorMenu({ options, selectedId, onSelect, align = 'left', pl
           onClick={() => !option.disabled && onSelect(option.id)}
           type="button"
         >
+          {option.icon ? (
+            <span className="selector-menu-provider-icon" aria-hidden="true">
+              {option.icon}
+            </span>
+          ) : option.prefix && (
+            <span className="selector-menu-prefix" aria-hidden="true">
+              {option.prefix}
+            </span>
+          )}
           <span className="selector-menu-copy">
             <span>{option.label}</span>
-            {option.description && (
-              <span className="selector-menu-description">{option.description}</span>
-            )}
           </span>
+          {option.description && (
+            <span className="selector-menu-description">{option.description}</span>
+          )}
           {option.id === selectedId && <CheckCorrect size={12} />}
         </button>
       ))}
@@ -74,6 +85,7 @@ export const SELECTOR_PILL_CSS = `
   cursor: pointer;
   transition: all 0.15s;
   white-space: nowrap;
+  max-width: 220px;
 }
 
 .selector-pill:hover {
@@ -101,22 +113,29 @@ export const SELECTOR_PILL_CSS = `
   font-size: var(--font-size-xs);
   font-weight: 500;
   color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .selector-menu {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
-  min-width: 180px;
-  padding: var(--space-3);
-  border-radius: var(--radius-xl);
+  min-width: 260px;
+  max-width: min(320px, calc(100vw - 32px));
+  max-height: min(252px, calc(100vh - 190px));
+  overflow-y: auto;
+  padding: 4px;
+  border-radius: 0;
   border: 1px solid var(--color-border-subtle);
-  background: var(--color-menu-bg);
-  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.22);
+  background: color-mix(in srgb, var(--color-surface) 96%, var(--color-bg));
+  box-shadow: 0 18px 48px rgba(31, 27, 23, 0.17);
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: 0;
   z-index: 30;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-text-muted) 28%, transparent) transparent;
 }
 
 .selector-menu--right {
@@ -131,39 +150,80 @@ export const SELECTOR_PILL_CSS = `
 
 .selector-menu-item {
   width: 100%;
-  border: none;
+  border: 1px solid transparent;
   background: transparent;
   color: var(--color-text);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-5);
-  padding: 7px var(--space-5);
-  border-radius: var(--radius-md);
+  gap: 7px;
+  padding: 6px 7px;
+  border-radius: 0;
   font-size: var(--font-size-sm);
   text-align: left;
   cursor: pointer;
+  min-width: 0;
+  min-height: 30px;
 }
 
 .selector-menu-copy {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+  min-width: 0;
+  flex: 1;
+}
+
+.selector-menu-copy > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .selector-menu-description {
   font-size: var(--font-size-2xs);
-  line-height: 1.35;
+  line-height: 1;
   color: var(--color-text-muted);
-  font-weight: 400;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+  max-width: 92px;
+  text-align: right;
+}
+
+.selector-menu-provider-icon,
+.selector-menu-prefix {
+  width: 17px;
+  height: 17px;
+  border-radius: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.selector-menu-provider-icon svg {
+  display: block;
+  width: 17px;
+  height: 17px;
+}
+
+.selector-menu-prefix {
+  background: color-mix(in srgb, var(--color-primary) 13%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-primary) 20%, var(--color-border-subtle));
+  color: var(--color-accent);
+  font-size: 8px;
+  font-weight: 800;
+  text-transform: uppercase;
 }
 
 .selector-menu-item:hover {
-  background: var(--color-hover);
+  background: color-mix(in srgb, var(--color-surface-elevated) 48%, var(--color-surface));
+  border-color: var(--color-border-subtle);
 }
 
 .selector-menu-item.active {
-  background: var(--color-primary-subtle);
+  background: color-mix(in srgb, var(--color-primary) 11%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--color-primary) 22%, var(--color-border-subtle));
   color: var(--color-accent);
 }
 

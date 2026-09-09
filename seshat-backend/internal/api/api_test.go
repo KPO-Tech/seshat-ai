@@ -4971,12 +4971,27 @@ func TestSettingCrossUserAccess(t *testing.T) {
 	}
 	bobToken := loginAs(t, router, "bob@settings.test", "bobpass")
 
+	// Bob creates his own personal setting first; admin must not see it through
+	// the normal personal settings endpoint.
+	bobBody, _ := json.Marshal(map[string]string{"provider": "mistral", "name": "Bob's Key"})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/settings/providers", bytes.NewReader(bobBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+bobToken)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("bob create setting: got %d, body=%s", rec.Code, rec.Body.String())
+	}
+	var bobCreated map[string]any
+	json.NewDecoder(rec.Body).Decode(&bobCreated)
+	bobSettingID := bobCreated["id"].(string)
+
 	// Admin creates a setting.
 	body, _ := json.Marshal(map[string]string{"provider": "openai", "name": "Admin's Key"})
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/settings/providers", bytes.NewReader(body))
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/settings/providers", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+adminToken)
-	rec := httptest.NewRecorder()
+	rec = httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 	var created map[string]any
 	json.NewDecoder(rec.Body).Decode(&created)
@@ -5000,25 +5015,42 @@ func TestSettingCrossUserAccess(t *testing.T) {
 		t.Errorf("cross-user DELETE: expected 403, got %d", rec.Code)
 	}
 
-	// Bob's own list is empty.
+	// Bob's own list only contains Bob's personal setting.
 	req = httptest.NewRequest(http.MethodGet, "/api/v1/settings/providers", nil)
 	req.Header.Set("Authorization", "Bearer "+bobToken)
 	rec = httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 	var list map[string]any
 	json.NewDecoder(rec.Body).Decode(&list)
-	if int(list["count"].(float64)) != 0 {
-		t.Errorf("bob's list should be empty, got %v", list["count"])
+	if int(list["count"].(float64)) != 1 {
+		t.Errorf("bob's list should only contain bob's own setting, got %v", list["count"])
 	}
 
-	// Admin list sees all settings (admin bypass).
+	// Admin's normal settings endpoint is also personal-only; it must not leak
+	// Bob's local provider into the admin account.
 	req = httptest.NewRequest(http.MethodGet, "/api/v1/settings/providers", nil)
 	req.Header.Set("Authorization", "Bearer "+adminToken)
 	rec = httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 	json.NewDecoder(rec.Body).Decode(&list)
 	if int(list["count"].(float64)) != 1 {
-		t.Errorf("admin list should see 1 setting, got %v", list["count"])
+		t.Errorf("admin list should only see admin's own setting, got %v", list["count"])
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/settings/providers/"+bobSettingID, nil)
+	req.Header.Set("Authorization", "Bearer "+adminToken)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("admin cross-user GET should be forbidden: got %d", rec.Code)
+	}
+
+	req = httptest.NewRequest(http.MethodDelete, "/api/v1/settings/providers/"+bobSettingID, nil)
+	req.Header.Set("Authorization", "Bearer "+adminToken)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("admin cross-user DELETE should be forbidden: got %d", rec.Code)
 	}
 }
 

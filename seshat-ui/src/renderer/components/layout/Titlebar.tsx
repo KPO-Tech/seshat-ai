@@ -62,7 +62,7 @@ export function Titlebar({ left, center }: Props) {
   )
 }
 
-export const TITLEBAR_HEIGHT = 42
+export const TITLEBAR_HEIGHT = 34
 
 export const TITLEBAR_CSS = `
 .shell-titlebar {
@@ -90,8 +90,8 @@ export const TITLEBAR_CSS = `
   background: transparent;
   border: none;
   color: var(--color-text-secondary);
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border-radius: 5px;
   display: flex;
   align-items: center;
@@ -115,8 +115,8 @@ export const TITLEBAR_CSS = `
   background: transparent;
   border: none;
   color: var(--color-text-muted);
-  width: 28px;
-  height: 32px;
+  width: 26px;
+  height: 28px;
   border-radius: 5px;
   display: flex;
   align-items: center;
@@ -155,7 +155,7 @@ export const TITLEBAR_CSS = `
   border: none;
   color: var(--color-text-secondary);
   width: 42px;
-  height: 42px;
+  height: ${TITLEBAR_HEIGHT}px;
   display: flex;
   align-items: center;
   justify-content: center;

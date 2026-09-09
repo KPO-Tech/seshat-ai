@@ -137,9 +137,9 @@ export function ChatTopBar({
         )}
         {onToggleMonitor && (
           <IconButton
-            icon={<Robot size={15} />}
+            icon={<Robot size={13} />}
             variant="bordered"
-            size={28}
+            size={24}
             title="Agent Monitor"
             active={monitorOpen}
             onClick={onToggleMonitor}
@@ -147,9 +147,9 @@ export function ChatTopBar({
         )}
         {onToggleBrowser && (
           <IconButton
-            icon={<Browser size={15} />}
+            icon={<Browser size={13} />}
             variant="bordered"
-            size={28}
+            size={24}
             title="Browser"
             active={browserOpen}
             onClick={onToggleBrowser}
@@ -158,9 +158,9 @@ export function ChatTopBar({
         {(onTogglePermission || onPermissionModeSelect) && (
           <div className="chat-top-selector">
             <IconButton
-              icon={<Shield size={15} />}
+              icon={<Shield size={13} />}
               variant="bordered"
-              size={28}
+              size={24}
               title={permissionModeTitle(permissionMode)}
               active
               activeColor={permissionModeColor(permissionMode)}
@@ -187,7 +187,7 @@ export function ChatTopBar({
               title="More"
               onClick={() => setMenuOpen((v) => !v)}
             >
-              <More size={15} />
+              <More size={13} />
             </button>
             {menuOpen && (
               <div className="conv-menu">
@@ -230,8 +230,8 @@ ${ICON_BUTTON_CSS}
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 32px;
-  gap: 12px;
+  min-height: 26px;
+  gap: 10px;
 }
 
 /* Shrinks (and the title inside it truncates, then disappears entirely)
@@ -252,7 +252,7 @@ ${ICON_BUTTON_CSS}
 }
 
 .chat-session-title {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 650;
   color: var(--color-text);
   white-space: nowrap;
@@ -303,19 +303,19 @@ ${ICON_BUTTON_CSS}
 .chat-top-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   position: relative;
   flex-shrink: 0;
 }
 
 .chat-auto-btn {
-  height: 28px;
+  height: 24px;
   background: transparent;
   border: 1px solid var(--color-border-subtle);
   color: var(--color-text-secondary);
-  padding: 0 9px;
-  border-radius: 7px;
-  font-size: 12px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 11px;
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -325,8 +325,8 @@ ${ICON_BUTTON_CSS}
 }
 
 .chat-auto-dot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   flex-shrink: 0;
   transition: background 0.15s;
@@ -351,9 +351,9 @@ ${ICON_BUTTON_CSS}
 }
 
 .conv-menu-trigger {
-  width: 28px;
-  height: 28px;
-  border-radius: 7px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
   border: none;
   background: transparent;
   color: var(--color-text-muted);
