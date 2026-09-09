@@ -382,6 +382,7 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
     return false
   })
   if (visibleBlocks.length === 0 && attachments.length === 0 && !liveActivity) return null
+  const hasVisibleTool = visibleBlocks.some((block) => block.type === 'tool_use')
 
   const copyText = message.content
     .map((block) => {
@@ -523,7 +524,7 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
 
         {liveActivity && <LiveActivityBlock label={liveActivity.label} detail={liveActivity.detail} />}
 
-        {copyText && (
+        {copyText && !hasVisibleTool && (
           <div className="msg-footer">
             <button
               className="msg-action-btn"
