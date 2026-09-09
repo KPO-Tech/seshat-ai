@@ -31,4 +31,15 @@ export type AutomationJob = {
   error_workflow_job_id?: string
 }
 
+// Tier 3.3 - a Seshat-authored starting point for a new automation (see
+// seshat-server's automation.Template). A small built-in catalog, not
+// org-scoped - the same static-catalog posture as NodeDescription.
+export type AutomationTemplate = {
+  id: string
+  name: string
+  description: string
+  category: string
+  definition: DataflowDefinition
+}
+
 export type { Agent }

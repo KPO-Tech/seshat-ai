@@ -150,6 +150,7 @@ func (app *App) routes() http.Handler {
 	mux.Handle("PUT /api/v1/variables/{variableID}", app.authMiddleware(http.HandlerFunc(app.handleVariableByID)))
 	mux.Handle("DELETE /api/v1/variables/{variableID}", app.authMiddleware(http.HandlerFunc(app.handleVariableByID)))
 	mux.Handle("GET /api/v1/dataflow/node-types", app.authMiddleware(http.HandlerFunc(app.handleDataflowNodeTypes)))
+	mux.Handle("GET /api/v1/dataflow/templates", app.authMiddleware(http.HandlerFunc(app.handleDataflowTemplates)))
 	mux.Handle("POST /api/v1/dataflow/preview-expression", app.authMiddleware(http.HandlerFunc(app.handleDataflowPreviewExpression)))
 	mux.Handle("POST /api/v1/dataflow/test-run", app.authMiddleware(http.HandlerFunc(app.handleDataflowTestRun)))
 	mux.Handle("POST /api/v1/dataflow/test-connection", app.authMiddleware(http.HandlerFunc(app.handleDataflowTestConnection)))

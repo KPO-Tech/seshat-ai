@@ -1,5 +1,6 @@
 export type {
   AutomationJob,
+  AutomationTemplate,
   Device,
   ExecutionTarget,
   JobStatus,

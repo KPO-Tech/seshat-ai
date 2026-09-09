@@ -1,5 +1,5 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams, useLocation, useBlocker } from 'react-router'
+import { useNavigate, useParams, useLocation, useSearchParams, useBlocker } from 'react-router'
 import {
   Left, Setting, Close, CheckOne, Home, ApplicationOne, DataOne, Help as HelpIcon,
   Plus, Play, Delete as DeleteIcon, LoadingOne, History,
@@ -14,8 +14,9 @@ import { RunsPanel } from '../graph/RunsPanel'
 import { VariablesPanel } from '../graph/VariablesPanel'
 import type { DataflowDefinition, DataflowNode, NodeDescription } from '../graph/types'
 import { UI_POSITION_KEY } from '../graph/types'
-import type { AutomationJob as Job, Device, ExecutionTarget, RailView } from '../api/types'
+import type { AutomationJob as Job, AutomationTemplate, Device, ExecutionTarget, RailView } from '../api/types'
 import { AutomationOverviewPanel } from '../components/AutomationOverviewPanel'
+import { TemplatesPanel } from '../components/TemplatesPanel'
 import { StubPanel } from '../components/StubPanel'
 import '../styles/automation.css'
 
@@ -49,6 +50,7 @@ export function AutomationPage() {
   const { jobId } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
   // The bare /automation route (no :jobId segment) is Overview - the list of
   // built automations, Automation's own home instead of a dead-end back to
   // Scheduling. /automation/new and /automation/:jobId are the graph editor.
@@ -196,7 +198,10 @@ export function AutomationPage() {
   // Load agents/devices/node types once - independent of whether this is a
   // new or existing job, unlike Scheduling's page-level fetch which this
   // page doesn't share (separate route, own mount). Skipped entirely on
-  // Overview, which needs none of this.
+  // Overview, which needs none of this (Templates' own smaller catalog need
+  // is handled by the dedicated effect just below instead, so switching
+  // rail tabs while on Overview doesn't refetch agents/devices/variables
+  // every time).
   useEffect(() => {
     if (isOverview) return
     api.get<{ agents: Agent[] }>('/agents').then((r) => setAgents((r.agents ?? []).filter((a) => a.enabled !== false))).catch(() => {})
@@ -219,6 +224,21 @@ export function AutomationPage() {
         .catch(() => {})
     }
   }, [isOverview, organizationId, jobId])
+
+  // TemplatesPanel's requirements checklist (Tier 3.3) needs the same
+  // nodeTypes catalog the graph editor uses, but Templates is reachable
+  // directly from Overview's own rail, where the effect above is skipped
+  // entirely. A small, separate fetch here instead of loosening that
+  // effect's own gate, which would also refetch agents/devices/variables on
+  // every rail-tab click, not just the first visit to Templates.
+  useEffect(() => {
+    if (!isOverview || railView !== 'templates' || nodeTypes.length > 0 || nodeTypesLoading) return
+    setNodeTypesLoading(true)
+    api.get<{ node_types: NodeDescription[] }>('/dataflow/node-types')
+      .then((res) => setNodeTypes(res.node_types ?? []))
+      .catch((err) => setNodeTypesError(err instanceof ApiError ? err.message : 'Unable to load node types.'))
+      .finally(() => setNodeTypesLoading(false))
+  }, [isOverview, railView, nodeTypes.length, nodeTypesLoading])
 
   // Load the existing job when editing. If the ID belongs to a prompt job,
   // keep Automation isolated and return to its own overview instead of
@@ -258,6 +278,35 @@ export function AutomationPage() {
       .catch((err) => setLoadError(err instanceof ApiError ? err.message : 'Unable to load this job.'))
       .finally(() => setLoading(false))
   }, [jobId, isNew, navigate])
+
+  // Seed a brand-new job from a Templates catalog pick (Tier 3.3) - reached
+  // via TemplatesPanel's "Use this template" navigating to
+  // /automation/new?template=<id>. A query param, not router location state
+  // (no precedent for that anywhere in this app, and a query param survives
+  // a refresh). Only fetches the template list when actually needed, not on
+  // every /automation/new visit - a blank "New automation" click never hits
+  // this at all.
+  useEffect(() => {
+    if (!isNew) return
+    const templateId = searchParams.get('template')
+    if (!templateId) return
+    api.get<{ templates: AutomationTemplate[] }>('/dataflow/templates')
+      .then((res) => {
+        const template = (res.templates ?? []).find((t) => t.id === templateId)
+        if (!template) return
+        // Same re-arm as the "load an existing job" effect above - these
+        // set*() calls are seeding, not a user edit.
+        skipDirtyRef.current = true
+        setName(template.name)
+        setDescription(template.description)
+        setGraph(template.definition)
+      })
+      .catch(() => {})
+    // Deliberately just [isNew] - searchParams is read once per landing on
+    // /automation/new, not tracked as a live dependency (the template picked
+    // shouldn't keep re-seeding if the URL changes some other way afterward).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNew])
 
   // Reported live: this fired on Overview itself (e.g. clicking "New
   // automation" from an untouched, empty Overview immediately prompted
@@ -537,7 +586,7 @@ export function AutomationPage() {
           ) : railView === 'runs' && jobId ? (
             <RunsPanel jobId={jobId} graph={graph} nodeTypes={nodeTypes} />
           ) : railView === 'templates' ? (
-            <StubPanel title="Templates" description="Browse and start from pre-built automation templates. Coming soon." />
+            <TemplatesPanel nodeTypes={nodeTypes} />
           ) : railView === 'variables' ? (
             <VariablesPanel />
           ) : railView === 'help' ? (
