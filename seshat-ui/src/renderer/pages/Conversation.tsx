@@ -966,7 +966,7 @@ ${MESSAGE_ITEM_CSS}
 }
 
 .conv-input-inner {
-  max-width: 1000px;
+  max-width: 860px;
   margin: 0 auto;
   width: 100%;
 }

@@ -13,8 +13,9 @@ import { resolveBackendOrigin } from './runtime'
 //   throughout the app (virtualized list positioning, etc.) - locking that
 //   down would need a full inline-style-to-class refactor, not a CSP problem.
 // - img-src additionally allows data: (attachment/doc-preview thumbnails are
-//   base64 data URLs), file: (local file previews staged before upload) and
-//   blob: (URL.createObjectURL previews).
+//   base64 data URLs), file: (local file previews staged before upload),
+//   blob: (URL.createObjectURL previews), and DuckDuckGo's favicon-only
+//   endpoint for compact web-search source icons.
 // - font-src additionally allows data: - KaTeX's bundled fonts are inlined as
 //   base64 in its stylesheet.
 // - connect-src 'self' only: the renderer never calls the backend directly -
@@ -37,7 +38,7 @@ function buildContentSecurityPolicy(backendOrigin: string) {
     "default-src 'self'",
     "script-src 'self'",
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: file: blob:",
+    "img-src 'self' data: file: blob: https://icons.duckduckgo.com",
     "font-src 'self' data:",
     "connect-src 'self'",
     "worker-src 'self'",

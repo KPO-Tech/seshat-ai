@@ -413,18 +413,30 @@ export const TOOL_BLOCK_CSS = `
   background: color-mix(in srgb, var(--color-accent) 7%, transparent);
 }
 
-.tb-link-index {
+.tb-link-favicon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 19px;
-  height: 19px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: color-mix(in srgb, var(--color-surface) 74%, var(--color-bg));
+}
+
+.tb-link-favicon img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tb-link-favicon--fallback {
   background: color-mix(in srgb, var(--color-accent) 88%, black);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   color: white;
-  flex-shrink: 0;
 }
 
 .tb-link-copy {
@@ -456,10 +468,24 @@ export const TOOL_BLOCK_CSS = `
 }
 
 .tb-links-more {
-  padding: 7px 10px 8px 39px;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 8px 10px 9px 38px;
   border-top: 1px solid var(--color-border-subtle);
+  border-right: none;
+  border-bottom: none;
+  border-left: none;
+  background: transparent;
   font-size: 11px;
   color: var(--color-text-muted);
+  cursor: pointer;
+  text-align: left;
+}
+
+.tb-links-more:hover {
+  background: color-mix(in srgb, var(--color-accent) 7%, transparent);
+  color: var(--color-text-secondary);
 }
 
 .tb-note {

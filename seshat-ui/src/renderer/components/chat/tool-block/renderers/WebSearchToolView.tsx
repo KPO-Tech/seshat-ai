@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { HeaderCard, Section, CodeBox } from '../common'
 import { fmtDuration, parseWebSearchHits } from '../helpers'
 import type { ToolViewProps } from '../types'
@@ -14,6 +15,9 @@ export function WebSearchToolView({ tool, result, sessionId }: ToolViewProps) {
     ? `${resultCount} result${resultCount === 1 ? '' : 's'}`
     : ''
   const stat = [provider, mode, countLabel, duration].filter(Boolean).join(' · ')
+  const [showAll, setShowAll] = useState(false)
+  const visibleHits = showAll ? hits : hits.slice(0, 5)
+  const selectedCount = showAll ? hits.length : Math.min(hits.length || resultCount || 0, 5)
 
   if (result?.isError) {
     return (
@@ -27,46 +31,72 @@ export function WebSearchToolView({ tool, result, sessionId }: ToolViewProps) {
     <HeaderCard
       header={
         <>
-          <span>{Math.min(hits.length || resultCount || 0, 5) || 'No'} selected result{Math.min(hits.length || resultCount || 0, 5) === 1 ? '' : 's'}</span>
+          <span>{selectedCount || 'No'} selected result{selectedCount === 1 ? '' : 's'}</span>
           {stat && <span className="tb-hcard-header-stat">{stat}</span>}
         </>
       }
     >
       {hits.length > 0 ? (
-        <div className="tb-links">
-          {hits.slice(0, 5).map((hit, index) => (
-            <a
-              key={`${hit.url}-${index}`}
-              className="tb-link-item"
-              href={hit.url}
-              target="_blank"
-              rel="noreferrer"
-              title={hit.url}
-              onClick={(event) => {
-                if (!shouldOpenInAppBrowser(event, hit.url)) return
-                event.preventDefault()
-                openInAppBrowser(hit.url, sessionId)
-              }}
-            >
-              <span className="tb-link-index">{sourceInitial(hit.title || hit.url)}</span>
-              <span className="tb-link-copy">
-                <span className="tb-link-title">{hit.title || hit.url}</span>
-              </span>
-              <span className="tb-link-domain">{domainLabel(hit.url)}</span>
-            </a>
-          ))}
+        <>
+          <div className="tb-links">
+            {visibleHits.map((hit, index) => {
+              const domain = domainLabel(hit.url)
+              return (
+                <a
+                  key={`${hit.url}-${index}`}
+                  className="tb-link-item"
+                  href={hit.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={hit.url}
+                  onClick={(event) => {
+                    if (!shouldOpenInAppBrowser(event, hit.url)) return
+                    event.preventDefault()
+                    openInAppBrowser(hit.url, sessionId)
+                  }}
+                >
+                  <Favicon domain={domain} fallback={sourceInitial(hit.title || domain)} />
+                  <span className="tb-link-copy">
+                    <span className="tb-link-title">{hit.title || hit.url}</span>
+                  </span>
+                  <span className="tb-link-domain">{domain}</span>
+                </a>
+              )
+            })}
+          </div>
           {hits.length > 5 && (
-            <div className="tb-links-more">
-              {hits.length - 5} more result{hits.length - 5 === 1 ? '' : 's'} available
-            </div>
+            <button
+              type="button"
+              className="tb-links-more"
+              onClick={() => setShowAll((value) => !value)}
+            >
+              {showAll ? 'Show fewer sources' : `View all sources (${hits.length})`}
+            </button>
           )}
-        </div>
+        </>
       ) : (
         <Section label="Sources">
           <div className="tb-ask-note">No sources found in the search result.</div>
         </Section>
       )}
     </HeaderCard>
+  )
+}
+
+function Favicon({ domain, fallback }: { domain: string; fallback: string }) {
+  const [failed, setFailed] = useState(false)
+  if (!domain || failed) {
+    return <span className="tb-link-favicon tb-link-favicon--fallback">{fallback}</span>
+  }
+  return (
+    <span className="tb-link-favicon" aria-hidden="true">
+      <img
+        src={`https://icons.duckduckgo.com/ip3/${domain}.ico`}
+        alt=""
+        loading="lazy"
+        onError={() => setFailed(true)}
+      />
+    </span>
   )
 }
 
