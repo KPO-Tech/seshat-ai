@@ -114,11 +114,11 @@ export function ProseBox({ content, copyable, bare }: { content: string; copyabl
 
 const CODE_HIGHLIGHT_STYLE: CSSProperties = {
   margin: 0,
-  padding: '10px 12px',
-  fontSize: '12.5px',
-  lineHeight: 1.55,
+  padding: '8px 10px',
+  fontSize: '11.5px',
+  lineHeight: 1.5,
   background: 'transparent',
-  maxHeight: 260,
+  maxHeight: 220,
   overflowY: 'auto',
   overflowX: 'auto',
 }

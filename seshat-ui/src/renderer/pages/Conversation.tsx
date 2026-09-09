@@ -886,6 +886,11 @@ export function Conversation() {
                 ? 'Models unavailable'
                 : selectedModelChoice?.model.display_name || selectedModelChoice?.model.model_id || session.modelLabel || 'Model'
             }
+            modelIcon={
+              selectedModelChoice
+                ? <ProviderIcon provider={selectedModelChoice.providerKind} size={13} />
+                : undefined
+            }
             modelOptions={!modelLoadError ? allModelChoices.map((choice) => ({
               id: choice.id,
               label: choice.model.display_name || choice.model.model_id,

@@ -162,30 +162,38 @@ function HTMLPreviewTrigger({ tool, filePath }: { tool: ToolUseBlock; filePath: 
 }
 
 export const TOOL_LINE_CSS = `
-.qtg-item { display: flex; flex-direction: column; }
+.qtg-item {
+  display: flex;
+  flex-direction: column;
+}
 
 .qtg-item-line {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   background: transparent;
   border: none;
-  padding: 2px 0;
+  border-radius: 6px;
+  padding: 3px 5px 3px 0;
   cursor: pointer;
   color: var(--color-text-muted);
   text-align: left;
   width: 100%;
-  font-size: 10px;
+  font-size: 10.5px;
+  line-height: 1.35;
 }
 
-.qtg-item-line:hover { color: var(--color-text-secondary); }
+.qtg-item-line:hover {
+  color: var(--color-text-secondary);
+  background: color-mix(in srgb, var(--color-surface) 42%, transparent);
+}
 
 .qtg-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
 }
 
@@ -203,6 +211,10 @@ export const TOOL_LINE_CSS = `
   justify-content: center;
   color: var(--color-text-muted);
   flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--color-surface) 68%, transparent);
 }
 
 /* A touch brighter than the default muted gray - not red, the badge
@@ -225,8 +237,8 @@ export const TOOL_LINE_CSS = `
 }
 
 .tl-spinner {
-  width: 9px;
-  height: 9px;
+  width: 10px;
+  height: 10px;
   border: 1.5px solid rgba(239, 124, 47, 0.2);
   border-top-color: var(--color-accent);
   border-radius: 50%;
@@ -244,6 +256,8 @@ export const TOOL_LINE_CSS = `
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
+  color: var(--color-text-secondary);
+  font-weight: 500;
 }
 
 .qtg-item-status {
@@ -259,8 +273,8 @@ export const TOOL_LINE_CSS = `
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
   border-radius: 4px;
   border: none;
@@ -277,7 +291,7 @@ export const TOOL_LINE_CSS = `
 .qtg-chevron {
   display: inline-flex;
   align-items: center;
-  opacity: 0.55;
+  opacity: 0.45;
   transition: transform 0.15s;
   flex-shrink: 0;
 }
@@ -285,7 +299,7 @@ export const TOOL_LINE_CSS = `
 .qtg-chevron--open { transform: rotate(180deg); }
 
 .qtg-item-subtitle {
-  padding: 0 0 2px 19px;
+  padding: 0 0 2px 22px;
   font-size: 9px;
   color: var(--color-text-muted);
   opacity: 0.65;
@@ -294,6 +308,6 @@ export const TOOL_LINE_CSS = `
 .qtg-item-subtitle--error { color: var(--color-error); opacity: 0.85; }
 
 .qtg-item-body {
-  padding: 4px 0 6px 19px;
+  padding: 4px 0 7px 22px;
 }
 `

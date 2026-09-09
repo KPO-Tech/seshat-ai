@@ -2,22 +2,22 @@ export const TOOL_BLOCK_CSS = `
 .tb-section {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
 }
 
 .tb-section-label {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--color-text-muted);
 }
 
 .tb-code {
   position: relative;
-  background: rgba(0, 0, 0, 0.35);
+  background: color-mix(in srgb, var(--color-bg) 84%, black);
   border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
+  border-radius: 6px;
   overflow: hidden;
 }
 
@@ -36,21 +36,21 @@ export const TOOL_BLOCK_CSS = `
    directly attached to its body - see common.tsx's HeaderCard. ── */
 .tb-hcard {
   border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--color-surface) 72%, transparent);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--color-surface) 76%, var(--color-bg));
   overflow: hidden;
 }
 
 .tb-hcard-header {
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 6px 9px;
-  font-size: 11px;
+  gap: 6px;
+  padding: 5px 8px;
+  font-size: 10px;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
   color: var(--color-text-secondary);
   border-bottom: 1px solid var(--color-border-subtle);
-  background: rgba(255, 255, 255, 0.03);
+  background: color-mix(in srgb, var(--color-surface-elevated) 54%, transparent);
   white-space: nowrap;
   overflow: hidden;
 }
@@ -67,7 +67,7 @@ export const TOOL_BLOCK_CSS = `
   padding-left: 8px;
   font-family: inherit;
   color: var(--color-text-disabled);
-  font-size: 10.5px;
+  font-size: 9.5px;
 }
 
 .tb-hcard-body {
@@ -88,14 +88,14 @@ export const TOOL_BLOCK_CSS = `
 
 .tb-pre {
   margin: 0;
-  padding: 9px 10px;
+  padding: 8px 9px;
   font-family: monospace;
-  font-size: 12px;
-  line-height: 1.55;
+  font-size: 11px;
+  line-height: 1.5;
   color: var(--color-text-secondary);
   white-space: pre-wrap;
   word-break: break-all;
-  max-height: 260px;
+  max-height: 220px;
   overflow-y: auto;
 }
 
@@ -377,11 +377,8 @@ export const TOOL_BLOCK_CSS = `
 .tb-links {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  /* Caps to roughly 8 result cards before scrolling - a search that turns up
-     20+ hits used to render every single one inline, making the tool card
-     dwarf the rest of the conversation just for link browsing. */
-  max-height: 500px;
+  gap: 4px;
+  max-height: 290px;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--color-border-subtle) transparent;
@@ -397,12 +394,12 @@ export const TOOL_BLOCK_CSS = `
 .tb-link-item {
   display: flex;
   align-items: flex-start;
-  gap: 9px;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
-  padding: 9px 10px;
+  gap: 7px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 6px 7px;
   text-decoration: none;
-  background: rgba(255, 255, 255, 0.02);
+  background: transparent;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 
@@ -412,7 +409,7 @@ export const TOOL_BLOCK_CSS = `
 }
 
 .tb-link-index {
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 700;
   color: var(--color-text-muted);
   flex-shrink: 0;
@@ -422,32 +419,38 @@ export const TOOL_BLOCK_CSS = `
 .tb-link-copy {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   min-width: 0;
 }
 
 .tb-link-title {
-  font-size: 13px;
+  font-size: 11.5px;
   font-weight: 600;
   color: var(--color-text);
   line-height: 1.4;
 }
 
 .tb-link-url {
-  font-size: 12px;
+  font-size: 10px;
   color: var(--color-accent);
   line-height: 1.4;
   word-break: break-all;
 }
 
 .tb-link-snippet {
-  font-size: 11px;
-  line-height: 1.45;
+  font-size: 10px;
+  line-height: 1.4;
   color: var(--color-text-muted);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.tb-links-more {
+  padding: 4px 7px 2px 24px;
+  font-size: 10px;
+  color: var(--color-text-muted);
 }
 
 .tb-note {

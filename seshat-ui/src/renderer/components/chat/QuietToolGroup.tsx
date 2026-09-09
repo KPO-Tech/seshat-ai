@@ -119,23 +119,25 @@ const QUIET_GROUP_CSS = `
 .qtg-root {
   display: flex;
   flex-direction: column;
-  margin: 0 0 2px;
+  margin: 1px 0 4px;
 }
 
 .qtg-items {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  margin: 2px 0 4px 2px;
+  gap: 1px;
+  margin: 2px 0 5px;
 }
 
-.qtg-item-line--thinking .qtg-item-label--thinking { font-style: italic; }
+.qtg-item-line--thinking .qtg-item-label--thinking {
+  color: var(--color-text-muted);
+}
 
 .qtg-item-body--thinking {
   font-size: 11px;
-  font-style: italic;
+  font-style: normal;
   color: var(--color-text-muted);
-  line-height: 1.65;
+  line-height: 1.55;
 }
 
 /* Same neutralizing rules as MessageItem.tsx's standalone ThinkingBlock -
@@ -149,7 +151,6 @@ const QUIET_GROUP_CSS = `
   margin: 0 0 4px;
   font-size: inherit;
   font-weight: 600;
-  font-style: italic;
   color: inherit;
 }
 

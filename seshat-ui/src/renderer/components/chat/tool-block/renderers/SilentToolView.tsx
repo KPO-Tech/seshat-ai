@@ -16,9 +16,11 @@ const CSS = `
 .tb-sl-line {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 2px 0;
-  font-size: 10px;
+  gap: 6px;
+  padding: 3px 5px 3px 0;
+  border-radius: 6px;
+  font-size: 10.5px;
+  line-height: 1.35;
   color: var(--color-text-muted);
   cursor: default;
   user-select: none;
@@ -31,21 +33,23 @@ const CSS = `
 
 .tb-sl-line--clickable:hover {
   color: var(--color-text-secondary);
+  background: color-mix(in srgb, var(--color-surface) 42%, transparent);
 }
 
 .tb-sl-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
 }
 
 .tb-sl-name {
-  font-style: italic;
+  font-style: normal;
   color: inherit;
   flex-shrink: 0;
+  font-weight: 500;
 }
 
 /* Was a flat max-width:320px regardless of how much room the row actually
@@ -54,7 +58,7 @@ const CSS = `
 .tb-sl-snippet {
   font-family: monospace;
   font-size: 10px;
-  opacity: 0.55;
+  opacity: 0.62;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -76,7 +80,7 @@ const CSS = `
 
 .tb-sl-body {
   margin-top: 4px;
-  padding-left: 14px;
+  padding-left: 22px;
 }
 
 .tb-sl-status {

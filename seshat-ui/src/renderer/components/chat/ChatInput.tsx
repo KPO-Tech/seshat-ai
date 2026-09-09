@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback } from 'react'
+import { useRef, useEffect, useState, useCallback, type ReactNode } from 'react'
 import { Plus, FolderClose, AtSign, Voice, Send, CheckCorrect, LoadingOne, Browser, SettingTwo } from '@icon-park/react'
 import { AttachmentTypeIcon } from '@/components/AttachmentTypeIcon'
 import { api, ApiError } from '@/api/client'
@@ -91,6 +91,7 @@ type Props = {
   // stays in ChatTopBar's top-right cluster.
   providerLabel?: string
   modelLabel?: string
+  modelIcon?: ReactNode
   onProviderClick?: () => void
   onModelClick?: () => void
   providerOptions?: SelectorOption[]
@@ -126,6 +127,7 @@ export function ChatInput({
   attachmentError,
   providerLabel = 'Provider',
   modelLabel = 'Model',
+  modelIcon,
   onProviderClick,
   onModelClick,
   providerOptions,
@@ -603,7 +605,7 @@ export function ChatInput({
           <div className="chat-model-selector-wrap">
             <SelectorPill
               label={modelLabel}
-              icon={hasModelMenu ? <CheckCorrect size={12} /> : <SettingTwo size={12} />}
+              icon={modelIcon ?? (hasModelMenu ? <CheckCorrect size={12} /> : <SettingTwo size={12} />)}
               onClick={handleModelTrigger}
               disabled={modelDisabled}
             />

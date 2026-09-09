@@ -685,28 +685,31 @@ export const MESSAGE_ITEM_CSS = `
 }
 
 .msg-thinking {
-  margin: 0 0 var(--space-2);
+  margin: 1px 0 5px;
 }
 
 .msg-thinking-toggle {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: 6px;
   background: transparent;
   border: none;
-  padding: 2px 0;
+  border-radius: 6px;
+  padding: 3px 5px 3px 0;
   cursor: pointer;
   color: var(--color-text-muted);
 }
 
 .msg-thinking-toggle:hover {
   color: var(--color-text-secondary);
+  background: color-mix(in srgb, var(--color-surface) 42%, transparent);
 }
 
 .msg-thinking-label {
   font-size: var(--font-size-2xs);
   color: inherit;
-  font-style: italic;
+  font-style: normal;
+  font-weight: 500;
 }
 
 .msg-thinking-chevron {
@@ -721,25 +724,24 @@ export const MESSAGE_ITEM_CSS = `
 }
 
 .msg-thinking-body {
-  margin-top: 5px;
-  padding-left: 9px;
-  border-left: 2px solid rgba(239, 124, 47, 0.22);
-  font-size: 12px;
-  font-style: italic;
+  margin-top: 4px;
+  padding: 6px 0 7px 22px;
+  border-left: none;
+  font-size: 11px;
+  font-style: normal;
   color: var(--color-text-muted);
-  line-height: 1.65;
+  line-height: 1.55;
 }
 
 /* Neutralizes the model's own markdown structure (bold lead-ins, headings,
    blockquotes - reasoning-summary providers like Codex format their summary
-   this way) back down to the same small/muted/italic look as the rest of
+   this way) back down to the same small/muted look as the rest of
    the thinking body, instead of a nested heading/blockquote fighting for
    attention with its own border and full-brightness text. */
 .tb-thinking-md h1, .tb-thinking-md h2, .tb-thinking-md h3 {
   margin: 0 0 var(--space-2);
   font-size: inherit;
   font-weight: 600;
-  font-style: italic;
   color: inherit;
 }
 

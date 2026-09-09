@@ -34,7 +34,7 @@ export function WebSearchToolView({ tool, result, sessionId }: ToolViewProps) {
     >
       {hits.length > 0 ? (
         <div className="tb-links">
-          {hits.map((hit, index) => (
+          {hits.slice(0, 5).map((hit, index) => (
             <a
               key={`${hit.url}-${index}`}
               className="tb-link-item"
@@ -56,6 +56,11 @@ export function WebSearchToolView({ tool, result, sessionId }: ToolViewProps) {
               </span>
             </a>
           ))}
+          {hits.length > 5 && (
+            <div className="tb-links-more">
+              {hits.length - 5} more result{hits.length - 5 === 1 ? '' : 's'} available
+            </div>
+          )}
         </div>
       ) : (
         <Section label="Sources">
