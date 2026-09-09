@@ -393,6 +393,57 @@ func TestAuthLoginMeLogoutFlow(t *testing.T) {
 	}
 }
 
+// TestAuthMeIncludesOrganizationID is a regression test for a bug found
+// live: seshat-ui's useOrganizationStore has no other way to learn "which
+// organization" than GET /auth/me, but this endpoint used to omit
+// organization info entirely (its DTO only carried workspace_memberships'
+// slugs, never an id) - every org-scoped feature in the desktop app
+// (Variables, Automation's Overview/Projects) was permanently stuck with no
+// organization at all, regardless of network conditions, on every account.
+func TestAuthMeIncludesOrganizationID(t *testing.T) {
+	database, err := db.Open(context.Background(), db.DefaultSQLiteConfig(filepath.Join(t.TempDir(), "api-auth-me-org.db")))
+	if err != nil {
+		t.Fatalf("db.Open failed: %v", err)
+	}
+	defer database.Close()
+
+	store, err := db.NewIdentityStore(database)
+	if err != nil {
+		t.Fatalf("NewIdentityStore failed: %v", err)
+	}
+	bootstrap, err := store.EnsureBootstrap(context.Background(), db.BootstrapOptions{
+		AdminEmail:           "admin@example.com",
+		AdminPassword:        "secret-password",
+		AdminDisplayName:     "Admin",
+		DefaultOrgName:       "Acme",
+		DefaultOrgSlug:       "acme",
+		DefaultWorkspaceName: "Core",
+		DefaultWorkspaceSlug: "core",
+	})
+	if err != nil {
+		t.Fatalf("EnsureBootstrap failed: %v", err)
+	}
+
+	router := CreateRouter(APIConfig{}, newTestAPIApp(store, stubQueryRunner{}))
+	token := loginForToken(t, router, "admin@example.com", "secret-password")
+
+	meReq := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
+	meReq.Header.Set("Authorization", "Bearer "+token)
+	meResp := httptest.NewRecorder()
+	router.ServeHTTP(meResp, meReq)
+	if meResp.Code != http.StatusOK {
+		t.Fatalf("expected me 200, got %d: %s", meResp.Code, meResp.Body.String())
+	}
+
+	var payload authPrincipalResponse
+	if err := json.Unmarshal(meResp.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode /auth/me response: %v", err)
+	}
+	if payload.OrganizationID != bootstrap.Organization.ID {
+		t.Fatalf("expected organization_id %q, got %q (full body: %s)", bootstrap.Organization.ID, payload.OrganizationID, meResp.Body.String())
+	}
+}
+
 func TestAdminEndpointRejectsNonAdminUser(t *testing.T) {
 	database, err := db.Open(context.Background(), db.DefaultSQLiteConfig(filepath.Join(t.TempDir(), "api-member.db")))
 	if err != nil {

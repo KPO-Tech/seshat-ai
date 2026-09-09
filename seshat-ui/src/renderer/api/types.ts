@@ -262,18 +262,6 @@ export type User = {
   status: string
 }
 
-// Organization mirrors iam.Organization as returned by GET /auth/me
-// (internal/server/api/auth.go's handleMe) - the current-organization
-// context useOrganizationStore resolves from, since the frontend has no
-// other job-independent way to know which organization is "current" (see
-// docs/helps/audit-2026-09-04-n8n-gap-analysis.md's Tier 3.2 entry).
-export type Organization = {
-  id: string
-  name: string
-  slug: string
-  is_default: boolean
-}
-
 export type ApiKey = {
   id: string
   name: string

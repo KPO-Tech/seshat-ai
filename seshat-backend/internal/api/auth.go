@@ -50,6 +50,17 @@ type authPrincipalResponse struct {
 	User                 authUserResponse              `json:"user"`
 	Roles                []string                      `json:"roles"`
 	WorkspaceMemberships []workspaceMembershipResponse `json:"workspace_memberships"`
+	// OrganizationID is the caller's single organization (this backend
+	// enforces at most one per user - see auth.Principal.OrganizationID's
+	// doc comment), correctly resolved for connected mode too (where
+	// WorkspaceMemberships starts empty for a freshly connected account -
+	// see ResolvedOrganizationID). This is the ONLY source seshat-ui's
+	// useOrganizationStore has for "which organization" - it used to expect
+	// a nonexistent "organizations" array here (copied from seshat-server's
+	// own, different /auth/me shape), which this endpoint never returned,
+	// leaving every org-scoped feature (Variables, Automation's Overview/
+	// Projects) permanently stuck with no organization at all.
+	OrganizationID string `json:"organization_id,omitempty"`
 }
 
 type workspaceMembershipResponse struct {
@@ -169,6 +180,7 @@ func (app *App) handleMe(w http.ResponseWriter, r *http.Request) {
 		User:                 toAuthUserResponse(principal.User),
 		Roles:                append([]string(nil), principal.Roles...),
 		WorkspaceMemberships: toWorkspaceMembershipResponses(principal.WorkspaceMemberships),
+		OrganizationID:       principal.OrganizationID(),
 	})
 }
 

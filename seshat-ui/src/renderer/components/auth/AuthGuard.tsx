@@ -5,7 +5,6 @@ import { api, ApiError } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { useOrganizationStore } from '@/stores/organization'
 import { useInactivityTimeout } from '@/hooks/useInactivityTimeout'
-import type { Organization } from '@/api/types'
 
 type Status = 'checking' | 'ok' | 'invalid'
 
@@ -20,24 +19,25 @@ export function AuthGuard({ children }: { children: ReactNode }) {
     let cancelled = false
 
     // /auth/me is also the one place useOrganizationStore's "current
-    // organization" gets (re)populated (see that store's own doc comment
-    // for why there's no switcher yet). A network error or 5xx here stays
+    // organization" gets (re)populated, straight from its organization_id
+    // field (see that store's own doc comment for why there's no switcher
+    // and why this used to be a list). A network error or 5xx here stays
     // "optimistic" (status 'ok', not bounced to /login) since it isn't a
     // statement about session validity - a transient blip while the local
     // backend is still starting up shouldn't log the user out. But nothing
     // ever retried after that single attempt: a user who lands here during
     // exactly that startup window got stuck with an empty organization
     // store for the rest of the session, with every org-scoped feature
-    // (Variables, Automation's Overview/job list) hanging forever on empty
+    // (Variables, Automation's Overview/Projects) hanging forever on empty
     // organizationId and no way to recover short of restarting the app.
     // fetchMe retries a handful of times with backoff specifically for
     // those two transient cases; a real answer (401, or any other 4xx)
     // still resolves immediately, same as before.
     async function fetchMe(attempt: number): Promise<void> {
       try {
-        const me = await api.get<{ organizations?: Organization[] }>('/auth/me')
+        const me = await api.get<{ organization_id?: string }>('/auth/me')
         if (!cancelled) {
-          useOrganizationStore.getState().setOrganizations(me.organizations ?? [])
+          useOrganizationStore.getState().setCurrentOrganizationId(me.organization_id ?? null)
           setStatus('ok')
         }
       } catch (error) {
