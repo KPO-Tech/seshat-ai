@@ -33,6 +33,13 @@ export function AutomationOverviewPanel({
     return () => { cancelled = true }
   }, [organizationId])
 
+  // organizationId can stay empty indefinitely if AuthGuard's own /auth/me
+  // call failed at boot (network error or 5xx - see AuthGuard.tsx, which
+  // still sets status 'ok' without populating the organization store in
+  // that path) - a distinct message here, same fix already applied to
+  // VariablesPanel, instead of hanging on a generic "Loading…" forever with
+  // no visible explanation.
+  if (!organizationId) return <div className="au-loading">Waiting for your organization…</div>
   if (error) return <div className="au-loading au-loading-error">{error}</div>
   if (!overview) return <div className="au-loading">Loading…</div>
 
