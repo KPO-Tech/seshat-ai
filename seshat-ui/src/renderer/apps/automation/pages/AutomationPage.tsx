@@ -577,6 +577,15 @@ export function AutomationPage() {
           <input className="au-name-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Untitled automation" />
           <div className="au-topbar-spacer" />
           {(saveError || runError) && <span className="au-topbar-error">{saveError || runError}</span>}
+          {jobId && (
+            <button
+              type="button" className={`au-icon-btn ${railView === 'runs' ? 'active' : ''}`}
+              onClick={() => setRailView((v) => (v === 'runs' ? 'graph' : 'runs'))}
+              title="Runs"
+            >
+              <History size={15} />
+            </button>
+          )}
           <button
             type="button" className="au-icon-btn"
             onClick={() => void handleRunThisJob()}
@@ -595,70 +604,58 @@ export function AutomationPage() {
       )}
 
       <div className="au-body">
-        <nav className="au-rail">
-          <div className="au-rail-header">
-            <div className="au-rail-header-icon"><RobotOne size={18} /></div>
-            <span className="au-rail-header-title">Automation</span>
-          </div>
-          <span className="au-rail-divider" />
-          <button
-            type="button"
-            className={`au-rail-btn ${railView === 'overview' ? 'active' : ''}`}
-            onClick={() => {
-              // Templates/Variables/Help never navigate, just flip railView
-              // locally - Overview needs to match when we're already on
-              // /automation (e.g. coming back from Templates). Navigating to
-              // the current route is a no-op (no location change), so the
-              // isOverview-driven reset effect never re-fires and railView
-              // would stay stuck on whatever panel was open. Only navigate
-              // when actually leaving the editor route.
-              setRailView('overview')
-              if (!isOverview) navigate('/automation')
-            }}
-            title="Overview"
-          >
-            <Home size={16} />
-            <span>Overview</span>
-          </button>
-          <button
-            type="button"
-            className={`au-rail-btn ${railView === 'projects' ? 'active' : ''}`}
-            onClick={() => {
-              setRailView('projects')
-              if (!isOverview) navigate('/automation')
-            }}
-            title="Projects"
-          >
-            <List size={16} />
-            <span>Projects</span>
-          </button>
-          {!isOverview && jobId && (
-            <button type="button" className={`au-rail-btn ${railView === 'runs' ? 'active' : ''}`} onClick={() => setRailView('runs')} title="Runs">
-              <History size={16} />
-              <span>Runs</span>
+        {/* Hidden while a job is open (isOverview false) so the canvas is
+            fully immersive - no persistent nav competing with it. The
+            topbar's own Back button is the only way out at that point,
+            same as the Runs toggle above replaces this rail's old
+            job-scoped Runs entry. */}
+        {isOverview && (
+          <nav className="au-rail">
+            <div className="au-rail-header">
+              <div className="au-rail-header-icon"><RobotOne size={18} /></div>
+              <span className="au-rail-header-title">Automation</span>
+            </div>
+            <span className="au-rail-divider" />
+            <button
+              type="button"
+              className={`au-rail-btn ${railView === 'overview' ? 'active' : ''}`}
+              onClick={() => setRailView('overview')}
+              title="Overview"
+            >
+              <Home size={16} />
+              <span>Overview</span>
             </button>
-          )}
-          <button type="button" className={`au-rail-btn ${railView === 'templates' ? 'active' : ''}`} onClick={() => setRailView('templates')} title="Templates">
-            <ApplicationOne size={16} />
-            <span>Templates</span>
-          </button>
+            <button
+              type="button"
+              className={`au-rail-btn ${railView === 'projects' ? 'active' : ''}`}
+              onClick={() => setRailView('projects')}
+              title="Projects"
+            >
+              <List size={16} />
+              <span>Projects</span>
+            </button>
+            <button type="button" className={`au-rail-btn ${railView === 'templates' ? 'active' : ''}`} onClick={() => setRailView('templates')} title="Templates">
+              <ApplicationOne size={16} />
+              <span>Templates</span>
+            </button>
 
-          {/* WORKSPACE - shared resources projects draw on (automation-
-              app-pages.md §4/§10). Only Variables exists today; Connections
-              and Credentials are later phases, not stubbed here. */}
-          <span className="au-rail-section-label">Workspace</span>
-          <button type="button" className={`au-rail-btn ${railView === 'variables' ? 'active' : ''}`} onClick={() => setRailView('variables')} title="Variables">
-            <DataOne size={16} />
-            <span>Variables</span>
-          </button>
+            {/* WORKSPACE - shared resources projects draw on (automation-
+                app-pages.md §4/§10). Only Variables exists today; Connections
+                and Credentials are later phases, not stubbed here. */}
+            <span className="au-rail-section-label">Workspace</span>
+            <button type="button" className={`au-rail-btn ${railView === 'variables' ? 'active' : ''}`} onClick={() => setRailView('variables')} title="Variables">
+              <DataOne size={16} />
+              <span>Variables</span>
+            </button>
 
-          <span className="au-rail-spacer" />
-          <span className="au-rail-divider" />
-          <button type="button" className={`au-rail-btn ${railView === 'help' ? 'active' : ''}`} onClick={() => setRailView('help')} title="Help">
-            <HelpIcon size={16} />
-            <span>Help</span>
-          </button>
-        </nav>
+            <span className="au-rail-spacer" />
+            <span className="au-rail-divider" />
+            <button type="button" className={`au-rail-btn ${railView === 'help' ? 'active' : ''}`} onClick={() => setRailView('help')} title="Help">
+              <HelpIcon size={16} />
+              <span>Help</span>
+            </button>
+          </nav>
+        )}
 
         <div className="au-main">
           {railView === 'overview' ? (
