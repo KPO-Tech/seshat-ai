@@ -2,14 +2,13 @@
 import { useNavigate, useParams, useLocation, useSearchParams, useBlocker } from 'react-router'
 import {
   Left, Setting, Close, CheckOne, Home, List, ApplicationOne, DataOne, Help as HelpIcon,
-  Play, Delete as DeleteIcon, LoadingOne, History,
+  Play, Delete as DeleteIcon, LoadingOne, History, RobotOne,
 } from '@icon-park/react'
 import { api, ApiError } from '@/api/client'
-import type { Agent, AdminOrganization, ProviderModel } from '@/api/types'
+import type { Agent, ProviderModel } from '@/api/types'
 import { fetchProviderModels, useProviders } from '@/hooks/useProviders'
 import { useProvidersStore } from '@/stores/providers'
 import { useOrganizationStore } from '@/stores/organization'
-import { NexusLogo } from '@/components/NexusLogo'
 import { GraphEditor } from '../graph/GraphEditor'
 import { RunsPanel } from '../graph/RunsPanel'
 import { VariablesPanel } from '../graph/VariablesPanel'
@@ -107,22 +106,6 @@ export function AutomationPage() {
   const [otherJobs, setOtherJobs] = useState<Job[]>([])
   const currentOrganizationId = useOrganizationStore((s) => s.currentOrganizationId)
 
-  // Sidebar identity (organization name next to the Automation brand mark)
-  // - this backend enforces at most one organization per user account, so
-  // the first entry is always the caller's own, same assumption
-  // useOrganizationStore itself already makes for currentOrganizationId.
-  // Mirrors AdminOverview's identical /organizations fetch (apps/admin/
-  // index.tsx) - nothing here is admin-only, seshat-backend's own
-  // ListOrganizations already scopes to the caller in both standalone and
-  // connected mode.
-  const [organizationName, setOrganizationName] = useState<string | null>(null)
-  useEffect(() => {
-    let cancelled = false
-    api.get<{ organizations: AdminOrganization[] }>('/organizations')
-      .then((res) => { if (!cancelled) setOrganizationName(res.organizations?.[0]?.name ?? null) })
-      .catch(() => {})
-    return () => { cancelled = true }
-  }, [])
   // The *effective* org id: a saved job's own organization_id once loaded
   // (set below), or the caller's current/default organization before that -
   // Variables/preview/job-creation all need an organization id even for a
@@ -569,18 +552,10 @@ export function AutomationPage() {
 
       <div className="au-body">
         <nav className="au-rail">
-          <button
-            type="button"
-            className="au-rail-header"
-            onClick={() => navigate('/apps')}
-            title="Back to Apps"
-          >
-            <NexusLogo size={22} />
-            <span className="au-rail-header-text">
-              <span className="au-rail-header-title">Automation</span>
-              {organizationName && <span className="au-rail-header-org">{organizationName}</span>}
-            </span>
-          </button>
+          <div className="au-rail-header">
+            <div className="au-rail-header-icon"><RobotOne size={18} /></div>
+            <span className="au-rail-header-title">Automation</span>
+          </div>
           <span className="au-rail-divider" />
           <button
             type="button"

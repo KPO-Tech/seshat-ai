@@ -111,45 +111,34 @@
   background: var(--color-surface);
 }
 
-/* Brand identity block at the top of the sidebar - the Seshat mark plus
-   which app this is and which organization it's scoped to (the same
-   NexusLogo used by the global Titlebar/Sidebar, not a one-off wordmark).
-   Doubles as the "back to Apps" affordance the old topbar's back button
-   used to provide, now that that bar is gone for this whole rail. */
+/* Identity block at the top of the sidebar - which app this is, with its
+   own icon rather than the generic Seshat mark (every SeshatOS app is
+   meant to read as its own place, not a copy of the same brand tile).
+   Static, not a nav control: the titlebar above already has its own
+   back/forward/home buttons, so this doesn't need to be clickable too. */
 .au-rail-header {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 6px 10px 12px;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  text-align: left;
 }
 
-.au-rail-header:hover .au-rail-header-title {
-  color: var(--color-primary);
-}
-
-.au-rail-header-text {
+.au-rail-header-icon {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: white;
   display: flex;
-  flex-direction: column;
-  min-width: 0;
+  align-items: center;
+  justify-content: center;
 }
 
 .au-rail-header-title {
   font-size: var(--font-size-md);
   font-weight: 700;
   color: var(--color-text);
-  transition: color 0.12s ease;
-}
-
-.au-rail-header-org {
-  font-size: var(--font-size-2xs);
-  color: var(--color-text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .au-rail-btn {

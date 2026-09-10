@@ -61,7 +61,6 @@ export function AutomationOverviewPanel({
         <div>
           <span className="au-dash-eyebrow">{stats.total_projects} project{stats.total_projects === 1 ? '' : 's'} total</span>
           <h1>Overview</h1>
-          <p className="au-dash-subtitle">What's happening across your automations right now.</p>
         </div>
         <button type="button" className="au-save-btn" onClick={onNew}>
           <Plus size={14} /> New automation
@@ -304,12 +303,6 @@ const OVERVIEW_DASH_CSS = `
   font-weight: 700;
   color: var(--color-text);
   letter-spacing: -0.01em;
-}
-
-.au-dash-subtitle {
-  margin: 0;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
 }
 
 .au-dash-kpis {
