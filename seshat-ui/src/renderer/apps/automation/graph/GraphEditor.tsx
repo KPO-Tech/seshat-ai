@@ -13,7 +13,7 @@ import {
   type ReactFlowInstance,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { Close, Plus, Undo as UndoIcon, Redo as RedoIcon, TreeDiagram, Magic, BlockOne, Play, LoadingOne } from '@icon-park/react'
+import { Close, Plus, Undo as UndoIcon, Redo as RedoIcon, TreeDiagram, Magic, AllApplication, Play, LoadingOne } from '@icon-park/react'
 import { definitionToFlow, flowToDefinition, ancestorClosure, INPUT_HANDLE } from './convert'
 import { missingRequiredFields } from './validation'
 import { GRAPH_NODE_TYPES, type FlowGraphNode, type TestStatus, type TestRunNodeResult } from './GraphNode'
@@ -536,8 +536,8 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
             </button>
 
             <span className="gf-toolbar-divider" />
-            <button type="button" className="gf-toolbar-btn" onClick={() => setCreatorOpen(true)} aria-label="Add node">
-              <BlockOne size={17} />
+            <button type="button" className="gf-toolbar-btn" onClick={() => setCreatorOpen(true)} aria-label="Library">
+              <AllApplication size={17} />
             </button>
           </div>
 

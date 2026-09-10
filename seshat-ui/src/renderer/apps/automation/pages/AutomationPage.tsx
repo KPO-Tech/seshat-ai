@@ -2,7 +2,7 @@
 import { useNavigate, useParams, useLocation, useSearchParams, useBlocker } from 'react-router'
 import {
   Left, Setting, Close, CheckOne, Home, List, ApplicationOne, DataOne, Help as HelpIcon,
-  Play, Delete as DeleteIcon, LoadingOne, History, RobotOne,
+  Play, Delete as DeleteIcon, LoadingOne, History, Branch,
 } from '@icon-park/react'
 import { api, ApiError } from '@/api/client'
 import type { Agent, ProviderModel } from '@/api/types'
@@ -612,7 +612,7 @@ export function AutomationPage() {
         {isOverview && (
           <nav className="au-rail">
             <div className="au-rail-header">
-              <div className="au-rail-header-icon"><RobotOne size={18} /></div>
+              <div className="au-rail-header-icon"><Branch size={18} /></div>
               <span className="au-rail-header-title">Automation</span>
             </div>
             <span className="au-rail-divider" />
