@@ -134,18 +134,6 @@ export function AutomationProjectsPanel({
   if (loading) return <div className="au-loading">Loading...</div>
   if (error) return <div className="au-loading au-loading-error">{error}</div>
 
-  if (jobs.length === 0) {
-    return (
-      <div className="au-stub">
-        <h2>No automations yet</h2>
-        <p>Build a visual graph workflow - connectors, branching logic, database steps - and it'll show up here.</p>
-        <button type="button" className="au-save-btn au-empty-action" onClick={onNew}>
-          <Plus size={14} /> New automation
-        </button>
-      </div>
-    )
-  }
-
   return (
     <div className="au-overview">
       <style>{OVERVIEW_FILTER_CSS}</style>
@@ -196,10 +184,20 @@ export function AutomationProjectsPanel({
       )}
 
       {filtered.length === 0 ? (
-        <div className="au-stub">
-          <h2>No matches</h2>
-          <p>Try a different search or folder.</p>
-        </div>
+        jobs.length === 0 ? (
+          <div className="au-stub au-stub--inline">
+            <h2>No automations yet</h2>
+            <p>Build a visual graph workflow - connectors, branching logic, database steps - and it'll show up here.</p>
+            <button type="button" className="au-save-btn au-empty-action" onClick={onNew}>
+              <Plus size={14} /> New automation
+            </button>
+          </div>
+        ) : (
+          <div className="au-stub au-stub--inline">
+            <h2>No matches</h2>
+            <p>Try a different search or folder.</p>
+          </div>
+        )
       ) : (
         <div className="au-project-cards">
           {filtered.map((job) => {
@@ -380,6 +378,19 @@ const OVERVIEW_FILTER_CSS = `
 .au-overview-badge--tag {
   background: var(--color-surface-elevated);
   color: var(--color-text-secondary);
+}
+
+/* .au-stub is normally a full-page takeover (height:100%, no card) - here
+   it sits inline below the page header/search/pills instead of replacing
+   them, so a "no jobs yet" or "no matches" account still shows a working
+   search bar and New automation button, ready for the moment a job does
+   exist, rather than a completely different blank-slate page. */
+.au-stub--inline {
+  height: auto;
+  margin-top: 8px;
+  padding: 48px 24px;
+  border-radius: var(--radius-2xl);
+  background: var(--color-surface-elevated);
 }
 
 .au-folder-pills {
