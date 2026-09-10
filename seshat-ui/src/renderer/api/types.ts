@@ -654,7 +654,7 @@ export type PlanDocument = {
 
 // ─── Agents ───────────────────────────────────────────────────────────────────
 
-export type AgentSource = 'user' | 'built-in' | 'builtin' | 'organization'
+export type AgentSource = 'user' | 'built-in' | 'builtin' | 'organization' | 'workflow'
 
 export type Agent = {
   id?: string
@@ -690,6 +690,10 @@ export type CreateAgentBody = {
   mcp_servers?: string[]
   icon?: string
   enabled?: boolean
+  // '' (default, omitted) for a normal Companion persona, 'workflow' for
+  // one created inline by an Automation graph's own "agent" node - see
+  // AgentPickerField.tsx. The backend rejects any other value here.
+  source?: 'workflow'
 }
 
 export type UpdateAgentBody = Partial<Omit<CreateAgentBody, 'slug'>>

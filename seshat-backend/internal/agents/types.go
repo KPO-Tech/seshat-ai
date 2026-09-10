@@ -18,7 +18,7 @@ type Agent struct {
 	McpServers      []string
 	Icon            string
 	Enabled         bool
-	Source          string // "user" for DB agents, "built-in" for engine defaults
+	Source          string // "user" (default) or "workflow" for DB agents, "built-in" for engine defaults, "organization" for org catalog presets
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 }
@@ -37,6 +37,11 @@ type CreateParams struct {
 	McpServers      []string
 	Icon            string
 	Enabled         bool
+	// Source: "" (defaults to "user") for a normal Companion persona,
+	// "workflow" for one created inline by an Automation graph's own
+	// "agent" node - see Service.List, which excludes "workflow" rows so
+	// they don't show up in Companion's own picker.
+	Source string
 }
 
 type UpdateParams struct {

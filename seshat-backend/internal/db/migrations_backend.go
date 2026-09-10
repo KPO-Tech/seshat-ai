@@ -355,6 +355,20 @@ func backendMigrations() []schemaMigration {
 				return db.gormDB.WithContext(ctx).AutoMigrate(&gInboxWorkflow{})
 			},
 		},
+		{
+			// Adds source to an existing agent_definitions table - the
+			// default ('user') applies to every row already there, so
+			// existing Companion-created agents are unaffected. Lets an
+			// Automation graph's own "agent" node create an agent tagged
+			// source="workflow" that Companion's own list excludes (see
+			// agents.Service.List), instead of every DB-backed agent being
+			// indistinguishable from a Companion persona.
+			ID:    "20260910_046_agent_definition_source",
+			Scope: migrationScopeBackend,
+			Run: func(ctx context.Context, db *DB) error {
+				return db.gormDB.WithContext(ctx).AutoMigrate(&gAgentDefinition{})
+			},
+		},
 	}
 }
 

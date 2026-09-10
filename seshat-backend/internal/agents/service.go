@@ -35,6 +35,10 @@ func NewService(store *db.AgentDefinitionStore, cloudClient *cloudagents.Client)
 	return &Service{store: store, cloudClient: cloudClient}
 }
 
+// List returns every Companion-visible agent - excludes "workflow" rows
+// (an Automation graph's own "agent" node creates these inline; they're
+// scoped to that one workflow, not meant to show up as a reusable
+// Companion persona - see agents.CreateParams.Source).
 func (s *Service) List(ctx context.Context) ([]Agent, error) {
 	if s == nil || s.store == nil {
 		return nil, bkerr.Unavailable("agent store not available", nil)
@@ -45,7 +49,11 @@ func (s *Service) List(ctx context.Context) ([]Agent, error) {
 	}
 	out := make([]Agent, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, fromDB(r))
+		a := fromDB(r)
+		if a.Source == "workflow" {
+			continue
+		}
+		out = append(out, a)
 	}
 	return out, nil
 }
@@ -124,6 +132,7 @@ func (s *Service) Create(ctx context.Context, p CreateParams) (*Agent, error) {
 		McpServers:      p.McpServers,
 		Icon:            strings.TrimSpace(p.Icon),
 		Enabled:         p.Enabled,
+		Source:          strings.TrimSpace(p.Source),
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
@@ -306,7 +315,7 @@ func fromDB(r db.AgentDefinition) Agent {
 		McpServers:      r.McpServers,
 		Icon:            r.Icon,
 		Enabled:         r.Enabled,
-		Source:          "user",
+		Source:          r.Source,
 		CreatedAt:       r.CreatedAt,
 		UpdatedAt:       r.UpdatedAt,
 	}

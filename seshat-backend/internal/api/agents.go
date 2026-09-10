@@ -174,12 +174,23 @@ func (a *App) handleAgentsCreate(w http.ResponseWriter, r *http.Request) {
 		McpServers      []string `json:"mcp_servers"`
 		Icon            string   `json:"icon"`
 		Enabled         *bool    `json:"enabled"`
+		// Source: omit/"" for a normal Companion persona - only the
+		// Automation graph's own "agent" node sets "workflow" explicitly
+		// (see agents.CreateParams.Source).
+		Source string `json:"source"`
 	}
 	if !decodeJSONBody(w, r, &body) {
 		return
 	}
 	if strings.TrimSpace(body.Slug) == "" {
 		writeJSONError(w, http.StatusBadRequest, "slug is required")
+		return
+	}
+	// "built-in"/"organization" are assigned internally (see
+	// builtInToResponse/organizationPresetToResponse) - never settable by
+	// a caller of this public endpoint.
+	if source := strings.TrimSpace(body.Source); source != "" && source != "workflow" {
+		writeJSONError(w, http.StatusBadRequest, "source must be empty or \"workflow\"")
 		return
 	}
 
@@ -202,6 +213,7 @@ func (a *App) handleAgentsCreate(w http.ResponseWriter, r *http.Request) {
 		McpServers:      body.McpServers,
 		Icon:            body.Icon,
 		Enabled:         enabled,
+		Source:          body.Source,
 	})
 	if err != nil {
 		writeBackendError(w, err)

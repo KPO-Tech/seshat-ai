@@ -241,18 +241,23 @@ func (r orgScopedSecretResolver) Resolve(ctx context.Context, ref string) (strin
 // reason as runGraph above: this package's session comes from its own
 // executeCloudRun, not the SDK's JobScheduler.
 //
-// agentSlug is accepted for interface symmetry but unused, matching the
-// SDK's own sessionAgentCaller (see its doc comment) - jobWorkflow's
-// session is already the one job.Agent resolved to; real per-node agent
-// dispatch is a separate, larger piece of work. tools is new: scoping a
-// node's turn to a subset of tools needs a way to resolve a tool name to a
-// registrable sdk.Tool, which nothing in this call path holds yet - rather
-// than silently ignore an override a workflow author explicitly set, it
-// fails loudly instead (same behavior/reasoning as the SDK's own
-// sessionAgentCaller).
+// agentSlug and tools both fail loudly instead of being silently ignored,
+// same reasoning as the SDK's own sessionAgentCaller for tools - but note
+// the earlier claim here that "jobWorkflow's session is already the one
+// job.Agent resolved to" was inaccurate for this package specifically:
+// this Job type (jobs.go) has no agent-persona field at all, only
+// ModelOverride. Resolving a *different* agent per node in this cloud
+// path needs seshat-backend (which owns the real agents.Agent table) to
+// resolve every referenced slug into a full definition before dispatching
+// the run - not yet built (see automation-app-pages.md §37.9's follow-up
+// note) - so this fails clearly rather than quietly running every node as
+// whatever agent the job's own session already is.
 type dataflowAgentCaller struct{ session *sdk.Session }
 
-func (a dataflowAgentCaller) Ask(ctx context.Context, _ string, prompt string, tools []string) (string, error) {
+func (a dataflowAgentCaller) Ask(ctx context.Context, agentSlug string, prompt string, tools []string) (string, error) {
+	if agentSlug != "" {
+		return "", fmt.Errorf("dataflow: agent node requested agent=%q, but per-node agent switching isn't supported yet on cloud-targeted runs - omit it to use the job's own agent", agentSlug)
+	}
 	if len(tools) > 0 {
 		return "", fmt.Errorf("dataflow: agent node requested tools=%v, but per-node tool scoping is not implemented yet - omit it to use the workflow's own agent's tools", tools)
 	}
