@@ -2,7 +2,7 @@
 import { useNavigate, useParams, useLocation, useSearchParams, useBlocker } from 'react-router'
 import {
   Left, Setting, Close, CheckOne, Home, List, ApplicationOne, DataOne, Help as HelpIcon,
-  Delete as DeleteIcon, LoadingOne, History, Branch,
+  Delete as DeleteIcon, LoadingOne, History, Branch, ShareOne,
 } from '@icon-park/react'
 import { api, ApiError } from '@/api/client'
 import type { Agent, ProviderModel } from '@/api/types'
@@ -64,6 +64,11 @@ export function AutomationPage() {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [deletingThisJob, setDeletingThisJob] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  // Share is a reserved placeholder, same "coming soon" treatment as the
+  // canvas toolbar's Assistant button - no sharing/CRM backend exists yet
+  // (per-org vs. public-community sharing), but the slot is here now so
+  // the feature isn't lost track of once that lands.
+  const [shareComingSoon, setShareComingSoon] = useState(false)
   // A job route can carry ?tab=runs&runId=<id> - Overview's Attention/
   // Activity rows deep-link straight into a run's replay this way (see the
   // template-seeding effect below for the precedent: a query param, not
@@ -589,6 +594,19 @@ export function AutomationPage() {
           <button type="button" className={`au-icon-btn ${settingsOpen ? 'active' : ''}`} onClick={() => setSettingsOpen((o) => !o)} aria-label="Job settings">
             <Setting size={15} />
           </button>
+          <div className="au-tooltip-anchor">
+            <button
+              type="button" className="au-icon-btn"
+              onClick={() => {
+                setShareComingSoon(true)
+                window.setTimeout(() => setShareComingSoon(false), 1600)
+              }}
+              aria-label="Share"
+            >
+              <ShareOne size={15} />
+            </button>
+            {shareComingSoon && <span className="au-tooltip au-tooltip--below">Coming soon</span>}
+          </div>
           <button type="button" className="au-save-btn" onClick={() => void handleSave()} disabled={saving || !canSave}>
             {saving ? 'Savingâ€¦' : isNew ? 'Deploy' : 'Save changes'}
           </button>

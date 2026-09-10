@@ -506,11 +506,12 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
               collides with the undo/redo cluster (top-left) or the node
               config panel (slides in from the right, see .gf-config-panel).
               Assistant is a placeholder (no AI-generated-workflow backend
-              exists yet) - Run and Add node are both real, existing actions
-              relocated here from the topbar's "+" button and (for Run) the
-              topbar itself, which keeps its own Run button too. */}
+              exists yet) - Run and Library are both real, existing actions
+              relocated here from the topbar's old "+" button and Run
+              button (the topbar dropped its own Run once this one existed,
+              so there's exactly one place for it now). */}
           <div className="gf-toolbar">
-            <div className="gf-toolbar-item">
+            <div className="au-tooltip-anchor">
               <button
                 type="button"
                 className="gf-toolbar-btn"
@@ -522,7 +523,7 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
               >
                 <Magic size={17} />
               </button>
-              {assistantComingSoon && <span className="gf-toolbar-tooltip">Coming soon</span>}
+              {assistantComingSoon && <span className="au-tooltip au-tooltip--right">Coming soon</span>}
             </div>
 
             <span className="gf-toolbar-divider" />
@@ -745,10 +746,6 @@ export const GRAPH_EDITOR_CSS = `
   box-shadow: var(--shadow-medium);
 }
 
-.gf-toolbar-item {
-  position: relative;
-}
-
 .gf-toolbar-btn {
   width: 34px;
   height: 34px;
@@ -777,21 +774,6 @@ export const GRAPH_EDITOR_CSS = `
   height: 1px;
   background: var(--color-border-subtle);
   margin: 2px 0;
-}
-
-.gf-toolbar-tooltip {
-  position: absolute;
-  top: 50%;
-  left: calc(100% + 10px);
-  transform: translateY(-50%);
-  white-space: nowrap;
-  padding: 4px 9px;
-  border-radius: var(--radius-sm);
-  background: var(--color-text);
-  color: var(--color-bg);
-  font-size: var(--font-size-2xs);
-  font-weight: 700;
-  box-shadow: var(--shadow-medium);
 }
 
 /* React Flow's own zoom/fit-view bar - default xyflow styling (plain white
