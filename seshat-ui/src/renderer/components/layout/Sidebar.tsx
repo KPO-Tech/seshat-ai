@@ -2,24 +2,17 @@ import { useNavigate, useLocation } from 'react-router'
 import {
   Plus,
   Search,
-  SettingTwo,
-  Message,
   Down,
   Right,
   Delete,
   Edit,
   Time,
   History,
-  Shield,
-  SunOne,
-  Moon,
   Workbench,
   Browser,
 } from '@icon-park/react'
 import { useUIStore } from '@/stores/ui'
-import { useAuthStore } from '@/stores/auth'
 import { useSessionStore } from '@/stores/session'
-import { NexusLogo } from '@/components/NexusLogo'
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '@/api/client'
 import { UNTITLED_SESSION_TITLE } from '@/lib/sessionTitle'
@@ -52,9 +45,6 @@ export function Sidebar() {
   const activeId = useSessionStore((s) => s.activeId)
   const setActive = useSessionStore((s) => s.setActive)
   const updateSession = useSessionStore((s) => s.updateSession)
-  const theme = useUIStore((s) => s.theme)
-  const toggleTheme = useUIStore((s) => s.toggleTheme)
-  const roles = useAuthStore((s) => s.roles)
   const navigate = useNavigate()
   const { pathname, search } = useLocation()
   
@@ -63,7 +53,6 @@ export function Sidebar() {
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
-  const [consoleMenuOpen, setConsoleMenuOpen] = useState(false)
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null)
 
   useEffect(() => {
@@ -72,7 +61,6 @@ export function Sidebar() {
   const connected = systemStatus?.mode === 'connected'
 
   const width = collapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)'
-  const isAdmin = roles.includes('admin')
   const projectParam = new URLSearchParams(search).get('project')
   const projectRouteId = pathname.match(/^\/projects\/([^/]+)/)?.[1]
   const conversationRouteId = pathname.match(/^\/conversation\/([^/]+)/)?.[1]
@@ -111,9 +99,7 @@ export function Sidebar() {
     function handlePointerDown(event: MouseEvent) {
       const target = event.target as HTMLElement | null
       if (target?.closest('.sb-recent-menu-wrap')) return
-      if (target?.closest('.sb-console-wrap')) return
       setMenuSessionId(null)
-      setConsoleMenuOpen(false)
     }
     document.addEventListener('mousedown', handlePointerDown)
     return () => document.removeEventListener('mousedown', handlePointerDown)
@@ -138,19 +124,6 @@ export function Sidebar() {
   function openSession(id: string) {
     setActive(id)
     navigate(`/conversation/${id}`)
-  }
-
-  function openConsoleItem(kind: 'settings' | 'feedback' | 'admin') {
-    setConsoleMenuOpen(false)
-    if (kind === 'settings') {
-      navigate('/settings')
-      return
-    }
-    if (kind === 'admin') {
-      if (isAdmin) navigate('/admin')
-      return
-    }
-    window.location.href = 'mailto:feedback@seshat.local?subject=SeshatOS%20feedback'
   }
 
   async function handleDeleteSession(id: string) {
@@ -329,64 +302,6 @@ export function Sidebar() {
             </div>
           )}
         </div>
-
-        {/* Footer */}
-        <div className="sb-footer">
-          <div className={`sb-footer-items ${collapsed ? 'collapsed' : ''}`}>
-            <div className="sb-console-wrap">
-              <button
-                className={`sb-console-btn${consoleMenuOpen ? ' open' : ''}`}
-                onClick={() => setConsoleMenuOpen((open) => !open)}
-                aria-label={collapsed ? 'Seshat menu' : undefined}
-                aria-expanded={consoleMenuOpen}
-                aria-haspopup="menu"
-              >
-                <NexusLogo size={collapsed ? 24 : 18} />
-                {!collapsed && (
-                  <>
-                    <span>SeshatOS</span>
-                    <Down size={12} />
-                  </>
-                )}
-              </button>
-
-              {consoleMenuOpen && (
-                <div className={`sb-console-menu${collapsed ? ' collapsed' : ''}`} role="menu">
-                  <button type="button" role="menuitem" onClick={() => openConsoleItem('settings')}>
-                    <SettingTwo theme="outline" size={14} />
-                    <span>Settings</span>
-                  </button>
-                  <button type="button" role="menuitem" onClick={() => openConsoleItem('feedback')}>
-                    <Message theme="outline" size={14} />
-                    <span>Feedback</span>
-                  </button>
-                  {connected && (
-                    <button
-                      type="button"
-                      role="menuitem"
-                      disabled={!isAdmin}
-                      onClick={() => openConsoleItem('admin')}
-                    >
-                      <Shield theme="outline" size={14} />
-                      <span>Admin</span>
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <button
-              className="sb-footer-btn theme-toggle"
-              onClick={toggleTheme}
-              aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-            >
-              <div className="sb-theme-circle">
-                {theme === 'dark' ? <SunOne size={collapsed ? 15 : 14} /> : <Moon size={collapsed ? 15 : 14} />}
-              </div>
-            </button>
-          </div>
-        </div>
-
       </aside>
 
       <SearchModal
@@ -725,141 +640,6 @@ const SIDEBAR_CSS = `
   background: var(--color-border-subtle);
   padding: 1px 5px;
   border-radius: 4px;
-}
-
-.sb-footer {
-  margin-top: 12px;
-  padding: 10px 10px 16px;
-  border-top: 1px solid var(--color-border-subtle);
-}
-
-.sb-footer-items {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 6px;
-}
-
-.sb-footer-items.collapsed {
-  flex-direction: column;
-  gap: 12px;
-  padding: 0;
-}
-
-.sb-console-wrap {
-  position: relative;
-  min-width: 0;
-}
-
-.sb-console-btn {
-  background: none;
-  border: none;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-base);
-  font-weight: 700;
-  cursor: pointer;
-  padding: 6px 8px;
-  border-radius: 8px;
-  transition: background 0.15s, color 0.15s;
-}
-
-.sb-console-btn span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sb-console-btn:hover,
-.sb-console-btn.open {
-  background: var(--color-hover);
-  color: var(--color-text);
-}
-
-.sb-console-menu {
-  position: absolute;
-  left: 0;
-  bottom: calc(100% + 10px);
-  min-width: 190px;
-  padding: 6px;
-  border-radius: 12px;
-  border: 1px solid var(--color-border-subtle);
-  background: var(--color-menu-bg);
-  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.28);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  z-index: 50;
-}
-
-.sb-console-menu.collapsed {
-  left: 0;
-  bottom: calc(100% + 8px);
-  min-width: 164px;
-}
-
-.sb-console-menu button {
-  width: 100%;
-  border: none;
-  background: transparent;
-  color: var(--color-text);
-  border-radius: 7px;
-  padding: 8px 9px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: var(--font-size-sm);
-  font-weight: 650;
-  cursor: pointer;
-  text-align: left;
-  white-space: nowrap;
-}
-
-.sb-console-menu button:hover:not(:disabled) {
-  background: var(--color-hover);
-}
-
-.sb-console-menu button:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
-.sb-footer-btn {
-  background: none;
-  border: none;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-base);
-  font-weight: 600;
-  cursor: pointer;
-  padding: 6px 8px;
-  border-radius: 8px;
-  transition: background 0.15s;
-}
-
-.sb-footer-btn:hover {
-  background: var(--color-hover);
-  color: var(--color-text);
-}
-
-.sb-theme-circle {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-muted);
-  flex-shrink: 0;
 }
 
 .sb-empty {

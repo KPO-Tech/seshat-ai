@@ -1,6 +1,7 @@
 import { Outlet, useLocation } from 'react-router'
 import { useEffect, useRef } from 'react'
 import { Sidebar } from './Sidebar'
+import { GlobalMenu, ThemeToggleButton } from './GlobalMenu'
 import { RightPanelHost } from './RightPanelHost'
 import { ImageLightbox } from './ImageLightbox'
 import { ErrorBoundary } from './ErrorBoundary'
@@ -123,6 +124,12 @@ export function Shell() {
       
       <Titlebar
         center="SeshatOS"
+        right={
+          <>
+            <ThemeToggleButton />
+            <GlobalMenu />
+          </>
+        }
         left={
           <button
             className="tb-toggle-btn"

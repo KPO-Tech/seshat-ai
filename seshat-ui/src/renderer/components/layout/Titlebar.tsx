@@ -7,6 +7,7 @@ import { WindowCloseIcon, WindowMaximizeIcon, WindowMinimizeIcon } from '@/compo
 type Props = {
   left?: ReactNode
   center?: ReactNode
+  right?: ReactNode
 }
 
 // The app runs frameless (frame: false in main/index.ts) so every screen
@@ -15,7 +16,7 @@ type Props = {
 // route tree (Login, Register — see router/index.tsx, they're top-level
 // routes, not Shell children) aren't left without any way to move or close
 // the window.
-export function Titlebar({ left, center }: Props) {
+export function Titlebar({ left, center, right }: Props) {
   const navigate = useNavigate()
   const handleMinimize = () => window.nexus.window.minimize()
   const handleMaximize = () => window.nexus.window.maximize()
@@ -48,6 +49,12 @@ export function Titlebar({ left, center }: Props) {
         </div>
       )}
       <div className="titlebar-right">
+        {right && (
+          <>
+            <div className="tb-right-slot">{right}</div>
+            <div className="tb-divider" aria-hidden="true" />
+          </>
+        )}
         <button className="tb-sys-btn" onClick={handleMinimize} aria-label="Minimize">
           <WindowMinimizeIcon />
         </button>
@@ -147,7 +154,20 @@ export const TITLEBAR_CSS = `
 .titlebar-right {
   display: flex;
   align-items: center;
+  gap: 4px;
   -webkit-app-region: no-drag;
+}
+
+.tb-right-slot {
+  display: flex;
+  align-items: center;
+}
+
+.tb-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--color-border-subtle);
+  margin: 0 4px;
 }
 
 .tb-sys-btn {
