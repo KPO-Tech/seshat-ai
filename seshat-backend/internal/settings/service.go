@@ -78,34 +78,35 @@ func (s *Service) ResolveDefaultForUser(ctx context.Context, principal *backenda
 	return s.provider.ResolveDefaultForUser(ctx, principal)
 }
 
-// ─── OAuth + daemon path (always local — see Provider's doc comment) ──────────
+// OAuth and daemon paths go through the active provider so connected mode can
+// scope personal settings away from stale standalone accounts.
 
 func (s *Service) StartOAuth(ctx context.Context, principal *backendauth.Principal, id string) (*OAuthChallenge, error) {
-	if s == nil || s.local == nil {
+	if s == nil || s.provider == nil {
 		return nil, bkerr.Unavailable("settings not configured", nil)
 	}
-	return s.local.StartOAuth(ctx, principal, id)
+	return s.provider.StartOAuth(ctx, principal, id)
 }
 
 func (s *Service) PollOAuth(ctx context.Context, principal *backendauth.Principal, id string) (*ProviderSetting, error) {
-	if s == nil || s.local == nil {
+	if s == nil || s.provider == nil {
 		return nil, bkerr.Unavailable("settings not configured", nil)
 	}
-	return s.local.PollOAuth(ctx, principal, id)
+	return s.provider.PollOAuth(ctx, principal, id)
 }
 
 func (s *Service) DisconnectOAuth(ctx context.Context, principal *backendauth.Principal, id string) (*ProviderSetting, error) {
-	if s == nil || s.local == nil {
+	if s == nil || s.provider == nil {
 		return nil, bkerr.Unavailable("settings not configured", nil)
 	}
-	return s.local.DisconnectOAuth(ctx, principal, id)
+	return s.provider.DisconnectOAuth(ctx, principal, id)
 }
 
 func (s *Service) GetDecryptedAPIKey(ctx context.Context, principal *backendauth.Principal, id string) (string, error) {
-	if s == nil || s.local == nil {
+	if s == nil || s.provider == nil {
 		return "", bkerr.Unavailable("settings not configured", nil)
 	}
-	return s.local.GetDecryptedAPIKey(ctx, principal, id)
+	return s.provider.GetDecryptedAPIKey(ctx, principal, id)
 }
 
 // ResolveDefaultForUserID resolves credentials for a user's default provider

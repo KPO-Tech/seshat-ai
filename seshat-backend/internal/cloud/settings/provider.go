@@ -2,8 +2,9 @@ package cloudsettings
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"strings"
-	"sync"
 
 	"github.com/KPO-Tech/seshat/pkg/providers"
 
@@ -21,12 +22,10 @@ const (
 
 var _ settings.Provider = (*Provider)(nil)
 
-// Provider implements settings.Provider against a remote seshat-server — the
-// "connected mode" provider-settings backend. Read-only entries from the
-// organization/platform tiers are exposed with synthetic IDs ("org:<provider>"
-// / "platform:<provider>") in List/Get; Create/Update/Delete/SetDefault always
-// operate on the local personal-key store (org/platform settings are managed
-// exclusively via Seshat Console).
+// Provider implements settings.Provider against a remote seshat-server in
+// connected mode. Organization settings are read-only synthetic entries, while
+// personal local settings are stored under a cloud-scoped local user id so a
+// standalone/local test account can never leak into a connected account.
 type Provider struct {
 	client   *Client
 	local    *settings.LocalProvider
@@ -37,60 +36,43 @@ func NewProvider(serverURL string, local *settings.LocalProvider, policies *clou
 	return &Provider{client: NewClient(serverURL), local: local, policies: policies}
 }
 
-// ─── List / Get (merges remote read-only entries with real local ones) ───────
-
-// knownProviders is the same catalog seshat-ui's ProvidersView offers when
-// adding a personal key — used here to discover org/platform entries via the
-// member-permitted resolve endpoint. Listing via seshat-server's raw CRUD
-// endpoints (GET /provider-settings, GET /platform/provider-settings) is
-// deliberately NOT used for discovery: those require provider_settings.read
-// (or platform superadmin), which an ordinary "member" — the exact user this
-// hierarchy exists to serve — does not have. Probing resolve() per known
-// provider name works for any org member, matching the endpoint's own,
-// deliberately looser authorization (see Phase 0's ResolveProviderSetting).
+// knownProviders is used for provider validation and default fallback ordering.
+// List uses seshat-server's member-safe /provider-settings/usable endpoint
+// instead of probing /resolve for every known provider.
 var knownProviders = []string{"anthropic", "openai", "codex", "mistral", "gemini", "z-ai", "minimax", "openrouter", "ollama", "kimi", "deepseek", "opencode", "workers-ai"}
 
 func (p *Provider) List(ctx context.Context, principal *backendauth.Principal) ([]settings.ProviderSetting, error) {
 	if err := backendauth.EnsureAuthenticated(principal); err != nil {
 		return nil, err
 	}
-	local, err := p.local.List(ctx, principal)
+	local, err := p.local.List(ctx, p.localPrincipal(principal))
 	if err != nil {
 		return nil, err
 	}
-	token := principal.AuthSession.ID
 
-	// Resolve every known provider concurrently rather than one HTTP round
-	// trip at a time — this list is otherwise as slow as the slowest
-	// provider times the catalog size. Indexed slots (rather than appending
-	// from goroutines) preserve knownProviders' order deterministically.
-	slots := make([]*settings.ProviderSetting, len(knownProviders))
-	var wg sync.WaitGroup
-	for i, provider := range knownProviders {
-		wg.Add(1)
-		go func(i int, provider string) {
-			defer wg.Done()
-			resolved, err := p.client.ResolveProviderSetting(ctx, token, principal.OrganizationID(), provider)
-			if err != nil {
-				return // not configured at any tier for this provider — nothing to show
-			}
-			id := prefixOrg + resolved.Provider
-			if resolved.Source == "platform" {
-				id = prefixPlatform + resolved.Provider
-			}
-			entry := remoteToDisplaySetting(id, resolved.Provider, resolved.DefaultModel, resolved.BaseURL)
-			slots[i] = &entry
-		}(i, provider)
-	}
-	wg.Wait()
-
-	out := make([]settings.ProviderSetting, 0, len(slots)+len(local))
-	for _, entry := range slots {
-		if entry != nil {
-			out = append(out, *entry)
-		}
-	}
+	out := make([]settings.ProviderSetting, 0, len(local)+len(knownProviders))
 	out = append(out, local...)
+
+	localProviders := make(map[string]bool, len(local))
+	for _, entry := range local {
+		localProviders[strings.ToLower(strings.TrimSpace(entry.Provider))] = true
+	}
+
+	organizationID := principal.OrganizationID()
+	if organizationID == "" {
+		return out, nil
+	}
+	remote, err := p.client.ListUsableProviderSettings(ctx, principal.AuthSession.ID, organizationID)
+	if err != nil {
+		return out, nil
+	}
+	for _, entry := range remote {
+		provider := strings.ToLower(strings.TrimSpace(entry.Provider))
+		if provider == "" || localProviders[provider] {
+			continue
+		}
+		out = append(out, remoteToDisplaySetting(prefixOrg+provider, provider, entry.DefaultModel, entry.BaseURL))
+	}
 	return out, nil
 }
 
@@ -109,32 +91,16 @@ func (p *Provider) Get(ctx context.Context, principal *backendauth.Principal, id
 		result := remoteToDisplaySetting(id, resolved.Provider, resolved.DefaultModel, resolved.BaseURL)
 		return &result, nil
 	}
-	return p.local.Get(ctx, principal, id)
+	return p.local.Get(ctx, p.localPrincipal(principal), id)
 }
-
-// ─── Create/Update/Delete/SetDefault: always local ─────────────────────────────
 
 func (p *Provider) Create(ctx context.Context, principal *backendauth.Principal, params settings.CreateSettingParams) (*settings.ProviderSetting, error) {
 	if err := p.checkCreatePolicy(ctx, params.Provider, params.BaseURL); err != nil {
 		return nil, err
 	}
-	return p.local.Create(ctx, principal, params)
+	return p.local.Create(ctx, p.localPrincipal(principal), params)
 }
 
-// checkCreatePolicy enforces the org's desktop policies for adding a
-// provider - see docs/helps/audit-2026-08-29-openwork-den-comparison.md § 5.
-// A no-op when p.policies is nil (older call sites/tests that never wired
-// one) or when this device has never synced a bundle (PolicyStore.Allowed's
-// own fail-open default already returns true in that case).
-//
-// "Custom provider" here matches this product's own definition (see the
-// catalog entry's admin description): a provider name outside knownProviders
-// entirely (defense in depth - seshat-ui's Add Provider form can't actually
-// submit one, its dropdown is drawn from the same catalog), OR - the
-// realistic, UI-reachable case - a known provider whose base_url has been
-// overridden away from its SDK-defined default (providers.DefaultBaseURL),
-// e.g. pointing "openai" at a self-hosted proxy instead of api.openai.com.
-// An empty base_url is never "custom" - it just means the default applies.
 func (p *Provider) checkCreatePolicy(ctx context.Context, provider, baseURL string) error {
 	if p.policies == nil {
 		return nil
@@ -173,24 +139,60 @@ func (p *Provider) Update(ctx context.Context, principal *backendauth.Principal,
 	if _, _, ok := parseSyntheticID(id); ok {
 		return nil, bkerr.Forbidden("organization/platform provider settings are managed via Seshat Console", nil)
 	}
-	return p.local.Update(ctx, principal, id, params)
+	return p.local.Update(ctx, p.localPrincipal(principal), id, params)
 }
 
 func (p *Provider) Delete(ctx context.Context, principal *backendauth.Principal, id string) error {
 	if _, _, ok := parseSyntheticID(id); ok {
 		return bkerr.Forbidden("organization/platform provider settings are managed via Seshat Console", nil)
 	}
-	return p.local.Delete(ctx, principal, id)
+	return p.local.Delete(ctx, p.localPrincipal(principal), id)
 }
 
 func (p *Provider) SetDefault(ctx context.Context, principal *backendauth.Principal, id string) (*settings.ProviderSetting, error) {
 	if _, _, ok := parseSyntheticID(id); ok {
 		return nil, bkerr.Forbidden("organization/platform provider settings cannot be set as your personal default", nil)
 	}
-	return p.local.SetDefault(ctx, principal, id)
+	return p.local.SetDefault(ctx, p.localPrincipal(principal), id)
 }
 
-// ─── Resolution ─────────────────────────────────────────────────────────────────
+func (p *Provider) StartOAuth(ctx context.Context, principal *backendauth.Principal, id string) (*settings.OAuthChallenge, error) {
+	if _, _, ok := parseSyntheticID(id); ok {
+		return nil, bkerr.Forbidden("organization/platform provider settings are managed via Seshat Console", nil)
+	}
+	return p.local.StartOAuth(ctx, p.localPrincipal(principal), id)
+}
+
+func (p *Provider) PollOAuth(ctx context.Context, principal *backendauth.Principal, id string) (*settings.ProviderSetting, error) {
+	if _, _, ok := parseSyntheticID(id); ok {
+		return nil, bkerr.Forbidden("organization/platform provider settings are managed via Seshat Console", nil)
+	}
+	return p.local.PollOAuth(ctx, p.localPrincipal(principal), id)
+}
+
+func (p *Provider) DisconnectOAuth(ctx context.Context, principal *backendauth.Principal, id string) (*settings.ProviderSetting, error) {
+	if _, _, ok := parseSyntheticID(id); ok {
+		return nil, bkerr.Forbidden("organization/platform provider settings are managed via Seshat Console", nil)
+	}
+	return p.local.DisconnectOAuth(ctx, p.localPrincipal(principal), id)
+}
+
+func (p *Provider) GetDecryptedAPIKey(ctx context.Context, principal *backendauth.Principal, id string) (string, error) {
+	if tier, provider, ok := parseSyntheticID(id); ok {
+		if err := backendauth.EnsureAuthenticated(principal); err != nil {
+			return "", err
+		}
+		resolved, err := p.client.ResolveProviderSetting(ctx, principal.AuthSession.ID, principal.OrganizationID(), provider)
+		if err != nil {
+			return "", cloudhttp.Translate(err)
+		}
+		if resolved.Source != tier {
+			return "", bkerr.NotFound("provider setting not found", nil)
+		}
+		return resolved.APIKey, nil
+	}
+	return p.local.GetDecryptedAPIKey(ctx, p.localPrincipal(principal), id)
+}
 
 func (p *Provider) ResolveRuntimeConfig(ctx context.Context, principal *backendauth.Principal, id string) (*settings.ResolvedProviderConfig, error) {
 	if tier, provider, ok := parseSyntheticID(id); ok {
@@ -209,19 +211,11 @@ func (p *Provider) ResolveRuntimeConfig(ctx context.Context, principal *backenda
 			BaseURL: resolved.BaseURL, ModelID: resolved.DefaultModel, Secret: resolved.APIKey,
 		}, nil
 	}
-	return p.local.ResolveRuntimeConfig(ctx, principal, id)
+	return p.local.ResolveRuntimeConfig(ctx, p.localPrincipal(principal), id)
 }
 
-// ResolveDefaultForUser prefers the user's own local default (an explicit
-// personal choice always wins). When they have none — the common case for a
-// freshly onboarded connected-mode account, which starts with zero personal
-// keys — falls back to the first org/platform provider configured in Seshat
-// Console, tried in knownProviders' order (same order List() displays them
-// in). This is what makes a new desktop account usable out of the box against
-// its organization's shared keys, without the user having to open Settings
-// and manually pick "org:<provider>" as their default first.
 func (p *Provider) ResolveDefaultForUser(ctx context.Context, principal *backendauth.Principal) (*settings.ResolvedProviderConfig, error) {
-	if resolved, err := p.local.ResolveDefaultForUser(ctx, principal); err != nil {
+	if resolved, err := p.local.ResolveDefaultForUser(ctx, p.localPrincipal(principal)); err != nil {
 		return nil, err
 	} else if resolved != nil {
 		return resolved, nil
@@ -252,8 +246,6 @@ func (p *Provider) ResolveDefaultForUser(ctx context.Context, principal *backend
 	return nil, nil
 }
 
-// ─── helpers ──────────────────────────────────────────────────────────────────
-
 func parseSyntheticID(id string) (tier, provider string, ok bool) {
 	if rest, found := strings.CutPrefix(id, prefixOrg); found {
 		return "organization", rest, true
@@ -262,6 +254,21 @@ func parseSyntheticID(id string) (tier, provider string, ok bool) {
 		return "platform", rest, true
 	}
 	return "", "", false
+}
+
+func (p *Provider) localPrincipal(principal *backendauth.Principal) *backendauth.Principal {
+	if principal == nil {
+		return nil
+	}
+	scoped := *principal
+	scoped.User = principal.User
+	scoped.User.ID = p.localUserID(principal.User.ID)
+	return &scoped
+}
+
+func (p *Provider) localUserID(userID string) string {
+	sum := sha256.Sum256([]byte(p.client.serverURL + "\x00" + strings.TrimSpace(userID)))
+	return "cloud:" + hex.EncodeToString(sum[:8])
 }
 
 func remoteToDisplaySetting(id, provider, defaultModel, baseURL string) settings.ProviderSetting {

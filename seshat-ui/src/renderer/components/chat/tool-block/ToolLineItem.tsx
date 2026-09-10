@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { Copy, Down } from '@icon-park/react'
+import { CheckOne, Copy, Down } from '@icon-park/react'
 import { api } from '@/api/client'
 import { useUIStore } from '@/stores/ui'
 import type { ToolUseBlock } from '@/api/types'
 import { DiffView, resolveDiffRows } from './DiffView'
-import { fmtDuration } from './helpers'
+import { fmtDuration, parseAskUserAnswers, resolveAskUserQuestions } from './helpers'
 import { summarizeQuietGroup, toolResultSubtitle, toolStatus } from './quietGroupPhrase'
 import { categoryIcon, isEditTool, isWriteTool, renderToolBody, toolLabel } from './toolDisplay'
 import type { ToolBlockProps } from './types'
@@ -20,11 +20,20 @@ export function ToolLineItem({ tool, sessionId, autoExpand = false, onSubmitProm
   autoExpand?: boolean
   onSubmitPrompt?: ToolBlockProps['onSubmitPrompt']
 }) {
-  const isPreviewTool = tool.name === 'web_search' || tool.name === 'web_fetch' || tool.name === 'read_url' || tool.name === 'read_document_url'
+  const isPreviewTool =
+    tool.name === 'web_search' ||
+    tool.name === 'web_fetch' ||
+    tool.name === 'read_url' ||
+    tool.name === 'read_document_url' ||
+    tool.name === 'bash' ||
+    tool.name === 'ask_user_question' ||
+    tool.name === 'mcp' ||
+    tool.name.startsWith('mcp__')
   const setToolExpansion = useUIStore((s) => s.setToolExpansion)
   const status = toolStatus(tool)
   const isRunning = status === 'running' || status === 'pending'
   const isError = status === 'failed'
+  const isCompleted = status === 'completed'
   const expanded = useUIStore((s) => s.toolExpansion[tool.id] ?? (autoExpand || isRunning || isError))
   const label = isPreviewTool ? toolLabel(tool.name) : summarizeQuietGroup([tool])
   const detail = isPreviewTool ? previewDetail(tool) : ''
@@ -67,6 +76,11 @@ export function ToolLineItem({ tool, sessionId, autoExpand = false, onSubmitProm
         {detail && <span className="qtg-item-detail" title={detail}>{detail}</span>}
         {isError && <span className="qtg-item-status qtg-item-status--failed">failed</span>}
         {meta && <span className="qtg-item-meta">{meta}</span>}
+        {isCompleted && (
+          <span className="qtg-item-done" title="Completed" aria-label="Completed">
+            <CheckOne size={10} />
+          </span>
+        )}
         <button
           type="button"
           className="qtg-item-copy"
@@ -106,6 +120,31 @@ function previewDetail(tool: ToolUseBlock): string {
   if (tool.name === 'web_search') {
     return typeof tool.input.query === 'string' ? tool.input.query : ''
   }
+  if (tool.name === 'bash') {
+    if (typeof tool.input.description === 'string' && tool.input.description) return tool.input.description
+    if (tool._message) return tool._message
+    return typeof tool.input.command === 'string' ? tool.input.command : ''
+  }
+  if (tool.name === 'ask_user_question') {
+    const answers = parseAskUserAnswers(tool._result?.content)
+    if (answers.size > 0) {
+      return `${answers.size} question${answers.size === 1 ? '' : 's'} answered`
+    }
+    if (tool._prompt?.message) return tool._prompt.message
+    if (typeof tool.input.question === 'string') return tool.input.question
+    if (Array.isArray(tool.input.questions) && tool.input.questions.length > 0) {
+      const first = tool.input.questions[0]
+      if (first && typeof first === 'object' && 'question' in first && typeof first.question === 'string') {
+        return first.question
+      }
+    }
+    return ''
+  }
+  if (tool.name === 'mcp' || tool.name.startsWith('mcp__')) {
+    const parsed = parseMcpPreview(tool)
+    if (parsed.tool) return parsed.tool
+    return typeof tool.input.tool === 'string' ? tool.input.tool : ''
+  }
   const url = typeof tool.input.url === 'string' ? tool.input.url : ''
   if (!url) return ''
   try {
@@ -118,14 +157,45 @@ function previewDetail(tool: ToolUseBlock): string {
 function previewMeta(tool: ToolUseBlock): string {
   const result = tool._result
   const parts: string[] = []
+  if (tool.name === 'ask_user_question') {
+    const questions = resolveAskUserQuestions(tool.input, tool._prompt)
+    const answers = parseAskUserAnswers(result?.content)
+    if (answers.size > 0 && questions.length > answers.size) {
+      parts.push(`${answers.size}/${questions.length}`)
+    }
+  }
   const provider = result?.metadata?.provider != null ? String(result.metadata.provider) : ''
   const resultCount = result?.metadata?.result_count != null ? Number(result.metadata.result_count) : NaN
+  if (tool.name === 'mcp' || tool.name.startsWith('mcp__')) {
+    const parsed = parseMcpPreview(tool)
+    if (parsed.server) parts.push(`mcp - ${parsed.server}`)
+  }
   if (provider) parts.push(provider)
   if (Number.isFinite(resultCount) && resultCount > 0) {
     parts.push(`${resultCount} result${resultCount === 1 ? '' : 's'}`)
   }
   if (result?.durationMs != null) parts.push(fmtDuration(result.durationMs))
   return parts.join('  *  ')
+}
+
+function parseMcpPreview(tool: ToolUseBlock): { server: string; tool: string } {
+  const dynamicName =
+    tool.name.startsWith('mcp__')
+      ? tool.name
+      : typeof tool.input.tool === 'string' && tool.input.tool.startsWith('mcp__')
+        ? tool.input.tool
+        : ''
+  if (dynamicName) {
+    const rest = dynamicName.slice('mcp__'.length)
+    const sepIndex = rest.indexOf('__')
+    return sepIndex >= 0
+      ? { server: rest.slice(0, sepIndex), tool: rest.slice(sepIndex + 2).replace(/_/g, ' ') }
+      : { server: '', tool: rest.replace(/_/g, ' ') }
+  }
+  return {
+    server: typeof tool.input.server === 'string' ? tool.input.server : '',
+    tool: typeof tool.input.tool === 'string' ? tool.input.tool.replace(/_/g, ' ') : '',
+  }
 }
 
 function DiffContent({ tool }: { tool: ToolUseBlock }) {
@@ -315,6 +385,18 @@ export const TOOL_LINE_CSS = `
   margin-left: auto;
   color: var(--color-text-muted);
   font-size: 10px;
+}
+
+.qtg-item-done {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-success) 12%, var(--color-bg));
+  color: var(--color-success);
 }
 
 .qtg-item-status {

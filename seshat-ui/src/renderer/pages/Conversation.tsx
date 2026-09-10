@@ -256,11 +256,20 @@ export function Conversation() {
   const selectedModelChoice = selectedModelChoiceId
     ? allModelChoices.find((choice) => choice.id === selectedModelChoiceId) ?? null
     : null
+  const selectedModelProviderStillLoading = Boolean(
+    selectedProviderId &&
+    selectedModelId &&
+    modelsByProvider[selectedProviderId] === undefined
+  )
 
-  // Auto-select first model when the list loads and current selection isn't in it
+  // Auto-select first model when the list loads and current selection isn't in it.
+  // If the session already carries a provider/model from Home, wait for that
+  // provider's catalog before falling back; otherwise whichever provider loads
+  // first can briefly replace the visible selection with the wrong model.
   useEffect(() => {
     if (allModelChoices.length === 0) return
     if (selectedModelChoice) return
+    if (selectedModelProviderStillLoading) return
     const sessionChoice = session?.providerSettingId && session?.modelId
       ? allModelChoices.find((choice) => choice.providerId === session.providerSettingId && choice.model.model_id === session.modelId)
       : null
@@ -269,7 +278,7 @@ export function Conversation() {
       ?? allModelChoices[0]
     setSelectedProviderId(def.providerId)
     setSelectedModelId(def.model.model_id)
-  }, [allModelChoices, selectedModelChoice, session?.providerSettingId, session?.modelId])
+  }, [allModelChoices, selectedModelChoice, selectedModelProviderStillLoading, session?.providerSettingId, session?.modelId])
 
   const handleModelSelect = useCallback((choiceId: string) => {
     const choice = splitModelChoiceId(choiceId)

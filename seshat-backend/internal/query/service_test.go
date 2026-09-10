@@ -2,11 +2,13 @@ package query
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 	"time"
 
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	"github.com/KPO-Tech/seshat/pkg/sdk"
 	"github.com/KPO-Tech/seshat/pkg/types"
 )
@@ -305,5 +307,87 @@ func TestSearchSessionsByContentFallsBackToInspector(t *testing.T) {
 	}
 	if len(results) != 1 || results[0].SessionID != "session-b" {
 		t.Fatalf("expected fallback to find session-b, got %#v", results)
+	}
+}
+
+func TestInitialTitleFromPromptCleansPrompt(t *testing.T) {
+	got := initialTitleFromPrompt("Salut, cherche en ligne toutes les nouveautes et evolution sur la generation d'image. https://example.com")
+	want := "En ligne toutes les nouveautes et evolution sur la generation"
+	if got != want {
+		t.Fatalf("initialTitleFromPrompt() = %q, want %q", got, want)
+	}
+}
+
+func TestEnsureInitialSessionTitleDoesNotOverwriteExistingTitle(t *testing.T) {
+	ctx := context.Background()
+	database, err := db.Open(ctx, db.DefaultSQLiteConfig(filepath.Join(t.TempDir(), "sessions.db")))
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	ownership, err := db.NewSessionOwnershipStore(database)
+	if err != nil {
+		t.Fatalf("new ownership store: %v", err)
+	}
+	principal := &backendauth.Principal{User: backendauth.User{ID: "user-42"}}
+	if _, err := ownership.Create(ctx, db.CreateSessionOwnershipParams{
+		SessionID: "sess-1",
+		UserID:    principal.User.ID,
+		Title:     "Manual Title",
+	}); err != nil {
+		t.Fatalf("create ownership: %v", err)
+	}
+
+	svc := NewService(ServiceConfig{Ownership: ownership})
+	title, err := svc.EnsureInitialSessionTitle(ctx, principal, "sess-1", "explain the French real estate market")
+	if err != nil {
+		t.Fatalf("ensure title: %v", err)
+	}
+	if title != "" {
+		t.Fatalf("expected no replacement title, got %q", title)
+	}
+	row, err := ownership.GetBySessionID(ctx, "sess-1")
+	if err != nil {
+		t.Fatalf("get ownership: %v", err)
+	}
+	if row.Title != "Manual Title" {
+		t.Fatalf("expected manual title to remain, got %q", row.Title)
+	}
+}
+
+func TestEnsureInitialSessionTitleUpdatesUntitledSession(t *testing.T) {
+	ctx := context.Background()
+	database, err := db.Open(ctx, db.DefaultSQLiteConfig(filepath.Join(t.TempDir(), "sessions.db")))
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	ownership, err := db.NewSessionOwnershipStore(database)
+	if err != nil {
+		t.Fatalf("new ownership store: %v", err)
+	}
+	principal := &backendauth.Principal{User: backendauth.User{ID: "user-42"}}
+	if _, err := ownership.Create(ctx, db.CreateSessionOwnershipParams{
+		SessionID: "sess-1",
+		UserID:    principal.User.ID,
+		Title:     "Untitled conversation",
+	}); err != nil {
+		t.Fatalf("create ownership: %v", err)
+	}
+
+	svc := NewService(ServiceConfig{Ownership: ownership})
+	title, err := svc.EnsureInitialSessionTitle(ctx, principal, "sess-1", "compare les rendements locatifs en france")
+	if err != nil {
+		t.Fatalf("ensure title: %v", err)
+	}
+	if title != "Compare les rendements locatifs en france" {
+		t.Fatalf("unexpected title %q", title)
+	}
+	row, err := ownership.GetBySessionID(ctx, "sess-1")
+	if err != nil {
+		t.Fatalf("get ownership: %v", err)
+	}
+	if row.Title != title {
+		t.Fatalf("expected persisted title %q, got %q", title, row.Title)
 	}
 }

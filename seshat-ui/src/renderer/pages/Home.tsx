@@ -4,8 +4,9 @@ import { CheckCorrect, FileTextOne, Browser, LightMember } from '@icon-park/reac
 import { ChatTopBar, CHAT_TOP_BAR_CSS } from '@/components/chat/ChatTopBar'
 import { ChatInput, CHAT_INPUT_CSS, type ChatAttachment } from '@/components/chat/ChatInput'
 import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
+import { ProviderIcon } from '@/components/ui/ProviderIcon'
 import { api, ApiError } from '@/api/client'
-import type { ProviderModel } from '@/api/types'
+import type { ProviderModel, ProviderSetting } from '@/api/types'
 import { useProviders, fetchProviderModels } from '@/hooks/useProviders'
 import { useProvidersStore } from '@/stores/providers'
 import { useSessionStore } from '@/stores/session'
@@ -73,6 +74,49 @@ function dismissContextBanner(projectPath: string) {
 
 const PROJECT_CONTEXT_STARTER_MESSAGE = "Let's define this project's context and rules together."
 
+type ModelChoice = {
+  id: string
+  providerId: string
+  providerName: string
+  providerKind: string
+  model: ProviderModel
+}
+
+function modelChoiceId(providerId: string, modelId: string): string {
+  return `${providerId}::${modelId}`
+}
+
+function splitModelChoiceId(id: string): { providerId: string; modelId: string } | null {
+  const separator = id.indexOf('::')
+  if (separator <= 0 || separator === id.length - 2) return null
+  return {
+    providerId: id.slice(0, separator),
+    modelId: id.slice(separator + 2),
+  }
+}
+
+function providerInitials(name: string, kind: string): string {
+  const source = name.trim() || kind.trim() || 'AI'
+  const parts = source.split(/[\s._-]+/).filter(Boolean)
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+  return source.slice(0, 2).toUpperCase()
+}
+
+function providerDisplayName(name: string, kind: string): string {
+  const displayName = name.trim()
+  const providerKind = kind.trim()
+  if (!displayName) return providerKind
+  if (!providerKind) return displayName
+  if (displayName.toLowerCase() === providerKind.toLowerCase()) return displayName
+  return displayName
+}
+
+function isChatProviderUsable(provider: ProviderSetting): boolean {
+  if (provider.provider === 'ollama') return true
+  if (provider.auth_kind === 'oauth') return provider.connection_status === 'connected'
+  return provider.has_api_key || provider.connection_status === 'ready'
+}
+
 function sentAttachment(file: ChatAttachment) {
   return {
     id: file.id,
@@ -99,7 +143,7 @@ export function Home() {
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null)
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null)
   const [modelsByProvider, setModelsByProvider] = useState<Record<string, ProviderModel[]>>({})
-  const [loadingModelsFor, setLoadingModelsFor] = useState<string | null>(null)
+  const [loadingModelProviderIds, setLoadingModelProviderIds] = useState<string[]>([])
   const [isCreatingSession, setIsCreatingSession] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [projectPath, setProjectPath] = useState('')
@@ -113,7 +157,33 @@ export function Home() {
   const [attachmentError, setAttachmentError] = useState<string | null>(null)
   const [showContextBanner, setShowContextBanner] = useState(false)
 
+  const chatProviders = useMemo(() => providers.filter(isChatProviderUsable), [providers])
   const selectedProvider = providers.find((provider) => provider.id === selectedProviderId) ?? null
+  const selectedModels = selectedProviderId ? (modelsByProvider[selectedProviderId] ?? []) : []
+  const selectedModel = selectedModels.find((model) => model.model_id === selectedModelId) ?? null
+  const hasConfiguredProviders = chatProviders.length > 0
+
+  const allModelChoices = useMemo<ModelChoice[]>(() => {
+    return chatProviders.flatMap((provider) => (modelsByProvider[provider.id] ?? []).map((model) => ({
+      id: modelChoiceId(provider.id, model.model_id),
+      providerId: provider.id,
+      providerName: provider.name,
+      providerKind: provider.provider,
+      model,
+    })))
+  }, [chatProviders, modelsByProvider])
+
+  const selectedModelChoiceId = selectedProviderId && selectedModelId
+    ? modelChoiceId(selectedProviderId, selectedModelId)
+    : null
+
+  const selectedModelChoice = selectedModelChoiceId
+    ? allModelChoices.find((choice) => choice.id === selectedModelChoiceId) ?? null
+    : null
+  const selectedProviderForSend = selectedModelChoice
+    ? providers.find((provider) => provider.id === selectedModelChoice.providerId) ?? selectedProvider
+    : selectedProvider
+  const selectedModelForSend = selectedModelChoice?.model ?? selectedModel
 
   useEffect(() => {
     const project = searchParams.get('project')
@@ -140,73 +210,74 @@ export function Home() {
       .catch(() => { if (!cancelled) setShowContextBanner(false) })
     return () => { cancelled = true }
   }, [projectPath])
-  // Use useMemo so the empty-array fallback is a stable reference across renders.
-  // An inline [] would be a new reference every render, causing effects that depend
-  // on selectedModels to re-run on every render when models aren't loaded yet.
-  const selectedModels = useMemo(
-    () => (selectedProviderId ? (modelsByProvider[selectedProviderId] ?? []) : []),
-    [selectedProviderId, modelsByProvider],
-  )
-  const selectedModel = selectedModels.find((model) => model.model_id === selectedModelId) ?? null
-  const hasConfiguredProviders = providers.length > 0
-  const hasLoadedSelectedProviderModels = selectedProviderId
-    ? Object.prototype.hasOwnProperty.call(modelsByProvider, selectedProviderId)
-    : false
 
   // Auto-select default (or first) provider when none is selected and providers are loaded
   useEffect(() => {
-    if (selectedProviderId || providersLoading || providers.length === 0) return
-    const def = providers.find((p) => p.is_default) ?? providers[0]
+    if (selectedProviderId || providersLoading || chatProviders.length === 0) return
+    const def = chatProviders.find((p) => p.is_default) ?? chatProviders[0]
     setSelectedProviderId(def.id)
-  }, [providers, providersLoading, selectedProviderId])
+  }, [chatProviders, providersLoading, selectedProviderId])
 
   useEffect(() => {
     if (!selectedProviderId) return
-    if (!providers.some((provider) => provider.id === selectedProviderId)) {
+    if (!chatProviders.some((provider) => provider.id === selectedProviderId)) {
       setSelectedProviderId(null)
       setSelectedModelId(null)
     }
-  }, [providers, selectedProviderId])
+  }, [chatProviders, selectedProviderId])
 
   useEffect(() => {
-    if (!selectedProviderId || modelsByProvider[selectedProviderId]) return
-
+    const missing = chatProviders.filter((provider) => modelsByProvider[provider.id] === undefined)
+    if (missing.length === 0) return
     let cancelled = false
-    setLoadingModelsFor(selectedProviderId)
+    const missingIds = missing.map((provider) => provider.id)
+    setLoadingModelProviderIds((current) => Array.from(new Set([...current, ...missingIds])))
 
-    fetchProviderModels(selectedProviderId)
-      .then((models) => {
-        if (cancelled) return
-        setModelsByProvider((current) => ({ ...current, [selectedProviderId]: models }))
-      })
-      .catch(() => {
-        if (cancelled) return
-        setModelsByProvider((current) => ({ ...current, [selectedProviderId]: [] }))
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoadingModelsFor((current) => (current === selectedProviderId ? null : current))
-        }
-      })
+    for (const provider of missing) {
+      fetchProviderModels(provider.id)
+        .then((models) => {
+          if (cancelled) return
+          setModelsByProvider((current) => ({ ...current, [provider.id]: models }))
+        })
+        .catch(() => {
+          if (cancelled) return
+          setModelsByProvider((current) => ({ ...current, [provider.id]: [] }))
+        })
+        .finally(() => {
+          if (cancelled) return
+          setLoadingModelProviderIds((current) => current.filter((id) => id !== provider.id))
+        })
+    }
 
     return () => {
       cancelled = true
     }
-  }, [modelsByProvider, selectedProviderId])
+  }, [chatProviders, modelsByProvider])
 
-  // Auto-select default (or first) model when models load and none is selected
+  // Auto-select the default (or first) model across every usable provider,
+  // matching the in-conversation composer.
   useEffect(() => {
-    if (!hasLoadedSelectedProviderModels || selectedModelId || selectedModels.length === 0) return
-    const def = selectedModels.find((m) => m.is_default) ?? selectedModels[0]
-    setSelectedModelId(def.model_id)
-  }, [hasLoadedSelectedProviderModels, selectedModelId, selectedModels])
+    if (allModelChoices.length === 0) return
+    if (selectedModelChoice) return
+    const def = allModelChoices.find((choice) => choice.model.is_default) ?? allModelChoices[0]
+    setSelectedProviderId(def.providerId)
+    setSelectedModelId(def.model.model_id)
+  }, [allModelChoices, selectedModelChoice])
 
   useEffect(() => {
-    if (!selectedModelId || !hasLoadedSelectedProviderModels) return
-    if (!selectedModels.some((model) => model.model_id === selectedModelId)) {
+    if (!selectedModelId || allModelChoices.length === 0) return
+    if (!selectedModelChoice) {
       setSelectedModelId(null)
     }
-  }, [hasLoadedSelectedProviderModels, selectedModelId, selectedModels])
+  }, [allModelChoices.length, selectedModelChoice, selectedModelId])
+
+  function handleModelSelect(choiceId: string) {
+    const choice = splitModelChoiceId(choiceId)
+    if (!choice) return
+    setSelectedProviderId(choice.providerId)
+    setSelectedModelId(choice.modelId)
+    setErrorMessage(null)
+  }
 
   // Creates the backend session on first use and reuses it afterward, so
   // attaching a file and then sending don't create two sessions.
@@ -217,19 +288,19 @@ export function Home() {
       setErrorMessage('Configure a provider in Settings before starting a chat.')
       return null
     }
-    if (!selectedProvider) {
+    if (!selectedProviderForSend) {
       setErrorMessage('Select a provider for this conversation.')
       return null
     }
-    if (!selectedModel) {
+    if (!selectedModelForSend) {
       setErrorMessage('Select a model for this conversation.')
       return null
     }
 
     setErrorMessage(null)
     const response = await api.post<{ session_id: string }>('/sessions', {
-      provider_setting_id: selectedProvider.id,
-      model_id: selectedModel.model_id,
+      provider_setting_id: selectedProviderForSend.id,
+      model_id: selectedModelForSend.model_id,
       permission_mode: permissionMode,
     })
     setPendingSessionId(response.session_id)
@@ -364,7 +435,7 @@ export function Home() {
     try {
       const wasAlreadyCreated = !!pendingSessionId
       const sessionId = await ensureSessionCreated()
-      if (!sessionId || !selectedProvider || !selectedModel) return
+      if (!sessionId || !selectedProviderForSend || !selectedModelForSend) return
 
       // If the session was created earlier (e.g. by attaching a file before
       // typing anything), the provider/model the user ends up sending with
@@ -372,8 +443,8 @@ export function Home() {
       // whatever was selected at attach time.
       if (wasAlreadyCreated) {
         await api.patch(`/sessions/${sessionId}`, {
-          provider_setting_id: selectedProvider.id,
-          model_id: selectedModel.model_id,
+          provider_setting_id: selectedProviderForSend.id,
+          model_id: selectedModelForSend.model_id,
         }).catch(() => {})
       }
 
@@ -397,10 +468,10 @@ export function Home() {
         messages: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        providerSettingId: selectedProvider.id,
-        providerLabel: selectedProvider.name,
-        modelId: selectedModel.model_id,
-        modelLabel: selectedModel.display_name || selectedModel.model_id,
+        providerSettingId: selectedProviderForSend.id,
+        providerLabel: selectedProviderForSend.name,
+        modelId: selectedModelForSend.model_id,
+        modelLabel: selectedModelForSend.display_name || selectedModelForSend.model_id,
         draftPrompt: prompt,
         draftFileIds: fileIds.length > 0 ? fileIds : undefined,
         draftAttachments: sentAttachments.length > 0 ? sentAttachments : undefined,
@@ -483,52 +554,50 @@ export function Home() {
             onRemoveAttachment={handleRemoveAttachment}
             isUploadingAttachments={isUploadingAttachments}
             attachmentError={attachmentError}
-            providerLabel={selectedProvider?.name ?? 'Provider'}
-            modelLabel={selectedModel?.display_name || selectedModel?.model_id || 'Model'}
-            providerOptions={providers.map((provider) => ({
-              id: provider.id,
-              label: provider.name,
-            }))}
+            modelLabel={
+              selectedModelChoice?.model.display_name ||
+              selectedModelChoice?.model.model_id ||
+              selectedModel?.display_name ||
+              selectedModel?.model_id ||
+              'Model'
+            }
+            modelIcon={
+              selectedModelChoice
+                ? <ProviderIcon provider={selectedModelChoice.providerKind} size={13} />
+                : undefined
+            }
             modelOptions={
-              selectedProviderId && hasLoadedSelectedProviderModels
-                ? selectedModels.map((model) => ({
-                    id: model.model_id,
-                    label: model.display_name || model.model_id,
+              allModelChoices.length > 0
+                ? allModelChoices.map((choice) => ({
+                    id: choice.id,
+                    label: choice.model.display_name || choice.model.model_id,
+                    description: providerDisplayName(choice.providerName, choice.providerKind),
+                    icon: <ProviderIcon provider={choice.providerKind} size={17} />,
+                    prefix: providerInitials(choice.providerName, choice.providerKind),
                   }))
                 : undefined
             }
-            selectedProviderId={selectedProviderId}
-            selectedModelId={selectedModelId}
-            onProviderSelect={(providerId: string) => {
-              setSelectedProviderId(providerId)
-              setSelectedModelId(null)
-              setErrorMessage(null)
-            }}
-            onModelSelect={(modelId: string) => {
-              setSelectedModelId(modelId)
-              setErrorMessage(null)
-            }}
-            providerDisabled={!hasConfiguredProviders || providersLoading || isCreatingSession}
+            selectedModelId={selectedModelChoiceId}
+            onModelSelect={handleModelSelect}
             modelDisabled={
-              !selectedProviderId ||
               isCreatingSession ||
-              loadingModelsFor === selectedProviderId ||
-              selectedModels.length === 0
+              (loadingModelProviderIds.length > 0 && allModelChoices.length === 0)
             }
           />
           <div className="home-input-hint">
             Press Enter to send, Shift + Enter for new line
           </div>
           {errorMessage && <div className="home-input-status error">{errorMessage}</div>}
-          {!errorMessage && selectedProviderId && loadingModelsFor === selectedProviderId && (
-            <div className="home-input-status">Loading models for the selected provider...</div>
+          {!errorMessage && loadingModelProviderIds.length > 0 && allModelChoices.length === 0 && (
+            <div className="home-input-status">Loading models...</div>
           )}
           {!errorMessage &&
-            selectedProviderId &&
-            hasLoadedSelectedProviderModels &&
-            selectedModels.length === 0 && (
+            !providersLoading &&
+            hasConfiguredProviders &&
+            loadingModelProviderIds.length === 0 &&
+            allModelChoices.length === 0 && (
               <div className="home-input-status">
-                No model is available for this provider yet.
+                No model is available yet.
               </div>
             )}
           {!errorMessage && isCreatingSession && (

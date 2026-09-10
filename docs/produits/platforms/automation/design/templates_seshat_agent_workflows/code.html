@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "tertiary-fixed": "#c2e8ff", "surface-variant": "#e7e1de", "on-secondary-fixed-variant": "#613f18", "on-background": "#1d1b19", "on-secondary-container": "#79542a", "tertiary": "#006688", "primary": "#9b4500", "on-error": "#ffffff", "on-primary-container": "#582400", "surface-container-low": "#f9f2ef", "primary-fixed": "#ffdbc9", "secondary-container": "#fecb97", "on-primary-fixed-variant": "#763300", "on-primary-fixed": "#331200", "on-error-container": "#93000a", "surface-container-highest": "#e7e1de", "tertiary-container": "#00a7dc", "inverse-on-surface": "#f6f0ec", "on-secondary-fixed": "#2c1700", "surface-bright": "#fff8f4", "on-tertiary-fixed-variant": "#004d67", "outline-variant": "#ddc1b2", "secondary-fixed-dim": "#efbd8a", "inverse-primary": "#ffb68d", "surface-container-lowest": "#ffffff", "surface-tint": "#9b4500", "primary-container": "#ef7c2f", "on-primary": "#ffffff", "secondary-fixed": "#ffdcbc", "primary-fixed-dim": "#ffb68d", "background": "#fff8f4", "inverse-surface": "#32302e", "on-tertiary-container": "#00374c", "secondary": "#7c572d", "error": "#ba1a1a", "on-tertiary-fixed": "#001e2b", "on-tertiary": "#ffffff", "surface-container": "#f3ede9", "surface-container-high": "#ede7e3", "surface": "#fff8f4", "on-surface-variant": "#574238", "surface-dim": "#dfd9d5", "error-container": "#ffdad6", "outline": "#8a7266", "on-secondary": "#ffffff", "on-surface": "#1d1b19", "tertiary-fixed-dim": "#75d1ff" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "space-base": "1rem", "space-2xl": "3rem", "space-xl": "2rem", "space-md": "0.75rem", "space-lg": "1.5rem", "space-2xs": "0.125rem", "layout-inspector": "24rem", "layout-sidebar": "17.5rem", "space-sm": "0.5rem", "space-xs": "0.25rem", "gutter": "1rem" }, "fontFamily": { "headline-lg": [ "Inter" ], "headline-lg-mobile": [ "Inter" ], "code-md": [ "JetBrains Mono" ], "code-sm": [ "JetBrains Mono" ], "headline-xl-mobile": [ "Inter" ], "headline-md": [ "Inter" ], "headline-xl": [ "Inter" ], "body-md": [ "Inter" ], "body-sm": [ "Inter" ], "body-lg": [ "Inter" ], "label-md": [ "Inter" ], "label-sm": [ "Inter" ] }, "fontSize": { "headline-lg": [ "24px", { "lineHeight": "32px", "letterSpacing": "-0.015em", "fontWeight": "600" } ], "headline-lg-mobile": [ "20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" } ], "code-md": [ "13px", { "lineHeight": "18px", "fontWeight": "400" } ], "code-sm": [ "11px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500" } ], "headline-xl-mobile": [ "28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "600" } ], "headline-md": [ "18px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600" } ], "headline-xl": [ "36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "600" } ], "body-md": [ "14px", { "lineHeight": "20px", "fontWeight": "400" } ], "body-sm": [ "13px", { "lineHeight": "18px", "fontWeight": "400" } ], "body-lg": [ "16px", { "lineHeight": "24px", "fontWeight": "400" } ], "label-md": [ "12px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "500" } ], "label-sm": [ "11px", { "lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "500" } ] } } } };</script></head><body class="bg-surface-container-low font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-screen w-[248px] bg-surface-container-low border-r border-outline-variant/40 z-50 flex flex-col justify-between select-none"><div class="flex flex-col flex-1 overflow-y-auto"><div class="p-space-base border-b border-outline-variant/30"><div class="flex items-center justify-between mb-space-xs"><div class="flex items-center gap-space-xs"><div class="w-6 h-6 rounded bg-primary-container flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[16px]">hub</span></div><span class="font-headline-md text-headline-md tracking-tight text-on-surface">Seshat</span></div><span class="font-code-sm text-code-sm px-space-xs py-0.5 rounded bg-surface-container-high text-on-surface-variant border border-outline-variant/40">Automation</span></div><div class="flex items-center gap-1.5 text-on-surface-variant"><span class="material-symbols-outlined text-[14px]">domain</span><span class="font-label-sm text-label-sm truncate">Acme Corp / Production</span><span class="material-symbols-outlined text-[14px] ml-auto">unfold_more</span></div></div><div class="px-space-md pt-space-md"><nav class="flex flex-col gap-1" data-active-classes="bg-surface-container-lowest text-on-surface font-semibold border border-outline-variant/50 shadow-sm relative before:content-[''] before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:bg-primary-container before:rounded-r"><a class="flex items-center px-space-sm py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors font-label-md text-label-md" data-path="overview" href="#">Overview</a><a aria-current="page" class="flex items-center px-space-sm py-2 rounded transition-colors bg-surface-container-lowest text-on-surface font-semibold border border-outline-variant/50 shadow-sm relative before:content-[''] before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:bg-primary-container before:rounded-r" data-path="projects" href="#">Projects</a><a class="flex items-center px-space-sm py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors font-label-md text-label-md" data-path="templates" href="#">Templates</a></nav></div><div class="px-space-md pt-space-lg"><div class="px-space-sm pb-space-xs font-code-sm text-code-sm tracking-wider uppercase text-on-surface-variant/80 font-medium">Workspace</div><nav class="flex flex-col gap-1" data-active-classes="bg-surface-container-lowest text-on-surface font-semibold border border-outline-variant/50 shadow-sm relative before:content-[''] before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:bg-primary-container before:rounded-r"><a class="flex items-center px-space-sm py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors font-label-md text-label-md" data-path="variables" href="#">Variables</a><a class="flex items-center px-space-sm py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors font-label-md text-label-md" data-path="connections" href="#">Connections</a><a class="flex items-center px-space-sm py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors font-label-md text-label-md" data-path="credentials" href="#">Credentials</a></nav></div></div><div class="p-space-base border-t border-outline-variant/30 flex flex-col gap-space-sm bg-surface-container-low"><a class="flex items-center text-on-surface-variant hover:text-on-surface transition-colors font-label-md text-label-md" data-path="documentation" href="#">Documentation &amp; Guides</a><div class="flex items-center gap-2 py-1 px-space-xs rounded bg-surface-container-lowest border border-outline-variant/30"><span class="w-2 h-2 rounded-full bg-[#15803D] animate-pulse"></span><span class="font-code-sm text-code-sm text-on-surface-variant">Engine v2.4 • Operational</span></div><div class="flex flex-col gap-1 pt-space-xs border-t border-outline-variant/20"><a class="flex items-center justify-between text-on-surface-variant hover:text-on-surface transition-colors font-code-sm text-code-sm" data-path="settings" href="#"><span>SeshatOS Settings</span><span class="material-symbols-outlined text-[14px]">north_east</span></a><a class="flex items-center justify-between text-on-surface-variant hover:text-on-surface transition-colors font-code-sm text-code-sm" data-path="console" href="#"><span>Seshat Console</span><span class="material-symbols-outlined text-[14px]">north_east</span></a></div></div></aside><div class="pl-[248px]"><header class="fixed top-0 left-[248px] right-0 h-14 bg-surface/90 backdrop-blur-md border-b border-outline-variant/40 z-40 px-space-lg flex items-center justify-between"><div class="flex items-center gap-space-sm"><span class="font-code-sm text-code-sm text-on-surface-variant">Seshat</span><span class="text-outline-variant text-sm">/</span><span class="font-label-md text-label-md text-on-surface font-medium">Workflows</span><span class="inline-flex items-center gap-1 ml-space-sm px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-code-sm text-code-sm"><span>production</span></span></div><div class="flex items-center gap-space-md"><div class="relative hidden sm:flex items-center"><span class="material-symbols-outlined absolute left-2.5 text-on-surface-variant text-[16px]">search</span><input class="w-64 pl-8 pr-12 py-1.5 bg-surface-container-lowest border border-outline-variant/50 rounded font-body-sm text-body-sm text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:border-primary-container" placeholder="Search pipelines, nodes, logs..." type="text"/><kbd class="absolute right-2 font-code-sm text-[10px] px-1.5 py-0.5 rounded bg-surface-container-high border border-outline-variant/50 text-on-surface-variant font-mono">⌘K</kbd></div><button class="relative p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded transition-colors"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-primary-container"></span></button><div class="h-4 w-[1px] bg-outline-variant/40"></div><div class="flex items-center gap-2"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><div class="hidden md:flex flex-col text-left"><span class="font-label-sm text-label-sm text-on-surface leading-tight font-medium">Alex Rivera</span><span class="font-code-sm text-[10px] text-on-surface-variant leading-tight">Lead Architect</span></div></div></div></header><main class="relative pt-14 min-h-screen bg-surface-container-low"><div class="w-full max-w-[1440px] mx-auto p-space-lg"><div class="flex flex-col w-full">
+<!-- Interactive Style Shim for Shell Active Tab -->
+<script>
+    (function() {
+      try {
+        const aside = document.querySelector('aside');
+        if (aside) {
+          const links = aside.querySelectorAll('nav a');
+          links.forEach(l => {
+            const path = l.getAttribute('data-path');
+            if (path === 'templates') {
+              l.className = "flex items-center px-space-sm py-2 rounded text-on-surface font-semibold bg-surface-container-lowest shadow-sm relative before:content-[''] before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:bg-primary-container before:rounded-r transition-colors font-label-md text-label-md";
+            } else if (path === 'projects') {
+              l.className = "flex items-center px-space-sm py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors font-label-md text-label-md";
+            }
+          });
+        }
+      } catch (e) {}
+    })();
+  </script>
+<!-- Top Hero & Search / Taxonomy Module -->
+<section class="flex flex-col gap-space-lg mb-space-2xl">
+<!-- Header Block -->
+<div class="flex flex-col lg:flex-row lg:items-end justify-between gap-space-md">
+<div class="flex flex-col gap-space-xs max-w-3xl">
+<div class="flex items-center gap-2">
+<span class="inline-block w-2 h-2 rounded-full bg-primary-container"></span>
+<span class="font-code-sm text-code-sm tracking-widest uppercase text-secondary font-semibold">Business Process Archetypes • Curated Workflows</span>
+</div>
+<h1 class="font-headline-xl text-headline-xl tracking-tight text-on-surface">Templates</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant mt-1">
+          Deploy battle-tested autonomous agent teams configured for business operations, enterprise guardrails, and compliance auditability.
+        </p>
+</div>
+<!-- Quick Action Meta / Mode Toggle -->
+<div class="flex items-center gap-2 self-start lg:self-auto bg-surface-container-high p-1 rounded-lg">
+<button class="px-space-sm py-1.5 rounded text-on-surface bg-surface-container-lowest shadow-sm font-label-md text-label-md flex items-center gap-1.5 transition-all" id="viewCuratedBtn" onclick="switchCatalogView('curated')">
+<span class="material-symbols-outlined text-[16px] text-primary-container">verified</span>
+<span>Curated Archetypes (18)</span>
+</button>
+<button class="px-space-sm py-1.5 rounded text-on-surface-variant hover:text-on-surface font-label-md text-label-md flex items-center gap-1.5 transition-all" id="viewCustomBtn" onclick="switchCatalogView('custom')">
+<span class="material-symbols-outlined text-[16px]">corporate_fare</span>
+<span>Acme Custom Teams (4)</span>
+</button>
+</div>
+</div>
+<!-- Search, Filter Chips & Sorting Toolbar -->
+<div class="flex flex-col gap-space-sm bg-surface-container-lowest p-space-md rounded-xl shadow-sm">
+<div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-space-sm">
+<!-- Deep Search Input -->
+<div class="relative flex-1">
+<span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+<input class="w-full pl-10 pr-16 py-2.5 bg-surface-container-low rounded font-body-sm text-body-sm text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:bg-surface-container-lowest focus:shadow-[0_0_0_1.5px_#ef7c2f] transition-all" id="templateSearch" onkeyup="filterTemplates(this.value)" placeholder="Search templates by business outcome, agent team, ERP, or platform..." type="text"/>
+<span class="absolute right-3 top-1/2 -translate-y-1/2 font-code-sm text-[10px] px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant">⌘K</span>
+</div>
+<!-- Sorting Selector -->
+<div class="flex items-center gap-2">
+<span class="font-code-sm text-code-sm text-on-surface-variant whitespace-nowrap">Sort by:</span>
+<div class="relative inline-block">
+<select class="appearance-none bg-surface-container-low text-on-surface font-label-md text-label-md pl-3 pr-8 py-2 rounded focus:outline-none cursor-pointer">
+<option value="recommended">Recommended by Architecture</option>
+<option value="deployed">Most Deployed Across Pods</option>
+<option value="roi">Highest Estimated ROI</option>
+<option value="complexity">Lowest Setup Friction</option>
+</select>
+<span class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-[16px] pointer-events-none text-on-surface-variant">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Category Filter Pills -->
+<div class="flex items-center gap-1.5 overflow-x-auto pt-space-xs pb-0.5 text-on-surface-variant" id="categoryChips">
+<button class="category-chip px-3 py-1 rounded font-code-sm text-code-sm bg-on-surface text-on-primary font-semibold transition-all" onclick="setActiveCategory(this, 'all')">All Templates (18)</button>
+<button class="category-chip px-3 py-1 rounded font-code-sm text-code-sm bg-surface-container-high hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-all" onclick="setActiveCategory(this, 'finance')">Finance &amp; AP (5)</button>
+<button class="category-chip px-3 py-1 rounded font-code-sm text-code-sm bg-surface-container-high hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-all" onclick="setActiveCategory(this, 'cx')">Customer Support &amp; CX (4)</button>
+<button class="category-chip px-3 py-1 rounded font-code-sm text-code-sm bg-surface-container-high hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-all" onclick="setActiveCategory(this, 'sales')">Sales &amp; RevOps (3)</button>
+<button class="category-chip px-3 py-1 rounded font-code-sm text-code-sm bg-surface-container-high hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-all" onclick="setActiveCategory(this, 'legal')">Legal &amp; Compliance (3)</button>
+<button class="category-chip px-3 py-1 rounded font-code-sm text-code-sm bg-surface-container-high hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-all" onclick="setActiveCategory(this, 'hr')">HR &amp; Operations (3)</button>
+</div>
+</div>
+</section>
+<!-- Curated Flagship Hero Spotlight -->
+<section class="relative mb-space-2xl rounded-xl bg-surface-container-lowest overflow-hidden shadow-md">
+<div class="absolute -right-16 -top-16 w-96 h-96 rounded-full bg-gradient-to-br from-primary-fixed/30 to-secondary-container/20 blur-3xl pointer-events-none"></div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg p-space-xl relative z-10">
+<!-- Flagship Info -->
+<div class="lg:col-span-7 flex flex-col justify-between">
+<div>
+<div class="flex items-center gap-2 mb-space-xs">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded font-code-sm text-code-sm bg-secondary-fixed text-on-secondary-fixed font-semibold">
+<span class="material-symbols-outlined text-[14px]">auto_awesome</span>
+              FLAGSHIP ENTERPRISE BLUEPRINT
+            </span>
+<span class="font-code-sm text-code-sm text-on-surface-variant">Arch-ID: <code>seshat.ap.sap-sync.v3</code></span>
+</div>
+<h2 class="font-headline-lg text-headline-lg tracking-tight text-on-surface mb-space-xs">
+            Autonomous Invoice Processing &amp; SAP Ingestion
+          </h2>
+<p class="font-body-md text-body-md text-on-surface-variant mb-space-md max-w-xl leading-relaxed">
+            Eliminates high-touch AP operational overhead by parsing multi-channel incoming invoices, performing autonomous cross-validation against purchase orders, and safely orchestrating ingestion into SAP ERP.
+          </p>
+<!-- Core Metric Badges Bento -->
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-space-md">
+<div class="p-space-xs bg-surface-container-low rounded flex flex-col">
+<span class="font-code-sm text-code-sm text-on-surface-variant uppercase">Time Saved</span>
+<span class="font-headline-md text-headline-md text-on-surface">8.4 hrs<span class="font-body-sm text-body-sm text-on-surface-variant">/wk</span></span>
+</div>
+<div class="p-space-xs bg-surface-container-low rounded flex flex-col">
+<span class="font-code-sm text-code-sm text-on-surface-variant uppercase">STP Accuracy</span>
+<span class="font-headline-md text-headline-md text-[#15803D]">99.4%</span>
+</div>
+<div class="p-space-xs bg-surface-container-low rounded flex flex-col">
+<span class="font-code-sm text-code-sm text-on-surface-variant uppercase">Agent Pod</span>
+<span class="font-headline-md text-headline-md text-on-surface">4 Units</span>
+</div>
+<div class="p-space-xs bg-surface-container-low rounded flex flex-col">
+<span class="font-code-sm text-code-sm text-on-surface-variant uppercase">Human Gate</span>
+<span class="font-headline-md text-headline-md text-secondary">&gt; €250</span>
+</div>
+</div>
+</div>
+<!-- Call to Actions -->
+<div class="flex flex-wrap items-center gap-space-sm pt-space-xs">
+<button class="px-space-md py-2.5 rounded bg-primary-container text-on-primary hover:bg-[#DC681B] active:bg-[#C9570E] font-label-md text-label-md font-semibold flex items-center gap-2 shadow-sm transition-all" onclick="scrollToAssistant()">
+<span>Use Template Blueprint</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+<button class="px-space-md py-2.5 rounded bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 transition-all" onclick="selectTemplate('flagship')">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">schema</span>
+<span>Inspect Blueprint Architecture</span>
+</button>
+<span class="font-code-sm text-code-sm text-on-surface-variant ml-auto hidden sm:inline-flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-[#15803D]"></span> Ready for One-Click Orchestration
+          </span>
+</div>
+</div>
+<!-- Flagship Micro-Diagram Preview Visual -->
+<div class="lg:col-span-5 bg-surface-container-low p-space-md rounded-lg flex flex-col justify-between">
+<div class="flex items-center justify-between pb-space-xs">
+<span class="font-code-sm text-code-sm font-semibold uppercase tracking-wider text-on-surface-variant">Execution Flow Model</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-lowest font-code-sm text-[10px] text-secondary font-mono">DAG Level 2.4</span>
+</div>
+<!-- Interactive Miniature Graph Nodes -->
+<div class="flex flex-col gap-2 py-2">
+<!-- Step 1 -->
+<div class="flex items-center gap-3 bg-surface-container-lowest p-2 rounded shadow-2xs">
+<div class="w-7 h-7 rounded bg-tertiary-fixed text-on-tertiary-fixed flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[16px]">mail</span>
+</div>
+<div class="min-w-0 flex-1">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm font-semibold text-on-surface truncate">Webhook / Inbound AP Mail</span>
+<span class="font-code-sm text-[10px] text-on-surface-variant">Trigger</span>
+</div>
+<p class="font-code-sm text-[10px] text-on-surface-variant truncate">Parses PDF, TIFF &amp; EDI payload invoices</p>
+</div>
+</div>
+<div class="flex justify-center -my-1 text-on-surface-variant/50">
+<span class="material-symbols-outlined text-[14px]">arrow_downward</span>
+</div>
+<!-- Step 2 -->
+<div class="flex items-center gap-3 bg-surface-container-lowest p-2 rounded shadow-2xs">
+<div class="w-7 h-7 rounded bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[16px]">smart_toy</span>
+</div>
+<div class="min-w-0 flex-1">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm font-semibold text-on-surface truncate">Intake &amp; OCR Line Extractor</span>
+<span class="font-code-sm text-[10px] text-primary font-mono">Claude 3.5 Sonnet</span>
+</div>
+<p class="font-code-sm text-[10px] text-on-surface-variant truncate">Structures metadata: VAT, totals, line items</p>
+</div>
+</div>
+<div class="flex justify-center -my-1 text-on-surface-variant/50">
+<span class="material-symbols-outlined text-[14px]">arrow_downward</span>
+</div>
+<!-- Step 3 Human Gate -->
+<div class="flex items-center gap-3 bg-amber-50/80 p-2 rounded shadow-2xs">
+<div class="w-7 h-7 rounded bg-amber-200 text-amber-900 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[16px]">how_to_reg</span>
+</div>
+<div class="min-w-0 flex-1">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm font-semibold text-amber-950 truncate">Human Verification Gate</span>
+<span class="font-code-sm text-[10px] text-amber-800 font-mono">Discrepancy / &gt; €250</span>
+</div>
+<p class="font-code-sm text-[10px] text-amber-900/80 truncate">Slack #finance-approvals interactive card</p>
+</div>
+</div>
+<div class="flex justify-center -my-1 text-on-surface-variant/50">
+<span class="material-symbols-outlined text-[14px]">arrow_downward</span>
+</div>
+<!-- Step 4 Destination -->
+<div class="flex items-center gap-3 bg-surface-container-lowest p-2 rounded shadow-2xs">
+<div class="w-7 h-7 rounded bg-surface-container-high text-on-surface flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[16px]">database</span>
+</div>
+<div class="min-w-0 flex-1">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm font-semibold text-on-surface truncate">SAP ERP Journal Entry Post</span>
+<span class="font-code-sm text-[10px] text-on-surface-variant">BAPI / OData</span>
+</div>
+<p class="font-code-sm text-[10px] text-on-surface-variant truncate">Posts document batch with full audit lineage</p>
+</div>
+</div>
+</div>
+<div class="pt-2 text-right">
+<span class="font-code-sm text-[10px] text-on-surface-variant">Includes automated reconciliation rollback on fault</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Main Grid: Catalog Cards (Left) + Interactive Inspector/Assistant (Right) -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-space-lg items-start">
+<!-- LEFT 7 COLS: Catalog Cards Grid -->
+<div class="xl:col-span-7 flex flex-col gap-space-md" id="templatesCatalog">
+<!-- Section Label Bar -->
+<div class="flex items-center justify-between px-1">
+<div class="flex items-center gap-2">
+<span class="font-headline-md text-headline-md text-on-surface">Available Agent Archetypes</span>
+<span class="font-code-sm text-code-sm px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant" id="catalogCountBadge">6 displayed</span>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant font-code-sm text-code-sm">
+<span class="material-symbols-outlined text-[14px] text-[#15803D]">shield</span>
+<span>Enterprise Guardrail Compliant</span>
+</div>
+</div>
+<!-- CARD 1: Customer Support & Triage Agent Pod (CX) -->
+<div class="template-card group bg-surface-container-lowest p-space-md rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer relative" data-category="cx" data-id="cx-triage" onclick="selectTemplate('cx-triage')">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded font-code-sm text-code-sm bg-tertiary-fixed text-on-tertiary-fixed font-medium">Customer Support &amp; CX</span>
+<span class="px-2 py-0.5 rounded font-code-sm text-code-sm bg-[#FAF4ED] text-[#C89A6A] font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">verified</span> Official Seshat
+              </span>
+</div>
+<span class="font-code-sm text-code-sm px-2 py-0.5 rounded bg-emerald-50 text-[#15803D] font-medium">~18h/week saved</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface group-hover:text-primary-container transition-colors">
+              Customer Support &amp; Triage Agent Pod
+            </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">
+              Classifies inbound tickets by urgency and sentiment, generates contextual multi-lingual draft replies from knowledge base embeddings, and safely escalates sensitive requests.
+            </p>
+</div>
+<!-- Pod Composition (Agent Avatars) -->
+<div class="flex flex-col gap-1.5 py-space-xs bg-surface-container-low px-space-sm rounded">
+<span class="font-code-sm text-[10px] uppercase text-on-surface-variant tracking-wider font-semibold">Agent Pod Composition (3 Specialists)</span>
+<div class="flex flex-wrap items-center gap-2">
+<span class="inline-flex items-center gap-1.5 px-2 py-1 bg-surface-container-lowest rounded font-code-sm text-code-sm text-on-surface">
+<span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                Ticket Classifier (Haiku 3.5)
+              </span>
+<span class="inline-flex items-center gap-1.5 px-2 py-1 bg-surface-container-lowest rounded font-code-sm text-code-sm text-on-surface">
+<span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                Sentiment Scorer
+              </span>
+<span class="inline-flex items-center gap-1.5 px-2 py-1 bg-surface-container-lowest rounded font-code-sm text-code-sm text-on-surface">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                Draft Specialist (GPT-4o)
+              </span>
+</div>
+</div>
+<!-- Bottom Meta & Actions -->
+<div class="flex flex-wrap items-center justify-between gap-space-sm pt-space-xs">
+<div class="flex items-center gap-2">
+<span class="font-code-sm text-[10px] text-on-surface-variant uppercase">Integrations:</span>
+<span class="px-2 py-0.5 rounded bg-surface-container font-code-sm text-code-sm text-on-surface">Zendesk</span>
+<span class="px-2 py-0.5 rounded bg-surface-container font-code-sm text-code-sm text-on-surface">Slack</span>
+<span class="px-2 py-0.5 rounded bg-surface-container font-code-sm text-code-sm text-on-surface">Intercom</span>
+<span class="font-code-sm text-[10px] text-secondary font-medium ml-1">Gate: Refunds &gt; €50</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-space-sm py-1.5 rounded text-on-surface bg-surface-container-low hover:bg-surface-container-high font-label-md text-label-md transition-colors" onclick="event.stopPropagation(); selectTemplate('cx-triage')">
+                Preview Flow
+              </button>
+<button class="px-space-sm py-1.5 rounded bg-primary-container text-on-primary hover:bg-[#DC681B] font-label-md text-label-md font-medium transition-colors" onclick="event.stopPropagation(); launchModal('Customer Support &amp; Triage Agent Pod')">
+                Use Template
+              </button>
+</div>
+</div>
+</div>
+</div>
+<!-- CARD 2: Weekly Executive Financial Summary (Finance) -->
+<div class="template-card group bg-surface-container-lowest p-space-md rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer relative" data-category="finance" data-id="finance-exec" onclick="selectTemplate('finance-exec')">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded font-code-sm text-code-sm bg-secondary-fixed text-on-secondary-fixed font-medium">Finance &amp; AP</span>
+<span class="px-2 py-0.5 rounded font-code-sm text-code-sm bg-[#FAF4ED] text-[#C89A6A] font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">verified</span> Official Seshat
+              </span>
+</div>
+<span class="font-code-sm text-code-sm px-2 py-0.5 rounded bg-emerald-50 text-[#15803D] font-medium">94% manual effort cut</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface group-hover:text-primary-container transition-colors">
+              Weekly Executive Financial Summary &amp; KPI Synthesis
+            </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">
+              Pulls live data from Stripe billing and NetSuite ledgers, queries enterprise BigQuery warehouses, computes variance alerts, and generates signed executive PDF briefings.
+            </p>
+</div>
+<!-- Pod Composition -->
+<div class="flex flex-col gap-1.5 py-space-xs bg-surface-container-low px-space-sm rounded">
+<span class="font-code-sm text-[10px] uppercase text-on-surface-variant tracking-wider font-semibold">Agent Pod Composition (3 Specialists)</span>
+<div class="flex flex-wrap items-center gap-2">
+<span class="inline-flex items-center gap-1.5 px-2 py-1 bg-surface-container-lowest rounded font-code-sm text-code-sm text-on-surface">
+<span class="w-2 h-2 rounded-full bg-purple-500"></span>
+                SQL Extractor &amp; Validator
+              </span>
+<span class="inline-flex items-center gap-1.5 px-2 py-1 bg-surface-container-lowest rounded font-code-sm text-code-sm text-on-surface">
+<span class="w-2 h-2 rounded-full bg-amber-600"></span>
+                Variance Analyzer
+              </span>
+<span class="inline-flex items-center gap-1.5 px-2 py-1 bg-surface-container-lowest rounded font-code-sm text-code-sm text-on-surface">
+<span class="w-2 h-2 rounded-full bg-blue-600"></span>
+                PDF &amp; Markdown Generator
+              </span>
+</div>
+</div>
+<!-- Bottom Meta & Actions -->
+<div class="flex flex-wrap items-center justify-between gap-space-sm pt-space-xs">
+<div class="flex items-center gap-2">
+<span class="font-code-sm text-[10px] text-on-surface-variant uppercase">Integrations:</span>
+<span class="px-2 py-0.5 rounded bg-surface-container font-code-sm text-code-sm text-on-surface">Stripe</span>
+<span class="px-2 py-0.5 rounded bg-surface-container font-code-sm text-code-sm text-on-surface">NetSuite</span>
+<span class="px-2 py-0.5 rounded bg-surface-container font-code-sm text-code-sm text-on-surface">BigQuery</span>
+<span class="font-code-sm text-[10px] text-secondary font-medium ml-1">Gate: CFO Sign-off on outliers</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-space-sm py-1.5 rounded text-on-surface bg-surface-container-low hover:bg-surface-container-high font-label-md text-label-md transition-colors" onclick="event.stopPropagation(); selectTemplate('finance-exec')">
+                Preview Flow
+              </button>
+<button class="px-space-sm py-1.5 rounded bg-primary-container text-on-primary hover:bg-[#DC681B] font-label-md text-label-md font-medium transition-colors" onclick="event.stopPropagation(); launchModal('Weekly Executive Financial Summary')">
+                Use Template
+              </button>
+</div>
+</div>
+</div>
+</div>
+<!-- CARD 3: HubSpot RevOps Enrichment & Deal Dossier (Sales) -->
+<div class="template-card group bg-surface-container-lowest p-space-md rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer relative" data-category="sales" data-id="sales-revops" onclick="selectTemplate('sales-revops')">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded font-code-sm text-code-sm bg-orange-100 text-primary font-medium">Sales &amp; RevOps</span>
+</div>
+<span class="font-code-sm text-code-sm px-2 py-0.5 rounded bg-emerald-50 text-[#15803D] font-medium">3.2x faster lead prep</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface group-hover:text-primary-container transition-colors">
+              HubSpot RevOps Enrichment &amp; Deal Dossier
+            </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">
+              Monitors new enterprise lead entries, synthesizes SEC filings, news releases, tech stack fingerprints, and builds a customized executive briefing doc right in HubSpot.
+            </p>
+</div>
+<!-- Pod Composition -->
+<div class="flex flex-col gap-1.5 py-space-xs bg-surface-container-low px-space-sm rounded">
+<span class="font-code-sm text-[10px] uppercase text-on-surface-variant tracking-wider font-semibold">Agent Pod Composition (2 Specialists)</span>
+<div class="flex flex-wrap items-center gap-2">
+<span class="inline-flex items-center gap-1.5 px-2 py-1 bg-surface-container-lowest rounded font-code-sm text-code-sm text-on-surface">
+<span class="w-2 h-2 rounded-full bg-cyan-600"></span>
+                Deep Web Researcher (Perplexity)
+              </span>
+<span class="inline-flex items-center gap-1.5 px-2 py-1 bg-surface-container-lowest rounded font-code-sm text-code-sm text-on-surface">
+<span class="w-2 h-2 rounded-full bg-orange-500"></span>
+                CRM Deal Sync &amp; Field Formatter
+              </span>
+</div>
+</div>
+<!-- Bottom Meta & Actions -->
+<div class="flex flex-wrap items-center justify-between gap-space-sm pt-space-xs">
+<div class="flex items-center gap-2">
+<span class="font-code-sm text-[10px] text-on-surface-variant uppercase">Integrations:</span>
+<span class="px-2 py-0.5 rounded bg-surface-container font-code-sm text-code-sm text-on-surface">HubSpot</span>
+<span class="px-2 py-0.5 rounded bg-surface-container font-code-sm text-code-sm text-on-surface">Seshat Vector DB</span>
+<span class="px-2 py-0.5 rounded bg-surface-container font-code-sm text-code-sm text-on-surface">LinkedIn API</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-space-sm py-1.5 rounded text-on-surface bg-surface-container-low hover:bg-surface-container-high font-label-md text-label-md transition-colors" onclick="event.stopPropagation(); selectTemplate('sales-revops')">
+                Preview Flow
+              </button>
+<button class="px-space-sm py-1.5 rounded bg-primary-container text-on-primary hover:bg-[#DC681B] font-label-md text-label-md font-medium transition-colors" onclick="event.stopPropagation(); launchModal('HubSpot RevOps Enrichment &amp; Deal Dossier')">
+                Use Template
+              </button>
+</div>
+</div>
+</div>
+</div>
+<!-- CARD 4: GDPR & Vendor Contract Review (Legal) -->
+<div class="template-card group bg-surface-container-lowest p-space-md rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer relative" data-category="legal" data-id="legal-gdpr" onclick="selectTemplate('legal-gdpr')">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded font-code-sm text-code-sm bg-stone-200 text-on-surface font-medium">Legal &amp; Compliance</span>
+<span class="px-2 py-0.5 rounded font-code-sm text-code-sm bg-[#FAF4ED] text-[#C89A6A] font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">verified</span> Official Seshat
+              </span>
+</div>
+<span class="font-code-sm text-code-sm px-2 py-0.5 rounded bg-emerald-50 text-[#15803D] font-medium">Zero compliance gaps</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface group-hover:text-primary-container transition-colors">
+              GDPR &amp; Vendor Contract Review &amp; Redline Formatter
+            </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">
+              Scans master service agreements (MSAs) for data residency liabilities, sub-processor notification windows, and indemnification caps with instant clause redlining.
+            </p>
+</div>
+<!-- Pod Composition -->
+<div class="flex flex-col gap-1.5 py-space-xs bg-surface-container-low px-space-sm rounded">
+<span class="font-code-sm text-[10px] uppercase text-on-surface-variant tracking-wider font-semibold">Agent Pod Composition (3 Specialists)</span>
+<div class="flex flex-wrap items-center gap-2">
+<span class="inline-flex items-center gap-1.5 px-2 py-1 bg-surface-container-lowest rounded font-code-sm text-code-sm text-on-surface">
+<span class="w-2 h-2 rounded-full bg-slate-700"></span>
+                Contract Clause Parser
+              </span>
+<span class="inline-flex items-center gap-1.5 px-2 py-1 bg-surface-container-lowest rounded font-code-sm text-code-sm text-on-surface">
+<span class="w-2 h-2 rounded-full bg-red-500"></span>
+                Risk &amp; Liability Assessor
+              </span>
+<span class="inline-flex items-center gap-1.5 px-2 py-1 bg-surface-container-lowest rounded font-code-sm text-code-sm text-on-surface">
+<span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                Redline Formatter
+              </span>
+</div>
+</div>
+<!-- Bottom Meta & Actions -->
+<div class="flex flex-wrap items-center justify-between gap-space-sm pt-space-xs">
+<div class="flex items-center gap-2">
+<span class="font-code-sm text-[10px] text-on-surface-variant uppercase">Integrations:</span>
+<span class="px-2 py-0.5 rounded bg-surface-container font-code-sm text-code-sm text-on-surface">Google Drive</span>
+<span class="px-2 py-0.5 rounded bg-surface-container font-code-sm text-code-sm text-on-surface">DocuSign</span>
+<span class="px-2 py-0.5 rounded bg-surface-container font-code-sm text-code-sm text-on-surface">Slack Legal Channel</span>
+<span class="font-code-sm text-[10px] text-secondary font-medium ml-1">Gate: General Counsel Review</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-space-sm py-1.5 rounded text-on-surface bg-surface-container-low hover:bg-surface-container-high font-label-md text-label-md transition-colors" onclick="event.stopPropagation(); selectTemplate('legal-gdpr')">
+                Preview Flow
+              </button>
+<button class="px-space-sm py-1.5 rounded bg-primary-container text-on-primary hover:bg-[#DC681B] font-label-md text-label-md font-medium transition-colors" onclick="event.stopPropagation(); launchModal('GDPR &amp; Vendor Contract Review')">
+                Use Template
+              </button>
+</div>
+</div>
+</div>
+</div>
+<!-- CARD 5: Employee Onboarding & Identity Provisioning (HR) -->
+<div class="template-card group bg-surface-container-lowest p-space-md rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer relative" data-category="hr" data-id="hr-onboarding" onclick="selectTemplate('hr-onboarding')">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded font-code-sm text-code-sm bg-teal-100 text-teal-800 font-medium">HR &amp; People Ops</span>
+</div>
+<span class="font-code-sm text-code-sm px-2 py-0.5 rounded bg-emerald-50 text-[#15803D] font-medium">Day 1 Zero-delay setup</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface group-hover:text-primary-container transition-colors">
+              Employee Onboarding &amp; Access Provisioning
+            </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">
+              Listens for new signed offers in Workday, generates role-specific permission scopes in Okta and Google Workspace, and dispatches an interactive onboarding DM.
+            </p>
+</div>
+<!-- Pod Composition -->
+<div class="flex flex-col gap-1.5 py-space-xs bg-surface-container-low px-space-sm rounded">
+<span class="font-code-sm text-[10px] uppercase text-on-surface-variant tracking-wider font-semibold">Agent Pod Composition (3 Specialists)</span>
+<div class="flex flex-wrap items-center gap-2">
+<span class="inline-flex items-center gap-1.5 px-2 py-1 bg-surface-container-lowest rounded font-code-sm text-code-sm text-on-surface">
+<span class="w-2 h-2 rounded-full bg-teal-500"></span>
+                HRIS Listener (Workday)
+              </span>
+<span class="inline-flex items-center gap-1.5 px-2 py-1 bg-surface-container-lowest rounded font-code-sm text-code-sm text-on-surface">
+<span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                Identity Provisioner (Okta)
+              </span>
+<span class="inline-flex items-center gap-1.5 px-2 py-1 bg-surface-container-lowest rounded font-code-sm text-code-sm text-on-surface">
+<span class="w-2 h-2 rounded-full bg-pink-500"></span>
+                Welcome &amp; IT Dispatch Agent
+              </span>
+</div>
+</div>
+<!-- Bottom Meta & Actions -->
+<div class="flex flex-wrap items-center justify-between gap-space-sm pt-space-xs">
+<div class="flex items-center gap-2">
+<span class="font-code-sm text-[10px] text-on-surface-variant uppercase">Integrations:</span>
+<span class="px-2 py-0.5 rounded bg-surface-container font-code-sm text-code-sm text-on-surface">Workday</span>
+<span class="px-2 py-0.5 rounded bg-surface-container font-code-sm text-code-sm text-on-surface">Okta</span>
+<span class="px-2 py-0.5 rounded bg-surface-container font-code-sm text-code-sm text-on-surface">Google Workspace</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-space-sm py-1.5 rounded text-on-surface bg-surface-container-low hover:bg-surface-container-high font-label-md text-label-md transition-colors" onclick="event.stopPropagation(); selectTemplate('hr-onboarding')">
+                Preview Flow
+              </button>
+<button class="px-space-sm py-1.5 rounded bg-primary-container text-on-primary hover:bg-[#DC681B] font-label-md text-label-md font-medium transition-colors" onclick="event.stopPropagation(); launchModal('Employee Onboarding &amp; Access Provisioning')">
+                Use Template
+              </button>
+</div>
+</div>
+</div>
+</div>
+<!-- CARD 6: Operational Inbox Triage & Dispatch (Operations) -->
+<div class="template-card group bg-surface-container-lowest p-space-md rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer relative" data-category="hr" data-id="ops-dispatch" onclick="selectTemplate('ops-dispatch')">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded font-code-sm text-code-sm bg-neutral-200 text-on-surface font-medium">Operations</span>
+</div>
+<span class="font-code-sm text-code-sm px-2 py-0.5 rounded bg-emerald-50 text-[#15803D] font-medium">&lt; 90s average resolution</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface group-hover:text-primary-container transition-colors">
+              Operational Inbox Triage &amp; Action Dispatcher
+            </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">
+              Monitors shared enterprise mailboxes (e.g., ops@, facilities@, security@), determines actionable intent, logs records in Notion/Jira, and dispatches automated task tickets.
+            </p>
+</div>
+<!-- Pod Composition -->
+<div class="flex flex-col gap-1.5 py-space-xs bg-surface-container-low px-space-sm rounded">
+<span class="font-code-sm text-[10px] uppercase text-on-surface-variant tracking-wider font-semibold">Agent Pod Composition (2 Specialists)</span>
+<div class="flex flex-wrap items-center gap-2">
+<span class="inline-flex items-center gap-1.5 px-2 py-1 bg-surface-container-lowest rounded font-code-sm text-code-sm text-on-surface">
+<span class="w-2 h-2 rounded-full bg-violet-600"></span>
+                Multi-Modal Intent Router
+              </span>
+<span class="inline-flex items-center gap-1.5 px-2 py-1 bg-surface-container-lowest rounded font-code-sm text-code-sm text-on-surface">
+<span class="w-2 h-2 rounded-full bg-emerald-600"></span>
+                Action Executor &amp; Notifier
+              </span>
+</div>
+</div>
+<!-- Bottom Meta & Actions -->
+<div class="flex flex-wrap items-center justify-between gap-space-sm pt-space-xs">
+<div class="flex items-center gap-2">
+<span class="font-code-sm text-[10px] text-on-surface-variant uppercase">Integrations:</span>
+<span class="px-2 py-0.5 rounded bg-surface-container font-code-sm text-code-sm text-on-surface">Microsoft 365</span>
+<span class="px-2 py-0.5 rounded bg-surface-container font-code-sm text-code-sm text-on-surface">Notion</span>
+<span class="px-2 py-0.5 rounded bg-surface-container font-code-sm text-code-sm text-on-surface">Jira Service Desk</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-space-sm py-1.5 rounded text-on-surface bg-surface-container-low hover:bg-surface-container-high font-label-md text-label-md transition-colors" onclick="event.stopPropagation(); selectTemplate('ops-dispatch')">
+                Preview Flow
+              </button>
+<button class="px-space-sm py-1.5 rounded bg-primary-container text-on-primary hover:bg-[#DC681B] font-label-md text-label-md font-medium transition-colors" onclick="event.stopPropagation(); launchModal('Operational Inbox Triage &amp; Dispatch')">
+                Use Template
+              </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- RIGHT 5 COLS: Interactive Template Preview & Setup Assistant Panel (Sticky Inspector) -->
+<div class="xl:col-span-5 sticky top-20 flex flex-col gap-space-base" id="assistantSection">
+<div class="bg-surface-container-lowest rounded-xl shadow-md overflow-hidden flex flex-col">
+<!-- Inspector Header -->
+<div class="p-space-base bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded bg-primary-container/20 text-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-[16px]">tune</span>
+</div>
+<span class="font-headline-md text-headline-md text-on-surface" id="panelTemplateTitle">Setup Assistant &amp; Blueprint Specs</span>
+</div>
+<span class="font-code-sm text-code-sm px-2 py-0.5 rounded bg-emerald-50 text-[#15803D] font-mono">Verified v2.4</span>
+</div>
+<div class="p-space-base flex flex-col gap-space-md max-h-[calc(100vh-140px)] overflow-y-auto">
+<!-- Architecture Flow Canvas Simulation -->
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-code-sm text-[11px] uppercase tracking-wider text-on-surface-variant font-semibold">Live DAG Execution Graph</span>
+<span class="font-code-sm text-[10px] text-primary-container hover:underline cursor-pointer flex items-center gap-0.5">
+<span>Expand in Canvas</span>
+<span class="material-symbols-outlined text-[12px]">open_in_new</span>
+</span>
+</div>
+<!-- Visual Flow Micro-Diagram -->
+<div class="p-space-md bg-surface-container-low rounded-lg flex flex-col gap-2 relative overflow-hidden">
+<div class="flex items-center justify-between text-xs font-code-sm text-on-surface-variant border-b border-outline-variant/30 pb-1.5">
+<span>Trigger: Webhook / REST</span>
+<span class="text-[#15803D] flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-[#15803D]"></span> 0.4s p99</span>
+</div>
+<!-- Flow Steps SVG Pipeline Graphic -->
+<div class="py-1">
+<svg class="w-full h-auto text-on-surface" fill="none" viewbox="0 0 420 120" xmlns="http://www.w3.org/2000/svg">
+<!-- Connection Lines -->
+<path d="M 60 40 L 130 40" stroke="#DDD5CC" stroke-dasharray="3 3" stroke-width="2"></path>
+<path d="M 190 40 L 250 40" stroke="#DDD5CC" stroke-width="2"></path>
+<path d="M 310 40 L 360 40" stroke="#EF7C2F" stroke-width="2"></path>
+<path d="M 280 62 L 280 85 L 360 85" stroke="#DDD5CC" stroke-dasharray="2 2" stroke-width="2"></path>
+<!-- Node 1: Ingestion -->
+<rect fill="#FFFFFF" height="44" rx="4" stroke="#DDD5CC" stroke-width="1.5" width="50" x="10" y="18"></rect>
+<text fill="#1D1B19" font-family="JetBrains Mono" font-size="9" text-anchor="middle" x="35" y="44">Ingest</text>
+<circle cx="35" cy="22" fill="#006688" r="3"></circle>
+<!-- Node 2: Agent Parsing -->
+<rect fill="#FFFFFF" height="44" rx="4" stroke="#DDD5CC" stroke-width="1.5" width="60" x="130" y="18"></rect>
+<text fill="#1D1B19" font-family="JetBrains Mono" font-size="8" text-anchor="middle" x="160" y="38">OCR + Pod</text>
+<text fill="#8A7266" font-family="JetBrains Mono" font-size="7" text-anchor="middle" x="160" y="49">Claude 3.5</text>
+<!-- Node 3: Policy Gate -->
+<rect fill="#FFFBEB" height="44" rx="4" stroke="#FDE68A" stroke-width="1.5" width="60" x="250" y="18"></rect>
+<text fill="#B45309" font-family="JetBrains Mono" font-size="8" text-anchor="middle" x="280" y="38">Policy Gate</text>
+<text fill="#B45309" font-family="JetBrains Mono" font-size="7" text-anchor="middle" x="280" y="49">&gt; €250</text>
+<!-- Node 4: SAP Writer -->
+<rect fill="#EF7C2F" height="44" rx="4" stroke="#EF7C2F" stroke-width="1.5" width="50" x="360" y="18"></rect>
+<text fill="#FFFFFF" font-family="JetBrains Mono" font-size="9" text-anchor="middle" x="385" y="44">SAP Post</text>
+<!-- Node 5: Slack Escalation -->
+<rect fill="#FFFFFF" height="30" rx="4" stroke="#DDD5CC" stroke-width="1" width="50" x="360" y="70"></rect>
+<text fill="#7C572D" font-family="JetBrains Mono" font-size="8" text-anchor="middle" x="385" y="88">Slack Ping</text>
+</svg>
+</div>
+<div class="flex items-center justify-between text-[11px] font-code-sm bg-surface-container-lowest p-2 rounded">
+<span class="text-on-surface font-medium">Estimated Runtime Cost:</span>
+<span class="text-on-surface font-mono font-semibold">€0.018 per processed document</span>
+</div>
+</div>
+</div>
+<!-- Setup Assistant: Dependencies & Action Items -->
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-code-sm text-[11px] uppercase tracking-wider text-on-surface-variant font-semibold">Configuration Readiness</span>
+<span class="font-code-sm text-code-sm text-amber-700 font-medium">3 of 5 Verified</span>
+</div>
+<!-- Checklist -->
+<div class="flex flex-col gap-2">
+<!-- Item 1: Verified -->
+<div class="p-space-xs bg-surface-container-low rounded flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-[#15803D]">check_circle</span>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm font-medium text-on-surface">LLM Provider Keys</span>
+<span class="font-code-sm text-[10px] text-on-surface-variant">Anthropic &amp; OpenAI API verified in Vault</span>
+</div>
+</div>
+<span class="font-code-sm text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">Connected</span>
+</div>
+<!-- Item 2: Verified -->
+<div class="p-space-xs bg-surface-container-low rounded flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-[#15803D]">check_circle</span>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm font-medium text-on-surface">Enterprise Knowledge Base</span>
+<span class="font-code-sm text-[10px] text-on-surface-variant">Finance Policies v2.4 (Active Vector Store)</span>
+</div>
+</div>
+<span class="font-code-sm text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">Indexed</span>
+</div>
+<!-- Item 3: Action Required -->
+<div class="p-space-xs bg-amber-50 rounded flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-amber-700">warning</span>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm font-medium text-amber-950">SAP ERP Connection</span>
+<span class="font-code-sm text-[10px] text-amber-800/90">Requires SAP BAPI endpoint &amp; basic auth credentials</span>
+</div>
+</div>
+<button class="font-code-sm text-[10px] px-2 py-1 rounded bg-amber-200 text-amber-900 font-semibold hover:bg-amber-300 transition-colors" onclick="promptConnection('SAP ERP')">
+                  Fix in Workspace
+                </button>
+</div>
+<!-- Item 4: Setup Needed -->
+<div class="p-space-xs bg-amber-50 rounded flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-amber-700">warning</span>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm font-medium text-amber-950">Approver Slack Channel</span>
+<span class="font-code-sm text-[10px] text-amber-800/90">Select target channel for Human-in-the-loop triggers</span>
+</div>
+</div>
+<select class="font-code-sm text-[10px] p-1 bg-surface-container-lowest text-on-surface rounded border-0 outline-none">
+<option>#finance-ops</option>
+<option>#ap-approvals</option>
+<option>#general</option>
+</select>
+</div>
+<!-- Item 5: Variable Pre-configured -->
+<div class="p-space-xs bg-surface-container-low rounded flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-[#15803D]">check_circle</span>
+<div class="flex flex-col">
+<span class="font-code-sm text-code-sm text-on-surface font-mono">$vars.MAX_AUTONOMOUS_AMOUNT</span>
+<span class="font-code-sm text-[10px] text-on-surface-variant">Default threshold = €250.00</span>
+</div>
+</div>
+<input class="w-16 text-right font-code-sm text-code-sm bg-surface-container-lowest px-1.5 py-0.5 rounded text-on-surface" type="number" value="250"/>
+</div>
+</div>
+</div>
+<!-- Bottom Action Buttons in Inspector -->
+<div class="flex flex-col gap-2 pt-space-xs">
+<button class="w-full py-2.5 rounded bg-primary-container text-on-primary hover:bg-[#DC681B] active:bg-[#C9570E] font-label-md text-label-md font-semibold flex items-center justify-center gap-2 shadow-sm transition-all" onclick="launchModal('Autonomous Invoice Processing &amp; SAP Ingestion')">
+<span class="material-symbols-outlined text-[18px]">rocket_launch</span>
+<span>Configure &amp; Launch Project</span>
+</button>
+<button class="w-full py-2 rounded bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center gap-1.5 transition-colors" onclick="alert('Opening canvas draft preview with isolated mock triggers...')">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">edit_note</span>
+<span>Customize in Canvas Sandbox</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Compliance & Security Footnote Card -->
+<div class="p-space-md bg-surface-container-lowest rounded-xl shadow-sm flex items-start gap-space-sm">
+<span class="material-symbols-outlined text-secondary text-[22px] shrink-0 mt-0.5">verified_user</span>
+<div class="flex flex-col gap-1">
+<span class="font-label-sm text-label-sm font-semibold text-on-surface">Seshat Sovereign AI Guarantee</span>
+<p class="font-code-sm text-[11px] text-on-surface-variant leading-relaxed">
+            All template models execute in zero-data-retention sandboxes. No customer data, PII, or prompt context is transmitted to third-party model training datasets.
+          </p>
+</div>
+</div>
+</div>
+</div>
+<!-- Interactive Deployment Modal (Hidden by default) -->
+<div class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm hidden items-center justify-center p-4" id="deployModal">
+<div class="bg-surface-container-lowest max-w-lg w-full rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+<div class="p-space-base bg-surface-container-low flex items-center justify-between border-b border-outline-variant/30">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container">layers</span>
+<h4 class="font-headline-md text-headline-md text-on-surface">Instant Blueprint Deployment</h4>
+</div>
+<button class="text-on-surface-variant hover:text-on-surface p-1" onclick="closeModal()">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<div class="p-space-lg flex flex-col gap-space-md">
+<div class="flex flex-col gap-1">
+<label class="font-code-sm text-code-sm uppercase text-on-surface-variant font-semibold">Target Environment</label>
+<div class="grid grid-cols-2 gap-2">
+<label class="flex items-center gap-2 p-2 bg-surface-container-low rounded cursor-pointer border border-transparent has-[:checked]:border-primary-container has-[:checked]:bg-primary-container/10">
+<input checked="" class="accent-primary-container" name="targetEnv" type="radio" value="staging"/>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm font-medium text-on-surface">Staging Sandbox</span>
+<span class="font-code-sm text-[10px] text-on-surface-variant">Simulated SAP ERP</span>
+</div>
+</label>
+<label class="flex items-center gap-2 p-2 bg-surface-container-low rounded cursor-pointer border border-transparent has-[:checked]:border-primary-container has-[:checked]:bg-primary-container/10">
+<input class="accent-primary-container" name="targetEnv" type="radio" value="prod"/>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm font-medium text-on-surface">Production Pod</span>
+<span class="font-code-sm text-[10px] text-on-surface-variant">Live ERP Ingestion</span>
+</div>
+</label>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-code-sm text-code-sm uppercase text-on-surface-variant font-semibold">Project Name</label>
+<input class="px-3 py-2 bg-surface-container-low rounded font-body-sm text-body-sm text-on-surface focus:outline-none focus:bg-surface-container-lowest focus:ring-1 focus:ring-primary-container" id="modalProjectNameInput" type="text" value="Autonomous Invoice Processing &amp; SAP Ingestion"/>
+</div>
+<div class="p-3 rounded bg-secondary-fixed/30 flex items-start gap-2">
+<span class="material-symbols-outlined text-[18px] text-secondary shrink-0 mt-0.5">info</span>
+<span class="font-code-sm text-[11px] text-on-secondary-fixed-variant leading-tight">
+            This will instantiate 4 Agent entities, inject default guardrail configurations, and create an audit log channel in your designated Workspace.
+          </span>
+</div>
+<div class="flex items-center justify-end gap-2 pt-2 border-t border-outline-variant/30">
+<button class="px-space-md py-2 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high font-label-md text-label-md transition-colors" onclick="closeModal()">
+            Cancel
+          </button>
+<button class="px-space-md py-2 rounded bg-primary-container text-on-primary hover:bg-[#DC681B] font-label-md text-label-md font-semibold transition-colors flex items-center gap-1.5" onclick="executeDeployment()">
+<span>Confirm &amp; Build Graph</span>
+<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Interactive Logic Handler Script -->
+<script>
+    // Category Filtering
+    function setActiveCategory(btn, category) {
+      const allChips = document.querySelectorAll('.category-chip');
+      allChips.forEach(c => {
+        c.className = "category-chip px-3 py-1 rounded font-code-sm text-code-sm bg-surface-container-high hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-all";
+      });
+      btn.className = "category-chip px-3 py-1 rounded font-code-sm text-code-sm bg-on-surface text-on-primary font-semibold transition-all";
+
+      const cards = document.querySelectorAll('.template-card');
+      let count = 0;
+      cards.forEach(card => {
+        const itemCat = card.getAttribute('data-category');
+        if (category === 'all' || itemCat === category) {
+          card.style.display = 'block';
+          count++;
+        } else {
+          card.style.display = 'none';
+        }
+      });
+      document.getElementById('catalogCountBadge').innerText = `${count} displayed`;
+    }
+
+    // Search Filtering
+    function filterTemplates(query) {
+      const q = query.toLowerCase().trim();
+      const cards = document.querySelectorAll('.template-card');
+      let count = 0;
+      cards.forEach(card => {
+        const text = card.innerText.toLowerCase();
+        if (text.includes(q)) {
+          card.style.display = 'block';
+          count++;
+        } else {
+          card.style.display = 'none';
+        }
+      });
+      document.getElementById('catalogCountBadge').innerText = `${count} displayed`;
+    }
+
+    // Interactive Selection for Inspector Assistant
+    function selectTemplate(templateId) {
+      const panelTitle = document.getElementById('panelTemplateTitle');
+      const cards = document.querySelectorAll('.template-card');
+      cards.forEach(c => c.classList.remove('ring-2', 'ring-primary-container'));
+
+      const map = {
+        'cx-triage': {
+          title: "Customer Support & Triage Pod",
+          cost: "€0.006 per ticket handled",
+          models: "Claude 3.5 Haiku + GPT-4o"
+        },
+        'finance-exec': {
+          title: "Weekly Financial Summary & KPI Synthesis",
+          cost: "€0.082 per generated report",
+          models: "Claude 3.5 Sonnet (Extended Context)"
+        },
+        'sales-revops': {
+          title: "HubSpot RevOps Enrichment & Deal Dossier",
+          cost: "€0.024 per prospect dossier",
+          models: "Perplexity API + GPT-4o-mini"
+        },
+        'legal-gdpr': {
+          title: "GDPR & Vendor Contract Review",
+          cost: "€0.14 per contract draft",
+          models: "Claude 3.5 Sonnet + Custom Law Embeddings"
+        },
+        'hr-onboarding': {
+          title: "Employee Onboarding & Access Provisioning",
+          cost: "€0.009 per onboarded profile",
+          models: "Seshat Deterministic Rule Engine + LLM"
+        },
+        'ops-dispatch': {
+          title: "Operational Inbox Triage & Dispatch",
+          cost: "€0.004 per processed email",
+          models: "Claude 3.5 Haiku"
+        },
+        'flagship': {
+          title: "Autonomous Invoice Processing & SAP Ingestion",
+          cost: "€0.018 per processed document",
+          models: "Claude 3.5 Sonnet + Line Item OCR"
+        }
+      };
+
+      const selected = map[templateId] || map['flagship'];
+      panelTitle.innerText = selected.title;
+
+      const targetCard = document.querySelector(`[data-id="${templateId}"]`);
+      if (targetCard) {
+        targetCard.classList.add('ring-2', 'ring-primary-container');
+      }
+
+      // Smooth scroll preview into view if on mobile/small screen
+      if (window.innerWidth < 1280) {
+        document.getElementById('assistantSection').scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+
+    function scrollToAssistant() {
+      selectTemplate('flagship');
+      document.getElementById('assistantSection').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Switch Catalog View (Curated vs Custom)
+    function switchCatalogView(view) {
+      const curatedBtn = document.getElementById('viewCuratedBtn');
+      const customBtn = document.getElementById('viewCustomBtn');
+
+      if (view === 'curated') {
+        curatedBtn.className = "px-space-sm py-1.5 rounded text-on-surface bg-surface-container-lowest shadow-sm font-label-md text-label-md flex items-center gap-1.5 transition-all";
+        customBtn.className = "px-space-sm py-1.5 rounded text-on-surface-variant hover:text-on-surface font-label-md text-label-md flex items-center gap-1.5 transition-all";
+        setActiveCategory(document.querySelector('.category-chip'), 'all');
+      } else {
+        customBtn.className = "px-space-sm py-1.5 rounded text-on-surface bg-surface-container-lowest shadow-sm font-label-md text-label-md flex items-center gap-1.5 transition-all";
+        curatedBtn.className = "px-space-sm py-1.5 rounded text-on-surface-variant hover:text-on-surface font-label-md text-label-md flex items-center gap-1.5 transition-all";
+        alert("Acme Corp Custom Templates: 4 internal team archetypes found. Filter applied.");
+      }
+    }
+
+    // Modal Interaction
+    function launchModal(templateName) {
+      document.getElementById('modalProjectNameInput').value = templateName;
+      const modal = document.getElementById('deployModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeModal() {
+      const modal = document.getElementById('deployModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function executeDeployment() {
+      const name = document.getElementById('modalProjectNameInput').value;
+      alert(`Success: Instantiating project pipeline '${name}'. Routing to Canvas Designer...`);
+      closeModal();
+    }
+
+    function promptConnection(target) {
+      alert(`Workspace routing: Opening connection wizard for ${target} with OAuth2 / Service Key credentials.`);
+    }
+  </script>
+</div></div></main></div></body></html>

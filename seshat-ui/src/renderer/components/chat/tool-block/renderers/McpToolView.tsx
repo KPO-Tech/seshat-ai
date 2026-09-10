@@ -1,4 +1,4 @@
-import { Section, CodeBox } from '../common'
+import { Section, CodeBox, HeaderCard } from '../common'
 import type { ToolViewProps } from '../types'
 
 const CSS = `
@@ -17,28 +17,35 @@ const CSS = `
   color: var(--color-accent);
   background: rgba(239, 124, 47, 0.1);
   border: 1px solid rgba(239, 124, 47, 0.25);
-  border-radius: 3px;
+  border-radius: 4px;
   padding: 1px 5px;
 }
 
 .tb-mcp-tool {
-  font-size: 11px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
   font-weight: 600;
   color: var(--color-text);
-  font-family: monospace;
 }
 
 .tb-mcp-args {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 0;
+  border-top: 1px solid var(--color-border-subtle);
 }
 
 .tb-mcp-arg {
-  display: flex;
-  gap: 6px;
-  font-size: 10.5px;
-  line-height: 1.5;
+  display: grid;
+  grid-template-columns: minmax(90px, max-content) minmax(0, 1fr);
+  gap: 10px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  font-size: 11px;
+  line-height: 1.45;
 }
 
 .tb-mcp-arg-key {
@@ -51,6 +58,12 @@ const CSS = `
   color: var(--color-text);
   font-family: monospace;
   overflow-wrap: anywhere;
+}
+
+.tb-mcp-empty {
+  padding: 8px 10px;
+  color: var(--color-text-muted);
+  font-size: 11px;
 }
 `
 
@@ -96,30 +109,36 @@ export function McpToolView({ tool, result }: ToolViewProps) {
   const args = Object.entries(tool.input).filter(
     ([key]) => !['tool', '_tool', 'server', '_server'].includes(key),
   )
+  const title = parsed?.server ? `MCP - ${parsed.server}` : 'MCP'
+  const toolName = parsed?.tool || tool.name
 
   return (
     <>
       <style>{CSS}</style>
 
-      <div className="tb-mcp-header">
-        {parsed?.server && <span className="tb-mcp-server">{parsed.server}</span>}
-        <span className="tb-mcp-tool">{parsed?.tool || tool.name}</span>
-      </div>
-
-      {args.length > 0 && (
-        <Section label="Arguments">
+      <HeaderCard
+        header={
+          <>
+            <span>{title}</span>
+            <span className="tb-hcard-header-path" title={toolName}>{toolName}</span>
+          </>
+        }
+      >
+        {args.length > 0 ? (
           <div className="tb-mcp-args">
             {args.map(([key, value]) => (
-              <div key={key} className="tb-mcp-arg">
-                <span className="tb-mcp-arg-key">{key}:</span>
-                <span className="tb-mcp-arg-value">
-                  {typeof value === 'string' ? value : JSON.stringify(value)}
-                </span>
-              </div>
-            ))}
+                <div key={key} className="tb-mcp-arg">
+                  <span className="tb-mcp-arg-key">{key}</span>
+                  <span className="tb-mcp-arg-value">
+                    {typeof value === 'string' ? value : JSON.stringify(value)}
+                  </span>
+                </div>
+              ))}
           </div>
-        </Section>
-      )}
+        ) : (
+          <div className="tb-mcp-empty">No arguments.</div>
+        )}
+      </HeaderCard>
 
       {result?.content && !result.isError && (
         <Section label="Result">

@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"unicode"
 
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
@@ -814,6 +815,133 @@ func (s *Service) UpdateSessionMetadata(ctx context.Context, principal *backenda
 		}
 	}
 	return nil
+}
+
+// EnsureInitialSessionTitle gives a new chat a readable title before the first
+// assistant tokens arrive. The SDK can still replace it later with its richer
+// async title, but users should not stare at "Untitled conversation" during
+// the first generation.
+func (s *Service) EnsureInitialSessionTitle(ctx context.Context, principal *backendauth.Principal, sessionID, prompt string) (string, error) {
+	if s == nil {
+		return "", bkerr.Unavailable("query service not configured", nil)
+	}
+	sessionID = strings.TrimSpace(sessionID)
+	if sessionID == "" {
+		return "", bkerr.InvalidInput("session_id is required", nil)
+	}
+	if s.ownership == nil {
+		return "", nil
+	}
+	if err := s.checkSessionAccess(ctx, principal, sessionID); err != nil {
+		return "", err
+	}
+	ownership, err := s.ownership.GetBySessionID(ctx, sessionID)
+	if err != nil {
+		return "", bkerr.NotFound("session not found", err)
+	}
+	if !isUntitledSessionTitle(ownership.Title) {
+		return "", nil
+	}
+	title := initialTitleFromPrompt(prompt)
+	if title == "" || isUntitledSessionTitle(title) {
+		return "", nil
+	}
+	if err := s.ownership.UpdateTitle(ctx, sessionID, title); err != nil {
+		return "", bkerr.Internal("update session title: "+err.Error(), err)
+	}
+	return title, nil
+}
+
+func isUntitledSessionTitle(title string) bool {
+	switch strings.ToLower(strings.TrimSpace(title)) {
+	case "", "untitled conversation", "new chat":
+		return true
+	default:
+		return false
+	}
+}
+
+func initialTitleFromPrompt(prompt string) string {
+	text := strings.TrimSpace(prompt)
+	if text == "" {
+		return ""
+	}
+	text = stripURLs(text)
+	text = strings.Map(func(r rune) rune {
+		switch {
+		case r == '\n' || r == '\r' || r == '\t':
+			return ' '
+		case unicode.IsLetter(r) || unicode.IsDigit(r):
+			return r
+		case r == '\'' || r == '-' || r == '_' || r == '/' || r == ':':
+			return r
+		case unicode.IsSpace(r):
+			return ' '
+		default:
+			return ' '
+		}
+	}, text)
+	words := strings.Fields(text)
+	for len(words) > 0 && isWeakTitleLead(words[0]) {
+		words = words[1:]
+	}
+	if len(words) == 0 {
+		return ""
+	}
+	title := strings.Join(words, " ")
+	if len([]rune(title)) > 64 {
+		title = truncateTitle(title, 64)
+	}
+	title = strings.Trim(title, " -_/:")
+	if title == "" {
+		return ""
+	}
+	return uppercaseFirst(title)
+}
+
+func stripURLs(text string) string {
+	parts := strings.Fields(text)
+	for i, part := range parts {
+		lower := strings.ToLower(part)
+		if strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://") {
+			parts[i] = ""
+		}
+	}
+	return strings.Join(parts, " ")
+}
+
+func isWeakTitleLead(word string) bool {
+	cleaned := strings.ToLower(strings.Trim(word, " -_/:"))
+	switch cleaned {
+	case "salut", "hello", "hi", "bonjour", "stp", "svp", "please", "peux", "peux-tu", "cherche", "cherches", "recherche", "fais", "donne", "explique", "aide":
+		return true
+	default:
+		return false
+	}
+}
+
+func truncateTitle(title string, maxRunes int) string {
+	runes := []rune(title)
+	if len(runes) <= maxRunes {
+		return title
+	}
+	cut := maxRunes
+	for cut > 36 && !unicode.IsSpace(runes[cut-1]) {
+		cut--
+	}
+	if cut <= 36 {
+		cut = maxRunes
+	}
+	return strings.TrimSpace(string(runes[:cut]))
+}
+
+func uppercaseFirst(title string) string {
+	runes := []rune(title)
+	if len(runes) == 0 {
+		return title
+	}
+	runes[0] = unicode.ToUpper(runes[0])
+	return string(runes)
 }
 
 func (s *Service) ResolveExecutionPolicy(ctx context.Context, principal *backendauth.Principal, sessionID string, requestedMode, fallbackMode types.PermissionMode, requestedOrigin types.ExecutionOrigin) (types.PermissionMode, types.ExecutionOrigin, error) {

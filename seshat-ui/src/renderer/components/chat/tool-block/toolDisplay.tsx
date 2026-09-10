@@ -15,6 +15,7 @@ import { JsonToolView } from './renderers/JsonToolView'
 import { ListDirectoryToolView } from './renderers/ListDirectoryToolView'
 import { MathToolView } from './renderers/MathToolView'
 import { McpToolView } from './renderers/McpToolView'
+import { NotebookToolView } from './renderers/NotebookToolView'
 import { PatchToolView } from './renderers/PatchToolView'
 import { ProseToolView } from './renderers/ProseToolView'
 import { RagSearchToolView } from './renderers/RagSearchToolView'
@@ -128,7 +129,7 @@ const TOOL_REGISTRY: Record<string, ToolDisplayEntry> = {
     },
   },
 
-  ask_user_question: { label: 'Ask User Question', groupable: false, render: AskUserToolView },
+  ask_user_question: { label: 'Ask User', groupable: false, render: AskUserToolView },
 
   // File tools with no user-visible output worth showing inline.
   read: { label: 'Read', category: 'read', render: ReadToolView, silent: true, snippet: (t) => str(t, 'file_path') ? basename(str(t, 'file_path')) : '', soloLabel: (t) => str(t, 'file_path') ? `Read ${basename(str(t, 'file_path'))}` : null },
@@ -273,13 +274,13 @@ const TOOL_REGISTRY: Record<string, ToolDisplayEntry> = {
   // .content (a cell dump, a per-op result list, kernel status) rather than
   // structured fields worth a bespoke layout; the fix is dropping the raw
   // input-JSON dump and showing that text as prose.
-  notebook_create: { label: 'Create Notebook', render: ProseToolView, snippet: (t) => basename(str(t, 'notebook_path') || str(t, 'path')) },
-  notebook_read: { label: 'Read Notebook', category: 'read', render: ProseToolView, snippet: (t) => basename(str(t, 'notebook_path') || str(t, 'path')) },
-  notebook_write: { label: 'Write Notebook', category: 'write', render: ProseToolView, snippet: (t) => basename(str(t, 'notebook_path') || str(t, 'path')) },
-  notebook_edit: { label: 'Edit Notebook', category: 'edit', render: ProseToolView, snippet: (t) => basename(str(t, 'notebook_path') || str(t, 'path')) },
-  notebook_execute: { label: 'Execute Notebook', render: ProseToolView, snippet: (t) => basename(str(t, 'notebook_path') || str(t, 'path')) },
-  notebook_run: { label: 'Run Notebook Cell', render: ProseToolView },
-  notebook_kernel: { label: 'Notebook Kernel', render: ProseToolView },
+  notebook_create: { label: 'Create Notebook', render: NotebookToolView, snippet: (t) => basename(str(t, 'notebook_path') || str(t, 'path')) },
+  notebook_read: { label: 'Read Notebook', category: 'read', render: NotebookToolView, snippet: (t) => basename(str(t, 'notebook_path') || str(t, 'path')) },
+  notebook_write: { label: 'Write Notebook', category: 'write', render: NotebookToolView, snippet: (t) => basename(str(t, 'notebook_path') || str(t, 'path')) },
+  notebook_edit: { label: 'Edit Notebook', category: 'edit', render: NotebookToolView, snippet: (t) => basename(str(t, 'notebook_path') || str(t, 'path')) },
+  notebook_execute: { label: 'Execute Notebook', render: NotebookToolView, snippet: (t) => basename(str(t, 'notebook_path') || str(t, 'path')) },
+  notebook_run: { label: 'Run Notebook Cell', render: NotebookToolView },
+  notebook_kernel: { label: 'Notebook Kernel', render: NotebookToolView },
 
   // Plan mode support tools - no user-facing input/output of their own
   // (enter_plan_mode/exit_plan_mode never even reach this registry, see

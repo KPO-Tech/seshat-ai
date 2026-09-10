@@ -1,46 +1,62 @@
-import { CodeBox, Section } from '../common'
+import { Copy } from '@icon-park/react'
 import { fmtDuration, parseBashResult } from '../helpers'
 import type { ToolViewProps } from '../types'
+
+function BashPanel({
+  label,
+  content,
+  tone = 'default',
+  copyable = false,
+}: {
+  label: string
+  content: string
+  tone?: 'default' | 'error'
+  copyable?: boolean
+}) {
+  if (!content) return null
+  return (
+    <div className={`tb-bash-panel tb-bash-panel--${tone}`}>
+      <div className="tb-bash-panel-label">{label}</div>
+      <pre className="tb-bash-pre">{content}</pre>
+      {copyable && (
+        <button
+          className="tb-bash-copy"
+          type="button"
+          aria-label="Copy"
+          onClick={() => void navigator.clipboard.writeText(content)}
+        >
+          <Copy size={10} />
+        </button>
+      )}
+    </div>
+  )
+}
 
 export function BashToolView({ tool, result }: ToolViewProps) {
   const command = (tool.input.command as string) ?? ''
   const parsed = parseBashResult(result)
+  const showResultError = Boolean(result?.isError && result.content && result.content !== parsed?.stderr)
 
   return (
-    <>
-      <Section label="Command">
-        <CodeBox content={command} language="bash" />
-      </Section>
+    <div className="tb-bash">
+      <BashPanel label="Command" content={command} copyable />
 
       {parsed?.stdout != null && (
-        <Section label="Output">
-          <CodeBox content={parsed.stdout} copyable />
-        </Section>
+        <BashPanel label="Output" content={parsed.stdout || '(no output)'} copyable />
       )}
 
       {parsed?.stderr && (
-        <Section label="Errors">
-          <CodeBox content={parsed.stderr} variant="error" copyable />
-        </Section>
+        <BashPanel label="Error" content={parsed.stderr} tone="error" copyable />
       )}
 
       {parsed != null && parsed.exitCode != null && (
-        <div className="tb-footer">
+        <div className="tb-bash-meta">
           <span>Exit code: {parsed.exitCode}</span>
           {result?.durationMs != null && <span>Duration: {fmtDuration(result.durationMs)}</span>}
         </div>
       )}
 
-      {/* Covers both a real failed execution (non-zero exit, stderr already
-          shown above) and a command blocked before it ever ran (denied
-          permission, sandbox rejection) - in that second case there's no
-          stdout/stderr/exit_code at all, just this message, and it's the
-          only place the reason for the failure is visible. */}
-      {result?.isError && result.content && (
-        <Section label="Error">
-          <pre className="tb-pre tb-pre--error">{result.content}</pre>
-        </Section>
-      )}
-    </>
+      {showResultError && <BashPanel label="Error" content={result?.content ?? ''} tone="error" copyable />}
+    </div>
   )
 }

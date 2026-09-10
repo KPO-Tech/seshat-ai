@@ -36,6 +36,20 @@ func (c *Client) ResolveProviderSetting(ctx context.Context, token, organization
 	return &result, nil
 }
 
+// ListUsableProviderSettings calls the member-safe picker endpoint. Unlike the
+// admin CRUD list, this exposes only settings the caller can actually use and
+// never includes API keys.
+func (c *Client) ListUsableProviderSettings(ctx context.Context, token, organizationID string) ([]OrgProviderSetting, error) {
+	q := url.Values{"organization_id": {organizationID}}
+	var payload struct {
+		ProviderSettings []OrgProviderSetting `json:"provider_settings"`
+	}
+	if _, err := cloudhttp.Do(ctx, c.httpClient, http.MethodGet, c.serverURL+"/api/v1/provider-settings/usable?"+q.Encode(), token, nil, &payload); err != nil {
+		return nil, err
+	}
+	return payload.ProviderSettings, nil
+}
+
 // ─── Admin CRUD (organization-wide, seshat-backend's own Admin Console) ────────
 //
 // Unlike ResolveProviderSetting above (any org member, read-only, decrypted

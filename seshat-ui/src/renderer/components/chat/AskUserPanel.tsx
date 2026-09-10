@@ -55,6 +55,7 @@ export function AskUserPanel({ tool, onSubmitPrompt }: Props) {
   const pastAnswer = !isActive ? askUserAnswers[`${tool.id}:${viewIndex}`] : undefined
 
   function toggleValue(value: string) {
+    setCustomAnswer('')
     if (!question.multiSelect) {
       setSelectedValues([value])
       return
@@ -103,30 +104,36 @@ export function AskUserPanel({ tool, onSubmitPrompt }: Props) {
   }
 
   const canSubmit = !isActive || Boolean(customAnswer.trim()) || selectedValues.length > 0
+  const hasCustomAnswer = Boolean(customAnswer.trim())
 
   return (
     <div className="askp-root">
       <style>{ASK_PANEL_CSS}</style>
 
-      {questions.length > 1 && (
-        <div className="askp-steps">
-          {questions.map((q, i) => (
-            <span
-              key={i}
-              className={`askp-step${i === viewIndex ? ' askp-step--current' : ''}${i < activeIndex ? ' askp-step--done' : ''}`}
-              title={q.header || q.question}
-            >
-              {q.header || `Q${i + 1}`}
-            </span>
-          ))}
+      <div className="askp-head">
+        <div className="askp-title">
+          <span className="askp-title-icon">?</span>
+          <span>Ask User</span>
         </div>
-      )}
-
-      <div className="askp-body">
+        {questions.length > 1 && (
+          <div className="askp-steps">
+            {questions.map((q, i) => (
+              <span
+                key={i}
+                className={`askp-step${i === viewIndex ? ' askp-step--current' : ''}${i < activeIndex ? ' askp-step--done' : ''}`}
+                title={q.header || q.question}
+              >
+                {q.header || `Q${i + 1}`}
+              </span>
+            ))}
+          </div>
+        )}
         {questions.length > 1 && (
           <div className="askp-progress">Question {viewIndex + 1} of {questions.length}</div>
         )}
+      </div>
 
+      <div className="askp-body">
         <div className="askp-question">{question.question}</div>
 
         {pastAnswer !== undefined ? (
@@ -145,21 +152,31 @@ export function AskUserPanel({ tool, onSubmitPrompt }: Props) {
                     className={`askp-option${selectedValues.includes(option.label) ? ' askp-option--selected' : ''}`}
                     onClick={() => toggleValue(option.label)}
                   >
-                    <span className="askp-option-label">{option.label}</span>
-                    {option.description && (
-                      <span className="askp-option-description">{option.description}</span>
-                    )}
+                    <span className="askp-radio" aria-hidden="true" />
+                    <span className="askp-option-copy">
+                      <span className="askp-option-label">{option.label}</span>
+                      {option.description && (
+                        <span className="askp-option-description">{option.description}</span>
+                      )}
+                    </span>
                   </button>
                 ))}
               </div>
             )}
-            <textarea
-              className="askp-textarea"
-              rows={question.options.length > 0 ? 2 : 3}
-              value={customAnswer}
-              onChange={(event) => setCustomAnswer(event.target.value)}
-              placeholder={question.options.length > 0 ? 'Or type your own answer…' : 'Type your answer…'}
-            />
+            <label className={`askp-custom${hasCustomAnswer ? ' askp-custom--active' : ''}`}>
+              <span className="askp-radio" aria-hidden="true" />
+              <textarea
+                className="askp-textarea"
+                rows={question.options.length > 0 ? 1 : 2}
+                value={customAnswer}
+                onChange={(event) => {
+                  const value = event.target.value
+                  setCustomAnswer(value)
+                  if (value.trim()) setSelectedValues([])
+                }}
+                placeholder={question.options.length > 0 ? 'Autre reponse...' : 'Type your answer...'}
+              />
+            </label>
           </>
         )}
       </div>
@@ -185,61 +202,129 @@ const ASK_PANEL_CSS = `
 .askp-root {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin: 0 24px 10px;
-  padding: 14px 16px;
-  border-radius: 12px;
-  border: 1px solid rgba(239, 124, 47, 0.22);
-  background: rgba(239, 124, 47, 0.05);
+  gap: 0;
+  width: min(780px, calc(100% - 32px));
+  margin: 0 auto 10px;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 26%, var(--color-border-subtle));
+  background: color-mix(in srgb, var(--color-surface-elevated) 62%, var(--color-bg));
+  box-shadow: 0 14px 34px rgba(31, 27, 23, 0.07);
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.askp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 48px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.askp-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.askp-title-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 22%, var(--color-border-subtle));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-bg));
+  color: var(--color-accent);
+  font-size: 14px;
+  font-weight: 750;
 }
 
 .askp-steps {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0;
+  margin-left: auto;
 }
 
 .askp-step {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.04);
+  font-weight: 650;
+  padding: 2px 8px 2px 18px;
+  border-radius: 0;
+  background: transparent;
   color: var(--color-text-muted);
-  max-width: 160px;
+  max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.askp-step::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.askp-step + .askp-step {
+  border-left: 1px solid var(--color-border-subtle);
+}
+
 .askp-step--done {
-  background: rgba(var(--color-success-rgb), 0.12);
   color: var(--color-success);
 }
 
+.askp-step--done::before {
+  border-color: color-mix(in srgb, var(--color-success) 45%, var(--color-border));
+  background: color-mix(in srgb, var(--color-success) 18%, var(--color-bg));
+}
+
 .askp-step--current {
-  background: rgba(239, 124, 47, 0.16);
   color: var(--color-accent);
+}
+
+.askp-step--current::before {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
 }
 
 .askp-body {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 9px;
+  padding: 12px;
 }
 
 .askp-progress {
-  font-size: 10px;
+  font-size: 9px;
   color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 
 .askp-question {
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 650;
   color: var(--color-text);
 }
 
@@ -251,64 +336,123 @@ const ASK_PANEL_CSS = `
 
 .askp-option {
   border: 1px solid var(--color-border-subtle);
-  border-radius: 10px;
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.02);
+  border-radius: 7px;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--color-bg) 92%, var(--color-surface));
   width: 100%;
   text-align: left;
   cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  transition: border-color 0.12s, background 0.12s, box-shadow 0.12s;
+}
+
+.askp-option:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 18%, var(--color-border-subtle));
+  background: color-mix(in srgb, var(--color-surface-elevated) 38%, var(--color-bg));
 }
 
 .askp-option--selected {
-  border-color: rgba(var(--color-success-rgb), 0.3);
-  background: rgba(var(--color-success-rgb), 0.08);
+  border-color: color-mix(in srgb, var(--color-primary) 34%, var(--color-border-subtle));
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-bg));
+}
+
+.askp-option--selected .askp-radio,
+.askp-custom--active .askp-radio {
+  border-color: var(--color-primary);
+  box-shadow: inset 0 0 0 4px var(--color-bg);
+  background: var(--color-primary);
+}
+
+.askp-radio {
+  width: 13px;
+  height: 13px;
+  border: 1.5px solid var(--color-border);
+  border-radius: 50%;
+  background: var(--color-bg);
+  flex-shrink: 0;
+}
+
+.askp-option-copy {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.85fr) minmax(0, 1.15fr);
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
 }
 
 .askp-option-label {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 650;
   color: var(--color-text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .askp-option-description {
-  font-size: 12px;
-  line-height: 1.4;
+  font-size: 11.5px;
+  line-height: 1.3;
   color: var(--color-text-muted);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.askp-custom {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--color-bg) 92%, var(--color-surface));
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.askp-custom:focus-within {
+  border-color: color-mix(in srgb, var(--color-primary) 34%, var(--color-border-subtle));
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-bg));
 }
 
 .askp-textarea {
   width: 100%;
-  resize: vertical;
-  min-height: 48px;
-  border-radius: 10px;
-  border: 1px solid var(--color-border-subtle);
-  background: rgba(0, 0, 0, 0.24);
+  resize: none;
+  min-height: 24px;
+  max-height: 58px;
+  border: 0;
+  background: transparent;
   color: var(--color-text);
-  padding: 8px 10px;
+  padding: 3px 0 0;
   font: inherit;
-  font-size: 13px;
-  line-height: 1.45;
+  font-size: 12px;
+  line-height: 1.35;
   outline: none;
 }
 
 .askp-textarea:focus {
-  border-color: rgba(239, 124, 47, 0.32);
+  border-color: transparent;
 }
 
 .askp-answer {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.03);
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 8px;
+  align-items: baseline;
+  padding: 6px 8px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--color-success) 8%, var(--color-bg));
 }
 
 .askp-answer-label {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -316,24 +460,30 @@ const ASK_PANEL_CSS = `
 }
 
 .askp-answer-value {
-  font-size: 13px;
+  font-size: 11px;
   color: var(--color-text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .askp-footer {
   display: flex;
   justify-content: space-between;
   gap: 8px;
+  padding: 0 12px 12px;
 }
 
 .askp-nav {
   border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
-  padding: 7px 14px;
-  background: rgba(255, 255, 255, 0.02);
+  border-radius: 6px;
+  min-width: 64px;
+  padding: 6px 12px;
+  background: color-mix(in srgb, var(--color-bg) 76%, var(--color-surface));
   color: var(--color-text-muted);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 650;
   cursor: pointer;
 }
 
@@ -343,9 +493,34 @@ const ASK_PANEL_CSS = `
 }
 
 .askp-nav--primary {
-  border-color: rgba(var(--color-success-rgb), 0.3);
-  background: rgba(var(--color-success-rgb), 0.14);
-  color: var(--color-success);
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: white;
   margin-left: auto;
+}
+
+@media (max-width: 760px) {
+  .askp-option {
+    align-items: start;
+  }
+
+  .askp-option-copy {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .askp-option-description {
+    white-space: normal;
+  }
+
+  .askp-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .askp-steps {
+    width: 100%;
+    justify-content: flex-start;
+  }
 }
 `

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { CodeBox, Section } from '../common'
-import { parseAskUserAnswers, resolveAskUserQuestions, splitSelectedAnswer } from '../helpers'
+import { parseAskUserAnswers, resolveAskUserQuestions } from '../helpers'
 import type { ToolViewProps } from '../types'
 import { GenericToolView } from './GenericToolView'
 
@@ -27,58 +27,21 @@ export function AskUserToolView({ tool, result, status }: ToolViewProps) {
   }
 
   return (
-    <>
+    <div className="tb-ask-summary">
       {questions.map((question, index) => {
         const answer = answers.get(question.question) ?? ''
-        const selectedLabels = splitSelectedAnswer(answer)
-        const hasKnownSelection = selectedLabels.some((label) =>
-          question.options.some((option) => option.label === label),
-        )
-        const customAnswerSummary = answer && !hasKnownSelection ? answer : ''
 
         return (
-          <div key={`${question.header}-${index}`} className="tb-ask-card">
-            <div className="tb-ask-card-top">
-              <span className="tb-ask-chip">
-                {question.header || `Question ${index + 1}`}
-              </span>
-              {question.multiSelect && (
-                <span className="tb-ask-meta">Multi-select</span>
+          <div key={`${question.header}-${index}`} className="tb-ask-qa">
+            <span className="tb-ask-qa-index">{index + 1}</span>
+            <div className="tb-ask-qa-copy">
+              <div className="tb-ask-question">{question.question}</div>
+              {answer ? (
+                <div className="tb-ask-answer-value">{answer}</div>
+              ) : (
+                <div className="tb-ask-note">No answer recorded yet.</div>
               )}
             </div>
-
-            <div className="tb-ask-question">{question.question}</div>
-
-            {question.options.length > 0 && (
-              <div className="tb-ask-options">
-                {question.options.map((option) => (
-                  <div
-                    key={option.label}
-                    className={`tb-ask-option tb-ask-option--readonly${selectedLabels.includes(option.label) ? ' tb-ask-option--selected' : ''}`}
-                  >
-                    <div className="tb-ask-option-copy">
-                      <span className="tb-ask-option-label">{option.label}</span>
-                      {option.description && (
-                        <span className="tb-ask-option-description">{option.description}</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {answer && (
-              <div className="tb-ask-answer">
-                <span className="tb-ask-answer-label">Answer</span>
-                <span className="tb-ask-answer-value">{answer}</span>
-              </div>
-            )}
-
-            {customAnswerSummary && (
-              <div className="tb-ask-note">
-                Custom user input was provided for this question.
-              </div>
-            )}
           </div>
         )
       })}
@@ -92,6 +55,6 @@ export function AskUserToolView({ tool, result, status }: ToolViewProps) {
           <CodeBox content={result.content} variant="error" copyable />
         </Section>
       )}
-    </>
+    </div>
   )
 }
