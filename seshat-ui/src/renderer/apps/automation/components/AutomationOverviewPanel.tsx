@@ -58,10 +58,7 @@ export function AutomationOverviewPanel({
       <style>{OVERVIEW_DASH_CSS}</style>
 
       <header className="au-dash-header">
-        <div>
-          <span className="au-dash-eyebrow">{stats.total_projects} project{stats.total_projects === 1 ? '' : 's'} total</span>
-          <h1>Overview</h1>
-        </div>
+        <h1>Overview</h1>
         <button type="button" className="au-save-btn" onClick={onNew}>
           <Plus size={14} /> New automation
         </button>
@@ -284,21 +281,13 @@ const OVERVIEW_DASH_CSS = `
 
 .au-dash-header {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
 }
 
-.au-dash-eyebrow {
-  font-size: var(--font-size-2xs);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-primary);
-}
-
 .au-dash-header h1 {
-  margin: 2px 0 0;
+  margin: 0;
   font-size: var(--font-size-3xl);
   font-weight: 700;
   color: var(--color-text);

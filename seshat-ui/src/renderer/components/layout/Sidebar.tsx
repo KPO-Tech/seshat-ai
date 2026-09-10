@@ -223,7 +223,7 @@ export function Sidebar() {
               )}
               <SidebarItem
                 icon={<Browser theme="outline" size={16} />}
-                label="Apps"
+                label="Seshat-Labs"
                 collapsed={collapsed}
                 active={pathname.startsWith('/apps') || pathname.startsWith('/automation') || pathname.startsWith('/teams')}
                 onClick={() => navigate('/apps')}

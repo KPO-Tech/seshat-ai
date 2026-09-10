@@ -148,7 +148,7 @@ export function AppsPage() {
 
       <main className="apps-content">
         <section className="apps-toolbar">
-          <h1>Apps</h1>
+          <h1>Seshat-Labs</h1>
           <div className="apps-toolbar-controls">
             <div className="apps-filters" aria-label="App categories">
               {FILTERS.map((filter) => (
