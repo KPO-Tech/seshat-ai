@@ -2,26 +2,29 @@ import { useNavigate, useLocation } from 'react-router'
 import {
   Plus,
   Search,
+  SettingTwo,
+  Message,
   Down,
   Right,
   Delete,
   Edit,
   Time,
   History,
+  Shield,
   Workbench,
   Browser,
 } from '@icon-park/react'
 import { useUIStore } from '@/stores/ui'
 import { useSessionStore } from '@/stores/session'
+import { NexusLogo } from '@/components/NexusLogo'
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '@/api/client'
 import { UNTITLED_SESSION_TITLE } from '@/lib/sessionTitle'
 import { deleteSession } from '@/lib/deleteSession'
 import { SearchModal } from './SearchModal'
+import { useSettingsMenu } from './useSettingsMenu'
 
 const PROJECTS_STORAGE_KEY = 'seshat.projects.v1'
-
-type SystemStatus = { mode: 'standalone' | 'connected'; server_url?: string }
 
 function normalizeProjectPath(path: string): string {
   return path.trim().replace(/[\\/]+$/, '')
@@ -53,12 +56,8 @@ export function Sidebar() {
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
-  const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null)
-
-  useEffect(() => {
-    api.get<SystemStatus>('/system/status').then(setSystemStatus).catch(() => setSystemStatus(null))
-  }, [])
-  const connected = systemStatus?.mode === 'connected'
+  const [consoleMenuOpen, setConsoleMenuOpen] = useState(false)
+  const { isAdmin, connected, go } = useSettingsMenu()
 
   const width = collapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)'
   const projectParam = new URLSearchParams(search).get('project')
@@ -99,7 +98,9 @@ export function Sidebar() {
     function handlePointerDown(event: MouseEvent) {
       const target = event.target as HTMLElement | null
       if (target?.closest('.sb-recent-menu-wrap')) return
+      if (target?.closest('.sb-console-wrap')) return
       setMenuSessionId(null)
+      setConsoleMenuOpen(false)
     }
     document.addEventListener('mousedown', handlePointerDown)
     return () => document.removeEventListener('mousedown', handlePointerDown)
@@ -301,6 +302,51 @@ export function Sidebar() {
               )}
             </div>
           )}
+        </div>
+
+        {/* Footer */}
+        <div className="sb-footer">
+          <div className="sb-console-wrap">
+            <button
+              className={`sb-console-btn${consoleMenuOpen ? ' open' : ''}${collapsed ? ' collapsed' : ''}`}
+              onClick={() => setConsoleMenuOpen((open) => !open)}
+              aria-label={collapsed ? 'Seshat menu' : undefined}
+              aria-expanded={consoleMenuOpen}
+              aria-haspopup="menu"
+            >
+              <NexusLogo size={collapsed ? 22 : 18} />
+              {!collapsed && (
+                <>
+                  <span>SeshatOS</span>
+                  <Down size={12} />
+                </>
+              )}
+            </button>
+
+            {consoleMenuOpen && (
+              <div className={`sb-console-menu${collapsed ? ' collapsed' : ''}`} role="menu">
+                <button type="button" role="menuitem" onClick={() => { setConsoleMenuOpen(false); go('settings') }}>
+                  <SettingTwo theme="outline" size={14} />
+                  <span>Settings</span>
+                </button>
+                <button type="button" role="menuitem" onClick={() => { setConsoleMenuOpen(false); go('feedback') }}>
+                  <Message theme="outline" size={14} />
+                  <span>Feedback</span>
+                </button>
+                {connected && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={!isAdmin}
+                    onClick={() => { setConsoleMenuOpen(false); go('admin') }}
+                  >
+                    <Shield theme="outline" size={14} />
+                    <span>Admin</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </aside>
 
@@ -647,5 +693,100 @@ const SIDEBAR_CSS = `
   font-size: var(--font-size-2xs);
   color: var(--color-text-muted);
   font-style: italic;
+}
+
+.sb-footer {
+  margin-top: 12px;
+  padding: 10px 10px 16px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.sb-console-wrap {
+  position: relative;
+  min-width: 0;
+}
+
+.sb-console-btn {
+  width: 100%;
+  background: none;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 8px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sb-console-btn.collapsed {
+  width: 36px;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.sb-console-btn span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sb-console-btn:hover,
+.sb-console-btn.open {
+  background: var(--color-hover);
+  color: var(--color-text);
+}
+
+.sb-console-menu {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 10px);
+  min-width: 190px;
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-menu-bg);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.28);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 50;
+}
+
+.sb-console-menu.collapsed {
+  left: 0;
+  bottom: calc(100% + 8px);
+  min-width: 164px;
+}
+
+.sb-console-menu button {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  border-radius: 7px;
+  padding: 8px 9px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-sm);
+  font-weight: 650;
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.sb-console-menu button:hover:not(:disabled) {
+  background: var(--color-hover);
+}
+
+.sb-console-menu button:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 `

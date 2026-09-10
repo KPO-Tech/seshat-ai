@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router'
-import { Home, Left, Right } from '@icon-park/react'
+import { Home, Left, Right, SunOne, Moon } from '@icon-park/react'
 import { NexusLogo } from '@/components/NexusLogo'
 import { WindowCloseIcon, WindowMaximizeIcon, WindowMinimizeIcon } from '@/components/ui/WindowControlIcon'
+import { useUIStore } from '@/stores/ui'
 
 type Props = {
   left?: ReactNode
@@ -66,6 +67,25 @@ export function Titlebar({ left, center, right }: Props) {
         </button>
       </div>
     </div>
+  )
+}
+
+// Kept in the titlebar (unlike Settings/Feedback/Admin, which live back in
+// each app's own footer nav - see Sidebar/AutomationPage/KnowledgePage) since
+// it's a single one-click toggle with no menu to get lost in, and every
+// screen already has a titlebar regardless of whether it has a sidebar.
+export function ThemeToggleButton() {
+  const theme = useUIStore((s) => s.theme)
+  const toggleTheme = useUIStore((s) => s.toggleTheme)
+  return (
+    <button
+      type="button"
+      className="tb-theme-btn"
+      onClick={toggleTheme}
+      aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+    >
+      {theme === 'dark' ? <SunOne size={14} /> : <Moon size={14} />}
+    </button>
   )
 }
 
@@ -168,6 +188,25 @@ export const TITLEBAR_CSS = `
   height: 18px;
   background: var(--color-border-subtle);
   margin: 0 4px;
+}
+
+.tb-theme-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  width: 28px;
+  height: 28px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.tb-theme-btn:hover {
+  background: var(--color-hover);
+  color: var(--color-text);
 }
 
 .tb-sys-btn {

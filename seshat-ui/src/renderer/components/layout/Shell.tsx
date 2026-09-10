@@ -1,11 +1,10 @@
 import { Outlet, useLocation } from 'react-router'
 import { useEffect, useRef } from 'react'
 import { Sidebar } from './Sidebar'
-import { GlobalMenu, ThemeToggleButton } from './GlobalMenu'
 import { RightPanelHost } from './RightPanelHost'
 import { ImageLightbox } from './ImageLightbox'
 import { ErrorBoundary } from './ErrorBoundary'
-import { Titlebar } from './Titlebar'
+import { Titlebar, ThemeToggleButton } from './Titlebar'
 import { useUIStore } from '@/stores/ui'
 import { useSessionStore } from '@/stores/session'
 import { api } from '@/api/client'
@@ -124,12 +123,7 @@ export function Shell() {
       
       <Titlebar
         center="SeshatOS"
-        right={
-          <>
-            <ThemeToggleButton />
-            <GlobalMenu />
-          </>
-        }
+        right={<ThemeToggleButton />}
         left={
           <button
             className="tb-toggle-btn"

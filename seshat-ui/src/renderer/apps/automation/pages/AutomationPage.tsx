@@ -2,9 +2,11 @@
 import { useNavigate, useParams, useLocation, useSearchParams, useBlocker } from 'react-router'
 import { Modal } from '@arco-design/web-react'
 import {
-  Left, Setting, CheckOne, Home, List, ApplicationOne, DataOne, Help as HelpIcon,
-  Delete as DeleteIcon, LoadingOne, History, Branch, ShareOne,
+  Left, Setting, SettingTwo, Message, Shield, CheckOne, Home, List, ApplicationOne, DataOne, Help as HelpIcon,
+  Delete as DeleteIcon, LoadingOne, History, Branch, ShareOne, Down,
 } from '@icon-park/react'
+import { NexusLogo } from '@/components/NexusLogo'
+import { useSettingsMenu } from '@/components/layout/useSettingsMenu'
 import { api, ApiError } from '@/api/client'
 import type { Agent, ProviderModel } from '@/api/types'
 import { fetchProviderModels, useProviders } from '@/hooks/useProviders'
@@ -70,6 +72,11 @@ export function AutomationPage() {
   // (per-org vs. public-community sharing), but the slot is here now so
   // the feature isn't lost track of once that lands.
   const [shareComingSoon, setShareComingSoon] = useState(false)
+  // Account-level Settings/Feedback/Admin, in the rail's own footer spot
+  // (see automation-app-pages.md's own nav conventions) - distinct from
+  // settingsOpen above, which toggles this one job's own Job Settings modal.
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false)
+  const { isAdmin: isAccountAdmin, connected: accountConnected, go: goAccountMenu } = useSettingsMenu()
   // A job route can carry ?tab=runs&runId=<id> - Overview's Attention/
   // Activity rows deep-link straight into a run's replay this way (see the
   // template-seeding effect below for the precedent: a query param, not
@@ -315,6 +322,16 @@ export function AutomationPage() {
       .catch((err) => setNodeTypesError(err instanceof ApiError ? err.message : 'Unable to load node types.'))
       .finally(() => setNodeTypesLoading(false))
   }, [isOverview, railView, nodeTypes.length])
+
+  useEffect(() => {
+    function handlePointerDown(event: MouseEvent) {
+      const target = event.target as HTMLElement | null
+      if (target?.closest('.au-rail-settings-wrap')) return
+      setAccountMenuOpen(false)
+    }
+    document.addEventListener('mousedown', handlePointerDown)
+    return () => document.removeEventListener('mousedown', handlePointerDown)
+  }, [])
 
   // Load the existing job when editing. If the ID belongs to a prompt job,
   // keep Automation isolated and return to its own overview instead of
@@ -656,13 +673,49 @@ export function AutomationPage() {
               <DataOne size={16} />
               <span>Variables</span>
             </button>
-
-            <span className="au-rail-spacer" />
-            <span className="au-rail-divider" />
             <button type="button" className={`au-rail-btn ${railView === 'help' ? 'active' : ''}`} onClick={() => setRailView('help')}>
               <HelpIcon size={16} />
               <span>Help</span>
             </button>
+
+            <span className="au-rail-spacer" />
+            <span className="au-rail-divider" />
+            <div className="au-rail-settings-wrap">
+              <button
+                type="button"
+                className={`au-rail-btn au-rail-settings-btn${accountMenuOpen ? ' open' : ''}`}
+                onClick={() => setAccountMenuOpen((open) => !open)}
+                aria-haspopup="menu"
+                aria-expanded={accountMenuOpen}
+              >
+                <NexusLogo size={16} />
+                <span>SeshatOS</span>
+                <Down size={12} />
+              </button>
+              {accountMenuOpen && (
+                <div className="au-rail-settings-menu" role="menu">
+                  <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); goAccountMenu('settings') }}>
+                    <SettingTwo theme="outline" size={14} />
+                    <span>Settings</span>
+                  </button>
+                  <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); goAccountMenu('feedback') }}>
+                    <Message theme="outline" size={14} />
+                    <span>Feedback</span>
+                  </button>
+                  {accountConnected && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={!isAccountAdmin}
+                      onClick={() => { setAccountMenuOpen(false); goAccountMenu('admin') }}
+                    >
+                      <Shield theme="outline" size={14} />
+                      <span>Admin</span>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </nav>
         )}
 
