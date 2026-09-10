@@ -101,31 +101,38 @@
   position: relative;
 }
 
+/* A real sidebar (automation-app-pages.md §4: Overview/Projects/Templates,
+   a WORKSPACE group, Help pinned at the bottom) - not an icon dock. Width
+   matches the app shell's own --sidebar-width so Automation's chrome reads
+   as the same kind of surface as the rest of Seshat. */
 .au-rail {
   flex-shrink: 0;
-  width: 60px;
+  width: var(--sidebar-width, 224px);
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 2px;
-  padding: 10px 6px;
+  gap: 1px;
+  padding: 14px 10px;
   border-right: 1px solid var(--color-border-subtle);
   background: var(--color-surface);
 }
 
 .au-rail-btn {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 4px;
-  padding: 8px 2px;
+  gap: 10px;
+  padding: 9px 10px;
   border: none;
+  border-left: 2px solid transparent;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-text-secondary);
-  font-size: 9px;
-  font-weight: 650;
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  text-align: left;
   cursor: pointer;
+  width: 100%;
 }
 
 .au-rail-btn:hover {
@@ -134,8 +141,28 @@
 }
 
 .au-rail-btn.active {
-  color: var(--color-cta);
+  color: var(--color-primary);
   background: var(--color-primary-subtle);
+  border-left-color: var(--color-primary);
+}
+
+.au-rail-section-label {
+  margin: 16px 10px 4px;
+  font-size: var(--font-size-2xs);
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.au-rail-spacer {
+  flex: 1;
+}
+
+.au-rail-divider {
+  height: 1px;
+  margin: 8px 10px;
+  background: var(--color-border-subtle);
 }
 
 .au-main {

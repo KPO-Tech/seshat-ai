@@ -595,10 +595,18 @@ export function AutomationPage() {
             <ApplicationOne size={16} />
             <span>Templates</span>
           </button>
+
+          {/* WORKSPACE - shared resources projects draw on (automation-
+              app-pages.md §4/§10). Only Variables exists today; Connections
+              and Credentials are later phases, not stubbed here. */}
+          <span className="au-rail-section-label">Workspace</span>
           <button type="button" className={`au-rail-btn ${railView === 'variables' ? 'active' : ''}`} onClick={() => setRailView('variables')} title="Variables">
             <DataOne size={16} />
             <span>Variables</span>
           </button>
+
+          <span className="au-rail-spacer" />
+          <span className="au-rail-divider" />
           <button type="button" className={`au-rail-btn ${railView === 'help' ? 'active' : ''}`} onClick={() => setRailView('help')} title="Help">
             <HelpIcon size={16} />
             <span>Help</span>
@@ -609,7 +617,6 @@ export function AutomationPage() {
           {railView === 'overview' ? (
             <AutomationOverviewPanel
               organizationId={currentOrganizationId ?? ''}
-              onNew={() => navigate('/automation/new')}
               onOpenJob={(id) => navigate(`/automation/${id}`)}
               onOpenRun={(id, runId) => navigate(`/automation/${id}?tab=runs&runId=${encodeURIComponent(runId)}`)}
             />
