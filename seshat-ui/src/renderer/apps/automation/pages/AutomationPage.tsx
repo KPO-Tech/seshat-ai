@@ -1,7 +1,8 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useLocation, useSearchParams, useBlocker } from 'react-router'
+import { Modal } from '@arco-design/web-react'
 import {
-  Left, Setting, Close, CheckOne, Home, List, ApplicationOne, DataOne, Help as HelpIcon,
+  Left, Setting, CheckOne, Home, List, ApplicationOne, DataOne, Help as HelpIcon,
   Delete as DeleteIcon, LoadingOne, History, Branch, ShareOne,
 } from '@icon-park/react'
 import { api, ApiError } from '@/api/client'
@@ -718,59 +719,74 @@ export function AutomationPage() {
           )}
         </div>
 
-        {settingsOpen && !isOverview && (
-          <aside className="au-settings-drawer">
-            <header className="au-drawer-head">
-              <strong>Job settings</strong>
-              <button type="button" onClick={() => setSettingsOpen(false)} aria-label="Close"><Close size={14} /></button>
-            </header>
-            <div className="au-drawer-body">
-              <div className="au-field">
-                <label>Description (optional)</label>
-                <input value={description} onChange={(e) => setDescription(e.target.value)} />
-              </div>
+        {/* Arco's Modal, same reasoning as TemplatesPanel's preview drawer
+            migration - Escape-to-close, a focus trap, and click-outside-to-
+            close for free. A centered dialog rather than the old right-side
+            drawer: settings are an occasional, focused task, not something
+            kept half-visible while working the canvas, and there are enough
+            fields here that grouping them into real sections needs more
+            width than a 320px sidebar had. */}
+        <Modal
+          visible={settingsOpen && !isOverview}
+          onCancel={() => setSettingsOpen(false)}
+          footer={null}
+          title="Job settings"
+          className="au-settings-modal"
+          style={{ width: 640 }}
+        >
+          <div className="au-settings-section">
+            <h3>General</h3>
+            <div className="au-field">
+              <label>Description <span className="au-field-hint">(optional)</span></label>
+              <input value={description} onChange={(e) => setDescription(e.target.value)} />
+            </div>
+            <div className="au-field">
+              <label>Tags <span className="au-field-hint">(optional)</span></label>
+              <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="finance, reporting" />
+              <div className="au-field-hint">Comma-separated - used to search and filter Projects.</div>
+            </div>
+          </div>
 
-              <div className="au-field">
-                <label>Tags <span className="au-field-hint">(optional)</span></label>
-                <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="finance, reporting" />
-                <div className="au-field-hint">Comma-separated - used to search and filter Projects.</div>
+          <div className="au-settings-section">
+            <h3>Execution</h3>
+            <div className="au-field">
+              <label>Execution target</label>
+              <div className="au-segmented">
+                <button type="button" className={`au-segment ${executionTarget === 'cloud' ? 'active' : ''}`} onClick={() => setExecutionTarget('cloud')}>Cloud</button>
+                <button type="button" className={`au-segment ${executionTarget === 'device' ? 'active' : ''}`} onClick={() => setExecutionTarget('device')}>Device</button>
               </div>
-
+              {executionTarget === 'device' && usesDeviceIncompatibleSecret && (
+                <div className="au-field-hint au-field-warning">This graph uses database secrets, which currently only run on Cloud execution.</div>
+              )}
+            </div>
+            {executionTarget === 'device' && (
               <div className="au-field">
-                <label>Default agent <span className="au-field-hint">(optional)</span></label>
-                <select value={agentSlug} onChange={(e) => setAgentSlug(e.target.value)}>
-                  <option value="">None - only used by agent nodes with none set</option>
-                  {agents.map((a) => (
-                    <option key={a.slug} value={a.slug}>{a.name || a.slug} ({a.source})</option>
+                <label>Device</label>
+                <select value={targetDeviceId} onChange={(e) => setTargetDeviceId(e.target.value)} required>
+                  <option value="" disabled>Select a deviceâ€¦</option>
+                  {devices.map((d) => (
+                    <option key={d.id} value={d.id} disabled={d.status !== 'active'}>{d.name}{d.status !== 'active' ? ` (${d.status})` : ''}</option>
                   ))}
                 </select>
-                {selectedAgent && (
-                  <div className="au-field-hint">{selectedAgent.model || 'Default model'} / {selectedAgent.permission_mode || 'default permissions'}</div>
-                )}
               </div>
+            )}
+          </div>
 
-              <div className="au-field">
-                <label>Execution target</label>
-                <div className="au-segmented">
-                  <button type="button" className={`au-segment ${executionTarget === 'cloud' ? 'active' : ''}`} onClick={() => setExecutionTarget('cloud')}>Cloud</button>
-                  <button type="button" className={`au-segment ${executionTarget === 'device' ? 'active' : ''}`} onClick={() => setExecutionTarget('device')}>Device</button>
-                </div>
-                {executionTarget === 'device' && usesDeviceIncompatibleSecret && (
-                  <div className="au-field-hint au-field-warning">This graph uses database secrets, which currently only run on Cloud execution.</div>
-                )}
-              </div>
-              {executionTarget === 'device' && (
-                <div className="au-field">
-                  <label>Device</label>
-                  <select value={targetDeviceId} onChange={(e) => setTargetDeviceId(e.target.value)} required>
-                    <option value="" disabled>Select a deviceâ€¦</option>
-                    {devices.map((d) => (
-                      <option key={d.id} value={d.id} disabled={d.status !== 'active'}>{d.name}{d.status !== 'active' ? ` (${d.status})` : ''}</option>
-                    ))}
-                  </select>
-                </div>
+          <div className="au-settings-section">
+            <h3>Agent defaults</h3>
+            <div className="au-field">
+              <label>Default agent <span className="au-field-hint">(optional)</span></label>
+              <select value={agentSlug} onChange={(e) => setAgentSlug(e.target.value)}>
+                <option value="">None - only used by agent nodes with none set</option>
+                {agents.map((a) => (
+                  <option key={a.slug} value={a.slug}>{a.name || a.slug} ({a.source})</option>
+                ))}
+              </select>
+              {selectedAgent && (
+                <div className="au-field-hint">{selectedAgent.model || 'Default model'} / {selectedAgent.permission_mode || 'default permissions'}</div>
               )}
-
+            </div>
+            <div className="au-settings-grid">
               <div className="au-field">
                 <label>Provider <span className="au-field-hint">(optional)</span></label>
                 <select value={selectedProviderId} onChange={(e) => { setSelectedProviderId(e.target.value); setSelectedModelId('') }} disabled={providersLoading || availableProviders.length === 0}>
@@ -789,38 +805,44 @@ export function AutomationPage() {
                   ))}
                 </select>
               </div>
-
-              <div className="au-field">
-                <label>Error workflow <span className="au-field-hint">(optional)</span></label>
-                <select value={errorWorkflowJobId} onChange={(e) => setErrorWorkflowJobId(e.target.value)}>
-                  <option value="">None - a failed run just stops</option>
-                  {otherJobs.map((j) => (
-                    <option key={j.id} value={j.id}>{j.name}</option>
-                  ))}
-                </select>
-                <div className="au-field-hint">Runs this other automation automatically whenever this one's own run fails.</div>
-              </div>
-
-              <div className="au-validation-list">
-                {validationItems.map((item) => (
-                  <div key={item.label} className={`au-validation-row ${item.ok ? 'ok' : ''}`}>
-                    <CheckOne size={11} />
-                    <span>{item.label}</span>
-                  </div>
-                ))}
-              </div>
-
-              {!isNew && (
-                <div className="au-danger-zone">
-                  <button type="button" className="au-danger-btn" onClick={() => void handleDeleteThisJob()} disabled={deletingThisJob}>
-                    {deletingThisJob ? <LoadingOne size={13} className="spin" /> : <DeleteIcon size={13} />}
-                    Delete this automation
-                  </button>
-                </div>
-              )}
             </div>
-          </aside>
-        )}
+          </div>
+
+          <div className="au-settings-section">
+            <h3>Reliability</h3>
+            <div className="au-field">
+              <label>Error workflow <span className="au-field-hint">(optional)</span></label>
+              <select value={errorWorkflowJobId} onChange={(e) => setErrorWorkflowJobId(e.target.value)}>
+                <option value="">None - a failed run just stops</option>
+                {otherJobs.map((j) => (
+                  <option key={j.id} value={j.id}>{j.name}</option>
+                ))}
+              </select>
+              <div className="au-field-hint">Runs this other automation automatically whenever this one's own run fails.</div>
+            </div>
+          </div>
+
+          <div className="au-readiness-card">
+            <h3>Readiness</h3>
+            <div className="au-readiness-grid">
+              {validationItems.map((item) => (
+                <div key={item.label} className={`au-readiness-row ${item.ok ? 'ok' : ''}`}>
+                  {item.ok ? <CheckOne size={13} /> : <span className="au-readiness-dot" />}
+                  <span>{item.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {!isNew && (
+            <div className="au-danger-zone">
+              <button type="button" className="au-danger-btn" onClick={() => void handleDeleteThisJob()} disabled={deletingThisJob}>
+                {deletingThisJob ? <LoadingOne size={13} className="spin" /> : <DeleteIcon size={13} />}
+                Delete this automation
+              </button>
+            </div>
+          )}
+        </Modal>
       </div>
     </div>
   )
