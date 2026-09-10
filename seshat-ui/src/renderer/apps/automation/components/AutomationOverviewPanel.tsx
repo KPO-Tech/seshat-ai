@@ -391,11 +391,22 @@ const OVERVIEW_DASH_CSS = `
   color: var(--color-text-muted);
 }
 
+/* Attention and Impact share one fixed row height (420px, roughly 4 alert
+   rows before scrolling) instead of each sizing to its own content - a
+   handful of alerts must not make the page taller than Impact's fixed,
+   compact content, and a long streak of alerts must scroll inside its own
+   card rather than push the rest of the page down indefinitely. */
 .au-dash-columns {
   display: grid;
   grid-template-columns: 1.4fr 1fr;
   gap: 16px;
-  align-items: start;
+  height: 420px;
+}
+
+.au-dash-columns > .au-dash-card,
+.au-dash-columns > .au-dash-impact {
+  height: 100%;
+  min-height: 0;
 }
 
 .au-dash-card {
@@ -468,6 +479,9 @@ const OVERVIEW_DASH_CSS = `
 }
 
 .au-dash-alerts {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -581,6 +595,9 @@ const OVERVIEW_DASH_CSS = `
 }
 
 .au-dash-impact-tiles {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -615,7 +632,12 @@ const OVERVIEW_DASH_CSS = `
   color: var(--color-text-muted);
 }
 
+/* Capped the same way as Attention/Impact (see .au-dash-columns) - roughly
+   7 rows before it scrolls internally, so a busy org's activity feed can't
+   push the rest of the page down indefinitely either. */
 .au-dash-table-wrap {
+  max-height: 380px;
+  overflow-y: auto;
   overflow-x: auto;
 }
 
@@ -625,6 +647,8 @@ const OVERVIEW_DASH_CSS = `
 }
 
 .au-dash-table thead th {
+  position: sticky;
+  top: 0;
   padding: 8px 12px;
   text-align: left;
   font-size: var(--font-size-2xs);
@@ -632,6 +656,7 @@ const OVERVIEW_DASH_CSS = `
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--color-text-muted);
+  background: var(--color-surface);
   border-bottom: 1px solid var(--color-border-subtle);
 }
 
