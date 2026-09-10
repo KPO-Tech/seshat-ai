@@ -240,9 +240,22 @@ func (r orgScopedSecretResolver) Resolve(ctx context.Context, ref string) (strin
 // SDK (see its dataflow_adapter.go) — reimplemented here for the same
 // reason as runGraph above: this package's session comes from its own
 // executeCloudRun, not the SDK's JobScheduler.
+//
+// agentSlug is accepted for interface symmetry but unused, matching the
+// SDK's own sessionAgentCaller (see its doc comment) - jobWorkflow's
+// session is already the one job.Agent resolved to; real per-node agent
+// dispatch is a separate, larger piece of work. tools is new: scoping a
+// node's turn to a subset of tools needs a way to resolve a tool name to a
+// registrable sdk.Tool, which nothing in this call path holds yet - rather
+// than silently ignore an override a workflow author explicitly set, it
+// fails loudly instead (same behavior/reasoning as the SDK's own
+// sessionAgentCaller).
 type dataflowAgentCaller struct{ session *sdk.Session }
 
-func (a dataflowAgentCaller) Ask(ctx context.Context, _ string, prompt string) (string, error) {
+func (a dataflowAgentCaller) Ask(ctx context.Context, _ string, prompt string, tools []string) (string, error) {
+	if len(tools) > 0 {
+		return "", fmt.Errorf("dataflow: agent node requested tools=%v, but per-node tool scoping is not implemented yet - omit it to use the workflow's own agent's tools", tools)
+	}
 	resp, err := a.session.SubmitMessage(ctx, prompt)
 	if err != nil {
 		return "", err
