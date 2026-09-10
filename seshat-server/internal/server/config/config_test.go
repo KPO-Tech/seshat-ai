@@ -55,8 +55,8 @@ func TestVectorConfigFromEnvDefaultsToHNSW(t *testing.T) {
 	if cfg.StoreKind != sdkvector.StoreHNSW {
 		t.Fatalf("expected default vector store %q, got %q", sdkvector.StoreHNSW, cfg.StoreKind)
 	}
-	if cfg.Backend != sdkvector.StoreHNSW {
-		t.Fatalf("expected deprecated backend mirror %q, got %q", sdkvector.StoreHNSW, cfg.Backend)
+	if cfg.Backend != sdkvector.StoreHNSW { //nolint:staticcheck // verifying the deprecated mirror itself
+		t.Fatalf("expected deprecated backend mirror %q, got %q", sdkvector.StoreHNSW, cfg.Backend) //nolint:staticcheck // same
 	}
 	if cfg.HNSWDir == "" {
 		t.Fatal("expected default HNSW dir to be set")
@@ -80,8 +80,8 @@ func TestVectorConfigFromEnvReadsOpenSearchSettings(t *testing.T) {
 	if cfg.StoreKind != sdkvector.StoreOpenSearch {
 		t.Fatalf("expected OpenSearch store, got %q", cfg.StoreKind)
 	}
-	if cfg.Backend != sdkvector.StoreOpenSearch {
-		t.Fatalf("expected deprecated backend mirror %q, got %q", sdkvector.StoreOpenSearch, cfg.Backend)
+	if cfg.Backend != sdkvector.StoreOpenSearch { //nolint:staticcheck // verifying the deprecated mirror itself
+		t.Fatalf("expected deprecated backend mirror %q, got %q", sdkvector.StoreOpenSearch, cfg.Backend) //nolint:staticcheck // same
 	}
 	if cfg.Dim != 768 {
 		t.Fatalf("expected dim 768, got %d", cfg.Dim)

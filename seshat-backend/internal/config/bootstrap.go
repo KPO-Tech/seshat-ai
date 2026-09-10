@@ -699,7 +699,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	}
 
 	vectorDatabase := database
-	if vector.Backend(config.VectorBackend) == vector.BackendPgVector && strings.TrimSpace(config.PgVectorDSN) != "" {
+	if vector.StoreKind(config.VectorStore) == vector.StorePgVector && strings.TrimSpace(config.PgVectorDSN) != "" {
 		vectorDB, err := db.Open(ctx, db.Config{
 			Driver:      db.DriverPostgres,
 			DSN:         strings.TrimSpace(config.PgVectorDSN),
@@ -758,7 +758,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		}
 	}
 	vectorCfg := vector.Config{
-		Backend:                    vector.Backend(config.VectorBackend),
+		StoreKind:                  vector.StoreKind(config.VectorStore),
 		DB:                         vector.NewDBHandle(string(vectorDatabase.Driver()), vectorDatabase.DSN()),
 		Dim:                        vectorDim,
 		QdrantHost:                 config.QdrantHost,
@@ -781,7 +781,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 			embedder = ragembedder.New(embedderCfg)
 		}
 		ragService = rag.NewService(artifactStore, vs, embedder, nil)
-		backendName := string(vectorCfg.Backend)
+		backendName := string(vectorCfg.StoreKind)
 		if backendName == "" {
 			backendName = "sqlite"
 		}

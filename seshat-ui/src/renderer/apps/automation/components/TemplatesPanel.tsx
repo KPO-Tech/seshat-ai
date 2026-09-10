@@ -245,6 +245,7 @@ const TEMPLATES_PANEL_CSS = `
   display: flex;
   flex-direction: column;
   gap: 10px;
+  padding: 18px 24px;
 }
 
 .au-templates-toolbar {

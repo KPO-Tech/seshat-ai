@@ -6,7 +6,7 @@ import "github.com/KPO-Tech/seshat/pkg/dataflow"
 // docs/produits/platforms/automation/automation-app-pages.md §9 and
 // agent-workflows.md's "Cas d'usage prioritaires" (Tier 3.3 of the n8n gap
 // analysis). Deliberately a small, built-in Go list rather than a
-// hosted/dynamic catalog - "quelques modèles internes concrets d'abord",
+// hosted/dynamic catalog - "quelques modèles internes réels d'abord",
 // same posture the audit doc already recommended. Every template here uses
 // only node types that are genuinely usable end to end today
 // (schedule_trigger/webhook_trigger, if/switch, http_request, agent, the

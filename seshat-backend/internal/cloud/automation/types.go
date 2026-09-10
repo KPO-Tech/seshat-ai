@@ -206,9 +206,9 @@ type OverviewStats struct {
 // Overview mirrors seshat-server's automation.Overview - the full payload
 // for GET /api/v1/automation/overview.
 type Overview struct {
-	Stats          OverviewStats         `json:"stats"`
-	Attention      []AttentionItem       `json:"attention"`
-	RecentActivity []RecentActivityItem  `json:"recent_activity"`
+	Stats          OverviewStats        `json:"stats"`
+	Attention      []AttentionItem      `json:"attention"`
+	RecentActivity []RecentActivityItem `json:"recent_activity"`
 }
 
 // Variable mirrors seshat-server's dataflowvariables.Variable - a

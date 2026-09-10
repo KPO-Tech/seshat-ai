@@ -96,9 +96,9 @@ type OverviewStats struct {
 
 // Overview is the full payload for GET /api/v1/automation/overview.
 type Overview struct {
-	Stats          OverviewStats         `json:"stats"`
-	Attention      []AttentionItem       `json:"attention"`
-	RecentActivity []RecentActivityItem  `json:"recent_activity"`
+	Stats          OverviewStats        `json:"stats"`
+	Attention      []AttentionItem      `json:"attention"`
+	RecentActivity []RecentActivityItem `json:"recent_activity"`
 }
 
 // GetOverview computes Automation's dashboard: KPI counts, attention
