@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CheckOne, ChartHistogram, FolderOpen, Rocket, Right, Plus } from '@icon-park/react'
+import { CheckOne, ChartHistogram, FolderOpen, Rocket, Right, Plus, TrendingUp } from '@icon-park/react'
 import { api, ApiError } from '@/api/client'
 import { RUN_STATUS_LABEL } from '../graph/types'
 import type { Overview, AttentionItem, RecentActivityItem } from '../api/overview'
@@ -70,24 +70,25 @@ export function AutomationOverviewPanel({
 
       <div className="au-dash-kpis">
         <KpiCard
-          icon={<FolderOpen size={19} />}
+          icon={<FolderOpen size={20} />}
           label="Active Projects"
           value={stats.active_projects}
           secondary={`/ ${stats.total_projects} total`}
-          footIcon={stats.new_projects_this_month > 0 ? <Rocket size={13} /> : undefined}
           footText={stats.new_projects_this_month > 0 ? `+${stats.new_projects_this_month} deployed this month` : 'No new projects this month'}
+          trend={stats.new_projects_this_month > 0 ? 'up' : undefined}
         />
         <KpiCard
-          icon={<ChartHistogram size={19} />}
+          icon={<ChartHistogram size={20} />}
           label="Executions"
           value={stats.executions_window}
           footText={`Last ${stats.window_days} days`}
         />
         <KpiCard
-          icon={<CheckOne size={19} />}
+          icon={<CheckOne size={20} />}
           label="Success Rate"
           value={stats.success_rate_percent != null ? `${stats.success_rate_percent.toFixed(1)}%` : '—'}
           footText={stats.success_rate_percent != null ? `${stats.failure_rate_percent?.toFixed(1) ?? '0.0'}% failure` : 'No finished runs yet'}
+          trend={stats.success_rate_percent != null && stats.success_rate_percent >= 90 ? 'up' : undefined}
         />
       </div>
 
@@ -168,13 +169,13 @@ export function AutomationOverviewPanel({
   )
 }
 
-function KpiCard({ icon, label, value, secondary, footIcon, footText }: {
+function KpiCard({ icon, label, value, secondary, footText, trend }: {
   icon: React.ReactNode
   label: string
   value: number | string
   secondary?: string
-  footIcon?: React.ReactNode
   footText: string
+  trend?: 'up'
 }) {
   return (
     <div className="au-dash-kpi">
@@ -186,8 +187,8 @@ function KpiCard({ icon, label, value, secondary, footIcon, footText }: {
         <span className="au-dash-kpi-value">{typeof value === 'number' ? value.toLocaleString() : value}</span>
         {secondary && <span className="au-dash-kpi-secondary">{secondary}</span>}
       </div>
-      <div className="au-dash-kpi-foot">
-        {footIcon}
+      <div className={`au-dash-kpi-foot ${trend ? 'au-dash-kpi-foot--up' : ''}`}>
+        {trend === 'up' && <TrendingUp size={12} />}
         <span>{footText}</span>
       </div>
     </div>
@@ -320,11 +321,16 @@ const OVERVIEW_DASH_CSS = `
 .au-dash-kpi {
   display: flex;
   flex-direction: column;
-  padding: 16px 18px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  border-radius: var(--radius-2xl);
   background: var(--color-surface);
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow-medium);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.au-dash-kpi:hover {
+  box-shadow: var(--shadow-large);
+  transform: translateY(-1px);
 }
 
 .au-dash-kpi-top {
@@ -344,11 +350,12 @@ const OVERVIEW_DASH_CSS = `
 
 .au-dash-kpi-icon {
   flex-shrink: 0;
-  width: 34px;
-  height: 34px;
-  border-radius: var(--radius-md);
-  background: var(--color-surface-elevated);
-  color: var(--color-text-secondary);
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-lg);
+  background: var(--color-text);
+  color: var(--color-surface);
+  box-shadow: var(--shadow-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -376,12 +383,17 @@ const OVERVIEW_DASH_CSS = `
 .au-dash-kpi-foot {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   margin-top: 10px;
   padding-top: 10px;
   border-top: 1px solid var(--color-border-subtle);
   font-size: var(--font-size-2xs);
+  font-weight: 600;
   color: var(--color-text-muted);
+}
+
+.au-dash-kpi-foot--up {
+  color: var(--color-success);
 }
 
 /* Attention and Impact share one fixed row height (420px, roughly 4 alert
@@ -406,11 +418,10 @@ const OVERVIEW_DASH_CSS = `
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 18px 20px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  padding: 20px 22px;
+  border-radius: var(--radius-2xl);
   background: var(--color-surface);
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow-medium);
 }
 
 .au-dash-card-head {
@@ -563,11 +574,10 @@ const OVERVIEW_DASH_CSS = `
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding: 18px 20px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  padding: 20px 22px;
+  border-radius: var(--radius-2xl);
   background: var(--color-surface);
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow-medium);
 }
 
 .au-dash-impact-head {
