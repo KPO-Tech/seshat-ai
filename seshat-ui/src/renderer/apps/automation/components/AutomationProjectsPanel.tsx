@@ -380,19 +380,6 @@ const OVERVIEW_FILTER_CSS = `
   color: var(--color-text-secondary);
 }
 
-/* .au-stub is normally a full-page takeover (height:100%, no card) - here
-   it sits inline below the page header/search/pills instead of replacing
-   them, so a "no jobs yet" or "no matches" account still shows a working
-   search bar and New automation button, ready for the moment a job does
-   exist, rather than a completely different blank-slate page. */
-.au-stub--inline {
-  height: auto;
-  margin-top: 8px;
-  padding: 48px 24px;
-  border-radius: var(--radius-2xl);
-  background: var(--color-surface-elevated);
-}
-
 .au-folder-pills {
   display: flex;
   flex-wrap: wrap;

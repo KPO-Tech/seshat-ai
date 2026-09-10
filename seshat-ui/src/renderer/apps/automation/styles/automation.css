@@ -220,6 +220,20 @@
   max-width: 340px;
 }
 
+/* .au-stub is normally a full-page takeover (height:100%, no card) - this
+   modifier lets it sit inline below a page header/search/toolbar instead of
+   replacing them, so a "nothing yet" or "no matches" state still shows a
+   working search bar and primary action, ready for the moment data does
+   exist. Promoted here after Projects and Templates each defined their own
+   identical copy - a third caller (Variables) is the trigger to share it. */
+.au-stub--inline {
+  height: auto;
+  margin-top: 8px;
+  padding: 48px 24px;
+  border-radius: var(--radius-2xl);
+  background: var(--color-surface-elevated);
+}
+
 .au-loading {
   height: 100%;
   display: flex;

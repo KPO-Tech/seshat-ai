@@ -316,14 +316,6 @@ const TEMPLATES_PANEL_CSS = `
   opacity: 0.75;
 }
 
-.au-stub--inline {
-  height: auto;
-  margin-top: 8px;
-  padding: 48px 24px;
-  border-radius: var(--radius-2xl);
-  background: var(--color-surface-elevated);
-}
-
 .au-templates-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
