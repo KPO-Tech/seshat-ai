@@ -590,7 +590,7 @@ export function AutomationPage() {
             <Setting size={15} />
           </button>
           <button type="button" className="au-save-btn" onClick={() => void handleSave()} disabled={saving || !canSave}>
-            {saving ? 'Savingâ€¦' : isNew ? 'Create job' : 'Save changes'}
+            {saving ? 'Savingâ€¦' : isNew ? 'Deploy' : 'Save changes'}
           </button>
         </header>
       )}
