@@ -186,108 +186,116 @@ export function ParameterForm({ nodeType, nodeId, parameters, properties, isTest
 
   return (
     <>
-      <PinnedOutputField nodeId={nodeId} jobId={jobId} value={pinnedOutput} onChange={onPinnedOutputChange} />
-      <RetrySettingsField value={retrySettings} onChange={onRetrySettingsChange} />
-      <TestNodeField canTest={canTestNode} status={testStatus} result={testResult} stale={testStale} onTest={onTestNode} />
-      {hasSchema ? (
-        <div className="gf-form">
-          {properties!.filter((p) => passesDisplayIf(p, drafts)).map((p) => (
-            <div key={p.name} className="gf-field">
-              <label className="gf-field-label">
-                {p.displayName}
-                {p.required && <span className="gf-field-required">*</span>}
-              </label>
-              {p.type === 'boolean' ? (
-                <label className="gf-field-checkbox">
-                  <input type="checkbox" checked={!!drafts[p.name]} onChange={(e) => setField(p.name, e.target.checked)} />
-                  {p.description}
+      <div className="gf-config-section">
+        <h3 className="gf-config-section-title">Configuration</h3>
+        {hasSchema ? (
+          <div className="gf-form">
+            {properties!.filter((p) => passesDisplayIf(p, drafts)).map((p) => (
+              <div key={p.name} className="gf-field">
+                <label className="gf-field-label">
+                  {p.displayName}
+                  {p.required && <span className="gf-field-required">*</span>}
                 </label>
-              ) : p.type === 'secretRef' ? (
-                <SecretRefField value={(drafts[p.name] as string) ?? ''} onChange={(name) => setField(p.name, name)} />
-              ) : nodeType === 'agent' && p.name === 'agent' ? (
-                // The SDK's own schema leaves this a plain string (a valid
-                // slug is only known per-tenant at runtime, which a
-                // stateless Description() can't express) - the authoring UI
-                // is where a real picker belongs instead. AgentPickerField
-                // also lets a new agent be configured (name/provider/model)
-                // inline, without leaving this panel to go to Companion.
-                <AgentPickerField value={(drafts[p.name] as string) ?? ''} onChange={(v) => setField(p.name, v)} />
-              ) : p.type === 'options' ? (
-                <select className="gf-field-input" value={(drafts[p.name] as string) ?? ''} onChange={(e) => setField(p.name, e.target.value)}>
-                  <option value="" disabled>Select…</option>
-                  {(p.options ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-              ) : p.type === 'json' ? (
-                <textarea
-                  className="gf-field-input gf-field-textarea"
-                  value={(drafts[p.name] as string) ?? ''}
-                  onChange={(e) => setField(p.name, e.target.value)}
-                  placeholder={p.placeholder}
-                  spellCheck={false}
-                  rows={5}
-                />
-              ) : p.type === 'text' || p.type === 'string' ? (
-                <ExpressionField
-                  nodeType={nodeType}
-                  propName={p.name}
-                  value={(drafts[p.name] as string) ?? ''}
-                  onChange={(v) => setField(p.name, v)}
-                  placeholder={p.placeholder}
-                  multiline={p.type === 'text'}
-                  nodeId={nodeId}
-                  siblingNodes={siblingNodes}
-                  jobId={jobId}
-                  organizationId={organizationId}
-                  variableNames={variableNames}
-                />
-              ) : (
-                <input
-                  className="gf-field-input"
-                  type="number"
-                  value={(drafts[p.name] as string) ?? ''}
-                  onChange={(e) => setField(p.name, e.target.value)}
-                  placeholder={p.placeholder}
-                />
-              )}
-              {p.type !== 'boolean' && !(nodeType === 'agent' && (p.name === 'agent' || p.name === 'prompt')) && p.description && <div className="gf-field-hint">{p.description}</div>}
-              {errors[p.name] && <div className="gf-field-error">{errors[p.name]}</div>}
-            </div>
-          ))}
-          {isTestable && (
-            <ConnectionTestField
-              organizationId={organizationId}
-              nodeType={nodeType}
-              getParams={() => buildParamsFromDrafts(properties!, parameters, drafts).params}
+                {p.type === 'boolean' ? (
+                  <label className="gf-field-checkbox">
+                    <input type="checkbox" checked={!!drafts[p.name]} onChange={(e) => setField(p.name, e.target.checked)} />
+                    {p.description}
+                  </label>
+                ) : p.type === 'secretRef' ? (
+                  <SecretRefField value={(drafts[p.name] as string) ?? ''} onChange={(name) => setField(p.name, name)} />
+                ) : nodeType === 'agent' && p.name === 'agent' ? (
+                  // The SDK's own schema leaves this a plain string (a valid
+                  // slug is only known per-tenant at runtime, which a
+                  // stateless Description() can't express) - the authoring UI
+                  // is where a real picker belongs instead. AgentPickerField
+                  // also lets a new agent be configured (name/provider/model)
+                  // inline, without leaving this panel to go to Companion.
+                  <AgentPickerField value={(drafts[p.name] as string) ?? ''} onChange={(v) => setField(p.name, v)} />
+                ) : p.type === 'options' ? (
+                  <select className="gf-field-input" value={(drafts[p.name] as string) ?? ''} onChange={(e) => setField(p.name, e.target.value)}>
+                    <option value="" disabled>Select…</option>
+                    {(p.options ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                ) : p.type === 'json' ? (
+                  <textarea
+                    className="gf-field-input gf-field-textarea"
+                    value={(drafts[p.name] as string) ?? ''}
+                    onChange={(e) => setField(p.name, e.target.value)}
+                    placeholder={p.placeholder}
+                    spellCheck={false}
+                    rows={5}
+                  />
+                ) : p.type === 'text' || p.type === 'string' ? (
+                  <ExpressionField
+                    nodeType={nodeType}
+                    propName={p.name}
+                    value={(drafts[p.name] as string) ?? ''}
+                    onChange={(v) => setField(p.name, v)}
+                    placeholder={p.placeholder}
+                    multiline={p.type === 'text'}
+                    nodeId={nodeId}
+                    siblingNodes={siblingNodes}
+                    jobId={jobId}
+                    organizationId={organizationId}
+                    variableNames={variableNames}
+                  />
+                ) : (
+                  <input
+                    className="gf-field-input"
+                    type="number"
+                    value={(drafts[p.name] as string) ?? ''}
+                    onChange={(e) => setField(p.name, e.target.value)}
+                    placeholder={p.placeholder}
+                  />
+                )}
+                {p.type !== 'boolean' && !(nodeType === 'agent' && (p.name === 'agent' || p.name === 'prompt')) && p.description && <div className="gf-field-hint">{p.description}</div>}
+                {errors[p.name] && <div className="gf-field-error">{errors[p.name]}</div>}
+              </div>
+            ))}
+            {isTestable && (
+              <ConnectionTestField
+                organizationId={organizationId}
+                nodeType={nodeType}
+                getParams={() => buildParamsFromDrafts(properties!, parameters, drafts).params}
+              />
+            )}
+            {nodeType === 'webhook_trigger' && (
+              <div className="gf-field">
+                <label className="gf-field-label">Webhook URL</label>
+                {jobId && webhookToken ? (
+                  <div className="gf-webhook-url-row">
+                    <code className="gf-webhook-url">{`${NEXUS_BASE}/webhooks/${webhookToken}`}</code>
+                    <CopyButton text={`${NEXUS_BASE}/webhooks/${webhookToken}`} />
+                  </div>
+                ) : (
+                  <div className="gf-field-hint">Save this automation to get your webhook URL.</div>
+                )}
+              </div>
+            )}
+            {nodeType === 'webhook_trigger' && <WebhookLastCall jobId={jobId} />}
+          </div>
+        ) : (
+          <>
+            <label className="gf-config-label">Parameters (JSON)</label>
+            <textarea
+              className="gf-config-textarea"
+              value={jsonDraft}
+              onChange={(e) => setJsonDraft(e.target.value)}
+              spellCheck={false}
+              rows={14}
             />
-          )}
-          {nodeType === 'webhook_trigger' && (
-            <div className="gf-field">
-              <label className="gf-field-label">Webhook URL</label>
-              {jobId && webhookToken ? (
-                <div className="gf-webhook-url-row">
-                  <code className="gf-webhook-url">{`${NEXUS_BASE}/webhooks/${webhookToken}`}</code>
-                  <CopyButton text={`${NEXUS_BASE}/webhooks/${webhookToken}`} />
-                </div>
-              ) : (
-                <div className="gf-field-hint">Save this automation to get your webhook URL.</div>
-              )}
-            </div>
-          )}
-          {nodeType === 'webhook_trigger' && <WebhookLastCall jobId={jobId} />}
-        </div>
-      ) : (
-        <>
-          <label className="gf-config-label">Parameters (JSON)</label>
-          <textarea
-            className="gf-config-textarea"
-            value={jsonDraft}
-            onChange={(e) => setJsonDraft(e.target.value)}
-            spellCheck={false}
-            rows={14}
-          />
-          {formError && <div className="gf-config-error">{formError}</div>}
-        </>
-      )}
+            {formError && <div className="gf-config-error">{formError}</div>}
+          </>
+        )}
+      </div>
+
+      <div className="gf-config-section">
+        <h3 className="gf-config-section-title">Testing &amp; Reliability</h3>
+        <PinnedOutputField nodeId={nodeId} jobId={jobId} value={pinnedOutput} onChange={onPinnedOutputChange} />
+        <RetrySettingsField value={retrySettings} onChange={onRetrySettingsChange} />
+        <TestNodeField canTest={canTestNode} status={testStatus} result={testResult} stale={testStale} onTest={onTestNode} />
+      </div>
+
       <div className="gf-config-actions">
         <button type="button" className="gf-action-btn primary" onClick={hasSchema ? saveForm : saveJson}>
           Save parameters

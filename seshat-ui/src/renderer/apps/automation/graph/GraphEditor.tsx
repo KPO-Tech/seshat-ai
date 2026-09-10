@@ -19,6 +19,7 @@ import { missingRequiredFields } from './validation'
 import { GRAPH_NODE_TYPES, type FlowGraphNode, type TestStatus, type TestRunNodeResult } from './GraphNode'
 import { NodeCreator } from './NodeCreator'
 import { ParameterForm } from './ParameterForm'
+import { resolveNodeIcon, tintColor } from './nodeIcons'
 import type { RetrySettingsValue } from './RetrySettingsField'
 import type { DataflowDefinition, NodeDescription } from './types'
 import { useUIStore } from '@/stores/ui'
@@ -569,9 +570,15 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
         {selectedNode && (
           <aside className="gf-config-panel">
             <header className="gf-config-head">
-              <div>
+              <div
+                className="gf-config-head-icon"
+                style={{ background: tintColor(selectedNode.data.categoryColor ?? 'var(--color-text-muted)'), color: selectedNode.data.categoryColor ?? 'var(--color-text-muted)' }}
+              >
+                {resolveNodeIcon(selectedNode.data.dfType, selectedNode.data.category ?? 'Other', 16)}
+              </div>
+              <div className="gf-config-head-text">
                 <NodeIdEditor key={selectedNode.id} nodeId={selectedNode.id} onRename={(next) => renameNode(selectedNode.id, next)} />
-                <span>{selectedNode.data.dfType}</span>
+                <span>{selectedNode.data.title ?? selectedNode.data.dfType}</span>
               </div>
               <button type="button" onClick={() => setSelectedNodeId(null)} aria-label="Close">
                 <Close size={14} />
@@ -885,10 +892,28 @@ export const GRAPH_EDITOR_CSS = `
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 10px;
   padding: 0 14px;
   border-bottom: 1px solid var(--color-border-subtle);
+}
+
+/* Same icon-tile language the canvas's own node cards and NodeCreator's
+   catalog rows already use (resolveNodeIcon/tintColor) - ties this panel's
+   identity to the node it's actually editing instead of a bare type
+   string. */
+.gf-config-head-icon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gf-config-head-text {
+  flex: 1;
+  min-width: 0;
 }
 
 .gf-id-input {
@@ -947,7 +972,30 @@ export const GRAPH_EDITOR_CSS = `
   padding: 12px 14px;
   display: flex;
   flex-direction: column;
+  gap: 18px;
+}
+
+/* Groups the panel into named sections (Configuration first, then the
+   secondary Testing & Reliability controls below it) instead of one flat
+   stack - same "progressive disclosure" principle automation-app-pages.md
+   §37.4 already calls for, and the same section-header recipe Job
+   Settings' own modal uses (.au-settings-section), reimplemented locally
+   here since this panel's own CSS scope is gf-, not au-. */
+.gf-config-section {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
+}
+
+.gf-config-section-title {
+  margin: 0;
+  font-size: var(--font-size-2xs);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--color-border-subtle);
 }
 
 .gf-config-label {
