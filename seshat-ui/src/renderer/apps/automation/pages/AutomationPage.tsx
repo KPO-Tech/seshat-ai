@@ -288,14 +288,27 @@ export function AutomationPage() {
   // entirely. A small, separate fetch here instead of loosening that
   // effect's own gate, which would also refetch agents/devices/variables on
   // every rail-tab click, not just the first visit to Templates.
+  //
+  // Found live: this effect used to also bail out `|| nodeTypesLoading` -
+  // meant to avoid re-firing while a fetch is already in flight, but
+  // nodeTypesLoading initializes to true (see its useState above) and
+  // nothing ever flips it to false on a pure Overview->Templates visit
+  // (that only happens inside the OTHER effect, gated on !isOverview). The
+  // guard permanently self-deadlocked: this fetch never ran at all landing
+  // on Templates without having opened a job's graph editor first, so
+  // nodeTypes stayed empty and every card's nodeLabel() lookup silently
+  // fell back to the raw type string (displayed, then CSS-uppercased, as
+  // "WEBHOOK_TRIGGER" instead of "Webhook"). nodeTypes.length is already
+  // sufficient to prevent re-fetching once loaded - nodeTypesLoading was
+  // never actually needed in this guard.
   useEffect(() => {
-    if (!isOverview || railView !== 'templates' || nodeTypes.length > 0 || nodeTypesLoading) return
+    if (!isOverview || railView !== 'templates' || nodeTypes.length > 0) return
     setNodeTypesLoading(true)
     api.get<{ node_types: NodeDescription[] }>('/automation/dataflow/node-types')
       .then((res) => setNodeTypes(res.node_types ?? []))
       .catch((err) => setNodeTypesError(err instanceof ApiError ? err.message : 'Unable to load node types.'))
       .finally(() => setNodeTypesLoading(false))
-  }, [isOverview, railView, nodeTypes.length, nodeTypesLoading])
+  }, [isOverview, railView, nodeTypes.length])
 
   // Load the existing job when editing. If the ID belongs to a prompt job,
   // keep Automation isolated and return to its own overview instead of
