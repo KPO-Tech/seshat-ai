@@ -21,7 +21,7 @@ import { NodeCreator } from './NodeCreator'
 import { ParameterForm } from './ParameterForm'
 import { resolveNodeIcon, tintColor } from './nodeIcons'
 import type { RetrySettingsValue } from './RetrySettingsField'
-import type { DataflowDefinition, NodeDescription } from './types'
+import type { DataflowDefinition, NodeDescription, NodeProperty } from './types'
 import { useUIStore } from '@/stores/ui'
 import { api, ApiError } from '@/api/client'
 
@@ -442,17 +442,22 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
   }, [selectedNodeId, nodes, edges])
 
   // Display-only: injects each node's current staleness (see
-  // isNodeTestStale) into a copy of `nodes` for rendering - never fed back
-  // into React Flow's own onNodesChange/setNodes state.
+  // isNodeTestStale) and a one-line config preview (see previewTextFor)
+  // into a copy of `nodes` for rendering - never fed back into React
+  // Flow's own onNodesChange/setNodes state, so this is always freshly
+  // derived from the real current parameters rather than a value that
+  // could go stale after an edit (unlike title/category/categoryColor
+  // above, which only change when the catalog itself resolves).
   const nodesForCanvas = nodes.map((n) => {
     const warnings = missingRequiredFields(nodeTypes.find((nt) => nt.type === n.data.dfType)?.properties, n.data.parameters)
-    if (!n.data.testStatus && warnings.length === 0) return n
+    const previewText = previewTextFor(nodeTypes.find((nt) => nt.type === n.data.dfType)?.properties, n.data.parameters)
     return {
       ...n,
       data: {
         ...n.data,
         ...(n.data.testStatus ? { isStale: isNodeTestStale(n) } : {}),
         validationWarnings: warnings,
+        previewText,
       },
     }
   })
@@ -625,6 +630,32 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
 
 function catalogCategory(type: string, nodeTypes: NodeDescription[]): string {
   return nodeTypes.find((n) => n.type === type)?.category ?? 'Other'
+}
+
+// A one-line "what does this node actually do" preview shown directly on
+// its canvas card (MaxKB's node cards show real configured values at a
+// glance instead of only a title - see the automation redesign's canvas
+// pass). Picks the current value of the schema's most representative
+// text/string field - required fields first (the SDK's own agentNode
+// lists "prompt" as required and before "agent"/"tools", so this already
+// prefers a prompt over a bare agent slug with no extra per-type logic),
+// then whichever text/string field actually has a value. Real data only:
+// nothing here is invented, just surfaced from parameters already saved.
+// Exported alongside categoryColor/GRAPH_EDITOR_CSS for GraphReplayViewer.tsx
+// to reuse verbatim - a replayed node should show the same real-config
+// preview a live one does.
+export function previewTextFor(properties: NodeProperty[] | undefined, parameters: Record<string, unknown>): string | undefined {
+  if (!properties) return undefined
+  const candidates = properties.filter((p) => p.type === 'text' || p.type === 'string')
+  const ordered = [...candidates.filter((p) => p.required), ...candidates.filter((p) => !p.required)]
+  for (const p of ordered) {
+    const value = parameters[p.name]
+    if (typeof value === 'string' && value.trim() !== '') {
+      const trimmed = value.trim()
+      return trimmed.length > 60 ? `${trimmed.slice(0, 60)}…` : trimmed
+    }
+  }
+  return undefined
 }
 
 // Mount with `key={nodeId}` so switching the selected node (or a successful
@@ -1180,7 +1211,7 @@ export const GRAPH_EDITOR_CSS = `
 
 .gf-node {
   position: relative;
-  width: 170px;
+  width: 210px;
   border-radius: 10px;
 }
 

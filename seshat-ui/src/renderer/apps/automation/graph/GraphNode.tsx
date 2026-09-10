@@ -27,6 +27,12 @@ export type GraphNodeData = {
   // trigger node is a graph's own entry point, so it gets no input handle
   // (nothing should ever connect into it) and a distinct rounded-left shape.
   isTrigger?: boolean
+  // Derived purely for rendering (see GraphEditor.tsx's previewTextFor) -
+  // the current value of this node's most representative text/string
+  // field (a prompt, a URL, a condition), so the card reads as "what this
+  // step actually does" at a glance instead of only its type. Recomputed
+  // every render from real parameters, never itself saved.
+  previewText?: string
   // Real, save-relevant data (unlike title/category above) - round-trips
   // through convert.ts's flowToDefinition into the saved DataflowDefinition's
   // top-level pinned_data map (Tier 2.3). Present (even as []) means pinned;
@@ -109,7 +115,7 @@ export function GraphNode({ id, data, selected }: NodeProps<FlowGraphNode>) {
         </div>
         <div className="gf-node-text">
           <div className="gf-node-title">{data.title ?? data.dfType}</div>
-          <div className="gf-node-subtitle">{id}</div>
+          <div className="gf-node-subtitle">{data.previewText ?? id}</div>
         </div>
       </div>
       {/* Multi-port nodes (if/switch) get one dot per port, evenly spaced

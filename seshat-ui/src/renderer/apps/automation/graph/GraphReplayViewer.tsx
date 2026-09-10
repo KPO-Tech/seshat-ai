@@ -4,7 +4,7 @@ import '@xyflow/react/dist/style.css'
 import { Close } from '@icon-park/react'
 import { definitionToFlow } from './convert'
 import { GRAPH_NODE_TYPES, type FlowGraphNode, type TestStatus, type TestRunNodeResult } from './GraphNode'
-import { GRAPH_EDITOR_CSS, categoryColor } from './GraphEditor'
+import { GRAPH_EDITOR_CSS, categoryColor, previewTextFor } from './GraphEditor'
 import { RunNodeDetailPanel } from './RunNodeDetailPanel'
 import type { DataflowDefinition, NodeDescription, NodeTraceEntry } from './types'
 import { useUIStore } from '@/stores/ui'
@@ -61,6 +61,7 @@ function GraphReplayViewerInner({ graph, nodeTrace, nodeTypes }: Props) {
             title: desc?.name,
             category,
             isTrigger: desc?.isTrigger,
+            previewText: previewTextFor(desc?.properties, n.data.parameters),
             testStatus,
             testResult,
           },
