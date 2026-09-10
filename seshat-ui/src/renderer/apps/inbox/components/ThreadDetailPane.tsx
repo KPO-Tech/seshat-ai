@@ -68,16 +68,16 @@ export function ThreadDetailPane({
               <span>{selectedThread.subject || `${selectedThread.channel} conversation`}</span>
             </div>
             <div className="ib-detail-actions">
-              <button type="button" onClick={onAskAgent} disabled={launchingAgent} title="Ask Inbox Agent">
+              <button type="button" onClick={onAskAgent} disabled={launchingAgent}>
                 {launchingAgent ? <LoadingOne size={13} className="spin" /> : <Robot size={13} />} Agent
               </button>
-              <button type="button" onClick={() => onUpdateStatus('handled')} title="Mark handled">
+              <button type="button" onClick={() => onUpdateStatus('handled')}>
                 <CheckOne size={13} /> Handled
               </button>
-              <button type="button" onClick={() => onUpdateStatus('snoozed')} title="Snooze">
+              <button type="button" onClick={() => onUpdateStatus('snoozed')}>
                 <AlarmClock size={13} /> Snooze
               </button>
-              <button type="button" onClick={() => onUpdateStatus('escalated')} title="Escalate">
+              <button type="button" onClick={() => onUpdateStatus('escalated')}>
                 <Flag size={13} /> Escalate
               </button>
             </div>
@@ -103,7 +103,6 @@ export function ThreadDetailPane({
                         type="button"
                         className="ib-attachment-chip"
                         onClick={() => onDownloadAttachment(message.id, attachment)}
-                        title={`Download ${attachment.filename}`}
                       >
                         <Paperclip size={12} />
                         <span className="ib-attachment-name">{attachment.filename}</span>

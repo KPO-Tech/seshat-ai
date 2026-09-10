@@ -179,10 +179,10 @@ export function HistoryPage() {
                       </div>
                     ) : (
                       <div className="hist-row-actions">
-                        <button className="hist-icon-btn" title="Rename" onClick={() => startRename(s.id, s.title)}>
+                        <button className="hist-icon-btn" aria-label="Rename" onClick={() => startRename(s.id, s.title)}>
                           <Edit size={12} />
                         </button>
-                        <button className="hist-icon-btn hist-icon-btn--danger" title="Delete" onClick={() => setDeletingId(s.id)}>
+                        <button className="hist-icon-btn hist-icon-btn--danger" aria-label="Delete" onClick={() => setDeletingId(s.id)}>
                           <Delete size={12} />
                         </button>
                       </div>

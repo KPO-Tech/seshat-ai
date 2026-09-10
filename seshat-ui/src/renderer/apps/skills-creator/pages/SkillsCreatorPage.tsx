@@ -200,12 +200,12 @@ export function SkillsCreatorPage() {
             <button
               className={`sc-icon-btn${showSearch ? ' active' : ''}`}
               onClick={() => { setShowSearch(v => !v); setTimeout(() => searchRef.current?.focus(), 50) }}
-              title="Search"
+              aria-label="Search"
             >
               <Search size={12} />
             </button>
             {repoManagementAvailable && (
-              <button className="sc-icon-btn" onClick={() => setShowInstaller(true)} title="Import skills from a repository">
+              <button className="sc-icon-btn" onClick={() => setShowInstaller(true)} aria-label="Import skills from a repository">
                 <Upload size={12} />
               </button>
             )}

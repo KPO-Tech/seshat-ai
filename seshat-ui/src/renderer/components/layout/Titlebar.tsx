@@ -30,13 +30,13 @@ export function Titlebar({ left, center }: Props) {
       <div className="titlebar-left">
         {left}
         <div className="tb-nav-group" aria-label="Navigation">
-          <button className="tb-nav-btn" onClick={handleHome} title="Home" type="button">
+          <button className="tb-nav-btn" onClick={handleHome} aria-label="Home" type="button">
             <Home size={14} />
           </button>
-          <button className="tb-nav-btn" onClick={handleBack} title="Back" type="button">
+          <button className="tb-nav-btn" onClick={handleBack} aria-label="Back" type="button">
             <Left size={14} />
           </button>
-          <button className="tb-nav-btn" onClick={handleForward} title="Forward" type="button">
+          <button className="tb-nav-btn" onClick={handleForward} aria-label="Forward" type="button">
             <Right size={14} />
           </button>
         </div>
@@ -48,13 +48,13 @@ export function Titlebar({ left, center }: Props) {
         </div>
       )}
       <div className="titlebar-right">
-        <button className="tb-sys-btn" onClick={handleMinimize} title="Minimize">
+        <button className="tb-sys-btn" onClick={handleMinimize} aria-label="Minimize">
           <WindowMinimizeIcon />
         </button>
-        <button className="tb-sys-btn" onClick={handleMaximize} title="Maximize/Restore">
+        <button className="tb-sys-btn" onClick={handleMaximize} aria-label="Maximize/Restore">
           <WindowMaximizeIcon />
         </button>
-        <button className="tb-sys-btn close" onClick={handleClose} title="Close">
+        <button className="tb-sys-btn close" onClick={handleClose} aria-label="Close">
           <WindowCloseIcon />
         </button>
       </div>

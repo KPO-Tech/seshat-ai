@@ -22,7 +22,7 @@ export function IconButton({ icon, onClick, title, variant = 'ghost', size = 32,
       className={`icon-btn icon-btn--${variant}${activeClass} ${className ?? ''}`}
       style={{ width: size, height: size }}
       onClick={onClick}
-      title={title}
+      aria-label={title}
     >
       {icon}
     </button>

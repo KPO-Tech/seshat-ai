@@ -450,7 +450,6 @@ export function ProjectsPage() {
                 <button
                   type="button"
                   className="projects-topbar-title-edit"
-                  title="Rename project"
                   onClick={() => startRenameProject(detailProject.id, detailProject.name)}
                 >
                   <strong>{detailProject.name}</strong>
@@ -624,7 +623,7 @@ export function ProjectsPage() {
                         <button
                           className={appsViewMode === 'grid' ? 'active' : ''}
                           type="button"
-                          title="Grid view"
+                          aria-label="Grid view"
                           onClick={() => setAppsViewMode('grid')}
                         >
                           <GridFour size={13} />
@@ -632,7 +631,7 @@ export function ProjectsPage() {
                         <button
                           className={appsViewMode === 'list' ? 'active' : ''}
                           type="button"
-                          title="List view"
+                          aria-label="List view"
                           onClick={() => setAppsViewMode('list')}
                         >
                           <List size={13} />
@@ -751,7 +750,7 @@ export function ProjectsPage() {
                       <button
                         type="button"
                         className={rightPanelView === 'terminal' ? 'active' : ''}
-                        title="Terminal"
+                        aria-label="Terminal"
                         onClick={() => setRightPanelView('terminal')}
                       >
                         <Command size={14} />
@@ -759,7 +758,7 @@ export function ProjectsPage() {
                       <button
                         type="button"
                         className={rightPanelView === 'browser' ? 'active' : ''}
-                        title="Browser"
+                        aria-label="Browser"
                         onClick={() => setRightPanelView('browser')}
                       >
                         <BrowserIcon size={14} />
@@ -768,15 +767,15 @@ export function ProjectsPage() {
                     {rightPanelView === 'terminal' && (
                       <div className="project-right-panel-actions">
                         <em>{terminalRunning ? terminalShellLabel : 'Stopped'}</em>
-                        <button type="button" title="Clear" onClick={() => terminalRef.current?.clear()}>
+                        <button type="button" aria-label="Clear" onClick={() => terminalRef.current?.clear()}>
                           <Delete size={13} />
                         </button>
-                        <button type="button" title="Restart" onClick={() => terminalRef.current?.restart()}>
+                        <button type="button" aria-label="Restart" onClick={() => terminalRef.current?.restart()}>
                           <Refresh size={13} />
                         </button>
                         <button
                           type="button"
-                          title="Open in external terminal"
+                          aria-label="Open in external terminal"
                           onClick={() => { void window.nexus?.openTerminal?.(detailProject.rootPath) }}
                         >
                           <LinkOne size={13} />

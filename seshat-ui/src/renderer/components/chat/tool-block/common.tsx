@@ -80,7 +80,7 @@ export function CodeBox({
         <button
           className="tb-copy"
           type="button"
-          title="Copy"
+          aria-label="Copy"
           onClick={() => void navigator.clipboard.writeText(content)}
         >
           <Copy size={10} />
@@ -102,7 +102,7 @@ export function ProseBox({ content, copyable, bare }: { content: string; copyabl
         <button
           className="tb-copy"
           type="button"
-          title="Copy"
+          aria-label="Copy"
           onClick={() => void navigator.clipboard.writeText(content)}
         >
           <Copy size={10} />

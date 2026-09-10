@@ -70,7 +70,7 @@ export function RunsPanel({ jobId, graph, nodeTypes, initialRunId }: Props) {
       <div className="au-runs-replay">
         <style>{RUNS_PANEL_CSS}</style>
         <header className="au-runs-replay-head">
-          <button type="button" className="au-icon-btn" onClick={() => setSelectedRun(null)} title="Back to runs">
+          <button type="button" className="au-icon-btn" onClick={() => setSelectedRun(null)} aria-label="Back to runs">
             <Left size={15} />
           </button>
           <strong>{formatRunTime(selectedRun)}</strong>

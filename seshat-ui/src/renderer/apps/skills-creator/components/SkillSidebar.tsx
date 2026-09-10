@@ -134,14 +134,14 @@ function SkillTreeItem({
           ref={iconBtnRef}
           className="sc-tree-icon-btn"
           onClick={handleIconClick}
-          title="Change icon"
+          aria-label="Change icon"
         >
           <IconComp size={12} />
         </button>
         {onToggleEnabled && (
           <label
             className="caps-skill-toggle-lbl"
-            title={isEnabled ? 'Disable' : 'Enable'}
+            aria-label={isEnabled ? 'Disable' : 'Enable'}
             onClick={e => e.stopPropagation()}
           >
             <input type="checkbox" checked={isEnabled} onChange={onToggleEnabled} />

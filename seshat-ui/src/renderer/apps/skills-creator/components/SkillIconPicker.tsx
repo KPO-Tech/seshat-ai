@@ -21,7 +21,7 @@ export function SkillIconPicker({ pos, currentIcon, onSelect, onClose }: SkillIc
                   key={name}
                   className={`sip-icon-btn ${name === currentIcon ? 'active' : ''}`}
                   onClick={() => onSelect(name)}
-                  title={name}
+                  aria-label={name}
                 >
                   <Icon size={15} />
                 </button>

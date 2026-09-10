@@ -223,7 +223,7 @@ export function DiffView({
         </div>
       )}
       <div className="tb-diff">
-        <button className="tb-diff-copy" type="button" title="Copy diff" onClick={() => void navigator.clipboard.writeText(copyText)}>
+        <button className="tb-diff-copy" type="button" aria-label="Copy diff" onClick={() => void navigator.clipboard.writeText(copyText)}>
           <Copy size={10} />
         </button>
         {rows.map((row, i) => (

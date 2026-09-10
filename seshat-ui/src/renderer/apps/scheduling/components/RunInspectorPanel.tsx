@@ -37,10 +37,10 @@ export function RunInspectorPanel({ job, runs, tab, onTabChange, onClose, onRunN
           <span className="sch-mini-pill target">{job.execution_target}</span>
         </div>
         <div className="sch-inspector-icon-actions">
-          <button onClick={() => onRunNow(job)} title="Run"><Play size={14} /><span>Run</span></button>
-          <button onClick={() => onTogglePaused(job)} title={job.status === 'active' ? 'Pause' : 'Resume'}>{job.status === 'active' ? <PauseOne size={14} /> : <Play size={14} />}<span>{job.status === 'active' ? 'Pause' : 'Resume'}</span></button>
-          <button onClick={() => onEdit(job)} title="Config"><Edit size={14} /><span>Config</span></button>
-          <button onClick={onClose} title="Close"><WindowCloseIcon size={14} /><span>Close</span></button>
+          <button onClick={() => onRunNow(job)}><Play size={14} /><span>Run</span></button>
+          <button onClick={() => onTogglePaused(job)}>{job.status === 'active' ? <PauseOne size={14} /> : <Play size={14} />}<span>{job.status === 'active' ? 'Pause' : 'Resume'}</span></button>
+          <button onClick={() => onEdit(job)}><Edit size={14} /><span>Config</span></button>
+          <button onClick={onClose}><WindowCloseIcon size={14} /><span>Close</span></button>
         </div>
       </div>
 
@@ -126,9 +126,9 @@ export function RunInspectorPanel({ job, runs, tab, onTabChange, onClose, onRunN
                   <span>{formatRunTime(item)}</span>
                 </div>
                 <div className="sch-output-actions">
-                  <button title="View"><PreviewOpen size={12} /></button>
-                  <button title="Download"><Download size={12} /></button>
-                  <button title="Delete"><Delete size={12} /></button>
+                  <button aria-label="View"><PreviewOpen size={12} /></button>
+                  <button aria-label="Download"><Download size={12} /></button>
+                  <button aria-label="Delete"><Delete size={12} /></button>
                 </div>
               </div>
             ))}

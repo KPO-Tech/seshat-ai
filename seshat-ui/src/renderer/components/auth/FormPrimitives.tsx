@@ -241,7 +241,6 @@ export function OAuthButtons() {
         <button
           key={name}
           type="button"
-          title={`Continue with ${name}`}
           style={{
             flex: 1,
             height: 42,

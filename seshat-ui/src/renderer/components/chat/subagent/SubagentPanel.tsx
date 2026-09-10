@@ -481,7 +481,6 @@ export const SubagentPanel = memo(function SubagentPanel({ sessionId, toolUseId 
               className="sap-cancel-btn"
               disabled={cancelling}
               onClick={handleCancel}
-              title="Cancel this sub-agent"
             >
               <CloseOne size={12} />
               {cancelling ? 'Cancelling…' : 'Cancel'}

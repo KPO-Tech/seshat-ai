@@ -256,7 +256,7 @@ export function Sidebar() {
                 <button
                   className="sb-history-btn"
                   type="button"
-                  title="Chat history"
+                  aria-label="Chat history"
                   onClick={() => navigate('/history')}
                 >
                   <History size={13} />
@@ -337,7 +337,7 @@ export function Sidebar() {
               <button
                 className={`sb-console-btn${consoleMenuOpen ? ' open' : ''}`}
                 onClick={() => setConsoleMenuOpen((open) => !open)}
-                title={collapsed ? 'Seshat menu' : undefined}
+                aria-label={collapsed ? 'Seshat menu' : undefined}
                 aria-expanded={consoleMenuOpen}
                 aria-haspopup="menu"
               >
@@ -366,7 +366,6 @@ export function Sidebar() {
                       role="menuitem"
                       disabled={!isAdmin}
                       onClick={() => openConsoleItem('admin')}
-                      title={!isAdmin ? 'Admin access required' : undefined}
                     >
                       <Shield theme="outline" size={14} />
                       <span>Admin</span>
@@ -379,7 +378,6 @@ export function Sidebar() {
             <button
               className="sb-footer-btn theme-toggle"
               onClick={toggleTheme}
-              title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
               aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
             >
               <div className="sb-theme-circle">
@@ -418,7 +416,7 @@ function SidebarItem({ icon, label, shortcut, collapsed, active, accent, onClick
     <button
       onClick={onClick}
       className={`sb-item${active ? ' active' : ''}${collapsed ? ' collapsed' : ''}${accent ? ' accent' : ''}`}
-      title={collapsed ? label : undefined}
+      aria-label={collapsed ? label : undefined}
     >
       <span className="sb-item-icon">{icon}</span>
       {!collapsed && (

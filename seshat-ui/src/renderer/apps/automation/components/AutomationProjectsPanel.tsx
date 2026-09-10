@@ -254,28 +254,28 @@ export function AutomationProjectsPanel({
                 </div>
                 <div className="au-overview-actions">
                   <button
-                    type="button" className="au-icon-btn" title="Run now"
+                    type="button" className="au-icon-btn" aria-label="Run now"
                     onClick={(e) => { e.stopPropagation(); onRun(job) }}
                     disabled={runningJobId === job.id}
                   >
                     {runningJobId === job.id ? <LoadingOne size={13} className="spin" /> : <Play size={13} />}
                   </button>
                   <button
-                    type="button" className="au-icon-btn" title={job.status === 'active' ? 'Pause' : 'Resume'}
+                    type="button" className="au-icon-btn" aria-label={job.status === 'active' ? 'Pause' : 'Resume'}
                     onClick={(e) => { e.stopPropagation(); onTogglePaused(job) }}
                     disabled={pausingJobId === job.id}
                   >
                     {pausingJobId === job.id ? <LoadingOne size={13} className="spin" /> : <PauseOne size={13} />}
                   </button>
                   <button
-                    type="button" className="au-icon-btn" title="Duplicate"
+                    type="button" className="au-icon-btn" aria-label="Duplicate"
                     onClick={(e) => { e.stopPropagation(); onDuplicate(job) }}
                     disabled={duplicatingJobId === job.id}
                   >
                     {duplicatingJobId === job.id ? <LoadingOne size={13} className="spin" /> : <Copy size={13} />}
                   </button>
                   <button
-                    type="button" className="au-icon-btn" title="Delete"
+                    type="button" className="au-icon-btn" aria-label="Delete"
                     onClick={(e) => { e.stopPropagation(); onDelete(job) }}
                     disabled={deletingJobId === job.id}
                   >

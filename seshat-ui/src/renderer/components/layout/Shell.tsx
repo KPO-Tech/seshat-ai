@@ -127,7 +127,7 @@ export function Shell() {
           <button
             className="tb-toggle-btn"
             onClick={toggleSidebar}
-            title={showSidebar ? 'Toggle Sidebar' : 'No sidebar on this page'}
+            aria-label={showSidebar ? 'Toggle Sidebar' : 'No sidebar on this page'}
             disabled={!showSidebar}
             aria-disabled={!showSidebar}
             type="button"

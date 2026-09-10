@@ -119,12 +119,12 @@ export function AdminMCPServersView() {
                 </td>
                 <td>
                   <div className="adm-roles" style={{ justifyContent: 'flex-end' }}>
-                    <button className="pv-icon-btn" title="Edit" onClick={() => setEditing(config)}>
+                    <button className="pv-icon-btn" aria-label="Edit" onClick={() => setEditing(config)}>
                       <Edit size={13} />
                     </button>
                     <button
                       className="pv-icon-btn"
-                      title="Delete"
+                      aria-label="Delete"
                       onClick={() => handleDelete(config.id)}
                       disabled={deletingId === config.id}
                     >

@@ -120,7 +120,7 @@ export function CompanionPage() {
       <div className="cmp-topbar">
         <h1 className="cmp-title">Companion</h1>
         <div className="cmp-topbar-right">
-          <button className="cmp-btn cmp-btn--ghost cmp-btn--icon" onClick={load} title="Refresh">
+          <button className="cmp-btn cmp-btn--ghost cmp-btn--icon" onClick={load} aria-label="Refresh">
             <Sync theme="outline" size={16} />
           </button>
           <button className="cmp-btn cmp-btn--primary" onClick={() => setModal('create')}>

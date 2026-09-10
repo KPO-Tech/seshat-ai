@@ -244,10 +244,10 @@ function MemoryRow({ memory, onEdit, onDelete, deleting }: {
         <span className="mv-date">{date}</span>
       </div>
       <div className="mv-row-actions">
-        <button className="mv-action-btn" onClick={onEdit} title="Edit">
+        <button className="mv-action-btn" onClick={onEdit} aria-label="Edit">
           <Edit size={11} />
         </button>
-        <button className="mv-action-btn danger" onClick={onDelete} disabled={deleting} title="Delete">
+        <button className="mv-action-btn danger" onClick={onDelete} disabled={deleting} aria-label="Delete">
           <Delete size={11} />
         </button>
       </div>

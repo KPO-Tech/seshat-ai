@@ -132,7 +132,7 @@ export function AdminDesktopPoliciesView() {
                   <div className="adm-roles" style={{ justifyContent: 'flex-end' }}>
                     <button
                       className="pv-icon-btn"
-                      title="Delete"
+                      aria-label="Delete"
                       onClick={() => handleDelete(b)}
                       disabled={deletingId === b.id}
                     >

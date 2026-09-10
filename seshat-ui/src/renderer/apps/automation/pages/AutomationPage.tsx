@@ -571,7 +571,7 @@ export function AutomationPage() {
           status, Run/Settings/Save actions) that has nowhere else to live. */}
       {!isOverview && (
         <header className="au-topbar">
-          <button type="button" className="au-icon-btn" onClick={() => navigate('/automation')} title="Back to Automation">
+          <button type="button" className="au-icon-btn" onClick={() => navigate('/automation')} aria-label="Back to Automation">
             <Left size={15} />
           </button>
           <input className="au-name-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Untitled automation" />
@@ -581,7 +581,7 @@ export function AutomationPage() {
             <button
               type="button" className={`au-icon-btn ${railView === 'runs' ? 'active' : ''}`}
               onClick={() => setRailView((v) => (v === 'runs' ? 'graph' : 'runs'))}
-              title="Runs"
+              aria-label="Runs"
             >
               <History size={15} />
             </button>
@@ -590,14 +590,14 @@ export function AutomationPage() {
             type="button" className="au-icon-btn"
             onClick={() => void handleRunThisJob()}
             disabled={runningThisJob || isNew}
-            title={isNew ? 'Save this automation before running it' : 'Run now'}
+            aria-label={isNew ? 'Save this automation before running it' : 'Run now'}
           >
             {runningThisJob ? <LoadingOne size={15} className="spin" /> : <Play size={15} />}
           </button>
-          <button type="button" className={`au-icon-btn ${settingsOpen ? 'active' : ''}`} onClick={() => setSettingsOpen((o) => !o)} title="Job settings">
+          <button type="button" className={`au-icon-btn ${settingsOpen ? 'active' : ''}`} onClick={() => setSettingsOpen((o) => !o)} aria-label="Job settings">
             <Setting size={15} />
           </button>
-          <button type="button" className="au-save-btn" onClick={() => void handleSave()} disabled={saving || !canSave} title={!canSave ? 'Finish job settings before saving' : undefined}>
+          <button type="button" className="au-save-btn" onClick={() => void handleSave()} disabled={saving || !canSave}>
             {saving ? 'Savingâ€¦' : isNew ? 'Create job' : 'Save changes'}
           </button>
         </header>
@@ -620,7 +620,6 @@ export function AutomationPage() {
               type="button"
               className={`au-rail-btn ${railView === 'overview' ? 'active' : ''}`}
               onClick={() => setRailView('overview')}
-              title="Overview"
             >
               <Home size={16} />
               <span>Overview</span>
@@ -629,12 +628,11 @@ export function AutomationPage() {
               type="button"
               className={`au-rail-btn ${railView === 'projects' ? 'active' : ''}`}
               onClick={() => setRailView('projects')}
-              title="Projects"
             >
               <List size={16} />
               <span>Projects</span>
             </button>
-            <button type="button" className={`au-rail-btn ${railView === 'templates' ? 'active' : ''}`} onClick={() => setRailView('templates')} title="Templates">
+            <button type="button" className={`au-rail-btn ${railView === 'templates' ? 'active' : ''}`} onClick={() => setRailView('templates')}>
               <ApplicationOne size={16} />
               <span>Templates</span>
             </button>
@@ -643,14 +641,14 @@ export function AutomationPage() {
                 app-pages.md §4/§10). Only Variables exists today; Connections
                 and Credentials are later phases, not stubbed here. */}
             <span className="au-rail-section-label">Workspace</span>
-            <button type="button" className={`au-rail-btn ${railView === 'variables' ? 'active' : ''}`} onClick={() => setRailView('variables')} title="Variables">
+            <button type="button" className={`au-rail-btn ${railView === 'variables' ? 'active' : ''}`} onClick={() => setRailView('variables')}>
               <DataOne size={16} />
               <span>Variables</span>
             </button>
 
             <span className="au-rail-spacer" />
             <span className="au-rail-divider" />
-            <button type="button" className={`au-rail-btn ${railView === 'help' ? 'active' : ''}`} onClick={() => setRailView('help')} title="Help">
+            <button type="button" className={`au-rail-btn ${railView === 'help' ? 'active' : ''}`} onClick={() => setRailView('help')}>
               <HelpIcon size={16} />
               <span>Help</span>
             </button>

@@ -74,10 +74,10 @@ export function UserCard({ agent, onChat, onEdit, onDelete }: UserCardProps) {
           <Send theme="outline" size={14} />
           Chat
         </button>
-        <button className="cmp-btn cmp-btn--ghost" onClick={() => onEdit(agent)} title="Edit">
+        <button className="cmp-btn cmp-btn--ghost" onClick={() => onEdit(agent)} aria-label="Edit">
           <Edit theme="outline" size={14} />
         </button>
-        <button className="cmp-btn cmp-btn--ghost cmp-btn--danger" onClick={() => onDelete(agent)} title="Delete">
+        <button className="cmp-btn cmp-btn--ghost cmp-btn--danger" onClick={() => onDelete(agent)} aria-label="Delete">
           <Delete theme="outline" size={14} />
         </button>
       </div>

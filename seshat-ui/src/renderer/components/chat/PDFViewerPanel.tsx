@@ -144,11 +144,11 @@ export function PDFViewerPanel({ fileId, filename }: Props) {
     <div className="pdf-viewer-panel">
       <style>{PDF_VIEWER_PANEL_CSS}</style>
       <div className="pdf-viewer-toolbar">
-        <button type="button" onClick={() => goToPage(-1)} disabled={status !== 'ready' || pageNumber <= 1} title="Previous page">
+        <button type="button" onClick={() => goToPage(-1)} disabled={status !== 'ready' || pageNumber <= 1} aria-label="Previous page">
           <Left size={12} />
         </button>
         <span className="pdf-viewer-page-indicator">{status === 'ready' ? `${pageNumber} / ${pageCount}` : '—'}</span>
-        <button type="button" onClick={() => goToPage(1)} disabled={status !== 'ready' || pageNumber >= pageCount} title="Next page">
+        <button type="button" onClick={() => goToPage(1)} disabled={status !== 'ready' || pageNumber >= pageCount} aria-label="Next page">
           <Right size={12} />
         </button>
         <span className="pdf-viewer-toolbar-spacer" />
@@ -158,7 +158,6 @@ export function PDFViewerPanel({ fileId, filename }: Props) {
             className={layoutMode === 'pages' ? 'is-active' : ''}
             onClick={() => setLayout('pages')}
             disabled={status !== 'ready'}
-            title="Fit pages and use multiple columns when space allows"
           >
             Pages
           </button>
@@ -167,16 +166,15 @@ export function PDFViewerPanel({ fileId, filename }: Props) {
             className={layoutMode === 'width' ? 'is-active' : ''}
             onClick={() => setLayout('width')}
             disabled={status !== 'ready'}
-            title="Fit one page to the panel width"
           >
             Width
           </button>
         </div>
-        <button type="button" onClick={() => zoomBy(1 / 1.15)} disabled={status !== 'ready'} title="Zoom out">
+        <button type="button" onClick={() => zoomBy(1 / 1.15)} disabled={status !== 'ready'} aria-label="Zoom out">
           <Reduce size={12} />
         </button>
         <span className="pdf-viewer-zoom-indicator">{status === 'ready' ? `${scalePercent}%` : '—'}</span>
-        <button type="button" onClick={() => zoomBy(1.15)} disabled={status !== 'ready'} title="Zoom in">
+        <button type="button" onClick={() => zoomBy(1.15)} disabled={status !== 'ready'} aria-label="Zoom in">
           <Add size={12} />
         </button>
       </div>

@@ -100,7 +100,7 @@ function RightPanelColumnView({ column }: { column: RightPanelColumn }) {
 
   return (
     <div className="right-panel-stack" style={{ width: `${column.width}px` }}>
-      <div className="right-panel-resize-handle" onMouseDown={onWidthDragStart} title="Drag to resize" />
+      <div className="right-panel-resize-handle" onMouseDown={onWidthDragStart} aria-label="Drag to resize" />
       {column.panels.map((panel, index) => (
         <div
           key={panel.id}
@@ -117,7 +117,7 @@ function RightPanelColumnView({ column }: { column: RightPanelColumn }) {
             <div
               className="right-panel-split-handle"
               onMouseDown={(e) => onSplitDragStart(e, e.currentTarget.parentElement?.parentElement?.clientHeight ?? 600)}
-              title="Drag to resize"
+              aria-label="Drag to resize"
             />
           )}
         </div>
@@ -160,7 +160,7 @@ function PanelFrame({
           </div>
         </div>
         <div className="right-panel-actions">
-          <button className="right-panel-maximize-btn" type="button" onClick={onToggleMaximize} title={isMaximized ? 'Restore' : 'Maximize'}>
+          <button className="right-panel-maximize-btn" type="button" onClick={onToggleMaximize} aria-label={isMaximized ? 'Restore' : 'Maximize'}>
             <WindowMaximizeIcon />
           </button>
           <button className="right-panel-close" type="button" onClick={onClose}>
@@ -441,7 +441,6 @@ export function BrowserPanel({ url, contextId = 'chat' }: { url?: string; contex
               type="button"
               className={`right-panel-browser-tab${tab.id === state?.activeTabId ? ' active' : ''}`}
               onClick={() => switchToTab(tab.id)}
-              title={tab.url}
             >
               {tab.status === 'loading' ? <LoadingOne className="spin" size={11} /> : <Browser size={11} />}
               <span>{tab.label}</span>
@@ -457,19 +456,19 @@ export function BrowserPanel({ url, contextId = 'chat' }: { url?: string; contex
               )}
             </button>
           ))}
-          <button type="button" className="right-panel-browser-tab-add" onClick={openNewTab} title="New tab">
+          <button type="button" className="right-panel-browser-tab-add" onClick={openNewTab} aria-label="New tab">
             <AddOne size={12} />
           </button>
         </div>
       )}
       <div className="right-panel-browser-toolbar">
-        <button type="button" onClick={() => void browserApi?.back(contextId).then(setState)} disabled={!activeTab?.canGoBack} title="Back">
+        <button type="button" onClick={() => void browserApi?.back(contextId).then(setState)} disabled={!activeTab?.canGoBack} aria-label="Back">
           <Left size={12} />
         </button>
-        <button type="button" onClick={() => void browserApi?.forward(contextId).then(setState)} disabled={!activeTab?.canGoForward} title="Forward">
+        <button type="button" onClick={() => void browserApi?.forward(contextId).then(setState)} disabled={!activeTab?.canGoForward} aria-label="Forward">
           <Right size={12} />
         </button>
-        <button type="button" onClick={() => void browserApi?.reload(contextId).then(setState)} title="Reload">
+        <button type="button" onClick={() => void browserApi?.reload(contextId).then(setState)} aria-label="Reload">
           <Refresh size={12} />
         </button>
         <form

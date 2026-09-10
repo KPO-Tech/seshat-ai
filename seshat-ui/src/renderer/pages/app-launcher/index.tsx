@@ -162,10 +162,10 @@ export function AppsPage() {
               ))}
             </div>
             <div className="apps-view-toggle" aria-label="App view mode">
-              <button className={viewMode === 'grid' ? 'active' : ''} type="button" onClick={() => setViewMode('grid')} title="Grid view">
+              <button className={viewMode === 'grid' ? 'active' : ''} type="button" onClick={() => setViewMode('grid')} aria-label="Grid view">
                 <GridFour size={14} />
               </button>
-              <button className={viewMode === 'list' ? 'active' : ''} type="button" onClick={() => setViewMode('list')} title="List view">
+              <button className={viewMode === 'list' ? 'active' : ''} type="button" onClick={() => setViewMode('list')} aria-label="List view">
                 <List size={14} />
               </button>
             </div>

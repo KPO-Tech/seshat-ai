@@ -49,7 +49,6 @@ export function WebFetchToolView({ tool, result, sessionId }: ToolViewProps) {
               href={sourceUrl}
               target="_blank"
               rel="noreferrer"
-              title={sourceUrl}
               onClick={(event) => {
                 if (!shouldOpenInAppBrowser(event, sourceUrl)) return
                 event.preventDefault()

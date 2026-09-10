@@ -70,7 +70,7 @@ export function ToolLineItem({ tool, sessionId, autoExpand = false, onSubmitProm
         <button
           type="button"
           className="qtg-item-copy"
-          title="Copy"
+          aria-label="Copy"
           onClick={(e) => { e.stopPropagation(); void navigator.clipboard.writeText(copyText) }}
         >
           <Copy size={10} />

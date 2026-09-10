@@ -447,7 +447,7 @@ function EmbedderConfigCard({
                   type="button"
                   onClick={handleDetectModels}
                   disabled={detecting || !form.base_url}
-                  title="Auto-detect embedding models from Ollama"
+                  aria-label="Auto-detect embedding models from Ollama"
                 >
                   {detecting ? <Sync size={11} className="kv-spin" /> : <Sync size={11} />}
                 </button>
@@ -795,7 +795,7 @@ function CorpusCard({
             className="kv-icon-btn"
             onClick={(e) => { e.stopPropagation(); handleDeleteCorpus() }}
             disabled={deleting}
-            title="Delete corpus"
+            aria-label="Delete corpus"
           >
             <Delete size={13} />
           </button>
@@ -814,7 +814,6 @@ function CorpusCard({
                   className="kv-ghost-btn"
                   onClick={loadFiles}
                   disabled={loadingFiles}
-                  title="Refresh"
                 >
                   <Sync size={11} className={loadingFiles ? 'kv-spin' : ''} />
                   Refresh

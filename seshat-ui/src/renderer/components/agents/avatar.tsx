@@ -151,7 +151,7 @@ export function AvatarPicker({ styleId, seed, baseSeed, onPick, onReroll, disabl
           style={{ width: size, height: size, borderRadius: radius }}
           onClick={() => !disabled && setOpen(v => !v)}
           disabled={disabled}
-          title={disabled ? undefined : 'Choose a face'}
+          aria-label={disabled ? undefined : 'Choose a face'}
           dangerouslySetInnerHTML={{ __html: svg }}
         />
         {!disabled && (
@@ -159,7 +159,7 @@ export function AvatarPicker({ styleId, seed, baseSeed, onPick, onReroll, disabl
             type="button"
             className="wk-avatar-reroll"
             onClick={onReroll}
-            title="Generate a new face"
+            aria-label="Generate a new face"
           >
             <Sync size={12} />
           </button>

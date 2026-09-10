@@ -293,7 +293,7 @@ export function ParameterForm({ nodeType, nodeId, parameters, properties, isTest
           Save parameters
         </button>
         <div className="gf-config-actions-row">
-          <button type="button" className="gf-action-btn" onClick={onDuplicate} title="Duplicate node (Ctrl+D)">
+          <button type="button" className="gf-action-btn" onClick={onDuplicate}>
             <Copy size={13} /> Duplicate
           </button>
           <button type="button" className="gf-action-btn" onClick={onDelete}>

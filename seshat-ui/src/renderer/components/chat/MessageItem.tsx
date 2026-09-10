@@ -437,15 +437,15 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
               return (
                 <div key={file.id} className={`msg-attachment msg-attachment--${isImage ? 'image' : file.category ?? 'other'}`}>
                   {previewURL ? (
-                    <button className="msg-attachment-thumb" type="button" onClick={onOpen} title={tooltip}>
+                    <button className="msg-attachment-thumb" type="button" onClick={onOpen} aria-label={tooltip}>
                       <img src={previewURL} alt={file.filename} />
                     </button>
                   ) : textPreview ? (
-                    <button className="msg-attachment-thumb msg-attachment-thumb--text" type="button" onClick={onOpen} title={tooltip}>
+                    <button className="msg-attachment-thumb msg-attachment-thumb--text" type="button" onClick={onOpen}>
                       <span className="msg-attachment-text-preview">{textPreview}</span>
                     </button>
                   ) : (
-                    <button className="msg-attachment-file" type="button" onClick={onOpen} title={tooltip || file.filename}>
+                    <button className="msg-attachment-file" type="button" onClick={onOpen} aria-label={tooltip || file.filename}>
                       <AttachmentTypeIcon filename={file.filename} />
                     </button>
                   )}
@@ -531,7 +531,7 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
           <div className="msg-footer">
             <button
               className="msg-action-btn"
-              title="Copy"
+              aria-label="Copy"
               type="button"
               onClick={() => {
                 if (copyText) void navigator.clipboard.writeText(copyText)

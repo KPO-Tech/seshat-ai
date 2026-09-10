@@ -27,7 +27,7 @@ export function SettingsNavItem<T extends string>({ id, label, icon, active, onC
     <button
       className={`snav-item ${active ? 'active' : ''} ${collapsed ? 'collapsed' : ''}`}
       onClick={() => onClick(id)}
-      title={collapsed ? label : undefined}
+      aria-label={collapsed ? label : undefined}
     >
       <span className="snav-icon">{icon}</span>
       {!collapsed && <span className="snav-label">{label}</span>}

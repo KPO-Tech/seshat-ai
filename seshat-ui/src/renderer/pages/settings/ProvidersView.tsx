@@ -302,7 +302,7 @@ export function ProvidersView() {
                   {!isReadOnly && !setting.is_default && (
                     <button
                       className="pv-icon-btn pv-default-btn"
-                      title="Set as default provider"
+                      aria-label="Set as default provider"
                       onClick={(e) => { e.stopPropagation(); handleSetDefault(setting.id) }}
                       disabled={settingDefaultId === setting.id}
                     >

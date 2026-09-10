@@ -124,8 +124,9 @@ function ProviderCard({ provider, onSaved }: {
           {hasConfig && (
             <span className={`wsp-status-dot ${isReady ? 'ready' : 'warn'}`} />
           )}
-          <label className="ws-toggle" title={enabled ? 'Disable' : 'Enable'}>
+          <label className="ws-toggle">
             <input type="checkbox" checked={enabled}
+              aria-label={enabled ? 'Disable' : 'Enable'}
               onChange={(e) => { setEnabled(e.target.checked); markDirty() }} />
             <span className="ws-toggle-slider" />
           </label>
@@ -333,7 +334,7 @@ function DomainCatalog({
                         key={domain}
                         className={`dc-card ${active ? 'dc-card-active' : ''}`}
                         onClick={() => onToggle(domain)}
-                        title={active ? `Deactivate ${domain}` : `Activate ${domain}`}
+                        aria-label={active ? `Deactivate ${domain}` : `Activate ${domain}`}
                       >
                         <FaviconImg domain={domain} />
                         <span className="dc-card-name">{domain}</span>

@@ -59,10 +59,10 @@ export function ImageLightbox() {
       <div className="image-lightbox-header" onMouseDown={(e) => e.stopPropagation()}>
         <span className="image-lightbox-filename">{image.filename}</span>
         <div className="image-lightbox-actions">
-          <button type="button" onClick={download} title="Download">
+          <button type="button" onClick={download} aria-label="Download">
             <Download size={13} />
           </button>
-          <button type="button" onClick={closeLightbox} title="Close">
+          <button type="button" onClick={closeLightbox} aria-label="Close">
             <WindowCloseIcon size={14} />
           </button>
         </div>
@@ -76,11 +76,11 @@ export function ImageLightbox() {
         />
       </div>
       <div className="image-lightbox-zoom" onMouseDown={(e) => e.stopPropagation()}>
-        <button type="button" onClick={() => zoomBy(1 / 1.25)} title="Zoom out">
+        <button type="button" onClick={() => zoomBy(1 / 1.25)} aria-label="Zoom out">
           <Reduce size={13} />
         </button>
         <span>{Math.round(scale * 100)}%</span>
-        <button type="button" onClick={() => zoomBy(1.25)} title="Zoom in">
+        <button type="button" onClick={() => zoomBy(1.25)} aria-label="Zoom in">
           <Add size={13} />
         </button>
       </div>

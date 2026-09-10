@@ -494,10 +494,10 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
           </ReactFlow>
 
           <div className="gf-history-controls">
-            <button type="button" className="gf-history-btn" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">
+            <button type="button" className="gf-history-btn" onClick={undo} disabled={!canUndo} aria-label="Undo (Ctrl+Z)">
               <UndoIcon size={15} />
             </button>
-            <button type="button" className="gf-history-btn" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)">
+            <button type="button" className="gf-history-btn" onClick={redo} disabled={!canRedo} aria-label="Redo (Ctrl+Shift+Z)">
               <RedoIcon size={15} />
             </button>
           </div>
@@ -518,7 +518,7 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
                   setAssistantComingSoon(true)
                   window.setTimeout(() => setAssistantComingSoon(false), 1600)
                 }}
-                title="Assistant"
+                aria-label="Assistant"
               >
                 <Magic size={17} />
               </button>
@@ -530,13 +530,13 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
               type="button" className="gf-toolbar-btn"
               onClick={onRun}
               disabled={!onRun || running}
-              title={!onRun ? 'Save this automation before running it' : 'Run now'}
+              aria-label={!onRun ? 'Save this automation before running it' : 'Run now'}
             >
               {running ? <LoadingOne size={17} className="spin" /> : <Play size={17} />}
             </button>
 
             <span className="gf-toolbar-divider" />
-            <button type="button" className="gf-toolbar-btn" onClick={() => setCreatorOpen(true)} title="Add node">
+            <button type="button" className="gf-toolbar-btn" onClick={() => setCreatorOpen(true)} aria-label="Add node">
               <BlockOne size={17} />
             </button>
           </div>
@@ -651,7 +651,7 @@ function NodeIdEditor({ nodeId, onRename }: { nodeId: string; onRename: (next: s
       ref={inputRef}
       className={`gf-id-input${error ? ' error' : ''}`}
       value={draft}
-      title={error ?? undefined}
+      aria-label={error ?? undefined}
       onChange={(e) => { setDraft(e.target.value); setError(null) }}
       onBlur={commit}
       onKeyDown={(e) => {

@@ -56,7 +56,7 @@ export function SkillEditorPanel({
         <h1 className="sc-editor-title">{displayName}</h1>
         <div className="sc-editor-topbar-right">
           {isEditable && (
-            <label className="sc-toggle-wrap" title={enabled ? 'Disable' : 'Enable'}>
+            <label className="sc-toggle-wrap">
               <input type="checkbox" checked={enabled} onChange={onToggleEnabled} />
               <span className="sc-toggle-track" />
               <span className="sc-toggle-label">{enabled ? 'Enabled' : 'Disabled'}</span>
@@ -70,7 +70,7 @@ export function SkillEditorPanel({
               <button
                 className={`sc-icon-btn${menuOpen ? ' active' : ''}`}
                 onClick={() => setMenuOpen(v => !v)}
-                title="More options"
+                aria-label="More options"
               >
                 <MoreOne size={15} />
               </button>
@@ -137,15 +137,15 @@ export function SkillEditorPanel({
               </>
             ) : isEditable ? (
               <>
-                <button className="sc-view-btn active" title="Preview">
+                <button className="sc-view-btn active" aria-label="Preview">
                   <PreviewOpen size={12} />
                 </button>
-                <button className="sc-view-btn" onClick={onToggleEdit} title="Edit raw markdown">
+                <button className="sc-view-btn" onClick={onToggleEdit} aria-label="Edit raw markdown">
                   <Edit size={12} />
                 </button>
               </>
             ) : isMd ? (
-              <button className="sc-view-btn active" title="Preview">
+              <button className="sc-view-btn active" aria-label="Preview">
                 <PreviewOpen size={12} />
               </button>
             ) : (

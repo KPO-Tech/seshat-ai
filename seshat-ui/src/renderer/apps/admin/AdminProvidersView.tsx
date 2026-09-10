@@ -158,7 +158,7 @@ export function AdminProvidersView() {
                     {!setting.is_default && (
                       <button
                         className="pv-icon-btn pv-default-btn"
-                        title="Set as organization default"
+                        aria-label="Set as organization default"
                         onClick={() => handleSetDefault(setting.id)}
                         disabled={settingDefaultId === setting.id}
                       >
@@ -167,14 +167,14 @@ export function AdminProvidersView() {
                     )}
                     <button
                       className="pv-icon-btn"
-                      title="Edit"
+                      aria-label="Edit"
                       onClick={() => setEditing({ catalogEntry, setting })}
                     >
                       <Edit size={13} />
                     </button>
                     <button
                       className="pv-icon-btn"
-                      title="Delete"
+                      aria-label="Delete"
                       onClick={() => handleDelete(setting.id)}
                       disabled={deletingId === setting.id}
                     >

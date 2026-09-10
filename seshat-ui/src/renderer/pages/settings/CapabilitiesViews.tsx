@@ -449,7 +449,7 @@ function SpeechToTextCard() {
                       </button>
                     )}
                     {!isActive && (
-                      <button className="caps-icon-btn" title="Delete" onClick={() => void handleDeleteModel(m.id)} disabled={isBusy}>
+                      <button className="caps-icon-btn" aria-label="Delete" onClick={() => void handleDeleteModel(m.id)} disabled={isBusy}>
                         <Close size={11} />
                       </button>
                     )}

@@ -189,7 +189,7 @@ export function WorkspacePage({ initialTab = 'agents', embedded = false }: Works
     if (tab === 'agents' && view === 'grid') {
       setEmbeddedActions(
         <>
-          <button className="wk-icon-btn" onClick={loadAgents} title="Refresh">
+          <button className="wk-icon-btn" onClick={loadAgents} aria-label="Refresh">
             <Sync size={12} />
           </button>
           <button className="wk-new-btn" onClick={openNew}><Plus size={11} /> New Agent</button>
@@ -388,7 +388,7 @@ function AgentGrid({ userAgents, organizationAgents, builtinAgents, loading, err
             : `${allAgents.length} agent${allAgents.length > 1 ? 's' : ''}`}
         </div>
         <div className="wk-grid-bar-actions">
-          <button className="wk-icon-btn" onClick={onRefresh} title="Refresh">
+          <button className="wk-icon-btn" onClick={onRefresh} aria-label="Refresh">
             <Sync size={12} />
           </button>
           <button className="wk-new-btn" onClick={onNew}><Plus size={11} /> New Agent</button>
@@ -1112,10 +1112,10 @@ export function McpPanel() {
                   <Attention size={10} /> Reload required
                 </span>
               )}
-              <button className="wk-icon-btn" title="Refresh list" onClick={load}>
+              <button className="wk-icon-btn" aria-label="Refresh list" onClick={load}>
                 <Sync size={13} />
               </button>
-              <button className="caps-import-json-btn" onClick={handleImportJSON} title="Import from mcp.json">
+              <button className="caps-import-json-btn" onClick={handleImportJSON}>
                 <Upload size={11} /> Load JSON
               </button>
               <button
@@ -1289,7 +1289,6 @@ function McpOrgCatalogSection({ onApprovalChanged }: { onApprovalChanged: () => 
                         className="caps-org-mcp-revoke-btn"
                         onClick={() => handleRevoke(entry)}
                         disabled={busyId === entry.id}
-                        title="Stop running this server locally"
                       >
                         <CheckOne size={11} /> {busyId === entry.id ? 'Working…' : 'Active'}
                       </button>
@@ -1298,7 +1297,6 @@ function McpOrgCatalogSection({ onApprovalChanged }: { onApprovalChanged: () => 
                         className="caps-org-mcp-approve-btn"
                         onClick={() => handleApprove(entry)}
                         disabled={busyId === entry.id}
-                        title={isStdio ? 'This will run a command on your machine' : 'Enable this server locally'}
                       >
                         <Lock size={11} /> {busyId === entry.id ? 'Working…' : 'Activer'}
                       </button>
@@ -1423,7 +1421,6 @@ function HooksOrgCatalogSection() {
                         className="caps-org-mcp-revoke-btn"
                         onClick={() => handleRevoke(entry)}
                         disabled={busyId === entry.id}
-                        title="Stop running this hook locally"
                       >
                         <CheckOne size={11} /> {busyId === entry.id ? 'Working…' : 'Active'}
                       </button>
@@ -1432,7 +1429,6 @@ function HooksOrgCatalogSection() {
                         className="caps-org-mcp-approve-btn"
                         onClick={() => handleApprove(entry)}
                         disabled={busyId === entry.id}
-                        title="This will run a shell command on your machine before matching tool calls"
                       >
                         <Lock size={11} /> {busyId === entry.id ? 'Working…' : 'Approve'}
                       </button>
@@ -1480,7 +1476,6 @@ function McpServerCard({
                 <button
                   className={`caps-tools-toggle ${expanded ? 'active' : ''}`}
                   onClick={() => setExpanded(v => !v)}
-                  title={expanded ? 'Hide tools' : 'Show tools'}
                 >
                   <Api size={10} />
                   {tools.length} tool{tools.length !== 1 ? 's' : ''}
@@ -1500,7 +1495,7 @@ function McpServerCard({
           </div>
         </div>
         <div className="caps-mcp-actions">
-          <label className="caps-mcp-toggle" title={server.enabled ? 'Disable' : 'Enable'}>
+          <label className="caps-mcp-toggle" aria-label={server.enabled ? 'Disable' : 'Enable'}>
             <input
               type="checkbox"
               checked={server.enabled}
@@ -1508,10 +1503,10 @@ function McpServerCard({
             />
             <span className="caps-toggle-track" />
           </label>
-          <button className="caps-mini-btn" title="Edit" onClick={onEdit}>
+          <button className="caps-mini-btn" aria-label="Edit" onClick={onEdit}>
             <Edit size={11} />
           </button>
-          <button className="caps-mini-btn danger" title="Delete" onClick={onDelete}>
+          <button className="caps-mini-btn danger" aria-label="Delete" onClick={onDelete}>
             <Close size={11} />
           </button>
         </div>
@@ -1894,7 +1889,7 @@ function DocumentsTab({ embedded = false, resetKey = 0, onSelectionChange, onAct
         <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={handleFileInput} />
         <div className="wk-grid-bar">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <button className="wk-icon-btn" onClick={() => selectCorpus(null)} title="Back">
+            <button className="wk-icon-btn" onClick={() => selectCorpus(null)} aria-label="Back">
               <Left size={13} />
             </button>
             <span className="wk-grid-bar-title">{selected.name}</span>
@@ -1956,7 +1951,7 @@ function DocumentsTab({ embedded = false, resetKey = 0, onSelectionChange, onAct
                       {latestJob?.status === 'failed' && (
                         <button
                           className="wk-icon-btn"
-                          title="Retry"
+                          aria-label="Retry"
                           disabled={actionLoading === latestJob.id}
                           onClick={() => retryJob(latestJob.id)}
                         >
@@ -2016,7 +2011,7 @@ function DocumentsTab({ embedded = false, resetKey = 0, onSelectionChange, onAct
                   <div className="wk-doc-icon">
                     <Brain size={15} />
                   </div>
-                  <button className="wk-icon-btn danger" onClick={(e) => deleteCorpus(corpus.id, e)} title="Delete">
+                  <button className="wk-icon-btn danger" onClick={(e) => deleteCorpus(corpus.id, e)} aria-label="Delete">
                     <Delete size={11} />
                   </button>
                 </div>

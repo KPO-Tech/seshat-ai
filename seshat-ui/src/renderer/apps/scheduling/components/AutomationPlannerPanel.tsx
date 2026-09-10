@@ -44,7 +44,7 @@ export function AutomationPlannerPanel({ disabled, agents, providers, onDraft }:
           type="button"
           className="sch-planner-settings-btn"
           onClick={() => setShowSettings(true)}
-          title="Choose the provider and model used to draft automations"
+          aria-label="Choose the provider and model used to draft automations"
         >
           <Setting size={15} />
         </button>
@@ -88,7 +88,7 @@ export function AutomationPlannerPanel({ disabled, agents, providers, onDraft }:
           disabled={disabled}
           placeholder="Describe the automation..."
         />
-        <button type="button" onClick={() => handleDraft()} disabled={!canDraft} title="Draft job">
+        <button type="button" onClick={() => handleDraft()} disabled={!canDraft} aria-label="Draft job">
           <Send size={15} />
         </button>
       </div>

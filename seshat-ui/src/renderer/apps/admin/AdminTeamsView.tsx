@@ -73,12 +73,12 @@ export function AdminTeamsView() {
                 <td>{team.member_user_ids?.length ?? 0}</td>
                 <td>
                   <div className="adm-roles" style={{ justifyContent: 'flex-end' }}>
-                    <button className="pv-icon-btn" title="Edit" onClick={() => setEditing(team)}>
+                    <button className="pv-icon-btn" aria-label="Edit" onClick={() => setEditing(team)}>
                       <Edit size={13} />
                     </button>
                     <button
                       className="pv-icon-btn"
-                      title="Delete"
+                      aria-label="Delete"
                       onClick={() => handleDelete(team.id)}
                       disabled={deletingId === team.id}
                     >

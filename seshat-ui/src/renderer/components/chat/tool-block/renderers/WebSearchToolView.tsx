@@ -48,7 +48,6 @@ export function WebSearchToolView({ tool, result, sessionId }: ToolViewProps) {
                   href={hit.url}
                   target="_blank"
                   rel="noreferrer"
-                  title={hit.url}
                   onClick={(event) => {
                     if (!shouldOpenInAppBrowser(event, hit.url)) return
                     event.preventDefault()

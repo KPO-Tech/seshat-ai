@@ -44,10 +44,10 @@ function VariableEditRow({
         {error && <div className="au-var-error">{error}</div>}
       </div>
       <div className="au-overview-actions">
-        <button type="button" className="au-icon-btn" title="Save" onClick={() => onSave(name.trim(), value)} disabled={saving}>
+        <button type="button" className="au-icon-btn" aria-label="Save" onClick={() => onSave(name.trim(), value)} disabled={saving}>
           {saving ? <LoadingOne size={13} className="spin" /> : <CheckOne size={13} />}
         </button>
-        <button type="button" className="au-icon-btn" title="Cancel" onClick={onCancel} disabled={saving}>
+        <button type="button" className="au-icon-btn" aria-label="Cancel" onClick={onCancel} disabled={saving}>
           <Close size={13} />
         </button>
       </div>
@@ -246,7 +246,7 @@ export function VariablesPanel() {
                 </div>
                 <div className="au-overview-main">
                   <div className="au-overview-name-row">
-                    <button type="button" className="au-var-ref" onClick={() => copyRef(variable)} title="Copy $vars reference">
+                    <button type="button" className="au-var-ref" onClick={() => copyRef(variable)}>
                       <span className="au-var-name">$vars.{variable.name}</span>
                       {copiedId === variable.id ? <CheckOne size={12} /> : <Copy size={12} />}
                     </button>
@@ -254,11 +254,11 @@ export function VariablesPanel() {
                   <div className="au-overview-desc au-var-value">{variable.value}</div>
                 </div>
                 <div className="au-overview-actions">
-                  <button type="button" className="au-icon-btn" title="Edit" onClick={() => setEditingId(variable.id)}>
+                  <button type="button" className="au-icon-btn" aria-label="Edit" onClick={() => setEditingId(variable.id)}>
                     <EditIcon size={13} />
                   </button>
                   <button
-                    type="button" className="au-icon-btn" title="Delete"
+                    type="button" className="au-icon-btn" aria-label="Delete"
                     onClick={() => void deleteVariable(variable)}
                     disabled={deletingId === variable.id}
                   >

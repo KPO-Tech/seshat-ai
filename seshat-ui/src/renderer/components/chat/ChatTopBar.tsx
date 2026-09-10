@@ -128,7 +128,6 @@ export function ChatTopBar({
               const next = EXECUTION_CYCLE[(currentIndex + 1) % EXECUTION_CYCLE.length]
               onExecutionModeChange(next)
             }}
-            title={`Mode: ${EXECUTION_LABEL[executionMode === 'plan' ? 'plan' : 'execute']} (click to toggle)`}
             data-mode={executionMode === 'plan' ? 'plan' : 'execute'}
           >
             <span className="chat-auto-dot" />
@@ -184,7 +183,7 @@ export function ChatTopBar({
             <button
               className="conv-menu-trigger"
               type="button"
-              title="More"
+              aria-label="More"
               onClick={() => setMenuOpen((v) => !v)}
             >
               <More size={13} />
@@ -203,7 +202,7 @@ export function ChatTopBar({
                     <span>{shareLabel}</span>
                   </button>
                 )}
-                <button type="button" disabled title="Coming soon">
+                <button type="button" disabled>
                   <Folder size={13} />
                   <span>Move to a project</span>
                 </button>

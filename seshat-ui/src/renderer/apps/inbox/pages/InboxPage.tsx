@@ -608,7 +608,6 @@ export function InboxPage() {
                 className="ib-action-btn primary"
                 onClick={handleStartInboxReview}
                 disabled={connectedAccounts.length === 0 || launchingAgent || agentStreaming}
-                title="Ask the Inbox Agent to review every connected channel"
               >
                 {launchingAgent || agentStreaming ? <LoadingOne size={13} className="spin" /> : <Send size={13} />} Scan inbox
               </button>

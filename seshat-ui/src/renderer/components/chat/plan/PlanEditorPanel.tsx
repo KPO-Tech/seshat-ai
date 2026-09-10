@@ -723,12 +723,12 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
         <DocDetail size={13} className="pep-icon" />
         <span className="pep-name">Implementation Plan</span>
         {onToggleMaximize && (
-          <button className="pep-frame-btn" type="button" onClick={onToggleMaximize} title={isMaximized ? 'Restore' : 'Maximize'}>
+          <button className="pep-frame-btn" type="button" onClick={onToggleMaximize} aria-label={isMaximized ? 'Restore' : 'Maximize'}>
             <WindowMaximizeIcon />
           </button>
         )}
         {onClose && (
-          <button className="pep-frame-btn" type="button" onClick={onClose} title="Close">
+          <button className="pep-frame-btn" type="button" onClick={onClose} aria-label="Close">
             <WindowCloseIcon />
           </button>
         )}
@@ -907,19 +907,19 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
               className={`pep-edit-btn${editMode ? ' pep-edit-btn--active' : ''}`}
               type="button"
               onClick={() => setEditMode((v) => !v)}
-              title={editMode ? 'Preview' : 'Edit'}
+              aria-label={editMode ? 'Preview' : 'Edit'}
             >
               <Edit size={11} />
             </button>
           )}
           <span className={badgeClass}>{status}</span>
           {onToggleMaximize && (
-            <button className="pep-frame-btn" type="button" onClick={onToggleMaximize} title={isMaximized ? 'Restore' : 'Maximize'}>
+            <button className="pep-frame-btn" type="button" onClick={onToggleMaximize} aria-label={isMaximized ? 'Restore' : 'Maximize'}>
               <WindowMaximizeIcon />
             </button>
           )}
           {onClose && (
-            <button className="pep-frame-btn" type="button" onClick={onClose} title="Close">
+            <button className="pep-frame-btn" type="button" onClick={onClose} aria-label="Close">
               <WindowCloseIcon />
             </button>
           )}
@@ -948,7 +948,7 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
                   <button
                     type="button"
                     className="pep-line-plus"
-                    title="Comment on this section"
+                    aria-label="Comment on this section"
                     onClick={(e) => openLineComment(e, block)}
                   >
                     +
@@ -1029,7 +1029,7 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
                 type="button"
                 className="pep-annotation-remove"
                 onClick={() => removeAnnotation(a.id)}
-                title="Remove"
+                aria-label="Remove"
               >
                 <CloseOne size={10} />
               </button>

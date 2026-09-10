@@ -128,7 +128,7 @@ export function AdminUsersView() {
                   <div className="adm-roles" style={{ justifyContent: 'flex-end' }}>
                     <button
                       className="pv-icon-btn"
-                      title="Remove from organization"
+                      aria-label="Remove from organization"
                       onClick={() => handleRemove(m)}
                       disabled={deletingId === m.id || m.user_id === currentUserId}
                     >

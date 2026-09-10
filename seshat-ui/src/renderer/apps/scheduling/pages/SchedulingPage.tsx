@@ -236,7 +236,7 @@ export function SchedulingPage() {
                       <div className="sch-job-actions">
                         <button
                           className="sch-icon-btn"
-                          title="Run now"
+                          aria-label="Run now"
                           onClick={(event) => { event.stopPropagation(); void handleRunNow(job) }}
                           disabled={runningJobId === job.id}
                         >
@@ -244,21 +244,21 @@ export function SchedulingPage() {
                         </button>
                         <button
                           className="sch-icon-btn"
-                          title={job.status === 'active' ? 'Pause' : 'Resume'}
+                          aria-label={job.status === 'active' ? 'Pause' : 'Resume'}
                           onClick={(event) => { event.stopPropagation(); void handleTogglePaused(job) }}
                           disabled={pausingJobId === job.id}
                         >
                           {job.status === 'active' ? <PauseOne size={12} /> : <Play size={12} />}
                         </button>
-                        <button className="sch-icon-btn" title="View runs" onClick={(event) => { event.stopPropagation(); void toggleRuns(job) }}>
+                        <button className="sch-icon-btn" aria-label="View runs" onClick={(event) => { event.stopPropagation(); void toggleRuns(job) }}>
                           <History size={12} />
                         </button>
-                        <button className="sch-icon-btn" title="Edit" onClick={(event) => { event.stopPropagation(); openEditForm(job) }}>
+                        <button className="sch-icon-btn" aria-label="Edit" onClick={(event) => { event.stopPropagation(); openEditForm(job) }}>
                           <Edit size={12} />
                         </button>
                         <button
                           className="sch-icon-btn sch-icon-btn--danger"
-                          title="Delete"
+                          aria-label="Delete"
                           onClick={(event) => { event.stopPropagation(); setDeletingJobId(job.id) }}
                         >
                           <Delete size={12} />

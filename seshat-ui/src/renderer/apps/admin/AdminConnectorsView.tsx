@@ -123,7 +123,7 @@ export function AdminConnectorsView() {
                       {app?.configured ? 'Configured' : 'Not configured'}
                     </span>
                     {app?.configured ? (
-                      <button className="pv-icon-btn" title="Edit" onClick={() => setConfiguring({ kind, label })}>
+                      <button className="pv-icon-btn" aria-label="Edit" onClick={() => setConfiguring({ kind, label })}>
                         <Edit size={13} />
                       </button>
                     ) : (

@@ -111,7 +111,7 @@ export function AdminInvitationsView() {
                     <div className="adm-roles" style={{ justifyContent: 'flex-end' }}>
                       <button
                         className="pv-icon-btn"
-                        title="Revoke invitation"
+                        aria-label="Revoke invitation"
                         onClick={() => handleRevoke(inv)}
                         disabled={revokingId === inv.id}
                       >

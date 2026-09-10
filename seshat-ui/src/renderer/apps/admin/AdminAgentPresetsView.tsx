@@ -98,12 +98,12 @@ export function AdminAgentPresetsView() {
                 </td>
                 <td>
                   <div className="adm-roles" style={{ justifyContent: 'flex-end' }}>
-                    <button className="pv-icon-btn" title="Edit" onClick={() => setEditing(p)}>
+                    <button className="pv-icon-btn" aria-label="Edit" onClick={() => setEditing(p)}>
                       <Edit size={13} />
                     </button>
                     <button
                       className="pv-icon-btn"
-                      title="Delete"
+                      aria-label="Delete"
                       onClick={() => handleDelete(p)}
                       disabled={deletingId === p.id}
                     >

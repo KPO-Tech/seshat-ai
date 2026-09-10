@@ -384,7 +384,7 @@ export function ChatInput({
           <button
             className="chat-corpus-chip-remove"
             onMouseDown={e => { e.preventDefault(); onCorpusChange(null) }}
-            title="Remove knowledge base"
+            aria-label="Remove knowledge base"
           >
             <WindowCloseIcon />
           </button>
@@ -423,7 +423,7 @@ export function ChatInput({
                     type="button"
                     className="chat-attachment-thumb"
                     onClick={() => (isImage ? openLightbox({ url: previewURL, filename: file.filename }) : setPreviewAttachment(file))}
-                    title={tooltip}
+                    aria-label={tooltip}
                   >
                     <img src={previewURL} alt={file.filename} />
                   </button>
@@ -432,7 +432,6 @@ export function ChatInput({
                     type="button"
                     className="chat-attachment-thumb chat-attachment-thumb--text"
                     onClick={() => setPreviewAttachment(file)}
-                    title={tooltip}
                   >
                     <span className="chat-attachment-text-preview">{textPreview}</span>
                   </button>
@@ -441,7 +440,6 @@ export function ChatInput({
                     type="button"
                     className="chat-attachment-file-icon"
                     onClick={() => file.local_path && void window.nexus?.openPath?.(file.local_path)}
-                    title={tooltip}
                   >
                     <span className="chat-attachment-file-icon-name">{file.filename}</span>
                     <AttachmentTypeIcon filename={file.filename} size={18} />
@@ -454,7 +452,7 @@ export function ChatInput({
                 <button
                   className="chat-attachment-remove"
                   onMouseDown={e => { e.preventDefault(); onRemoveAttachment?.(file.id) }}
-                  title="Remove attachment"
+                  aria-label="Remove attachment"
                 >
                   <WindowCloseIcon size={10} />
                 </button>
@@ -474,7 +472,7 @@ export function ChatInput({
           <div className="chat-attachment-preview-shell" onMouseDown={(event) => event.stopPropagation()}>
             <div className="chat-attachment-preview-header">
               <span>{previewAttachment.filename}</span>
-              <button type="button" onClick={() => setPreviewAttachment(null)} title="Close preview">
+              <button type="button" onClick={() => setPreviewAttachment(null)} aria-label="Close preview">
                 <WindowCloseIcon size={14} />
               </button>
             </div>
@@ -529,7 +527,7 @@ export function ChatInput({
           <button
             className={`chat-tool-circle${isUploadingAttachments ? ' chat-tool-circle-loading' : ''}`}
             type="button"
-            title="Attach files"
+            aria-label="Attach files"
             disabled={isUploadingAttachments}
             onClick={() => fileInputRef.current?.click()}
           >
@@ -549,7 +547,7 @@ export function ChatInput({
           <div className="chat-workspace-control">
             <button
               className={`chat-tool-icon${projectPath ? ' chat-tool-icon-active' : ''}`}
-              title={projectPath ? `Project: ${projectPath}` : 'Set project folder'}
+              aria-label={projectPath ? `Project: ${projectPath}` : 'Set project folder'}
               onClick={async () => {
                 const result = await window.nexus?.dialog?.openDirectory?.()
                 if (result && !result.canceled && result.filePaths?.length) {
@@ -564,7 +562,7 @@ export function ChatInput({
                 <span className="chat-workspace-label" title={projectPath}>{projectLabel}</span>
                 <button
                   className="chat-workspace-clear"
-                  title="Clear project folder"
+                  aria-label="Clear project folder"
                   onMouseDown={(e) => { e.preventDefault(); onProjectChange?.('') }}
                 >
                   <WindowCloseIcon />
@@ -575,7 +573,7 @@ export function ChatInput({
           <div className="chat-corpus-wrap" ref={corpusDropdownRef}>
             <button
               className={`chat-tool-icon${selectedCorpusId ? ' chat-tool-icon-active' : ''}`}
-              title="Attach knowledge base"
+              aria-label="Attach knowledge base"
               onClick={() => setCorpusDropdownOpen(v => !v)}
             >
               <AtSign size={13} />
@@ -654,7 +652,7 @@ export function ChatInput({
           <button
             className={`chat-tool-icon chat-tool-icon-mic${recordingState === 'recording' ? ' chat-tool-icon-recording' : ''}`}
             type="button"
-            title={
+            aria-label={
               recordingState === 'recording'
                 ? 'Stop recording'
                 : recordingState === 'transcribing'
@@ -669,7 +667,7 @@ export function ChatInput({
               : <Voice size={13} />}
           </button>
           {isStreaming ? (
-            <button className="chat-stop-btn" onClick={onStop} type="button" title="Stop">
+            <button className="chat-stop-btn" onClick={onStop} type="button" aria-label="Stop">
               <WindowCloseIcon size={14} />
             </button>
           ) : (
