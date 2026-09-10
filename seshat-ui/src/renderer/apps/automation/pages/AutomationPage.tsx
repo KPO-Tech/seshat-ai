@@ -80,6 +80,7 @@ export function AutomationPage() {
   const [runningJobId, setRunningJobId] = useState<string | null>(null)
   const [pausingJobId, setPausingJobId] = useState<string | null>(null)
   const [deletingJobId, setDeletingJobId] = useState<string | null>(null)
+  const [duplicatingJobId, setDuplicatingJobId] = useState<string | null>(null)
 
   const [name, setName] = useState('Untitled automation')
   const [description, setDescription] = useState('')
@@ -218,6 +219,36 @@ export function AutomationPage() {
       setJobsError(err instanceof ApiError ? err.message : 'Failed to delete this automation.')
     } finally {
       setDeletingJobId(null)
+    }
+  }
+
+  // Projects' "Duplicate" (automation-app-pages.md §7) - clones a job via
+  // the same CreateJob call handleSave's isNew branch already makes, using
+  // the source job's own already-loaded fields directly rather than
+  // reopening the editor. No trigger_type/cron_expr/etc - a graph job's
+  // schedule_trigger node is the trigger config now (same reasoning as
+  // handleSave). Always creates active (CreateJob's own default), whether
+  // or not the source was paused - a duplicate starts fresh.
+  async function handleDuplicateJob(job: Job) {
+    setDuplicatingJobId(job.id)
+    try {
+      await api.post('/automation/jobs', {
+        name: `Copy of ${job.name}`,
+        description: job.description,
+        execution_target: job.execution_target,
+        target_device_id: job.target_device_id,
+        model_override: job.model_override,
+        organization_id: job.organization_id ?? currentOrganizationId ?? '',
+        error_workflow_job_id: job.error_workflow_job_id,
+        tags: job.tags,
+        configuration: job.configuration,
+        graph: job.graph,
+      })
+      await loadJobs()
+    } catch (err) {
+      setJobsError(err instanceof ApiError ? err.message : 'Failed to duplicate this automation.')
+    } finally {
+      setDuplicatingJobId(null)
     }
   }
 
@@ -634,9 +665,11 @@ export function AutomationPage() {
               onRun={(job) => void handleRunNow(job)}
               onTogglePaused={(job) => void handleTogglePaused(job)}
               onDelete={(job) => void handleDeleteJob(job)}
+              onDuplicate={(job) => void handleDuplicateJob(job)}
               runningJobId={runningJobId}
               pausingJobId={pausingJobId}
               deletingJobId={deletingJobId}
+              duplicatingJobId={duplicatingJobId}
             />
           ) : railView === 'runs' && jobId ? (
             <RunsPanel jobId={jobId} graph={graph} nodeTypes={nodeTypes} initialRunId={searchParams.get('runId') ?? undefined} />
