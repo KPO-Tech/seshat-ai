@@ -2,13 +2,14 @@
 import { useNavigate, useParams, useLocation, useSearchParams, useBlocker } from 'react-router'
 import {
   Left, Setting, Close, CheckOne, Home, List, ApplicationOne, DataOne, Help as HelpIcon,
-  Plus, Play, Delete as DeleteIcon, LoadingOne, History,
+  Play, Delete as DeleteIcon, LoadingOne, History,
 } from '@icon-park/react'
 import { api, ApiError } from '@/api/client'
-import type { Agent, ProviderModel } from '@/api/types'
+import type { Agent, AdminOrganization, ProviderModel } from '@/api/types'
 import { fetchProviderModels, useProviders } from '@/hooks/useProviders'
 import { useProvidersStore } from '@/stores/providers'
 import { useOrganizationStore } from '@/stores/organization'
+import { NexusLogo } from '@/components/NexusLogo'
 import { GraphEditor } from '../graph/GraphEditor'
 import { RunsPanel } from '../graph/RunsPanel'
 import { VariablesPanel } from '../graph/VariablesPanel'
@@ -105,6 +106,23 @@ export function AutomationPage() {
   const [errorWorkflowJobId, setErrorWorkflowJobId] = useState('')
   const [otherJobs, setOtherJobs] = useState<Job[]>([])
   const currentOrganizationId = useOrganizationStore((s) => s.currentOrganizationId)
+
+  // Sidebar identity (organization name next to the Automation brand mark)
+  // - this backend enforces at most one organization per user account, so
+  // the first entry is always the caller's own, same assumption
+  // useOrganizationStore itself already makes for currentOrganizationId.
+  // Mirrors AdminOverview's identical /organizations fetch (apps/admin/
+  // index.tsx) - nothing here is admin-only, seshat-backend's own
+  // ListOrganizations already scopes to the caller in both standalone and
+  // connected mode.
+  const [organizationName, setOrganizationName] = useState<string | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    api.get<{ organizations: AdminOrganization[] }>('/organizations')
+      .then((res) => { if (!cancelled) setOrganizationName(res.organizations?.[0]?.name ?? null) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
   // The *effective* org id: a saved job's own organization_id once loaded
   // (set below), or the caller's current/default organization before that -
   // Variables/preview/job-creation all need an organization id even for a
@@ -517,43 +535,53 @@ export function AutomationPage() {
 
   return (
     <div className="au-root">
-      <header className="au-topbar">
-        <button type="button" className="au-icon-btn" onClick={() => navigate(isOverview ? '/apps' : '/automation')} title={isOverview ? 'Back to Apps' : 'Back to Automation'}>
-          <Left size={15} />
-        </button>
-        {isOverview ? (
-          <span className="au-topbar-title">Automation</span>
-        ) : (
-          <input className="au-name-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Untitled automation" />
-        )}
-        <div className="au-topbar-spacer" />
-        {(saveError || runError) && <span className="au-topbar-error">{saveError || runError}</span>}
-        {isOverview ? (
-          <button type="button" className="au-save-btn" onClick={() => navigate('/automation/new')}>
-            <Plus size={14} /> New automation
+      {/* The overview-family views (Overview/Projects/Templates/Variables/
+          Help) render no topbar at all - a bare "< Automation ... +New"
+          bar added nothing they don't already get from the sidebar header
+          below plus each panel's own page header, and just sat there as
+          dead chrome. The job editor keeps its topbar: unlike Overview, it
+          carries real, load-bearing state (the name input, dirty/saving
+          status, Run/Settings/Save actions) that has nowhere else to live. */}
+      {!isOverview && (
+        <header className="au-topbar">
+          <button type="button" className="au-icon-btn" onClick={() => navigate('/automation')} title="Back to Automation">
+            <Left size={15} />
           </button>
-        ) : (
-          <>
-            <button
-              type="button" className="au-icon-btn"
-              onClick={() => void handleRunThisJob()}
-              disabled={runningThisJob || isNew}
-              title={isNew ? 'Save this automation before running it' : 'Run now'}
-            >
-              {runningThisJob ? <LoadingOne size={15} className="spin" /> : <Play size={15} />}
-            </button>
-            <button type="button" className={`au-icon-btn ${settingsOpen ? 'active' : ''}`} onClick={() => setSettingsOpen((o) => !o)} title="Job settings">
-              <Setting size={15} />
-            </button>
-            <button type="button" className="au-save-btn" onClick={() => void handleSave()} disabled={saving || !canSave} title={!canSave ? 'Finish job settings before saving' : undefined}>
-              {saving ? 'Savingâ€¦' : isNew ? 'Create job' : 'Save changes'}
-            </button>
-          </>
-        )}
-      </header>
+          <input className="au-name-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Untitled automation" />
+          <div className="au-topbar-spacer" />
+          {(saveError || runError) && <span className="au-topbar-error">{saveError || runError}</span>}
+          <button
+            type="button" className="au-icon-btn"
+            onClick={() => void handleRunThisJob()}
+            disabled={runningThisJob || isNew}
+            title={isNew ? 'Save this automation before running it' : 'Run now'}
+          >
+            {runningThisJob ? <LoadingOne size={15} className="spin" /> : <Play size={15} />}
+          </button>
+          <button type="button" className={`au-icon-btn ${settingsOpen ? 'active' : ''}`} onClick={() => setSettingsOpen((o) => !o)} title="Job settings">
+            <Setting size={15} />
+          </button>
+          <button type="button" className="au-save-btn" onClick={() => void handleSave()} disabled={saving || !canSave} title={!canSave ? 'Finish job settings before saving' : undefined}>
+            {saving ? 'Savingâ€¦' : isNew ? 'Create job' : 'Save changes'}
+          </button>
+        </header>
+      )}
 
       <div className="au-body">
         <nav className="au-rail">
+          <button
+            type="button"
+            className="au-rail-header"
+            onClick={() => navigate('/apps')}
+            title="Back to Apps"
+          >
+            <NexusLogo size={22} />
+            <span className="au-rail-header-text">
+              <span className="au-rail-header-title">Automation</span>
+              {organizationName && <span className="au-rail-header-org">{organizationName}</span>}
+            </span>
+          </button>
+          <span className="au-rail-divider" />
           <button
             type="button"
             className={`au-rail-btn ${railView === 'overview' ? 'active' : ''}`}
@@ -617,6 +645,7 @@ export function AutomationPage() {
           {railView === 'overview' ? (
             <AutomationOverviewPanel
               organizationId={currentOrganizationId ?? ''}
+              onNew={() => navigate('/automation/new')}
               onOpenJob={(id) => navigate(`/automation/${id}`)}
               onOpenRun={(id, runId) => navigate(`/automation/${id}?tab=runs&runId=${encodeURIComponent(runId)}`)}
             />

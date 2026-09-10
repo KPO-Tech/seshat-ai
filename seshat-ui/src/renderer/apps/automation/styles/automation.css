@@ -79,12 +79,6 @@
   gap: 6px;
 }
 
-.au-topbar-title {
-  font-size: var(--font-size-base);
-  font-weight: 700;
-  color: var(--color-text);
-}
-
 .au-save-btn:disabled {
   opacity: 0.5;
   cursor: default;
@@ -115,6 +109,47 @@
   padding: 14px 10px;
   border-right: 1px solid var(--color-border-subtle);
   background: var(--color-surface);
+}
+
+/* Brand identity block at the top of the sidebar - the Seshat mark plus
+   which app this is and which organization it's scoped to (the same
+   NexusLogo used by the global Titlebar/Sidebar, not a one-off wordmark).
+   Doubles as the "back to Apps" affordance the old topbar's back button
+   used to provide, now that that bar is gone for this whole rail. */
+.au-rail-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.au-rail-header:hover .au-rail-header-title {
+  color: var(--color-primary);
+}
+
+.au-rail-header-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.au-rail-header-title {
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  color: var(--color-text);
+  transition: color 0.12s ease;
+}
+
+.au-rail-header-org {
+  font-size: var(--font-size-2xs);
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .au-rail-btn {

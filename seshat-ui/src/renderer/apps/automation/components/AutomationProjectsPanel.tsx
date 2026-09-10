@@ -65,6 +65,15 @@ export function AutomationProjectsPanel({
   return (
     <div className="au-overview">
       <style>{OVERVIEW_FILTER_CSS}</style>
+      <div className="au-overview-page-head">
+        <div>
+          <h1>Projects</h1>
+          <p>Browse, search, and manage every automation.</p>
+        </div>
+        <button type="button" className="au-save-btn" onClick={onNew}>
+          <Plus size={14} /> New automation
+        </button>
+      </div>
       <div className="au-overview-toolbar">
         <div className="au-overview-search-row">
           <Search size={14} className="au-overview-search-icon" />
@@ -145,6 +154,28 @@ export function AutomationProjectsPanel({
 }
 
 const OVERVIEW_FILTER_CSS = `
+.au-overview-page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 6px;
+}
+
+.au-overview-page-head h1 {
+  margin: 0;
+  font-size: var(--font-size-3xl);
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.01em;
+}
+
+.au-overview-page-head p {
+  margin: 4px 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
 .au-overview-toolbar {
   display: flex;
   gap: 8px;

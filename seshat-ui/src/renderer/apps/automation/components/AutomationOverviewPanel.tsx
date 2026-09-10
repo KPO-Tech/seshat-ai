@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CheckOne, ChartHistogram, FolderOpen, Rocket, Right } from '@icon-park/react'
+import { CheckOne, ChartHistogram, FolderOpen, Rocket, Right, Plus } from '@icon-park/react'
 import { api, ApiError } from '@/api/client'
 import { RUN_STATUS_LABEL } from '../graph/types'
 import type { Overview, AttentionItem, RecentActivityItem } from '../api/overview'
@@ -20,9 +20,10 @@ import type { Overview, AttentionItem, RecentActivityItem } from '../api/overvie
 // touch figures, per-node "Agent Routing Flow", a "Human Step" column) is
 // left out rather than faked.
 export function AutomationOverviewPanel({
-  organizationId, onOpenJob, onOpenRun,
+  organizationId, onNew, onOpenJob, onOpenRun,
 }: {
   organizationId: string
+  onNew: () => void
   onOpenJob: (jobId: string) => void
   onOpenRun: (jobId: string, runId: string) => void
 }) {
@@ -57,13 +58,14 @@ export function AutomationOverviewPanel({
       <style>{OVERVIEW_DASH_CSS}</style>
 
       <header className="au-dash-header">
-        <div className="au-dash-eyebrow-row">
-          <span className="au-dash-eyebrow">Automation</span>
-          <span className="au-dash-eyebrow-dot" />
-          <span className="au-dash-eyebrow-muted">{stats.total_projects} project{stats.total_projects === 1 ? '' : 's'} total</span>
+        <div>
+          <span className="au-dash-eyebrow">{stats.total_projects} project{stats.total_projects === 1 ? '' : 's'} total</span>
+          <h1>Overview</h1>
+          <p className="au-dash-subtitle">What's happening across your automations right now.</p>
         </div>
-        <h1>Overview</h1>
-        <p className="au-dash-subtitle">What's happening across your automations right now.</p>
+        <button type="button" className="au-save-btn" onClick={onNew}>
+          <Plus size={14} /> New automation
+        </button>
       </header>
 
       <div className="au-dash-kpis">
@@ -280,9 +282,12 @@ const OVERVIEW_DASH_CSS = `
   gap: 20px;
 }
 
-.au-dash-header { display: flex; flex-direction: column; gap: 4px; }
-
-.au-dash-eyebrow-row { display: flex; align-items: center; gap: 8px; }
+.au-dash-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
 
 .au-dash-eyebrow {
   font-size: var(--font-size-2xs);
@@ -292,20 +297,8 @@ const OVERVIEW_DASH_CSS = `
   color: var(--color-primary);
 }
 
-.au-dash-eyebrow-dot {
-  width: 3px;
-  height: 3px;
-  border-radius: var(--radius-full);
-  background: var(--color-text-muted);
-}
-
-.au-dash-eyebrow-muted {
-  font-size: var(--font-size-2xs);
-  color: var(--color-text-muted);
-}
-
 .au-dash-header h1 {
-  margin: 0;
+  margin: 2px 0 0;
   font-size: var(--font-size-3xl);
   font-weight: 700;
   color: var(--color-text);
