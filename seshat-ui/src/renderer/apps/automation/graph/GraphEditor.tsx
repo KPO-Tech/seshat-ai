@@ -1163,6 +1163,17 @@ export const GRAPH_EDITOR_CSS = `
   letter-spacing: normal;
 }
 
+/* Bare, unstyled native checkboxes rendered as plain black squares - this
+   one property recolors them to the app's own accent instead of the OS
+   default, shared by every .gf-field-checkbox across the panel (pin
+   output, retry on fail, and any schema boolean property). */
+.gf-field-checkbox input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--color-cta);
+  cursor: pointer;
+}
+
 .gf-field-hint {
   color: var(--color-text-muted);
   font-size: var(--font-size-2xs);
