@@ -1,17 +1,41 @@
-import { useMemo, useState } from 'react'
-import { Copy, Delete as DeleteIcon, Edit as EditIcon, LoadingOne, PauseOne, Play, Plus, Search } from '@icon-park/react'
+import { useMemo, useState, type CSSProperties } from 'react'
+import { Connection, Copy, Delete as DeleteIcon, Edit as EditIcon, LoadingOne, PauseOne, Play, Plus, Right, Search } from '@icon-park/react'
 import type { AutomationJob as Job } from '../api/types'
 import { RUN_STATUS_LABEL } from '../graph/types'
 
-// Text-only color for the footer's last-run indicator (no pill background -
-// unlike the shared .au-overview-badge--* pills, this sits inline among
-// plain muted meta text, so only the hue is reused, not the tinted
-// background that comes bundled with those classes).
-const RUN_STATUS_COLOR: Record<string, string> = {
-  completed: 'var(--color-success)',
-  failed: 'var(--color-error)',
-  running: 'var(--color-accent)',
-  claimed: 'var(--color-accent)',
+// A small, stable "tone" per project - cycles through existing brand/
+// semantic tokens keyed off the project's first tag (or its id, if
+// untagged) so the same project always gets the same color, without a
+// real per-department color concept (no such field exists on a job).
+// Purely a categorization aid, not data - mirrors the folder pills' own
+// "one tag ~= one department" approximation.
+const TONES = ['var(--color-primary)', 'var(--color-accent)', 'var(--color-info)', 'var(--color-success)', 'var(--color-warning)']
+function toneFor(key: string): string {
+  let hash = 0
+  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0
+  return TONES[hash % TONES.length]
+}
+
+// A project's at-a-glance state - always exactly one, same idea as the
+// mockup's ever-present "Active Routine"/"Needs Reconnect" pill, but
+// derived only from real fields (job.status, last_run_status) rather than
+// invented alert types (no "approvals waiting"/"needs reconnect" concept
+// exists in this engine).
+function deriveState(job: Job): { label: string; color: string } {
+  if (job.status === 'paused') return { label: 'Paused', color: 'var(--color-text-muted)' }
+  if (job.last_run_status === 'failed') return { label: 'Failing', color: 'var(--color-error)' }
+  return { label: 'Active', color: 'var(--color-success)' }
+}
+
+function formatRelative(iso: string): string {
+  const then = new Date(iso).getTime()
+  if (Number.isNaN(then)) return '—'
+  const minutes = Math.round((Date.now() - then) / 60000)
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.round(hours / 24)}d ago`
 }
 
 function describeTrigger(job: Job): string {
@@ -37,13 +61,18 @@ const UNTAGGED = '__untagged__'
 //
 // Phase 2 adds: a card layout matching Overview's visual language (same
 // tokens - radius-2xl, no border, lift-on-hover shadow - not a new one), a
-// sort control, tag-pill "folders", and Duplicate. The pills are a
-// deliberately reduced stand-in for §7's real folder tree: one free-text
-// tag (added in an earlier "Tier 3.4" pass) isn't the same as a single-
-// parent hierarchical folder, and there's no rename-independent-of-jobs -
-// "moving" a job to a folder here just means editing its tags in the job's
-// own settings drawer, which already works. A real folder concept is a
-// later phase, not faked here.
+// sort control, tag-pill "folders", and Duplicate. A later pass (this one)
+// took further structural cues from the Stitch mockup under docs/produits/
+// platforms/automation/design/ - a colored accent bar + icon tile, an
+// always-present state pill, and a labeled footer grid - but deliberately
+// left out everything in that mockup we have no real data for (a run
+// count/success-rate sparkline, an owner/team chip): see overview.go's own
+// scope notes for why per-job success rate isn't invented here either.
+// The folder pills are a deliberately reduced stand-in for §7's real
+// folder tree: one free-text tag (added in an earlier "Tier 3.4" pass)
+// isn't the same as a single-parent hierarchical folder, and there's no
+// rename-independent-of-jobs - "moving" a job to a folder here just means
+// editing its tags in the job's own settings drawer, which already works.
 export function AutomationProjectsPanel({
   jobs, loading, error, onOpen, onNew, onRun, onTogglePaused, onDelete, onDuplicate,
   runningJobId, pausingJobId, deletingJobId, duplicatingJobId,
@@ -173,71 +202,109 @@ export function AutomationProjectsPanel({
         </div>
       ) : (
         <div className="au-project-cards">
-          {filtered.map((job) => (
-            <div key={job.id} className="au-project-card" onClick={() => onOpen(job.id)} role="button" tabIndex={0}>
-              <div className="au-overview-main">
-                <div className="au-overview-name-row">
-                  <span className="au-overview-name">{job.name}</span>
-                  <span className={`au-overview-badge au-overview-badge--${job.status}`}>{job.status}</span>
-                  <span className="au-overview-badge au-overview-badge--target">{job.execution_target}</span>
-                </div>
-                {job.description && <div className="au-overview-desc">{job.description}</div>}
-                {!!job.tags?.length && (
-                  <div className="au-overview-tags">
-                    {job.tags.map((t) => <span key={t} className="au-overview-badge au-overview-badge--tag">{t}</span>)}
-                  </div>
-                )}
-                <div className="au-project-card-foot">
-                  <span>{describeTrigger(job)}</span>
-                  {job.next_run_at && <span>next: {new Date(job.next_run_at).toLocaleString()}</span>}
-                  {job.last_run_status && (
-                    <span className="au-project-card-foot-run" style={{ color: RUN_STATUS_COLOR[job.last_run_status] ?? 'var(--color-text-muted)' }}>
+          {filtered.map((job) => {
+            const tone = toneFor(job.tags?.[0] ?? job.id)
+            const state = deriveState(job)
+            const [primaryTag, ...restTags] = job.tags ?? []
+            return (
+              <div
+                key={job.id}
+                className="au-project-card"
+                style={{ '--tone': tone } as CSSProperties}
+                onClick={() => onOpen(job.id)}
+                role="button"
+                tabIndex={0}
+              >
+                <span className="au-project-card-accent" />
+                <div className="au-project-card-icon"><Connection size={19} /></div>
+                <div className="au-overview-main">
+                  <div className="au-overview-name-row">
+                    <span className="au-overview-name">{job.name}</span>
+                    {primaryTag && <span className="au-overview-badge au-overview-badge--tag">{primaryTag}</span>}
+                    <span className="au-project-state-pill" style={{ color: state.color }}>
                       <span className="au-dash-status-dot" />
-                      {RUN_STATUS_LABEL[job.last_run_status] ?? job.last_run_status}
+                      {state.label}
                     </span>
+                    <span className="au-overview-badge au-overview-badge--target">{job.execution_target}</span>
+                  </div>
+                  {job.description && <div className="au-overview-desc">{job.description}</div>}
+                  {restTags.length > 0 && (
+                    <div className="au-overview-tags">
+                      {restTags.map((t) => <span key={t} className="au-overview-badge au-overview-badge--tag">{t}</span>)}
+                    </div>
                   )}
-                  {job.updated_at && <span>modified: {new Date(job.updated_at).toLocaleString()}</span>}
+                  <div className="au-project-card-grid">
+                    <div className="au-project-card-grid-col">
+                      <span className="au-project-card-grid-label">Trigger</span>
+                      <span>{describeTrigger(job)}</span>
+                    </div>
+                    <div className="au-project-card-grid-col">
+                      <span className="au-project-card-grid-label">Last run</span>
+                      {job.last_run_status ? (
+                        <span style={{ color: RUN_STATUS_COLOR[job.last_run_status] ?? 'var(--color-text-muted)' }}>
+                          <span className="au-dash-status-dot" />
+                          {RUN_STATUS_LABEL[job.last_run_status] ?? job.last_run_status}
+                          {job.last_run_at && ` · ${formatRelative(job.last_run_at)}`}
+                        </span>
+                      ) : <span>Never run</span>}
+                    </div>
+                    <div className="au-project-card-grid-col">
+                      <span className="au-project-card-grid-label">{job.next_run_at ? 'Next run' : 'Modified'}</span>
+                      <span>{job.next_run_at ? new Date(job.next_run_at).toLocaleString() : (job.updated_at ? formatRelative(job.updated_at) : '—')}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="au-overview-actions">
+                  <button
+                    type="button" className="au-icon-btn" title="Run now"
+                    onClick={(e) => { e.stopPropagation(); onRun(job) }}
+                    disabled={runningJobId === job.id}
+                  >
+                    {runningJobId === job.id ? <LoadingOne size={13} className="spin" /> : <Play size={13} />}
+                  </button>
+                  <button
+                    type="button" className="au-icon-btn" title={job.status === 'active' ? 'Pause' : 'Resume'}
+                    onClick={(e) => { e.stopPropagation(); onTogglePaused(job) }}
+                    disabled={pausingJobId === job.id}
+                  >
+                    {pausingJobId === job.id ? <LoadingOne size={13} className="spin" /> : <PauseOne size={13} />}
+                  </button>
+                  <button
+                    type="button" className="au-icon-btn" title="Duplicate"
+                    onClick={(e) => { e.stopPropagation(); onDuplicate(job) }}
+                    disabled={duplicatingJobId === job.id}
+                  >
+                    {duplicatingJobId === job.id ? <LoadingOne size={13} className="spin" /> : <Copy size={13} />}
+                  </button>
+                  <button
+                    type="button" className="au-icon-btn" title="Delete"
+                    onClick={(e) => { e.stopPropagation(); onDelete(job) }}
+                    disabled={deletingJobId === job.id}
+                  >
+                    {deletingJobId === job.id ? <LoadingOne size={13} className="spin" /> : <DeleteIcon size={13} />}
+                  </button>
+                  <button type="button" className="au-project-card-open" onClick={(e) => { e.stopPropagation(); onOpen(job.id) }}>
+                    <EditIcon size={13} /> Open <Right size={12} />
+                  </button>
                 </div>
               </div>
-              <div className="au-overview-actions">
-                <button
-                  type="button" className="au-icon-btn" title="Run now"
-                  onClick={(e) => { e.stopPropagation(); onRun(job) }}
-                  disabled={runningJobId === job.id}
-                >
-                  {runningJobId === job.id ? <LoadingOne size={13} className="spin" /> : <Play size={13} />}
-                </button>
-                <button
-                  type="button" className="au-icon-btn" title={job.status === 'active' ? 'Pause' : 'Resume'}
-                  onClick={(e) => { e.stopPropagation(); onTogglePaused(job) }}
-                  disabled={pausingJobId === job.id}
-                >
-                  {pausingJobId === job.id ? <LoadingOne size={13} className="spin" /> : <PauseOne size={13} />}
-                </button>
-                <button type="button" className="au-icon-btn" title="Edit" onClick={(e) => { e.stopPropagation(); onOpen(job.id) }}>
-                  <EditIcon size={13} />
-                </button>
-                <button
-                  type="button" className="au-icon-btn" title="Duplicate"
-                  onClick={(e) => { e.stopPropagation(); onDuplicate(job) }}
-                  disabled={duplicatingJobId === job.id}
-                >
-                  {duplicatingJobId === job.id ? <LoadingOne size={13} className="spin" /> : <Copy size={13} />}
-                </button>
-                <button
-                  type="button" className="au-icon-btn" title="Delete"
-                  onClick={(e) => { e.stopPropagation(); onDelete(job) }}
-                  disabled={deletingJobId === job.id}
-                >
-                  {deletingJobId === job.id ? <LoadingOne size={13} className="spin" /> : <DeleteIcon size={13} />}
-                </button>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>
   )
+}
+
+// Text-only color for the "last run" grid cell (no pill background -
+// unlike the shared .au-overview-badge--* pills, this sits inline in a
+// labeled grid cell, so only the hue is reused, not the tinted background
+// that comes bundled with those classes).
+const RUN_STATUS_COLOR: Record<string, string> = {
+  completed: 'var(--color-success)',
+  failed: 'var(--color-error)',
+  running: 'var(--color-accent)',
+  claimed: 'var(--color-accent)',
 }
 
 const OVERVIEW_FILTER_CSS = `
@@ -363,13 +430,17 @@ const OVERVIEW_FILTER_CSS = `
    medium: Overview has a handful of standalone panel cards, but this is a
    repeated list row - a strong shadow on every single one would look
    heavy stacked many times over, so it starts soft and only lifts to
-   medium on hover, same idea as .au-dash-kpi but tuned for repetition. */
+   medium on hover, same idea as .au-dash-kpi but tuned for repetition.
+   position:relative + overflow:hidden lets the accent bar below sit flush
+   against the card's own rounded corners. --tone is set inline per card
+   (see toneFor) and consumed by both the accent bar and the icon tile. */
 .au-project-card {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
   gap: 14px;
-  padding: 16px 18px;
+  padding: 16px 18px 16px 22px;
   border-radius: var(--radius-2xl);
   background: var(--color-surface);
   box-shadow: var(--shadow-soft);
@@ -382,21 +453,82 @@ const OVERVIEW_FILTER_CSS = `
   transform: translateY(-1px);
 }
 
-.au-project-card-foot {
+.au-project-card-accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--tone);
+}
+
+.au-project-card-icon {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--tone) 14%, transparent);
+  color: var(--tone);
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--color-border-subtle);
+  justify-content: center;
+}
+
+.au-overview-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.au-project-state-pill {
+  display: inline-flex;
+  align-items: center;
   font-size: var(--font-size-2xs);
+  font-weight: 700;
+}
+
+.au-project-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-elevated);
+}
+
+.au-project-card-grid-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: var(--font-size-2xs);
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.au-project-card-grid-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
   color: var(--color-text-muted);
 }
 
-.au-project-card-foot-run {
+.au-project-card-open {
   display: inline-flex;
   align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-text);
+  color: var(--color-surface);
+  font-size: var(--font-size-2xs);
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 .au-dash-status-dot {
