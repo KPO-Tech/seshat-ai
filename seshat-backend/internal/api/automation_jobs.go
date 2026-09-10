@@ -138,6 +138,27 @@ func (a *App) handleAutomationJobDispatch(w http.ResponseWriter, r *http.Request
 	}
 }
 
+// handleAutomationOverview — GET /api/v1/automation/overview, proxying
+// seshat-server's dashboard aggregate (KPI stats, attention signals, recent
+// activity) - same proxy-with-the-caller's-own-token reasoning as every
+// other handler in this file.
+func (a *App) handleAutomationOverview(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	client, token, organizationID, ok := a.jobsClientForRequest(w, r)
+	if !ok {
+		return
+	}
+	overview, err := client.GetOverview(r.Context(), token, organizationID)
+	if err != nil {
+		writeBackendError(w, cloudhttp.Translate(err))
+		return
+	}
+	writeJSON(w, http.StatusOK, overview)
+}
+
 // handleAutomationDevices — GET /api/v1/automation/devices, the organization's
 // registered devices, for populating a job's target_device_id picker.
 func (a *App) handleAutomationDevices(w http.ResponseWriter, r *http.Request) {

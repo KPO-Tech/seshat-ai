@@ -27,7 +27,7 @@ export function ConnectionTestField({ organizationId, nodeType, getParams }: Pro
     setStatus('running')
     setMessage(null)
     try {
-      const res = await api.post<ConnectionTestResult>('/dataflow/test-connection', {
+      const res = await api.post<ConnectionTestResult>('/automation/dataflow/test-connection', {
         organization_id: organizationId,
         node_type: nodeType,
         parameters: getParams(),

@@ -45,7 +45,7 @@ export function RunsPanel({ jobId, graph, nodeTypes, initialRunId }: Props) {
     setError(null)
     setSelectedRun(null)
     api
-      .get<{ runs: Run[] }>(`/jobs/${jobId}/runs?limit=50`)
+      .get<{ runs: Run[] }>(`/automation/jobs/${jobId}/runs?limit=50`)
       .then((res) => {
         if (cancelled) return
         const fetched = res.runs ?? []

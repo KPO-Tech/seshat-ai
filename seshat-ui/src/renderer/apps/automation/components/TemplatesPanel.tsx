@@ -47,7 +47,7 @@ export function TemplatesPanel({ nodeTypes }: Props) {
 
   useEffect(() => {
     let cancelled = false
-    api.get<{ templates: AutomationTemplate[] }>('/dataflow/templates')
+    api.get<{ templates: AutomationTemplate[] }>('/automation/dataflow/templates')
       .then((res) => { if (!cancelled) setTemplates(res.templates ?? []) })
       .catch((err) => { if (!cancelled) setError(err instanceof ApiError ? err.message : 'Failed to load templates.') })
     return () => { cancelled = true }

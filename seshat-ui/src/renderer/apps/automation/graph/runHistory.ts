@@ -14,7 +14,7 @@ type RunSummary = { id: string; node_trace?: NodeTraceEntry[] }
 // with nothing to seed from.
 export async function fetchLatestNodeTrace(jobId: string, nodeId: string): Promise<NodeTraceEntry | null> {
   try {
-    const res = await api.get<{ runs: RunSummary[] }>(`/jobs/${jobId}/runs?limit=1`)
+    const res = await api.get<{ runs: RunSummary[] }>(`/automation/jobs/${jobId}/runs?limit=1`)
     return res.runs?.[0]?.node_trace?.find((n) => n.id === nodeId) ?? null
   } catch {
     return null

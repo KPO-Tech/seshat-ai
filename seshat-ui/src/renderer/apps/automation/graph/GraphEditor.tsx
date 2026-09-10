@@ -333,7 +333,7 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
 
     setNodeTestStatus(closureIds, 'running')
     try {
-      const res = await api.post<TestRunResponse>('/dataflow/test-run', { organization_id: organizationId, graph: def, seed: [{}] })
+      const res = await api.post<TestRunResponse>('/automation/dataflow/test-run', { organization_id: organizationId, graph: def, seed: [{}] })
       setNodes((current) => current.map((n) => {
         if (!closureIds.includes(n.id)) return n
         const r = res.results[n.id]

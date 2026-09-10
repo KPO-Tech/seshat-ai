@@ -2,6 +2,7 @@ package cloudautomation
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/url"
 	"strings"
@@ -112,6 +113,17 @@ func (c *JobsClient) ListJobRuns(ctx context.Context, token, jobID string) ([]Ru
 	return payload.Runs, nil
 }
 
+// GetOverview returns Automation's dashboard aggregate (KPI stats, attention
+// signals, recent activity) for organizationID.
+func (c *JobsClient) GetOverview(ctx context.Context, token, organizationID string) (*Overview, error) {
+	q := url.Values{"organization_id": {organizationID}}
+	var overview Overview
+	if _, err := c.do(ctx, http.MethodGet, "/api/v1/automation/overview?"+q.Encode(), token, nil, &overview); err != nil {
+		return nil, err
+	}
+	return &overview, nil
+}
+
 // ListOrgDevices returns the organization's registered devices, for
 // populating a job's target_device_id picker (an empty list, not an error,
 // when the caller lacks devices.read/devices.manage).
@@ -126,6 +138,35 @@ func (c *JobsClient) ListOrgDevices(ctx context.Context, token, organizationID s
 	return payload.Devices, nil
 }
 
+// postDataflowRaw is a raw passthrough for the three dataflow "editor
+// testing" endpoints below (preview-expression, test-connection, test-run):
+// their request/response shapes are seshat-server internals the graph
+// editor UI consumes directly (a preview value of any type, a live
+// connection-test result, a full graph-execution trace) - re-declaring
+// typed mirrors here would just be a second copy of seshat-server's own
+// types to keep in sync for no behavioral benefit, unlike Job/Run/Variable/
+// Template above which this package's own callers (job CRUD, the device
+// protocol) need to inspect field-by-field.
+func (c *JobsClient) postDataflowRaw(ctx context.Context, token, path string, body json.RawMessage) (json.RawMessage, error) {
+	var out json.RawMessage
+	if _, err := c.do(ctx, http.MethodPost, path, token, body, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *JobsClient) PreviewExpression(ctx context.Context, token string, body json.RawMessage) (json.RawMessage, error) {
+	return c.postDataflowRaw(ctx, token, "/api/v1/dataflow/preview-expression", body)
+}
+
+func (c *JobsClient) TestConnection(ctx context.Context, token string, body json.RawMessage) (json.RawMessage, error) {
+	return c.postDataflowRaw(ctx, token, "/api/v1/dataflow/test-connection", body)
+}
+
+func (c *JobsClient) TestRunGraph(ctx context.Context, token string, body json.RawMessage) (json.RawMessage, error) {
+	return c.postDataflowRaw(ctx, token, "/api/v1/dataflow/test-run", body)
+}
+
 // ListNodeTypes returns the pkg/dataflow node types a Job.Graph on this
 // server can reference, for populating a graph-building UI's node palette.
 func (c *JobsClient) ListNodeTypes(ctx context.Context, token string) ([]dataflow.NodeDescription, error) {
@@ -136,6 +177,62 @@ func (c *JobsClient) ListNodeTypes(ctx context.Context, token string) ([]dataflo
 		return nil, err
 	}
 	return payload.NodeTypes, nil
+}
+
+// ListVariables returns organizationID's $vars.NAME workspace variables (an
+// empty list, not an error, when the caller lacks visibility - same
+// convention as ListJobs/ListOrgDevices).
+func (c *JobsClient) ListVariables(ctx context.Context, token, organizationID string) ([]Variable, error) {
+	q := url.Values{"organization_id": {organizationID}}
+	var payload struct {
+		Variables []Variable `json:"variables"`
+	}
+	if _, err := c.do(ctx, http.MethodGet, "/api/v1/variables?"+q.Encode(), token, nil, &payload); err != nil {
+		return nil, err
+	}
+	return payload.Variables, nil
+}
+
+func (c *JobsClient) CreateVariable(ctx context.Context, token, organizationID, name, value string) (*Variable, error) {
+	body := struct {
+		OrganizationID string `json:"organization_id"`
+		Name           string `json:"name"`
+		Value          string `json:"value"`
+	}{OrganizationID: organizationID, Name: name, Value: value}
+	var variable Variable
+	if _, err := c.do(ctx, http.MethodPost, "/api/v1/variables", token, body, &variable); err != nil {
+		return nil, err
+	}
+	return &variable, nil
+}
+
+func (c *JobsClient) UpdateVariable(ctx context.Context, token, id, name, value string) (*Variable, error) {
+	body := struct {
+		Name  string `json:"name"`
+		Value string `json:"value"`
+	}{Name: name, Value: value}
+	var variable Variable
+	if _, err := c.do(ctx, http.MethodPut, "/api/v1/variables/"+id, token, body, &variable); err != nil {
+		return nil, err
+	}
+	return &variable, nil
+}
+
+func (c *JobsClient) DeleteVariable(ctx context.Context, token, id string) error {
+	_, err := c.do(ctx, http.MethodDelete, "/api/v1/variables/"+id, token, nil, nil)
+	return err
+}
+
+// ListTemplates returns the built-in workflow templates Templates can start
+// a new project from.
+func (c *JobsClient) ListTemplates(ctx context.Context, token string) ([]Template, error) {
+	var payload struct {
+		Templates []Template `json:"templates"`
+	}
+	if _, err := c.do(ctx, http.MethodGet, "/api/v1/dataflow/templates", token, nil, &payload); err != nil {
+		return nil, err
+	}
+	return payload.Templates, nil
 }
 
 // DataflowSecret is the org-scoped named secret a graph node's *SecretRef

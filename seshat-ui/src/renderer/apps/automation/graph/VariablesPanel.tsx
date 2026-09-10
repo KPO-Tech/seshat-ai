@@ -76,7 +76,7 @@ export function VariablesPanel() {
     setVariables(null)
     setError(null)
     api
-      .get<{ variables: Variable[] }>(`/variables?organization_id=${encodeURIComponent(organizationId)}`)
+      .get<{ variables: Variable[] }>(`/automation/variables?organization_id=${encodeURIComponent(organizationId)}`)
       .then((res) => {
         if (!cancelled) setVariables(res.variables ?? [])
       })
@@ -93,7 +93,7 @@ export function VariablesPanel() {
     setSaving(true)
     setSaveError(null)
     try {
-      const created = await api.post<Variable>('/variables', { organization_id: organizationId, name, value })
+      const created = await api.post<Variable>('/automation/variables', { organization_id: organizationId, name, value })
       setVariables((v) => [...(v ?? []), created].sort((a, b) => a.name.localeCompare(b.name)))
       setCreating(false)
     } catch (err) {
@@ -107,7 +107,7 @@ export function VariablesPanel() {
     setSaving(true)
     setSaveError(null)
     try {
-      const updated = await api.put<Variable>(`/variables/${id}`, { name, value })
+      const updated = await api.put<Variable>(`/automation/variables/${id}`, { name, value })
       setVariables((v) => (v ?? []).map((item) => (item.id === id ? updated : item)).sort((a, b) => a.name.localeCompare(b.name)))
       setEditingId(null)
     } catch (err) {
@@ -121,7 +121,7 @@ export function VariablesPanel() {
     if (!window.confirm(`Delete "${variable.name}"? Any expression referencing $vars.${variable.name} will stop resolving.`)) return
     setDeletingId(variable.id)
     try {
-      await api.delete(`/variables/${variable.id}`)
+      await api.delete(`/automation/variables/${variable.id}`)
       setVariables((v) => (v ?? []).filter((item) => item.id !== variable.id))
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to delete this variable.')

@@ -157,12 +157,13 @@ export function AutomationPage() {
     if (!currentOrganizationId) return
     setJobsLoading(true)
     try {
-      // Real bugs, fixed alongside Tier 3.2's organization-context work
-      // (see docs/helps/audit-2026-09-04-n8n-gap-analysis.md): this call
-      // used the wrong URL prefix (/automation/jobs instead of /jobs) and
-      // never sent organization_id, so it 404'd/errored before there was
-      // any "current organization" to send.
-      const result = await api.get<{ jobs: Job[] }>(`/jobs?organization_id=${encodeURIComponent(currentOrganizationId)}`)
+      // Found live: a prior "fix" here (Tier 3.2's organization-context
+      // work) changed this call from /automation/jobs to a bare /jobs -
+      // backwards. seshat-backend only ever registers /automation/jobs*
+      // (see routes.go) - a bare /jobs was never routed at all, so this
+      // 404'd on every real connected-mode install, unconditionally, no
+      // matter the organization_id. /automation/jobs is correct.
+      const result = await api.get<{ jobs: Job[] }>(`/automation/jobs?organization_id=${encodeURIComponent(currentOrganizationId)}`)
       // Automation Overview is graph jobs' only home now - Scheduling's own
       // list is Prompt-only, mirroring that page's own filter.
       setJobs((result.jobs ?? []).filter((job) => !!job.graph))
@@ -184,7 +185,7 @@ export function AutomationPage() {
   async function handleRunNow(job: Job) {
     setRunningJobId(job.id)
     try {
-      await api.post(`/jobs/${job.id}/run`, {})
+      await api.post(`/automation/jobs/${job.id}/run`, {})
       await loadJobs()
     } catch (err) {
       setJobsError(err instanceof ApiError ? err.message : 'Failed to trigger this automation.')
@@ -197,7 +198,7 @@ export function AutomationPage() {
     setPausingJobId(job.id)
     try {
       const action = job.status === 'active' ? 'pause' : 'resume'
-      await api.post(`/jobs/${job.id}/${action}`, {})
+      await api.post(`/automation/jobs/${job.id}/${action}`, {})
       await loadJobs()
     } catch (err) {
       setJobsError(err instanceof ApiError ? err.message : 'Failed to update this automation.')
@@ -210,7 +211,7 @@ export function AutomationPage() {
     if (!window.confirm(`Delete "${job.name}"? This cannot be undone.`)) return
     setDeletingJobId(job.id)
     try {
-      await api.delete(`/jobs/${job.id}`)
+      await api.delete(`/automation/jobs/${job.id}`)
       await loadJobs()
     } catch (err) {
       setJobsError(err instanceof ApiError ? err.message : 'Failed to delete this automation.')
@@ -229,9 +230,9 @@ export function AutomationPage() {
   useEffect(() => {
     if (isOverview) return
     api.get<{ agents: Agent[] }>('/agents').then((r) => setAgents((r.agents ?? []).filter((a) => a.enabled !== false))).catch(() => {})
-    api.get<{ devices: Device[] }>('/devices').then((r) => setDevices(r.devices ?? [])).catch(() => {})
+    api.get<{ devices: Device[] }>('/automation/devices').then((r) => setDevices(r.devices ?? [])).catch(() => {})
     setNodeTypesLoading(true)
-    api.get<{ node_types: NodeDescription[] }>('/dataflow/node-types')
+    api.get<{ node_types: NodeDescription[] }>('/automation/dataflow/node-types')
       .then((res) => setNodeTypes(res.node_types ?? []))
       .catch((err) => setNodeTypesError(err instanceof ApiError ? err.message : 'Unable to load node types.'))
       .finally(() => setNodeTypesLoading(false))
@@ -239,11 +240,11 @@ export function AutomationPage() {
     // GraphEditor.tsx). Uses the effective org id, which is already
     // available even for a never-saved job (unlike jobId/webhookToken).
     if (organizationId) {
-      api.get<{ variables: { name: string }[] }>(`/variables?organization_id=${encodeURIComponent(organizationId)}`)
+      api.get<{ variables: { name: string }[] }>(`/automation/variables?organization_id=${encodeURIComponent(organizationId)}`)
         .then((res) => setVariableNames((res.variables ?? []).map((v) => v.name)))
         .catch(() => {})
       // Tier 3.1 - candidates for this job's own "Error workflow" setting.
-      api.get<{ jobs: Job[] }>(`/jobs?organization_id=${encodeURIComponent(organizationId)}`)
+      api.get<{ jobs: Job[] }>(`/automation/jobs?organization_id=${encodeURIComponent(organizationId)}`)
         .then((res) => setOtherJobs((res.jobs ?? []).filter((j) => j.id !== jobId)))
         .catch(() => {})
     }
@@ -258,7 +259,7 @@ export function AutomationPage() {
   useEffect(() => {
     if (!isOverview || railView !== 'templates' || nodeTypes.length > 0 || nodeTypesLoading) return
     setNodeTypesLoading(true)
-    api.get<{ node_types: NodeDescription[] }>('/dataflow/node-types')
+    api.get<{ node_types: NodeDescription[] }>('/automation/dataflow/node-types')
       .then((res) => setNodeTypes(res.node_types ?? []))
       .catch((err) => setNodeTypesError(err instanceof ApiError ? err.message : 'Unable to load node types.'))
       .finally(() => setNodeTypesLoading(false))
@@ -270,7 +271,7 @@ export function AutomationPage() {
   useEffect(() => {
     if (isNew || !jobId) return
     setLoading(true)
-    api.get<Job>(`/jobs/${jobId}`)
+    api.get<Job>(`/automation/jobs/${jobId}`)
       .then((job) => {
         if (!job.graph) {
           setLoadError('This job is not a graph automation.')
@@ -315,7 +316,7 @@ export function AutomationPage() {
     if (!isNew) return
     const templateId = searchParams.get('template')
     if (!templateId) return
-    api.get<{ templates: AutomationTemplate[] }>('/dataflow/templates')
+    api.get<{ templates: AutomationTemplate[] }>('/automation/dataflow/templates')
       .then((res) => {
         const template = (res.templates ?? []).find((t) => t.id === templateId)
         if (!template) return
@@ -460,12 +461,10 @@ export function AutomationPage() {
         },
         graph: { ...graph, name: name.trim() || graph.name },
       }
-      // Also fixed here: both calls used the wrong URL prefix
-      // (/automation/jobs instead of /jobs).
       if (isNew) {
-        await api.post('/jobs', params)
+        await api.post('/automation/jobs', params)
       } else {
-        await api.put(`/jobs/${jobId}`, params)
+        await api.put(`/automation/jobs/${jobId}`, params)
       }
       navigate('/automation')
     } catch (err) {
@@ -486,7 +485,7 @@ export function AutomationPage() {
     setDeletingThisJob(true)
     setSaveError(null)
     try {
-      await api.delete(`/jobs/${jobId}`)
+      await api.delete(`/automation/jobs/${jobId}`)
       setIsDirty(false)
       navigate('/automation')
     } catch (err) {
@@ -508,7 +507,7 @@ export function AutomationPage() {
     setRunningThisJob(true)
     setRunError(null)
     try {
-      await api.post(`/jobs/${jobId}/run`, {})
+      await api.post(`/automation/jobs/${jobId}/run`, {})
     } catch (err) {
       setRunError(err instanceof ApiError ? err.message : 'Failed to trigger this automation.')
     } finally {

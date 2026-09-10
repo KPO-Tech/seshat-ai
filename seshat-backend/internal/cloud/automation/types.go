@@ -167,6 +167,70 @@ type JobParams struct {
 	Configuration   map[string]string    `json:"configuration,omitempty"`
 }
 
+// AttentionItem mirrors seshat-server's automation.AttentionItem — one
+// actionable row in Automation Overview's "Attention Required" section.
+type AttentionItem struct {
+	Kind       string `json:"kind"`
+	JobID      string `json:"job_id"`
+	JobName    string `json:"job_name"`
+	Message    string `json:"message"`
+	LastRunID  string `json:"last_run_id,omitempty"`
+	DetectedAt string `json:"detected_at"`
+}
+
+// RecentActivityItem mirrors seshat-server's automation.RecentActivityItem —
+// one row in Automation Overview's Activity feed.
+type RecentActivityItem struct {
+	RunID      string `json:"run_id"`
+	JobID      string `json:"job_id"`
+	JobName    string `json:"job_name"`
+	Status     string `json:"status"`
+	QueuedAt   string `json:"queued_at"`
+	StartedAt  string `json:"started_at,omitempty"`
+	FinishedAt string `json:"finished_at,omitempty"`
+}
+
+// OverviewStats mirrors seshat-server's automation.OverviewStats.
+type OverviewStats struct {
+	ActiveProjects       int64    `json:"active_projects"`
+	TotalProjects        int64    `json:"total_projects"`
+	NewProjectsThisMonth int64    `json:"new_projects_this_month"`
+	WindowDays           int      `json:"window_days"`
+	ExecutionsWindow     int64    `json:"executions_window"`
+	CompletedWindow      int64    `json:"completed_window"`
+	FailedWindow         int64    `json:"failed_window"`
+	SuccessRatePercent   *float64 `json:"success_rate_percent,omitempty"`
+	FailureRatePercent   *float64 `json:"failure_rate_percent,omitempty"`
+}
+
+// Overview mirrors seshat-server's automation.Overview - the full payload
+// for GET /api/v1/automation/overview.
+type Overview struct {
+	Stats          OverviewStats         `json:"stats"`
+	Attention      []AttentionItem       `json:"attention"`
+	RecentActivity []RecentActivityItem  `json:"recent_activity"`
+}
+
+// Variable mirrors seshat-server's dataflowvariables.Variable - a
+// workspace-scoped $vars.NAME value graph nodes can reference.
+type Variable struct {
+	ID              string `json:"id"`
+	OrganizationID  string `json:"organization_id,omitempty"`
+	Name            string `json:"name"`
+	Value           string `json:"value"`
+	CreatedByUserID string `json:"created_by_user_id,omitempty"`
+}
+
+// Template mirrors seshat-server's automation.Template - a built-in,
+// pre-built workflow definition Templates can start a new project from.
+type Template struct {
+	ID          string              `json:"id"`
+	Name        string              `json:"name"`
+	Description string              `json:"description"`
+	Category    string              `json:"category"`
+	Definition  dataflow.Definition `json:"definition"`
+}
+
 // RunJob is the execution payload for a run this device has claimed —
 // fetched separately via GET /device/runs/{id}/job (see seshat-server's
 // automation.RunJob).

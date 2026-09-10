@@ -111,7 +111,7 @@ export function ExpressionField({ nodeType, propName, value, onChange, placehold
 
     const timer = window.setTimeout(() => {
       setPreviewing(true)
-      api.post<{ value: unknown }>('/dataflow/preview-expression', { expression: source, item, item_index: itemIndex, organization_id: organizationId })
+      api.post<{ value: unknown }>('/automation/dataflow/preview-expression', { expression: source, item, item_index: itemIndex, organization_id: organizationId })
         .then((res) => {
           setResult(typeof res.value === 'string' ? res.value : JSON.stringify(res.value, null, 2))
           setPreviewError(null)
