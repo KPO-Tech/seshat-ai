@@ -1,6 +1,8 @@
 import './styles/tokens.css'
 import './styles/globals.css'
 import './styles/shared.css'
+import '@arco-design/web-react/dist/css/arco.css'
+import './styles/arco-theme.css'
 
 import React from 'react'
 import { createRoot } from 'react-dom/client'

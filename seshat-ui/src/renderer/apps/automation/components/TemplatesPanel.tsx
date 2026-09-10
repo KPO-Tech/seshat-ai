@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { Close, Right, Search, TreeDiagram } from '@icon-park/react'
+import { Modal } from '@arco-design/web-react'
+import { Right, Search, TreeDiagram } from '@icon-park/react'
 import { api, ApiError } from '@/api/client'
 import type { AutomationTemplate } from '../api/types'
 import type { NodeDescription } from '../graph/types'
@@ -188,19 +189,25 @@ export function TemplatesPanel({ nodeTypes }: Props) {
         </div>
       )}
 
-      {preview && (
-        <div className="au-templates-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) setPreviewId(null) }}>
-          <div className="au-templates-preview" role="dialog" aria-modal="true" aria-label={preview.name}>
-            <header className="au-templates-preview-head">
-              <div>
-                <span className="au-templates-card-category">{preview.category}</span>
-                <h2>{preview.name}</h2>
-              </div>
-              <button type="button" className="au-icon-btn" onClick={() => setPreviewId(null)} aria-label="Close">
-                <Close size={14} />
-              </button>
-            </header>
-
+      {/* Arco's Modal, not a hand-rolled backdrop + <div> - gets
+          Escape-to-close, a focus trap, and click-outside-to-close for
+          free (maskClosable defaults to true), none of which the previous
+          hand-rolled version had. Only the outer chrome comes from Arco;
+          every piece of inner content below is unchanged. */}
+      <Modal
+        visible={!!preview}
+        onCancel={() => setPreviewId(null)}
+        footer={null}
+        title={preview && (
+          <div className="au-templates-preview-title">
+            <span className="au-templates-card-category">{preview.category}</span>
+            <span>{preview.name}</span>
+          </div>
+        )}
+        className="au-templates-preview-modal"
+      >
+        {preview && (
+          <>
             <p className="au-templates-preview-desc">{preview.description}</p>
 
             <div className="au-templates-preview-section">
@@ -225,9 +232,9 @@ export function TemplatesPanel({ nodeTypes }: Props) {
             <button type="button" className="au-save-btn au-templates-use-btn" onClick={() => useTemplate(preview)}>
               Use this template
             </button>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Modal>
     </div>
   )
 }
@@ -444,42 +451,14 @@ const TEMPLATES_PANEL_CSS = `
   cursor: pointer;
 }
 
-.au-templates-backdrop {
-  position: absolute;
-  inset: 0;
-  z-index: 20;
-  background: rgba(0,0,0,0.35);
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
-  padding: 14px;
-}
-
-.au-templates-preview {
-  width: 380px;
-  max-width: 100%;
-  max-height: 100%;
-  overflow-y: auto;
+/* The Modal's own chrome (backdrop, panel, close icon, focus trap,
+   Escape-to-close) is Arco's - see the au-templates-preview-modal Modal
+   above. Only its title's inner layout and the body content below still
+   need local styling. */
+.au-templates-preview-title {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-2xl);
-  box-shadow: 0 24px 64px rgba(0,0,0,0.32);
-}
-
-.au-templates-preview-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.au-templates-preview-head h2 {
-  margin: 4px 0 0;
-  font-size: 15px;
+  gap: 4px;
 }
 
 .au-templates-preview-desc {

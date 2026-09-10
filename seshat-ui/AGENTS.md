@@ -266,11 +266,15 @@ Never use inline `style={}` for anything other than dynamic values (dimensions, 
 
 ### UnoCSS utility classes
 
-For layout utilities (`flex`, `items-center`, `gap-2`, etc.) use UnoCSS. The reset is `@unocss/reset`. The config is in `uno.config.ts`.
+For layout utilities (`flex`, `items-center`, `gap-2`, etc.) use UnoCSS. The reset is `@unocss/reset`. The config is in `uno.config.ts`. Prefer these over a bespoke CSS-in-JS rule for plain layout (spacing, flex/grid alignment, sizing) - a hand-written block for something `flex items-center gap-2` already says is exactly the kind of code this exists to avoid.
 
-### Arco Design components
+### Arco Design components — use first, by default
 
-For complex interactive primitives (modals, forms, selects, tables, tabs) use Arco Design. Theme it through CSS variable overrides, not Arco's JS config API. Never import Arco styles globally — they are already included.
+**Arco Design is the default for anything resembling a standard UI primitive**: cards, buttons, badges/tags, statistics, grids/layout, tables, tabs, selects, dropdowns, modals/drawers, forms and their inputs. Check Arco before writing a hand-rolled equivalent — not just for the "complex" cases. Theme it through CSS variable overrides, not Arco's JS config API. Never import Arco styles globally — they are already included.
+
+This reverses an earlier, narrower framing ("only for complex interactive primitives"). In practice, dashboard-style pages (KPI/stat cards, project/template catalogs, filter pills, preview modals) were repeatedly hand-rolled from scratch instead, at real cost: more CSS per page than a comparable Arco-based build would need, and gaps a maintained component already closes (e.g. a hand-rolled preview drawer with no Escape-to-close or focus trap, both free with Arco's `Modal`/`Drawer`).
+
+Hand-rolled CSS-in-JS is still the right call for styling that's genuinely bespoke to Seshat's own visual identity and has no real Arco equivalent — a category-toned icon tile, an accent-colored left border keyed to a tag, the specific card layout of a dashboard KPI strip. Wrap Arco's own components/props for that instead of reimplementing the primitive itself (e.g. put a custom-toned icon *inside* an Arco `Card`, don't rebuild `Card`).
 
 ---
 
@@ -425,8 +429,9 @@ When the API changes, update `src/renderer/api/types.ts` to match the new respon
 - Do not add business logic to pages — call the API and render.
 - Do not access `window.nexus` without a null-check — code must work without Electron.
 - Do not hardcode colors — always use design tokens (`var(--color-*)`).
-- Do not import `@arco-design` for things that can be done in 5 lines of CSS.
+- Do not hand-roll a UI primitive Arco Design already provides (cards, buttons, tags, statistics, tables, tabs, selects, modals/drawers, forms) — check Arco first, by default, not only for "complex" cases.
 - Do not add new global CSS files — use scoped CSS strings or UnoCSS utilities.
+- Do not write a bespoke CSS-in-JS block for plain layout (flex/grid alignment, spacing, sizing) that UnoCSS utility classes already express in the className.
 - Do not use `any` — type all API responses in `api/types.ts`.
 - Do not put long inline styles in JSX — move to the component's CSS string.
 - Do not add `console.log` in production paths.

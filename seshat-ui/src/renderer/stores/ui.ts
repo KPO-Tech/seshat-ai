@@ -465,6 +465,11 @@ export const useUIStore = create<UIState>()(
         set({ theme: t })
         document.documentElement.setAttribute('data-theme', t)
         document.documentElement.setAttribute('data-color-scheme', 'default')
+        // Arco Design keys its own dark/light switch off body[arco-theme],
+        // entirely separate from our own data-theme on <html> - never wired
+        // together before now, despite AGENTS.md previously (incorrectly)
+        // claiming it already was.
+        document.body.setAttribute('arco-theme', t === 'dark' ? 'dark' : 'light')
       },
 
       toggleTheme: () => get().setTheme(get().theme === 'dark' ? 'light' : 'dark'),
@@ -518,6 +523,7 @@ export const useUIStore = create<UIState>()(
         const { theme } = get()
         document.documentElement.setAttribute('data-theme', theme)
         document.documentElement.setAttribute('data-color-scheme', 'default')
+        document.body.setAttribute('arco-theme', theme === 'dark' ? 'dark' : 'light')
       },
     }),
     {

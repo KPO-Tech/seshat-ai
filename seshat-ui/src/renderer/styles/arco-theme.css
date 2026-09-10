@@ -1,0 +1,46 @@
+/* ═══════════════════════════════════════════════════
+   ARCO DESIGN THEME OVERRIDE
+   Maps Seshat's own design tokens (tokens.css) onto
+   Arco Design's own, separate CSS variable system, so
+   components imported from @arco-design/web-react look
+   on-brand instead of using Arco's stock blue palette.
+
+   This is a FIRST PASS, scoped to what the first real
+   Arco migration (Templates' preview Modal) actually
+   needs: background/border/text colors, corner radius,
+   and the "main" (-6) shade of each semantic color. Arco
+   ships a full 1-10 tonal ramp per color (hover/active
+   tints, etc.) - those intentionally still fall back to
+   Arco's own computed defaults for now. Expand this file
+   as more Arco components get adopted and any real
+   mismatch shows up, rather than guessing a full ramp
+   nobody has visually checked yet.
+
+   Every value here is a var() reference into tokens.css,
+   never a literal - so this file needs no light/dark
+   duplication of its own; it inherits whichever theme
+   tokens.css itself resolved to.
+═══════════════════════════════════════════════════ */
+
+:root {
+  --primary-6: var(--color-primary);
+  --success-6: var(--color-success);
+  --danger-6: var(--color-error);
+  --warning-6: var(--color-warning, var(--color-accent));
+
+  --color-bg-1: var(--color-surface);
+  --color-bg-2: var(--color-surface-elevated);
+  --color-bg-white: var(--color-surface);
+  --color-bg-popup: var(--color-surface-elevated);
+
+  --color-text-1: var(--color-text);
+  --color-text-2: var(--color-text-secondary);
+  --color-text-3: var(--color-text-muted);
+
+  --color-border: var(--color-border);
+  --color-border-2: var(--color-border);
+
+  --border-radius-small: var(--radius-sm);
+  --border-radius-medium: var(--radius-md);
+  --border-radius-large: var(--radius-lg);
+}
