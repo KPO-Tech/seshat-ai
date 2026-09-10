@@ -525,14 +525,15 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
               {assistantComingSoon && <span className="gf-toolbar-tooltip">Coming soon</span>}
             </div>
 
-            {onRun && (
-              <>
-                <span className="gf-toolbar-divider" />
-                <button type="button" className="gf-toolbar-btn" onClick={onRun} disabled={running} title="Run now">
-                  {running ? <LoadingOne size={17} className="spin" /> : <Play size={17} />}
-                </button>
-              </>
-            )}
+            <span className="gf-toolbar-divider" />
+            <button
+              type="button" className="gf-toolbar-btn"
+              onClick={onRun}
+              disabled={!onRun || running}
+              title={!onRun ? 'Save this automation before running it' : 'Run now'}
+            >
+              {running ? <LoadingOne size={17} className="spin" /> : <Play size={17} />}
+            </button>
 
             <span className="gf-toolbar-divider" />
             <button type="button" className="gf-toolbar-btn" onClick={() => setCreatorOpen(true)} title="Add node">
