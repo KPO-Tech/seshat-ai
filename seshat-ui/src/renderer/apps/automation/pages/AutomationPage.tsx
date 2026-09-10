@@ -694,7 +694,19 @@ export function AutomationPage() {
           ) : loadError ? (
             <div className="au-loading au-loading-error">{loadError}</div>
           ) : (
-            <GraphEditor value={graph} onChange={setGraph} nodeTypes={nodeTypes} nodeTypesLoading={nodeTypesLoading} nodeTypesError={nodeTypesError} jobId={jobId} webhookToken={webhookToken} organizationId={organizationId} variableNames={variableNames} />
+            <GraphEditor
+              value={graph}
+              onChange={setGraph}
+              nodeTypes={nodeTypes}
+              nodeTypesLoading={nodeTypesLoading}
+              nodeTypesError={nodeTypesError}
+              jobId={jobId}
+              webhookToken={webhookToken}
+              organizationId={organizationId}
+              variableNames={variableNames}
+              onRun={isNew ? undefined : () => void handleRunThisJob()}
+              running={runningThisJob}
+            />
           )}
         </div>
 

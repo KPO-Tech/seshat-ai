@@ -13,7 +13,7 @@ import {
   type ReactFlowInstance,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { Close, Plus, Undo as UndoIcon, Redo as RedoIcon, TreeDiagram } from '@icon-park/react'
+import { Close, Plus, Undo as UndoIcon, Redo as RedoIcon, TreeDiagram, Magic, BlockOne, Play, LoadingOne } from '@icon-park/react'
 import { definitionToFlow, flowToDefinition, ancestorClosure, INPUT_HANDLE } from './convert'
 import { missingRequiredFields } from './validation'
 import { GRAPH_NODE_TYPES, type FlowGraphNode, type TestStatus, type TestRunNodeResult } from './GraphNode'
@@ -84,9 +84,18 @@ type GraphEditorProps = {
   // straight through to ParameterForm/ExpressionField for the $vars.NAME
   // insert chips. Fetched once by AutomationPage alongside nodeTypes.
   variableNames?: string[]
+  // "Run now" is AutomationPage's own handleRunThisJob/runningThisJob/isNew
+  // state (the job's whole lifecycle, not something the canvas owns) -
+  // threaded through so the canvas toolbar can offer the same action the
+  // topbar's own Run button already does, without duplicating that state
+  // here. onRun is undefined until the job is saved for the first time
+  // (same "nothing to run yet" precondition the topbar button already
+  // encodes via its own disabled+title combo).
+  onRun?: () => void
+  running?: boolean
 }
 
-function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTypesError, jobId, webhookToken, organizationId, variableNames }: GraphEditorProps) {
+function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTypesError, jobId, webhookToken, organizationId, variableNames, onRun, running }: GraphEditorProps) {
   const theme = useUIStore((s) => s.theme)
   const initial = useMemo(() => {
     const flow = definitionToFlow(value ?? { name: 'Untitled graph', nodes: [] })
@@ -239,6 +248,11 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
   const onPaneClick = useCallback(() => setSelectedNodeId(null), [])
 
   const [creatorOpen, setCreatorOpen] = useState(false)
+  // No assistant feature exists yet (see the toolbar's Assistant button
+  // below) - this is purely a transient "not yet" acknowledgement, same
+  // local-timeout pattern VariablesPanel's copiedId already uses, not a
+  // real feature flag.
+  const [assistantComingSoon, setAssistantComingSoon] = useState(false)
 
   const addNodeFromCatalog = useCallback(
     (desc: NodeDescription) => {
@@ -479,16 +493,50 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
             <Controls showInteractive={false} orientation="horizontal" />
           </ReactFlow>
 
-          <button type="button" className="gf-add-btn" onClick={() => setCreatorOpen(true)} title="Add node">
-            <Plus size={16} />
-          </button>
-
           <div className="gf-history-controls">
             <button type="button" className="gf-history-btn" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">
               <UndoIcon size={15} />
             </button>
             <button type="button" className="gf-history-btn" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)">
               <RedoIcon size={15} />
+            </button>
+          </div>
+
+          {/* Left-edge vertical toolbar - vertically centered so it never
+              collides with the undo/redo cluster (top-left) or the node
+              config panel (slides in from the right, see .gf-config-panel).
+              Assistant is a placeholder (no AI-generated-workflow backend
+              exists yet) - Run and Add node are both real, existing actions
+              relocated here from the topbar's "+" button and (for Run) the
+              topbar itself, which keeps its own Run button too. */}
+          <div className="gf-toolbar">
+            <div className="gf-toolbar-item">
+              <button
+                type="button"
+                className="gf-toolbar-btn"
+                onClick={() => {
+                  setAssistantComingSoon(true)
+                  window.setTimeout(() => setAssistantComingSoon(false), 1600)
+                }}
+                title="Assistant"
+              >
+                <Magic size={17} />
+              </button>
+              {assistantComingSoon && <span className="gf-toolbar-tooltip">Coming soon</span>}
+            </div>
+
+            {onRun && (
+              <>
+                <span className="gf-toolbar-divider" />
+                <button type="button" className="gf-toolbar-btn" onClick={onRun} disabled={running} title="Run now">
+                  {running ? <LoadingOne size={17} className="spin" /> : <Play size={17} />}
+                </button>
+              </>
+            )}
+
+            <span className="gf-toolbar-divider" />
+            <button type="button" className="gf-toolbar-btn" onClick={() => setCreatorOpen(true)} title="Add node">
+              <BlockOne size={17} />
             </button>
           </div>
 
@@ -641,29 +689,6 @@ export const GRAPH_EDITOR_CSS = `
   min-width: 0;
 }
 
-.gf-add-btn {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  z-index: 10;
-  width: 34px;
-  height: 34px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg);
-  color: var(--color-text-secondary);
-  box-shadow: var(--shadow-medium);
-  cursor: pointer;
-}
-
-.gf-add-btn:hover {
-  color: var(--color-text);
-  background: var(--color-hover);
-}
-
 .gf-history-controls {
   position: absolute;
   top: 14px;
@@ -697,9 +722,80 @@ export const GRAPH_EDITOR_CSS = `
   cursor: default;
 }
 
+/* Left-edge vertical toolbar (Assistant/Run/Add node) - vertically
+   centered so it never collides with .gf-history-controls (top-left) or
+   .gf-config-panel (slides in from the right). Same card language as the
+   history controls right above, just laid out as one grouped pill instead
+   of a loose row. */
+.gf-toolbar {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  transform: translateY(-50%);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg);
+  box-shadow: var(--shadow-medium);
+}
+
+.gf-toolbar-item {
+  position: relative;
+}
+
+.gf-toolbar-btn {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.gf-toolbar-btn:hover:not(:disabled) {
+  color: var(--color-text);
+  background: var(--color-hover);
+}
+
+.gf-toolbar-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.gf-toolbar-divider {
+  width: 22px;
+  height: 1px;
+  background: var(--color-border-subtle);
+  margin: 2px 0;
+}
+
+.gf-toolbar-tooltip {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 10px);
+  transform: translateY(-50%);
+  white-space: nowrap;
+  padding: 4px 9px;
+  border-radius: var(--radius-sm);
+  background: var(--color-text);
+  color: var(--color-bg);
+  font-size: var(--font-size-2xs);
+  font-weight: 700;
+  box-shadow: var(--shadow-medium);
+}
+
 /* React Flow's own zoom/fit-view bar - default xyflow styling (plain white
    squares, sharp corners, no shadow) looked visually disconnected from the
-   rest of the app. Same card language as .gf-add-btn/.gf-history-btn above.
+   rest of the app. Same card language as .gf-history-btn/.gf-toolbar above.
    Shared with GraphReplayViewer.tsx via the same GRAPH_EDITOR_CSS export,
    so its zoom bar gets this for free too. */
 .react-flow__controls {
