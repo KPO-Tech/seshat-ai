@@ -13,7 +13,7 @@ import {
   type ReactFlowInstance,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { Close, Plus, Undo as UndoIcon, Redo as RedoIcon } from '@icon-park/react'
+import { Close, Plus, Undo as UndoIcon, Redo as RedoIcon, TreeDiagram } from '@icon-park/react'
 import { definitionToFlow, flowToDefinition, ancestorClosure, INPUT_HANDLE } from './convert'
 import { missingRequiredFields } from './validation'
 import { GRAPH_NODE_TYPES, type FlowGraphNode, type TestStatus, type TestRunNodeResult } from './GraphNode'
@@ -494,8 +494,14 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
 
           {nodes.length === 0 && (
             <div className="gf-canvas-hint">
-              <Plus size={20} />
-              <span>Click + to add your first node.</span>
+              <div className="gf-canvas-hint-icon">
+                <TreeDiagram size={22} />
+              </div>
+              <h2>Design your automation</h2>
+              <p>Add a trigger to start, then chain the steps that follow.</p>
+              <button type="button" className="gf-canvas-hint-cta" onClick={() => setCreatorOpen(true)}>
+                <Plus size={14} /> Add your first node
+              </button>
             </div>
           )}
 
@@ -691,6 +697,35 @@ export const GRAPH_EDITOR_CSS = `
   cursor: default;
 }
 
+/* React Flow's own zoom/fit-view bar - default xyflow styling (plain white
+   squares, sharp corners, no shadow) looked visually disconnected from the
+   rest of the app. Same card language as .gf-add-btn/.gf-history-btn above.
+   Shared with GraphReplayViewer.tsx via the same GRAPH_EDITOR_CSS export,
+   so its zoom bar gets this for free too. */
+.react-flow__controls {
+  display: flex;
+  gap: 6px;
+  box-shadow: none;
+}
+
+.react-flow__controls-button {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  box-shadow: var(--shadow-medium);
+  fill: var(--color-text-secondary);
+}
+
+.react-flow__controls-button:hover {
+  background: var(--color-hover);
+  fill: var(--color-text);
+}
+
+/* pointer-events is re-enabled here (unlike the old bare hint) since this
+   now carries a real, clickable CTA - only the empty area around it stays
+   click-through so the canvas beneath (pan/zoom) still works. */
 .gf-canvas-hint {
   position: absolute;
   inset: 0;
@@ -699,9 +734,53 @@ export const GRAPH_EDITOR_CSS = `
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  color: var(--color-text-muted);
+  gap: 6px;
+  text-align: center;
+  padding: 0 24px;
+}
+
+.gf-canvas-hint-icon {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 6px;
+  border-radius: var(--radius-lg);
+  background: var(--color-cta);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gf-canvas-hint h2 {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: 750;
+  color: var(--color-text);
+}
+
+.gf-canvas-hint p {
+  margin: 0;
   font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  max-width: 320px;
+}
+
+.gf-canvas-hint-cta {
+  pointer-events: all;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  height: 34px;
+  padding: 0 16px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--color-cta);
+  color: white;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: var(--shadow-medium);
 }
 
 .gf-config-panel {
