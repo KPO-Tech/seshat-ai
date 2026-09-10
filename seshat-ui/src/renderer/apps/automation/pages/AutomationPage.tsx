@@ -2,7 +2,7 @@
 import { useNavigate, useParams, useLocation, useSearchParams, useBlocker } from 'react-router'
 import {
   Left, Setting, Close, CheckOne, Home, List, ApplicationOne, DataOne, Help as HelpIcon,
-  Play, Delete as DeleteIcon, LoadingOne, History, Branch,
+  Delete as DeleteIcon, LoadingOne, History, Branch,
 } from '@icon-park/react'
 import { api, ApiError } from '@/api/client'
 import type { Agent, ProviderModel } from '@/api/types'
@@ -586,14 +586,6 @@ export function AutomationPage() {
               <History size={15} />
             </button>
           )}
-          <button
-            type="button" className="au-icon-btn"
-            onClick={() => void handleRunThisJob()}
-            disabled={runningThisJob || isNew}
-            aria-label={isNew ? 'Save this automation before running it' : 'Run now'}
-          >
-            {runningThisJob ? <LoadingOne size={15} className="spin" /> : <Play size={15} />}
-          </button>
           <button type="button" className={`au-icon-btn ${settingsOpen ? 'active' : ''}`} onClick={() => setSettingsOpen((o) => !o)} aria-label="Job settings">
             <Setting size={15} />
           </button>
