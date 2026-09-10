@@ -1,5 +1,5 @@
 import { Outlet, useLocation } from 'react-router'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Sidebar } from './Sidebar'
 import { RightPanelHost } from './RightPanelHost'
 import { ImageLightbox } from './ImageLightbox'
@@ -17,6 +17,8 @@ export function Shell() {
   const { pathname } = useLocation()
   
   const isConversation = pathname.startsWith('/conversation/')
+  const conversationId = pathname.match(/^\/conversation\/([^/]+)/)?.[1] ?? null
+  const previousConversationIdRef = useRef<string | null>(conversationId)
   // Automation (its own Overview at /automation, or the graph editor at
   // /automation/new or /automation/:jobId) is immersive for the same reason
   // a conversation is — the canvas needs the window, not a fixed-width
@@ -48,6 +50,34 @@ export function Shell() {
       if (frame !== null) cancelAnimationFrame(frame)
     }
   }, [])
+
+  useEffect(() => {
+    const previousConversationId = previousConversationIdRef.current
+    if (conversationId) {
+      if (previousConversationId && previousConversationId !== conversationId) {
+        void window.nexus?.browser?.hide(`session:${previousConversationId}`).catch(() => undefined)
+        useUIStore.getState().closeRightPanelsForSession(previousConversationId)
+      }
+      previousConversationIdRef.current = conversationId
+      return
+    }
+
+    const browserContexts = new Set<string>(['chat'])
+    for (const column of useUIStore.getState().rightColumns) {
+      for (const panel of column.panels) {
+        if (panel.kind === 'browser') {
+          browserContexts.add(panel.sessionId ? `session:${panel.sessionId}` : 'chat')
+        }
+      }
+    }
+    if (previousConversationId) browserContexts.add(`session:${previousConversationId}`)
+
+    useUIStore.getState().closeAllRightPanels()
+    for (const contextId of browserContexts) {
+      void window.nexus?.browser?.hide(contextId).catch(() => undefined)
+    }
+    previousConversationIdRef.current = null
+  }, [conversationId])
 
   useEffect(() => {
     let cancelled = false

@@ -156,6 +156,7 @@ type Props = {
   sessionId?: string
   compact?: boolean
   revealThinking?: boolean
+  autoExpandTools?: boolean
   liveActivity?: {
     label: string
     detail?: string
@@ -310,7 +311,7 @@ function LiveActivityBlock({ label, detail }: { label: string; detail?: string }
   )
 }
 
-export const MessageItem = memo(function MessageItem({ message, sessionId, compact = false, revealThinking = false, liveActivity, onApproveTool, onDenyTool, onSubmitToolPrompt }: Props) {
+export const MessageItem = memo(function MessageItem({ message, sessionId, compact = false, revealThinking = false, autoExpandTools = false, liveActivity, onApproveTool, onDenyTool, onSubmitToolPrompt }: Props) {
   const isUser = message.role === 'user'
   const attachments = messageAttachments(message)
   const openLightbox = useUIStore((s) => s.openLightbox)
@@ -478,6 +479,7 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
                 items={item.items}
                 sessionId={sessionId}
                 revealThinking={revealThinking}
+                autoExpandTools={autoExpandTools}
                 onSubmitPrompt={onSubmitToolPrompt}
               />
             )
@@ -512,6 +514,7 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
                 key={key}
                 tool={block}
                 sessionId={sessionId}
+                autoExpand={autoExpandTools}
                 onSubmitPrompt={onSubmitToolPrompt}
               />
             )

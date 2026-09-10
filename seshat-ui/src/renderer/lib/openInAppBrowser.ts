@@ -7,10 +7,10 @@ import { useUIStore } from '@/stores/ui'
 // clicks a link the agent produced, they land in the built-in browser
 // rather than getting bounced out of the app.
 //
-// openRightPanel alone only reliably navigates when it causes BrowserPanel
-// to newly mount (its own mount effect calls browserApi.show + navigate) -
-// if the panel is already open, that effect won't re-run for the new URL,
-// so navigate() is also called directly here to cover both cases.
+// openRightPanel only makes the panel visible. The actual browser action is
+// handled through the Electron bridge so repeated link clicks behave like a
+// normal browser: first click uses the empty/current tab, later clicks open
+// a new tab instead of overwriting what the user is already reading.
 //
 // sessionId scopes the browser tab/history to the conversation the link was
 // clicked from (matching RightPanelHost's `session:<id>` contextId), so
@@ -25,9 +25,13 @@ export function openInAppBrowser(url: string, sessionId?: string): void {
     return
   }
   const contextId = sessionId ? `session:${sessionId}` : 'chat'
-  useUIStore.getState().openRightPanel({ kind: 'browser', title: 'Browser', browserUrl: url, sessionId })
-  void window.nexus.browser.navigate(contextId, url).catch(() => {
-    // Panel will still be open; the user can retry via its own address bar.
+  useUIStore.getState().openRightPanel({ kind: 'browser', title: 'Browser', sessionId })
+  void window.nexus.browser.getState(contextId).then((state) => {
+    const hasUserTab = state.tabs.some((tab) => tab.url && tab.url !== 'about:blank' && tab.url !== 'https://www.google.com/')
+    if (hasUserTab) return window.nexus.browser!.newTab(contextId, url)
+    return window.nexus.browser!.navigate(contextId, url)
+  }).catch(() => {
+    void window.nexus?.browser?.newTab(contextId, url).catch(() => undefined)
   })
 }
 

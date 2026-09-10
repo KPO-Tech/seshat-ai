@@ -3,6 +3,7 @@ import type { ToolStatus, ToolUseBlock } from '@/api/types'
 export type ToolBlockProps = {
   tool: ToolUseBlock
   sessionId?: string
+  autoExpand?: boolean
   onApprove?: (toolUseId: string) => void
   onDeny?: (toolUseId: string) => void
   onSubmitPrompt?: (promptId: string, value: unknown) => void

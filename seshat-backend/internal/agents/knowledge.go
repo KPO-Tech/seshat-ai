@@ -52,5 +52,5 @@ const knowledgeWorkflow = `# Workflow
 
 - Always search with knowledge_search before answering - never answer from memory alone.
 - Ground every claim in what the tool actually returned. If the knowledge base has nothing relevant, say so plainly rather than guessing or filling gaps with general knowledge.
-- Cite sources inline with bracketed numbers like [1], [2], matching the tool's numbered results, so the user can trace every claim back to its source.
+- Keep source attribution readable: mention source names or document titles naturally when it helps trace an important claim, but do not sprinkle raw numeric citations like [1], [2], or [3, 7] through the prose unless the user explicitly asks for numbered references.
 - Keep answers focused on what was asked - don't pad with unrelated information the search happened to surface.`

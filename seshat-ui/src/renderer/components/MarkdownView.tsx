@@ -234,8 +234,18 @@ function sealOpenFences(text: string): string {
   return inFence ? text + '\n```' : text
 }
 
+function normalizeMathDelimiters(text: string): string {
+  const segments = text.split(/(^[ \t]*(?:`{3,}|~{3,})[\s\S]*?^[ \t]*(?:`{3,}|~{3,})[ \t]*$)/gm)
+  return segments.map((segment) => {
+    if (/^[ \t]*(?:`{3,}|~{3,})/.test(segment)) return segment
+    return segment
+      .replace(/\\\[([\s\S]*?)\\\]/g, (_match, math: string) => `$$\n${math.trim()}\n$$`)
+      .replace(/\\\(([^()\n]+?)\\\)/g, (_match, math: string) => `$${math.trim()}$`)
+  }).join('')
+}
+
 export function MarkdownView({ children, className, streaming = false, sessionId }: Props) {
-  const content = streaming ? sealOpenFences(children) : children
+  const content = normalizeMathDelimiters(streaming ? sealOpenFences(children) : children)
 
   return (
     <div className={`markdown-body ${className || ''}`}>

@@ -13,6 +13,7 @@ type Props = {
   items: QuietGroupItem[]
   sessionId?: string
   revealThinking?: boolean
+  autoExpandTools?: boolean
   onSubmitPrompt?: ToolBlockProps['onSubmitPrompt']
 }
 
@@ -22,7 +23,7 @@ type Props = {
 // summary someone has to click to see anything. Each step keeps its own
 // expand-for-details affordance (ToolLineItem/SilentToolView/thinking below)
 // - only the outer "collapse the whole run into one line" behavior is gone.
-export function QuietToolGroup({ items, sessionId, revealThinking = false, onSubmitPrompt }: Props) {
+export function QuietToolGroup({ items, sessionId, revealThinking = false, autoExpandTools = false, onSubmitPrompt }: Props) {
   return (
     <div className="qtg-root">
       <style>{QUIET_GROUP_CSS}</style>
@@ -59,6 +60,7 @@ export function QuietToolGroup({ items, sessionId, revealThinking = false, onSub
               key={tool.id}
               tool={tool}
               sessionId={sessionId}
+              autoExpand={autoExpandTools}
               onSubmitPrompt={onSubmitPrompt}
             />
           )

@@ -42,6 +42,15 @@ func TestBaseSections_DropCodingSpecificExamples(t *testing.T) {
 	}
 }
 
+func TestKnowledgeBase_DoesNotRequestBracketedInlineCitations(t *testing.T) {
+	forbidden := []string{"Cite sources inline", "bracketed numbers", "matching the tool's numbered results"}
+	for _, phrase := range forbidden {
+		if strings.Contains(KnowledgeBase, phrase) {
+			t.Errorf("KnowledgeBase should not request raw inline numeric citations, found %q", phrase)
+		}
+	}
+}
+
 func TestBaseSections_AreDistinctFromCorePrompt(t *testing.T) {
 	// Base sections are hand-adapted derivatives, not verbatim copies of
 	// sections.go - they should not be byte-identical to any core section.

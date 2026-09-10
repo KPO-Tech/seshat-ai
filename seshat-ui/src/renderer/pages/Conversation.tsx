@@ -351,9 +351,9 @@ export function Conversation() {
 
   function toggleBrowser() {
     if (browserOpen) {
-      closeRightPanel(buildRightPanelId({ kind: 'browser' }))
+      closeRightPanel(buildRightPanelId({ kind: 'browser', sessionId: id }))
     } else {
-      openRightPanel({ kind: 'browser', title: 'Browser', width: 620 })
+      openRightPanel({ kind: 'browser', title: 'Browser', sessionId: id })
     }
   }
 
@@ -494,7 +494,7 @@ export function Conversation() {
   useEffect(() => {
     const tool = agentState.activeTool
     if (!tool?.toolName.startsWith('browser_')) return
-    if (!browserOpen) openRightPanel({ kind: 'browser', title: 'Browser', width: 620, sessionId: id })
+    if (!browserOpen) openRightPanel({ kind: 'browser', title: 'Browser', sessionId: id })
     if (tool.toolName !== 'browser_open' && tool.toolName !== 'browser_navigate') return
     const toolBlock = [...streaming].reverse().find((block) => (
       block.type === 'tool_use' &&
@@ -795,6 +795,7 @@ export function Conversation() {
             const msg = visibleMessages[virtualRow.index]
             const i = virtualRow.index
             const revealThinking = isStreaming && msg.role === 'assistant' && i === visibleMessages.length - 1
+            const autoExpandTools = revealThinking
             const showLiveActivity = revealThinking && !pendingPermission && !pendingAskUser
             return (
               <div
@@ -809,6 +810,7 @@ export function Conversation() {
                   sessionId={id}
                   compact={msg.role === 'assistant' && i > 0 && visibleMessages[i - 1]?.role === 'assistant'}
                   revealThinking={revealThinking}
+                  autoExpandTools={autoExpandTools}
                   liveActivity={showLiveActivity ? liveActivity : undefined}
                   onApproveTool={onApproveTool}
                   onDenyTool={onDenyTool}

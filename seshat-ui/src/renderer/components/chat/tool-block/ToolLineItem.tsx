@@ -14,17 +14,18 @@ import type { ToolBlockProps } from './types'
 // simultaneous neighbor) or nested inside a shared group (QuietToolGroup,
 // 2+ tools running back-to-back with no text between them) - both surfaces
 // render the exact same row so they can never visually drift apart.
-export function ToolLineItem({ tool, sessionId, onSubmitPrompt }: {
+export function ToolLineItem({ tool, sessionId, autoExpand = false, onSubmitPrompt }: {
   tool: ToolUseBlock
   sessionId?: string
+  autoExpand?: boolean
   onSubmitPrompt?: ToolBlockProps['onSubmitPrompt']
 }) {
   const isPreviewTool = tool.name === 'web_search' || tool.name === 'web_fetch' || tool.name === 'read_url' || tool.name === 'read_document_url'
-  const expanded = useUIStore((s) => s.toolExpansion[tool.id] ?? isPreviewTool)
   const setToolExpansion = useUIStore((s) => s.setToolExpansion)
   const status = toolStatus(tool)
   const isRunning = status === 'running' || status === 'pending'
   const isError = status === 'failed'
+  const expanded = useUIStore((s) => s.toolExpansion[tool.id] ?? (autoExpand || isRunning || isError))
   const label = isPreviewTool ? toolLabel(tool.name) : summarizeQuietGroup([tool])
   const detail = isPreviewTool ? previewDetail(tool) : ''
   const meta = isPreviewTool ? previewMeta(tool) : ''

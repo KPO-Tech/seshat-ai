@@ -74,15 +74,16 @@ function isRightPanelPinned(p: RightPanelInstance): boolean {
 // in a row, while something like an Agent Monitor a user deliberately kept
 // open stays put instead of being silently evicted to make room.
 const DOCUMENT_PANEL_KINDS: ReadonlySet<RightPanelKind> = new Set(['pdf', 'docx', 'xlsx', 'pptx', 'markdown', 'plan', 'artifact'])
+const READABLE_PANEL_KINDS: ReadonlySet<RightPanelKind> = new Set(['browser', ...DOCUMENT_PANEL_KINDS])
 
-const RIGHT_PANEL_STACK_LIMIT = 2
-const RIGHT_PANEL_WIDE_COLUMN_LIMIT = 2
+const RIGHT_PANEL_STACK_LIMIT = 1
+const RIGHT_PANEL_WIDE_COLUMN_LIMIT = 1
 // A lone open column can go up to 720px; once a 2nd column opens, both
 // clamp into this tighter range so the chat pane never gets crushed. This
 // static range alone is only safe on a wide-enough window, though - see
 // clampRightPanelWidth below for the dynamic top-up that protects small
 // windows too.
-const RIGHT_PANEL_WIDTH_SOLO = { min: 320, max: 720 }
+const RIGHT_PANEL_WIDTH_SOLO = { min: 320, max: 960 }
 const RIGHT_PANEL_WIDTH_SHARED = { min: 280, max: 480 }
 // A newly-opened column's default width is this fraction of the window,
 // not a flat pixel value - so a panel opened on a small laptop window
@@ -145,7 +146,7 @@ const CHAT_MIN_FRACTION = 0.25
 // there is unchanged (this was already tuned and correct) - it only bites
 // on a small window, which is exactly the case that was breaking.
 function clampRightPanelWidth(width: number, windowWidth: number, sidebarCollapsed: boolean, columnCount: number): number {
-  const range = columnCount >= RIGHT_PANEL_WIDE_COLUMN_LIMIT ? RIGHT_PANEL_WIDTH_SHARED : RIGHT_PANEL_WIDTH_SOLO
+  const range = columnCount > 1 ? RIGHT_PANEL_WIDTH_SHARED : RIGHT_PANEL_WIDTH_SOLO
   const sidebarWidth = sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH
   const available = windowWidth - sidebarWidth
   const chatFloor = Math.max(MIN_CHAT_PANE_WIDTH, available * CHAT_MIN_FRACTION)
@@ -153,6 +154,15 @@ function clampRightPanelWidth(width: number, windowWidth: number, sidebarCollaps
   const effectiveMax = Math.min(range.max, dynamicMax)
   const effectiveMin = Math.min(range.min, effectiveMax)
   return Math.round(Math.max(effectiveMin, Math.min(width, effectiveMax)))
+}
+
+function defaultRightPanelWidth(kind: RightPanelKind, windowWidth: number, sidebarCollapsed: boolean): number {
+  const sidebarWidth = sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH
+  const available = Math.max(0, windowWidth - sidebarWidth)
+  const preferred = READABLE_PANEL_KINDS.has(kind)
+    ? available * 0.5
+    : windowWidth * RIGHT_PANEL_WIDTH_RATIO
+  return clampRightPanelWidth(preferred, windowWidth, sidebarCollapsed, 1)
 }
 
 export type LightboxImage = { url: string; filename: string }
@@ -302,7 +312,13 @@ export const useUIStore = create<UIState>()(
             const nextColumns = [...rightColumns]
             const nextPanels = [...nextColumns[ci].panels]
             nextPanels[pi] = { ...nextPanels[pi], ...panel, id }
-            nextColumns[ci] = { ...nextColumns[ci], panels: nextPanels }
+            nextColumns[ci] = {
+              ...nextColumns[ci],
+              width: READABLE_PANEL_KINDS.has(panel.kind)
+                ? (panel.width ?? defaultRightPanelWidth(panel.kind, s.windowWidth, s.sidebarCollapsed))
+                : nextColumns[ci].width,
+              panels: nextPanels,
+            }
             return { rightColumns: nextColumns }
           }
 
@@ -323,24 +339,23 @@ export const useUIStore = create<UIState>()(
               const nextColumns = [...rightColumns]
               const nextPanels = [...nextColumns[ci].panels]
               nextPanels[pi] = instance
-              nextColumns[ci] = { ...nextColumns[ci], panels: nextPanels }
+              nextColumns[ci] = {
+                ...nextColumns[ci],
+                width: panel.width ?? defaultRightPanelWidth(panel.kind, s.windowWidth, s.sidebarCollapsed),
+                panels: nextPanels,
+              }
               return { rightColumns: nextColumns }
             }
           }
 
-          // On a single-column screen there's no room to stack a document
-          // next to something else and still read either one - a document
-          // opening here takes the column outright (Agent Monitor, a
-          // sub-agent trace, ... whatever was there closes), sized to half
-          // the window by default. Wide/2-column screens fall through to
-          // the stacking logic below unchanged (not yet redesigned - see
-          // RIGHT_PANEL_WIDTH_RATIO).
-          if (isDocument && columnLimit === 1) {
-            const halfWidth = Math.round(Math.max(RIGHT_PANEL_WIDTH_SOLO.min, Math.min(s.windowWidth * 0.5, RIGHT_PANEL_WIDTH_SOLO.max)))
+          // Keep the right side to one readable panel at a time. Opening a
+          // new browser/document/monitor replaces the current panel instead
+          // of splitting the column vertically into cramped halves.
+          if (columnLimit === 1) {
             const column: RightPanelColumn = {
               id: rightColumns[0]?.id ?? crypto.randomUUID(),
               panels: [instance],
-              width: panel.width ?? halfWidth,
+              width: panel.width ?? defaultRightPanelWidth(panel.kind, s.windowWidth, s.sidebarCollapsed),
               split: 0.5,
             }
             return { rightColumns: [column] }
@@ -359,7 +374,7 @@ export const useUIStore = create<UIState>()(
           // stay single-column so the chat pane is never squeezed.
           if (rightColumns.length < columnLimit) {
             const defaultWidth = Math.round(
-              Math.max(RIGHT_PANEL_WIDTH_SOLO.min, Math.min(s.windowWidth * RIGHT_PANEL_WIDTH_RATIO, RIGHT_PANEL_WIDTH_SOLO.max))
+              defaultRightPanelWidth(panel.kind, s.windowWidth, s.sidebarCollapsed)
             )
             const column: RightPanelColumn = {
               id: crypto.randomUUID(),
@@ -396,7 +411,11 @@ export const useUIStore = create<UIState>()(
             if (ci !== victim.ci) return c
             const nextPanels = [...c.panels]
             nextPanels[victim.pi] = instance
-            return { ...c, panels: nextPanels }
+            return {
+              ...c,
+              width: panel.width ?? defaultRightPanelWidth(panel.kind, s.windowWidth, s.sidebarCollapsed),
+              panels: nextPanels,
+            }
           })
           return { rightColumns: nextColumns }
         }),

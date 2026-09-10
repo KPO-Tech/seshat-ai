@@ -62,6 +62,19 @@ export const TOOL_BLOCK_CSS = `
   color: var(--color-text-muted);
 }
 
+.tb-hcard-header-link {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.tb-hcard-header-link:hover {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
 .tb-hcard-header-stat {
   flex-shrink: 0;
   margin-left: auto;
@@ -623,6 +636,12 @@ export const TOOL_BLOCK_CSS = `
   color: var(--color-accent);
   word-break: break-all;
   line-height: 1.5;
+}
+
+/* ── Web fetch view ── */
+.tb-fetch-card {
+  display: flex;
+  flex-direction: column;
 }
 
 /* ── Diff view ── */

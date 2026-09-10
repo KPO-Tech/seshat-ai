@@ -17,7 +17,7 @@ import type { ToolBlockProps } from './tool-block/types'
 // inside a group (ToolLineItem) - it's the group wrapper that differs, not
 // the individual row. A bordered "card" treatment here made even a single
 // Read/Write look as heavy as an actual multi-step operation.
-export const ToolBlock = memo(function ToolBlock({ tool, sessionId, onSubmitPrompt }: ToolBlockProps) {
+export const ToolBlock = memo(function ToolBlock({ tool, sessionId, autoExpand = false, onSubmitPrompt }: ToolBlockProps) {
   const result = tool._result
   const status: ToolStatus = tool._status
     ?? (result ? (result.isError ? 'failed' : 'completed') : 'running')
@@ -45,7 +45,7 @@ export const ToolBlock = memo(function ToolBlock({ tool, sessionId, onSubmitProm
     <>
       <style>{TOOL_BLOCK_CSS}</style>
       <style>{TOOL_LINE_CSS}</style>
-      <ToolLineItem tool={tool} sessionId={sessionId} onSubmitPrompt={onSubmitPrompt} />
+      <ToolLineItem tool={tool} sessionId={sessionId} autoExpand={autoExpand} onSubmitPrompt={onSubmitPrompt} />
     </>
   )
 })

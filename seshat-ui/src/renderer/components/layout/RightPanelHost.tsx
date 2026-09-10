@@ -832,7 +832,7 @@ export const RIGHT_PANEL_CSS = `
   flex: 1;
   min-height: 0;
   border-left: 1px solid var(--color-border-subtle);
-  background: rgba(43, 41, 48, 0.96);
+  background: color-mix(in srgb, var(--color-bg) 94%, var(--color-surface) 6%);
   backdrop-filter: blur(14px);
   display: flex;
   flex-direction: column;
@@ -1032,7 +1032,7 @@ export const RIGHT_PANEL_CSS = `
   flex-direction: column;
   height: 100%;
   min-height: 0;
-  background: var(--color-bg);
+  background: color-mix(in srgb, var(--color-bg) 96%, var(--color-surface) 4%);
   color: var(--color-text);
 }
 
@@ -1046,6 +1046,7 @@ export const RIGHT_PANEL_CSS = `
   align-items: center;
   gap: 4px;
   padding: 6px 7px 0;
+  background: color-mix(in srgb, var(--color-bg) 92%, var(--color-surface) 8%);
   overflow-x: auto;
   flex-shrink: 0;
   scrollbar-width: none;
@@ -1074,13 +1075,13 @@ export const RIGHT_PANEL_CSS = `
 
 .right-panel-browser-tab:hover {
   color: var(--color-text);
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--color-hover);
 }
 
 .right-panel-browser-tab.active {
   color: var(--color-text);
   border-color: var(--color-border-subtle);
-  background: rgba(255, 255, 255, 0.035);
+  background: color-mix(in srgb, var(--color-bg) 86%, var(--color-surface) 14%);
 }
 
 .right-panel-browser-tab span:not(.right-panel-browser-tab-close) {
@@ -1102,7 +1103,7 @@ export const RIGHT_PANEL_CSS = `
 }
 
 .right-panel-browser-tab-close:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--color-hover);
   color: var(--color-text);
 }
 
@@ -1131,7 +1132,7 @@ export const RIGHT_PANEL_CSS = `
   gap: 6px;
   padding: 7px;
   border-bottom: 1px solid var(--color-border-subtle);
-  background: rgba(255, 255, 255, 0.035);
+  background: color-mix(in srgb, var(--color-bg) 88%, var(--color-surface) 12%);
   flex-shrink: 0;
 }
 
@@ -1140,7 +1141,7 @@ export const RIGHT_PANEL_CSS = `
   height: 26px;
   border: 1px solid var(--color-border-subtle);
   border-radius: 7px;
-  background: rgba(255, 255, 255, 0.035);
+  background: color-mix(in srgb, var(--color-bg) 80%, var(--color-surface) 20%);
   color: var(--color-text-secondary);
   display: flex;
   align-items: center;
@@ -1168,7 +1169,7 @@ export const RIGHT_PANEL_CSS = `
   height: 27px;
   border: 1px solid var(--color-border-subtle);
   border-radius: 7px;
-  background: rgba(0, 0, 0, 0.25);
+  background: color-mix(in srgb, var(--color-bg) 78%, var(--color-surface) 22%);
   color: var(--color-text);
   padding: 0 9px;
   font-size: 11px;
@@ -1184,7 +1185,7 @@ export const RIGHT_PANEL_CSS = `
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  background: var(--color-bg);
+  background: color-mix(in srgb, var(--color-bg) 96%, var(--color-surface) 4%);
 }
 
 .right-panel-browser-empty {
