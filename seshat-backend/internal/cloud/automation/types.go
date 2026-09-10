@@ -148,6 +148,18 @@ type Job struct {
 	UpdatedAt       string               `json:"updated_at,omitempty"`
 }
 
+// ResolvedAgent is a graph's own "agent" node's referenced agent, resolved
+// to what a cloud-targeted run actually needs to honor it - a save-time
+// snapshot (see resolveGraphAgents in internal/api/automation_jobs.go),
+// not re-resolved per run, since seshat-server's scheduler fires
+// cron/interval/webhook runs entirely on its own with no per-run call back
+// here. Editing the agent later only takes effect the next time this
+// automation itself is saved.
+type ResolvedAgent struct {
+	SystemPrompt string `json:"system_prompt,omitempty"`
+	Model        string `json:"model,omitempty"`
+}
+
 // JobParams is the shared request shape for creating and updating a job,
 // mirroring seshat-server's CreateJobParams/UpdateJobParams (they differ
 // only by OrganizationID, which CreateJob takes as a separate argument here
@@ -165,6 +177,11 @@ type JobParams struct {
 	Graph           *dataflow.Definition `json:"graph,omitempty"`
 	ModelOverride   string               `json:"model_override,omitempty"`
 	Configuration   map[string]string    `json:"configuration,omitempty"`
+	// ResolvedAgents is populated server-side (see resolveGraphAgents) from
+	// whatever "agent" nodes Graph actually references - never authored by
+	// the caller directly, though nothing stops a caller from setting it;
+	// it gets overwritten before forwarding to seshat-server regardless.
+	ResolvedAgents map[string]ResolvedAgent `json:"resolved_agents,omitempty"`
 }
 
 // AttentionItem mirrors seshat-server's automation.AttentionItem — one

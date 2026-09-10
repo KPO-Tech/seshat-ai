@@ -532,9 +532,27 @@ type ScheduledJob struct {
 	// Tags (Tier 3.4) - free-text labels for organizing Overview's flat job
 	// list once an organization has more than a handful of automations. Same
 	// JSON-serializer convention as Corpus.Tags. nil/empty means untagged.
-	Tags      []string `gorm:"serializer:json;type:text"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	Tags []string `gorm:"serializer:json;type:text"`
+	// ResolvedAgents is a save-time snapshot of every "agent" node's
+	// referenced agent (slug -> system prompt/model), resolved by
+	// seshat-backend when the job was created/updated (see
+	// cloudautomation.ResolvedAgent's doc comment for why this can only be a
+	// snapshot, not fresh per-run resolution). nil/empty for a graph with no
+	// agent nodes, or for jobs saved before this field existed - both cases
+	// mean executeCloudRun falls back to the job's own default agent.
+	ResolvedAgents map[string]ResolvedAgent `gorm:"serializer:json;type:text"`
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+// ResolvedAgent mirrors seshat-backend's cloudautomation.ResolvedAgent - one
+// "agent" node's resolved system prompt/model, snapshotted into
+// ScheduledJob.ResolvedAgents at save time. Defined here (not in package
+// automation) and reused directly by automation.Job/CreateJobParams/
+// UpdateJobParams, same convention as NodeTraceEntry.
+type ResolvedAgent struct {
+	SystemPrompt string `json:"system_prompt,omitempty"`
+	Model        string `json:"model,omitempty"`
 }
 
 // ScheduledJobMailCursor stores a mail-polling node's incremental sync

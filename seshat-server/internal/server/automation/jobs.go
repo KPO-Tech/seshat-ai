@@ -62,6 +62,9 @@ type Job struct {
 	Graph         *dataflow.Definition `json:"graph,omitempty"`
 	ModelOverride string               `json:"model_override,omitempty"`
 	Configuration map[string]string    `json:"configuration,omitempty"`
+	// ResolvedAgents is the save-time snapshot resolved by seshat-backend
+	// for this graph's "agent" nodes - see sdb.ResolvedAgent's doc comment.
+	ResolvedAgents map[string]sdb.ResolvedAgent `json:"resolved_agents,omitempty"`
 	// ErrorWorkflowJobID (Tier 3.1) is another job in this organization to
 	// queue a run for whenever this job's own run fails - see
 	// Service.triggerErrorWorkflowIfConfigured.
@@ -87,22 +90,24 @@ type jobTriggerParams struct {
 	Graph           *dataflow.Definition
 	ModelOverride   string
 	Configuration   map[string]string
+	ResolvedAgents  map[string]sdb.ResolvedAgent
 }
 
 type CreateJobParams struct {
-	OrganizationID  string               `json:"organization_id"`
-	Name            string               `json:"name"`
-	Description     string               `json:"description"`
-	TriggerType     string               `json:"trigger_type"`
-	CronExpr        string               `json:"cron_expr"`
-	IntervalSeconds int                  `json:"interval_seconds"`
-	RunAt           *time.Time           `json:"run_at"`
-	ExecutionTarget string               `json:"execution_target"`
-	TargetDeviceID  string               `json:"target_device_id"`
-	Prompt          string               `json:"prompt"`
-	Graph           *dataflow.Definition `json:"graph"`
-	ModelOverride   string               `json:"model_override"`
-	Configuration   map[string]string    `json:"configuration"`
+	OrganizationID  string                       `json:"organization_id"`
+	Name            string                       `json:"name"`
+	Description     string                       `json:"description"`
+	TriggerType     string                       `json:"trigger_type"`
+	CronExpr        string                       `json:"cron_expr"`
+	IntervalSeconds int                          `json:"interval_seconds"`
+	RunAt           *time.Time                   `json:"run_at"`
+	ExecutionTarget string                       `json:"execution_target"`
+	TargetDeviceID  string                       `json:"target_device_id"`
+	Prompt          string                       `json:"prompt"`
+	Graph           *dataflow.Definition         `json:"graph"`
+	ModelOverride   string                       `json:"model_override"`
+	Configuration   map[string]string            `json:"configuration"`
+	ResolvedAgents  map[string]sdb.ResolvedAgent `json:"resolved_agents"`
 	// ErrorWorkflowJobID (Tier 3.1) is error-handling config, not a trigger
 	// concern - kept separate from jobTriggerParams (see normalizeErrorWorkflowJobID).
 	ErrorWorkflowJobID string `json:"error_workflow_job_id"`
@@ -113,18 +118,19 @@ type CreateJobParams struct {
 }
 
 type UpdateJobParams struct {
-	Name            string               `json:"name"`
-	Description     string               `json:"description"`
-	TriggerType     string               `json:"trigger_type"`
-	CronExpr        string               `json:"cron_expr"`
-	IntervalSeconds int                  `json:"interval_seconds"`
-	RunAt           *time.Time           `json:"run_at"`
-	ExecutionTarget string               `json:"execution_target"`
-	TargetDeviceID  string               `json:"target_device_id"`
-	Prompt          string               `json:"prompt"`
-	Graph           *dataflow.Definition `json:"graph"`
-	ModelOverride   string               `json:"model_override"`
-	Configuration   map[string]string    `json:"configuration"`
+	Name            string                       `json:"name"`
+	Description     string                       `json:"description"`
+	TriggerType     string                       `json:"trigger_type"`
+	CronExpr        string                       `json:"cron_expr"`
+	IntervalSeconds int                          `json:"interval_seconds"`
+	RunAt           *time.Time                   `json:"run_at"`
+	ExecutionTarget string                       `json:"execution_target"`
+	TargetDeviceID  string                       `json:"target_device_id"`
+	Prompt          string                       `json:"prompt"`
+	Graph           *dataflow.Definition         `json:"graph"`
+	ModelOverride   string                       `json:"model_override"`
+	Configuration   map[string]string            `json:"configuration"`
+	ResolvedAgents  map[string]sdb.ResolvedAgent `json:"resolved_agents"`
 	// See CreateJobParams.ErrorWorkflowJobID's doc comment. Empty clears any
 	// existing setting.
 	ErrorWorkflowJobID string `json:"error_workflow_job_id"`
@@ -220,6 +226,7 @@ func (s *Service) CreateJob(ctx context.Context, principal *iam.Principal, param
 			Graph:           params.Graph,
 			ModelOverride:   params.ModelOverride,
 			Configuration:   params.Configuration,
+			ResolvedAgents:  params.ResolvedAgents,
 		})
 		if err != nil {
 			return err
@@ -266,6 +273,7 @@ func (s *Service) CreateJob(ctx context.Context, principal *iam.Principal, param
 			GraphJSON:           graphToJSON(trigger.Graph),
 			ModelOverride:       trigger.ModelOverride,
 			Configuration:       trigger.Configuration,
+			ResolvedAgents:      trigger.ResolvedAgents,
 			ErrorWorkflowJobID:  errorWorkflowJobID,
 			Tags:                normalizeTags(params.Tags),
 			CreatedAt:           now,
@@ -329,6 +337,7 @@ func (s *Service) UpdateJob(ctx context.Context, principal *iam.Principal, jobID
 			Graph:           params.Graph,
 			ModelOverride:   params.ModelOverride,
 			Configuration:   params.Configuration,
+			ResolvedAgents:  params.ResolvedAgents,
 		})
 		if err != nil {
 			return err
@@ -362,6 +371,7 @@ func (s *Service) UpdateJob(ctx context.Context, principal *iam.Principal, jobID
 		record.GraphJSON = graphToJSON(trigger.Graph)
 		record.ModelOverride = trigger.ModelOverride
 		record.Configuration = trigger.Configuration
+		record.ResolvedAgents = trigger.ResolvedAgents
 		record.WebhookMethod = webhook.Method
 		record.WebhookResponseMode = webhook.ResponseMode
 		record.ErrorWorkflowJobID = errorWorkflowJobID
@@ -765,6 +775,7 @@ func normalizeJobTrigger(input jobTriggerParams) (normalizedJobTrigger, extracte
 		Graph:           input.Graph,
 		ModelOverride:   strings.TrimSpace(input.ModelOverride),
 		Configuration:   input.Configuration,
+		ResolvedAgents:  input.ResolvedAgents,
 	}, webhook, nil
 }
 
@@ -973,6 +984,7 @@ func toJob(record sdb.ScheduledJob) Job {
 		Graph:               graphFromJSON(record.GraphJSON),
 		ModelOverride:       record.ModelOverride,
 		Configuration:       record.Configuration,
+		ResolvedAgents:      record.ResolvedAgents,
 		ErrorWorkflowJobID:  record.ErrorWorkflowJobID,
 		Tags:                record.Tags,
 		CreatedAt:           record.CreatedAt,

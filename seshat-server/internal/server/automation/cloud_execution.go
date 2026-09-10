@@ -58,6 +58,17 @@ type jobWorkflow struct {
 	organization string
 	ownerID      string
 	secrets      DataflowSecretResolver
+	// resolvedAgents/providerConfig/provider/model/maxTokens are threaded
+	// straight from executeCloudRun's own already-resolved values, so a
+	// dataflowAgentCaller (built per runGraph call, not once for the whole
+	// jobWorkflow) can build a scoped one-shot sdk.Client for an "agent" node
+	// whose resolved agent differs from the job's own default - see
+	// dataflowAgentCaller.Ask.
+	resolvedAgents map[string]sdb.ResolvedAgent
+	providerConfig *sdkproviders.Config
+	provider       string
+	model          string
+	maxTokens      int
 	// variables, when non-nil, resolves the job's whole organization's
 	// $vars.NAME set (Tier 3.2) before runGraph below builds the Runtime -
 	// see Service.SetVariablesResolver's doc comment.
@@ -113,8 +124,15 @@ func (w *jobWorkflow) runGraph(ctx context.Context, session *sdk.Session) error 
 		}
 	}
 	rt := &dataflow.Runtime{
-		Secrets:     secrets,
-		Agent:       dataflowAgentCaller{session: session},
+		Secrets: secrets,
+		Agent: dataflowAgentCaller{
+			session:        session,
+			resolvedAgents: w.resolvedAgents,
+			providerConfig: w.providerConfig,
+			provider:       w.provider,
+			model:          w.model,
+			maxTokens:      w.maxTokens,
+		},
 		Subworkflow: dataflowSubworkflowRunner{session: session},
 		Expr:        w.exprEval,
 		Vars:        vars,
@@ -241,27 +259,89 @@ func (r orgScopedSecretResolver) Resolve(ctx context.Context, ref string) (strin
 // reason as runGraph above: this package's session comes from its own
 // executeCloudRun, not the SDK's JobScheduler.
 //
-// agentSlug and tools both fail loudly instead of being silently ignored,
-// same reasoning as the SDK's own sessionAgentCaller for tools - but note
-// the earlier claim here that "jobWorkflow's session is already the one
-// job.Agent resolved to" was inaccurate for this package specifically:
-// this Job type (jobs.go) has no agent-persona field at all, only
-// ModelOverride. Resolving a *different* agent per node in this cloud
-// path needs seshat-backend (which owns the real agents.Agent table) to
-// resolve every referenced slug into a full definition before dispatching
-// the run - not yet built (see automation-app-pages.md §37.9's follow-up
-// note) - so this fails clearly rather than quietly running every node as
-// whatever agent the job's own session already is.
-type dataflowAgentCaller struct{ session *sdk.Session }
+// agentSlug is now real for a slug seshat-backend resolved at save time
+// (see resolvedAgents) - anything else (an unresolved slug, meaning the
+// graph was hand-edited via the raw API after the last save, or this
+// deployment's Job predates the resolvedAgents column) still fails clearly
+// rather than silently running as the job's own default agent. tools still
+// fails loudly unconditionally - per-node tool scoping is a separate,
+// not-yet-built piece (see automation-app-pages.md §37.9's follow-up note).
+type dataflowAgentCaller struct {
+	session        *sdk.Session
+	resolvedAgents map[string]sdb.ResolvedAgent
+	// providerConfig/provider/model/maxTokens are executeCloudRun's own
+	// already-resolved values for the job's default agent - reused as-is
+	// for a scoped turn whose resolved agent didn't override the model, and
+	// as the base a resolved Model override is checked against (see Ask).
+	providerConfig *sdkproviders.Config
+	provider       string
+	model          string
+	maxTokens      int
+}
 
 func (a dataflowAgentCaller) Ask(ctx context.Context, agentSlug string, prompt string, tools []string) (string, error) {
-	if agentSlug != "" {
-		return "", fmt.Errorf("dataflow: agent node requested agent=%q, but per-node agent switching isn't supported yet on cloud-targeted runs - omit it to use the job's own agent", agentSlug)
-	}
 	if len(tools) > 0 {
 		return "", fmt.Errorf("dataflow: agent node requested tools=%v, but per-node tool scoping is not implemented yet - omit it to use the workflow's own agent's tools", tools)
 	}
-	resp, err := a.session.SubmitMessage(ctx, prompt)
+	if agentSlug == "" {
+		resp, err := a.session.SubmitMessage(ctx, prompt)
+		if err != nil {
+			return "", err
+		}
+		return lastAssistantText(resp.Messages), nil
+	}
+	resolved, ok := a.resolvedAgents[agentSlug]
+	if !ok {
+		return "", fmt.Errorf("dataflow: agent node requested agent=%q, but it wasn't resolved when this automation was last saved - re-save the automation to pick it up", agentSlug)
+	}
+	return a.askScoped(ctx, resolved, prompt)
+}
+
+// askScoped runs prompt as a one-shot, isolated turn against resolved's own
+// system prompt - a fresh sdk.Client/session, never joining the job's own
+// shared conversation, mirroring pkg/sdk.Client.Ask's own create→submit→
+// close pattern. Reuses the job's own already-decrypted provider
+// credentials (providerConfig) unless resolved.Model names a different
+// provider, which this pass can't support - executeCloudRun only ever
+// decrypts credentials for the job's own provider, so switching providers
+// per-node would need credential resolution this caller doesn't have; it
+// fails clearly instead of guessing.
+func (a dataflowAgentCaller) askScoped(ctx context.Context, resolved sdb.ResolvedAgent, prompt string) (string, error) {
+	provider, model := a.provider, a.model
+	if strings.TrimSpace(resolved.Model) != "" {
+		p, m, err := parseModelOverride(resolved.Model)
+		if err != nil {
+			return "", fmt.Errorf("dataflow: resolved agent has an invalid model override %q: %w", resolved.Model, err)
+		}
+		if p != a.provider {
+			return "", fmt.Errorf("dataflow: resolved agent's model %q uses provider %q, but this run only has credentials decrypted for %q - per-node provider switching isn't supported yet", resolved.Model, p, a.provider)
+		}
+		model = m
+	}
+
+	clientConfig := &sdk.ClientConfig{
+		Model:          sdktypes.ModelIdentifier{Provider: sdktypes.APIProvider(provider), Model: model},
+		ProviderConfig: a.providerConfig,
+		MaxTokens:      a.maxTokens,
+		RequireSandbox: true,
+	}
+	if strings.TrimSpace(resolved.SystemPrompt) != "" {
+		systemPrompt := resolved.SystemPrompt
+		clientConfig.PromptConfig = &sdk.PromptConfig{SystemPrompt: &systemPrompt}
+	}
+	client, err := sdk.NewClient(clientConfig)
+	if err != nil {
+		return "", fmt.Errorf("dataflow: failed to build scoped agent client: %w", err)
+	}
+	defer client.Close()
+
+	session, err := client.CreateSession(ctx)
+	if err != nil {
+		return "", fmt.Errorf("dataflow: failed to create scoped agent session: %w", err)
+	}
+	defer session.Close()
+
+	resp, err := session.SubmitMessage(ctx, prompt)
 	if err != nil {
 		return "", err
 	}
@@ -423,6 +503,11 @@ func (s *Service) executeCloudRun(ctx context.Context, runID string) error {
 		ownerID: job.CreatedByUserID, secrets: s.secrets, variables: s.variables,
 		triggerPayload: run.TriggerPayload,
 		exprEval:       s.exprEval,
+		resolvedAgents: job.ResolvedAgents,
+		providerConfig: providerConfig,
+		provider:       provider,
+		model:          model,
+		maxTokens:      cloudMaxTokens,
 	}
 	result, execErr := executor.Run(ctx, workflow, sdkautomation.Options{})
 
