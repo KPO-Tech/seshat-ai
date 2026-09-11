@@ -9,14 +9,17 @@ import "github.com/KPO-Tech/seshat/pkg/dataflow"
 // hosted/dynamic catalog - "quelques modèles internes réels d'abord",
 // same posture the audit doc already recommended. Every template here uses
 // only node types that are genuinely usable end to end today
-// (schedule_trigger/webhook_trigger, if/switch, http_request, agent, the
-// database nodes) - none depend on a ConnectorAccount-backed third-party
-// node (Stripe, Salesforce, ...) since there's no connect-UI for those yet,
-// and none use a "Human Approval" node since that primitive doesn't exist in
-// the SDK yet either. No node position is set on any node here - the
-// frontend's own nodePosition fallback (convert.ts) lays out a definition
-// with no stored positions in an even grid, so there's nothing to hand-place
-// server-side.
+// (schedule_trigger/webhook_trigger, if/switch, http_request, the
+// database nodes, and the agent/query pair - §37.9's identity/task split;
+// every "agent" node here ships with an empty slug, a valid, unconfigured
+// starting point rather than a specific account's persona - see
+// pkg/dataflow's agentNode doc comment) - none depend on a
+// ConnectorAccount-backed third-party node (Stripe, Salesforce, ...) since
+// there's no connect-UI for those yet, and none use a "Human Approval" node
+// since that primitive doesn't exist in the SDK yet either. No node
+// position is set on any node here - the frontend's own nodePosition
+// fallback (convert.ts) lays out a definition with no stored positions in
+// an even grid, so there's nothing to hand-place server-side.
 type Template struct {
 	ID          string              `json:"id"`
 	Name        string              `json:"name"`
@@ -42,8 +45,13 @@ var templates = []Template{
 					Connections: map[string][]string{"main": {"extract"}},
 				},
 				{
-					ID:   "extract",
+					ID:   "extract_agent",
 					Type: "agent",
+				},
+				{
+					ID:    "extract",
+					Type:  "query",
+					Agent: "extract_agent",
 					Parameters: map[string]any{
 						"prompt": "Extract the invoice fields (supplier, amount, due date, line items) from the incoming data as structured JSON with an \"amount\" numeric field.",
 					},
@@ -83,8 +91,13 @@ var templates = []Template{
 					Connections: map[string][]string{"main": {"classify"}},
 				},
 				{
-					ID:   "classify",
+					ID:   "classify_agent",
 					Type: "agent",
+				},
+				{
+					ID:    "classify",
+					Type:  "query",
+					Agent: "classify_agent",
 					Parameters: map[string]any{
 						"prompt": "Classify this incoming message into one of: urgent, support, sales, spam. Also draft a short suggested reply as \"draft\".",
 					},
@@ -136,8 +149,13 @@ var templates = []Template{
 					Connections: map[string][]string{"main": {"compare"}},
 				},
 				{
-					ID:   "compare",
+					ID:   "compare_agent",
 					Type: "agent",
+				},
+				{
+					ID:    "compare",
+					Type:  "query",
+					Agent: "compare_agent",
 					Parameters: map[string]any{
 						"prompt": "Compare the latest version of our key policy documents against company guidelines using company knowledge, and list any discrepancies found as \"text\".",
 					},
@@ -186,8 +204,13 @@ var templates = []Template{
 					Connections: map[string][]string{"main": {"summarize"}},
 				},
 				{
-					ID:   "summarize",
+					ID:   "summarize_agent",
 					Type: "agent",
+				},
+				{
+					ID:    "summarize",
+					Type:  "query",
+					Agent: "summarize_agent",
 					Parameters: map[string]any{
 						"prompt": "Summarize the following weekly metrics into a short executive report highlighting notable changes.",
 					},

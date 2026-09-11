@@ -3,7 +3,7 @@ module github.com/EngineerProjects/seshat-ai/seshat-backend
 go 1.26.6
 
 require (
-	github.com/KPO-Tech/seshat v1.2.42
+	github.com/KPO-Tech/seshat v1.2.44
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.106.1
 	github.com/glebarez/go-sqlite v1.21.2
 	github.com/glebarez/sqlite v1.11.0

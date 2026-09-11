@@ -84,7 +84,8 @@ func TestDispatchWorkflows_RunsGraphWhenSet(t *testing.T) {
 		Trigger: automation.Trigger{Type: automation.TriggerTypeEvent, EventType: "inbox.message.received"},
 		Agent:   automation.AgentConfig{Slug: "inbox-agent"},
 		Graph: &dataflow.Definition{Name: "g", Nodes: []dataflow.Node{
-			{ID: "a", Type: "agent", Parameters: map[string]any{"prompt": "handle this message"}},
+			{ID: "id", Type: "agent"},
+			{ID: "a", Type: "query", Agent: "id", Parameters: map[string]any{"prompt": "handle this message"}},
 		}},
 		Status: automation.JobStatusActive,
 	}
@@ -142,8 +143,9 @@ func TestDispatchWorkflows_GraphSharesSessionAcrossAgentNodes(t *testing.T) {
 		Trigger: automation.Trigger{Type: automation.TriggerTypeEvent, EventType: "inbox.message.received"},
 		Agent:   automation.AgentConfig{Slug: "inbox-agent"},
 		Graph: &dataflow.Definition{Name: "g", Nodes: []dataflow.Node{
-			{ID: "first", Type: "agent", Parameters: map[string]any{"prompt": "step one"}, Connections: map[string][]string{"main": {"second"}}},
-			{ID: "second", Type: "agent", Parameters: map[string]any{"prompt": "step two"}},
+			{ID: "id", Type: "agent"},
+			{ID: "first", Type: "query", Agent: "id", Parameters: map[string]any{"prompt": "step one"}, Connections: map[string][]string{"main": {"second"}}},
+			{ID: "second", Type: "query", Agent: "id", Parameters: map[string]any{"prompt": "step two"}},
 		}},
 		Status: automation.JobStatusActive,
 	}
