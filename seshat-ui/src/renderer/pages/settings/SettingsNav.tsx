@@ -1,4 +1,5 @@
 import { NexusLogo } from '@/components/NexusLogo'
+import { TITLEBAR_HEIGHT } from '@/components/layout/Titlebar'
 
 // Concrete TabId for the Settings page — exported for use in settings/index.tsx.
 // Admin-only tabs (users/groups/organizations/workspaces/audit) live
@@ -87,7 +88,7 @@ export function SettingsSidebar<T extends string>({ activeTab, onTabChange, coll
 export const SETTINGS_NAV_CSS = `
 .snav-sidebar {
   position: fixed;
-  top: 42px;
+  top: ${TITLEBAR_HEIGHT}px;
   left: 0;
   bottom: 0;
   width: var(--sidebar-width);
