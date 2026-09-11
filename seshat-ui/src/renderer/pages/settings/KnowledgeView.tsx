@@ -7,6 +7,7 @@ import { api } from '@/api/client'
 import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
 import { useCapabilityLink } from '@/components/settings/CapabilityLink'
 import type { Corpus, CorpusFile, IngestionJob, FileItem, EmbedderConfig, DoclingConfig } from '@/api/types'
+import { loadSearchDefaults, saveSearchDefaults } from '@/apps/knowledge/hooks/searchDefaults'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -89,6 +90,8 @@ export function KnowledgeView() {
         config={doclingConfig}
         onSaved={setDoclingConfig}
       />
+
+      <SearchDefaultsCard corpora={corpora} />
 
       {error && (
         <div className="kv-error-banner">{error}</div>
@@ -653,6 +656,66 @@ function DoclingConfigCard({
             {saving ? 'Saving…' : 'Save'}
           </button>
         )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Search defaults card ───────────────────────────────────────────────────────
+
+// Which corpus a fresh Knowledge session starts scoped to, and how many
+// chunks it asks for per search. A per-device preference (localStorage, see
+// searchDefaults.ts) rather than a server-side setting - same tier as the
+// chat model preference Knowledge itself already keeps client-side, not
+// worth a backend field for a single retrieval knob. Applies immediately on
+// change; nothing to "save" here, unlike the API-backed cards above.
+function SearchDefaultsCard({ corpora }: { corpora: Corpus[] }) {
+  const [prefs, setPrefs] = useState(() => loadSearchDefaults())
+
+  function update(next: typeof prefs) {
+    setPrefs(next)
+    saveSearchDefaults(next)
+  }
+
+  return (
+    <div className="kv-emb-card">
+      <div className="kv-emb-header">
+        <div className="kv-emb-title-row">
+          <div className="kv-emb-icon">
+            <Setting size={15} />
+          </div>
+          <div>
+            <div className="kv-emb-title">Search Defaults</div>
+            <div className="kv-emb-subtitle">Where a new Knowledge session starts searching, and how many results it asks for</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="kv-emb-body">
+        <div className="kv-emb-row">
+          <div className="kv-emb-field kv-emb-field-lg">
+            <label>Default collection</label>
+            <select
+              value={prefs.corpusId}
+              onChange={(e) => update({ ...prefs, corpusId: e.target.value })}
+            >
+              <option value="all">All included knowledge</option>
+              {corpora.map((corpus) => (
+                <option key={corpus.id} value={corpus.id}>{corpus.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="kv-emb-field kv-emb-field-md">
+            <label>Matching chunks ({prefs.topK})</label>
+            <input
+              type="range"
+              min={3}
+              max={20}
+              value={prefs.topK}
+              onChange={(e) => update({ ...prefs, topK: Number(e.target.value) })}
+            />
+          </div>
+        </div>
       </div>
     </div>
   )
