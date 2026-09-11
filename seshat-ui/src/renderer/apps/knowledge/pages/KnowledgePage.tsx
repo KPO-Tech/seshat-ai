@@ -1,10 +1,23 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import {
+  Compass,
+  Dashboard,
+  DatabaseSearch,
   Book,
+  Down,
+  FileText,
+  Left,
+  LoadingOne,
   Message as MessageIcon,
+  RelationalGraph,
   Search,
   Setting,
+  Shield,
+  Upload,
 } from '@icon-park/react'
+import { NexusLogo } from '@/components/NexusLogo'
+import { useSettingsMenu } from '@/components/layout/useSettingsMenu'
 import { api, ApiError } from '@/api/client'
 import { PLANNED_FEATURE_CARD_CSS } from '@/components/ui/PlannedFeatureCard'
 import { streamingToContentBlocks, useSessionStore } from '@/stores/session'
@@ -16,14 +29,15 @@ import { MESSAGE_ITEM_CSS, isRenderableMessage } from '@/components/chat/Message
 import type { Corpus, CorpusFile, DoclingConfig, EmbedderConfig, FileItem, IngestionJob, ProviderModel } from '@/api/types'
 import type { CorpusDetail, KnowledgeSearchResponse, KnowledgeView, TaggedSearchResult } from '../api/types'
 import { CollectionsWorkspace } from '../components/CollectionsWorkspace'
-import { KnowledgeAdvancedPanel } from '../components/KnowledgeAdvancedPanel'
 import { KnowledgeChatWorkspace } from '../components/KnowledgeChatWorkspace'
+import { OverviewWorkspace } from '../components/OverviewWorkspace'
 import { PublicLibraryModal } from '../components/PublicLibraryModal'
 import { SearchWorkspace } from '../components/SearchWorkspace'
 import { buildAgentInstruction } from '../lib/agentInstruction'
 import { splitCitations } from '../lib/citations'
 import { isFileReady, isJobActive } from '../lib/status'
 import { loadChatModelPreference, saveChatModelPreference } from '../hooks/chatPreference'
+import { loadSearchDefaults } from '../hooks/searchDefaults'
 import '../styles/knowledge.css'
 
 const EMPTY_DETAIL: CorpusDetail = { files: [], jobs: [], loading: false, error: null }
@@ -48,20 +62,28 @@ export function KnowledgePage() {
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null)
 
   const [corpora, setCorpora] = useState<Corpus[]>([])
-  const [selectedCorpusId, setSelectedCorpusId] = useState<string>('all')
+  const [selectedCorpusId, setSelectedCorpusId] = useState<string>(() => loadSearchDefaults().corpusId)
+  const [openedCorpusId, setOpenedCorpusId] = useState<string | null>(null)
   const [detail, setDetail] = useState<CorpusDetail>(EMPTY_DETAIL)
   const [corporaError, setCorporaError] = useState<string | null>(null)
   const [creatingCorpus, setCreatingCorpus] = useState(false)
+  const [createCorpusOpen, setCreateCorpusOpen] = useState(false)
   const [newCorpusName, setNewCorpusName] = useState('')
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [processing, setProcessing] = useState(false)
   const [processError, setProcessError] = useState<string | null>(null)
   const [publicLibraryOpen, setPublicLibraryOpen] = useState(false)
-  const [advancedOpen, setAdvancedOpen] = useState(false)
-  const [view, setView] = useState<KnowledgeView>('search')
-  const [topK, setTopK] = useState(8)
-  const [minChunkSize, setMinChunkSize] = useState(300)
+  const [view, setView] = useState<KnowledgeView>('overview')
+  // Account-level Settings/Feedback/Admin, in this nav's own footer.
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false)
+  const { isAdmin, connected, go: goAccountMenu } = useSettingsMenu()
+  // Default collection scope and result count are configured once from
+  // Settings > Knowledge (see searchDefaults.ts) - read here only as this
+  // session's starting point, not re-synced afterward, so picking a
+  // different corpus mid-session (e.g. from Collections) doesn't silently
+  // overwrite the user's configured default.
+  const [topK] = useState(() => loadSearchDefaults().topK)
 
   const [embedder, setEmbedder] = useState<EmbedderConfig | null>(null)
   const [docling, setDocling] = useState<DoclingConfig | null>(null)
@@ -78,6 +100,7 @@ export function KnowledgePage() {
   const hasAppliedStoredPreference = useRef(false)
 
   const selectedCorpus = corpora.find((c) => c.id === selectedCorpusId) ?? null
+  const openedCorpus = openedCorpusId ? corpora.find((c) => c.id === openedCorpusId) ?? null : null
   const totalChunks = corpora.reduce((sum, corpus) => sum + (corpus.chunk_count || 0), 0)
   const activeJobs = detail.jobs.filter(isJobActive).length
   const readyFiles = detail.files.filter(isFileReady).length
@@ -101,6 +124,16 @@ export function KnowledgePage() {
   useEffect(() => {
     if (!sessionId && latestKnowledgeSession) setSessionId(latestKnowledgeSession.id)
   }, [latestKnowledgeSession, sessionId])
+
+  useEffect(() => {
+    function handlePointerDown(event: MouseEvent) {
+      const target = event.target as HTMLElement | null
+      if (target?.closest('.k-settings-menu-wrap')) return
+      setAccountMenuOpen(false)
+    }
+    document.addEventListener('mousedown', handlePointerDown)
+    return () => document.removeEventListener('mousedown', handlePointerDown)
+  }, [])
 
   const selectedModels = useMemo(
     () => (selectedProviderId ? (modelsByProvider[selectedProviderId] ?? []) : []),
@@ -224,6 +257,12 @@ export function KnowledgePage() {
   useEffect(() => {
     void loadCorpusDetail(selectedCorpusId)
   }, [selectedCorpusId, loadCorpusDetail])
+
+  useEffect(() => {
+    if (openedCorpusId && !corpora.some((corpus) => corpus.id === openedCorpusId)) {
+      setOpenedCorpusId(null)
+    }
+  }, [corpora, openedCorpusId])
 
   useEffect(() => {
     if (pollTimer.current) {
@@ -466,10 +505,40 @@ export function KnowledgePage() {
       setCorpora((current) => [corpus, ...current])
       setSelectedCorpusId(corpus.id)
       setNewCorpusName('')
+      setCreateCorpusOpen(false)
     } catch (err) {
       setCorporaError(err instanceof ApiError ? err.message : 'Unable to create the knowledge base.')
     } finally {
       setCreatingCorpus(false)
+    }
+  }
+
+  async function renameCorpus(corpusId: string, name: string) {
+    const nextName = name.trim()
+    if (!nextName) return
+    setCorporaError(null)
+    try {
+      const corpus = await api.put<Corpus>(`/corpora/${corpusId}`, { name: nextName })
+      setCorpora((current) => current.map((item) => (item.id === corpus.id ? corpus : item)))
+    } catch (err) {
+      setCorporaError(err instanceof ApiError ? err.message : 'Unable to rename the collection.')
+      throw err
+    }
+  }
+
+  async function deleteCorpus(corpusId: string) {
+    setCorporaError(null)
+    try {
+      await api.delete<void>(`/corpora/${corpusId}`)
+      setCorpora((current) => current.filter((item) => item.id !== corpusId))
+      if (selectedCorpusId === corpusId) {
+        setSelectedCorpusId('all')
+        setDetail(EMPTY_DETAIL)
+      }
+      if (openedCorpusId === corpusId) setOpenedCorpusId(null)
+    } catch (err) {
+      setCorporaError(err instanceof ApiError ? err.message : 'Unable to delete the collection.')
+      throw err
     }
   }
 
@@ -521,6 +590,7 @@ export function KnowledgePage() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    setView('search')
     void runSearch(query)
   }
 
@@ -544,6 +614,32 @@ export function KnowledgePage() {
     setHighlightedIndex(null)
   }
 
+  const navGroups: Array<{ label: string; items: Array<{ id: KnowledgeView; label: string; icon: ReactNode }> }> = [
+    {
+      label: 'Discover',
+      items: [
+        { id: 'overview', label: 'Overview', icon: <Dashboard size={14} /> },
+        { id: 'discover', label: 'Discover', icon: <Compass size={14} /> },
+        { id: 'graph', label: 'Knowledge Graph', icon: <RelationalGraph size={14} /> },
+      ],
+    },
+    {
+      label: 'Ask',
+      items: [
+        { id: 'search', label: 'Search', icon: <Search size={14} /> },
+        { id: 'chat', label: 'Chat Knowledge', icon: <MessageIcon size={14} /> },
+      ],
+    },
+    {
+      label: 'Act',
+      items: [
+        { id: 'actions', label: 'Actions', icon: <Shield size={14} /> },
+        { id: 'sources', label: 'Sources', icon: <DatabaseSearch size={14} /> },
+        { id: 'collections', label: 'Collections', icon: <Book size={14} /> },
+      ],
+    },
+  ]
+
   return (
     <div className="k-root">
       <style>{CHAT_INPUT_CSS}</style>
@@ -558,40 +654,182 @@ export function KnowledgePage() {
           if (file) void uploadFile(file)
         }}
       />
+      <aside className="k-product-nav">
+        <div className="k-product-brand">
+          <span className="k-product-logo">
+            <Book size={20} />
+          </span>
+          <div>
+            <strong>Knowledge</strong>
+          </div>
+        </div>
+        <nav className="k-product-menu" aria-label="Knowledge navigation">
+          {navGroups.map((group) => (
+            <section key={group.label}>
+              <h2>{group.label}</h2>
+              {group.items.map((item) => (
+                <button key={item.id} type="button" className={view === item.id ? 'active' : ''} onClick={() => setView(item.id)}>
+                  {item.icon}
+                  <span>{item.label}</span>
+                </button>
+              ))}
+            </section>
+          ))}
+        </nav>
+        <div className="k-product-footer">
+          <div className="k-settings-menu-wrap">
+            <button
+              type="button"
+              className={accountMenuOpen ? 'active' : ''}
+              onClick={() => setAccountMenuOpen((open) => !open)}
+              aria-haspopup="menu"
+              aria-expanded={accountMenuOpen}
+            >
+              <NexusLogo size={14} />
+              <span>SeshatOS</span>
+              <Down size={11} />
+            </button>
+            {accountMenuOpen && (
+              <div className="k-settings-menu" role="menu">
+                <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); goAccountMenu('settings') }}>
+                  <Setting size={14} />
+                  <span>Settings</span>
+                </button>
+                <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); goAccountMenu('feedback') }}>
+                  <MessageIcon size={14} />
+                  <span>Feedback</span>
+                </button>
+                {connected && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={!isAdmin}
+                    onClick={() => { setAccountMenuOpen(false); goAccountMenu('admin') }}
+                  >
+                    <Shield size={14} />
+                    <span>Admin</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </aside>
+
       <main className="k-content">
-        <section className="k-toolbar">
-          <div className="k-toolbar-heading">
-            <button type="button" className="k-title-reset" onClick={resetSearch}>
-              Knowledge
-            </button>
-          </div>
-          <div className="k-view-switch" role="tablist" aria-label="Knowledge views">
-            <button type="button" className={view === 'search' ? 'active' : ''} onClick={() => setView('search')}>
-              <Search size={13} /> Search
-            </button>
-            <button type="button" className={view === 'collections' ? 'active' : ''} onClick={() => setView('collections')}>
-              <Book size={13} /> Collections
-            </button>
-            <button type="button" className={view === 'chat' ? 'active' : ''} onClick={() => setView('chat')}>
-              <MessageIcon size={13} /> Chat
-            </button>
-          </div>
-          <div className="k-toolbar-actions">
-            <button type="button" className="k-settings-btn" onClick={() => setPublicLibraryOpen(true)}>
-              <Book size={13} /> Public
-            </button>
-            <button type="button" className="k-settings-btn" onClick={() => setAdvancedOpen(true)}>
-              <Setting size={13} /> Advanced
-            </button>
-          </div>
-        </section>
+        {view !== 'overview' && (
+          <section className="k-toolbar">
+            {view === 'collections' ? (
+              <div className="k-toolbar-page-title">
+                {openedCorpus ? (
+                  <>
+                    <button type="button" className="k-toolbar-back" onClick={() => setOpenedCorpusId(null)} aria-label="Back to collections">
+                      <Left size={15} />
+                    </button>
+                    <Book size={16} />
+                    <span>{openedCorpus.name}</span>
+                  </>
+                ) : (
+                  <>
+                    <Book size={16} />
+                    <span>Collections</span>
+                  </>
+                )}
+              </div>
+            ) : (
+              <form className="k-global-search" onSubmit={handleSubmit}>
+                <Search size={15} />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search knowledge entities, facts, sources..."
+                />
+                <button type="submit" disabled={!query.trim() || rawLoading || isStreaming}>Search</button>
+              </form>
+            )}
+            <div className="k-toolbar-actions">
+              {view === 'collections' ? (
+                openedCorpus ? (
+                  <>
+                    <button
+                      type="button"
+                      className="k-settings-btn"
+                      onClick={() => {
+                        setSelectedCorpusId(openedCorpus.id)
+                        fileRef.current?.click()
+                      }}
+                      disabled={uploading}
+                    >
+                      <Upload size={13} /> {uploading ? 'Importing...' : 'Import'}
+                    </button>
+                    <button
+                      type="button"
+                      className="k-settings-btn"
+                      onClick={() => { void processFiles(openedCorpus.id, 'missing') }}
+                      disabled={processing}
+                    >
+                      <LoadingOne size={13} className={processing ? 'spin' : undefined} /> Missing
+                    </button>
+                    <button
+                      type="button"
+                      className="k-settings-btn primary"
+                      onClick={() => { void processFiles(openedCorpus.id, 'all') }}
+                      disabled={processing}
+                    >
+                      <LoadingOne size={13} className={processing ? 'spin' : undefined} /> Reprocess
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button type="button" className="k-settings-btn" onClick={() => setPublicLibraryOpen(true)}>
+                      <Search size={13} /> Public library
+                    </button>
+                    <button
+                      type="button"
+                      className="k-settings-btn primary"
+                      onClick={() => {
+                        setNewCorpusName('')
+                        setCreateCorpusOpen(true)
+                      }}
+                      disabled={creatingCorpus}
+                    >
+                      <FileText size={13} /> New collection
+                    </button>
+                  </>
+                )
+              ) : (
+                <button type="button" className="k-settings-btn" onClick={() => setPublicLibraryOpen(true)}>
+                  <Book size={13} /> Public
+                </button>
+              )}
+            </div>
+          </section>
+        )}
 
         <section className={`k-dashboard ${view === 'search' ? 'search-only' : ''} ${view === 'chat' ? 'chat-only' : ''}`}>
           <section className="k-workspace">
-            {view === 'collections' ? (
+            {view === 'overview' ? (
+              <OverviewWorkspace
+                corpora={corpora}
+                selectedCorpus={selectedCorpus}
+                selectedCorpusId={selectedCorpusId}
+                selectedJobs={detail.jobs}
+                totalChunks={totalChunks}
+                embedder={embedder}
+                docling={docling}
+                corporaError={corporaError}
+                onNavigate={setView}
+                onRefresh={() => {
+                  void loadCorpora()
+                  void loadCorpusDetail(selectedCorpusId)
+                }}
+              />
+            ) : view === 'collections' ? (
               <CollectionsWorkspace
                 corpora={corpora}
                 selectedCorpus={selectedCorpus}
+                openedCorpusId={openedCorpusId}
                 selectedScope={selectedScope}
                 detail={detail}
                 readyFiles={readyFiles}
@@ -601,16 +839,16 @@ export function KnowledgePage() {
                 uploadError={uploadError}
                 processing={processing}
                 processError={processError}
-                newCorpusName={newCorpusName}
-                creatingCorpus={creatingCorpus}
                 corporaError={corporaError}
-                onNewCorpusNameChange={setNewCorpusName}
-                onCreateCorpus={createCorpus}
-                onBrowsePublic={() => setPublicLibraryOpen(true)}
                 onUpload={() => fileRef.current?.click()}
                 onSelectCorpus={setSelectedCorpusId}
+                onOpenCorpus={(corpusId) => {
+                  setSelectedCorpusId(corpusId)
+                  setOpenedCorpusId(corpusId)
+                }}
                 onTestSearch={testSearch}
-                onProcessMissing={(corpusId) => void processFiles(corpusId, 'missing')}
+                onRenameCorpus={renameCorpus}
+                onDeleteCorpus={deleteCorpus}
                 onProcessAll={(corpusId) => void processFiles(corpusId, 'all')}
                 onRetryDetail={(corpusId) => void loadCorpusDetail(corpusId)}
               />
@@ -637,7 +875,7 @@ export function KnowledgePage() {
                 onProviderSelect={(id) => { setSelectedProviderId(id); setSelectedModelId(null) }}
                 onModelSelect={setSelectedModelId}
               />
-            ) : (
+            ) : view === 'search' ? (
               <SearchWorkspace
                 query={query}
                 submittedQuery={submittedQuery}
@@ -658,6 +896,15 @@ export function KnowledgePage() {
                 onScrollToResult={scrollToResult}
                 onContinue={handleContinueInChat}
               />
+            ) : (
+              <section className="k-planned-view">
+                <div>
+                  {view === 'sources' ? <DatabaseSearch size={24} /> : view === 'graph' ? <RelationalGraph size={24} /> : view === 'discover' ? <Compass size={24} /> : <FileText size={24} />}
+                  <span>{view}</span>
+                </div>
+                <h1>{view === 'sources' ? 'Sources & Connectors' : view === 'graph' ? 'Knowledge Graph' : view === 'discover' ? 'Discover' : 'Actions'}</h1>
+                <p>This section is now part of the Knowledge platform shell and will be transformed in the next pass.</p>
+              </section>
             )}
           </section>
         </section>
@@ -665,21 +912,55 @@ export function KnowledgePage() {
       {publicLibraryOpen && (
         <PublicLibraryModal onClose={() => setPublicLibraryOpen(false)} />
       )}
-      {advancedOpen && (
-        <KnowledgeAdvancedPanel
-          corpora={corpora}
-          selectedCorpusId={selectedCorpusId}
-          embedder={embedder}
-          docling={docling}
-          topK={topK}
-          minChunkSize={minChunkSize}
-          onTopKChange={setTopK}
-          onMinChunkSizeChange={setMinChunkSize}
-          onSelectCorpus={setSelectedCorpusId}
-          onClose={() => setAdvancedOpen(false)}
-        />
+      {createCorpusOpen && (
+        <div
+          className="k-modal-backdrop"
+          role="presentation"
+          onMouseDown={() => {
+            if (!creatingCorpus) setCreateCorpusOpen(false)
+          }}
+        >
+          <form
+            className="k-create-collection-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Create collection"
+            onMouseDown={(e) => e.stopPropagation()}
+            onSubmit={(e) => {
+              e.preventDefault()
+              void createCorpus()
+            }}
+          >
+            <div className="k-create-collection-head">
+              <span className="k-create-collection-icon">
+                <FileText size={18} />
+              </span>
+              <div>
+                <h2>New collection</h2>
+                <p>Create a corpus to group documents, permissions, and retrieval scope.</p>
+              </div>
+            </div>
+            <label className="k-create-collection-field">
+              <span>Collection name</span>
+              <input
+                autoFocus
+                value={newCorpusName}
+                onChange={(e) => setNewCorpusName(e.target.value)}
+                placeholder="e.g. Legal policies, Product docs..."
+              />
+            </label>
+            {corporaError && <div className="k-page-error compact">{corporaError}</div>}
+            <div className="k-create-collection-actions">
+              <button type="button" className="k-settings-btn" onClick={() => setCreateCorpusOpen(false)} disabled={creatingCorpus}>
+                Cancel
+              </button>
+              <button type="submit" className="k-settings-btn primary" disabled={!newCorpusName.trim() || creatingCorpus}>
+                {creatingCorpus ? 'Creating...' : 'Create collection'}
+              </button>
+            </div>
+          </form>
+        </div>
       )}
     </div>
   )
 }
-

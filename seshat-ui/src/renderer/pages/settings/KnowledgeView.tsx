@@ -1,105 +1,124 @@
 import { useState, useEffect, useCallback } from 'react'
+import type { ReactNode } from 'react'
 import {
-  Sync, CheckOne, CloseOne,
-  Setting, PreviewOpen, PreviewClose, LinkCloud,
+  CheckOne,
+  CloseOne,
+  Connection,
+  DatabaseSearch,
+  DocDetail,
+  LinkCloud,
+  PreviewClose,
+  PreviewOpen,
+  Search,
+  Setting,
+  Sync,
 } from '@icon-park/react'
 import { api } from '@/api/client'
 import { useCapabilityLink } from '@/components/settings/CapabilityLink'
-import type { Corpus, EmbedderConfig, DoclingConfig } from '@/api/types'
+import type { Corpus, DoclingConfig, EmbedderConfig, RerankerConfig } from '@/api/types'
 import { loadSearchDefaults, saveSearchDefaults } from '@/apps/knowledge/hooks/searchDefaults'
 
-// ─── main view ────────────────────────────────────────────────────────────────
+const DEFAULT_BASE_URLS: Record<string, string> = {
+  openai: 'https://api.openai.com/v1',
+  mistral: 'https://api.mistral.ai/v1',
+  gemini: 'https://generativelanguage.googleapis.com/v1beta/openai',
+  ollama: 'http://localhost:11434',
+}
+
+const SUGGESTED_EMBEDDING_MODELS: Record<string, string[]> = {
+  openai: ['text-embedding-3-small', 'text-embedding-3-large', 'text-embedding-ada-002'],
+  mistral: ['mistral-embed'],
+  gemini: ['gemini-embedding-001'],
+  ollama: [],
+}
+
+const RERANKER_PRESETS = [
+  { id: 'langsearch', label: 'LangSearch', baseURL: 'https://api.langsearch.com/v1/rerank', model: 'langsearch-reranker-v1' },
+  { id: 'cohere', label: 'Cohere compatible', baseURL: 'https://api.cohere.com/v2/rerank', model: 'rerank-v3.5' },
+  { id: 'tei', label: 'TEI / vLLM local', baseURL: 'http://localhost:8080/rerank', model: 'BAAI/bge-reranker-v2-m3' },
+  { id: 'custom', label: 'Custom endpoint', baseURL: '', model: '' },
+]
+
+type TestState = 'idle' | 'running' | 'ok' | 'error'
 
 export function KnowledgeView() {
-  // corpora is fetched here only to populate SearchDefaultsCard's "Default
-  // collection" dropdown - creating, browsing and deleting corpora lives in
-  // the Knowledge app's own Collections view, not duplicated here.
   const [corpora, setCorpora] = useState<Corpus[]>([])
   const [error, setError] = useState<string | null>(null)
   const [embedderConfig, setEmbedderConfig] = useState<EmbedderConfig | null>(null)
+  const [rerankerConfig, setRerankerConfig] = useState<RerankerConfig | null>(null)
   const [doclingConfig, setDoclingConfig] = useState<DoclingConfig | null>(null)
 
-  const loadCorpora = useCallback(async () => {
+  const load = useCallback(async () => {
     setError(null)
     try {
-      const [corporaData, embData, doclingData] = await Promise.all([
-        api.get<{ corpora: Corpus[]; count: number }>('/corpora'),
+      const [corporaData, embData, rerankerData, doclingData] = await Promise.all([
+        api.get<{ corpora: Corpus[]; count: number }>('/corpora').catch(() => ({ corpora: [], count: 0 })),
         api.get<EmbedderConfig>('/settings/embedder').catch(() => null),
+        api.get<RerankerConfig>('/settings/reranker').catch(() => null),
         api.get<DoclingConfig>('/settings/docling').catch(() => null),
       ])
       setCorpora(corporaData?.corpora ?? [])
       if (embData) setEmbedderConfig(embData)
+      if (rerankerData) setRerankerConfig(rerankerData)
       if (doclingData) setDoclingConfig(doclingData)
     } catch (e: unknown) {
-      const err = e as { message?: string }
-      setError(err?.message ?? 'Failed to load knowledge settings')
+      setError((e as { message?: string })?.message ?? 'Failed to load knowledge settings')
     }
   }, [])
 
-  useEffect(() => { loadCorpora() }, [loadCorpora])
+  useEffect(() => { void load() }, [load])
+
+  const embedderReady = Boolean(embedderConfig?.enabled && embedderConfig.is_configured)
+  const rerankerReady = Boolean(rerankerConfig?.enabled && rerankerConfig.is_configured)
+  const doclingReady = doclingConfig?.enabled !== false
+  const totalChunks = corpora.reduce((sum, corpus) => sum + (corpus.chunk_count || 0), 0)
 
   return (
-    <div className="sv-view">
+    <div className="sv-view kv-page">
       <style>{KNOWLEDGE_CSS}</style>
 
-      <header className="sv-view-header">
-        <div className="sv-header-info">
-          <h1>Knowledge Base</h1>
-          <p>Configure the embedding and document conversion pipeline behind Retrieval-Augmented Generation (RAG).</p>
+      <header className="kv-hero">
+        <div>
+          <span className="kv-eyebrow">Knowledge settings</span>
+          <h1>Retrieval pipeline</h1>
+          <p>Configure ingestion, semantic search, reranking, and the defaults used by new Knowledge sessions.</p>
         </div>
+        <button type="button" className="kv-ghost-btn" onClick={() => void load()}>
+          <Sync size={13} /> Refresh
+        </button>
       </header>
 
-      <EmbedderConfigCard
-        config={embedderConfig}
-        onSaved={setEmbedderConfig}
-      />
+      <section className="kv-status-grid" aria-label="Knowledge pipeline status">
+        <StatusTile label="Embedding" value={embedderReady ? 'Ready' : 'Review'} tone={embedderReady ? 'ok' : 'warn'} detail={embedderConfig?.model || 'No model selected'} />
+        <StatusTile label="Reranker" value={rerankerReady ? 'Ready' : 'Off'} tone={rerankerReady ? 'ok' : 'muted'} detail={rerankerConfig?.model || 'Optional second pass'} />
+        <StatusTile label="Conversion" value={doclingReady ? 'Enabled' : 'Disabled'} tone={doclingReady ? 'ok' : 'muted'} detail={doclingConfig?.base_url || 'Auto-detected local service'} />
+        <StatusTile label="Corpus" value={`${corpora.length}`} tone="muted" detail={`${totalChunks} indexed chunks`} />
+      </section>
 
-      <DoclingConfigCard
-        config={doclingConfig}
-        onSaved={setDoclingConfig}
-      />
-
+      <EmbeddingCard config={embedderConfig} onSaved={setEmbedderConfig} />
+      <RerankerCard config={rerankerConfig} onSaved={setRerankerConfig} />
+      <DoclingCard config={doclingConfig} onSaved={setDoclingConfig} />
       <SearchDefaultsCard corpora={corpora} />
 
-      {error && (
-        <div className="kv-error-banner">{error}</div>
-      )}
+      {error && <div className="kv-error-banner">{error}</div>}
     </div>
   )
 }
 
-// ─── Embedder config card ─────────────────────────────────────────────────────
-
-const DEFAULT_BASE_URLS: Record<string, string> = {
-  openai: 'https://api.openai.com/v1',
-  ollama: 'http://localhost:11434',
+function StatusTile({ label, value, detail, tone }: { label: string; value: string; detail: string; tone: 'ok' | 'warn' | 'muted' }) {
+  return (
+    <article className={`kv-status-tile ${tone}`}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+      <em>{detail}</em>
+    </article>
+  )
 }
 
-const SUGGESTED_MODELS: Record<string, string[]> = {
-  openai: ['text-embedding-3-small', 'text-embedding-3-large', 'text-embedding-ada-002'],
-  ollama: [],
-}
-
-// The "Source" dropdown's two fixed entries - everything else is built from
-// useCapabilityLink('embeddings').status.candidates, i.e. whichever AI
-// Providers the user has already configured that are actually
-// embeddings-compatible (see seshat-backend's EmbedderDefaultsFor). No more
-// hardcoded "OpenAI-compatible" as if it were the only option - configured
-// providers show up under their own name automatically.
-const OLLAMA_SOURCE = '__ollama__'
-const CUSTOM_SOURCE = '__custom__'
-
-function EmbedderConfigCard({
-  config,
-  onSaved,
-}: {
-  config: EmbedderConfig | null
-  onSaved: (cfg: EmbedderConfig) => void
-}) {
-  const { status: linkStatus, link: linkCapability, unlink: unlinkCapability } = useCapabilityLink('embeddings')
+function EmbeddingCard({ config, onSaved }: { config: EmbedderConfig | null; onSaved: (cfg: EmbedderConfig) => void }) {
+  const { status: linkStatus, link: linkCapability, unlink: unlinkCapability, busy: linkBusy } = useCapabilityLink('embeddings')
   const candidates = linkStatus?.candidates ?? []
-
-  const [source, setSource] = useState<string>(CUSTOM_SOURCE)
+  const [source, setSource] = useState('__custom__')
   const [sourceInitialized, setSourceInitialized] = useState(false)
   const [form, setForm] = useState({
     provider: config?.provider ?? 'openai',
@@ -111,92 +130,72 @@ function EmbedderConfigCard({
   const [showKey, setShowKey] = useState(false)
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [testState, setTestState] = useState<'idle' | 'running' | 'ok' | 'error'>('idle')
+  const [testState, setTestState] = useState<TestState>('idle')
   const [testError, setTestError] = useState<string | null>(null)
   const [testLatency, setTestLatency] = useState<number | null>(null)
-  const [saveError, setSaveError] = useState<string | null>(null)
-  const [detectedEmbedModels, setDetectedEmbedModels] = useState<string[]>([])
+  const [detectedModels, setDetectedModels] = useState<string[]>([])
   const [detecting, setDetecting] = useState(false)
 
-  // Sync when config loads
   useEffect(() => {
-    if (config) {
-      setForm(f => ({
-        ...f,
-        provider: config.provider || 'openai',
-        base_url: config.base_url || '',
-        model: config.model || '',
-        enabled: config.enabled,
-      }))
-    }
+    if (!config) return
+    setForm((current) => ({
+      ...current,
+      provider: config.provider || 'openai',
+      base_url: config.base_url || '',
+      model: config.model || '',
+      enabled: config.enabled,
+    }))
   }, [config])
 
-  // Figure out which "Source" entry the current config actually corresponds
-  // to - a linked candidate, Ollama, or a fully custom/manual setup - once
-  // both the embedder config and the capability-link candidates have
-  // loaded. Runs once; the user's own selection takes over after that.
   useEffect(() => {
     if (sourceInitialized || !config || !linkStatus) return
     if (config.provider === 'ollama') {
-      setSource(OLLAMA_SOURCE)
-    } else if (linkStatus.linked_provider_id && candidates.some(c => c.id === linkStatus.linked_provider_id)) {
+      setSource('__ollama__')
+    } else if (linkStatus.linked_provider_id && candidates.some((candidate) => candidate.id === linkStatus.linked_provider_id)) {
       setSource(linkStatus.linked_provider_id)
     } else {
-      setSource(CUSTOM_SOURCE)
+      setSource('__custom__')
     }
     setSourceInitialized(true)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [config, linkStatus, sourceInitialized])
-
-  // Auto-detect Ollama models when provider=ollama and base_url is available
-  useEffect(() => {
-    if (form.provider === 'ollama' && form.base_url && detectedEmbedModels.length === 0 && !detecting) {
-      handleDetectModels()
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.provider, form.base_url])
+  }, [candidates, config, linkStatus, sourceInitialized])
 
   function update<K extends keyof typeof form>(key: K, value: typeof form[K]) {
-    setForm(f => ({ ...f, [key]: value }))
+    setForm((current) => ({ ...current, [key]: value }))
     setDirty(true)
+    setTestState('idle')
   }
 
   function handleSourceChange(value: string) {
     setSource(value)
-    setDetectedEmbedModels([])
+    setDetectedModels([])
     setDirty(true)
-    if (value === OLLAMA_SOURCE) {
-      setForm(f => ({ ...f, provider: 'ollama', base_url: DEFAULT_BASE_URLS.ollama, model: '', api_key: '' }))
+    setTestState('idle')
+    if (value === '__ollama__') {
+      setForm((current) => ({ ...current, provider: 'ollama', base_url: DEFAULT_BASE_URLS.ollama, model: '', api_key: '' }))
       return
     }
-    if (value === CUSTOM_SOURCE) {
-      setForm(f => ({ ...f, provider: 'openai', base_url: DEFAULT_BASE_URLS.openai, model: SUGGESTED_MODELS.openai[0], api_key: '' }))
+    if (value === '__custom__') {
+      setForm((current) => ({ ...current, provider: 'openai', base_url: current.base_url || DEFAULT_BASE_URLS.openai, api_key: '' }))
       return
     }
-    const candidate = candidates.find(c => c.id === value)
+    const candidate = candidates.find((item) => item.id === value)
     if (candidate) {
-      setForm(f => ({
-        ...f,
+      setForm((current) => ({
+        ...current,
         provider: candidate.provider,
-        base_url: candidate.base_url || f.base_url,
-        model: candidate.model || f.model,
+        base_url: candidate.base_url || DEFAULT_BASE_URLS[candidate.provider] || current.base_url,
+        model: candidate.model || current.model,
         api_key: '',
       }))
     }
   }
 
-  const isCandidateSource = source !== OLLAMA_SOURCE && source !== CUSTOM_SOURCE
-  const activeCandidate = candidates.find(c => c.id === source)
-
-  async function handleSave() {
+  async function save() {
     setSaving(true)
-    setSaveError(null)
     try {
-      if (isCandidateSource) {
+      if (isProviderCandidate(source)) {
         await linkCapability(source)
       } else if (linkStatus?.linked_provider_id) {
-        // Switching away from a linked provider - the link no longer
-        // applies, don't leave a stale one silently overriding the key.
         await unlinkCapability()
       }
       const body: Record<string, unknown> = {
@@ -205,411 +204,346 @@ function EmbedderConfigCard({
         model: form.model,
         enabled: form.enabled,
       }
-      // A candidate source reuses that provider's key via the capability
-      // link above - never send one here, so embedder_config's own
-      // (unused in that case) key field stays untouched.
-      if (!isCandidateSource && form.api_key !== '') body.api_key = form.api_key
+      if (!isProviderCandidate(source) && form.api_key !== '') body.api_key = form.api_key
       const saved = await api.put<EmbedderConfig>('/settings/embedder', body)
       onSaved(saved)
+      setForm((current) => ({ ...current, api_key: '' }))
       setDirty(false)
-      setForm(f => ({ ...f, api_key: '' }))
     } catch (e: unknown) {
-      const err = e as { message?: string }
-      setSaveError(err?.message ?? 'Failed to save')
+      setTestState('error')
+      setTestError((e as { message?: string })?.message ?? 'Failed to save embedding settings')
     } finally {
       setSaving(false)
     }
   }
 
-  async function handleDetectModels() {
+  async function detectModels() {
     setDetecting(true)
     try {
-      const result = await api.post<{ embedding_models: string[]; llm_models: string[]; error?: string }>(
-        '/settings/embedder/detect-models',
-        { provider: form.provider, base_url: form.base_url }
-      )
+      const result = await api.post<{ embedding_models: string[]; error?: string }>('/settings/embedder/detect-models', {
+        provider: form.provider,
+        base_url: form.base_url,
+      })
       if (result.error) {
-        setSaveError(result.error)
+        setTestState('error')
+        setTestError(result.error)
       } else {
         const models = result.embedding_models ?? []
-        setDetectedEmbedModels(models)
-        if (models.length > 0) {
-          setForm(f => ({ ...f, model: f.model || models[0] }))
+        setDetectedModels(models)
+        if (models.length > 0 && !form.model) {
+          setForm((current) => ({ ...current, model: models[0] }))
           setDirty(true)
         }
       }
     } catch (e: unknown) {
-      setSaveError((e as { message?: string })?.message ?? 'Detection failed')
+      setTestState('error')
+      setTestError((e as { message?: string })?.message ?? 'Model detection failed')
     } finally {
       setDetecting(false)
     }
   }
 
-  async function handleTest() {
+  async function test() {
     setTestState('running')
     setTestError(null)
     setTestLatency(null)
     try {
-      const body: Record<string, unknown> = {
-        provider: form.provider,
-        base_url: form.base_url,
-        model: form.model,
-      }
+      const body: Record<string, unknown> = { provider: form.provider, base_url: form.base_url, model: form.model }
       if (form.api_key !== '') body.api_key = form.api_key
-      const result = await api.post<{ ok: boolean; latency_ms: number; error: string | null }>(
-        '/settings/embedder/test', body
-      )
+      const result = await api.post<{ ok: boolean; latency_ms: number; error: string | null }>('/settings/embedder/test', body)
       if (result.ok) {
         setTestState('ok')
         setTestLatency(result.latency_ms)
       } else {
         setTestState('error')
-        setTestError(result.error ?? 'Test failed')
+        setTestError(result.error ?? 'Embedding test failed')
       }
     } catch (e: unknown) {
-      const err = e as { message?: string }
       setTestState('error')
-      setTestError(err?.message ?? 'Request failed')
+      setTestError((e as { message?: string })?.message ?? 'Embedding test failed')
     }
   }
 
-  const isConfigured = config?.is_configured ?? false
-  const suggestions = detectedEmbedModels.length > 0 ? detectedEmbedModels : (SUGGESTED_MODELS[form.provider] ?? [])
-  const isOllama = source === OLLAMA_SOURCE
+  const inherited = isProviderCandidate(source)
+  const activeCandidate = candidates.find((item) => item.id === source)
+  const suggestions = detectedModels.length > 0 ? detectedModels : (SUGGESTED_EMBEDDING_MODELS[form.provider] ?? [])
 
   return (
-    <div className="kv-emb-card">
-      <div className="kv-emb-header">
-        <div className="kv-emb-title-row">
-          <div className="kv-emb-icon">
-            <LinkCloud size={15} />
-          </div>
-          <div>
-            <div className="kv-emb-title">Embedding Model</div>
-            <div className="kv-emb-subtitle">Used for document ingestion and semantic search</div>
-          </div>
-        </div>
-        <div className="kv-emb-status-row">
-          {isConfigured ? (
-            <span className="kv-emb-badge kv-emb-badge-ok">
-              <CheckOne size={10} /> Configured
-            </span>
-          ) : (
-            <span className="kv-emb-badge kv-emb-badge-warn">
-              Not configured
-            </span>
-          )}
-          <label className="kv-emb-toggle">
-            <input
-              type="checkbox"
-              checked={form.enabled}
-              onChange={e => update('enabled', e.target.checked)}
-            />
-            <span className="kv-emb-toggle-label">Enabled</span>
-          </label>
-        </div>
-      </div>
+    <section className="kv-card">
+      <CardHeader
+        icon={<LinkCloud size={16} />}
+        title="Embedding"
+        subtitle="Used for ingestion vectors and semantic search."
+        status={config?.is_configured ? 'Configured' : 'Not configured'}
+        ok={Boolean(config?.is_configured)}
+      >
+        <Toggle checked={form.enabled} onChange={(value) => update('enabled', value)} label="Enabled" />
+      </CardHeader>
 
-      <div className="kv-emb-body">
-        <div className="kv-emb-row">
-          <div className="kv-emb-field kv-emb-field-sm">
-            <label>Source</label>
-            <select
-              value={source}
-              onChange={e => handleSourceChange(e.target.value)}
-            >
-              {candidates.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
+      <div className="kv-card-body">
+        <div className="kv-grid two">
+          <Field label="Provider source">
+            <select value={source} onChange={(event) => handleSourceChange(event.target.value)}>
+              {candidates.map((candidate) => (
+                <option key={candidate.id} value={candidate.id}>{candidate.name}</option>
               ))}
-              <option value={OLLAMA_SOURCE}>Ollama (local)</option>
-              <option value={CUSTOM_SOURCE}>Custom</option>
+              <option value="__ollama__">Ollama local</option>
+              <option value="__custom__">Custom endpoint</option>
             </select>
+          </Field>
+          <Field label="Base URL">
+            <input value={form.base_url} onChange={(event) => update('base_url', event.target.value)} placeholder="https://api.openai.com/v1" />
+          </Field>
+        </div>
+
+        {inherited && activeCandidate && (
+          <div className="kv-note ok">
+            <CheckOne size={12} /> Reusing the API key from <strong>{activeCandidate.name}</strong>. Compatible providers are filtered by the backend.
           </div>
-          <div className="kv-emb-field kv-emb-field-lg">
-            <label>Base URL</label>
-            <input
-              type="text"
-              value={form.base_url}
-              onChange={e => update('base_url', e.target.value)}
-              placeholder={DEFAULT_BASE_URLS[form.provider] ?? 'https://…'}
+        )}
+
+        <div className="kv-grid two">
+          {!inherited && (
+            <SecretField
+              label="API key"
+              value={form.api_key}
+              show={showKey}
+              placeholder={config?.has_api_key ? 'Leave blank to keep current key' : 'sk-...'}
+              onToggle={() => setShowKey((value) => !value)}
+              onChange={(value) => update('api_key', value)}
             />
-          </div>
-        </div>
-
-        {isCandidateSource && activeCandidate && (
-          <div className="kv-emb-inherit-note">
-            <CheckOne size={11} /> Using the API key already configured for <strong>{activeCandidate.name}</strong> in AI Providers — no key needed here.
-          </div>
-        )}
-
-        <div className="kv-emb-row">
-          {!isCandidateSource && (
-            <div className="kv-emb-field kv-emb-field-lg">
-              <label>
-                API Key
-                {config?.has_api_key && form.api_key === '' && (
-                  <span className="kv-emb-key-hint"> (leave blank to keep current)</span>
-                )}
-              </label>
-              <div className="kv-emb-key-wrap">
-                <input
-                  type={showKey ? 'text' : 'password'}
-                  value={form.api_key}
-                  onChange={e => update('api_key', e.target.value)}
-                  placeholder={config?.has_api_key ? '••••••••••••' : 'sk-…'}
-                  autoComplete="new-password"
-                />
-                <button
-                  className="kv-emb-eye"
-                  type="button"
-                  onClick={() => setShowKey(v => !v)}
-                  tabIndex={-1}
-                >
-                  {showKey ? <PreviewClose size={12} /> : <PreviewOpen size={12} />}
-                </button>
-              </div>
-            </div>
           )}
-          <div className={`kv-emb-field ${isCandidateSource ? 'kv-emb-field-lg' : 'kv-emb-field-md'}`}>
-            <label>
-              Embedding Model
-              {detectedEmbedModels.length > 0 && (
-                <span className="kv-emb-key-hint"> ({detectedEmbedModels.length} detected)</span>
-              )}
-            </label>
-            <div className="kv-emb-model-row">
-              <input
-                type="text"
-                list="emb-model-list"
-                value={form.model}
-                onChange={e => update('model', e.target.value)}
-                placeholder="e.g. nomic-embed-text"
-              />
-              {isOllama && (
-                <button
-                  className="kv-emb-detect-btn"
-                  type="button"
-                  onClick={handleDetectModels}
-                  disabled={detecting || !form.base_url}
-                  aria-label="Auto-detect embedding models from Ollama"
-                >
-                  {detecting ? <Sync size={11} className="kv-spin" /> : <Sync size={11} />}
+          <Field label={detectedModels.length > 0 ? `Embedding model (${detectedModels.length} detected)` : 'Embedding model'}>
+            <div className="kv-inline-field">
+              <input list="embedding-models" value={form.model} onChange={(event) => update('model', event.target.value)} placeholder="text-embedding-3-small" />
+              {form.provider === 'ollama' && (
+                <button type="button" className="kv-icon-btn" onClick={() => void detectModels()} disabled={detecting || !form.base_url}>
+                  <Sync size={13} className={detecting ? 'kv-spin' : undefined} />
                 </button>
               )}
             </div>
-            <datalist id="emb-model-list">
-              {suggestions.map(m => <option key={m} value={m} />)}
+            <datalist id="embedding-models">
+              {suggestions.map((model) => <option key={model} value={model} />)}
             </datalist>
-            {isOllama && detecting && (
-              <span className="kv-emb-key-hint">Detecting models…</span>
-            )}
-            {isOllama && !detecting && detectedEmbedModels.length === 0 && form.base_url && (
-              <span className="kv-emb-key-hint">No embedding models detected — make sure Ollama is running and models are pulled.</span>
-            )}
-          </div>
+          </Field>
         </div>
 
-        {(saveError || testError) && (
-          <div className="kv-emb-error">{saveError ?? testError}</div>
-        )}
-
-        {testState === 'ok' && testLatency !== null && (
-          <div className="kv-emb-ok">
-            <CheckOne size={11} /> Connected — {testLatency}ms
-          </div>
-        )}
+        <TestMessage state={testState} error={testError} latency={testLatency} />
       </div>
 
-      <div className="kv-emb-footer">
-        <button
-          className={`kv-emb-test-btn ${testState === 'running' ? 'kv-emb-btn-loading' : testState === 'ok' ? 'kv-emb-btn-ok' : testState === 'error' ? 'kv-emb-btn-error' : ''}`}
-          onClick={handleTest}
-          disabled={testState === 'running' || !form.base_url || !form.model}
-          type="button"
-        >
-          {testState === 'running' ? (
-            <><Sync size={11} className="kv-spin" /> Testing…</>
-          ) : testState === 'ok' ? (
-            <><CheckOne size={11} /> OK</>
-          ) : testState === 'error' ? (
-            <><CloseOne size={11} /> Failed</>
-          ) : (
-            <><Setting size={11} /> Test Connection</>
-          )}
-        </button>
-        {dirty && (
-          <button
-            className="kv-emb-save-btn"
-            onClick={handleSave}
-            disabled={saving}
-            type="button"
-          >
-            {saving ? 'Saving…' : 'Save'}
-          </button>
-        )}
-      </div>
-    </div>
+      <CardFooter dirty={dirty} saving={saving || linkBusy} testState={testState} canTest={Boolean(form.base_url && form.model)} onTest={() => void test()} onSave={() => void save()} />
+    </section>
   )
 }
 
-// ─── Docling config card ───────────────────────────────────────────────────────
-
-function DoclingConfigCard({
-  config,
-  onSaved,
-}: {
-  config: DoclingConfig | null
-  onSaved: (cfg: DoclingConfig) => void
-}) {
+function RerankerCard({ config, onSaved }: { config: RerankerConfig | null; onSaved: (cfg: RerankerConfig) => void }) {
+  const [preset, setPreset] = useState(presetFor(config?.base_url || ''))
   const [form, setForm] = useState({
     base_url: config?.base_url ?? '',
-    enabled: config?.enabled ?? true,
+    api_key: '',
+    model: config?.model ?? '',
+    enabled: config?.enabled ?? false,
   })
+  const [showKey, setShowKey] = useState(false)
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [testState, setTestState] = useState<'idle' | 'running' | 'ok' | 'error'>('idle')
+  const [testState, setTestState] = useState<TestState>('idle')
   const [testError, setTestError] = useState<string | null>(null)
   const [testLatency, setTestLatency] = useState<number | null>(null)
-  const [saveError, setSaveError] = useState<string | null>(null)
 
-  // Sync when config loads
   useEffect(() => {
-    if (config) {
-      setForm({ base_url: config.base_url || '', enabled: config.enabled })
-    }
+    if (!config) return
+    setPreset(presetFor(config.base_url || ''))
+    setForm((current) => ({ ...current, base_url: config.base_url || '', model: config.model || '', enabled: config.enabled }))
   }, [config])
 
   function update<K extends keyof typeof form>(key: K, value: typeof form[K]) {
-    setForm(f => ({ ...f, [key]: value }))
+    setForm((current) => ({ ...current, [key]: value }))
     setDirty(true)
+    setTestState('idle')
   }
 
-  async function handleSave() {
+  function choosePreset(value: string) {
+    setPreset(value)
+    const next = RERANKER_PRESETS.find((item) => item.id === value)
+    if (!next) return
+    setForm((current) => ({
+      ...current,
+      base_url: next.baseURL || current.base_url,
+      model: next.model || current.model,
+      api_key: '',
+      enabled: true,
+    }))
+    setDirty(true)
+    setTestState('idle')
+  }
+
+  async function save() {
     setSaving(true)
-    setSaveError(null)
     try {
-      const saved = await api.put<DoclingConfig>('/settings/docling', form)
+      const body: Record<string, unknown> = {
+        base_url: form.base_url,
+        model: form.model,
+        enabled: form.enabled,
+      }
+      if (form.api_key !== '') body.api_key = form.api_key
+      const saved = await api.put<RerankerConfig>('/settings/reranker', body)
       onSaved(saved)
+      setForm((current) => ({ ...current, api_key: '' }))
       setDirty(false)
     } catch (e: unknown) {
-      const err = e as { message?: string }
-      setSaveError(err?.message ?? 'Failed to save')
+      setTestState('error')
+      setTestError((e as { message?: string })?.message ?? 'Failed to save reranker settings')
     } finally {
       setSaving(false)
     }
   }
 
-  async function handleTest() {
+  async function test() {
     setTestState('running')
     setTestError(null)
     setTestLatency(null)
     try {
-      const result = await api.post<{ ok: boolean; latency_ms: number; error: string | null }>(
-        '/settings/docling/test',
-        { base_url: form.base_url }
-      )
+      const result = await api.post<{ ok: boolean; latency_ms: number; error: string | null }>('/settings/reranker/test', {
+        base_url: form.base_url,
+        model: form.model,
+        api_key: form.api_key,
+      })
       if (result.ok) {
         setTestState('ok')
         setTestLatency(result.latency_ms)
       } else {
         setTestState('error')
-        setTestError(result.error ?? 'Test failed')
+        setTestError(result.error ?? 'Reranker test failed')
       }
     } catch (e: unknown) {
-      const err = e as { message?: string }
       setTestState('error')
-      setTestError(err?.message ?? 'Request failed')
+      setTestError((e as { message?: string })?.message ?? 'Reranker test failed')
     }
   }
 
   return (
-    <div className="kv-emb-card">
-      <div className="kv-emb-header">
-        <div className="kv-emb-title-row">
-          <div className="kv-emb-icon">
-            <LinkCloud size={15} />
-          </div>
-          <div>
-            <div className="kv-emb-title">Document Conversion (Docling)</div>
-            <div className="kv-emb-subtitle">Converts PDF/DOCX/PPTX/XLSX/audio/images to markdown during upload and ingestion — self-hosted, on your network, or your organization's own</div>
-          </div>
-        </div>
-        <div className="kv-emb-status-row">
-          <label className="kv-emb-toggle">
-            <input
-              type="checkbox"
-              checked={form.enabled}
-              onChange={e => update('enabled', e.target.checked)}
-            />
-            <span className="kv-emb-toggle-label">Enabled</span>
-          </label>
-        </div>
-      </div>
+    <section className="kv-card">
+      <CardHeader
+        icon={<DatabaseSearch size={16} />}
+        title="Reranker"
+        subtitle="Optional second pass for better result ordering after retrieval."
+        status={config?.is_configured ? 'Configured' : 'Optional'}
+        ok={Boolean(config?.is_configured)}
+      >
+        <Toggle checked={form.enabled} onChange={(value) => update('enabled', value)} label="Enabled" />
+      </CardHeader>
 
-      <div className="kv-emb-body">
-        <div className="kv-emb-row">
-          <div className="kv-emb-field kv-emb-field-lg">
-            <label>Server URL</label>
-            <input
-              type="text"
-              value={form.base_url}
-              onChange={e => update('base_url', e.target.value)}
-              placeholder="http://localhost:5001 (leave blank to use the auto-detected local instance)"
-            />
-          </div>
+      <div className="kv-card-body">
+        <div className="kv-grid three">
+          <Field label="Endpoint type">
+            <select value={preset} onChange={(event) => choosePreset(event.target.value)}>
+              {RERANKER_PRESETS.map((item) => (
+                <option key={item.id} value={item.id}>{item.label}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Endpoint URL">
+            <input value={form.base_url} onChange={(event) => update('base_url', event.target.value)} placeholder="http://localhost:8080/rerank" />
+          </Field>
+          <Field label="Model">
+            <input value={form.model} onChange={(event) => update('model', event.target.value)} placeholder="BAAI/bge-reranker-v2-m3" />
+          </Field>
         </div>
 
-        {(saveError || testError) && (
-          <div className="kv-emb-error">{saveError ?? testError}</div>
-        )}
+        <SecretField
+          label="API key"
+          value={form.api_key}
+          show={showKey}
+          placeholder={config?.has_api_key ? 'Leave blank to keep current key' : 'Optional for local TEI/vLLM'}
+          onToggle={() => setShowKey((value) => !value)}
+          onChange={(value) => update('api_key', value)}
+        />
 
-        {testState === 'ok' && testLatency !== null && (
-          <div className="kv-emb-ok">
-            <CheckOne size={11} /> Reachable — {testLatency}ms
-          </div>
-        )}
+        <div className="kv-note">
+          <Connection size={12} /> Rerank endpoints must support Cohere, LangSearch, TEI, or vLLM rerank response shapes.
+        </div>
+        <TestMessage state={testState} error={testError} latency={testLatency} />
       </div>
 
-      <div className="kv-emb-footer">
-        <button
-          className={`kv-emb-test-btn ${testState === 'running' ? 'kv-emb-btn-loading' : testState === 'ok' ? 'kv-emb-btn-ok' : testState === 'error' ? 'kv-emb-btn-error' : ''}`}
-          onClick={handleTest}
-          disabled={testState === 'running' || !form.base_url}
-          type="button"
-        >
-          {testState === 'running' ? (
-            <><Sync size={11} className="kv-spin" /> Testing…</>
-          ) : testState === 'ok' ? (
-            <><CheckOne size={11} /> OK</>
-          ) : testState === 'error' ? (
-            <><CloseOne size={11} /> Failed</>
-          ) : (
-            <><Setting size={11} /> Test Connection</>
-          )}
-        </button>
-        {dirty && (
-          <button
-            className="kv-emb-save-btn"
-            onClick={handleSave}
-            disabled={saving}
-            type="button"
-          >
-            {saving ? 'Saving…' : 'Save'}
-          </button>
-        )}
-      </div>
-    </div>
+      <CardFooter dirty={dirty} saving={saving} testState={testState} canTest={Boolean(form.base_url)} onTest={() => void test()} onSave={() => void save()} />
+    </section>
   )
 }
 
-// ─── Search defaults card ───────────────────────────────────────────────────────
+function DoclingCard({ config, onSaved }: { config: DoclingConfig | null; onSaved: (cfg: DoclingConfig) => void }) {
+  const [form, setForm] = useState({ base_url: config?.base_url ?? '', enabled: config?.enabled ?? true })
+  const [dirty, setDirty] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [testState, setTestState] = useState<TestState>('idle')
+  const [testError, setTestError] = useState<string | null>(null)
+  const [testLatency, setTestLatency] = useState<number | null>(null)
 
-// Which corpus a fresh Knowledge session starts scoped to, and how many
-// chunks it asks for per search. A per-device preference (localStorage, see
-// searchDefaults.ts) rather than a server-side setting - same tier as the
-// chat model preference Knowledge itself already keeps client-side, not
-// worth a backend field for a single retrieval knob. Applies immediately on
-// change; nothing to "save" here, unlike the API-backed cards above.
+  useEffect(() => {
+    if (config) setForm({ base_url: config.base_url || '', enabled: config.enabled })
+  }, [config])
+
+  function update<K extends keyof typeof form>(key: K, value: typeof form[K]) {
+    setForm((current) => ({ ...current, [key]: value }))
+    setDirty(true)
+    setTestState('idle')
+  }
+
+  async function save() {
+    setSaving(true)
+    try {
+      const saved = await api.put<DoclingConfig>('/settings/docling', form)
+      onSaved(saved)
+      setDirty(false)
+    } catch (e: unknown) {
+      setTestState('error')
+      setTestError((e as { message?: string })?.message ?? 'Failed to save document conversion settings')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function test() {
+    setTestState('running')
+    setTestError(null)
+    setTestLatency(null)
+    try {
+      const result = await api.post<{ ok: boolean; latency_ms: number; error: string | null }>('/settings/docling/test', { base_url: form.base_url })
+      if (result.ok) {
+        setTestState('ok')
+        setTestLatency(result.latency_ms)
+      } else {
+        setTestState('error')
+        setTestError(result.error ?? 'Docling test failed')
+      }
+    } catch (e: unknown) {
+      setTestState('error')
+      setTestError((e as { message?: string })?.message ?? 'Docling test failed')
+    }
+  }
+
+  return (
+    <section className="kv-card">
+      <CardHeader
+        icon={<DocDetail size={16} />}
+        title="Document conversion"
+        subtitle="Converts PDFs, Office documents, images, and audio into markdown before ingestion."
+        status={form.enabled ? 'Enabled' : 'Disabled'}
+        ok={form.enabled}
+      >
+        <Toggle checked={form.enabled} onChange={(value) => update('enabled', value)} label="Enabled" />
+      </CardHeader>
+      <div className="kv-card-body">
+        <Field label="Docling server URL">
+          <input value={form.base_url} onChange={(event) => update('base_url', event.target.value)} placeholder="http://localhost:5001 (blank uses auto-detected local service)" />
+        </Field>
+        <TestMessage state={testState} error={testError} latency={testLatency} />
+      </div>
+      <CardFooter dirty={dirty} saving={saving} testState={testState} canTest={Boolean(form.base_url)} onTest={() => void test()} onSave={() => void save()} />
+    </section>
+  )
+}
+
 function SearchDefaultsCard({ corpora }: { corpora: Corpus[] }) {
   const [prefs, setPrefs] = useState(() => loadSearchDefaults())
 
@@ -619,328 +553,469 @@ function SearchDefaultsCard({ corpora }: { corpora: Corpus[] }) {
   }
 
   return (
-    <div className="kv-emb-card">
-      <div className="kv-emb-header">
-        <div className="kv-emb-title-row">
-          <div className="kv-emb-icon">
-            <Setting size={15} />
-          </div>
-          <div>
-            <div className="kv-emb-title">Search Defaults</div>
-            <div className="kv-emb-subtitle">Where a new Knowledge session starts searching, and how many results it asks for</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="kv-emb-body">
-        <div className="kv-emb-row">
-          <div className="kv-emb-field kv-emb-field-lg">
-            <label>Default collection</label>
-            <select
-              value={prefs.corpusId}
-              onChange={(e) => update({ ...prefs, corpusId: e.target.value })}
-            >
+    <section className="kv-card">
+      <CardHeader
+        icon={<Search size={16} />}
+        title="Retrieval defaults"
+        subtitle="Default corpus scope and result count for new Knowledge sessions."
+        status={`${prefs.topK} chunks`}
+        ok
+      />
+      <div className="kv-card-body">
+        <div className="kv-grid two">
+          <Field label="Default collection">
+            <select value={prefs.corpusId} onChange={(event) => update({ ...prefs, corpusId: event.target.value })}>
               <option value="all">All included knowledge</option>
               {corpora.map((corpus) => (
                 <option key={corpus.id} value={corpus.id}>{corpus.name}</option>
               ))}
             </select>
-          </div>
-          <div className="kv-emb-field kv-emb-field-md">
-            <label>Matching chunks ({prefs.topK})</label>
-            <input
-              type="range"
-              min={3}
-              max={20}
-              value={prefs.topK}
-              onChange={(e) => update({ ...prefs, topK: Number(e.target.value) })}
-            />
-          </div>
+          </Field>
+          <Field label={`Matching chunks (${prefs.topK})`}>
+            <input type="range" min={3} max={20} value={prefs.topK} onChange={(event) => update({ ...prefs, topK: Number(event.target.value) })} />
+          </Field>
         </div>
+      </div>
+    </section>
+  )
+}
+
+function CardHeader({ icon, title, subtitle, status, ok, children }: { icon: ReactNode; title: string; subtitle: string; status: string; ok: boolean; children?: ReactNode }) {
+  return (
+    <div className="kv-card-header">
+      <div className="kv-card-title">
+        <span className="kv-card-icon">{icon}</span>
+        <div>
+          <h2>{title}</h2>
+          <p>{subtitle}</p>
+        </div>
+      </div>
+      <div className="kv-card-actions">
+        <span className={`kv-pill ${ok ? 'ok' : 'warn'}`}>{ok ? <CheckOne size={11} /> : null}{status}</span>
+        {children}
       </div>
     </div>
   )
 }
 
-// ─── CSS ──────────────────────────────────────────────────────────────────────
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="kv-field">
+      <span>{label}</span>
+      {children}
+    </label>
+  )
+}
+
+function SecretField({ label, value, show, placeholder, onToggle, onChange }: { label: string; value: string; show: boolean; placeholder: string; onToggle: () => void; onChange: (value: string) => void }) {
+  return (
+    <Field label={label}>
+      <div className="kv-secret">
+        <input type={show ? 'text' : 'password'} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} autoComplete="new-password" />
+        <button type="button" onClick={onToggle} aria-label={show ? 'Hide key' : 'Show key'}>
+          {show ? <PreviewClose size={13} /> : <PreviewOpen size={13} />}
+        </button>
+      </div>
+    </Field>
+  )
+}
+
+function Toggle({ checked, label, onChange }: { checked: boolean; label: string; onChange: (checked: boolean) => void }) {
+  return (
+    <label className="kv-toggle">
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+      <span>{label}</span>
+    </label>
+  )
+}
+
+function TestMessage({ state, error, latency }: { state: TestState; error: string | null; latency: number | null }) {
+  if (state === 'idle' || state === 'running') return null
+  if (state === 'ok') {
+    return <div className="kv-message ok"><CheckOne size={12} /> Connected in {latency ?? 0}ms.</div>
+  }
+  return <div className="kv-message error"><CloseOne size={12} /> {error ?? 'Connection failed.'}</div>
+}
+
+function CardFooter({ dirty, saving, testState, canTest, onTest, onSave }: { dirty: boolean; saving: boolean; testState: TestState; canTest: boolean; onTest: () => void; onSave: () => void }) {
+  return (
+    <div className="kv-card-footer">
+      <button type="button" className="kv-secondary-btn" onClick={onTest} disabled={!canTest || testState === 'running'}>
+        {testState === 'running' ? <Sync size={12} className="kv-spin" /> : <Setting size={12} />}
+        {testState === 'running' ? 'Testing...' : 'Test connection'}
+      </button>
+      <button type="button" className="kv-primary-btn" onClick={onSave} disabled={!dirty || saving}>
+        {saving ? 'Saving...' : dirty ? 'Save changes' : 'Saved'}
+      </button>
+    </div>
+  )
+}
+
+function isProviderCandidate(source: string) {
+  return source !== '__ollama__' && source !== '__custom__'
+}
+
+function presetFor(baseURL: string) {
+  const match = RERANKER_PRESETS.find((item) => item.baseURL && item.baseURL === baseURL)
+  return match?.id ?? 'custom'
+}
 
 const KNOWLEDGE_CSS = `
-.kv-error-banner {
-  background: rgba(201,107,92,0.1);
-  border: 1px solid rgba(201,107,92,0.3);
-  color: var(--color-error);
-  padding: 8px 11px;
-  border-radius: 8px;
+.kv-page {
+  max-width: 1296px;
+  margin: 0 auto;
+  padding-bottom: 32px;
+}
+
+.kv-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.kv-eyebrow {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--color-primary);
   font-size: 11px;
-  margin-bottom: 20px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.kv-hero h1 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 26px;
+  line-height: 1.1;
+}
+
+.kv-hero p {
+  margin: 7px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.kv-status-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.kv-status-tile {
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg);
+  padding: 14px 16px;
+}
+
+.kv-status-tile span {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.kv-status-tile strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--color-text);
+  font-size: 25px;
+  line-height: 1;
+}
+
+.kv-status-tile em {
+  display: block;
+  margin-top: 8px;
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kv-status-tile.ok strong { color: var(--color-success); }
+.kv-status-tile.warn strong { color: var(--color-warning, var(--color-primary)); }
+.kv-status-tile.muted strong { color: var(--color-text); }
+
+.kv-card {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg);
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+
+.kv-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.kv-card-title {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 12px;
+}
+
+.kv-card-icon {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg);
+  color: var(--color-primary);
+}
+
+.kv-card-title h2 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.kv-card-title p {
+  margin: 4px 0 0;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.kv-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.kv-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  padding: 16px 18px;
+}
+
+.kv-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.kv-primary-btn,
+.kv-secondary-btn,
+.kv-ghost-btn,
+.kv-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 7px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.kv-primary-btn {
+  margin-left: auto;
+  border: 1px solid transparent;
+  background: var(--color-primary);
+  color: white;
+  padding: 7px 12px;
+}
+
+.kv-secondary-btn,
+.kv-ghost-btn {
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  padding: 7px 12px;
+}
+
+.kv-primary-btn:disabled,
+.kv-secondary-btn:disabled,
+.kv-icon-btn:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.kv-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.kv-grid.two {
+  grid-template-columns: minmax(220px, 0.9fr) minmax(260px, 2fr);
+}
+
+.kv-grid.three {
+  grid-template-columns: minmax(180px, 0.8fr) minmax(260px, 1.4fr) minmax(220px, 1fr);
+}
+
+.kv-field {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 6px;
+}
+
+.kv-field > span {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.kv-field input,
+.kv-field select {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+  padding: 8px 10px;
+}
+
+.kv-field input:focus,
+.kv-field select:focus {
+  border-color: var(--color-primary);
+}
+
+.kv-inline-field,
+.kv-secret {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.kv-inline-field input,
+.kv-secret input {
+  flex: 1 1 auto;
+}
+
+.kv-icon-btn,
+.kv-secret button {
+  width: 35px;
+  height: 35px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+}
+
+.kv-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.kv-pill.ok {
+  background: rgba(111, 175, 123, 0.13);
+  color: var(--color-success);
+}
+
+.kv-pill.warn {
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+}
+
+.kv-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.kv-toggle input {
+  margin: 0;
+}
+
+.kv-note,
+.kv-message {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.kv-note.ok,
+.kv-message.ok {
+  border-color: rgba(111, 175, 123, 0.32);
+  background: rgba(111, 175, 123, 0.08);
+  color: var(--color-success);
+}
+
+.kv-message.error,
+.kv-error-banner {
+  border-color: rgba(201, 107, 92, 0.32);
+  background: rgba(201, 107, 92, 0.08);
+  color: var(--color-error);
+}
+
+.kv-error-banner {
+  border-style: solid;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12px;
 }
 
 .kv-spin {
   animation: kv-spin 1s linear infinite;
 }
+
 @keyframes kv-spin {
   from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+  to { transform: rotate(360deg); }
 }
 
-/* ── Embedder config card ── */
-.kv-emb-card {
-  background: var(--color-bg);
-  border: 1.5px solid var(--color-border);
-  border-radius: 11px;
-  margin-bottom: 24px;
-  overflow: hidden;
-}
+@media (max-width: 980px) {
+  .kv-status-grid,
+  .kv-grid.two,
+  .kv-grid.three {
+    grid-template-columns: 1fr;
+  }
 
-.kv-emb-header {
-  padding: 13px 17px 10px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  border-bottom: 1px solid var(--color-border);
-}
+  .kv-card-header,
+  .kv-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 
-.kv-emb-title-row {
-  display: flex;
-  align-items: center;
-  gap: 11px;
+  .kv-card-actions {
+    flex-wrap: wrap;
+  }
 }
-
-.kv-emb-icon {
-  width: 38px;
-  height: 38px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-primary);
-  flex-shrink: 0;
-}
-
-.kv-emb-title {
-  font-weight: 700;
-  font-size: 13px;
-  color: var(--color-text);
-}
-.kv-emb-subtitle {
-  font-size: 10px;
-  color: var(--color-text-muted);
-  margin-top: 2px;
-}
-
-.kv-emb-status-row {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-}
-
-.kv-emb-badge {
-  font-size: 10px;
-  font-weight: 700;
-  padding: 2px 7px;
-  border-radius: 5px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.kv-emb-badge-ok {
-  background: rgba(111,175,123,0.14);
-  color: var(--color-success);
-}
-.kv-emb-badge-warn {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  color: var(--color-text-muted);
-}
-
-.kv-emb-toggle {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  cursor: pointer;
-  font-size: 11px;
-  color: var(--color-text-secondary);
-  user-select: none;
-}
-.kv-emb-toggle input { cursor: pointer; }
-.kv-emb-toggle-label { font-weight: 600; }
-
-.kv-emb-body {
-  padding: 14px 17px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.kv-emb-row {
-  display: flex;
-  gap: 11px;
-  flex-wrap: wrap;
-}
-
-.kv-emb-field {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  min-width: 0;
-}
-.kv-emb-field label {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--color-text-secondary);
-  letter-spacing: 0.02em;
-}
-.kv-emb-key-hint {
-  font-weight: 400;
-  color: var(--color-text-muted);
-}
-.kv-emb-field input,
-.kv-emb-field select {
-  background: var(--color-surface);
-  border: 1.5px solid var(--color-border);
-  border-radius: 7px;
-  padding: 6px 9px;
-  font-size: 11px;
-  font-family: inherit;
-  color: var(--color-text);
-  outline: none;
-  transition: border-color 0.15s;
-  width: 100%;
-  box-sizing: border-box;
-}
-.kv-emb-field input:focus,
-.kv-emb-field select:focus { border-color: var(--color-primary); }
-
-.kv-emb-field-sm { flex: 0 0 160px; }
-.kv-emb-field-md { flex: 1 1 200px; }
-.kv-emb-field-lg { flex: 2 1 260px; }
-
-.kv-emb-key-wrap {
-  position: relative;
-}
-.kv-emb-key-wrap input { padding-right: 27px; }
-.kv-emb-eye {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  padding: 2px;
-  display: flex;
-  align-items: center;
-}
-.kv-emb-eye:hover { color: var(--color-text); }
-
-.kv-emb-inherit-note {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(111,175,123,0.08);
-  border: 1px dashed rgba(111,175,123,0.35);
-  color: var(--color-text-secondary);
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 11px;
-}
-.kv-emb-inherit-note strong { color: var(--color-text); }
-
-.kv-emb-error {
-  background: rgba(201,107,92,0.1);
-  border: 1px solid rgba(201,107,92,0.3);
-  color: var(--color-error);
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 11px;
-}
-.kv-emb-ok {
-  background: rgba(111,175,123,0.1);
-  border: 1px solid rgba(111,175,123,0.3);
-  color: var(--color-success);
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 11px;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.kv-emb-footer {
-  padding: 10px 17px;
-  border-top: 1px solid var(--color-border);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.kv-emb-test-btn,
-.kv-emb-save-btn {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 6px 11px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.15s, opacity 0.15s;
-  border: 1.5px solid var(--color-border);
-}
-.kv-emb-test-btn {
-  background: var(--color-surface);
-  color: var(--color-text-secondary);
-}
-.kv-emb-test-btn:hover:not(:disabled) { background: var(--color-hover); }
-.kv-emb-test-btn:disabled { opacity: 0.5; cursor: default; }
-.kv-emb-btn-loading { border-color: transparent; }
-.kv-emb-btn-ok {
-  background: rgba(111,175,123,0.12) !important;
-  border-color: rgba(111,175,123,0.35) !important;
-  color: var(--color-success) !important;
-}
-.kv-emb-btn-error {
-  background: rgba(201,107,92,0.1) !important;
-  border-color: rgba(201,107,92,0.3) !important;
-  color: var(--color-error) !important;
-}
-
-.kv-emb-save-btn {
-  background: var(--color-primary);
-  color: white;
-  border-color: transparent;
-  margin-left: auto;
-}
-.kv-emb-save-btn:hover:not(:disabled) { opacity: 0.9; }
-.kv-emb-save-btn:disabled { opacity: 0.5; cursor: default; }
-
-.kv-emb-model-row {
-  display: flex;
-  gap: 5px;
-  align-items: center;
-}
-.kv-emb-model-row input { flex: 1; }
-
-.kv-emb-detect-btn {
-  flex-shrink: 0;
-  width: 34px;
-  height: 34px;
-  border: 1.5px solid var(--color-border);
-  background: var(--color-surface);
-  border-radius: 6px;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: border-color 0.15s, color 0.15s;
-}
-.kv-emb-detect-btn:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-primary); }
-.kv-emb-detect-btn:disabled { opacity: 0.4; cursor: default; }
 `

@@ -29,6 +29,11 @@ type CreateCorpusParams struct {
 	WorkspaceID string // optional
 }
 
+type UpdateCorpusParams struct {
+	Name        string
+	Description string
+}
+
 type IngestParams struct {
 	CorpusID string
 	FileID   string

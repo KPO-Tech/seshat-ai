@@ -14,6 +14,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox/whatsapp"
 	backendquery "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/query"
 	longterm "github.com/KPO-Tech/seshat/pkg/memory/longterm"
+	"github.com/KPO-Tech/seshat/pkg/rag"
 	"github.com/KPO-Tech/seshat/pkg/sdk"
 )
 
@@ -40,6 +41,7 @@ type App struct {
 	// only ever touched directly for the standalone/local path.
 	providerSettingStore *db.ProviderSettingStore
 	doclingStore         *db.DoclingConfigStore
+	rerankerStore        *db.RerankerConfigStore
 	localSTTStore        *db.LocalSTTConfigStore
 	storageConfigStore   *db.StorageConfigStore
 	dataflowSecrets      *dataflowsecrets.Service
@@ -57,6 +59,7 @@ type App struct {
 	terminalRelay         *backendquery.TerminalRelay
 	cloudAutomation       *cloudautomation.Service
 	artifactPreviews      *artifactpreview.Store
+	ragService            *rag.Service
 	enableSignup          bool
 	enableAPIKeys         bool
 	featuredRepos         []FeaturedSkillRepo
@@ -111,6 +114,7 @@ type AppConfig struct {
 	CapabilityLinkStore   *db.CapabilityLinkStore
 	ProviderSettingStore  *db.ProviderSettingStore
 	DoclingStore          *db.DoclingConfigStore
+	RerankerStore         *db.RerankerConfigStore
 	LocalSTTStore         *db.LocalSTTConfigStore
 	StorageConfigStore    *db.StorageConfigStore
 	DataflowSecrets       *dataflowsecrets.Service
@@ -118,6 +122,7 @@ type AppConfig struct {
 	RateLimiter           *RateLimiter
 	LoginRateLimiter      *RateLimiter
 	CloudAutomation       *cloudautomation.Service
+	RAGService            *rag.Service
 	EnableSignup          bool
 	EnableAPIKeys         bool
 	FeaturedRepos         []FeaturedSkillRepo
@@ -175,6 +180,7 @@ func NewApp(cfg AppConfig) *App {
 		capabilityLinkStore:   cfg.CapabilityLinkStore,
 		providerSettingStore:  cfg.ProviderSettingStore,
 		doclingStore:          cfg.DoclingStore,
+		rerankerStore:         cfg.RerankerStore,
 		localSTTStore:         cfg.LocalSTTStore,
 		storageConfigStore:    cfg.StorageConfigStore,
 		dataflowSecrets:       cfg.DataflowSecrets,
@@ -182,6 +188,7 @@ func NewApp(cfg AppConfig) *App {
 		rateLimiter:           cfg.RateLimiter,
 		loginRateLimiter:      cfg.LoginRateLimiter,
 		cloudAutomation:       cfg.CloudAutomation,
+		ragService:            cfg.RAGService,
 		permBroker:            backendquery.NewPermissionBroker(),
 		promptBroker:          backendquery.NewPromptBroker(),
 		titleBroker:           titleBroker,

@@ -1844,6 +1844,30 @@ Deux modèles étaient possibles pour composer plusieurs agents (orchestrateur �
 
 ---
 
+## 37.9 Nœuds comme tools d'agent — double usage, pas exclusif
+
+Décision d'architecture (2026-09-10), suite directe de 37.8.
+
+**Le nœud "agent" change de nature.** Il ne référence plus un agent Companion déjà existant (ces agents ont leur utilité ailleurs). Par défaut, il **crée un agent local à ce workflow** - son propre nom/identité, zéro tool au départ. Trois briques séparées remplacent l'actuel nœud "agent" fourre-tout :
+- **Agent** - l'identité (qui il est)
+- **Tools** - ce à quoi il a accès
+- **Query** - la vraie tâche/prompt d'entrée, toujours connectée à un agent pour être exécutée
+
+**Comment un agent accède à un tool** : n'importe quel nœud (sauf Trigger/Logic/Agent - un point d'entrée, une structure de branchement, et l'acteur lui-même ne sont pas des "capacités") peut être branché sur un agent pour devenir un tool que le LLM peut invoquer pendant son tour - Stripe/Gmail/Discord/HTTP/Database/Set-Merge/Wait, tout le catalogue de connecteurs déjà construit pour le rattrapage n8n.
+
+**Double usage, pas exclusif** : un nœud connecté comme tool à un agent ne perd pas sa capacité à tourner en séquence normale ailleurs dans le graphe. Purement additif - rien de l'existant (tout le socle déterministe de l'audit n8n) n'est perdu ou remplacé. Option rejetée : rendre les nœuds utilisables *uniquement* comme tools d'agent, ce qui aurait forcé chaque automatisation à passer par au moins un agent - un vrai pivot produit (abandonner le "clone n8n généraliste" pour devenir exclusivement agentique) qui n'a pas été retenu ici.
+
+**Ce que ça implique réellement au niveau moteur** (vérifié dans le SDK, pas juste supposé) :
+- `dataflow.Node.Connections` (`pkg/dataflow/types.go`) est aujourd'hui `map[string][]string` - port de sortie → liste d'IDs de nœuds cibles. Aucune notion de *sur quel port d'entrée* ça arrive : impossible de distinguer une connexion "donnée" d'une connexion "tool" avec le schéma actuel. Une extension de schéma est nécessaire.
+- Le moteur exécute aujourd'hui tout nœud accessible depuis le déclencheur, dans l'ordre topologique, systématiquement. Un nœud "tool" ne doit PAS s'exécuter automatiquement - il reste en attente, et ne s'exécute que si et quand l'agent choisit de l'invoquer pendant son tour. C'est un changement du modèle d'exécution (exécution éager pour tous vs. exécution à la demande pour certains), pas un ajout de champ.
+- Il faut aussi convertir la définition d'un nœud connecté (ses paramètres/description) en une vraie définition de tool que le LLM peut appeler, puis router l'appel réel du LLM vers l'exécution de ce nœud précis et lui renvoyer le résultat.
+
+**Relation avec le paramètre `tools` déjà livré** (KPO-Tech/seshat#307/#308, v1.2.41) : ce paramètre `tools []string` (liste de noms, texte libre) sur le nœud `agent` reste en place comme option de secours pour des capacités qui n'ont pas de nœud de workflow correspondant (ex. `web_search`, une capacité intégrée à l'agent lui-même) - il n'est pas remplacé, seulement complété. Le mécanisme par connexion de graphe devient la façon principale et découvrable de donner des tools à un agent une fois construit.
+
+Vu la taille du chantier (plus gros que tout ce qui a été livré cette session), il sera découpé en phases livrables séparément plutôt que construit d'un coup - voir le plan associé.
+
+---
+
 # 38. Design System — Palette officielle Seshat
 
 Agent Workflows utilise la palette globale de Seshat.

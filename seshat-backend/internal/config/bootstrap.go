@@ -580,6 +580,12 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		return nil, nil, fmt.Errorf("init docling config store: %w", err)
 	}
 
+	rerankerConfigStore, err := db.NewRerankerConfigStore(database)
+	if err != nil {
+		_ = cleanup()
+		return nil, nil, fmt.Errorf("init reranker config store: %w", err)
+	}
+
 	localSTTConfigStore, err := db.NewLocalSTTConfigStore(database)
 	if err != nil {
 		_ = cleanup()
@@ -791,13 +797,23 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 			fmt.Printf("[API] RAG service initialisé en mode vectorless (BM25) — aucun embedder configuré, backend=%s\n", backendName)
 		}
 
-		// RAG_RERANK_URL points at any Cohere/TEI-compatible endpoint
-		// (self-hosted TEI/vLLM serving BAAI/bge-reranker-v2-m3, free and
-		// no API key needed) - falls back to LangSearch's hosted API if
-		// only LANGSEARCH_API_KEY is set. See reranker.FromEnv's doc.
-		if r := reranker.NewFromEnv(); r.IsConfigured() {
-			ragService.SetReranker(r)
-			fmt.Printf("[API] RAG reranker actif (second passage sur les résultats de recherche)\n")
+		if dbReranker, dbErr := rerankerConfigStore.Get(ctx); dbErr == nil && dbReranker != nil && dbReranker.Enabled && dbReranker.BaseURL != "" {
+			apiKey, _ := rerankerConfigStore.GetDecryptedAPIKey(ctx)
+			ragService.SetReranker(reranker.New(reranker.Config{
+				BaseURL: dbReranker.BaseURL,
+				APIKey:  apiKey,
+				Model:   dbReranker.Model,
+			}))
+			fmt.Printf("[API] RAG reranker actif: model=%s\n", dbReranker.Model)
+		} else {
+			// RAG_RERANK_URL points at any Cohere/TEI-compatible endpoint
+			// (self-hosted TEI/vLLM serving BAAI/bge-reranker-v2-m3, free and
+			// no API key needed) - falls back to LangSearch's hosted API if
+			// only LANGSEARCH_API_KEY is set. See reranker.FromEnv's doc.
+			if r := reranker.NewFromEnv(); r.IsConfigured() {
+				ragService.SetReranker(r)
+				fmt.Printf("[API] RAG reranker actif (second passage sur les résultats de recherche)\n")
+			}
 		}
 	} else {
 		fmt.Fprintf(os.Stderr, "[API] Avertissement: vector store non disponible (%v)\n", err)
@@ -1333,11 +1349,13 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		CapabilityLinkStore:   capabilityLinkStore,
 		ProviderSettingStore:  settingStore,
 		DoclingStore:          doclingConfigStore,
+		RerankerStore:         rerankerConfigStore,
 		LocalSTTStore:         localSTTConfigStore,
 		StorageConfigStore:    storageConfigStore,
 		DataflowSecrets:       dataflowSecretsService,
 		LongTermExtractor:     longTermExtractor,
 		CloudAutomation:       cloudAutomationService,
+		RAGService:            ragService,
 		RateLimiter:           api.NewRateLimiter(config.RateLimitPerMinute, time.Minute),
 		LoginRateLimiter:      api.NewRateLimiter(10, 15*time.Minute),
 		EnableSignup:          config.EnableSignup,

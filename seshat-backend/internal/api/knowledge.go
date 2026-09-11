@@ -218,6 +218,35 @@ func (a *App) handleCorpusByID(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			writeJSON(w, http.StatusOK, corpusToResponse(*corpus))
+		case http.MethodPut:
+			var body struct {
+				Name        string `json:"name"`
+				Description string `json:"description"`
+			}
+			if !decodeJSONBody(w, r, &body) {
+				return
+			}
+			if strings.TrimSpace(body.Name) == "" {
+				writeJSONError(w, http.StatusBadRequest, "name is required")
+				return
+			}
+			if len(body.Name) > 255 {
+				writeJSONError(w, http.StatusBadRequest, "name exceeds maximum length (255 chars)")
+				return
+			}
+			if len(body.Description) > 1024 {
+				writeJSONError(w, http.StatusBadRequest, "description exceeds maximum length (1024 chars)")
+				return
+			}
+			corpus, err := a.backend.Knowledge.UpdateCorpus(r.Context(), principal, corpusID, knowledge.UpdateCorpusParams{
+				Name:        body.Name,
+				Description: body.Description,
+			})
+			if err != nil {
+				writeBackendError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, corpusToResponse(*corpus))
 		case http.MethodDelete:
 			if err := a.backend.Knowledge.DeleteCorpus(r.Context(), principal, corpusID); err != nil {
 				writeBackendError(w, err)

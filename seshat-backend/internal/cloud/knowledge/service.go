@@ -86,6 +86,17 @@ func (s *RemoteService) ListCorpora(ctx context.Context, principal *backendauth.
 	return out, nil
 }
 
+func (s *RemoteService) UpdateCorpus(ctx context.Context, principal *backendauth.Principal, corpusID string, params knowledge.UpdateCorpusParams) (*knowledge.Corpus, error) {
+	if err := backendauth.EnsureAuthenticated(principal); err != nil {
+		return nil, err
+	}
+	remote, err := s.client.UpdateCorpus(ctx, principal.AuthSession.ID, corpusID, params.Name, params.Description)
+	if err != nil {
+		return nil, cloudhttp.Translate(err)
+	}
+	return fromRemoteCorpus(*remote), nil
+}
+
 func (s *RemoteService) DeleteCorpus(ctx context.Context, principal *backendauth.Principal, corpusID string) error {
 	if err := backendauth.EnsureAuthenticated(principal); err != nil {
 		return err

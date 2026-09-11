@@ -21,7 +21,7 @@ export type CorpusDetail = {
   error: string | null
 }
 
-export type KnowledgeView = 'search' | 'collections' | 'chat'
+export type KnowledgeView = 'overview' | 'discover' | 'graph' | 'search' | 'chat' | 'actions' | 'sources' | 'collections'
 
 export type KnowledgePreviewKind =
   | 'pdf'

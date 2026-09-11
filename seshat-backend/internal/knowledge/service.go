@@ -138,6 +138,30 @@ func (s *Service) ListCorpora(ctx context.Context, principal *backendauth.Princi
 	return result, nil
 }
 
+func (s *Service) UpdateCorpus(ctx context.Context, principal *backendauth.Principal, corpusID string, params UpdateCorpusParams) (*Corpus, error) {
+	if s == nil || s.corpora == nil {
+		return nil, bkerr.Unavailable("knowledge store not configured", nil)
+	}
+	if strings.TrimSpace(params.Name) == "" {
+		return nil, bkerr.InvalidInput("corpus name is required", nil)
+	}
+	record, err := s.corpora.GetByID(ctx, corpusID)
+	if err != nil {
+		return nil, bkerr.NotFound("corpus not found", err)
+	}
+	if err := s.checkAccess(principal, record); err != nil {
+		return nil, err
+	}
+	updated, err := s.corpora.Update(ctx, corpusID, db.UpdateCorpusParams{
+		Name:        params.Name,
+		Description: params.Description,
+	})
+	if err != nil {
+		return nil, bkerr.Internal("update corpus: "+err.Error(), err)
+	}
+	return corpusFromDB(*updated), nil
+}
+
 func (s *Service) DeleteCorpus(ctx context.Context, principal *backendauth.Principal, corpusID string) error {
 	if s == nil || s.corpora == nil {
 		return bkerr.Unavailable("knowledge store not configured", nil)

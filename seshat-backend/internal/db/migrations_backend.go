@@ -369,6 +369,13 @@ func backendMigrations() []schemaMigration {
 				return db.gormDB.WithContext(ctx).AutoMigrate(&gAgentDefinition{})
 			},
 		},
+		{
+			ID:    "20260911_047_reranker_config",
+			Scope: migrationScopeBackend,
+			Run: func(ctx context.Context, db *DB) error {
+				return db.gormDB.WithContext(ctx).AutoMigrate(&gRerankerConfig{})
+			},
+		},
 	}
 }
 

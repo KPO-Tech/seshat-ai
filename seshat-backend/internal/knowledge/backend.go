@@ -23,6 +23,7 @@ type Backend interface {
 	CreateCorpus(ctx context.Context, principal *backendauth.Principal, params CreateCorpusParams) (*Corpus, error)
 	GetCorpus(ctx context.Context, principal *backendauth.Principal, corpusID string) (*Corpus, error)
 	ListCorpora(ctx context.Context, principal *backendauth.Principal) ([]Corpus, error)
+	UpdateCorpus(ctx context.Context, principal *backendauth.Principal, corpusID string, params UpdateCorpusParams) (*Corpus, error)
 	DeleteCorpus(ctx context.Context, principal *backendauth.Principal, corpusID string) error
 
 	AttachFile(ctx context.Context, principal *backendauth.Principal, corpusID, fileID string) (*CorpusFile, error)

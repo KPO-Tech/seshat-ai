@@ -123,6 +123,15 @@ func (c *Client) GetCorpus(ctx context.Context, token, corpusID string) (*remote
 	return &result, nil
 }
 
+func (c *Client) UpdateCorpus(ctx context.Context, token, corpusID, name, description string) (*remoteCorpus, error) {
+	var result remoteCorpus
+	body := map[string]any{"name": name, "description": description}
+	if _, err := cloudhttp.Do(ctx, c.httpClient, http.MethodPut, c.corporaURL(corpusID), token, body, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
 func (c *Client) DeleteCorpus(ctx context.Context, token, corpusID string) error {
 	_, err := cloudhttp.Do(ctx, c.httpClient, http.MethodDelete, c.corporaURL(corpusID), token, nil, nil)
 	return err

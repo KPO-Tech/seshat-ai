@@ -419,6 +419,15 @@ export type DoclingConfig = {
   updated_at?: number
 }
 
+export type RerankerConfig = {
+  base_url: string
+  model: string
+  has_api_key: boolean
+  enabled: boolean
+  is_configured: boolean
+  updated_at?: number
+}
+
 export type UserMemory = {
   id: string
   type: string

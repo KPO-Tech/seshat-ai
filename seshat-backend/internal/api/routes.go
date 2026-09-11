@@ -179,6 +179,8 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	apiV1.Handle("/settings/capability-links/", app.requireSettingsWritable(app.authMiddleware(http.HandlerFunc(app.handleCapabilityLinks))))
 	apiV1.Handle("/settings/docling", app.requireSettingsWritable(app.authMiddleware(http.HandlerFunc(app.handleDoclingConfig))))
 	apiV1.Handle("/settings/docling/", app.requireSettingsWritable(app.authMiddleware(http.HandlerFunc(app.handleDoclingConfig))))
+	apiV1.Handle("/settings/reranker", app.requireSettingsWritable(app.authMiddleware(http.HandlerFunc(app.handleRerankerConfig))))
+	apiV1.Handle("/settings/reranker/", app.requireSettingsWritable(app.authMiddleware(http.HandlerFunc(app.handleRerankerConfig))))
 	apiV1.Handle("/settings/local-stt", app.requireSettingsWritable(app.authMiddleware(http.HandlerFunc(app.handleLocalSTTConfig))))
 	apiV1.Handle("/settings/dataflow-secrets", app.requireSettingsWritable(app.authMiddleware(http.HandlerFunc(app.handleDataflowSecrets))))
 	apiV1.Handle("/settings/dataflow-secrets/{name}", app.requireSettingsWritable(app.authMiddleware(http.HandlerFunc(app.handleDataflowSecretByName))))

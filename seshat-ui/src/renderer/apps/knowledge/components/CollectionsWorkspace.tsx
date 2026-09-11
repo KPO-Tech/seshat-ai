@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Caution, FileText, Left, LoadingOne, Plus, Search, Upload } from '@icon-park/react'
+import { Caution, Delete, Edit, FileText, LoadingOne, More, Search, Upload } from '@icon-park/react'
 import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
 import type { Corpus } from '@/api/types'
 import type { CorpusDetail } from '../api/types'
@@ -12,6 +12,7 @@ import { StatusBadge } from './StatusBadge'
 export function CollectionsWorkspace({
   corpora,
   selectedCorpus,
+  openedCorpusId,
   selectedScope,
   detail,
   readyFiles,
@@ -21,21 +22,19 @@ export function CollectionsWorkspace({
   uploadError,
   processing,
   processError,
-  newCorpusName,
-  creatingCorpus,
   corporaError,
-  onNewCorpusNameChange,
-  onCreateCorpus,
-  onBrowsePublic,
   onUpload,
   onSelectCorpus,
+  onOpenCorpus,
   onTestSearch,
-  onProcessMissing,
+  onRenameCorpus,
+  onDeleteCorpus,
   onProcessAll,
   onRetryDetail,
 }: {
   corpora: Corpus[]
   selectedCorpus: Corpus | null
+  openedCorpusId: string | null
   selectedScope: string
   detail: CorpusDetail
   readyFiles: number
@@ -45,24 +44,46 @@ export function CollectionsWorkspace({
   uploadError: string | null
   processing: boolean
   processError: string | null
-  newCorpusName: string
-  creatingCorpus: boolean
   corporaError: string | null
-  onNewCorpusNameChange: (value: string) => void
-  onCreateCorpus: () => void
-  onBrowsePublic: () => void
   onUpload: () => void
   onSelectCorpus: (id: string) => void
+  onOpenCorpus: (id: string) => void
   onTestSearch: (query: string, corpusId: string) => void
-  onProcessMissing: (corpusId: string) => void
+  onRenameCorpus: (corpusId: string, name: string) => Promise<void>
+  onDeleteCorpus: (corpusId: string) => Promise<void>
   onProcessAll: (corpusId: string) => void
   onRetryDetail: (corpusId: string) => void
 }) {
-  const [openedCorpusId, setOpenedCorpusId] = useState<string | null>(null)
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null)
   const [testQuery, setTestQuery] = useState('')
+  const [collectionFilter, setCollectionFilter] = useState('')
+  const [menuCorpusId, setMenuCorpusId] = useState<string | null>(null)
+  const [renamingCorpus, setRenamingCorpus] = useState<Corpus | null>(null)
+  const [renameName, setRenameName] = useState('')
+  const [renaming, setRenaming] = useState(false)
+  const [deletingCorpusId, setDeletingCorpusId] = useState<string | null>(null)
+
   const openedCorpus = openedCorpusId ? corpora.find((corpus) => corpus.id === openedCorpusId) ?? null : null
   const selectedFile = selectedFileId ? detail.files.find((file) => file.file_id === selectedFileId) ?? null : null
+  const normalizedFilter = collectionFilter.trim().toLowerCase()
+  const visibleCorpora = normalizedFilter
+    ? corpora.filter((corpus) => {
+      const scope = corpus.workspace_id ? 'organization' : 'personal'
+      return `${corpus.name} ${scope} ${formatDate(corpus.updated_at)}`.toLowerCase().includes(normalizedFilter)
+    })
+    : corpora
+  const failedFiles = detail.files.filter((file) => file.status === 'failed').length
+  const pendingFiles = detail.files.filter((file) => file.status !== 'ingested' && file.status !== 'failed').length
+  const organizationCorpora = corpora.filter((corpus) => corpus.workspace_id).length
+  const selectedHealth = !selectedCorpus
+    ? 'No selection'
+    : failedFiles > 0
+      ? `${failedFiles} failed`
+      : activeJobs > 0 || pendingFiles > 0
+        ? 'Processing'
+        : selectedCorpus.chunk_count > 0
+          ? 'Ready'
+          : 'Empty'
 
   useEffect(() => {
     if (!openedCorpus || detail.loading) return
@@ -72,42 +93,42 @@ export function CollectionsWorkspace({
     })
   }, [detail.files, detail.loading, openedCorpus])
 
+  async function submitRename() {
+    if (!renamingCorpus) return
+    const nextName = renameName.trim()
+    if (!nextName) return
+    setRenaming(true)
+    try {
+      await onRenameCorpus(renamingCorpus.id, nextName)
+      setRenamingCorpus(null)
+      setRenameName('')
+    } finally {
+      setRenaming(false)
+    }
+  }
+
+  async function confirmDelete(corpus: Corpus) {
+    if (!window.confirm(`Delete "${corpus.name}"? This removes its files from the collection and cannot be undone.`)) return
+    setDeletingCorpusId(corpus.id)
+    try {
+      await onDeleteCorpus(corpus.id)
+      setMenuCorpusId(null)
+    } finally {
+      setDeletingCorpusId(null)
+    }
+  }
+
   if (openedCorpus) {
     return (
-      <div className="k-collections-page detail">
+      <div className="k-collections-page detail k-collections-console">
         {uploadError && <div className="k-page-error">{uploadError}</div>}
         {processError && <div className="k-page-error">{processError}</div>}
 
         <section className="k-collection-detail-grid">
           <main className="k-hub-panel">
             <div className="k-panel-title">
-              <span className="k-file-heading">
-                <button type="button" className="k-back-action" onClick={() => setOpenedCorpusId(null)} aria-label="Back to collections">
-                  <Left size={14} />
-                </button>
-                Files
-              </span>
-              <div className="k-panel-actions">
-                <button type="button" className="k-mini-action" onClick={onUpload} disabled={uploading}>
-                  <Upload size={13} /> {uploading ? 'Uploading...' : 'Import files'}
-                </button>
-                <button
-                  type="button"
-                  className="k-mini-action"
-                  onClick={() => onProcessMissing(openedCorpus.id)}
-                  disabled={processing}
-                >
-                  <LoadingOne size={13} className={processing ? 'spin' : undefined} /> Process missing
-                </button>
-                <button
-                  type="button"
-                  className="k-mini-action primary"
-                  onClick={() => onProcessAll(openedCorpus.id)}
-                  disabled={processing}
-                >
-                  <LoadingOne size={13} className={processing ? 'spin' : undefined} /> Process all
-                </button>
-              </div>
+              <span className="k-file-heading">Files</span>
+              <strong>{readyFiles}/{detail.files.length} ready</strong>
             </div>
             <div className="k-detail-files">
               {detail.loading ? (
@@ -188,63 +209,111 @@ export function CollectionsWorkspace({
   }
 
   return (
-    <div className="k-collections-page">
-      <section className="k-collections-top">
-        <div>
-          <h2>Manage knowledge bases</h2>
-        </div>
-        <div className="k-hero-actions">
-          <div className="k-inline-create">
-            <input
-              value={newCorpusName}
-              onChange={(e) => onNewCorpusNameChange(e.target.value)}
-              placeholder="New collection name"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  onCreateCorpus()
-                }
-              }}
-            />
-          </div>
-          <button type="button" className="k-secondary-action" onClick={onBrowsePublic}>
-            <Search size={14} /> Public library
-          </button>
-          <button type="button" className="k-primary-action" onClick={onCreateCorpus} disabled={!newCorpusName.trim() || creatingCorpus}>
-            <Plus size={14} /> New collection
-          </button>
-        </div>
-      </section>
+    <div className="k-collections-page k-collections-console">
       {corporaError && <div className="k-page-error">{corporaError}</div>}
 
+      <section className="k-collection-stats">
+        <div><span>Total collections</span><strong>{corpora.length}</strong></div>
+        <div><span>Indexed chunks</span><strong>{totalChunks.toLocaleString()}</strong></div>
+        <div><span>Org collections</span><strong>{organizationCorpora}</strong></div>
+        <div><span>Active jobs</span><strong>{activeJobs}</strong></div>
+      </section>
+
       <section className="k-management-grid">
-        <div className="k-hub-panel">
+        <div className="k-hub-panel k-collection-registry">
           <div className="k-panel-title">
-            <span>Collections</span>
-            <strong>{corpora.length} · {totalChunks} chunks</strong>
+            <span>Corpus registry</span>
+            <div className="k-registry-filter">
+              <Search size={13} />
+              <input
+                value={collectionFilter}
+                onChange={(event) => setCollectionFilter(event.target.value)}
+                placeholder="Filter collections..."
+              />
+            </div>
+            <strong>{visibleCorpora.length}/{corpora.length} total</strong>
           </div>
           {corpora.length === 0 ? (
             <div className="k-dashboard-empty">Create your first collection.</div>
+          ) : visibleCorpora.length === 0 ? (
+            <div className="k-dashboard-empty">No collection matches this filter.</div>
           ) : (
             <div className="k-collection-table">
-              {corpora.map((corpus) => (
-                <button
+              {visibleCorpora.map((corpus) => (
+                <div
                   key={corpus.id}
-                  type="button"
+                  role="button"
+                  tabIndex={0}
                   className={`k-collection-row ${selectedCorpus?.id === corpus.id ? 'active' : ''}`}
                   onClick={() => onSelectCorpus(corpus.id)}
                   onDoubleClick={() => {
                     onSelectCorpus(corpus.id)
-                    setOpenedCorpusId(corpus.id)
+                    onOpenCorpus(corpus.id)
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') onSelectCorpus(corpus.id)
                   }}
                 >
-                  <FileText size={15} />
-                  <span>
-                    <strong>{corpus.name}</strong>
-                    <small>{corpus.workspace_id ? 'Organization' : 'Personal'} · updated {formatDate(corpus.updated_at)}</small>
+                  <span className="k-collection-row-icon">
+                    <FileText size={15} />
                   </span>
-                  <em>{corpus.chunk_count} chunks</em>
-                </button>
+                  <span className="k-collection-row-main">
+                    <strong>{corpus.name}</strong>
+                    <small>{corpus.chunk_count > 0 ? `${corpus.chunk_count.toLocaleString()} indexed chunks` : 'No indexed chunks yet'}</small>
+                    <span className="k-collection-row-meta">
+                      <em>{corpus.workspace_id ? 'Organization' : 'Personal'}</em>
+                      <em>{formatDate(corpus.updated_at)}</em>
+                    </span>
+                  </span>
+                  <em className={`k-collection-state ${corpus.chunk_count > 0 ? 'ready' : 'empty'}`}>
+                    {corpus.chunk_count > 0 ? 'Ready' : 'Empty'}
+                  </em>
+                  <button
+                    type="button"
+                    className="k-collection-menu-trigger"
+                    aria-label={`Actions for ${corpus.name}`}
+                    aria-expanded={menuCorpusId === corpus.id}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      setMenuCorpusId((current) => (current === corpus.id ? null : corpus.id))
+                    }}
+                  >
+                    <More size={15} />
+                  </button>
+                  {menuCorpusId === corpus.id && (
+                    <div className="k-collection-menu" role="menu" onClick={(event) => event.stopPropagation()}>
+                      <button type="button" role="menuitem" onClick={() => { setMenuCorpusId(null); onOpenCorpus(corpus.id) }}>
+                        <FileText size={12} /> Open collection
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setMenuCorpusId(null)
+                          setRenamingCorpus(corpus)
+                          setRenameName(corpus.name)
+                        }}
+                      >
+                        <Edit size={12} /> Rename
+                      </button>
+                      <button type="button" role="menuitem" onClick={() => { setMenuCorpusId(null); onSelectCorpus(corpus.id); onUpload() }}>
+                        <Upload size={12} /> Import documents
+                      </button>
+                      <button type="button" role="menuitem" onClick={() => { setMenuCorpusId(null); onProcessAll(corpus.id) }} disabled={processing}>
+                        <LoadingOne size={12} className={processing ? 'spin' : undefined} /> Reprocess
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="danger"
+                        disabled={deletingCorpusId === corpus.id}
+                        onClick={() => { void confirmDelete(corpus) }}
+                      >
+                        {deletingCorpusId === corpus.id ? <LoadingOne size={12} className="spin" /> : <Delete size={12} />} Delete
+                      </button>
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           )}
@@ -253,7 +322,7 @@ export function CollectionsWorkspace({
         <aside className="k-hub-panel k-collection-summary">
           <div className="k-panel-title">
             <span>{selectedCorpus ? selectedCorpus.name : 'Selection'}</span>
-            <strong>{selectedCorpus ? selectedScope : 'None'}</strong>
+            <strong>{selectedHealth}</strong>
           </div>
           {!selectedCorpus ? (
             <div className="k-dashboard-empty">Select a collection, double-click to open.</div>
@@ -262,7 +331,11 @@ export function CollectionsWorkspace({
               <div className="k-summary-lines">
                 <div><span>Files</span><strong>{readyFiles}/{detail.files.length} ready</strong></div>
                 <div><span>Jobs</span><strong>{activeJobs} active</strong></div>
-                <div><span>Chunks</span><strong>{selectedCorpus.chunk_count}</strong></div>
+                <div><span>Chunks</span><strong>{selectedCorpus.chunk_count.toLocaleString()}</strong></div>
+              </div>
+              <div className="k-summary-lines compact">
+                <div><span>Scope</span><strong>{selectedScope}</strong></div>
+                <div><span>Updated</span><strong>{formatDate(selectedCorpus.updated_at)}</strong></div>
               </div>
               <form
                 className="k-test-search"
@@ -275,13 +348,69 @@ export function CollectionsWorkspace({
                 <input value={testQuery} onChange={(e) => setTestQuery(e.target.value)} placeholder="Test this collection..." />
                 <button type="submit" disabled={!testQuery.trim()}>Test</button>
               </form>
-              <button type="button" className="k-secondary-action k-wide-action" onClick={() => setOpenedCorpusId(selectedCorpus.id)}>
+              <button type="button" className="k-secondary-action k-wide-action" onClick={() => onOpenCorpus(selectedCorpus.id)}>
                 Open collection
               </button>
+              <div className="k-mini-file-list">
+                {detail.loading ? (
+                  <span>Loading files...</span>
+                ) : detail.files.length === 0 ? (
+                  <span>No files indexed yet.</span>
+                ) : detail.files.slice(0, 4).map((file) => (
+                  <div key={file.file_id}>
+                    <KnowledgeFileIcon filename={file.filename} />
+                    <strong>{file.filename}</strong>
+                    <StatusBadge status={file.status} />
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </aside>
       </section>
+      {renamingCorpus && (
+        <div
+          className="k-modal-backdrop"
+          role="presentation"
+          onMouseDown={() => {
+            if (!renaming) setRenamingCorpus(null)
+          }}
+        >
+          <form
+            className="k-create-collection-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Rename collection"
+            onMouseDown={(event) => event.stopPropagation()}
+            onSubmit={(event) => {
+              event.preventDefault()
+              void submitRename()
+            }}
+          >
+            <div className="k-create-collection-head">
+              <span className="k-create-collection-icon">
+                <Edit size={18} />
+              </span>
+              <div>
+                <h2>Rename collection</h2>
+                <p>Update the corpus name used in collection lists and retrieval scope.</p>
+              </div>
+            </div>
+            <label className="k-create-collection-field">
+              <span>Collection name</span>
+              <input autoFocus value={renameName} onChange={(event) => setRenameName(event.target.value)} />
+            </label>
+            <div className="k-create-collection-actions">
+              <button type="button" className="k-settings-btn" onClick={() => setRenamingCorpus(null)} disabled={renaming}>
+                Cancel
+              </button>
+              <button type="submit" className="k-settings-btn primary" disabled={!renameName.trim() || renaming}>
+                {renaming ? 'Renaming...' : 'Rename collection'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   )
 }
