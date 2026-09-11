@@ -201,3 +201,19 @@ func TestDispatchWorkflows_GraphFailsClearlyWithoutRegistry(t *testing.T) {
 		t.Fatalf("expected the asker never to be called without a registry, got %d calls", len(asker.calls))
 	}
 }
+
+// TestInboxAskerFailsLoudlyOnGraphTools locks in the "fail clearly, not
+// silently" contract for nodes-as-tools here - not yet implemented (only
+// internal/automation's sessionAgentCaller in the SDK repo has real support
+// today, see automation-app-pages.md §37.9).
+func TestInboxAskerFailsLoudlyOnGraphTools(t *testing.T) {
+	fake := &fakeAsker{output: "unused"}
+	asker := &inboxAsker{ask: fake.ask, ownerID: "user-1"}
+	graphTools := []dataflow.ToolSpec{{Name: "http_request"}}
+	if _, err := asker.Ask(context.Background(), "", "do it", nil, graphTools); err == nil {
+		t.Fatal("expected an error - nodes-as-tools isn't implemented here yet")
+	}
+	if len(fake.calls) != 0 {
+		t.Fatalf("expected the underlying asker never to be called, got %d calls", len(fake.calls))
+	}
+}

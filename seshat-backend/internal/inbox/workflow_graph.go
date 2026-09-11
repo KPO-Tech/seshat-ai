@@ -181,10 +181,16 @@ type inboxAsker struct {
 // closure), query.ContextBuildParams has no tools/tool-names field today.
 // Rather than silently ignore an override a workflow author explicitly
 // set, it fails loudly instead (same behavior/reasoning as the SDK's own
-// sessionAgentCaller and seshat-server's dataflowAgentCaller).
-func (a *inboxAsker) Ask(ctx context.Context, agentSlug, prompt string, tools []string) (string, error) {
+// sessionAgentCaller and seshat-server's dataflowAgentCaller). graphTools
+// (nodes-as-tools, automation-app-pages.md §37.9) is the same story - not
+// wired here either; only the SDK repo's own sessionAgentCaller has real
+// support today.
+func (a *inboxAsker) Ask(ctx context.Context, agentSlug, prompt string, tools []string, graphTools []dataflow.ToolSpec) (string, error) {
 	if len(tools) > 0 {
 		return "", fmt.Errorf("dataflow: agent node requested tools=%v, but per-node tool scoping is not implemented yet - omit it to use the workflow's own agent's tools", tools)
+	}
+	if len(graphTools) > 0 {
+		return "", fmt.Errorf("dataflow: agent node has %d node(s) wired as tools, but that's not implemented yet here - omit them to run without graph-node tools", len(graphTools))
 	}
 	content, sessionID, err := a.ask(ctx, a.ownerID, agentSlug, prompt, a.modelOverride, a.sessionID)
 	if err != nil {
@@ -201,7 +207,7 @@ type subworkflowAsker struct{ asker *inboxAsker }
 
 func (r subworkflowAsker) Run(ctx context.Context, def workflow.Definition) (workflow.Result, error) {
 	executor := workflow.ExecutorFunc(func(execCtx context.Context, node workflow.Node, inputs map[string]workflow.NodeResult) (string, error) {
-		return r.asker.Ask(execCtx, node.Agent, workflow.BuildNodePrompt(node, inputs), nil)
+		return r.asker.Ask(execCtx, node.Agent, workflow.BuildNodePrompt(node, inputs), nil, nil)
 	})
 	return workflow.Run(ctx, def, executor, workflow.Options{})
 }

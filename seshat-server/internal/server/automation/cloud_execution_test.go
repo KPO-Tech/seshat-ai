@@ -396,3 +396,17 @@ func TestBuildNodeTrace(t *testing.T) {
 		t.Fatalf("expected a dangling Order entry to be ignored, got %d entries", len(got))
 	}
 }
+
+// TestDataflowAgentCallerFailsLoudlyOnGraphTools locks in the "fail clearly,
+// not silently" contract for nodes-as-tools on this cloud path - not yet
+// implemented here (only internal/automation's sessionAgentCaller in the SDK
+// repo has real support today, see automation-app-pages.md §37.9). The check
+// happens before a.session is ever touched, so a zero-value caller is enough
+// - no real *sdk.Session needed for this one.
+func TestDataflowAgentCallerFailsLoudlyOnGraphTools(t *testing.T) {
+	caller := dataflowAgentCaller{}
+	graphTools := []dataflow.ToolSpec{{Name: "http_request"}}
+	if _, err := caller.Ask(context.Background(), "", "do it", nil, graphTools); err == nil {
+		t.Fatal("expected an error - nodes-as-tools isn't implemented on cloud-targeted runs yet")
+	}
+}

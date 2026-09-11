@@ -263,9 +263,12 @@ func (r orgScopedSecretResolver) Resolve(ctx context.Context, ref string) (strin
 // (see resolvedAgents) - anything else (an unresolved slug, meaning the
 // graph was hand-edited via the raw API after the last save, or this
 // deployment's Job predates the resolvedAgents column) still fails clearly
-// rather than silently running as the job's own default agent. tools still
-// fails loudly unconditionally - per-node tool scoping is a separate,
-// not-yet-built piece (see automation-app-pages.md §37.9's follow-up note).
+// rather than silently running as the job's own default agent. tools and
+// graphTools both still fail loudly unconditionally - per-node tool scoping
+// and nodes-as-tools are a separate, not-yet-built piece here (see
+// automation-app-pages.md §37.9's follow-up note; internal/automation's
+// sessionAgentCaller in the SDK repo is the one place graphTools is real
+// today).
 type dataflowAgentCaller struct {
 	session        *sdk.Session
 	resolvedAgents map[string]sdb.ResolvedAgent
@@ -279,9 +282,12 @@ type dataflowAgentCaller struct {
 	maxTokens      int
 }
 
-func (a dataflowAgentCaller) Ask(ctx context.Context, agentSlug string, prompt string, tools []string) (string, error) {
+func (a dataflowAgentCaller) Ask(ctx context.Context, agentSlug string, prompt string, tools []string, graphTools []dataflow.ToolSpec) (string, error) {
 	if len(tools) > 0 {
 		return "", fmt.Errorf("dataflow: agent node requested tools=%v, but per-node tool scoping is not implemented yet - omit it to use the workflow's own agent's tools", tools)
+	}
+	if len(graphTools) > 0 {
+		return "", fmt.Errorf("dataflow: agent node has %d node(s) wired as tools, but that's not implemented yet on cloud-targeted runs - omit them to run without graph-node tools", len(graphTools))
 	}
 	if agentSlug == "" {
 		resp, err := a.session.SubmitMessage(ctx, prompt)
