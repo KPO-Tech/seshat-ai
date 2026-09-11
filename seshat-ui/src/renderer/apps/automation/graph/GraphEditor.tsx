@@ -14,9 +14,13 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { Close, Plus, Undo as UndoIcon, Redo as RedoIcon, TreeDiagram, Magic, AllApplication, Play, LoadingOne } from '@icon-park/react'
-import { definitionToFlow, flowToDefinition, ancestorClosure, INPUT_HANDLE } from './convert'
-import { missingRequiredFields } from './validation'
+import {
+  definitionToFlow, flowToDefinition, ancestorClosure, INPUT_HANDLE,
+  REFERENCE_EDGE_TYPE, AGENT_SOURCE_HANDLE, AGENT_TARGET_HANDLE, TOOL_SOURCE_HANDLE, TOOL_TARGET_HANDLE,
+} from './convert'
+import { missingRequiredFields, missingAgentReference } from './validation'
 import { GRAPH_NODE_TYPES, type FlowGraphNode, type TestStatus, type TestRunNodeResult } from './GraphNode'
+import { GRAPH_EDGE_TYPES } from './ReferenceEdge'
 import { NodeCreator } from './NodeCreator'
 import { ParameterForm } from './ParameterForm'
 import { resolveNodeIcon, tintColor } from './nodeIcons'
@@ -186,10 +190,34 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
   const canUndo = historyPast.current.length > 0
   const canRedo = historyFuture.current.length > 0
 
+  // A reference connection (Agent/Tools - see convert.ts) is tagged by its
+  // own source handle rather than sharing the normal data-connection shape:
+  // it must not have its targetHandle forced to INPUT_HANDLE (the real
+  // dragged handle - AGENT_TARGET_HANDLE/TOOL_TARGET_HANDLE - is exactly
+  // what makes it a reference edge, not a data one), and it carries
+  // `type: REFERENCE_EDGE_TYPE` + `data.kind` so flowToDefinition and
+  // GraphNode's own styling can tell it apart. A query has exactly one
+  // agent, so a fresh agent-ref connection replaces any existing one from
+  // the same source instead of allowing a second.
+  function toReferenceEdge(connection: Connection, eds: Edge[]): Edge[] | null {
+    if (connection.source === connection.target) return null // no self-loops
+    if (connection.sourceHandle === AGENT_SOURCE_HANDLE) {
+      const withoutExisting = eds.filter((e) => !(e.source === connection.source && e.data?.kind === 'agent'))
+      return addEdge({ ...connection, type: REFERENCE_EDGE_TYPE, data: { kind: 'agent' } }, withoutExisting)
+    }
+    if (connection.sourceHandle === TOOL_SOURCE_HANDLE) {
+      const id = `${connection.source}:tool-ref->${connection.target}`
+      if (eds.some((e) => e.id === id)) return null // already wired
+      return addEdge({ ...connection, id, type: REFERENCE_EDGE_TYPE, data: { kind: 'tool' } }, eds)
+    }
+    return null
+  }
+
   const onConnect = useCallback(
     (connection: Connection) => {
       setEdges((eds) => {
-        const next = addEdge({ ...connection, targetHandle: INPUT_HANDLE }, eds)
+        const referenceNext = toReferenceEdge(connection, eds)
+        const next = referenceNext ?? addEdge({ ...connection, targetHandle: INPUT_HANDLE }, eds)
         emitChange(nodes, next)
         return next
       })
@@ -201,16 +229,32 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
   // it in place - without this, the only way to move a connection was
   // delete it and draw a brand new one from scratch. Providing this handler
   // is also what makes edges reconnectable at all (off by default otherwise).
+  // A reference edge being reconnected takes the same handle-based branch
+  // onConnect does (dropped first so its own stale copy doesn't collide with
+  // the dedupe/replace checks above), rather than always going through the
+  // default INPUT_HANDLE path.
   const onReconnect = useCallback(
     (oldEdge: Edge, connection: Connection) => {
       setEdges((eds) => {
-        const next = reconnectEdge(oldEdge, { ...connection, targetHandle: INPUT_HANDLE }, eds)
+        const withoutOld = eds.filter((e) => e.id !== oldEdge.id)
+        const referenceNext = oldEdge.type === REFERENCE_EDGE_TYPE ? toReferenceEdge(connection, withoutOld) : null
+        const next = referenceNext ?? reconnectEdge(oldEdge, { ...connection, targetHandle: INPUT_HANDLE }, eds)
         emitChange(nodes, next)
         return next
       })
     },
     [nodes, setEdges, emitChange],
   )
+
+  // Immediate drag feedback mirroring the same rules onConnect/flowToDefinition
+  // already enforce - an agent-ref may only land on an agent-target handle,
+  // a tool-ref only on a tool-target handle, and neither on a self-loop.
+  const isValidConnection = useCallback((connection: Edge | Connection) => {
+    if (connection.source === connection.target) return false
+    if (connection.sourceHandle === AGENT_SOURCE_HANDLE) return connection.targetHandle === AGENT_TARGET_HANDLE
+    if (connection.sourceHandle === TOOL_SOURCE_HANDLE) return connection.targetHandle === TOOL_TARGET_HANDLE
+    return true
+  }, [])
 
   const onNodeDragStop = useCallback(
     (_: unknown, node: FlowGraphNode) => {
@@ -449,7 +493,10 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
   // could go stale after an edit (unlike title/category/categoryColor
   // above, which only change when the catalog itself resolves).
   const nodesForCanvas = nodes.map((n) => {
-    const warnings = missingRequiredFields(nodeTypes.find((nt) => nt.type === n.data.dfType)?.properties, n.data.parameters)
+    const warnings = [
+      ...missingRequiredFields(nodeTypes.find((nt) => nt.type === n.data.dfType)?.properties, n.data.parameters),
+      ...missingAgentReference(n.data.dfType, n.data.agent),
+    ]
     const previewText = previewTextFor(nodeTypes.find((nt) => nt.type === n.data.dfType)?.properties, n.data.parameters)
     return {
       ...n,
@@ -471,6 +518,8 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
             nodes={nodesForCanvas}
             edges={edges}
             nodeTypes={GRAPH_NODE_TYPES}
+            edgeTypes={GRAPH_EDGE_TYPES}
+            isValidConnection={isValidConnection}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
@@ -602,6 +651,8 @@ function GraphEditorInner({ value, onChange, nodeTypes, nodeTypesLoading, nodeTy
                 organizationId={organizationId}
                 variableNames={variableNames ?? []}
                 siblingNodes={nodes.filter((n) => n.id !== selectedNode.id).map((n) => ({ id: n.id, type: n.data.dfType }))}
+                graphAgentId={selectedNode.data.agent}
+                graphToolIds={selectedNode.data.tools}
                 pinnedOutput={selectedNode.data.pinnedOutput}
                 onPinnedOutputChange={savePinnedOutput}
                 retrySettings={{

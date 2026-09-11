@@ -1,6 +1,6 @@
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react'
 import { Pin, CheckOne, CloseOne, Loading, Attention, Reduce } from '@icon-park/react'
-import { outputPortsForNode, INPUT_HANDLE } from './convert'
+import { outputPortsForNode, INPUT_HANDLE, AGENT_SOURCE_HANDLE, AGENT_TARGET_HANDLE, TOOL_SOURCE_HANDLE, TOOL_TARGET_HANDLE } from './convert'
 import { resolveNodeIcon, tintColor } from './nodeIcons'
 import type { OnErrorMode } from './types'
 
@@ -65,13 +65,41 @@ export type GraphNodeData = {
   maxTries?: number
   waitBetweenTriesMs?: number
   onError?: OnErrorMode
+  // Structural references (see convert.ts's reference edges) - a "query"
+  // node's connected agent-identity node ID, and a "query"/"tools" node's
+  // own list of capability-node IDs it may call as tools. Never data flow;
+  // rendered as dedicated dashed edges, not through the normal port system
+  // below.
+  tools?: string[]
+  agent?: string
 }
 
 export type FlowGraphNode = Node<GraphNodeData, 'dataflow'>
 
+// Reference-handle dot colors match ReferenceEdge.tsx's own KIND_COLOR
+// exactly, so a handle and the dashed line it draws always read as the same
+// kind at a glance.
+const AGENT_REF_COLOR = '#B197FC'
+const TOOL_REF_COLOR = '#FFC53D'
+
 export function GraphNode({ id, data, selected }: NodeProps<FlowGraphNode>) {
   const ports = outputPortsForNode(data.dfType, data.parameters, data.onError)
   const color = data.categoryColor ?? 'var(--color-text-muted)'
+
+  // "agent" and "tools" node types never execute real work (both are pure
+  // no-ops in the engine - see pkg/dataflow/builtin.go) - their only
+  // meaningful connections are the structural Agent/Tools reference handles
+  // below, so they drop the ordinary data-flow Left/Right handles entirely
+  // rather than offering a connection that would silently do nothing.
+  const isAgentType = data.dfType === 'agent'
+  const isQueryType = data.dfType === 'query'
+  const isToolsType = data.dfType === 'tools'
+  const hasDataHandles = !isAgentType && !isToolsType
+  // Mirrors pkg/dataflow/engine.go's validateToolTargetTypes/Validate exactly:
+  // a Tools reference may not target a trigger, a Logic-category node, an
+  // agent node, or a query node (a "tools" hub is an explicitly valid,
+  // nestable target).
+  const isValidToolTarget = !data.isTrigger && data.category !== 'Logic' && !isAgentType && !isQueryType
 
   return (
     <div className={`gf-node ${data.isTrigger ? 'trigger' : ''} ${selected ? 'selected' : ''}`}>
@@ -79,8 +107,14 @@ export function GraphNode({ id, data, selected }: NodeProps<FlowGraphNode>) {
           the node's own bounding box by default - since .gf-node now wraps
           only the card (no trailing ports block adding extra height below
           it), that center lines up exactly with the card's own edge. */}
-      {!data.isTrigger && (
+      {!data.isTrigger && hasDataHandles && (
         <Handle type="target" position={Position.Left} id={INPUT_HANDLE} className="gf-handle gf-handle-target" />
+      )}
+      {isAgentType && (
+        <Handle type="target" position={Position.Top} id={AGENT_TARGET_HANDLE} className="gf-handle gf-handle-ref" style={{ background: AGENT_REF_COLOR }} title="Identity used by a connected Query node" />
+      )}
+      {isQueryType && (
+        <Handle type="source" position={Position.Top} id={AGENT_SOURCE_HANDLE} className="gf-handle gf-handle-ref" style={{ background: AGENT_REF_COLOR }} title="Drag to an Agent node to set this query's identity" />
       )}
       <div className="gf-node-card">
         {!!data.validationWarnings?.length && (
@@ -121,7 +155,7 @@ export function GraphNode({ id, data, selected }: NodeProps<FlowGraphNode>) {
       {/* Multi-port nodes (if/switch) get one dot per port, evenly spaced
           down the card's own right edge - single-'main'-port nodes get one
           dot dead center, matching the target handle on the left. */}
-      {ports.map((port, i) => {
+      {hasDataHandles && ports.map((port, i) => {
         const topPct = ((i + 1) / (ports.length + 1)) * 100
         return (
           <div key={port} className="gf-port" style={{ top: `${topPct}%` }}>
@@ -136,6 +170,30 @@ export function GraphNode({ id, data, selected }: NodeProps<FlowGraphNode>) {
           </div>
         )
       })}
+      {/* Tools wiring - a "query"/"tools" node exposes other nodes as
+          callable tools (source), and any node eligible to be one accepts
+          the link (target) - a "tools" hub gets both, since it can itself be
+          nested inside another one (see pkg/dataflow's ResolveTools). */}
+      {(isQueryType || isToolsType) && (
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          id={TOOL_SOURCE_HANDLE}
+          className="gf-handle gf-handle-ref"
+          style={isValidToolTarget ? { left: '30%', background: TOOL_REF_COLOR } : { background: TOOL_REF_COLOR }}
+          title="Drag to a node to expose it as a callable tool"
+        />
+      )}
+      {isValidToolTarget && (
+        <Handle
+          type="target"
+          position={Position.Bottom}
+          id={TOOL_TARGET_HANDLE}
+          className="gf-handle gf-handle-ref"
+          style={(isQueryType || isToolsType) ? { left: '70%', background: TOOL_REF_COLOR } : { background: TOOL_REF_COLOR }}
+          title="Callable as a tool from a connected Query/Tools node"
+        />
+      )}
     </div>
   )
 }

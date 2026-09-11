@@ -5,6 +5,20 @@ import { UI_POSITION_KEY } from './types'
 
 export const INPUT_HANDLE = 'in'
 
+// Structural (non-data-flow) reference edges - a "query" node's Agent link
+// and a "query"/"tools" node's Tools wiring. Synthesized from Node.agent/
+// Node.tools in definitionToFlow and read back the same way in
+// flowToDefinition - never touching `connections` - so delete/reconnect/
+// undo-redo all work for free via the exact same edge-derived-state model
+// GraphEditor.tsx already uses for real connections. Tagged with
+// `type: REFERENCE_EDGE_TYPE` (see GraphEditor's edgeTypes/ReferenceEdge.tsx)
+// so flowToDefinition can tell them apart from normal edges.
+export const REFERENCE_EDGE_TYPE = 'reference'
+export const AGENT_SOURCE_HANDLE = 'agent-ref'
+export const AGENT_TARGET_HANDLE = 'agent-target'
+export const TOOL_SOURCE_HANDLE = 'tool-ref'
+export const TOOL_TARGET_HANDLE = 'tool-target'
+
 // outputPortsForNode is data-driven, not a hardcoded per-type table with a
 // fallback that can drift - "if" and "switch" are the only two node types
 // pkg/dataflow ships that emit on anything but "main" (see
@@ -62,6 +76,8 @@ export function definitionToFlow(def: DataflowDefinition): { nodes: FlowGraphNod
     data: {
       dfType: n.type,
       parameters: n.parameters ?? {},
+      tools: n.tools,
+      agent: n.agent,
       pinnedOutput: def.pinned_data?.[n.id],
       retryOnFail: n.retry_on_fail,
       maxTries: n.max_tries,
@@ -83,6 +99,28 @@ export function definitionToFlow(def: DataflowDefinition): { nodes: FlowGraphNod
         })
       }
     }
+    if (n.agent) {
+      edges.push({
+        id: `${n.id}:agent-ref->${n.agent}`,
+        source: n.id,
+        sourceHandle: AGENT_SOURCE_HANDLE,
+        target: n.agent,
+        targetHandle: AGENT_TARGET_HANDLE,
+        type: REFERENCE_EDGE_TYPE,
+        data: { kind: 'agent' },
+      })
+    }
+    for (const toolId of n.tools ?? []) {
+      edges.push({
+        id: `${n.id}:tool-ref->${toolId}`,
+        source: n.id,
+        sourceHandle: TOOL_SOURCE_HANDLE,
+        target: toolId,
+        targetHandle: TOOL_TARGET_HANDLE,
+        type: REFERENCE_EDGE_TYPE,
+        data: { kind: 'tool' },
+      })
+    }
   }
   return { nodes, edges }
 }
@@ -91,20 +129,43 @@ export function definitionToFlow(def: DataflowDefinition): { nodes: FlowGraphNod
 // into it, and the edges connecting them - the sub-graph "test this node"
 // (Tier 2.4) actually runs, so testing a downstream node replays its real
 // upstream chain (pin costly upstream nodes first - Tier 2.3 - to skip
-// re-running them for real). Plain backward BFS over the edges already held
-// client-side; no engine internals needed.
+// re-running them for real). Plain backward BFS over the real data edges
+// already held client-side; no engine internals needed.
+//
+// Reference edges (agent/tools) are walked separately, forward only, from
+// whatever's already in the data-ancestor closure - a query/tools node's
+// Agent/Tools targets must exist in whatever sub-definition gets sent to
+// test-run (pkg/dataflow.Validate rejects a reference to a node outside the
+// given Definition), but pulling in a referenced node shouldn't also pull in
+// *its* own upstream data ancestors - that's a different, unrelated data
+// dependency, not something this node's test run actually needs.
 export function ancestorClosure(nodes: FlowGraphNode[], edges: Edge[], targetId: string): { nodes: FlowGraphNode[]; edges: Edge[] } {
+  const dataEdges = edges.filter((e) => e.type !== REFERENCE_EDGE_TYPE)
+  const referenceEdges = edges.filter((e) => e.type === REFERENCE_EDGE_TYPE)
+
   const included = new Set<string>([targetId])
   const queue = [targetId]
   while (queue.length > 0) {
     const current = queue.pop()!
-    for (const edge of edges) {
+    for (const edge of dataEdges) {
       if (edge.target === current && !included.has(edge.source)) {
         included.add(edge.source)
         queue.push(edge.source)
       }
     }
   }
+
+  const refQueue = [...included]
+  while (refQueue.length > 0) {
+    const current = refQueue.pop()!
+    for (const edge of referenceEdges) {
+      if (edge.source === current && !included.has(edge.target)) {
+        included.add(edge.target)
+        refQueue.push(edge.target)
+      }
+    }
+  }
+
   return {
     nodes: nodes.filter((n) => included.has(n.id)),
     edges: edges.filter((e) => included.has(e.source) && included.has(e.target)),
@@ -117,6 +178,9 @@ export function flowToDefinition(name: string, description: string, nodes: FlowG
     if (n.data.pinnedOutput !== undefined) pinnedData[n.id] = n.data.pinnedOutput
   }
 
+  const dataEdges = edges.filter((e) => e.type !== REFERENCE_EDGE_TYPE)
+  const referenceEdges = edges.filter((e) => e.type === REFERENCE_EDGE_TYPE)
+
   return {
     name,
     description: description || undefined,
@@ -125,11 +189,19 @@ export function flowToDefinition(name: string, description: string, nodes: FlowG
       parameters[UI_POSITION_KEY] = { x: Math.round(n.position.x), y: Math.round(n.position.y) }
 
       const connections: Record<string, string[]> = {}
-      for (const edge of edges) {
+      for (const edge of dataEdges) {
         if (edge.source !== n.id) continue
         const port = edge.sourceHandle || 'main'
         if (!connections[port]) connections[port] = []
         connections[port].push(edge.target)
+      }
+
+      let agent: string | undefined
+      const tools: string[] = []
+      for (const edge of referenceEdges) {
+        if (edge.source !== n.id) continue
+        if (edge.data?.kind === 'agent') agent = edge.target
+        else if (edge.data?.kind === 'tool') tools.push(edge.target)
       }
 
       return {
@@ -137,6 +209,8 @@ export function flowToDefinition(name: string, description: string, nodes: FlowG
         type: (n.data?.dfType as string) ?? 'unknown',
         parameters,
         connections: Object.keys(connections).length > 0 ? connections : undefined,
+        tools: tools.length > 0 ? tools : undefined,
+        agent,
         retry_on_fail: n.data.retryOnFail || undefined,
         max_tries: n.data.maxTries,
         wait_between_tries_ms: n.data.waitBetweenTriesMs,

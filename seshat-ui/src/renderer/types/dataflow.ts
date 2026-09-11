@@ -9,6 +9,12 @@ export type DataflowNode = {
   max_tries?: number
   wait_between_tries_ms?: number
   on_error?: OnErrorMode
+  // Structural references, not data-flow (mirrors pkg/dataflow.Node exactly)
+  // - tools lists node IDs a "query"/"tools" node may invoke as LLM tools;
+  // agent is the "agent"-typed node ID providing a "query" node's identity.
+  // Never routed through `connections` - see convert.ts's reference edges.
+  tools?: string[]
+  agent?: string
 }
 
 export type DataflowDefinition = {

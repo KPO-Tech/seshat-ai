@@ -42,6 +42,14 @@ type Props = {
   // $node('id') for each one without ParameterForm needing to know
   // anything about expressions itself.
   siblingNodes: SiblingNode[]
+  // Node-level structural references (see convert.ts's reference edges),
+  // not a parameter - edited on the canvas by dragging from this node's own
+  // Agent/Tools handles, not through this form. Surfaced here read-only so
+  // it's not a mystery why a "query" node has no agent-related field in its
+  // own schema, and so a "tools" hub's disabled-toggle checklist (below) has
+  // something to list.
+  graphAgentId?: string
+  graphToolIds?: string[]
   // Node-level, not a parameter - see PinnedOutputField.
   pinnedOutput: Record<string, unknown>[] | undefined
   onPinnedOutputChange: (next: Record<string, unknown>[] | undefined) => void
@@ -76,6 +84,45 @@ function CopyButton({ text }: { text: string }) {
       {copied ? <CheckOne size={13} /> : <Copy size={13} />}
       {copied ? 'Copied' : 'Copy'}
     </button>
+  )
+}
+
+// "id (type)" - the same identification scheme ExpressionField's own
+// $node('id') sibling picker already uses; no other per-instance display
+// name exists client-side (GraphNodeData.title is the shared catalog name
+// for the whole node *type*, not this instance).
+function siblingLabel(id: string, siblingNodes: SiblingNode[]): string {
+  const type = siblingNodes.find((s) => s.id === id)?.type
+  return type ? `${id} (${type})` : id
+}
+
+// Replaces the generic freetext rendering of a "tools" node's own `disabled`
+// parameter (comma-separated node IDs) with a real checklist over its actual
+// Tools members - each toggle off adds that member's id to the comma-
+// separated string this still saves as, so the wire format is unchanged.
+function ToolsDisabledField({ value, toolIds, siblingNodes, onChange }: { value: string; toolIds: string[]; siblingNodes: SiblingNode[]; onChange: (next: string) => void }) {
+  const disabled = new Set(value.split(',').map((s) => s.trim()).filter(Boolean))
+  if (toolIds.length === 0) {
+    return <div className="gf-field-hint">No tools wired to this hub yet - drag a connection from this node's bottom handle to one.</div>
+  }
+  return (
+    <div className="gf-form">
+      {toolIds.map((id) => (
+        <label key={id} className="gf-field-checkbox">
+          <input
+            type="checkbox"
+            checked={!disabled.has(id)}
+            onChange={(e) => {
+              const next = new Set(disabled)
+              if (e.target.checked) next.delete(id)
+              else next.add(id)
+              onChange(Array.from(next).join(','))
+            }}
+          />
+          {siblingLabel(id, siblingNodes)}
+        </label>
+      ))}
+    </div>
   )
 }
 
@@ -140,7 +187,7 @@ function buildParamsFromDrafts(properties: NodeProperty[], parameters: Record<st
 // the SDK's own comments - and any future type shipped before its schema
 // is written). Consumers should mount this with `key={nodeId}` so switching
 // the selected node resets the local draft instead of merging stale state.
-export function ParameterForm({ nodeType, nodeId, parameters, properties, isTestable, jobId, webhookToken, organizationId, variableNames, siblingNodes, pinnedOutput, onPinnedOutputChange, retrySettings, onRetrySettingsChange, canTestNode, testStatus, testResult, testStale, onTestNode, onSave, onDelete, onDuplicate }: Props) {
+export function ParameterForm({ nodeType, nodeId, parameters, properties, isTestable, jobId, webhookToken, organizationId, variableNames, siblingNodes, graphAgentId, graphToolIds, pinnedOutput, onPinnedOutputChange, retrySettings, onRetrySettingsChange, canTestNode, testStatus, testResult, testStale, onTestNode, onSave, onDelete, onDuplicate }: Props) {
   const clean = stripUIPosition(parameters)
   const hasSchema = !!properties && properties.length > 0
 
@@ -188,8 +235,24 @@ export function ParameterForm({ nodeType, nodeId, parameters, properties, isTest
     <>
       <div className="gf-config-section">
         <h3 className="gf-config-section-title">Configuration</h3>
+        {nodeType === 'query' && (
+          <div className="gf-field">
+            <label className="gf-field-label">Agent</label>
+            {graphAgentId ? (
+              <div className="gf-field-hint">Connected to {siblingLabel(graphAgentId, siblingNodes)}.</div>
+            ) : (
+              <div className="gf-field-hint">Not connected yet - drag from this node's top handle to an Agent node.</div>
+            )}
+          </div>
+        )}
         {hasSchema ? (
           <div className="gf-form">
+            {/* "query"'s own `tools` property (rendered generically below,
+                like any other string field) is a comma-separated tool-*name*
+                override/fallback - unrelated to graphToolIds above, which is
+                the node-*ID* wiring drawn on the canvas. Both happen to be
+                called "tools" (see pkg/dataflow/builtin.go's own doc
+                comment) but are two entirely separate mechanisms. */}
             {properties!.filter((p) => passesDisplayIf(p, drafts)).map((p) => (
               <div key={p.name} className="gf-field">
                 <label className="gf-field-label">
@@ -203,6 +266,13 @@ export function ParameterForm({ nodeType, nodeId, parameters, properties, isTest
                   </label>
                 ) : p.type === 'secretRef' ? (
                   <SecretRefField value={(drafts[p.name] as string) ?? ''} onChange={(name) => setField(p.name, name)} />
+                ) : nodeType === 'tools' && p.name === 'disabled' ? (
+                  <ToolsDisabledField
+                    value={(drafts[p.name] as string) ?? ''}
+                    toolIds={graphToolIds ?? []}
+                    siblingNodes={siblingNodes}
+                    onChange={(v) => setField(p.name, v)}
+                  />
                 ) : nodeType === 'agent' && p.name === 'agent' ? (
                   // The SDK's own schema leaves this a plain string (a valid
                   // slug is only known per-tenant at runtime, which a
@@ -248,7 +318,7 @@ export function ParameterForm({ nodeType, nodeId, parameters, properties, isTest
                     placeholder={p.placeholder}
                   />
                 )}
-                {p.type !== 'boolean' && !(nodeType === 'agent' && (p.name === 'agent' || p.name === 'prompt')) && p.description && <div className="gf-field-hint">{p.description}</div>}
+                {p.type !== 'boolean' && !(nodeType === 'agent' && p.name === 'agent') && p.description && <div className="gf-field-hint">{p.description}</div>}
                 {errors[p.name] && <div className="gf-field-error">{errors[p.name]}</div>}
               </div>
             ))}

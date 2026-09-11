@@ -15,6 +15,8 @@ import {
   MessageOne,
   IdCard,
   CooperativeHandshake,
+  Comment,
+  Toolkit,
 } from '@icon-park/react'
 import {
   siPostgresql,
@@ -110,6 +112,8 @@ const GENERIC_ICONS: Record<string, (size: number) => ReactNode> = {
   merge: (size) => <Merge size={size} />,
   wait: (size) => <Time size={size} />,
   agent: (size) => <Robot size={size} />,
+  query: (size) => <Comment size={size} />,
+  tools: (size) => <Toolkit size={size} />,
   subworkflow: (size) => <Share size={size} />,
   teams_send_message: (size) => <MessageOne size={size} />,
   salesforce_create_record: (size) => <IdCard size={size} />,

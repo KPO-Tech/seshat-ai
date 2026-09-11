@@ -4,6 +4,7 @@ import '@xyflow/react/dist/style.css'
 import { Close } from '@icon-park/react'
 import { definitionToFlow } from './convert'
 import { GRAPH_NODE_TYPES, type FlowGraphNode, type TestStatus, type TestRunNodeResult } from './GraphNode'
+import { GRAPH_EDGE_TYPES } from './ReferenceEdge'
 import { GRAPH_EDITOR_CSS, categoryColor, previewTextFor } from './GraphEditor'
 import { RunNodeDetailPanel } from './RunNodeDetailPanel'
 import type { DataflowDefinition, NodeDescription, NodeTraceEntry } from './types'
@@ -81,6 +82,7 @@ function GraphReplayViewerInner({ graph, nodeTrace, nodeTypes }: Props) {
             nodes={nodesForCanvas}
             edges={initial.edges}
             nodeTypes={GRAPH_NODE_TYPES}
+            edgeTypes={GRAPH_EDGE_TYPES}
             nodesDraggable={false}
             nodesConnectable={false}
             edgesReconnectable={false}

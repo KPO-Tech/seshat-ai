@@ -29,3 +29,12 @@ export function missingRequiredFields(properties: NodeProperty[] | undefined, pa
     })
     .map((p) => p.displayName)
 }
+
+// A "query" node's Agent is a node-level structural reference (see
+// convert.ts's reference edges), not a NodeProperty, so missingRequiredFields
+// above never sees it - this is the one extra check needed to mirror
+// pkg/dataflow's own Validate ("query node %q requires an agent reference")
+// for the same static validation badge.
+export function missingAgentReference(dfType: string, agent: string | undefined): string[] {
+  return dfType === 'query' && !agent ? ['Agent'] : []
+}
