@@ -1271,40 +1271,61 @@ export const GRAPH_EDITOR_CSS = `
   font-size: var(--font-size-2xs);
 }
 
+/* n8n-style compact node: a square icon tile (the connectable box React
+   Flow measures for edges/dragging) with the node's name as a separate
+   label below it, rather than a wide icon+text-row card. */
 .gf-node {
-  position: relative;
-  width: 210px;
-  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 76px;
 }
 
-.gf-node-card {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
+.gf-node-tile {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-width: 1px;
+  border-style: solid;
+  border-color: var(--color-border);
+  border-radius: 12px;
   background: var(--color-surface);
   box-shadow: var(--shadow-medium);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: border-color 0.1s ease, box-shadow 0.1s ease;
 }
 
 /* Trigger nodes have no input handle (nothing connects into a graph's own
    entry point) - a fully rounded left edge makes that visually obvious
    instead of just quietly missing a handle other nodes have. */
-.gf-node.trigger .gf-node-card {
-  border-radius: 999px 10px 10px 999px;
+.gf-node-tile.trigger {
+  border-radius: 999px 12px 12px 999px;
 }
 
-.gf-node.selected .gf-node-card {
+.gf-node.selected .gf-node-tile {
   border-color: var(--color-cta);
   box-shadow: 0 0 0 2px var(--color-primary-subtle), var(--shadow-medium);
 }
 
-/* Floats at the card's own top-right corner (positioned against .gf-node,
-   the nearest positioned ancestor) rather than inline in the card's flex
-   row, so it reads as a status badge on the node, not a fourth piece of
-   its regular content. */
+.gf-node-label {
+  max-width: 76px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-2xs);
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+/* Floats at the tile's own top-right corner (positioned against
+   .gf-node-tile, the nearest positioned ancestor) so it reads as a status
+   badge on the node, not something attached to its label. */
 .gf-node-pin-badge {
   position: absolute;
   top: -6px;
@@ -1384,42 +1405,14 @@ export const GRAPH_EDITOR_CSS = `
 }
 
 .gf-node-icon {
-  width: 28px;
-  height: 28px;
-  flex-shrink: 0;
-  border-radius: 7px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.gf-node-text {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.gf-node-title {
-  color: var(--color-text);
-  font-size: var(--font-size-xs);
-  font-weight: 750;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.gf-node-subtitle {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-2xs);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 /* One per output port, absolutely positioned at an even vertical interval
-   along the card's own right edge (set inline via top%) rather than
-   stacked below the card in normal flow - that's what made ports look
+   along the tile's own right edge (set inline via top%) rather than
+   stacked below the tile in normal flow - that's what made ports look
    detached/floating instead of attached to the node. */
 .gf-port {
   position: absolute;

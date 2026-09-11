@@ -82,9 +82,9 @@ export type FlowGraphNode = Node<GraphNodeData, 'dataflow'>
 const AGENT_REF_COLOR = '#B197FC'
 const TOOL_REF_COLOR = '#FFC53D'
 
-export function GraphNode({ id, data, selected }: NodeProps<FlowGraphNode>) {
+export function GraphNode({ data, selected }: NodeProps<FlowGraphNode>) {
   const ports = outputPortsForNode(data.dfType, data.parameters, data.onError)
-  const color = data.categoryColor ?? 'var(--color-text-muted)'
+  const categoryColorValue = data.categoryColor ?? 'var(--color-text-muted)'
 
   // "agent" and "tools" node types never execute real work (both are pure
   // no-ops in the engine - see pkg/dataflow/builtin.go) - their only
@@ -101,22 +101,25 @@ export function GraphNode({ id, data, selected }: NodeProps<FlowGraphNode>) {
   // nestable target).
   const isValidToolTarget = !data.isTrigger && data.category !== 'Logic' && !isAgentType && !isQueryType
 
+  // Agent/Query/Tools read as visually distinct from an ordinary step - same
+  // colors already used for their own reference-edge handles/lines above, so
+  // a node's tile border matches the color of the link it draws. Deliberately
+  // the same size as every other tile (color/border says "special", not
+  // scale) - there's no auto-layout relationship between these nodes, just a
+  // plain structural reference, so nothing here should visually imply a
+  // parent/child hierarchy that isn't real.
+  const specialColor = isAgentType || isQueryType ? AGENT_REF_COLOR : isToolsType ? TOOL_REF_COLOR : undefined
+  const tileColor = specialColor ?? categoryColorValue
+  const tileBorderColor = specialColor ?? 'var(--color-border)'
+  const tileBorderWidth = specialColor ? '1.5px' : '1px'
+
   return (
-    <div className={`gf-node ${data.isTrigger ? 'trigger' : ''} ${selected ? 'selected' : ''}`}>
-      {/* No override: React Flow centers a Left/Right handle vertically on
-          the node's own bounding box by default - since .gf-node now wraps
-          only the card (no trailing ports block adding extra height below
-          it), that center lines up exactly with the card's own edge. */}
-      {!data.isTrigger && hasDataHandles && (
-        <Handle type="target" position={Position.Left} id={INPUT_HANDLE} className="gf-handle gf-handle-target" />
-      )}
-      {isAgentType && (
-        <Handle type="target" position={Position.Top} id={AGENT_TARGET_HANDLE} className="gf-handle gf-handle-ref" style={{ background: AGENT_REF_COLOR }} title="Identity used by a connected Query node" />
-      )}
-      {isQueryType && (
-        <Handle type="source" position={Position.Top} id={AGENT_SOURCE_HANDLE} className="gf-handle gf-handle-ref" style={{ background: AGENT_REF_COLOR }} title="Drag to an Agent node to set this query's identity" />
-      )}
-      <div className="gf-node-card">
+    <div className={`gf-node ${selected ? 'selected' : ''}`}>
+      <div
+        className={`gf-node-tile ${data.isTrigger ? 'trigger' : ''}`}
+        style={{ background: tintColor(tileColor), borderColor: tileBorderColor, borderWidth: tileBorderWidth }}
+        title={data.previewText}
+      >
         {!!data.validationWarnings?.length && (
           <div className="gf-node-validation-badge" title={`Missing required field${data.validationWarnings.length > 1 ? 's' : ''}: ${data.validationWarnings.join(', ')}`}>
             <Attention theme="filled" size={10} />
@@ -144,56 +147,62 @@ export function GraphNode({ id, data, selected }: NodeProps<FlowGraphNode>) {
               : <CheckOne theme="filled" size={10} />}
           </div>
         )}
-        <div className="gf-node-icon" style={{ background: tintColor(color), color }}>
-          {resolveNodeIcon(data.dfType, data.category ?? 'Other', 16)}
+        {!data.isTrigger && hasDataHandles && (
+          <Handle type="target" position={Position.Left} id={INPUT_HANDLE} className="gf-handle gf-handle-target" />
+        )}
+        {isAgentType && (
+          <Handle type="target" position={Position.Top} id={AGENT_TARGET_HANDLE} className="gf-handle gf-handle-ref" style={{ background: AGENT_REF_COLOR }} title="Identity used by a connected Query node" />
+        )}
+        {isQueryType && (
+          <Handle type="source" position={Position.Top} id={AGENT_SOURCE_HANDLE} className="gf-handle gf-handle-ref" style={{ background: AGENT_REF_COLOR }} title="Drag to an Agent node to set this query's identity" />
+        )}
+        <div className="gf-node-icon" style={{ color: tileColor }}>
+          {resolveNodeIcon(data.dfType, data.category ?? 'Other', 24)}
         </div>
-        <div className="gf-node-text">
-          <div className="gf-node-title">{data.title ?? data.dfType}</div>
-          <div className="gf-node-subtitle">{data.previewText ?? id}</div>
-        </div>
+        {/* Multi-port nodes (if/switch) get one dot per port, evenly spaced
+            down the tile's own right edge - single-'main'-port nodes get one
+            dot dead center, matching the target handle on the left. */}
+        {hasDataHandles && ports.map((port, i) => {
+          const topPct = ((i + 1) / (ports.length + 1)) * 100
+          return (
+            <div key={port} className="gf-port" style={{ top: `${topPct}%` }}>
+              {port !== 'main' && <span className="gf-port-label">{port}</span>}
+              <Handle
+                type="source"
+                position={Position.Right}
+                id={port}
+                className="gf-handle"
+                style={{ position: 'relative', top: 0, right: 0, transform: 'none', background: categoryColorValue }}
+              />
+            </div>
+          )
+        })}
+        {/* Tools wiring - a "query"/"tools" node exposes other nodes as
+            callable tools (source), and any node eligible to be one accepts
+            the link (target) - a "tools" hub gets both, since it can itself
+            be nested inside another one (see pkg/dataflow's ResolveTools). */}
+        {(isQueryType || isToolsType) && (
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            id={TOOL_SOURCE_HANDLE}
+            className="gf-handle gf-handle-ref"
+            style={isValidToolTarget ? { left: '30%', background: TOOL_REF_COLOR } : { background: TOOL_REF_COLOR }}
+            title="Drag to a node to expose it as a callable tool"
+          />
+        )}
+        {isValidToolTarget && (
+          <Handle
+            type="target"
+            position={Position.Bottom}
+            id={TOOL_TARGET_HANDLE}
+            className="gf-handle gf-handle-ref"
+            style={(isQueryType || isToolsType) ? { left: '70%', background: TOOL_REF_COLOR } : { background: TOOL_REF_COLOR }}
+            title="Callable as a tool from a connected Query/Tools node"
+          />
+        )}
       </div>
-      {/* Multi-port nodes (if/switch) get one dot per port, evenly spaced
-          down the card's own right edge - single-'main'-port nodes get one
-          dot dead center, matching the target handle on the left. */}
-      {hasDataHandles && ports.map((port, i) => {
-        const topPct = ((i + 1) / (ports.length + 1)) * 100
-        return (
-          <div key={port} className="gf-port" style={{ top: `${topPct}%` }}>
-            {port !== 'main' && <span className="gf-port-label">{port}</span>}
-            <Handle
-              type="source"
-              position={Position.Right}
-              id={port}
-              className="gf-handle"
-              style={{ position: 'relative', top: 0, right: 0, transform: 'none', background: color }}
-            />
-          </div>
-        )
-      })}
-      {/* Tools wiring - a "query"/"tools" node exposes other nodes as
-          callable tools (source), and any node eligible to be one accepts
-          the link (target) - a "tools" hub gets both, since it can itself be
-          nested inside another one (see pkg/dataflow's ResolveTools). */}
-      {(isQueryType || isToolsType) && (
-        <Handle
-          type="source"
-          position={Position.Bottom}
-          id={TOOL_SOURCE_HANDLE}
-          className="gf-handle gf-handle-ref"
-          style={isValidToolTarget ? { left: '30%', background: TOOL_REF_COLOR } : { background: TOOL_REF_COLOR }}
-          title="Drag to a node to expose it as a callable tool"
-        />
-      )}
-      {isValidToolTarget && (
-        <Handle
-          type="target"
-          position={Position.Bottom}
-          id={TOOL_TARGET_HANDLE}
-          className="gf-handle gf-handle-ref"
-          style={(isQueryType || isToolsType) ? { left: '70%', background: TOOL_REF_COLOR } : { background: TOOL_REF_COLOR }}
-          title="Callable as a tool from a connected Query/Tools node"
-        />
-      )}
+      <div className="gf-node-label">{data.title ?? data.dfType}</div>
     </div>
   )
 }
