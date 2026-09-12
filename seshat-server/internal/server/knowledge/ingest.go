@@ -190,7 +190,7 @@ func (s *Service) Search(ctx context.Context, principal *iam.Principal, params S
 	if err != nil {
 		return nil, ErrInvalidInput("search corpus: " + err.Error())
 	}
-	enriched, err := s.enrichSearchResponse(ctx, *corpus, query, mode, topK, resp.Results)
+	enriched, err := s.enrichSearchResponse(ctx, principal, *corpus, query, mode, topK, resp.Results)
 	if err != nil {
 		return nil, err
 	}
@@ -217,16 +217,27 @@ func normalizeSearchMode(mode string) (string, float32, error) {
 	}
 }
 
-func (s *Service) enrichSearchResponse(ctx context.Context, corpus sdb.Corpus, query, mode string, topK int, raw []sdkrag.SearchResult) (*SearchResponse, error) {
+func (s *Service) enrichSearchResponse(ctx context.Context, principal *iam.Principal, corpus sdb.Corpus, query, mode string, topK int, raw []sdkrag.SearchResult) (*SearchResponse, error) {
 	files, err := s.searchFilesByResult(ctx, corpus.ID, raw)
 	if err != nil {
 		return nil, err
 	}
+	// Loaded once per search, not per result - only needed for "domain:"
+	// ExternalAccess entries. A lookup failure isn't fatal to the search
+	// itself; it just means domain-based entries won't match (the safe,
+	// restrictive direction - see principalMatchesExternalAccess).
+	var org sdb.Organization
+	_ = s.db.Gorm().WithContext(ctx).First(&org, "id = ?", corpus.OrganizationID).Error
+
 	results := make([]SearchResult, 0, len(raw))
 	for _, hit := range raw {
 		metadata := copyMetadata(hit.Metadata)
 		fileID := fileIDFromRAGMetadata(corpus.ID, hit.Key, metadata)
 		position := intFromMetadata(metadata, "position")
+		file, hasFile := files[fileID]
+		if hasFile && !principalMatchesExternalAccess(principal, org, file.ExternalAccess) {
+			continue
+		}
 		result := SearchResult{
 			Key:      hit.Key,
 			Text:     hit.Text,
@@ -239,7 +250,7 @@ func (s *Service) enrichSearchResponse(ctx context.Context, corpus sdb.Corpus, q
 				ArtifactKey: metadata["artifact_key"],
 			},
 		}
-		if file, ok := files[fileID]; ok {
+		if hasFile {
 			result.CorpusFileID = file.ID
 			result.Filename = file.Filename
 			result.ContentType = file.ContentType
@@ -260,6 +271,51 @@ func (s *Service) enrichSearchResponse(ctx context.Context, corpus sdb.Corpus, q
 		results = append(results, result)
 	}
 	return &SearchResponse{CorpusID: corpus.ID, Query: query, Mode: mode, TopK: topK, Results: results}, nil
+}
+
+// principalMatchesExternalAccess reports whether principal may see a file
+// whose source connector reported the given ACL (sdb.CorpusFile.
+// ExternalAccess - prefixed-identity strings: "user:<email>", "group:<id>",
+// "domain:<name>", "public"). Empty/nil access means no source ACL is known
+// (manual upload, or a connector that doesn't report one) - unchanged
+// default-open behavior, gated only by the corpus-level permission check
+// mustLoadCorpus already performed.
+//
+// "group:" entries are not resolved in this pass (no external-identity
+// mapping exists yet - see
+// docs/produits/platforms/knowledge/knowledge-onyx-connectors-permissions-analysis.md
+// section 4b) and deliberately fail closed: a file whose only ACL entries
+// are external groups is invisible to everyone until group resolution is
+// built, rather than risk falling open.
+func principalMatchesExternalAccess(principal *iam.Principal, org sdb.Organization, access []string) bool {
+	if len(access) == 0 {
+		return true
+	}
+	if principal == nil {
+		return false
+	}
+	email := strings.ToLower(strings.TrimSpace(principal.User.Email))
+	verifiedDomain := ""
+	if org.Domain != nil && org.DomainVerifiedAt != nil {
+		verifiedDomain = strings.ToLower(strings.TrimSpace(*org.Domain))
+	}
+	for _, entry := range access {
+		switch {
+		case entry == "public":
+			return true
+		case strings.HasPrefix(entry, "user:"):
+			if email != "" && strings.EqualFold(strings.TrimPrefix(entry, "user:"), email) {
+				return true
+			}
+		case strings.HasPrefix(entry, "domain:"):
+			if verifiedDomain != "" && strings.EqualFold(strings.TrimPrefix(entry, "domain:"), verifiedDomain) {
+				return true
+			}
+		}
+		// "group:" and any other unrecognized prefix: never matched here -
+		// fail closed, see doc comment above.
+	}
+	return false
 }
 
 func (s *Service) searchFilesByResult(ctx context.Context, corpusID string, raw []sdkrag.SearchResult) (map[string]sdb.CorpusFile, error) {

@@ -703,8 +703,20 @@ type CorpusFile struct {
 	// duplicating it. See connectors.Service.IngestFromConnector.
 	ConnectorAccountID *string `gorm:"size:32;index"`
 	ExternalResourceID string  `gorm:"size:1000"`
-	CreatedAt          time.Time
-	UpdatedAt          time.Time
+	// ExternalAccess carries the source system's per-file ACL, when the
+	// connector that synced this file reports one (today: gdrive only) -
+	// prefixed-identity strings ("user:alice@co.com", "group:eng@co.com",
+	// "domain:co.com", "public"), mirroring coreconnectors.AccessEntry.
+	// Empty/nil means no source ACL is known (manual upload, or a connector
+	// that doesn't report one) - unchanged default-open behavior, checked
+	// only against corpus-level permissions as before. See
+	// knowledge.principalMatchesExternalAccess for how this is enforced at
+	// search time, and the "explicit scope decision" in
+	// docs/produits/platforms/knowledge/knowledge-onyx-connectors-permissions-analysis.md
+	// for why an unresolved "group:" entry fails closed rather than open.
+	ExternalAccess []string `gorm:"serializer:json;type:text"`
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 // KnowledgeSearchEvent records one user search against a corpus. It is a

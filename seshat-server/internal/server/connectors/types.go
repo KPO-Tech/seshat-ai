@@ -45,6 +45,21 @@ type (
 	accessEntry = coreconnectors.AccessEntry
 )
 
+// accessEntriesToStrings converts a SyncItem's ACL to the plain []string
+// shape sdb.CorpusFile.ExternalAccess stores - accessEntry is a defined
+// string type, not identical to string, so Go requires an explicit
+// element-wise conversion rather than a bare slice cast.
+func accessEntriesToStrings(entries []accessEntry) []string {
+	if len(entries) == 0 {
+		return nil
+	}
+	out := make([]string, len(entries))
+	for i, e := range entries {
+		out[i] = string(e)
+	}
+	return out
+}
+
 // knowledgeConnector discovers and syncs external resources into Knowledge.
 // Every connector implementation in this package and connectorFor's
 // registry satisfy this. account is accepted for interface uniformity but

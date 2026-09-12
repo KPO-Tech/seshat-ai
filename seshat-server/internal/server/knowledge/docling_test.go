@@ -193,6 +193,7 @@ func TestConnectorIngestionUsesRuntimeDoclingChunkerForBinaryData(t *testing.T) 
 		"application/pdf",
 		[]byte{0x25, 0x50, 0x44, 0x46, 0x00, 0x01, 0x02},
 		"",
+		nil,
 	); err != nil {
 		t.Fatalf("ingest connector item: %v", err)
 	}

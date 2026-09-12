@@ -267,6 +267,29 @@ Point d'attention :
 
 `go test ./...` dans `doclingclient` echoue sous Windows au 2026-09-06 sur deux sujets non lies au chunking lui-meme : un test de cache concurrent base sur `os.Rename` vers le meme fichier, et un test de chemin XDG qui attend une forme Unix. Cela invite a faire un POC prudent avant d'ajouter la dependance au moteur.
 
+## Analyse RAGFlow - 2026-09-12
+
+RAGFlow (https://github.com/infiniflow/ragflow, Apache 2.0, cloné dans `D:\Documents\PROJECTS\ai\helps\ragflow`) devient la source prioritaire pour combler le vrai gap identifié sur reranking et chunking - voir `knowledge-sources-retenues.md` pour le contexte de priorisation.
+
+### Correction importante
+
+Seshat n'a **pas** un reranking totalement absent. `internal/rag/types.go:110-113` définit déjà une interface `Reranker`, implémentée par `HTTPReranker` (`internal/rag/reranker/reranker.go`, compatible Cohere/TEI, donc `BAAI/bge-reranker-v2-m3` déjà supporté), câblée dans `internal/rag/service.go:250-313` et `cmd/cli/runtime.go:346-355`, présente depuis `[1.1.0]` (2026-08-01 au CHANGELOG). Le vrai gap n'est pas "aucun reranking" mais un reranking primitif : il **remplace** l'ordre vectoriel au lieu de le mélanger, ne normalise pas les scores, et n'est pas configurable par corpus.
+
+### Reranking - ce qui vient de RAGFlow
+
+- **Fusion au lieu de remplacement** : RAGFlow calcule `sim = tkWeight*token_similarity + vtWeight*normalized_model_score + tag_score*10 + pagerank` (`internal/service/nlp/reranker.go:190-213`, `vtWeight` par défaut 0.3) - le score du cross-encoder est mélangé au score vectoriel/BM25, jamais un remplacement total. À porter dans `internal/rag/service.go` (le bloc `useReranker`).
+- **Normalisation des scores** : `rag/llm/rerank_model.py:104` (`_normalize_rank`) - min-max vers [0,1] seulement si hors intervalle. Sans ça, un provider à score non borné (ex: NVIDIA) casserait tout mélange. À porter dans `internal/rag/reranker/reranker.go`.
+- **Reranker configurable par corpus** plutôt qu'une seule variable d'env `RAG_RERANK_URL` globale - inspiration : `dialog.rerank_id` (`api/db/services/dialog_service.py:382-389`) et `RerankModel`/`ModelDriver.Rerank` (`internal/entity/models/types.go:297-350`), qui traite le rerank comme une capacité parmi d'autres d'un provider déjà configuré plutôt qu'un bloc `RAG_RERANK_*` séparé.
+- **Ne pas porter** : la ménagerie de ~20 adaptateurs providers RAGFlow (`rag/llm/rerank_model.py`) - la plupart sont des variantes quasi-identiques `{query, documents, top_n} → {results}` déjà couvertes par `HTTPReranker`. Seuls Bedrock (pagination par lots de 1000) et le SDK natif Cohere seraient des cas réellement différents, à ajouter seulement si demandés.
+
+### Chunking/parsing - ce qui vient de RAGFlow
+
+- **Chunking hiérarchique par numérotation** (`tree_merge`/`bullets_category`, `rag/nlp/__init__.py:1120-1164`) - respecte la structure d'un document (articles de loi, clauses de contrat, sections numérotées) au lieu de découper à plat. Le profil `structured` de seshat (`internal/rag/chunk_profile.go:19,49-53`) n'est aujourd'hui qu'un preset de taille sans awareness structurel - c'est le slot exact pour ce nouveau `DocumentChunker`.
+- **Correction de l'ordre de lecture multi-colonnes** (`rag/app/paper.py:57-65`, ~10 lignes, aucun modèle ML) - seshat ne fait rien contre ce problème aujourd'hui puisqu'il fait confiance au markdown renvoyé par docling-serve. À tester empiriquement d'abord (est-ce que docling-serve gère déjà bien le multi-colonnes ?) avant de porter.
+- **Contexte de titre pour les tableaux** (`Docx.__get_nearest_title`, `rag/app/naive.py:572-675`) - remonte les titres DOCX pour attacher un chemin "Table Location: X > Y > Z" à chaque tableau. Se branche directement sur `doclingChunkMetadata` (`internal/rag/docling_chunker.go:117-152`), qui a déjà un chemin `Headings`/`Captions` mais ne le fait pas pour les tableaux spécifiquement.
+- **Tables pivotées/scannées** (`_evaluate_table_orientation`, `_ocr_rotated_tables`, `pdf_parser.py:367,642`) - à vérifier empiriquement contre docling-serve avant de porter quoi que ce soit.
+- **Ne pas porter** : le dispatch à 10 backends PDF de RAGFlow (`PARSERS` dans `naive.py`) - docling-serve fait déjà OCR+layout+tables en un seul service, dupliquer cette ménagerie serait une lourde charge de maintenance pour un bénéfice incertain.
+
 ## Lecture produit
 
 OpenSearch doit améliorer d'abord la page Search et la fiabilité du moteur Knowledge.

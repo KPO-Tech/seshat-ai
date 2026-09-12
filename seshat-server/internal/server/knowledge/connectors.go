@@ -37,7 +37,12 @@ func (s *Service) ExtractText(ctx context.Context, data []byte, contentType, fil
 // Upserts by (corpus_id, connector_account_id, external_resource_id) so a
 // re-sync of an unchanged-but-rediscovered resource replaces its content in
 // place instead of duplicating the CorpusFile.
-func (s *Service) IngestFromConnector(ctx context.Context, organizationID, corpusID, connectorAccountID, externalResourceID, createdByUserID, filename, contentType string, data []byte, text string) (*CorpusFile, error) {
+//
+// accessControl is the source system's per-file ACL, when the connector
+// reports one (see coreconnectors.SyncItem.AccessControl) - persisted
+// as-is onto CorpusFile.ExternalAccess and refreshed on every re-sync, same
+// as content. Pass nil when the connector doesn't report ACLs.
+func (s *Service) IngestFromConnector(ctx context.Context, organizationID, corpusID, connectorAccountID, externalResourceID, createdByUserID, filename, contentType string, data []byte, text string, accessControl []string) (*CorpusFile, error) {
 	if s.artifacts == nil {
 		return nil, ErrInvalidInput("artifact storage is not configured on this server")
 	}
@@ -85,17 +90,20 @@ func (s *Service) IngestFromConnector(ctx context.Context, organizationID, corpu
 	err = s.db.Transaction(func(tx *gorm.DB) error {
 		tx = tx.WithContext(ctx)
 		if hasExisting {
-			updates := map[string]any{
-				"filename":     filename,
-				"content_type": contentType,
-				"storage_key":  storageKey,
-				"size":         int64(len(data)),
-				"status":       CorpusFileStatusPending,
-			}
-			if err := tx.Model(&sdb.CorpusFile{}).Where("id = ?", fileID).Updates(updates).Error; err != nil {
+			// Struct-based load-mutate-Save (not a map Updates) so GORM's
+			// serializer runs for ExternalAccess the same way it already
+			// does for Tags/Metadata elsewhere (see UpdateFile in
+			// files.go) - a map Updates bypasses that serializer path.
+			if err := tx.First(&record, "id = ?", fileID).Error; err != nil {
 				return err
 			}
-			return tx.First(&record, "id = ?", fileID).Error
+			record.Filename = filename
+			record.ContentType = contentType
+			record.StorageKey = storageKey
+			record.Size = int64(len(data))
+			record.Status = CorpusFileStatusPending
+			record.ExternalAccess = accessControl
+			return tx.Save(&record).Error
 		}
 		record = sdb.CorpusFile{
 			ID:                 fileID,
@@ -109,6 +117,7 @@ func (s *Service) IngestFromConnector(ctx context.Context, organizationID, corpu
 			Status:             CorpusFileStatusPending,
 			ConnectorAccountID: &accountID,
 			ExternalResourceID: externalResourceID,
+			ExternalAccess:     accessControl,
 		}
 		return tx.Create(&record).Error
 	})
