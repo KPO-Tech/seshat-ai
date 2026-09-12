@@ -6,7 +6,15 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 )
+
+// spGraphDefaultRateLimitBackoff is used when a 429/503 response carries no
+// Retry-After header - Microsoft's own throttling guidance for Graph is "a
+// short, randomized backoff," 30s is a conservative middle ground that
+// avoids hammering a still-throttled endpoint without waiting excessively
+// long when the real window is shorter.
+const spGraphDefaultRateLimitBackoff = 30 * time.Second
 
 // spGraphBaseURL is the stable v1.0 Microsoft Graph endpoint - deliberately
 // not beta, since this connector only needs long-stable surfaces (sites,
@@ -98,16 +106,30 @@ type spGraphClient struct {
 }
 
 // spGraphError carries the HTTP status so callers can special-case 410 Gone
-// (expired delta link, see deltaPage's doc comment).
+// (expired delta link, see deltaPage's doc comment) and 429/503 throttling
+// (see RetryAfter/RateLimited, types.go).
 type spGraphError struct {
-	Status   int
-	Location string
-	Body     string
+	Status      int
+	Location    string
+	Body        string
+	retryAfter  time.Duration
+	isRateLimit bool
 }
 
 func (e *spGraphError) Error() string {
 	return fmt.Sprintf("microsoft graph returned %d: %s", e.Status, e.Body)
 }
+
+// RetryAfter implements RateLimited (types.go) - isRateLimit is only true
+// for a 429/503 response; every other spGraphError reports (0, false).
+func (e *spGraphError) RetryAfter() (time.Duration, bool) {
+	if !e.isRateLimit {
+		return 0, false
+	}
+	return e.retryAfter, true
+}
+
+var _ RateLimited = (*spGraphError)(nil)
 
 func (c *spGraphClient) get(ctx context.Context, url string, out any) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -121,7 +143,16 @@ func (c *spGraphClient) get(ctx context.Context, url string, out any) (*http.Res
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return resp, &spGraphError{Status: resp.StatusCode, Location: resp.Header.Get("Location"), Body: string(body)}
+		gerr := &spGraphError{Status: resp.StatusCode, Location: resp.Header.Get("Location"), Body: string(body)}
+		if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusServiceUnavailable {
+			gerr.isRateLimit = true
+			if delay, ok := parseRetryAfter(resp.Header); ok {
+				gerr.retryAfter = delay
+			} else {
+				gerr.retryAfter = spGraphDefaultRateLimitBackoff
+			}
+		}
+		return resp, gerr
 	}
 	if out != nil {
 		if err := json.NewDecoder(resp.Body).Decode(out); err != nil {

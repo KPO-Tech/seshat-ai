@@ -3,6 +3,7 @@ package connectors
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,6 +16,53 @@ import (
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/option"
 )
+
+// gdriveDefaultRateLimitBackoff is used when Google's response doesn't
+// include a Retry-After header - Drive's quota errors often don't, unlike
+// some other Google APIs. 30s matches the same conservative default used
+// for Microsoft Graph/Confluence (sharepoint_graph.go, confluence_atlassian.go).
+const gdriveDefaultRateLimitBackoff = 30 * time.Second
+
+// wrapGDriveRateLimit checks whether err is (or wraps, via errors.As) a
+// *googleapi.Error indicating rate-limiting - a 429, or Drive's own way of
+// signaling quota exhaustion via 403 with a "rateLimitExceeded"/
+// "userRateLimitExceeded" reason - and if so wraps it as a RateLimited
+// error (types.go) using the response's own Retry-After header when
+// present, or gdriveDefaultRateLimitBackoff otherwise. Returns err
+// unchanged (same value, safe to compare with ==) for anything else,
+// including a nil err.
+func wrapGDriveRateLimit(err error) error {
+	if err == nil {
+		return nil
+	}
+	var gerr *googleapi.Error
+	if !errors.As(err, &gerr) {
+		return err
+	}
+	if gerr.Code != http.StatusTooManyRequests && !isGDriveQuotaReason(gerr) {
+		return err
+	}
+	delay, ok := parseRetryAfter(gerr.Header)
+	if !ok {
+		delay = gdriveDefaultRateLimitBackoff
+	}
+	return &rateLimitWrap{err: err, retryAfter: delay, hasDelay: true}
+}
+
+// isGDriveQuotaReason reports whether a 403 googleapi.Error is Drive's way
+// of signaling quota exhaustion rather than a genuine permission problem -
+// both share HTTP 403, distinguished only by the structured reason code.
+func isGDriveQuotaReason(gerr *googleapi.Error) bool {
+	if gerr.Code != http.StatusForbidden {
+		return false
+	}
+	for _, item := range gerr.Errors {
+		if item.Reason == "rateLimitExceeded" || item.Reason == "userRateLimitExceeded" {
+			return true
+		}
+	}
+	return false
+}
 
 // GDriveScopes requested from Google - read-only Drive access plus the
 // account's email (used by callers as the connector account's external
@@ -126,13 +174,14 @@ func (c *GDriveConnector) client(ctx context.Context, secret Secret) (*drive.Ser
 
 // Discover lists files in the account's Drive without fetching their
 // content - a lightweight preview of what a Sync would pull in.
-func (c *GDriveConnector) Discover(ctx context.Context, secret Secret) ([]ResourceRef, error) {
+func (c *GDriveConnector) Discover(ctx context.Context, secret Secret) (refs []ResourceRef, err error) {
+	defer func() { err = wrapGDriveRateLimit(err) }()
+
 	srv, err := c.client(ctx, secret)
 	if err != nil {
 		return nil, err
 	}
 
-	var refs []ResourceRef
 	pageToken := ""
 	for {
 		call := srv.Files.List().Q("trashed = false").Fields(googleapi.Field(gdriveFileListFields)).PageSize(200)
@@ -159,7 +208,9 @@ func (c *GDriveConnector) Discover(ctx context.Context, secret Secret) ([]Resour
 
 // Sync bootstraps (cursor == "") by listing and downloading every file, or
 // pulls only what changed since cursor via Drive's Changes API.
-func (c *GDriveConnector) Sync(ctx context.Context, secret Secret, cursor string) ([]SyncItem, string, error) {
+func (c *GDriveConnector) Sync(ctx context.Context, secret Secret, cursor string) (items []SyncItem, nextCursor string, err error) {
+	defer func() { err = wrapGDriveRateLimit(err) }()
+
 	srv, err := c.client(ctx, secret)
 	if err != nil {
 		return nil, "", err
@@ -318,8 +369,19 @@ func (c *GDriveConnector) RefreshPermissions(ctx context.Context, secret Secret,
 	}
 	out := make(map[string][]AccessEntry, len(resourceIDs))
 	for _, id := range resourceIDs {
-		list, err := srv.Permissions.List(id).Fields(googleapi.Field(gdrivePermissionFields)).Context(ctx).Do()
-		if err != nil {
+		list, listErr := srv.Permissions.List(id).Fields(googleapi.Field(gdrivePermissionFields)).Context(ctx).Do()
+		if listErr != nil {
+			// Rate-limiting almost certainly means every remaining ID in
+			// this batch would fail identically - stop and surface it as
+			// the call's own error (via the deferred wrap above) instead
+			// of silently grinding through the rest and returning an
+			// increasingly-empty map with no signal anything went wrong.
+			// A non-rate-limit per-ID error (e.g. a deleted file, 404) is
+			// still swallowed and simply omitted from the result, per this
+			// method's documented contract above.
+			if wrapped := wrapGDriveRateLimit(listErr); wrapped != listErr {
+				return nil, wrapped
+			}
 			continue
 		}
 		out[id] = gdrivePermissionsToAccessControl(list.Permissions)

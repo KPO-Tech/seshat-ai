@@ -8,7 +8,14 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
+
+// confluenceDefaultRateLimitBackoff is used when a 429 response carries no
+// Retry-After header - Atlassian's documented throttling guidance is to
+// back off "at least a few seconds"; 30s matches the same conservative
+// default used for Microsoft Graph (sharepoint_graph.go).
+const confluenceDefaultRateLimitBackoff = 30 * time.Second
 
 // confluenceSearchResponse is GET /wiki/rest/api/search's response shape -
 // a minimal hand-rolled subset, no official Go SDK is vendored in this
@@ -54,13 +61,26 @@ type confluenceClient struct {
 }
 
 type confluenceError struct {
-	Status int
-	Body   string
+	Status      int
+	Body        string
+	retryAfter  time.Duration
+	isRateLimit bool
 }
 
 func (e *confluenceError) Error() string {
 	return fmt.Sprintf("confluence api returned %d: %s", e.Status, e.Body)
 }
+
+// RetryAfter implements RateLimited (types.go) - isRateLimit is only true
+// for a 429 response; every other confluenceError reports (0, false).
+func (e *confluenceError) RetryAfter() (time.Duration, bool) {
+	if !e.isRateLimit {
+		return 0, false
+	}
+	return e.retryAfter, true
+}
+
+var _ RateLimited = (*confluenceError)(nil)
 
 func (cl *confluenceClient) get(ctx context.Context, requestURL string, out any) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
@@ -74,7 +94,16 @@ func (cl *confluenceClient) get(ctx context.Context, requestURL string, out any)
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return &confluenceError{Status: resp.StatusCode, Body: string(body)}
+		cerr := &confluenceError{Status: resp.StatusCode, Body: string(body)}
+		if resp.StatusCode == http.StatusTooManyRequests {
+			cerr.isRateLimit = true
+			if delay, ok := parseRetryAfter(resp.Header); ok {
+				cerr.retryAfter = delay
+			} else {
+				cerr.retryAfter = confluenceDefaultRateLimitBackoff
+			}
+		}
+		return cerr
 	}
 	if out != nil {
 		if err := json.NewDecoder(io.LimitReader(resp.Body, maxConfluenceResponseBytes)).Decode(out); err != nil {

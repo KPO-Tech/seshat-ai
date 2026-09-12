@@ -39,10 +39,11 @@ type syncAccount struct {
 // aliasing keeps every other file in this package working unchanged, with
 // zero conversion code between this package's own shapes and core's.
 type (
-	resourceRef = coreconnectors.ResourceRef
-	syncSecret  = coreconnectors.Secret
-	syncItem    = coreconnectors.SyncItem
-	accessEntry = coreconnectors.AccessEntry
+	resourceRef     = coreconnectors.ResourceRef
+	syncSecret      = coreconnectors.Secret
+	syncItem        = coreconnectors.SyncItem
+	accessEntry     = coreconnectors.AccessEntry
+	syncRateLimited = coreconnectors.RateLimited
 )
 
 // accessEntriesToStrings converts a SyncItem's ACL to the plain []string

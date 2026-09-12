@@ -184,6 +184,13 @@ func (s *Service) processContentSyncJob(ctx context.Context, job sdb.ConnectorSy
 
 	items, nextCursor, err := conn.Sync(ctx, connAccount, secret, account.SyncCursor)
 	if err != nil {
+		if delay, ok := rateLimitedDelay(err); ok {
+			// Rate-limiting is expected backpressure, not evidence the
+			// account/credentials are broken - honor the suggested delay,
+			// but don't mark the account itself unhealthy over it.
+			s.markSyncJobFailedWithDelay(ctx, job, "rate limited: "+err.Error(), delay)
+			return
+		}
 		s.markSyncJobFailed(ctx, job, "sync: "+err.Error())
 		s.markAccountError(ctx, account.ID, "sync: "+err.Error())
 		return
@@ -241,6 +248,10 @@ func (s *Service) processPermissionSyncJob(ctx context.Context, job sdb.Connecto
 
 	refreshed, err := refresher.RefreshPermissions(ctx, secret, resourceIDs)
 	if err != nil {
+		if delay, ok := rateLimitedDelay(err); ok {
+			s.markSyncJobFailedWithDelay(ctx, job, "rate limited: "+err.Error(), delay)
+			return
+		}
 		s.markSyncJobFailed(ctx, job, "refresh permissions: "+err.Error())
 		s.markAccountError(ctx, account.ID, "refresh permissions: "+err.Error())
 		return
@@ -317,14 +328,56 @@ func (s *Service) markAccountError(ctx context.Context, accountID, message strin
 }
 
 func (s *Service) markSyncJobFailed(ctx context.Context, job sdb.ConnectorSyncJob, reason string) {
+	s.markSyncJobFailedWithDelay(ctx, job, reason, defaultSyncRetryDelay)
+}
+
+// markSyncJobFailedWithDelay is markSyncJobFailed with an explicit retry
+// delay instead of the flat defaultSyncRetryDelay - used for a rate-limited
+// failure (see rateLimitedDelay below), where the connector's own API told
+// us how long to actually wait, and a 2-second retry would just get
+// rate-limited again immediately.
+func (s *Service) markSyncJobFailedWithDelay(ctx context.Context, job sdb.ConnectorSyncJob, reason string, delay time.Duration) {
 	attempts := job.AttemptCount + 1
 	status := SyncJobStatusFailed
 	var nextRunAt *time.Time
 	if attempts < job.MaxAttempts {
 		status = SyncJobStatusQueued
-		at := time.Now().UTC().Add(defaultSyncRetryDelay)
+		at := time.Now().UTC().Add(delay)
 		nextRunAt = &at
 	}
 	_ = s.db.Gorm().WithContext(ctx).Model(&sdb.ConnectorSyncJob{}).Where("id = ?", job.ID).
 		Updates(map[string]any{"status": status, "attempt_count": attempts, "last_error": reason, "next_run_at": nextRunAt}).Error
+}
+
+// minRateLimitRetryDelay/maxRateLimitRetryDelay clamp a connector-suggested
+// retry delay (a Retry-After header value, ultimately) so a bogus or
+// unreasonably large suggestion can't schedule a near-immediate retry storm
+// or a job that effectively never comes back.
+const (
+	minRateLimitRetryDelay = 1 * time.Second
+	maxRateLimitRetryDelay = 15 * time.Minute
+)
+
+// rateLimitedDelay reports whether err represents rate-limiting (see
+// coreconnectors.RateLimited, aliased as syncRateLimited in types.go) and,
+// if so, the clamped delay to honor instead of the flat
+// defaultSyncRetryDelay. ok=false covers both "not a RateLimited error at
+// all" and "is one, but its own RetryAfter reported no real delay" - either
+// way, the caller should fall through to its normal failure handling.
+func rateLimitedDelay(err error) (time.Duration, bool) {
+	var rl syncRateLimited
+	if !errors.As(err, &rl) {
+		return 0, false
+	}
+	delay, ok := rl.RetryAfter()
+	if !ok {
+		return 0, false
+	}
+	switch {
+	case delay < minRateLimitRetryDelay:
+		delay = minRateLimitRetryDelay
+	case delay > maxRateLimitRetryDelay:
+		delay = maxRateLimitRetryDelay
+	}
+	return delay, true
 }

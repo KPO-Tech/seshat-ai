@@ -30,6 +30,9 @@ package connectors
 
 import (
 	"context"
+	"net/http"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -78,3 +81,51 @@ type SyncItem struct {
 	Text          string
 	AccessControl []AccessEntry
 }
+
+// RateLimited is implemented by an error a connector returns to represent a
+// rate-limit/backpressure response (HTTP 429, or a provider-specific
+// quota-exceeded signal) rather than a genuine failure - a caller decides
+// how long to back off by checking for this via errors.As instead of
+// applying a flat retry delay regardless of cause. ok=false from
+// RetryAfter means "this was rate-limiting, but no specific delay was
+// suggested" - the caller should fall back to its own default, not treat
+// it as "not rate-limited."
+type RateLimited interface {
+	error
+	RetryAfter() (time.Duration, bool)
+}
+
+// parseRetryAfter reads a standard Retry-After response header (RFC 7231,
+// section 7.1.3): either a whole number of seconds, or an HTTP-date. Returns
+// (0, false) when the header is absent, unparseable, or names a time
+// already in the past.
+func parseRetryAfter(h http.Header) (time.Duration, bool) {
+	v := strings.TrimSpace(h.Get("Retry-After"))
+	if v == "" {
+		return 0, false
+	}
+	if secs, err := strconv.Atoi(v); err == nil && secs >= 0 {
+		return time.Duration(secs) * time.Second, true
+	}
+	if when, err := http.ParseTime(v); err == nil {
+		if d := time.Until(when); d > 0 {
+			return d, true
+		}
+	}
+	return 0, false
+}
+
+// rateLimitWrap is the shared RateLimited implementation for a connector
+// (gdrive) whose errors don't already have one dedicated error type to
+// extend directly, unlike spGraphError/confluenceError.
+type rateLimitWrap struct {
+	err        error
+	retryAfter time.Duration
+	hasDelay   bool
+}
+
+func (w *rateLimitWrap) Error() string                     { return w.err.Error() }
+func (w *rateLimitWrap) Unwrap() error                     { return w.err }
+func (w *rateLimitWrap) RetryAfter() (time.Duration, bool) { return w.retryAfter, w.hasDelay }
+
+var _ RateLimited = (*rateLimitWrap)(nil)
