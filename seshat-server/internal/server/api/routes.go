@@ -234,6 +234,11 @@ func (app *App) routes() http.Handler {
 	mux.Handle("GET /api/v1/knowledge/corpora/{corpusID}/files/{fileID}/segments", app.authMiddleware(http.HandlerFunc(app.handleCorpusFileSegments)))
 	mux.Handle("PUT /api/v1/knowledge/corpora/{corpusID}/files/{fileID}", app.authMiddleware(http.HandlerFunc(app.handleCorpusFileByID)))
 	mux.Handle("DELETE /api/v1/knowledge/corpora/{corpusID}/files/{fileID}", app.authMiddleware(http.HandlerFunc(app.handleCorpusFileByID)))
+	// Not corpus-scoped in the path, unlike every route above - a CorpusFile
+	// id is its own primary key, and this is what a "connected mode" desktop
+	// client's plain GET /files/{id}/content bridges to (see
+	// knowledge.Service.DownloadFile's doc comment).
+	mux.Handle("GET /api/v1/knowledge/files/{fileID}/content", app.authMiddleware(http.HandlerFunc(app.handleFileContent)))
 	// Re-triggers ingestion for an already-uploaded file — used to upgrade a
 	// file ingested vectorless to real vectors once an embedder is
 	// configured (Ingest upserts by deterministic key, so this replaces the

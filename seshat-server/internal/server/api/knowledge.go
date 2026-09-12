@@ -235,6 +235,42 @@ func (app *App) handleCorpusFileByID(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleFileContent serves a corpus file's raw bytes, looked up by the
+// file's own id alone (no corpus id in the path) - see
+// knowledge.Service.DownloadFile's doc comment for why this shape exists:
+// it's what cloudknowledge.RemoteService on the desktop side calls for a
+// "connected mode" GET /files/{id}/content request, which only ever has the
+// file id to go on.
+func (app *App) handleFileContent(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	principal, ok := authPrincipalFromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "missing principal")
+		return
+	}
+	fileID := strings.TrimSpace(r.PathValue("fileID"))
+	if fileID == "" {
+		writeJSONError(w, http.StatusBadRequest, "missing file id")
+		return
+	}
+	data, file, err := app.backend.Knowledge.DownloadFile(r.Context(), principal, fileID)
+	if err != nil {
+		writeKnowledgeError(w, err)
+		return
+	}
+	ct := file.ContentType
+	if ct == "" {
+		ct = "application/octet-stream"
+	}
+	w.Header().Set("Content-Type", ct)
+	w.Header().Set("Content-Disposition", `attachment; filename="`+strings.ReplaceAll(file.Filename, `"`, "")+`"`)
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(data)
+}
+
 // handleCorpusFileIngest re-triggers ingestion for an already-uploaded
 // file — the console-facing way to upgrade a file ingested vectorless to
 // real vectors after an embedder gets configured, or to retry one that

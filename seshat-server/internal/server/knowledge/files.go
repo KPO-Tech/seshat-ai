@@ -81,6 +81,40 @@ func (s *Service) UploadFile(ctx context.Context, principal *iam.Principal, corp
 	return &result, nil
 }
 
+// DownloadFile returns a corpus file's raw bytes, looked up by the file's
+// own id alone - unlike every other method here, the caller doesn't know
+// which corpus the file belongs to up front. This is what bridges
+// cloudknowledge.RemoteService's "connected mode" file-content requests on
+// the desktop side (see that package's doc comment): a CorpusFile's id is
+// its own primary key, so it can be resolved without a corpus_id, then the
+// usual mustLoadCorpus check enforces access using the corpus it turns out
+// to belong to.
+func (s *Service) DownloadFile(ctx context.Context, principal *iam.Principal, fileID string) ([]byte, *CorpusFile, error) {
+	if s.artifacts == nil {
+		return nil, nil, ErrInvalidInput("artifact storage is not configured on this server")
+	}
+	fileID = strings.TrimSpace(fileID)
+	if fileID == "" {
+		return nil, nil, ErrInvalidInput("file_id is required")
+	}
+	var record sdb.CorpusFile
+	if err := s.db.Gorm().WithContext(ctx).First(&record, "id = ?", fileID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil, ErrNotFound("file not found")
+		}
+		return nil, nil, err
+	}
+	if _, err := s.mustLoadCorpus(ctx, principal, record.CorpusID, "knowledge.read", "knowledge.manage", "organization.manage"); err != nil {
+		return nil, nil, err
+	}
+	data, err := s.artifacts.Get(ctx, record.StorageKey)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read file blob: %w", err)
+	}
+	result := toCorpusFile(record)
+	return data, &result, nil
+}
+
 // ListFiles returns every file attached to a corpus (no pagination — a
 // corpus's file count is operator-bounded, unlike append-only run history).
 func (s *Service) ListFiles(ctx context.Context, principal *iam.Principal, corpusID string) ([]CorpusFile, error) {
