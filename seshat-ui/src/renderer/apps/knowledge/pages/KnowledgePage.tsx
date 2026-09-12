@@ -33,6 +33,7 @@ import { KnowledgeChatWorkspace } from '../components/KnowledgeChatWorkspace'
 import { OverviewWorkspace } from '../components/OverviewWorkspace'
 import { PublicLibraryModal } from '../components/PublicLibraryModal'
 import { SearchWorkspace } from '../components/SearchWorkspace'
+import { SourcesWorkspace } from '../components/SourcesWorkspace'
 import { buildAgentInstruction } from '../lib/agentInstruction'
 import { splitCitations } from '../lib/citations'
 import { isFileReady, isJobActive } from '../lib/status'
@@ -895,13 +896,15 @@ export function KnowledgePage() {
                 onScrollToResult={scrollToResult}
                 onContinue={handleContinueInChat}
               />
+            ) : view === 'sources' ? (
+              <SourcesWorkspace corpora={corpora} selectedCorpusId={selectedCorpusId} onSelectCorpus={setSelectedCorpusId} />
             ) : (
               <section className="k-planned-view">
                 <div>
-                  {view === 'sources' ? <DatabaseSearch size={24} /> : view === 'graph' ? <RelationalGraph size={24} /> : view === 'discover' ? <Compass size={24} /> : <FileText size={24} />}
+                  {view === 'graph' ? <RelationalGraph size={24} /> : view === 'discover' ? <Compass size={24} /> : <FileText size={24} />}
                   <span>{view}</span>
                 </div>
-                <h1>{view === 'sources' ? 'Sources & Connectors' : view === 'graph' ? 'Knowledge Graph' : view === 'discover' ? 'Discover' : 'Actions'}</h1>
+                <h1>{view === 'graph' ? 'Knowledge Graph' : view === 'discover' ? 'Discover' : 'Actions'}</h1>
                 <p>This section is now part of the Knowledge platform shell and will be transformed in the next pass.</p>
               </section>
             )}
