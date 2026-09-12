@@ -53,13 +53,16 @@ var oauthConnectorKinds = map[string]bool{
 // agentActionOnlyKinds are OAuth connector kinds with no Discover/Sync -
 // they only make sense as a self-service, per-employee agent_action
 // connect, never an admin-run knowledge_sync source. Checked in
-// BeginConnectorOAuth.
+// BeginConnectorOAuth. notionKind is deliberately absent: it supports both
+// purposes now that core/connectors/notion.go implements real Discover/Sync
+// (see notionConnector, notion.go) - agent_action still works unchanged for
+// existing self-service connections, this map just no longer forbids
+// knowledge_sync for it too.
 var agentActionOnlyKinds = map[string]bool{
 	string(slackKind):      true,
 	string(outlookKind):    true,
 	string(teamsKind):      true,
 	string(gmailKind):      true,
-	string(notionKind):     true,
 	string(gsheetsKind):    true,
 	string(gcalendarKind):  true,
 	string(jiraKind):       true,

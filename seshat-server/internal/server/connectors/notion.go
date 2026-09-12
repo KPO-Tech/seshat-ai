@@ -7,13 +7,47 @@ import (
 	"net/http"
 
 	"golang.org/x/oauth2"
+
+	coreconnectors "github.com/EngineerProjects/seshat-ai/seshat-core/connectors"
 )
 
-// notionKind is agent_action-only - like slack/outlook/teams/gmail, it
-// exists purely so an employee can connect their own Notion identity for a
-// dataflow node (see automation.NotionCreatePageNode) to act as, not as an
-// admin-run Discover/Sync source.
+// notionKind supports both purposes: agent_action (an employee connecting
+// their own Notion identity for a dataflow node, see
+// automation.NotionCreatePageNode - the original and, until now, only use)
+// and knowledge_sync (admin-run Discover/Sync, added once Discover/Sync
+// were implemented in core/connectors/notion.go - see notionConnector
+// below). Removed from agentActionOnlyKinds (oauth.go) accordingly.
 const notionKind connectorKind = "notion"
+
+// notionConnector wraps core/connectors.NotionConnector - the actual
+// Discover/Sync logic lives there now (shared module pattern every other
+// knowledge_sync-capable connector in this package already uses). This
+// file only adapts core's plain (secret, cursor) signature to this
+// package's knowledgeConnector interface.
+type notionConnector struct {
+	inner *coreconnectors.NotionConnector
+}
+
+func newNotionConnector(oauthConfig *oauth2.Config) *notionConnector {
+	return &notionConnector{inner: coreconnectors.NewNotionConnector(oauthConfig)}
+}
+
+func (c *notionConnector) withTextExtractor(fn func(ctx context.Context, data []byte, contentType, filename string) string) *notionConnector {
+	c.inner.WithTextExtractor(coreconnectors.TextExtractorFunc(fn))
+	return c
+}
+
+func (c *notionConnector) Kind() connectorKind { return notionKind }
+
+func (c *notionConnector) Discover(ctx context.Context, account syncAccount, secret syncSecret) ([]resourceRef, error) {
+	return c.inner.Discover(ctx, secret)
+}
+
+func (c *notionConnector) Sync(ctx context.Context, account syncAccount, secret syncSecret, cursor string) ([]syncItem, string, error) {
+	return c.inner.Sync(ctx, secret, cursor)
+}
+
+var _ knowledgeConnector = (*notionConnector)(nil)
 
 // notionScopes stays nil deliberately, not an oversight: Notion's OAuth
 // doesn't take a request-time "scope" parameter the way Google/Microsoft/

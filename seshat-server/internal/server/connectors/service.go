@@ -898,6 +898,12 @@ func (s *Service) connectorFor(ctx context.Context, kind, organizationID string)
 			return nil, err
 		}
 		return newConfluenceConnector(oauthCfg).withTextExtractor(s.knowledge.ExtractText), nil
+	case string(notionKind):
+		oauthCfg, err := s.oauthConfigFor(ctx, organizationID, kind)
+		if err != nil {
+			return nil, err
+		}
+		return newNotionConnector(oauthCfg).withTextExtractor(s.knowledge.ExtractText), nil
 	default:
 		return nil, fmt.Errorf("unsupported connector kind %q", kind)
 	}
