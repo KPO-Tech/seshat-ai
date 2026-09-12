@@ -147,14 +147,11 @@ func (c *ConfluenceConnector) Sync(ctx context.Context, secret Secret, cursor st
 		return nil, "", err
 	}
 
-	var since time.Time
-	if cursor != "" {
-		since, err = time.Parse(time.RFC3339Nano, cursor)
-		if err != nil {
-			return nil, "", fmt.Errorf("invalid sync cursor: %w", err)
-		}
+	since, err := DecodeTimeCursor(cursor)
+	if err != nil {
+		return nil, "", err
 	}
-	nextCursor := time.Now().UTC().Format(time.RFC3339Nano)
+	nextCursor := NewTimeCursorNow()
 
 	var items []SyncItem
 	err = cl.searchPages(ctx, confluencePageCQL, func(item confluenceSearchResult) bool {
@@ -162,7 +159,7 @@ func (c *ConfluenceConnector) Sync(ctx context.Context, secret Secret, cursor st
 			return true
 		}
 		modified, ok := parseConfluenceTime(item.LastModified)
-		if ok && !since.IsZero() && !modified.After(since) {
+		if ok && !since.Since.IsZero() && !modified.After(since.Since) {
 			// Sorted newest-modified-first - everything from here on is also
 			// at or before the cursor, so the whole rest of the search can be
 			// skipped rather than walked and filtered out one by one.
@@ -176,7 +173,7 @@ func (c *ConfluenceConnector) Sync(ctx context.Context, secret Secret, cursor st
 	if err != nil {
 		return nil, "", err
 	}
-	return items, nextCursor, nil
+	return items, nextCursor.Encode(), nil
 }
 
 // syncOnePage downloads one page's rendered content and extracts its text.

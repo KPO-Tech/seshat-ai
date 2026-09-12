@@ -30,6 +30,7 @@ package connectors
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -80,6 +81,47 @@ type SyncItem struct {
 	ContentType   string
 	Text          string
 	AccessControl []AccessEntry
+}
+
+// TimeCursor is the shared sync-cursor shape for a connector with no native
+// change-feed API (s3.go, azureblob.go, confluence.go, today) - each of
+// those instead resyncs by listing everything and filtering to whatever
+// changed after a timestamp, so "the cursor" is just "when the previous
+// sync started." Was three independent, byte-for-byte identical
+// RFC3339Nano parse/format implementations before being extracted here;
+// mirrors SPDriveCursor's existing Decode.../Encode() shape (sharepoint.go)
+// for a connector kind that does have real structure to a cursor.
+type TimeCursor struct {
+	Since time.Time
+}
+
+// DecodeTimeCursor parses cursor as RFC3339Nano - not RFC3339, which
+// truncates to whole seconds and can lose real ordering between a
+// resource's own modified time and this cursor landing in the same second.
+// Empty means "no cursor yet" (Since stays the zero time.Time, so
+// (TimeCursor{}).Since.IsZero() is how a caller detects "bootstrap sync").
+func DecodeTimeCursor(cursor string) (TimeCursor, error) {
+	if cursor == "" {
+		return TimeCursor{}, nil
+	}
+	since, err := time.Parse(time.RFC3339Nano, cursor)
+	if err != nil {
+		return TimeCursor{}, fmt.Errorf("invalid sync cursor: %w", err)
+	}
+	return TimeCursor{Since: since}, nil
+}
+
+// Encode formats c back into the string form ConnectorAccount.SyncCursor
+// stores.
+func (c TimeCursor) Encode() string {
+	return c.Since.UTC().Format(time.RFC3339Nano)
+}
+
+// NewTimeCursorNow is the "next cursor" a bootstrap or incremental sync
+// returns - capture it once, before listing starts, so a resource modified
+// mid-sync isn't missed by the following incremental run.
+func NewTimeCursorNow() TimeCursor {
+	return TimeCursor{Since: time.Now().UTC()}
 }
 
 // RateLimited is implemented by an error a connector returns to represent a

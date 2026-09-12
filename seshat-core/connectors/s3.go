@@ -14,7 +14,6 @@ import (
 	"io"
 	"path"
 	"strings"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
@@ -178,17 +177,11 @@ func (c *S3Connector) Sync(ctx context.Context, config string, secret Secret, cu
 		return nil, "", err
 	}
 
-	var since time.Time
-	if cursor != "" {
-		// RFC3339Nano, not RFC3339: the plain form truncates to whole
-		// seconds, precise enough to lose real ordering between an object's
-		// LastModified and this cursor when they land in the same second.
-		since, err = time.Parse(time.RFC3339Nano, cursor)
-		if err != nil {
-			return nil, "", fmt.Errorf("invalid sync cursor: %w", err)
-		}
+	since, err := DecodeTimeCursor(cursor)
+	if err != nil {
+		return nil, "", err
 	}
-	nextCursor := time.Now().UTC().Format(time.RFC3339Nano)
+	nextCursor := NewTimeCursorNow()
 
 	var items []SyncItem
 	err = c.listObjects(ctx, cl, cfg, func(obj types.Object) {
@@ -197,7 +190,7 @@ func (c *S3Connector) Sync(ctx context.Context, config string, secret Secret, cu
 			return
 		}
 		modified := aws.ToTime(obj.LastModified)
-		if !since.IsZero() && !modified.After(since) {
+		if !since.Since.IsZero() && !modified.After(since.Since) {
 			return
 		}
 		if item, ok := c.syncOneObject(ctx, cl, cfg, obj); ok {
@@ -207,7 +200,7 @@ func (c *S3Connector) Sync(ctx context.Context, config string, secret Secret, cu
 	if err != nil {
 		return nil, "", err
 	}
-	return items, nextCursor, nil
+	return items, nextCursor.Encode(), nil
 }
 
 // listObjects pages through every object under the account's configured

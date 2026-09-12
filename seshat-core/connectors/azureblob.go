@@ -213,21 +213,18 @@ func (c *AzureBlobConnector) Sync(ctx context.Context, config string, secret Sec
 		return nil, "", err
 	}
 
-	var since time.Time
-	if cursor != "" {
-		since, err = time.Parse(time.RFC3339Nano, cursor)
-		if err != nil {
-			return nil, "", fmt.Errorf("invalid sync cursor: %w", err)
-		}
+	since, err := DecodeTimeCursor(cursor)
+	if err != nil {
+		return nil, "", err
 	}
-	nextCursor := time.Now().UTC().Format(time.RFC3339Nano)
+	nextCursor := NewTimeCursorNow()
 
 	var items []SyncItem
 	err = c.listBlobs(ctx, cl, cfg, func(entry blobEntry) {
 		if !isAllowedS3Key(entry.Name) {
 			return
 		}
-		if !since.IsZero() && !entry.LastModified.After(since) {
+		if !since.Since.IsZero() && !entry.LastModified.After(since.Since) {
 			return
 		}
 		if item, ok := c.syncOneBlob(ctx, cl, cfg, entry); ok {
@@ -237,7 +234,7 @@ func (c *AzureBlobConnector) Sync(ctx context.Context, config string, secret Sec
 	if err != nil {
 		return nil, "", err
 	}
-	return items, nextCursor, nil
+	return items, nextCursor.Encode(), nil
 }
 
 // syncOneBlob downloads and extracts one blob's content. ok=false is a
