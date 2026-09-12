@@ -71,3 +71,41 @@ type knowledgeConnector interface {
 	Discover(ctx context.Context, account syncAccount, secret syncSecret) ([]resourceRef, error)
 	Sync(ctx context.Context, account syncAccount, secret syncSecret, cursor string) (items []syncItem, nextCursor string, err error)
 }
+
+// permissionRefresher is an optional capability - implemented by connectors
+// that can cheaply re-check ACLs for already-known resources without
+// re-fetching content, on their own (typically shorter) schedule
+// independent of content re-sync. Checked via type assertion at both
+// schedule time (oauth.go, only a capable connector's account gets
+// NextPermissionSyncAt set at all) and process time (worker.go), the same
+// optional-capability pattern tokenRefreshReporter already uses below.
+//
+// A resourceID omitted from the returned map means its permissions could
+// not be confirmed this pass (a transient error, a since-deleted resource,
+// etc.) - the caller must leave that resource's last-known ACL untouched
+// rather than treat the omission as "confirmed no restrictions," which
+// would silently widen access on a lookup failure. Today only gdrive
+// implements this (the only connector confirmed to populate real ACLs).
+type permissionRefresher interface {
+	RefreshPermissions(ctx context.Context, secret syncSecret, externalResourceIDs []string) (map[string][]accessEntry, error)
+}
+
+// permissionCapableKinds lists connector kinds whose connectorFor(...)
+// result implements permissionRefresher - checked as a static lookup, NOT
+// by actually constructing a connector via connectorFor, because doing
+// that from inside CompleteConnectorOAuth's transaction (oauth.go) would
+// call oauthConfigFor, which queries the DB through s.db.Gorm() rather
+// than the transaction's own tx handle - a second connection request
+// while a connection-limited pool's only connection is already checked out
+// by the surrounding transaction, which deadlocks (found via a hang in
+// TestCompleteConnectorOAuthEndToEnd during development of this feature).
+// Kept in sync manually; gdrive.go's `var _ permissionRefresher =
+// (*gdriveConnector)(nil)` is the compile-time check that keeps this list
+// honest for the one entry it has today.
+var permissionCapableKinds = map[connectorKind]bool{
+	gdriveKind: true,
+}
+
+func kindSupportsPermissionRefresh(kind string) bool {
+	return permissionCapableKinds[connectorKind(kind)]
+}

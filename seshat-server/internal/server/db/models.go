@@ -795,8 +795,19 @@ type ConnectorAccount struct {
 	NextSyncAt            *time.Time
 	LastSyncedAt          *time.Time
 	LastError             string `gorm:"type:text"`
-	CreatedAt             time.Time
-	UpdatedAt             time.Time
+	// PermissionSyncIntervalSeconds/NextPermissionSyncAt schedule a
+	// separate, typically-shorter, ACL-only refresh pass - independent of
+	// SyncIntervalSeconds/NextSyncAt above, which govern full content
+	// re-sync. Only set for an account whose connector implements
+	// connectors.permissionRefresher (today: gdrive only) - see
+	// connectors.CompleteConnectorOAuth's account-creation branch. Nil
+	// NextPermissionSyncAt means this account never gets a permission-only
+	// refresh scheduled (its connector can't supply one, or refresh support
+	// hasn't been enabled for it).
+	PermissionSyncIntervalSeconds int `gorm:"not null;default:900"`
+	NextPermissionSyncAt          *time.Time
+	CreatedAt                     time.Time
+	UpdatedAt                     time.Time
 }
 
 // ConnectorSyncJob queues one ConnectorAccount sync attempt. Polled via the
@@ -809,15 +820,20 @@ type ConnectorSyncJob struct {
 	CorpusID           string `gorm:"size:32;not null;index"`
 	OrganizationID     string `gorm:"size:32;not null;index"`
 	Status             string `gorm:"size:32;not null;index"` // queued | running | completed | failed
-	AttemptCount       int    `gorm:"not null;default:0"`
-	MaxAttempts        int    `gorm:"not null;default:3"`
-	ItemsSynced        int    `gorm:"not null;default:0"`
-	LastError          string `gorm:"type:text"`
-	NextRunAt          *time.Time
-	StartedAt          *time.Time
-	CompletedAt        *time.Time
-	CreatedAt          time.Time
-	UpdatedAt          time.Time
+	// SyncKind distinguishes a full content sync ("content", the long-
+	// standing default) from an ACL-only refresh pass ("permissions") -
+	// see connectors.permissionRefresher. Same queue/claim/worker
+	// machinery handles both; processSyncJob branches on this field.
+	SyncKind     string `gorm:"size:16;not null;default:'content'"`
+	AttemptCount int    `gorm:"not null;default:0"`
+	MaxAttempts  int    `gorm:"not null;default:3"`
+	ItemsSynced  int    `gorm:"not null;default:0"`
+	LastError    string `gorm:"type:text"`
+	NextRunAt    *time.Time
+	StartedAt    *time.Time
+	CompletedAt  *time.Time
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 // DataflowSecret is a named, org-scoped secret a pkg/dataflow graph node

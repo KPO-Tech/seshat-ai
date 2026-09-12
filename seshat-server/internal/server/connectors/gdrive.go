@@ -47,4 +47,9 @@ func (c *gdriveConnector) Sync(ctx context.Context, account syncAccount, secret 
 	return c.inner.Sync(ctx, secret, cursor)
 }
 
+func (c *gdriveConnector) RefreshPermissions(ctx context.Context, secret syncSecret, externalResourceIDs []string) (map[string][]accessEntry, error) {
+	return c.inner.RefreshPermissions(ctx, secret, externalResourceIDs)
+}
+
 var _ knowledgeConnector = (*gdriveConnector)(nil)
+var _ permissionRefresher = (*gdriveConnector)(nil)

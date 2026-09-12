@@ -298,6 +298,35 @@ func (c *GDriveConnector) fetchAccessControl(ctx context.Context, srv *drive.Ser
 	return gdrivePermissionsToAccessControl(list.Permissions)
 }
 
+// RefreshPermissions re-fetches the current Drive ACL for a batch of
+// already-known file IDs, without re-fetching content - lets a caller keep
+// CorpusFile.ExternalAccess fresh on its own (typically shorter) schedule,
+// independent of content re-sync.
+//
+// Deliberately does NOT reuse fetchAccessControl, whose "swallow the error,
+// return nil" contract is right for first-sync (an unknown file defaults to
+// corpus-level access, never blocked) but wrong here: on a refresh pass,
+// collapsing "API call failed" into the same nil/empty result as "confirmed
+// zero restrictions" would let a transient error silently WIDEN access
+// instead of just failing to narrow it. A file whose lookup fails here is
+// omitted from the returned map entirely - the caller should leave that
+// file's last-known ExternalAccess untouched rather than risk widening it.
+func (c *GDriveConnector) RefreshPermissions(ctx context.Context, secret Secret, resourceIDs []string) (map[string][]AccessEntry, error) {
+	srv, err := c.client(ctx, secret)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string][]AccessEntry, len(resourceIDs))
+	for _, id := range resourceIDs {
+		list, err := srv.Permissions.List(id).Fields(googleapi.Field(gdrivePermissionFields)).Context(ctx).Do()
+		if err != nil {
+			continue
+		}
+		out[id] = gdrivePermissionsToAccessControl(list.Permissions)
+	}
+	return out, nil
+}
+
 // gdrivePermissionsToAccessControl is the pure mapping fetchAccessControl
 // applies to whatever the Drive API returns - split out so it's
 // unit-testable without a live *drive.Service/HTTP mock.

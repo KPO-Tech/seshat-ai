@@ -506,6 +506,19 @@ func (s *Service) CompleteConnectorOAuth(ctx context.Context, kind, code, state 
 			if oauthState.Purpose == PurposeKnowledgeSync {
 				now := time.Now().UTC()
 				account.NextSyncAt = &now
+
+				// A separate, ACL-only refresh schedule only makes sense for
+				// a connector kind that can actually supply one - a static
+				// lookup (permissionCapableKinds), not connectorFor: that
+				// would need oauthConfigFor's own DB query through
+				// s.db.Gorm() rather than this transaction's tx handle,
+				// which deadlocks a connection-limited pool from inside an
+				// already-open transaction (see permissionCapableKinds'
+				// doc comment, types.go).
+				if kindSupportsPermissionRefresh(kind) {
+					account.PermissionSyncIntervalSeconds = defaultPermissionSyncIntervalSeconds
+					account.NextPermissionSyncAt = &now
+				}
 			}
 			if err := tx.Create(&account).Error; err != nil {
 				return err

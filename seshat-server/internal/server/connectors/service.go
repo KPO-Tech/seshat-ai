@@ -102,10 +102,17 @@ const (
 	SyncJobStatusCompleted = "completed"
 	SyncJobStatusFailed    = "failed"
 
-	defaultSyncMaxAttempts     = 3
-	defaultSyncRetryDelay      = 2 * time.Second
-	defaultStaleSyncTimeout    = 10 * time.Minute
-	defaultSyncIntervalSeconds = 3600
+	// SyncJobKindContent (the long-standing default) fetches and ingests
+	// full content; SyncJobKindPermissions only refreshes ACLs for
+	// already-known resources - see permissionRefresher's doc comment.
+	SyncJobKindContent     = "content"
+	SyncJobKindPermissions = "permissions"
+
+	defaultSyncMaxAttempts               = 3
+	defaultSyncRetryDelay                = 2 * time.Second
+	defaultStaleSyncTimeout              = 10 * time.Minute
+	defaultSyncIntervalSeconds           = 3600
+	defaultPermissionSyncIntervalSeconds = 900
 )
 
 // Service owns connector accounts and their sync jobs.
@@ -175,6 +182,7 @@ type SyncJob struct {
 	ID                 string     `json:"id"`
 	ConnectorAccountID string     `json:"connector_account_id"`
 	CorpusID           string     `json:"corpus_id"`
+	SyncKind           string     `json:"sync_kind"`
 	Status             string     `json:"status"`
 	AttemptCount       int        `json:"attempt_count"`
 	MaxAttempts        int        `json:"max_attempts"`
@@ -797,13 +805,27 @@ func (s *Service) ListSyncJobs(ctx context.Context, principal *iam.Principal, ac
 	return out, nil
 }
 
-// enqueueSyncJob creates a queued job unless one is already queued/running
-// for this account, so a manual "sync now" racing the periodic reap (see
-// ReapDueAccounts) doesn't pile up duplicate work.
+// enqueueSyncJob creates a queued content-sync job unless one of the same
+// kind is already queued/running for this account, so a manual "sync now"
+// racing the periodic reap (see ReapDueAccounts) doesn't pile up duplicate
+// work. A queued/running permissions-only job for the same account never
+// blocks this (and vice versa, in enqueuePermissionSyncJob below) - the two
+// kinds run independently, see enqueueSyncJobOfKind.
 func (s *Service) enqueueSyncJob(ctx context.Context, organizationID, corpusID, accountID string) (*SyncJob, error) {
+	return s.enqueueSyncJobOfKind(ctx, organizationID, corpusID, accountID, SyncJobKindContent)
+}
+
+// enqueuePermissionSyncJob is enqueueSyncJob's ACL-only counterpart - see
+// permissionRefresher's doc comment (types.go) for what it actually does
+// once processed.
+func (s *Service) enqueuePermissionSyncJob(ctx context.Context, organizationID, corpusID, accountID string) (*SyncJob, error) {
+	return s.enqueueSyncJobOfKind(ctx, organizationID, corpusID, accountID, SyncJobKindPermissions)
+}
+
+func (s *Service) enqueueSyncJobOfKind(ctx context.Context, organizationID, corpusID, accountID, kind string) (*SyncJob, error) {
 	var existing sdb.ConnectorSyncJob
 	err := s.db.Gorm().WithContext(ctx).
-		Where("connector_account_id = ? AND status IN ?", accountID, []string{SyncJobStatusQueued, SyncJobStatusRunning}).
+		Where("connector_account_id = ? AND sync_kind = ? AND status IN ?", accountID, kind, []string{SyncJobStatusQueued, SyncJobStatusRunning}).
 		First(&existing).Error
 	if err == nil {
 		job := toSyncJob(existing)
@@ -824,6 +846,7 @@ func (s *Service) enqueueSyncJob(ctx context.Context, organizationID, corpusID, 
 		CorpusID:           corpusID,
 		OrganizationID:     organizationID,
 		Status:             SyncJobStatusQueued,
+		SyncKind:           kind,
 		MaxAttempts:        defaultSyncMaxAttempts,
 		NextRunAt:          &now,
 	}
@@ -922,6 +945,7 @@ func toSyncJob(r sdb.ConnectorSyncJob) SyncJob {
 		ID:                 r.ID,
 		ConnectorAccountID: r.ConnectorAccountID,
 		CorpusID:           r.CorpusID,
+		SyncKind:           r.SyncKind,
 		Status:             r.Status,
 		AttemptCount:       r.AttemptCount,
 		MaxAttempts:        r.MaxAttempts,

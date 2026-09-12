@@ -17,6 +17,11 @@ import (
 // queued/running dedup rather than a stricter claim, so a rare race between
 // two seshat-server processes reaping the same tick converges on one job,
 // not a hard error.
+//
+// Also reaps accounts due for a separate, ACL-only permission refresh (see
+// reapDuePermissionAccounts below) - only ever true for an account whose
+// connector implements permissionRefresher, since NextPermissionSyncAt is
+// only set for those in the first place (see CompleteConnectorOAuth).
 func (s *Service) ReapDueAccounts(ctx context.Context) error {
 	now := time.Now().UTC()
 	var due []sdb.ConnectorAccount
@@ -40,6 +45,34 @@ func (s *Service) ReapDueAccounts(ctx context.Context) error {
 			continue
 		}
 		if _, err := s.enqueueSyncJob(ctx, account.OrganizationID, *account.CorpusID, account.ID); err != nil {
+			return err
+		}
+	}
+	return s.reapDuePermissionAccounts(ctx, now)
+}
+
+// reapDuePermissionAccounts mirrors the content-sync reap loop above
+// exactly, for accounts whose NextPermissionSyncAt has elapsed - a separate
+// query/reschedule/enqueue pass rather than folding into the loop above,
+// since the two schedules are independent (an account can be due for one,
+// the other, both, or neither on any given tick).
+func (s *Service) reapDuePermissionAccounts(ctx context.Context, now time.Time) error {
+	var due []sdb.ConnectorAccount
+	if err := s.db.Gorm().WithContext(ctx).
+		Where("status = ? AND next_permission_sync_at IS NOT NULL AND next_permission_sync_at <= ?", StatusConnected, now).
+		Find(&due).Error; err != nil {
+		return err
+	}
+	for _, account := range due {
+		next := now.Add(time.Duration(account.PermissionSyncIntervalSeconds) * time.Second)
+		if err := s.db.Gorm().WithContext(ctx).Model(&sdb.ConnectorAccount{}).
+			Where("id = ?", account.ID).Update("next_permission_sync_at", &next).Error; err != nil {
+			return err
+		}
+		if account.CorpusID == nil {
+			continue
+		}
+		if _, err := s.enqueuePermissionSyncJob(ctx, account.OrganizationID, *account.CorpusID, account.ID); err != nil {
 			return err
 		}
 	}
@@ -94,31 +127,50 @@ func (s *Service) claimNextSyncJob(ctx context.Context) (sdb.ConnectorSyncJob, b
 }
 
 func (s *Service) processSyncJob(ctx context.Context, job sdb.ConnectorSyncJob) {
+	account, conn, secret, ok := s.loadAccountConnectorAndSecret(ctx, job)
+	if !ok {
+		return
+	}
+	if job.SyncKind == SyncJobKindPermissions {
+		s.processPermissionSyncJob(ctx, job, account, conn, secret)
+		return
+	}
+	s.processContentSyncJob(ctx, job, account, conn, secret)
+}
+
+// loadAccountConnectorAndSecret is the shared prologue both sync job kinds
+// need: load the account, resolve its connector, decrypt its credentials.
+// On any failure it marks the job (and, past the account-lookup step, the
+// account itself) failed and returns ok=false, so callers can just return.
+func (s *Service) loadAccountConnectorAndSecret(ctx context.Context, job sdb.ConnectorSyncJob) (sdb.ConnectorAccount, knowledgeConnector, syncSecret, bool) {
 	var account sdb.ConnectorAccount
 	if err := s.db.Gorm().WithContext(ctx).First(&account, "id = ?", job.ConnectorAccountID).Error; err != nil {
 		s.markSyncJobFailed(ctx, job, "connector account no longer exists")
-		return
+		return sdb.ConnectorAccount{}, nil, syncSecret{}, false
 	}
 	conn, err := s.connectorFor(ctx, account.Kind, account.OrganizationID)
 	if err != nil {
 		s.markSyncJobFailed(ctx, job, err.Error())
 		s.markAccountError(ctx, account.ID, err.Error())
-		return
+		return sdb.ConnectorAccount{}, nil, syncSecret{}, false
 	}
 
 	accessToken, err := sdb.DecryptSecret(s.db.Gorm().WithContext(ctx), account.OrganizationID, account.AccessTokenEncrypted)
 	if err != nil {
 		s.markSyncJobFailed(ctx, job, "decrypt access secret: "+err.Error())
 		s.markAccountError(ctx, account.ID, "decrypt access secret: "+err.Error())
-		return
+		return sdb.ConnectorAccount{}, nil, syncSecret{}, false
 	}
 	refreshToken, err := sdb.DecryptSecret(s.db.Gorm().WithContext(ctx), account.OrganizationID, account.RefreshTokenEncrypted)
 	if err != nil {
 		s.markSyncJobFailed(ctx, job, "decrypt refresh secret: "+err.Error())
 		s.markAccountError(ctx, account.ID, "decrypt refresh secret: "+err.Error())
-		return
+		return sdb.ConnectorAccount{}, nil, syncSecret{}, false
 	}
+	return account, conn, syncSecret{AccessToken: accessToken, RefreshToken: refreshToken}, true
+}
 
+func (s *Service) processContentSyncJob(ctx context.Context, job sdb.ConnectorSyncJob, account sdb.ConnectorAccount, conn knowledgeConnector, secret syncSecret) {
 	// job.CorpusID (not account.CorpusID, which is nullable - see
 	// sdb.ConnectorAccount's doc comment) is the reliable source here: every
 	// ConnectorSyncJob targets a real corpus by definition, non-nullable.
@@ -129,7 +181,6 @@ func (s *Service) processSyncJob(ctx context.Context, job sdb.ConnectorSyncJob) 
 		Status:         account.Status,
 		Config:         account.Config,
 	}
-	secret := syncSecret{AccessToken: accessToken, RefreshToken: refreshToken}
 
 	items, nextCursor, err := conn.Sync(ctx, connAccount, secret, account.SyncCursor)
 	if err != nil {
@@ -154,6 +205,73 @@ func (s *Service) processSyncJob(ctx context.Context, job sdb.ConnectorSyncJob) 
 
 	_ = s.db.Gorm().WithContext(ctx).Model(&sdb.ConnectorSyncJob{}).Where("id = ?", job.ID).
 		Updates(map[string]any{"status": SyncJobStatusCompleted, "completed_at": &now, "items_synced": synced}).Error
+}
+
+// processPermissionSyncJob refreshes only the ACL for CorpusFiles already
+// known to this connector account - no content re-fetch, no re-chunking,
+// no re-indexing, no IngestFromConnector call at all. See
+// permissionRefresher's doc comment (types.go).
+func (s *Service) processPermissionSyncJob(ctx context.Context, job sdb.ConnectorSyncJob, account sdb.ConnectorAccount, conn knowledgeConnector, secret syncSecret) {
+	refresher, ok := conn.(permissionRefresher)
+	if !ok {
+		// Shouldn't happen - CompleteConnectorOAuth only ever schedules a
+		// permissions job for a connector kind that implements this - but a
+		// clear failure beats a panic if it somehow does.
+		s.markSyncJobFailed(ctx, job, "connector does not support permission refresh")
+		return
+	}
+
+	var files []sdb.CorpusFile
+	if err := s.db.Gorm().WithContext(ctx).
+		Where("connector_account_id = ?", account.ID).
+		Find(&files).Error; err != nil {
+		s.markSyncJobFailed(ctx, job, "load known files: "+err.Error())
+		return
+	}
+	if len(files) == 0 {
+		s.completePermissionSyncJob(ctx, job, 0)
+		return
+	}
+	resourceIDs := make([]string, 0, len(files))
+	byResourceID := make(map[string]sdb.CorpusFile, len(files))
+	for _, f := range files {
+		resourceIDs = append(resourceIDs, f.ExternalResourceID)
+		byResourceID[f.ExternalResourceID] = f
+	}
+
+	refreshed, err := refresher.RefreshPermissions(ctx, secret, resourceIDs)
+	if err != nil {
+		s.markSyncJobFailed(ctx, job, "refresh permissions: "+err.Error())
+		s.markAccountError(ctx, account.ID, "refresh permissions: "+err.Error())
+		return
+	}
+
+	// A resourceID absent from refreshed means its lookup failed this pass
+	// (see permissionRefresher's doc comment) - that file's own
+	// ExternalAccess is left exactly as it was, not touched here at all.
+	updated := 0
+	for resourceID, acl := range refreshed {
+		file, ok := byResourceID[resourceID]
+		if !ok {
+			continue
+		}
+		// Full load-mutate-Save (not a column-targeted Updates call), same
+		// reasoning as IngestFromConnector's update path (connectors.go) -
+		// GORM's serializer for a JSON-tagged field is only guaranteed to
+		// run on a struct-based Save, and Save needs every other field
+		// already populated (from the Find above) or it would zero them out.
+		file.ExternalAccess = accessEntriesToStrings(acl)
+		if err := s.db.Gorm().WithContext(ctx).Save(&file).Error; err == nil {
+			updated++
+		}
+	}
+	s.completePermissionSyncJob(ctx, job, updated)
+}
+
+func (s *Service) completePermissionSyncJob(ctx context.Context, job sdb.ConnectorSyncJob, updated int) {
+	now := time.Now().UTC()
+	_ = s.db.Gorm().WithContext(ctx).Model(&sdb.ConnectorSyncJob{}).Where("id = ?", job.ID).
+		Updates(map[string]any{"status": SyncJobStatusCompleted, "completed_at": &now, "items_synced": updated}).Error
 }
 
 // tokenRefreshReporter is implemented by connectors whose OAuth provider
