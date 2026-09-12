@@ -3,8 +3,10 @@ package query
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/KPO-Tech/seshat/pkg/providers"
 	"github.com/KPO-Tech/seshat/pkg/sdk"
@@ -50,12 +52,50 @@ type SDKRuntime struct {
 	terminalRelay   *TerminalRelay
 	resolveLocalSTT func(ctx context.Context) *sdk.SpeechToTextConfig
 	mu              sync.RWMutex
+
+	clientCacheMu sync.Mutex
+	clientCache   map[clientCacheKey]*cachedRuntimeClient
 }
+
+// clientCacheKey identifies the (user, provider, model, credential) identity
+// a built *sdk.Client is specific to - the only things clientForInput's
+// config-building actually varies per call (see buildClientConfig). Two
+// turns that resolve to the same key can safely share one cached client:
+// per-session state (the tool allowlist, working-directory prompt text,
+// etc.) lives on the *sdk.Session each turn loads fresh, never on the
+// client/registry itself - and the one exception that used to (PromptFn /
+// WebSearchRunner) is now carried per-turn via context, not mutated on the
+// client. See RunPrompt/StreamPrompt's types.WithPromptFn /
+// types.WithWebSearchRunner calls.
+type clientCacheKey struct {
+	userID   string
+	provider string
+	model    string
+	apiKey   string
+	baseURL  string
+}
+
+// cachedRuntimeClient pairs a cached client with when it was last handed out,
+// for TTL-based eviction (see evictExpiredClientsLocked).
+type cachedRuntimeClient struct {
+	client   *sdk.Client
+	lastUsed time.Time
+}
+
+// clientCacheTTL bounds how long an idle cached client is kept alive. Long
+// enough that a real back-and-forth conversation never pays a rebuild after
+// its first turn; short enough that a client nobody's used in a while (a
+// closed conversation, a provider setting nobody selects anymore) is
+// eventually released instead of accumulating forever - each cached client
+// holds real resources (MCP connections, a browser manager, artifact store
+// handles) for as long as it's cached.
+const clientCacheTTL = 30 * time.Minute
 
 func NewSDKRuntime(client *sdk.Client, baseConfig *sdk.ClientConfig) *SDKRuntime {
 	return &SDKRuntime{
-		client:     client,
-		baseConfig: cloneClientConfig(baseConfig),
+		client:      client,
+		baseConfig:  cloneClientConfig(baseConfig),
+		clientCache: make(map[clientCacheKey]*cachedRuntimeClient),
 	}
 }
 
@@ -111,9 +151,11 @@ func (r *SDKRuntime) RunPrompt(ctx context.Context, input QueryInput) (*QueryRes
 	r.applyRemoteExecutor(session, session.GetID().String())
 	applyToolAllowlist(session, input.AllowedTools)
 
+	// See the matching comment in StreamPrompt: carried on ctx, not
+	// client.SetWebSearchRunner, so a cached/reused client can't have one
+	// turn's search routing overwritten by another's.
 	if input.WebSearchRunner != nil {
-		client.SetWebSearchRunner(input.WebSearchRunner)
-		defer client.SetWebSearchRunner(nil)
+		ctx = types.WithWebSearchRunner(ctx, input.WebSearchRunner)
 	}
 	if input.PermissionMode != "" {
 		session.SetPermissionMode(input.PermissionMode)
@@ -138,25 +180,55 @@ func (r *SDKRuntime) RunPrompt(ctx context.Context, input QueryInput) (*QueryRes
 }
 
 func (r *SDKRuntime) StreamPrompt(ctx context.Context, input QueryInput, onChunk func(sdk.ResponseChunk), onRuntimeEvent func(sdk.RuntimeEvent)) (*QueryResult, error) {
+	// perf: turnStart anchors every timing below to "the moment seshat-backend
+	// started building the SDK client for this turn" - the dominant suspect
+	// for perceived slowness is clientMs, since sdk.NewClient rebuilds the
+	// whole tool registry and re-synchronizes every configured MCP server
+	// (one at a time, no cache) on EVERY turn, not once per session. See
+	// docs/produits/chat/seshatos-main-chat-ui-audit.md.
+	turnStart := time.Now()
+
+	// Stage events give the client something concrete to show during the
+	// otherwise-silent gap before the first response chunk - reusing the
+	// same phase boundaries the [perf] timings above already measure, so
+	// there's no separate profiling to keep in sync.
+	emitStage := func(stage, label string) {
+		onRuntimeEvent(sdk.RuntimeEvent{
+			Type:       sdk.RuntimeEventTypeStage,
+			SessionID:  sdk.SessionID(input.SessionID),
+			StageEvent: &sdk.StageRuntimeEvent{Stage: stage, Label: label},
+		})
+	}
+
+	emitStage("tools", "Loading tools & connections")
+	clientStart := time.Now()
 	client, releaseClient, err := r.clientForInput(ctx, input)
 	if err != nil {
 		return nil, err
 	}
+	clientMs := time.Since(clientStart).Milliseconds()
 	defer releaseClient()
+
+	emitStage("session", "Resuming session")
+	sessionStart := time.Now()
 	session, err := r.loadOrCreateSession(ctx, client, input.SessionID, input.ExecutionOrigin)
 	if err != nil {
 		return nil, err
 	}
+	sessionLoadMs := time.Since(sessionStart).Milliseconds()
 	r.applyRemoteExecutor(session, session.GetID().String())
 	applyToolAllowlist(session, input.AllowedTools)
 
+	// Carried on ctx (not client.SetPromptFn/SetWebSearchRunner, which mutate
+	// state shared by every session built from this *sdk.Client) so a client
+	// reused across concurrent turns - see clientForInput's cache - can't
+	// have one turn's prompt/search routing overwritten or cleared by
+	// another's. See types.WithPromptFn's doc comment for the full story.
 	if input.PromptFn != nil {
-		client.SetPromptFn(input.PromptFn)
-		defer client.SetPromptFn(nil)
+		ctx = types.WithPromptFn(ctx, input.PromptFn)
 	}
 	if input.WebSearchRunner != nil {
-		client.SetWebSearchRunner(input.WebSearchRunner)
-		defer client.SetWebSearchRunner(nil)
+		ctx = types.WithWebSearchRunner(ctx, input.WebSearchRunner)
 	}
 	if input.PermissionMode != "" {
 		session.SetPermissionMode(input.PermissionMode)
@@ -172,13 +244,32 @@ func (r *SDKRuntime) StreamPrompt(ctx context.Context, input QueryInput, onChunk
 	}
 	session.SetAppendSystemPrompt(effectiveAppendSystemPrompt(input))
 
-	session.SetResponseChunkFn(onChunk)
+	// perf: capture wall-clock time (from turnStart, i.e. including client
+	// rebuild + session load) to the first visible sign of life, whichever
+	// comes first - a runtime event (tool call, thinking, permission prompt)
+	// or a response chunk (text token). Only the first occurrence of each is
+	// timed; onceFirstTrace/onceFirstChunk guard against re-timing every
+	// subsequent event in a turn with many tool calls.
+	var onceFirstTrace, onceFirstChunk sync.Once
+	var firstTraceMs, firstChunkMs int64
+	wrappedOnRuntimeEvent := func(event sdk.RuntimeEvent) {
+		onceFirstTrace.Do(func() { firstTraceMs = time.Since(turnStart).Milliseconds() })
+		onRuntimeEvent(event)
+	}
+	wrappedOnChunk := func(chunk sdk.ResponseChunk) {
+		onceFirstChunk.Do(func() { firstChunkMs = time.Since(turnStart).Milliseconds() })
+		onChunk(chunk)
+	}
 
+	session.SetResponseChunkFn(wrappedOnChunk)
 	defer session.SetResponseChunkFn(nil)
-	session.SetRuntimeEventFn(onRuntimeEvent)
+	session.SetRuntimeEventFn(wrappedOnRuntimeEvent)
 	defer session.SetRuntimeEventFn(nil)
 
 	response, err := submitQueryMessage(ctx, session, input)
+	totalMs := time.Since(turnStart).Milliseconds()
+	log.Printf("[perf] stream_prompt session=%s client_build_ms=%d session_load_ms=%d time_to_first_trace_ms=%d time_to_first_chunk_ms=%d total_ms=%d",
+		session.GetID(), clientMs, sessionLoadMs, firstTraceMs, firstChunkMs, totalMs)
 	if err != nil {
 		return nil, fmt.Errorf("submit message: %w", err)
 	}
@@ -328,6 +419,9 @@ func (r *SDKRuntime) ReloadMCPServers(ctx context.Context, servers []sdk.MCPServ
 	}
 	r.baseConfig.MCPServers = append([]sdk.MCPServerConfig(nil), servers...)
 	r.mu.Unlock()
+	// Every cached per-turn client was built from the base config's previous
+	// MCP set - now stale, so the clients themselves are too.
+	r.invalidateClientCache()
 	return nil
 }
 
@@ -350,6 +444,8 @@ func (r *SDKRuntime) ReloadPreToolHooks(hooks []sdk.PreToolHookConfig) error {
 	}
 	r.baseConfig.PreToolHooks = append([]sdk.PreToolHookConfig(nil), hooks...)
 	r.mu.Unlock()
+	// See ReloadMCPServers' matching call - same staleness reasoning.
+	r.invalidateClientCache()
 	return nil
 }
 
@@ -416,6 +512,20 @@ func (r *SDKRuntime) clientForInput(ctx context.Context, input QueryInput) (*sdk
 	}
 	cfg.UserID = input.UserID
 
+	key := clientCacheKey{userID: input.UserID, provider: string(cfg.Model.Provider), model: cfg.Model.Model, apiKey: cfg.APIKey}
+	if cfg.ProviderConfig != nil {
+		key.baseURL = cfg.ProviderConfig.BaseURL
+	}
+
+	r.clientCacheMu.Lock()
+	r.evictExpiredClientsLocked()
+	if cached, ok := r.clientCache[key]; ok {
+		cached.lastUsed = time.Now()
+		r.clientCacheMu.Unlock()
+		return cached.client, func() {}, nil
+	}
+	r.clientCacheMu.Unlock()
+
 	client, err := sdk.NewClient(cfg)
 	if err != nil {
 		if input.RuntimeProvider != nil {
@@ -423,9 +533,54 @@ func (r *SDKRuntime) clientForInput(ctx context.Context, input QueryInput) (*sdk
 		}
 		return nil, nil, fmt.Errorf("create request runtime client: %w", err)
 	}
-	return client, func() {
-		_ = client.Close()
-	}, nil
+
+	r.clientCacheMu.Lock()
+	if r.clientCache == nil {
+		r.clientCache = make(map[clientCacheKey]*cachedRuntimeClient)
+	}
+	r.clientCache[key] = &cachedRuntimeClient{client: client, lastUsed: time.Now()}
+	r.clientCacheMu.Unlock()
+
+	return client, func() {}, nil
+}
+
+// evictExpiredClientsLocked closes and drops every cached client idle for
+// longer than clientCacheTTL. Callers must hold clientCacheMu.
+func (r *SDKRuntime) evictExpiredClientsLocked() {
+	if len(r.clientCache) == 0 {
+		return
+	}
+	now := time.Now()
+	for key, entry := range r.clientCache {
+		if now.Sub(entry.lastUsed) > clientCacheTTL {
+			_ = entry.client.Close()
+			delete(r.clientCache, key)
+		}
+	}
+}
+
+// invalidateClientCache closes and drops every cached client. Called
+// whenever the base config those clients were built from changes underneath
+// them (ReloadMCPServers, ReloadPreToolHooks) - a cached client only reflects
+// the config snapshot it was built with, so once that snapshot is stale the
+// whole cache is.
+func (r *SDKRuntime) invalidateClientCache() {
+	r.clientCacheMu.Lock()
+	defer r.clientCacheMu.Unlock()
+	for key, entry := range r.clientCache {
+		_ = entry.client.Close()
+		delete(r.clientCache, key)
+	}
+}
+
+// CloseCachedClients closes every cached per-turn client. Call once at
+// process shutdown, alongside the base client's own Close() - see
+// bootstrap.go's cleanups chain.
+func (r *SDKRuntime) CloseCachedClients() {
+	if r == nil {
+		return
+	}
+	r.invalidateClientCache()
 }
 
 func (r *SDKRuntime) buildBaseClientConfig(ctx context.Context) *sdk.ClientConfig {

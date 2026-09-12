@@ -313,6 +313,7 @@ func (app *App) routes() http.Handler {
 	// Jobs
 	mux.Handle("GET /api/v1/jobs", app.authMiddleware(http.HandlerFunc(app.handleJobs)))
 	mux.Handle("POST /api/v1/jobs", app.authMiddleware(http.HandlerFunc(app.handleJobs)))
+	mux.Handle("POST /api/v1/jobs/draft", app.authMiddleware(http.HandlerFunc(app.handleJobDraft)))
 	mux.Handle("GET /api/v1/jobs/{jobID}", app.authMiddleware(http.HandlerFunc(app.handleJobByID)))
 	mux.Handle("PUT /api/v1/jobs/{jobID}", app.authMiddleware(http.HandlerFunc(app.handleJobByID)))
 	mux.Handle("DELETE /api/v1/jobs/{jobID}", app.authMiddleware(http.HandlerFunc(app.handleJobByID)))

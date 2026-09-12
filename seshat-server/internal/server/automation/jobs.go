@@ -24,6 +24,12 @@ const (
 	TriggerTypeCron     = "cron"
 	TriggerTypeInterval = "interval"
 	TriggerTypeOnce     = "once"
+	// TriggerTypeWebhook, unlike the three above, is never persisted as-is —
+	// it's a request-only signal telling normalizeJobTrigger to mint a
+	// webhook trigger for a graph-less (Prompt-only) job, the same way a
+	// webhook_trigger node does for a graph job. Storage still normalizes to
+	// TriggerType "" (see normalizeJobTrigger), matching the graph case.
+	TriggerTypeWebhook = "webhook"
 
 	ExecutionTargetCloud  = "cloud"
 	ExecutionTargetDevice = "device"
@@ -91,6 +97,10 @@ type jobTriggerParams struct {
 	ModelOverride   string
 	Configuration   map[string]string
 	ResolvedAgents  map[string]sdb.ResolvedAgent
+	// WebhookMethod/WebhookResponseMode are only consulted when TriggerType
+	// is TriggerTypeWebhook and Graph is nil - see normalizeJobTrigger.
+	WebhookMethod       string
+	WebhookResponseMode string
 }
 
 type CreateJobParams struct {
@@ -108,6 +118,10 @@ type CreateJobParams struct {
 	ModelOverride   string                       `json:"model_override"`
 	Configuration   map[string]string            `json:"configuration"`
 	ResolvedAgents  map[string]sdb.ResolvedAgent `json:"resolved_agents"`
+	// WebhookMethod/WebhookResponseMode: see jobTriggerParams's doc comment -
+	// only consulted when TriggerType is "webhook" and Graph is nil.
+	WebhookMethod       string `json:"webhook_method"`
+	WebhookResponseMode string `json:"webhook_response_mode"`
 	// ErrorWorkflowJobID (Tier 3.1) is error-handling config, not a trigger
 	// concern - kept separate from jobTriggerParams (see normalizeErrorWorkflowJobID).
 	ErrorWorkflowJobID string `json:"error_workflow_job_id"`
@@ -131,6 +145,10 @@ type UpdateJobParams struct {
 	ModelOverride   string                       `json:"model_override"`
 	Configuration   map[string]string            `json:"configuration"`
 	ResolvedAgents  map[string]sdb.ResolvedAgent `json:"resolved_agents"`
+	// WebhookMethod/WebhookResponseMode: see jobTriggerParams's doc comment -
+	// only consulted when TriggerType is "webhook" and Graph is nil.
+	WebhookMethod       string `json:"webhook_method"`
+	WebhookResponseMode string `json:"webhook_response_mode"`
 	// See CreateJobParams.ErrorWorkflowJobID's doc comment. Empty clears any
 	// existing setting.
 	ErrorWorkflowJobID string `json:"error_workflow_job_id"`
@@ -214,19 +232,21 @@ func (s *Service) CreateJob(ctx context.Context, principal *iam.Principal, param
 		}
 
 		trigger, webhook, err := normalizeJobTrigger(jobTriggerParams{
-			Name:            params.Name,
-			Description:     params.Description,
-			TriggerType:     params.TriggerType,
-			CronExpr:        params.CronExpr,
-			IntervalSeconds: params.IntervalSeconds,
-			RunAt:           params.RunAt,
-			ExecutionTarget: params.ExecutionTarget,
-			TargetDeviceID:  params.TargetDeviceID,
-			Prompt:          params.Prompt,
-			Graph:           params.Graph,
-			ModelOverride:   params.ModelOverride,
-			Configuration:   params.Configuration,
-			ResolvedAgents:  params.ResolvedAgents,
+			Name:                params.Name,
+			Description:         params.Description,
+			TriggerType:         params.TriggerType,
+			CronExpr:            params.CronExpr,
+			IntervalSeconds:     params.IntervalSeconds,
+			RunAt:               params.RunAt,
+			ExecutionTarget:     params.ExecutionTarget,
+			TargetDeviceID:      params.TargetDeviceID,
+			Prompt:              params.Prompt,
+			Graph:               params.Graph,
+			ModelOverride:       params.ModelOverride,
+			Configuration:       params.Configuration,
+			ResolvedAgents:      params.ResolvedAgents,
+			WebhookMethod:       params.WebhookMethod,
+			WebhookResponseMode: params.WebhookResponseMode,
 		})
 		if err != nil {
 			return err
@@ -325,19 +345,21 @@ func (s *Service) UpdateJob(ctx context.Context, principal *iam.Principal, jobID
 		}
 
 		trigger, webhook, err := normalizeJobTrigger(jobTriggerParams{
-			Name:            params.Name,
-			Description:     params.Description,
-			TriggerType:     params.TriggerType,
-			CronExpr:        params.CronExpr,
-			IntervalSeconds: params.IntervalSeconds,
-			RunAt:           params.RunAt,
-			ExecutionTarget: params.ExecutionTarget,
-			TargetDeviceID:  params.TargetDeviceID,
-			Prompt:          params.Prompt,
-			Graph:           params.Graph,
-			ModelOverride:   params.ModelOverride,
-			Configuration:   params.Configuration,
-			ResolvedAgents:  params.ResolvedAgents,
+			Name:                params.Name,
+			Description:         params.Description,
+			TriggerType:         params.TriggerType,
+			CronExpr:            params.CronExpr,
+			IntervalSeconds:     params.IntervalSeconds,
+			RunAt:               params.RunAt,
+			ExecutionTarget:     params.ExecutionTarget,
+			TargetDeviceID:      params.TargetDeviceID,
+			Prompt:              params.Prompt,
+			Graph:               params.Graph,
+			ModelOverride:       params.ModelOverride,
+			Configuration:       params.Configuration,
+			ResolvedAgents:      params.ResolvedAgents,
+			WebhookMethod:       params.WebhookMethod,
+			WebhookResponseMode: params.WebhookResponseMode,
 		})
 		if err != nil {
 			return err
@@ -709,6 +731,19 @@ func normalizeJobTrigger(input jobTriggerParams) (normalizedJobTrigger, extracte
 		} else if ok {
 			webhook = wtrig
 		}
+	} else if strings.EqualFold(strings.TrimSpace(input.TriggerType), TriggerTypeWebhook) {
+		// A graph-less (Prompt-only) Scheduling job asking for a webhook
+		// trigger directly - the same extractedWebhookTrigger the graph
+		// branch above would produce from a webhook_trigger node, just
+		// sourced from request fields instead of graph parameters. Everything
+		// downstream (token mint/keep/clear in CreateJob/UpdateJob, the
+		// TriggerType=="" normalization below, computeNextRunAt) treats this
+		// identically to the graph case.
+		wtrig, err := normalizeWebhookTrigger(input.WebhookMethod, input.WebhookResponseMode)
+		if err != nil {
+			return normalizedJobTrigger{}, extractedWebhookTrigger{}, ErrInvalidInput("invalid webhook trigger: " + err.Error())
+		}
+		webhook = wtrig
 	}
 
 	triggerType := strings.ToLower(strings.TrimSpace(input.TriggerType))
@@ -862,27 +897,44 @@ func webhookTriggerFromGraph(def dataflow.Definition) (extractedWebhookTrigger, 
 		if node.Type != "webhook_trigger" {
 			continue
 		}
-		method := strings.ToUpper(strings.TrimSpace(dataflow.StringParam(node.Parameters, "method", "")))
-		if method == "" {
-			method = "POST" // matches nodes.WebhookTrigger's own Description() default
+		method := dataflow.StringParam(node.Parameters, "method", "")
+		mode := dataflow.StringParam(node.Parameters, "responseMode", "")
+		webhook, err := normalizeWebhookTrigger(method, mode)
+		if err != nil {
+			return extractedWebhookTrigger{}, false, err
 		}
-		switch method {
-		case "GET", "POST", "PUT", "PATCH", "DELETE":
-		default:
-			return extractedWebhookTrigger{}, false, errors.New(`method must be one of "GET", "POST", "PUT", "PATCH", "DELETE"`)
-		}
-
-		mode := strings.TrimSpace(dataflow.StringParam(node.Parameters, "responseMode", ""))
-		if mode == "" {
-			mode = WebhookResponseModeImmediate
-		}
-		if mode != WebhookResponseModeImmediate && mode != WebhookResponseModeWhenFinished {
-			return extractedWebhookTrigger{}, false, errors.New(`responseMode must be one of "immediate", "whenFinished"`)
-		}
-
-		return extractedWebhookTrigger{Method: method, ResponseMode: mode}, true, nil
+		return webhook, true, nil
 	}
 	return extractedWebhookTrigger{}, false, nil
+}
+
+// normalizeWebhookTrigger validates and defaults a webhook trigger's method/
+// response mode - shared by webhookTriggerFromGraph (reading a
+// webhook_trigger node's Parameters off a graph) and normalizeJobTrigger's
+// graph-less branch (a Scheduling job requesting TriggerTypeWebhook
+// directly). Defaults match nodes.WebhookTrigger's own Description()
+// (POST/immediate) so a graph-based and a graph-less webhook trigger behave
+// identically when unconfigured.
+func normalizeWebhookTrigger(method, responseMode string) (extractedWebhookTrigger, error) {
+	method = strings.ToUpper(strings.TrimSpace(method))
+	if method == "" {
+		method = "POST"
+	}
+	switch method {
+	case "GET", "POST", "PUT", "PATCH", "DELETE":
+	default:
+		return extractedWebhookTrigger{}, errors.New(`method must be one of "GET", "POST", "PUT", "PATCH", "DELETE"`)
+	}
+
+	mode := strings.TrimSpace(responseMode)
+	if mode == "" {
+		mode = WebhookResponseModeImmediate
+	}
+	if mode != WebhookResponseModeImmediate && mode != WebhookResponseModeWhenFinished {
+		return extractedWebhookTrigger{}, errors.New(`responseMode must be one of "immediate", "whenFinished"`)
+	}
+
+	return extractedWebhookTrigger{Method: method, ResponseMode: mode}, nil
 }
 
 // graphToJSON/graphFromJSON mirror the same pattern already used by

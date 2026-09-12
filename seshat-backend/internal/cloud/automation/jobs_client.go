@@ -67,6 +67,23 @@ func (c *JobsClient) CreateJob(ctx context.Context, token, organizationID string
 	return &job, nil
 }
 
+// DraftJob turns a natural-language request into a JobDraft via
+// seshat-server's one-shot LLM call (see automation.Service.DraftJob's doc
+// comment there) - nothing is persisted, the caller still does a separate
+// CreateJob once it confirms the draft.
+func (c *JobsClient) DraftJob(ctx context.Context, token, organizationID, provider, request string) (*JobDraft, error) {
+	body := struct {
+		OrganizationID string `json:"organization_id"`
+		Provider       string `json:"provider"`
+		Request        string `json:"request"`
+	}{OrganizationID: organizationID, Provider: provider, Request: request}
+	var draft JobDraft
+	if _, err := c.do(ctx, http.MethodPost, "/api/v1/jobs/draft", token, body, &draft); err != nil {
+		return nil, err
+	}
+	return &draft, nil
+}
+
 func (c *JobsClient) UpdateJob(ctx context.Context, token, jobID string, params JobParams) (*Job, error) {
 	var job Job
 	if _, err := c.do(ctx, http.MethodPut, "/api/v1/jobs/"+jobID, token, params, &job); err != nil {

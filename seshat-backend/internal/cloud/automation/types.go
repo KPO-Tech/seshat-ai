@@ -125,27 +125,36 @@ type NodeTraceEntry struct {
 
 // Job mirrors seshat-server's Job schema (automation.Job / openapi Job).
 type Job struct {
-	ID              string               `json:"id"`
-	OrganizationID  string               `json:"organization_id"`
-	CreatedByUserID string               `json:"created_by_user_id,omitempty"`
-	Name            string               `json:"name"`
-	Description     string               `json:"description,omitempty"`
-	Status          string               `json:"status"`
-	TriggerType     string               `json:"trigger_type"`
-	CronExpr        string               `json:"cron_expr,omitempty"`
-	IntervalSeconds int                  `json:"interval_seconds,omitempty"`
-	RunAt           string               `json:"run_at,omitempty"`
-	NextRunAt       string               `json:"next_run_at,omitempty"`
-	LastRunAt       string               `json:"last_run_at,omitempty"`
-	LastRunStatus   string               `json:"last_run_status,omitempty"`
-	ExecutionTarget string               `json:"execution_target"`
-	TargetDeviceID  string               `json:"target_device_id,omitempty"`
-	Prompt          string               `json:"prompt,omitempty"`
-	Graph           *dataflow.Definition `json:"graph,omitempty"`
-	ModelOverride   string               `json:"model_override,omitempty"`
-	Configuration   map[string]string    `json:"configuration,omitempty"`
-	CreatedAt       string               `json:"created_at,omitempty"`
-	UpdatedAt       string               `json:"updated_at,omitempty"`
+	ID              string `json:"id"`
+	OrganizationID  string `json:"organization_id"`
+	CreatedByUserID string `json:"created_by_user_id,omitempty"`
+	Name            string `json:"name"`
+	Description     string `json:"description,omitempty"`
+	Status          string `json:"status"`
+	TriggerType     string `json:"trigger_type"`
+	CronExpr        string `json:"cron_expr,omitempty"`
+	IntervalSeconds int    `json:"interval_seconds,omitempty"`
+	RunAt           string `json:"run_at,omitempty"`
+	NextRunAt       string `json:"next_run_at,omitempty"`
+	LastRunAt       string `json:"last_run_at,omitempty"`
+	LastRunStatus   string `json:"last_run_status,omitempty"`
+	ExecutionTarget string `json:"execution_target"`
+	TargetDeviceID  string `json:"target_device_id,omitempty"`
+	// WebhookToken/Method/ResponseMode mirror seshat-server automation.Job's
+	// own fields (jobs.go) - present once a webhook trigger (graph-based
+	// webhook_trigger node, or a graph-less job created with
+	// trigger_type "webhook") has been saved. Without these fields here,
+	// JobsClient silently drops them on both the request and response side
+	// since it marshals/unmarshals strictly through this struct.
+	WebhookToken        string               `json:"webhook_token,omitempty"`
+	WebhookMethod       string               `json:"webhook_method,omitempty"`
+	WebhookResponseMode string               `json:"webhook_response_mode,omitempty"`
+	Prompt              string               `json:"prompt,omitempty"`
+	Graph               *dataflow.Definition `json:"graph,omitempty"`
+	ModelOverride       string               `json:"model_override,omitempty"`
+	Configuration       map[string]string    `json:"configuration,omitempty"`
+	CreatedAt           string               `json:"created_at,omitempty"`
+	UpdatedAt           string               `json:"updated_at,omitempty"`
 }
 
 // ResolvedAgent is a graph's own "agent" node's referenced agent, resolved
@@ -177,11 +186,31 @@ type JobParams struct {
 	Graph           *dataflow.Definition `json:"graph,omitempty"`
 	ModelOverride   string               `json:"model_override,omitempty"`
 	Configuration   map[string]string    `json:"configuration,omitempty"`
+	// WebhookMethod/WebhookResponseMode: see Job's doc comment - only
+	// meaningful when TriggerType is "webhook" and Graph is nil.
+	WebhookMethod       string `json:"webhook_method,omitempty"`
+	WebhookResponseMode string `json:"webhook_response_mode,omitempty"`
 	// ResolvedAgents is populated server-side (see resolveGraphAgents) from
 	// whatever "agent" nodes Graph actually references - never authored by
 	// the caller directly, though nothing stops a caller from setting it;
 	// it gets overwritten before forwarding to seshat-server regardless.
 	ResolvedAgents map[string]ResolvedAgent `json:"resolved_agents,omitempty"`
+}
+
+// JobDraft mirrors seshat-server's automation.JobDraft - the response shape
+// of DraftJob (schedule + prompt only, no execution_target/model_override/
+// agent selection - those stay a frontend concern, see JobsClient.DraftJob's
+// doc comment).
+type JobDraft struct {
+	Name                string `json:"name"`
+	Description         string `json:"description,omitempty"`
+	TriggerType         string `json:"trigger_type"`
+	CronExpr            string `json:"cron_expr,omitempty"`
+	IntervalSeconds     int    `json:"interval_seconds,omitempty"`
+	RunAt               string `json:"run_at,omitempty"`
+	WebhookMethod       string `json:"webhook_method,omitempty"`
+	WebhookResponseMode string `json:"webhook_response_mode,omitempty"`
+	Prompt              string `json:"prompt"`
 }
 
 // AttentionItem mirrors seshat-server's automation.AttentionItem — one

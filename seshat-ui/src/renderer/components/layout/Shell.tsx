@@ -22,12 +22,13 @@ export function Shell() {
   // Automation (its own Overview at /automation, or the graph editor at
   // /automation/new or /automation/:jobId) is immersive for the same reason
   // a conversation is — the canvas needs the window, not a fixed-width
-  // column sharing space with the main nav. /scheduling (the job list,
-  // reached from the Automation tile in Apps) is a normal list page like
-  // any other, so it keeps the sidebar - the bare /automation route
-  // already gets no sidebar below (not in sidebarRoutes either way) - this
-  // flag exists for the /automation/* children, which startsWith('/') alone
-  // wouldn't cover without the trailing segment.
+  // column sharing space with the main nav. /scheduling briefly got the same
+  // treatment when its job list was redesigned into a search+sectioned-grid
+  // dashboard, but the user asked for the main sidebar back - it stays a
+  // normal list page like any other, keeping the sidebar - the bare
+  // /automation route already gets no sidebar below (not in sidebarRoutes
+  // either way) - this flag exists for the /automation/* children, which
+  // startsWith('/') alone wouldn't cover without the trailing segment.
   const isAutomation = pathname === '/automation' || pathname.startsWith('/automation/')
   const sidebarRoutes = ['/', '/apps', '/projects', '/history', '/scheduling']
   const showSidebar = isConversation || (!isAutomation && sidebarRoutes.includes(pathname))

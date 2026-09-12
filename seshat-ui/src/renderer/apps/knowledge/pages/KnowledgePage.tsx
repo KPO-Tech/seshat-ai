@@ -144,8 +144,7 @@ export function KnowledgePage() {
     : false
 
   // Apply a stored preference once providers have loaded; otherwise fall
-  // back to the organization default, same precedence as scheduling's
-  // PlannerSettingsModal.
+  // back to the organization default.
   useEffect(() => {
     if (hasAppliedStoredPreference.current || providersLoading || providers.length === 0) return
     hasAppliedStoredPreference.current = true

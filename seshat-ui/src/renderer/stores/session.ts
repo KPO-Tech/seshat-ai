@@ -109,6 +109,11 @@ export type AgentState = {
   activityLog: ToolActivity[]
   isThinking: boolean
   pendingPermission: PendingPermission | null
+  // Named pre-generation setup phase (loading tools, resuming session,
+  // searching knowledge) — see turn.stage in useChat.ts's handleRuntimeEvent.
+  // Superseded implicitly once isThinking flips true on turn.started, so no
+  // separate "stage ended" signal is needed.
+  stage: { stage: string; label: string } | null
 }
 
 const defaultAgentState = (): AgentState => ({
@@ -120,6 +125,7 @@ const defaultAgentState = (): AgentState => ({
   activityLog: [],
   isThinking: false,
   pendingPermission: null,
+  stage: null,
 })
 
 export const EMPTY_STREAMING: StreamingBlock[] = []

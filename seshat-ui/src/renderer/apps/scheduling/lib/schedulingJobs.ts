@@ -1,96 +1,107 @@
+import { api } from '@/api/client'
 import type { Agent, ProviderSetting } from '@/api/types'
-import type { Job, JobDraft, PlannerPreference, RunStatus } from '../api/types'
+import type { Job, JobDraft, RunStatus, TriggerType, WebhookMethod, WebhookResponseMode } from '../api/types'
 export const RUN_STATUS_LABEL: Record<RunStatus, string> = {
   queued: 'Queued', claimed: 'Claimed', running: 'Running',
   completed: 'Completed', failed: 'Failed', cancelled: 'Cancelled',
 }
 
-function titleFromRequest(request: string): string {
-  const cleaned = request.replace(/\s+/g, ' ').trim()
-  if (!cleaned) return 'Scheduled automation'
-  const short = cleaned.length > 58 ? `${cleaned.slice(0, 55).trim()}...` : cleaned
-  return short[0].toUpperCase() + short.slice(1)
+// Response shape of POST /automation/jobs/draft (seshat-server's
+// automation.JobDraft, relayed as-is) - the schedule/prompt/name fields a
+// real one-shot agent call produces from the request text. Deliberately
+// does not cover execution_target/model_override/agent selection, which
+// stay resolved locally below exactly as before this was a real agent call.
+type ScheduleDraftResponse = {
+  name: string
+  description?: string
+  trigger_type: TriggerType
+  cron_expr?: string
+  interval_seconds?: number
+  run_at?: string
+  webhook_method?: WebhookMethod
+  webhook_response_mode?: WebhookResponseMode
+  prompt: string
 }
 
-function draftScheduleFromRequest(request: string): Pick<JobDraft, 'trigger_type' | 'cron_expr' | 'interval_seconds' | 'run_at'> {
-  const text = request.toLowerCase()
-  const hourMatch = text.match(/\b(?:a|à|at)\s*(\d{1,2})(?:h|:)?(\d{2})?\b/)
-  const hour = hourMatch ? Math.min(23, Number(hourMatch[1])) : 9
-  const minute = hourMatch?.[2] ? Math.min(59, Number(hourMatch[2])) : 0
-  const minuteHour = `${minute} ${hour}`
-
-  if (/\b(once|une fois|demain|tomorrow)\b/.test(text)) {
-    const runAt = new Date()
-    runAt.setDate(runAt.getDate() + (/\b(demain|tomorrow)\b/.test(text) ? 1 : 0))
-    runAt.setHours(hour, minute, 0, 0)
-    return { trigger_type: 'once', run_at: runAt.toISOString() }
-  }
-  if (/\b(hourly|chaque heure|toutes les heures)\b/.test(text)) return { trigger_type: 'interval', interval_seconds: 3600 }
-  if (/\b(daily|tous les jours|chaque jour|quotidien)\b/.test(text)) return { trigger_type: 'cron', cron_expr: `${minuteHour} * * *` }
-  if (/\b(monday|lundi)\b/.test(text)) return { trigger_type: 'cron', cron_expr: `${minuteHour} * * 1` }
-  if (/\b(friday|vendredi)\b/.test(text)) return { trigger_type: 'cron', cron_expr: `${minuteHour} * * 5` }
-  if (/\b(weekly|chaque semaine|hebdo|hebdomadaire)\b/.test(text)) return { trigger_type: 'cron', cron_expr: `${minuteHour} * * 1` }
-  if (/\b(monthly|chaque mois|mensuel)\b/.test(text)) return { trigger_type: 'cron', cron_expr: `${minuteHour} 1 * *` }
-  return { trigger_type: 'cron', cron_expr: '0 9 * * 1' }
-}
-
-// The planner's preferred provider/model is a per-device convenience, not
-// job data - persisted in localStorage rather than sent anywhere, same
-// pattern as other lightweight per-viewer preferences in this app.
-const PLANNER_PREFERENCE_KEY = 'seshat.scheduling-planner-preferred-model.v1'
-
-export function loadPlannerPreference(): PlannerPreference | null {
-  try {
-    const raw = localStorage.getItem(PLANNER_PREFERENCE_KEY)
-    if (!raw) return null
-    const parsed = JSON.parse(raw)
-    if (typeof parsed?.providerSettingId === 'string' && typeof parsed?.modelId === 'string') return parsed
-    return null
-  } catch {
-    return null
-  }
-}
-
-export function savePlannerPreference(pref: PlannerPreference | null) {
-  try {
-    if (pref) localStorage.setItem(PLANNER_PREFERENCE_KEY, JSON.stringify(pref))
-    else localStorage.removeItem(PLANNER_PREFERENCE_KEY)
-  } catch {
-    // best-effort only - a private window or blocked storage just means the
-    // planner falls back to the org default provider every time, same as
-    // before this preference existed at all.
-  }
-}
-
-export function draftAutomation(request: string, agents: Agent[], providers: ProviderSetting[], preference: PlannerPreference | null): JobDraft {
-  const text = request.toLowerCase()
-  const selectedAgent =
-    agents.find((agent) => text.includes(agent.slug.toLowerCase())) ??
-    agents.find((agent) => text.includes((agent.name || '').toLowerCase())) ??
+// selectDefaultAgent/selectDefaultProvider are the "who runs it" defaulting
+// chain shared by draftAutomation (below) and jobTemplates.ts's
+// templateToDraft - a template has no request text to keyword-match against,
+// so it skips straight to the same fallback tail draftAutomation uses when
+// no keyword match hits. Always the organization's default provider/model -
+// no per-device override UI exists for this (removed as unnecessary
+// clutter; the org default is the right choice for almost everyone).
+export function selectDefaultAgent(agents: Agent[], requestText?: string): Agent | undefined {
+  const text = requestText?.toLowerCase()
+  return (
+    (text ? agents.find((agent) => text.includes(agent.slug.toLowerCase())) : undefined) ??
+    (text ? agents.find((agent) => text.includes((agent.name || '').toLowerCase())) : undefined) ??
     agents.find((agent) => agent.slug === 'automation-manager') ??
     agents.find((agent) => agent.source === 'user') ??
     agents[0]
-  const preferredProvider = preference ? providers.find((item) => item.id === preference.providerSettingId) : undefined
-  const provider = preferredProvider ?? providers.find((item) => item.is_default) ?? providers[0]
-  const schedule = draftScheduleFromRequest(request)
+  )
+}
+
+export function selectDefaultProvider(providers: ProviderSetting[]): ProviderSetting | undefined {
+  return providers.find((item) => item.is_default) ?? providers[0]
+}
+
+// draftAutomation hands the request to a real one-shot agent call
+// (POST /automation/jobs/draft - see automation.Service.DraftJob in
+// seshat-server) to work out the schedule and the job's prompt, then keeps
+// the existing local logic for picking *who runs it*: a keyword-matched
+// agent and the organization's default provider. Throws on failure (LLM
+// call/timeout/parse error) - the caller is expected to surface that as a
+// real error, not swallow it, since this sits in the confirm-before-create
+// path for a job that will execute real prompts against real systems.
+export async function draftAutomation(request: string, agents: Agent[], providers: ProviderSetting[]): Promise<JobDraft> {
+  const selectedAgent = selectDefaultAgent(agents, request)
+  const provider = selectDefaultProvider(providers)
+
+  const schedule = await api.post<ScheduleDraftResponse>('/automation/jobs/draft', {
+    provider: provider?.provider ?? '',
+    request: request.trim(),
+  })
 
   return {
-    name: titleFromRequest(request),
-    description: 'Drafted from the Scheduling assistant. Review every field before creating the job.',
-    ...schedule,
+    name: schedule.name,
+    description: schedule.description,
+    trigger_type: schedule.trigger_type,
+    cron_expr: schedule.cron_expr,
+    interval_seconds: schedule.interval_seconds,
+    run_at: schedule.run_at,
+    webhook_method: schedule.webhook_method,
+    webhook_response_mode: schedule.webhook_response_mode,
     execution_target: 'cloud',
-    prompt: `You are running a scheduled automation.\n\nUser request:\n${request.trim()}\n\nExecute the task carefully, summarize what was done, and include any errors or follow-up needed.`,
+    prompt: schedule.prompt,
     agent_slug: selectedAgent?.slug,
     provider_setting_id: provider?.id,
-    model_id: preferredProvider ? preference?.modelId : undefined,
+  }
+}
+
+// describeDraftTrigger is describeTrigger's counterpart for a not-yet-saved
+// JobDraft - a draft's trigger_type is literally 'webhook' (unlike a saved
+// job, which normalizes to trigger_type "" with webhook_token as the real
+// signal - see describeTrigger below), so this doesn't need that check.
+export function describeDraftTrigger(draft: JobDraft): string {
+  switch (draft.trigger_type) {
+    case 'cron': return draft.cron_expr ? `cron ${draft.cron_expr}` : 'cron'
+    case 'interval': return draft.interval_seconds ? `every ${draft.interval_seconds}s` : 'interval'
+    case 'once': return draft.run_at ? `once at ${new Date(draft.run_at).toLocaleString()}` : 'once'
+    case 'webhook': return `webhook (${draft.webhook_method || 'POST'})`
+    default: return draft.trigger_type ?? ''
   }
 }
 
 export function describeTrigger(job: Job): string {
+  // A saved webhook trigger normalizes to trigger_type "" server-side (see
+  // normalizeJobTrigger in seshat-server) - webhook_token presence is the
+  // actual signal, checked before the switch below.
+  if (job.webhook_token) return `webhook (${job.webhook_method || 'POST'})`
   switch (job.trigger_type) {
     case 'cron': return job.cron_expr ? `cron ${job.cron_expr}` : 'cron'
     case 'interval': return job.interval_seconds ? `every ${job.interval_seconds}s` : 'interval'
     case 'once': return job.run_at ? `once at ${new Date(job.run_at).toLocaleString()}` : 'once'
+    case 'webhook': return 'webhook'
     default: return job.trigger_type
   }
 }

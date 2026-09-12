@@ -20,10 +20,19 @@ func newTestSDKRuntime(t *testing.T) *SDKRuntime {
 	}
 	t.Cleanup(func() { _ = client.Close() })
 
-	return NewSDKRuntime(client, cfg)
+	runtime := NewSDKRuntime(client, cfg)
+	t.Cleanup(runtime.CloseCachedClients)
+	return runtime
 }
 
-func TestSDKRuntimeClientForInputReturnsFreshBaseClients(t *testing.T) {
+// TestSDKRuntimeClientForInputCachesBaseClients guards clientForInput's
+// cache: two calls with the same (userID, provider, model, credential) key
+// must return the identical *sdk.Client instead of building a fresh one each
+// time - see clientCacheKey's doc comment for why this is safe (per-session
+// state lives on the *sdk.Session each turn loads fresh, and the one
+// historically shared mutable field, PromptFn/WebSearchRunner, is now
+// threaded per-turn via context instead - see types.WithPromptFn).
+func TestSDKRuntimeClientForInputCachesBaseClients(t *testing.T) {
 	runtime := newTestSDKRuntime(t)
 
 	clientA, releaseA, err := runtime.clientForInput(context.Background(), QueryInput{})
@@ -41,8 +50,8 @@ func TestSDKRuntimeClientForInputReturnsFreshBaseClients(t *testing.T) {
 	if clientA == runtime.client || clientB == runtime.client {
 		t.Fatal("expected request-scoped clients, not the shared base client")
 	}
-	if clientA == clientB {
-		t.Fatal("expected a fresh client per request")
+	if clientA != clientB {
+		t.Fatal("expected the same cache key to reuse the same cached client")
 	}
 	if clientA.GetSessionStore() != runtime.client.GetSessionStore() {
 		t.Fatal("expected request client to reuse the shared session store")
@@ -52,7 +61,9 @@ func TestSDKRuntimeClientForInputReturnsFreshBaseClients(t *testing.T) {
 	}
 }
 
-func TestSDKRuntimeClientForInputReturnsFreshProviderOverrideClients(t *testing.T) {
+// TestSDKRuntimeClientForInputCachesProviderOverrideClients mirrors the base
+// case above for the RuntimeProvider (per-session model override) path.
+func TestSDKRuntimeClientForInputCachesProviderOverrideClients(t *testing.T) {
 	runtime := newTestSDKRuntime(t)
 	input := QueryInput{RuntimeProvider: &RuntimeProviderConfig{
 		Provider: "anthropic",
@@ -75,11 +86,35 @@ func TestSDKRuntimeClientForInputReturnsFreshProviderOverrideClients(t *testing.
 	if clientA == runtime.client || clientB == runtime.client {
 		t.Fatal("expected provider override clients to be request-scoped")
 	}
-	if clientA == clientB {
-		t.Fatal("expected provider override clients to be recreated per request")
+	if clientA != clientB {
+		t.Fatal("expected the same provider override key to reuse the same cached client")
 	}
 	if clientA.GetSessionStore() != runtime.client.GetSessionStore() {
 		t.Fatal("expected provider override client to reuse the shared session store")
+	}
+}
+
+// TestSDKRuntimeClientForInputDoesNotShareAcrossDifferentKeys guards the
+// other half of the cache's correctness: two calls whose keys genuinely
+// differ (here, different users) must never resolve to the same cached
+// client - only same-key reuse is safe.
+func TestSDKRuntimeClientForInputDoesNotShareAcrossDifferentKeys(t *testing.T) {
+	runtime := newTestSDKRuntime(t)
+
+	clientA, releaseA, err := runtime.clientForInput(context.Background(), QueryInput{UserID: "user-a"})
+	if err != nil {
+		t.Fatalf("clientForInput failed: %v", err)
+	}
+	defer releaseA()
+
+	clientB, releaseB, err := runtime.clientForInput(context.Background(), QueryInput{UserID: "user-b"})
+	if err != nil {
+		t.Fatalf("second clientForInput failed: %v", err)
+	}
+	defer releaseB()
+
+	if clientA == clientB {
+		t.Fatal("expected different users to get different cached clients")
 	}
 }
 

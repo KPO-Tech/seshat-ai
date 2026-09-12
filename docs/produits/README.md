@@ -35,7 +35,7 @@ Un sous-dossier de plateforme peut contenir :
 | Produit | Statut du document | Rôle |
 |---|---|---|
 | [Cadrage général](./general.md) | Premier cadrage | Vision globale du portefeuille produit SeshatOS et activation des applications par organisation. |
-| [Chat principal - Audit UI](./chat/seshatos-main-chat-ui-audit.md) | Audit | Chat principal SeshatOS - ne dépend d'aucune plateforme spécifique. |
+| [Chat principal - Audit UI](./chat/seshatos-main-chat-ui-audit.md) | Résolu (sauf perception du temps d'attente) | Chat principal SeshatOS - ne dépend d'aucune plateforme spécifique. |
 | [Agent Workflows](./platforms/automation/agent-workflows.md) | Premier cadrage | Orchestrer des agents métier gouvernés qui utilisent outils, connaissance et plateformes pour exécuter des processus mesurables. |
 | [Application Automation - Pages et fonctionnalités](./platforms/automation/automation-app-pages.md) | Cadrage fonctionnel | Structure de l'app Automation comme plateforme : pages, utilisateurs, fonctionnalités, cycle build/run/prove. |
 | [MVP Knowledge-to-Action](./platforms/knowledge/mvp-knowledge-to-action.md) | Premier cadrage | Premier périmètre vendable : documentation intelligente, Knowledge Intelligence, ASK/DISCOVER/ACT. |

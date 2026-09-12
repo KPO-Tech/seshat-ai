@@ -132,4 +132,10 @@ type ContextBuildParams struct {
 	AppendSystemPrompt *string
 	AgentSlug          string
 	Principal          *backendauth.Principal
+	// OnStage, when set, is called once right before the one sub-phase of
+	// context building slow enough to be worth naming individually to the
+	// client (the RAG search) - see the [perf] context_build timings this
+	// mirrors. Skills/memories/preferences stay bundled implicitly since
+	// they're fast relative to it.
+	OnStage func(stage, label string)
 }

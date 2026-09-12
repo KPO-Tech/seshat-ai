@@ -9,6 +9,7 @@ import { MessageItem, MESSAGE_ITEM_CSS, isRenderableMessage } from '@/components
 import { ProviderIcon } from '@/components/ui/ProviderIcon'
 import { PlanArtifactCard } from '@/components/chat/plan/PlanArtifactCard'
 import { AskUserPanel } from '@/components/chat/AskUserPanel'
+import { useToast, ToastStack, TOAST_CSS } from '@/components/ui/Toast'
 import { useChat } from '@/hooks/useChat'
 import { useProviders, fetchProviderModels } from '@/hooks/useProviders'
 import { useProvidersStore } from '@/stores/providers'
@@ -114,6 +115,10 @@ function agentActivityPhrase(state: AgentState, thinkingWord: string): string {
   // takes priority over the decorative rotation below.
   if (state.activeTool) return capitalize(TOOL_ACTIVITY_PHRASES[state.activeTool.toolName] ?? 'working')
   if (state.isThinking) return thinkingWord
+  // Named setup phase (loading tools, resuming session, searching knowledge)
+  // - only shown during the genuine pre-generation gap, since activeTool and
+  // isThinking above both already win the instant real activity starts.
+  if (state.stage) return state.stage.label
   return 'Working'
 }
 
@@ -346,7 +351,22 @@ export function Conversation() {
   const [attachmentError, setAttachmentError] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const browserToolNavigationRef = useRef<string | null>(null)
-  const { sendMessage, stopMessage, isStreaming } = useChat(id || '')
+  const { toasts, show: showToast } = useToast()
+  // Brief "done" checkmark after a genuinely successful turn - fires only
+  // from useChat's actual commit path (see onTurnSuccess below), never on
+  // isStreaming's falling edge alone, since that also fires on failure and
+  // would otherwise flash a success checkmark on an errored turn.
+  const [justCompleted, setJustCompleted] = useState(false)
+  const { sendMessage, stopMessage, isStreaming } = useChat(id || '', {
+    onCompaction: (preTokens, postTokens) => {
+      const saved = preTokens - postTokens
+      showToast(`Compacted conversation - saved ${saved.toLocaleString()} tokens (${preTokens.toLocaleString()} → ${postTokens.toLocaleString()})`, 'info')
+    },
+    onTurnSuccess: () => {
+      setJustCompleted(true)
+      setTimeout(() => setJustCompleted(false), 1500)
+    },
+  })
   const isAtBottomRef = useRef(true)
   const scrollRafRef = useRef<number | null>(null)
 
@@ -774,6 +794,7 @@ export function Conversation() {
   return (
     <div className="conv-root">
       <style>{CONV_CSS}</style>
+      <ToastStack toasts={toasts} />
 
       {/* Top Bar */}
       <div className="conv-top-bar">
@@ -806,6 +827,7 @@ export function Conversation() {
             const revealThinking = isStreaming && msg.role === 'assistant' && i === visibleMessages.length - 1
             const autoExpandTools = revealThinking
             const showLiveActivity = revealThinking && !pendingPermission && !pendingAskUser
+            const showCompleted = justCompleted && msg.role === 'assistant' && i === visibleMessages.length - 1 && !pendingPermission && !pendingAskUser
             return (
               <div
                 key={virtualRow.key}
@@ -821,9 +843,11 @@ export function Conversation() {
                   revealThinking={revealThinking}
                   autoExpandTools={autoExpandTools}
                   liveActivity={showLiveActivity ? liveActivity : undefined}
+                  justCompleted={showCompleted}
                   onApproveTool={onApproveTool}
                   onDenyTool={onDenyTool}
                   onSubmitToolPrompt={onSubmitToolPrompt}
+                  onRetryMessage={(text) => { void sendMessage(text) }}
                 />
               </div>
             )
@@ -925,6 +949,7 @@ const CONV_CSS = `
 ${CHAT_TOP_BAR_CSS}
 ${CHAT_INPUT_CSS}
 ${MESSAGE_ITEM_CSS}
+${TOAST_CSS}
 
 .conv-root {
   flex: 1;

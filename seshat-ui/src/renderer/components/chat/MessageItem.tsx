@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useState } from 'react'
-import { Copy, Down, Time } from '@icon-park/react'
+import { Copy, Down, Time, CheckOne } from '@icon-park/react'
 import { MarkdownView } from '@/components/MarkdownView'
 import { AttachmentTypeIcon } from '@/components/AttachmentTypeIcon'
 import { NexusLogo } from '@/components/NexusLogo'
@@ -161,9 +161,11 @@ type Props = {
     label: string
     detail?: string
   }
+  justCompleted?: boolean
   onApproveTool?: (toolUseId: string, remember?: boolean) => void
   onDenyTool?: (toolUseId: string) => void
   onSubmitToolPrompt?: (promptId: string, value: unknown) => void
+  onRetryMessage?: (text: string) => void
 }
 
 const AGENT_TOOLS = new Set(['agent', 'spawn_agent'])
@@ -311,7 +313,20 @@ function LiveActivityBlock({ label, detail }: { label: string; detail?: string }
   )
 }
 
-export const MessageItem = memo(function MessageItem({ message, sessionId, compact = false, revealThinking = false, autoExpandTools = false, liveActivity, onApproveTool, onDenyTool, onSubmitToolPrompt }: Props) {
+// Occupies the LiveActivityBlock's slot for a moment after a turn finishes -
+// otherwise "done" is communicated purely by that line vanishing, with no
+// acknowledgment the turn actually completed. Its parent clears justCompleted
+// after ~1.5s (see Conversation.tsx), so this never needs its own timer.
+function CompletionFlash() {
+  return (
+    <div className="msg-live-activity msg-completion-flash" aria-live="polite">
+      <CheckOne size={16} theme="filled" className="msg-completion-flash-icon" />
+      <span className="msg-live-activity-text">Done</span>
+    </div>
+  )
+}
+
+export const MessageItem = memo(function MessageItem({ message, sessionId, compact = false, revealThinking = false, autoExpandTools = false, liveActivity, justCompleted = false, onApproveTool, onDenyTool, onSubmitToolPrompt, onRetryMessage }: Props) {
   const isUser = message.role === 'user'
   const attachments = messageAttachments(message)
   const openLightbox = useUIStore((s) => s.openLightbox)
@@ -382,7 +397,7 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
     if (block.type === 'tool_use') return !HIDDEN_TOOLS.has(block.name)
     return false
   })
-  if (visibleBlocks.length === 0 && attachments.length === 0 && !liveActivity) return null
+  if (visibleBlocks.length === 0 && attachments.length === 0 && !liveActivity && !justCompleted) return null
   const hasVisibleTool = visibleBlocks.some((block) => block.type === 'tool_use')
 
   const copyText = message.content
@@ -487,9 +502,19 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
 
           const block = item.block
           if (block.type === 'text') {
+            const statusClass = isUser && message.status === 'sending' ? ' msg-bubble--sending' : isUser && message.status === 'error' ? ' msg-bubble--failed' : ''
             return (
-              <div key={`${message.id ?? 'msg'}-text-${item.index}`} className={`msg-bubble${isUser ? '' : ' msg-bubble--plain'}`}>
+              <div key={`${message.id ?? 'msg'}-text-${item.index}`} className={`msg-bubble${isUser ? '' : ' msg-bubble--plain'}${statusClass}`}>
                 <MarkdownView sessionId={sessionId}>{block.text}</MarkdownView>
+                {isUser && message.status === 'error' && (
+                  <button
+                    type="button"
+                    className="msg-retry-btn"
+                    onClick={() => onRetryMessage?.(block.text)}
+                  >
+                    Failed to send · Retry
+                  </button>
+                )}
               </div>
             )
           }
@@ -526,6 +551,7 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
         })}
 
         {liveActivity && <LiveActivityBlock label={liveActivity.label} detail={liveActivity.detail} />}
+        {!liveActivity && justCompleted && <CompletionFlash />}
 
         {copyText && !hasVisibleTool && (
           <div className="msg-footer">
@@ -598,6 +624,31 @@ export const MESSAGE_ITEM_CSS = `
   padding: 7px 11px;
   border-radius: 12px 12px 4px 12px;
   border: 1px solid var(--color-border-subtle);
+}
+
+.msg-bubble--sending {
+  opacity: 0.55;
+}
+
+.msg-bubble--failed {
+  border-color: var(--color-error);
+}
+
+.msg-retry-btn {
+  display: block;
+  margin-top: 6px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--color-error);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+}
+
+.msg-retry-btn:hover {
+  text-decoration: underline;
 }
 
 .msg-attachments {
@@ -811,6 +862,15 @@ export const MESSAGE_ITEM_CSS = `
   font-weight: 500;
   color: inherit;
   animation: msg-live-activity-fade 0.25s ease;
+}
+
+.msg-completion-flash {
+  color: var(--color-success);
+  animation: msg-live-activity-fade 0.25s ease;
+}
+
+.msg-completion-flash-icon {
+  flex-shrink: 0;
 }
 
 @keyframes msg-live-activity-fade {

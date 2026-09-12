@@ -12,38 +12,42 @@ import (
 )
 
 type createJobRequest struct {
-	OrganizationID     string               `json:"organization_id"`
-	Name               string               `json:"name"`
-	Description        string               `json:"description"`
-	TriggerType        string               `json:"trigger_type"`
-	CronExpr           string               `json:"cron_expr"`
-	IntervalSeconds    int                  `json:"interval_seconds"`
-	RunAt              *time.Time           `json:"run_at"`
-	ExecutionTarget    string               `json:"execution_target"`
-	TargetDeviceID     string               `json:"target_device_id"`
-	Prompt             string               `json:"prompt"`
-	Graph              *dataflow.Definition `json:"graph"`
-	ModelOverride      string               `json:"model_override"`
-	Configuration      map[string]string    `json:"configuration"`
-	ErrorWorkflowJobID string               `json:"error_workflow_job_id"`
-	Tags               []string             `json:"tags"`
+	OrganizationID      string               `json:"organization_id"`
+	Name                string               `json:"name"`
+	Description         string               `json:"description"`
+	TriggerType         string               `json:"trigger_type"`
+	CronExpr            string               `json:"cron_expr"`
+	IntervalSeconds     int                  `json:"interval_seconds"`
+	RunAt               *time.Time           `json:"run_at"`
+	ExecutionTarget     string               `json:"execution_target"`
+	TargetDeviceID      string               `json:"target_device_id"`
+	Prompt              string               `json:"prompt"`
+	Graph               *dataflow.Definition `json:"graph"`
+	ModelOverride       string               `json:"model_override"`
+	Configuration       map[string]string    `json:"configuration"`
+	WebhookMethod       string               `json:"webhook_method"`
+	WebhookResponseMode string               `json:"webhook_response_mode"`
+	ErrorWorkflowJobID  string               `json:"error_workflow_job_id"`
+	Tags                []string             `json:"tags"`
 }
 
 type updateJobRequest struct {
-	Name               string               `json:"name"`
-	Description        string               `json:"description"`
-	TriggerType        string               `json:"trigger_type"`
-	CronExpr           string               `json:"cron_expr"`
-	IntervalSeconds    int                  `json:"interval_seconds"`
-	RunAt              *time.Time           `json:"run_at"`
-	ExecutionTarget    string               `json:"execution_target"`
-	TargetDeviceID     string               `json:"target_device_id"`
-	Prompt             string               `json:"prompt"`
-	Graph              *dataflow.Definition `json:"graph"`
-	ModelOverride      string               `json:"model_override"`
-	Configuration      map[string]string    `json:"configuration"`
-	ErrorWorkflowJobID string               `json:"error_workflow_job_id"`
-	Tags               []string             `json:"tags"`
+	Name                string               `json:"name"`
+	Description         string               `json:"description"`
+	TriggerType         string               `json:"trigger_type"`
+	CronExpr            string               `json:"cron_expr"`
+	IntervalSeconds     int                  `json:"interval_seconds"`
+	RunAt               *time.Time           `json:"run_at"`
+	ExecutionTarget     string               `json:"execution_target"`
+	TargetDeviceID      string               `json:"target_device_id"`
+	Prompt              string               `json:"prompt"`
+	Graph               *dataflow.Definition `json:"graph"`
+	ModelOverride       string               `json:"model_override"`
+	Configuration       map[string]string    `json:"configuration"`
+	WebhookMethod       string               `json:"webhook_method"`
+	WebhookResponseMode string               `json:"webhook_response_mode"`
+	ErrorWorkflowJobID  string               `json:"error_workflow_job_id"`
+	Tags                []string             `json:"tags"`
 }
 
 func (app *App) handleJobs(w http.ResponseWriter, r *http.Request) {
@@ -68,21 +72,23 @@ func (app *App) handleJobs(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		job, err := app.backend.Automation.CreateJob(r.Context(), principal, automation.CreateJobParams{
-			OrganizationID:     req.OrganizationID,
-			Name:               req.Name,
-			Description:        req.Description,
-			TriggerType:        req.TriggerType,
-			CronExpr:           req.CronExpr,
-			IntervalSeconds:    req.IntervalSeconds,
-			RunAt:              req.RunAt,
-			ExecutionTarget:    req.ExecutionTarget,
-			TargetDeviceID:     req.TargetDeviceID,
-			Prompt:             req.Prompt,
-			Graph:              req.Graph,
-			ModelOverride:      req.ModelOverride,
-			Configuration:      req.Configuration,
-			ErrorWorkflowJobID: req.ErrorWorkflowJobID,
-			Tags:               req.Tags,
+			OrganizationID:      req.OrganizationID,
+			Name:                req.Name,
+			Description:         req.Description,
+			TriggerType:         req.TriggerType,
+			CronExpr:            req.CronExpr,
+			IntervalSeconds:     req.IntervalSeconds,
+			RunAt:               req.RunAt,
+			ExecutionTarget:     req.ExecutionTarget,
+			TargetDeviceID:      req.TargetDeviceID,
+			Prompt:              req.Prompt,
+			Graph:               req.Graph,
+			ModelOverride:       req.ModelOverride,
+			Configuration:       req.Configuration,
+			WebhookMethod:       req.WebhookMethod,
+			WebhookResponseMode: req.WebhookResponseMode,
+			ErrorWorkflowJobID:  req.ErrorWorkflowJobID,
+			Tags:                req.Tags,
 		})
 		if err != nil {
 			writeAutomationError(w, err)
@@ -120,20 +126,22 @@ func (app *App) handleJobByID(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		job, err := app.backend.Automation.UpdateJob(r.Context(), principal, jobID, automation.UpdateJobParams{
-			Name:               req.Name,
-			Description:        req.Description,
-			TriggerType:        req.TriggerType,
-			CronExpr:           req.CronExpr,
-			IntervalSeconds:    req.IntervalSeconds,
-			RunAt:              req.RunAt,
-			ExecutionTarget:    req.ExecutionTarget,
-			TargetDeviceID:     req.TargetDeviceID,
-			Prompt:             req.Prompt,
-			Graph:              req.Graph,
-			ModelOverride:      req.ModelOverride,
-			Configuration:      req.Configuration,
-			ErrorWorkflowJobID: req.ErrorWorkflowJobID,
-			Tags:               req.Tags,
+			Name:                req.Name,
+			Description:         req.Description,
+			TriggerType:         req.TriggerType,
+			CronExpr:            req.CronExpr,
+			IntervalSeconds:     req.IntervalSeconds,
+			RunAt:               req.RunAt,
+			ExecutionTarget:     req.ExecutionTarget,
+			TargetDeviceID:      req.TargetDeviceID,
+			Prompt:              req.Prompt,
+			Graph:               req.Graph,
+			ModelOverride:       req.ModelOverride,
+			Configuration:       req.Configuration,
+			WebhookMethod:       req.WebhookMethod,
+			WebhookResponseMode: req.WebhookResponseMode,
+			ErrorWorkflowJobID:  req.ErrorWorkflowJobID,
+			Tags:                req.Tags,
 		})
 		if err != nil {
 			writeAutomationError(w, err)
@@ -149,6 +157,36 @@ func (app *App) handleJobByID(w http.ResponseWriter, r *http.Request) {
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
+}
+
+type draftJobRequest struct {
+	OrganizationID string `json:"organization_id"`
+	Provider       string `json:"provider"`
+	Request        string `json:"request"`
+}
+
+// handleJobDraft — POST /api/v1/jobs/draft. Turns a natural-language
+// request into a automation.JobDraft (schedule + prompt), via one
+// providers.Client.CreateMessage call - not a job, nothing is persisted
+// here, see automation.Service.DraftJob's own doc comment. Creating the job
+// itself stays a separate, explicit POST /api/v1/jobs once the caller
+// confirms the draft.
+func (app *App) handleJobDraft(w http.ResponseWriter, r *http.Request) {
+	principal, ok := authPrincipalFromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "missing principal")
+		return
+	}
+	var req draftJobRequest
+	if !decodeJSONBody(w, r, &req) {
+		return
+	}
+	draft, err := app.backend.Automation.DraftJob(r.Context(), principal, req.OrganizationID, req.Provider, req.Request)
+	if err != nil {
+		writeAutomationError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, draft)
 }
 
 func (app *App) handleJobPause(w http.ResponseWriter, r *http.Request) {

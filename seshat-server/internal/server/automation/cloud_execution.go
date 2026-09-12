@@ -98,7 +98,15 @@ func (w *jobWorkflow) Run(ctx context.Context, session *sdk.Session) error {
 	if w.graph != nil {
 		return w.runGraph(ctx, session)
 	}
-	_, err := session.SubmitMessage(ctx, w.prompt)
+	// A graph-less job has no seed Item to merge triggerPayload into the way
+	// runGraph does under a "webhook" key - append it to the prompt instead
+	// so a webhook-triggered prompt job (see TriggerTypeWebhook) doesn't fire
+	// blind to what actually arrived.
+	message := w.prompt
+	if w.triggerPayload != "" {
+		message += "\n\n---\nWebhook payload:\n" + w.triggerPayload
+	}
+	_, err := session.SubmitMessage(ctx, message)
 	return err
 }
 

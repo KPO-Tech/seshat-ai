@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Copy, CheckOne, Delete } from '@icon-park/react'
+import { Copy, Delete } from '@icon-park/react'
 import { stripUIPosition } from './convert'
 import { SecretRefField } from './SecretRefField'
 import { AgentPickerField } from './AgentPickerField'
-import { WebhookLastCall } from './WebhookLastCall'
+import { WebhookLastCall } from '@/components/automation/WebhookLastCall'
+import { CopyButton } from '@/components/ui/CopyButton'
 import { ExpressionField, type SiblingNode } from './ExpressionField'
 import { PinnedOutputField } from './PinnedOutputField'
 import { TestNodeField } from './TestNodeField'
@@ -65,26 +66,6 @@ type Props = {
   onSave: (next: Record<string, unknown>) => void
   onDelete: () => void
   onDuplicate: () => void
-}
-
-// Small copied-state-with-timeout helper used by parameter fields that expose
-// generated values or examples.
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false)
-  return (
-    <button
-      type="button"
-      className="gf-action-btn"
-      onClick={() => {
-        void navigator.clipboard.writeText(text)
-        setCopied(true)
-        window.setTimeout(() => setCopied(false), 1200)
-      }}
-    >
-      {copied ? <CheckOne size={13} /> : <Copy size={13} />}
-      {copied ? 'Copied' : 'Copy'}
-    </button>
-  )
 }
 
 // "id (type)" - the same identification scheme ExpressionField's own

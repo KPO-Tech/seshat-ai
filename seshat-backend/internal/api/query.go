@@ -407,6 +407,13 @@ func (app *App) handleQueryStream(w http.ResponseWriter, r *http.Request) {
 		AppendSystemPrompt: req.AppendSystemPrompt,
 		AgentSlug:          req.AgentSlug,
 		Principal:          principal,
+		OnStage: func(stage, label string) {
+			onRuntimeEvent(sdk.RuntimeEvent{
+				Type:       sdk.RuntimeEventTypeStage,
+				SessionID:  sdk.SessionID(req.SessionID),
+				StageEvent: &sdk.StageRuntimeEvent{Stage: stage, Label: label},
+			})
+		},
 	})
 	if app.titleBroker != nil {
 		titleCh, unsubscribeTitle := app.titleBroker.Subscribe(streamInput.SessionID)

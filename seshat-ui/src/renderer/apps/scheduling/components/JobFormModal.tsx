@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CheckOne } from '@icon-park/react'
-import { api, ApiError } from '@/api/client'
+import { api, ApiError, NEXUS_BASE } from '@/api/client'
 import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
+import { CopyButton } from '@/components/ui/CopyButton'
+import { WebhookLastCall } from '@/components/automation/WebhookLastCall'
 import type { Agent, ProviderModel, ProviderSetting } from '@/api/types'
 import { fetchProviderModels } from '@/hooks/useProviders'
-import type { Device, ExecutionTarget, Job, JobDraft, JobParams, TriggerType } from '../api/types'
+import type { Device, ExecutionTarget, Job, JobDraft, JobParams, TriggerType, WebhookMethod, WebhookResponseMode } from '../api/types'
 export function JobFormModal({
   job, draft, devices, agents, providers, providersLoading, onClose, onSaved,
 }: {
@@ -20,10 +22,17 @@ export function JobFormModal({
   const isEdit = !!job
   const [name, setName] = useState(job?.name ?? draft?.name ?? '')
   const [description, setDescription] = useState(job?.description ?? draft?.description ?? '')
-  const [triggerType, setTriggerType] = useState<TriggerType>(job?.trigger_type ?? draft?.trigger_type ?? 'cron')
+  // A saved webhook trigger is stored as trigger_type "" (see
+  // normalizeJobTrigger in seshat-server) - webhook_token presence is what
+  // actually distinguishes it, same convention describeTrigger() uses.
+  const [triggerType, setTriggerType] = useState<TriggerType>(
+    job?.webhook_token ? 'webhook' : (job?.trigger_type || draft?.trigger_type || 'cron'),
+  )
   const [cronExpr, setCronExpr] = useState(job?.cron_expr ?? draft?.cron_expr ?? '0 0 * * *')
   const [intervalSeconds, setIntervalSeconds] = useState(job?.interval_seconds ?? draft?.interval_seconds ?? 3600)
   const [runAt, setRunAt] = useState(job?.run_at ? job.run_at.slice(0, 16) : draft?.run_at ? draft.run_at.slice(0, 16) : '')
+  const [webhookMethod, setWebhookMethod] = useState<WebhookMethod>(job?.webhook_method ?? 'POST')
+  const [webhookResponseMode, setWebhookResponseMode] = useState<WebhookResponseMode>(job?.webhook_response_mode ?? 'immediate')
   const [executionTarget, setExecutionTarget] = useState<ExecutionTarget>(job?.execution_target ?? draft?.execution_target ?? 'cloud')
   const [targetDeviceId, setTargetDeviceId] = useState(job?.target_device_id ?? draft?.target_device_id ?? '')
   const [agentSlug, setAgentSlug] = useState(job?.configuration?.agent_slug ?? draft?.agent_slug ?? '')
@@ -52,12 +61,20 @@ export function JobFormModal({
     ? cronExpr || 'Cron not set'
     : triggerType === 'interval'
       ? `Every ${intervalSeconds}s`
-      : runAt
-        ? new Date(runAt).toLocaleString()
-        : 'Date not set'
+      : triggerType === 'webhook'
+        ? `Webhook (${webhookMethod})`
+        : runAt
+          ? new Date(runAt).toLocaleString()
+          : 'Date not set'
   const validationItems = [
     { label: 'Name is valid', ok: name.trim().length > 0 },
-    { label: 'Schedule configured', ok: triggerType === 'cron' ? cronExpr.trim().length > 0 : triggerType === 'interval' ? intervalSeconds >= 60 : runAt.length > 0 },
+    {
+      label: 'Schedule configured',
+      ok: triggerType === 'cron' ? cronExpr.trim().length > 0
+        : triggerType === 'interval' ? intervalSeconds >= 60
+        : triggerType === 'webhook' ? true
+        : runAt.length > 0,
+    },
     { label: 'Execution target selected', ok: executionTarget === 'cloud' || targetDeviceId.length > 0 },
     { label: 'Agent selected', ok: agentSlug.length > 0 },
     { label: 'Model selected', ok: !!selectedProviderId && !!selectedModelId },
@@ -113,6 +130,8 @@ export function JobFormModal({
         cron_expr: triggerType === 'cron' ? cronExpr.trim() : undefined,
         interval_seconds: triggerType === 'interval' ? intervalSeconds : undefined,
         run_at: triggerType === 'once' && runAt ? new Date(runAt).toISOString() : undefined,
+        webhook_method: triggerType === 'webhook' ? webhookMethod : undefined,
+        webhook_response_mode: triggerType === 'webhook' ? webhookResponseMode : undefined,
         execution_target: executionTarget,
         target_device_id: executionTarget === 'device' ? targetDeviceId : undefined,
         model_override: executionTarget === 'cloud' ? modelOverride : undefined,
@@ -181,14 +200,14 @@ export function JobFormModal({
           <div className="sch-field">
             <label>Trigger</label>
             <div className="sch-segmented">
-              {(['cron', 'interval', 'once'] as TriggerType[]).map((type) => (
+              {(['cron', 'interval', 'once', 'webhook'] as TriggerType[]).map((type) => (
                 <button
                   key={type}
                   type="button"
                   className={`sch-segment ${triggerType === type ? 'active' : ''}`}
                   onClick={() => setTriggerType(type)}
                 >
-                  {type === 'cron' ? 'Cron' : type === 'interval' ? 'Interval' : 'Once'}
+                  {type === 'cron' ? 'Cron' : type === 'interval' ? 'Interval' : type === 'once' ? 'Once' : 'Webhook'}
                 </button>
               ))}
             </div>
@@ -214,6 +233,39 @@ export function JobFormModal({
               <label>Run at</label>
               <input type="datetime-local" value={runAt} onChange={(e) => setRunAt(e.target.value)} required />
             </div>
+          )}
+          {triggerType === 'webhook' && (
+            <>
+              <div className="sch-field-grid">
+                <div className="sch-field">
+                  <label>HTTP method</label>
+                  <select value={webhookMethod} onChange={(e) => setWebhookMethod(e.target.value as WebhookMethod)}>
+                    {(['POST', 'GET', 'PUT', 'PATCH', 'DELETE'] as WebhookMethod[]).map((method) => (
+                      <option key={method} value={method}>{method}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="sch-field">
+                  <label>Response mode</label>
+                  <select value={webhookResponseMode} onChange={(e) => setWebhookResponseMode(e.target.value as WebhookResponseMode)}>
+                    <option value="immediate">Immediate - queue and respond right away</option>
+                    <option value="whenFinished">Wait for finish - hold the response until the run completes</option>
+                  </select>
+                </div>
+              </div>
+              <div className="sch-field">
+                <label>Webhook URL</label>
+                {job?.webhook_token ? (
+                  <div className="gf-webhook-url-row">
+                    <code className="gf-webhook-url">{`${NEXUS_BASE}/webhooks/${job.webhook_token}`}</code>
+                    <CopyButton text={`${NEXUS_BASE}/webhooks/${job.webhook_token}`} />
+                  </div>
+                ) : (
+                  <div className="sch-field-hint">Save this job to get its webhook URL.</div>
+                )}
+              </div>
+              {job?.webhook_token && <WebhookLastCall jobId={job.id} />}
+            </>
           )}
 
           <div className="sch-field">

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -1349,6 +1350,13 @@ func (s *Service) ResolvePolicyFromRequest(ctx context.Context, principal *backe
 // user memories → long-term memory → RAG context → attachments.
 // Both blocking and streaming handlers call this to guarantee identical behaviour.
 func (s *Service) BuildContextInput(ctx context.Context, p ContextBuildParams) (QueryInput, []RAGSearchResult) {
+	// perf: this whole function runs synchronously before the first SSE byte
+	// can be sent (see handleQueryStream) - memoriesMs/ragMs are the two
+	// sub-costs most likely to dominate, since both can hit an embedding
+	// call plus a vector/keyword search. See docs/produits/chat/seshatos-main-chat-ui-audit.md.
+	buildStart := time.Now()
+	var skillsMs, memListMs, memLTMMs, ragMs int64
+
 	effectiveAgentSlug := strings.TrimSpace(p.AgentSlug)
 
 	userID := ""
@@ -1359,7 +1367,9 @@ func (s *Service) BuildContextInput(ctx context.Context, p ContextBuildParams) (
 	// Expand "/skillname [args]" prompt shortcuts.
 	prompt := p.Prompt
 	if s.skills != nil {
+		skillsStart := time.Now()
 		prompt = s.skills.ResolvePrompt(ctx, userID, prompt)
+		skillsMs = time.Since(skillsStart).Milliseconds()
 	}
 
 	input := QueryInput{
@@ -1442,7 +1452,9 @@ func (s *Service) BuildContextInput(ctx context.Context, p ContextBuildParams) (
 
 	// Layer user memories (explicit user-defined knowledge) after preferences.
 	if p.Principal != nil && s.memories != nil {
+		memListStart := time.Now()
 		mems, err := s.memories.List(ctx, p.Principal)
+		memListMs = time.Since(memListStart).Milliseconds()
 		if err == nil && len(mems) > 0 {
 			const maxMemories = 30
 			if len(mems) > maxMemories {
@@ -1456,7 +1468,10 @@ func (s *Service) BuildContextInput(ctx context.Context, p ContextBuildParams) (
 
 	// Long-term memory: inject relevant entities found for the current prompt.
 	if p.Principal != nil && s.memories != nil {
-		if block, err := s.memories.BuildContextBlock(ctx, p.Principal, p.Prompt); err == nil && block != "" {
+		ltmStart := time.Now()
+		block, err := s.memories.BuildContextBlock(ctx, p.Principal, p.Prompt)
+		memLTMMs = time.Since(ltmStart).Milliseconds()
+		if err == nil && block != "" {
 			input.AppendSystemPrompt = appendBlock(input.AppendSystemPrompt, block)
 		}
 	}
@@ -1464,7 +1479,12 @@ func (s *Service) BuildContextInput(ctx context.Context, p ContextBuildParams) (
 	// RAG: build and append knowledge context block when a corpus is attached.
 	var ragResults []RAGSearchResult
 	if strings.TrimSpace(p.CorpusID) != "" && s.knowledge != nil {
+		if p.OnStage != nil {
+			p.OnStage("knowledge", "Searching knowledge base")
+		}
+		ragStart := time.Now()
 		ragBlock, results := buildRAGContext(ctx, p.Principal, s.knowledge, p.CorpusID, p.Prompt)
+		ragMs = time.Since(ragStart).Milliseconds()
 		ragResults = results
 		if ragBlock != "" {
 			input.AppendSystemPrompt = appendBlock(input.AppendSystemPrompt, ragBlock)
@@ -1533,6 +1553,9 @@ func (s *Service) BuildContextInput(ctx context.Context, p ContextBuildParams) (
 			}
 		}
 	}
+
+	log.Printf("[perf] context_build session=%q corpus=%q skills_ms=%d mem_list_ms=%d mem_ltm_ms=%d rag_ms=%d total_ms=%d",
+		p.SessionID, p.CorpusID, skillsMs, memListMs, memLTMMs, ragMs, time.Since(buildStart).Milliseconds())
 
 	return input, ragResults
 }

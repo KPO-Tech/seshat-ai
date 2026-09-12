@@ -120,6 +120,32 @@ func (a *App) handleAutomationJobs(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleAutomationJobDraft — POST /api/v1/automation/jobs/draft. Nothing is
+// persisted here - see cloudautomation.JobsClient.DraftJob's doc comment.
+func (a *App) handleAutomationJobDraft(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	client, token, organizationID, ok := a.jobsClientForRequest(w, r)
+	if !ok {
+		return
+	}
+	var req struct {
+		Provider string `json:"provider"`
+		Request  string `json:"request"`
+	}
+	if !decodeJSONBody(w, r, &req) {
+		return
+	}
+	draft, err := client.DraftJob(r.Context(), token, organizationID, req.Provider, req.Request)
+	if err != nil {
+		writeBackendError(w, cloudhttp.Translate(err))
+		return
+	}
+	writeJSON(w, http.StatusOK, draft)
+}
+
 // handleAutomationJobDispatch — GET/PUT/DELETE /api/v1/automation/jobs/{id}
 // and POST .../pause, .../resume, .../run, GET .../runs.
 func (a *App) handleAutomationJobDispatch(w http.ResponseWriter, r *http.Request) {

@@ -299,6 +299,129 @@ func TestTriggerJobByWebhookWhenFinishedWaitsForCompletion(t *testing.T) {
 // TestTriggerJobByWebhookWhenFinishedRespectsTimeout proves the timeout
 // branch: with the wait bounded to ~0, the call must return promptly
 // instead of blocking, whatever state the run happens to be in yet.
+// TestCreateJobWebhookTriggerNoGraph is the graph-less counterpart of
+// TestCreateJobWithOnlyWebhookTriggerNeedsNoLegacyFields: a Scheduling job
+// (Prompt only, no Graph) requesting TriggerTypeWebhook directly must mint a
+// token exactly like a webhook_trigger node would, without needing a graph
+// at all.
+func TestCreateJobWebhookTriggerNoGraph(t *testing.T) {
+	env := newTestEnv(t)
+	job, err := env.automation.CreateJob(context.Background(), env.adminPrincipal, CreateJobParams{
+		OrganizationID: env.orgID, Name: "Webhook prompt job",
+		ExecutionTarget: ExecutionTargetCloud, ModelOverride: "anthropic:claude-sonnet-5",
+		Prompt:              "Summarize whatever arrived in the webhook payload.",
+		TriggerType:         TriggerTypeWebhook,
+		WebhookMethod:       "PUT",
+		WebhookResponseMode: WebhookResponseModeWhenFinished,
+	})
+	if err != nil {
+		t.Fatalf("create job: %v", err)
+	}
+	if job.TriggerType != "" {
+		t.Fatalf("expected an empty trigger_type for a purely event-driven job, got %q", job.TriggerType)
+	}
+	if job.NextRunAt != nil {
+		t.Fatalf("expected no next_run_at for a webhook-only job, got %v", job.NextRunAt)
+	}
+	if job.WebhookToken == "" {
+		t.Fatal("expected a webhook_token to be generated for a graph-less webhook trigger")
+	}
+	if job.WebhookMethod != "PUT" || job.WebhookResponseMode != WebhookResponseModeWhenFinished {
+		t.Fatalf("expected the requested method/response mode preserved, got method=%q mode=%q", job.WebhookMethod, job.WebhookResponseMode)
+	}
+}
+
+func TestCreateJobWebhookTriggerNoGraphRejectsInvalidMethod(t *testing.T) {
+	env := newTestEnv(t)
+	_, err := env.automation.CreateJob(context.Background(), env.adminPrincipal, CreateJobParams{
+		OrganizationID: env.orgID, Name: "Bad method",
+		ExecutionTarget: ExecutionTargetCloud, ModelOverride: "anthropic:claude-sonnet-5",
+		Prompt: "Do something.", TriggerType: TriggerTypeWebhook, WebhookMethod: "TRACE",
+	})
+	if err == nil {
+		t.Fatal("expected an error for an unsupported webhook method")
+	}
+}
+
+// TestUpdateJobAddsAndRemovesWebhookTriggerNoGraph mirrors
+// TestUpdateJobKeepsWebhookTokenStableAcrossEdits for the graph-less path:
+// switching a Prompt-only job's trigger_type to/from "webhook" must mint/
+// clear WebhookToken the same way editing a graph's webhook_trigger node
+// does.
+func TestUpdateJobAddsAndRemovesWebhookTriggerNoGraph(t *testing.T) {
+	env := newTestEnv(t)
+	job, err := env.automation.CreateJob(context.Background(), env.adminPrincipal, CreateJobParams{
+		OrganizationID: env.orgID, Name: "Starts as cron",
+		ExecutionTarget: ExecutionTargetCloud, ModelOverride: "anthropic:claude-sonnet-5",
+		Prompt: "Do something.", TriggerType: TriggerTypeCron, CronExpr: "0 9 * * 1",
+	})
+	if err != nil {
+		t.Fatalf("create job: %v", err)
+	}
+	if job.WebhookToken != "" {
+		t.Fatalf("expected no webhook token on a cron job, got %q", job.WebhookToken)
+	}
+
+	toWebhook, err := env.automation.UpdateJob(context.Background(), env.adminPrincipal, job.ID, UpdateJobParams{
+		Name: "Now webhook", ExecutionTarget: ExecutionTargetCloud, ModelOverride: "anthropic:claude-sonnet-5",
+		Prompt: "Do something.", TriggerType: TriggerTypeWebhook,
+	})
+	if err != nil {
+		t.Fatalf("update job to webhook: %v", err)
+	}
+	if toWebhook.WebhookToken == "" {
+		t.Fatal("expected a webhook token to be minted once switched to a webhook trigger")
+	}
+	firstToken := toWebhook.WebhookToken
+
+	stillWebhook, err := env.automation.UpdateJob(context.Background(), env.adminPrincipal, job.ID, UpdateJobParams{
+		Name: "Still webhook", ExecutionTarget: ExecutionTargetCloud, ModelOverride: "anthropic:claude-sonnet-5",
+		Prompt: "Do something else.", TriggerType: TriggerTypeWebhook,
+	})
+	if err != nil {
+		t.Fatalf("update job (still webhook): %v", err)
+	}
+	if stillWebhook.WebhookToken != firstToken {
+		t.Fatalf("expected the webhook token to stay stable across an edit, got %q then %q", firstToken, stillWebhook.WebhookToken)
+	}
+
+	backToCron, err := env.automation.UpdateJob(context.Background(), env.adminPrincipal, job.ID, UpdateJobParams{
+		Name: "Back to cron", ExecutionTarget: ExecutionTargetCloud, ModelOverride: "anthropic:claude-sonnet-5",
+		Prompt: "Do something.", TriggerType: TriggerTypeCron, CronExpr: "0 9 * * 1",
+	})
+	if err != nil {
+		t.Fatalf("update job back to cron: %v", err)
+	}
+	if backToCron.WebhookToken != "" {
+		t.Fatalf("expected the webhook token to be revoked once the trigger is no longer webhook, got %q", backToCron.WebhookToken)
+	}
+}
+
+// TestTriggerJobByWebhookQueuesARunWithPayloadForPromptOnlyJob is the
+// graph-less counterpart of TestTriggerJobByWebhookQueuesARunWithThePayload -
+// proves the dispatch path (token lookup, method check, run queuing) works
+// end to end for a job with no Graph at all, not just the trigger-config
+// plumbing covered above.
+func TestTriggerJobByWebhookQueuesARunWithPayloadForPromptOnlyJob(t *testing.T) {
+	env := newTestEnv(t)
+	job, err := env.automation.CreateJob(context.Background(), env.adminPrincipal, CreateJobParams{
+		OrganizationID: env.orgID, Name: "Webhook prompt run",
+		ExecutionTarget: ExecutionTargetCloud, ModelOverride: "anthropic:claude-sonnet-5",
+		Prompt: "Summarize whatever arrived.", TriggerType: TriggerTypeWebhook,
+	})
+	if err != nil {
+		t.Fatalf("create job: %v", err)
+	}
+
+	run, err := env.automation.TriggerJobByWebhook(context.Background(), job.WebhookToken, "POST", `{"body":{"foo":"bar"}}`)
+	if err != nil {
+		t.Fatalf("trigger job by webhook: %v", err)
+	}
+	if run.Status != RunStatusQueued {
+		t.Fatalf("expected the run to be queued for async execution, got status %s", run.Status)
+	}
+}
+
 func TestTriggerJobByWebhookWhenFinishedRespectsTimeout(t *testing.T) {
 	env := newTestEnv(t)
 	env.automation.SetWebhookSyncTimeout(1 * time.Nanosecond)

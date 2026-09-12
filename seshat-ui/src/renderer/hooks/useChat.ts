@@ -67,6 +67,18 @@ type RuntimeEventPayload = {
     agent_role?: string
     status?: string
   }
+  // Carried by turn.stage — a named phase of pre-generation turn setup (see
+  // StageRuntimeEvent in the engine). No explicit "stage ended" event exists;
+  // turn.started/response.chunk arriving on the same channel supersede it.
+  stage_event?: {
+    stage: string
+    label: string
+  }
+  // Carried by context.compacted — see CompactionRuntimeEvent in the engine.
+  compaction_event?: {
+    pre_compact_tokens: number
+    post_compact_tokens: number
+  }
   error?: string
 }
 
@@ -91,6 +103,10 @@ type SessionTitledPayload = {
 
 const MAX_RETRIES = 3
 const RETRY_BASE_MS = 1000
+// Ceiling for "the connection looks fine but the server never responds at
+// all" - distinct from the network-drop retry above, which only fires on a
+// detected disconnect. Mirrors OpenHands' own 150s watchdog precedent.
+const WATCHDOG_TIMEOUT_MS = 150_000
 
 // The backend's OnSessionTitled callback (see seshat-backend's bootstrap.go)
 // only fires once the SDK's own background title-generation LLM call
@@ -117,11 +133,22 @@ async function pollForGeneratedTitle(sessionId: string) {
   }
 }
 
-export function useChat(sessionId: string) {
+export function useChat(sessionId: string, options?: { onCompaction?: (preTokens: number, postTokens: number) => void; onTurnSuccess?: () => void }) {
   const isStreaming = useSessionStore((s) => Boolean(s.isStreamingBySession[sessionId]))
   // Tracks a pending requestAnimationFrame for batching assistant-message syncs.
   // Without batching, every SSE token triggers a full store.updateMessage call.
   const syncRafRef = useRef<number | null>(null)
+  // Ref (not state) since options.onCompaction is a plain callback the
+  // caller may pass a fresh closure for on every render - a ref sidesteps
+  // re-subscribing sendMessage's useCallback (scoped to [sessionId]) on
+  // every such render while still calling the latest callback.
+  const onCompactionRef = useRef<(preTokens: number, postTokens: number) => void>(() => {})
+  onCompactionRef.current = options?.onCompaction ?? (() => {})
+  // Fires only on a genuinely successful commit (the 'done' payload path) -
+  // deliberately NOT tied to isStreaming's falling edge, which also fires on
+  // failure and would otherwise show a success flash on an errored turn.
+  const onTurnSuccessRef = useRef<() => void>(() => {})
+  onTurnSuccessRef.current = options?.onTurnSuccess ?? (() => {})
 
   const sendMessage = useCallback(async (text: string, opts?: { corpusId?: string | null; fileIds?: string[]; attachments?: MessageAttachment[]; agentSlug?: string; providerSettingId?: string | null; modelId?: string | null }) => {
     const store = useSessionStore.getState()
@@ -132,21 +159,40 @@ export function useChat(sessionId: string) {
     const nowIso = new Date().toISOString()
 
     const assistantMessageId = crypto.randomUUID()
+    const userMessageId = crypto.randomUUID()
     const currentSession = store.sessions.find((session) => session.id === sessionId)
     const isFirstMessage = Boolean(currentSession && currentSession.messages.length === 0 && isUntitledSessionTitle(currentSession.title))
     store.updateSession(sessionId, { updatedAt: nowIso })
     store.addMessage(sessionId, {
+      id: userMessageId,
       role: 'user',
       content: [{ type: 'text', text: prompt }],
       metadata: opts?.attachments?.length ? { attachments: opts.attachments } : undefined,
+      status: 'sending',
     })
     store.addMessage(sessionId, { id: assistantMessageId, role: 'assistant', content: [] })
     store.setIsStreaming(sessionId, true)
     store.clearStreaming(sessionId)
-    store.updateAgentState(sessionId, { isThinking: true, activeTool: null })
+    store.updateAgentState(sessionId, { isThinking: true, activeTool: null, stage: null })
     const abortController = new AbortController()
     registerController(sessionId, abortController)
     clearStopRequested(sessionId)
+
+    // Watchdog: aborts the turn if no server activity (chunk/runtime event/done)
+    // arrives within WATCHDOG_TIMEOUT_MS of the last one - covers the case where
+    // the connection never drops (so the retry-on-TypeError path above never
+    // triggers) but the server also never responds. Reset on every sign of life,
+    // cleared in the outer `finally`.
+    let watchdogTimedOut = false
+    let watchdogTimer: ReturnType<typeof setTimeout> | null = null
+    const resetWatchdog = () => {
+      if (watchdogTimer !== null) clearTimeout(watchdogTimer)
+      watchdogTimer = setTimeout(() => {
+        watchdogTimedOut = true
+        abortController.abort()
+      }, WATCHDOG_TIMEOUT_MS)
+    }
+    resetWatchdog()
 
     // Cancel any stale RAF from a prior message (defensive).
     if (syncRafRef.current !== null) {
@@ -208,20 +254,24 @@ export function useChat(sessionId: string) {
               body,
               abortController.signal,
               (donePayload) => {
+                if (watchdogTimer !== null) clearTimeout(watchdogTimer)
                 commitDonePayload(sessionId, assistantMessageId, donePayload, store)
                 openKnowledgePanel(sessionId, donePayload.rag_results)
                 store.clearStreaming(sessionId)
                 committed = true
+                onTurnSuccessRef.current()
                 flushSync()
               },
               (runtimeEvent) => {
                 receivedServerActivity = true
+                resetWatchdog()
                 handleRuntimeEvent(sessionId, runtimeEvent, store, (tool) => {
                   pendingTool = tool
-                }, () => pendingTool, scheduleSync)
+                }, () => pendingTool, scheduleSync, onCompactionRef.current)
               },
               (streamEvent) => {
                 receivedServerActivity = true
+                resetWatchdog()
                 handleStreamChunk(sessionId, streamEvent, store, scheduleSync)
               },
               (titleEvent) => {
@@ -299,16 +349,19 @@ export function useChat(sessionId: string) {
                   }
 
                   if (eventName === 'done') {
+                    if (watchdogTimer !== null) clearTimeout(watchdogTimer)
                     const donePayload = parsed as DonePayload
                     commitDonePayload(sessionId, assistantMessageId, donePayload, store)
                     openKnowledgePanel(sessionId, donePayload.rag_results)
                     store.clearStreaming(sessionId)
                     committed = true
+                    onTurnSuccessRef.current()
                     flushSync()
                     break outer
                   }
 
                   receivedServerActivity = true
+                  resetWatchdog()
 
                   if (eventName === 'session_titled') {
                     const titleEvent = parsed as SessionTitledPayload
@@ -321,7 +374,7 @@ export function useChat(sessionId: string) {
                   if (eventName === 'runtime') {
                     handleRuntimeEvent(sessionId, parsed as RuntimeEventPayload, store, (tool) => {
                       pendingTool = tool
-                    }, () => pendingTool, scheduleSync)
+                    }, () => pendingTool, scheduleSync, onCompactionRef.current)
                     continue
                   }
 
@@ -391,7 +444,11 @@ export function useChat(sessionId: string) {
       }
     } catch (error) {
       if (committed) return
-      if (isStopRequested(sessionId) || (error instanceof DOMException && error.name === 'AbortError')) {
+      // A watchdog-triggered abort looks identical to a user Stop at the
+      // AbortError level, but it isn't one - the turn stalled, not the user's
+      // choice, so unlike a real Stop it must surface as a visible failure
+      // (including marking the user's own message as failed to send).
+      if (!watchdogTimedOut && (isStopRequested(sessionId) || (error instanceof DOMException && error.name === 'AbortError'))) {
         flushSync()
         const partial = streamingToContentBlocks(useSessionStore.getState().getStreaming(sessionId))
         store.updateMessage(sessionId, assistantMessageId, (message) => ({
@@ -401,12 +458,16 @@ export function useChat(sessionId: string) {
         store.clearStreaming(sessionId)
         return
       }
-      const errMsg = error instanceof Error ? error.message : 'Unable to reach the backend.'
+      const errMsg = watchdogTimedOut
+        ? 'No response from the agent. The connection may have stalled.'
+        : error instanceof Error ? error.message : 'Unable to reach the backend.'
       const partial = streamingToContentBlocks(useSessionStore.getState().getStreaming(sessionId))
       const content = [...partial, { type: 'text' as const, text: `> ${errorHeading(errMsg)}\n\n${errMsg}` }]
       store.updateMessage(sessionId, assistantMessageId, (message) => ({ ...message, content }))
+      store.updateMessage(sessionId, userMessageId, (message) => ({ ...message, status: 'error' }))
       store.clearStreaming(sessionId)
     } finally {
+      if (watchdogTimer !== null) clearTimeout(watchdogTimer)
       if (syncRafRef.current !== null) {
         cancelAnimationFrame(syncRafRef.current)
         syncRafRef.current = null
@@ -414,7 +475,7 @@ export function useChat(sessionId: string) {
       clearSharedController(sessionId)
       clearStopRequested(sessionId)
       store.setIsStreaming(sessionId, false)
-      store.updateAgentState(sessionId, { isThinking: false, activeTool: null, pendingPermission: null })
+      store.updateAgentState(sessionId, { isThinking: false, activeTool: null, pendingPermission: null, stage: null })
       // Only the first turn triggers server-side title generation at all
       // (see the engine's TotalTurns==1 check) - and only once it actually
       // completed (committed), since an aborted/failed turn never reaches
@@ -667,6 +728,7 @@ function handleRuntimeEvent(
   setPendingTool: (tool: ToolActivity | null) => void,
   getPendingTool: () => ToolActivity | null,
   syncAssistantMessage: () => void,
+  onCompaction: (preTokens: number, postTokens: number) => void,
 ) {
   // Sub-agent events are tagged with agent_tool_use_id — route them separately.
   if (event.agent_tool_use_id) {
@@ -686,12 +748,33 @@ function handleRuntimeEvent(
       break
     }
 
+    // Named pre-generation setup phase - shown only while nothing more
+    // concrete (thinking/a tool) is already happening, see
+    // agentActivityPhrase's priority chain in Conversation.tsx. No "stage
+    // ended" case exists: turn.started below always clears it.
+    case 'turn.stage': {
+      if (event.stage_event) store.updateAgentState(sessionId, { stage: event.stage_event })
+      break
+    }
+
+    // Compaction otherwise happens completely silently - runs synchronously
+    // inside this same turn (unlike an out-of-band /condense call), so its
+    // event just arrives in-band with everything else already handled here,
+    // no separate await/timeout wrapper needed.
+    case 'context.compacted': {
+      if (event.compaction_event) {
+        onCompaction(event.compaction_event.pre_compact_tokens, event.compaction_event.post_compact_tokens)
+      }
+      break
+    }
+
     case 'turn.started': {
       store.updateAgentState(sessionId, {
         executionMode: normaliseMode(event.execution_mode),
         turnNumber: event.turn_number ?? 0,
         isThinking: true,
         activeTool: null,
+        stage: null,
       })
       break
     }
@@ -704,13 +787,14 @@ function handleRuntimeEvent(
         outputTokens: event.usage?.output_tokens ?? 0,
         isThinking: false,
         activeTool: null,
+        stage: null,
       })
       syncAssistantMessage()
       break
     }
 
     case 'turn.failed':
-      store.updateAgentState(sessionId, { isThinking: false, activeTool: null })
+      store.updateAgentState(sessionId, { isThinking: false, activeTool: null, stage: null })
       markLatestStreamingTool(sessionId, store, null, 'failed')
       syncAssistantMessage()
       break

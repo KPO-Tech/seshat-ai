@@ -79,6 +79,13 @@ export type Message = {
   content: ContentBlock[]
   timestamp?: string
   metadata?: Record<string, unknown>
+  // status is client-only bookkeeping for an optimistically-added user
+  // message that hasn't been confirmed by the server yet - never present on
+  // a message the server itself returns (see useChat.ts's commitDonePayload,
+  // which replaces the whole array with the server's own messages on
+  // success, naturally clearing this). 'sending' while in flight, 'error'
+  // if the turn fails or a hard timeout elapses with no progress.
+  status?: 'sending' | 'error'
 }
 
 export type TokenUsage = {

@@ -2,6 +2,10 @@
 
 Date: 2026-09-09
 
+**Statut (2026-09-11) : clos, sauf le point performance.** Le plan d'execution a ete livre en plusieurs commits (`5128c45` spinner deplace dans le thread, `26ada3e`/`2a5a1fe`/`a1e1fd7` thinking et tool cards, `f6925cd` sources web search compactes, `b39df81`/`809bd16` polish general). Verifie dans le code au 2026-09-11 : `ThinkingBlock` est replie par defaut avec un simple toggle "Thinking" (`MessageItem.tsx`), le statut de generation vit desormais dans `liveActivity` passe au message courant (`Conversation.tsx`) au lieu d'etre docke hors du flux, `WebSearchToolView` affiche un header compact (`N selected results · provider · mode · duree`) avec 5 resultats visibles et un bouton `View all sources (N)`.
+
+Seul point du plan encore ouvert : la section "Ameliorer la perception du temps d'attente" (`time_to_first_trace`, `time_to_first_tool`, `time_to_first_token`, `tool_duration`, `total_turn_duration`) - aucune instrumentation de latence n'a ete trouvee dans le code (recherche `time_to_first_token` etc. : aucun match backend/frontend au 2026-09-11). C'est le seul chantier restant de cet audit, a traiter separement.
+
 ## Contexte
 
 Le chat principal de SeshatOS est la porte d'entree du produit: c'est l'accueil de l'OS et probablement la surface la plus utilisee. Aujourd'hui, sur desktop, il donne une impression nettement moins aboutie que le chat de Seshat Console.

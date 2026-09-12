@@ -16,14 +16,17 @@ function timeAgo(iso?: string): string {
   return `${Math.floor(minutes / 60)}h ago`
 }
 
-// Passive "did anything actually arrive" view for a webhook_trigger node -
-// the closest equivalent to n8n's "listen for test event," minus its
-// separate test/production machinery: our URL is already live once the job
-// is saved, so this just polls the job's own run history (GET .../runs,
-// already used the same way by apps/scheduling/index.tsx) for the most
+// Passive "did anything actually arrive" view for a job with a webhook
+// trigger - the closest equivalent to n8n's "listen for test event," minus
+// its separate test/production machinery: the URL is already live once the
+// job is saved, so this just polls the job's own run history for the most
 // recent run that actually carried a payload. No "send a simulated call"
 // button on purpose - the point is seeing what a real caller actually
 // sends, which a simulation can't show.
+//
+// Shared by apps/automation (graph webhook_trigger node) and
+// apps/scheduling (graph-less webhook-triggered jobs) - both hit the same
+// GET /automation/jobs/:id/runs endpoint, so this needs no per-app variant.
 export function WebhookLastCall({ jobId }: Props) {
   const [payload, setPayload] = useState<string | null>(null)
   const [receivedAt, setReceivedAt] = useState<string | undefined>(undefined)
