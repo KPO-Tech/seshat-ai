@@ -16,7 +16,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
+	"mime"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -185,6 +187,43 @@ func (c *Client) Search(ctx context.Context, token, corpusID, query string, topK
 		return nil, err
 	}
 	return &result, nil
+}
+
+// DownloadFile fetches a corpus file's raw bytes by its own id alone -
+// GET /api/v1/knowledge/files/{fileID}/content is deliberately not
+// corpus-scoped in the path, since the caller (RemoteService.DownloadFile)
+// only ever has the id it got back from AttachFile/ListFiles to go on. The
+// server sets Content-Type/Content-Disposition the same way the desktop's
+// own local file-content endpoint does, so those are read back here rather
+// than re-fetching CorpusFile metadata in a second round trip.
+func (c *Client) DownloadFile(ctx context.Context, token, fileID string) ([]byte, *remoteCorpusFile, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.serverURL+"/api/v1/knowledge/files/"+url.PathEscape(fileID)+"/content", nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("seshat-server unreachable: %w", err)
+	}
+	defer resp.Body.Close()
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read response body: %w", err)
+	}
+	if resp.StatusCode >= 400 {
+		return nil, nil, &cloudhttp.HTTPError{Status: resp.StatusCode, Body: strings.TrimSpace(string(data))}
+	}
+
+	filename := ""
+	if _, params, err := mime.ParseMediaType(resp.Header.Get("Content-Disposition")); err == nil {
+		filename = params["filename"]
+	}
+	return data, &remoteCorpusFile{Filename: filename, ContentType: resp.Header.Get("Content-Type")}, nil
 }
 
 // UploadFile uploads file bytes as a multipart form to

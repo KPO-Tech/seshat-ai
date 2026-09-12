@@ -29,6 +29,12 @@ type Backend interface {
 	AttachFile(ctx context.Context, principal *backendauth.Principal, corpusID, fileID string) (*CorpusFile, error)
 	ListFiles(ctx context.Context, principal *backendauth.Principal, corpusID string) ([]CorpusFile, error)
 	DetachFile(ctx context.Context, principal *backendauth.Principal, corpusID, fileID string) error
+	// DownloadFile fetches a corpus file's raw bytes by its own id alone -
+	// the caller doesn't (and in connected mode, can't cheaply) know which
+	// corpus it belongs to up front. See cloudknowledge.RemoteService's doc
+	// comment for why a corpus file's id and the desktop's local blob id are
+	// two different id spaces there.
+	DownloadFile(ctx context.Context, principal *backendauth.Principal, fileID string) (*DownloadedFile, error)
 
 	EnqueueIngest(ctx context.Context, principal *backendauth.Principal, params IngestParams) (*IngestionJob, error)
 	ListIngestionJobs(ctx context.Context, principal *backendauth.Principal, corpusID string) ([]IngestionJob, error)

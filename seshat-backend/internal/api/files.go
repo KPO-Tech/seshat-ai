@@ -1,12 +1,14 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 
 	backendaudit "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/audit"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
 	backendfiles "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/files"
 	backendquotas "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/quotas"
 )
@@ -133,6 +135,18 @@ func (app *App) handleFileDownload(w http.ResponseWriter, r *http.Request, _ any
 
 	reader, f, err := app.backend.Files.OpenFileReader(r.Context(), principal, fileID)
 	if err != nil {
+		// A corpus file attached in "connected mode" has no record in the
+		// local Files store at all - its id is seshat-server's own
+		// CorpusFile id, a different id space (see
+		// cloudknowledge.RemoteService's doc comment). Knowledge.DownloadFile
+		// resolves that case; any other error (auth, a genuinely missing
+		// local file) still fails as before.
+		if isNotFound(err) && app.backend.Knowledge != nil {
+			if downloaded, kErr := app.backend.Knowledge.DownloadFile(r.Context(), principal, fileID); kErr == nil {
+				writeFileContent(w, downloaded.ContentType, downloaded.Filename, downloaded.Data)
+				return
+			}
+		}
 		writeBackendError(w, err)
 		return
 	}
@@ -146,6 +160,25 @@ func (app *App) handleFileDownload(w http.ResponseWriter, r *http.Request, _ any
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename=%q`, f.Filename))
 	w.WriteHeader(http.StatusOK)
 	_, _ = io.Copy(w, reader)
+}
+
+// isNotFound reports whether err is a bkerr.Error carrying
+// ErrorKindNotFound - used to decide whether a local Files-store miss is
+// worth retrying against Knowledge, rather than swallowing every failure
+// (auth, backend unavailable) into a silent fallback.
+func isNotFound(err error) bool {
+	var bkErr *bkerr.Error
+	return errors.As(err, &bkErr) && bkErr.Kind == bkerr.ErrorKindNotFound
+}
+
+func writeFileContent(w http.ResponseWriter, contentType, filename string, data []byte) {
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename=%q`, filename))
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(data)
 }
 
 // handleFileMarkdown serves the docling-converted markdown text for a file

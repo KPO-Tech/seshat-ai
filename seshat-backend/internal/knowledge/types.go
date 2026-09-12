@@ -23,6 +23,15 @@ type CorpusFile struct {
 	CreatedAt  time.Time  `json:"created_at"`
 }
 
+// DownloadedFile carries a corpus file's raw bytes and the metadata needed
+// to serve them (Content-Type/Content-Disposition) - kept separate from
+// CorpusFile since content type isn't part of that API-facing type.
+type DownloadedFile struct {
+	Data        []byte
+	Filename    string
+	ContentType string
+}
+
 type CreateCorpusParams struct {
 	Name        string
 	Description string

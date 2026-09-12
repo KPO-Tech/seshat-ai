@@ -133,6 +133,24 @@ func (s *RemoteService) AttachFile(ctx context.Context, principal *backendauth.P
 	return fromRemoteCorpusFile(*remote), nil
 }
 
+// DownloadFile fetches a corpus file's raw bytes from seshat-server by the
+// CorpusFile id AttachFile/ListFiles returned - not a local blob id, see the
+// type doc comment. This is the fix for the gap that comment already flagged:
+// GET /files/{id}/content previously always went through the *local* Files
+// service (internal/api/files.go), which has no record of a server-side
+// CorpusFile id at all, so every content/preview/delete request for a
+// connected-mode corpus file 404'd regardless of ingest status.
+func (s *RemoteService) DownloadFile(ctx context.Context, principal *backendauth.Principal, fileID string) (*knowledge.DownloadedFile, error) {
+	if err := backendauth.EnsureAuthenticated(principal); err != nil {
+		return nil, err
+	}
+	data, meta, err := s.client.DownloadFile(ctx, principal.AuthSession.ID, fileID)
+	if err != nil {
+		return nil, cloudhttp.Translate(err)
+	}
+	return &knowledge.DownloadedFile{Data: data, Filename: meta.Filename, ContentType: meta.ContentType}, nil
+}
+
 func (s *RemoteService) ListFiles(ctx context.Context, principal *backendauth.Principal, corpusID string) ([]knowledge.CorpusFile, error) {
 	if err := backendauth.EnsureAuthenticated(principal); err != nil {
 		return nil, err

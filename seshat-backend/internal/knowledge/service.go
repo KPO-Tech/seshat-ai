@@ -251,6 +251,30 @@ func (s *Service) AttachFile(ctx context.Context, principal *backendauth.Princip
 	return corpusFileFromDB(*cf), nil
 }
 
+// DownloadFile fetches a corpus file's raw bytes by its own id alone. In
+// standalone mode a CorpusFile's FileID is always the same id the local
+// Files service already knows (AttachFile reuses it verbatim), so this can
+// go straight to the local file store/blob without touching s.corpora at
+// all - unlike RemoteService's implementation, which is the one that
+// actually needs a corpus lookup (see that type's doc comment).
+func (s *Service) DownloadFile(ctx context.Context, principal *backendauth.Principal, fileID string) (*DownloadedFile, error) {
+	if s == nil || s.files == nil || s.artifacts == nil {
+		return nil, bkerr.Unavailable("file store not configured", nil)
+	}
+	fileRecord, err := s.files.GetByID(ctx, fileID)
+	if err != nil {
+		return nil, bkerr.NotFound("file not found", err)
+	}
+	if err := s.checkFileAccess(principal, fileRecord); err != nil {
+		return nil, err
+	}
+	data, err := s.artifacts.Get(ctx, fileRecord.StorageKey)
+	if err != nil {
+		return nil, bkerr.Internal("read file blob: "+err.Error(), err)
+	}
+	return &DownloadedFile{Data: data, Filename: fileRecord.Filename, ContentType: fileRecord.ContentType}, nil
+}
+
 func (s *Service) ListFiles(ctx context.Context, principal *backendauth.Principal, corpusID string) ([]CorpusFile, error) {
 	if s == nil || s.corpora == nil {
 		return nil, bkerr.Unavailable("knowledge store not configured", nil)
