@@ -76,6 +76,15 @@ services:
       # unset DOCLING_PERF_* in .env behaves the same as never setting it.
       DOCLING_PERF_PAGE_BATCH_SIZE: ${DOCLING_PERF_PAGE_BATCH_SIZE:-4}
       DOCLING_PERF_ELEMENTS_BATCH_SIZE: ${DOCLING_PERF_ELEMENTS_BATCH_SIZE:-16}
+      # docling-serve's own internal wait budget for a synchronous convert
+      # call - defaults to 120s, which a large/scanned/OCR-heavy PDF on a
+      # CPU-only worker can easily exceed (seen taking 6+ minutes on a
+      # 10 MB scanned document). seshat-server's own docling client already
+      # budgets 15 minutes for exactly this reason (see doclingIngestTimeout
+      # in internal/server/app/app.go) - matched here so docling-serve
+      # itself doesn't give up and return a 504 first while the client is
+      # still happily waiting.
+      DOCLING_SERVE_MAX_SYNC_WAIT: ${DOCLING_SERVE_MAX_SYNC_WAIT:-900}
       DOCLING_SERVE_LOAD_MODELS_AT_BOOT: ${DOCLING_SERVE_LOAD_MODELS_AT_BOOT:-false}
       DOCLING_SERVE_OPTIONS_CACHE_SIZE: ${DOCLING_SERVE_OPTIONS_CACHE_SIZE:-32}
     ports:
