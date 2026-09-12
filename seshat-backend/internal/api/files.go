@@ -142,10 +142,18 @@ func (app *App) handleFileDownload(w http.ResponseWriter, r *http.Request, _ any
 		// resolves that case; any other error (auth, a genuinely missing
 		// local file) still fails as before.
 		if isNotFound(err) && app.backend.Knowledge != nil {
-			if downloaded, kErr := app.backend.Knowledge.DownloadFile(r.Context(), principal, fileID); kErr == nil {
+			downloaded, kErr := app.backend.Knowledge.DownloadFile(r.Context(), principal, fileID)
+			if kErr == nil {
 				writeFileContent(w, downloaded.ContentType, downloaded.Filename, downloaded.Data)
 				return
 			}
+			// The Knowledge fallback was actually attempted (this id isn't a
+			// local file, so the plain "file not found" above would be
+			// misleading either way) - surface what it said instead of the
+			// original local-store miss, so a real cause (auth, corpus
+			// permission, seshat-server unreachable) isn't masked by it.
+			writeBackendError(w, kErr)
+			return
 		}
 		writeBackendError(w, err)
 		return
