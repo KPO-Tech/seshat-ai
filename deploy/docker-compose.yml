@@ -66,8 +66,16 @@ services:
       DOCLING_SERVE_ENG_RQ_REDIS_MAX_CONNECTIONS: ${DOCLING_SERVE_ENG_RQ_REDIS_MAX_CONNECTIONS:-50}
       DOCLING_DEVICE: ${DOCLING_DEVICE:-cpu}
       DOCLING_NUM_THREADS: ${DOCLING_NUM_THREADS:-4}
-      DOCLING_PERF_PAGE_BATCH_SIZE: ${DOCLING_PERF_PAGE_BATCH_SIZE:-}
-      DOCLING_PERF_ELEMENTS_BATCH_SIZE: ${DOCLING_PERF_ELEMENTS_BATCH_SIZE:-}
+      # An empty-string default here (as these two used to have) crashes
+      # docling-serve outright: its Pydantic settings model requires a real
+      # int, and an unset-but-present env var still passes "" through
+      # Compose's map-form `environment:` (there's no way to conditionally
+      # omit a key here) - it doesn't fall back to docling-serve's own
+      # default the way leaving the var out of `environment:` entirely
+      # would. These match docling-serve's own upstream defaults, so an
+      # unset DOCLING_PERF_* in .env behaves the same as never setting it.
+      DOCLING_PERF_PAGE_BATCH_SIZE: ${DOCLING_PERF_PAGE_BATCH_SIZE:-4}
+      DOCLING_PERF_ELEMENTS_BATCH_SIZE: ${DOCLING_PERF_ELEMENTS_BATCH_SIZE:-16}
       DOCLING_SERVE_LOAD_MODELS_AT_BOOT: ${DOCLING_SERVE_LOAD_MODELS_AT_BOOT:-false}
       DOCLING_SERVE_OPTIONS_CACHE_SIZE: ${DOCLING_SERVE_OPTIONS_CACHE_SIZE:-32}
     ports:
