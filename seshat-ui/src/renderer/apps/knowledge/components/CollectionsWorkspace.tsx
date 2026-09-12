@@ -61,7 +61,8 @@ export function CollectionsWorkspace({
   const [renamingCorpus, setRenamingCorpus] = useState<Corpus | null>(null)
   const [renameName, setRenameName] = useState('')
   const [renaming, setRenaming] = useState(false)
-  const [deletingCorpusId, setDeletingCorpusId] = useState<string | null>(null)
+  const [deletingCorpus, setDeletingCorpus] = useState<Corpus | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const openedCorpus = openedCorpusId ? corpora.find((corpus) => corpus.id === openedCorpusId) ?? null : null
   const selectedFile = selectedFileId ? detail.files.find((file) => file.file_id === selectedFileId) ?? null : null
@@ -93,6 +94,25 @@ export function CollectionsWorkspace({
     })
   }, [detail.files, detail.loading, openedCorpus])
 
+  useEffect(() => {
+    if (!menuCorpusId) return
+    function closeOnOutsideEvent(event: MouseEvent | KeyboardEvent) {
+      if (event instanceof KeyboardEvent) {
+        if (event.key === 'Escape') setMenuCorpusId(null)
+        return
+      }
+      const target = event.target as HTMLElement
+      if (target.closest('.k-collection-menu') || target.closest('.k-collection-menu-trigger')) return
+      setMenuCorpusId(null)
+    }
+    document.addEventListener('mousedown', closeOnOutsideEvent)
+    document.addEventListener('keydown', closeOnOutsideEvent)
+    return () => {
+      document.removeEventListener('mousedown', closeOnOutsideEvent)
+      document.removeEventListener('keydown', closeOnOutsideEvent)
+    }
+  }, [menuCorpusId])
+
   async function submitRename() {
     if (!renamingCorpus) return
     const nextName = renameName.trim()
@@ -107,14 +127,14 @@ export function CollectionsWorkspace({
     }
   }
 
-  async function confirmDelete(corpus: Corpus) {
-    if (!window.confirm(`Delete "${corpus.name}"? This removes its files from the collection and cannot be undone.`)) return
-    setDeletingCorpusId(corpus.id)
+  async function submitDelete() {
+    if (!deletingCorpus) return
+    setDeleting(true)
     try {
-      await onDeleteCorpus(corpus.id)
-      setMenuCorpusId(null)
+      await onDeleteCorpus(deletingCorpus.id)
+      setDeletingCorpus(null)
     } finally {
-      setDeletingCorpusId(null)
+      setDeleting(false)
     }
   }
 
@@ -306,10 +326,9 @@ export function CollectionsWorkspace({
                         type="button"
                         role="menuitem"
                         className="danger"
-                        disabled={deletingCorpusId === corpus.id}
-                        onClick={() => { void confirmDelete(corpus) }}
+                        onClick={() => { setMenuCorpusId(null); setDeletingCorpus(corpus) }}
                       >
-                        {deletingCorpusId === corpus.id ? <LoadingOne size={12} className="spin" /> : <Delete size={12} />} Delete
+                        <Delete size={12} /> Delete
                       </button>
                     </div>
                   )}
@@ -406,6 +425,45 @@ export function CollectionsWorkspace({
               </button>
               <button type="submit" className="k-settings-btn primary" disabled={!renameName.trim() || renaming}>
                 {renaming ? 'Renaming...' : 'Rename collection'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+      {deletingCorpus && (
+        <div
+          className="k-modal-backdrop"
+          role="presentation"
+          onMouseDown={() => {
+            if (!deleting) setDeletingCorpus(null)
+          }}
+        >
+          <form
+            className="k-create-collection-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Delete collection"
+            onMouseDown={(event) => event.stopPropagation()}
+            onSubmit={(event) => {
+              event.preventDefault()
+              void submitDelete()
+            }}
+          >
+            <div className="k-create-collection-head">
+              <span className="k-create-collection-icon danger">
+                <Delete size={18} />
+              </span>
+              <div>
+                <h2>Delete collection</h2>
+                <p>Delete “{deletingCorpus.name}”? This removes its files from the collection and cannot be undone.</p>
+              </div>
+            </div>
+            <div className="k-create-collection-actions">
+              <button type="button" className="k-settings-btn" onClick={() => setDeletingCorpus(null)} disabled={deleting}>
+                Cancel
+              </button>
+              <button type="submit" className="k-settings-btn danger" disabled={deleting}>
+                {deleting ? 'Deleting...' : 'Delete collection'}
               </button>
             </div>
           </form>

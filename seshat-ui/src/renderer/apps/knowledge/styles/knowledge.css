@@ -91,6 +91,17 @@
   color: white;
 }
 
+.k-settings-btn.danger {
+  border-color: #dc2626;
+  background: #dc2626;
+  color: white;
+}
+
+.k-settings-btn.danger:hover:not(:disabled) {
+  background: #b91c1c;
+  color: white;
+}
+
 .k-toolbar-actions {
   margin-left: auto;
   display: flex;
@@ -913,6 +924,11 @@
   border-radius: 8px;
   background: rgba(239, 124, 47, 0.1);
   color: #ef7c2f;
+}
+
+.k-create-collection-icon.danger {
+  background: rgba(220, 38, 38, 0.1);
+  color: #dc2626;
 }
 
 .k-create-collection-head h2 {
