@@ -1789,7 +1789,7 @@
 .k-detail-file-row {
   min-height: 46px;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   gap: 10px;
   align-items: center;
   border: 1px solid var(--color-border-subtle);
@@ -1804,6 +1804,37 @@
 
 .k-detail-file-row:hover {
   background: var(--color-hover);
+}
+
+.k-detail-file-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+
+.k-detail-file-row:hover .k-detail-file-remove,
+.k-detail-file-row:focus-within .k-detail-file-remove {
+  opacity: 1;
+}
+
+.k-detail-file-remove:hover {
+  background: rgba(220, 38, 38, 0.1);
+  color: #dc2626;
+}
+
+.k-detail-file-remove:disabled {
+  opacity: 1;
+  cursor: default;
+  color: var(--color-text-muted);
 }
 
 .k-detail-file-row.active {

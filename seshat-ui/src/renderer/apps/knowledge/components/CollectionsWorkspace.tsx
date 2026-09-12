@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Caution, Delete, Edit, FileText, LoadingOne, More, Search, Upload } from '@icon-park/react'
 import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
-import type { Corpus } from '@/api/types'
+import type { Corpus, CorpusFile } from '@/api/types'
 import type { CorpusDetail } from '../api/types'
 import { fileExtension } from '../lib/preview'
 import { formatDate } from '../lib/status'
@@ -23,6 +23,8 @@ export function CollectionsWorkspace({
   processing,
   processError,
   corporaError,
+  deletingFileId,
+  fileDeleteError,
   onUpload,
   onSelectCorpus,
   onOpenCorpus,
@@ -31,6 +33,7 @@ export function CollectionsWorkspace({
   onDeleteCorpus,
   onProcessAll,
   onRetryDetail,
+  onDeleteFile,
 }: {
   corpora: Corpus[]
   selectedCorpus: Corpus | null
@@ -45,6 +48,8 @@ export function CollectionsWorkspace({
   processing: boolean
   processError: string | null
   corporaError: string | null
+  deletingFileId: string | null
+  fileDeleteError: string | null
   onUpload: () => void
   onSelectCorpus: (id: string) => void
   onOpenCorpus: (id: string) => void
@@ -53,6 +58,7 @@ export function CollectionsWorkspace({
   onDeleteCorpus: (corpusId: string) => Promise<void>
   onProcessAll: (corpusId: string) => void
   onRetryDetail: (corpusId: string) => void
+  onDeleteFile: (corpusId: string, fileId: string) => Promise<void>
 }) {
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null)
   const [testQuery, setTestQuery] = useState('')
@@ -63,6 +69,7 @@ export function CollectionsWorkspace({
   const [renaming, setRenaming] = useState(false)
   const [deletingCorpus, setDeletingCorpus] = useState<Corpus | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [deletingFile, setDeletingFile] = useState<CorpusFile | null>(null)
 
   const openedCorpus = openedCorpusId ? corpora.find((corpus) => corpus.id === openedCorpusId) ?? null : null
   const selectedFile = selectedFileId ? detail.files.find((file) => file.file_id === selectedFileId) ?? null : null
@@ -138,11 +145,19 @@ export function CollectionsWorkspace({
     }
   }
 
+  async function submitDeleteFile() {
+    if (!deletingFile || !openedCorpus) return
+    await onDeleteFile(openedCorpus.id, deletingFile.file_id)
+    setDeletingFile(null)
+    if (selectedFileId === deletingFile.file_id) setSelectedFileId(null)
+  }
+
   if (openedCorpus) {
     return (
       <div className="k-collections-page detail k-collections-console">
         {uploadError && <div className="k-page-error">{uploadError}</div>}
         {processError && <div className="k-page-error">{processError}</div>}
+        {fileDeleteError && <div className="k-page-error">{fileDeleteError}</div>}
 
         <section className="k-collection-detail-grid">
           <main className="k-hub-panel">
@@ -170,11 +185,15 @@ export function CollectionsWorkspace({
                   <span>{uploading ? 'Uploading...' : 'Import documents into this collection'}</span>
                 </button>
               ) : detail.files.map((file) => (
-                <button
+                <div
                   key={file.file_id}
-                  type="button"
+                  role="button"
+                  tabIndex={0}
                   className={`k-detail-file-row${selectedFile?.file_id === file.file_id ? ' active' : ''}`}
                   onClick={() => setSelectedFileId(file.file_id)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') setSelectedFileId(file.file_id)
+                  }}
                 >
                   <KnowledgeFileIcon filename={file.filename} />
                   <span>
@@ -182,7 +201,19 @@ export function CollectionsWorkspace({
                     <small>{file.chunk_count} chunks</small>
                   </span>
                   <StatusBadge status={file.status} />
-                </button>
+                  <button
+                    type="button"
+                    className="k-detail-file-remove"
+                    aria-label={`Remove ${file.filename}`}
+                    disabled={deletingFileId === file.file_id}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      setDeletingFile(file)
+                    }}
+                  >
+                    {deletingFileId === file.file_id ? <LoadingOne size={12} className="spin" /> : <Delete size={12} />}
+                  </button>
+                </div>
               ))}
             </div>
           </main>
@@ -224,6 +255,50 @@ export function CollectionsWorkspace({
             </section>
           </aside>
         </section>
+        {deletingFile && (
+          <div
+            className="k-modal-backdrop"
+            role="presentation"
+            onMouseDown={() => {
+              if (deletingFileId !== deletingFile.file_id) setDeletingFile(null)
+            }}
+          >
+            <form
+              className="k-create-collection-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Remove file"
+              onMouseDown={(event) => event.stopPropagation()}
+              onSubmit={(event) => {
+                event.preventDefault()
+                void submitDeleteFile()
+              }}
+            >
+              <div className="k-create-collection-head">
+                <span className="k-create-collection-icon danger">
+                  <Delete size={18} />
+                </span>
+                <div>
+                  <h2>Remove file</h2>
+                  <p>Remove "{deletingFile.filename}" from this collection? Its indexed chunks are deleted too, and this cannot be undone.</p>
+                </div>
+              </div>
+              <div className="k-create-collection-actions">
+                <button
+                  type="button"
+                  className="k-settings-btn"
+                  onClick={() => setDeletingFile(null)}
+                  disabled={deletingFileId === deletingFile.file_id}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="k-settings-btn danger" disabled={deletingFileId === deletingFile.file_id}>
+                  {deletingFileId === deletingFile.file_id ? 'Removing...' : 'Remove file'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
       </div>
     )
   }

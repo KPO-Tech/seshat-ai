@@ -74,6 +74,8 @@ export function KnowledgePage() {
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [processing, setProcessing] = useState(false)
   const [processError, setProcessError] = useState<string | null>(null)
+  const [deletingFileId, setDeletingFileId] = useState<string | null>(null)
+  const [fileDeleteError, setFileDeleteError] = useState<string | null>(null)
   const [publicLibraryOpen, setPublicLibraryOpen] = useState(false)
   const [view, setView] = useState<KnowledgeView>('overview')
   // Account-level Settings/Feedback/Admin, in this nav's own footer.
@@ -588,6 +590,26 @@ export function KnowledgePage() {
     }
   }
 
+  // Removes one file from a corpus - the only way to get rid of a file
+  // stuck permanently `failed` (ingestion exhausted its retries), since
+  // Reprocess only re-queues, it never removes. Detach also deletes the
+  // file's indexed chunks server-side (see knowledge.Service.DetachFile),
+  // so this isn't just a listing change.
+  async function deleteFile(corpusId: string, fileId: string) {
+    setDeletingFileId(fileId)
+    setFileDeleteError(null)
+    try {
+      await api.delete<void>(`/corpora/${corpusId}/files/${fileId}`)
+      await loadCorpusDetail(corpusId)
+      await loadCorpora()
+    } catch (err) {
+      setFileDeleteError(err instanceof ApiError ? err.message : 'Unable to remove this file.')
+      throw err
+    } finally {
+      setDeletingFileId(null)
+    }
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setView('search')
@@ -840,6 +862,8 @@ export function KnowledgePage() {
                 processing={processing}
                 processError={processError}
                 corporaError={corporaError}
+                deletingFileId={deletingFileId}
+                fileDeleteError={fileDeleteError}
                 onUpload={() => fileRef.current?.click()}
                 onSelectCorpus={setSelectedCorpusId}
                 onOpenCorpus={(corpusId) => {
@@ -851,6 +875,7 @@ export function KnowledgePage() {
                 onDeleteCorpus={deleteCorpus}
                 onProcessAll={(corpusId) => void processFiles(corpusId, 'all')}
                 onRetryDetail={(corpusId) => void loadCorpusDetail(corpusId)}
+                onDeleteFile={deleteFile}
               />
             ) : view === 'chat' ? (
               <KnowledgeChatWorkspace
