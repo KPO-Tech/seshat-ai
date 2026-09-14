@@ -9,6 +9,10 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import 'katex/dist/katex.min.css'
 import { openInAppBrowser, shouldOpenInAppBrowser } from '@/lib/openInAppBrowser'
 
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(' ')
+}
+
 // Short language tags read poorly as headers ("md", "js", "py") - a small
 // display-name map for the common ones, falling back to just capitalizing
 // whatever Prism's own language id is for anything not listed.
@@ -42,20 +46,24 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
   }
 
   return (
-    <div className="md-code">
-      <div className="md-code-header">
+    <div className="my-4 overflow-hidden rounded-lg border border-app-border-subtle bg-[#1e1e1e]">
+      <div className="flex items-center justify-between border-b border-app-border-subtle bg-white/5 px-2.5 py-1.5">
         <button
           type="button"
-          className="md-code-toggle"
+          className="inline-flex cursor-pointer items-center gap-1.5 border-0 bg-transparent px-1 py-0.5 text-xs font-semibold text-app-text-muted hover:text-app-text-secondary"
           onClick={() => setCollapsed((v) => !v)}
           aria-expanded={!collapsed}
         >
-          <span className={`md-code-chevron${collapsed ? '' : ' md-code-chevron--open'}`}>
+          <span className={cx('inline-flex items-center transition-transform duration-150', collapsed ? '-rotate-90' : 'rotate-0')}>
             <Down size={11} />
           </span>
-          <span className="md-code-lang">{languageLabel(language)}</span>
+          <span>{languageLabel(language)}</span>
         </button>
-        <button type="button" className="md-code-copy" onClick={copy}>
+        <button
+          type="button"
+          className="inline-flex cursor-pointer items-center gap-[5px] rounded-md border border-app-border-subtle bg-transparent px-[9px] py-1 text-[11px] text-app-text-muted transition-[background,border-color,color] duration-100 hover:border-app-border hover:bg-[var(--color-hover)] hover:text-app-text"
+          onClick={copy}
+        >
           {copied ? <Check size={12} /> : <Copy size={12} />}
           <span>{copied ? 'Copied' : 'Copy'}</span>
         </button>
@@ -125,18 +133,18 @@ function MermaidBlock({ code }: { code: string }) {
 
   if (error) {
     return (
-      <div className="mermaid-block mermaid-block--error">
-        <div className="mermaid-error-label">Diagram failed to render: {error}</div>
-        <pre className="mermaid-error-source">{code}</pre>
+      <div className="my-4 flex flex-col items-stretch gap-1.5 overflow-x-auto">
+        <div className="text-xs text-app-error">Diagram failed to render: {error}</div>
+        <pre className="m-0 overflow-x-auto rounded-md bg-app-surface p-2.5 text-xs">{code}</pre>
       </div>
     )
   }
   if (!svg) {
-    return <div className="mermaid-block mermaid-block--loading">Rendering diagram…</div>
+    return <div className="my-4 flex justify-start overflow-x-auto p-4 text-xs text-app-text-muted">Rendering diagram…</div>
   }
   // svg is mermaid's own sanitized output (securityLevel: 'strict' above),
   // not raw user/model text — see the note on that setting.
-  return <div className="mermaid-block" dangerouslySetInnerHTML={{ __html: svg }} />
+  return <div className="my-4 flex justify-center overflow-x-auto [&_svg]:max-w-full" dangerouslySetInnerHTML={{ __html: svg }} />
 }
 
 // Renders a ```chart fenced block (a JSON Chart.js config: {type, data,
@@ -201,14 +209,14 @@ function ChartBlock({ code }: { code: string }) {
 
   if (error) {
     return (
-      <div className="chart-block chart-block--error">
-        <div className="mermaid-error-label">Chart failed to render: {error}</div>
-        <pre className="mermaid-error-source">{code}</pre>
+      <div className="my-4 flex flex-col gap-1.5">
+        <div className="text-xs text-app-error">Chart failed to render: {error}</div>
+        <pre className="m-0 overflow-x-auto rounded-md bg-app-surface p-2.5 text-xs">{code}</pre>
       </div>
     )
   }
   return (
-    <div className="chart-block">
+    <div className="relative my-4 h-80">
       <canvas ref={canvasRef} />
     </div>
   )
@@ -248,8 +256,7 @@ export function MarkdownView({ children, className, streaming = false, sessionId
   const content = normalizeMathDelimiters(streaming ? sealOpenFences(children) : children)
 
   return (
-    <div className={`markdown-body ${className || ''}`}>
-      <style>{MARKDOWN_CSS}</style>
+    <div className={cx('text-[13px] leading-[1.6] text-app-text', className)}>
       <ReactMarkdown
         // KaTeX and Prism re-parse their whole input on every render; while
         // streaming, `content` changes on every token, which would mean
@@ -273,17 +280,58 @@ export function MarkdownView({ children, className, streaming = false, sessionId
               return <CodeBlock language={match[1]} code={code} />
             }
             return (
-              <code className={className} {...props}>
+              <code
+                className={cx(
+                  inline
+                    ? 'rounded-[3px] bg-app-surface px-[3px] py-0.5 font-mono text-[0.9em]'
+                    : 'font-mono text-[0.9em]',
+                  className,
+                )}
+                {...props}
+              >
                 {children}
               </code>
             )
           },
+          p({ children }) {
+            return <p className="mb-3 last:mb-0">{children}</p>
+          },
+          pre({ children }) {
+            return <pre className="my-4 overflow-hidden rounded-md">{children}</pre>
+          },
           table({ children }) {
             return (
-              <div style={{ overflowX: 'auto', margin: '16px 0' }}>
-                <table>{children}</table>
+              <div className="my-4 overflow-x-auto">
+                <table className="w-full border-collapse border border-app-border">{children}</table>
               </div>
             )
+          },
+          th({ children }) {
+            return <th className="border border-app-border bg-app-surface px-2 py-1.5 text-left">{children}</th>
+          },
+          td({ children }) {
+            return <td className="border border-app-border px-2 py-1.5 text-left">{children}</td>
+          },
+          ul({ children }) {
+            return <ul className="mb-4 pl-3.5">{children}</ul>
+          },
+          ol({ children }) {
+            return <ol className="mb-4 pl-3.5">{children}</ol>
+          },
+          li({ children }) {
+            return <li className="mb-1">{children}</li>
+          },
+          h1({ children }) {
+            return <h1 className="mb-3 mt-6 font-semibold text-app-text">{children}</h1>
+          },
+          h2({ children }) {
+            return <h2 className="mb-3 mt-6 font-semibold text-app-text">{children}</h2>
+          },
+          h3({ children }) {
+            return <h3 className="mb-3 mt-6 font-semibold text-app-text">{children}</h3>
+          },
+          blockquote({ children }) {
+            return <blockquote className="my-4 border-l-4 border-app-primary pl-[11px] text-app-text-secondary">{children}</blockquote>
           },
           // Plain markdown links otherwise render as a bare <a href> with no
           // target/onClick - in Electron that's a same-frame top-level
@@ -315,203 +363,3 @@ export function MarkdownView({ children, className, streaming = false, sessionId
     </div>
   )
 }
-
-const MARKDOWN_CSS = `
-.markdown-body {
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--color-text);
-}
-
-.markdown-body p {
-  margin: 0 0 12px;
-}
-
-.markdown-body p:last-child {
-  margin-bottom: 0;
-}
-
-.markdown-body code {
-  background: var(--color-surface);
-  padding: 2px 3px;
-  border-radius: 3px;
-  font-family: monospace;
-  font-size: 0.9em;
-}
-
-/* react-syntax-highlighter wraps a fenced block's whole content in its own
-   <code class="language-*">, which inherits the inline-code chip styling
-   above. That <code> is still display:inline (never overridden) with
-   multi-line, white-space:pre content - the browser paints the inherited
-   background/padding as one rounded box per visual line-fragment instead of
-   one box around the whole block, reading as a chunk of pre-selected text
-   rather than free text. Reset it back to plain inside our own block
-   wrapper; CODE_BLOCK_STYLE already supplies the block's real
-   background/padding on the container around it. */
-.md-code code {
-  background: transparent;
-  padding: 0;
-  border-radius: 0;
-  font-size: inherit;
-}
-
-.markdown-body pre {
-  margin: 16px 0;
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.md-code {
-  margin: 16px 0;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
-  overflow: hidden;
-  background: #1e1e1e;
-}
-
-.md-code-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 10px;
-  background: rgba(255, 255, 255, 0.04);
-  border-bottom: 1px solid var(--color-border-subtle);
-}
-
-.md-code-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border: none;
-  background: transparent;
-  color: var(--color-text-muted);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 2px 4px;
-}
-
-.md-code-toggle:hover { color: var(--color-text-secondary); }
-
-.md-code-chevron {
-  display: inline-flex;
-  align-items: center;
-  transition: transform 0.15s;
-  transform: rotate(-90deg);
-}
-
-.md-code-chevron--open { transform: rotate(0deg); }
-
-.md-code-lang {
-  letter-spacing: 0.02em;
-}
-
-.md-code-copy {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 6px;
-  padding: 4px 9px;
-  background: transparent;
-  color: var(--color-text-muted);
-  font-size: 11px;
-  cursor: pointer;
-  transition: color 0.12s, background 0.12s, border-color 0.12s;
-}
-
-.md-code-copy:hover {
-  color: var(--color-text);
-  background: var(--color-hover);
-  border-color: var(--color-border);
-}
-
-.markdown-body table {
-  border-collapse: collapse;
-  width: 100%;
-  border: 1px solid var(--color-border);
-}
-
-.markdown-body th, .markdown-body td {
-  border: 1px solid var(--color-border);
-  padding: 6px 8px;
-  text-align: left;
-}
-
-.markdown-body th {
-  background: var(--color-surface);
-}
-
-.markdown-body ul, .markdown-body ol {
-  margin-bottom: 16px;
-  padding-left: 14px;
-}
-
-.markdown-body li {
-  margin-bottom: 4px;
-}
-
-.markdown-body h1, .markdown-body h2, .markdown-body h3 {
-  margin: 24px 0 12px;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.markdown-body blockquote {
-  margin: 16px 0;
-  padding-left: 11px;
-  border-left: 4px solid var(--color-accent);
-  color: var(--color-text-secondary);
-}
-
-.mermaid-block {
-  margin: 16px 0;
-  display: flex;
-  justify-content: center;
-  overflow-x: auto;
-}
-
-.mermaid-block svg {
-  max-width: 100%;
-}
-
-.mermaid-block--loading {
-  padding: 16px;
-  font-size: 12px;
-  color: var(--color-text-muted);
-  justify-content: flex-start;
-}
-
-.mermaid-block--error {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 6px;
-}
-
-.mermaid-error-label {
-  font-size: 12px;
-  color: var(--color-error, #C96B5C);
-}
-
-.mermaid-error-source {
-  margin: 0;
-  padding: 10px;
-  border-radius: 6px;
-  background: var(--color-surface);
-  font-size: 12px;
-  overflow-x: auto;
-}
-
-.chart-block {
-  margin: 16px 0;
-  position: relative;
-  height: 320px;
-}
-
-.chart-block--error {
-  height: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-`

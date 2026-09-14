@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Add, CheckCorrect } from '@icon-park/react'
-import { SelectorPill, SELECTOR_PILL_CSS } from '@/components/ui/SelectorPill'
+import { SelectorPill, SELECTOR_MENU_CLASS, SELECTOR_MENU_COPY_CLASS, SELECTOR_MENU_ITEM_CLASS } from '@/components/ui/SelectorPill'
 import { api, ApiError } from '@/api/client'
 
 type DataflowSecret = { id: string; name: string }
@@ -8,6 +8,10 @@ type DataflowSecret = { id: string; name: string }
 type Props = {
   value: string
   onChange: (name: string) => void
+}
+
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(' ')
 }
 
 // Picks an existing org-scoped dataflow secret by name, or creates one
@@ -79,18 +83,16 @@ export function SecretRefField({ value, onChange }: Props) {
   }
 
   return (
-    <div className="gf-secret-field" ref={rootRef}>
-      <style>{SELECTOR_PILL_CSS}</style>
-      <style>{SECRET_FIELD_CSS}</style>
+    <div className="relative inline-block" ref={rootRef}>
       <SelectorPill label={value || 'Select secret…'} onClick={openMenu} />
       {open && (
-        <div className="selector-menu gf-secret-menu">
+        <div className={cx(SELECTOR_MENU_CLASS, 'min-w-[220px]')}>
           {creating ? (
-            <div className="gf-secret-create">
-              <input placeholder="Secret name" value={newName} onChange={(e) => setNewName(e.target.value)} autoFocus />
-              <input placeholder="Value" type="password" value={newValue} onChange={(e) => setNewValue(e.target.value)} />
-              {createError && <div className="gf-secret-error">{createError}</div>}
-              <div className="gf-secret-create-actions">
+            <div className="flex flex-col gap-2 p-1">
+              <input className="h-[30px] rounded-md border border-app-border bg-app-bg px-2 text-[var(--font-size-xs)] text-app-text" placeholder="Secret name" value={newName} onChange={(e) => setNewName(e.target.value)} autoFocus />
+              <input className="h-[30px] rounded-md border border-app-border bg-app-bg px-2 text-[var(--font-size-xs)] text-app-text" placeholder="Value" type="password" value={newValue} onChange={(e) => setNewValue(e.target.value)} />
+              {createError && <div className="text-app-error">{createError}</div>}
+              <div className="mt-0.5 flex gap-1.5">
                 <button type="button" className="gf-action-btn primary" onClick={() => void createSecret()} disabled={saving}>
                   {saving ? 'Saving…' : 'Save'}
                 </button>
@@ -99,17 +101,25 @@ export function SecretRefField({ value, onChange }: Props) {
             </div>
           ) : (
             <>
-              {loading && <div className="gf-secret-empty">Loading…</div>}
-              {listError && <div className="gf-secret-empty gf-secret-error">{listError}</div>}
-              {!loading && !listError && (secrets ?? []).length === 0 && <div className="gf-secret-empty">No secrets yet</div>}
+              {loading && <div className="p-2 text-[var(--font-size-xs)] text-app-text-muted">Loading…</div>}
+              {listError && <div className="p-2 text-[var(--font-size-xs)] text-app-error">{listError}</div>}
+              {!loading && !listError && (secrets ?? []).length === 0 && <div className="p-2 text-[var(--font-size-xs)] text-app-text-muted">No secrets yet</div>}
               {!loading && (secrets ?? []).map((s) => (
-                <button key={s.id} className={`selector-menu-item${s.name === value ? ' active' : ''}`} type="button" onClick={() => pick(s.name)}>
-                  <span className="selector-menu-copy"><span>{s.name}</span></span>
+                <button
+                  key={s.id}
+                  className={cx(
+                    SELECTOR_MENU_ITEM_CLASS,
+                    s.name === value && 'border-[color-mix(in_srgb,var(--color-primary)_22%,var(--color-border-subtle))] bg-[color-mix(in_srgb,var(--color-primary)_11%,var(--color-surface))] text-app-primary',
+                  )}
+                  type="button"
+                  onClick={() => pick(s.name)}
+                >
+                  <span className={SELECTOR_MENU_COPY_CLASS}><span>{s.name}</span></span>
                   {s.name === value && <CheckCorrect size={12} />}
                 </button>
               ))}
-              <button className="selector-menu-item gf-secret-new" type="button" onClick={() => setCreating(true)}>
-                <span className="selector-menu-copy"><span>New secret</span></span>
+              <button className={cx(SELECTOR_MENU_ITEM_CLASS, 'mt-0.5 border-t-app-border-subtle pt-[9px] text-[var(--color-cta)]')} type="button" onClick={() => setCreating(true)}>
+                <span className={SELECTOR_MENU_COPY_CLASS}><span>New secret</span></span>
                 <Add size={12} />
               </button>
             </>
@@ -119,54 +129,3 @@ export function SecretRefField({ value, onChange }: Props) {
     </div>
   )
 }
-
-const SECRET_FIELD_CSS = `
-.gf-secret-field {
-  position: relative;
-  display: inline-block;
-}
-
-.gf-secret-menu {
-  min-width: 220px;
-}
-
-.gf-secret-new {
-  border-top: 1px solid var(--color-border-subtle);
-  margin-top: 2px;
-  padding-top: 9px;
-  color: var(--color-cta);
-}
-
-.gf-secret-create {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 4px;
-}
-
-.gf-secret-create input {
-  height: 30px;
-  padding: 0 8px;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-size: var(--font-size-xs);
-}
-
-.gf-secret-create-actions {
-  display: flex;
-  gap: 6px;
-  margin-top: 2px;
-}
-
-.gf-secret-empty {
-  padding: 8px;
-  color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
-}
-
-.gf-secret-error {
-  color: #ff6b6b;
-}
-`

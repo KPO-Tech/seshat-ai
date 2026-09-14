@@ -1,7 +1,9 @@
+import type { CSSProperties } from 'react'
+
 type Props = {
   size?: number
   className?: string
-  style?: React.CSSProperties
+  style?: CSSProperties
 }
 
 export function NexusLogo({ size = 80, className, style }: Props) {
@@ -21,8 +23,8 @@ export function NexusLogo({ size = 80, className, style }: Props) {
       alt="Seshat"
       width={size}
       height={size}
-      className={className}
-      style={{ objectFit: 'contain', ...style }}
+      className={['object-contain', className].filter(Boolean).join(' ')}
+      style={style}
     />
   )
 }

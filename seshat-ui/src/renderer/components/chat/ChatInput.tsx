@@ -5,7 +5,7 @@ import { AttachmentTypeIcon } from '@/components/AttachmentTypeIcon'
 import { api, ApiError } from '@/api/client'
 import type { Corpus } from '@/api/types'
 import { startWavRecording, type WavRecording } from '@/lib/wavRecorder'
-import { SelectorPill, SelectorMenu, SELECTOR_PILL_CSS, type SelectorOption } from '@/components/ui/SelectorPill'
+import { SelectorPill, SelectorMenu, type SelectorOption } from '@/components/ui/SelectorPill'
 import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
 import { useUIStore } from '@/stores/ui'
 
@@ -541,7 +541,6 @@ export function ChatInput({
         rows={1}
       />
 
-      <style>{SELECTOR_PILL_MODEL_OVERRIDE_CSS}</style>
       <div className="mt-2.5 flex items-center justify-between gap-2.5" ref={selectorsRef}>
         <div className="flex min-w-0 flex-1 items-center gap-1.5">
           <button
@@ -626,21 +625,18 @@ export function ChatInput({
               </div>
             )}
           </div>
-          {/* chat-model-selector-wrap carries no CSS of its own - kept as a
-              bare marker class purely so SELECTOR_PILL_MODEL_OVERRIDE_CSS
-              below can restyle the shared <SelectorPill>'s internals
-              (bigger pill, tinted hover) without adding a variant prop to
-              that component just for this one call site. */}
-          <div className="chat-model-selector-wrap relative min-w-0 max-w-[min(240px,32vw)]">
+          <div className="relative min-w-0 max-w-[min(240px,32vw)]">
             <SelectorPill
               label={modelLabel}
               icon={modelIcon ?? (hasModelMenu ? <CheckCorrect size={12} /> : <SettingTwo size={12} />)}
               onClick={handleModelTrigger}
               disabled={modelDisabled}
+              className="h-7 max-w-full rounded-lg bg-[color-mix(in_srgb,var(--color-surface)_74%,var(--color-bg))] px-[9px] py-0 hover:border-[color-mix(in_srgb,var(--color-primary)_24%,var(--color-border-subtle))] hover:bg-[color-mix(in_srgb,var(--color-surface)_88%,var(--color-primary)_5%)]"
             />
             {openSelector === 'model' && modelOptions && onModelSelect && (
               <SelectorMenu
                 placement="up"
+                className="min-w-[330px]"
                 options={modelOptions}
                 selectedId={selectedModelId}
                 onSelect={(id) => {
@@ -730,29 +726,4 @@ export function ChatInput({
 }
 
 export const CHAT_INPUT_CSS = `
-${SELECTOR_PILL_CSS}
-`
-
-// The one piece of ChatInput's old CSS kept scoped: it reaches into
-// <SelectorPill>'s own internal classes to make the Model pill bigger and
-// warmer here than everywhere else SelectorPill is used - out of scope to
-// solve with a new component prop during the chat/ pass (SelectorPill lives
-// in components/ui/, its own later migration phase).
-const SELECTOR_PILL_MODEL_OVERRIDE_CSS = `
-.chat-model-selector-wrap .selector-pill {
-  height: 28px;
-  max-width: 100%;
-  padding: 0 9px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--color-surface) 74%, var(--color-bg));
-}
-
-.chat-model-selector-wrap .selector-pill:hover {
-  background: color-mix(in srgb, var(--color-surface) 88%, var(--color-primary) 5%);
-  border-color: color-mix(in srgb, var(--color-primary) 24%, var(--color-border-subtle));
-}
-
-.chat-model-selector-wrap .selector-menu {
-  min-width: 330px;
-}
 `

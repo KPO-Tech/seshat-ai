@@ -1,18 +1,39 @@
 import type { ReactNode } from 'react'
 import { Down, CheckCorrect } from '@icon-park/react'
 
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(' ')
+}
+
+export const SELECTOR_MENU_CLASS =
+  'absolute left-0 top-[calc(100%+6px)] z-30 flex max-h-[min(252px,calc(100vh-190px))] min-w-[260px] max-w-[min(320px,calc(100vw-32px))] flex-col gap-0 overflow-y-auto rounded-none border border-app-border-subtle bg-[color-mix(in_srgb,var(--color-surface)_96%,var(--color-bg))] p-1 shadow-[0_18px_48px_rgba(31,27,23,0.17)] [scrollbar-color:color-mix(in_srgb,var(--color-text-muted)_28%,transparent)_transparent] [scrollbar-width:thin]'
+
+export const SELECTOR_MENU_ITEM_CLASS =
+  'flex min-h-[30px] w-full min-w-0 cursor-pointer items-center justify-between gap-[7px] rounded-none border border-transparent bg-transparent px-[7px] py-1.5 text-left text-[var(--font-size-sm)] text-app-text hover:border-app-border-subtle hover:bg-[color-mix(in_srgb,var(--color-surface-elevated)_48%,var(--color-surface))] disabled:cursor-default disabled:opacity-60 disabled:hover:bg-transparent'
+
+export const SELECTOR_MENU_COPY_CLASS = 'min-w-0 flex-1 [&>span:first-child]:truncate'
+
 type Props = {
   label: string
   icon?: ReactNode
   onClick?: () => void
   disabled?: boolean
+  className?: string
 }
 
-export function SelectorPill({ label, icon, onClick, disabled = false }: Props) {
+export function SelectorPill({ label, icon, onClick, disabled = false, className }: Props) {
   return (
-    <button className="selector-pill" onClick={onClick} disabled={disabled} type="button">
-      {icon && <span className="selector-pill-icon">{icon}</span>}
-      <span className="selector-pill-label">{label}</span>
+    <button
+      className={cx(
+        'flex max-w-[220px] cursor-pointer items-center gap-3 whitespace-nowrap rounded-app-md border border-app-border-subtle bg-app-surface px-4 py-2 transition-all duration-150 hover:border-app-border hover:bg-[var(--color-hover)] disabled:cursor-default disabled:opacity-70 disabled:hover:border-app-border-subtle disabled:hover:bg-app-surface',
+        className,
+      )}
+      onClick={onClick}
+      disabled={disabled}
+      type="button"
+    >
+      {icon && <span className="flex items-center text-app-text-secondary">{icon}</span>}
+      <span className="truncate text-[var(--font-size-xs)] font-medium text-app-text">{label}</span>
       <Down size={10} />
     </button>
   )
@@ -32,39 +53,56 @@ type SelectorMenuProps = {
   selectedId?: string | null
   onSelect: (id: string) => void
   align?: 'left' | 'right'
-  // 'up' for triggers near the bottom of the screen (e.g. ChatInput) so the
-  // menu doesn't render off-screen — 'down' (default) suits ChatTopBar.
+  // 'up' is for triggers near the bottom of the screen, e.g. ChatInput.
   placement?: 'down' | 'up'
+  className?: string
 }
 
-// Small dropdown shared by every "pick one of N options, checkmark on the
-// current one" control (Provider, Model, Permission) — used by both
-// ChatTopBar and ChatInput.
-export function SelectorMenu({ options, selectedId, onSelect, align = 'left', placement = 'down' }: SelectorMenuProps) {
+export function SelectorMenu({
+  options,
+  selectedId,
+  onSelect,
+  align = 'left',
+  placement = 'down',
+  className,
+}: SelectorMenuProps) {
   return (
-    <div className={`selector-menu selector-menu--${align} selector-menu--${placement}`}>
+    <div
+      className={cx(
+        SELECTOR_MENU_CLASS,
+        align === 'right' && 'left-auto right-0',
+        placement === 'up' && 'bottom-[calc(100%+6px)] top-auto',
+        className,
+      )}
+    >
       {options.map((option) => (
         <button
           key={option.id}
-          className={`selector-menu-item${option.id === selectedId ? ' active' : ''}`}
+          className={cx(
+            SELECTOR_MENU_ITEM_CLASS,
+            option.id === selectedId &&
+              'border-[color-mix(in_srgb,var(--color-primary)_22%,var(--color-border-subtle))] bg-[color-mix(in_srgb,var(--color-primary)_11%,var(--color-surface))] text-app-primary',
+          )}
           disabled={option.disabled}
           onClick={() => !option.disabled && onSelect(option.id)}
           type="button"
         >
           {option.icon ? (
-            <span className="selector-menu-provider-icon" aria-hidden="true">
+            <span className="inline-flex size-[17px] shrink-0 items-center justify-center rounded-none [&_svg]:block [&_svg]:size-[17px]" aria-hidden="true">
               {option.icon}
             </span>
           ) : option.prefix && (
-            <span className="selector-menu-prefix" aria-hidden="true">
+            <span className="inline-flex size-[17px] shrink-0 items-center justify-center rounded-none border border-[color-mix(in_srgb,var(--color-primary)_20%,var(--color-border-subtle))] bg-[color-mix(in_srgb,var(--color-primary)_13%,var(--color-surface))] text-[8px] font-extrabold uppercase text-app-primary" aria-hidden="true">
               {option.prefix}
             </span>
           )}
-          <span className="selector-menu-copy">
+          <span className={SELECTOR_MENU_COPY_CLASS}>
             <span>{option.label}</span>
           </span>
           {option.description && (
-            <span className="selector-menu-description">{option.description}</span>
+            <span className="max-w-[92px] shrink-0 truncate text-right text-[var(--font-size-2xs)] font-medium leading-none text-app-text-muted">
+              {option.description}
+            </span>
           )}
           {option.id === selectedId && <CheckCorrect size={12} />}
         </button>
@@ -72,167 +110,3 @@ export function SelectorMenu({ options, selectedId, onSelect, align = 'left', pl
     </div>
   )
 }
-
-export const SELECTOR_PILL_CSS = `
-.selector-pill {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-md);
-  padding: var(--space-2) var(--space-4);
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  cursor: pointer;
-  transition: all 0.15s;
-  white-space: nowrap;
-  max-width: 220px;
-}
-
-.selector-pill:hover {
-  background: var(--color-hover);
-  border-color: var(--color-border);
-}
-
-.selector-pill:disabled {
-  cursor: default;
-  opacity: 0.7;
-}
-
-.selector-pill:disabled:hover {
-  background: var(--color-surface);
-  border-color: var(--color-border-subtle);
-}
-
-.selector-pill-icon {
-  display: flex;
-  align-items: center;
-  color: var(--color-text-secondary);
-}
-
-.selector-pill-label {
-  font-size: var(--font-size-xs);
-  font-weight: 500;
-  color: var(--color-text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.selector-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  min-width: 260px;
-  max-width: min(320px, calc(100vw - 32px));
-  max-height: min(252px, calc(100vh - 190px));
-  overflow-y: auto;
-  padding: 4px;
-  border-radius: 0;
-  border: 1px solid var(--color-border-subtle);
-  background: color-mix(in srgb, var(--color-surface) 96%, var(--color-bg));
-  box-shadow: 0 18px 48px rgba(31, 27, 23, 0.17);
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  z-index: 30;
-  scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--color-text-muted) 28%, transparent) transparent;
-}
-
-.selector-menu--right {
-  left: auto;
-  right: 0;
-}
-
-.selector-menu--up {
-  top: auto;
-  bottom: calc(100% + 6px);
-}
-
-.selector-menu-item {
-  width: 100%;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--color-text);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 7px;
-  padding: 6px 7px;
-  border-radius: 0;
-  font-size: var(--font-size-sm);
-  text-align: left;
-  cursor: pointer;
-  min-width: 0;
-  min-height: 30px;
-}
-
-.selector-menu-copy {
-  min-width: 0;
-  flex: 1;
-}
-
-.selector-menu-copy > span:first-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.selector-menu-description {
-  font-size: var(--font-size-2xs);
-  line-height: 1;
-  color: var(--color-text-muted);
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex-shrink: 0;
-  max-width: 92px;
-  text-align: right;
-}
-
-.selector-menu-provider-icon,
-.selector-menu-prefix {
-  width: 17px;
-  height: 17px;
-  border-radius: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.selector-menu-provider-icon svg {
-  display: block;
-  width: 17px;
-  height: 17px;
-}
-
-.selector-menu-prefix {
-  background: color-mix(in srgb, var(--color-primary) 13%, var(--color-surface));
-  border: 1px solid color-mix(in srgb, var(--color-primary) 20%, var(--color-border-subtle));
-  color: var(--color-accent);
-  font-size: 8px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.selector-menu-item:hover {
-  background: color-mix(in srgb, var(--color-surface-elevated) 48%, var(--color-surface));
-  border-color: var(--color-border-subtle);
-}
-
-.selector-menu-item.active {
-  background: color-mix(in srgb, var(--color-primary) 11%, var(--color-surface));
-  border-color: color-mix(in srgb, var(--color-primary) 22%, var(--color-border-subtle));
-  color: var(--color-accent);
-}
-
-.selector-menu-item:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-.selector-menu-item:disabled:hover {
-  background: transparent;
-}
-`
