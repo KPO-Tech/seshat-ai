@@ -724,6 +724,3 @@ export function ChatInput({
     </div>
   )
 }
-
-export const CHAT_INPUT_CSS = `
-`

@@ -93,17 +93,6 @@ export function DocxPreviewPanel({ fileId, filename }: Props) {
 
   return (
     <div className="relative h-full min-h-0">
-      {/* The app-wide ::selection (globals.css) is tuned for the dark theme -
-          near-white text on a faint highlight - which is unreadable against
-          this panel's white page. Scoped override for legible
-          dark-on-highlight selection here specifically, plus the one rule
-          that reaches into docx-preview's own injected markup (the
-          className passed to renderAsync below) - a deep third-party
-          override, not expressible as a prop on that markup. */}
-      <style>{`
-        .docx-preview-scroll ::selection { background: #b4d7ff; color: #1a1a1a; }
-        .docx-preview-container .docx-preview-doc { background: white; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35); }
-      `}</style>
       <div className="docx-preview-scroll flex h-full items-start justify-center overflow-auto bg-app-surface p-5" ref={scrollRef}>
         <div className="docx-preview-container" ref={containerRef} />
       </div>

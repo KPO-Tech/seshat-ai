@@ -234,6 +234,3 @@ export function ChatTopBar({
     </div>
   )
 }
-
-export const CHAT_TOP_BAR_CSS = `
-`

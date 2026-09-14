@@ -51,6 +51,33 @@ body,
   color: var(--color-text);
 }
 
+/* Third-party document viewers generate their own nested DOM, so these
+   scoped overrides stay in CSS instead of Tailwind component classes. */
+.pdf-viewer-container .pdfViewer .page {
+  margin: 10px;
+  border: none;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+}
+
+.pdf-viewer-container .pdfViewer:not(.scrollWrapped) .page {
+  margin: 12px auto;
+}
+
+.pdf-viewer-container .pdfViewer.scrollWrapped {
+  padding: 14px;
+}
+
+.docx-preview-scroll ::selection,
+.xlsx-preview-scroll ::selection {
+  background: #b4d7ff;
+  color: #1a1a1a;
+}
+
+.docx-preview-container .docx-preview-doc {
+  background: white;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+}
+
 /* Focus ring */
 :focus-visible {
   outline: 2px solid var(--color-primary);

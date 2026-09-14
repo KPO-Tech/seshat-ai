@@ -1,8 +1,8 @@
 import { useEffect, useState, useMemo, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { CheckCorrect, FileTextOne, Browser, LightMember } from '@icon-park/react'
-import { ChatTopBar, CHAT_TOP_BAR_CSS } from '@/components/chat/ChatTopBar'
-import { ChatInput, CHAT_INPUT_CSS, type ChatAttachment } from '@/components/chat/ChatInput'
+import { ChatTopBar } from '@/components/chat/ChatTopBar'
+import { ChatInput, type ChatAttachment } from '@/components/chat/ChatInput'
 import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
 import { ProviderIcon } from '@/components/ui/ProviderIcon'
 import { api, ApiError } from '@/api/client'
@@ -626,9 +626,6 @@ function QuickAction({ icon, label, onClick }: { icon: ReactNode; label: string;
 }
 
 const HOME_CSS = `
-${CHAT_TOP_BAR_CSS}
-${CHAT_INPUT_CSS}
-
 .home-root {
   flex: 1;
   display: flex;

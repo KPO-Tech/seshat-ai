@@ -102,10 +102,6 @@ export function XlsxPreviewPanel({ fileId, filename }: Props) {
 
   return (
     <div className="relative flex h-full min-h-0 flex-col">
-      {/* The app-wide ::selection (globals.css) is tuned for the dark theme
-          and unreadable against this panel's white background - see the
-          identical comment/fix in DocxPreviewPanel.tsx. */}
-      <style>{'.xlsx-preview-scroll ::selection { background: #b4d7ff; color: #1a1a1a; }'}</style>
       {sheets && sheets.length > 1 && (
         <div className="flex shrink-0 flex-wrap gap-1 border-b border-app-border-subtle px-2 py-1.5">
           {sheets.map((sheet, i) => {

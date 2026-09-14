@@ -174,14 +174,6 @@ export function PDFViewerPanel({ fileId, filename }: Props) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* pdf.js's own internal DOM (.pdfViewer/.page/.scrollWrapped, created
-          by the PDFViewer instance above, not by this component's JSX) -
-          the one deep third-party override left un-Tailwind-able here. */}
-      <style>{`
-        .pdf-viewer-container .pdfViewer .page { margin: 10px; border: none; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35); }
-        .pdf-viewer-container .pdfViewer:not(.scrollWrapped) .page { margin: 12px auto; }
-        .pdf-viewer-container .pdfViewer.scrollWrapped { padding: 14px; }
-      `}</style>
       <div className="flex shrink-0 items-center gap-1.5 border-b border-app-border-subtle px-2.5 py-1.5">
         <button type="button" className={toolbarBtnCx()} onClick={() => goToPage(-1)} disabled={status !== 'ready' || pageNumber <= 1} aria-label="Previous page">
           <Left size={12} />

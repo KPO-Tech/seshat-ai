@@ -23,7 +23,6 @@ import { streamingToContentBlocks, useSessionStore } from '@/stores/session'
 import { useChat } from '@/hooks/useChat'
 import { useProviders, fetchProviderModels } from '@/hooks/useProviders'
 import { useProvidersStore } from '@/stores/providers'
-import { CHAT_INPUT_CSS } from '@/components/chat/ChatInput'
 import { isRenderableMessage } from '@/components/chat/MessageItem'
 import type { Corpus, CorpusFile, DoclingConfig, EmbedderConfig, FileItem, IngestionJob, ProviderModel } from '@/api/types'
 import type { CorpusDetail, KnowledgeSearchResponse, KnowledgeView, TaggedSearchResult } from '../api/types'
@@ -667,7 +666,6 @@ export function KnowledgePage() {
 
   return (
     <div className="k-root">
-      <style>{CHAT_INPUT_CSS}</style>
       <input
         ref={fileRef}
         type="file"
