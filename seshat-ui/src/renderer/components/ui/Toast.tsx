@@ -25,49 +25,20 @@ export function useToast() {
 
 export function ToastStack({ toasts }: { toasts: Toast[] }) {
   return (
-    <div className="ui-toasts">
+    <div className="fixed bottom-6 right-6 z-[2000] flex flex-col gap-2">
       {toasts.map((toast) => (
-        <div key={toast.id} className={`ui-toast ui-toast--${toast.kind}`}>{toast.msg}</div>
+        <div
+          key={toast.id}
+          className={[
+            'animate-[toast-slide-in_0.2s_ease] rounded-lg bg-app-surface px-4 py-2.5 text-[13px] font-medium shadow-[var(--shadow-medium)]',
+            toast.kind === 'ok' ? 'border border-[rgba(var(--color-success-rgb),0.4)] text-app-success' : '',
+            toast.kind === 'err' ? 'border border-[rgba(var(--color-error-rgb),0.4)] text-app-error' : '',
+            toast.kind === 'info' ? 'border border-app-border-subtle text-app-text-secondary' : '',
+          ].filter(Boolean).join(' ')}
+        >
+          {toast.msg}
+        </div>
       ))}
     </div>
   )
 }
-
-export const TOAST_CSS = `
-.ui-toasts {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  z-index: 2000;
-}
-.ui-toast {
-  padding: 10px 16px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  box-shadow: var(--shadow-medium);
-  animation: ui-toast-slide-in 0.2s ease;
-}
-.ui-toast--ok {
-  background: var(--color-surface);
-  border: 1px solid rgba(var(--color-success-rgb), 0.4);
-  color: var(--color-success);
-}
-.ui-toast--err {
-  background: var(--color-surface);
-  border: 1px solid rgba(var(--color-error-rgb), 0.4);
-  color: var(--color-error);
-}
-.ui-toast--info {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-subtle);
-  color: var(--color-text-secondary);
-}
-@keyframes ui-toast-slide-in {
-  from { opacity: 0; transform: translateX(12px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-`

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { More, FileTextOne, Share, Folder, Delete, Shield, Robot, Browser } from '@icon-park/react'
 import { SelectorMenu, SELECTOR_PILL_CSS, type SelectorOption } from '@/components/ui/SelectorPill'
-import { IconButton, ICON_BUTTON_CSS } from '@/components/ui/IconButton'
+import { IconButton } from '@/components/ui/IconButton'
 import type { UIPermissionMode } from '@/stores/ui'
 import type { AgentState } from '@/stores/session'
 
@@ -237,5 +237,4 @@ export function ChatTopBar({
 
 export const CHAT_TOP_BAR_CSS = `
 ${SELECTOR_PILL_CSS}
-${ICON_BUTTON_CSS}
 `

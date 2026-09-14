@@ -9,36 +9,23 @@ type Props = {
   className?: string
 }
 
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(' ')
+}
+
+const VARIANT_CLASS: Record<Variant, string> = {
+  success: 'text-app-success',
+  error: 'text-app-error',
+  pending: 'text-app-text-muted',
+  connected: 'bg-[rgba(0,180,42,0.08)] text-[#00B42A]',
+  planned: 'border border-[color-mix(in_srgb,var(--color-primary)_25%,transparent)] bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)] text-[10px] uppercase tracking-[0.05em] text-[var(--color-primary)]',
+}
+
 export function StatusBadge({ label, variant, icon, className }: Props) {
   return (
-    <span className={`status-badge status-badge--${variant}${className ? ` ${className}` : ''}`}>
+    <span className={cx('inline-flex items-center gap-1 rounded-[7px] px-2.5 py-[3px] text-[11px] font-bold', VARIANT_CLASS[variant], className)}>
       {icon}
       {label}
     </span>
   )
 }
-
-export const STATUS_BADGE_CSS = `
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 10px;
-  border-radius: 7px;
-}
-
-.status-badge--success  { color: var(--color-success); }
-.status-badge--error    { color: var(--color-error); }
-.status-badge--pending  { color: var(--color-text-muted); }
-.status-badge--connected { color: #00B42A; background: rgba(0, 180, 42, 0.08); }
-.status-badge--planned {
-  color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-primary) 25%, transparent);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-size: 10px;
-}
-`

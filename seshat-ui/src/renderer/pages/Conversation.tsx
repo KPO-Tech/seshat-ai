@@ -9,7 +9,7 @@ import { MessageItem, isRenderableMessage } from '@/components/chat/MessageItem'
 import { ProviderIcon } from '@/components/ui/ProviderIcon'
 import { PlanArtifactCard } from '@/components/chat/plan/PlanArtifactCard'
 import { AskUserPanel } from '@/components/chat/AskUserPanel'
-import { useToast, ToastStack, TOAST_CSS } from '@/components/ui/Toast'
+import { useToast, ToastStack } from '@/components/ui/Toast'
 import { useChat } from '@/hooks/useChat'
 import { useProviders, fetchProviderModels } from '@/hooks/useProviders'
 import { useProvidersStore } from '@/stores/providers'
@@ -945,7 +945,6 @@ export function Conversation() {
 const CONV_CSS = `
 ${CHAT_TOP_BAR_CSS}
 ${CHAT_INPUT_CSS}
-${TOAST_CSS}
 
 .conv-root {
   flex: 1;

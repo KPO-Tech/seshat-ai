@@ -1,7 +1,7 @@
 import { Lightning, Mail, FileText, Caution, Robot } from '@icon-park/react'
 import { useUIStore } from '@/stores/ui'
 import { useEffect } from 'react'
-import { StatusBadge, STATUS_BADGE_CSS } from '@/components/ui/StatusBadge'
+import { StatusBadge } from '@/components/ui/StatusBadge'
 
 export function TeamPage() {
   const closeAllRightPanels = useUIStore(s => s.closeAllRightPanels)
@@ -11,7 +11,6 @@ export function TeamPage() {
   return (
     <div className="tm-root">
       <style>{CSS}</style>
-      <style>{STATUS_BADGE_CSS}</style>
 
       {/* Top bar */}
       <header className="tm-topbar">

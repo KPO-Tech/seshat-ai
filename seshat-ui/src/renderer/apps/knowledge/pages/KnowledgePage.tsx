@@ -19,13 +19,12 @@ import {
 import { NexusLogo } from '@/components/NexusLogo'
 import { useSettingsMenu } from '@/components/layout/useSettingsMenu'
 import { api, ApiError } from '@/api/client'
-import { PLANNED_FEATURE_CARD_CSS } from '@/components/ui/PlannedFeatureCard'
 import { streamingToContentBlocks, useSessionStore } from '@/stores/session'
 import { useChat } from '@/hooks/useChat'
 import { useProviders, fetchProviderModels } from '@/hooks/useProviders'
 import { useProvidersStore } from '@/stores/providers'
 import { CHAT_INPUT_CSS } from '@/components/chat/ChatInput'
-import { MESSAGE_ITEM_CSS, isRenderableMessage } from '@/components/chat/MessageItem'
+import { isRenderableMessage } from '@/components/chat/MessageItem'
 import type { Corpus, CorpusFile, DoclingConfig, EmbedderConfig, FileItem, IngestionJob, ProviderModel } from '@/api/types'
 import type { CorpusDetail, KnowledgeSearchResponse, KnowledgeView, TaggedSearchResult } from '../api/types'
 import { CollectionsWorkspace } from '../components/CollectionsWorkspace'
@@ -76,6 +75,7 @@ export function KnowledgePage() {
   const [processError, setProcessError] = useState<string | null>(null)
   const [deletingFileId, setDeletingFileId] = useState<string | null>(null)
   const [fileDeleteError, setFileDeleteError] = useState<string | null>(null)
+  const [processingFileId, setProcessingFileId] = useState<string | null>(null)
   const [publicLibraryOpen, setPublicLibraryOpen] = useState(false)
   const [view, setView] = useState<KnowledgeView>('overview')
   // Account-level Settings/Feedback/Admin, in this nav's own footer.
@@ -386,31 +386,19 @@ export function KnowledgePage() {
     if (created) setPendingPrompt(instruction)
   }
 
-  // Entry point for CollectionsWorkspace's "Test" forms - takes an explicit
-  // corpusId rather than reading selectedCorpusId from closure, since
-  // setSelectedCorpusId(corpusId) below wouldn't be visible yet within this
-  // same synchronous handler (React state updates are async).
-  async function testSearch(q: string, corpusId: string) {
+  // Entry point for CollectionsWorkspace's "Test" forms - stays on the
+  // Collections view and renders results inline there (rawResults/rawLoading/
+  // rawError are already view-independent state), rather than jumping to the
+  // Search page like the real search bar's handleSubmit does. This is meant
+  // as a quick "does retrieval actually surface the right chunks" probe for
+  // one collection, not a full chat/agent turn, so it only runs the raw
+  // search - no session/agent instruction.
+  function testSearch(q: string, corpusId: string) {
     const trimmed = q.trim()
     if (!trimmed) return
     setSelectedCorpusId(corpusId)
-    setView('search')
     setSubmittedQuery(trimmed)
     void runRawSearch(trimmed, corpusId)
-
-    const corpusName = corpora.find((c) => c.id === corpusId)?.name
-    const instruction = buildAgentInstruction(trimmed, corpusId === 'all' ? undefined : corpusName)
-    if (sessionId) {
-      void sendMessage(instruction, {
-        agentSlug: 'knowledge-agent',
-        corpusId: corpusId === 'all' ? undefined : corpusId,
-        providerSettingId: selectedProviderId,
-        modelId: selectedModelId,
-      })
-      return
-    }
-    const created = await ensureSession()
-    if (created) setPendingPrompt(instruction)
   }
 
   async function handleSendChatPrompt() {
@@ -590,6 +578,21 @@ export function KnowledgePage() {
     }
   }
 
+  // Reprocesses one file - same /ingest call processFiles loops over, just
+  // for a single row's icon button instead of the corpus-wide bulk actions.
+  async function processFile(corpusId: string, fileId: string) {
+    setProcessingFileId(fileId)
+    setProcessError(null)
+    try {
+      await api.post(`/corpora/${corpusId}/ingest`, { file_id: fileId })
+      await loadCorpusDetail(corpusId)
+    } catch (err) {
+      setProcessError(err instanceof ApiError ? err.message : 'Unable to queue this file for processing.')
+    } finally {
+      setProcessingFileId(null)
+    }
+  }
+
   // Removes one file from a corpus - the only way to get rid of a file
   // stuck permanently `failed` (ingestion exhausted its retries), since
   // Reprocess only re-queues, it never removes. Detach also deletes the
@@ -665,8 +668,6 @@ export function KnowledgePage() {
   return (
     <div className="k-root">
       <style>{CHAT_INPUT_CSS}</style>
-      <style>{MESSAGE_ITEM_CSS}</style>
-      <style>{PLANNED_FEATURE_CARD_CSS}</style>
       <input
         ref={fileRef}
         type="file"
@@ -864,6 +865,7 @@ export function KnowledgePage() {
                 corporaError={corporaError}
                 deletingFileId={deletingFileId}
                 fileDeleteError={fileDeleteError}
+                processingFileId={processingFileId}
                 onUpload={() => fileRef.current?.click()}
                 onSelectCorpus={setSelectedCorpusId}
                 onOpenCorpus={(corpusId) => {
@@ -874,8 +876,13 @@ export function KnowledgePage() {
                 onRenameCorpus={renameCorpus}
                 onDeleteCorpus={deleteCorpus}
                 onProcessAll={(corpusId) => void processFiles(corpusId, 'all')}
+                onProcessFile={(corpusId, fileId) => void processFile(corpusId, fileId)}
                 onRetryDetail={(corpusId) => void loadCorpusDetail(corpusId)}
                 onDeleteFile={deleteFile}
+                submittedQuery={submittedQuery}
+                rawResults={rawResults}
+                rawLoading={rawLoading}
+                rawError={rawError}
               />
             ) : view === 'chat' ? (
               <KnowledgeChatWorkspace

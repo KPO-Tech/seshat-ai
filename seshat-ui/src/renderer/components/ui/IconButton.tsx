@@ -9,17 +9,23 @@ type Props = {
   activeColor?: 'orange' | 'green' | 'red'
 }
 
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(' ')
+}
+
 export function IconButton({ icon, onClick, title, variant = 'ghost', size = 32, className, active, activeColor = 'orange' }: Props) {
-  const activeClass = active
-    ? activeColor === 'green'
-      ? ' icon-btn--active-green'
-      : activeColor === 'red'
-        ? ' icon-btn--active-red'
-        : ' icon-btn--active'
-    : ''
   return (
     <button
-      className={`icon-btn icon-btn--${variant}${activeClass} ${className ?? ''}`}
+      className={cx(
+        'flex shrink-0 cursor-pointer items-center justify-center rounded-lg transition-[background,color,border-color] duration-150',
+        variant === 'ghost'
+          ? 'border-0 bg-transparent text-app-text-secondary hover:bg-[var(--color-hover)] hover:text-app-text'
+          : 'border border-app-border-subtle bg-transparent text-app-text-secondary hover:bg-[var(--color-hover)] hover:text-app-text',
+        active && activeColor === 'green' && '!border-[rgba(var(--color-success-rgb),0.25)] !bg-[rgba(var(--color-success-rgb),0.1)] !text-app-success',
+        active && activeColor === 'red' && '!border-[rgba(var(--color-error-rgb),0.3)] !bg-[rgba(var(--color-error-rgb),0.12)] !text-app-error',
+        active && activeColor === 'orange' && '!border-[rgba(239,124,47,0.3)] !bg-[rgba(239,124,47,0.12)] !text-[var(--color-accent)]',
+        className,
+      )}
       style={{ width: size, height: size }}
       onClick={onClick}
       aria-label={title}
@@ -28,55 +34,3 @@ export function IconButton({ icon, onClick, title, variant = 'ghost', size = 32,
     </button>
   )
 }
-
-export const ICON_BUTTON_CSS = `
-.icon-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-  flex-shrink: 0;
-}
-
-.icon-btn--ghost {
-  background: transparent;
-  border: none;
-  color: var(--color-text-secondary);
-}
-
-.icon-btn--ghost:hover {
-  background: var(--color-hover);
-  color: var(--color-text);
-}
-
-.icon-btn--bordered {
-  background: transparent;
-  border: 1px solid var(--color-border-subtle);
-  color: var(--color-text-secondary);
-}
-
-.icon-btn--bordered:hover {
-  background: var(--color-hover);
-  color: var(--color-text);
-}
-
-.icon-btn--active {
-  background: rgba(239, 124, 47, 0.12) !important;
-  color: var(--color-accent) !important;
-  border-color: rgba(239, 124, 47, 0.3) !important;
-}
-
-.icon-btn--active-green {
-  background: rgba(var(--color-success-rgb), 0.1) !important;
-  color: var(--color-success) !important;
-  border-color: rgba(var(--color-success-rgb), 0.25) !important;
-}
-
-.icon-btn--active-red {
-  background: rgba(var(--color-error-rgb), 0.12) !important;
-  color: var(--color-error) !important;
-  border-color: rgba(var(--color-error-rgb), 0.3) !important;
-}
-`

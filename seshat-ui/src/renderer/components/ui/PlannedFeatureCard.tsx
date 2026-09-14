@@ -16,52 +16,13 @@ type Props = {
  */
 export function PlannedFeatureCard({ icon, title, description, note }: Props) {
   return (
-    <div className="pfc-root">
-      <div className="pfc-card">
-        <div className="pfc-icon">{icon}</div>
-        <h2>{title}</h2>
-        {description && <p>{description}</p>}
-        <div className="pfc-note">{note}</div>
+    <div className="flex min-h-0 flex-1 items-center justify-center p-[34px]">
+      <div className="flex max-w-[380px] flex-col items-center gap-2.5 text-center">
+        <div className="mb-1 flex size-[52px] items-center justify-center rounded-[13px] border border-[color-mix(in_srgb,var(--color-primary)_22%,transparent)] bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)] text-[var(--color-primary)]">{icon}</div>
+        <h2 className="m-0 text-base font-bold text-app-text">{title}</h2>
+        {description && <p className="m-0 text-sm leading-[1.5] text-app-text-secondary">{description}</p>}
+        <div className="mt-1.5 rounded-lg border border-app-border-subtle bg-app-surface px-3 py-2 text-[var(--font-size-2xs)] leading-[1.5] text-app-text-muted">{note}</div>
       </div>
     </div>
   )
 }
-
-export const PLANNED_FEATURE_CARD_CSS = `
-.pfc-root {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 34px;
-}
-.pfc-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 10px;
-  max-width: 380px;
-}
-.pfc-icon {
-  width: 52px; height: 52px; border-radius: 13px;
-  display: flex; align-items: center; justify-content: center;
-  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-primary) 22%, transparent);
-  color: var(--color-primary);
-  margin-bottom: 4px;
-}
-.pfc-card h2 { margin: 0; font-size: var(--font-size-base); font-weight: 700; color: var(--color-text); }
-.pfc-card p { margin: 0; font-size: var(--font-size-sm); color: var(--color-text-secondary); line-height: 1.5; }
-.pfc-note {
-  margin-top: 6px;
-  font-size: var(--font-size-2xs);
-  color: var(--color-text-muted);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
-  padding: 8px 12px;
-  line-height: 1.5;
-}
-`

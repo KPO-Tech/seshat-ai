@@ -13,7 +13,7 @@ import { useChat } from '@/hooks/useChat'
 import { NexusLogo } from '@/components/NexusLogo'
 import { listToolCatalog, type ToolCatalogEntry } from '@/components/chat/tool-block/toolDisplay'
 import { SETTINGS_SHARED_CSS } from '@/pages/settings/SettingsNav'
-import { PlannedFeatureCard, PLANNED_FEATURE_CARD_CSS } from '@/components/ui/PlannedFeatureCard'
+import { PlannedFeatureCard } from '@/components/ui/PlannedFeatureCard'
 import { WorkspaceConnectionsTab } from './WorkspaceConnectionsTab'
 import {
   AgentAvatar as Avatar, AvatarPicker, AVATAR_CSS,
@@ -206,7 +206,6 @@ export function WorkspacePage({ initialTab = 'agents', embedded = false }: Works
       <style>{AVATAR_CSS}</style>
       {/* Reused for the MCP section's sv-card/modal-* primitives (Tools & MCP tab) */}
       <style>{SETTINGS_SHARED_CSS}</style>
-      <style>{PLANNED_FEATURE_CARD_CSS}</style>
 
       {toast && (
         <div className={`wk-toast ${toast.kind}`}>

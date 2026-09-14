@@ -13,7 +13,7 @@ import {
   Mail,
   SmilingFace,
 } from '@icon-park/react'
-import { StatusBadge, STATUS_BADGE_CSS } from '@/components/ui/StatusBadge'
+import { StatusBadge } from '@/components/ui/StatusBadge'
 import { api } from '@/api/client'
 
 type AppStatus = 'ready' | 'planned'
@@ -144,7 +144,6 @@ export function AppsPage() {
   return (
     <div className="apps-root">
       <style>{APPS_CSS}</style>
-      <style>{STATUS_BADGE_CSS}</style>
 
       <main className="apps-content">
         <section className="apps-toolbar">

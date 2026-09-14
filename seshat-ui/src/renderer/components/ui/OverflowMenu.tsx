@@ -9,6 +9,10 @@ export type OverflowMenuItem = {
   disabled?: boolean
 }
 
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(' ')
+}
+
 // Generic kebab/overflow menu for a card's secondary actions - no shared
 // version of this existed anywhere in the app before (only a private,
 // outside-click-only one inside apps/skills-creator/components/SkillSidebar.tsx).
@@ -36,10 +40,14 @@ export function OverflowMenu({ items, ariaLabel = 'More actions' }: { items: Ove
   }, [open])
 
   return (
-    <div className="ov-menu-wrap" ref={wrapRef}>
+    <div className="relative inline-flex shrink-0" ref={wrapRef}>
       <button
         type="button"
-        className={`ov-menu-trigger${open ? ' open' : ''}`}
+        className={cx(
+          'flex size-7 cursor-pointer items-center justify-center rounded-app-sm border border-app-border-subtle bg-transparent text-app-text-muted',
+          'hover:bg-[var(--color-hover)] hover:text-app-text',
+          open && 'bg-[var(--color-hover)] text-app-text',
+        )}
         aria-label={ariaLabel}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -48,14 +56,17 @@ export function OverflowMenu({ items, ariaLabel = 'More actions' }: { items: Ove
         <MoreOne size={14} />
       </button>
       {open && (
-        <div className="ov-menu" role="menu">
+        <div className="absolute right-0 top-[calc(100%+var(--space-3))] z-20 flex min-w-40 flex-col rounded-app-md border border-[var(--color-border)] bg-app-surface p-[var(--space-3)] shadow-[var(--shadow-medium)]" role="menu">
           {items.map((item) => (
             <button
               key={item.label}
               type="button"
               role="menuitem"
               disabled={item.disabled}
-              className={`ov-menu-item${item.danger ? ' danger' : ''}`}
+              className={cx(
+                'flex cursor-pointer items-center gap-[var(--space-4)] rounded-app-sm border-0 bg-transparent px-[var(--space-5)] py-[var(--space-4)] text-left text-xs text-app-text hover:bg-[var(--color-hover)] disabled:cursor-not-allowed disabled:opacity-50',
+                item.danger && 'text-app-error hover:bg-[rgba(var(--color-error-rgb),0.1)]',
+              )}
               onClick={(event) => {
                 event.stopPropagation()
                 setOpen(false)
