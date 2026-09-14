@@ -3,15 +3,11 @@ import { Reduce, Add, Download } from '@icon-park/react'
 import { useUIStore } from '@/stores/ui'
 import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
 
-// A single full-screen image viewer used everywhere an image can be
-// enlarged (chat attachments, sent messages, tool-generated images, ...) -
-// previously each call site had its own ad-hoc modal (or, for tool-generated
-// images, no way to enlarge at all). Mounted once at the Shell level so it
-// covers the content area consistently (respects the titlebar/sidebar via
-// the same geometry RightPanelHost's maximized-panel overlay uses) no matter
-// which page triggered it.
+const glassButton = 'flex cursor-pointer items-center justify-center border-0 bg-white/10 text-white/85 transition-colors duration-150 hover:bg-white/20 hover:text-white'
+
 export function ImageLightbox() {
   const image = useUIStore((s) => s.lightboxImage)
+  const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
   const closeLightbox = useUIStore((s) => s.closeLightbox)
   const containerRef = useRef<HTMLDivElement>(null)
   const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null)
@@ -54,153 +50,42 @@ export function ImageLightbox() {
   }
 
   return (
-    <div className="image-lightbox" role="dialog" aria-modal="true" onMouseDown={closeLightbox}>
-      <style>{IMAGE_LIGHTBOX_CSS}</style>
-      <div className="image-lightbox-header" onMouseDown={(e) => e.stopPropagation()}>
-        <span className="image-lightbox-filename">{image.filename}</span>
-        <div className="image-lightbox-actions">
-          <button type="button" onClick={download} aria-label="Download">
+    <div
+      className="absolute bottom-0 right-0 top-0 z-[60] flex flex-col bg-[rgba(10,10,12,0.94)]"
+      style={{ left: sidebarCollapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)' }}
+      role="dialog"
+      aria-modal="true"
+      onMouseDown={closeLightbox}
+    >
+      <div className="flex shrink-0 items-center justify-between gap-3 px-4 py-2.5" onMouseDown={(e) => e.stopPropagation()}>
+        <span className="overflow-hidden text-ellipsis whitespace-nowrap text-[var(--font-size-sm)] text-white/85">{image.filename}</span>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <button className={`${glassButton} size-[26px] rounded-md`} type="button" onClick={download} aria-label="Download">
             <Download size={13} />
           </button>
-          <button type="button" onClick={closeLightbox} aria-label="Close">
+          <button className={`${glassButton} size-[26px] rounded-md`} type="button" onClick={closeLightbox} aria-label="Close">
             <WindowCloseIcon size={14} />
           </button>
         </div>
       </div>
-      <div className="image-lightbox-stage" ref={containerRef} onMouseDown={(e) => e.stopPropagation()}>
+      <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-3" ref={containerRef} onMouseDown={(e) => e.stopPropagation()}>
         <img
+          className="block max-w-none rounded-md shadow-[0_20px_70px_rgba(0,0,0,0.5)]"
           src={image.url}
           alt={image.filename}
           onLoad={onImageLoad}
           style={naturalSize ? { width: naturalSize.width * scale, height: naturalSize.height * scale } : undefined}
         />
       </div>
-      <div className="image-lightbox-zoom" onMouseDown={(e) => e.stopPropagation()}>
-        <button type="button" onClick={() => zoomBy(1 / 1.25)} aria-label="Zoom out">
+      <div className="flex shrink-0 items-center justify-center gap-2.5 px-4 pb-4 pt-2.5" onMouseDown={(e) => e.stopPropagation()}>
+        <button className={`${glassButton} size-[30px] rounded-full`} type="button" onClick={() => zoomBy(1 / 1.25)} aria-label="Zoom out">
           <Reduce size={13} />
         </button>
-        <span>{Math.round(scale * 100)}%</span>
-        <button type="button" onClick={() => zoomBy(1.25)} aria-label="Zoom in">
+        <span className="min-w-10 text-center text-[var(--font-size-sm)] text-white/80">{Math.round(scale * 100)}%</span>
+        <button className={`${glassButton} size-[30px] rounded-full`} type="button" onClick={() => zoomBy(1.25)} aria-label="Zoom in">
           <Add size={13} />
         </button>
       </div>
     </div>
   )
 }
-
-const IMAGE_LIGHTBOX_CSS = `
-.image-lightbox {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: var(--sidebar-width);
-  z-index: 60;
-  display: flex;
-  flex-direction: column;
-  background: rgba(10, 10, 12, 0.94);
-}
-
-.shell-main.collapsed .image-lightbox {
-  left: var(--sidebar-collapsed-width);
-}
-
-.shell-main.no-sidebar .image-lightbox {
-  left: 0;
-}
-
-.image-lightbox-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 16px;
-  flex-shrink: 0;
-}
-
-.image-lightbox-filename {
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 12px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.image-lightbox-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-.image-lightbox-actions button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  padding: 0;
-  border: none;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.8);
-  cursor: pointer;
-}
-
-.image-lightbox-actions button:hover {
-  background: rgba(255, 255, 255, 0.16);
-  color: white;
-}
-
-.image-lightbox-stage {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: auto;
-  padding: 12px;
-}
-
-.image-lightbox-stage img {
-  display: block;
-  max-width: none;
-  border-radius: 6px;
-  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.5);
-}
-
-.image-lightbox-zoom {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 10px 16px 16px;
-  flex-shrink: 0;
-}
-
-.image-lightbox-zoom span {
-  min-width: 40px;
-  text-align: center;
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 12px;
-}
-
-.image-lightbox-zoom button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  border: none;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.85);
-  cursor: pointer;
-}
-
-.image-lightbox-zoom button:hover {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-}
-`

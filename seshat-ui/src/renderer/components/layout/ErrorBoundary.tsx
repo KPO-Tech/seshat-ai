@@ -27,12 +27,19 @@ export class ErrorBoundary extends Component<Props, State> {
     if (error) {
       if (this.props.fallback) return this.props.fallback
       return (
-        <div className="eb-root">
-          <style>{EB_CSS}</style>
-          <div className="eb-box">
-            <p className="eb-title">Something went wrong</p>
-            <pre className="eb-message">{error.message}</pre>
-            <button className="eb-btn" onClick={this.reset}>Try again</button>
+        <div className="flex flex-1 items-center justify-center bg-app-bg p-5">
+          <div className="flex max-w-[480px] flex-col items-center gap-3 text-center">
+            <p className="m-0 text-[var(--font-size-md)] font-semibold text-app-text">Something went wrong</p>
+            <pre className="m-0 w-full whitespace-pre-wrap break-words rounded-[5px] border border-app-border-subtle bg-app-surface px-3 py-2 text-[10px] text-app-text-muted">
+              {error.message}
+            </pre>
+            <button
+              className="cursor-pointer rounded-[5px] border border-app-border bg-app-surface px-3.5 py-1.5 text-[var(--font-size-2xs)] text-app-text transition-colors duration-150 hover:bg-[var(--color-hover)]"
+              onClick={this.reset}
+              type="button"
+            >
+              Try again
+            </button>
           </div>
         </div>
       )
@@ -40,58 +47,3 @@ export class ErrorBoundary extends Component<Props, State> {
     return this.props.children
   }
 }
-
-const EB_CSS = `
-.eb-root {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-bg);
-  padding: 22px;
-}
-
-.eb-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  max-width: 480px;
-  text-align: center;
-}
-
-.eb-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text);
-  margin: 0;
-}
-
-.eb-message {
-  font-size: 10px;
-  color: var(--color-text-muted);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 5px;
-  padding: 8px 11px;
-  white-space: pre-wrap;
-  word-break: break-word;
-  margin: 0;
-  width: 100%;
-}
-
-.eb-btn {
-  padding: 6px 14px;
-  border-radius: 5px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font-size: 11px;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.eb-btn:hover {
-  background: var(--color-hover);
-}
-`

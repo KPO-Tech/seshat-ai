@@ -6,6 +6,10 @@ import type { SessionSearchResult } from '@/api/types'
 import type { ChatSession } from '@/stores/session'
 import { UNTITLED_SESSION_TITLE } from '@/lib/sessionTitle'
 
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(' ')
+}
+
 function relativeDate(value: string | number | undefined): string {
   if (!value) return ''
   const date = typeof value === 'number' ? new Date(value * 1000) : new Date(value)
@@ -38,7 +42,7 @@ function highlight(text: string, query: string): React.ReactNode {
   return (
     <>
       {text.slice(0, idx)}
-      <mark className="srch-mark">{text.slice(idx, idx + query.length)}</mark>
+      <mark className="rounded-[3px] bg-app-primary-subtle px-0.5 text-inherit">{text.slice(idx, idx + query.length)}</mark>
       {text.slice(idx + query.length)}
     </>
   )
@@ -160,177 +164,79 @@ export function SearchModal({ open, sessions, onClose, onSelect }: Props) {
   if (!open) return null
 
   return (
-    <div className="srch-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <style>{SEARCH_CSS}</style>
-      <div className="srch-shell" role="dialog" aria-modal="true" aria-label="Search conversations">
-        <div className="srch-input-row">
-          <Search size={15} className="srch-input-icon" />
+    <div
+      className="fixed inset-0 z-[9000] flex items-start justify-center bg-black/45 pt-[12vh] backdrop-blur-[3px]"
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div
+        className="flex max-h-[70vh] w-full max-w-[560px] animate-[fade-in_0.15s_ease-out] flex-col overflow-hidden rounded-app-xl border border-app-border bg-app-bg shadow-[0_24px_64px_rgba(0,0,0,0.32)]"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Search conversations"
+      >
+        <div className="flex shrink-0 items-center gap-2.5 border-b border-app-border-subtle px-3 py-2.5">
+          <Search size={15} className="shrink-0 text-app-text-muted" />
           <input
             ref={inputRef}
-            className="srch-input"
-            placeholder="Search conversations…"
+            className="min-w-0 flex-1 border-0 bg-transparent font-app-sans text-[var(--font-size-md)] font-medium text-app-text outline-none placeholder:text-app-text-muted"
+            placeholder="Search conversations..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             autoComplete="off"
             spellCheck={false}
           />
-          {loading ? <Sync size={11} className="spin srch-loading-icon" /> : null}
-          <button className="srch-esc-btn" onClick={onClose} tabIndex={-1}>
+          {loading ? <Sync size={11} className="animate-spin text-app-text-muted" /> : null}
+          <button
+            className="flex shrink-0 cursor-pointer items-center rounded-[5px] border border-app-border bg-app-surface px-1.5 py-[3px] text-app-text-muted hover:bg-[var(--color-hover)]"
+            onClick={onClose}
+            tabIndex={-1}
+            type="button"
+          >
             <WindowCloseIcon />
           </button>
         </div>
 
-        <div className="srch-results" ref={listRef}>
+        <div className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-1" ref={listRef}>
           {results.length === 0 ? (
-            <div className="srch-empty">{loading ? 'Searching…' : 'No conversations found'}</div>
+            <div className="flex min-h-40 items-center justify-center text-[var(--font-size-2xs)] text-app-text-muted">
+              {loading ? 'Searching...' : 'No conversations found'}
+            </div>
           ) : results.map((result, idx) => {
             const date = relativeDate(result.updatedAt || result.createdAt)
             return (
               <button
                 key={result.id}
                 data-idx={idx}
-                className={`srch-item ${idx === focused ? 'focused' : ''}`}
+                className={cx(
+                  'flex w-full cursor-pointer items-center justify-between gap-2 rounded-app-md border-0 bg-transparent px-2 py-[7px] text-left transition-colors duration-75 hover:bg-app-surface',
+                  idx === focused && 'bg-app-surface outline outline-[1.5px] -outline-offset-1 outline-app-primary',
+                )}
                 onMouseEnter={() => setFocused(idx)}
                 onMouseDown={(e) => { e.preventDefault(); select(result.id) }}
+                type="button"
               >
-                <div className="srch-item-body">
-                  <span className="srch-item-title">{highlight(result.title, query)}</span>
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <span className="overflow-hidden text-ellipsis whitespace-nowrap text-[var(--font-size-sm)] font-semibold text-app-text">
+                    {highlight(result.title, query)}
+                  </span>
                   {result.preview && (
-                    <span className="srch-item-preview">{highlight(result.preview.slice(0, 140), query)}</span>
+                    <span className="overflow-hidden text-ellipsis whitespace-nowrap text-[10px] text-app-text-muted">
+                      {highlight(result.preview.slice(0, 140), query)}
+                    </span>
                   )}
                 </div>
-                <span className="srch-item-date">{date}</span>
+                <span className="shrink-0 whitespace-nowrap text-[10px] text-app-text-muted">{date}</span>
               </button>
             )
           })}
         </div>
 
-        <div className="srch-footer">
-          <span><kbd>↑↓</kbd> navigate</span>
-          <span><kbd>↵</kbd> open</span>
-          <span><kbd>Esc</kbd> close</span>
+        <div className="flex items-center justify-end gap-3 border-t border-app-border-subtle px-3 py-2 text-[10px] text-app-text-muted">
+          <span><kbd className="rounded-[5px] border border-app-border bg-app-surface px-1 py-0.5 font-mono">up/down</kbd> navigate</span>
+          <span><kbd className="rounded-[5px] border border-app-border bg-app-surface px-1 py-0.5 font-mono">Enter</kbd> open</span>
+          <span><kbd className="rounded-[5px] border border-app-border bg-app-surface px-1 py-0.5 font-mono">Esc</kbd> close</span>
         </div>
       </div>
     </div>
   )
 }
-
-const SEARCH_CSS = `
-.srch-backdrop {
-  position: fixed; inset: 0; z-index: 9000;
-  background: rgba(0,0,0,0.45); backdrop-filter: blur(3px);
-  display: flex; align-items: flex-start; justify-content: center;
-  padding-top: 12vh;
-}
-
-.srch-shell {
-  width: 100%; max-width: 560px;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  box-shadow: 0 24px 64px rgba(0,0,0,0.32);
-  overflow: hidden;
-  animation: srch-in 0.15s ease-out;
-  display: flex; flex-direction: column;
-  max-height: 70vh;
-}
-
-@keyframes srch-in {
-  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
-  to   { opacity: 1; transform: none; }
-}
-
-.srch-input-row {
-  display: flex; align-items: center; gap: 9px;
-  padding: 10px 13px;
-  border-bottom: 1px solid var(--color-border-subtle);
-  flex-shrink: 0;
-}
-
-.srch-input-icon { color: var(--color-text-muted); flex-shrink: 0; }
-.srch-loading-icon { color: var(--color-text-muted); }
-
-.srch-input {
-  flex: 1; background: none; border: none; outline: none;
-  font-size: 14px; font-weight: 500; color: var(--color-text);
-  font-family: var(--font-sans);
-}
-
-.srch-input::placeholder { color: var(--color-text-muted); }
-
-.srch-esc-btn {
-  background: var(--color-surface); border: 1px solid var(--color-border);
-  color: var(--color-text-muted); border-radius: 5px;
-  padding: 3px 6px; cursor: pointer; flex-shrink: 0;
-  display: flex; align-items: center;
-}
-.srch-esc-btn:hover { background: var(--color-hover); }
-
-.srch-results {
-  overflow-y: auto; flex: 1;
-  padding: 4px;
-  display: flex; flex-direction: column; gap: 2px;
-}
-
-.srch-item {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 9px; padding: 7px 8px; border-radius: 8px;
-  border: none; background: transparent; text-align: left;
-  cursor: pointer; width: 100%; transition: background 0.08s;
-}
-
-.srch-item:hover, .srch-item.focused {
-  background: var(--color-surface);
-}
-
-.srch-item.focused {
-  outline: 1.5px solid var(--color-primary);
-  outline-offset: -1px;
-}
-
-.srch-item-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-
-.srch-item-title {
-  font-size: 12px; font-weight: 600; color: var(--color-text);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-
-.srch-item-preview {
-  font-size: 10px; color: var(--color-text-muted);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-
-.srch-item-date {
-  font-size: 10px; color: var(--color-text-muted);
-  white-space: nowrap; flex-shrink: 0;
-}
-
-.srch-empty {
-  display: flex; align-items: center; justify-content: center;
-  min-height: 160px; color: var(--color-text-muted); font-size: 11px;
-}
-
-.srch-mark {
-  background: rgba(239, 124, 47, 0.18);
-  color: inherit;
-  padding: 0 2px;
-  border-radius: 3px;
-}
-
-.srch-footer {
-  display: flex; align-items: center; gap: 12px; justify-content: flex-end;
-  padding: 8px 11px; border-top: 1px solid var(--color-border-subtle);
-  color: var(--color-text-muted); font-size: 10px;
-}
-
-.srch-footer kbd {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 5px;
-  padding: 2px 4px;
-  font-family: var(--font-mono, monospace);
-}
-
-.spin { animation: spin 1s linear infinite; }
-@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-`
