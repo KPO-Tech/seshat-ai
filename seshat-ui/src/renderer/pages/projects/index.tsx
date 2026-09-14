@@ -28,7 +28,7 @@ import { useSessionStore, type ChatSession } from '@/stores/session'
 import { normalizeSessionMessages } from '@/lib/chat'
 import { deleteSession } from '@/lib/deleteSession'
 import { UNTITLED_SESSION_TITLE } from '@/lib/sessionTitle'
-import { BrowserPanel, RIGHT_PANEL_CSS } from '@/components/layout/RightPanelHost'
+import { BrowserPanel } from '@/components/layout/RightPanelHost'
 
 type ProjectRecord = {
   id: string
@@ -744,7 +744,6 @@ export function ProjectsPage() {
                 </div>
 
                 <div className="project-right-panel">
-                  <style>{RIGHT_PANEL_CSS}</style>
                   <div className="project-right-panel-tabs">
                     <div className="project-right-panel-switch">
                       <button

@@ -25,6 +25,48 @@ import type { Message, ToolUseBlock } from '@/api/types'
 // would return a new reference each call, triggering an infinite re-render loop.
 const EMPTY_MESSAGES: Message[] = []
 
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(' ')
+}
+
+function toolStatusDotClass(status: string | null) {
+  if (status === 'completed') return 'bg-app-success'
+  if (status === 'failed') return 'bg-app-error'
+  if (status === 'running' || status === 'pending') return 'bg-[var(--color-accent)]'
+  return 'bg-app-text-muted'
+}
+
+function statusIconClass(status: string) {
+  if (status === 'completed') return 'text-app-success'
+  if (status === 'failed') return 'text-app-error'
+  if (status === 'running' || status === 'pending') return 'animate-spin text-[var(--color-accent)]'
+  return 'text-app-text-muted'
+}
+
+function activePanelClass(active?: boolean) {
+  return active ? 'border-[rgba(239,124,47,0.28)] bg-[rgba(239,124,47,0.055)]' : 'border-app-border-subtle bg-white/[0.02]'
+}
+
+const monitorSectionClass = 'flex flex-col gap-2 border-b border-app-border-subtle px-3 py-2.5'
+const monitorSectionHeadClass = 'flex items-center justify-between gap-2'
+const monitorLabelClass = 'text-[10px] font-bold uppercase tracking-[0.08em] text-app-text-muted'
+const monitorMetaClass = 'text-[10px] text-app-text-muted'
+const emptyHintClass = 'm-0 text-[10px] italic text-app-text-muted'
+
+function tintedRowClass(status?: string) {
+  if (status === 'running' || status === 'in_progress' || status === 'pending') return 'border-[rgba(239,124,47,0.28)] bg-[rgba(239,124,47,0.05)]'
+  if (status === 'failed') return 'border-[rgba(var(--color-error-rgb),0.28)] bg-[rgba(var(--color-error-rgb),0.05)]'
+  if (status === 'completed') return 'border-app-border-subtle bg-white/[0.02] opacity-75'
+  return 'border-app-border-subtle bg-white/[0.02]'
+}
+
+function statusDotClass(status?: string) {
+  if (status === 'completed') return 'bg-app-success'
+  if (status === 'failed') return 'bg-app-error'
+  if (status === 'running' || status === 'in_progress' || status === 'pending') return 'bg-[var(--color-accent)]'
+  return 'bg-app-border'
+}
+
 export function RightPanelHost() {
   const rightColumns = useUIStore((s) => s.rightColumns)
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
@@ -42,7 +84,6 @@ export function RightPanelHost() {
         className="fixed bottom-0 right-0 top-[34px] z-[200] flex min-w-0 flex-col border-l border-app-border-subtle bg-app-bg shadow-[var(--shadow-large)]"
         style={{ left: sidebarCollapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)' }}
       >
-        <style>{RIGHT_PANEL_CSS}</style>
         <PanelFrame
           panel={maximized}
           isMaximized
@@ -55,7 +96,6 @@ export function RightPanelHost() {
 
   return (
     <div className="relative z-40 flex h-full shrink-0 items-stretch">
-      <style>{RIGHT_PANEL_CSS}</style>
       {rightColumns.map((column) => (
         <RightPanelColumnView key={column.id} column={column} />
       ))}
@@ -569,14 +609,19 @@ function AgentWorkspacePanel({ sessionId }: { sessionId: string }) {
   }
 
   return (
-    <div className="aw-root">
+    <div className="flex h-full min-h-0 flex-col bg-app-bg">
       <style>{TOOL_BLOCK_CSS}</style>
-      <div className="aw-hero">
-        <div className="aw-hero-copy">
-          <span className={`aw-live-dot${agentState.activeTool ? ' active' : ''}`} />
-          <div className="aw-hero-text">
-            <h3>Seshat's workspace</h3>
-            <p>
+      <div className="flex shrink-0 items-center justify-between gap-2.5 border-b border-app-border-subtle bg-app-surface px-3 py-2.5">
+        <div className="flex min-w-0 items-center gap-2">
+          <span
+            className={cx(
+              'size-2 shrink-0 rounded-full shadow-[0_0_0_5px_rgba(255,255,255,0.025)]',
+              agentState.activeTool ? 'bg-[var(--color-accent)] shadow-[0_0_0_5px_rgba(239,124,47,0.14)]' : 'bg-app-text-muted',
+            )}
+          />
+          <div className="min-w-0">
+            <h3 className="m-0 text-[var(--font-size-sm)] font-bold text-app-text">Seshat's workspace</h3>
+            <p className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-[10.5px] text-app-text-muted">
               {agentState.activeTool
                 ? `${toolDisplayName(agentState.activeTool.toolName)}${agentState.activeTool.message ? ` - ${agentState.activeTool.message}` : ''}`
                 : agentState.isThinking
@@ -586,34 +631,34 @@ function AgentWorkspacePanel({ sessionId }: { sessionId: string }) {
           </div>
         </div>
         {isBrowserTool && (
-          <button type="button" className="aw-hero-action" onClick={openBrowser}>
+          <button type="button" className="inline-flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-[7px] border border-[rgba(239,124,47,0.26)] bg-[rgba(239,124,47,0.09)] px-2 text-[10.5px] font-semibold text-[var(--color-accent)] hover:bg-[rgba(239,124,47,0.14)]" onClick={openBrowser}>
             <PreviewOpen size={13} />
             <span>Open browser</span>
           </button>
         )}
       </div>
 
-      <div className="aw-stage">
+      <div className="h-[min(46vh,520px)] min-h-[280px] shrink-0 border-b border-app-border-subtle bg-[color-mix(in_srgb,var(--color-bg)_97%,black)]">
         {!selectedTool ? (
-          <div className="aw-empty">
+          <div className="flex h-full flex-col items-center justify-center gap-2 px-5 text-center text-app-text-muted">
             <Tool size={20} />
-            <h3>No tool activity yet</h3>
-            <p>Tool runs, files, browser actions, plans and sub-agents will appear here.</p>
+            <h3 className="m-0 text-[var(--font-size-base)] text-app-text">No tool activity yet</h3>
+            <p className="m-0 max-w-[260px] text-[var(--font-size-2xs)] leading-normal">Tool runs, files, browser actions, plans and sub-agents will appear here.</p>
           </div>
         ) : isBrowserTool && window.nexus?.browser ? (
-          <div className="aw-browser-stage">
+          <div className="h-full min-h-0">
             <BrowserPanel url={selectedUrl ?? undefined} contextId={`session:${sessionId}`} />
           </div>
         ) : (
-          <div className="aw-tool-stage">
-            <div className="aw-tool-head">
-              <div className="aw-tool-title">
-                <span className={`aw-tool-status aw-tool-status--${selectedStatus ?? 'pending'}`} />
+          <div className="flex h-full min-h-0 flex-col">
+            <div className="flex items-center justify-between gap-2 border-b border-app-border-subtle bg-app-surface px-2.5 py-2">
+              <div className="flex min-w-0 items-center gap-2 text-[var(--font-size-sm)] font-bold text-app-text">
+                <span className={cx('size-2 shrink-0 rounded-full', toolStatusDotClass(selectedStatus))} />
                 <span>{toolLabel(selectedTool.name)}</span>
               </div>
-              <span className="aw-tool-meta">{selectedTool.source === 'live' ? 'Live' : 'History'}</span>
+              <span className="text-[10px] text-app-text-muted">{selectedTool.source === 'live' ? 'Live' : 'History'}</span>
             </div>
-            <div className="aw-tool-body">
+            <div className="min-h-0 flex-1 overflow-auto p-2.5 [&>*]:max-w-full">
               {renderToolBody({
                 tool: selectedTool,
                 result: selectedTool._result,
@@ -625,22 +670,22 @@ function AgentWorkspacePanel({ sessionId }: { sessionId: string }) {
         )}
       </div>
 
-      <div className="aw-timeline-bar">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-app-border-subtle px-2.5 py-2">
         <button
           type="button"
-          className="aw-jump-live"
+          className="inline-flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-[7px] border border-[rgba(239,124,47,0.26)] bg-[rgba(239,124,47,0.09)] px-2 text-[10.5px] font-semibold text-[var(--color-accent)] hover:bg-[rgba(239,124,47,0.14)] disabled:cursor-default disabled:opacity-45 disabled:hover:bg-[rgba(239,124,47,0.09)]"
           disabled={!latestTool}
           onClick={() => latestTool && setSelectedToolId(latestTool.id)}
         >
           <Play size={11} />
           <span>Jump to live</span>
         </button>
-        <span className="aw-timeline-count">{tools.length} tool{tools.length === 1 ? '' : 's'}</span>
+        <span className="text-[10px] text-app-text-muted">{tools.length} tool{tools.length === 1 ? '' : 's'}</span>
       </div>
 
-      <div className="aw-timeline">
+      <div className="flex max-h-[230px] shrink-0 flex-col gap-1.5 overflow-auto border-b border-app-border-subtle p-2.5">
         {tools.length === 0 ? (
-          <p className="am-empty-hint">No tool activity has been recorded yet.</p>
+          <p className="m-0 text-[10px] italic text-app-text-muted">No tool activity has been recorded yet.</p>
         ) : (
           tools.slice(-18).reverse().map((tool) => {
             const status = toolStatus(tool)
@@ -649,21 +694,25 @@ function AgentWorkspacePanel({ sessionId }: { sessionId: string }) {
               <button
                 key={`${tool.source}-${tool.id}-${tool.order}`}
                 type="button"
-                className={`aw-timeline-item aw-timeline-item--${status}${selectedTool?.id === tool.id ? ' selected' : ''}`}
+                className={cx(
+                  'grid w-full cursor-pointer grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-2 rounded-app-md border p-2 text-left text-inherit',
+                  activePanelClass(selectedTool?.id === tool.id),
+                  'hover:border-[rgba(239,124,47,0.28)] hover:bg-[rgba(239,124,47,0.055)]',
+                )}
                 onClick={() => setSelectedToolId(tool.id)}
               >
-                <span className="aw-timeline-icon">
+                <span className={cx('inline-flex items-center justify-center', statusIconClass(status))}>
                   {status === 'running' || status === 'pending'
                     ? <LoadingOne size={11} />
                     : status === 'failed'
                       ? <Close size={11} />
                       : <CheckOne size={11} />}
                 </span>
-                <span className="aw-timeline-copy">
-                  <span className="aw-timeline-title">{toolLabel(tool.name)}</span>
-                  {snippet && <span className="aw-timeline-snippet">{snippet}</span>}
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <span className="text-[var(--font-size-2xs)] font-bold text-app-text">{toolLabel(tool.name)}</span>
+                  {snippet && <span className="overflow-hidden text-ellipsis whitespace-nowrap text-[10.5px] text-app-text-muted">{snippet}</span>}
                 </span>
-                <span className="aw-timeline-source">{tool.source === 'live' ? 'live' : 'past'}</span>
+                <span className="text-[10px] text-app-text-muted">{tool.source === 'live' ? 'live' : 'past'}</span>
               </button>
             )
           })
@@ -738,21 +787,24 @@ function SubagentsSection({ sessionId }: { sessionId: string }) {
   const failedCount = entries.filter(([, sub]) => sub.status === 'failed').length
 
   return (
-    <div className="am-section">
-      <div className="am-section-head">
-        <span className="am-section-label">Sub-agents</span>
-        <span className="am-plan-meta">
+    <div className={monitorSectionClass}>
+      <div className={monitorSectionHeadClass}>
+        <span className={monitorLabelClass}>Sub-agents</span>
+        <span className={monitorMetaClass}>
           {runningCount > 0 ? `${runningCount} running / ` : ''}
           {entries.length} total
           {failedCount > 0 ? ` / ${failedCount} failed` : ''}
         </span>
       </div>
-      <div className="am-subagent-list">
+      <div className="flex flex-col gap-1.5">
         {entries.map(([toolUseId, sub]) => (
           <button
             key={toolUseId}
             type="button"
-            className={`am-subagent-row am-subagent-row--${sub.status}`}
+            className={cx(
+              'flex w-full cursor-pointer items-start gap-2 rounded-[9px] border px-2 py-[7px] text-left text-inherit transition-colors duration-150 hover:border-app-border hover:bg-white/[0.045]',
+              tintedRowClass(sub.status),
+            )}
             onClick={() => openRightPanel({
               kind: 'subagent',
               title: sub.agentType,
@@ -760,16 +812,16 @@ function SubagentsSection({ sessionId }: { sessionId: string }) {
               subagentToolUseId: toolUseId,
             } as Parameters<typeof openRightPanel>[0])}
           >
-            <span className="am-subagent-status-icon">
+            <span className={cx('mt-px flex size-4 shrink-0 items-center justify-center', statusIconClass(sub.status))}>
               {sub.status === 'running'
                 ? <LoadingOne size={10} />
                 : sub.status === 'completed'
                   ? <CheckOne size={10} />
                   : <Close size={10} />}
             </span>
-            <span className="am-subagent-copy">
-              <span className="am-subagent-type">{sub.agentType.replace(/_/g, ' ').replace(/-/g, ' ')}</span>
-              {sub.task && <span className="am-subagent-task">{sub.task}</span>}
+            <span className="flex min-w-0 flex-col gap-0.5">
+              <span className="text-[var(--font-size-2xs)] font-semibold capitalize text-app-text">{sub.agentType.replace(/_/g, ' ').replace(/-/g, ' ')}</span>
+              {sub.task && <span className="overflow-hidden text-ellipsis whitespace-nowrap text-[10px] text-app-text-muted">{sub.task}</span>}
             </span>
           </button>
         ))}
@@ -780,9 +832,9 @@ function SubagentsSection({ sessionId }: { sessionId: string }) {
 
 function TurnTokenStats({ state }: { state: AgentState }) {
   return (
-    <div className="am-section">
-      <span className="am-section-label">Stats</span>
-      <div className="am-stat-grid">
+    <div className={monitorSectionClass}>
+      <span className={monitorLabelClass}>Stats</span>
+      <div className="grid grid-cols-2 gap-1.5">
         <Stat label="Turn" value={state.turnNumber > 0 ? `#${state.turnNumber}` : '-'} />
         <Stat label="Input tokens"  value={state.inputTokens  > 0 ? fmt(state.inputTokens)  : '-'} />
         <Stat label="Output tokens" value={state.outputTokens > 0 ? fmt(state.outputTokens) : '-'} />
@@ -798,29 +850,31 @@ function TurnTokenStats({ state }: { state: AgentState }) {
 
 function PlanSection({ plan }: { plan: ReturnType<typeof derivePlanSnapshot> }) {
   return (
-    <div className="am-section">
-      <div className="am-section-head">
-        <span className="am-section-label">Plan</span>
+    <div className={monitorSectionClass}>
+      <div className={monitorSectionHeadClass}>
+        <span className={monitorLabelClass}>Plan</span>
         {plan.items.length > 0 && (
-          <span className="am-plan-meta">
+          <span className={monitorMetaClass}>
             {plan.completedCount}/{plan.items.length} done / Tasks
           </span>
         )}
       </div>
 
       {plan.items.length === 0 ? (
-        <p className="am-empty-hint">No live plan is being tracked yet.</p>
+        <p className={emptyHintClass}>No live plan is being tracked yet.</p>
       ) : (
-        <div className="am-plan-list">
+        <div className="flex flex-col gap-2">
           {plan.items.map((item) => (
-            <div key={item.id} className={`am-plan-item am-plan-item--${item.status}`}>
-              <div className="am-plan-marker">
-                {item.status === 'completed' ? <CheckOne size={10} /> : <span className="am-plan-dot" />}
+            <div key={item.id} className={cx('flex items-start gap-2 rounded-[9px] border px-2 py-[7px]', tintedRowClass(item.status))}>
+              <div className="mt-0.5 flex size-4 shrink-0 items-center justify-center text-app-success">
+                {item.status === 'completed'
+                  ? <CheckOne size={10} />
+                  : <span className={cx('size-[7px] rounded-full', statusDotClass(item.status), item.status === 'in_progress' && 'shadow-[0_0_0_5px_rgba(239,124,47,0.12)]')} />}
               </div>
-              <div className="am-plan-copy">
-                <span className="am-plan-title">{item.title}</span>
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <span className="text-[var(--font-size-2xs)] leading-normal text-app-text">{item.title}</span>
                 {item.detail && item.status === 'in_progress' && (
-                  <span className="am-plan-detail">{item.detail}</span>
+                  <span className="text-[10px] leading-normal text-app-text-secondary">{item.detail}</span>
                 )}
               </div>
             </div>
@@ -833,9 +887,9 @@ function PlanSection({ plan }: { plan: ReturnType<typeof derivePlanSnapshot> }) 
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="am-stat">
-      <span className="am-stat-value">{value}</span>
-      <span className="am-stat-label">{label}</span>
+    <div className="flex flex-col gap-0.5 rounded-app-md border border-app-border-subtle bg-white/[0.03] px-2 py-[7px]">
+      <span className="font-mono text-[var(--font-size-md)] font-bold tabular-nums text-app-text">{value}</span>
+      <span className="text-[10px] uppercase tracking-[0.06em] text-app-text-muted">{label}</span>
     </div>
   )
 }
@@ -843,10 +897,10 @@ function Stat({ label, value }: { label: string; value: string }) {
 function PlanArtifactSection({ sessionId, planArtifact }: { sessionId: string; planArtifact: string }) {
   const openRightPanel = useUIStore((s) => s.openRightPanel)
   return (
-    <div className="am-section am-section--compact">
-      <span className="am-section-label">Artifact</span>
+    <div className="flex flex-col gap-2 border-b border-app-border-subtle px-3 py-2">
+      <span className={monitorLabelClass}>Artifact</span>
       <button
-        className="am-artifact-btn"
+        className="flex w-full cursor-pointer items-center gap-1.5 rounded-app-md border border-app-border-subtle bg-white/[0.03] px-2 py-1.5 text-left text-[var(--font-size-2xs)] font-medium text-app-text transition-colors duration-150 hover:border-[rgba(239,124,47,0.28)] hover:bg-[var(--color-hover)] hover:text-[var(--color-accent)]"
         type="button"
         onClick={() => openRightPanel({
           kind: 'markdown',
@@ -866,26 +920,26 @@ function ActivityTimelineSection({ state }: { state: AgentState }) {
   const entries = useMemo(() => [...state.activityLog].slice(-12).reverse(), [state.activityLog])
 
   return (
-    <div className="am-section">
-      <div className="am-section-head">
-        <span className="am-section-label">Timeline</span>
-        {entries.length > 0 && <span className="am-plan-meta">{entries.length} recent</span>}
+    <div className={monitorSectionClass}>
+      <div className={monitorSectionHeadClass}>
+        <span className={monitorLabelClass}>Timeline</span>
+        {entries.length > 0 && <span className={monitorMetaClass}>{entries.length} recent</span>}
       </div>
       {entries.length === 0 ? (
-        <p className="am-empty-hint">Tool activity will appear here as the agent runs.</p>
+        <p className={emptyHintClass}>Tool activity will appear here as the agent runs.</p>
       ) : (
-        <div className="am-timeline">
+        <div className="flex flex-col gap-[7px]">
           {entries.map((entry, index) => (
-            <div key={`${entry.toolName}-${entry.startedAt}-${index}`} className={`am-timeline-row am-timeline-row--${entry.stage}`}>
-              <span className="am-timeline-dot" />
-              <span className="am-timeline-copy">
-                <span className="am-timeline-title">
+            <div key={`${entry.toolName}-${entry.startedAt}-${index}`} className="grid grid-cols-[12px_minmax(0,1fr)_auto] items-start gap-[7px] py-1.5">
+              <span className={cx('mt-[5px] size-[7px] rounded-full', statusDotClass(entry.stage))} />
+              <span className="flex min-w-0 flex-col gap-0.5">
+                <span className="flex min-w-0 items-center gap-1.5 text-[var(--font-size-2xs)] font-semibold text-app-text">
                   {toolDisplayName(entry.toolName)}
-                  <span className="am-timeline-stage">{entry.stage.replace('_', ' ')}</span>
+                  <span className="shrink-0 text-[9px] font-bold uppercase text-app-text-muted">{entry.stage.replace('_', ' ')}</span>
                 </span>
-                {entry.message && <span className="am-timeline-message">{entry.message}</span>}
+                {entry.message && <span className="overflow-hidden text-ellipsis whitespace-nowrap text-[10.5px] leading-normal text-app-text-muted">{entry.message}</span>}
               </span>
-              <span className="am-timeline-time">{formatActivityDuration(entry)}</span>
+              <span className="pt-px text-[10px] text-app-text-muted">{formatActivityDuration(entry)}</span>
             </div>
           ))}
         </div>
@@ -924,657 +978,3 @@ function EmptyState({ title, description }: { title: string; description: string
     </div>
   )
 }
-
-export const RIGHT_PANEL_CSS = `
-/* Agent Workspace */
-.aw-root {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
-  background: color-mix(in srgb, var(--color-bg) 94%, var(--color-surface) 6%);
-}
-
-.aw-hero {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 11px 13px;
-  border-bottom: 1px solid var(--color-border-subtle);
-  background: color-mix(in srgb, var(--color-bg) 88%, var(--color-surface) 12%);
-  flex-shrink: 0;
-}
-
-.aw-hero-copy {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  min-width: 0;
-}
-
-.aw-live-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: var(--color-text-muted);
-  box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.025);
-  flex-shrink: 0;
-}
-
-.aw-live-dot.active {
-  background: var(--color-accent);
-  box-shadow: 0 0 0 5px rgba(239, 124, 47, 0.14);
-}
-
-.aw-hero-text {
-  min-width: 0;
-}
-
-.aw-hero-text h3 {
-  margin: 0;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--color-text);
-}
-
-.aw-hero-text p {
-  margin: 2px 0 0;
-  font-size: 10.5px;
-  color: var(--color-text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.aw-hero-action,
-.aw-jump-live {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  border: 1px solid rgba(239, 124, 47, 0.26);
-  background: rgba(239, 124, 47, 0.09);
-  color: var(--color-accent);
-  border-radius: 7px;
-  height: 28px;
-  padding: 0 8px;
-  font-size: 10.5px;
-  font-weight: 650;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.aw-hero-action:hover,
-.aw-jump-live:hover:not(:disabled) {
-  background: rgba(239, 124, 47, 0.14);
-}
-
-.aw-jump-live:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
-.aw-stage {
-  min-height: 280px;
-  height: min(46vh, 520px);
-  border-bottom: 1px solid var(--color-border-subtle);
-  background: color-mix(in srgb, var(--color-bg) 97%, black);
-  flex-shrink: 0;
-}
-
-.aw-browser-stage,
-.aw-tool-stage {
-  height: 100%;
-  min-height: 0;
-}
-
-.aw-tool-stage {
-  display: flex;
-  flex-direction: column;
-}
-
-.aw-tool-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--color-border-subtle);
-  background: color-mix(in srgb, var(--color-bg) 88%, var(--color-surface) 12%);
-}
-
-.aw-tool-title {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  min-width: 0;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--color-text);
-}
-
-.aw-tool-status {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--color-text-muted);
-  flex-shrink: 0;
-}
-
-.aw-tool-status--running,
-.aw-tool-status--pending {
-  background: var(--color-accent);
-}
-
-.aw-tool-status--completed {
-  background: var(--color-success);
-}
-
-.aw-tool-status--failed {
-  background: var(--color-error);
-}
-
-.aw-tool-meta,
-.aw-timeline-count,
-.aw-timeline-source {
-  font-size: 10px;
-  color: var(--color-text-muted);
-}
-
-.aw-tool-body {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  padding: 10px;
-  scrollbar-width: thin;
-}
-
-.aw-tool-body > * {
-  max-width: 100%;
-}
-
-.aw-empty {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  color: var(--color-text-muted);
-  text-align: center;
-  padding: 20px;
-}
-
-.aw-empty h3 {
-  margin: 0;
-  font-size: 13px;
-  color: var(--color-text);
-}
-
-.aw-empty p {
-  margin: 0;
-  max-width: 260px;
-  font-size: 11px;
-  line-height: 1.5;
-}
-
-.aw-timeline-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--color-border-subtle);
-  flex-shrink: 0;
-}
-
-.aw-timeline {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px;
-  border-bottom: 1px solid var(--color-border-subtle);
-  max-height: 230px;
-  overflow: auto;
-  scrollbar-width: thin;
-  flex-shrink: 0;
-}
-
-.aw-timeline-item {
-  display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.02);
-  color: inherit;
-  padding: 7px 8px;
-  cursor: pointer;
-  text-align: left;
-}
-
-.aw-timeline-item:hover,
-.aw-timeline-item.selected {
-  border-color: rgba(239, 124, 47, 0.28);
-  background: rgba(239, 124, 47, 0.055);
-}
-
-.aw-timeline-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-muted);
-}
-
-.aw-timeline-item--running .aw-timeline-icon,
-.aw-timeline-item--pending .aw-timeline-icon {
-  color: var(--color-accent);
-  animation: am-spin 1s linear infinite;
-}
-
-.aw-timeline-item--completed .aw-timeline-icon {
-  color: var(--color-success);
-}
-
-.aw-timeline-item--failed .aw-timeline-icon {
-  color: var(--color-error);
-}
-
-.aw-timeline-copy {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.aw-timeline-title {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--color-text);
-}
-
-.aw-timeline-snippet {
-  font-size: 10.5px;
-  color: var(--color-text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Agent Monitor */
-
-.am-root {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  padding: 0;
-  height: 100%;
-}
-
-.am-section {
-  padding: 11px 13px;
-  border-bottom: 1px solid var(--color-border-subtle);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.am-section-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 9px;
-}
-
-.am-section-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-}
-
-.am-plan-meta {
-  font-size: 10px;
-  color: var(--color-text-muted);
-}
-
-/* Stats grid */
-.am-stat-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-}
-
-.am-stat {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
-  padding: 7px 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.am-stat-value {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--color-text);
-  font-variant-numeric: tabular-nums;
-}
-
-.am-stat-label {
-  font-size: 10px;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.am-empty-hint {
-  margin: 0;
-  font-size: 10px;
-  color: var(--color-text-muted);
-  font-style: italic;
-}
-
-.am-plan-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.am-plan-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 7px 8px;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 9px;
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.am-plan-item--completed {
-  opacity: 0.72;
-}
-
-.am-plan-item--in_progress {
-  border-color: rgba(239, 124, 47, 0.28);
-  background: rgba(239, 124, 47, 0.05);
-}
-
-.am-plan-item--failed {
-  border-color: rgba(var(--color-error-rgb), 0.28);
-  background: rgba(var(--color-error-rgb), 0.05);
-}
-
-.am-plan-marker {
-  width: 16px;
-  height: 16px;
-  margin-top: 2px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-success);
-  flex-shrink: 0;
-}
-
-.am-plan-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--color-text-muted);
-}
-
-.am-plan-item--in_progress .am-plan-dot {
-  background: var(--color-accent);
-  box-shadow: 0 0 0 5px rgba(239, 124, 47, 0.12);
-}
-
-.am-plan-item--failed .am-plan-dot {
-  background: var(--color-error);
-}
-
-.am-plan-copy {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.am-plan-title {
-  font-size: 11px;
-  line-height: 1.45;
-  color: var(--color-text);
-}
-
-.am-plan-detail {
-  font-size: 10px;
-  color: var(--color-text-secondary);
-  line-height: 1.45;
-}
-
-/* Sub-agents list */
-.am-subagent-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.am-subagent-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 7px 8px;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 9px;
-  background: rgba(255, 255, 255, 0.02);
-  cursor: pointer;
-  text-align: left;
-  font: inherit;
-  color: inherit;
-  width: 100%;
-  transition: border-color 0.15s ease, background 0.15s ease;
-}
-
-.am-subagent-row:hover {
-  border-color: var(--color-border);
-  background: rgba(255, 255, 255, 0.045);
-}
-
-.am-subagent-row--running {
-  border-color: rgba(239, 124, 47, 0.28);
-  background: rgba(239, 124, 47, 0.05);
-}
-
-.am-subagent-row--failed {
-  border-color: rgba(var(--color-error-rgb), 0.28);
-  background: rgba(var(--color-error-rgb), 0.05);
-}
-
-.am-subagent-row--completed {
-  opacity: 0.72;
-}
-
-.am-subagent-status-icon {
-  width: 16px;
-  height: 16px;
-  margin-top: 1px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.am-subagent-row--running .am-subagent-status-icon {
-  color: var(--color-accent);
-  animation: am-spin 1s linear infinite;
-}
-
-.am-subagent-row--completed .am-subagent-status-icon { color: var(--color-success); }
-.am-subagent-row--failed .am-subagent-status-icon { color: var(--color-error); }
-
-.am-subagent-copy {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.am-subagent-type {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--color-text);
-  text-transform: capitalize;
-}
-
-.am-subagent-task {
-  font-size: 10px;
-  color: var(--color-text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Active tool indicator */
-.am-section--compact {
-  padding: 8px 13px;
-}
-
-.am-active-tool {
-  display: flex;
-  align-items: flex-start;
-  gap: 7px;
-  padding: 6px 8px;
-  border-radius: 8px;
-  border: 1px solid rgba(239, 124, 47, 0.25);
-  background: rgba(239, 124, 47, 0.06);
-}
-
-.am-active-spinner {
-  color: var(--color-accent);
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-  margin-top: 1px;
-  animation: am-spin 1s linear infinite;
-}
-
-@keyframes am-spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-
-.am-active-copy {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.am-active-name {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--color-accent);
-}
-
-.am-active-msg {
-  font-size: 10px;
-  color: var(--color-text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.am-timeline {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-
-.am-timeline-row {
-  display: grid;
-  grid-template-columns: 12px minmax(0, 1fr) auto;
-  gap: 7px;
-  align-items: start;
-  padding: 6px 0;
-}
-
-.am-timeline-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  margin-top: 5px;
-  background: var(--color-border);
-}
-
-.am-timeline-row--completed .am-timeline-dot { background: var(--color-success); }
-.am-timeline-row--failed .am-timeline-dot { background: var(--color-error); }
-.am-timeline-row--running .am-timeline-dot,
-.am-timeline-row--pending .am-timeline-dot { background: var(--color-accent); }
-
-.am-timeline-copy {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.am-timeline-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.am-timeline-stage {
-  flex-shrink: 0;
-  font-size: 9px;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-}
-
-.am-timeline-message {
-  font-size: 10.5px;
-  line-height: 1.4;
-  color: var(--color-text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.am-timeline-time {
-  font-size: 10px;
-  color: var(--color-text-muted);
-  padding-top: 1px;
-}
-
-/* Plan artifact button */
-.am-artifact-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 8px;
-  border-radius: 8px;
-  border: 1px solid var(--color-border-subtle);
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--color-text);
-  font-size: 11px;
-  font-weight: 500;
-  cursor: pointer;
-  width: 100%;
-  text-align: left;
-  transition: background 0.15s, border-color 0.15s;
-}
-
-.am-artifact-btn:hover {
-  background: var(--color-hover);
-  border-color: rgba(239, 124, 47, 0.28);
-  color: var(--color-accent);
-}
-`
