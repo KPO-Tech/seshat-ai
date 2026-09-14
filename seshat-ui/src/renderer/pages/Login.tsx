@@ -34,8 +34,7 @@ export function Login() {
 
   return (
     <AuthLayout title="Welcome back" subtitle="Sign in to continue to your workspace">
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-
+      <form onSubmit={handleSubmit} className="flex flex-col gap-[18px]">
         <Field label="Email">
           <InputWithIcon
             icon={<EmailIcon />}
@@ -49,7 +48,7 @@ export function Login() {
         </Field>
 
         <Field label="Password">
-          <div style={{ position: 'relative' }}>
+          <div className="relative">
             <InputWithIcon
               icon={<LockIcon />}
               type={showPassword ? 'text' : 'password'}
@@ -63,14 +62,7 @@ export function Login() {
         </Field>
 
         {error && (
-          <div style={{
-            padding: '10px 14px',
-            borderRadius: 8,
-            backgroundColor: 'rgba(var(--color-error-rgb), 0.08)',
-            border: '1px solid rgba(var(--color-error-rgb), 0.2)',
-            color: 'var(--danger)',
-            fontSize: 13,
-          }}>
+          <div className="rounded-lg border border-[rgba(var(--color-error-rgb),0.2)] bg-[rgba(var(--color-error-rgb),0.08)] px-3.5 py-2.5 text-[13px] text-[var(--danger)]">
             {error}
           </div>
         )}
@@ -79,9 +71,9 @@ export function Login() {
           Sign in
         </PrimaryButton>
 
-        <p style={{ margin: '8px 0 0', textAlign: 'center', fontSize: 13, color: 'var(--text-secondary)' }}>
+        <p className="m-0 mt-2 text-center text-[13px] text-[var(--text-secondary)]">
           Don't have an account?{' '}
-          <Link to="/register" style={{ color: 'var(--brand)', textDecoration: 'none', fontWeight: 500 }}>
+          <Link to="/register" className="font-medium text-[var(--brand)] no-underline">
             Sign up
           </Link>
         </p>

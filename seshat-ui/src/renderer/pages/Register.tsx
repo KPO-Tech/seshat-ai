@@ -24,7 +24,7 @@ function getRequirements(password: string): Requirement[] {
 
 function PersonIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <circle cx="12" cy="8" r="4" />
       <path d="M20 21a8 8 0 1 0-16 0" />
     </svg>
@@ -84,21 +84,13 @@ export function Register() {
   if (registrationDisabled) {
     return (
       <AuthLayout title="Account creation is managed by your organization" subtitle="This workspace is connected to a Seshat Server">
-        <div style={{
-          padding: '14px 16px',
-          borderRadius: 8,
-          backgroundColor: 'var(--color-hover)',
-          border: '1px solid var(--color-border-subtle)',
-          color: 'var(--text-secondary)',
-          fontSize: 13.5,
-          lineHeight: 1.6,
-        }}>
+        <div className="rounded-lg border border-app-border-subtle bg-[var(--color-hover)] px-4 py-3.5 text-[13.5px] leading-[1.6] text-[var(--text-secondary)]">
           Self-registration is disabled here. Ask your organization administrator to create an account for you,
           then sign in below.
         </div>
-        <p style={{ margin: '16px 0 0', textAlign: 'center', fontSize: 13, color: 'var(--text-secondary)' }}>
+        <p className="m-0 mt-4 text-center text-[13px] text-[var(--text-secondary)]">
           Already have an account?{' '}
-          <Link to="/login" style={{ color: 'var(--brand)', textDecoration: 'none', fontWeight: 500 }}>
+          <Link to="/login" className="font-medium text-[var(--brand)] no-underline">
             Sign in
           </Link>
         </p>
@@ -108,9 +100,7 @@ export function Register() {
 
   return (
     <AuthLayout title="Create your account" subtitle="Start building with SeshatOS today">
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-        {/* Full name */}
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <Field label="Full name">
           <InputWithIcon
             icon={<PersonIcon />}
@@ -123,7 +113,6 @@ export function Register() {
           />
         </Field>
 
-        {/* Email */}
         <Field label="Email">
           <InputWithIcon
             icon={<EmailIcon />}
@@ -135,9 +124,8 @@ export function Register() {
           />
         </Field>
 
-        {/* Password */}
         <Field label="Password">
-          <div style={{ position: 'relative' }}>
+          <div className="relative">
             <InputWithIcon
               icon={<LockIcon />}
               type={showPassword ? 'text' : 'password'}
@@ -149,9 +137,8 @@ export function Register() {
             <EyeToggle visible={showPassword} onToggle={() => setShowPassword((v) => !v)} />
           </div>
 
-          {/* Requirements */}
           {password.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 10 }}>
+            <div className="mt-2.5 flex flex-col gap-[5px]">
               {requirements.map((req) => (
                 <RequirementRow key={req.label} {...req} />
               ))}
@@ -159,21 +146,13 @@ export function Register() {
           )}
         </Field>
 
-        {/* Terms */}
-        <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)' }}>
+        <label className="flex cursor-pointer items-start gap-2.5 text-[13px] text-[var(--text-secondary)]">
           <CustomCheckbox checked={agreed} onChange={setAgreed} />
           <span>I agree to the Terms and Privacy Policy</span>
         </label>
 
         {error && (
-          <div style={{
-            padding: '10px 14px',
-            borderRadius: 8,
-            backgroundColor: 'rgba(var(--color-error-rgb), 0.08)',
-            border: '1px solid rgba(var(--color-error-rgb), 0.2)',
-            color: 'var(--danger)',
-            fontSize: 13,
-          }}>
+          <div className="rounded-lg border border-[rgba(var(--color-error-rgb),0.2)] bg-[rgba(var(--color-error-rgb),0.08)] px-3.5 py-2.5 text-[13px] text-[var(--danger)]">
             {error}
           </div>
         )}
@@ -182,9 +161,9 @@ export function Register() {
           Create account
         </PrimaryButton>
 
-        <p style={{ margin: '8px 0 0', textAlign: 'center', fontSize: 13, color: 'var(--text-secondary)' }}>
+        <p className="m-0 mt-2 text-center text-[13px] text-[var(--text-secondary)]">
           Already have an account?{' '}
-          <Link to="/login" style={{ color: 'var(--brand)', textDecoration: 'none', fontWeight: 500 }}>
+          <Link to="/login" className="font-medium text-[var(--brand)] no-underline">
             Sign in
           </Link>
         </p>
@@ -195,18 +174,21 @@ export function Register() {
 
 function RequirementRow({ label, met }: Requirement) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: met ? 'var(--success)' : 'var(--text-secondary)' }}>
-      <span style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: 16,
-        height: 16,
-        borderRadius: 999,
-        fontSize: 11,
-        background: met ? 'rgba(var(--color-success-rgb), 0.14)' : 'var(--color-hover)',
-        border: met ? '1px solid rgba(var(--color-success-rgb), 0.28)' : '1px solid var(--color-border-subtle)',
-      }}>{met ? '✓' : ''}</span>
+    <div className={['flex items-center gap-2', met ? 'text-[var(--success)]' : 'text-[var(--text-secondary)]'].join(' ')}>
+      <span
+        className={[
+          'inline-flex size-4 items-center justify-center rounded-full border text-[11px]',
+          met
+            ? 'border-[rgba(var(--color-success-rgb),0.28)] bg-[rgba(var(--color-success-rgb),0.14)]'
+            : 'border-app-border-subtle bg-[var(--color-hover)]',
+        ].join(' ')}
+      >
+        {met && (
+          <svg width="9" height="7" viewBox="0 0 9 7" fill="none" aria-hidden="true">
+            <path d="M1 3.5L3.5 6L8 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
+      </span>
       <span>{label}</span>
     </div>
   )

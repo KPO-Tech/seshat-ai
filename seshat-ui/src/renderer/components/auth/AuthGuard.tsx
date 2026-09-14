@@ -108,14 +108,8 @@ export function AuthGuard({ children }: { children: ReactNode }) {
 
   if (status === 'checking') {
     return (
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100vh',
-        color: 'var(--color-text-muted)',
-      }}>
-        <LoadingOne size={23} className="spin" />
+      <div className="flex h-screen items-center justify-center text-app-text-muted">
+        <LoadingOne size={23} className="animate-[spin_1s_linear_infinite]" />
       </div>
     )
   }
