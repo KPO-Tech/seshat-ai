@@ -26,6 +26,10 @@ import { useSettingsMenu } from './useSettingsMenu'
 
 const PROJECTS_STORAGE_KEY = 'seshat.projects.v1'
 
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(' ')
+}
+
 function normalizeProjectPath(path: string): string {
   return path.trim().replace(/[\\/]+$/, '')
 }
@@ -50,7 +54,7 @@ export function Sidebar() {
   const updateSession = useSessionStore((s) => s.updateSession)
   const navigate = useNavigate()
   const { pathname, search } = useLocation()
-  
+
   const [recentsOpen, setRecentsOpen] = useState(true)
   const [menuSessionId, setMenuSessionId] = useState<string | null>(null)
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
@@ -78,9 +82,6 @@ export function Sidebar() {
   }, [projectParam, projectRouteId, conversationRouteId, sessions])
   const inProjectContext = Boolean(projectContextPath)
   const recentSessions = sessions
-    // Sessions created from Knowledge are real, fully persisted sessions
-    // (reachable from History and Ctrl+K search) - just excluded from this
-    // list so a one-off lookup doesn't clutter the main chat sidebar.
     .filter((s) => s.source !== 'knowledge' && s.source !== 'inbox')
     .filter((s) => {
       if (!projectContextPath) return !s.projectPath
@@ -163,13 +164,11 @@ export function Sidebar() {
 
   return (
     <>
-      <style>{SIDEBAR_CSS}</style>
       <aside
-        className={`sb-root${collapsed ? ' collapsed' : ''}`}
+        className="absolute inset-y-0 left-0 z-[100] flex flex-col overflow-hidden border-r border-app-border-subtle bg-app-bg transition-[width] duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]"
         style={{ width }}
       >
-        {/* Primary Actions */}
-        <div className="sb-section">
+        <div className={cx('flex flex-col gap-px px-2 pb-1 pt-3.5', collapsed && 'items-center')}>
           <SidebarItem
             icon={<Plus theme="outline" size={16} />}
             label="New Chat"
@@ -213,22 +212,20 @@ export function Sidebar() {
           )}
         </div>
 
-        {/* History Sections */}
-        <div className="sb-scroll">
-          
-          {/* Recents */}
+        <div className="flex flex-1 flex-col gap-2.5 overflow-y-auto px-2.5 py-2">
           {!collapsed && (
-            <div className="sb-nav-group">
-              <div className="sb-nav-header-row">
+            <div className="flex flex-col gap-0.5">
+              <div className="flex items-center gap-0.5">
                 <button
-                  className="sb-nav-header interactive"
+                  className="flex min-w-0 flex-1 items-center justify-between border-0 bg-transparent px-2 text-left text-[var(--font-size-2xs)] font-bold uppercase tracking-[0.05em] text-app-text-muted"
                   onClick={() => setRecentsOpen(!recentsOpen)}
+                  type="button"
                 >
                   <span>Recents</span>
                   {recentsOpen ? <Down size={12} /> : <Right size={12} />}
                 </button>
                 <button
-                  className="sb-history-btn"
+                  className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-[5px] border-0 bg-transparent text-app-text-muted transition-colors duration-150 hover:bg-[var(--color-hover)] hover:text-app-text"
                   type="button"
                   aria-label="Chat history"
                   onClick={() => navigate('/history')}
@@ -238,65 +235,81 @@ export function Sidebar() {
               </div>
 
               {recentsOpen && (
-                <div className="sb-recents-list">
-                  {recentSessions.map((s) => (
-                    <div key={s.id} className={`sb-recent-row ${s.id === activeId ? 'active' : ''}`}>
-                      {editingSessionId === s.id ? (
-                        <input
-                          className="sb-recent-rename"
-                          value={editingTitle}
-                          autoFocus
-                          onChange={(event) => setEditingTitle(event.target.value)}
-                          onBlur={() => { void commitRenameSession(s.id) }}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter') {
-                              event.preventDefault()
-                              void commitRenameSession(s.id)
-                            } else if (event.key === 'Escape') {
-                              setEditingSessionId(null)
-                              setEditingTitle('')
-                            }
-                          }}
-                        />
-                      ) : (
-                        <>
-                          <button
-                            className="sb-recent-item"
-                            onClick={() => openSession(s.id)}
-                            type="button"
-                          >
-                            <span className="sb-recent-title">{s.title || UNTITLED_SESSION_TITLE}</span>
-                          </button>
-                          <div className="sb-recent-menu-wrap">
+                <div className="flex flex-col gap-0.5 overflow-visible pl-2 pr-1">
+                  {recentSessions.map((s) => {
+                    const active = s.id === activeId
+                    const menuOpen = menuSessionId === s.id
+                    return (
+                      <div
+                        key={s.id}
+                        className={cx(
+                          'group relative flex items-center gap-1 overflow-visible rounded-app-md p-px',
+                          active && 'bg-white/[0.04]',
+                        )}
+                      >
+                        {editingSessionId === s.id ? (
+                          <input
+                            className="w-full min-w-0 rounded-[7px] border border-[rgba(239,124,47,0.22)] bg-white/[0.04] px-2 py-[5px] text-[var(--font-size-sm)] text-app-text outline-none"
+                            value={editingTitle}
+                            autoFocus
+                            onChange={(event) => setEditingTitle(event.target.value)}
+                            onBlur={() => { void commitRenameSession(s.id) }}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter') {
+                                event.preventDefault()
+                                void commitRenameSession(s.id)
+                              } else if (event.key === 'Escape') {
+                                setEditingSessionId(null)
+                                setEditingTitle('')
+                              }
+                            }}
+                          />
+                        ) : (
+                          <>
                             <button
-                              className={`sb-recent-menu-btn${menuSessionId === s.id ? ' open' : ''}`}
+                              className={cx(
+                                'block min-w-0 flex-1 cursor-pointer rounded-[7px] border-0 bg-transparent px-2 py-[5px] text-left text-[var(--font-size-sm)] text-app-text-secondary transition-colors duration-150 hover:bg-[var(--color-hover)] hover:text-app-text',
+                                active && 'font-semibold',
+                              )}
+                              onClick={() => openSession(s.id)}
                               type="button"
-                              onClick={(event) => {
-                                event.stopPropagation()
-                                setMenuSessionId((current) => current === s.id ? null : s.id)
-                              }}
                             >
-                              <span className="sb-recent-menu-icon" aria-hidden="true">...</span>
+                              <span className="block overflow-hidden text-ellipsis whitespace-nowrap">{s.title || UNTITLED_SESSION_TITLE}</span>
                             </button>
-                            {menuSessionId === s.id && (
-                              <div className="sb-recent-menu">
-                                <button type="button" onClick={() => startRenameSession(s.id, s.title)}>
-                                  <Edit size={12} />
-                                  <span>Rename</span>
-                                </button>
-                                <button type="button" className="danger" onClick={() => { void handleDeleteSession(s.id) }}>
-                                  <Delete size={12} />
-                                  <span>Delete</span>
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ))}
+                            <div className="sb-recent-menu-wrap relative shrink-0">
+                              <button
+                                className={cx(
+                                  'flex size-[22px] cursor-pointer items-center justify-center rounded-[7px] border-0 bg-transparent text-app-text-muted opacity-0 transition duration-150 hover:bg-[var(--color-hover)] hover:text-app-text group-hover:opacity-100',
+                                  menuOpen && 'bg-[var(--color-hover)] text-app-text opacity-100',
+                                )}
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  setMenuSessionId((current) => current === s.id ? null : s.id)
+                                }}
+                              >
+                                <span className="-translate-y-px text-[var(--font-size-md)] leading-none" aria-hidden="true">...</span>
+                              </button>
+                              {menuOpen && (
+                                <div className="absolute right-0 top-[calc(100%+6px)] z-30 flex min-w-[156px] flex-col gap-0.5 rounded-app-xl border border-app-border-subtle bg-[var(--color-menu-bg)] p-1.5 shadow-[0_14px_28px_rgba(0,0,0,0.24)]">
+                                  <button className="flex w-full cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-[7px] border-0 bg-transparent px-2 py-[7px] text-left text-[var(--font-size-sm)] text-app-text hover:bg-[var(--color-hover)]" type="button" onClick={() => startRenameSession(s.id, s.title)}>
+                                    <Edit size={12} />
+                                    <span>Rename</span>
+                                  </button>
+                                  <button className="flex w-full cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-[7px] border-0 bg-transparent px-2 py-[7px] text-left text-[var(--font-size-sm)] text-[#fda4af] hover:bg-[var(--color-hover)]" type="button" onClick={() => { void handleDeleteSession(s.id) }}>
+                                    <Delete size={12} />
+                                    <span>Delete</span>
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )
+                  })}
                   {recentSessions.length === 0 && (
-                    <div className="sb-empty">No recent chats</div>
+                    <div className="px-4 pb-2 pt-1 text-[var(--font-size-2xs)] italic text-app-text-muted">No recent chats</div>
                   )}
                 </div>
               )}
@@ -304,45 +317,46 @@ export function Sidebar() {
           )}
         </div>
 
-        {/* Footer */}
-        <div className="sb-footer">
-          <div className="sb-console-wrap">
+        <div className="mt-3 border-t border-app-border-subtle px-2.5 pb-4 pt-2.5">
+          <div className="sb-console-wrap relative min-w-0">
             <button
-              className={`sb-console-btn${consoleMenuOpen ? ' open' : ''}${collapsed ? ' collapsed' : ''}`}
+              className={cx(
+                'flex min-w-0 cursor-pointer items-center gap-2 rounded-app-md border-0 bg-transparent px-2 py-1.5 text-[var(--font-size-base)] font-bold text-app-text-secondary transition-colors duration-150 hover:bg-[var(--color-hover)] hover:text-app-text',
+                collapsed ? 'mx-auto w-9 justify-center' : 'w-full',
+                consoleMenuOpen && 'bg-[var(--color-hover)] text-app-text',
+              )}
               onClick={() => setConsoleMenuOpen((open) => !open)}
               aria-label={collapsed ? 'Seshat menu' : undefined}
               aria-expanded={consoleMenuOpen}
               aria-haspopup="menu"
+              type="button"
             >
               <NexusLogo size={collapsed ? 22 : 18} />
               {!collapsed && (
                 <>
-                  <span>SeshatOS</span>
+                  <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">SeshatOS</span>
                   <Down size={12} />
                 </>
               )}
             </button>
 
             {consoleMenuOpen && (
-              <div className={`sb-console-menu${collapsed ? ' collapsed' : ''}`} role="menu">
-                <button type="button" role="menuitem" onClick={() => { setConsoleMenuOpen(false); go('settings') }}>
-                  <SettingTwo theme="outline" size={14} />
-                  <span>Settings</span>
-                </button>
-                <button type="button" role="menuitem" onClick={() => { setConsoleMenuOpen(false); go('feedback') }}>
-                  <Message theme="outline" size={14} />
-                  <span>Feedback</span>
-                </button>
+              <div
+                className={cx(
+                  'absolute bottom-[calc(100%+10px)] left-0 z-50 flex min-w-[190px] flex-col gap-0.5 rounded-app-xl border border-app-border-subtle bg-[var(--color-menu-bg)] p-1.5 shadow-[0_16px_34px_rgba(0,0,0,0.28)]',
+                  collapsed && 'bottom-[calc(100%+8px)] min-w-[164px]',
+                )}
+                role="menu"
+              >
+                <ConsoleMenuButton onClick={() => { setConsoleMenuOpen(false); go('settings') }} icon={<SettingTwo theme="outline" size={14} />} label="Settings" />
+                <ConsoleMenuButton onClick={() => { setConsoleMenuOpen(false); go('feedback') }} icon={<Message theme="outline" size={14} />} label="Feedback" />
                 {connected && (
-                  <button
-                    type="button"
-                    role="menuitem"
-                    disabled={!isAdmin}
+                  <ConsoleMenuButton
                     onClick={() => { setConsoleMenuOpen(false); go('admin') }}
-                  >
-                    <Shield theme="outline" size={14} />
-                    <span>Admin</span>
-                  </button>
+                    icon={<Shield theme="outline" size={14} />}
+                    label="Admin"
+                    disabled={!isAdmin}
+                  />
                 )}
               </div>
             )}
@@ -360,8 +374,6 @@ export function Sidebar() {
   )
 }
 
-// SidebarItem
-
 type ItemProps = {
   icon: React.ReactNode
   label: string
@@ -375,418 +387,52 @@ type ItemProps = {
 function SidebarItem({ icon, label, shortcut, collapsed, active, accent, onClick }: ItemProps) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      className={`sb-item${active ? ' active' : ''}${collapsed ? ' collapsed' : ''}${accent ? ' accent' : ''}`}
+      className={cx(
+        'flex w-full cursor-pointer items-center gap-2 whitespace-nowrap rounded-app-md border-0 bg-transparent px-2.5 py-1.5 text-[var(--font-size-base)] font-semibold text-app-text-secondary transition duration-100 hover:bg-[var(--color-hover)] hover:text-app-text',
+        collapsed && 'mx-auto w-9 justify-center px-0 py-2',
+        active && 'bg-app-primary-subtle text-[var(--color-cta)] hover:bg-app-primary-subtle hover:text-[var(--color-cta)]',
+        accent && 'text-app-primary',
+      )}
       aria-label={collapsed ? label : undefined}
     >
-      <span className="sb-item-icon">{icon}</span>
+      <span className={cx('flex shrink-0 items-center text-app-text-muted', active && 'text-[var(--color-cta)]')}>{icon}</span>
       {!collapsed && (
         <>
-          <span className="sb-item-label">{label}</span>
-          {shortcut && <span className="sb-item-shortcut">{shortcut}</span>}
+          <span className={cx('min-w-0 flex-1 overflow-hidden text-ellipsis text-left', active && 'text-[var(--color-cta)]')}>{label}</span>
+          {shortcut && (
+            <span className="rounded-[4px] bg-app-border-subtle px-[5px] py-px text-[var(--font-size-2xs)] font-bold text-app-text-muted">
+              {shortcut}
+            </span>
+          )}
         </>
       )}
     </button>
   )
 }
 
-// Styles
-
-const SIDEBAR_CSS = `
-.sb-root {
-  position: absolute;
-  top: 0; 
-  left: 0;
-  bottom: 0;
-  display: flex;
-  flex-direction: column;
-  background: var(--color-bg);
-  border-right: 1px solid var(--color-border-subtle);
-  overflow: hidden;
-  z-index: 100;
-  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+function ConsoleMenuButton({
+  icon,
+  label,
+  disabled,
+  onClick,
+}: {
+  icon: React.ReactNode
+  label: string
+  disabled?: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      className="flex w-full cursor-pointer items-center gap-2 whitespace-nowrap rounded-[7px] border-0 bg-transparent px-[9px] py-2 text-left text-[var(--font-size-sm)] font-semibold text-app-text hover:bg-[var(--color-hover)] disabled:cursor-default disabled:opacity-45 disabled:hover:bg-transparent"
+      type="button"
+      role="menuitem"
+      disabled={disabled}
+      onClick={onClick}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
+  )
 }
-
-.sb-section {
-  padding: 14px 8px 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.sb-root.collapsed .sb-section {
-  align-items: center;
-}
-
-.sb-scroll {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.sb-nav-group {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.sb-recents-list {
-  padding-left: 8px;
-  overflow: visible;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding-right: 4px;
-}
-
-.sb-nav-header-row {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.sb-nav-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 8px;
-  font-size: var(--font-size-2xs);
-  font-weight: 700;
-  color: var(--color-text-muted);
-  background: none;
-  border: none;
-  flex: 1;
-  min-width: 0;
-  text-align: left;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.sb-history-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 5px;
-  border: none;
-  background: transparent;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background 0.15s, color 0.15s;
-}
-
-.sb-history-btn:hover {
-  background: var(--color-hover);
-  color: var(--color-text);
-}
-
-.sb-recent-row {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  border-radius: 8px;
-  padding: 1px;
-  overflow: visible;
-}
-
-.sb-recent-row.active {
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.sb-recent-item {
-  flex: 1;
-  min-width: 0;
-  display: block;
-  width: 100%;
-  padding: 5px 8px;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-  background: none;
-  border: none;
-  border-radius: 7px;
-  text-align: left;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.sb-recent-item:hover {
-  background: var(--color-hover);
-  color: var(--color-text);
-}
-
-.sb-recent-item.active {
-  background: var(--color-active);
-  color: var(--color-text);
-  font-weight: 600;
-}
-
-.sb-recent-title {
-  display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.sb-recent-menu-wrap {
-  position: relative;
-  flex-shrink: 0;
-}
-
-.sb-recent-menu-btn {
-  width: 22px;
-  height: 22px;
-  border-radius: 7px;
-  border: none;
-  background: transparent;
-  color: var(--color-text-muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.15s, background 0.15s, color 0.15s;
-}
-
-.sb-recent-menu-icon {
-  font-size: var(--font-size-md);
-  line-height: 1;
-  transform: translateY(-1px);
-}
-
-.sb-recent-row:hover .sb-recent-menu-btn,
-.sb-recent-menu-btn.open {
-  opacity: 1;
-}
-
-.sb-recent-menu-btn:hover,
-.sb-recent-menu-btn.open {
-  background: var(--color-hover);
-  color: var(--color-text);
-}
-
-.sb-recent-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  min-width: 156px;
-  padding: 6px;
-  border-radius: 12px;
-  border: 1px solid var(--color-border-subtle);
-  background: var(--color-menu-bg);
-  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.24);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  z-index: 30;
-}
-
-.sb-recent-menu button {
-  width: 100%;
-  border: none;
-  background: transparent;
-  color: var(--color-text);
-  border-radius: 7px;
-  padding: 7px 8px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--font-size-sm);
-  cursor: pointer;
-  text-align: left;
-  white-space: nowrap;
-}
-
-.sb-recent-menu button:hover {
-  background: var(--color-hover);
-}
-
-.sb-recent-menu button.danger {
-  color: #fda4af;
-}
-
-.sb-recent-rename {
-  width: 100%;
-  min-width: 0;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(239, 124, 47, 0.22);
-  color: var(--color-text);
-  border-radius: 7px;
-  padding: 5px 8px;
-  font-size: var(--font-size-sm);
-  outline: none;
-}
-
-.sb-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 6px 10px;
-  border-radius: 8px;
-  border: none;
-  background: transparent;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-base);
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.1s;
-  white-space: nowrap;
-}
-
-
-.sb-item.collapsed {
-  justify-content: center;
-  padding: 8px 0;
-  width: 36px;
-  margin: 0 auto;
-}
-
-.sb-item:hover {
-  background: var(--color-hover);
-  color: var(--color-text);
-}
-
-.sb-item.active {
-  background: var(--color-primary-subtle);
-  color: var(--color-cta);
-}
-
-.sb-item-icon {
-  display: flex;
-  align-items: center;
-  color: var(--color-text-muted);
-  flex-shrink: 0;
-}
-
-.sb-item.active .sb-item-icon {
-  color: var(--color-cta);
-}
-
-.sb-item.active .sb-item-label {
-  color: var(--color-cta);
-}
-
-.sb-item-label {
-  flex: 1;
-  text-align: left;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.sb-item-shortcut {
-  font-size: var(--font-size-2xs);
-  font-weight: 700;
-  color: var(--color-text-muted);
-  background: var(--color-border-subtle);
-  padding: 1px 5px;
-  border-radius: 4px;
-}
-
-.sb-empty {
-  padding: 4px 16px 8px;
-  font-size: var(--font-size-2xs);
-  color: var(--color-text-muted);
-  font-style: italic;
-}
-
-.sb-footer {
-  margin-top: 12px;
-  padding: 10px 10px 16px;
-  border-top: 1px solid var(--color-border-subtle);
-}
-
-.sb-console-wrap {
-  position: relative;
-  min-width: 0;
-}
-
-.sb-console-btn {
-  width: 100%;
-  background: none;
-  border: none;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-base);
-  font-weight: 700;
-  cursor: pointer;
-  padding: 6px 8px;
-  border-radius: 8px;
-  transition: background 0.15s, color 0.15s;
-}
-
-.sb-console-btn.collapsed {
-  width: 36px;
-  justify-content: center;
-  margin: 0 auto;
-}
-
-.sb-console-btn span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sb-console-btn:hover,
-.sb-console-btn.open {
-  background: var(--color-hover);
-  color: var(--color-text);
-}
-
-.sb-console-menu {
-  position: absolute;
-  left: 0;
-  bottom: calc(100% + 10px);
-  min-width: 190px;
-  padding: 6px;
-  border-radius: 12px;
-  border: 1px solid var(--color-border-subtle);
-  background: var(--color-menu-bg);
-  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.28);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  z-index: 50;
-}
-
-.sb-console-menu.collapsed {
-  left: 0;
-  bottom: calc(100% + 8px);
-  min-width: 164px;
-}
-
-.sb-console-menu button {
-  width: 100%;
-  border: none;
-  background: transparent;
-  color: var(--color-text);
-  border-radius: 7px;
-  padding: 8px 9px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: var(--font-size-sm);
-  font-weight: 650;
-  cursor: pointer;
-  text-align: left;
-  white-space: nowrap;
-}
-
-.sb-console-menu button:hover:not(:disabled) {
-  background: var(--color-hover);
-}
-
-.sb-console-menu button:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-`

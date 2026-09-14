@@ -27,6 +27,7 @@ const EMPTY_MESSAGES: Message[] = []
 
 export function RightPanelHost() {
   const rightColumns = useUIStore((s) => s.rightColumns)
+  const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed)
   const maximizedPanelId = useUIStore((s) => s.maximizedPanelId)
   const closeRightPanel = useUIStore((s) => s.closeRightPanel)
   const toggleMaximizePanel = useUIStore((s) => s.toggleMaximizePanel)
@@ -37,7 +38,10 @@ export function RightPanelHost() {
 
   if (maximized) {
     return (
-      <div className="right-panel-stack right-panel-stack--maximized">
+      <div
+        className="fixed bottom-0 right-0 top-[34px] z-[200] flex min-w-0 flex-col border-l border-app-border-subtle bg-app-bg shadow-[var(--shadow-large)]"
+        style={{ left: sidebarCollapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)' }}
+      >
         <style>{RIGHT_PANEL_CSS}</style>
         <PanelFrame
           panel={maximized}
@@ -50,7 +54,7 @@ export function RightPanelHost() {
   }
 
   return (
-    <div className="right-panel-columns">
+    <div className="relative z-40 flex h-full shrink-0 items-stretch">
       <style>{RIGHT_PANEL_CSS}</style>
       {rightColumns.map((column) => (
         <RightPanelColumnView key={column.id} column={column} />
@@ -102,12 +106,12 @@ function RightPanelColumnView({ column }: { column: RightPanelColumn }) {
   }
 
   return (
-    <div className="right-panel-stack" style={{ width: `${column.width}px` }}>
-      <div className="right-panel-resize-handle" onMouseDown={onWidthDragStart} aria-label="Drag to resize" />
+    <div className="relative flex h-full min-w-0 flex-col border-l border-app-border-subtle bg-app-bg shadow-[var(--shadow-medium)]" style={{ width: `${column.width}px` }}>
+      <div className="absolute bottom-0 left-[-4px] top-0 z-10 w-2 cursor-col-resize transition-colors duration-150 hover:bg-app-primary-subtle active:bg-app-primary-subtle" onMouseDown={onWidthDragStart} aria-label="Drag to resize" />
       {column.panels.map((panel, index) => (
         <div
           key={panel.id}
-          className="right-panel-slot"
+          className="relative flex min-h-0 flex-col"
           style={column.panels.length === 2 ? { flex: index === 0 ? column.split : 1 - column.split } : { flex: 1 }}
         >
           <PanelFrame
@@ -118,7 +122,7 @@ function RightPanelColumnView({ column }: { column: RightPanelColumn }) {
           />
           {column.panels.length === 2 && index === 0 && (
             <div
-              className="right-panel-split-handle"
+              className="absolute bottom-[-4px] left-0 right-0 z-20 h-2 cursor-row-resize transition-colors duration-150 hover:bg-app-primary-subtle active:bg-app-primary-subtle"
               onMouseDown={(e) => onSplitDragStart(e, e.currentTarget.parentElement?.parentElement?.clientHeight ?? 600)}
               aria-label="Drag to resize"
             />
@@ -146,33 +150,33 @@ function PanelFrame({
   // independent header here would just repeat the title underneath it.
   if (panel.kind === 'plan') {
     return (
-      <aside className="right-panel">
+      <aside className="flex min-h-0 flex-1 flex-col overflow-hidden bg-app-surface">
         <PlanEditorPanelHost panel={panel} isMaximized={isMaximized} onClose={onClose} onToggleMaximize={onToggleMaximize} />
       </aside>
     )
   }
 
   return (
-    <aside className="right-panel">
-      <div className="right-panel-header">
-        <div className="right-panel-heading">
-          <span className="right-panel-icon">{renderPanelIcon(panel.kind)}</span>
-          <div className="right-panel-header-copy">
-            <h2 className="right-panel-title">{panel.title}</h2>
-            {panel.sourceLabel && <p className="right-panel-meta">{panel.sourceLabel}</p>}
+    <aside className="flex min-h-0 flex-1 flex-col overflow-hidden bg-app-surface">
+      <div className="flex min-h-[46px] shrink-0 items-center justify-between gap-2 border-b border-app-border-subtle px-3 py-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="flex size-[22px] shrink-0 items-center justify-center rounded-[7px] border border-app-border-subtle bg-app-primary-subtle text-app-primary">{renderPanelIcon(panel.kind)}</span>
+          <div className="min-w-0">
+            <h2 className="overflow-hidden text-ellipsis whitespace-nowrap text-[var(--font-size-base)] font-bold text-app-text">{panel.title}</h2>
+            {panel.sourceLabel && <p className="mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-[var(--font-size-2xs)] font-semibold uppercase tracking-[0.06em] text-app-text-muted">{panel.sourceLabel}</p>}
           </div>
         </div>
-        <div className="right-panel-actions">
-          <button className="right-panel-maximize-btn" type="button" onClick={onToggleMaximize} aria-label={isMaximized ? 'Restore' : 'Maximize'}>
+        <div className="flex shrink-0 items-center gap-1">
+          <button className="flex size-7 cursor-pointer items-center justify-center rounded-[7px] border-0 bg-transparent text-app-text-secondary transition-colors duration-150 hover:bg-[var(--color-hover)] hover:text-app-text" type="button" onClick={onToggleMaximize} aria-label={isMaximized ? 'Restore' : 'Maximize'}>
             <WindowMaximizeIcon />
           </button>
-          <button className="right-panel-close" type="button" onClick={onClose}>
+          <button className="flex size-7 cursor-pointer items-center justify-center rounded-[7px] border-0 bg-transparent text-app-text-secondary transition-colors duration-150 hover:bg-[var(--color-hover)] hover:text-app-text" type="button" onClick={onClose}>
             <WindowCloseIcon />
           </button>
         </div>
       </div>
 
-      <div className="right-panel-body">{renderPanelBody(panel)}</div>
+      <div className="min-h-0 flex-1 overflow-auto bg-app-surface p-3">{renderPanelBody(panel)}</div>
     </aside>
   )
 }
@@ -218,7 +222,7 @@ function renderPanelBody(panel: RightPanelInstance) {
         )
       }
       return panel.plainText ? (
-        <pre className="right-panel-plaintext">{panel.markdown}</pre>
+        <pre className="m-0 whitespace-pre-wrap rounded-app-md border border-app-border-subtle bg-[var(--color-code-bg)] p-3 font-mono text-[var(--font-size-sm)] leading-relaxed text-[var(--color-code-fg)]">{panel.markdown}</pre>
       ) : (
         <MarkdownView sessionId={panel.sessionId}>{panel.markdown}</MarkdownView>
       )
@@ -326,15 +330,15 @@ function KnowledgePanel({ results }: { results: NonNullable<RightPanelInstance['
   }
 
   return (
-    <div className="right-panel-list">
+    <div className="flex flex-col gap-2">
       {results.map((result, index) => {
         const filename = result.metadata?.filename
         const score = Number.isFinite(result.score) ? result.score.toFixed(3) : null
         return (
-          <div key={result.key || String(index)} className="right-panel-list-item">
-            <span className="right-panel-list-title">{filename || `Excerpt ${index + 1}`}</span>
-            {score && <span className="right-panel-list-status">Relevance {score}</span>}
-            <p className="right-panel-list-copy">{result.text}</p>
+          <div key={result.key || String(index)} className="rounded-app-md border border-app-border-subtle bg-app-bg p-2.5">
+            <span className="block text-[var(--font-size-sm)] font-bold text-app-text">{filename || `Excerpt ${index + 1}`}</span>
+            {score && <span className="mt-1 block text-[var(--font-size-2xs)] font-semibold uppercase tracking-[0.06em] text-app-text-muted">Relevance {score}</span>}
+            <p className="mt-1.5 text-[var(--font-size-sm)] leading-relaxed text-app-text-secondary">{result.text}</p>
           </div>
         )
       })}
@@ -435,21 +439,24 @@ export function BrowserPanel({ url, contextId = 'chat' }: { url?: string; contex
   const tabs = state?.tabs ?? []
 
   return (
-    <div className="right-panel-browser">
+    <div className="flex h-full min-h-[420px] flex-col overflow-hidden rounded-app-md border border-app-border-subtle bg-app-bg">
       {tabs.length > 0 && (
-        <div className="right-panel-browser-tabstrip">
+        <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-app-border-subtle bg-app-surface px-2 pb-1.5 pt-2">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               type="button"
-              className={`right-panel-browser-tab${tab.id === state?.activeTabId ? ' active' : ''}`}
+              className={[
+                'flex max-w-[180px] shrink-0 cursor-pointer items-center gap-1.5 rounded-[7px] border border-transparent px-2 py-1.5 text-left text-[var(--font-size-2xs)] font-semibold text-app-text-muted transition-colors duration-150 hover:bg-[var(--color-hover)] hover:text-app-text',
+                tab.id === state?.activeTabId ? 'border-app-border-subtle bg-app-bg text-app-text' : '',
+              ].join(' ')}
               onClick={() => switchToTab(tab.id)}
             >
-              {tab.status === 'loading' ? <LoadingOne className="spin" size={11} /> : <Browser size={11} />}
-              <span>{tab.label}</span>
+              {tab.status === 'loading' ? <LoadingOne className="animate-spin" size={11} /> : <Browser size={11} />}
+              <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{tab.label}</span>
               {tabs.length > 1 && (
                 <span
-                  className="right-panel-browser-tab-close"
+                  className="ml-1 flex size-[18px] shrink-0 items-center justify-center rounded-[5px] text-app-text-muted hover:bg-[var(--color-hover)] hover:text-app-text"
                   role="button"
                   aria-label="Close tab"
                   onClick={(event) => closeTab(event, tab.id)}
@@ -459,29 +466,30 @@ export function BrowserPanel({ url, contextId = 'chat' }: { url?: string; contex
               )}
             </button>
           ))}
-          <button type="button" className="right-panel-browser-tab-add" onClick={openNewTab} aria-label="New tab">
+          <button type="button" className="flex size-[26px] shrink-0 cursor-pointer items-center justify-center rounded-[7px] border border-app-border-subtle bg-app-bg text-app-text-secondary transition-colors duration-150 hover:bg-[var(--color-hover)] hover:text-app-text" onClick={openNewTab} aria-label="New tab">
             <AddOne size={12} />
           </button>
         </div>
       )}
-      <div className="right-panel-browser-toolbar">
-        <button type="button" onClick={() => void browserApi?.back(contextId).then(setState)} disabled={!activeTab?.canGoBack} aria-label="Back">
+      <div className="flex shrink-0 items-center gap-1 border-b border-app-border-subtle bg-app-surface px-2 py-1.5">
+        <button className="flex size-7 cursor-pointer items-center justify-center rounded-[7px] border-0 bg-transparent text-app-text-secondary transition-colors duration-150 hover:bg-[var(--color-hover)] hover:text-app-text disabled:cursor-default disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-app-text-secondary" type="button" onClick={() => void browserApi?.back(contextId).then(setState)} disabled={!activeTab?.canGoBack} aria-label="Back">
           <Left size={12} />
         </button>
-        <button type="button" onClick={() => void browserApi?.forward(contextId).then(setState)} disabled={!activeTab?.canGoForward} aria-label="Forward">
+        <button className="flex size-7 cursor-pointer items-center justify-center rounded-[7px] border-0 bg-transparent text-app-text-secondary transition-colors duration-150 hover:bg-[var(--color-hover)] hover:text-app-text disabled:cursor-default disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-app-text-secondary" type="button" onClick={() => void browserApi?.forward(contextId).then(setState)} disabled={!activeTab?.canGoForward} aria-label="Forward">
           <Right size={12} />
         </button>
-        <button type="button" onClick={() => void browserApi?.reload(contextId).then(setState)} aria-label="Reload">
+        <button className="flex size-7 cursor-pointer items-center justify-center rounded-[7px] border-0 bg-transparent text-app-text-secondary transition-colors duration-150 hover:bg-[var(--color-hover)] hover:text-app-text disabled:cursor-default disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-app-text-secondary" type="button" onClick={() => void browserApi?.reload(contextId).then(setState)} aria-label="Reload">
           <Refresh size={12} />
         </button>
         <form
-          className="right-panel-browser-address"
+          className="min-w-0 flex-1"
           onSubmit={(event) => {
             event.preventDefault()
             void navigate()
           }}
         >
           <input
+            className="h-7 w-full rounded-[8px] border border-app-border-subtle bg-app-bg px-2.5 text-[var(--font-size-sm)] text-app-text outline-none transition-colors duration-150 placeholder:text-app-text-muted focus:border-app-primary"
             value={address}
             onChange={(event) => setAddress(event.target.value)}
             placeholder="Search or enter website"
@@ -489,9 +497,9 @@ export function BrowserPanel({ url, contextId = 'chat' }: { url?: string; contex
           />
         </form>
       </div>
-      <div className="right-panel-browser-viewport" ref={viewportRef}>
+      <div className="relative min-h-[260px] flex-1 overflow-hidden bg-white" ref={viewportRef}>
         {!browserApi && (
-          <div className="right-panel-browser-empty">
+          <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-[var(--font-size-sm)] text-app-text-muted">
             <Browser size={18} />
             <span>Embedded browser is only available in the desktop app.</span>
           </div>
@@ -910,460 +918,14 @@ function formatActivityDuration(entry: AgentState['activityLog'][number]) {
 
 function EmptyState({ title, description }: { title: string; description: string }) {
   return (
-    <div className="right-panel-empty">
-      <h3>{title}</h3>
-      <p>{description}</p>
+    <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+      <h3 className="m-0 text-[var(--font-size-md)] font-bold text-app-text">{title}</h3>
+      <p className="m-0 mt-2 max-w-[280px] text-[var(--font-size-sm)] leading-relaxed text-app-text-muted">{description}</p>
     </div>
   )
 }
 
 export const RIGHT_PANEL_CSS = `
-.right-panel-columns {
-  display: flex;
-  flex-direction: row;
-  flex-shrink: 0;
-  height: 100%;
-  min-width: 0;
-}
-
-.right-panel-stack {
-  flex-shrink: 0;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  position: relative;
-}
-
-/* position:absolute's containing block is the nearest positioned
-   ancestor's *padding* box, which includes the padding area itself - so
-   inset:0 alone would render behind .shell-main's padding-left (i.e.
-   behind the sidebar, which only visually reserves that space via
-   padding, not real layout width). Pin "left" to the same width .shell-main
-   already uses for its own padding so the maximized panel starts exactly
-   where the sidebar ends, on both open and collapsed states. */
-.right-panel-stack--maximized {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: var(--sidebar-width);
-  z-index: 50;
-}
-
-.shell-main.collapsed .right-panel-stack--maximized {
-  left: var(--sidebar-collapsed-width);
-}
-
-.shell-main.no-sidebar .right-panel-stack--maximized {
-  left: 0;
-}
-
-.right-panel-resize-handle {
-  position: absolute;
-  left: -3px;
-  top: 0;
-  bottom: 0;
-  width: 6px;
-  cursor: ew-resize;
-  z-index: 10;
-}
-
-.right-panel-resize-handle:hover,
-.right-panel-resize-handle:active {
-  background: color-mix(in srgb, var(--color-accent, #f97316) 40%, transparent);
-}
-
-.right-panel-slot {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.right-panel-split-handle {
-  height: 6px;
-  margin: -3px 0;
-  cursor: ns-resize;
-  z-index: 10;
-  flex-shrink: 0;
-}
-
-.right-panel-split-handle:hover,
-.right-panel-split-handle:active {
-  background: color-mix(in srgb, var(--color-accent, #f97316) 40%, transparent);
-}
-
-.right-panel {
-  flex: 1;
-  min-height: 0;
-  border-left: 1px solid var(--color-border-subtle);
-  background: color-mix(in srgb, var(--color-bg) 94%, var(--color-surface) 6%);
-  backdrop-filter: blur(14px);
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.right-panel-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.right-panel-maximize-btn {
-  width: 22px;
-  height: 22px;
-  border-radius: 5px;
-  border: none;
-  background: transparent;
-  color: var(--color-text-muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.right-panel-maximize-btn:hover {
-  background: var(--color-hover);
-  color: var(--color-text);
-}
-
-.right-panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  padding: 7px 8px 6px;
-  border-bottom: 1px solid var(--color-border-subtle);
-}
-
-.right-panel-heading {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
-.right-panel-icon {
-  width: 20px;
-  height: 20px;
-  border-radius: 5px;
-  background: rgba(239, 124, 47, 0.12);
-  color: var(--color-accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.right-panel-header-copy {
-  min-width: 0;
-}
-
-.right-panel-title {
-  margin: 0;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.right-panel-meta {
-  margin: 1px 0 0;
-  font-size: 10px;
-  color: var(--color-text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.right-panel-close {
-  width: 22px;
-  height: 22px;
-  border-radius: 5px;
-  border: none;
-  background: transparent;
-  color: var(--color-text-muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.right-panel-close:hover {
-  background: var(--color-hover);
-  color: var(--color-text);
-}
-
-.right-panel-body {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 0;
-  scrollbar-width: thin;
-}
-
-/* Narrower and lower-contrast than the app-wide default (5px,
-   rgba(128,128,128,0.3) on hover) - this panel's scrollbar sits right
-   against the window edge, where the wider/greyer default reads as an
-   overly prominent stripe rather than a scroll affordance. */
-.right-panel-body::-webkit-scrollbar {
-  width: 3px;
-}
-
-.right-panel-body::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.right-panel-body::-webkit-scrollbar-thumb {
-  background: transparent;
-  border-radius: 3px;
-}
-
-.right-panel-body:hover::-webkit-scrollbar-thumb {
-  background: rgba(128, 128, 128, 0.18);
-}
-
-.right-panel-empty {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 14px 13px;
-}
-
-.right-panel-empty h3 {
-  margin: 0;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.right-panel-empty p {
-  margin: 0;
-  font-size: 11px;
-  line-height: 1.6;
-  color: var(--color-text-secondary);
-}
-
-.right-panel-plaintext {
-  margin: 0;
-  padding: 14px 13px;
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 11.5px;
-  line-height: 1.6;
-  color: var(--color-text);
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.right-panel-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 14px 13px;
-}
-
-.right-panel-list-item {
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 11px;
-  padding: 8px 10px;
-  background: rgba(255, 255, 255, 0.02);
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.right-panel-list-title {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.right-panel-list-status {
-  font-size: 10px;
-  color: var(--color-text-muted);
-}
-
-.right-panel-list-copy {
-  margin: 0;
-  font-size: 11px;
-  line-height: 1.6;
-  color: var(--color-text-secondary);
-  white-space: pre-wrap;
-}
-
-.right-panel-browser {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
-  background: color-mix(in srgb, var(--color-bg) 96%, var(--color-surface) 4%);
-  color: var(--color-text);
-}
-
-.right-panel-browser .spin {
-  animation: spin 0.8s linear infinite;
-  display: inline-block;
-}
-
-.right-panel-browser-tabstrip {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 7px 0;
-  background: color-mix(in srgb, var(--color-bg) 92%, var(--color-surface) 8%);
-  overflow-x: auto;
-  flex-shrink: 0;
-  scrollbar-width: none;
-}
-
-.right-panel-browser-tabstrip::-webkit-scrollbar {
-  display: none;
-}
-
-.right-panel-browser-tab {
-  flex-shrink: 0;
-  max-width: 160px;
-  height: 26px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0 8px;
-  border: 1px solid transparent;
-  border-bottom: 0;
-  border-radius: 7px 7px 0 0;
-  background: transparent;
-  color: var(--color-text-muted);
-  font-size: 11px;
-  cursor: pointer;
-}
-
-.right-panel-browser-tab:hover {
-  color: var(--color-text);
-  background: var(--color-hover);
-}
-
-.right-panel-browser-tab.active {
-  color: var(--color-text);
-  border-color: var(--color-border-subtle);
-  background: color-mix(in srgb, var(--color-bg) 86%, var(--color-surface) 14%);
-}
-
-.right-panel-browser-tab span:not(.right-panel-browser-tab-close) {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.right-panel-browser-tab-close {
-  flex-shrink: 0;
-  width: 14px;
-  height: 14px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  color: var(--color-text-muted);
-}
-
-.right-panel-browser-tab-close:hover {
-  background: var(--color-hover);
-  color: var(--color-text);
-}
-
-.right-panel-browser-tab-add {
-  flex-shrink: 0;
-  width: 22px;
-  height: 22px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--color-text-muted);
-  cursor: pointer;
-}
-
-.right-panel-browser-tab-add:hover {
-  color: var(--color-cta);
-  background: rgba(239, 124, 47, 0.1);
-}
-
-.right-panel-browser-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px;
-  border-bottom: 1px solid var(--color-border-subtle);
-  background: color-mix(in srgb, var(--color-bg) 88%, var(--color-surface) 12%);
-  flex-shrink: 0;
-}
-
-.right-panel-browser-toolbar button {
-  width: 26px;
-  height: 26px;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 7px;
-  background: color-mix(in srgb, var(--color-bg) 80%, var(--color-surface) 20%);
-  color: var(--color-text-secondary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.right-panel-browser-toolbar button:hover:not(:disabled) {
-  color: var(--color-text);
-  border-color: var(--color-border-strong);
-}
-
-.right-panel-browser-toolbar button:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.right-panel-browser-address {
-  flex: 1;
-  min-width: 0;
-}
-
-.right-panel-browser-address input {
-  width: 100%;
-  height: 27px;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 7px;
-  background: color-mix(in srgb, var(--color-bg) 78%, var(--color-surface) 22%);
-  color: var(--color-text);
-  padding: 0 9px;
-  font-size: 11px;
-  outline: none;
-}
-
-.right-panel-browser-address input:focus {
-  border-color: rgba(239, 124, 47, 0.7);
-}
-
-.right-panel-browser-viewport {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-  background: color-mix(in srgb, var(--color-bg) 96%, var(--color-surface) 4%);
-}
-
-.right-panel-browser-empty {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  color: var(--color-text-muted);
-  font-size: 11px;
-}
-
 /* Agent Workspace */
 .aw-root {
   display: flex;
@@ -1464,10 +1026,6 @@ export const RIGHT_PANEL_CSS = `
 .aw-tool-stage {
   height: 100%;
   min-height: 0;
-}
-
-.aw-browser-stage .right-panel-browser {
-  border: none;
 }
 
 .aw-tool-stage {

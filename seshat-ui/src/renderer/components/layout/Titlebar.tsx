@@ -11,12 +11,11 @@ type Props = {
   right?: ReactNode
 }
 
+const navButtonClass = 'flex h-7 w-[26px] cursor-pointer items-center justify-center rounded-[5px] border-0 bg-transparent text-app-text-muted transition-colors duration-150 hover:bg-[var(--color-hover)] hover:text-app-text'
+const systemButtonClass = 'flex h-[34px] w-[42px] cursor-pointer items-center justify-center border-0 bg-transparent text-app-text-secondary transition-colors duration-150 hover:bg-[var(--color-hover)]'
+
 // The app runs frameless (frame: false in main/index.ts) so every screen
-// needs its own drag region + minimize/maximize/close — there's no OS
-// titlebar to fall back on. Shared here so screens rendered outside Shell's
-// route tree (Login, Register — see router/index.tsx, they're top-level
-// routes, not Shell children) aren't left without any way to move or close
-// the window.
+// needs its own drag region + minimize/maximize/close.
 export function Titlebar({ left, center, right }: Props) {
   const navigate = useNavigate()
   const handleMinimize = () => window.nexus.window.minimize()
@@ -27,42 +26,43 @@ export function Titlebar({ left, center, right }: Props) {
   const handleHome = () => navigate('/')
 
   return (
-    <div className="shell-titlebar">
-      <style>{TITLEBAR_CSS}</style>
-      <div className="titlebar-left">
+    <div className="relative z-[1000] flex h-[34px] shrink-0 items-center justify-between border-b border-app-border-subtle bg-app-bg px-2 [-webkit-app-region:drag]">
+      <div className="flex items-center gap-1 [-webkit-app-region:no-drag]">
         {left}
-        <div className="tb-nav-group" aria-label="Navigation">
-          <button className="tb-nav-btn" onClick={handleHome} aria-label="Home" type="button">
+        <div className="flex items-center gap-0.5" aria-label="Navigation">
+          <button className={navButtonClass} onClick={handleHome} aria-label="Home" type="button">
             <Home size={14} />
           </button>
-          <button className="tb-nav-btn" onClick={handleBack} aria-label="Back" type="button">
+          <button className={navButtonClass} onClick={handleBack} aria-label="Back" type="button">
             <Left size={14} />
           </button>
-          <button className="tb-nav-btn" onClick={handleForward} aria-label="Forward" type="button">
+          <button className={navButtonClass} onClick={handleForward} aria-label="Forward" type="button">
             <Right size={14} />
           </button>
         </div>
       </div>
+
       {center && (
-        <div className="titlebar-center">
+        <div className="pointer-events-none absolute left-1/2 flex -translate-x-1/2 items-center gap-1.5 text-[11px] font-semibold tracking-[0.02em] text-app-text-muted">
           <NexusLogo size={14} />
           <span>{center}</span>
         </div>
       )}
-      <div className="titlebar-right">
+
+      <div className="flex items-center gap-1 [-webkit-app-region:no-drag]">
         {right && (
           <>
-            <div className="tb-right-slot">{right}</div>
-            <div className="tb-divider" aria-hidden="true" />
+            <div className="flex items-center">{right}</div>
+            <div className="mx-1 h-[18px] w-px bg-app-border-subtle" aria-hidden="true" />
           </>
         )}
-        <button className="tb-sys-btn" onClick={handleMinimize} aria-label="Minimize">
+        <button className={systemButtonClass} onClick={handleMinimize} aria-label="Minimize" type="button">
           <WindowMinimizeIcon />
         </button>
-        <button className="tb-sys-btn" onClick={handleMaximize} aria-label="Maximize/Restore">
+        <button className={systemButtonClass} onClick={handleMaximize} aria-label="Maximize/Restore" type="button">
           <WindowMaximizeIcon />
         </button>
-        <button className="tb-sys-btn close" onClick={handleClose} aria-label="Close">
+        <button className={`${systemButtonClass} hover:bg-app-error hover:text-white`} onClick={handleClose} aria-label="Close" type="button">
           <WindowCloseIcon />
         </button>
       </div>
@@ -70,17 +70,13 @@ export function Titlebar({ left, center, right }: Props) {
   )
 }
 
-// Kept in the titlebar (unlike Settings/Feedback/Admin, which live back in
-// each app's own footer nav - see Sidebar/AutomationPage/KnowledgePage) since
-// it's a single one-click toggle with no menu to get lost in, and every
-// screen already has a titlebar regardless of whether it has a sidebar.
 export function ThemeToggleButton() {
   const theme = useUIStore((s) => s.theme)
   const toggleTheme = useUIStore((s) => s.toggleTheme)
   return (
     <button
       type="button"
-      className="tb-theme-btn"
+      className="flex size-7 cursor-pointer items-center justify-center rounded-[5px] border-0 bg-transparent text-app-text-secondary transition-colors duration-150 hover:bg-[var(--color-hover)] hover:text-app-text"
       onClick={toggleTheme}
       aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
     >
@@ -90,144 +86,3 @@ export function ThemeToggleButton() {
 }
 
 export const TITLEBAR_HEIGHT = 34
-
-export const TITLEBAR_CSS = `
-.shell-titlebar {
-  height: ${TITLEBAR_HEIGHT}px;
-  background: var(--color-bg);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 8px;
-  border-bottom: 1px solid var(--color-border-subtle);
-  -webkit-app-region: drag;
-  z-index: 1000;
-  flex-shrink: 0;
-  position: relative;
-}
-
-.titlebar-left {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  -webkit-app-region: no-drag;
-}
-
-.tb-toggle-btn {
-  background: transparent;
-  border: none;
-  color: var(--color-text-secondary);
-  width: 28px;
-  height: 28px;
-  border-radius: 5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-
-.tb-toggle-btn:hover {
-  background: var(--color-hover);
-  color: var(--color-text);
-}
-
-.tb-nav-group {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.tb-nav-btn {
-  background: transparent;
-  border: none;
-  color: var(--color-text-muted);
-  width: 26px;
-  height: 28px;
-  border-radius: 5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-
-.tb-nav-btn:hover {
-  background: var(--color-hover);
-  color: var(--color-text);
-}
-
-.titlebar-center {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  letter-spacing: 0.02em;
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  pointer-events: none;
-}
-
-.titlebar-right {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  -webkit-app-region: no-drag;
-}
-
-.tb-right-slot {
-  display: flex;
-  align-items: center;
-}
-
-.tb-divider {
-  width: 1px;
-  height: 18px;
-  background: var(--color-border-subtle);
-  margin: 0 4px;
-}
-
-.tb-theme-btn {
-  background: transparent;
-  border: none;
-  color: var(--color-text-secondary);
-  width: 28px;
-  height: 28px;
-  border-radius: 5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-
-.tb-theme-btn:hover {
-  background: var(--color-hover);
-  color: var(--color-text);
-}
-
-.tb-sys-btn {
-  background: transparent;
-  border: none;
-  color: var(--color-text-secondary);
-  width: 42px;
-  height: ${TITLEBAR_HEIGHT}px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.tb-sys-btn:hover {
-  background: var(--color-hover);
-}
-
-.tb-sys-btn.close:hover {
-  background: var(--color-error);
-  color: white;
-}
-`
