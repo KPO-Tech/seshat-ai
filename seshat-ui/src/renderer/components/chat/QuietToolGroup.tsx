@@ -3,6 +3,7 @@ import { useUIStore } from '@/stores/ui'
 import { MarkdownView } from '@/components/MarkdownView'
 import { SilentToolView } from './tool-block/renderers/SilentToolView'
 import { ToolLineItem } from './tool-block/ToolLineItem'
+import { THINKING_MARKDOWN_CLASS } from './thinkingMarkdownClass'
 import { toolStatus } from './tool-block/quietGroupPhrase'
 import { isSilentTool, thinkingIcon, toolSnippet } from './tool-block/toolDisplay'
 import type { ToolBlockProps } from './tool-block/types'
@@ -29,7 +30,6 @@ type Props = {
 export function QuietToolGroup({ items, sessionId, revealThinking = false, autoExpandTools = false, onSubmitPrompt }: Props) {
   return (
     <div className="m-0 flex flex-col">
-      <style>{THINKING_MARKDOWN_CSS}</style>
       <div className="m-0 flex flex-col gap-1.5">
         {items.map((item) => {
           if (item.kind === 'thinking') {
@@ -114,37 +114,9 @@ function ThinkingGroupItem({
       </div>
       {expanded && (
         <div className="rounded-b-md border border-t-0 border-app-border-subtle bg-[color-mix(in_srgb,var(--color-bg)_72%,white)] pb-[10px] pl-[39px] pr-3 pt-[9px] text-[11px] not-italic leading-[1.55] text-app-text-muted">
-          <MarkdownView className="tb-thinking-md" sessionId={sessionId}>{thinking}</MarkdownView>
+          <MarkdownView className={THINKING_MARKDOWN_CLASS} sessionId={sessionId}>{thinking}</MarkdownView>
         </div>
       )}
     </div>
   )
 }
-
-const THINKING_MARKDOWN_CSS = `
-/* Same neutralizing rules as MessageItem.tsx's standalone ThinkingBlock -
-   duplicated (not shared) since QuietToolGroup renders on its own inside
-   SubagentPanel, where MessageItem's own <style> tag isn't guaranteed to be
-   mounted. Reasoning-summary providers (Codex/gpt-5) format their summary
-   with real markdown structure (bold lead-ins, headings, blockquotes) that
-   would otherwise render at full weight instead of this row's small/muted/
-   italic look. */
-.tb-thinking-md h1, .tb-thinking-md h2, .tb-thinking-md h3 {
-  margin: 0 0 4px;
-  font-size: inherit;
-  font-weight: 600;
-  color: inherit;
-}
-
-.tb-thinking-md strong { font-weight: 600; }
-
-.tb-thinking-md blockquote {
-  margin: 4px 0;
-  padding-left: 8px;
-  border-left: 2px solid var(--color-border-subtle);
-  color: inherit;
-}
-
-.tb-thinking-md p { margin: 0 0 6px; }
-.tb-thinking-md p:last-child { margin-bottom: 0; }
-`

@@ -10,6 +10,7 @@ import { ToolBlock } from './ToolBlock'
 import { PermissionCard } from './PermissionCard'
 import { AgentCardsRow } from './AgentToolView'
 import { QuietToolGroup } from './QuietToolGroup'
+import { THINKING_MARKDOWN_CLASS } from './thinkingMarkdownClass'
 import { breaksGroup } from './tool-block/quietGroupPhrase'
 import { isGroupable } from './tool-block/toolDisplay'
 import type { Message, ToolUseBlock, ToolStatus } from '@/api/types'
@@ -159,10 +160,10 @@ function ThinkingBlock({
               bold lead-in line, sometimes a blockquote - which otherwise
               renders at full heading/blockquote weight and blows up what's
               supposed to be a small, muted, italic aside into something
-              that looks like its own card. tb-thinking-md neutralizes that
+              that looks like its own card. These descendant classes neutralize that
               formatting back down to the same subdued style regardless of
               what markdown the model used. */}
-          <MarkdownView className="tb-thinking-md" sessionId={sessionId}>{thinking}</MarkdownView>
+          <MarkdownView className={THINKING_MARKDOWN_CLASS} sessionId={sessionId}>{thinking}</MarkdownView>
         </div>
       )}
     </div>
@@ -439,7 +440,6 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
         isUser && 'flex-row-reverse',
       )}
     >
-      <style>{THINKING_MARKDOWN_CSS}</style>
       <div className={cx('flex min-w-0 flex-1 flex-col gap-1.5', isUser && 'max-w-[85%] items-end')}>
         {attachments.length > 0 && (
           <div className="flex max-w-full flex-nowrap gap-2 overflow-x-auto justify-end px-0.5 py-[5px]">
@@ -612,28 +612,3 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
     </div>
   )
 })
-
-// Same neutralizing rules as QuietToolGroup.tsx's ThinkingGroupItem -
-// duplicated (not shared) since either component can be the only one
-// mounted on a given page, and a plain <style> tag's rules are global the
-// moment either copy lands in the DOM.
-const THINKING_MARKDOWN_CSS = `
-.tb-thinking-md h1, .tb-thinking-md h2, .tb-thinking-md h3 {
-  margin: 0 0 4px;
-  font-size: inherit;
-  font-weight: 600;
-  color: inherit;
-}
-
-.tb-thinking-md strong { font-weight: 600; }
-
-.tb-thinking-md blockquote {
-  margin: 4px 0;
-  padding-left: 8px;
-  border-left: 2px solid var(--color-border-subtle);
-  color: inherit;
-}
-
-.tb-thinking-md p { margin: 0 0 6px; }
-.tb-thinking-md p:last-child { margin-bottom: 0; }
-`
