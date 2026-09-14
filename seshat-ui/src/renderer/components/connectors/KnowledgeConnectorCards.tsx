@@ -26,6 +26,31 @@ export type ConnectFormProps = {
 
 // ─── Google Drive card (OAuth) ─────────────────────────────────────────────
 
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(' ')
+}
+
+const CARD_CSS = 'mb-6 shrink-0 overflow-hidden rounded-xl border-[1.5px] border-[var(--color-border)] bg-app-bg transition-colors duration-200 focus-within:border-[var(--color-primary)]'
+const CARD_HEAD_CSS = 'border-b border-[var(--color-border)] bg-app-surface px-4 py-3.5'
+const CARD_BRAND_CSS = 'flex items-center gap-2.5'
+const BRAND_ICON_CSS = 'flex size-8 items-center justify-center rounded-lg border border-[var(--color-border)] bg-app-bg text-[var(--color-primary)]'
+const BRAND_NAME_CSS = 'text-sm font-bold text-app-text'
+const BRAND_SUB_CSS = 'text-[var(--font-size-2xs)] text-app-text-muted'
+const CARD_BODY_CSS = 'flex flex-col gap-3 p-4'
+const NOTE_CSS = 'text-[12px] leading-[1.6] text-app-text-secondary'
+const INLINE_ERROR_CSS = 'flex items-center gap-1.5 rounded-lg border border-[rgba(var(--color-error-rgb),0.35)] bg-[rgba(var(--color-error-rgb),0.1)] px-[9px] py-2 text-[11px] leading-[1.5] text-app-error'
+const PRIMARY_BTN_CSS = 'inline-flex w-fit shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-[7px] border-0 bg-[var(--color-cta)] px-3 py-[7px] font-inherit text-[11px] font-bold text-white disabled:cursor-default disabled:opacity-45'
+const GHOST_BTN_CSS = 'inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-[7px] border border-[var(--color-border)] bg-transparent px-3 py-[7px] font-inherit text-[11px] font-bold text-app-text-secondary hover:bg-[var(--color-hover)] hover:text-app-text disabled:cursor-default disabled:opacity-45'
+const MODAL_BACKDROP_CSS = 'fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 p-6 [backdrop-filter:blur(2px)]'
+const MODAL_SHELL_CSS = 'flex max-h-[calc(100vh-48px)] w-full max-w-[560px] animate-[slide-up_0.3s_ease-out] flex-col overflow-hidden rounded-[14px] bg-app-bg shadow-[0_30px_80px_rgba(0,0,0,0.2)]'
+const MODAL_HEADER_CSS = 'flex shrink-0 items-center justify-between border-b border-[var(--color-border)] px-[18px] py-3.5'
+const MODAL_CONTENT_CSS = 'min-h-0 flex-1 overflow-y-auto px-[18px] py-4'
+const MODAL_FOOTER_CSS = 'flex shrink-0 justify-end gap-2 border-t border-[var(--color-border)] px-[18px] py-3'
+const MODAL_SUBMIT_CSS = 'cursor-pointer rounded-lg border-0 bg-[var(--color-cta)] px-4 py-[7px] text-[var(--font-size-xs)] font-bold text-white disabled:cursor-not-allowed disabled:opacity-50'
+const FIELD_CSS = 'mt-3 first:mt-0'
+const FIELD_LABEL_CSS = 'mb-2 block text-sm font-bold text-app-text'
+const FIELD_INPUT_CSS = 'w-full rounded-[10px] border-[1.5px] border-[var(--color-border)] bg-app-surface px-3 py-[9px] font-inherit text-sm text-app-text outline-none focus:border-[var(--color-primary)]'
+
 export function DriveConnectorCard({ corpora, lockedCorpusId }: { corpora: Corpus[]; lockedCorpusId?: string }) {
   const [accounts, setAccounts] = useState<ConnectorAccount[]>([])
   const [loading, setLoading] = useState(true)
@@ -108,22 +133,22 @@ export function DriveConnectorCard({ corpora, lockedCorpusId }: { corpora: Corpu
   }
 
   return (
-    <div className="sv-card cnv-card">
-      <div className="sv-card-head">
-        <div className="sv-card-brand">
-          <div className="sv-brand-icon"><FolderClose size={15} /></div>
+    <div className={CARD_CSS}>
+      <div className={CARD_HEAD_CSS}>
+        <div className={CARD_BRAND_CSS}>
+          <div className={BRAND_ICON_CSS}><FolderClose size={15} /></div>
           <div>
-            <div className="sv-brand-name">Google Drive</div>
-            <div className="sv-brand-sub">Sync business documents (PDF, Word, PowerPoint, text) into a corpus</div>
+            <div className={BRAND_NAME_CSS}>Google Drive</div>
+            <div className={BRAND_SUB_CSS}>Sync business documents (PDF, Word, PowerPoint, text) into a corpus</div>
           </div>
         </div>
       </div>
-      <div className="sv-card-body cnv-stack">
-        {error && <div className="cnv-inline-error"><Caution size={13} /> {error}</div>}
+      <div className={CARD_BODY_CSS}>
+        {error && <div className={INLINE_ERROR_CSS}><Caution size={13} /> {error}</div>}
         {loading && accounts.length === 0 ? (
-          <div className="cnv-note">Loading…</div>
+          <div className={NOTE_CSS}>Loading…</div>
         ) : accounts.length === 0 ? (
-          <div className="cnv-note">No Google Drive account connected yet.</div>
+          <div className={NOTE_CSS}>No Google Drive account connected yet.</div>
         ) : (
           accounts.map((account) => (
             <ConnectorAccountRow
@@ -136,8 +161,8 @@ export function DriveConnectorCard({ corpora, lockedCorpusId }: { corpora: Corpu
             />
           ))
         )}
-        <button className="cnv-primary-btn" onClick={() => void handleConnect()} disabled={connecting}>
-          {connecting ? <LoadingOne size={12} className="spin" /> : <Plus size={12} />}
+        <button className={PRIMARY_BTN_CSS} onClick={() => void handleConnect()} disabled={connecting}>
+          {connecting ? <LoadingOne size={12} className="animate-spin" /> : <Plus size={12} />}
           {connecting ? 'Waiting for Google sign-in…' : 'Connect a Google Drive account'}
         </button>
       </div>
@@ -239,22 +264,22 @@ export function SharePointConnectorCard({ corpora, lockedCorpusId }: { corpora: 
   }
 
   return (
-    <div className="sv-card cnv-card">
-      <div className="sv-card-head">
-        <div className="sv-card-brand">
-          <div className="sv-brand-icon"><Share size={15} /></div>
+    <div className={CARD_CSS}>
+      <div className={CARD_HEAD_CSS}>
+        <div className={CARD_BRAND_CSS}>
+          <div className={BRAND_ICON_CSS}><Share size={15} /></div>
           <div>
-            <div className="sv-brand-name">SharePoint</div>
-            <div className="sv-brand-sub">Sync business documents (PDF, Word, PowerPoint, text) into a corpus</div>
+            <div className={BRAND_NAME_CSS}>SharePoint</div>
+            <div className={BRAND_SUB_CSS}>Sync business documents (PDF, Word, PowerPoint, text) into a corpus</div>
           </div>
         </div>
       </div>
-      <div className="sv-card-body cnv-stack">
-        {error && <div className="cnv-inline-error"><Caution size={13} /> {error}</div>}
+      <div className={CARD_BODY_CSS}>
+        {error && <div className={INLINE_ERROR_CSS}><Caution size={13} /> {error}</div>}
         {loading && accounts.length === 0 ? (
-          <div className="cnv-note">Loading…</div>
+          <div className={NOTE_CSS}>Loading…</div>
         ) : accounts.length === 0 ? (
-          <div className="cnv-note">No SharePoint account connected yet.</div>
+          <div className={NOTE_CSS}>No SharePoint account connected yet.</div>
         ) : (
           accounts.map((account) => (
             <ConnectorAccountRow
@@ -267,8 +292,8 @@ export function SharePointConnectorCard({ corpora, lockedCorpusId }: { corpora: 
             />
           ))
         )}
-        <button className="cnv-primary-btn" onClick={() => void handleConnect()} disabled={connecting}>
-          {connecting ? <LoadingOne size={12} className="spin" /> : <Plus size={12} />}
+        <button className={PRIMARY_BTN_CSS} onClick={() => void handleConnect()} disabled={connecting}>
+          {connecting ? <LoadingOne size={12} className="animate-spin" /> : <Plus size={12} />}
           {connecting ? 'Waiting for Microsoft sign-in…' : 'Connect a SharePoint account'}
         </button>
       </div>
@@ -348,22 +373,22 @@ export function StaticAccountConnectorCard({
   }
 
   return (
-    <div className="sv-card cnv-card">
-      <div className="sv-card-head">
-        <div className="sv-card-brand">
-          <div className="sv-brand-icon">{icon}</div>
+    <div className={CARD_CSS}>
+      <div className={CARD_HEAD_CSS}>
+        <div className={CARD_BRAND_CSS}>
+          <div className={BRAND_ICON_CSS}>{icon}</div>
           <div>
-            <div className="sv-brand-name">{title}</div>
-            <div className="sv-brand-sub">{subtitle}</div>
+            <div className={BRAND_NAME_CSS}>{title}</div>
+            <div className={BRAND_SUB_CSS}>{subtitle}</div>
           </div>
         </div>
       </div>
-      <div className="sv-card-body cnv-stack">
-        {error && <div className="cnv-inline-error"><Caution size={13} /> {error}</div>}
+      <div className={CARD_BODY_CSS}>
+        {error && <div className={INLINE_ERROR_CSS}><Caution size={13} /> {error}</div>}
         {loading && accounts.length === 0 ? (
-          <div className="cnv-note">Loading…</div>
+          <div className={NOTE_CSS}>Loading…</div>
         ) : accounts.length === 0 ? (
-          <div className="cnv-note">No account connected yet.</div>
+          <div className={NOTE_CSS}>No account connected yet.</div>
         ) : (
           accounts.map((account) => (
             <ConnectorAccountRow
@@ -376,17 +401,17 @@ export function StaticAccountConnectorCard({
             />
           ))
         )}
-        <button className="cnv-primary-btn" onClick={() => setShowModal(true)}>
+        <button className={PRIMARY_BTN_CSS} onClick={() => setShowModal(true)}>
           <Plus size={12} /> Connect an account
         </button>
       </div>
 
       {showModal && (
-        <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false) }}>
-          <div className="modal-shell">
-            <header className="modal-header">
-              <h2>Connect {title}</h2>
-              <button className="modal-close-btn" onClick={() => setShowModal(false)}>
+        <div className={MODAL_BACKDROP_CSS} onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false) }}>
+          <div className={MODAL_SHELL_CSS}>
+            <header className={MODAL_HEADER_CSS}>
+              <h2 className="m-0 text-lg font-bold text-app-text">Connect {title}</h2>
+              <button className="flex cursor-pointer border-0 bg-transparent text-app-text-muted" onClick={() => setShowModal(false)}>
                 <WindowCloseIcon size={16} />
               </button>
             </header>
@@ -427,39 +452,39 @@ export function S3ConnectForm({ onSubmit, submitting }: ConnectFormProps) {
 
   return (
     <>
-      <div className="modal-content">
-        <div className="modal-field">
-          <label>Display name</label>
-          <input type="text" placeholder="e.g. Company Docs bucket" value={displayName} onChange={(e) => setDisplayName(e.target.value)} autoFocus />
+      <div className={MODAL_CONTENT_CSS}>
+        <div className={FIELD_CSS}>
+          <label className={FIELD_LABEL_CSS}>Display name</label>
+          <input className={FIELD_INPUT_CSS} type="text" placeholder="e.g. Company Docs bucket" value={displayName} onChange={(e) => setDisplayName(e.target.value)} autoFocus />
         </div>
-        <div className="modal-field" style={{ marginTop: 12 }}>
-          <label>Bucket *</label>
-          <input type="text" placeholder="my-bucket" value={bucket} onChange={(e) => setBucket(e.target.value)} />
+        <div className={FIELD_CSS}>
+          <label className={FIELD_LABEL_CSS}>Bucket *</label>
+          <input className={FIELD_INPUT_CSS} type="text" placeholder="my-bucket" value={bucket} onChange={(e) => setBucket(e.target.value)} />
         </div>
-        <div className="modal-field" style={{ marginTop: 12 }}>
-          <label>Endpoint *</label>
-          <input type="text" placeholder="http://127.0.0.1:9000" value={endpoint} onChange={(e) => setEndpoint(e.target.value)} />
+        <div className={FIELD_CSS}>
+          <label className={FIELD_LABEL_CSS}>Endpoint *</label>
+          <input className={FIELD_INPUT_CSS} type="text" placeholder="http://127.0.0.1:9000" value={endpoint} onChange={(e) => setEndpoint(e.target.value)} />
         </div>
-        <div className="modal-field" style={{ marginTop: 12 }}>
-          <label>Region</label>
-          <input type="text" value={region} onChange={(e) => setRegion(e.target.value)} />
+        <div className={FIELD_CSS}>
+          <label className={FIELD_LABEL_CSS}>Region</label>
+          <input className={FIELD_INPUT_CSS} type="text" value={region} onChange={(e) => setRegion(e.target.value)} />
         </div>
-        <div className="modal-field" style={{ marginTop: 12 }}>
-          <label>Key prefix</label>
-          <input type="text" placeholder="Optional, e.g. docs/" value={prefix} onChange={(e) => setPrefix(e.target.value)} />
+        <div className={FIELD_CSS}>
+          <label className={FIELD_LABEL_CSS}>Key prefix</label>
+          <input className={FIELD_INPUT_CSS} type="text" placeholder="Optional, e.g. docs/" value={prefix} onChange={(e) => setPrefix(e.target.value)} />
         </div>
-        <div className="modal-field" style={{ marginTop: 12 }}>
-          <label>Access key ID *</label>
-          <input type="text" value={accessKeyId} onChange={(e) => setAccessKeyId(e.target.value)} />
+        <div className={FIELD_CSS}>
+          <label className={FIELD_LABEL_CSS}>Access key ID *</label>
+          <input className={FIELD_INPUT_CSS} type="text" value={accessKeyId} onChange={(e) => setAccessKeyId(e.target.value)} />
         </div>
-        <div className="modal-field" style={{ marginTop: 12 }}>
-          <label>Secret access key *</label>
-          <input type="password" value={secretAccessKey} onChange={(e) => setSecretAccessKey(e.target.value)} />
+        <div className={FIELD_CSS}>
+          <label className={FIELD_LABEL_CSS}>Secret access key *</label>
+          <input className={FIELD_INPUT_CSS} type="password" value={secretAccessKey} onChange={(e) => setSecretAccessKey(e.target.value)} />
         </div>
-        {error && <div className="cnv-inline-error" style={{ marginTop: 12 }}><Caution size={13} /> {error}</div>}
+        {error && <div className={cx(INLINE_ERROR_CSS, 'mt-3')}><Caution size={13} /> {error}</div>}
       </div>
-      <footer className="modal-footer">
-        <button className="modal-btn-submit" disabled={submitting} onClick={() => void handleSubmit()}>
+      <footer className={MODAL_FOOTER_CSS}>
+        <button className={MODAL_SUBMIT_CSS} disabled={submitting} onClick={() => void handleSubmit()}>
           {submitting ? 'Connecting…' : 'Connect'}
         </button>
       </footer>
@@ -498,31 +523,31 @@ export function AzureBlobConnectForm({ onSubmit, submitting }: ConnectFormProps)
 
   return (
     <>
-      <div className="modal-content">
-        <div className="modal-field">
-          <label>Display name</label>
-          <input type="text" placeholder="e.g. Company Docs container" value={displayName} onChange={(e) => setDisplayName(e.target.value)} autoFocus />
+      <div className={MODAL_CONTENT_CSS}>
+        <div className={FIELD_CSS}>
+          <label className={FIELD_LABEL_CSS}>Display name</label>
+          <input className={FIELD_INPUT_CSS} type="text" placeholder="e.g. Company Docs container" value={displayName} onChange={(e) => setDisplayName(e.target.value)} autoFocus />
         </div>
-        <div className="modal-field" style={{ marginTop: 12 }}>
-          <label>Storage account name *</label>
-          <input type="text" placeholder="mystorageaccount" value={accountName} onChange={(e) => setAccountName(e.target.value)} />
+        <div className={FIELD_CSS}>
+          <label className={FIELD_LABEL_CSS}>Storage account name *</label>
+          <input className={FIELD_INPUT_CSS} type="text" placeholder="mystorageaccount" value={accountName} onChange={(e) => setAccountName(e.target.value)} />
         </div>
-        <div className="modal-field" style={{ marginTop: 12 }}>
-          <label>Container *</label>
-          <input type="text" placeholder="documents" value={container} onChange={(e) => setContainer(e.target.value)} />
+        <div className={FIELD_CSS}>
+          <label className={FIELD_LABEL_CSS}>Container *</label>
+          <input className={FIELD_INPUT_CSS} type="text" placeholder="documents" value={container} onChange={(e) => setContainer(e.target.value)} />
         </div>
-        <div className="modal-field" style={{ marginTop: 12 }}>
-          <label>Prefix</label>
-          <input type="text" placeholder="Optional, e.g. docs/" value={prefix} onChange={(e) => setPrefix(e.target.value)} />
+        <div className={FIELD_CSS}>
+          <label className={FIELD_LABEL_CSS}>Prefix</label>
+          <input className={FIELD_INPUT_CSS} type="text" placeholder="Optional, e.g. docs/" value={prefix} onChange={(e) => setPrefix(e.target.value)} />
         </div>
-        <div className="modal-field" style={{ marginTop: 12 }}>
-          <label>Account key *</label>
-          <input type="password" value={accountKey} onChange={(e) => setAccountKey(e.target.value)} />
+        <div className={FIELD_CSS}>
+          <label className={FIELD_LABEL_CSS}>Account key *</label>
+          <input className={FIELD_INPUT_CSS} type="password" value={accountKey} onChange={(e) => setAccountKey(e.target.value)} />
         </div>
-        {error && <div className="cnv-inline-error" style={{ marginTop: 12 }}><Caution size={13} /> {error}</div>}
+        {error && <div className={cx(INLINE_ERROR_CSS, 'mt-3')}><Caution size={13} /> {error}</div>}
       </div>
-      <footer className="modal-footer">
-        <button className="modal-btn-submit" disabled={submitting} onClick={() => void handleSubmit()}>
+      <footer className={MODAL_FOOTER_CSS}>
+        <button className={MODAL_SUBMIT_CSS} disabled={submitting} onClick={() => void handleSubmit()}>
           {submitting ? 'Connecting…' : 'Connect'}
         </button>
       </footer>
@@ -555,163 +580,40 @@ export function ConnectorAccountRow({
   const effectiveCorpusId = lockedCorpusId ?? corpusId
 
   return (
-    <div className="sv-toggle-row cnv-row">
-      <div className="cnv-row-info">
-        <div className="sv-setting-label">{account.display_name || account.external_account_id}</div>
-        <div className="sv-setting-desc">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-[10px] border border-[var(--color-border)] bg-app-surface px-3 py-[9px]">
+      <div className="min-w-0">
+        <div className="text-sm font-semibold text-app-text">{account.display_name || account.external_account_id}</div>
+        <div className="mt-0.5 text-[var(--font-size-2xs)] text-app-text-muted">
           {account.status === 'error' && account.last_error ? account.last_error : account.status}
         </div>
       </div>
-      <div className="cnv-row-actions">
+      <div className="flex shrink-0 items-center gap-2">
         {!lockedCorpusId && (
-          <select className="cnv-corpus-select" value={corpusId} onChange={(e) => setCorpusId(e.target.value)}>
+          <select
+            className="max-w-40 rounded-[7px] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-2 py-1.5 font-inherit text-[11px] text-app-text"
+            value={corpusId}
+            onChange={(e) => setCorpusId(e.target.value)}
+          >
             <option value="" disabled>Select a corpus…</option>
             {corpora.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         )}
         <button
-          className="cnv-ghost-btn"
+          className={GHOST_BTN_CSS}
           disabled={!effectiveCorpusId || syncing}
           onClick={async () => {
             setSyncing(true)
             try { onSync(effectiveCorpusId) } finally { setSyncing(false) }
           }}
         >
-          {syncing ? <LoadingOne size={12} className="spin" /> : 'Sync'}
+          {syncing ? <LoadingOne size={12} className="animate-spin" /> : 'Sync'}
         </button>
-        <button className="cnv-ghost-btn" onClick={onDisconnect}>
+        <button className={GHOST_BTN_CSS} onClick={onDisconnect}>
           <Close size={12} /> Disconnect
         </button>
       </div>
     </div>
   )
 }
-
-// Base card/modal chrome (.sv-card, .sv-toggle-row, .modal-*) is normally
-// provided by Settings' own shared stylesheet (SettingsNav.tsx) - ported
-// here too (same rules, kept in sync manually) so these cards render
-// correctly wherever they're used, including the Knowledge app's Sources
-// page, which never loads Settings' stylesheet.
-export const KNOWLEDGE_CONNECTOR_CARDS_CSS = `
-.sv-card {
-  background: var(--color-bg);
-  border: 1.5px solid var(--color-border);
-  border-radius: 12px;
-  overflow: hidden;
-  transition: border-color 0.2s;
-  flex-shrink: 0;
-}
-.sv-card:focus-within { border-color: var(--color-primary); }
-.sv-card-head {
-  padding: 14px 16px;
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
-}
-.sv-card-brand { display: flex; align-items: center; gap: 10px; }
-.sv-brand-icon {
-  width: 32px;
-  height: 32px;
-  background: var(--color-bg);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-primary);
-  border: 1px solid var(--color-border);
-}
-.sv-brand-name { font-weight: 700; font-size: var(--font-size-sm); }
-.sv-brand-sub { font-size: var(--font-size-2xs); color: var(--color-text-muted); }
-.sv-card-body { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
-.sv-toggle-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 9px 12px;
-  background: var(--color-surface);
-  border-radius: 10px;
-  border: 1px solid var(--color-border);
-}
-.sv-setting-label { font-size: var(--font-size-sm); font-weight: 600; color: var(--color-text); }
-.sv-setting-desc { font-size: var(--font-size-2xs); color: var(--color-text-muted); margin-top: 2px; }
-.modal-backdrop {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 1000; backdrop-filter: blur(2px);
-  padding: 24px; box-sizing: border-box;
-}
-.modal-shell {
-  background: var(--color-bg); width: 100%; max-width: 560px;
-  border-radius: 14px; box-shadow: 0 30px 80px rgba(0,0,0,0.2);
-  animation: slide-up 0.3s ease-out;
-  display: flex; flex-direction: column;
-  max-height: calc(100vh - 48px); overflow: hidden;
-}
-.modal-header {
-  padding: 14px 18px; display: flex; align-items: center;
-  justify-content: space-between; border-bottom: 1px solid var(--color-border);
-  flex-shrink: 0;
-}
-.modal-header h2 { font-size: var(--font-size-lg); margin: 0; font-weight: 700; color: var(--color-text); }
-.modal-close-btn { background: none; border: none; color: var(--color-text-muted); cursor: pointer; display: flex; }
-.modal-content { padding: 16px 18px; overflow-y: auto; flex: 1; min-height: 0; }
-.modal-field label { display: block; font-size: var(--font-size-sm); font-weight: 700; margin-bottom: 8px; color: var(--color-text); }
-.modal-field input, .modal-field textarea { width: 100%; background: var(--color-surface); border: 1.5px solid var(--color-border); padding: 9px 12px; border-radius: 10px; color: var(--color-text); font-size: var(--font-size-sm); outline: none; font-family: inherit; }
-.modal-field input:focus, .modal-field textarea:focus { border-color: var(--color-primary); }
-.modal-footer {
-  padding: 12px 18px; display: flex; justify-content: flex-end; gap: 8px;
-  border-top: 1px solid var(--color-border); flex-shrink: 0;
-}
-.modal-btn-submit { background: var(--color-cta); color: white; border: none; padding: 7px 16px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: var(--font-size-xs); }
-.modal-btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
-@keyframes slide-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-.cnv-card { margin-bottom: 24px; }
-.cnv-stack { display: flex; flex-direction: column; gap: 12px; }
-.cnv-note { color: var(--color-text-secondary); font-size: 12px; line-height: 1.6; }
-.cnv-row-info { min-width: 0; }
-.cnv-row { align-items: center; gap: 12px; flex-wrap: wrap; }
-.cnv-row-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.cnv-corpus-select {
-  border: 1px solid var(--color-border);
-  background: var(--color-bg-secondary);
-  color: var(--color-text);
-  border-radius: 7px;
-  padding: 6px 8px;
-  font-size: 11px;
-  font-family: inherit;
-  max-width: 160px;
-}
-.cnv-primary-btn,
-.cnv-ghost-btn {
-  border: 1px solid var(--color-border);
-  font-size: 11px;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  cursor: pointer;
-  padding: 7px 12px;
-  border-radius: 7px;
-  font-family: inherit;
-  flex-shrink: 0;
-}
-.cnv-primary-btn { width: fit-content; border: none; background: var(--color-cta); color: white; }
-.cnv-ghost-btn { background: transparent; color: var(--color-text-secondary); }
-.cnv-ghost-btn:hover:not(:disabled) { background: var(--color-hover); color: var(--color-text); }
-.cnv-primary-btn:disabled,
-.cnv-ghost-btn:disabled { opacity: 0.45; cursor: default; }
-.cnv-inline-error {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid rgba(var(--color-error-rgb), 0.35);
-  background: rgba(var(--color-error-rgb), 0.1);
-  color: var(--color-error);
-  border-radius: 8px;
-  padding: 8px 9px;
-  font-size: 11px;
-  line-height: 1.5;
-}
-`
 
 export { CloudStorage }

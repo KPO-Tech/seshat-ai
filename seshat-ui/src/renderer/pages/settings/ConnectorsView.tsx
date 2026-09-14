@@ -9,7 +9,6 @@ import {
   StaticAccountConnectorCard,
   S3ConnectForm,
   CloudStorage,
-  KNOWLEDGE_CONNECTOR_CARDS_CSS,
 } from '@/components/connectors/KnowledgeConnectorCards'
 
 // ConnectorsView is the unified catalog for internal/connector-based
@@ -23,6 +22,31 @@ import {
 // live in components/connectors/KnowledgeConnectorCards.tsx, shared with
 // the Knowledge app's Sources page - only the action-capability piece
 // (ActionAccountRow/TokenConnectForm, below) is specific to this view.
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(' ')
+}
+
+const CARD_CSS = 'mb-6 shrink-0 overflow-hidden rounded-xl border-[1.5px] border-[var(--color-border)] bg-app-bg transition-colors duration-200 focus-within:border-[var(--color-primary)]'
+const CARD_HEAD_CSS = 'border-b border-[var(--color-border)] bg-app-surface px-4 py-3.5'
+const CARD_BRAND_CSS = 'flex items-center gap-2.5'
+const BRAND_ICON_CSS = 'flex size-8 items-center justify-center rounded-lg border border-[var(--color-border)] bg-app-bg text-[var(--color-primary)]'
+const BRAND_NAME_CSS = 'text-sm font-bold text-app-text'
+const BRAND_SUB_CSS = 'text-[var(--font-size-2xs)] text-app-text-muted'
+const CARD_BODY_CSS = 'flex flex-col gap-3 p-4'
+const NOTE_CSS = 'text-[12px] leading-[1.6] text-app-text-secondary'
+const INLINE_ERROR_CSS = 'flex items-center gap-1.5 rounded-lg border border-[rgba(var(--color-error-rgb),0.35)] bg-[rgba(var(--color-error-rgb),0.1)] px-[9px] py-2 text-[11px] leading-[1.5] text-app-error'
+const PRIMARY_BTN_CSS = 'inline-flex w-fit shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-[7px] border-0 bg-[var(--color-cta)] px-3 py-[7px] font-inherit text-[11px] font-bold text-white disabled:cursor-default disabled:opacity-45'
+const GHOST_BTN_CSS = 'inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-[7px] border border-[var(--color-border)] bg-transparent px-3 py-[7px] font-inherit text-[11px] font-bold text-app-text-secondary hover:bg-[var(--color-hover)] hover:text-app-text disabled:cursor-default disabled:opacity-45'
+const MODAL_BACKDROP_CSS = 'fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 p-6 [backdrop-filter:blur(2px)]'
+const MODAL_SHELL_CSS = 'flex max-h-[calc(100vh-48px)] w-full max-w-[560px] animate-[slide-up_0.3s_ease-out] flex-col overflow-hidden rounded-[14px] bg-app-bg shadow-[0_30px_80px_rgba(0,0,0,0.2)]'
+const MODAL_HEADER_CSS = 'flex shrink-0 items-center justify-between border-b border-[var(--color-border)] px-[18px] py-3.5'
+const MODAL_CONTENT_CSS = 'min-h-0 flex-1 overflow-y-auto px-[18px] py-4'
+const MODAL_FOOTER_CSS = 'flex shrink-0 justify-end gap-2 border-t border-[var(--color-border)] px-[18px] py-3'
+const MODAL_SUBMIT_CSS = 'cursor-pointer rounded-lg border-0 bg-[var(--color-cta)] px-4 py-[7px] text-[var(--font-size-xs)] font-bold text-white disabled:cursor-not-allowed disabled:opacity-50'
+const FIELD_CSS = 'mt-3 first:mt-0'
+const FIELD_LABEL_CSS = 'mb-2 block text-sm font-bold text-app-text'
+const FIELD_INPUT_CSS = 'w-full rounded-[10px] border-[1.5px] border-[var(--color-border)] bg-app-surface px-3 py-[9px] font-inherit text-sm text-app-text outline-none focus:border-[var(--color-primary)]'
+
 export function ConnectorsView() {
   const [corpora, setCorpora] = useState<Corpus[]>([])
 
@@ -32,8 +56,6 @@ export function ConnectorsView() {
 
   return (
     <div className="sv-view">
-      <style>{KNOWLEDGE_CONNECTOR_CARDS_CSS}</style>
-      <style>{CONNECTORS_CSS}</style>
       <header className="sv-view-header">
         <div className="sv-header-info">
           <h1>Connectors</h1>
@@ -119,38 +141,38 @@ function ActionConnectorCard({
   }
 
   return (
-    <div className="sv-card cnv-card">
-      <div className="sv-card-head">
-        <div className="sv-card-brand">
-          <div className="sv-brand-icon">{icon}</div>
+    <div className={CARD_CSS}>
+      <div className={CARD_HEAD_CSS}>
+        <div className={CARD_BRAND_CSS}>
+          <div className={BRAND_ICON_CSS}>{icon}</div>
           <div>
-            <div className="sv-brand-name">{title}</div>
-            <div className="sv-brand-sub">{subtitle}</div>
+            <div className={BRAND_NAME_CSS}>{title}</div>
+            <div className={BRAND_SUB_CSS}>{subtitle}</div>
           </div>
         </div>
       </div>
-      <div className="sv-card-body cnv-stack">
-        {error && <div className="cnv-inline-error"><Caution size={13} /> {error}</div>}
+      <div className={CARD_BODY_CSS}>
+        {error && <div className={INLINE_ERROR_CSS}><Caution size={13} /> {error}</div>}
         {loading && accounts.length === 0 ? (
-          <div className="cnv-note">Loading…</div>
+          <div className={NOTE_CSS}>Loading…</div>
         ) : accounts.length === 0 ? (
-          <div className="cnv-note">No account connected yet.</div>
+          <div className={NOTE_CSS}>No account connected yet.</div>
         ) : (
           accounts.map((account) => (
             <ActionAccountRow key={account.id} kind={kind} account={account} onDisconnect={() => void handleDisconnect(account.id)} />
           ))
         )}
-        <button className="cnv-primary-btn" onClick={() => setShowModal(true)}>
+        <button className={PRIMARY_BTN_CSS} onClick={() => setShowModal(true)}>
           Connect an account
         </button>
       </div>
 
       {showModal && (
-        <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false) }}>
-          <div className="modal-shell">
-            <header className="modal-header">
-              <h2>Connect {title}</h2>
-              <button className="modal-close-btn" onClick={() => setShowModal(false)}>
+        <div className={MODAL_BACKDROP_CSS} onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false) }}>
+          <div className={MODAL_SHELL_CSS}>
+            <header className={MODAL_HEADER_CSS}>
+              <h2 className="m-0 text-lg font-bold text-app-text">Connect {title}</h2>
+              <button className="flex cursor-pointer border-0 bg-transparent text-app-text-muted" onClick={() => setShowModal(false)}>
                 <WindowCloseIcon size={16} />
               </button>
             </header>
@@ -193,23 +215,23 @@ function TokenConnectForm({ onSubmit, submitting }: ConnectFormProps) {
 
   return (
     <>
-      <div className="modal-content">
-        <div className="modal-field">
-          <label>Display name</label>
-          <input type="text" placeholder="e.g. Demo CRM" value={displayName} onChange={(e) => setDisplayName(e.target.value)} autoFocus />
+      <div className={MODAL_CONTENT_CSS}>
+        <div className={FIELD_CSS}>
+          <label className={FIELD_LABEL_CSS}>Display name</label>
+          <input className={FIELD_INPUT_CSS} type="text" placeholder="e.g. Demo CRM" value={displayName} onChange={(e) => setDisplayName(e.target.value)} autoFocus />
         </div>
-        <div className="modal-field" style={{ marginTop: 12 }}>
-          <label>External account ID</label>
-          <input type="text" placeholder="Optional label" value={externalId} onChange={(e) => setExternalId(e.target.value)} />
+        <div className={FIELD_CSS}>
+          <label className={FIELD_LABEL_CSS}>External account ID</label>
+          <input className={FIELD_INPUT_CSS} type="text" placeholder="Optional label" value={externalId} onChange={(e) => setExternalId(e.target.value)} />
         </div>
-        <div className="modal-field" style={{ marginTop: 12 }}>
-          <label>Access token *</label>
-          <input type="password" value={token} onChange={(e) => setToken(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSubmit()} />
+        <div className={FIELD_CSS}>
+          <label className={FIELD_LABEL_CSS}>Access token *</label>
+          <input className={FIELD_INPUT_CSS} type="password" value={token} onChange={(e) => setToken(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSubmit()} />
         </div>
-        {error && <div className="cnv-inline-error" style={{ marginTop: 12 }}><Caution size={13} /> {error}</div>}
+        {error && <div className={cx(INLINE_ERROR_CSS, 'mt-3')}><Caution size={13} /> {error}</div>}
       </div>
-      <footer className="modal-footer">
-        <button className="modal-btn-submit" disabled={submitting} onClick={() => void handleSubmit()}>
+      <footer className={MODAL_FOOTER_CSS}>
+        <button className={MODAL_SUBMIT_CSS} disabled={submitting} onClick={() => void handleSubmit()}>
           {submitting ? 'Connecting…' : 'Connect'}
         </button>
       </footer>
@@ -259,39 +281,44 @@ function ActionAccountRow({
   }
 
   return (
-    <div className="cnv-action-row">
-      <div className="sv-toggle-row cnv-row">
-        <div className="cnv-row-info">
-          <div className="sv-setting-label">{account.display_name || account.external_account_id}</div>
-          <div className="sv-setting-desc">
+    <div className="flex flex-col gap-2.5 rounded-[10px] border border-[var(--color-border)] p-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-app-text">{account.display_name || account.external_account_id}</div>
+          <div className="mt-0.5 text-[var(--font-size-2xs)] text-app-text-muted">
             {account.status === 'error' && account.last_error ? account.last_error : account.status}
           </div>
         </div>
-        <button className="cnv-ghost-btn" onClick={onDisconnect}>
+        <button className={GHOST_BTN_CSS} onClick={onDisconnect}>
           <Close size={12} /> Disconnect
         </button>
       </div>
-      <div className="cnv-action-form">
+      <div className="flex flex-col gap-2">
         <input
           type="text"
-          className="cnv-action-name"
+          className="rounded-[7px] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-[9px] py-2 font-inherit text-[12px] text-app-text"
           placeholder="action name, e.g. create_contact"
           value={action}
           onChange={(e) => setAction(e.target.value)}
         />
         <textarea
-          className="cnv-action-payload"
+          className="resize-y rounded-[7px] border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-[9px] py-2 font-mono text-[12px] text-app-text"
           rows={4}
           value={payload}
           onChange={(e) => setPayload(e.target.value)}
           spellCheck={false}
         />
-        <button className="cnv-primary-btn" disabled={!action.trim() || running} onClick={() => void handleRun()}>
-          {running ? <LoadingOne size={12} className="spin" /> : 'Run'}
+        <button className={PRIMARY_BTN_CSS} disabled={!action.trim() || running} onClick={() => void handleRun()}>
+          {running ? <LoadingOne size={12} className="animate-spin" /> : 'Run'}
         </button>
-        {error && <div className="cnv-inline-error"><Caution size={13} /> {error}</div>}
+        {error && <div className={INLINE_ERROR_CSS}><Caution size={13} /> {error}</div>}
         {result && (
-          <pre className={`cnv-result ${result.Success ? 'cnv-result-ok' : 'cnv-result-fail'}`}>
+          <pre className={cx(
+            'm-0 overflow-x-auto whitespace-pre-wrap rounded-lg p-2.5 font-mono text-[11px]',
+            result.Success
+              ? 'border border-[rgba(var(--color-success-rgb),0.35)] bg-[rgba(var(--color-success-rgb),0.08)]'
+              : 'border border-[rgba(var(--color-error-rgb),0.35)] bg-[rgba(var(--color-error-rgb),0.08)]',
+          )}>
             {JSON.stringify(result, null, 2)}
           </pre>
         )}
@@ -299,42 +326,3 @@ function ActionAccountRow({
     </div>
   )
 }
-
-// CONNECTORS_CSS carries only the action-capability rules now -
-// KNOWLEDGE_CONNECTOR_CARDS_CSS (imported above) already provides
-// .cnv-card/.cnv-stack/.cnv-note/.cnv-row*/.cnv-primary-btn/.cnv-ghost-btn/
-// .cnv-inline-error, shared with the Knowledge Sources page.
-const CONNECTORS_CSS = `
-.cnv-action-row {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  padding: 10px;
-}
-.cnv-action-row .cnv-row { border: none; padding: 0; }
-.cnv-action-form { display: flex; flex-direction: column; gap: 8px; }
-.cnv-action-name,
-.cnv-action-payload {
-  border: 1px solid var(--color-border);
-  background: var(--color-bg-secondary);
-  color: var(--color-text);
-  border-radius: 7px;
-  padding: 8px 9px;
-  font-size: 12px;
-  font-family: inherit;
-}
-.cnv-action-payload { font-family: ui-monospace, SFMono-Regular, monospace; resize: vertical; }
-.cnv-result {
-  border-radius: 8px;
-  padding: 10px;
-  font-size: 11px;
-  font-family: ui-monospace, SFMono-Regular, monospace;
-  overflow-x: auto;
-  white-space: pre-wrap;
-  margin: 0;
-}
-.cnv-result-ok { border: 1px solid rgba(var(--color-success-rgb), 0.35); background: rgba(var(--color-success-rgb), 0.08); }
-.cnv-result-fail { border: 1px solid rgba(var(--color-error-rgb), 0.35); background: rgba(var(--color-error-rgb), 0.08); }
-`

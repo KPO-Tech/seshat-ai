@@ -6,7 +6,6 @@ import {
   StaticAccountConnectorCard,
   S3ConnectForm,
   AzureBlobConnectForm,
-  KNOWLEDGE_CONNECTOR_CARDS_CSS,
 } from '@/components/connectors/KnowledgeConnectorCards'
 
 // Sources: governed connection of external systems into a Knowledge corpus
@@ -35,7 +34,6 @@ export function SourcesWorkspace({
 
   return (
     <div className="k-sources">
-      <style>{KNOWLEDGE_CONNECTOR_CARDS_CSS}</style>
       <style>{SOURCES_CSS}</style>
 
       <div className="k-sources-target">
