@@ -15,6 +15,21 @@ import { isGroupable } from './tool-block/toolDisplay'
 import type { Message, ToolUseBlock, ToolStatus } from '@/api/types'
 import type { MessageAttachment, StreamingBlock } from '@/stores/session'
 
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(' ')
+}
+
+// Base look for an attachment tile's clickable surface - border color is
+// layered on separately per category (image/documents/other), see
+// attachmentBorderClass below.
+const ATTACHMENT_THUMB_CSS = 'block h-full w-full cursor-pointer overflow-hidden rounded-app-md border bg-app-bg p-0 text-app-text-secondary'
+
+function attachmentBorderClass(category: string): string {
+  if (category === 'image') return 'border-[color-mix(in_srgb,var(--color-primary)_34%,transparent)]'
+  if (category === 'documents') return 'border-[color-mix(in_srgb,var(--color-success)_32%,transparent)]'
+  return 'border-app-border-subtle'
+}
+
 // Tools that never appear as chat tool blocks - each has its own dedicated
 // surface elsewhere so an inline line here would just be a redundant second
 // copy of the same information:
@@ -119,23 +134,26 @@ function ThinkingBlock({
   const expanded = storedExpansion ?? revealThinking
   const setThinkingExpansion = useUIStore((s) => s.setThinkingExpansion)
   return (
-    <div className="msg-thinking">
+    <div>
       <button
-        className={`msg-thinking-toggle${expanded ? ' open' : ''}`}
+        className={cx(
+          'flex min-h-10 w-full cursor-pointer items-center gap-2 border border-app-border-subtle bg-[color-mix(in_srgb,var(--color-surface-elevated)_58%,var(--color-bg))] px-2.5 py-[7px] text-left text-app-text-secondary transition-colors duration-150 hover:border-[color-mix(in_srgb,var(--color-accent)_20%,var(--color-border-subtle))] hover:bg-[color-mix(in_srgb,var(--color-surface-elevated)_74%,var(--color-bg))] hover:text-app-text',
+          expanded ? 'rounded-t-md' : 'rounded-md',
+        )}
         type="button"
         onClick={() => setThinkingExpansion(thinkingId, !expanded)}
         aria-expanded={expanded}
       >
-        <span className={`msg-thinking-chevron${expanded ? ' open' : ''}`}>
+        <span className={cx('order-3 ml-auto inline-flex opacity-55 transition-transform duration-150', expanded && 'rotate-180')}>
           <Down size={10} />
         </span>
-        <span className="msg-thinking-icon">
+        <span className="inline-flex items-center justify-center text-app-text-muted">
           <Time size={12} />
         </span>
-        <span className="msg-thinking-label">Thinking</span>
+        <span className="text-[12px] font-[650] not-italic text-inherit">Thinking</span>
       </button>
       {expanded && (
-        <div className="msg-thinking-body">
+        <div className="rounded-b-md border border-t-0 border-app-border-subtle bg-[color-mix(in_srgb,var(--color-bg)_72%,white)] pb-[10px] pl-[39px] pr-3 pt-[9px] text-[11px] not-italic leading-[1.55] text-app-text-muted">
           {/* Reasoning-model summaries (Codex/gpt-5's own reasoning_summary
               text) come back with the model's own markdown structure - a
               bold lead-in line, sometimes a blockquote - which otherwise
@@ -302,11 +320,14 @@ async function fetchOfficeThumbnail(fileId: string): Promise<string | null> {
   return extractOfficeThumbnail(bytes.buffer)
 }
 
+const LIVE_ACTIVITY_ROOT_CSS = 'mt-0.5 inline-flex min-w-0 items-center gap-[7px] text-app-text-secondary'
+const LIVE_ACTIVITY_TEXT_CSS = 'min-w-0 truncate text-[12px] font-medium text-inherit [animation:msg-live-activity-fade_0.25s_ease]'
+
 function LiveActivityBlock({ label, detail }: { label: string; detail?: string }) {
   return (
-    <div className="msg-live-activity" aria-live="polite">
-      <NexusLogo size={16} className="msg-live-activity-logo" />
-      <span className="msg-live-activity-text" key={`${label}-${detail ?? ''}`}>
+    <div className={LIVE_ACTIVITY_ROOT_CSS} aria-live="polite">
+      <NexusLogo size={16} className="shrink-0 [animation:msg-live-activity-pulse_1.8s_ease-in-out_infinite]" />
+      <span className={LIVE_ACTIVITY_TEXT_CSS} key={`${label}-${detail ?? ''}`}>
         {label}{detail ? ` - ${detail}` : '...'}
       </span>
     </div>
@@ -319,9 +340,9 @@ function LiveActivityBlock({ label, detail }: { label: string; detail?: string }
 // after ~1.5s (see Conversation.tsx), so this never needs its own timer.
 function CompletionFlash() {
   return (
-    <div className="msg-live-activity msg-completion-flash" aria-live="polite">
-      <CheckOne size={16} theme="filled" className="msg-completion-flash-icon" />
-      <span className="msg-live-activity-text">Done</span>
+    <div className={cx(LIVE_ACTIVITY_ROOT_CSS, 'text-app-success [animation:msg-live-activity-fade_0.25s_ease]')} aria-live="polite">
+      <CheckOne size={16} theme="filled" className="shrink-0" />
+      <span className={LIVE_ACTIVITY_TEXT_CSS}>Done</span>
     </div>
   )
 }
@@ -411,10 +432,17 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
   const renderItems = groupBlocks(visibleBlocks, message.id ?? 'msg')
 
   return (
-    <div className={`msg-row ${isUser ? 'user' : 'assistant'}${compact ? ' compact' : ''}`}>
-      <div className="msg-content">
+    <div
+      className={cx(
+        'group flex w-full items-start gap-3 first:mt-0',
+        compact ? 'mt-2' : 'mt-[22px]',
+        isUser && 'flex-row-reverse',
+      )}
+    >
+      <style>{THINKING_MARKDOWN_CSS}</style>
+      <div className={cx('flex min-w-0 flex-1 flex-col gap-1.5', isUser && 'max-w-[85%] items-end')}>
         {attachments.length > 0 && (
-          <div className="msg-attachments">
+          <div className="flex max-w-full flex-nowrap gap-2 overflow-x-auto justify-end px-0.5 py-[5px]">
             {attachments.map((file) => {
               const isImage = file.category === 'images' || file.content_type?.startsWith('image/')
               const previewURL = file.page_preview_urls?.[0] ?? file.preview_url ?? hydratedPreviews[file.id]
@@ -449,22 +477,26 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
                   void window.nexus?.openPath?.(file.local_path)
                 }
               }
+              const category = isImage ? 'image' : file.category ?? 'other'
+              const borderClass = attachmentBorderClass(category)
               return (
-                <div key={file.id} className={`msg-attachment msg-attachment--${isImage ? 'image' : file.category ?? 'other'}`}>
+                <div key={file.id} className="relative size-12 shrink-0">
                   {previewURL ? (
-                    <button className="msg-attachment-thumb" type="button" onClick={onOpen} aria-label={tooltip}>
-                      <img src={previewURL} alt={file.filename} />
+                    <button className={cx(ATTACHMENT_THUMB_CSS, borderClass)} type="button" onClick={onOpen} aria-label={tooltip}>
+                      <img className="block h-full w-full object-cover" src={previewURL} alt={file.filename} />
                     </button>
                   ) : textPreview ? (
-                    <button className="msg-attachment-thumb msg-attachment-thumb--text" type="button" onClick={onOpen}>
-                      <span className="msg-attachment-text-preview">{textPreview}</span>
+                    <button className={cx(ATTACHMENT_THUMB_CSS, borderClass, 'px-[5px] py-1 text-left')} type="button" onClick={onOpen}>
+                      <span className="line-clamp-[7] overflow-hidden whitespace-pre-wrap break-words font-mono text-[6px] leading-[1.3] text-app-text-muted">{textPreview}</span>
                     </button>
                   ) : (
-                    <button className="msg-attachment-file" type="button" onClick={onOpen} aria-label={tooltip || file.filename}>
+                    <button className={cx(ATTACHMENT_THUMB_CSS, borderClass, 'flex items-center justify-center')} type="button" onClick={onOpen} aria-label={tooltip || file.filename}>
                       <AttachmentTypeIcon filename={file.filename} />
                     </button>
                   )}
-                  {extLabel && <span className="msg-attachment-thumb-badge">{extLabel}</span>}
+                  {extLabel && (
+                    <span className="pointer-events-none absolute bottom-[3px] left-[3px] rounded-app-xs bg-[rgba(0,0,0,0.72)] px-1 py-px text-[8px] font-extrabold tracking-[0.02em] text-white">{extLabel}</span>
+                  )}
                 </div>
               )
             })}
@@ -502,14 +534,23 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
 
           const block = item.block
           if (block.type === 'text') {
-            const statusClass = isUser && message.status === 'sending' ? ' msg-bubble--sending' : isUser && message.status === 'error' ? ' msg-bubble--failed' : ''
             return (
-              <div key={`${message.id ?? 'msg'}-text-${item.index}`} className={`msg-bubble${isUser ? '' : ' msg-bubble--plain'}${statusClass}`}>
+              <div
+                key={`${message.id ?? 'msg'}-text-${item.index}`}
+                className={cx(
+                  'text-[14px] leading-[1.62] text-app-text',
+                  isUser
+                    ? 'rounded-[12px_12px_4px_12px] border border-app-border-subtle bg-app-surface px-[11px] py-[7px]'
+                    : 'rounded-none border-0 bg-transparent p-0',
+                  isUser && message.status === 'sending' && 'opacity-55',
+                  isUser && message.status === 'error' && 'border-app-error',
+                )}
+              >
                 <MarkdownView sessionId={sessionId}>{block.text}</MarkdownView>
                 {isUser && message.status === 'error' && (
                   <button
                     type="button"
-                    className="msg-retry-btn"
+                    className="mt-1.5 block cursor-pointer border-0 bg-none p-0 text-left text-[12px] font-medium text-app-error hover:underline"
                     onClick={() => onRetryMessage?.(block.text)}
                   >
                     Failed to send · Retry
@@ -554,9 +595,9 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
         {!liveActivity && justCompleted && <CompletionFlash />}
 
         {copyText && !hasVisibleTool && (
-          <div className="msg-footer">
+          <div className={cx('mt-0.5 flex items-center gap-[7px] opacity-0 transition-opacity duration-200 group-hover:opacity-100', isUser && 'flex-row-reverse')}>
             <button
-              className="msg-action-btn"
+              className="flex cursor-pointer items-center rounded-app-xs border-0 bg-transparent p-0.5 text-app-text-muted hover:bg-[var(--color-hover)] hover:text-app-text-secondary"
               aria-label="Copy"
               type="button"
               onClick={() => {
@@ -572,251 +613,13 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
   )
 })
 
-export const MESSAGE_ITEM_CSS = `
-.msg-row {
-  display: flex;
-  gap: 12px;
-  width: 100%;
-  align-items: flex-start;
-  margin-top: 22px;
-}
-
-.msg-row:first-child {
-  margin-top: 0;
-}
-
-.msg-row.compact {
-  margin-top: 8px;
-}
-
-.msg-row.user {
-  flex-direction: row-reverse;
-}
-
-.msg-content {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  flex: 1;
-  min-width: 0;
-}
-
-.msg-row.user .msg-content {
-  align-items: flex-end;
-  max-width: 85%;
-}
-
-.msg-bubble {
-  font-size: 14px;
-  line-height: 1.62;
-  color: var(--color-text);
-}
-
-.msg-bubble--plain {
-  background: transparent;
-  padding: 0;
-  border: none;
-  border-radius: 0;
-}
-
-.msg-row.user .msg-bubble {
-  background: var(--color-surface);
-  padding: 7px 11px;
-  border-radius: 12px 12px 4px 12px;
-  border: 1px solid var(--color-border-subtle);
-}
-
-.msg-bubble--sending {
-  opacity: 0.55;
-}
-
-.msg-bubble--failed {
-  border-color: var(--color-error);
-}
-
-.msg-retry-btn {
-  display: block;
-  margin-top: 6px;
-  padding: 0;
-  background: none;
-  border: none;
-  color: var(--color-error);
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  text-align: left;
-}
-
-.msg-retry-btn:hover {
-  text-decoration: underline;
-}
-
-.msg-attachments {
-  display: flex;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  justify-content: flex-end;
-  gap: 8px;
-  max-width: 100%;
-  padding: 5px 2px;
-}
-
-.msg-attachment {
-  position: relative;
-  flex-shrink: 0;
-  width: 48px;
-  height: 48px;
-}
-
-.msg-attachment--image .msg-attachment-thumb,
-.msg-attachment--image .msg-attachment-file {
-  border-color: color-mix(in srgb, var(--color-primary) 34%, transparent);
-}
-
-.msg-attachment--documents .msg-attachment-thumb,
-.msg-attachment--documents .msg-attachment-file {
-  border-color: color-mix(in srgb, var(--color-success) 32%, transparent);
-}
-
-.msg-attachment-thumb,
-.msg-attachment-file {
-  display: block;
-  width: 100%;
-  height: 100%;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border-subtle);
-  background: var(--color-bg);
-  color: var(--color-text-secondary);
-  overflow: hidden;
-  cursor: pointer;
-  padding: 0;
-}
-
-.msg-attachment-file {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.msg-attachment-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.msg-attachment-thumb--text {
-  padding: 4px 5px;
-  text-align: left;
-}
-
-.msg-attachment-text-preview {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 7;
-  overflow: hidden;
-  font-family: var(--font-mono, monospace);
-  font-size: 6px;
-  line-height: 1.3;
-  color: var(--color-text-muted);
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.msg-attachment-thumb-badge {
-  position: absolute;
-  left: 3px;
-  bottom: 3px;
-  background: rgba(0, 0, 0, 0.72);
-  color: white;
-  border-radius: var(--radius-xs);
-  padding: 1px var(--space-2);
-  font-size: 8px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  pointer-events: none;
-}
-
-.msg-tool-result {
-  color: var(--color-text-secondary);
-}
-
-.msg-thinking {
-  margin: 0;
-}
-
-.msg-thinking-toggle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  min-height: 40px;
-  background: color-mix(in srgb, var(--color-surface-elevated) 58%, var(--color-bg));
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 6px;
-  padding: 7px 10px;
-  cursor: pointer;
-  color: var(--color-text-secondary);
-  text-align: left;
-}
-
-.msg-thinking-toggle:hover {
-  color: var(--color-text);
-  background: color-mix(in srgb, var(--color-surface-elevated) 74%, var(--color-bg));
-  border-color: color-mix(in srgb, var(--color-accent) 20%, var(--color-border-subtle));
-}
-
-.msg-thinking-toggle.open {
-  border-radius: 6px 6px 0 0;
-}
-
-.msg-thinking-label {
-  font-size: 12px;
-  color: inherit;
-  font-style: normal;
-  font-weight: 650;
-}
-
-.msg-thinking-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-muted);
-}
-
-.msg-thinking-chevron {
-  display: inline-flex;
-  color: inherit;
-  opacity: 0.55;
-  transition: transform 0.15s ease;
-  margin-left: auto;
-  order: 3;
-}
-
-.msg-thinking-chevron.open {
-  transform: rotate(180deg);
-}
-
-.msg-thinking-body {
-  margin-top: 0;
-  padding: 9px 12px 10px 39px;
-  border: 1px solid var(--color-border-subtle);
-  border-top: none;
-  border-radius: 0 0 6px 6px;
-  background: color-mix(in srgb, var(--color-bg) 72%, white);
-  font-size: 11px;
-  font-style: normal;
-  color: var(--color-text-muted);
-  line-height: 1.55;
-}
-
-/* Neutralizes the model's own markdown structure (bold lead-ins, headings,
-   blockquotes - reasoning-summary providers like Codex format their summary
-   this way) back down to the same small/muted look as the rest of
-   the thinking body, instead of a nested heading/blockquote fighting for
-   attention with its own border and full-brightness text. */
+// Same neutralizing rules as QuietToolGroup.tsx's ThinkingGroupItem -
+// duplicated (not shared) since either component can be the only one
+// mounted on a given page, and a plain <style> tag's rules are global the
+// moment either copy lands in the DOM.
+const THINKING_MARKDOWN_CSS = `
 .tb-thinking-md h1, .tb-thinking-md h2, .tb-thinking-md h3 {
-  margin: 0 0 var(--space-2);
+  margin: 0 0 4px;
   font-size: inherit;
   font-weight: 600;
   color: inherit;
@@ -825,89 +628,12 @@ export const MESSAGE_ITEM_CSS = `
 .tb-thinking-md strong { font-weight: 600; }
 
 .tb-thinking-md blockquote {
-  margin: var(--space-2) 0;
-  padding-left: var(--space-4);
+  margin: 4px 0;
+  padding-left: 8px;
   border-left: 2px solid var(--color-border-subtle);
   color: inherit;
 }
 
-.tb-thinking-md p { margin: 0 0 var(--space-3); }
+.tb-thinking-md p { margin: 0 0 6px; }
 .tb-thinking-md p:last-child { margin-bottom: 0; }
-
-.msg-live-activity {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  margin: 2px 0 0;
-  color: var(--color-text-secondary);
-  min-width: 0;
-}
-
-.msg-live-activity-logo {
-  flex-shrink: 0;
-  animation: msg-live-activity-pulse 1.8s ease-in-out infinite;
-}
-
-@keyframes msg-live-activity-pulse {
-  0%, 100% { opacity: 0.5; transform: scale(0.88); }
-  50%      { opacity: 1;   transform: scale(1); }
-}
-
-.msg-live-activity-text {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 12px;
-  font-weight: 500;
-  color: inherit;
-  animation: msg-live-activity-fade 0.25s ease;
-}
-
-.msg-completion-flash {
-  color: var(--color-success);
-  animation: msg-live-activity-fade 0.25s ease;
-}
-
-.msg-completion-flash-icon {
-  flex-shrink: 0;
-}
-
-@keyframes msg-live-activity-fade {
-  from { opacity: 0; transform: translateY(2px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-.msg-footer {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin-top: var(--space-1);
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.msg-row:hover .msg-footer {
-  opacity: 1;
-}
-
-.msg-row.user .msg-footer {
-  flex-direction: row-reverse;
-}
-
-.msg-action-btn {
-  background: transparent;
-  border: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  padding: var(--space-1);
-  display: flex;
-  align-items: center;
-  border-radius: var(--radius-xs);
-}
-
-.msg-action-btn:hover {
-  background: var(--color-hover);
-  color: var(--color-text-secondary);
-}
 `

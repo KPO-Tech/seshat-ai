@@ -4,6 +4,12 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import type { ToolUseBlock } from '@/api/types'
 import { languageForPath } from './helpers'
 
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(' ')
+}
+
+const SCROLL_THIN = '[scrollbar-width:thin] [scrollbar-color:var(--color-border-subtle)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-app-border-subtle [&::-webkit-scrollbar-thumb]:rounded'
+
 // ─── Backend payload shapes ─────────────────────────────────────────────────
 // Mirrors github.com/KPO-Tech/seshat's edit_file/write_file tool output
 // (internal/tools/files/edit/edit.go, .../write/write.go) — note the mixed
@@ -211,29 +217,46 @@ export function DiffView({
     .join('\n')
 
   return (
-    <div className="tb-difv">
-      <style>{DIFF_VIEW_CSS}</style>
+    <div className="flex flex-col">
       {filePath && (
-        <div className="tb-edit-path-row">
-          <span className="tb-filepath-full" title={filePath}>{filePath}</span>
-          <span className="tb-difv-stats">
-            <span className="tb-difv-add">+{addCount}</span>
-            <span className="tb-difv-del">−{delCount}</span>
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-t-lg border border-b-0 border-app-border-subtle bg-[rgba(255,255,255,0.03)] px-[9px] py-1.5">
+          <span className="min-w-0 flex-1 truncate font-['JetBrains_Mono','Fira_Code',monospace] text-[11px] text-app-text-muted" title={filePath}>{filePath}</span>
+          <span className="flex items-center gap-1.5 font-['JetBrains_Mono','Fira_Code',monospace] text-[10px] font-bold">
+            <span className="text-[#6ee7b7]">+{addCount}</span>
+            <span className="text-[#fca5a5]">−{delCount}</span>
           </span>
         </div>
       )}
-      <div className="tb-diff">
-        <button className="tb-diff-copy" type="button" aria-label="Copy diff" onClick={() => void navigator.clipboard.writeText(copyText)}>
+      <div
+        className={cx(
+          'group relative max-h-[360px] overflow-auto rounded-lg border border-app-border-subtle bg-[rgba(0,0,0,0.2)] font-[\'JetBrains_Mono\',\'Fira_Code\',monospace] text-[11.5px] leading-[1.55]',
+          filePath && 'rounded-t-none border-t-0',
+          SCROLL_THIN,
+        )}
+      >
+        <button
+          className="absolute right-1.5 top-1.5 z-[2] flex size-[26px] items-center justify-center rounded-md border border-app-border-subtle bg-[rgba(0,0,0,0.4)] text-app-text-muted opacity-0 transition-opacity duration-150 group-hover:opacity-100 hover:text-app-text"
+          type="button"
+          aria-label="Copy diff"
+          onClick={() => void navigator.clipboard.writeText(copyText)}
+        >
           <Copy size={10} />
         </button>
         {rows.map((row, i) => (
-          <div key={i} className={`tb-difv-row tb-difv-row--${row.type}`}>
-            <span className="tb-difv-gutter tb-difv-gutter--old">{row.oldLineNo ?? ''}</span>
-            <span className="tb-difv-gutter tb-difv-gutter--new">{row.newLineNo ?? ''}</span>
-            <span className="tb-diff-sign" aria-hidden>
+          <div
+            key={i}
+            className={cx(
+              'flex items-start py-0 pr-[7px]',
+              row.type === 'del' && 'bg-[rgba(var(--color-error-rgb),0.10)]',
+              row.type === 'add' && 'bg-[rgba(var(--color-success-rgb),0.08)]',
+            )}
+          >
+            <span className="w-[34px] shrink-0 select-none pr-1 text-right text-[var(--color-text-disabled)]">{row.oldLineNo ?? ''}</span>
+            <span className="w-[34px] shrink-0 select-none pr-1 text-right text-[var(--color-text-disabled)]">{row.newLineNo ?? ''}</span>
+            <span className="w-3.5 shrink-0 select-none text-center font-bold" aria-hidden>
               {row.type === 'add' ? '+' : row.type === 'del' ? '−' : ' '}
             </span>
-            <span className="tb-difv-code">
+            <span className="min-w-0 flex-1 whitespace-pre-wrap break-all pl-[3px] text-app-text-secondary">
               {language ? (
                 <SyntaxHighlighter
                   language={language}
@@ -255,58 +278,3 @@ export function DiffView({
     </div>
   )
 }
-
-const DIFF_VIEW_CSS = `
-.tb-difv {
-  display: flex;
-  flex-direction: column;
-}
-
-/* Fused directly to .tb-edit-path-row above (see styles.ts) - no border-top
-   or top radius of its own, so the path/stats strip and the diff body read
-   as one continuous bordered box instead of two stacked ones. */
-.tb-edit-path-row + .tb-diff {
-  border-top: none;
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
-}
-
-.tb-difv-stats {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 10px;
-  font-weight: 700;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-}
-
-.tb-difv-add { color: #6ee7b7; }
-.tb-difv-del { color: #fca5a5; }
-
-.tb-difv-row {
-  display: flex;
-  align-items: flex-start;
-  padding: 0 7px 0 0;
-}
-
-.tb-difv-row--del { background: rgba(var(--color-error-rgb), 0.10); }
-.tb-difv-row--add { background: rgba(var(--color-success-rgb), 0.08); }
-
-.tb-difv-gutter {
-  flex-shrink: 0;
-  width: 34px;
-  text-align: right;
-  padding-right: 4px;
-  color: var(--color-text-disabled);
-  user-select: none;
-}
-
-.tb-difv-code {
-  flex: 1;
-  min-width: 0;
-  white-space: pre-wrap;
-  word-break: break-all;
-  color: var(--color-text-secondary);
-  padding-left: 3px;
-}
-`

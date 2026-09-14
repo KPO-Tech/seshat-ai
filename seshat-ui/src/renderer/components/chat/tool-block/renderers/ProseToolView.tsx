@@ -1,4 +1,4 @@
-import { ProseBox, Section } from '../common'
+import { ErrorPre, ProseBox, Section } from '../common'
 import type { ToolViewProps } from '../types'
 
 // Shared body for tools whose result is genuinely readable text (a feed of
@@ -10,7 +10,7 @@ export function ProseToolView({ result }: ToolViewProps) {
   if (result?.isError) {
     return result.content ? (
       <Section label="Error">
-        <pre className="tb-pre tb-pre--error">{result.content}</pre>
+        <ErrorPre content={result.content} />
       </Section>
     ) : null
   }

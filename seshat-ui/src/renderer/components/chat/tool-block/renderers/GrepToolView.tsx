@@ -1,4 +1,4 @@
-import { CodeBox, HeaderCard, Section } from '../common'
+import { CodeBox, ErrorPre, HCARD_HEADER_PATH_CSS, HeaderCard, Section } from '../common'
 import type { ToolViewProps } from '../types'
 
 export function GrepToolView({ tool, result }: ToolViewProps) {
@@ -9,7 +9,7 @@ export function GrepToolView({ tool, result }: ToolViewProps) {
   if (result?.isError && result.content) {
     return (
       <Section label="Error">
-        <pre className="tb-pre tb-pre--error">{result.content}</pre>
+        <ErrorPre content={result.content} />
       </Section>
     )
   }
@@ -21,8 +21,8 @@ export function GrepToolView({ tool, result }: ToolViewProps) {
       header={
         <>
           <span>{pattern}</span>
-          {include && <span className="tb-hcard-header-path">{include}</span>}
-          {path && <span className="tb-hcard-header-path">{path}</span>}
+          {include && <span className={HCARD_HEADER_PATH_CSS}>{include}</span>}
+          {path && <span className={HCARD_HEADER_PATH_CSS}>{path}</span>}
         </>
       }
     >

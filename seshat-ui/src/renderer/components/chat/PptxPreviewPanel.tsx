@@ -68,57 +68,16 @@ export function PptxPreviewPanel({ fileId, filename }: Props) {
   }, [fileId])
 
   return (
-    <div className="pptx-preview-panel">
-      <style>{PPTX_PREVIEW_CSS}</style>
-      <div className="pptx-preview-scroll" ref={scrollRef}>
-        <div className="pptx-preview-container" ref={containerRef} />
+    <div className="relative h-full min-h-0">
+      <div className="h-full overflow-auto bg-app-surface p-3" ref={scrollRef}>
+        <div className="min-w-max [&>*]:mx-auto" ref={containerRef} />
       </div>
-      {status === 'loading' && <div className="pptx-preview-status">Loading {filename}...</div>}
+      {status === 'loading' && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-app-surface px-5 text-center text-[12px] text-app-text-muted">Loading {filename}...</div>
+      )}
       {status === 'error' && (
-        <div className="pptx-preview-status pptx-preview-status--error">Couldn't load this presentation: {errorMessage}</div>
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-app-surface px-5 text-center text-[12px] text-app-error">Couldn't load this presentation: {errorMessage}</div>
       )}
     </div>
   )
 }
-
-const PPTX_PREVIEW_CSS = `
-.pptx-preview-panel {
-  position: relative;
-  height: 100%;
-  min-height: 0;
-}
-
-.pptx-preview-scroll {
-  height: 100%;
-  overflow: auto;
-  background: var(--color-surface);
-  padding: 12px;
-}
-
-.pptx-preview-container {
-  min-width: max-content;
-}
-
-.pptx-preview-container > * {
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.pptx-preview-status {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-muted);
-  font-size: 12px;
-  text-align: center;
-  padding: 0 20px;
-  pointer-events: none;
-  background: var(--color-surface);
-}
-
-.pptx-preview-status--error {
-  color: var(--color-error);
-}
-`

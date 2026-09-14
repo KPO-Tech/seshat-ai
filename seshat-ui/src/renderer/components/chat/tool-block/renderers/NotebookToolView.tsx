@@ -1,4 +1,4 @@
-import { CodeBox, HeaderCard, ProseBox, Section } from '../common'
+import { CodeBox, ErrorPre, HCARD_HEADER_PATH_CSS, HeaderCard, ProseBox, Section } from '../common'
 import { basename } from '../helpers'
 import type { ToolViewProps } from '../types'
 
@@ -32,7 +32,7 @@ export function NotebookToolView({ tool, result }: ToolViewProps) {
   if (result?.isError) {
     return result.content ? (
       <Section label="Error">
-        <pre className="tb-pre tb-pre--error">{result.content}</pre>
+        <ErrorPre content={result.content} />
       </Section>
     ) : null
   }
@@ -44,7 +44,7 @@ export function NotebookToolView({ tool, result }: ToolViewProps) {
       header={
         <>
           <span title={path || title}>{title}</span>
-          <span className="tb-hcard-header-path">{action}</span>
+          <span className={HCARD_HEADER_PATH_CSS}>{action}</span>
         </>
       }
     >

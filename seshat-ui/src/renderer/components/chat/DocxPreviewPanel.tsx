@@ -92,65 +92,27 @@ export function DocxPreviewPanel({ fileId, filename }: Props) {
   }, [fileId])
 
   return (
-    <div className="docx-preview-panel">
-      <style>{DOCX_PREVIEW_CSS}</style>
-      <div className="docx-preview-scroll" ref={scrollRef}>
+    <div className="relative h-full min-h-0">
+      {/* The app-wide ::selection (globals.css) is tuned for the dark theme -
+          near-white text on a faint highlight - which is unreadable against
+          this panel's white page. Scoped override for legible
+          dark-on-highlight selection here specifically, plus the one rule
+          that reaches into docx-preview's own injected markup (the
+          className passed to renderAsync below) - a deep third-party
+          override, not expressible as a prop on that markup. */}
+      <style>{`
+        .docx-preview-scroll ::selection { background: #b4d7ff; color: #1a1a1a; }
+        .docx-preview-container .docx-preview-doc { background: white; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35); }
+      `}</style>
+      <div className="docx-preview-scroll flex h-full items-start justify-center overflow-auto bg-app-surface p-5" ref={scrollRef}>
         <div className="docx-preview-container" ref={containerRef} />
       </div>
-      {status === 'loading' && <div className="docx-preview-status">Loading {filename}…</div>}
+      {status === 'loading' && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-app-surface px-5 text-center text-[12px] text-app-text-muted">Loading {filename}…</div>
+      )}
       {status === 'error' && (
-        <div className="docx-preview-status docx-preview-status--error">Couldn't load this document: {errorMessage}</div>
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-app-surface px-5 text-center text-[12px] text-app-error">Couldn't load this document: {errorMessage}</div>
       )}
     </div>
   )
 }
-
-const DOCX_PREVIEW_CSS = `
-.docx-preview-panel {
-  position: relative;
-  height: 100%;
-  min-height: 0;
-}
-
-.docx-preview-scroll {
-  height: 100%;
-  overflow: auto;
-  background: var(--color-surface);
-  padding: ${SCROLL_PADDING}px;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-}
-
-.docx-preview-container .docx-preview-doc {
-  background: white;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
-}
-
-/* The app-wide ::selection (globals.css) is tuned for the dark theme -
-   near-white text on a faint highlight - which is unreadable against this
-   panel's white page. Scoped override for legible dark-on-highlight
-   selection here specifically. */
-.docx-preview-scroll ::selection {
-  background: #b4d7ff;
-  color: #1a1a1a;
-}
-
-.docx-preview-status {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-muted);
-  font-size: 12px;
-  text-align: center;
-  padding: 0 20px;
-  pointer-events: none;
-  background: var(--color-surface);
-}
-
-.docx-preview-status--error {
-  color: var(--color-error);
-}
-`

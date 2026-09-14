@@ -2,12 +2,15 @@ import { Down } from '@icon-park/react'
 import { useUIStore } from '@/stores/ui'
 import { MarkdownView } from '@/components/MarkdownView'
 import { SilentToolView } from './tool-block/renderers/SilentToolView'
-import { ToolLineItem, TOOL_LINE_CSS } from './tool-block/ToolLineItem'
+import { ToolLineItem } from './tool-block/ToolLineItem'
 import { toolStatus } from './tool-block/quietGroupPhrase'
 import { isSilentTool, thinkingIcon, toolSnippet } from './tool-block/toolDisplay'
-import { TOOL_BLOCK_CSS } from './tool-block/styles'
 import type { ToolBlockProps } from './tool-block/types'
 import type { QuietGroupItem } from './MessageItem'
+
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(' ')
+}
 
 type Props = {
   items: QuietGroupItem[]
@@ -25,14 +28,9 @@ type Props = {
 // - only the outer "collapse the whole run into one line" behavior is gone.
 export function QuietToolGroup({ items, sessionId, revealThinking = false, autoExpandTools = false, onSubmitPrompt }: Props) {
   return (
-    <div className="qtg-root">
-      <style>{QUIET_GROUP_CSS}</style>
-      <style>{TOOL_LINE_CSS}</style>
-      {/* Every dedicated *ToolView body (Section/CodeBox/ProseBox/…) is
-          styled by TOOL_BLOCK_CSS. ToolBlock.tsx injects it for a solo tool;
-          this is the same injection for the grouped-run surface. */}
-      <style>{TOOL_BLOCK_CSS}</style>
-      <div className="qtg-items">
+    <div className="m-0 flex flex-col">
+      <style>{THINKING_MARKDOWN_CSS}</style>
+      <div className="m-0 flex flex-col gap-1.5">
         {items.map((item) => {
           if (item.kind === 'thinking') {
             return <ThinkingGroupItem key={item.thinkingId} thinkingId={item.thinkingId} thinking={item.thinking} sessionId={sessionId} revealThinking={revealThinking} />
@@ -94,23 +92,28 @@ function ThinkingGroupItem({
   }
 
   return (
-    <div className="qtg-item">
+    <div className="flex flex-col">
       <div
-        className={`qtg-item-line qtg-item-line--thinking${expanded ? ' qtg-item-line--open' : ''}`}
+        className={cx(
+          'group inline-flex min-h-10 w-full cursor-pointer items-center gap-1.5 border border-app-border-subtle bg-app-surface px-2 py-1.5 text-left text-[10.5px] leading-snug text-app-text-muted transition-colors duration-150 hover:border-[color-mix(in_srgb,var(--color-accent)_20%,var(--color-border-subtle))] hover:bg-app-surface-elevated hover:text-app-text-secondary',
+          expanded ? 'rounded-t-md' : 'rounded-md',
+        )}
         role="button"
         tabIndex={0}
         onClick={toggle}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle() } }}
         aria-expanded={expanded}
       >
-        <span className="qtg-icon"><span className="tl-icon">{thinkingIcon()}</span></span>
-        <span className="qtg-item-label qtg-item-label--thinking">Thinking</span>
-        <span className={`qtg-chevron${expanded ? ' qtg-chevron--open' : ''}`}>
+        <span className="inline-flex size-3.5 shrink-0 items-center justify-center">
+          <span className="relative inline-flex shrink-0 items-center justify-center text-app-text-muted">{thinkingIcon()}</span>
+        </span>
+        <span className="min-w-0 flex-none overflow-hidden text-ellipsis whitespace-nowrap text-[12px] font-[650] text-app-text-secondary">Thinking</span>
+        <span className={cx('ml-auto inline-flex shrink-0 items-center opacity-45 transition-transform duration-150', expanded && 'rotate-180')}>
           <Down size={10} />
         </span>
       </div>
       {expanded && (
-        <div className="qtg-item-body qtg-item-body--thinking">
+        <div className="rounded-b-md border border-t-0 border-app-border-subtle bg-[color-mix(in_srgb,var(--color-bg)_72%,white)] pb-[10px] pl-[39px] pr-3 pt-[9px] text-[11px] not-italic leading-[1.55] text-app-text-muted">
           <MarkdownView className="tb-thinking-md" sessionId={sessionId}>{thinking}</MarkdownView>
         </div>
       )}
@@ -118,50 +121,7 @@ function ThinkingGroupItem({
   )
 }
 
-const QUIET_GROUP_CSS = `
-.qtg-root {
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-}
-
-.qtg-items {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin: 0;
-}
-
-.qtg-item-line--thinking .qtg-item-label--thinking {
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  font-weight: 650;
-}
-
-.qtg-item-line--thinking {
-  min-height: 40px;
-}
-
-.qtg-item-line--thinking .qtg-chevron {
-  margin-left: auto;
-}
-
-.qtg-item-line--open {
-  border-radius: 6px 6px 0 0;
-}
-
-.qtg-item-body--thinking {
-  padding: 9px 12px 10px 39px;
-  border: 1px solid var(--color-border-subtle);
-  border-top: none;
-  border-radius: 0 0 6px 6px;
-  background: color-mix(in srgb, var(--color-bg) 72%, white);
-  font-size: 11px;
-  font-style: normal;
-  color: var(--color-text-muted);
-  line-height: 1.55;
-}
-
+const THINKING_MARKDOWN_CSS = `
 /* Same neutralizing rules as MessageItem.tsx's standalone ThinkingBlock -
    duplicated (not shared) since QuietToolGroup renders on its own inside
    SubagentPanel, where MessageItem's own <style> tag isn't guaranteed to be

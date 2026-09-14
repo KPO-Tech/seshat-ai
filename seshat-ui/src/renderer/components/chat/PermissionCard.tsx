@@ -40,39 +40,49 @@ export function PermissionCard({ tool, onApprove, onDeny }: Props) {
   }
 
   return (
-    <div className="perm-root">
-      <style>{PERMISSION_CSS}</style>
-
-      <div className="perm-top">
-        <div className="perm-icon-wrap">
+    <div className="flex w-full flex-col gap-2.5 rounded-[11px] border border-[rgba(251,191,36,0.3)] bg-[rgba(251,191,36,0.05)] px-[11px] py-2.5">
+      <div className="flex items-start gap-2.5">
+        <div className="flex size-[30px] shrink-0 items-center justify-center rounded-[7px] bg-[rgba(251,191,36,0.12)] text-[#fbbf24]">
           <Caution size={13} />
         </div>
-        <div className="perm-copy">
-          <div className="perm-title">
-            Allow Claude to run <span className="perm-tool">{toolIcon(tool.name)}{toolLabel(tool.name)}</span>?
+        <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
+          <div className="text-[12px] font-bold leading-[1.4] text-app-text">
+            Allow Claude to run <span className="inline-flex items-center gap-[3px] text-app-text">{toolIcon(tool.name)}{toolLabel(tool.name)}</span>?
           </div>
-          <div className="perm-desc">{description}</div>
+          <div className="text-[11px] leading-[1.5] text-app-text-muted">{description}</div>
         </div>
       </div>
 
       {snippet && (
-        <div className="perm-snippet">
-          <pre className="perm-pre">{snippet}</pre>
+        <div className="overflow-hidden rounded-md bg-[rgba(0,0,0,0.3)]">
+          <pre className="m-0 max-h-[160px] overflow-y-auto whitespace-pre-wrap break-all px-2 py-1.5 font-['JetBrains_Mono','Fira_Code',monospace] text-[10px] leading-[1.5] text-app-text-secondary">{snippet}</pre>
         </div>
       )}
 
-      <div className="perm-actions">
+      <div className="flex justify-end gap-1.5">
         {onDeny && (
-          <button className="perm-btn perm-btn--deny" type="button" onClick={() => onDeny(tool.id)}>
+          <button
+            className="cursor-pointer whitespace-nowrap rounded-md border border-app-border-subtle bg-transparent px-[11px] py-1 text-[11px] font-semibold text-app-text-muted transition-all duration-150 hover:bg-[var(--color-hover)] hover:text-app-text"
+            type="button"
+            onClick={() => onDeny(tool.id)}
+          >
             Deny
           </button>
         )}
         {onApprove && (
           <>
-            <button className="perm-btn perm-btn--allow-always" type="button" onClick={handleAlwaysAllow}>
+            <button
+              className="cursor-pointer whitespace-nowrap rounded-md border border-app-border-subtle bg-transparent px-[11px] py-1 text-[11px] font-semibold text-app-text-muted transition-all duration-150 hover:bg-[var(--color-hover)] hover:text-app-text"
+              type="button"
+              onClick={handleAlwaysAllow}
+            >
               Always allow
             </button>
-            <button className="perm-btn perm-btn--allow" type="button" onClick={() => onApprove(tool.id)}>
+            <button
+              className="cursor-pointer whitespace-nowrap rounded-md border border-[rgba(var(--color-success-rgb),0.3)] bg-[rgba(var(--color-success-rgb),0.15)] px-[11px] py-1 text-[11px] font-semibold text-app-success transition-all duration-150 hover:border-[rgba(var(--color-success-rgb),0.5)] hover:bg-[rgba(var(--color-success-rgb),0.25)]"
+              type="button"
+              onClick={() => onApprove(tool.id)}
+            >
               Allow once
             </button>
           </>
@@ -89,131 +99,3 @@ function commandSnippet(tool: ToolUseBlock): string {
   if (Object.keys(tool.input).length === 0) return ''
   return JSON.stringify(tool.input, null, 2).slice(0, 400)
 }
-
-export const PERMISSION_CSS = `
-.perm-root {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  padding: 10px 11px;
-  border: 1px solid rgba(251, 191, 36, 0.3);
-  border-radius: 11px;
-  background: rgba(251, 191, 36, 0.05);
-  width: 100%;
-}
-
-.perm-top {
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
-}
-
-.perm-icon-wrap {
-  width: 30px;
-  height: 30px;
-  border-radius: 7px;
-  background: rgba(251, 191, 36, 0.12);
-  color: #fbbf24;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.perm-copy {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.perm-title {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--color-text);
-  line-height: 1.4;
-}
-
-.perm-tool {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  color: var(--color-text);
-}
-
-.perm-desc {
-  font-size: 11px;
-  line-height: 1.5;
-  color: var(--color-text-muted);
-}
-
-.perm-snippet {
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.perm-pre {
-  margin: 0;
-  padding: 6px 8px;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 10px;
-  line-height: 1.5;
-  color: var(--color-text-secondary);
-  white-space: pre-wrap;
-  word-break: break-all;
-  max-height: 160px;
-  overflow-y: auto;
-}
-
-.perm-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 6px;
-}
-
-.perm-btn {
-  padding: 4px 11px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: all 0.15s;
-  white-space: nowrap;
-}
-
-.perm-btn--allow {
-  background: rgba(var(--color-success-rgb), 0.15);
-  border-color: rgba(var(--color-success-rgb), 0.3);
-  color: var(--color-success);
-}
-
-.perm-btn--allow:hover {
-  background: rgba(var(--color-success-rgb), 0.25);
-  border-color: rgba(var(--color-success-rgb), 0.5);
-}
-
-.perm-btn--deny {
-  background: transparent;
-  border-color: var(--color-border-subtle);
-  color: var(--color-text-muted);
-}
-
-.perm-btn--deny:hover {
-  background: var(--color-hover);
-  color: var(--color-text);
-}
-
-.perm-btn--allow-always {
-  background: transparent;
-  border-color: var(--color-border-subtle);
-  color: var(--color-text-muted);
-}
-
-.perm-btn--allow-always:hover {
-  background: var(--color-hover);
-  color: var(--color-text);
-}
-`

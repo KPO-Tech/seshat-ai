@@ -2,7 +2,7 @@ import { useEffect, useRef, type ComponentProps } from 'react'
 import { Robot } from '@icon-park/react'
 import type { ProviderModel, ProviderSetting } from '@/api/types'
 import { ChatInput, CHAT_INPUT_CSS } from '@/components/chat/ChatInput'
-import { MessageItem, MESSAGE_ITEM_CSS } from '@/components/chat/MessageItem'
+import { MessageItem } from '@/components/chat/MessageItem'
 
 type AgentMessage = ComponentProps<typeof MessageItem>['message']
 
@@ -58,7 +58,6 @@ export function InboxAgentPanel({
   return (
     <section className="ib-agent-panel-card ib-agent-chat-card">
       <style>{CHAT_INPUT_CSS}</style>
-      <style>{MESSAGE_ITEM_CSS}</style>
       <div className="ib-panel-headline">
         <Robot size={16} />
         <strong>Inbox Agent</strong>

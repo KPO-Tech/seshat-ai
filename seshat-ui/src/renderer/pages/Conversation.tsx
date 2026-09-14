@@ -5,7 +5,7 @@ import { streamingToContentBlocks, useSessionStore, EMPTY_STREAMING, DEFAULT_AGE
 import { useUIStore, buildRightPanelId } from '@/stores/ui'
 import { ChatTopBar, CHAT_TOP_BAR_CSS } from '@/components/chat/ChatTopBar'
 import { ChatInput, CHAT_INPUT_CSS, type ChatAttachment } from '@/components/chat/ChatInput'
-import { MessageItem, MESSAGE_ITEM_CSS, isRenderableMessage } from '@/components/chat/MessageItem'
+import { MessageItem, isRenderableMessage } from '@/components/chat/MessageItem'
 import { ProviderIcon } from '@/components/ui/ProviderIcon'
 import { PlanArtifactCard } from '@/components/chat/plan/PlanArtifactCard'
 import { AskUserPanel } from '@/components/chat/AskUserPanel'
@@ -945,7 +945,6 @@ export function Conversation() {
 const CONV_CSS = `
 ${CHAT_TOP_BAR_CSS}
 ${CHAT_INPUT_CSS}
-${MESSAGE_ITEM_CSS}
 ${TOAST_CSS}
 
 .conv-root {

@@ -10,382 +10,30 @@ import { groupBlocks } from '../MessageItem'
 import type { ToolStatus } from '@/api/types'
 import type { ToolActivity } from '@/stores/session'
 
-const SUBAGENT_PANEL_CSS = `
-.sap-root {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden;
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(' ')
 }
 
-/* ── Header ── */
-.sap-header {
-  padding: 10px 11px 0;
-  border-bottom: 1px solid var(--color-border-subtle);
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  flex-shrink: 0;
+type SubagentLifecycle = 'running' | 'completed' | 'failed'
+
+const STATUS_DOT_CSS: Record<SubagentLifecycle, string> = {
+  running: 'bg-[var(--color-accent)] [animation:mode-dot-pulse_1.4s_ease-in-out_infinite]',
+  completed: 'bg-app-success',
+  failed: 'bg-app-error',
 }
 
-.sap-header-top {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
+const STATUS_TEXT_CSS: Record<SubagentLifecycle, string> = {
+  running: 'text-[var(--color-accent)]',
+  completed: 'text-app-success',
+  failed: 'text-app-error',
 }
 
-.sap-status-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  flex-shrink: 0;
+const ACTIVITY_DOT_CSS: Record<ToolActivity['stage'], string> = {
+  pending: 'bg-[var(--color-accent)]',
+  running: 'bg-[var(--color-accent)]',
+  completed: 'bg-app-success',
+  failed: 'bg-app-error',
 }
-
-.sap-status--running .sap-status-dot { background: var(--color-accent); animation: sap-pulse 1.4s ease-in-out infinite; }
-.sap-status--completed .sap-status-dot { background: var(--color-success); }
-.sap-status--failed .sap-status-dot { background: var(--color-error); }
-
-@keyframes sap-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.35; }
-}
-
-.sap-type-badge {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
-
-.sap-status--running .sap-type-badge { color: var(--color-accent); }
-.sap-status--completed .sap-type-badge { color: var(--color-success); }
-.sap-status--failed .sap-type-badge { color: var(--color-error); }
-
-.sap-cancel-btn {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--color-text-secondary);
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: 20px;
-  padding: 3px 8px 3px 7px;
-  cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
-}
-
-.sap-cancel-btn:hover:not(:disabled) {
-  color: var(--color-error);
-  border-color: var(--color-error);
-  background: rgba(var(--color-error-rgb), 0.08);
-}
-
-.sap-cancel-btn:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-.sap-cancel-error {
-  font-size: 10.5px;
-  color: var(--color-error);
-  margin-bottom: 6px;
-}
-
-.sap-task {
-  font-size: 11px;
-  line-height: 1.5;
-  color: var(--color-text);
-  margin-bottom: 8px;
-}
-
-.sap-stats {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 10px;
-  color: var(--color-text-muted);
-  padding-bottom: 7px;
-  flex-wrap: wrap;
-}
-
-.sap-stat-sep {
-  opacity: 0.3;
-}
-
-/* ── Tabs ── */
-.sap-tabs {
-  display: flex;
-  gap: 0;
-  border-top: 1px solid var(--color-border-subtle);
-  margin-top: auto;
-}
-
-.sap-tab {
-  flex: 1;
-  padding: 6px 0;
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-}
-
-.sap-tab--active {
-  color: var(--color-accent);
-  border-bottom-color: var(--color-accent);
-}
-
-.sap-tab:hover:not(.sap-tab--active):not(:disabled) {
-  color: var(--color-text-secondary);
-}
-
-.sap-tab:disabled {
-  cursor: not-allowed;
-  opacity: 0.38;
-}
-
-.sap-tab-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--color-success);
-  animation: sap-pulse 1.2s ease-in-out infinite;
-  flex-shrink: 0;
-}
-
-/* ── Body ── */
-.sap-body {
-  flex: 1;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  scrollbar-width: thin;
-}
-
-.sap-body::-webkit-scrollbar { width: 4px; }
-.sap-body::-webkit-scrollbar-thumb {
-  background: var(--color-border-subtle);
-  border-radius: 3px;
-}
-
-/* ── Activity tab (full stream) ── */
-.sap-activity {
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  flex: 1;
-}
-
-.sap-block-text {
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--color-text);
-}
-
-.sap-block-thinking {
-  border-left: 2px solid rgba(239, 124, 47, 0.22);
-  padding-left: 8px;
-  font-size: 11px;
-  line-height: 1.55;
-  color: var(--color-text-muted);
-  font-style: italic;
-}
-
-/* ── Active tool indicator ── */
-.sap-active-tool {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 7px;
-  border-radius: 6px;
-  border: 1px solid rgba(239, 124, 47, 0.25);
-  background: rgba(239, 124, 47, 0.06);
-  font-size: 10px;
-  color: var(--color-accent);
-}
-
-.sap-active-spinner {
-  width: 12px;
-  height: 12px;
-  border: 2px solid rgba(239, 124, 47, 0.25);
-  border-top-color: var(--color-accent);
-  border-radius: 50%;
-  animation: sap-spin 0.9s linear infinite;
-  flex-shrink: 0;
-}
-
-.sap-tool-log {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.sap-tool-log-title {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-}
-
-.sap-tool-log-row {
-  display: grid;
-  grid-template-columns: 8px minmax(0, 1fr) auto;
-  gap: 7px;
-  align-items: start;
-  padding: 4px 0;
-}
-
-.sap-tool-log-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  margin-top: 5px;
-  background: var(--color-border);
-}
-
-.sap-tool-log-row--completed .sap-tool-log-dot { background: var(--color-success); }
-.sap-tool-log-row--failed .sap-tool-log-dot { background: var(--color-error); }
-.sap-tool-log-row--running .sap-tool-log-dot,
-.sap-tool-log-row--pending .sap-tool-log-dot { background: var(--color-accent); }
-
-.sap-tool-log-copy {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.sap-tool-log-name {
-  font-size: 10.5px;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.sap-tool-log-message {
-  font-size: 10px;
-  color: var(--color-text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sap-tool-log-time {
-  font-size: 10px;
-  color: var(--color-text-muted);
-}
-
-@keyframes sap-spin {
-  to { transform: rotate(360deg); }
-}
-
-/* ── Output tab ── */
-.sap-output {
-  padding: 10px;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.sap-output-content {
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--color-text);
-}
-
-.sap-output-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
-  gap: 6px;
-  color: var(--color-text-muted);
-  padding: 22px;
-  text-align: center;
-  font-size: 11px;
-}
-
-.sap-output-state {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.sap-output-status {
-  font-size: 9px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.sap-output-status--failed { color: var(--color-error); }
-
-.sap-final-output {
-  border-top: 1px solid var(--color-border-subtle);
-  padding-top: 9px;
-  margin-top: 2px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.sap-final-output-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-}
-
-.sap-final-output-content {
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--color-text);
-}
-
-.sap-final-output-empty {
-  font-size: 11px;
-  color: var(--color-text-muted);
-}
-
-/* ── Empty / loading ── */
-.sap-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
-  gap: 6px;
-  color: var(--color-text-muted);
-  padding: 22px;
-}
-
-.sap-empty-label { font-size: 11px; }
-
-.sap-spinner {
-  width: 18px;
-  height: 18px;
-  border: 2px solid var(--color-border-subtle);
-  border-top-color: var(--color-accent);
-  border-radius: 50%;
-  animation: sap-spin 0.9s linear infinite;
-}
-`
 
 type Tab = 'activity' | 'output'
 
@@ -451,11 +99,10 @@ export const SubagentPanel = memo(function SubagentPanel({ sessionId, toolUseId 
 
   if (!subagent) {
     return (
-      <div className="sap-root">
-        <style>{SUBAGENT_PANEL_CSS}</style>
-        <div className="sap-empty">
-          <div className="sap-spinner" />
-          <span className="sap-empty-label">Waiting for sub-agent…</span>
+      <div className="flex h-full flex-col overflow-hidden">
+        <div className="flex flex-1 flex-col items-center justify-center gap-1.5 p-[22px] text-app-text-muted">
+          <div className="size-[18px] rounded-full border-2 border-app-border-subtle border-t-[var(--color-accent)] [animation:spin_0.9s_linear_infinite]" />
+          <span className="text-[11px]">Waiting for sub-agent…</span>
         </div>
       </div>
     )
@@ -466,19 +113,17 @@ export const SubagentPanel = memo(function SubagentPanel({ sessionId, toolUseId 
     : Date.now() - subagent.startedAt
 
   return (
-    <div className="sap-root">
-      <style>{SUBAGENT_PANEL_CSS}</style>
-
-      <div className={`sap-header sap-status--${subagent.status}`}>
-        <div className="sap-header-top">
-          <span className="sap-status-dot" />
-          <span className="sap-type-badge">
+    <div className="flex h-full flex-col overflow-hidden">
+      <div className="flex shrink-0 flex-col border-b border-app-border-subtle px-[11px] pt-2.5">
+        <div className="mb-1.5 flex items-center gap-1.5">
+          <span className={cx('size-[7px] shrink-0 rounded-full', STATUS_DOT_CSS[subagent.status])} />
+          <span className={cx('text-[10px] font-bold uppercase tracking-[0.07em]', STATUS_TEXT_CSS[subagent.status])}>
             {subagent.agentType.replace(/_/g, ' ').replace(/-/g, ' ')}
           </span>
           {subagent.status === 'running' && subagent.agentId && (
             <button
               type="button"
-              className="sap-cancel-btn"
+              className="ml-auto flex cursor-pointer items-center gap-1 rounded-full border border-[var(--color-border)] bg-transparent py-[3px] pl-[7px] pr-2 text-[10px] font-semibold tracking-[0.02em] text-app-text-secondary transition-[color,border-color,background] duration-150 disabled:cursor-default disabled:opacity-60 enabled:hover:border-app-error enabled:hover:bg-[rgba(var(--color-error-rgb),0.08)] enabled:hover:text-app-error"
               disabled={cancelling}
               onClick={handleCancel}
             >
@@ -488,23 +133,23 @@ export const SubagentPanel = memo(function SubagentPanel({ sessionId, toolUseId 
           )}
         </div>
 
-        {cancelError && <div className="sap-cancel-error">{cancelError}</div>}
+        {cancelError && <div className="mb-1.5 text-[10.5px] text-app-error">{cancelError}</div>}
 
-        {subagent.task && <div className="sap-task">{subagent.task}</div>}
+        {subagent.task && <div className="mb-2 text-[11px] leading-[1.5] text-app-text">{subagent.task}</div>}
 
-        <div className="sap-stats">
+        <div className="flex flex-wrap items-center gap-2 pb-[7px] text-[10px] text-app-text-muted">
           <span>
             {subagent.status === 'running' ? `${formatMs(durationMs)} elapsed` : formatMs(durationMs)}
           </span>
           {subagent.turnNumber > 0 && (
             <>
-              <span className="sap-stat-sep">·</span>
+              <span className="opacity-30">·</span>
               <span>{subagent.turnNumber} turn{subagent.turnNumber > 1 ? 's' : ''}</span>
             </>
           )}
           {subagent.inputTokens > 0 && (
             <>
-              <span className="sap-stat-sep">·</span>
+              <span className="opacity-30">·</span>
               <span>
                 {subagent.inputTokens.toLocaleString()} in / {subagent.outputTokens.toLocaleString()} out
               </span>
@@ -512,33 +157,41 @@ export const SubagentPanel = memo(function SubagentPanel({ sessionId, toolUseId 
           )}
         </div>
 
-        <div className="sap-tabs">
+        <div className="mt-auto flex border-t border-app-border-subtle">
           <button
-            className={`sap-tab${tab === 'activity' ? ' sap-tab--active' : ''}`}
+            className={cx(
+              'flex flex-1 items-center justify-center gap-1 border-0 border-b-2 border-b-transparent bg-transparent py-1.5 text-[10px] font-semibold text-app-text-muted transition-colors duration-150 cursor-pointer',
+              tab === 'activity' ? 'border-b-[var(--color-accent)] text-[var(--color-accent)]' : 'hover:text-app-text-secondary',
+            )}
             type="button"
             onClick={() => handleTabClick('activity')}
           >
             Activity
           </button>
           <button
-            className={`sap-tab${tab === 'output' ? ' sap-tab--active' : ''}`}
+            className={cx(
+              'flex flex-1 items-center justify-center gap-1 border-0 border-b-2 border-b-transparent bg-transparent py-1.5 text-[10px] font-semibold text-app-text-muted transition-colors duration-150',
+              tab === 'output'
+                ? 'cursor-pointer border-b-[var(--color-accent)] text-[var(--color-accent)]'
+                : hasTerminalOutputState ? 'cursor-pointer hover:text-app-text-secondary' : 'cursor-not-allowed opacity-[0.38]',
+            )}
             type="button"
             disabled={!hasTerminalOutputState}
             onClick={() => hasTerminalOutputState && handleTabClick('output')}
           >
-            {outputReady && tab !== 'output' && <span className="sap-tab-dot" />}
+            {outputReady && tab !== 'output' && <span className="size-1.5 shrink-0 rounded-full bg-app-success [animation:mode-dot-pulse_1.2s_ease-in-out_infinite]" />}
             Output
           </button>
         </div>
       </div>
 
-      <div className="sap-body">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-[3px] [&::-webkit-scrollbar-thumb]:bg-app-border-subtle [&::-webkit-scrollbar]:w-1">
         {tab === 'activity' && (
-          <div className="sap-activity">
+          <div className="flex flex-1 flex-col gap-2 p-2.5">
             {streaming.length === 0 && subagent.status === 'running' && (
-              <div className="sap-empty">
-                <div className="sap-spinner" />
-                <span className="sap-empty-label">Agent is starting…</span>
+              <div className="flex flex-1 flex-col items-center justify-center gap-1.5 p-[22px] text-app-text-muted">
+                <div className="size-[18px] rounded-full border-2 border-app-border-subtle border-t-[var(--color-accent)] [animation:spin_0.9s_linear_infinite]" />
+                <span className="text-[11px]">Agent is starting…</span>
               </div>
             )}
             {groupBlocks(streaming, toolUseId).map((item, i) => {
@@ -565,8 +218,8 @@ export const SubagentPanel = memo(function SubagentPanel({ sessionId, toolUseId 
               return <StreamBlockView key={`${toolUseId}-block-${i}`} block={item.block} sessionId={sessionId} />
             })}
             {subagent.activeTool && (
-              <div className="sap-active-tool">
-                <div className="sap-active-spinner" />
+              <div className="flex items-center gap-1.5 rounded-md border border-[rgba(239,124,47,0.25)] bg-[rgba(239,124,47,0.06)] px-[7px] py-1.5 text-[10px] text-[var(--color-accent)]">
+                <div className="size-3 shrink-0 rounded-full border-2 border-[rgba(239,124,47,0.25)] border-t-[var(--color-accent)] [animation:spin_0.9s_linear_infinite]" />
                 <span>
                   <strong>{subagent.activeTool.toolName}</strong>
                   {subagent.activeTool.message ? ` — ${subagent.activeTool.message}` : ''}
@@ -574,16 +227,16 @@ export const SubagentPanel = memo(function SubagentPanel({ sessionId, toolUseId 
               </div>
             )}
             {subagent.activityLog.length > 0 && (
-              <div className="sap-tool-log">
-                <span className="sap-tool-log-title">Tool log</span>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[10px] font-bold uppercase text-app-text-muted">Tool log</span>
                 {subagent.activityLog.slice(-10).reverse().map((entry, index) => (
-                  <div key={`${entry.toolName}-${entry.startedAt}-${index}`} className={`sap-tool-log-row sap-tool-log-row--${entry.stage}`}>
-                    <span className="sap-tool-log-dot" />
-                    <span className="sap-tool-log-copy">
-                      <span className="sap-tool-log-name">{entry.toolName.replace(/_/g, ' ')}</span>
-                      {entry.message && <span className="sap-tool-log-message">{entry.message}</span>}
+                  <div key={`${entry.toolName}-${entry.startedAt}-${index}`} className="grid grid-cols-[8px_minmax(0,1fr)_auto] items-start gap-[7px] py-1">
+                    <span className={cx('mt-[5px] size-1.5 rounded-full', ACTIVITY_DOT_CSS[entry.stage] ?? 'bg-[var(--color-border)]')} />
+                    <span className="flex min-w-0 flex-col gap-px">
+                      <span className="text-[10.5px] font-semibold text-app-text">{entry.toolName.replace(/_/g, ' ')}</span>
+                      {entry.message && <span className="truncate text-[10px] text-app-text-muted">{entry.message}</span>}
                     </span>
-                    <span className="sap-tool-log-time">{formatActivityDuration(entry)}</span>
+                    <span className="text-[10px] text-app-text-muted">{formatActivityDuration(entry)}</span>
                   </div>
                 ))}
               </div>
@@ -596,17 +249,17 @@ export const SubagentPanel = memo(function SubagentPanel({ sessionId, toolUseId 
         )}
 
         {tab === 'output' && (
-          <div className="sap-output">
+          <div className="flex flex-1 flex-col gap-2 p-2.5">
             {hasResult
               ? (
-                <div className="sap-output-content">
+                <div className="text-[12px] leading-[1.6] text-app-text">
                   <MarkdownView sessionId={sessionId}>{result ?? ''}</MarkdownView>
                 </div>
               )
               : (
-                <div className="sap-output-empty">
-                  <span className="sap-output-state">
-                    {subagent.status === 'failed' && <span className="sap-output-status sap-output-status--failed">failed</span>}
+                <div className="flex flex-1 flex-col items-center justify-center gap-1.5 p-[22px] text-center text-[11px] text-app-text-muted">
+                  <span className="inline-flex items-center gap-1.5">
+                    {subagent.status === 'failed' && <span className="text-[9px] font-bold leading-none text-app-error">failed</span>}
                     <span>{subagent.status === 'running' ? 'Output will appear here once the agent finishes.' : 'No final output was captured.'}</span>
                   </span>
                 </div>
@@ -622,19 +275,19 @@ export const SubagentPanel = memo(function SubagentPanel({ sessionId, toolUseId 
 function FinalOutputSummary({ status, result, sessionId }: { status: 'running' | 'completed' | 'failed'; result?: string; sessionId?: string }) {
   const hasResult = Boolean(result?.trim())
   return (
-    <div className="sap-final-output">
-      <div className="sap-final-output-title">
-        {status === 'failed' && <span className="sap-output-status sap-output-status--failed">failed</span>}
+    <div className="mt-0.5 flex flex-col gap-1.5 border-t border-app-border-subtle pt-[9px]">
+      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-app-text-muted">
+        {status === 'failed' && <span className="text-[9px] font-bold leading-none text-app-error">failed</span>}
         <span>Agent output</span>
       </div>
       {hasResult
         ? (
-          <div className="sap-final-output-content">
+          <div className="text-[12px] leading-[1.6] text-app-text">
             <MarkdownView sessionId={sessionId}>{result ?? ''}</MarkdownView>
           </div>
         )
         : (
-          <div className="sap-final-output-empty">No final output was captured.</div>
+          <div className="text-[11px] text-app-text-muted">No final output was captured.</div>
         )
       }
     </div>
@@ -647,7 +300,7 @@ function StreamBlockView({ block, sessionId }: { block: Parameters<typeof groupB
   if (block.type === 'text') {
     if (!block.text.trim()) return null
     return (
-      <div className="sap-block-text">
+      <div className="text-[12px] leading-[1.6] text-app-text">
         <MarkdownView sessionId={sessionId}>{block.text}</MarkdownView>
       </div>
     )
@@ -656,7 +309,7 @@ function StreamBlockView({ block, sessionId }: { block: Parameters<typeof groupB
   if (block.type === 'thinking') {
     if (!block.thinking.trim()) return null
     return (
-      <div className="sap-block-thinking">{block.thinking}</div>
+      <div className="border-l-2 border-[rgba(239,124,47,0.22)] pl-2 text-[11px] italic leading-[1.55] text-app-text-muted">{block.thinking}</div>
     )
   }
 

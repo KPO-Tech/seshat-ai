@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState, useCallback, type ReactNode } from 'react'
+import { cx, ATTACHMENT_THUMB_CSS, attachmentBorderClass, NOTICE_CSS, TOOL_ICON_CSS } from './chatInputStyles'
 import { Plus, FolderClose, AtSign, Voice, Send, CheckCorrect, LoadingOne, Browser, SettingTwo } from '@icon-park/react'
 import { AttachmentTypeIcon } from '@/components/AttachmentTypeIcon'
 import { api, ApiError } from '@/api/client'
@@ -359,18 +360,21 @@ export function ChatInput({
   useEffect(() => { setSlashIdx(0) }, [slashQuery])
 
   return (
-    <div className="chat-input-wrapper">
+    <div className="relative rounded-[18px] border border-app-border-subtle bg-[color-mix(in_srgb,var(--color-surface)_92%,var(--color-bg))] px-3.5 pb-2.5 pt-3 shadow-[0_14px_34px_rgba(31,27,23,0.09)] transition-[border-color,box-shadow] duration-[180ms] ease-in-out focus-within:border-[color-mix(in_srgb,var(--color-primary)_42%,var(--color-border-subtle))] focus-within:shadow-[0_18px_42px_rgba(31,27,23,0.12),0_0_0_2px_color-mix(in_srgb,var(--color-primary)_14%,transparent)]">
       {showSlash && filtered.length > 0 && (
-        <div className="chat-slash-dropdown" ref={dropdownRef}>
+        <div className="absolute inset-x-0 bottom-[calc(100%+8px)] z-[200] max-h-[280px] overflow-y-auto overflow-x-hidden rounded-[10px] border border-[var(--color-border)] bg-app-bg shadow-[0_8px_32px_rgba(0,0,0,0.18)]" ref={dropdownRef}>
           {filtered.map((sk, i) => (
             <button
               key={sk.Name}
-              className={`chat-slash-item${i === slashIdx ? ' selected' : ''}`}
+              className={cx(
+                'flex w-full cursor-pointer items-baseline gap-2.5 border-0 bg-none px-3 py-[9px] text-left transition-colors duration-100',
+                i === slashIdx && 'bg-app-surface',
+              )}
               onMouseDown={e => { e.preventDefault(); selectSkill(sk) }}
               onMouseEnter={() => setSlashIdx(i)}
             >
-              <span className="chat-slash-name">/{sk.Name}</span>
-              {sk.Description && <span className="chat-slash-desc">{sk.Description}</span>}
+              <span className="shrink-0 font-mono text-[13px] font-bold text-[var(--color-cta)]">/{sk.Name}</span>
+              {sk.Description && <span className="truncate text-[12px] text-app-text-muted">{sk.Description}</span>}
             </button>
           ))}
         </div>
@@ -378,11 +382,11 @@ export function ChatInput({
 
       {/* Corpus chip */}
       {selectedCorpus && onCorpusChange && (
-        <div className="chat-corpus-chip">
-          <span className="chat-corpus-chip-icon">@</span>
-          <span className="chat-corpus-chip-name">{selectedCorpus.name}</span>
+        <div className="mb-2 inline-flex items-center gap-1.5 rounded-[7px] border border-[rgba(239,124,47,0.3)] bg-[rgba(239,124,47,0.1)] py-[3px] pl-1.5 pr-2 text-[12px] font-semibold text-[var(--color-primary)]">
+          <span className="text-[13px] leading-none">@</span>
+          <span className="max-w-[200px] truncate">{selectedCorpus.name}</span>
           <button
-            className="chat-corpus-chip-remove"
+            className="flex items-center rounded-[3px] border-0 bg-none p-px text-inherit opacity-70 hover:opacity-100"
             onMouseDown={e => { e.preventDefault(); onCorpusChange(null) }}
             aria-label="Remove knowledge base"
           >
@@ -392,7 +396,7 @@ export function ChatInput({
       )}
 
       {attachments.length > 0 && (
-        <div className="chat-attachment-row">
+        <div className="mb-2.5 flex flex-nowrap gap-2 overflow-x-auto px-0.5 py-[5px]">
           {attachments.map(file => {
             const isImage = file.category === 'images' || file.content_type?.startsWith('image/')
             const pagePreviewURL = file.page_preview_urls?.[0]
@@ -409,48 +413,48 @@ export function ChatInput({
                 ? file.error || 'Upload failed'
                 : sizeLabel
             const tooltip = [file.filename, statusLabel].filter(Boolean).join(' - ')
+            const category = isImage ? 'image' : file.category ?? 'other'
+            const borderClass = attachmentBorderClass(category)
+            const isUploading = file.upload_status === 'uploading'
+            const isFailed = file.upload_status === 'failed'
+            const statusClass = cx(isUploading && 'opacity-60', isFailed && 'border-[rgba(var(--color-error-rgb),0.5)]')
             return (
-              <div
-                key={file.id}
-                className={[
-                  'chat-attachment-card',
-                  `chat-attachment-card--${isImage ? 'image' : file.category ?? 'other'}`,
-                  file.upload_status ? `chat-attachment-card--${file.upload_status}` : '',
-                ].filter(Boolean).join(' ')}
-              >
+              <div key={file.id} className="relative size-14 shrink-0">
                 {previewURL ? (
                   <button
                     type="button"
-                    className="chat-attachment-thumb"
+                    className={cx(ATTACHMENT_THUMB_CSS, borderClass, statusClass)}
                     onClick={() => (isImage ? openLightbox({ url: previewURL, filename: file.filename }) : setPreviewAttachment(file))}
                     aria-label={tooltip}
                   >
-                    <img src={previewURL} alt={file.filename} />
+                    <img className="block h-full w-full object-cover" src={previewURL} alt={file.filename} />
                   </button>
                 ) : textPreview ? (
                   <button
                     type="button"
-                    className="chat-attachment-thumb chat-attachment-thumb--text"
+                    className={cx(ATTACHMENT_THUMB_CSS, borderClass, statusClass, 'px-[5px] py-1 text-left')}
                     onClick={() => setPreviewAttachment(file)}
                   >
-                    <span className="chat-attachment-text-preview">{textPreview}</span>
+                    <span className="line-clamp-[7] overflow-hidden whitespace-pre-wrap break-words font-mono text-[6px] leading-[1.3] text-app-text-muted">{textPreview}</span>
                   </button>
                 ) : (
                   <button
                     type="button"
-                    className="chat-attachment-file-icon"
+                    className={cx(ATTACHMENT_THUMB_CSS, borderClass, statusClass, 'flex flex-col items-center justify-center gap-[3px] px-1 pb-0.5 pt-1')}
                     onClick={() => file.local_path && void window.nexus?.openPath?.(file.local_path)}
                   >
-                    <span className="chat-attachment-file-icon-name">{file.filename}</span>
+                    <span className="w-full truncate text-center text-[7px] leading-[1.15] text-app-text-muted">{file.filename}</span>
                     <AttachmentTypeIcon filename={file.filename} size={18} />
                   </button>
                 )}
-                {extLabel && <span className="chat-attachment-thumb-badge">{extLabel}</span>}
-                {file.upload_status === 'uploading' && (
-                  <span className="chat-attachment-spinner"><LoadingOne size={14} className="chat-status-spin" /></span>
+                {extLabel && (
+                  <span className="pointer-events-none absolute bottom-[3px] left-[3px] rounded-app-xs bg-[rgba(0,0,0,0.72)] px-1 py-px text-[8px] font-extrabold tracking-[0.02em] text-white">{extLabel}</span>
+                )}
+                {isUploading && (
+                  <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-white"><LoadingOne size={14} className="animate-[spin_0.9s_linear_infinite]" /></span>
                 )}
                 <button
-                  className="chat-attachment-remove"
+                  className="absolute -right-1.5 -top-1.5 z-[2] flex size-4 items-center justify-center rounded-full border border-app-border-subtle bg-app-surface p-0 text-app-text-muted hover:bg-[var(--color-hover)] hover:text-app-text-secondary"
                   onMouseDown={e => { e.preventDefault(); onRemoveAttachment?.(file.id) }}
                   aria-label="Remove attachment"
                 >
@@ -464,45 +468,60 @@ export function ChatInput({
 
       {previewAttachment && (
         <div
-          className="chat-attachment-preview"
+          className="fixed inset-0 z-[1000] flex items-center justify-center bg-[rgba(0,0,0,0.72)] p-7"
           role="dialog"
           aria-modal="true"
           onMouseDown={() => setPreviewAttachment(null)}
         >
-          <div className="chat-attachment-preview-shell" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="chat-attachment-preview-header">
-              <span>{previewAttachment.filename}</span>
-              <button type="button" onClick={() => setPreviewAttachment(null)} aria-label="Close preview">
+          <div className="flex max-h-[88vh] max-w-[min(92vw,980px)] flex-col gap-2.5" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="flex items-center justify-between gap-3.5 text-[13px] font-bold text-white">
+              <span className="truncate">{previewAttachment.filename}</span>
+              <button
+                className="flex size-[30px] items-center justify-center rounded-app-md border border-[rgba(255,255,255,0.2)] bg-[rgba(255,255,255,0.1)] text-white"
+                type="button"
+                onClick={() => setPreviewAttachment(null)}
+                aria-label="Close preview"
+              >
                 <WindowCloseIcon size={14} />
               </button>
             </div>
             {previewAttachment.page_preview_urls?.length ? (
-              <div className="chat-attachment-preview-pages">
+              <div className="flex max-h-[calc(88vh-48px)] flex-col gap-3.5 overflow-y-auto pr-1">
                 {previewAttachment.page_preview_urls.map((url, index) => (
-                  <img key={`${previewAttachment.id}-page-${index}`} src={url} alt={`${previewAttachment.filename} page ${index + 1}`} />
+                  <img
+                    key={`${previewAttachment.id}-page-${index}`}
+                    className="h-auto w-full max-w-[min(78vw,760px)] rounded-app-md shadow-[0_18px_60px_rgba(0,0,0,0.36)]"
+                    src={url}
+                    alt={`${previewAttachment.filename} page ${index + 1}`}
+                  />
                 ))}
               </div>
             ) : (previewAttachment.preview_url ?? attachmentPreviewURLs[previewAttachment.id] ?? filePathToURL(previewAttachment.local_path)) ? (
               <img
+                className="max-h-[calc(88vh-48px)] max-w-full rounded-app-md object-contain shadow-[0_18px_60px_rgba(0,0,0,0.36)]"
                 src={previewAttachment.preview_url ?? attachmentPreviewURLs[previewAttachment.id] ?? filePathToURL(previewAttachment.local_path) ?? undefined}
                 alt={previewAttachment.filename}
               />
             ) : textPreviews[previewAttachment.id] ? (
-              <pre className="chat-attachment-preview-text">{textPreviews[previewAttachment.id]}</pre>
+              <pre className="m-0 max-h-[calc(88vh-48px)] w-[min(78vw,760px)] overflow-y-auto whitespace-pre-wrap break-words rounded-app-md border border-app-border-subtle bg-app-surface px-[18px] py-4 font-mono text-[12px] leading-[1.55] text-app-text">{textPreviews[previewAttachment.id]}</pre>
             ) : null}
           </div>
         </div>
       )}
 
       {(attachmentError || modelError || recordError) && (
-        <div className="chat-input-notices" aria-live="polite">
-          {attachmentError && <div className="chat-input-notice">{attachmentError}</div>}
-          {recordError && <div className="chat-input-notice">{recordError}</div>}
+        <div className="mb-2 flex flex-col gap-1" aria-live="polite">
+          {attachmentError && <div className={NOTICE_CSS}>{attachmentError}</div>}
+          {recordError && <div className={NOTICE_CSS}>{recordError}</div>}
           {modelError && (
-            <div className="chat-input-notice">
+            <div className={NOTICE_CSS}>
               <span>{modelError}</span>
               {onModelRetry && (
-                <button type="button" className="chat-input-notice-action" onClick={onModelRetry}>
+                <button
+                  type="button"
+                  className="ml-auto shrink-0 cursor-pointer rounded-app-sm border border-[rgba(var(--color-error-rgb),0.2)] bg-transparent px-[7px] py-0.5 font-bold text-app-error [font-family:inherit] [font-size:inherit] [line-height:inherit] hover:bg-[rgba(var(--color-error-rgb),0.08)]"
+                  onClick={onModelRetry}
+                >
                   Retry
                 </button>
               )}
@@ -513,7 +532,7 @@ export function ChatInput({
 
       <textarea
         ref={textareaRef}
-        className="chat-input-textarea"
+        className="min-h-5 w-full resize-none border-0 bg-transparent text-[13px] leading-[1.55] text-app-text outline-none [font-family:inherit] placeholder:text-app-text-muted"
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -522,10 +541,11 @@ export function ChatInput({
         rows={1}
       />
 
-      <div className="chat-input-footer" ref={selectorsRef}>
-        <div className="chat-input-tools-left">
+      <style>{SELECTOR_PILL_MODEL_OVERRIDE_CSS}</style>
+      <div className="mt-2.5 flex items-center justify-between gap-2.5" ref={selectorsRef}>
+        <div className="flex min-w-0 flex-1 items-center gap-1.5">
           <button
-            className={`chat-tool-circle${isUploadingAttachments ? ' chat-tool-circle-loading' : ''}`}
+            className="flex size-7 items-center justify-center rounded-[7px] border-0 bg-transparent p-0 text-app-text-muted transition-[color,transform] duration-150 hover:bg-[var(--color-hover)] hover:text-app-text-secondary disabled:cursor-progress disabled:opacity-55"
             type="button"
             aria-label="Attach files"
             disabled={isUploadingAttachments}
@@ -535,7 +555,7 @@ export function ChatInput({
           </button>
           <input
             ref={fileInputRef}
-            className="chat-file-input"
+            className="hidden"
             type="file"
             multiple
             onChange={e => {
@@ -544,9 +564,9 @@ export function ChatInput({
               e.currentTarget.value = ''
             }}
           />
-          <div className="chat-workspace-control">
+          <div className="flex min-w-0 max-w-[180px] items-center gap-1">
             <button
-              className={`chat-tool-icon${projectPath ? ' chat-tool-icon-active' : ''}`}
+              className={cx(TOOL_ICON_CSS, projectPath && '!text-[var(--color-primary)]')}
               aria-label={projectPath ? `Project: ${projectPath}` : 'Set project folder'}
               onClick={async () => {
                 const result = await window.nexus?.dialog?.openDirectory?.()
@@ -559,9 +579,9 @@ export function ChatInput({
             </button>
             {projectLabel && (
               <>
-                <span className="chat-workspace-label" title={projectPath}>{projectLabel}</span>
+                <span className="truncate text-[12px] text-app-text-secondary" title={projectPath}>{projectLabel}</span>
                 <button
-                  className="chat-workspace-clear"
+                  className="flex items-center border-0 bg-transparent p-0.5 text-app-text-muted hover:text-app-text-secondary"
                   aria-label="Clear project folder"
                   onMouseDown={(e) => { e.preventDefault(); onProjectChange?.('') }}
                 >
@@ -570,37 +590,48 @@ export function ChatInput({
               </>
             )}
           </div>
-          <div className="chat-corpus-wrap" ref={corpusDropdownRef}>
+          <div className="relative" ref={corpusDropdownRef}>
             <button
-              className={`chat-tool-icon${selectedCorpusId ? ' chat-tool-icon-active' : ''}`}
+              className={cx(TOOL_ICON_CSS, selectedCorpusId && '!text-[var(--color-primary)]')}
               aria-label="Attach knowledge base"
               onClick={() => setCorpusDropdownOpen(v => !v)}
             >
               <AtSign size={13} />
             </button>
             {corpusDropdownOpen && (
-              <div className="chat-corpus-dropdown">
-                <div className="chat-corpus-dropdown-header">Knowledge bases</div>
+              <div className="absolute bottom-[calc(100%+8px)] left-0 z-[200] flex max-w-[280px] min-w-[220px] flex-col overflow-hidden rounded-[10px] border border-[var(--color-border)] bg-app-bg shadow-[0_8px_28px_rgba(0,0,0,0.18)]">
+                <div className="border-b border-app-border-subtle px-3.5 pb-1.5 pt-2 text-[11px] font-extrabold uppercase tracking-[0.06em] text-app-text-muted">Knowledge bases</div>
                 {corpora.length === 0 ? (
-                  <div className="chat-corpus-empty">No knowledge bases found</div>
-                ) : corpora.map(c => (
-                  <button
-                    key={c.id}
-                    className={`chat-corpus-item${c.id === selectedCorpusId ? ' selected' : ''}`}
-                    onMouseDown={e => {
-                      e.preventDefault()
-                      onCorpusChange?.(c.id === selectedCorpusId ? null : c.id)
-                      setCorpusDropdownOpen(false)
-                    }}
-                  >
-                    <span className="chat-corpus-item-name">{c.name}</span>
-                    {c.chunk_count > 0 && <span className="chat-corpus-item-count">{c.chunk_count} chunks</span>}
-                  </button>
-                ))}
+                  <div className="p-3.5 text-[13px] text-app-text-muted">No knowledge bases found</div>
+                ) : corpora.map(c => {
+                  const selected = c.id === selectedCorpusId
+                  return (
+                    <button
+                      key={c.id}
+                      className={cx(
+                        'flex w-full cursor-pointer items-center justify-between gap-2 border-0 bg-none px-3.5 py-[9px] text-left text-[13px] text-app-text transition-colors duration-100 hover:bg-app-surface',
+                        selected && 'bg-app-surface',
+                      )}
+                      onMouseDown={e => {
+                        e.preventDefault()
+                        onCorpusChange?.(c.id === selectedCorpusId ? null : c.id)
+                        setCorpusDropdownOpen(false)
+                      }}
+                    >
+                      <span className={cx(selected && 'font-bold text-[var(--color-primary)]')}>{c.name}</span>
+                      {c.chunk_count > 0 && <span className="whitespace-nowrap text-[11px] text-app-text-muted">{c.chunk_count} chunks</span>}
+                    </button>
+                  )
+                })}
               </div>
             )}
           </div>
-          <div className="chat-model-selector-wrap">
+          {/* chat-model-selector-wrap carries no CSS of its own - kept as a
+              bare marker class purely so SELECTOR_PILL_MODEL_OVERRIDE_CSS
+              below can restyle the shared <SelectorPill>'s internals
+              (bigger pill, tinted hover) without adding a variant prop to
+              that component just for this one call site. */}
+          <div className="chat-model-selector-wrap relative min-w-0 max-w-[min(240px,32vw)]">
             <SelectorPill
               label={modelLabel}
               icon={modelIcon ?? (hasModelMenu ? <CheckCorrect size={12} /> : <SettingTwo size={12} />)}
@@ -620,16 +651,16 @@ export function ChatInput({
             )}
           </div>
           {showInlineStatus && isStreaming && (
-            <div className="chat-status-inline" aria-live="polite">
-              <LoadingOne size={14} className="chat-status-spin" />
-              <span>{statusText || 'Running...'}</span>
+            <div className="flex min-w-0 max-w-[320px] items-center gap-[7px] text-[12px] text-app-text-secondary" aria-live="polite">
+              <LoadingOne size={14} className="animate-[spin_0.9s_linear_infinite]" />
+              <span className="truncate">{statusText || 'Running...'}</span>
             </div>
           )}
         </div>
 
-        <div className="chat-input-tools-right">
+        <div className="flex min-w-0 shrink-0 items-center gap-1.5">
           {showProviderSelector && (
-            <div className="chat-selector-wrap">
+            <div className="relative">
               <SelectorPill
                 label={providerLabel}
                 icon={<Browser size={12} />}
@@ -650,7 +681,10 @@ export function ChatInput({
             </div>
           )}
           <button
-            className={`chat-tool-icon chat-tool-icon-mic${recordingState === 'recording' ? ' chat-tool-icon-recording' : ''}`}
+            className={cx(
+              'flex h-7 w-6 items-center justify-center rounded-[7px] border-0 bg-transparent p-0 text-app-text-muted transition-colors duration-150 hover:text-app-text-secondary disabled:cursor-progress disabled:opacity-55',
+              recordingState === 'recording' && '![animation:pulse-opacity_1.2s_ease-in-out_infinite] !text-app-error',
+            )}
             type="button"
             aria-label={
               recordingState === 'recording'
@@ -663,16 +697,26 @@ export function ChatInput({
             onClick={() => void handleMicClick()}
           >
             {recordingState === 'transcribing'
-              ? <LoadingOne size={13} className="chat-status-spin" />
+              ? <LoadingOne size={13} className="animate-[spin_0.9s_linear_infinite]" />
               : <Voice size={13} />}
           </button>
           {isStreaming ? (
-            <button className="chat-stop-btn" onClick={onStop} type="button" aria-label="Stop">
+            <button
+              className="flex size-[30px] items-center justify-center rounded-[9px] border border-[var(--color-primary-hover)] bg-[var(--color-primary-subtle)] text-[var(--color-primary)] transition-all duration-200 hover:bg-[var(--color-primary-hover)]"
+              onClick={onStop}
+              type="button"
+              aria-label="Stop"
+            >
               <WindowCloseIcon size={14} />
             </button>
           ) : (
             <button
-              className={`chat-send-btn${canSend ? ' active' : ''}`}
+              className={cx(
+                'flex size-[30px] items-center justify-center rounded-[9px] border-0 transition-all duration-200',
+                canSend
+                  ? 'cursor-pointer bg-[var(--color-primary)] text-white hover:-translate-y-px hover:bg-[var(--color-primary-hover)]'
+                  : 'cursor-not-allowed bg-[color-mix(in_srgb,var(--color-surface)_82%,var(--color-bg))] text-app-text-muted',
+              )}
               onClick={() => canSend && onSend()}
               type="button"
             >
@@ -687,17 +731,14 @@ export function ChatInput({
 
 export const CHAT_INPUT_CSS = `
 ${SELECTOR_PILL_CSS}
+`
 
-.chat-selector-wrap {
-  position: relative;
-}
-
-.chat-model-selector-wrap {
-  position: relative;
-  min-width: 0;
-  max-width: min(240px, 32vw);
-}
-
+// The one piece of ChatInput's old CSS kept scoped: it reaches into
+// <SelectorPill>'s own internal classes to make the Model pill bigger and
+// warmer here than everywhere else SelectorPill is used - out of scope to
+// solve with a new component prop during the chat/ pass (SelectorPill lives
+// in components/ui/, its own later migration phase).
+const SELECTOR_PILL_MODEL_OVERRIDE_CSS = `
 .chat-model-selector-wrap .selector-pill {
   height: 28px;
   max-width: 100%;
@@ -714,591 +755,4 @@ ${SELECTOR_PILL_CSS}
 .chat-model-selector-wrap .selector-menu {
   min-width: 330px;
 }
-
-/* Slash-command dropdown */
-.chat-slash-dropdown {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 0; right: 0;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
-  overflow: hidden;
-  z-index: 200;
-  max-height: 280px;
-  overflow-y: auto;
-}
-
-.chat-slash-item {
-  width: 100%; text-align: left;
-  background: none; border: none; cursor: pointer;
-  padding: 9px 12px;
-  display: flex; align-items: baseline; gap: var(--space-5);
-  transition: background 0.1s;
-}
-.chat-slash-item:hover, .chat-slash-item.selected {
-  background: var(--color-surface);
-}
-.chat-slash-name {
-  font-size: 13px; font-weight: 700; color: var(--color-cta);
-  flex-shrink: 0; font-family: var(--font-mono, monospace);
-}
-.chat-slash-desc {
-  font-size: 12px; color: var(--color-text-muted);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-
-.chat-input-wrapper {
-  background: color-mix(in srgb, var(--color-surface) 92%, var(--color-bg));
-  border-radius: 18px;
-  padding: 12px 14px 10px;
-  position: relative; /* anchors slash dropdown */
-  border: 1px solid var(--color-border-subtle);
-  box-shadow: 0 14px 34px rgba(31, 27, 23, 0.09);
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
-}
-
-.chat-input-wrapper:focus-within {
-  border-color: color-mix(in srgb, var(--color-primary) 42%, var(--color-border-subtle));
-  box-shadow: 0 18px 42px rgba(31, 27, 23, 0.12), 0 0 0 2px color-mix(in srgb, var(--color-primary) 14%, transparent);
-}
-
-.chat-input-textarea {
-  background: transparent;
-  border: none;
-  color: var(--color-text);
-  font-size: 13px;
-  line-height: 1.55;
-  outline: none;
-  resize: none;
-  width: 100%;
-  min-height: 20px;
-  font-family: inherit;
-}
-
-.chat-input-textarea::placeholder {
-  color: var(--color-text-muted);
-}
-
-.chat-attachment-row {
-  display: flex;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  gap: 8px;
-  margin-bottom: 10px;
-  padding: 5px 2px;
-}
-
-.chat-attachment-card {
-  position: relative;
-  flex-shrink: 0;
-  width: 56px;
-  height: 56px;
-}
-
-.chat-attachment-card--uploading .chat-attachment-thumb,
-.chat-attachment-card--uploading .chat-attachment-file-icon {
-  opacity: 0.6;
-}
-
-.chat-attachment-card--failed .chat-attachment-thumb,
-.chat-attachment-card--failed .chat-attachment-file-icon {
-  border-color: rgba(var(--color-error-rgb), 0.5);
-}
-
-.chat-attachment-thumb,
-.chat-attachment-file-icon {
-  display: block;
-  width: 100%;
-  height: 100%;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border-subtle);
-  background: var(--color-surface);
-  color: var(--color-text-secondary);
-  overflow: hidden;
-  cursor: pointer;
-  padding: 0;
-}
-
-.chat-attachment-file-icon {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  padding: 4px 4px 2px;
-}
-
-.chat-attachment-file-icon-name {
-  width: 100%;
-  font-size: 7px;
-  line-height: 1.15;
-  color: var(--color-text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-align: center;
-}
-
-.chat-attachment-card--image .chat-attachment-thumb,
-.chat-attachment-card--image .chat-attachment-file-icon {
-  border-color: color-mix(in srgb, var(--color-primary) 36%, transparent);
-}
-
-.chat-attachment-card--documents .chat-attachment-thumb,
-.chat-attachment-card--documents .chat-attachment-file-icon {
-  border-color: color-mix(in srgb, var(--color-success) 34%, transparent);
-}
-
-.chat-attachment-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.chat-attachment-thumb--text {
-  padding: 4px 5px;
-  text-align: left;
-}
-
-.chat-attachment-text-preview {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 7;
-  overflow: hidden;
-  font-family: var(--font-mono, monospace);
-  font-size: 6px;
-  line-height: 1.3;
-  color: var(--color-text-muted);
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.chat-attachment-thumb-badge {
-  position: absolute;
-  left: 3px;
-  bottom: 3px;
-  background: rgba(0, 0, 0, 0.72);
-  color: white;
-  border-radius: var(--radius-xs);
-  padding: 1px var(--space-2);
-  font-size: 8px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  pointer-events: none;
-}
-
-.chat-attachment-spinner {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  pointer-events: none;
-}
-
-.chat-attachment-remove {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  z-index: 2;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-subtle);
-  color: var(--color-text-muted);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-}
-
-.chat-attachment-remove:hover {
-  color: var(--color-text-secondary);
-  background: var(--color-hover);
-}
-
-.chat-attachment-preview {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 28px;
-  background: rgba(0, 0, 0, 0.72);
-}
-
-.chat-attachment-preview-shell {
-  max-width: min(92vw, 980px);
-  max-height: 88vh;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
-}
-
-.chat-attachment-preview-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  color: white;
-  font-size: var(--font-size-base);
-  font-weight: 700;
-}
-
-.chat-attachment-preview-header span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.chat-attachment-preview-header button {
-  width: 30px;
-  height: 30px;
-  border-radius: var(--radius-md);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.chat-attachment-preview-shell > img {
-  max-width: 100%;
-  max-height: calc(88vh - 48px);
-  object-fit: contain;
-  border-radius: var(--radius-md);
-  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.36);
-}
-
-.chat-attachment-preview-pages {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  overflow-y: auto;
-  max-height: calc(88vh - 48px);
-  padding-right: 4px;
-}
-
-.chat-attachment-preview-pages img {
-  max-width: min(78vw, 760px);
-  width: 100%;
-  height: auto;
-  border-radius: var(--radius-md);
-  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.36);
-}
-
-.chat-attachment-preview-text {
-  width: min(78vw, 760px);
-  max-height: calc(88vh - 48px);
-  overflow-y: auto;
-  margin: 0;
-  padding: 16px 18px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-md);
-  font-family: var(--font-mono, monospace);
-  font-size: var(--font-size-sm);
-  line-height: 1.55;
-  color: var(--color-text);
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.chat-input-notices {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin-bottom: var(--space-4);
-}
-
-.chat-input-notice {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: var(--space-4);
-  color: var(--color-error);
-  font-size: var(--font-size-xs);
-  line-height: 1.4;
-  background: rgba(var(--color-error-rgb), 0.08);
-  border: 1px solid rgba(var(--color-error-rgb), 0.16);
-  border-radius: var(--radius-md);
-  padding: var(--space-3) var(--space-4);
-}
-
-.chat-input-notice-action {
-  margin-left: auto;
-  flex-shrink: 0;
-  border: 1px solid rgba(var(--color-error-rgb), 0.2);
-  background: transparent;
-  color: var(--color-error);
-  border-radius: var(--radius-sm);
-  padding: 2px 7px;
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.chat-input-notice-action:hover {
-  background: rgba(var(--color-error-rgb), 0.08);
-}
-
-.chat-file-input {
-  display: none;
-}
-
-.chat-input-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 10px;
-}
-
-.chat-input-tools-left {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  flex: 1;
-}
-
-.chat-input-tools-right {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  flex-shrink: 0;
-}
-
-.chat-tool-circle {
-  background: transparent;
-  border: none;
-  color: var(--color-text-muted);
-  width: 28px;
-  height: 28px;
-  border-radius: 7px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  padding: 0;
-  transition: color 0.15s, transform 0.15s;
-}
-
-.chat-tool-circle:disabled {
-  opacity: 0.55;
-  cursor: progress;
-}
-
-.chat-tool-circle:hover:not(:disabled) {
-  color: var(--color-text-secondary);
-  background: var(--color-hover);
-}
-
-.chat-tool-icon {
-  background: transparent;
-  border: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  justify-content: center;
-  border-radius: 7px;
-  display: flex;
-  align-items: center;
-  transition: color 0.15s;
-}
-
-.chat-tool-icon:disabled {
-  opacity: 0.55;
-  cursor: progress;
-}
-
-.chat-tool-icon-recording {
-  color: var(--color-error) !important;
-  animation: chat-mic-pulse 1.2s ease-in-out infinite;
-}
-
-@keyframes chat-mic-pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.4; }
-}
-
-.chat-record-error {
-  font-size: var(--font-size-2xs);
-  color: var(--color-error);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 220px;
-}
-
-.chat-tool-icon:hover {
-  color: var(--color-text-secondary);
-  background: var(--color-hover);
-}
-
-.chat-tool-icon-mic {
-  width: 24px;
-  color: var(--color-text-muted);
-  background: transparent;
-  border: none;
-}
-
-.chat-tool-icon-mic:hover {
-  background: transparent;
-  color: var(--color-text-secondary);
-}
-
-.chat-workspace-control {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-  max-width: 180px;
-}
-
-.chat-workspace-label {
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.chat-workspace-clear {
-  background: transparent;
-  border: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  padding: var(--space-1);
-}
-
-.chat-workspace-clear:hover {
-  color: var(--color-text-secondary);
-}
-
-.chat-send-btn {
-  background: color-mix(in srgb, var(--color-surface) 82%, var(--color-bg));
-  color: var(--color-text-muted);
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: not-allowed;
-  transition: all 0.2s;
-}
-
-.chat-send-btn.active {
-  background: var(--color-primary);
-  color: white;
-  cursor: pointer;
-}
-
-.chat-send-btn.active:hover {
-  background: var(--color-primary-hover);
-  transform: translateY(-1px);
-}
-
-.chat-stop-btn {
-  background: var(--color-primary-subtle);
-  color: var(--color-primary);
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
-  border: 1px solid var(--color-primary-hover);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.chat-stop-btn:hover {
-  background: var(--color-primary-hover);
-}
-
-.chat-status-inline {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  min-width: 0;
-  max-width: 320px;
-}
-
-.chat-status-inline span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.chat-status-spin {
-  animation: chat-input-spin 0.9s linear infinite;
-}
-
-@keyframes chat-input-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-/* Corpus chip */
-.chat-corpus-chip {
-  display: inline-flex; align-items: center; gap: 5px;
-  background: rgba(239,124,47,0.1); border: 1px solid rgba(239,124,47,0.3);
-  border-radius: 7px; padding: 3px 8px 3px 6px;
-  margin-bottom: 8px; font-size: 12px; font-weight: 600;
-  color: var(--color-primary);
-}
-.chat-corpus-chip-icon { font-size: var(--font-size-base); line-height: 1; }
-.chat-corpus-chip-name { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.chat-corpus-chip-remove {
-  background: none; border: none; color: inherit; cursor: pointer;
-  padding: 1px; display: flex; align-items: center; opacity: 0.7;
-  border-radius: 3px;
-}
-.chat-corpus-chip-remove:hover { opacity: 1; }
-
-/* Corpus dropdown */
-.chat-corpus-wrap { position: relative; }
-.chat-tool-icon-active { color: var(--color-primary) !important; }
-.chat-corpus-dropdown {
-  position: absolute; bottom: calc(100% + 8px); left: 0;
-  min-width: 220px; max-width: 280px;
-  background: var(--color-bg); border: 1px solid var(--color-border);
-  border-radius: 10px; box-shadow: 0 8px 28px rgba(0,0,0,0.18);
-  overflow: hidden; z-index: 200;
-  display: flex; flex-direction: column;
-}
-.chat-corpus-dropdown-header {
-  padding: 8px 14px 6px; font-size: var(--font-size-xs); font-weight: 800;
-  color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.06em;
-  border-bottom: 1px solid var(--color-border-subtle);
-}
-.chat-corpus-item {
-  width: 100%; text-align: left; background: none; border: none;
-  padding: 9px 14px; cursor: pointer; display: flex;
-  align-items: center; justify-content: space-between; gap: var(--space-4);
-  font-size: 13px; color: var(--color-text); transition: background 0.1s;
-}
-.chat-corpus-item:hover, .chat-corpus-item.selected { background: var(--color-surface); }
-.chat-corpus-item.selected .chat-corpus-item-name { color: var(--color-primary); font-weight: 700; }
-.chat-corpus-item-count { font-size: var(--font-size-xs); color: var(--color-text-muted); white-space: nowrap; }
-.chat-corpus-empty { padding: 14px; font-size: 13px; color: var(--color-text-muted); }
 `

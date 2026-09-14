@@ -1,35 +1,7 @@
-import { Section } from '../common'
+import { ErrorPre, Section } from '../common'
 import type { ToolViewProps } from '../types'
 
-const CSS = `
-.tb-stt-transcript {
-  font-size: 12px;
-  line-height: 1.65;
-  color: var(--color-text);
-  padding: 7px 8px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 6px;
-  white-space: pre-wrap;
-}
-
-.tb-stt-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 10px;
-  color: var(--color-text-muted);
-  flex-wrap: wrap;
-}
-
-.tb-stt-chip {
-  padding: 2px 5px;
-  border-radius: 3px;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid var(--color-border-subtle);
-  font-family: monospace;
-}
-`
+const CHIP_CSS = 'rounded-[3px] border border-app-border-subtle bg-[rgba(255,255,255,0.05)] px-[5px] py-0.5 font-mono'
 
 type SttResult = {
   text?: string
@@ -55,7 +27,7 @@ export function SttToolView({ result }: ToolViewProps) {
   if (result?.isError && result.content) {
     return (
       <Section label="Error">
-        <pre className="tb-pre tb-pre--error">{result.content}</pre>
+        <ErrorPre content={result.content} />
       </Section>
     )
   }
@@ -67,15 +39,13 @@ export function SttToolView({ result }: ToolViewProps) {
 
   return (
     <>
-      <style>{CSS}</style>
-
       <Section label="Transcript">
-        <div className="tb-stt-transcript">{transcript}</div>
+        <div className="whitespace-pre-wrap rounded-md border border-app-border-subtle bg-[rgba(255,255,255,0.03)] px-2 py-[7px] text-[12px] leading-[1.65] text-app-text">{transcript}</div>
       </Section>
 
       {(parsed?.language || parsed?.duration != null) && (
-        <div className="tb-stt-meta" style={{ marginTop: 6 }}>
-          {parsed.language && <span className="tb-stt-chip">{parsed.language}</span>}
+        <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[10px] text-app-text-muted">
+          {parsed.language && <span className={CHIP_CSS}>{parsed.language}</span>}
           {parsed.duration != null && (
             <span>{formatDuration(parsed.duration)}</span>
           )}

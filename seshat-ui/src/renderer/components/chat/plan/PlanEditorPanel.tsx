@@ -6,521 +6,20 @@ import { api } from '@/api/client'
 import { useChat } from '@/hooks/useChat'
 import { useSessionStore } from '@/stores/session'
 import { useUIStore, buildRightPanelId } from '@/stores/ui'
-import type { PlanDocument } from '@/api/types'
+import type { PlanDocument, PlanStatus } from '@/api/types'
 
-const CSS = `
-.pep-root {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(' ')
 }
 
-.pep-header {
-  padding: 10px 11px;
-  border-bottom: 1px solid var(--color-border-subtle);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  flex-shrink: 0;
+const BADGE_CSS: Record<PlanStatus, string> = {
+  pending: 'bg-[rgba(239,124,47,0.15)] text-[var(--color-accent)]',
+  validated: 'bg-[rgba(var(--color-success-rgb),0.12)] text-app-success',
+  rejected: 'bg-[rgba(var(--color-error-rgb),0.1)] text-app-error',
 }
 
-.pep-header-top {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
+const FRAME_BTN_CSS = 'inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-[5px] border-0 bg-transparent text-app-text-muted hover:bg-[var(--color-hover)] hover:text-app-text'
 
-.pep-icon {
-  color: var(--color-accent);
-  flex-shrink: 0;
-}
-
-.pep-name {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--color-text);
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pep-badge {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  padding: 2px 6px;
-  border-radius: 779px;
-  flex-shrink: 0;
-}
-
-.pep-badge--pending {
-  background: rgba(239, 124, 47, 0.15);
-  color: var(--color-accent);
-}
-
-.pep-badge--validated {
-  background: rgba(var(--color-success-rgb), 0.12);
-  color: var(--color-success);
-}
-
-.pep-badge--rejected {
-  background: rgba(var(--color-error-rgb), 0.1);
-  color: var(--color-error);
-}
-
-.pep-meta {
-  font-size: 10px;
-  color: var(--color-text-muted);
-}
-
-.pep-edit-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-  border-radius: 5px;
-  border: none;
-  background: transparent;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.pep-edit-btn:hover {
-  background: var(--color-hover);
-  color: var(--color-text);
-}
-
-.pep-edit-btn--active {
-  background: rgba(239, 124, 47, 0.12);
-  color: var(--color-accent);
-}
-
-.pep-frame-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-  border-radius: 5px;
-  border: none;
-  background: transparent;
-  color: var(--color-text-muted);
-  cursor: pointer;
-}
-
-.pep-frame-btn:hover {
-  background: var(--color-hover);
-  color: var(--color-text);
-}
-
-.pep-tool-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 7px;
-  border-radius: 5px;
-  border: 1px solid var(--color-border-subtle);
-  background: transparent;
-  color: var(--color-text-muted);
-  font-size: 10px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.pep-tool-btn:hover {
-  background: var(--color-hover);
-  color: var(--color-text);
-}
-
-.pep-body {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-border-subtle) transparent;
-}
-
-.pep-body::-webkit-scrollbar { width: 4px; }
-.pep-body::-webkit-scrollbar-track { background: transparent; }
-.pep-body::-webkit-scrollbar-thumb {
-  background: var(--color-border-subtle);
-  border-radius: 3px;
-}
-
-.pep-markdown {
-  padding: 11px 13px;
-  flex: 1;
-  position: relative;
-  user-select: text;
-}
-
-.pep-line-wrap {
-  position: relative;
-  padding-left: 20px;
-  border-radius: 6px;
-  transition: background 0.12s;
-}
-
-.pep-line-wrap:hover {
-  background: rgba(239, 124, 47, 0.05);
-}
-
-.pep-line-plus {
-  position: absolute;
-  left: 0;
-  top: 4px;
-  width: 17px;
-  height: 17px;
-  border-radius: 50%;
-  border: none;
-  background: var(--color-accent);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  opacity: 0;
-  transform: scale(0.8);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
-  transition: opacity 0.12s, transform 0.12s;
-}
-
-/* Only the block the mouse is actually over reveals its "+" - showing
-   every block's button at once (even dimly) made every paragraph look
-   annotatable simultaneously instead of pointing at the one under the
-   cursor. */
-.pep-line-wrap:hover .pep-line-plus {
-  opacity: 1;
-  transform: scale(1);
-}
-
-.pep-line-plus:hover {
-  transform: scale(1.1);
-}
-
-.pep-editor {
-  width: 100%;
-  flex: 1;
-  min-height: 300px;
-  padding: 11px 13px;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: var(--color-text);
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 11px;
-  line-height: 1.6;
-  resize: none;
-  box-sizing: border-box;
-}
-
-/* ── Inline annotation float ──
-   Positioned absolute *within .pep-markdown* (top/left are set in JS as
-   offsets from that container, not the viewport) so it scrolls and stays
-   attached to the paragraph it's commenting on, and can never render
-   outside the panel - see clampFloatPosition's comment. */
-.pep-float {
-  position: absolute;
-  z-index: 20;
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0;
-  filter: drop-shadow(0 4px 16px rgba(0,0,0,0.35));
-}
-
-.pep-float-btn {
-  padding: 4px 8px;
-  border-radius: 6px;
-  background: var(--color-accent);
-  border: none;
-  color: #fff;
-  font-size: 10px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.12s;
-}
-
-.pep-float-btn:hover {
-  background: rgba(239, 124, 47, 0.9);
-}
-
-.pep-float-form {
-  background: rgba(38, 36, 44, 0.98);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
-  padding: 7px;
-  width: 280px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.pep-float-quote {
-  font-size: 10px;
-  color: var(--color-text-muted);
-  border-left: 2px solid var(--color-accent);
-  padding-left: 6px;
-  font-style: italic;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pep-float-textarea {
-  width: 100%;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 5px;
-  color: var(--color-text);
-  font-size: 10px;
-  font-family: inherit;
-  padding: 5px 6px;
-  resize: none;
-  outline: none;
-  box-sizing: border-box;
-  transition: border-color 0.15s;
-}
-
-.pep-float-textarea:focus {
-  border-color: rgba(239, 124, 47, 0.4);
-}
-
-.pep-float-actions {
-  display: flex;
-  gap: 5px;
-  justify-content: flex-end;
-}
-
-.pep-float-cancel {
-  padding: 3px 7px;
-  border-radius: 5px;
-  border: 1px solid var(--color-border-subtle);
-  background: transparent;
-  color: var(--color-text-muted);
-  font-size: 10px;
-  cursor: pointer;
-}
-
-.pep-float-cancel:hover {
-  background: var(--color-hover);
-  color: var(--color-text);
-}
-
-.pep-float-add {
-  padding: 3px 7px;
-  border-radius: 5px;
-  border: none;
-  background: var(--color-accent);
-  color: #fff;
-  font-size: 10px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.12s;
-}
-
-.pep-float-add:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* ── Annotation list ── */
-.pep-annotations {
-  padding: 0 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  flex-shrink: 0;
-}
-
-.pep-annotations-label {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding-top: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.pep-annotations-clear {
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--color-text-muted);
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  text-transform: lowercase;
-  letter-spacing: 0;
-  transition: color 0.12s;
-}
-
-.pep-annotations-clear:hover {
-  color: var(--color-error);
-}
-
-.pep-annotation-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  background: rgba(239, 124, 47, 0.05);
-  border: 1px solid rgba(239, 124, 47, 0.15);
-  border-radius: 6px;
-  padding: 6px 7px;
-}
-
-.pep-annotation-body {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.pep-annotation-quote {
-  font-size: 10px;
-  font-style: italic;
-  color: var(--color-text-muted);
-  border-left: 2px solid var(--color-accent);
-  padding-left: 5px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pep-annotation-comment {
-  font-size: 10px;
-  color: var(--color-text);
-  line-height: 1.45;
-}
-
-.pep-annotation-remove {
-  flex-shrink: 0;
-  background: none;
-  border: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  padding: 2px;
-  display: flex;
-  align-items: center;
-  opacity: 0.5;
-  transition: opacity 0.12s;
-}
-
-.pep-annotation-remove:hover {
-  opacity: 1;
-  color: var(--color-error);
-}
-
-/* ── Footer ── */
-.pep-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 9px;
-  padding: 7px 10px;
-  border-top: 1px solid var(--color-border-subtle);
-  flex-shrink: 0;
-  background: rgba(0, 0, 0, 0.08);
-}
-
-.pep-hint {
-  font-size: 10px;
-  color: var(--color-text-muted);
-  flex: 1;
-}
-
-.pep-error-banner {
-  margin: 0 11px 8px;
-  padding: 7px 9px;
-  border-radius: 6px;
-  background: rgba(var(--color-error-rgb), 0.08);
-  border: 1px solid rgba(var(--color-error-rgb), 0.3);
-  color: var(--color-error);
-  font-size: 10.5px;
-  line-height: 1.4;
-  flex-shrink: 0;
-}
-
-.pep-actions {
-  display: flex;
-  gap: 5px;
-  flex-shrink: 0;
-}
-
-.pep-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 5px 10px;
-  border-radius: 6px;
-  font-size: 10px;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: all 0.15s;
-}
-
-.pep-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.pep-btn--deny {
-  background: transparent;
-  border-color: var(--color-border-subtle);
-  color: var(--color-text-muted);
-}
-
-.pep-btn--deny:hover:not(:disabled) {
-  background: rgba(var(--color-error-rgb), 0.08);
-  border-color: rgba(var(--color-error-rgb), 0.3);
-  color: var(--color-error);
-}
-
-.pep-btn--proceed {
-  background: rgba(var(--color-success-rgb), 0.12);
-  border-color: rgba(var(--color-success-rgb), 0.3);
-  color: var(--color-success);
-}
-
-.pep-btn--proceed:hover:not(:disabled) {
-  background: rgba(var(--color-success-rgb), 0.22);
-  border-color: rgba(var(--color-success-rgb), 0.5);
-}
-
-.pep-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
-  gap: 6px;
-  color: var(--color-text-muted);
-  padding: 22px;
-  font-size: 11px;
-}
-`
 
 type Annotation = {
   id: string
@@ -718,17 +217,17 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
   // no close/maximize control at all, since the generic RightPanelHost
   // header no longer exists as a fallback for plan panels (see PanelFrame).
   const minimalHeader = (
-    <div className="pep-header">
-      <div className="pep-header-top">
-        <DocDetail size={13} className="pep-icon" />
-        <span className="pep-name">Implementation Plan</span>
+    <div className="flex shrink-0 flex-col gap-1.5 border-b border-app-border-subtle px-[11px] py-2.5">
+      <div className="flex items-center gap-1.5">
+        <DocDetail size={13} className="shrink-0 text-[var(--color-accent)]" />
+        <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-app-text">Implementation Plan</span>
         {onToggleMaximize && (
-          <button className="pep-frame-btn" type="button" onClick={onToggleMaximize} aria-label={isMaximized ? 'Restore' : 'Maximize'}>
+          <button className={FRAME_BTN_CSS} type="button" onClick={onToggleMaximize} aria-label={isMaximized ? 'Restore' : 'Maximize'}>
             <WindowMaximizeIcon />
           </button>
         )}
         {onClose && (
-          <button className="pep-frame-btn" type="button" onClick={onClose} aria-label="Close">
+          <button className={FRAME_BTN_CSS} type="button" onClick={onClose} aria-label="Close">
             <WindowCloseIcon />
           </button>
         )}
@@ -738,25 +237,23 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
 
   if (isDocumentBacked && !plan) {
     return (
-      <div className="pep-root">
-        <style>{CSS}</style>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {minimalHeader}
-        <div className="pep-empty">Loading plan…</div>
+        <div className="flex flex-1 flex-col items-center justify-center gap-1.5 p-[22px] text-[11px] text-app-text-muted">Loading plan…</div>
       </div>
     )
   }
 
   if (!content) {
     return (
-      <div className="pep-root">
-        <style>{CSS}</style>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {minimalHeader}
-        <div className="pep-empty">
-          <span style={actionError ? { color: 'var(--color-error)', textAlign: 'center' } : undefined}>
+        <div className="flex flex-1 flex-col items-center justify-center gap-1.5 p-[22px] text-[11px] text-app-text-muted">
+          <span className={cx(actionError && 'text-center text-app-error')}>
             {actionError ?? 'No plan content yet.'}
           </span>
           {isDocumentBacked && (
-            <button type="button" className="pep-tool-btn" onClick={() => void loadFull()}>
+            <button type="button" className="inline-flex cursor-pointer items-center gap-1 rounded-[5px] border border-app-border-subtle bg-transparent px-[7px] py-1 text-[10px] font-medium text-app-text-muted transition-all duration-150 hover:bg-[var(--color-hover)] hover:text-app-text" onClick={() => void loadFull()}>
               Retry
             </button>
           )}
@@ -771,12 +268,6 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
   const humanSlug = plan
     ? plan.slug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
     : 'Implementation Plan'
-
-  const badgeClass = status === 'validated'
-    ? 'pep-badge pep-badge--validated'
-    : status === 'rejected'
-      ? 'pep-badge pep-badge--rejected'
-      : 'pep-badge pep-badge--pending'
 
   const hasFeedback = annotations.length > 0 || (isDocumentBacked && editMode && editedContent !== content)
 
@@ -895,16 +386,17 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
   }
 
   return (
-    <div className="pep-root">
-      <style>{CSS}</style>
-
-      <div className="pep-header">
-        <div className="pep-header-top">
-          <DocDetail size={13} className="pep-icon" />
-          <span className="pep-name">{humanSlug}</span>
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="flex shrink-0 flex-col gap-1.5 border-b border-app-border-subtle px-[11px] py-2.5">
+        <div className="flex items-center gap-1.5">
+          <DocDetail size={13} className="shrink-0 text-[var(--color-accent)]" />
+          <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-app-text">{humanSlug}</span>
           {isDocumentBacked && !isReadonly && (
             <button
-              className={`pep-edit-btn${editMode ? ' pep-edit-btn--active' : ''}`}
+              className={cx(
+                'inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-[5px] border-0 transition-all duration-150',
+                editMode ? 'bg-[rgba(239,124,47,0.12)] text-[var(--color-accent)]' : 'bg-transparent text-app-text-muted hover:bg-[var(--color-hover)] hover:text-app-text',
+              )}
               type="button"
               onClick={() => setEditMode((v) => !v)}
               aria-label={editMode ? 'Preview' : 'Edit'}
@@ -912,42 +404,42 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
               <Edit size={11} />
             </button>
           )}
-          <span className={badgeClass}>{status}</span>
+          <span className={cx('shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.06em]', BADGE_CSS[status])}>{status}</span>
           {onToggleMaximize && (
-            <button className="pep-frame-btn" type="button" onClick={onToggleMaximize} aria-label={isMaximized ? 'Restore' : 'Maximize'}>
+            <button className={FRAME_BTN_CSS} type="button" onClick={onToggleMaximize} aria-label={isMaximized ? 'Restore' : 'Maximize'}>
               <WindowMaximizeIcon />
             </button>
           )}
           {onClose && (
-            <button className="pep-frame-btn" type="button" onClick={onClose} aria-label="Close">
+            <button className={FRAME_BTN_CSS} type="button" onClick={onClose} aria-label="Close">
               <WindowCloseIcon />
             </button>
           )}
         </div>
-        {plan && <div className="pep-meta">{plan.filename} · v{plan.version}</div>}
+        {plan && <div className="text-[10px] text-app-text-muted">{plan.filename} · v{plan.version}</div>}
       </div>
 
-      <div className="pep-body">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto [scrollbar-color:var(--color-border-subtle)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-[3px] [&::-webkit-scrollbar-thumb]:bg-app-border-subtle [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-1">
         {editMode ? (
           <textarea
-            className="pep-editor"
+            className="box-border w-full flex-1 resize-none border-0 bg-transparent px-[13px] py-[11px] font-['JetBrains_Mono','Fira_Code',monospace] text-[11px] leading-[1.6] text-app-text outline-none [min-height:300px]"
             value={editedContent}
             onChange={(e) => setEditedContent(e.target.value)}
             spellCheck={false}
             autoFocus
           />
         ) : (
-          <div className="pep-markdown" ref={markdownRef} onMouseUp={handleMarkdownMouseUp}>
+          <div className="relative flex-1 select-text px-[13px] py-[11px]" ref={markdownRef} onMouseUp={handleMarkdownMouseUp}>
             {!contentToShow ? (
-              <span style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Loading content…</span>
+              <span className="text-[13px] text-app-text-muted">Loading content…</span>
             ) : isReadonly ? (
               <MarkdownView sessionId={sessionId}>{contentToShow}</MarkdownView>
             ) : (
               splitMarkdownBlocks(contentToShow).map((block, i) => (
-                <div key={i} className="pep-line-wrap">
+                <div key={i} className="group relative rounded-md pl-5 transition-colors duration-[120ms] hover:bg-[rgba(239,124,47,0.05)]">
                   <button
                     type="button"
-                    className="pep-line-plus"
+                    className="absolute left-0 top-1 flex size-[17px] scale-[0.8] cursor-pointer items-center justify-center rounded-full border-0 bg-[var(--color-accent)] text-[12px] font-bold leading-none text-white opacity-0 shadow-[0_1px_4px_rgba(0,0,0,0.3)] transition-[opacity,transform] duration-[120ms] group-hover:scale-100 group-hover:opacity-100"
                     aria-label="Comment on this section"
                     onClick={(e) => openLineComment(e, block)}
                   >
@@ -961,15 +453,15 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
             {floatStyle && pendingQuote && (
               <div
                 ref={floatRef}
-                className="pep-float"
+                className="absolute z-20 flex -translate-x-1/2 flex-col items-stretch [filter:drop-shadow(0_4px_16px_rgba(0,0,0,0.35))]"
                 style={{ top: floatStyle.top, left: floatStyle.left }}
                 onMouseDown={(e) => e.stopPropagation()}
               >
                 {showAnnotationForm ? (
-                  <div className="pep-float-form">
-                    <div className="pep-float-quote">"{pendingQuote}"</div>
+                  <div className="flex w-[280px] flex-col gap-1.5 rounded-lg border border-app-border-subtle bg-[rgba(38,36,44,0.98)] p-[7px]">
+                    <div className="truncate border-l-2 border-[var(--color-accent)] pl-1.5 text-[10px] italic text-app-text-muted">"{pendingQuote}"</div>
                     <textarea
-                      className="pep-float-textarea"
+                      className="box-border w-full resize-none rounded-[5px] border border-app-border-subtle bg-[rgba(255,255,255,0.04)] px-1.5 py-[5px] text-[10px] text-app-text outline-none transition-colors duration-150 [font-family:inherit] focus:border-[rgba(239,124,47,0.4)]"
                       autoFocus
                       rows={3}
                       placeholder="Your comment on this selection…"
@@ -980,11 +472,11 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
                         if (e.key === 'Escape') closeFloat()
                       }}
                     />
-                    <div className="pep-float-actions">
-                      <button type="button" className="pep-float-cancel" onClick={closeFloat}>Cancel</button>
+                    <div className="flex justify-end gap-[5px]">
+                      <button type="button" className="cursor-pointer rounded-[5px] border border-app-border-subtle bg-transparent px-[7px] py-[3px] text-[10px] text-app-text-muted hover:bg-[var(--color-hover)] hover:text-app-text" onClick={closeFloat}>Cancel</button>
                       <button
                         type="button"
-                        className="pep-float-add"
+                        className="cursor-pointer rounded-[5px] border-0 bg-[var(--color-accent)] px-[7px] py-[3px] text-[10px] font-semibold text-white transition-opacity duration-[120ms] disabled:cursor-not-allowed disabled:opacity-40"
                         onClick={addAnnotation}
                         disabled={!annotationInput.trim()}
                       >
@@ -995,7 +487,7 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
                 ) : (
                   <button
                     type="button"
-                    className="pep-float-btn"
+                    className="cursor-pointer whitespace-nowrap rounded-md border-0 bg-[var(--color-accent)] px-2 py-1 text-[10px] font-semibold text-white transition-colors duration-[120ms] hover:bg-[rgba(239,124,47,0.9)]"
                     onClick={() => setShowAnnotationForm(true)}
                   >
                     ✎ Comment
@@ -1008,26 +500,26 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
       </div>
 
       {!isReadonly && annotations.length > 0 && (
-        <div className="pep-annotations">
-          <div className="pep-annotations-label">
+        <div className="flex shrink-0 flex-col gap-[5px] px-2.5">
+          <div className="flex items-center justify-between pt-2 text-[10px] font-semibold uppercase tracking-[0.05em] text-app-text-muted">
             Annotations ({annotations.length})
             <button
               type="button"
-              className="pep-annotations-clear"
+              className="cursor-pointer border-0 bg-none p-0 text-[10px] font-medium normal-case tracking-normal text-app-text-muted transition-colors duration-[120ms] hover:text-app-error"
               onClick={() => setAnnotations([])}
             >
               clear all
             </button>
           </div>
           {annotations.map((a) => (
-            <div key={a.id} className="pep-annotation-row">
-              <div className="pep-annotation-body">
-                <div className="pep-annotation-quote">"{a.quote}"</div>
-                <div className="pep-annotation-comment">{a.comment}</div>
+            <div key={a.id} className="flex items-start gap-1.5 rounded-md border border-[rgba(239,124,47,0.15)] bg-[rgba(239,124,47,0.05)] px-[7px] py-1.5">
+              <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
+                <div className="truncate border-l-2 border-[var(--color-accent)] pl-[5px] text-[10px] italic text-app-text-muted">"{a.quote}"</div>
+                <div className="text-[10px] leading-[1.45] text-app-text">{a.comment}</div>
               </div>
               <button
                 type="button"
-                className="pep-annotation-remove"
+                className="flex shrink-0 cursor-pointer items-center border-0 bg-none p-0.5 text-app-text-muted opacity-50 transition-opacity duration-[120ms] hover:text-app-error hover:opacity-100"
                 onClick={() => removeAnnotation(a.id)}
                 aria-label="Remove"
               >
@@ -1038,18 +530,20 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
         </div>
       )}
 
-      {actionError && <div className="pep-error-banner">{actionError}</div>}
+      {actionError && (
+        <div className="mx-[11px] mb-2 shrink-0 rounded-md border border-[rgba(var(--color-error-rgb),0.3)] bg-[rgba(var(--color-error-rgb),0.08)] px-[9px] py-[7px] text-[10.5px] leading-[1.4] text-app-error">{actionError}</div>
+      )}
 
       {!isReadonly && (pendingPermission || isDocumentBacked) && (
-        <div className="pep-footer">
-          <span className="pep-hint">
+        <div className="flex shrink-0 items-center justify-between gap-[9px] border-t border-app-border-subtle bg-[rgba(0,0,0,0.08)] px-2.5 py-[7px]">
+          <span className="flex-1 text-[10px] text-app-text-muted">
             {hasFeedback
               ? 'Sends your feedback to the agent, which revises the plan right away'
               : 'Hover a section for + to comment, or select a range of lines'}
           </span>
-          <div className="pep-actions">
+          <div className="flex shrink-0 gap-[5px]">
             <button
-              className="pep-btn pep-btn--deny"
+              className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-app-border-subtle bg-transparent px-2.5 py-[5px] text-[10px] font-semibold text-app-text-muted transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-45 enabled:hover:border-[rgba(var(--color-error-rgb),0.3)] enabled:hover:bg-[rgba(var(--color-error-rgb),0.08)] enabled:hover:text-app-error"
               type="button"
               onClick={() => void handleDeny()}
               disabled={sending}
@@ -1058,7 +552,7 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
               {hasFeedback ? 'Send Feedback' : 'Reject'}
             </button>
             <button
-              className="pep-btn pep-btn--proceed"
+              className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-[rgba(var(--color-success-rgb),0.3)] bg-[rgba(var(--color-success-rgb),0.12)] px-2.5 py-[5px] text-[10px] font-semibold text-app-success transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-45 enabled:hover:border-[rgba(var(--color-success-rgb),0.5)] enabled:hover:bg-[rgba(var(--color-success-rgb),0.22)]"
               type="button"
               onClick={() => void handleProceed()}
               disabled={sending}

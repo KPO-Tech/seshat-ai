@@ -5,6 +5,12 @@ import { IconButton, ICON_BUTTON_CSS } from '@/components/ui/IconButton'
 import type { UIPermissionMode } from '@/stores/ui'
 import type { AgentState } from '@/stores/session'
 
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(' ')
+}
+
+const MENU_BTN_CSS = 'flex w-full cursor-pointer items-center gap-2 whitespace-nowrap rounded-[7px] border-0 bg-transparent px-[9px] py-[7px] text-left text-[12px] hover:bg-[var(--color-hover)] disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent'
+
 type UIExecutionMode = 'execute' | 'plan'
 
 type Props = {
@@ -104,34 +110,42 @@ export function ChatTopBar({
     onDelete?.()
   }
 
+  const modeAttr = executionMode === 'plan' ? 'plan' : 'execute'
+  const isPlanMode = modeAttr === 'plan'
+
   return (
-    <div className="chat-top-bar" ref={rootRef}>
-      <div className="chat-top-left">
+    <div className="flex min-h-[26px] items-center justify-between gap-2.5" ref={rootRef}>
+      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
         {/* No "Plan Mode" badge here anymore - the mode toggle on the right
             (blue "Plan" pill) already says that; repeating it here was pure
             duplication. Pair programming has no such indicator elsewhere
             yet, so it keeps its badge until it does. */}
-        {title && <span className="chat-session-title" title={title}>{title}</span>}
+        {title && <span className="min-w-0 max-w-[420px] truncate text-[12px] font-[650] text-app-text" title={title}>{title}</span>}
         {executionMode === 'pair_programming' && (
-          <div className="chat-mode-badge chat-mode-badge--pair_programming">
+          <div className="inline-flex items-center gap-1 rounded-full border border-[rgba(139,92,246,0.3)] bg-[rgba(139,92,246,0.12)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.05em] text-[#a78bfa] [animation:mode-badge-in_0.2s_ease] before:size-1.5 before:rounded-full before:bg-[#a78bfa] before:[animation:mode-dot-pulse_1.8s_ease-in-out_infinite] before:content-['']">
             Pair Programming
           </div>
         )}
       </div>
-      <div className="chat-top-actions">
+      <div className="relative flex shrink-0 items-center gap-[5px]">
         {onExecutionModeChange && (
           <button
-            className="chat-auto-btn"
+            className={cx(
+              'flex h-6 cursor-pointer items-center gap-[5px] rounded-md border px-2 text-[11px] font-semibold transition-[border-color,color] duration-150',
+              isPlanMode
+                ? 'border-[color-mix(in_srgb,#60a5fa_32%,transparent)] text-[#60a5fa]'
+                : 'border-[color-mix(in_srgb,var(--color-primary)_32%,transparent)] text-[var(--color-primary)]',
+            )}
             onClick={() => {
-              const current = (executionMode === 'plan' ? 'plan' : 'execute') as UIExecutionMode
+              const current = modeAttr as UIExecutionMode
               const currentIndex = EXECUTION_CYCLE.indexOf(current)
               const next = EXECUTION_CYCLE[(currentIndex + 1) % EXECUTION_CYCLE.length]
               onExecutionModeChange(next)
             }}
-            data-mode={executionMode === 'plan' ? 'plan' : 'execute'}
+            data-mode={modeAttr}
           >
-            <span className="chat-auto-dot" />
-            <span>{EXECUTION_LABEL[executionMode === 'plan' ? 'plan' : 'execute']}</span>
+            <span className={cx('size-[5px] shrink-0 rounded-full transition-colors duration-150', isPlanMode ? 'bg-[#60a5fa]' : 'bg-[var(--color-primary)]')} />
+            <span>{EXECUTION_LABEL[modeAttr]}</span>
           </button>
         )}
         {onToggleMonitor && (
@@ -155,7 +169,7 @@ export function ChatTopBar({
           />
         )}
         {(onTogglePermission || onPermissionModeSelect) && (
-          <div className="chat-top-selector">
+          <div className="relative">
             <IconButton
               icon={<Shield size={13} />}
               variant="bordered"
@@ -179,9 +193,9 @@ export function ChatTopBar({
           </div>
         )}
         {hasMenu && (
-          <div className="chat-top-selector">
+          <div className="relative">
             <button
-              className="conv-menu-trigger"
+              className="flex size-6 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent text-app-text-muted transition-[background,color] duration-150 hover:bg-[var(--color-hover)] hover:text-app-text"
               type="button"
               aria-label="More"
               onClick={() => setMenuOpen((v) => !v)}
@@ -189,25 +203,25 @@ export function ChatTopBar({
               <More size={13} />
             </button>
             {menuOpen && (
-              <div className="conv-menu">
+              <div className="absolute right-0 top-[calc(100%+6px)] z-30 flex min-w-[190px] flex-col gap-0.5 rounded-[9px] border border-app-border-subtle bg-[var(--color-menu-bg)] p-[5px] shadow-[0_14px_32px_rgba(0,0,0,0.22)]">
                 {onExport && (
-                  <button type="button" onClick={handleExportClick}>
+                  <button type="button" className={cx(MENU_BTN_CSS, 'text-app-text')} onClick={handleExportClick}>
                     <FileTextOne size={13} />
                     <span>Export as Markdown</span>
                   </button>
                 )}
                 {onShare && (
-                  <button type="button" onClick={handleShareClick}>
+                  <button type="button" className={cx(MENU_BTN_CSS, 'text-app-text')} onClick={handleShareClick}>
                     <Share size={13} />
                     <span>{shareLabel}</span>
                   </button>
                 )}
-                <button type="button" disabled>
+                <button type="button" className={cx(MENU_BTN_CSS, 'text-app-text')} disabled>
                   <Folder size={13} />
                   <span>Move to a project</span>
                 </button>
                 {onDelete && (
-                  <button type="button" className="danger" onClick={handleDeleteClick}>
+                  <button type="button" className={cx(MENU_BTN_CSS, 'text-app-error')} onClick={handleDeleteClick}>
                     <Delete size={13} />
                     <span>Delete conversation</span>
                   </button>
@@ -224,196 +238,4 @@ export function ChatTopBar({
 export const CHAT_TOP_BAR_CSS = `
 ${SELECTOR_PILL_CSS}
 ${ICON_BUTTON_CSS}
-
-.chat-top-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 26px;
-  gap: 10px;
-}
-
-/* Shrinks (and the title inside it truncates, then disappears entirely)
-   before ever taking space away from .chat-top-actions on the right - the
-   action icons are the one thing that must never get squeezed off a narrow
-   window; the session title is the thing that gives way first. */
-.chat-top-left {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  min-width: 0;
-  flex: 1 1 auto;
-  overflow: hidden;
-}
-
-.chat-top-selector {
-  position: relative;
-}
-
-.chat-session-title {
-  font-size: 12px;
-  font-weight: 650;
-  color: var(--color-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 420px;
-  min-width: 0;
-}
-
-.chat-mode-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--font-size-2xs);
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  padding: 2px var(--space-4);
-  border-radius: var(--radius-full);
-  animation: mode-badge-in 0.2s ease;
-}
-
-@keyframes mode-badge-in {
-  from { opacity: 0; transform: scale(0.88); }
-  to   { opacity: 1; transform: scale(1); }
-}
-
-.chat-mode-badge--pair_programming {
-  background: rgba(139, 92, 246, 0.12);
-  border: 1px solid rgba(139, 92, 246, 0.3);
-  color: #a78bfa;
-}
-
-.chat-mode-badge--pair_programming::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #a78bfa;
-  animation: mode-dot-pulse 1.8s ease-in-out infinite;
-}
-
-@keyframes mode-dot-pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.35; }
-}
-
-.chat-top-actions {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  position: relative;
-  flex-shrink: 0;
-}
-
-.chat-auto-btn {
-  height: 24px;
-  background: transparent;
-  border: 1px solid var(--color-border-subtle);
-  color: var(--color-text-secondary);
-  padding: 0 8px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
-}
-
-.chat-auto-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  transition: background 0.15s;
-}
-
-.chat-auto-btn[data-mode="execute"] {
-  border-color: color-mix(in srgb, var(--color-primary) 32%, transparent);
-  color: var(--color-primary);
-}
-
-.chat-auto-btn[data-mode="execute"] .chat-auto-dot {
-  background: var(--color-primary);
-}
-
-.chat-auto-btn[data-mode="plan"] {
-  border-color: color-mix(in srgb, #60a5fa 32%, transparent);
-  color: #60a5fa;
-}
-
-.chat-auto-btn[data-mode="plan"] .chat-auto-dot {
-  background: #60a5fa;
-}
-
-.conv-menu-trigger {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  border: none;
-  background: transparent;
-  color: var(--color-text-muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-
-.conv-menu-trigger:hover {
-  background: var(--color-hover);
-  color: var(--color-text);
-}
-
-.conv-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  min-width: 190px;
-  padding: 5px;
-  border-radius: 9px;
-  border: 1px solid var(--color-border-subtle);
-  background: var(--color-menu-bg);
-  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.22);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  z-index: 30;
-}
-
-.conv-menu button {
-  width: 100%;
-  border: none;
-  background: transparent;
-  color: var(--color-text);
-  border-radius: 7px;
-  padding: 7px 9px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  cursor: pointer;
-  text-align: left;
-  white-space: nowrap;
-}
-
-.conv-menu button:hover {
-  background: var(--color-hover);
-}
-
-.conv-menu button.danger {
-  color: var(--color-error);
-}
-
-.conv-menu button:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.conv-menu button:disabled:hover {
-  background: transparent;
-}
 `

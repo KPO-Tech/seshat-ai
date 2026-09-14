@@ -1,52 +1,9 @@
-import { Section } from '../common'
+import { ErrorPre, Section } from '../common'
 import { useUIStore } from '@/stores/ui'
 import type { ToolViewProps } from '../types'
 
-const CSS = `
-.tb-img-wrap {
-  border-radius: 6px;
-  overflow: hidden;
-  border: 1px solid var(--color-border-subtle);
-  background: rgba(0,0,0,0.12);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  max-height: 480px;
-}
-
-.tb-img-wrap img {
-  width: 100%;
-  height: auto;
-  max-height: 480px;
-  object-fit: contain;
-  display: block;
-  cursor: zoom-in;
-}
-
-.tb-img-meta {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  font-size: 10px;
-  color: var(--color-text-muted);
-}
-
-.tb-img-meta-chip {
-  padding: 2px 5px;
-  border-radius: 3px;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid var(--color-border-subtle);
-  font-family: monospace;
-}
-
-.tb-img-revised {
-  font-size: 10px;
-  color: var(--color-text-muted);
-  font-style: italic;
-  line-height: 1.5;
-}
-`
+const NOTE_CSS = 'text-[12px] leading-[1.55] text-app-text-muted'
+const CHIP_CSS = 'rounded-[3px] border border-app-border-subtle bg-[rgba(255,255,255,0.05)] px-[5px] py-0.5 font-mono'
 
 type ImageResult = {
   provider?: string
@@ -72,9 +29,9 @@ export function ImageGenToolView({ tool, result }: ToolViewProps) {
   if (!result || result.isError) {
     return (
       <>
-        {prompt && <Section label="Prompt"><span className="tb-note">{prompt}</span></Section>}
+        {prompt && <Section label="Prompt"><span className={NOTE_CSS}>{prompt}</span></Section>}
         {result?.isError && result.content && (
-          <Section label="Error"><pre className="tb-pre tb-pre--error">{result.content}</pre></Section>
+          <Section label="Error"><ErrorPre content={result.content} /></Section>
         )}
       </>
     )
@@ -92,24 +49,23 @@ export function ImageGenToolView({ tool, result }: ToolViewProps) {
 
   return (
     <>
-      <style>{CSS}</style>
-
       {prompt && (
         <Section label="Prompt">
-          <span className="tb-note">{prompt}</span>
+          <span className={NOTE_CSS}>{prompt}</span>
         </Section>
       )}
 
       {promptChanged && (
         <Section label="Revised prompt">
-          <span className="tb-img-revised">{revisedPrompt}</span>
+          <span className="text-[10px] italic leading-[1.5] text-app-text-muted">{revisedPrompt}</span>
         </Section>
       )}
 
       {src && (
         <Section label="Result">
-          <div className="tb-img-wrap">
+          <div className="flex max-h-[480px] items-center justify-center overflow-hidden rounded-md border border-app-border-subtle bg-[rgba(0,0,0,0.12)]">
             <img
+              className="block h-auto max-h-[480px] w-full cursor-zoom-in object-contain"
               src={src}
               alt={revisedPrompt ?? prompt}
               loading="lazy"
@@ -120,9 +76,9 @@ export function ImageGenToolView({ tool, result }: ToolViewProps) {
       )}
 
       {parsed && (parsed.provider || parsed.model) && (
-        <div className="tb-img-meta" style={{ marginTop: 6 }}>
-          {parsed.provider && <span className="tb-img-meta-chip">{parsed.provider}</span>}
-          {parsed.model && <span className="tb-img-meta-chip">{parsed.model}</span>}
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] text-app-text-muted">
+          {parsed.provider && <span className={CHIP_CSS}>{parsed.provider}</span>}
+          {parsed.model && <span className={CHIP_CSS}>{parsed.model}</span>}
         </div>
       )}
     </>

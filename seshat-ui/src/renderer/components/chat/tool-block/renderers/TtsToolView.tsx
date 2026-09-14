@@ -1,43 +1,9 @@
 import { useMemo } from 'react'
-import { Section } from '../common'
+import { ErrorPre, Section } from '../common'
 import type { ToolViewProps } from '../types'
 
-const CSS = `
-.tb-audio-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.tb-audio-player {
-  width: 100%;
-  height: 36px;
-  border-radius: 6px;
-  outline: none;
-  accent-color: var(--color-accent);
-}
-
-.tb-audio-player::-webkit-media-controls-panel {
-  background: var(--color-surface);
-}
-
-.tb-audio-meta {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 10px;
-  color: var(--color-text-muted);
-  flex-wrap: wrap;
-}
-
-.tb-audio-chip {
-  padding: 2px 5px;
-  border-radius: 3px;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid var(--color-border-subtle);
-  font-family: monospace;
-}
-`
+const NOTE_CSS = 'text-[12px] leading-[1.55] text-app-text-muted'
+const CHIP_CSS = 'rounded-[3px] border border-app-border-subtle bg-[rgba(255,255,255,0.05)] px-[5px] py-0.5 font-mono'
 
 type TtsResult = {
   provider?: string
@@ -69,29 +35,31 @@ export function TtsToolView({ tool, result }: ToolViewProps) {
 
   return (
     <>
-      <style>{CSS}</style>
-
       {text && (
         <Section label="Text">
-          <span className="tb-note">{text.length > 200 ? `${text.slice(0, 200)}…` : text}</span>
+          <span className={NOTE_CSS}>{text.length > 200 ? `${text.slice(0, 200)}…` : text}</span>
         </Section>
       )}
 
       {result?.isError && result.content && (
         <Section label="Error">
-          <pre className="tb-pre tb-pre--error">{result.content}</pre>
+          <ErrorPre content={result.content} />
         </Section>
       )}
 
       {audioSrc && (
         <Section label="Audio">
-          <div className="tb-audio-wrap">
+          <div className="flex flex-col gap-1.5">
             {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-            <audio className="tb-audio-player" controls src={audioSrc} />
-            <div className="tb-audio-meta">
-              {parsed?.provider && <span className="tb-audio-chip">{parsed.provider}</span>}
-              {parsed?.model && <span className="tb-audio-chip">{parsed.model}</span>}
-              {voice && <span className="tb-audio-chip">voice: {voice}</span>}
+            <audio
+              className="h-9 w-full rounded-md outline-none [accent-color:var(--color-accent)] [&::-webkit-media-controls-panel]:bg-app-surface"
+              controls
+              src={audioSrc}
+            />
+            <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-app-text-muted">
+              {parsed?.provider && <span className={CHIP_CSS}>{parsed.provider}</span>}
+              {parsed?.model && <span className={CHIP_CSS}>{parsed.model}</span>}
+              {voice && <span className={CHIP_CSS}>voice: {voice}</span>}
               {parsed?.characters_used != null && (
                 <span>{parsed.characters_used.toLocaleString()} chars</span>
               )}

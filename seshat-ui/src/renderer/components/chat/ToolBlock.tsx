@@ -2,8 +2,7 @@ import { memo } from 'react'
 import type { ToolStatus } from '@/api/types'
 import { isSilentTool, toolSnippet } from './tool-block/toolDisplay'
 import { SilentToolView } from './tool-block/renderers/SilentToolView'
-import { ToolLineItem, TOOL_LINE_CSS } from './tool-block/ToolLineItem'
-import { TOOL_BLOCK_CSS } from './tool-block/styles'
+import { ToolLineItem } from './tool-block/ToolLineItem'
 import type { ToolBlockProps } from './tool-block/types'
 
 // Note: awaiting_approval tool_use blocks never reach ToolBlock — MessageItem
@@ -24,28 +23,15 @@ export const ToolBlock = memo(function ToolBlock({ tool, sessionId, autoExpand =
 
   if (isSilentTool(tool.name)) {
     return (
-      <>
-        <style>{TOOL_BLOCK_CSS}</style>
-        {/* SilentToolView's status dot uses the shared .tl-dot/.tl-spinner
-            classes defined in TOOL_LINE_CSS, same as ToolLineItem below and
-            QuietToolGroup's grouped run - one dot style everywhere. */}
-        <style>{TOOL_LINE_CSS}</style>
-        <SilentToolView
-          tool={tool}
-          result={result}
-          status={status}
-          snippet={toolSnippet(tool)}
-          sessionId={sessionId}
-        />
-      </>
+      <SilentToolView
+        tool={tool}
+        result={result}
+        status={status}
+        snippet={toolSnippet(tool)}
+        sessionId={sessionId}
+      />
     )
   }
 
-  return (
-    <>
-      <style>{TOOL_BLOCK_CSS}</style>
-      <style>{TOOL_LINE_CSS}</style>
-      <ToolLineItem tool={tool} sessionId={sessionId} autoExpand={autoExpand} onSubmitPrompt={onSubmitPrompt} />
-    </>
-  )
+  return <ToolLineItem tool={tool} sessionId={sessionId} autoExpand={autoExpand} onSubmitPrompt={onSubmitPrompt} />
 })

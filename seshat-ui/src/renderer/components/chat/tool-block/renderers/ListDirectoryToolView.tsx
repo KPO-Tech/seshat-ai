@@ -1,4 +1,4 @@
-import { HeaderCard, Section } from '../common'
+import { ErrorPre, FILEPATH_CSS, FILE_ITEM_CSS, FILE_LIST_CSS, HCARD_HEADER_PATH_CSS, HCARD_HEADER_STAT_CSS, HeaderCard, Section } from '../common'
 import type { ToolViewProps } from '../types'
 
 type DirEntry = { name: string; is_directory: boolean; is_symlink: boolean; size_bytes: number }
@@ -31,7 +31,7 @@ export function ListDirectoryToolView({ tool, result }: ToolViewProps) {
   if (result?.isError && result.content) {
     return (
       <Section label="Error">
-        <pre className="tb-pre tb-pre--error">{result.content}</pre>
+        <ErrorPre content={result.content} />
       </Section>
     )
   }
@@ -44,24 +44,24 @@ export function ListDirectoryToolView({ tool, result }: ToolViewProps) {
     <HeaderCard
       header={
         <>
-          {path && <span className="tb-hcard-header-path">{path}</span>}
-          <span className="tb-hcard-header-stat">
+          {path && <span className={HCARD_HEADER_PATH_CSS}>{path}</span>}
+          <span className={HCARD_HEADER_STAT_CSS}>
             {count} item{count !== 1 ? 's' : ''}{parsed.truncated ? ' (truncated)' : ''}
           </span>
         </>
       }
     >
       {parsed.entries.length > 0 ? (
-        <div className="tb-file-list">
+        <div className={FILE_LIST_CSS}>
           {parsed.entries.map((entry, i) => (
-            <div key={i} className="tb-file-item">
+            <div key={i} className={FILE_ITEM_CSS}>
               {entry.is_directory ? `${entry.name}/` : entry.name}
-              {!entry.is_directory && <span className="tb-file-item-size"> — {fmtSize(entry.size_bytes)}</span>}
+              {!entry.is_directory && <span className="opacity-[0.55]"> — {fmtSize(entry.size_bytes)}</span>}
             </div>
           ))}
         </div>
       ) : (
-        <span className="tb-filepath">Empty directory.</span>
+        <span className={FILEPATH_CSS}>Empty directory.</span>
       )}
     </HeaderCard>
   )

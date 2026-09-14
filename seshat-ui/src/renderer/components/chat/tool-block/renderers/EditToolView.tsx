@@ -1,4 +1,4 @@
-import { Section } from '../common'
+import { ErrorPre, Section } from '../common'
 import { DiffView, resolveDiffRows } from '../DiffView'
 import type { ToolViewProps } from '../types'
 
@@ -14,7 +14,7 @@ export function EditToolView({ tool, result }: ToolViewProps) {
 
       {result?.isError && result.content && (
         <Section label="Error">
-          <pre className="tb-pre tb-pre--error">{result.content}</pre>
+          <ErrorPre content={result.content} />
         </Section>
       )}
     </>

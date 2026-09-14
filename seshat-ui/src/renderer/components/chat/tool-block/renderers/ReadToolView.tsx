@@ -1,4 +1,4 @@
-import { CodeBox, HeaderCard, Section } from '../common'
+import { CodeBox, ErrorPre, HCARD_HEADER_STAT_CSS, HeaderCard, Section } from '../common'
 import { languageForPath, basename } from '../helpers'
 import type { ToolViewProps } from '../types'
 
@@ -18,7 +18,7 @@ export function ReadToolView({ tool, result }: ToolViewProps) {
   if (result?.isError && result.content) {
     return (
       <Section label="Error">
-        <pre className="tb-pre tb-pre--error">{result.content}</pre>
+        <ErrorPre content={result.content} />
       </Section>
     )
   }
@@ -30,7 +30,7 @@ export function ReadToolView({ tool, result }: ToolViewProps) {
       header={
         <>
           <span title={filePath}>{basename(filePath)}</span>
-          {range && <span className="tb-hcard-header-stat">{range}</span>}
+          {range && <span className={HCARD_HEADER_STAT_CSS}>{range}</span>}
         </>
       }
     >

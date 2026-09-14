@@ -4,6 +4,34 @@ import { useSessionStore } from '@/stores/session'
 import { useUIStore } from '@/stores/ui'
 import type { ToolUseBlock, ToolStatus } from '@/api/types'
 
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(' ')
+}
+
+const STATUS_BORDER_CSS: Record<ToolStatus, string> = {
+  running: 'border-[rgba(239,124,47,0.28)]',
+  completed: 'border-[rgba(var(--color-success-rgb),0.2)]',
+  failed: 'border-[rgba(var(--color-error-rgb),0.24)]',
+  pending: 'border-app-border-subtle',
+  awaiting_approval: 'border-app-border-subtle',
+}
+
+const STATUS_ICON_CSS: Record<ToolStatus, string> = {
+  running: 'bg-[rgba(239,124,47,0.12)] text-[var(--color-accent)]',
+  completed: 'bg-[rgba(var(--color-success-rgb),0.12)] text-app-success',
+  failed: 'bg-[rgba(var(--color-error-rgb),0.12)] text-app-error',
+  pending: 'bg-[rgba(239,124,47,0.12)] text-[var(--color-accent)]',
+  awaiting_approval: 'bg-[rgba(239,124,47,0.12)] text-[var(--color-accent)]',
+}
+
+const STATUS_TEXT_CSS: Record<ToolStatus, string> = {
+  running: 'text-[var(--color-accent)]',
+  completed: 'text-app-success',
+  failed: 'text-app-error',
+  pending: 'text-app-text-muted',
+  awaiting_approval: 'text-app-text-muted',
+}
+
 function useElapsedMs(startedAt: number, active: boolean): number {
   const [ms, setMs] = useState(() => Date.now() - startedAt)
   useEffect(() => {
@@ -26,177 +54,6 @@ function fmtTokens(n: number): string {
   if (n < 1000) return `${n} tok`
   return `${(n / 1000).toFixed(1)}k tok`
 }
-
-// CSS injected once at the component level
-const AGENT_CARDS_CSS = `
-.agent-cards-row {
-  display: flex;
-  gap: 7px;
-  width: 100%;
-  overflow-x: auto;
-  scrollbar-width: thin;
-  padding-bottom: 2px;
-}
-
-.agent-cards-row::-webkit-scrollbar {
-  height: 4px;
-}
-
-.agent-cards-row::-webkit-scrollbar-thumb {
-  background: var(--color-border-subtle);
-  border-radius: 3px;
-}
-
-.agent-card {
-  flex: 1 1 0;
-  min-width: 220px;
-  max-width: 100%;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
-  background: var(--color-surface);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
-}
-
-.agent-card:hover {
-  border-color: rgba(239, 124, 47, 0.3);
-  background: var(--color-hover);
-}
-
-.agent-card--running {
-  border-color: rgba(239, 124, 47, 0.28);
-}
-
-.agent-card--completed {
-  border-color: rgba(var(--color-success-rgb), 0.2);
-}
-
-.agent-card--failed {
-  border-color: rgba(var(--color-error-rgb), 0.24);
-}
-
-.agent-card-header {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 7px 9px 5px;
-}
-
-.agent-card-icon {
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
-  background: rgba(239, 124, 47, 0.12);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-accent);
-  flex-shrink: 0;
-}
-
-.agent-card-icon--completed {
-  background: rgba(var(--color-success-rgb), 0.12);
-  color: var(--color-success);
-}
-
-.agent-card-icon--failed {
-  background: rgba(var(--color-error-rgb), 0.12);
-  color: var(--color-error);
-}
-
-.agent-card-meta {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.agent-card-type {
-  font-size: 10px;
-  font-weight: 750;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-}
-
-.agent-card-status {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10px;
-  font-weight: 650;
-}
-
-.agent-card-status--running { color: var(--color-accent); }
-.agent-card-status--completed { color: var(--color-success); }
-.agent-card-status--failed { color: var(--color-error); }
-.agent-card-status--pending { color: var(--color-text-muted); }
-
-.agent-card-spin {
-  animation: agent-spin 1s linear infinite;
-}
-
-@keyframes agent-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.agent-card-body {
-  padding: 0 9px 7px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  flex: 1;
-}
-
-.agent-card-task {
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--color-text);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.agent-card-activity {
-  font-size: 10px;
-  color: var(--color-text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  padding: 3px 6px;
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 5px;
-  border: 1px solid var(--color-border-subtle);
-}
-
-.agent-card-footer {
-  padding: 6px 9px;
-  border-top: 1px solid var(--color-border-subtle);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.agent-card-view-link {
-  font-size: 10px;
-  font-weight: 650;
-  color: var(--color-accent);
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-
-.agent-card-turn-badge {
-  font-size: 10px;
-  color: var(--color-text-muted);
-}
-`
 
 type AgentToolCardProps = {
   tool: ToolUseBlock
@@ -268,14 +125,17 @@ function AgentToolCard({ tool, sessionId, status }: AgentToolCardProps) {
 
   return (
     <div
-      className={`agent-card agent-card--${derivedStatus}`}
+      className={cx(
+        'flex min-w-[220px] max-w-full flex-1 basis-0 cursor-pointer flex-col overflow-hidden rounded-lg border bg-app-surface transition-[border-color,background] duration-150 ease-in-out hover:border-[rgba(239,124,47,0.3)] hover:bg-[var(--color-hover)]',
+        STATUS_BORDER_CSS[derivedStatus],
+      )}
       role="button"
       tabIndex={0}
       onClick={handleClick}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleClick() }}
     >
-      <div className="agent-card-header">
-        <div className={`agent-card-icon agent-card-icon--${derivedStatus}`}>
+      <div className="flex items-center gap-[7px] px-[9px] pb-[5px] pt-[7px]">
+        <div className={cx('flex size-[26px] shrink-0 items-center justify-center rounded-md', STATUS_ICON_CSS[derivedStatus])}>
           {derivedStatus === 'completed'
             ? <CheckOne size={13} />
             : derivedStatus === 'failed'
@@ -283,13 +143,13 @@ function AgentToolCard({ tool, sessionId, status }: AgentToolCardProps) {
               : <Robot size={13} />
           }
         </div>
-        <div className="agent-card-meta">
-          <span className="agent-card-type">
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="text-[10px] font-[750] uppercase tracking-[0.05em] text-app-text-muted">
             {agentType.replace(/_/g, ' ').replace(/-/g, ' ')}
           </span>
-          <span className={`agent-card-status agent-card-status--${derivedStatus}`}>
+          <span className={cx('flex items-center gap-1 text-[10px] font-[650]', STATUS_TEXT_CSS[derivedStatus])}>
             {derivedStatus === 'running' && (
-              <span className="agent-card-spin" style={{ display: 'flex' }}>
+              <span className="flex animate-[spin_1s_linear_infinite]">
                 <LoadingOne size={10} />
               </span>
             )}
@@ -305,23 +165,23 @@ function AgentToolCard({ tool, sessionId, status }: AgentToolCardProps) {
         </div>
       </div>
 
-      <div className="agent-card-body">
-        {task && <div className="agent-card-task">{task}</div>}
+      <div className="flex flex-1 flex-col gap-1.5 px-[9px] pb-[7px]">
+        {task && <div className="line-clamp-2 text-[12px] leading-[1.45] text-app-text">{task}</div>}
         {activeTool && (
-          <div className="agent-card-activity">
+          <div className="truncate rounded-[5px] border border-app-border-subtle bg-[rgba(255,255,255,0.04)] px-1.5 py-[3px] text-[10px] text-app-text-muted">
             {activeTool.toolName}{activeTool.message ? ` — ${activeTool.message}` : ''}
           </div>
         )}
       </div>
 
-      <div className="agent-card-footer">
-        <span className="agent-card-view-link">View activity →</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <div className="flex items-center justify-between border-t border-app-border-subtle px-[9px] py-1.5">
+        <span className="flex items-center gap-[3px] text-[10px] font-[650] text-[var(--color-accent)]">View activity →</span>
+        <div className="flex items-center gap-1.5">
           {tokens > 0 && (
-            <span className="agent-card-turn-badge">{fmtTokens(tokens)}</span>
+            <span className="text-[10px] text-app-text-muted">{fmtTokens(tokens)}</span>
           )}
           {(turnNumber > 0 || derivedStatus === 'running') && (
-            <span className="agent-card-turn-badge">{fmtElapsed(elapsedMs)}</span>
+            <span className="text-[10px] text-app-text-muted">{fmtElapsed(elapsedMs)}</span>
           )}
         </div>
       </div>
@@ -337,18 +197,15 @@ type Props = {
 
 export const AgentCardsRow = memo(function AgentCardsRow({ tools, sessionId, getStatus }: Props) {
   return (
-    <>
-      <style>{AGENT_CARDS_CSS}</style>
-      <div className="agent-cards-row">
-        {tools.map((tool) => (
-          <AgentToolCard
-            key={tool.id}
-            tool={tool}
-            sessionId={sessionId}
-            status={getStatus(tool)}
-          />
-        ))}
-      </div>
-    </>
+    <div className="flex w-full gap-[7px] overflow-x-auto pb-0.5 [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-[3px] [&::-webkit-scrollbar-thumb]:bg-app-border-subtle">
+      {tools.map((tool) => (
+        <AgentToolCard
+          key={tool.id}
+          tool={tool}
+          sessionId={sessionId}
+          status={getStatus(tool)}
+        />
+      ))}
+    </div>
   )
 })

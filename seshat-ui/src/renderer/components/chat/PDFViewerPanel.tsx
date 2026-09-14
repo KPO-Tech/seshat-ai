@@ -4,6 +4,10 @@ import { api, ApiError } from '@/api/client'
 import { loadPdfViewerModule, pdfjsLib } from '@/lib/pdfInteractiveViewer'
 import 'pdfjs-dist/web/pdf_viewer.css'
 
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(' ')
+}
+
 type Props = {
   fileId: string
   filename: string
@@ -13,10 +17,10 @@ type LayoutMode = 'pages' | 'width'
 type PdfViewerModule = Awaited<ReturnType<typeof loadPdfViewerModule>>
 type PdfViewerInstance = InstanceType<PdfViewerModule['PDFViewer']>
 
-function base64ToBytes(dataUrl: string): Uint8Array {
-  const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1)
-  return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
-}
+// Matches pdf.js's own default rangeChunkSize - the size of the very first
+// fetch, used both to seed PDFDataRangeTransport's initialData and (via that
+// response's Content-Range) learn the document's real total length.
+const INITIAL_RANGE_CHUNK = 65536
 
 function applyPDFLayout(
   viewer: PdfViewerInstance | null,
@@ -90,10 +94,33 @@ export function PDFViewerPanel({ fileId, filename }: Props) {
           if (!cancelled) setPageNumber(e.pageNumber)
         })
 
-        const dataUrl = await api.getFileDataURL(`/files/${fileId}/content`)
+        const path = `/files/${fileId}/content`
+        const initial = await api.getFileRange(path, 0, INITIAL_RANGE_CHUNK - 1)
         if (cancelled) return
-        const bytes = base64ToBytes(dataUrl)
-        pdfDocument = await pdfjsLib.getDocument({ data: bytes }).promise
+
+        // A custom range transport (rather than getDocument({ url })) so
+        // every byte still flows through the app's own IPC bridge - the
+        // renderer has no direct network access by design (see
+        // content-security-policy.ts's connect-src 'self') - while still
+        // letting pdf.js fetch only the ranges it actually needs instead of
+        // waiting for the whole file, then render as soon as it has enough.
+        const transport = new pdfjsLib.PDFDataRangeTransport(initial.totalLength, new Uint8Array(initial.data))
+        transport.requestDataRange = (begin: number, end: number) => {
+          void (async () => {
+            try {
+              const chunk = await api.getFileRange(path, begin, end - 1)
+              if (cancelled) return
+              transport.onDataRange(begin, new Uint8Array(chunk.data))
+            } catch {
+              // pdf.js has no per-range error channel - a chunk failing
+              // mid-document (a transient network hiccup, say) just stops
+              // that range from ever arriving rather than tearing down a
+              // document that may already be partially rendered and usable.
+            }
+          })()
+        }
+
+        pdfDocument = await pdfjsLib.getDocument({ range: transport }).promise
         if (cancelled) {
           void pdfDocument.destroy()
           return
@@ -140,22 +167,34 @@ export function PDFViewerPanel({ fileId, filename }: Props) {
     viewer.currentPageNumber = Math.max(1, Math.min(viewer.currentPageNumber + delta, pageCount))
   }
 
+  const toolbarBtnCx = (active?: boolean) => cx(
+    'flex size-[22px] items-center justify-center rounded-md border border-app-border-subtle bg-app-surface p-0 text-app-text-secondary enabled:cursor-pointer enabled:hover:bg-[var(--color-hover)] enabled:hover:text-app-text disabled:cursor-default disabled:opacity-40',
+    active && '!border-[rgba(255,122,24,0.45)] !bg-[rgba(255,122,24,0.16)] !text-[var(--color-accent)]',
+  )
+
   return (
-    <div className="pdf-viewer-panel">
-      <style>{PDF_VIEWER_PANEL_CSS}</style>
-      <div className="pdf-viewer-toolbar">
-        <button type="button" onClick={() => goToPage(-1)} disabled={status !== 'ready' || pageNumber <= 1} aria-label="Previous page">
+    <div className="flex h-full min-h-0 flex-col">
+      {/* pdf.js's own internal DOM (.pdfViewer/.page/.scrollWrapped, created
+          by the PDFViewer instance above, not by this component's JSX) -
+          the one deep third-party override left un-Tailwind-able here. */}
+      <style>{`
+        .pdf-viewer-container .pdfViewer .page { margin: 10px; border: none; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35); }
+        .pdf-viewer-container .pdfViewer:not(.scrollWrapped) .page { margin: 12px auto; }
+        .pdf-viewer-container .pdfViewer.scrollWrapped { padding: 14px; }
+      `}</style>
+      <div className="flex shrink-0 items-center gap-1.5 border-b border-app-border-subtle px-2.5 py-1.5">
+        <button type="button" className={toolbarBtnCx()} onClick={() => goToPage(-1)} disabled={status !== 'ready' || pageNumber <= 1} aria-label="Previous page">
           <Left size={12} />
         </button>
-        <span className="pdf-viewer-page-indicator">{status === 'ready' ? `${pageNumber} / ${pageCount}` : '—'}</span>
-        <button type="button" onClick={() => goToPage(1)} disabled={status !== 'ready' || pageNumber >= pageCount} aria-label="Next page">
+        <span className="min-w-[44px] text-center text-[11px] text-app-text-secondary">{status === 'ready' ? `${pageNumber} / ${pageCount}` : '—'}</span>
+        <button type="button" className={toolbarBtnCx()} onClick={() => goToPage(1)} disabled={status !== 'ready' || pageNumber >= pageCount} aria-label="Next page">
           <Right size={12} />
         </button>
-        <span className="pdf-viewer-toolbar-spacer" />
-        <div className="pdf-viewer-layout-toggle" aria-label="PDF layout">
+        <span className="flex-1" />
+        <div className="flex items-center gap-0.5 rounded-[7px] border border-app-border-subtle bg-app-surface p-0.5" aria-label="PDF layout">
           <button
             type="button"
-            className={layoutMode === 'pages' ? 'is-active' : ''}
+            className={cx('h-5 min-w-[48px] rounded-[5px] border-0 bg-transparent px-2 text-[11px] text-app-text-secondary', layoutMode === 'pages' && '!bg-[rgba(255,122,24,0.16)] !text-[var(--color-accent)]')}
             onClick={() => setLayout('pages')}
             disabled={status !== 'ready'}
           >
@@ -163,169 +202,35 @@ export function PDFViewerPanel({ fileId, filename }: Props) {
           </button>
           <button
             type="button"
-            className={layoutMode === 'width' ? 'is-active' : ''}
+            className={cx('h-5 min-w-[48px] rounded-[5px] border-0 bg-transparent px-2 text-[11px] text-app-text-secondary', layoutMode === 'width' && '!bg-[rgba(255,122,24,0.16)] !text-[var(--color-accent)]')}
             onClick={() => setLayout('width')}
             disabled={status !== 'ready'}
           >
             Width
           </button>
         </div>
-        <button type="button" onClick={() => zoomBy(1 / 1.15)} disabled={status !== 'ready'} aria-label="Zoom out">
+        <button type="button" className={toolbarBtnCx()} onClick={() => zoomBy(1 / 1.15)} disabled={status !== 'ready'} aria-label="Zoom out">
           <Reduce size={12} />
         </button>
-        <span className="pdf-viewer-zoom-indicator">{status === 'ready' ? `${scalePercent}%` : '—'}</span>
-        <button type="button" onClick={() => zoomBy(1.15)} disabled={status !== 'ready'} aria-label="Zoom in">
+        <span className="min-w-[44px] text-center text-[11px] text-app-text-secondary">{status === 'ready' ? `${scalePercent}%` : '—'}</span>
+        <button type="button" className={toolbarBtnCx()} onClick={() => zoomBy(1.15)} disabled={status !== 'ready'} aria-label="Zoom in">
           <Add size={12} />
         </button>
       </div>
-      <div className="pdf-viewer-stage">
-        <div className="pdf-viewer-container" ref={containerRef}>
+      <div className="relative min-h-0 flex-1">
+        <div className="pdf-viewer-container absolute inset-0 overflow-auto bg-app-surface-elevated" ref={containerRef}>
           <div className="pdfViewer" ref={viewerRef} />
         </div>
         {status === 'loading' && (
-          <div className="pdf-viewer-status">
-            <LoadingOne size={20} className="pdf-viewer-status-spin" />
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 px-5 text-center text-[12px] text-app-text-secondary">
+            <LoadingOne size={20} className="animate-[spin_1s_linear_infinite]" />
             <span>Loading {filename}...</span>
           </div>
         )}
-        {status === 'error' && <div className="pdf-viewer-status pdf-viewer-status--error">Couldn't load this PDF: {errorMessage}</div>}
+        {status === 'error' && (
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 px-5 text-center text-[12px] text-app-error">Couldn't load this PDF: {errorMessage}</div>
+        )}
       </div>
     </div>
   )
 }
-
-const PDF_VIEWER_PANEL_CSS = `
-.pdf-viewer-panel {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
-}
-
-.pdf-viewer-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--color-border-subtle);
-  flex-shrink: 0;
-}
-
-.pdf-viewer-toolbar button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 6px;
-  background: var(--color-surface);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-}
-
-.pdf-viewer-toolbar button:hover:not(:disabled) {
-  background: var(--color-hover);
-  color: var(--color-text);
-}
-
-.pdf-viewer-toolbar button.is-active {
-  background: rgba(255, 122, 24, 0.16);
-  border-color: rgba(255, 122, 24, 0.45);
-  color: var(--color-accent);
-}
-
-.pdf-viewer-toolbar button:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.pdf-viewer-page-indicator,
-.pdf-viewer-zoom-indicator {
-  min-width: 44px;
-  text-align: center;
-  font-size: 11px;
-  color: var(--color-text-secondary);
-}
-
-.pdf-viewer-toolbar-spacer {
-  flex: 1;
-}
-
-.pdf-viewer-layout-toggle {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 2px;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 7px;
-  background: var(--color-surface);
-}
-
-.pdf-viewer-layout-toggle button {
-  width: auto;
-  min-width: 48px;
-  height: 20px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  font-size: 11px;
-}
-
-.pdf-viewer-stage {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-}
-
-.pdf-viewer-container {
-  position: absolute;
-  inset: 0;
-  overflow: auto;
-  background: #525659;
-}
-
-.pdf-viewer-container .pdfViewer .page {
-  margin: 10px;
-  border: none;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
-}
-
-.pdf-viewer-container .pdfViewer:not(.scrollWrapped) .page {
-  margin: 12px auto;
-}
-
-.pdf-viewer-container .pdfViewer.scrollWrapped {
-  padding: 14px;
-}
-
-.pdf-viewer-status {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  color: rgba(255, 255, 255, 0.75);
-  font-size: 12px;
-  text-align: center;
-  padding: 0 20px;
-  pointer-events: none;
-}
-
-.pdf-viewer-status-spin {
-  animation: pdf-viewer-spin 1s linear infinite;
-}
-
-@keyframes pdf-viewer-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.pdf-viewer-status--error {
-  color: var(--color-error);
-}
-`

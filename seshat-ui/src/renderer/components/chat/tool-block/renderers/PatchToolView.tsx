@@ -1,11 +1,13 @@
-import { Section } from '../common'
+import { ErrorPre, Section } from '../common'
 import type { ToolViewProps } from '../types'
 
+const PATCH_LINE_CSS = 'rounded-[5px] px-2 py-[3px] font-[\'JetBrains_Mono\',\'Fira_Code\',monospace] text-[12px] text-app-text-secondary'
+
 const VERB_CLASS: Record<string, string> = {
-  Added: 'tb-patch-line--add',
-  Deleted: 'tb-patch-line--del',
-  Updated: 'tb-patch-line--update',
-  Moved: 'tb-patch-line--move',
+  Added: 'text-[#6ee7b7]',
+  Deleted: 'text-[#fca5a5]',
+  Updated: 'text-[var(--color-accent)]',
+  Moved: 'text-app-text-muted',
 }
 
 // apply_patch's result content is already a clean one-line-per-file summary
@@ -16,7 +18,7 @@ export function PatchToolView({ result }: ToolViewProps) {
   if (result?.isError) {
     return result.content ? (
       <Section label="Error">
-        <pre className="tb-pre tb-pre--error">{result.content}</pre>
+        <ErrorPre content={result.content} />
       </Section>
     ) : null
   }
@@ -24,11 +26,11 @@ export function PatchToolView({ result }: ToolViewProps) {
   if (lines.length === 0) return null
   return (
     <Section label="Changes">
-      <div className="tb-patch-list">
+      <div className="flex flex-col gap-[3px] rounded-lg border border-app-border-subtle bg-[rgba(0,0,0,0.2)] p-1">
         {lines.map((line, i) => {
           const verb = line.split(':')[0]?.trim() ?? ''
           const cls = VERB_CLASS[verb] ?? ''
-          return <div key={i} className={`tb-patch-line ${cls}`}>{line}</div>
+          return <div key={i} className={`${PATCH_LINE_CSS} ${cls}`}>{line}</div>
         })}
       </div>
     </Section>

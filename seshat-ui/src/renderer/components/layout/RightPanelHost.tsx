@@ -13,7 +13,6 @@ import { XlsxPreviewPanel } from '@/components/chat/XlsxPreviewPanel'
 import { PptxPreviewPanel } from '@/components/chat/PptxPreviewPanel'
 import { flattenRightPanels } from '@/stores/ui'
 import { WindowCloseIcon, WindowMaximizeIcon } from '@/components/ui/WindowControlIcon'
-import { TOOL_BLOCK_CSS } from '@/components/chat/tool-block/styles'
 import { renderToolBody, toolLabel, toolSnippet } from '@/components/chat/tool-block/toolDisplay'
 import { toolStatus } from '@/components/chat/tool-block/quietGroupPhrase'
 import type { RightPanelInstance, RightPanelKind, RightPanelColumn } from '@/stores/ui'
@@ -610,7 +609,6 @@ function AgentWorkspacePanel({ sessionId }: { sessionId: string }) {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-app-bg">
-      <style>{TOOL_BLOCK_CSS}</style>
       <div className="flex shrink-0 items-center justify-between gap-2.5 border-b border-app-border-subtle bg-app-surface px-3 py-2.5">
         <div className="flex min-w-0 items-center gap-2">
           <span

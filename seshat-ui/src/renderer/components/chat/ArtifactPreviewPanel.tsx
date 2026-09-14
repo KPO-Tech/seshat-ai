@@ -37,54 +37,20 @@ export function ArtifactPreviewPanel({ artifactId, filename }: Props) {
   }, [artifactId])
 
   return (
-    <div className="artifact-preview-panel">
-      <style>{ARTIFACT_PREVIEW_CSS}</style>
+    <div className="relative h-full min-h-0 bg-white">
       {error ? (
-        <div className="artifact-preview-status artifact-preview-status--error">Couldn't load preview: {error}</div>
+        <div className="absolute inset-0 flex items-center justify-center bg-app-surface px-5 text-center text-[12px] text-app-error">Couldn't load preview: {error}</div>
       ) : src ? (
         <iframe
           src={src}
           title={filename}
-          className="artifact-preview-frame"
+          className="block h-full w-full border-0"
           sandbox="allow-scripts"
           referrerPolicy="no-referrer"
         />
       ) : (
-        <div className="artifact-preview-status">Loading preview…</div>
+        <div className="absolute inset-0 flex items-center justify-center bg-app-surface px-5 text-center text-[12px] text-app-text-muted">Loading preview…</div>
       )}
     </div>
   )
 }
-
-const ARTIFACT_PREVIEW_CSS = `
-.artifact-preview-panel {
-  position: relative;
-  height: 100%;
-  min-height: 0;
-  background: #fff;
-}
-
-.artifact-preview-frame {
-  width: 100%;
-  height: 100%;
-  border: none;
-  display: block;
-}
-
-.artifact-preview-status {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-muted);
-  font-size: 12px;
-  text-align: center;
-  padding: 0 20px;
-  background: var(--color-surface);
-}
-
-.artifact-preview-status--error {
-  color: var(--color-error);
-}
-`

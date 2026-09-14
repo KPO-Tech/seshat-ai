@@ -1,4 +1,4 @@
-import { CodeBox, Section } from '../common'
+import { CodeBox, ErrorPre, Section } from '../common'
 import type { ToolViewProps } from '../types'
 
 export function RagSearchToolView({ tool, result }: ToolViewProps) {
@@ -7,9 +7,9 @@ export function RagSearchToolView({ tool, result }: ToolViewProps) {
 
   return (
     <>
-      <div className="tb-edit-path-row">
-        {query && <span className="tb-grep-pattern">{query}</span>}
-        {corpusId && <span className="tb-range-label">corpus: {corpusId}</span>}
+      <div className="flex flex-wrap items-center gap-2 px-3.5 pt-2.5">
+        {query && <span className="font-['JetBrains_Mono','Fira_Code',monospace] text-[12px] font-bold text-[var(--color-accent)]">{query}</span>}
+        {corpusId && <span className="shrink-0 whitespace-nowrap rounded-[5px] border border-[rgba(239,124,47,0.2)] bg-[rgba(239,124,47,0.1)] px-1.5 py-px text-[11px] font-semibold text-[var(--color-accent)]">corpus: {corpusId}</span>}
       </div>
 
       {result?.content && !result.isError && (
@@ -20,7 +20,7 @@ export function RagSearchToolView({ tool, result }: ToolViewProps) {
 
       {result?.isError && result.content && (
         <Section label="Error">
-          <pre className="tb-pre tb-pre--error">{result.content}</pre>
+          <ErrorPre content={result.content} />
         </Section>
       )}
     </>

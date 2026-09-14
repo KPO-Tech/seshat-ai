@@ -6,97 +6,21 @@ import { useSessionStore } from '@/stores/session'
 import { PlanArtifactCard } from '@/components/chat/plan/PlanArtifactCard'
 import { categoryIcon, hasCustomRender, renderToolBody, toolLabel } from '../toolDisplay'
 
-const CSS = `
-.tb-sl {
-  display: flex;
-  flex-direction: column;
-  margin: 0;
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(' ')
 }
 
-.tb-sl-line {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 5px 3px 0;
-  border-radius: 6px;
-  font-size: 10.5px;
-  line-height: 1.35;
-  color: var(--color-text-muted);
-  cursor: default;
-  user-select: none;
-  width: 100%;
+function lineIcon(toolName: string, isRunning: boolean, isError: boolean) {
+  if (isRunning) {
+    return <span className="size-2.5 shrink-0 animate-spin rounded-full border-[1.5px] border-[rgba(239,124,47,0.2)] border-t-[var(--color-accent)]" />
+  }
+  return (
+    <span className={cx('relative inline-flex shrink-0 items-center justify-center text-app-text-muted', isError && 'text-app-text-secondary')}>
+      {categoryIcon(toolName)}
+      {isError && <span className="absolute -right-0.5 -top-0.5 size-[5px] rounded-full bg-app-error" />}
+    </span>
+  )
 }
-
-.tb-sl-line--clickable {
-  cursor: pointer;
-}
-
-.tb-sl-line--clickable:hover {
-  color: var(--color-text-secondary);
-  background: color-mix(in srgb, var(--color-surface) 42%, transparent);
-}
-
-.tb-sl-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
-}
-
-.tb-sl-name {
-  font-style: normal;
-  color: inherit;
-  flex-shrink: 0;
-  font-weight: 500;
-}
-
-/* Was a flat max-width:320px regardless of how much room the row actually
-   had - flex:1/min-width:0 lets it fill whatever space is left after the
-   label (and icon/arrow) instead of truncating early on a wide window. */
-.tb-sl-snippet {
-  font-family: monospace;
-  font-size: 10px;
-  opacity: 0.62;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-  min-width: 0;
-}
-
-.tb-sl-arrow {
-  opacity: 0.45;
-  font-size: 10px;
-  transition: transform 0.15s;
-  line-height: 1;
-  flex-shrink: 0;
-}
-
-.tb-sl-arrow--open {
-  transform: rotate(180deg);
-}
-
-.tb-sl-body {
-  margin-top: 0;
-  padding-left: 22px;
-}
-
-.tb-sl-body > .tb-hcard:first-child {
-  border-top: none;
-  border-radius: 0 0 6px 6px;
-}
-
-.tb-sl-status {
-  flex-shrink: 0;
-  font-size: 9px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.tb-sl-status--failed { color: var(--color-error); }
-`
 
 type Props = ToolViewProps & { status: ToolStatus; snippet: string }
 
@@ -164,29 +88,25 @@ export function SilentToolView({ tool, result, status, snippet, sessionId }: Pro
   const clickable = expandable || canOpenPlan
 
   return (
-    <div className="tb-sl">
-      <style>{CSS}</style>
+    <div className="flex flex-col">
       <div
-        className={`tb-sl-line${clickable ? ' tb-sl-line--clickable' : ''}`}
+        className={cx(
+          'inline-flex w-full select-none items-center gap-1.5 rounded-md py-[3px] pr-[5px] text-[10.5px] leading-snug text-app-text-muted',
+          clickable ? 'cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-surface)_42%,transparent)] hover:text-app-text-secondary' : 'cursor-default',
+        )}
         role={clickable ? 'button' : undefined}
         tabIndex={clickable ? 0 : undefined}
         onClick={clickable ? handleClick : undefined}
         onKeyDown={clickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleClick() } : undefined}
       >
-        <span className="tb-sl-icon">
-          {isRunning && <span className="tl-spinner" />}
-          {!isRunning && (
-            <span className={`tl-icon${isError ? ' tl-icon--err' : ''}`}>
-              {categoryIcon(tool.name)}
-              {isError && <span className="tl-icon-badge" />}
-            </span>
-          )}
+        <span className="inline-flex size-3.5 shrink-0 items-center justify-center">
+          {lineIcon(tool.name, isRunning, isError)}
         </span>
-        <span className="tb-sl-name">{label}</span>
-        {isError && <span className="tb-sl-status tb-sl-status--failed">failed</span>}
-        {snippet && <span className="tb-sl-snippet">{snippet}</span>}
+        <span className="shrink-0 font-medium not-italic text-inherit">{label}</span>
+        {isError && <span className="shrink-0 text-[9px] font-bold leading-none text-app-error">failed</span>}
+        {snippet && <span className="min-w-0 flex-1 truncate font-mono text-[10px] opacity-[0.62]">{snippet}</span>}
         {expandable && (
-          <span className={`tb-sl-arrow${open ? ' tb-sl-arrow--open' : ''}`}>▾</span>
+          <span className={cx('shrink-0 text-[10px] leading-none opacity-45 transition-transform duration-150', open && 'rotate-180')}>▾</span>
         )}
       </div>
       {/* Delegates to the tool's own dedicated renderer (or GenericToolView
@@ -194,7 +114,7 @@ export function SilentToolView({ tool, result, status, snippet, sessionId }: Pro
           same "every full-card renderer owns its own presentation" rule the
           non-silent surfaces already follow, see DESIGN.md. */}
       {open && expandable && (
-        <div className="tb-sl-body">{renderToolBody({ tool, result, status })}</div>
+        <div className="pl-[22px] [&>.tb-hcard:first-child]:rounded-b-md [&>.tb-hcard:first-child]:rounded-t-none [&>.tb-hcard:first-child]:border-t-0">{renderToolBody({ tool, result, status })}</div>
       )}
     </div>
   )

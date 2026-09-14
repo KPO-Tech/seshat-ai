@@ -3,6 +3,10 @@ import type { ToolUseBlock } from '@/api/types'
 import { useUIStore } from '@/stores/ui'
 import { resolveAskUserQuestions } from './tool-block/helpers'
 
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(' ')
+}
+
 type Props = {
   tool: ToolUseBlock
   onSubmitPrompt: (promptId: string, value: unknown) => void
@@ -107,66 +111,101 @@ export function AskUserPanel({ tool, onSubmitPrompt }: Props) {
   const hasCustomAnswer = Boolean(customAnswer.trim())
 
   return (
-    <div className="askp-root">
-      <style>{ASK_PANEL_CSS}</style>
-
-      <div className="askp-head">
-        <div className="askp-title">
-          <span className="askp-title-icon">?</span>
+    <div className="mx-auto mb-2.5 flex w-[min(780px,calc(100%-32px))] shrink-0 flex-col overflow-hidden rounded-lg border border-[color-mix(in_srgb,var(--color-primary)_26%,var(--color-border-subtle))] bg-[color-mix(in_srgb,var(--color-surface-elevated)_62%,var(--color-bg))] shadow-[0_14px_34px_rgba(31,27,23,0.07)]">
+      <div className="flex min-h-12 items-center justify-between gap-3.5 border-b border-app-border-subtle px-3 py-[9px] max-[760px]:flex-col max-[760px]:items-start">
+        <div className="inline-flex min-w-0 items-center gap-2 text-[13px] font-bold text-app-text">
+          <span className="inline-flex size-6 items-center justify-center rounded-md border border-[color-mix(in_srgb,var(--color-primary)_22%,var(--color-border-subtle))] bg-[color-mix(in_srgb,var(--color-primary)_10%,var(--color-bg))] text-[14px] font-[750] text-[var(--color-accent)]">?</span>
           <span>Ask User</span>
         </div>
         {questions.length > 1 && (
-          <div className="askp-steps">
-            {questions.map((q, i) => (
-              <span
-                key={i}
-                className={`askp-step${i === viewIndex ? ' askp-step--current' : ''}${i < activeIndex ? ' askp-step--done' : ''}`}
-                title={q.header || q.question}
-              >
-                {q.header || `Q${i + 1}`}
-              </span>
-            ))}
+          <div className="ml-auto flex items-center justify-end max-[760px]:w-full max-[760px]:justify-start">
+            {questions.map((q, i) => {
+              const isCurrent = i === viewIndex
+              const isDone = i < activeIndex
+              return (
+                <span
+                  key={i}
+                  className={cx(
+                    'relative inline-flex max-w-[120px] items-center gap-1 truncate py-0.5 pl-[18px] pr-2 text-[10px] font-[650] [&+&]:border-l [&+&]:border-app-border-subtle',
+                    "before:absolute before:left-1 before:size-2 before:rounded-full before:border before:content-['']",
+                    isCurrent
+                      ? 'text-[var(--color-accent)] before:border-app-primary before:bg-app-primary'
+                      : isDone
+                        ? 'text-app-success before:border-[color-mix(in_srgb,var(--color-success)_45%,var(--color-border))] before:bg-[color-mix(in_srgb,var(--color-success)_18%,var(--color-bg))]'
+                        : 'text-app-text-muted before:border-[var(--color-border)] before:bg-app-bg',
+                  )}
+                  title={q.header || q.question}
+                >
+                  {q.header || `Q${i + 1}`}
+                </span>
+              )
+            })}
           </div>
         )}
         {questions.length > 1 && (
-          <div className="askp-progress">Question {viewIndex + 1} of {questions.length}</div>
+          <div className="whitespace-nowrap text-[9px] uppercase tracking-[0.04em] text-app-text-muted">Question {viewIndex + 1} of {questions.length}</div>
         )}
       </div>
 
-      <div className="askp-body">
-        <div className="askp-question">{question.question}</div>
+      <div className="flex flex-col gap-[9px] p-3">
+        <div className="text-[13px] font-[650] leading-[1.4] text-app-text">{question.question}</div>
 
         {pastAnswer !== undefined ? (
-          <div className="askp-answer">
-            <span className="askp-answer-label">Your answer</span>
-            <span className="askp-answer-value">{pastAnswer}</span>
+          <div className="grid grid-cols-[max-content_minmax(0,1fr)] items-baseline gap-2 rounded-[5px] bg-[color-mix(in_srgb,var(--color-success)_8%,var(--color-bg))] px-2 py-1.5">
+            <span className="text-[9px] font-bold uppercase tracking-[0.05em] text-app-success">Your answer</span>
+            <span className="min-w-0 truncate text-[11px] text-app-text">{pastAnswer}</span>
           </div>
         ) : (
           <>
             {question.options.length > 0 && (
-              <div className="askp-options">
-                {question.options.map((option) => (
-                  <button
-                    key={option.label}
-                    type="button"
-                    className={`askp-option${selectedValues.includes(option.label) ? ' askp-option--selected' : ''}`}
-                    onClick={() => toggleValue(option.label)}
-                  >
-                    <span className="askp-radio" aria-hidden="true" />
-                    <span className="askp-option-copy">
-                      <span className="askp-option-label">{option.label}</span>
-                      {option.description && (
-                        <span className="askp-option-description">{option.description}</span>
+              <div className="flex flex-col gap-1.5">
+                {question.options.map((option) => {
+                  const selected = selectedValues.includes(option.label)
+                  return (
+                    <button
+                      key={option.label}
+                      type="button"
+                      className={cx(
+                        'grid min-h-[42px] w-full grid-cols-[18px_minmax(0,1fr)] items-center gap-2.5 rounded-[7px] border px-2.5 py-2 text-left transition-[border-color,background,box-shadow] duration-[120ms] max-[760px]:items-start',
+                        selected
+                          ? 'border-[color-mix(in_srgb,var(--color-primary)_34%,var(--color-border-subtle))] bg-[color-mix(in_srgb,var(--color-primary)_8%,var(--color-bg))]'
+                          : 'border-app-border-subtle bg-[color-mix(in_srgb,var(--color-bg)_92%,var(--color-surface))] hover:border-[color-mix(in_srgb,var(--color-primary)_18%,var(--color-border-subtle))] hover:bg-[color-mix(in_srgb,var(--color-surface-elevated)_38%,var(--color-bg))]',
                       )}
-                    </span>
-                  </button>
-                ))}
+                      onClick={() => toggleValue(option.label)}
+                    >
+                      <span
+                        className={cx(
+                          'size-[13px] shrink-0 rounded-full border-[1.5px]',
+                          selected ? 'border-[var(--color-primary)] bg-[var(--color-primary)] shadow-[inset_0_0_0_4px_var(--color-bg)]' : 'border-[var(--color-border)] bg-app-bg',
+                        )}
+                        aria-hidden="true"
+                      />
+                      <span className="grid min-w-0 grid-cols-[minmax(160px,0.85fr)_minmax(0,1.15fr)] items-baseline gap-2 max-[760px]:grid-cols-1 max-[760px]:gap-0.5">
+                        <span className="min-w-0 truncate text-[12px] font-[650] text-app-text">{option.label}</span>
+                        {option.description && (
+                          <span className="min-w-0 truncate text-[11.5px] leading-[1.3] text-app-text-muted max-[760px]:whitespace-normal">{option.description}</span>
+                        )}
+                      </span>
+                    </button>
+                  )
+                })}
               </div>
             )}
-            <label className={`askp-custom${hasCustomAnswer ? ' askp-custom--active' : ''}`}>
-              <span className="askp-radio" aria-hidden="true" />
+            <label
+              className={cx(
+                'grid min-h-[38px] grid-cols-[18px_minmax(0,1fr)] items-center gap-2.5 rounded-[7px] border px-2.5 py-1.5 transition-[border-color,background] duration-[120ms] focus-within:border-[color-mix(in_srgb,var(--color-primary)_34%,var(--color-border-subtle))] focus-within:bg-[color-mix(in_srgb,var(--color-primary)_6%,var(--color-bg))]',
+                'border-app-border-subtle bg-[color-mix(in_srgb,var(--color-bg)_92%,var(--color-surface))]',
+              )}
+            >
+              <span
+                className={cx(
+                  'size-[13px] shrink-0 rounded-full border-[1.5px]',
+                  hasCustomAnswer ? 'border-[var(--color-primary)] bg-[var(--color-primary)] shadow-[inset_0_0_0_4px_var(--color-bg)]' : 'border-[var(--color-border)] bg-app-bg',
+                )}
+                aria-hidden="true"
+              />
               <textarea
-                className="askp-textarea"
+                className="max-h-[58px] min-h-6 w-full resize-none border-0 bg-transparent pt-[3px] text-[12px] leading-[1.35] text-app-text outline-none"
                 rows={question.options.length > 0 ? 1 : 2}
                 value={customAnswer}
                 onChange={(event) => {
@@ -181,13 +220,18 @@ export function AskUserPanel({ tool, onSubmitPrompt }: Props) {
         )}
       </div>
 
-      <div className="askp-footer">
-        <button type="button" className="askp-nav" onClick={goPrev} disabled={viewIndex === 0}>
+      <div className="flex justify-between gap-2 px-3 pb-3">
+        <button
+          type="button"
+          className="min-w-16 cursor-pointer rounded-md border border-app-border-subtle bg-[color-mix(in_srgb,var(--color-bg)_76%,var(--color-surface))] px-3 py-1.5 text-[11px] font-[650] text-app-text-muted disabled:cursor-default disabled:opacity-40"
+          onClick={goPrev}
+          disabled={viewIndex === 0}
+        >
           Previous
         </button>
         <button
           type="button"
-          className="askp-nav askp-nav--primary"
+          className="ml-auto min-w-16 cursor-pointer rounded-md border border-app-primary bg-app-primary px-3 py-1.5 text-[11px] font-[650] text-white disabled:cursor-default disabled:opacity-40"
           onClick={goNext}
           disabled={!canSubmit}
         >
@@ -197,330 +241,3 @@ export function AskUserPanel({ tool, onSubmitPrompt }: Props) {
     </div>
   )
 }
-
-const ASK_PANEL_CSS = `
-.askp-root {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  width: min(780px, calc(100% - 32px));
-  margin: 0 auto 10px;
-  padding: 0;
-  border-radius: 8px;
-  border: 1px solid color-mix(in srgb, var(--color-primary) 26%, var(--color-border-subtle));
-  background: color-mix(in srgb, var(--color-surface-elevated) 62%, var(--color-bg));
-  box-shadow: 0 14px 34px rgba(31, 27, 23, 0.07);
-  flex-shrink: 0;
-  overflow: hidden;
-}
-
-.askp-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  min-height: 48px;
-  padding: 9px 12px;
-  border-bottom: 1px solid var(--color-border-subtle);
-}
-
-.askp-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  color: var(--color-text);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.askp-title-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border: 1px solid color-mix(in srgb, var(--color-primary) 22%, var(--color-border-subtle));
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-bg));
-  color: var(--color-accent);
-  font-size: 14px;
-  font-weight: 750;
-}
-
-.askp-steps {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0;
-  margin-left: auto;
-}
-
-.askp-step {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10px;
-  font-weight: 650;
-  padding: 2px 8px 2px 18px;
-  border-radius: 0;
-  background: transparent;
-  color: var(--color-text-muted);
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.askp-step::before {
-  content: "";
-  position: absolute;
-  left: 4px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  border: 1px solid var(--color-border);
-  background: var(--color-bg);
-}
-
-.askp-step + .askp-step {
-  border-left: 1px solid var(--color-border-subtle);
-}
-
-.askp-step--done {
-  color: var(--color-success);
-}
-
-.askp-step--done::before {
-  border-color: color-mix(in srgb, var(--color-success) 45%, var(--color-border));
-  background: color-mix(in srgb, var(--color-success) 18%, var(--color-bg));
-}
-
-.askp-step--current {
-  color: var(--color-accent);
-}
-
-.askp-step--current::before {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
-}
-
-.askp-body {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  padding: 12px;
-}
-
-.askp-progress {
-  font-size: 9px;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-}
-
-.askp-question {
-  font-size: 13px;
-  line-height: 1.4;
-  font-weight: 650;
-  color: var(--color-text);
-}
-
-.askp-options {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.askp-option {
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 7px;
-  padding: 8px 10px;
-  background: color-mix(in srgb, var(--color-bg) 92%, var(--color-surface));
-  width: 100%;
-  text-align: left;
-  cursor: pointer;
-  display: grid;
-  grid-template-columns: 18px minmax(0, 1fr);
-  align-items: center;
-  gap: 10px;
-  min-height: 42px;
-  transition: border-color 0.12s, background 0.12s, box-shadow 0.12s;
-}
-
-.askp-option:hover {
-  border-color: color-mix(in srgb, var(--color-primary) 18%, var(--color-border-subtle));
-  background: color-mix(in srgb, var(--color-surface-elevated) 38%, var(--color-bg));
-}
-
-.askp-option--selected {
-  border-color: color-mix(in srgb, var(--color-primary) 34%, var(--color-border-subtle));
-  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-bg));
-}
-
-.askp-option--selected .askp-radio,
-.askp-custom--active .askp-radio {
-  border-color: var(--color-primary);
-  box-shadow: inset 0 0 0 4px var(--color-bg);
-  background: var(--color-primary);
-}
-
-.askp-radio {
-  width: 13px;
-  height: 13px;
-  border: 1.5px solid var(--color-border);
-  border-radius: 50%;
-  background: var(--color-bg);
-  flex-shrink: 0;
-}
-
-.askp-option-copy {
-  display: grid;
-  grid-template-columns: minmax(160px, 0.85fr) minmax(0, 1.15fr);
-  align-items: baseline;
-  gap: 8px;
-  min-width: 0;
-}
-
-.askp-option-label {
-  font-size: 12px;
-  font-weight: 650;
-  color: var(--color-text);
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.askp-option-description {
-  font-size: 11.5px;
-  line-height: 1.3;
-  color: var(--color-text-muted);
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.askp-custom {
-  display: grid;
-  grid-template-columns: 18px minmax(0, 1fr);
-  align-items: center;
-  gap: 10px;
-  min-height: 38px;
-  padding: 6px 10px;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 7px;
-  background: color-mix(in srgb, var(--color-bg) 92%, var(--color-surface));
-  transition: border-color 0.12s, background 0.12s;
-}
-
-.askp-custom:focus-within {
-  border-color: color-mix(in srgb, var(--color-primary) 34%, var(--color-border-subtle));
-  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-bg));
-}
-
-.askp-textarea {
-  width: 100%;
-  resize: none;
-  min-height: 24px;
-  max-height: 58px;
-  border: 0;
-  background: transparent;
-  color: var(--color-text);
-  padding: 3px 0 0;
-  font: inherit;
-  font-size: 12px;
-  line-height: 1.35;
-  outline: none;
-}
-
-.askp-textarea:focus {
-  border-color: transparent;
-}
-
-.askp-answer {
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  gap: 8px;
-  align-items: baseline;
-  padding: 6px 8px;
-  border-radius: 5px;
-  background: color-mix(in srgb, var(--color-success) 8%, var(--color-bg));
-}
-
-.askp-answer-label {
-  font-size: 9px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-success);
-}
-
-.askp-answer-value {
-  font-size: 11px;
-  color: var(--color-text);
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.askp-footer {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 0 12px 12px;
-}
-
-.askp-nav {
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 6px;
-  min-width: 64px;
-  padding: 6px 12px;
-  background: color-mix(in srgb, var(--color-bg) 76%, var(--color-surface));
-  color: var(--color-text-muted);
-  font-size: 11px;
-  font-weight: 650;
-  cursor: pointer;
-}
-
-.askp-nav:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.askp-nav--primary {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
-  color: white;
-  margin-left: auto;
-}
-
-@media (max-width: 760px) {
-  .askp-option {
-    align-items: start;
-  }
-
-  .askp-option-copy {
-    grid-template-columns: 1fr;
-    gap: 2px;
-  }
-
-  .askp-option-description {
-    white-space: normal;
-  }
-
-  .askp-head {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .askp-steps {
-    width: 100%;
-    justify-content: flex-start;
-  }
-}
-`

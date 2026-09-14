@@ -1,4 +1,4 @@
-import { HeaderCard, Section } from '../common'
+import { ErrorPre, FILEPATH_CSS, FILE_ITEM_CSS, FILE_LIST_CSS, HCARD_HEADER_PATH_CSS, HCARD_HEADER_STAT_CSS, HeaderCard, Section } from '../common'
 import type { ToolViewProps } from '../types'
 
 export function GlobToolView({ tool, result }: ToolViewProps) {
@@ -15,7 +15,7 @@ export function GlobToolView({ tool, result }: ToolViewProps) {
   if (result?.isError && result.content) {
     return (
       <Section label="Error">
-        <pre className="tb-pre tb-pre--error">{result.content}</pre>
+        <ErrorPre content={result.content} />
       </Section>
     )
   }
@@ -25,21 +25,21 @@ export function GlobToolView({ tool, result }: ToolViewProps) {
       header={
         <>
           <span>{pattern}</span>
-          {path && <span className="tb-hcard-header-path">{path}</span>}
-          <span className="tb-hcard-header-stat">
+          {path && <span className={HCARD_HEADER_PATH_CSS}>{path}</span>}
+          <span className={HCARD_HEADER_STAT_CSS}>
             {files.length} match{files.length !== 1 ? 'es' : ''}
           </span>
         </>
       }
     >
       {files.length > 0 ? (
-        <div className="tb-file-list">
+        <div className={FILE_LIST_CSS}>
           {files.map((file, i) => (
-            <div key={i} className="tb-file-item">{file}</div>
+            <div key={i} className={FILE_ITEM_CSS}>{file}</div>
           ))}
         </div>
       ) : (
-        <span className="tb-filepath">No matches found.</span>
+        <span className={FILEPATH_CSS}>No matches found.</span>
       )}
     </HeaderCard>
   )

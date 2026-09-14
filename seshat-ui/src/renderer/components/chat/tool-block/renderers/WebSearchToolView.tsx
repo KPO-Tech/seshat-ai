@@ -1,8 +1,12 @@
 import { useState } from 'react'
-import { HeaderCard, Section, CodeBox } from '../common'
+import { ASK_NOTE_CSS, CodeBox, HCARD_HEADER_STAT_CSS, HeaderCard, Section } from '../common'
 import { fmtDuration, parseWebSearchHits } from '../helpers'
 import type { ToolViewProps } from '../types'
 import { openInAppBrowser, shouldOpenInAppBrowser } from '@/lib/openInAppBrowser'
+
+const LINKS_CSS = '[scrollbar-width:thin] [scrollbar-color:var(--color-border-subtle)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-app-border-subtle flex max-h-[220px] flex-col overflow-y-auto'
+const LINK_ITEM_CSS = 'flex items-center gap-2.5 border-0 border-b border-app-border-subtle px-2.5 py-2 no-underline transition-colors duration-150 last:border-b-0 hover:bg-[color-mix(in_srgb,var(--color-accent)_7%,transparent)]'
+const LINK_FAVICON_CSS = 'inline-flex size-[18px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--color-surface)_74%,var(--color-bg))]'
 
 export function WebSearchToolView({ tool, result, sessionId }: ToolViewProps) {
   const query = typeof tool.input.query === 'string' ? tool.input.query : ''
@@ -32,19 +36,19 @@ export function WebSearchToolView({ tool, result, sessionId }: ToolViewProps) {
       header={
         <>
           <span>{selectedCount || 'No'} selected result{selectedCount === 1 ? '' : 's'}</span>
-          {stat && <span className="tb-hcard-header-stat">{stat}</span>}
+          {stat && <span className={HCARD_HEADER_STAT_CSS}>{stat}</span>}
         </>
       }
     >
       {hits.length > 0 ? (
         <>
-          <div className="tb-links">
+          <div className={LINKS_CSS}>
             {visibleHits.map((hit, index) => {
               const domain = domainLabel(hit.url)
               return (
                 <a
                   key={`${hit.url}-${index}`}
-                  className="tb-link-item"
+                  className={LINK_ITEM_CSS}
                   href={hit.url}
                   target="_blank"
                   rel="noreferrer"
@@ -55,10 +59,10 @@ export function WebSearchToolView({ tool, result, sessionId }: ToolViewProps) {
                   }}
                 >
                   <Favicon domain={domain} fallback={sourceInitial(hit.title || domain)} />
-                  <span className="tb-link-copy">
-                    <span className="tb-link-title">{hit.title || hit.url}</span>
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate text-[12px] font-medium leading-[1.35] text-app-text">{hit.title || hit.url}</span>
                   </span>
-                  <span className="tb-link-domain">{domain}</span>
+                  <span className="max-w-[180px] shrink-0 truncate text-[11px] text-app-text-muted">{domain}</span>
                 </a>
               )
             })}
@@ -66,7 +70,7 @@ export function WebSearchToolView({ tool, result, sessionId }: ToolViewProps) {
           {hits.length > 5 && (
             <button
               type="button"
-              className="tb-links-more"
+              className="flex w-full items-center border-0 border-t border-app-border-subtle bg-transparent pb-[9px] pl-[38px] pr-2.5 pt-2 text-left text-[11px] text-app-text-muted transition-colors duration-150 hover:bg-[color-mix(in_srgb,var(--color-accent)_7%,transparent)] hover:text-app-text-secondary"
               onClick={() => setShowAll((value) => !value)}
             >
               {showAll ? 'Show fewer sources' : `View all sources (${hits.length})`}
@@ -75,7 +79,7 @@ export function WebSearchToolView({ tool, result, sessionId }: ToolViewProps) {
         </>
       ) : (
         <Section label="Sources">
-          <div className="tb-ask-note">No sources found in the search result.</div>
+          <div className={ASK_NOTE_CSS}>No sources found in the search result.</div>
         </Section>
       )}
     </HeaderCard>
@@ -85,11 +89,12 @@ export function WebSearchToolView({ tool, result, sessionId }: ToolViewProps) {
 function Favicon({ domain, fallback }: { domain: string; fallback: string }) {
   const [failed, setFailed] = useState(false)
   if (!domain || failed) {
-    return <span className="tb-link-favicon tb-link-favicon--fallback">{fallback}</span>
+    return <span className={`${LINK_FAVICON_CSS} bg-[color-mix(in_srgb,var(--color-accent)_88%,black)] text-[9px] font-bold text-white`}>{fallback}</span>
   }
   return (
-    <span className="tb-link-favicon" aria-hidden="true">
+    <span className={LINK_FAVICON_CSS} aria-hidden="true">
       <img
+        className="block size-full object-cover"
         src={`https://icons.duckduckgo.com/ip3/${domain}.ico`}
         alt=""
         loading="lazy"

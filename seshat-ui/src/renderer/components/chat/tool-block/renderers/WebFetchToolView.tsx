@@ -1,4 +1,4 @@
-import { HeaderCard, CodeBox } from '../common'
+import { CodeBox, HCARD_HEADER_LINK_CSS, HCARD_HEADER_STAT_CSS, HeaderCard } from '../common'
 import type { ToolViewProps } from '../types'
 import { openInAppBrowser, shouldOpenInAppBrowser } from '@/lib/openInAppBrowser'
 
@@ -30,7 +30,7 @@ export function WebFetchToolView({ tool, result, sessionId }: ToolViewProps) {
         header={
           <>
             <span title={url}>{hostname || 'Web Fetch'}</span>
-            {stat && <span className="tb-hcard-header-stat">{stat}</span>}
+            {stat && <span className={HCARD_HEADER_STAT_CSS}>{stat}</span>}
           </>
         }
       >
@@ -45,7 +45,7 @@ export function WebFetchToolView({ tool, result, sessionId }: ToolViewProps) {
         <>
           {sourceUrl ? (
             <a
-              className="tb-hcard-header-link"
+              className={HCARD_HEADER_LINK_CSS}
               href={sourceUrl}
               target="_blank"
               rel="noreferrer"
@@ -60,11 +60,11 @@ export function WebFetchToolView({ tool, result, sessionId }: ToolViewProps) {
           ) : (
             <span>Web Fetch</span>
           )}
-          {stat && <span className="tb-hcard-header-stat">{stat}</span>}
+          {stat && <span className={HCARD_HEADER_STAT_CSS}>{stat}</span>}
         </>
       }
     >
-      <div className="tb-fetch-card">
+      <div className="flex flex-col">
         {payload && <CodeBox content={payload} language="json" bare />}
       </div>
     </HeaderCard>

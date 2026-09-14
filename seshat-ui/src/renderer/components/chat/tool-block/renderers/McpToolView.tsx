@@ -1,71 +1,5 @@
-import { Section, CodeBox, HeaderCard } from '../common'
+import { CodeBox, ErrorPre, HCARD_HEADER_PATH_CSS, HeaderCard, Section } from '../common'
 import type { ToolViewProps } from '../types'
-
-const CSS = `
-.tb-mcp-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.tb-mcp-server {
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--color-accent);
-  background: rgba(239, 124, 47, 0.1);
-  border: 1px solid rgba(239, 124, 47, 0.25);
-  border-radius: 4px;
-  padding: 1px 5px;
-}
-
-.tb-mcp-tool {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.tb-mcp-args {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  border-top: 1px solid var(--color-border-subtle);
-}
-
-.tb-mcp-arg {
-  display: grid;
-  grid-template-columns: minmax(90px, max-content) minmax(0, 1fr);
-  gap: 10px;
-  padding: 7px 10px;
-  border-bottom: 1px solid var(--color-border-subtle);
-  font-size: 11px;
-  line-height: 1.45;
-}
-
-.tb-mcp-arg-key {
-  flex-shrink: 0;
-  color: var(--color-text-muted);
-  font-family: monospace;
-}
-
-.tb-mcp-arg-value {
-  color: var(--color-text);
-  font-family: monospace;
-  overflow-wrap: anywhere;
-}
-
-.tb-mcp-empty {
-  padding: 8px 10px;
-  color: var(--color-text-muted);
-  font-size: 11px;
-}
-`
 
 type ParsedMcpName = { server: string; tool: string }
 
@@ -114,29 +48,27 @@ export function McpToolView({ tool, result }: ToolViewProps) {
 
   return (
     <>
-      <style>{CSS}</style>
-
       <HeaderCard
         header={
           <>
             <span>{title}</span>
-            <span className="tb-hcard-header-path" title={toolName}>{toolName}</span>
+            <span className={HCARD_HEADER_PATH_CSS} title={toolName}>{toolName}</span>
           </>
         }
       >
         {args.length > 0 ? (
-          <div className="tb-mcp-args">
+          <div className="flex flex-col border-t border-app-border-subtle">
             {args.map(([key, value]) => (
-                <div key={key} className="tb-mcp-arg">
-                  <span className="tb-mcp-arg-key">{key}</span>
-                  <span className="tb-mcp-arg-value">
+                <div key={key} className="grid grid-cols-[minmax(90px,max-content)_minmax(0,1fr)] gap-2.5 border-b border-app-border-subtle px-2.5 py-[7px] text-[11px] leading-[1.45]">
+                  <span className="shrink-0 font-mono text-app-text-muted">{key}</span>
+                  <span className="[overflow-wrap:anywhere] font-mono text-app-text">
                     {typeof value === 'string' ? value : JSON.stringify(value)}
                   </span>
                 </div>
               ))}
           </div>
         ) : (
-          <div className="tb-mcp-empty">No arguments.</div>
+          <div className="px-2.5 py-2 text-[11px] text-app-text-muted">No arguments.</div>
         )}
       </HeaderCard>
 
@@ -148,7 +80,7 @@ export function McpToolView({ tool, result }: ToolViewProps) {
 
       {result?.isError && result.content && (
         <Section label="Error">
-          <pre className="tb-pre tb-pre--error">{result.content}</pre>
+          <ErrorPre content={result.content} />
         </Section>
       )}
     </>

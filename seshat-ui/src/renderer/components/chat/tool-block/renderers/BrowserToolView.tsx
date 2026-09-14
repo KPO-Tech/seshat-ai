@@ -1,53 +1,10 @@
-import { Section, CodeBox } from '../common'
+import { CodeBox, ErrorPre, Section } from '../common'
 import type { ToolViewProps } from '../types'
 
-const CSS = `
-.tb-browser-target {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  color: var(--color-text);
-  overflow: hidden;
-}
-
-.tb-browser-target-url {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: monospace;
-}
-
-.tb-browser-target-page {
-  flex-shrink: 0;
-  font-size: 9.5px;
-  font-family: monospace;
-  color: var(--color-text-muted);
-  background: rgba(255,255,255,0.05);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 3px;
-  padding: 1px 4px;
-}
-
-.tb-img-wrap {
-  border-radius: 6px;
-  overflow: hidden;
-  border: 1px solid var(--color-border-subtle);
-  background: rgba(0,0,0,0.12);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  max-height: 480px;
-}
-
-.tb-img-wrap img {
-  width: 100%;
-  height: auto;
-  max-height: 480px;
-  object-fit: contain;
-  display: block;
-}
-`
+const TARGET_CSS = 'flex items-center gap-1.5 overflow-hidden text-[11px] text-app-text'
+const TARGET_URL_CSS = 'truncate font-mono'
+const TARGET_PAGE_CSS = 'shrink-0 rounded-[3px] border border-app-border-subtle bg-[rgba(255,255,255,0.05)] px-1 py-px font-mono text-[9.5px] text-app-text-muted'
+const IMG_WRAP_CSS = 'flex max-h-[480px] items-center justify-center overflow-hidden rounded-md border border-app-border-subtle bg-[rgba(0,0,0,0.12)]'
 
 type ScreenshotResult = {
   page?: { id?: string; url?: string }
@@ -94,15 +51,14 @@ export function BrowserToolView({ tool, result }: ToolViewProps) {
   if (!result || result.isError) {
     return (
       <>
-        <style>{CSS}</style>
         {(target || pageId) && (
-          <div className="tb-browser-target">
-            {target && <span className="tb-browser-target-url">{target}</span>}
-            {pageId && <span className="tb-browser-target-page">{pageId}</span>}
+          <div className={TARGET_CSS}>
+            {target && <span className={TARGET_URL_CSS}>{target}</span>}
+            {pageId && <span className={TARGET_PAGE_CSS}>{pageId}</span>}
           </div>
         )}
         {result?.isError && result.content && (
-          <Section label="Error"><pre className="tb-pre tb-pre--error">{result.content}</pre></Section>
+          <Section label="Error"><ErrorPre content={result.content} /></Section>
         )}
       </>
     )
@@ -115,15 +71,14 @@ export function BrowserToolView({ tool, result }: ToolViewProps) {
       : null
     return (
       <>
-        <style>{CSS}</style>
-        <div className="tb-browser-target">
-          {parsed?.page?.url && <span className="tb-browser-target-url">{parsed.page.url}</span>}
-          {parsed?.page?.id && <span className="tb-browser-target-page">{parsed.page.id}</span>}
+        <div className={TARGET_CSS}>
+          {parsed?.page?.url && <span className={TARGET_URL_CSS}>{parsed.page.url}</span>}
+          {parsed?.page?.id && <span className={TARGET_PAGE_CSS}>{parsed.page.id}</span>}
         </div>
         {src ? (
           <Section label={parsed?.full_page ? 'Full page' : 'Viewport'}>
-            <div className="tb-img-wrap">
-              <img src={src} alt={parsed?.page?.url ?? 'Browser screenshot'} loading="lazy" />
+            <div className={IMG_WRAP_CSS}>
+              <img className="block h-auto max-h-[480px] w-full object-contain" src={src} alt={parsed?.page?.url ?? 'Browser screenshot'} loading="lazy" />
             </div>
           </Section>
         ) : (
@@ -135,11 +90,10 @@ export function BrowserToolView({ tool, result }: ToolViewProps) {
 
   return (
     <>
-      <style>{CSS}</style>
       {(target || pageId) && (
-        <div className="tb-browser-target">
-          {target && <span className="tb-browser-target-url">{target}</span>}
-          {pageId && <span className="tb-browser-target-page">{pageId}</span>}
+        <div className={TARGET_CSS}>
+          {target && <span className={TARGET_URL_CSS}>{target}</span>}
+          {pageId && <span className={TARGET_PAGE_CSS}>{pageId}</span>}
         </div>
       )}
       {result.content && (

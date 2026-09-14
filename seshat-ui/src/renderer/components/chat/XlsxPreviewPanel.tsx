@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react'
 import ExcelJS from 'exceljs'
 import { api, ApiError } from '@/api/client'
 
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(' ')
+}
+
 type Props = {
   fileId: string
   filename: string
@@ -97,138 +101,59 @@ export function XlsxPreviewPanel({ fileId, filename }: Props) {
   const truncated = (current?.rows.length ?? 0) >= MAX_PREVIEW_ROWS
 
   return (
-    <div className="xlsx-preview-panel">
-      <style>{XLSX_PREVIEW_CSS}</style>
+    <div className="relative flex h-full min-h-0 flex-col">
+      {/* The app-wide ::selection (globals.css) is tuned for the dark theme
+          and unreadable against this panel's white background - see the
+          identical comment/fix in DocxPreviewPanel.tsx. */}
+      <style>{'.xlsx-preview-scroll ::selection { background: #b4d7ff; color: #1a1a1a; }'}</style>
       {sheets && sheets.length > 1 && (
-        <div className="xlsx-preview-tabs">
-          {sheets.map((sheet, i) => (
-            <button
-              key={sheet.name + i}
-              type="button"
-              className={`xlsx-preview-tab${i === activeSheet ? ' active' : ''}`}
-              onClick={() => setActiveSheet(i)}
-            >
-              {sheet.name}
-            </button>
-          ))}
+        <div className="flex shrink-0 flex-wrap gap-1 border-b border-app-border-subtle px-2 py-1.5">
+          {sheets.map((sheet, i) => {
+            const active = i === activeSheet
+            return (
+              <button
+                key={sheet.name + i}
+                type="button"
+                className={cx(
+                  'cursor-pointer rounded-md border px-2.5 py-1 text-[11px]',
+                  active
+                    ? 'border-[var(--color-primary,var(--color-accent))] bg-[color-mix(in_srgb,var(--color-primary,var(--color-accent))_12%,var(--color-surface))] text-app-text'
+                    : 'border-app-border-subtle bg-app-surface text-app-text-secondary hover:bg-[var(--color-hover)] hover:text-app-text',
+                )}
+                onClick={() => setActiveSheet(i)}
+              >
+                {sheet.name}
+              </button>
+            )
+          })}
         </div>
       )}
-      <div className="xlsx-preview-scroll">
+      <div className="xlsx-preview-scroll min-h-0 flex-1 overflow-auto bg-white">
         {current && current.rows.length > 0 ? (
           <>
-            <table className="xlsx-preview-table">
+            <table className="border-collapse whitespace-nowrap text-[12px] text-[#1c1a17]">
               <tbody>
                 {current.rows.map((row, ri) => (
                   <tr key={ri}>
                     {row.map((cell, ci) => (
-                      <td key={ci}>{cell}</td>
+                      <td key={ci} className="border border-[#e4dfd4] px-2 py-1">{cell}</td>
                     ))}
                   </tr>
                 ))}
               </tbody>
             </table>
-            {truncated && <div className="xlsx-preview-truncated">Showing the first {MAX_PREVIEW_ROWS} rows.</div>}
+            {truncated && <div className="px-3.5 py-2.5 text-[11px] text-app-text-muted">Showing the first {MAX_PREVIEW_ROWS} rows.</div>}
           </>
         ) : current ? (
-          <div className="xlsx-preview-empty">This sheet is empty.</div>
+          <div className="px-3.5 py-2.5 text-[11px] text-app-text-muted">This sheet is empty.</div>
         ) : null}
       </div>
-      {status === 'loading' && <div className="xlsx-preview-status">Loading {filename}…</div>}
+      {status === 'loading' && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-app-surface px-5 text-center text-[12px] text-app-text-muted">Loading {filename}…</div>
+      )}
       {status === 'error' && (
-        <div className="xlsx-preview-status xlsx-preview-status--error">Couldn't load this spreadsheet: {errorMessage}</div>
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-app-surface px-5 text-center text-[12px] text-app-error">Couldn't load this spreadsheet: {errorMessage}</div>
       )}
     </div>
   )
 }
-
-const XLSX_PREVIEW_CSS = `
-.xlsx-preview-panel {
-  position: relative;
-  height: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.xlsx-preview-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  padding: 6px 8px;
-  border-bottom: 1px solid var(--color-border-subtle);
-  flex-shrink: 0;
-}
-
-.xlsx-preview-tab {
-  padding: 4px 10px;
-  font-size: 11px;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 6px;
-  background: var(--color-surface);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-}
-
-.xlsx-preview-tab:hover {
-  background: var(--color-hover);
-  color: var(--color-text);
-}
-
-.xlsx-preview-tab.active {
-  border-color: var(--color-primary, var(--color-accent));
-  color: var(--color-text);
-  background: color-mix(in srgb, var(--color-primary, var(--color-accent)) 12%, var(--color-surface));
-}
-
-.xlsx-preview-scroll {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  background: white;
-}
-
-/* The app-wide ::selection (globals.css) is tuned for the dark theme and
-   unreadable against this panel's white background - see the identical
-   comment/fix in DocxPreviewPanel.tsx. */
-.xlsx-preview-scroll ::selection {
-  background: #b4d7ff;
-  color: #1a1a1a;
-}
-
-.xlsx-preview-table {
-  border-collapse: collapse;
-  font-size: 12px;
-  color: #1c1a17;
-  white-space: nowrap;
-}
-
-.xlsx-preview-table td {
-  border: 1px solid #e4dfd4;
-  padding: 4px 8px;
-}
-
-.xlsx-preview-empty,
-.xlsx-preview-truncated {
-  padding: 10px 14px;
-  font-size: 11px;
-  color: var(--color-text-muted);
-}
-
-.xlsx-preview-status {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-muted);
-  font-size: 12px;
-  text-align: center;
-  padding: 0 20px;
-  pointer-events: none;
-  background: var(--color-surface);
-}
-
-.xlsx-preview-status--error {
-  color: var(--color-error);
-}
-`

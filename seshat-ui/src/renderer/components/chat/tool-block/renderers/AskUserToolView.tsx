@@ -1,5 +1,17 @@
 import { useMemo } from 'react'
-import { CodeBox, Section } from '../common'
+import {
+  ASK_ANSWER_VALUE_CSS,
+  ASK_CARD_PENDING_CSS,
+  ASK_NOTE_CSS,
+  ASK_PENDING_NOTE_CSS,
+  ASK_QA_CSS,
+  ASK_QA_COPY_CSS,
+  ASK_QA_INDEX_CSS,
+  ASK_QUESTION_CSS,
+  ASK_SUMMARY_CSS,
+  CodeBox,
+  Section,
+} from '../common'
 import { parseAskUserAnswers, resolveAskUserQuestions } from '../helpers'
 import type { ToolViewProps } from '../types'
 import { GenericToolView } from './GenericToolView'
@@ -20,26 +32,26 @@ export function AskUserToolView({ tool, result, status }: ToolViewProps) {
 
   if (status === 'running' && prompt) {
     return (
-      <div className="tb-ask-card tb-ask-card--pending">
-        <span className="tb-ask-pending-note">Waiting for your answer above the message box.</span>
+      <div className={ASK_CARD_PENDING_CSS}>
+        <span className={ASK_PENDING_NOTE_CSS}>Waiting for your answer above the message box.</span>
       </div>
     )
   }
 
   return (
-    <div className="tb-ask-summary">
+    <div className={ASK_SUMMARY_CSS}>
       {questions.map((question, index) => {
         const answer = answers.get(question.question) ?? ''
 
         return (
-          <div key={`${question.header}-${index}`} className="tb-ask-qa">
-            <span className="tb-ask-qa-index">{index + 1}</span>
-            <div className="tb-ask-qa-copy">
-              <div className="tb-ask-question">{question.question}</div>
+          <div key={`${question.header}-${index}`} className={ASK_QA_CSS}>
+            <span className={ASK_QA_INDEX_CSS}>{index + 1}</span>
+            <div className={ASK_QA_COPY_CSS}>
+              <div className={ASK_QUESTION_CSS}>{question.question}</div>
               {answer ? (
-                <div className="tb-ask-answer-value">{answer}</div>
+                <div className={ASK_ANSWER_VALUE_CSS}>{answer}</div>
               ) : (
-                <div className="tb-ask-note">No answer recorded yet.</div>
+                <div className={ASK_NOTE_CSS}>No answer recorded yet.</div>
               )}
             </div>
           </div>
@@ -47,7 +59,7 @@ export function AskUserToolView({ tool, result, status }: ToolViewProps) {
       })}
 
       {status === 'running' && !result?.content && !prompt && (
-        <div className="tb-ask-note">Waiting for the user response.</div>
+        <div className={ASK_NOTE_CSS}>Waiting for the user response.</div>
       )}
 
       {status === 'failed' && result?.content && (
