@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AddOne, Book, Browser, CheckOne, Close, Code, DocDetail, FilePdf, FileTextOne, Robot, LoadingOne, FileWord, FileExcel, Left, Right, Refresh } from '@icon-park/react'
+import { AddOne, Book, Browser, CheckOne, Close, Code, DocDetail, FilePdf, FileTextOne, Robot, LoadingOne, FileWord, FileExcel, Left, Right, Refresh, Play, Tool, PreviewOpen } from '@icon-park/react'
 import { MarkdownView } from '@/components/MarkdownView'
 import { derivePlanSnapshot } from '@/lib/plan'
 import { useUIStore } from '@/stores/ui'
@@ -13,9 +13,12 @@ import { XlsxPreviewPanel } from '@/components/chat/XlsxPreviewPanel'
 import { PptxPreviewPanel } from '@/components/chat/PptxPreviewPanel'
 import { flattenRightPanels } from '@/stores/ui'
 import { WindowCloseIcon, WindowMaximizeIcon } from '@/components/ui/WindowControlIcon'
+import { TOOL_BLOCK_CSS } from '@/components/chat/tool-block/styles'
+import { renderToolBody, toolLabel, toolSnippet } from '@/components/chat/tool-block/toolDisplay'
+import { toolStatus } from '@/components/chat/tool-block/quietGroupPhrase'
 import type { RightPanelInstance, RightPanelKind, RightPanelColumn } from '@/stores/ui'
-import type { AgentState } from '@/stores/session'
-import type { Message } from '@/api/types'
+import type { AgentState, StreamingBlock } from '@/stores/session'
+import type { Message, ToolUseBlock } from '@/api/types'
 
 // Stable empty reference - must be module-level so the Zustand selector returns
 // the same reference every render when no session is found. An inline []
@@ -204,7 +207,7 @@ function renderPanelIcon(kind: RightPanelKind) {
 function renderPanelBody(panel: RightPanelInstance) {
   switch (panel.kind) {
     case 'agent':
-      return <AgentMonitorPanel sessionId={panel.sessionId ?? ''} />
+      return <AgentWorkspacePanel sessionId={panel.sessionId ?? ''} />
     case 'markdown':
       if (!panel.markdown) {
         return (
@@ -498,9 +501,21 @@ export function BrowserPanel({ url, contextId = 'chat' }: { url?: string; contex
   )
 }
 
-// Agent Monitor
+// Agent Workspace
 
-function AgentMonitorPanel({ sessionId }: { sessionId: string }) {
+const WORKSPACE_HIDDEN_TOOLS = new Set([
+  'enter_plan_mode',
+  'exit_plan_mode',
+  'enter_pair_programming_mode',
+  'exit_pair_programming_mode',
+])
+
+type WorkspaceTool = ToolUseBlock & {
+  source: 'history' | 'live'
+  order: number
+}
+
+function AgentWorkspacePanel({ sessionId }: { sessionId: string }) {
   const agentState = useSessionStore((s) => s.getAgentState(sessionId))
   const planArtifact = useSessionStore(
     (s) => s.sessions.find((session) => session.id === sessionId)?.planArtifact,
@@ -509,21 +524,190 @@ function AgentMonitorPanel({ sessionId }: { sessionId: string }) {
     (s) => s.sessions.find((session) => session.id === sessionId)?.messages ?? EMPTY_MESSAGES,
   )
   const streaming = useSessionStore((s) => s.getStreaming(sessionId))
+  const [selectedToolId, setSelectedToolId] = useState<string | null>(null)
+  const openRightPanel = useUIStore((s) => s.openRightPanel)
   const plan = useMemo(
     () => derivePlanSnapshot(sessionMessages, streaming),
     [sessionMessages, streaming],
   )
+  const tools = useMemo(
+    () => collectWorkspaceTools(sessionMessages, streaming),
+    [sessionMessages, streaming],
+  )
+  const latestTool = tools.at(-1) ?? null
+  const selectedTool = selectedToolId
+    ? tools.find((tool) => tool.id === selectedToolId) ?? latestTool
+    : latestTool
+  const selectedStatus = selectedTool ? toolStatus(selectedTool) : null
+  const selectedUrl = selectedTool ? browserUrlFromTool(selectedTool) : null
+  const isBrowserTool = selectedTool?.name.startsWith('browser_') ?? false
+
+  useEffect(() => {
+    if (!latestTool) return
+    const latestStatus = toolStatus(latestTool)
+    const selectedStillExists = selectedToolId && tools.some((tool) => tool.id === selectedToolId)
+    if (!selectedStillExists || latestStatus === 'running' || latestStatus === 'pending') {
+      setSelectedToolId(latestTool.id)
+    }
+  }, [latestTool?.id, selectedToolId, tools])
+
+  function openBrowser() {
+    openRightPanel({
+      kind: 'browser',
+      title: 'Browser',
+      sessionId,
+      browserUrl: selectedUrl ?? undefined,
+    })
+  }
 
   return (
-    <div className="am-root">
+    <div className="aw-root">
+      <style>{TOOL_BLOCK_CSS}</style>
+      <div className="aw-hero">
+        <div className="aw-hero-copy">
+          <span className={`aw-live-dot${agentState.activeTool ? ' active' : ''}`} />
+          <div className="aw-hero-text">
+            <h3>Seshat's workspace</h3>
+            <p>
+              {agentState.activeTool
+                ? `${toolDisplayName(agentState.activeTool.toolName)}${agentState.activeTool.message ? ` - ${agentState.activeTool.message}` : ''}`
+                : agentState.isThinking
+                  ? 'Reasoning'
+                  : 'Waiting for the next action'}
+            </p>
+          </div>
+        </div>
+        {isBrowserTool && (
+          <button type="button" className="aw-hero-action" onClick={openBrowser}>
+            <PreviewOpen size={13} />
+            <span>Open browser</span>
+          </button>
+        )}
+      </div>
+
+      <div className="aw-stage">
+        {!selectedTool ? (
+          <div className="aw-empty">
+            <Tool size={20} />
+            <h3>No tool activity yet</h3>
+            <p>Tool runs, files, browser actions, plans and sub-agents will appear here.</p>
+          </div>
+        ) : isBrowserTool && window.nexus?.browser ? (
+          <div className="aw-browser-stage">
+            <BrowserPanel url={selectedUrl ?? undefined} contextId={`session:${sessionId}`} />
+          </div>
+        ) : (
+          <div className="aw-tool-stage">
+            <div className="aw-tool-head">
+              <div className="aw-tool-title">
+                <span className={`aw-tool-status aw-tool-status--${selectedStatus ?? 'pending'}`} />
+                <span>{toolLabel(selectedTool.name)}</span>
+              </div>
+              <span className="aw-tool-meta">{selectedTool.source === 'live' ? 'Live' : 'History'}</span>
+            </div>
+            <div className="aw-tool-body">
+              {renderToolBody({
+                tool: selectedTool,
+                result: selectedTool._result,
+                status: selectedStatus ?? 'pending',
+                sessionId,
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="aw-timeline-bar">
+        <button
+          type="button"
+          className="aw-jump-live"
+          disabled={!latestTool}
+          onClick={() => latestTool && setSelectedToolId(latestTool.id)}
+        >
+          <Play size={11} />
+          <span>Jump to live</span>
+        </button>
+        <span className="aw-timeline-count">{tools.length} tool{tools.length === 1 ? '' : 's'}</span>
+      </div>
+
+      <div className="aw-timeline">
+        {tools.length === 0 ? (
+          <p className="am-empty-hint">No tool activity has been recorded yet.</p>
+        ) : (
+          tools.slice(-18).reverse().map((tool) => {
+            const status = toolStatus(tool)
+            const snippet = workspaceToolSnippet(tool)
+            return (
+              <button
+                key={`${tool.source}-${tool.id}-${tool.order}`}
+                type="button"
+                className={`aw-timeline-item aw-timeline-item--${status}${selectedTool?.id === tool.id ? ' selected' : ''}`}
+                onClick={() => setSelectedToolId(tool.id)}
+              >
+                <span className="aw-timeline-icon">
+                  {status === 'running' || status === 'pending'
+                    ? <LoadingOne size={11} />
+                    : status === 'failed'
+                      ? <Close size={11} />
+                      : <CheckOne size={11} />}
+                </span>
+                <span className="aw-timeline-copy">
+                  <span className="aw-timeline-title">{toolLabel(tool.name)}</span>
+                  {snippet && <span className="aw-timeline-snippet">{snippet}</span>}
+                </span>
+                <span className="aw-timeline-source">{tool.source === 'live' ? 'live' : 'past'}</span>
+              </button>
+            )
+          })
+        )}
+      </div>
+
       <TurnTokenStats state={agentState} />
-      {agentState.activeTool && <ActiveToolSection state={agentState} />}
       <SubagentsSection sessionId={sessionId} />
       {planArtifact && <PlanArtifactSection sessionId={sessionId} planArtifact={planArtifact} />}
       <PlanSection plan={plan} />
       <ActivityTimelineSection state={agentState} />
     </div>
   )
+}
+
+function collectWorkspaceTools(messages: Message[], streaming: StreamingBlock[]): WorkspaceTool[] {
+  const byId = new Map<string, WorkspaceTool>()
+  let order = 0
+  for (const message of messages) {
+    for (const block of message.content) {
+      if (block.type !== 'tool_use' || WORKSPACE_HIDDEN_TOOLS.has(block.name)) continue
+      byId.set(block.id, { ...block, source: 'history', order: order++ })
+    }
+  }
+  for (const block of streaming ?? []) {
+    if (block.type !== 'tool_use' || WORKSPACE_HIDDEN_TOOLS.has(block.name)) continue
+    byId.set(block.id, { ...block, source: 'live', order: order++ })
+  }
+  return [...byId.values()].sort((a, b) => a.order - b.order)
+}
+
+function workspaceToolSnippet(tool: ToolUseBlock): string {
+  const registrySnippet = toolSnippet(tool)
+  if (registrySnippet) return registrySnippet
+  const values = ['description', 'query', 'url', 'file_path', 'path', 'command']
+  for (const key of values) {
+    const value = tool.input[key]
+    if (typeof value === 'string' && value.trim()) {
+      return value.length > 72 ? `${value.slice(0, 72)}...` : value
+    }
+  }
+  return tool._message ?? ''
+}
+
+function browserUrlFromTool(tool: ToolUseBlock): string | null {
+  const url = tool.input.url
+  if (typeof url === 'string' && url.trim()) return url
+  const target = tool.input.target
+  if (typeof target === 'string' && target.trim()) return target
+  const resultUrl = tool._result?.metadata?.url
+  if (typeof resultUrl === 'string' && resultUrl.trim()) return resultUrl
+  return null
 }
 
 // Aggregated view of every sub-agent spawned from this session (via the `agent`
@@ -644,24 +828,6 @@ function Stat({ label, value }: { label: string; value: string }) {
     <div className="am-stat">
       <span className="am-stat-value">{value}</span>
       <span className="am-stat-label">{label}</span>
-    </div>
-  )
-}
-
-function ActiveToolSection({ state }: { state: AgentState }) {
-  const tool = state.activeTool!
-  return (
-    <div className="am-section am-section--compact">
-      <span className="am-section-label">Running</span>
-      <div className="am-active-tool">
-        <span className="am-active-spinner">
-          <LoadingOne size={10} />
-        </span>
-        <div className="am-active-copy">
-          <span className="am-active-name">{toolDisplayName(tool.toolName)}</span>
-          {tool.message && <span className="am-active-msg">{tool.message}</span>}
-        </div>
-      </div>
     </div>
   )
 }
@@ -1196,6 +1362,287 @@ export const RIGHT_PANEL_CSS = `
   gap: 8px;
   color: var(--color-text-muted);
   font-size: 11px;
+}
+
+/* Agent Workspace */
+.aw-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: color-mix(in srgb, var(--color-bg) 94%, var(--color-surface) 6%);
+}
+
+.aw-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 13px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: color-mix(in srgb, var(--color-bg) 88%, var(--color-surface) 12%);
+  flex-shrink: 0;
+}
+
+.aw-hero-copy {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.aw-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--color-text-muted);
+  box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.025);
+  flex-shrink: 0;
+}
+
+.aw-live-dot.active {
+  background: var(--color-accent);
+  box-shadow: 0 0 0 5px rgba(239, 124, 47, 0.14);
+}
+
+.aw-hero-text {
+  min-width: 0;
+}
+
+.aw-hero-text h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.aw-hero-text p {
+  margin: 2px 0 0;
+  font-size: 10.5px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.aw-hero-action,
+.aw-jump-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid rgba(239, 124, 47, 0.26);
+  background: rgba(239, 124, 47, 0.09);
+  color: var(--color-accent);
+  border-radius: 7px;
+  height: 28px;
+  padding: 0 8px;
+  font-size: 10.5px;
+  font-weight: 650;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.aw-hero-action:hover,
+.aw-jump-live:hover:not(:disabled) {
+  background: rgba(239, 124, 47, 0.14);
+}
+
+.aw-jump-live:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.aw-stage {
+  min-height: 280px;
+  height: min(46vh, 520px);
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: color-mix(in srgb, var(--color-bg) 97%, black);
+  flex-shrink: 0;
+}
+
+.aw-browser-stage,
+.aw-tool-stage {
+  height: 100%;
+  min-height: 0;
+}
+
+.aw-browser-stage .right-panel-browser {
+  border: none;
+}
+
+.aw-tool-stage {
+  display: flex;
+  flex-direction: column;
+}
+
+.aw-tool-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: color-mix(in srgb, var(--color-bg) 88%, var(--color-surface) 12%);
+}
+
+.aw-tool-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.aw-tool-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.aw-tool-status--running,
+.aw-tool-status--pending {
+  background: var(--color-accent);
+}
+
+.aw-tool-status--completed {
+  background: var(--color-success);
+}
+
+.aw-tool-status--failed {
+  background: var(--color-error);
+}
+
+.aw-tool-meta,
+.aw-timeline-count,
+.aw-timeline-source {
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+.aw-tool-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 10px;
+  scrollbar-width: thin;
+}
+
+.aw-tool-body > * {
+  max-width: 100%;
+}
+
+.aw-empty {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--color-text-muted);
+  text-align: center;
+  padding: 20px;
+}
+
+.aw-empty h3 {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text);
+}
+
+.aw-empty p {
+  margin: 0;
+  max-width: 260px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.aw-timeline-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  flex-shrink: 0;
+}
+
+.aw-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  max-height: 230px;
+  overflow: auto;
+  scrollbar-width: thin;
+  flex-shrink: 0;
+}
+
+.aw-timeline-item {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  color: inherit;
+  padding: 7px 8px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.aw-timeline-item:hover,
+.aw-timeline-item.selected {
+  border-color: rgba(239, 124, 47, 0.28);
+  background: rgba(239, 124, 47, 0.055);
+}
+
+.aw-timeline-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+}
+
+.aw-timeline-item--running .aw-timeline-icon,
+.aw-timeline-item--pending .aw-timeline-icon {
+  color: var(--color-accent);
+  animation: am-spin 1s linear infinite;
+}
+
+.aw-timeline-item--completed .aw-timeline-icon {
+  color: var(--color-success);
+}
+
+.aw-timeline-item--failed .aw-timeline-icon {
+  color: var(--color-error);
+}
+
+.aw-timeline-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.aw-timeline-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.aw-timeline-snippet {
+  font-size: 10.5px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Agent Monitor */

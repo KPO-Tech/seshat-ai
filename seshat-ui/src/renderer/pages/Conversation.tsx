@@ -509,21 +509,18 @@ export function Conversation() {
     }
   }, [])
 
-  // Agent Monitor is opt-in for entering a conversation or resolving a plan
-  // (the user opens it explicitly via toggleMonitor). task_create is the one
-  // deliberate exception: tasks render as a quiet, foldable line in the
-  // transcript (see SILENT_TOOLS), not their own card, so without this
-  // there'd be no visible feedback that a task list was even created, let
-  // alone a way to watch it progress.
+  // Keep the agent workspace visible while concrete tool work is happening.
+  // This replaces the old task-only monitor exception with a Manus-like
+  // workspace where browser/file/shell/search actions get a richer live view.
   useEffect(() => {
-    if (!id || agentState.activeTool?.toolName !== 'task_create' || monitorOpen) return
-    openRightPanel({ kind: 'agent', title: 'Agent Monitor', sessionId: id })
-  }, [id, agentState.activeTool?.toolName, monitorOpen]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (!id || !agentState.activeTool || monitorOpen || browserOpen) return
+    openRightPanel({ kind: 'agent', title: 'Agent Workspace', sessionId: id })
+  }, [id, agentState.activeTool?.toolName, monitorOpen, browserOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const tool = agentState.activeTool
     if (!tool?.toolName.startsWith('browser_')) return
-    if (!browserOpen) openRightPanel({ kind: 'browser', title: 'Browser', sessionId: id })
+    if (!monitorOpen && !browserOpen) openRightPanel({ kind: 'agent', title: 'Agent Workspace', sessionId: id })
     if (tool.toolName !== 'browser_open' && tool.toolName !== 'browser_navigate') return
     const toolBlock = [...streaming].reverse().find((block) => (
       block.type === 'tool_use' &&
