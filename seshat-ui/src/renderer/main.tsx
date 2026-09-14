@@ -1,4 +1,5 @@
 import './styles/tokens.css'
+import './styles/tailwind.css'
 import './styles/globals.css'
 import './styles/shared.css'
 import '@arco-design/web-react/dist/css/arco.css'

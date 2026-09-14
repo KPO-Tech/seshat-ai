@@ -27,7 +27,7 @@ seshat-ui communicates with nexus-product **exclusively** through the HTTP API a
 | Desktop shell | Electron 43+ (frameless, `frame: false`, custom title bar) |
 | Build | electron-vite + Vite 6 |
 | UI framework | React 19 |
-| Styling | UnoCSS (utility classes) + scoped CSS-in-JS strings per component |
+| Styling | Tailwind CSS utility classes + scoped CSS-in-JS strings per component |
 | Component library | Arco Design (`@arco-design/web-react`) |
 | Icons | `@icon-park/react` |
 | State | Zustand 5 (persisted via `localStorage` for UI prefs) |
@@ -106,6 +106,7 @@ seshat-ui/
 │       │   └── secure-storage.ts ← thin wrapper over window.nexus.secureStore
 │       ├── styles/
 │       │   ├── tokens.css     ← design tokens (CSS custom properties)
+│       │   ├── tailwind.css   ← Tailwind import + token bridge
 │       │   ├── globals.css    ← base reset, scrollbar, animations
 │       │   └── shared.css     ← auth-page layout utilities
 │       └── types/
@@ -117,7 +118,6 @@ seshat-ui/
 │                                 app imports the other's internals
 ├── public/                    ← static assets (logos, icons)
 ├── electron.vite.config.ts
-├── uno.config.ts
 ├── tsconfig.json
 └── package.json
 ```
@@ -264,9 +264,9 @@ const MY_CSS = `
 
 Never use inline `style={}` for anything other than dynamic values (dimensions, calculated positions). Never reach for a CSS file if a scoped string works.
 
-### UnoCSS utility classes
+### Tailwind utility classes
 
-For layout utilities (`flex`, `items-center`, `gap-2`, etc.) use UnoCSS. The reset is `@unocss/reset`. The config is in `uno.config.ts`. Prefer these over a bespoke CSS-in-JS rule for plain layout (spacing, flex/grid alignment, sizing) - a hand-written block for something `flex items-center gap-2` already says is exactly the kind of code this exists to avoid.
+For layout utilities (`flex`, `items-center`, `gap-2`, etc.) use Tailwind CSS. Tailwind is wired through `@tailwindcss/vite` and imported from `src/renderer/styles/tailwind.css`. Prefer utility classes over bespoke CSS-in-JS rules for plain layout (spacing, flex/grid alignment, sizing) - a hand-written block for something `flex items-center gap-2` already says is exactly the kind of code this exists to avoid.
 
 ### Arco Design components — use first, by default
 
@@ -430,8 +430,8 @@ When the API changes, update `src/renderer/api/types.ts` to match the new respon
 - Do not access `window.nexus` without a null-check — code must work without Electron.
 - Do not hardcode colors — always use design tokens (`var(--color-*)`).
 - Do not hand-roll a UI primitive Arco Design already provides (cards, buttons, tags, statistics, tables, tabs, selects, modals/drawers, forms) — check Arco first, by default, not only for "complex" cases.
-- Do not add new global CSS files — use scoped CSS strings or UnoCSS utilities.
-- Do not write a bespoke CSS-in-JS block for plain layout (flex/grid alignment, spacing, sizing) that UnoCSS utility classes already express in the className.
+- Do not add new global CSS files beyond `src/renderer/styles/tailwind.css` and the existing base styles - use scoped CSS strings or Tailwind utilities.
+- Do not write a bespoke CSS-in-JS block for plain layout (flex/grid alignment, spacing, sizing) that Tailwind utility classes already express in the className.
 - Do not use `any` — type all API responses in `api/types.ts`.
 - Do not put long inline styles in JSX — move to the component's CSS string.
 - Do not add `console.log` in production paths.
