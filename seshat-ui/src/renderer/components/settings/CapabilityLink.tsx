@@ -16,6 +16,17 @@ export type CapabilityStatus = {
   candidates: Candidate[]
 }
 
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(' ')
+}
+
+const BANNER_CLASS = 'mb-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed border-[var(--color-border)] bg-app-surface px-2.5 py-2 text-[var(--font-size-2xs)] text-app-text-secondary'
+const ACTIVE_BANNER_CLASS = 'border-solid border-[rgba(var(--color-success-rgb,34,197,94),0.35)] bg-[rgba(var(--color-success-rgb,34,197,94),0.06)]'
+const TEXT_CLASS = 'inline-flex items-center gap-1.5'
+const ACTIONS_CLASS = 'flex flex-wrap gap-1.5'
+const BUTTON_CLASS = 'inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-md border border-[var(--color-border)] bg-app-bg px-[9px] py-1 text-[var(--font-size-2xs)] font-semibold text-app-text disabled:cursor-default disabled:opacity-50'
+const PRIMARY_BUTTON_CLASS = 'border-[var(--color-primary)] text-[var(--color-primary)]'
+
 /**
  * Backs image generation, audio (TTS/STT), and embeddings' reuse of an
  * already-configured chat provider's key — see seshat-backend's
@@ -78,12 +89,12 @@ export function CapabilityLinkBanner({ capability, label }: { capability: Capabi
 
   if (status.linked_provider_id) {
     return (
-      <div className="cap-link-banner cap-link-active">
-        <span className="cap-link-text">
+      <div className={cx(BANNER_CLASS, ACTIVE_BANNER_CLASS)}>
+        <span className={TEXT_CLASS}>
           <CheckOne size={12} /> Using your <strong>{status.linked_name || status.linked_provider}</strong> provider key for {label}
         </span>
-        <button className="cap-link-btn" onClick={() => void unlink()} disabled={busy}>
-          {busy ? <LoadingOne size={11} className="spin" /> : <Close size={11} />} Unlink
+        <button className={BUTTON_CLASS} onClick={() => void unlink()} disabled={busy}>
+          {busy ? <LoadingOne size={11} className="animate-spin" /> : <Close size={11} />} Unlink
         </button>
       </div>
     )
@@ -92,55 +103,15 @@ export function CapabilityLinkBanner({ capability, label }: { capability: Capabi
   if (status.candidates.length === 0) return null
 
   return (
-    <div className="cap-link-banner">
-      <span className="cap-link-text">You have a provider configured that can also handle {label}:</span>
-      <div className="cap-link-actions">
+    <div className={BANNER_CLASS}>
+      <span className={TEXT_CLASS}>You have a provider configured that can also handle {label}:</span>
+      <div className={ACTIONS_CLASS}>
         {status.candidates.map((candidate) => (
-          <button key={candidate.id} className="cap-link-btn cap-link-btn-primary" onClick={() => void link(candidate.id)} disabled={busy}>
-            {busy ? <LoadingOne size={11} className="spin" /> : null} Use {candidate.name}
+          <button key={candidate.id} className={cx(BUTTON_CLASS, PRIMARY_BUTTON_CLASS)} onClick={() => void link(candidate.id)} disabled={busy}>
+            {busy ? <LoadingOne size={11} className="animate-spin" /> : null} Use {candidate.name}
           </button>
         ))}
       </div>
     </div>
   )
 }
-
-export const CAPABILITY_LINK_CSS = `
-.cap-link-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: var(--color-surface);
-  border: 1px dashed var(--color-border);
-  font-size: var(--font-size-2xs);
-  color: var(--color-text-secondary);
-  margin-bottom: 8px;
-}
-.cap-link-active {
-  border-style: solid;
-  border-color: rgba(var(--color-success-rgb, 34, 197, 94), 0.35);
-  background: rgba(var(--color-success-rgb, 34, 197, 94), 0.06);
-}
-.cap-link-text { display: inline-flex; align-items: center; gap: 6px; }
-.cap-link-actions { display: flex; gap: 6px; flex-wrap: wrap; }
-.cap-link-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 9px;
-  border: 1px solid var(--color-border);
-  background: var(--color-bg);
-  color: var(--color-text);
-  border-radius: 6px;
-  font-size: var(--font-size-2xs);
-  font-weight: 600;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-.cap-link-btn:disabled { opacity: 0.5; cursor: default; }
-.cap-link-btn-primary { border-color: var(--color-primary); color: var(--color-primary); }
-`
