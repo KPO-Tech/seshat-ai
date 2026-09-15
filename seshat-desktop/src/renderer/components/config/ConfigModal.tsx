@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import type { User } from '@renderer/api/types'
+import { KnowledgeConfig } from './knowledge/KnowledgeConfig'
 import { ModelsConfig } from './models/ModelsConfig'
 import { ProvidersConfig } from './providers/ProvidersConfig'
 import { WebSearchConfig } from './web-search/WebSearchConfig'
@@ -98,7 +99,8 @@ export function ConfigModal({ user, initialSection = 'providers', onClose }: Pro
               {activeSection === 'providers' && <ProvidersConfig />}
               {activeSection === 'models' && <ModelsConfig />}
               {activeSection === 'web-search' && <WebSearchConfig />}
-              {activeSection !== 'providers' && activeSection !== 'models' && activeSection !== 'web-search' && <ConfigOverview active={active} />}
+              {activeSection === 'knowledge' && <KnowledgeConfig />}
+              {activeSection !== 'providers' && activeSection !== 'models' && activeSection !== 'web-search' && activeSection !== 'knowledge' && <ConfigOverview active={active} />}
             </div>
           </div>
         </section>
