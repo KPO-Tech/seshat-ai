@@ -53,7 +53,8 @@ SERVER_CMD        := ./cmd/server
 SERVER_BIN_DIR    := $(SERVER_DIR)/bin
 SERVER_BIN        := seshat-server
 SERVER_BIN_PATH   := $(SERVER_BIN_DIR)/$(SERVER_BIN)
-UI_DIR            := $(ROOT)/seshat-ui
+DESKTOP_DIR       := $(ROOT)/seshat-desktop
+UI_DIR            := $(DESKTOP_DIR)
 CONSOLE_DIR       := $(ROOT)/seshat-console
 WEBSITE_DIR       := $(ROOT)/website
 DAEMON_BIN        := seshat-automation
@@ -106,9 +107,11 @@ help: ## Show available targets
 
 dev: stop ui-install ## Start local backend + Electron UI
 	@printf "\033[32m[nexus]\033[0m starting local backend...\n"
-	@cd $(BACKEND_DIR) && go run $(BACKEND_CMD) &
 	@printf "\033[32m[nexus]\033[0m starting Electron UI...\n"
-	@cd $(UI_DIR) && $(UI_PKG_MGR) run start
+	@(cd $(BACKEND_DIR) && go run $(BACKEND_CMD)) & \
+	BACKEND_PID=$$!; \
+	trap 'kill $$BACKEND_PID 2>/dev/null || true' EXIT INT TERM; \
+	cd $(UI_DIR) && $(UI_PKG_MGR) run start
 
 # `go run` executes a temp binary named after the last path segment of the
 # package (./cmd/api -> "api", ./cmd/server -> "server", .../automation-server
@@ -131,18 +134,21 @@ stop: ## Stop backend, server, automation, and UI processes
 	  pkill -x $(DAEMON_BIN) 2>/dev/null || true; \
 	elif command -v powershell.exe >/dev/null 2>&1; then \
 	  powershell.exe -NoProfile -Command \
-	    "Get-CimInstance Win32_Process | Where-Object { \$$_.Name -match '^(api|server|automation-server|go|seshat-api|seshat-server|seshat-automation)(\.exe)?\$$' -or (\$$_.Name -match '^(electron|node)(\.exe)?\$$' -and \$$_.CommandLine -match 'electron-vite|seshat-ui') } | ForEach-Object { Stop-Process -Id \$$_.ProcessId -Force -ErrorAction SilentlyContinue }" \
+	    "Get-CimInstance Win32_Process | Where-Object { \$$_.Name -match '^(api|server|automation-server|go|seshat-api|seshat-server|seshat-automation)(\.exe)?\$$' -or (\$$_.Name -match '^(electron|node)(\.exe)?\$$' -and \$$_.CommandLine -match 'electron-vite|seshat-desktop|seshat-ui') } | ForEach-Object { Stop-Process -Id \$$_.ProcessId -Force -ErrorAction SilentlyContinue }" \
 	    2>/dev/null || true; \
 	fi
 	@printf "\033[32m[nexus]\033[0m stopped.\n"
 
 dev-full: stop ui-install ## Start local backend + automation daemon + Electron UI
 	@printf "\033[32m[nexus]\033[0m starting local backend...\n"
-	@cd $(BACKEND_DIR) && go run $(BACKEND_CMD) &
 	@printf "\033[32m[nexus]\033[0m starting automation daemon...\n"
-	@go run $(DAEMON_PKG)@$(SESHAT_VERSION) &
 	@printf "\033[32m[nexus]\033[0m starting Electron UI...\n"
-	@cd $(UI_DIR) && $(UI_PKG_MGR) run start
+	@(cd $(BACKEND_DIR) && go run $(BACKEND_CMD)) & \
+	BACKEND_PID=$$!; \
+	(go run $(DAEMON_PKG)@$(SESHAT_VERSION)) & \
+	DAEMON_PID=$$!; \
+	trap 'kill $$BACKEND_PID $$DAEMON_PID 2>/dev/null || true' EXIT INT TERM; \
+	cd $(UI_DIR) && $(UI_PKG_MGR) run start
 
 # Backend
 
@@ -302,7 +308,7 @@ ui-package-win: desktop-package-win ## Alias for desktop-package-win
 ui-package-linux: desktop-package-linux ## Alias for desktop-package-linux
 
 desktop-install: ## Install desktop Electron dependencies
-	@if [ ! -d "$(UI_DIR)/node_modules" ]; then \
+	@if [ ! -d "$(UI_DIR)/node_modules" ] || [ ! -f "$(UI_DIR)/node_modules/electron/path.txt" ]; then \
 	  printf "\033[32m[desktop]\033[0m installing dependencies with %s...\n" $(UI_PKG_MGR); \
 	  cd $(UI_DIR) && $(UI_PKG_MGR) install; \
 	else \
@@ -312,8 +318,8 @@ desktop-install: ## Install desktop Electron dependencies
 desktop-build: desktop-install build ## Build desktop Electron app and local backend
 	cd $(UI_DIR) && $(UI_PKG_MGR) run build
 
-desktop-dev: desktop-install ## Start desktop Vite dev server only (no Electron sidecar)
-	cd $(UI_DIR) && $(UI_PKG_MGR) run dev
+desktop-dev: desktop-install ## Start desktop Electron dev app
+	cd $(UI_DIR) && $(UI_PKG_MGR) run start
 
 # Packaging a real installer (electron-builder) is much slower than `make dev`
 # but produces the actual artifact users run - closer to what "does this work
