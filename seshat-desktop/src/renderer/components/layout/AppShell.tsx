@@ -4,6 +4,7 @@ import { ConfigModal } from '@renderer/components/config/ConfigModal'
 import { SettingsModal, type SettingsSection } from '@renderer/components/settings/SettingsModal'
 import { applyTheme, getStoredTheme } from '@renderer/lib/theme'
 import { Dashboard } from '@renderer/pages/Dashboard'
+import { useChatStore } from '@renderer/stores/chat'
 import { Titlebar } from './Titlebar'
 
 type AppView = 'home' | 'store' | 'search' | 'skills' | 'plugins' | 'scheduled' | 'library' | 'projects' | 'tasks'
@@ -29,6 +30,7 @@ export function AppShell({ user, onLogout }: Props) {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [settingsSection, setSettingsSection] = useState<SettingsSection | null>(null)
   const [configOpen, setConfigOpen] = useState(false)
+  const setActiveSessionId = useChatStore((state) => state.setActiveSessionId)
   const displayName = user.display_name || user.email
   const initials = useMemo(() => initialsFor(displayName), [displayName])
   const openSettings = (section: SettingsSection) => {
@@ -115,7 +117,10 @@ export function AppShell({ user, onLogout }: Props) {
         center="SeshatOS"
         sidebarOpen={sidebarOpen}
         onToggleSidebar={() => setSidebarOpen((open) => !open)}
-        onHome={() => setActiveView('home')}
+        onHome={() => {
+          setActiveView('home')
+          setActiveSessionId(null)
+        }}
         onBack={() => setActiveView('home')}
         onForward={() => setActiveView('home')}
       />
@@ -127,6 +132,10 @@ export function AppShell({ user, onLogout }: Props) {
             displayName={displayName}
             initials={initials}
             onSelect={setActiveView}
+            onNewTask={() => {
+              setActiveView('home')
+              setActiveSessionId(null)
+            }}
             onLogout={onLogout}
             profileMenuOpen={profileMenuOpen}
             onToggleProfileMenu={() => setProfileMenuOpen((open) => !open)}
@@ -168,6 +177,7 @@ function Sidebar({
   displayName,
   initials,
   onSelect,
+  onNewTask,
   onLogout,
   profileMenuOpen,
   onToggleProfileMenu,
@@ -178,6 +188,7 @@ function Sidebar({
   displayName: string
   initials: string
   onSelect: (view: AppView) => void
+  onNewTask: () => void
   onLogout: () => void
   profileMenuOpen: boolean
   onToggleProfileMenu: () => void
@@ -192,7 +203,7 @@ function Sidebar({
             key={item.id}
             item={item}
             active={activeView === item.id}
-            onClick={() => onSelect(item.id)}
+            onClick={() => item.id === 'home' ? onNewTask() : onSelect(item.id)}
           />
         ))}
       </nav>
@@ -218,12 +229,7 @@ function Sidebar({
         </button>
       </div>
 
-      <div className="flex flex-1 items-center justify-center px-6 text-center">
-        <div className="max-w-[150px] text-[13px] font-semibold leading-5 text-[var(--text-muted)]">
-          <EmptyTasksIcon />
-          <div className="mt-3">Create a new task to get started</div>
-        </div>
-      </div>
+      <RecentTasks onSelect={() => onSelect('home')} />
 
       <div className="relative border-t border-[var(--border-soft)] p-2.5">
         {profileMenuOpen && (
@@ -256,6 +262,59 @@ function Sidebar({
       </div>
     </aside>
   )
+}
+
+function RecentTasks({ onSelect }: { onSelect: () => void }) {
+  const sessions = useChatStore((state) => state.sessions)
+  const activeSessionId = useChatStore((state) => state.activeSessionId)
+  const setActiveSessionId = useChatStore((state) => state.setActiveSessionId)
+  const recent = sessions.slice(0, 8)
+
+  if (recent.length === 0) {
+    return (
+      <div className="flex flex-1 items-center justify-center px-6 text-center">
+        <div className="max-w-[150px] text-[13px] font-semibold leading-5 text-[var(--text-muted)]">
+          <EmptyTasksIcon />
+          <div className="mt-3">Create a new task to get started</div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-2 pt-1">
+      <div className="grid gap-1">
+        {recent.map((session) => (
+          <button
+            key={session.id}
+            type="button"
+            onClick={() => {
+              setActiveSessionId(session.id)
+              onSelect()
+            }}
+            className={[
+              'min-h-9 rounded-md px-2.5 py-2 text-left transition-colors',
+              activeSessionId === session.id ? 'bg-[var(--surface-panel)]' : 'hover:bg-[var(--surface-muted)]'
+            ].join(' ')}
+          >
+            <div className="truncate text-[12px] font-semibold text-[var(--text-primary)]">{session.title}</div>
+            <div className="mt-0.5 truncate text-[10px] text-[var(--text-muted)]">{formatRelative(session.updatedAt)}</div>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function formatRelative(value: string) {
+  const time = new Date(value).getTime()
+  if (Number.isNaN(time)) return 'Recent'
+  const minutes = Math.max(0, Math.round((Date.now() - time) / 60000))
+  if (minutes < 1) return 'Now'
+  if (minutes < 60) return `${minutes} min`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `${hours} h`
+  return new Date(value).toLocaleDateString()
 }
 
 function ProfileMenu({
