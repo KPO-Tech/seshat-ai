@@ -1,12 +1,12 @@
 import type { LocalSTTConfig, SystemStatus } from './multimodalTypes'
 
-export function MultimodalStatus({ status, localSTT }: { status: SystemStatus | null; localSTT: LocalSTTConfig | null }) {
+export function MultimodalStatus({ status, localSTT, imageLinked, audioLinked }: { status: SystemStatus | null; localSTT: LocalSTTConfig | null; imageLinked: boolean; audioLinked: boolean }) {
   const items = [
     {
       label: 'Image',
-      value: status?.image_generation_configured ? 'Ready' : 'Review',
-      detail: 'OpenAI or Gemini',
-      tone: status?.image_generation_configured ? 'success' : 'primary'
+      value: imageLinked ? 'Ready' : 'Review',
+      detail: imageLinked ? 'Provider linked' : 'OpenAI or Gemini',
+      tone: imageLinked ? 'success' : 'primary'
     },
     {
       label: 'Voice',
@@ -16,9 +16,9 @@ export function MultimodalStatus({ status, localSTT }: { status: SystemStatus | 
     },
     {
       label: 'Audio',
-      value: 'OpenAI',
-      detail: 'TTS and STT cloud',
-      tone: 'muted'
+      value: audioLinked ? 'Ready' : 'Review',
+      detail: audioLinked ? 'Provider linked' : 'OpenAI provider',
+      tone: audioLinked ? 'success' : 'primary'
     },
     {
       label: 'Runtime',

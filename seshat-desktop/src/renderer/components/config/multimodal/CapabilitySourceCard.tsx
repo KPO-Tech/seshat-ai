@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ConfigCard, CustomSelect, Field, SoftButton, StatusPill, type SelectOption } from '../knowledge/KnowledgePrimitives'
-import { linkCapability, unlinkCapability } from './multimodalApi'
+import { linkCapability } from './multimodalApi'
 import { CapabilityIcon, SourceIcon } from './MultimodalIcons'
 import type { CapabilityName, CapabilityStatus } from './multimodalTypes'
 
@@ -13,45 +13,42 @@ type Props = {
   onChanged: () => Promise<void>
 }
 
-const CUSTOM_SOURCE = '__custom__'
+const NO_PROVIDER = '__none__'
 
 export function CapabilitySourceCard({ capability, title, description, configured, status, onChanged }: Props) {
-  const [source, setSource] = useState(CUSTOM_SOURCE)
+  const [source, setSource] = useState(NO_PROVIDER)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    setSource(status?.linked_provider_id || CUSTOM_SOURCE)
+    setSource(status?.linked_provider_id || NO_PROVIDER)
   }, [status?.linked_provider_id])
 
   const options: SelectOption[] = useMemo(() => {
-    const candidateOptions = (status?.candidates ?? []).map((candidate) => ({
+    const providerOptions = (status?.candidates ?? []).map((candidate) => ({
       value: candidate.id,
       label: candidate.name,
       description: providerDescription(candidate.provider, capability),
       icon: <SourceIcon provider={candidate.provider} />
     }))
     return [
-      ...candidateOptions,
       {
-        value: CUSTOM_SOURCE,
-        label: 'Environment key',
-        description: capability === 'image' ? 'OPENAI_API_KEY or GOOGLE_API_KEY' : 'OPENAI_API_KEY',
+        value: NO_PROVIDER,
+        label: 'Select provider',
+        description: capability === 'image' ? 'OpenAI or Gemini provider' : 'OpenAI provider',
         icon: <SourceIcon provider="custom" />
-      }
+      },
+      ...providerOptions
     ]
   }, [capability, status?.candidates])
 
   async function handleSourceChange(value: string) {
+    if (value === NO_PROVIDER) return
     setSource(value)
     setSaving(true)
     setError(null)
     try {
-      if (value === CUSTOM_SOURCE) {
-        await unlinkCapability(capability)
-      } else {
-        await linkCapability(capability, value)
-      }
+      await linkCapability(capability, value)
       await onChanged()
     } catch (err) {
       setError((err as { message?: string })?.message ?? 'Failed to update capability source.')
@@ -60,31 +57,39 @@ export function CapabilitySourceCard({ capability, title, description, configure
     }
   }
 
-  const linked = source !== CUSTOM_SOURCE
-  const badgeTone = configured ? 'ok' : linked ? 'warn' : 'muted'
+  const linked = source !== NO_PROVIDER
+  const hasProviders = (status?.candidates.length ?? 0) > 0
+  const badgeTone = configured || linked ? 'ok' : hasProviders ? 'warn' : 'muted'
 
   return (
     <ConfigCard
       title={title}
       description={description}
-      status={<StatusPill tone={badgeTone}>{configured ? 'Configured' : linked ? 'Linked' : 'Fallback'}</StatusPill>}
+      status={<StatusPill tone={badgeTone}>{configured || linked ? 'Provider linked' : hasProviders ? 'Choose provider' : 'No provider'}</StatusPill>}
       action={<CapabilityIcon name={capability} />}
     >
       <div className="grid gap-4">
-        <Field label="Source">
-          <CustomSelect value={source} options={options} onChange={(value) => void handleSourceChange(value)} />
-        </Field>
+        {hasProviders ? (
+          <Field label="Provider">
+            <CustomSelect value={source} options={options} onChange={(value) => void handleSourceChange(value)} />
+          </Field>
+        ) : (
+          <div className="rounded-md border border-dashed border-[var(--border-soft)] bg-[var(--surface-muted)] px-3 py-3">
+            <div className="text-[13px] font-semibold text-[var(--text-primary)]">No compatible provider configured</div>
+            <div className="mt-1 text-[12px] leading-[var(--leading-copy)] text-[var(--text-muted)]">
+              Add {capability === 'image' ? 'OpenAI or Gemini' : 'OpenAI'} in Providers, then select it here for this capability.
+            </div>
+          </div>
+        )}
 
         <div className="rounded-md border border-[var(--border-soft)] bg-[var(--surface-muted)] px-3 py-2.5">
           <div className="text-[13px] font-semibold text-[var(--text-primary)]">
-            {linked ? status?.linked_name || 'Linked provider' : 'Environment fallback'}
+            {linked ? status?.linked_name || 'Linked provider' : 'Provider not selected'}
           </div>
           <div className="mt-1 text-[12px] leading-[var(--leading-copy)] text-[var(--text-muted)]">
             {linked
               ? 'SeshatOS reuses the API key already saved in Providers.'
-              : capability === 'image'
-                ? 'The backend will use OPENAI_API_KEY or GOOGLE_API_KEY when available.'
-                : 'The backend will use OPENAI_API_KEY for cloud transcription and speech.'}
+              : 'This capability should be attached to a provider before agents rely on it.'}
           </div>
         </div>
 
@@ -95,8 +100,8 @@ export function CapabilitySourceCard({ capability, title, description, configure
         )}
 
         <div className="flex items-center justify-end">
-          <SoftButton type="button" tone={saving ? 'primary' : 'success'} disabled>
-            {saving ? 'Saving...' : 'Source synced'}
+          <SoftButton type="button" tone={linked ? 'success' : 'default'} disabled>
+            {saving ? 'Saving...' : linked ? 'Provider synced' : 'Waiting for provider'}
           </SoftButton>
         </div>
       </div>

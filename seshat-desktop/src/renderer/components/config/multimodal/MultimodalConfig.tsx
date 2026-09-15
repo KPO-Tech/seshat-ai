@@ -37,6 +37,10 @@ export function MultimodalConfig() {
     snapshot.capabilities.forEach((capability) => map.set(capability.capability, capability))
     return map
   }, [snapshot.capabilities])
+  const imageCapability = capabilityByName.get('image') ?? null
+  const audioCapability = capabilityByName.get('audio') ?? null
+  const imageLinked = Boolean(imageCapability?.linked_provider_id)
+  const audioLinked = Boolean(audioCapability?.linked_provider_id)
 
   return (
     <div className="grid gap-4">
@@ -59,14 +63,14 @@ export function MultimodalConfig() {
         </div>
       )}
 
-      <MultimodalStatus status={snapshot.status} localSTT={snapshot.localSTT} />
+      <MultimodalStatus status={snapshot.status} localSTT={snapshot.localSTT} imageLinked={imageLinked} audioLinked={audioLinked} />
 
       <CapabilitySourceCard
         capability="image"
         title="Image generation"
-        description="Choose the credential source used by image generation tools in conversations."
-        configured={snapshot.status?.image_generation_configured}
-        status={capabilityByName.get('image') ?? null}
+        description="Choose the provider used by image generation tools in conversations."
+        configured={imageLinked}
+        status={imageCapability}
         onChanged={load}
       />
 
@@ -79,9 +83,9 @@ export function MultimodalConfig() {
         <CapabilitySourceCard
           capability="audio"
           title="Cloud audio source"
-          description="Fallback credential for cloud speech-to-text and future text-to-speech tools."
-          configured={Boolean(capabilityByName.get('audio')?.linked_provider_id)}
-          status={capabilityByName.get('audio') ?? null}
+          description="Choose the provider used for cloud speech-to-text and future text-to-speech tools."
+          configured={audioLinked}
+          status={audioCapability}
           onChanged={load}
         />
       </div>
