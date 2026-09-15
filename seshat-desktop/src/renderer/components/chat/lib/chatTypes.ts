@@ -39,6 +39,7 @@ export type ChatSession = {
   messages: ChatMessage[]
   createdAt: string
   updatedAt: string
+  status?: 'idle' | 'running' | 'completed' | 'stopped' | 'failed'
   providerSettingId?: string
   modelId?: string
 }
@@ -69,3 +70,4 @@ export type StreamEvent =
   | { event: string; data: unknown }
   | { event: 'done'; data: QueryDone }
   | { event: 'error'; data: { error?: string; message?: string } }
+  | { event: 'session_titled'; data: { session_id?: string; title?: string } }

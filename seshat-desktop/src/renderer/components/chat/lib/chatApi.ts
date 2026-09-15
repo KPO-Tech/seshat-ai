@@ -5,6 +5,7 @@ import type { ChatMessage, ChatSession, StreamEvent } from './chatTypes'
 type BackendSession = {
   session_id: string
   title?: string
+  status?: 'idle' | 'running' | 'completed' | 'stopped' | 'failed'
   created_at?: number
   updated_at?: number
   messages?: ChatMessage[]
@@ -161,6 +162,7 @@ function sessionFromBackend(session: BackendSession): ChatSession {
     messages: session.messages ?? [],
     createdAt: created,
     updatedAt: updated,
+    status: session.status,
     providerSettingId: session.provider_setting_id,
     modelId: session.model_id
   }

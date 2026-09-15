@@ -9,14 +9,18 @@ type ChatModelSelection = {
   modelId?: string
 }
 
+const TITLE_POLL_INTERVAL_MS = 3000
+const TITLE_POLL_MAX_ATTEMPTS = 10
+
 export function useChatWorkspace() {
   const sessions = useChatStore((state) => state.sessions)
   const activeSessionId = useChatStore((state) => state.activeSessionId)
-  const streaming = useChatStore((state) => state.streaming)
-  const isStreaming = useChatStore((state) => state.isStreaming)
+  const streaming = useChatStore((state) => activeSessionId ? state.streamingBySession[activeSessionId] ?? [] : [])
+  const isStreaming = useChatStore((state) => activeSessionId ? Boolean(state.isStreamingBySession[activeSessionId]) : false)
   const setSessions = useChatStore((state) => state.setSessions)
   const setActiveSessionId = useChatStore((state) => state.setActiveSessionId)
   const upsertSession = useChatStore((state) => state.upsertSession)
+  const updateSession = useChatStore((state) => state.updateSession)
   const addMessage = useChatStore((state) => state.addMessage)
   const setMessages = useChatStore((state) => state.setMessages)
   const setStreaming = useChatStore((state) => state.setStreaming)
@@ -24,7 +28,7 @@ export function useChatWorkspace() {
   const setIsStreaming = useChatStore((state) => state.setIsStreaming)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const abortRef = useRef<AbortController | null>(null)
+  const abortRef = useRef<Record<string, AbortController>>({})
 
   const activeSession = useMemo(
     () => sessions.find((session) => session.id === activeSessionId) ?? null,
@@ -60,9 +64,8 @@ export function useChatWorkspace() {
 
   const send = useCallback(async (prompt: string, model?: ChatModelSelection) => {
     const text = prompt.trim()
-    if (!text || isStreaming) return
+    if (!text) return
     setError(null)
-    clearStreaming()
 
     let sessionId = activeSessionId
     if (!sessionId) {
@@ -73,11 +76,14 @@ export function useChatWorkspace() {
         messages: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        status: 'idle',
         providerSettingId: model?.providerSettingId,
         modelId: model?.modelId
       })
       setActiveSessionId(sessionId)
     }
+    if (useChatStore.getState().isSessionStreaming(sessionId)) return
+    clearStreaming(sessionId)
 
     const userMessage: ChatMessage = {
       id: crypto.randomUUID(),
@@ -95,11 +101,11 @@ export function useChatWorkspace() {
     addMessage(sessionId, assistantMessage)
 
     const controller = new AbortController()
-    abortRef.current = controller
-    setIsStreaming(true)
+    abortRef.current[sessionId] = controller
+    setIsStreaming(sessionId, true)
 
     try {
-      let liveBlocks = useChatStore.getState().streaming
+      let liveBlocks = useChatStore.getState().getStreaming(sessionId)
       await streamQuery({
         prompt: text,
         sessionId,
@@ -111,18 +117,30 @@ export function useChatWorkspace() {
             const done = event.data as QueryDone
             const current = useChatStore.getState().sessions.find((session) => session.id === sessionId)?.messages ?? []
             setMessages(sessionId, mergeDoneIntoMessages(current, done, assistantId, liveBlocks))
+            updateSession(sessionId, { status: 'completed', updatedAt: new Date().toISOString() })
             return
           }
           if (event.event === 'error') {
             const data = event.data as { error?: string; message?: string }
             throw new Error(data.error ?? data.message ?? 'Streaming failed.')
           }
+          if (event.event === 'session_titled') {
+            const data = event.data as { session_id?: string; title?: string }
+            if (data.session_id === sessionId && data.title?.trim()) {
+              updateSession(sessionId, { title: data.title.trim(), updatedAt: new Date().toISOString() })
+            }
+            return
+          }
           liveBlocks = applyStreamEvent(liveBlocks, event)
-          setStreaming(liveBlocks)
+          setStreaming(sessionId, liveBlocks)
         }
       })
       const refreshed = await fetchSession(sessionId).catch(() => null)
       if (refreshed) upsertSession(refreshed)
+      const latest = useChatStore.getState().sessions.find((session) => session.id === sessionId)
+      if (latest?.title === text.slice(0, 64)) {
+        void pollForGeneratedTitle(sessionId, updateSession)
+      }
     } catch (err) {
       if (controller.signal.aborted) return
       const messageText = err instanceof Error ? err.message : 'Message failed.'
@@ -132,19 +150,37 @@ export function useChatWorkspace() {
         status: 'error' as const,
         content: [{ type: 'text', text: messageText }]
       } : message))
+      updateSession(sessionId, { status: 'failed', updatedAt: new Date().toISOString() })
     } finally {
-      setIsStreaming(false)
-      clearStreaming()
-      abortRef.current = null
+      setIsStreaming(sessionId, false)
+      clearStreaming(sessionId)
+      delete abortRef.current[sessionId]
     }
-  }, [activeSessionId, addMessage, clearStreaming, isStreaming, setActiveSessionId, setIsStreaming, setMessages, setStreaming, upsertSession])
+  }, [activeSessionId, addMessage, clearStreaming, setActiveSessionId, setIsStreaming, setMessages, setStreaming, updateSession, upsertSession])
 
-  const stop = useCallback(async () => {
-    abortRef.current?.abort()
-    if (activeSessionId) await interruptSession(activeSessionId).catch(() => undefined)
-    setIsStreaming(false)
-    clearStreaming()
-  }, [activeSessionId, clearStreaming, setIsStreaming])
+  const stop = useCallback(async (sessionId = activeSessionId) => {
+    if (!sessionId) return
+    abortRef.current[sessionId]?.abort()
+    await interruptSession(sessionId).catch(() => undefined)
+    setIsStreaming(sessionId, false)
+    clearStreaming(sessionId)
+    updateSession(sessionId, { status: 'stopped', updatedAt: new Date().toISOString() })
+  }, [activeSessionId, clearStreaming, setIsStreaming, updateSession])
 
   return { sessions, activeSession, streaming, isStreaming, loading, error, openSession, send, stop }
+}
+
+async function pollForGeneratedTitle(
+  sessionId: string,
+  updateSession: (id: string, patch: { title?: string; updatedAt?: string }) => void
+) {
+  for (let attempt = 0; attempt < TITLE_POLL_MAX_ATTEMPTS; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, TITLE_POLL_INTERVAL_MS))
+    const session = await fetchSession(sessionId).catch(() => null)
+    if (!session) continue
+    const title = session?.title?.trim()
+    if (!title || title === 'New task') continue
+    updateSession(sessionId, { title, updatedAt: session.updatedAt })
+    return
+  }
 }

@@ -5,6 +5,8 @@ import { SettingsModal, type SettingsSection } from '@renderer/components/settin
 import { applyTheme, getStoredTheme } from '@renderer/lib/theme'
 import { Dashboard } from '@renderer/pages/Dashboard'
 import { useChatStore } from '@renderer/stores/chat'
+import { fetchSession } from '@renderer/components/chat/lib/chatApi'
+import type { ChatSession } from '@renderer/components/chat/lib/chatTypes'
 import { Titlebar } from './Titlebar'
 
 type AppView = 'home' | 'store' | 'search' | 'skills' | 'plugins' | 'scheduled' | 'library' | 'projects' | 'tasks'
@@ -267,8 +269,12 @@ function Sidebar({
 function RecentTasks({ onSelect }: { onSelect: () => void }) {
   const sessions = useChatStore((state) => state.sessions)
   const activeSessionId = useChatStore((state) => state.activeSessionId)
+  const isStreamingBySession = useChatStore((state) => state.isStreamingBySession)
   const setActiveSessionId = useChatStore((state) => state.setActiveSessionId)
-  const recent = sessions.slice(0, 8)
+  const upsertSession = useChatStore((state) => state.upsertSession)
+  const recent = [...sessions]
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    .slice(0, 8)
 
   if (recent.length === 0) {
     return (
@@ -291,19 +297,48 @@ function RecentTasks({ onSelect }: { onSelect: () => void }) {
             onClick={() => {
               setActiveSessionId(session.id)
               onSelect()
+              void fetchSession(session.id).then(upsertSession).catch(() => undefined)
             }}
             className={[
-              'min-h-9 rounded-md px-2.5 py-2 text-left transition-colors',
+              'relative min-h-9 rounded-md px-2.5 py-2 text-left transition-colors',
               activeSessionId === session.id ? 'bg-[var(--surface-panel)]' : 'hover:bg-[var(--surface-muted)]'
             ].join(' ')}
           >
-            <div className="truncate text-[12px] font-semibold text-[var(--text-primary)]">{session.title}</div>
-            <div className="mt-0.5 truncate text-[10px] text-[var(--text-muted)]">{formatRelative(session.updatedAt)}</div>
+            <div className="flex min-w-0 items-center gap-2">
+              <SessionStatusDot session={session} running={Boolean(isStreamingBySession[session.id])} />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[12px] font-semibold text-[var(--text-primary)]">{session.title || 'New task'}</div>
+                <div className="mt-0.5 truncate text-[10px] text-[var(--text-muted)]">
+                  {taskMetaLabel(session, Boolean(isStreamingBySession[session.id]))}
+                </div>
+              </div>
+            </div>
           </button>
         ))}
       </div>
     </div>
   )
+}
+
+function SessionStatusDot({ session, running }: { session: ChatSession; running: boolean }) {
+  if (running || session.status === 'running') {
+    return (
+      <span className="relative flex size-2.5 shrink-0 items-center justify-center" aria-label="Running">
+        <span className="absolute size-2.5 animate-ping rounded-full bg-[var(--accent-primary)]/35" />
+        <span className="size-2 rounded-full bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-primary)]" />
+      </span>
+    )
+  }
+  if (session.status === 'failed') {
+    return <span className="size-2 shrink-0 rounded-full bg-[var(--accent-danger)]" aria-label="Failed" />
+  }
+  return <span className="size-2 shrink-0 rounded-full border border-[var(--border-soft)] bg-transparent opacity-70" aria-hidden="true" />
+}
+
+function taskMetaLabel(session: ChatSession, running: boolean) {
+  if (running || session.status === 'running') return 'Agent working'
+  if (session.status === 'failed') return 'Failed'
+  return formatRelative(session.updatedAt)
 }
 
 function formatRelative(value: string) {
