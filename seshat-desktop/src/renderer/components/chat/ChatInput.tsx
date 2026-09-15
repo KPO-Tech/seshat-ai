@@ -66,6 +66,9 @@ export function ChatInput({
 
         <div className="mt-1.5 flex items-center justify-between">
           <div className="flex min-w-0 items-center gap-2">
+            <RoundToolButton label="Attach file"><PlusIcon /></RoundToolButton>
+            <RoundToolButton label="Tools"><ToolsIcon /></RoundToolButton>
+            <RoundToolButton label="Computer"><DesktopIcon /></RoundToolButton>
             <ChatModelSelect
               choices={modelChoices}
               value={selectedModelId}
@@ -73,9 +76,6 @@ export function ChatInput({
               disabled={disabled || !onModelChange}
               onChange={(id) => onModelChange?.(id)}
             />
-            <RoundToolButton label="Attach file"><PlusIcon /></RoundToolButton>
-            <RoundToolButton label="Tools"><ToolsIcon /></RoundToolButton>
-            <RoundToolButton label="Computer"><DesktopIcon /></RoundToolButton>
           </div>
 
           <div className="flex items-center gap-2">

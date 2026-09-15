@@ -12,6 +12,7 @@ type ChatModelSelectProps = {
 
 export function ChatModelSelect({ choices, value, loading, disabled, onChange }: ChatModelSelectProps) {
   const [open, setOpen] = useState(false)
+  const [direction, setDirection] = useState<'down' | 'up'>('down')
   const ref = useRef<HTMLDivElement>(null)
   const selected = choices.find((choice) => choice.id === value) ?? choices.find((choice) => choice.selected) ?? choices[0] ?? null
   const unavailable = disabled || loading || choices.length === 0
@@ -24,12 +25,23 @@ export function ChatModelSelect({ choices, value, loading, disabled, onChange }:
     return () => document.removeEventListener('mousedown', onPointerDown)
   }, [])
 
+  function toggleOpen() {
+    if (!open && ref.current) {
+      const rect = ref.current.getBoundingClientRect()
+      const panelHeight = Math.min(342, 74 + choices.length * 44)
+      const spaceBelow = window.innerHeight - rect.bottom
+      const spaceAbove = rect.top
+      setDirection(spaceBelow >= panelHeight || spaceBelow >= spaceAbove ? 'down' : 'up')
+    }
+    setOpen((current) => !current)
+  }
+
   return (
     <div ref={ref} className="relative">
       <button
         type="button"
         disabled={unavailable}
-        onClick={() => setOpen((current) => !current)}
+        onClick={toggleOpen}
         className="flex h-8 max-w-[210px] items-center gap-2 rounded-full border border-[var(--border-soft)] bg-[var(--surface-muted)] px-2.5 text-[12px] font-semibold text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-55"
         aria-haspopup="listbox"
         aria-expanded={open}
@@ -41,7 +53,10 @@ export function ChatModelSelect({ choices, value, loading, disabled, onChange }:
       </button>
 
       {open && !unavailable && (
-        <div className="absolute bottom-[calc(100%+8px)] left-0 z-40 w-[320px] overflow-hidden rounded-xl border border-[var(--border-soft)] bg-[var(--surface-panel)] shadow-[0_20px_60px_rgba(0,0,0,0.42)]">
+        <div className={[
+          'absolute left-0 z-40 w-[320px] overflow-hidden rounded-xl border border-[var(--border-soft)] bg-[var(--surface-panel)] shadow-[0_20px_60px_rgba(0,0,0,0.42)]',
+          direction === 'down' ? 'top-[calc(100%+8px)]' : 'bottom-[calc(100%+8px)]'
+        ].join(' ')}>
           <div className="border-b border-[var(--border-soft)] px-3 py-2">
             <div className="text-[12px] font-semibold text-[var(--text-primary)]">Model</div>
             <div className="mt-0.5 text-[11px] text-[var(--text-muted)]">Choose the model for the next message.</div>
