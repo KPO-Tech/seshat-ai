@@ -28,7 +28,7 @@ export function ChatInput({ disabled, compact = false, onSend }: { disabled?: bo
 
   return (
     <div className="w-full">
-      <div className="rounded-[22px] border border-[var(--border-soft)] bg-[var(--surface-panel)] px-4 pb-3 pt-3.5 shadow-[0_20px_70px_rgba(0,0,0,0.08)]">
+      <div className="rounded-[22px] border border-[var(--border-soft)] bg-[var(--surface-panel)] px-4 pb-3 pt-3 shadow-[0_20px_70px_rgba(0,0,0,0.08)]">
         <textarea
           ref={ref}
           value={draft}
@@ -41,10 +41,10 @@ export function ChatInput({ disabled, compact = false, onSend }: { disabled?: bo
           }}
           placeholder="Assign a task or type / for more"
           disabled={disabled}
-          className="min-h-[56px] w-full resize-none border-0 bg-transparent text-[15px] leading-6 text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] disabled:opacity-60"
+          className="min-h-[48px] w-full resize-none border-0 bg-transparent text-[15px] leading-6 text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] disabled:opacity-60"
         />
 
-        <div className="mt-2 flex items-center justify-between">
+        <div className="mt-1.5 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <RoundToolButton label="Attach file"><PlusIcon /></RoundToolButton>
             <RoundToolButton label="Tools"><ToolsIcon /></RoundToolButton>
@@ -58,7 +58,7 @@ export function ChatInput({ disabled, compact = false, onSend }: { disabled?: bo
               type="button"
               disabled={disabled || !draft.trim()}
               onClick={submit}
-              className="flex size-9 items-center justify-center rounded-full bg-[var(--surface-muted)] text-[var(--text-muted)] transition-colors enabled:bg-[var(--text-primary)] enabled:text-[var(--surface-root)]"
+              className="flex size-8 items-center justify-center rounded-full bg-[var(--surface-muted)] text-[var(--text-muted)] transition-colors enabled:bg-[var(--text-primary)] enabled:text-[var(--surface-root)]"
               aria-label="Send"
             >
               <ArrowUpIcon />
@@ -68,7 +68,7 @@ export function ChatInput({ disabled, compact = false, onSend }: { disabled?: bo
       </div>
 
       {!compact && (
-        <div className="mx-auto mt-4 grid w-full max-w-[720px] grid-cols-[1fr_1fr_1.35fr_0.82fr_0.72fr] gap-2">
+        <div className="mx-auto mt-3.5 grid w-full max-w-[680px] grid-cols-[1fr_1fr_1.36fr_0.78fr_0.68fr] gap-2">
           {actionChips.map((action) => (
             <button
               key={action.label}
@@ -77,7 +77,7 @@ export function ChatInput({ disabled, compact = false, onSend }: { disabled?: bo
                 setDraft(action.prompt)
                 requestAnimationFrame(() => ref.current?.focus())
               }}
-              className="flex h-[30px] min-w-0 items-center justify-center gap-1.5 rounded-full border border-[var(--border-soft)] bg-[var(--surface-panel)] px-2 text-[12px] font-medium text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
+              className="flex h-7 min-w-0 items-center justify-center gap-1.5 rounded-full border border-[var(--border-soft)] bg-[var(--surface-panel)] px-2 text-[11.5px] font-medium text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
             >
               <ActionIcon name={action.icon} />
               <span className="truncate">{action.label}</span>
