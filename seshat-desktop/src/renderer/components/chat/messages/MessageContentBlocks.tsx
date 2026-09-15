@@ -1,5 +1,5 @@
 import type { ChatContentBlock } from '../lib/chatTypes'
-import { ToolCard } from './ToolCard'
+import { ToolRenderer } from './ToolRenderer'
 
 export function MessageContentBlocks({ blocks }: { blocks: ChatContentBlock[] }) {
   return (
@@ -7,7 +7,7 @@ export function MessageContentBlocks({ blocks }: { blocks: ChatContentBlock[] })
       {blocks.map((block, index) => {
         if (block.type === 'text') return <TextBlock key={index} text={block.text} />
         if (block.type === 'thinking') return <ThinkingBlock key={index} text={block.thinking} />
-        if (block.type === 'tool_use') return <ToolCard key={block.id || index} tool={block} />
+        if (block.type === 'tool_use') return <ToolRenderer key={block.id || index} tool={block} />
         return null
       })}
     </>
