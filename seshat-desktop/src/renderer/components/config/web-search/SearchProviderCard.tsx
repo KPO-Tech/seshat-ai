@@ -153,7 +153,7 @@ export function SearchProviderCard({ provider, onSaved }: SearchProviderCardProp
           {testing === 'running' ? 'Testing...' : testing === 'ok' ? 'Connected' : testing === 'error' ? 'Failed' : 'Test'}
         </button>
         {dirty && (
-          <button type="button" onClick={() => void handleSave()} disabled={saving} className="rounded-md bg-[var(--text-primary)] px-2.5 py-1.5 text-[12px] font-semibold text-[var(--surface-root)] disabled:opacity-45">
+          <button type="button" onClick={() => void handleSave()} disabled={saving} className="rounded-md border border-[var(--border-soft)] bg-[var(--surface-muted)] px-2.5 py-1.5 text-[12px] font-semibold text-[var(--text-primary)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-panel)] disabled:opacity-45">
             {saving ? 'Saving...' : 'Save'}
           </button>
         )}

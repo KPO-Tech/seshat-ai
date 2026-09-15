@@ -16,7 +16,17 @@ export function GlobalWebSearchSettings({ form, saving, saved, onChange, onSave 
           <h2 className="text-[15px] font-semibold text-[var(--text-primary)]">Search behavior</h2>
           <p className="mt-1 text-[12px] text-[var(--text-muted)]">Control agent web access and daily query limits.</p>
         </div>
-        <button type="button" onClick={() => void onSave()} disabled={saving} className="rounded-md bg-[var(--text-primary)] px-3 py-1.5 text-[12px] font-semibold text-[var(--surface-root)] disabled:opacity-45">
+        <button
+          type="button"
+          onClick={() => void onSave()}
+          disabled={saving}
+          className={[
+            'rounded-md border px-3 py-1.5 text-[12px] font-semibold transition-colors disabled:opacity-45',
+            saved
+              ? 'border-[var(--accent-success)]/35 bg-[var(--accent-success)]/10 text-[var(--accent-success)]'
+              : 'border-[var(--border-soft)] bg-[var(--surface-muted)] text-[var(--text-primary)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-panel)]'
+          ].join(' ')}
+        >
           {saving ? 'Saving...' : saved ? 'Saved' : 'Save'}
         </button>
       </div>
@@ -41,7 +51,7 @@ export function GlobalWebSearchSettings({ form, saving, saved, onChange, onSave 
             min={0}
             value={form.max_queries_per_day}
             onChange={(event) => onChange('max_queries_per_day', Math.max(0, Number.parseInt(event.target.value, 10) || 0))}
-            className="h-9 w-[180px] rounded-md border border-[var(--border-soft)] bg-[var(--surface-muted)] px-3 text-[13px] text-[var(--text-primary)] outline-none"
+            className="h-9 w-[180px] appearance-none rounded-md border border-[var(--border-soft)] bg-[var(--surface-muted)] px-3 text-[13px] text-[var(--text-primary)] outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
           <span className="text-[12px] text-[var(--text-muted)]">0 means unlimited.</span>
         </label>
