@@ -1,11 +1,13 @@
 import { useState, type ReactNode } from 'react'
 import type { User } from '@renderer/api/types'
 import { ConnectorsConfig } from './connectors/ConnectorsConfig'
+import { EnvironmentConfig } from './environment/EnvironmentConfig'
 import { KnowledgeConfig } from './knowledge/KnowledgeConfig'
 import { MCPConfig } from './mcp/MCPConfig'
 import { ModelsConfig } from './models/ModelsConfig'
 import { MultimodalConfig } from './multimodal/MultimodalConfig'
 import { ProvidersConfig } from './providers/ProvidersConfig'
+import { StorageConfig } from './storage/StorageConfig'
 import { WebSearchConfig } from './web-search/WebSearchConfig'
 
 export type ConfigSection =
@@ -106,7 +108,9 @@ export function ConfigModal({ user, initialSection = 'providers', onClose }: Pro
               {activeSection === 'multimodal' && <MultimodalConfig />}
               {activeSection === 'mcp' && <MCPConfig />}
               {activeSection === 'connectors' && <ConnectorsConfig />}
-              {activeSection !== 'providers' && activeSection !== 'models' && activeSection !== 'web-search' && activeSection !== 'knowledge' && activeSection !== 'multimodal' && activeSection !== 'mcp' && activeSection !== 'connectors' && <ConfigOverview active={active} />}
+              {activeSection === 'environment' && <EnvironmentConfig />}
+              {activeSection === 'storage' && <StorageConfig />}
+              {activeSection !== 'providers' && activeSection !== 'models' && activeSection !== 'web-search' && activeSection !== 'knowledge' && activeSection !== 'multimodal' && activeSection !== 'mcp' && activeSection !== 'connectors' && activeSection !== 'environment' && activeSection !== 'storage' && <ConfigOverview active={active} />}
             </div>
           </div>
         </section>

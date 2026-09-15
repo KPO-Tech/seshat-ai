@@ -3,7 +3,7 @@ import type { User } from '@renderer/api/types'
 import { applyTheme, getStoredTheme, notifyThemeChange, setStoredTheme, type ThemePreference } from '@renderer/lib/theme'
 import { SettingsContent } from './SettingsContent'
 
-export type SettingsSection = 'general' | 'account' | 'shortcuts' | 'memories' | 'usage' | 'about'
+export type SettingsSection = 'general' | 'account' | 'shortcuts' | 'memories' | 'usage' | 'data-controls' | 'about'
 
 type Props = {
   user: User
@@ -18,6 +18,7 @@ const sections: Array<{ id: SettingsSection; label: string; icon: IconName; grou
   { id: 'shortcuts', label: 'Shortcuts', icon: 'keyboard', group: 'Settings' },
   { id: 'memories', label: 'Memories', icon: 'database', group: 'Settings' },
   { id: 'usage', label: 'Usage', icon: 'spark', group: 'Settings' },
+  { id: 'data-controls', label: 'Data Controls', icon: 'shield', group: 'Settings' },
   { id: 'about', label: 'About', icon: 'info', group: 'SeshatOS' }
 ]
 
@@ -143,7 +144,7 @@ function initialsFor(name: string): string {
   return name.slice(0, 2).toUpperCase()
 }
 
-type IconName = 'sliders' | 'user' | 'keyboard' | 'grid' | 'connectors' | 'spark' | 'store' | 'database' | 'info' | 'help' | 'search' | 'sun' | 'moon' | 'contrast'
+type IconName = 'sliders' | 'user' | 'keyboard' | 'grid' | 'connectors' | 'spark' | 'store' | 'database' | 'shield' | 'info' | 'help' | 'search' | 'sun' | 'moon' | 'contrast'
 
 function Icon({ name }: { name: IconName }) {
   const paths: Record<IconName, ReactNode> = {
@@ -155,6 +156,7 @@ function Icon({ name }: { name: IconName }) {
     spark: <path d="M8 1.5v4M8 10.5v4M1.5 8h4M10.5 8h4M3 3l2.8 2.8M10.2 10.2 13 13M13 3l-2.8 2.8M5.8 10.2 3 13" />,
     store: <path d="M2.5 7h11M4 7l1-4h6l1 4M4 7v6h8V7M6.5 13v-3h3v3" />,
     database: <path d="M3 4c0-1.1 2.2-2 5-2s5 .9 5 2-2.2 2-5 2-5-.9-5-2ZM3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2" />,
+    shield: <path d="M8 2.5 13 4.3v3.8c0 3-2 5.1-5 6-3-1-5-3-5-6V4.3L8 2.5ZM6 8l1.4 1.4L10.5 6" />,
     info: <path d="M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12ZM8 7.5V11M8 5h.01" />,
     help: <path d="M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12ZM6.5 6a1.7 1.7 0 1 1 2.5 1.5c-.7.4-1 .8-1 1.5M8 11h.01" />,
     search: <><circle cx="7" cy="7" r="4.5" /><path d="m10.5 10.5 3 3" /></>,

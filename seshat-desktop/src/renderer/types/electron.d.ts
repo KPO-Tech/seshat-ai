@@ -23,6 +23,21 @@ declare global {
         get: (key: string) => Promise<string | null>
         delete: (key: string) => Promise<void>
       }
+      envVars: {
+        catalog: () => Promise<Array<{
+          key: string
+          label: string
+          description: string
+          group: string
+          groupLabel: string
+          helpUrl?: string
+          hidden?: boolean
+        }>>
+        status: () => Promise<Record<string, boolean>>
+        set: (key: string, value: string) => Promise<void>
+        delete: (key: string) => Promise<void>
+        restartBackend: () => Promise<{ ok: boolean; error?: string }>
+      }
       http: {
         request: (payload: { path: string; method?: string; body?: unknown }) => Promise<{
           ok: boolean

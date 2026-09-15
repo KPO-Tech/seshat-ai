@@ -22,6 +22,13 @@ const nexus = {
     get: (key: string): Promise<string | null> => ipcRenderer.invoke('secure-store:get', key),
     delete: (key: string): Promise<void> => ipcRenderer.invoke('secure-store:delete', key)
   },
+  envVars: {
+    catalog: () => ipcRenderer.invoke('env-vars:catalog'),
+    status: () => ipcRenderer.invoke('env-vars:status'),
+    set: (key: string, value: string): Promise<void> => ipcRenderer.invoke('env-vars:set', key, value),
+    delete: (key: string): Promise<void> => ipcRenderer.invoke('env-vars:delete', key),
+    restartBackend: (): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke('env-vars:restart-backend')
+  },
   http: {
     request: (payload: { path: string; method?: string; body?: unknown }) => ipcRenderer.invoke('http:request', payload)
   },

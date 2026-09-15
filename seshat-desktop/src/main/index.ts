@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import { join } from 'node:path'
 import { registerBackendHandlers } from './ipc/backend'
+import { registerEnvVarsHandlers } from './ipc/env-vars'
 import { registerSecureStoreHandlers } from './ipc/secure-store'
 import { registerWindowHandlers } from './ipc/window'
 
@@ -39,6 +40,7 @@ function createWindow(): void {
 app.whenReady().then(() => {
   registerSecureStoreHandlers(ipcMain)
   registerBackendHandlers(ipcMain)
+  registerEnvVarsHandlers(ipcMain)
   registerWindowHandlers(ipcMain)
   createWindow()
 
