@@ -22,8 +22,11 @@ export async function fetchSession(id: string) {
   return sessionFromBackend(result)
 }
 
-export async function createSession() {
-  const result = await api.post<{ session_id: string }>('/sessions', {})
+export async function createSession(params: { providerSettingId?: string; modelId?: string } = {}) {
+  const result = await api.post<{ session_id: string }>('/sessions', {
+    provider_setting_id: params.providerSettingId,
+    model_id: params.modelId
+  })
   return result.session_id
 }
 
@@ -34,6 +37,8 @@ export function interruptSession(id: string) {
 export async function streamQuery(params: {
   prompt: string
   sessionId: string
+  providerSettingId?: string
+  modelId?: string
   signal?: AbortSignal
   onEvent: (event: StreamEvent) => void
 }) {
@@ -44,7 +49,12 @@ export async function streamQuery(params: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {})
     },
-    body: JSON.stringify({ prompt: params.prompt, session_id: params.sessionId }),
+    body: JSON.stringify({
+      prompt: params.prompt,
+      session_id: params.sessionId,
+      provider_setting_id: params.providerSettingId,
+      model_id: params.modelId
+    }),
     signal: params.signal
   })
 

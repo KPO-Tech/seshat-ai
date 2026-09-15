@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { ChatModelSelect } from './ChatModelSelect'
+import type { ChatModelChoice } from './chatModels'
 
 const actionChips = [
   { label: 'Create slides', icon: 'slides', prompt: 'Create slides about ' },
@@ -8,7 +10,25 @@ const actionChips = [
   { label: 'More', icon: 'more', prompt: '' }
 ]
 
-export function ChatInput({ disabled, compact = false, onSend }: { disabled?: boolean; compact?: boolean; onSend: (text: string) => void }) {
+type ChatInputProps = {
+  disabled?: boolean
+  compact?: boolean
+  modelChoices?: ChatModelChoice[]
+  selectedModelId?: string
+  modelsLoading?: boolean
+  onModelChange?: (id: string) => void
+  onSend: (text: string) => void
+}
+
+export function ChatInput({
+  disabled,
+  compact = false,
+  modelChoices = [],
+  selectedModelId = '',
+  modelsLoading = false,
+  onModelChange,
+  onSend
+}: ChatInputProps) {
   const [draft, setDraft] = useState('')
   const ref = useRef<HTMLTextAreaElement>(null)
 
@@ -45,7 +65,14 @@ export function ChatInput({ disabled, compact = false, onSend }: { disabled?: bo
         />
 
         <div className="mt-1.5 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <ChatModelSelect
+              choices={modelChoices}
+              value={selectedModelId}
+              loading={modelsLoading}
+              disabled={disabled || !onModelChange}
+              onChange={(id) => onModelChange?.(id)}
+            />
             <RoundToolButton label="Attach file"><PlusIcon /></RoundToolButton>
             <RoundToolButton label="Tools"><ToolsIcon /></RoundToolButton>
             <RoundToolButton label="Computer"><DesktopIcon /></RoundToolButton>

@@ -1,12 +1,16 @@
 import type { User } from '@renderer/api/types'
 import { ChatInput } from './ChatInput'
 import { MessageList } from './MessageList'
+import { useChatModels } from './useChatModels'
 import { useChatWorkspace } from './useChatWorkspace'
 
 export function ChatWorkspace({ user }: { user: User }) {
   const { activeSession, streaming, isStreaming, loading, error, send, stop } = useChatWorkspace()
   const displayName = user.display_name || user.email
   const isEmpty = !activeSession || activeSession.messages.length === 0
+  const models = useChatModels(activeSession?.modelId)
+  const selectedModel = models.selected
+  const visibleError = error ?? models.error
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -39,8 +43,15 @@ export function ChatWorkspace({ user }: { user: User }) {
               </h1>
             </div>
             <div className="mx-auto mt-8 w-[78%] max-w-[900px] min-w-0">
-              <ChatInput disabled={isStreaming || loading} onSend={(text) => void send(text)} />
-              {error && <div className="mt-4 rounded-lg border border-[var(--accent-danger)]/40 bg-[var(--surface-panel)] px-4 py-3 text-[13px] font-semibold text-[var(--accent-danger)]">{error}</div>}
+              <ChatInput
+                disabled={isStreaming || loading}
+                modelChoices={models.choices}
+                selectedModelId={models.selectedId}
+                modelsLoading={models.loading}
+                onModelChange={models.setSelectedId}
+                onSend={(text) => void send(text, selectedModel ? { providerSettingId: selectedModel.providerSettingId, modelId: selectedModel.modelId } : undefined)}
+              />
+              {visibleError && <div className="mt-4 rounded-lg border border-[var(--accent-danger)]/40 bg-[var(--surface-panel)] px-4 py-3 text-[13px] font-semibold text-[var(--accent-danger)]">{visibleError}</div>}
             </div>
           </div>
         </section>
@@ -51,8 +62,16 @@ export function ChatWorkspace({ user }: { user: User }) {
           </section>
           <footer className="shrink-0 border-t border-transparent px-8 pb-5">
             <div className="mx-auto max-w-[820px]">
-              {error && <div className="mb-3 rounded-lg border border-[var(--accent-danger)]/40 bg-[var(--surface-panel)] px-4 py-3 text-[13px] font-semibold text-[var(--accent-danger)]">{error}</div>}
-              <ChatInput compact disabled={isStreaming || loading} onSend={(text) => void send(text)} />
+              {visibleError && <div className="mb-3 rounded-lg border border-[var(--accent-danger)]/40 bg-[var(--surface-panel)] px-4 py-3 text-[13px] font-semibold text-[var(--accent-danger)]">{visibleError}</div>}
+              <ChatInput
+                compact
+                disabled={isStreaming || loading}
+                modelChoices={models.choices}
+                selectedModelId={models.selectedId}
+                modelsLoading={models.loading}
+                onModelChange={models.setSelectedId}
+                onSend={(text) => void send(text, selectedModel ? { providerSettingId: selectedModel.providerSettingId, modelId: selectedModel.modelId } : undefined)}
+              />
             </div>
           </footer>
         </>

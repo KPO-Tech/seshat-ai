@@ -4,6 +4,11 @@ import { createSession, fetchSession, fetchSessions, interruptSession, streamQue
 import { applyStreamEvent, mergeDoneIntoMessages } from './streaming'
 import type { ChatMessage, QueryDone } from './chatTypes'
 
+type ChatModelSelection = {
+  providerSettingId?: string
+  modelId?: string
+}
+
 export function useChatWorkspace() {
   const sessions = useChatStore((state) => state.sessions)
   const activeSessionId = useChatStore((state) => state.activeSessionId)
@@ -53,7 +58,7 @@ export function useChatWorkspace() {
     }
   }, [setActiveSessionId, upsertSession])
 
-  const send = useCallback(async (prompt: string) => {
+  const send = useCallback(async (prompt: string, model?: ChatModelSelection) => {
     const text = prompt.trim()
     if (!text || isStreaming) return
     setError(null)
@@ -61,13 +66,15 @@ export function useChatWorkspace() {
 
     let sessionId = activeSessionId
     if (!sessionId) {
-      sessionId = await createSession()
+      sessionId = await createSession(model)
       upsertSession({
         id: sessionId,
         title: text.slice(0, 64),
         messages: [],
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        providerSettingId: model?.providerSettingId,
+        modelId: model?.modelId
       })
       setActiveSessionId(sessionId)
     }
@@ -96,6 +103,8 @@ export function useChatWorkspace() {
       await streamQuery({
         prompt: text,
         sessionId,
+        providerSettingId: model?.providerSettingId,
+        modelId: model?.modelId,
         signal: controller.signal,
         onEvent: (event) => {
           if (event.event === 'done') {
