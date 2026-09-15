@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ProviderIcon } from '@renderer/components/ui/ProviderIcon'
-import { ConfigCard, Field, ResultMessage, SelectInput, SoftButton, StatusPill, TextInput, ToggleSwitch } from './KnowledgePrimitives'
+import { ConfigCard, CustomSelect, Field, ResultMessage, SoftButton, StatusPill, TextInput, ToggleSwitch, type SelectOption } from './KnowledgePrimitives'
 import { detectEmbedderModels, saveEmbedderConfig, testEmbedderConfig } from './knowledgeApi'
 import type { EmbedderConfig, TestState } from './knowledgeTypes'
 
@@ -129,6 +129,13 @@ export function EmbedderCard({ config, onSaved }: { config: EmbedderConfig | nul
   }
 
   const suggestions = detectedModels.length > 0 ? detectedModels : MODEL_HINTS[form.provider] ?? []
+  const providerOptions: SelectOption[] = [
+    { value: 'tei', label: 'TEI local', description: 'Local embeddings server', icon: <ProviderIcon provider="tei" size={24} /> },
+    { value: 'ollama', label: 'Ollama local', description: 'Local Ollama models', icon: <ProviderIcon provider="ollama" size={24} /> },
+    { value: 'openai', label: 'OpenAI', description: 'OpenAI embeddings API', icon: <ProviderIcon provider="openai" size={24} /> },
+    { value: 'mistral', label: 'Mistral', description: 'Mistral embeddings API', icon: <ProviderIcon provider="mistral" size={24} /> },
+    { value: 'gemini', label: 'Google Gemini', description: 'Gemini OpenAI-compatible endpoint', icon: <ProviderIcon provider="gemini" size={24} /> }
+  ]
 
   return (
     <ConfigCard
@@ -138,25 +145,16 @@ export function EmbedderCard({ config, onSaved }: { config: EmbedderConfig | nul
       action={<ToggleSwitch enabled={form.enabled} onChange={(enabled) => update('enabled', enabled)} />}
     >
       <div className="grid gap-4">
-        <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)]">
+        <div className="grid gap-3 md:grid-cols-[250px_minmax(0,1fr)]">
           <Field label="Provider">
-            <div className="flex h-10 items-center gap-2.5 rounded-md border border-[var(--border-soft)] bg-[var(--surface-muted)] px-2.5">
-              <ProviderIcon provider={form.provider} size={24} />
-              <SelectInput value={form.provider} onChange={(event) => chooseProvider(event.target.value)} className="h-8 border-0 bg-transparent px-0 focus:border-transparent">
-                <option value="tei">TEI local</option>
-                <option value="ollama">Ollama local</option>
-                <option value="openai">OpenAI</option>
-                <option value="mistral">Mistral</option>
-                <option value="gemini">Google Gemini</option>
-              </SelectInput>
-            </div>
+            <CustomSelect value={form.provider} options={providerOptions} onChange={chooseProvider} />
           </Field>
           <Field label="Base URL">
             <TextInput value={form.base_url} onChange={(event) => update('base_url', event.target.value)} placeholder="http://localhost:8082/v1" />
           </Field>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_180px]">
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
           <Field label={detectedModels.length > 0 ? `Model (${detectedModels.length} detected)` : 'Model'}>
             <TextInput list="knowledge-embedding-models" value={form.model} onChange={(event) => update('model', event.target.value)} placeholder="text-embedding-3-small" />
             <datalist id="knowledge-embedding-models">

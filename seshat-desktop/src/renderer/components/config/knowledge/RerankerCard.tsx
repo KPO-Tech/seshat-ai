@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ConfigCard, Field, ResultMessage, SelectInput, SoftButton, StatusPill, TextInput, ToggleSwitch } from './KnowledgePrimitives'
+import { ConfigCard, CustomSelect, Field, ResultMessage, SoftButton, StatusPill, TextInput, ToggleSwitch, type SelectOption } from './KnowledgePrimitives'
 import { detectRerankerModel, saveRerankerConfig, testRerankerConfig } from './knowledgeApi'
 import type { RerankerConfig, TestState } from './knowledgeTypes'
 
@@ -116,6 +116,12 @@ export function RerankerCard({ config, onSaved }: { config: RerankerConfig | nul
     }
   }
 
+  const presetOptions: SelectOption[] = RERANKER_PRESETS.map((item) => ({
+    value: item.id,
+    label: item.label,
+    description: item.id === 'tei' ? 'Local reranking server' : item.id === 'custom' ? 'Bring your own endpoint' : item.model
+  }))
+
   return (
     <ConfigCard
       title="Reranker"
@@ -124,17 +130,15 @@ export function RerankerCard({ config, onSaved }: { config: RerankerConfig | nul
       action={<ToggleSwitch enabled={form.enabled} onChange={(enabled) => update('enabled', enabled)} />}
     >
       <div className="grid gap-4">
-        <div className="grid gap-3 md:grid-cols-[180px_minmax(0,1fr)]">
+        <div className="grid gap-3 md:grid-cols-[250px_minmax(0,1fr)]">
           <Field label="Endpoint">
-            <SelectInput value={preset} onChange={(event) => choosePreset(event.target.value)}>
-              {RERANKER_PRESETS.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
-            </SelectInput>
+            <CustomSelect value={preset} options={presetOptions} onChange={choosePreset} />
           </Field>
           <Field label="Base URL">
             <TextInput value={form.base_url} onChange={(event) => update('base_url', event.target.value)} placeholder="http://localhost:8083/rerank" />
           </Field>
         </div>
-        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_180px]">
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
           <Field label="Model">
             <TextInput value={form.model} onChange={(event) => update('model', event.target.value)} placeholder="BAAI/bge-reranker-v2-m3" />
           </Field>
