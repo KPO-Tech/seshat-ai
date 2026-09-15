@@ -1,8 +1,8 @@
 import type { User } from '@renderer/api/types'
 import { ChatInput } from './ChatInput'
-import { MessageList } from './MessageList'
-import { useChatModels } from './useChatModels'
-import { useChatWorkspace } from './useChatWorkspace'
+import { useChatModels } from './lib/useChatModels'
+import { useChatWorkspace } from './lib/useChatWorkspace'
+import { MessageList } from './messages/MessageList'
 
 export function ChatWorkspace({ user }: { user: User }) {
   const { activeSession, streaming, isStreaming, loading, error, send, stop } = useChatWorkspace()

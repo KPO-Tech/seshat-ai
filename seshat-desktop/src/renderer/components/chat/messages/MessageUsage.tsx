@@ -1,4 +1,4 @@
-import type { TokenUsage } from './chatTypes'
+import type { TokenUsage } from '../lib/chatTypes'
 
 type MessageUsageProps = {
   usage?: TokenUsage

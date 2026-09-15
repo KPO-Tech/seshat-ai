@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { ToolUseBlock } from './chatTypes'
+import type { ToolUseBlock } from '../lib/chatTypes'
 
 export function ToolCard({ tool }: { tool: ToolUseBlock }) {
   const [open, setOpen] = useState(false)

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { ProviderIcon } from '@renderer/components/ui/ProviderIcon'
-import type { ChatModelChoice } from './chatModels'
+import type { ChatModelChoice } from './lib/chatModels'
 
 type ChatModelSelectProps = {
   choices: ChatModelChoice[]

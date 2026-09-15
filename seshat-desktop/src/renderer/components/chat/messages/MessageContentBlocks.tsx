@@ -1,4 +1,4 @@
-import type { ChatContentBlock } from './chatTypes'
+import type { ChatContentBlock } from '../lib/chatTypes'
 import { ToolCard } from './ToolCard'
 
 export function MessageContentBlocks({ blocks }: { blocks: ChatContentBlock[] }) {

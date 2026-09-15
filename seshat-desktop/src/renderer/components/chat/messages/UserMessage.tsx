@@ -1,4 +1,4 @@
-import type { ChatMessage } from './chatTypes'
+import type { ChatMessage } from '../lib/chatTypes'
 import { MessageContentBlocks } from './MessageContentBlocks'
 
 export function UserMessage({ message }: { message: ChatMessage }) {

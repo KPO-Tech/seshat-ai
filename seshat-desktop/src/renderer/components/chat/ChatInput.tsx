@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { ChatModelSelect } from './ChatModelSelect'
-import type { ChatModelChoice } from './chatModels'
+import type { ChatModelChoice } from './lib/chatModels'
 
 const actionChips = [
   { label: 'Create slides', icon: 'slides', prompt: 'Create slides about ' },

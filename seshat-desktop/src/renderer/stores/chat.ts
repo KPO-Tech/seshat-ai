@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { ChatMessage, ChatSession, StreamingBlock } from '@renderer/components/chat/chatTypes'
+import type { ChatMessage, ChatSession, StreamingBlock } from '@renderer/components/chat/lib/chatTypes'
 
 type ChatState = {
   sessions: ChatSession[]

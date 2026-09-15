@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import type { ChatMessage, StreamingBlock } from './chatTypes'
+import type { ChatMessage, StreamingBlock } from '../lib/chatTypes'
 import { AgentMessage } from './AgentMessage'
 import { UserMessage } from './UserMessage'
 
