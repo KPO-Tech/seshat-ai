@@ -1,6 +1,7 @@
 import { ProviderIcon } from '@renderer/components/ui/ProviderIcon'
 import type { ProviderModel, ProviderRowModel, ProviderSetting } from './providerTypes'
-import { formatModelMeta, getProviderConnection } from './providerUtils'
+import { ProviderOAuthControls } from './ProviderOAuthControls'
+import { formatModelMeta, getProviderConnection, isCodexProvider } from './providerUtils'
 
 type ProviderRowProps = {
   row: ProviderRowModel
@@ -11,6 +12,8 @@ type ProviderRowProps = {
   onSyncModels: (setting: ProviderSetting) => Promise<void>
   onSetDefault: (setting: ProviderSetting) => Promise<void>
   onRemove: (setting: ProviderSetting) => Promise<void>
+  onProviderChanged: (setting?: ProviderSetting) => void
+  onError: (message: string) => void
 }
 
 export function ProviderRow({
@@ -21,10 +24,13 @@ export function ProviderRow({
   onToggleModels,
   onSyncModels,
   onSetDefault,
-  onRemove
+  onRemove,
+  onProviderChanged,
+  onError
 }: ProviderRowProps) {
   const setting = row.setting
   const connected = setting ? getProviderConnection(setting) : { label: 'Not configured', tone: 'muted' as const }
+  const isCodex = isCodexProvider(row.provider)
 
   return (
     <div className="overflow-hidden rounded-lg border border-[var(--border-soft)] bg-[var(--surface-panel)]">
@@ -70,6 +76,14 @@ export function ProviderRow({
 
       {expanded && setting && (
         <div className="border-t border-[var(--border-soft)] px-4 py-3">
+          {isCodex && setting.auth_kind === 'oauth' && (
+            <ProviderOAuthControls
+              setting={setting}
+              busy={busy}
+              onChanged={onProviderChanged}
+              onError={onError}
+            />
+          )}
           <div className="mb-3 flex items-center justify-between">
             <div className="text-[13px] font-semibold text-[var(--text-primary)]">Models</div>
             <button type="button" onClick={() => void onSyncModels(setting)} disabled={busy} className="rounded-md border border-[var(--border-soft)] px-2.5 py-1 text-[12px] font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-muted)] disabled:opacity-45">

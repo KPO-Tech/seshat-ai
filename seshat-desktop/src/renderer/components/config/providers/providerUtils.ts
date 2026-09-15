@@ -32,7 +32,7 @@ export function buildProviderRows(catalog: ProviderCatalogEntry[], settings: Pro
 
 export function initialProviderForm(entry?: ProviderCatalogEntry): ProviderForm {
   const provider = entry?.name ?? ''
-  const authKind = provider === 'ollama' || entry?.auth_type === 'none' ? 'none' : 'api_key'
+  const authKind = provider === 'codex' ? 'oauth' : provider === 'ollama' || entry?.auth_type === 'none' ? 'none' : 'api_key'
   return {
     provider,
     name: entry?.display_name ?? '',
@@ -69,6 +69,10 @@ export function authTypeLabel(authType: string) {
   if (authType === 'none') return 'No key'
   if (authType === 'oauth') return 'OAuth'
   return 'API key'
+}
+
+export function isCodexProvider(provider: string) {
+  return provider.toLowerCase() === 'codex'
 }
 
 function formatNumber(value: number) {

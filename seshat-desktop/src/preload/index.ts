@@ -24,7 +24,8 @@ const nexus = {
   },
   http: {
     request: (payload: { path: string; method?: string; body?: unknown }) => ipcRenderer.invoke('http:request', payload)
-  }
+  },
+  openExternal: (url: string) => ipcRenderer.invoke('system:open-external', url)
 }
 
 function appVersion(): string {

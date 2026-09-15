@@ -1,5 +1,5 @@
 import { api } from '@renderer/api/client'
-import type { ProviderCatalogEntry, ProviderModel, ProviderSetting } from './providerTypes'
+import type { ProviderCatalogEntry, ProviderModel, ProviderOAuthChallenge, ProviderSetting } from './providerTypes'
 
 export async function fetchProviderCatalog() {
   const result = await api.get<{ providers: ProviderCatalogEntry[]; count: number }>('/models')
@@ -57,4 +57,20 @@ export function createProviderModel(settingId: string, params: {
   is_default?: boolean
 }) {
   return api.post<ProviderModel>(`/settings/providers/${settingId}/models`, params)
+}
+
+export function startProviderOAuth(settingId: string) {
+  return api.post<ProviderOAuthChallenge>(`/settings/providers/${settingId}/oauth/start`, {})
+}
+
+export function pollProviderOAuth(settingId: string) {
+  return api.post<ProviderSetting>(`/settings/providers/${settingId}/oauth/poll`, {})
+}
+
+export function disconnectProviderOAuth(settingId: string) {
+  return api.delete<ProviderSetting>(`/settings/providers/${settingId}/oauth`)
+}
+
+export function fetchSystemStatus() {
+  return api.get<{ mode: 'standalone' | 'connected'; server_url?: string }>('/system/status')
 }

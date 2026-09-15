@@ -9,6 +9,9 @@ export type ProviderSetting = {
   is_default: boolean
   connection_status: string
   last_error?: string
+  oauth_account_email?: string
+  oauth_subject?: string
+  oauth_expires_at?: number
   updated_at: number
 }
 
@@ -48,6 +51,14 @@ export type ProviderForm = {
   auth_kind: string
   api_key: string
   base_url: string
+}
+
+export type ProviderOAuthChallenge = {
+  status: string
+  user_code: string
+  verification_url: string
+  poll_interval_seconds: number
+  expires_at: number
 }
 
 export type ProviderRowModel = {

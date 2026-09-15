@@ -5,6 +5,7 @@ import {
   fetchProviderCatalog,
   fetchProviderModels,
   fetchProviderSettings,
+  fetchSystemStatus,
   setDefaultProvider,
   syncProviderModels
 } from './providerApi'
@@ -12,11 +13,12 @@ import { ProviderEmptyState } from './ProviderEmptyState'
 import { ProviderRow } from './ProviderRow'
 import { ProviderSelect } from './ProviderSelect'
 import type { ProviderCatalogEntry, ProviderForm, ProviderModel, ProviderSetting } from './providerTypes'
-import { buildProviderRows, initialProviderForm, upsertProviderSetting } from './providerUtils'
+import { buildProviderRows, initialProviderForm, isCodexProvider, upsertProviderSetting } from './providerUtils'
 
 export function ProvidersConfig() {
   const [catalog, setCatalog] = useState<ProviderCatalogEntry[]>([])
   const [settings, setSettings] = useState<ProviderSetting[]>([])
+  const [systemMode, setSystemMode] = useState<'standalone' | 'connected' | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [models, setModels] = useState<Record<string, ProviderModel[]>>({})
   const [form, setForm] = useState<ProviderForm>({ provider: '', name: '', auth_kind: 'api_key', api_key: '', base_url: '' })
@@ -30,10 +32,17 @@ export function ProvidersConfig() {
     setLoading(true)
     setError(null)
     try {
-      const [nextCatalog, nextSettings] = await Promise.all([fetchProviderCatalog(), fetchProviderSettings()])
+      const [nextCatalog, nextSettings, status] = await Promise.all([
+        fetchProviderCatalog(),
+        fetchProviderSettings(),
+        fetchSystemStatus().catch(() => null)
+      ])
+      const localMode = status?.mode !== 'connected'
+      const visibleCatalog = localMode ? nextCatalog : nextCatalog.filter((entry) => !isCodexProvider(entry.name))
       setCatalog(nextCatalog)
-      setSettings(nextSettings)
-      setForm((current) => current.provider ? current : initialProviderForm(nextCatalog[0]))
+      setSettings(localMode ? nextSettings : nextSettings.filter((setting) => !isCodexProvider(setting.provider)))
+      setSystemMode(status?.mode ?? 'standalone')
+      setForm((current) => current.provider && visibleCatalog.some((entry) => entry.name === current.provider) ? current : initialProviderForm(visibleCatalog[0]))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load providers.')
     } finally {
@@ -45,9 +54,13 @@ export function ProvidersConfig() {
     void load()
   }, [])
 
-  const rows = useMemo(() => buildProviderRows(catalog, settings), [catalog, settings])
+  const visibleCatalog = useMemo(() => (
+    systemMode === 'connected' ? catalog.filter((entry) => !isCodexProvider(entry.name)) : catalog
+  ), [catalog, systemMode])
+  const rows = useMemo(() => buildProviderRows(visibleCatalog, settings), [visibleCatalog, settings])
   const selectedCatalog = catalog.find((entry) => entry.name === form.provider)
-  const canSave = form.provider && (form.auth_kind !== 'api_key' || form.api_key.trim().length > 0 || form.provider === 'ollama')
+  const isCodex = isCodexProvider(form.provider)
+  const canSave = form.provider && (form.auth_kind !== 'api_key' || form.api_key.trim().length > 0 || form.provider === 'ollama' || isCodex)
 
   function handleProviderChange(provider: string) {
     const entry = catalog.find((item) => item.name === provider)
@@ -63,11 +76,12 @@ export function ProvidersConfig() {
       const created = await createProviderSetting({
         provider: form.provider,
         name: form.name || selectedCatalog?.display_name || form.provider,
-        auth_kind: form.provider === 'ollama' ? 'none' : form.auth_kind,
-        api_key: form.auth_kind === 'api_key' ? form.api_key : undefined,
-        base_url: form.base_url || undefined
+        auth_kind: form.provider === 'ollama' ? 'none' : isCodex ? 'oauth' : form.auth_kind,
+        api_key: form.auth_kind === 'api_key' && !isCodex ? form.api_key : undefined,
+        base_url: !isCodex && form.base_url ? form.base_url : undefined
       })
       setSettings((current) => upsertProviderSetting(current, created))
+      setExpandedId(isCodex ? created.id : expandedId)
       setForm({ ...initialProviderForm(selectedCatalog), api_key: '' })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add provider.')
@@ -154,7 +168,7 @@ export function ProvidersConfig() {
 
         <div className="mt-4 grid grid-cols-[1fr_1fr] gap-3">
           <ProviderSelect
-            catalog={catalog}
+            catalog={visibleCatalog}
             value={form.provider}
             open={providerMenuOpen}
             onOpenChange={setProviderMenuOpen}
@@ -164,24 +178,28 @@ export function ProvidersConfig() {
             <span className="text-[12px] font-semibold text-[var(--text-muted)]">Name</span>
             <input value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} className="h-9 rounded-md border border-[var(--border-soft)] bg-[var(--surface-muted)] px-3 text-[13px] text-[var(--text-primary)] outline-none" />
           </label>
-          {form.provider !== 'ollama' && (
+          {!isCodex && form.provider !== 'ollama' && (
             <label className="grid gap-1.5">
               <span className="text-[12px] font-semibold text-[var(--text-muted)]">API key</span>
               <input value={form.api_key} onChange={(event) => setForm((current) => ({ ...current, api_key: event.target.value }))} type="password" placeholder="Saved encrypted by the backend" className="h-9 rounded-md border border-[var(--border-soft)] bg-[var(--surface-muted)] px-3 text-[13px] text-[var(--text-primary)] outline-none" />
             </label>
           )}
-          <label className="grid gap-1.5">
-            <span className="text-[12px] font-semibold text-[var(--text-muted)]">Base URL</span>
-            <input value={form.base_url} onChange={(event) => setForm((current) => ({ ...current, base_url: event.target.value }))} placeholder={form.provider === 'ollama' ? 'http://localhost:11434' : 'Provider default'} className="h-9 rounded-md border border-[var(--border-soft)] bg-[var(--surface-muted)] px-3 text-[13px] text-[var(--text-primary)] outline-none" />
-          </label>
+          {!isCodex && (
+            <label className="grid gap-1.5">
+              <span className="text-[12px] font-semibold text-[var(--text-muted)]">Base URL</span>
+              <input value={form.base_url} onChange={(event) => setForm((current) => ({ ...current, base_url: event.target.value }))} placeholder={form.provider === 'ollama' ? 'http://localhost:11434' : 'Provider default'} className="h-9 rounded-md border border-[var(--border-soft)] bg-[var(--surface-muted)] px-3 text-[13px] text-[var(--text-primary)] outline-none" />
+            </label>
+          )}
         </div>
 
         <div className="mt-4 flex items-center justify-between gap-4">
           <p className="text-[12px] leading-[var(--leading-copy)] text-[var(--text-muted)]">
-            {selectedCatalog?.description || 'Provider catalog is loaded from the local backend.'}
+            {isCodex
+              ? 'Codex uses a browser sign-in with your ChatGPT account. It is only available for local desktop accounts.'
+              : selectedCatalog?.description || 'Provider catalog is loaded from the local backend.'}
           </p>
           <button type="button" onClick={() => void handleAdd()} disabled={!canSave || saving} className="h-9 rounded-md bg-[var(--text-primary)] px-4 text-[13px] font-semibold text-[var(--surface-root)] disabled:cursor-not-allowed disabled:opacity-45">
-            {saving ? 'Adding...' : 'Add'}
+            {saving ? 'Adding...' : isCodex ? 'Add OAuth provider' : 'Add'}
           </button>
         </div>
       </section>
@@ -205,6 +223,11 @@ export function ProvidersConfig() {
                 onSyncModels={syncModels}
                 onSetDefault={setDefault}
                 onRemove={remove}
+                onProviderChanged={(setting) => {
+                  if (!setting) return void load()
+                  setSettings((current) => current.map((item) => item.id === setting.id ? setting : item))
+                }}
+                onError={setError}
               />
             ))
           )}

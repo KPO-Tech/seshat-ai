@@ -31,6 +31,7 @@ declare global {
           text?: string
         }>
       }
+      openExternal: (url: string) => Promise<void>
     }
   }
 }
