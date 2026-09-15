@@ -15,48 +15,38 @@ export function AgentMessage({ message, live = false }: AgentMessageProps) {
     if (block.type === 'tool_use') return true
     return false
   })
+  const hasUsage = Boolean(message.usage || message.turn_number || message.stop_reason)
+
+  if (!live && !failed && !hasContent && !hasUsage) return null
 
   return (
     <article className="group flex w-full flex-col gap-2">
-      <div className="flex min-h-7 items-center justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="flex size-6 shrink-0 items-center justify-center rounded-md border border-[var(--border-soft)] bg-[var(--surface-panel)] text-[11px] font-bold text-[var(--accent-primary)]">
-            S
-          </span>
-          <span className="truncate text-[14px] font-semibold text-[var(--text-primary)]">Seshat</span>
-          <AgentStatus live={live} failed={failed} />
-        </div>
-        <MessageUsage usage={message.usage} turnNumber={message.turn_number} stopReason={message.stop_reason} />
-      </div>
-
       <div className={failed
         ? 'rounded-xl border border-[var(--accent-danger)]/35 bg-[var(--accent-danger)]/5 px-4 py-3 text-[13px] font-semibold leading-6 text-[var(--accent-danger)]'
         : 'min-w-0 text-[14px] leading-7 text-[var(--text-primary)]'
       }>
-        {hasContent ? <MessageContentBlocks blocks={message.content} /> : <EmptyAgentState live={live} />}
+        {hasContent ? <MessageContentBlocks blocks={message.content} /> : <AgentGenerating />}
       </div>
+      <MessageUsage usage={message.usage} turnNumber={message.turn_number} stopReason={message.stop_reason} />
     </article>
   )
 }
 
-function AgentStatus({ live, failed }: { live: boolean; failed: boolean }) {
-  if (failed) {
-    return <span className="rounded-full bg-[var(--accent-danger)]/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--accent-danger)]">Failed</span>
-  }
-  if (!live) return null
+function AgentGenerating() {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--accent-primary)]/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--accent-primary)]">
-      <span className="size-1.5 animate-pulse rounded-full bg-[var(--accent-primary)]" />
-      Working
-    </span>
+    <div className="flex h-7 items-center gap-2 text-[13px] font-medium text-[var(--text-muted)]">
+      <AgentSpinner />
+      <span>Thinking</span>
+    </div>
   )
 }
 
-function EmptyAgentState({ live }: { live: boolean }) {
+function AgentSpinner() {
   return (
-    <span className="inline-flex items-center gap-2 text-[var(--text-muted)]">
-      {live && <span className="size-2 animate-pulse rounded-full bg-[var(--accent-primary)]" />}
-      {live ? 'Seshat is working...' : 'No response yet.'}
+    <span className="relative flex size-5 shrink-0 items-center justify-center" aria-hidden="true">
+      <span className="absolute size-4 animate-ping rounded-full bg-[var(--accent-primary)]/25" />
+      <span className="absolute size-4 animate-spin rounded-full border border-[var(--border-soft)] border-t-[var(--accent-primary)]" />
+      <span className="size-1.5 rounded-full bg-[var(--accent-primary)] shadow-[0_0_12px_var(--accent-primary)]" />
     </span>
   )
 }

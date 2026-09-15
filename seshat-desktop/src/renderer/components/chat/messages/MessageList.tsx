@@ -12,9 +12,16 @@ export function MessageList({ messages, streaming, isStreaming }: { messages: Ch
 
   return (
     <div className="mx-auto flex w-full max-w-[850px] flex-col gap-6 px-4 pb-8 pt-8">
-      {messages.map((message, index) => (
-        <MessageBubble key={message.id || index} message={message} />
-      ))}
+      {messages.map((message, index) => {
+        const isLast = index === messages.length - 1
+        return (
+          <MessageBubble
+            key={message.id || index}
+            message={message}
+            hidePendingAssistant={isStreaming && isLast}
+          />
+        )
+      })}
       {isStreaming && streaming.length > 0 && (
         <AgentMessage message={{ id: 'streaming', role: 'assistant', content: streaming }} live />
       )}
@@ -26,8 +33,9 @@ export function MessageList({ messages, streaming, isStreaming }: { messages: Ch
   )
 }
 
-function MessageBubble({ message }: { message: ChatMessage }) {
+function MessageBubble({ message, hidePendingAssistant }: { message: ChatMessage; hidePendingAssistant?: boolean }) {
   if (message.role === 'system') return null
   if (message.role === 'user') return <UserMessage message={message} />
+  if (hidePendingAssistant && message.content.length === 0 && message.status !== 'error') return null
   return <AgentMessage message={message} />
 }
