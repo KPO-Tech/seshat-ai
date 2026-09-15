@@ -79,6 +79,22 @@ export function AgentsConfig() {
     }
   }
 
+  if (creating) {
+    return (
+      <div className="space-y-5">
+        {message && (
+          <div className={[
+            'rounded-lg border bg-[var(--surface-panel)] px-4 py-3 text-[13px] font-semibold',
+            message.tone === 'ok' ? 'border-[var(--accent-success)]/35 text-[var(--accent-success)]' : 'border-[var(--accent-danger)]/40 text-[var(--accent-danger)]'
+          ].join(' ')}>
+            {message.text}
+          </div>
+        )}
+        <AgentCreateForm saving={Boolean(busySlug)} onCancel={() => setCreating(false)} onSubmit={(payload) => void handleCreate(payload)} />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-5">
       {message && (
@@ -106,8 +122,6 @@ export function AgentsConfig() {
           Built-in and organization agents stay read-only in this config panel. Custom profiles can be created here, then edited more deeply in the future agent workspace.
         </p>
       </ConfigCard>
-
-      {creating && <AgentCreateForm saving={Boolean(busySlug)} onCancel={() => setCreating(false)} onSubmit={(payload) => void handleCreate(payload)} />}
 
       {loading ? (
         <ProviderEmptyState label="Loading agents..." />

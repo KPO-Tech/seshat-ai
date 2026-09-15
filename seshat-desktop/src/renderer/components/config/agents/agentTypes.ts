@@ -32,9 +32,11 @@ export type AgentCreatePayload = {
   system_prompt: string
   model?: string
   tools?: string[]
+  disallowed_tools?: string[]
   max_turns?: number
   permission_mode?: string
   isolation?: string
+  mcp_servers?: string[]
   icon?: string
   enabled?: boolean
 }
