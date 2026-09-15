@@ -27,12 +27,15 @@ export function ChatWorkspace({ user }: { user: User }) {
       </header>
 
       {isEmpty ? (
-        <section className="flex flex-1 items-center justify-center overflow-hidden px-8 pb-14 pt-2">
+        <section className="flex flex-1 items-start justify-center overflow-hidden px-8 pb-14 pt-[clamp(72px,18vh,160px)]">
           <div className="w-full">
             <div className="text-center">
-              <p className="mb-3 text-[13px] font-semibold text-[var(--text-muted)]">Signed in as {displayName}</p>
+              <div className="mb-3 flex items-center justify-center gap-2 text-[13px] font-semibold text-[var(--text-muted)]">
+                <span className="size-1.5 rounded-full bg-[var(--accent-primary)] shadow-[0_0_16px_var(--accent-primary)]" />
+                <span>Signed in as {displayName}</span>
+              </div>
               <h1 className="font-serif text-[clamp(42px,4.1vw,58px)] font-normal leading-[1.08] tracking-normal text-[var(--text-primary)]">
-                Where should we begin?
+                Where should we <span className="text-[var(--accent-primary)]">begin?</span>
               </h1>
             </div>
             <div className="mx-auto mt-8 w-[78%] max-w-[900px] min-w-0">
