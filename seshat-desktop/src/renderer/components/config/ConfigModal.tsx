@@ -88,7 +88,7 @@ export function ConfigModal({ user, initialSection = 'providers', onClose }: Pro
             <CloseIcon />
           </button>
 
-          <div className="min-h-full max-w-[860px] pb-8">
+          <div className="mx-auto min-h-full max-w-[920px] pb-8">
             <h1 className="text-[24px] font-semibold tracking-normal text-[var(--text-primary)]">{active.label}</h1>
             <p className="mt-2 max-w-[620px] text-[13px] leading-[var(--leading-copy)] text-[var(--text-muted)]">
               {active.description}

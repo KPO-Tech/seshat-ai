@@ -45,28 +45,34 @@ export function DomainCatalog({ categories, activeDomains, saving, saved, orgBlo
           const activeCount = category.domains.filter((domain) => activeDomains.has(domain)).length
           return (
             <div key={category.id}>
-              <div className="flex w-full items-center justify-between gap-4 px-4 py-3 hover:bg-[var(--surface-muted)]">
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => onToggleCategory(category.domains)}
-                    className={[
-                      'flex size-4 shrink-0 items-center justify-center rounded-full border transition-colors',
-                      activeCount === category.domains.length
-                        ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]'
-                        : activeCount > 0
-                          ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/25'
-                          : 'border-[var(--border-strong)] bg-transparent'
-                    ].join(' ')}
-                    aria-label={`Toggle all ${category.label} domains`}
-                  >
-                    {activeCount > 0 && <span className="size-1.5 rounded-full bg-white" />}
-                  </button>
-                  <button type="button" onClick={() => toggleCategory(category.id)} className="min-w-0 truncate text-left text-[13px] font-semibold text-[var(--text-primary)]">
-                    {category.label}
-                  </button>
-                </div>
-                <span className="text-[12px] font-semibold text-[var(--text-muted)]">{activeCount} / {category.domains.length} active</span>
+              <div className="flex w-full items-center gap-2.5 px-4 py-3 hover:bg-[var(--surface-muted)]">
+                <button
+                  type="button"
+                  onClick={() => onToggleCategory(category.domains)}
+                  className={[
+                    'flex size-4 shrink-0 items-center justify-center rounded-full border transition-colors',
+                    activeCount === category.domains.length
+                      ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]'
+                      : activeCount > 0
+                        ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/25'
+                        : 'border-[var(--border-strong)] bg-transparent'
+                  ].join(' ')}
+                  aria-label={`Toggle all ${category.label} domains`}
+                >
+                  {activeCount > 0 && <span className="size-1.5 rounded-full bg-white" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleCategory(category.id)}
+                  className="flex min-w-0 flex-1 items-center justify-between gap-4 text-left"
+                  aria-expanded={open}
+                >
+                  <span className="flex min-w-0 items-center gap-2">
+                    <ChevronIcon open={open} />
+                    <span className="truncate text-[13px] font-semibold text-[var(--text-primary)]">{category.label}</span>
+                  </span>
+                  <span className="shrink-0 text-[12px] font-semibold text-[var(--text-muted)]">{activeCount} / {category.domains.length} active</span>
+                </button>
               </div>
               {open && (
                 <div className="grid grid-cols-3 gap-2 border-t border-[var(--border-soft)] bg-[var(--surface-muted)] p-3">
@@ -80,7 +86,7 @@ export function DomainCatalog({ categories, activeDomains, saving, saved, orgBlo
                         className={[
                           'flex min-w-0 items-center justify-between gap-2 rounded-md border px-2.5 py-2 text-left text-[12px] font-semibold',
                           active
-                            ? 'border-[var(--accent-primary)] bg-[var(--surface-panel)] text-[var(--text-primary)]'
+                            ? 'border-[var(--border-soft)] bg-[var(--surface-panel)] text-[var(--text-primary)]'
                             : 'border-[var(--border-soft)] bg-[var(--surface-panel)] text-[var(--text-muted)]'
                         ].join(' ')}
                       >
@@ -99,6 +105,14 @@ export function DomainCatalog({ categories, activeDomains, saving, saved, orgBlo
         })}
       </div>
     </section>
+  )
+}
+
+function ChevronIcon({ open }: { open: boolean }) {
+  return (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-[var(--text-muted)]" aria-hidden="true">
+      {open ? <path d="m3.5 5 3 3 3-3" /> : <path d="m5 3.5 3 3-3 3" />}
+    </svg>
   )
 }
 

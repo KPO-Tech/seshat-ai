@@ -103,22 +103,24 @@ export function SettingsModal({ user, initialSection, onLogout, onClose }: Props
             <CloseIcon />
           </button>
 
-          <SettingsContent
-            section={activeSection}
-            user={user}
-            displayName={displayName}
-            theme={theme}
-            language={language}
-            notifications={notifications}
-            soundAlert={soundAlert}
-            productUpdates={productUpdates}
-            onLogout={onLogout}
-            onThemeChange={setTheme}
-            onLanguageChange={updateLanguage}
-            onNotificationsChange={setNotifications}
-            onSoundAlertChange={setSoundAlert}
-            onProductUpdatesChange={setProductUpdates}
-          />
+          <div className="mx-auto max-w-[920px]">
+            <SettingsContent
+              section={activeSection}
+              user={user}
+              displayName={displayName}
+              theme={theme}
+              language={language}
+              notifications={notifications}
+              soundAlert={soundAlert}
+              productUpdates={productUpdates}
+              onLogout={onLogout}
+              onThemeChange={setTheme}
+              onLanguageChange={updateLanguage}
+              onNotificationsChange={setNotifications}
+              onSoundAlertChange={setSoundAlert}
+              onProductUpdatesChange={setProductUpdates}
+            />
+          </div>
         </section>
       </div>
     </div>
