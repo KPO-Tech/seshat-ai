@@ -95,6 +95,7 @@ async function clearSession(): Promise<void> {
 }
 
 async function performJSONRequest(path: string, method: string, body: unknown, token?: string) {
+  const url = buildBackendURL(path)
   const headers: Record<string, string> = {
     Accept: 'application/json'
   }
@@ -105,11 +106,22 @@ async function performJSONRequest(path: string, method: string, body: unknown, t
   }
   if (token) headers.Authorization = `Bearer ${token}`
 
-  const res = await fetch(buildBackendURL(path), {
-    method,
-    headers,
-    body: requestBody
-  })
+  let res: Response
+  try {
+    res = await fetch(url, {
+      method,
+      headers,
+      body: requestBody
+    })
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : 'request failed'
+    return {
+      ok: false,
+      status: 0,
+      text: `Cannot reach the local Seshat backend at ${BACKEND_ORIGIN}. ${detail}`
+    }
+  }
+
   const payload = await parseResponse(res)
   if (res.status === 401) await clearSession()
   return payload
