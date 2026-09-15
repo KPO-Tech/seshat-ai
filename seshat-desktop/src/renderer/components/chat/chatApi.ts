@@ -42,6 +42,54 @@ export async function streamQuery(params: {
   signal?: AbortSignal
   onEvent: (event: StreamEvent) => void
 }) {
+  if (window.nexus?.http?.startStream) {
+    const started = await window.nexus.http.startStream({
+      path: '/query/stream',
+      method: 'POST',
+      body: {
+        prompt: params.prompt,
+        session_id: params.sessionId,
+        provider_setting_id: params.providerSettingId,
+        model_id: params.modelId
+      }
+    })
+
+    if (started.unauthorized) useAuthStore.getState().logout()
+    if (!started.streamId) throw new Error(started.error || 'Streaming failed.')
+    const streamId = started.streamId
+
+    await new Promise<void>((resolve, reject) => {
+      let settled = false
+      const cleanup = window.nexus?.http?.onStreamEvent(streamId, (event) => {
+        if (event.name === 'error') {
+          settle(() => reject(new Error(String(event.data.error ?? event.data.message ?? 'Streaming failed.'))))
+          return
+        }
+
+        params.onEvent({ event: event.name, data: event.data } as StreamEvent)
+        if (event.name === 'done') {
+          settle(resolve)
+        }
+      })
+
+      const cancel = () => {
+        void window.nexus?.http?.cancelStream(streamId)
+        settle(resolve)
+      }
+
+      params.signal?.addEventListener('abort', cancel, { once: true })
+
+      function settle(callback: () => void) {
+        if (settled) return
+        settled = true
+        cleanup?.()
+        params.signal?.removeEventListener('abort', cancel)
+        callback()
+      }
+    })
+    return
+  }
+
   const token = useAuthStore.getState().token
   const response = await fetch(`${SESHAT_BASE}/query/stream`, {
     method: 'POST',

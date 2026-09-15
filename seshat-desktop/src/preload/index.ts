@@ -30,7 +30,17 @@ const nexus = {
     restartBackend: (): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke('env-vars:restart-backend')
   },
   http: {
-    request: (payload: { path: string; method?: string; body?: unknown }) => ipcRenderer.invoke('http:request', payload)
+    request: (payload: { path: string; method?: string; body?: unknown }) => ipcRenderer.invoke('http:request', payload),
+    startStream: (payload: { path: string; method?: string; body?: unknown }) => ipcRenderer.invoke('http:stream:start', payload),
+    cancelStream: (streamId: string) => ipcRenderer.invoke('http:stream:cancel', streamId),
+    onStreamEvent: (streamId: string, listener: (event: { name: string; data: Record<string, unknown> }) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, payload: { streamId: string; name: string; data: Record<string, unknown> }) => {
+        if (payload.streamId !== streamId) return
+        listener({ name: payload.name, data: payload.data })
+      }
+      ipcRenderer.on('http:stream:event', handler)
+      return () => ipcRenderer.removeListener('http:stream:event', handler)
+    }
   },
   openExternal: (url: string) => ipcRenderer.invoke('system:open-external', url)
 }

@@ -45,6 +45,17 @@ declare global {
           data?: unknown
           text?: string
         }>
+        startStream: (payload: { path: string; method?: string; body?: unknown }) => Promise<{
+          streamId?: string
+          error?: string
+          retryable?: boolean
+          unauthorized?: boolean
+        }>
+        cancelStream: (streamId: string) => Promise<void>
+        onStreamEvent: (
+          streamId: string,
+          listener: (event: { name: string; data: Record<string, unknown> }) => void
+        ) => () => void
       }
       openExternal: (url: string) => Promise<void>
     }

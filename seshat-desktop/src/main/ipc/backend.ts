@@ -1,4 +1,5 @@
-import type { IpcMain } from 'electron'
+import type { IpcMain, IpcMainInvokeEvent } from 'electron'
+import { randomUUID } from 'crypto'
 import { deleteSecret, getSecret, setSecret } from './secure-store'
 import { assertTrustedSender } from './trusted-sender'
 
@@ -21,10 +22,18 @@ type RequestPayload = {
   body?: unknown
 }
 
+type StreamStartPayload = {
+  path: string
+  method?: string
+  body?: unknown
+}
+
 const BACKEND_ORIGIN = process.env.SESHAT_BACKEND_ORIGIN || 'http://127.0.0.1:8090'
 const AUTH_SESSION_KEY = 'seshat-desktop-auth-session'
+const STREAM_EVENT_CHANNEL = 'http:stream:event'
 
 let cachedSession: StoredSession | null = null
+const activeStreams = new Map<string, { controller: AbortController; webContentsId: number }>()
 
 function buildBackendURL(path: string): string {
   const normalized = path.startsWith('/') ? path : `/${path}`
@@ -127,6 +136,122 @@ async function performJSONRequest(path: string, method: string, body: unknown, t
   return payload
 }
 
+async function startStream(event: IpcMainInvokeEvent, payload: StreamStartPayload, token?: string) {
+  const controller = new AbortController()
+  const headers: Record<string, string> = {
+    Accept: 'text/event-stream',
+    'Content-Type': 'application/json'
+  }
+  if (token) headers.Authorization = `Bearer ${token}`
+
+  let res: Response
+  try {
+    res = await fetch(buildBackendURL(payload.path), {
+      method: payload.method || 'POST',
+      headers,
+      body: JSON.stringify(payload.body ?? {}),
+      signal: controller.signal
+    })
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : 'stream request failed'
+    return {
+      error: `Cannot reach the local Seshat backend at ${BACKEND_ORIGIN}. ${detail}`,
+      retryable: true
+    }
+  }
+
+  if (!res.ok) {
+    const parsed = await parseResponse(res)
+    if (res.status === 401) await clearSession()
+    return {
+      error: extractErrorMessage(parsed),
+      retryable: false,
+      unauthorized: res.status === 401
+    }
+  }
+
+  const reader = res.body?.getReader()
+  if (!reader) {
+    return { error: 'No response body', retryable: false }
+  }
+
+  const streamId = randomUUID()
+  activeStreams.set(streamId, { controller, webContentsId: event.sender.id })
+
+  void (async () => {
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    try {
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const frames = buffer.split(/\n\n/)
+        buffer = frames.pop() ?? ''
+
+        for (const frame of frames) {
+          const parsed = parseSSEFrame(frame)
+          if (!parsed || event.sender.isDestroyed()) continue
+          event.sender.send(STREAM_EVENT_CHANNEL, {
+            streamId,
+            name: parsed.name,
+            data: parsed.data
+          })
+        }
+      }
+
+      if (buffer.trim()) {
+        const parsed = parseSSEFrame(buffer)
+        if (parsed && !event.sender.isDestroyed()) {
+          event.sender.send(STREAM_EVENT_CHANNEL, {
+            streamId,
+            name: parsed.name,
+            data: parsed.data
+          })
+        }
+      }
+    } catch (err) {
+      if (!controller.signal.aborted && !event.sender.isDestroyed()) {
+        event.sender.send(STREAM_EVENT_CHANNEL, {
+          streamId,
+          name: 'error',
+          data: { error: err instanceof Error ? err.message : 'Streaming failed' }
+        })
+      }
+    } finally {
+      activeStreams.delete(streamId)
+      try {
+        reader.releaseLock()
+      } catch {
+        // noop
+      }
+    }
+  })()
+
+  return { streamId }
+}
+
+function parseSSEFrame(frame: string): { name: string; data: Record<string, unknown> } | null {
+  const lines = frame.split(/\r?\n/)
+  let name = 'message'
+  const data: string[] = []
+
+  for (const line of lines) {
+    if (line.startsWith(':')) continue
+    if (line.startsWith('event:')) name = line.slice(6).trim()
+    if (line.startsWith('data:')) data.push(line.slice(5).trimStart())
+  }
+
+  if (data.length === 0) return null
+  try {
+    return { name, data: JSON.parse(data.join('\n')) as Record<string, unknown> }
+  } catch {
+    return { name, data: { message: data.join('\n') } }
+  }
+}
+
 export function registerBackendHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('auth:login', async (event, credentials: { email: string; password: string }) => {
     assertTrustedSender(event)
@@ -172,5 +297,19 @@ export function registerBackendHandlers(ipcMain: IpcMain): void {
     assertTrustedSender(event)
     const session = await loadSession()
     return performJSONRequest(payload.path, payload.method || 'GET', payload.body, session?.token)
+  })
+
+  ipcMain.handle('http:stream:start', async (event, payload: StreamStartPayload) => {
+    assertTrustedSender(event)
+    const session = await loadSession()
+    return startStream(event, payload, session?.token)
+  })
+
+  ipcMain.handle('http:stream:cancel', async (event, streamId: string) => {
+    assertTrustedSender(event)
+    const active = activeStreams.get(streamId)
+    if (!active || active.webContentsId !== event.sender.id) return
+    active.controller.abort()
+    activeStreams.delete(streamId)
   })
 }
