@@ -1,5 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import type { User } from '@renderer/api/types'
+import { AgentsConfig } from './agents/AgentsConfig'
+import { AutomationConfig } from './automation/AutomationConfig'
 import { ConnectorsConfig } from './connectors/ConnectorsConfig'
 import { EnvironmentConfig } from './environment/EnvironmentConfig'
 import { KnowledgeConfig } from './knowledge/KnowledgeConfig'
@@ -110,7 +112,9 @@ export function ConfigModal({ user, initialSection = 'providers', onClose }: Pro
               {activeSection === 'connectors' && <ConnectorsConfig />}
               {activeSection === 'environment' && <EnvironmentConfig />}
               {activeSection === 'storage' && <StorageConfig />}
-              {activeSection !== 'providers' && activeSection !== 'models' && activeSection !== 'web-search' && activeSection !== 'knowledge' && activeSection !== 'multimodal' && activeSection !== 'mcp' && activeSection !== 'connectors' && activeSection !== 'environment' && activeSection !== 'storage' && <ConfigOverview active={active} />}
+              {activeSection === 'agents' && <AgentsConfig />}
+              {activeSection === 'automation' && <AutomationConfig />}
+              {activeSection !== 'providers' && activeSection !== 'models' && activeSection !== 'web-search' && activeSection !== 'knowledge' && activeSection !== 'multimodal' && activeSection !== 'mcp' && activeSection !== 'connectors' && activeSection !== 'environment' && activeSection !== 'storage' && activeSection !== 'agents' && activeSection !== 'automation' && <ConfigOverview active={active} />}
             </div>
           </div>
         </section>
