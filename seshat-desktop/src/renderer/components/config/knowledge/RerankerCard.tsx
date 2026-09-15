@@ -119,7 +119,8 @@ export function RerankerCard({ config, onSaved }: { config: RerankerConfig | nul
   const presetOptions: SelectOption[] = RERANKER_PRESETS.map((item) => ({
     value: item.id,
     label: item.label,
-    description: item.id === 'tei' ? 'Local reranking server' : item.id === 'custom' ? 'Bring your own endpoint' : item.model
+    description: item.id === 'tei' ? 'Local reranking server' : item.id === 'custom' ? 'Bring your own endpoint' : item.model,
+    icon: <RerankerIcon name={item.id} />
   }))
 
   return (
@@ -164,5 +165,48 @@ export function RerankerCard({ config, onSaved }: { config: RerankerConfig | nul
         </div>
       </div>
     </ConfigCard>
+  )
+}
+
+function RerankerIcon({ name }: { name: string }) {
+  const content = {
+    tei: (
+      <>
+        <rect width="24" height="24" rx="6" fill="#2E5C8A" />
+        <path d="M7 8h10M9 12h6M7 16h10" stroke="white" strokeWidth="1.8" strokeLinecap="round" />
+      </>
+    ),
+    langsearch: (
+      <>
+        <rect width="24" height="24" rx="6" fill="#2957D9" />
+        <path d="M8 7v10h8" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="m10 14 2-3 2 2 2-4" stroke="white" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      </>
+    ),
+    cohere: (
+      <>
+        <rect width="24" height="24" rx="6" fill="#395B48" />
+        <circle cx="9" cy="9" r="4" fill="#50C878" />
+        <circle cx="15" cy="15" r="4" fill="#F2A7B7" />
+        <circle cx="9" cy="15" r="3" fill="#F5C16C" />
+      </>
+    ),
+    custom: (
+      <>
+        <rect width="24" height="24" rx="6" fill="#3A3740" />
+        <path d="M8 9 5.5 12 8 15M16 9l2.5 3L16 15M13.5 7.5l-3 9" stroke="white" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      </>
+    )
+  }[name] ?? (
+    <>
+      <rect width="24" height="24" rx="6" fill="#3A3740" />
+      <circle cx="12" cy="12" r="4" stroke="white" strokeWidth="1.7" />
+    </>
+  )
+
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="shrink-0" aria-hidden="true">
+      {content}
+    </svg>
   )
 }
