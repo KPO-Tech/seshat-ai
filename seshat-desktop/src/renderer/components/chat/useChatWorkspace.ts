@@ -125,11 +125,12 @@ export function useChatWorkspace() {
       if (refreshed) upsertSession(refreshed)
     } catch (err) {
       if (controller.signal.aborted) return
-      setError(err instanceof Error ? err.message : 'Message failed.')
+      const messageText = err instanceof Error ? err.message : 'Message failed.'
       const current = useChatStore.getState().sessions.find((session) => session.id === sessionId)?.messages ?? []
       setMessages(sessionId, current.map((message) => message.id === assistantId ? {
         ...message,
-        content: [{ type: 'text', text: err instanceof Error ? err.message : 'Message failed.' }]
+        status: 'error' as const,
+        content: [{ type: 'text', text: messageText }]
       } : message))
     } finally {
       setIsStreaming(false)

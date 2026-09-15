@@ -13,12 +13,24 @@ export type ToolResultBlock = { type: 'tool_result'; tool_use_id?: string; conte
 
 export type ChatContentBlock = TextBlock | ThinkingBlock | ToolUseBlock | ToolResultBlock
 
+export type TokenUsage = {
+  input_tokens?: number
+  output_tokens?: number
+  total_tokens?: number
+  cached_input_tokens?: number
+  cache_creation_input_tokens?: number
+}
+
 export type ChatMessage = {
   id: string
   role: 'user' | 'assistant' | 'system'
   content: ChatContentBlock[]
   created_at?: number
   status?: 'sending' | 'sent' | 'error'
+  usage?: TokenUsage
+  turn_number?: number
+  stop_reason?: string
+  is_complete?: boolean
 }
 
 export type ChatSession = {
@@ -46,6 +58,9 @@ export type QueryDone = {
   session_id: string
   content: string
   stop_reason?: string
+  turn_number?: number
+  is_complete?: boolean
+  usage?: TokenUsage
   messages?: ChatMessage[]
   tool_results?: ToolResult[]
 }

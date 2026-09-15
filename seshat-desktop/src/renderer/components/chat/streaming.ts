@@ -29,8 +29,10 @@ export function applyStreamEvent(blocks: StreamingBlock[], event: StreamEvent): 
   return blocks
 }
 
-export function mergeDoneIntoMessages(current: ChatMessage[], done: QueryDone, assistantId: string, streaming: StreamingBlock[]) {
-  if (Array.isArray(done.messages) && done.messages.length > 0) return normalizeMessages(done.messages)
+export function mergeDoneIntoMessages(current: ChatMessage[], done: QueryDone, assistantId: string, streaming: StreamingBlock[]): ChatMessage[] {
+  if (Array.isArray(done.messages) && done.messages.length > 0) {
+    return attachDoneMetadata(normalizeMessages(done.messages), done)
+  }
   const resultById = new Map((done.tool_results ?? []).map((result) => [result.id ?? result.tool_use_id ?? '', result]))
   const content = streaming.map((block) => {
     if (block.type !== 'tool_use') return block
@@ -38,10 +40,38 @@ export function mergeDoneIntoMessages(current: ChatMessage[], done: QueryDone, a
     return result ? { ...block, _status: result.is_error ? 'failed' as const : 'completed' as const, _result: result } : block
   })
   if (content.length === 0 && done.content) content.push({ type: 'text', text: done.content })
-  return current.map((message) => message.id === assistantId ? { ...message, content } : message)
+  return current.map((message) => message.id === assistantId ? {
+    ...message,
+    content,
+    status: 'sent' as const,
+    usage: done.usage,
+    turn_number: done.turn_number,
+    stop_reason: done.stop_reason,
+    is_complete: done.is_complete
+  } : message)
 }
 
-export function normalizeMessages(messages: ChatMessage[]) {
+function attachDoneMetadata(messages: ChatMessage[], done: QueryDone): ChatMessage[] {
+  let lastAssistantIndex = -1
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (messages[index].role === 'assistant') {
+      lastAssistantIndex = index
+      break
+    }
+  }
+  if (lastAssistantIndex < 0) return messages
+
+  return messages.map((message, index) => index === lastAssistantIndex ? {
+    ...message,
+    usage: message.usage ?? done.usage,
+    turn_number: message.turn_number ?? done.turn_number,
+    stop_reason: message.stop_reason ?? done.stop_reason,
+    is_complete: message.is_complete ?? done.is_complete,
+    status: message.status ?? ('sent' as const)
+  } : message)
+}
+
+export function normalizeMessages(messages: ChatMessage[]): ChatMessage[] {
   return messages.map((message) => ({
     ...message,
     id: message.id || crypto.randomUUID(),
