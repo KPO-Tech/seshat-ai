@@ -28,14 +28,14 @@ export function ChatWorkspace({ user }: { user: User }) {
 
       {isEmpty ? (
         <section className="flex flex-1 items-center justify-center overflow-hidden px-8 pb-14 pt-2">
-          <div className="w-full max-w-[960px]">
+          <div className="w-full">
             <div className="text-center">
               <p className="mb-3 text-[13px] font-semibold text-[var(--text-muted)]">Signed in as {displayName}</p>
-              <h1 className="font-serif text-[52px] font-normal leading-[1.08] tracking-normal text-[var(--text-primary)]">
+              <h1 className="font-serif text-[clamp(42px,4.1vw,58px)] font-normal leading-[1.08] tracking-normal text-[var(--text-primary)]">
                 Where should we begin?
               </h1>
             </div>
-            <div className="mx-auto mt-8 max-w-[900px]">
+            <div className="mx-auto mt-8 w-[78%] max-w-[900px] min-w-0">
               <ChatInput disabled={isStreaming || loading} onSend={(text) => void send(text)} />
               {error && <div className="mt-4 rounded-lg border border-[var(--accent-danger)]/40 bg-[var(--surface-panel)] px-4 py-3 text-[13px] font-semibold text-[var(--accent-danger)]">{error}</div>}
             </div>

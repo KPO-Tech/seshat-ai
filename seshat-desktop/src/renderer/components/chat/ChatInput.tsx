@@ -68,7 +68,7 @@ export function ChatInput({ disabled, compact = false, onSend }: { disabled?: bo
       </div>
 
       {!compact && (
-        <div className="mx-auto mt-3.5 grid w-full max-w-[680px] grid-cols-[1fr_1fr_1.36fr_0.78fr_0.68fr] gap-2">
+        <div className="mx-auto mt-3.5 grid w-[76%] max-w-[680px] min-w-0 grid-cols-[1fr_1fr_1.36fr_0.78fr_0.68fr] gap-2">
           {actionChips.map((action) => (
             <button
               key={action.label}
