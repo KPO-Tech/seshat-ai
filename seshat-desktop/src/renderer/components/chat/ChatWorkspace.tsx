@@ -35,7 +35,7 @@ export function ChatWorkspace({ user }: { user: User }) {
                 Where should we begin?
               </h1>
             </div>
-            <div className="mx-auto mt-9 max-w-[760px]">
+            <div className="mx-auto mt-9 max-w-[900px]">
               <ChatInput disabled={isStreaming || loading} onSend={(text) => void send(text)} />
               {error && <div className="mt-4 rounded-lg border border-[var(--accent-danger)]/40 bg-[var(--surface-panel)] px-4 py-3 text-[13px] font-semibold text-[var(--accent-danger)]">{error}</div>}
             </div>
@@ -47,7 +47,7 @@ export function ChatWorkspace({ user }: { user: User }) {
             <MessageList messages={activeSession.messages} streaming={streaming} isStreaming={isStreaming} />
           </section>
           <footer className="shrink-0 border-t border-transparent px-8 pb-5">
-            <div className="mx-auto max-w-[760px]">
+            <div className="mx-auto max-w-[820px]">
               {error && <div className="mb-3 rounded-lg border border-[var(--accent-danger)]/40 bg-[var(--surface-panel)] px-4 py-3 text-[13px] font-semibold text-[var(--accent-danger)]">{error}</div>}
               <ChatInput compact disabled={isStreaming || loading} onSend={(text) => void send(text)} />
             </div>

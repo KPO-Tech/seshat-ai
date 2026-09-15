@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 const actionChips = [
-  { label: 'Research', icon: 'search', prompt: 'Research ' },
-  { label: 'Build', icon: 'code', prompt: 'Build ' },
-  { label: 'Analyze', icon: 'spark', prompt: 'Analyze ' },
-  { label: 'Plan', icon: 'plan', prompt: 'Plan ' }
+  { label: 'Create slides', icon: 'slides', prompt: 'Create slides about ' },
+  { label: 'Build website', icon: 'code', prompt: 'Build a website for ' },
+  { label: 'Develop desktop apps', icon: 'desktop', prompt: 'Develop a desktop app that ' },
+  { label: 'Design', icon: 'magic', prompt: 'Design ' },
+  { label: 'More', icon: 'more', prompt: '' }
 ]
 
 export function ChatInput({ disabled, compact = false, onSend }: { disabled?: boolean; compact?: boolean; onSend: (text: string) => void }) {
@@ -40,7 +41,7 @@ export function ChatInput({ disabled, compact = false, onSend }: { disabled?: bo
           }}
           placeholder="Assign a task or type / for more"
           disabled={disabled}
-          className="min-h-[52px] w-full resize-none border-0 bg-transparent text-[14px] leading-6 text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] disabled:opacity-60"
+          className="min-h-[56px] w-full resize-none border-0 bg-transparent text-[15px] leading-6 text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] disabled:opacity-60"
         />
 
         <div className="mt-2 flex items-center justify-between">
@@ -67,7 +68,7 @@ export function ChatInput({ disabled, compact = false, onSend }: { disabled?: bo
       </div>
 
       {!compact && (
-        <div className="mt-4 grid grid-cols-4 gap-2">
+        <div className="mx-auto mt-4 grid w-full max-w-[720px] grid-cols-[1fr_1fr_1.35fr_0.82fr_0.72fr] gap-2">
           {actionChips.map((action) => (
             <button
               key={action.label}
@@ -102,10 +103,11 @@ function RoundToolButton({ label, children }: { label: string; children: ReactNo
 }
 
 function ActionIcon({ name }: { name: string }) {
-  if (name === 'search') return <SearchIcon />
+  if (name === 'slides') return <SlidesIcon />
   if (name === 'code') return <CodeIcon />
-  if (name === 'spark') return <MagicIcon />
-  return <PlanIcon />
+  if (name === 'desktop') return <DesktopChipIcon />
+  if (name === 'magic') return <MagicIcon />
+  return <MoreIcon />
 }
 
 function PlusIcon() {
@@ -132,18 +134,22 @@ function ArrowUpIcon() {
   return <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 14V4M5 8l4-4 4 4" /></svg>
 }
 
-function SearchIcon() {
-  return <svg width="15" height="15" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true"><circle cx="8" cy="8" r="5" /><path d="m12 12 3 3" /></svg>
+function SlidesIcon() {
+  return <svg width="15" height="15" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="4" y="4" width="10" height="10" rx="1.8" /><path d="M7 8h4M7 11h3" /></svg>
 }
 
 function CodeIcon() {
   return <svg width="15" height="15" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m7 5-4 4 4 4M11 5l4 4-4 4" /></svg>
 }
 
+function DesktopChipIcon() {
+  return <svg width="15" height="15" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="12" height="8" rx="1.5" /><path d="M7 15h4M9 12.5V15" /></svg>
+}
+
 function MagicIcon() {
   return <svg width="15" height="15" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m4 14 8-8M10 4l4 4M3 5h2M5 3v2M13 12h2M15 10v2" /></svg>
 }
 
-function PlanIcon() {
-  return <svg width="15" height="15" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 4h8M5 9h8M5 14h5" /></svg>
+function MoreIcon() {
+  return <svg width="15" height="15" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true"><path d="M5 9h.01M9 9h.01M13 9h.01" /></svg>
 }
