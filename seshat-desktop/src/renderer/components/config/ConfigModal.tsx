@@ -1,6 +1,8 @@
 import { useState, type ReactNode } from 'react'
 import type { User } from '@renderer/api/types'
+import { ConnectorsConfig } from './connectors/ConnectorsConfig'
 import { KnowledgeConfig } from './knowledge/KnowledgeConfig'
+import { MCPConfig } from './mcp/MCPConfig'
 import { ModelsConfig } from './models/ModelsConfig'
 import { MultimodalConfig } from './multimodal/MultimodalConfig'
 import { ProvidersConfig } from './providers/ProvidersConfig'
@@ -102,7 +104,9 @@ export function ConfigModal({ user, initialSection = 'providers', onClose }: Pro
               {activeSection === 'web-search' && <WebSearchConfig />}
               {activeSection === 'knowledge' && <KnowledgeConfig />}
               {activeSection === 'multimodal' && <MultimodalConfig />}
-              {activeSection !== 'providers' && activeSection !== 'models' && activeSection !== 'web-search' && activeSection !== 'knowledge' && activeSection !== 'multimodal' && <ConfigOverview active={active} />}
+              {activeSection === 'mcp' && <MCPConfig />}
+              {activeSection === 'connectors' && <ConnectorsConfig />}
+              {activeSection !== 'providers' && activeSection !== 'models' && activeSection !== 'web-search' && activeSection !== 'knowledge' && activeSection !== 'multimodal' && activeSection !== 'mcp' && activeSection !== 'connectors' && <ConfigOverview active={active} />}
             </div>
           </div>
         </section>
