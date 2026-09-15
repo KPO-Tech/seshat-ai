@@ -15,6 +15,7 @@ export function ChatWorkspace({ user }: { user: User }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <header className="flex h-14 shrink-0 items-center justify-between px-7">
+        {/* Future workflow selector: Seshat should choose the agent runtime flow, e.g. Plan, Execute, Tools, or custom workflows. */}
         <button type="button" className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[15px] font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-muted)]">
           Seshat
           <ChevronDownIcon />

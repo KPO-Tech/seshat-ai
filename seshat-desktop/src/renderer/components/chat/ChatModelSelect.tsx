@@ -28,7 +28,7 @@ export function ChatModelSelect({ choices, value, loading, disabled, onChange }:
   function toggleOpen() {
     if (!open && ref.current) {
       const rect = ref.current.getBoundingClientRect()
-      const panelHeight = Math.min(342, 74 + choices.length * 44)
+      const panelHeight = Math.min(278, 58 + choices.length * 38)
       const spaceBelow = window.innerHeight - rect.bottom
       const spaceAbove = rect.top
       setDirection(spaceBelow >= panelHeight || spaceBelow >= spaceAbove ? 'down' : 'up')
@@ -42,26 +42,26 @@ export function ChatModelSelect({ choices, value, loading, disabled, onChange }:
         type="button"
         disabled={unavailable}
         onClick={toggleOpen}
-        className="flex h-8 max-w-[210px] items-center gap-2 rounded-full border border-[var(--border-soft)] bg-[var(--surface-muted)] px-2.5 text-[12px] font-semibold text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-55"
+        className="flex h-8 max-w-[168px] items-center gap-1.5 rounded-full border border-[var(--border-soft)] bg-[var(--surface-muted)] px-2 text-[12px] font-semibold text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-55"
         aria-haspopup="listbox"
         aria-expanded={open}
         title={selected ? `${selected.providerName} - ${selected.modelId}` : 'Default model'}
       >
-        {selected ? <ProviderIcon provider={selected.provider} size={18} className="shrink-0" /> : <ModelIcon />}
+        {selected ? <ProviderIcon provider={selected.provider} size={17} className="shrink-0" /> : <ModelIcon />}
         <span className="truncate">{loading ? 'Models...' : selected?.label || 'Default model'}</span>
         <ChevronDownIcon />
       </button>
 
       {open && !unavailable && (
         <div className={[
-          'absolute left-0 z-40 w-[320px] overflow-hidden rounded-xl border border-[var(--border-soft)] bg-[var(--surface-panel)] shadow-[0_20px_60px_rgba(0,0,0,0.42)]',
+          'absolute left-0 z-40 w-[280px] overflow-hidden rounded-xl border border-[var(--border-soft)] bg-[var(--surface-panel)] shadow-[0_18px_48px_rgba(0,0,0,0.36)]',
           direction === 'down' ? 'top-[calc(100%+8px)]' : 'bottom-[calc(100%+8px)]'
         ].join(' ')}>
           <div className="border-b border-[var(--border-soft)] px-3 py-2">
             <div className="text-[12px] font-semibold text-[var(--text-primary)]">Model</div>
-            <div className="mt-0.5 text-[11px] text-[var(--text-muted)]">Choose the model for the next message.</div>
+            <div className="mt-0.5 text-[10.5px] text-[var(--text-muted)]">Used for the next message.</div>
           </div>
-          <div className="no-scrollbar max-h-[280px] overflow-y-auto p-1.5" role="listbox">
+          <div className="no-scrollbar max-h-[202px] overflow-y-auto p-1.5" role="listbox">
             {choices.map((choice) => (
               <button
                 key={choice.id}
@@ -71,7 +71,7 @@ export function ChatModelSelect({ choices, value, loading, disabled, onChange }:
                   setOpen(false)
                 }}
                 className={[
-                  'flex min-h-11 w-full items-center gap-2.5 rounded-lg px-2.5 text-left transition-colors',
+                  'flex h-[38px] w-full items-center gap-2 rounded-lg px-2 text-left transition-colors',
                   choice.id === selected?.id
                     ? 'bg-[var(--surface-muted)] text-[var(--text-primary)]'
                     : 'text-[var(--text-secondary)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]'
@@ -79,10 +79,10 @@ export function ChatModelSelect({ choices, value, loading, disabled, onChange }:
                 role="option"
                 aria-selected={choice.id === selected?.id}
               >
-                <ProviderIcon provider={choice.provider} size={28} className="shrink-0" />
+                <ProviderIcon provider={choice.provider} size={24} className="shrink-0" />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13px] font-semibold">{choice.label}</span>
-                  <span className="block truncate text-[11px] text-[var(--text-muted)]">{choice.providerName}</span>
+                  <span className="block truncate text-[12px] font-semibold">{choice.label}</span>
+                  <span className="block truncate text-[10.5px] text-[var(--text-muted)]">{choice.providerName}</span>
                 </span>
                 {choice.id === selected?.id && <CheckIcon />}
               </button>
