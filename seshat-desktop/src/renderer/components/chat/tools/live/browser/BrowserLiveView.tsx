@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useBrowserStore, type BrowserActionRun } from '@renderer/stores/browser'
 import type { ToolUseBlock } from '../../../lib/chatTypes'
+import { CodePanel, prettyJsonOrRaw } from '../../ToolDetails'
+import { browserResultSummary, parseBrowserScreenshot } from './browserResults'
 import { browserActionLabel, browserContextId, browserTargetFromTool } from './browserTools'
 
 type BrowserPanelTab = {
@@ -27,6 +29,8 @@ export function BrowserLiveView({ sessionId, tool }: { sessionId?: string; tool:
   const target = browserTargetFromTool(tool)
   const actions = useBrowserStore((store) => sessionId ? store.sessions[sessionId]?.actions ?? [] : [])
   const visibleActions = actions.length > 0 ? actions : [fallbackAction(tool)]
+  const screenshot = parseBrowserScreenshot(tool)
+  const resultSummary = browserResultSummary(tool)
   const activeTab = state?.tabs.find((tab) => tab.id === state.activeTabId) ?? state?.tabs[0] ?? null
 
   const syncBounds = useCallback(() => {
@@ -169,6 +173,34 @@ export function BrowserLiveView({ sessionId, tool }: { sessionId?: string; tool:
       ) : null}
 
       <div ref={viewportRef} className="h-[360px] min-h-[260px] bg-[#080a0d]" />
+
+      {(screenshot || resultSummary || tool._result?.content) && (
+        <div className="border-t border-[var(--border-soft)] p-3">
+          {screenshot ? (
+            <div className="overflow-hidden rounded-md border border-[var(--border-soft)] bg-[var(--surface-muted)]">
+              <div className="flex items-center justify-between gap-3 border-b border-[var(--border-soft)] px-3 py-2">
+                <div className="min-w-0">
+                  <div className="truncate text-[12px] font-semibold text-[var(--text-primary)]">{screenshot.label}</div>
+                  {screenshot.url && <div className="truncate text-[10.5px] text-[var(--text-muted)]">{screenshot.url}</div>}
+                </div>
+                {screenshot.bytes ? <span className="shrink-0 text-[10px] text-[var(--text-muted)]">{formatBytes(screenshot.bytes)}</span> : null}
+              </div>
+              <div className="max-h-[340px] overflow-auto bg-[#080a0d] p-2">
+                <img className="mx-auto block max-h-[320px] max-w-full rounded object-contain" src={screenshot.src} alt={screenshot.url || 'Browser screenshot'} loading="lazy" />
+              </div>
+            </div>
+          ) : resultSummary ? (
+            <div className="rounded-md border border-[var(--border-soft)] bg-[var(--surface-muted)] px-3 py-2 text-[12px] text-[var(--text-secondary)]">
+              {resultSummary}
+            </div>
+          ) : null}
+          {!screenshot && tool._result?.content && (
+            <div className="mt-3">
+              <CodePanel title={tool._result.is_error || tool._result.isError ? 'Error' : 'Result'} value={prettyJsonOrRaw(tool._result.content)} />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -198,6 +230,12 @@ function actionDotClass(status: BrowserActionRun['status']) {
   if (status === 'completed') return 'size-1.5 shrink-0 rounded-full bg-[var(--accent-success)]'
   if (status === 'failed') return 'size-1.5 shrink-0 rounded-full bg-[var(--accent-danger)]'
   return 'size-1.5 shrink-0 rounded-full bg-[var(--text-muted)]'
+}
+
+function formatBytes(value: number) {
+  if (value < 1024) return `${value} B`
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`
 }
 
 function ArrowLeftIcon() {
