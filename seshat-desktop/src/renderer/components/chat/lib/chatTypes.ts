@@ -7,6 +7,7 @@ export type ToolUseBlock = {
   input: Record<string, unknown>
   _status?: 'pending' | 'running' | 'completed' | 'failed' | 'awaiting_approval'
   _result?: ToolResult
+  _progress?: ToolProgress
   _partialInput?: string
   _message?: string
   _approval?: ToolApproval
@@ -26,6 +27,19 @@ export type ToolPromptRequest = {
   type?: string
   message?: string
   options?: Array<{ label: string; value?: string; description?: string }>
+  metadata?: Record<string, unknown>
+}
+
+export type ToolProgress = {
+  toolUseId?: string
+  toolName?: string
+  stage?: 'pending' | 'running' | 'completed' | 'failed' | string
+  message?: string
+  summary?: string
+  percentComplete?: number
+  input?: Record<string, unknown>
+  result?: string
+  durationMs?: number
   metadata?: Record<string, unknown>
 }
 
@@ -90,4 +104,30 @@ export type StreamEvent =
   | { event: string; data: unknown }
   | { event: 'done'; data: QueryDone }
   | { event: 'error'; data: { error?: string; message?: string } }
+  | { event: 'runtime'; data: RuntimeEvent }
   | { event: 'session_titled'; data: { session_id?: string; title?: string } }
+
+export type RuntimeEvent = {
+  type?: string
+  tool_progress?: RuntimeToolProgress
+  toolProgress?: RuntimeToolProgress
+}
+
+export type RuntimeToolProgress = {
+  tool_use_id?: string
+  toolUseId?: string
+  tool_name?: string
+  toolName?: string
+  name?: string
+  stage?: string
+  message?: string
+  summary?: string
+  percent_complete?: number
+  percentComplete?: number
+  input?: Record<string, unknown>
+  tool_input?: Record<string, unknown>
+  result?: string
+  duration_ms?: number
+  durationMs?: number
+  metadata?: Record<string, unknown>
+}

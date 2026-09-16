@@ -1,7 +1,8 @@
-import type { ChatMessage, QueryDone, StreamingBlock, StreamEvent } from './chatTypes'
+import type { ChatMessage, QueryDone, RuntimeToolProgress, StreamingBlock, StreamEvent, ToolProgress, ToolUseBlock } from './chatTypes'
 
 export function applyStreamEvent(blocks: StreamingBlock[], event: StreamEvent): StreamingBlock[] {
-  if (event.event === 'done' || event.event === 'error' || event.event === 'runtime') return blocks
+  if (event.event === 'done' || event.event === 'error') return blocks
+  if (event.event === 'runtime') return applyRuntimeEvent(blocks, event.data as Record<string, unknown>)
 
   const data = event.data as Record<string, unknown>
   const type = String(data.type ?? '')
@@ -27,6 +28,21 @@ export function applyStreamEvent(blocks: StreamingBlock[], event: StreamEvent): 
   }
 
   return blocks
+}
+
+function applyRuntimeEvent(blocks: StreamingBlock[], data: Record<string, unknown>): StreamingBlock[] {
+  const type = String(data.type ?? '')
+  const rawProgress = (data.tool_progress ?? data.toolProgress ?? data.tool) as RuntimeToolProgress | undefined
+  if (!rawProgress || !type.includes('tool')) return blocks
+
+  const progress = normalizeToolProgress(rawProgress)
+  const index = findToolIndex(blocks, progress)
+  if (index < 0) return blocks
+
+  const tool = blocks[index]
+  if (tool.type !== 'tool_use') return blocks
+
+  return setBlock(blocks, index, mergeToolProgress(tool, progress))
 }
 
 export function mergeDoneIntoMessages(current: ChatMessage[], done: QueryDone, assistantId: string, streaming: StreamingBlock[]): ChatMessage[] {
@@ -92,6 +108,59 @@ function normalizeBlock(raw: Record<string, unknown>, index: number): StreamingB
     }
   }
   return { type: 'text', text: String(raw.text ?? '') }
+}
+
+function normalizeToolProgress(raw: RuntimeToolProgress): ToolProgress {
+  return {
+    toolUseId: raw.tool_use_id ?? raw.toolUseId,
+    toolName: raw.tool_name ?? raw.toolName ?? raw.name,
+    stage: raw.stage,
+    message: raw.message,
+    summary: raw.summary,
+    percentComplete: raw.percent_complete ?? raw.percentComplete,
+    input: raw.input ?? raw.tool_input,
+    result: raw.result,
+    durationMs: raw.duration_ms ?? raw.durationMs,
+    metadata: raw.metadata
+  }
+}
+
+function findToolIndex(blocks: StreamingBlock[], progress: ToolProgress) {
+  if (progress.toolUseId) {
+    const byId = blocks.findIndex((block) => block.type === 'tool_use' && block.id === progress.toolUseId)
+    if (byId >= 0) return byId
+  }
+  if (progress.toolName) {
+    for (let index = blocks.length - 1; index >= 0; index -= 1) {
+      const block = blocks[index]
+      if (block.type === 'tool_use' && block.name === progress.toolName) return index
+    }
+  }
+  return -1
+}
+
+function mergeToolProgress(tool: ToolUseBlock, progress: ToolProgress): ToolUseBlock {
+  const status = progress.stage === 'completed' || progress.stage === 'failed' || progress.stage === 'pending' || progress.stage === 'running'
+    ? progress.stage
+    : tool._status
+  const input = progress.input ? { ...tool.input, ...progress.input } : tool.input
+  const result = progress.result
+    ? {
+        id: tool.id,
+        tool_use_id: tool.id,
+        content: progress.result,
+        is_error: progress.stage === 'failed',
+        duration_ms: progress.durationMs
+      }
+    : tool._result
+
+  return {
+    ...tool,
+    input,
+    _status: status,
+    _progress: { ...tool._progress, ...progress },
+    _result: result
+  }
 }
 
 function setBlock(blocks: StreamingBlock[], index: number, block: StreamingBlock) {
