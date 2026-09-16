@@ -48,6 +48,8 @@ export type ToolProgress = {
 
 export type ChatContentBlock = TextBlock | ThinkingBlock | ToolUseBlock | ToolResultBlock
 
+export type ChatExecutionMode = 'execute' | 'plan'
+
 export type TokenUsage = {
   input_tokens?: number
   output_tokens?: number
@@ -77,6 +79,7 @@ export type ChatSession = {
   status?: 'idle' | 'running' | 'completed' | 'stopped' | 'failed'
   providerSettingId?: string
   modelId?: string
+  executionMode?: ChatExecutionMode
 }
 
 export type ToolResult = {

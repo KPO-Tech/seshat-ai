@@ -1,11 +1,12 @@
 import type { User } from '@renderer/api/types'
+import type { ChatExecutionMode } from './lib/chatTypes'
 import { ChatInput } from './ChatInput'
 import { useChatModels } from './lib/useChatModels'
 import { useChatWorkspace } from './lib/useChatWorkspace'
 import { MessageList } from './messages/MessageList'
 
 export function ChatWorkspace({ user }: { user: User }) {
-  const { activeSession, streaming, isStreaming, loading, error, send, stop } = useChatWorkspace()
+  const { activeSession, streaming, isStreaming, loading, error, executionMode, send, stop, setExecutionMode } = useChatWorkspace()
   const displayName = user.display_name || user.email
   const isEmpty = !activeSession || activeSession.messages.length === 0
   const models = useChatModels(activeSession?.modelId)
@@ -19,15 +20,18 @@ export function ChatWorkspace({ user }: { user: User }) {
           Seshat
           <ChevronDownIcon />
         </button>
-        {isStreaming && (
-          <button
-            type="button"
-            onClick={() => void stop()}
-            className="rounded-md border border-[var(--border-soft)] bg-[var(--surface-panel)] px-3 py-1.5 text-[12px] font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
-          >
-            Stop
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <ExecutionModeToggle mode={executionMode} disabled={loading || isStreaming} onChange={(mode) => void setExecutionMode(mode)} />
+          {isStreaming && (
+            <button
+              type="button"
+              onClick={() => void stop()}
+              className="rounded-md border border-[var(--border-soft)] bg-[var(--surface-panel)] px-3 py-1.5 text-[12px] font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
+            >
+              Stop
+            </button>
+          )}
+        </div>
       </header>
 
       {isEmpty ? (
@@ -77,6 +81,30 @@ export function ChatWorkspace({ user }: { user: User }) {
         </>
       )}
     </div>
+  )
+}
+
+function ExecutionModeToggle({
+  mode,
+  disabled,
+  onChange
+}: {
+  mode: ChatExecutionMode
+  disabled?: boolean
+  onChange: (mode: ChatExecutionMode) => void
+}) {
+  const nextMode = mode === 'plan' ? 'execute' : 'plan'
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => onChange(nextMode)}
+      className="flex h-8 items-center gap-2 rounded-full border border-[var(--border-soft)] bg-[var(--surface-panel)] px-3 text-[12px] font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)] disabled:cursor-not-allowed disabled:opacity-60"
+      title={mode === 'plan' ? 'Plan mode' : 'Execute mode'}
+    >
+      <span className={`size-1.5 rounded-full ${mode === 'plan' ? 'bg-[var(--accent-primary)] shadow-[0_0_12px_var(--accent-primary)]' : 'bg-[var(--text-muted)]'}`} />
+      {mode === 'plan' ? 'Plan' : 'Execute'}
+    </button>
   )
 }
 

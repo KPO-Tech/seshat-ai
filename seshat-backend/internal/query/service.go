@@ -239,6 +239,7 @@ func (s *Service) ListSessions(ctx context.Context, principal *backendauth.Princ
 			Title:             o.Title,
 			PermissionMode:    o.PermissionMode,
 			ExecutionOrigin:   o.ExecutionOrigin,
+			ExecutionMode:     o.ForcedExecutionMode,
 			Source:            o.Source,
 			WorkspacePath:     o.WorkspacePath,
 			ProjectPath:       o.ProjectPath,
@@ -397,6 +398,7 @@ func (s *Service) sessionInfosFromIDs(ctx context.Context, principal *backendaut
 			info.UserID = owned.UserID
 			info.Title = owned.Title
 			info.ExecutionOrigin = owned.ExecutionOrigin
+			info.ExecutionMode = owned.ForcedExecutionMode
 			info.WorkspacePath = owned.WorkspacePath
 			info.ProjectPath = owned.ProjectPath
 			info.CreatedAt = owned.CreatedAt.Unix()
@@ -447,6 +449,7 @@ func (s *Service) GetSession(ctx context.Context, principal *backendauth.Princip
 		info.Title = ownership.Title
 		info.PermissionMode = ownership.PermissionMode
 		info.ExecutionOrigin = ownership.ExecutionOrigin
+		info.ExecutionMode = ownership.ForcedExecutionMode
 		info.WorkspacePath = ownership.WorkspacePath
 		info.ProjectPath = ownership.ProjectPath
 		info.CreatedAt = ownership.CreatedAt.Unix()

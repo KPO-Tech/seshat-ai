@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useChatStore } from '@renderer/stores/chat'
-import { createSession, fetchSession, fetchSessions, interruptSession, streamQuery } from './chatApi'
+import { createSession, fetchSession, fetchSessions, interruptSession, patchSessionMetadata, streamQuery } from './chatApi'
 import { applyStreamEvent, mergeDoneIntoMessages } from './streaming'
-import type { ChatMessage, QueryDone } from './chatTypes'
+import type { ChatExecutionMode, ChatMessage, QueryDone } from './chatTypes'
 
 type ChatModelSelection = {
   providerSettingId?: string
@@ -28,12 +28,14 @@ export function useChatWorkspace() {
   const setIsStreaming = useChatStore((state) => state.setIsStreaming)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [draftExecutionMode, setDraftExecutionMode] = useState<ChatExecutionMode>('execute')
   const abortRef = useRef<Record<string, AbortController>>({})
 
   const activeSession = useMemo(
     () => sessions.find((session) => session.id === activeSessionId) ?? null,
     [activeSessionId, sessions]
   )
+  const executionMode = activeSession?.executionMode ?? draftExecutionMode
 
   useEffect(() => {
     let cancelled = false
@@ -62,6 +64,22 @@ export function useChatWorkspace() {
     }
   }, [setActiveSessionId, upsertSession])
 
+  const setExecutionMode = useCallback(async (mode: ChatExecutionMode) => {
+    setError(null)
+    setDraftExecutionMode(mode)
+    if (!activeSessionId) return
+
+    const previous = useChatStore.getState().sessions.find((session) => session.id === activeSessionId)?.executionMode ?? 'execute'
+    updateSession(activeSessionId, { executionMode: mode, updatedAt: new Date().toISOString() })
+    try {
+      await patchSessionMetadata(activeSessionId, { executionMode: mode })
+    } catch (err) {
+      updateSession(activeSessionId, { executionMode: previous, updatedAt: new Date().toISOString() })
+      setDraftExecutionMode(previous)
+      setError(err instanceof Error ? err.message : 'Failed to update execution mode.')
+    }
+  }, [activeSessionId, updateSession])
+
   const send = useCallback(async (prompt: string, model?: ChatModelSelection) => {
     const text = prompt.trim()
     if (!text) return
@@ -69,7 +87,13 @@ export function useChatWorkspace() {
 
     let sessionId = activeSessionId
     if (!sessionId) {
-      sessionId = await createSession(model)
+      try {
+        sessionId = await createSession(model)
+        await patchSessionMetadata(sessionId, { executionMode: draftExecutionMode })
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to create session.')
+        return
+      }
       upsertSession({
         id: sessionId,
         title: text.slice(0, 64),
@@ -78,7 +102,8 @@ export function useChatWorkspace() {
         updatedAt: new Date().toISOString(),
         status: 'idle',
         providerSettingId: model?.providerSettingId,
-        modelId: model?.modelId
+        modelId: model?.modelId,
+        executionMode: draftExecutionMode
       })
       setActiveSessionId(sessionId)
     }
@@ -156,7 +181,7 @@ export function useChatWorkspace() {
       clearStreaming(sessionId)
       delete abortRef.current[sessionId]
     }
-  }, [activeSessionId, addMessage, clearStreaming, setActiveSessionId, setIsStreaming, setMessages, setStreaming, updateSession, upsertSession])
+  }, [activeSessionId, addMessage, clearStreaming, draftExecutionMode, setActiveSessionId, setIsStreaming, setMessages, setStreaming, updateSession, upsertSession])
 
   const stop = useCallback(async (sessionId = activeSessionId) => {
     if (!sessionId) return
@@ -167,7 +192,7 @@ export function useChatWorkspace() {
     updateSession(sessionId, { status: 'stopped', updatedAt: new Date().toISOString() })
   }, [activeSessionId, clearStreaming, setIsStreaming, updateSession])
 
-  return { sessions, activeSession, streaming, isStreaming, loading, error, openSession, send, stop }
+  return { sessions, activeSession, streaming, isStreaming, loading, error, executionMode, openSession, send, stop, setExecutionMode }
 }
 
 async function pollForGeneratedTitle(

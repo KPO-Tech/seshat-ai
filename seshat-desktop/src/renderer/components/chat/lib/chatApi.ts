@@ -1,6 +1,6 @@
 import { api, SESHAT_BASE } from '@renderer/api/client'
 import { useAuthStore } from '@renderer/stores/auth'
-import type { ChatMessage, ChatSession, PlanDocument, StreamEvent } from './chatTypes'
+import type { ChatExecutionMode, ChatMessage, ChatSession, PlanDocument, StreamEvent } from './chatTypes'
 
 type BackendSession = {
   session_id: string
@@ -11,6 +11,7 @@ type BackendSession = {
   messages?: ChatMessage[]
   provider_setting_id?: string
   model_id?: string
+  execution_mode?: string
 }
 
 export async function fetchSessions() {
@@ -33,6 +34,12 @@ export async function createSession(params: { providerSettingId?: string; modelI
 
 export function interruptSession(id: string) {
   return api.post(`/sessions/${encodeURIComponent(id)}/interrupt`, {})
+}
+
+export function patchSessionMetadata(id: string, params: { executionMode?: ChatExecutionMode }) {
+  return api.patch(`/sessions/${encodeURIComponent(id)}`, {
+    execution_mode: params.executionMode
+  })
 }
 
 export function decideToolPermission(params: {
@@ -209,6 +216,12 @@ function sessionFromBackend(session: BackendSession): ChatSession {
     updatedAt: updated,
     status: session.status,
     providerSettingId: session.provider_setting_id,
-    modelId: session.model_id
+    modelId: session.model_id,
+    executionMode: normalizeExecutionMode(session.execution_mode)
   }
+}
+
+function normalizeExecutionMode(value?: string): ChatExecutionMode | undefined {
+  if (value === 'plan' || value === 'execute') return value
+  return undefined
 }
