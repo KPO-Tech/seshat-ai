@@ -1,3 +1,7 @@
+> **Archived 2026-09-16.** This specific nav proposal (Apps/Workspace/Projects hierarchy) was not implemented as written — the product instead settled on per-app top-level items (automation/companion/inbox/knowledge/scheduling/skills-creator/team, matching `Discussions/mvp`'s app taxonomy). Kept for historical context, not as a live plan.
+
+---
+
 # SeshatOS navigation redesign plan
 
 Last updated: 2026-08-02.

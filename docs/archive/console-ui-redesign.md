@@ -1,3 +1,7 @@
+> **Archived 2026-09-16.** This redesign pass is complete (see its own closing status table). The living successor is `docs/console-guides/`. Kept as a record of how the redesign was executed.
+
+---
+
 # seshat-console UI redesign — tracking doc
 
 Started 2026-09-03. The goal: bring `seshat-console` (the web admin app) to the

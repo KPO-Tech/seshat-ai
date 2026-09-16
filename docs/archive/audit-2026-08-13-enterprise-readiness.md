@@ -1,3 +1,7 @@
+> **Archived 2026-09-16.** All 4 phases of this audit are closed as of 2026-08-16 (see `docs/helps/roadmap.md`). Kept as a historical record.
+
+---
+
 # SeshatOS — Audit enterprise-readiness
 
 *Confrontation du retour manager avec l'état réel du code, sur les 5 dépôts (seshat, seshat-backend, seshat-server, seshat-ui, seshat-console). Aucune modification de code — analyse uniquement, chaque affirmation vérifiée directement dans le code, pas dans la documentation ou par supposition.*

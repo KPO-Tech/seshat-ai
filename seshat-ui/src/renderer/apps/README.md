@@ -1,3 +1,7 @@
+> **Note (2026-09-16).** This codebase is being superseded by `seshat-desktop` - see `seshat-ui/AGENTS.md`. Kept as reference, not a target for new work.
+
+---
+
 # SeshatOS Renderer Apps
 
 This directory contains product platforms inside SeshatOS.

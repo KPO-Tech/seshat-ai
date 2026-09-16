@@ -2,7 +2,9 @@
 
 Ce dossier documente les produits Seshat de façon concrète, un par un.
 
-Les documents de `docs/project/strategy/` gardent la vision globale, le modèle d'entreprise et la stratégie. Les documents de ce dossier servent à cadrer chaque produit comme une offre lisible : objectif, utilisateur cible, problème traité, cas d'usage, primitives fonctionnelles, limites du MVP, illustrations à produire et critères de succès.
+Les documents de ce dossier servent à cadrer chaque produit comme une offre lisible : objectif, utilisateur cible, problème traité, cas d'usage, primitives fonctionnelles, limites du MVP, illustrations à produire et critères de succès.
+
+La vision globale, le modèle d'entreprise et la stratégie du 20/08/2026 sont archivés dans `docs/archive/strategy/` (dépassés par le pivot vers `Discussions/mvp/`, hors de ce dépôt — c'est la source actuelle pour l'ordre MVP et la stratégie produit).
 
 Le principe directeur est simple : chaque produit doit pouvoir être expliqué par le problème métier qu'il résout, pas par la liste de fonctionnalités techniques qu'il expose.
 
@@ -38,11 +40,15 @@ Un sous-dossier de plateforme peut contenir :
 | [Chat principal - Audit UI](./chat/seshatos-main-chat-ui-audit.md) | Résolu (sauf perception du temps d'attente) | Chat principal SeshatOS - ne dépend d'aucune plateforme spécifique. |
 | [Agent Workflows](./platforms/automation/agent-workflows.md) | Premier cadrage | Orchestrer des agents métier gouvernés qui utilisent outils, connaissance et plateformes pour exécuter des processus mesurables. |
 | [Application Automation - Pages et fonctionnalités](./platforms/automation/automation-app-pages.md) | Cadrage fonctionnel | Structure de l'app Automation comme plateforme : pages, utilisateurs, fonctionnalités, cycle build/run/prove. |
+| [Automation - Editorial Canvas (design tokens)](./platforms/automation/design/seshat_editorial_canvas/DESIGN.md) | Export design | Tokens/palette Stitch pour le canevas éditorial Automation. |
 | [MVP Knowledge-to-Action](./platforms/knowledge/mvp-knowledge-to-action.md) | Premier cadrage | Premier périmètre vendable : documentation intelligente, Knowledge Intelligence, ASK/DISCOVER/ACT. |
 | [Application Knowledge - Pages et fonctionnalités](./platforms/knowledge/knowledge-app-pages.md) | Cadrage fonctionnel | Structure de l'app Knowledge comme plateforme : pages, utilisateurs, fonctionnalités, ASK/DISCOVER/ACT. |
+| [Knowledge - PRD complet](./platforms/knowledge/design/prd_seshatos_knowledge.md) | PRD | Vision produit détaillée : cycle collecter/connecter/rechercher/agir de l'app Knowledge. |
+| [Knowledge - Institutional Knowledge Architecture (design tokens)](./platforms/knowledge/design/seshatos_institutional_knowledge_architecture/DESIGN.md) | Export design | Tokens/palette Stitch pour l'architecture Knowledge institutionnelle. |
 | [Knowledge - Sources open source retenues](./platforms/knowledge/knowledge-sources-retenues.md) | Références | Projets open source à étudier pour améliorer le RAG, la recherche, le graph et la plateforme Knowledge. |
 | [Knowledge RAG - Améliorations retenues](./platforms/knowledge/knowledge-rag-improvements.md) | Analyse technique | Première analyse OpenSearch Go et piste d'intégration dans le moteur RAG/vector de Seshat. |
 | [Knowledge - Analyse backend MaxKB](./platforms/knowledge/knowledge-maxkb-backend-analysis.md) | Analyse technique | Étude du backend MaxKB comme référence d'architecture Knowledge. |
+| [Knowledge - Analyse connecteurs/permissions Onyx](./platforms/knowledge/knowledge-onyx-connectors-permissions-analysis.md) | Analyse technique | Étude d'Onyx comme référence prioritaire pour étendre connecteurs et modèle de permissions. |
 | [Knowledge - Roadmap produit](./platforms/knowledge/knowledge-roadmap.md) | Suivi | Progression et décisions de cadrage du chantier Knowledge MVP. |
 
 ## Règle de positionnement

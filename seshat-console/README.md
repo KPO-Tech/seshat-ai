@@ -2,7 +2,7 @@
 
 Web admin/ops frontend for `seshat-server` (the cloud control plane). Separate from `seshat-ui` (the desktop app, which never talks to `seshat-server` directly — only `seshat-backend` does).
 
-See `../docs/casdoor-frontend-mapping.md` for the reasoning behind the screen-by-screen build order and stack choice.
+See `../docs/archive/casdoor-frontend-mapping.md` for the reasoning behind the screen-by-screen build order and stack choice.
 
 ## Stack
 

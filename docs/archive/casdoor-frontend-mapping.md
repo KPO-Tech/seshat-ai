@@ -1,3 +1,7 @@
+> **Archived 2026-09-16.** This screen backlog is fully cleared (see root `ROADMAP.md`) — all Tier A/B/C domains it tracked are built and verified live. Kept as a build-order record.
+
+---
+
 # Casdoor Frontend Mapping For Seshat Server
 
 ## Goal

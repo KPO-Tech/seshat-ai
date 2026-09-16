@@ -1,3 +1,7 @@
+> **Archived 2026-09-16.** The IA regroup this describes shipped, but naming has since drifted (e.g. "AI Config" became "AI Core" — see `docs/console-guides/` for the current structure). Kept for historical context.
+
+---
+
 # Seshat Console — Target Information Architecture
 
 Updated 2026-07-14 after a direct code audit of `seshat-console` and a product-direction clarification: this console is not a general-purpose desktop UI, and not a temporary internal CRUD tool. It is the enterprise control plane for organizations that use `seshat-ui` through `seshat-backend` + `seshat-server`.
