@@ -3,6 +3,7 @@ import type { ToolUseBlock } from '../lib/chatTypes'
 import type { ToolPresentation } from './catalog/toolPresentation'
 import { CodePanel, getToolStatus, StatusPill, ToolGlyph, toolSnippet } from './ToolDetails'
 import { EditorLiveView } from './live/EditorLiveView'
+import { BrowserLiveView } from './live/browser/BrowserLiveView'
 import { TerminalLiveView } from './live/TerminalLiveView'
 
 export function LiveToolCard({ sessionId, tool, presentation }: { sessionId?: string; tool: ToolUseBlock; presentation: ToolPresentation }) {
@@ -46,6 +47,7 @@ export function LiveToolCard({ sessionId, tool, presentation }: { sessionId?: st
 }
 
 function LiveBody({ sessionId, tool, surface }: { sessionId?: string; tool: ToolUseBlock; surface: ToolPresentation['surface'] }) {
+  if (surface === 'browser') return <BrowserLiveView sessionId={sessionId} tool={tool} />
   if (surface === 'terminal') return <TerminalLiveView sessionId={sessionId} tool={tool} />
   if (surface === 'editor') return <EditorLiveView tool={tool} />
   return <GenericLiveBody tool={tool} />

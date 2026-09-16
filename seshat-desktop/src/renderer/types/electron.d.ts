@@ -63,6 +63,20 @@ declare global {
         status: (sessionId: string) => Promise<{ connected: boolean }>
         onEvent: (sessionId: string, listener: (event: TerminalRelayEvent) => void) => () => void
       }
+      browser?: {
+        show: (contextId: string, bounds?: BrowserPanelBounds) => Promise<BrowserPanelState>
+        hide: (contextId: string) => Promise<BrowserPanelState>
+        openUrl: (url: string, sessionId?: string) => Promise<BrowserOpenResult>
+        navigate: (contextId: string, url: string) => Promise<BrowserPanelState>
+        back: (contextId: string) => Promise<BrowserPanelState>
+        forward: (contextId: string) => Promise<BrowserPanelState>
+        reload: (contextId: string) => Promise<BrowserPanelState>
+        setBounds: (contextId: string, bounds: BrowserPanelBounds) => Promise<BrowserPanelState>
+        getState: (contextId: string) => Promise<BrowserPanelState>
+        newTab: (contextId: string, url?: string) => Promise<BrowserPanelState>
+        switchTab: (contextId: string, tabId: string) => Promise<BrowserPanelState>
+        onStateChange: (contextId: string, listener: (state: BrowserPanelState) => void) => () => void
+      }
       openExternal: (url: string) => Promise<void>
     }
   }
@@ -86,4 +100,33 @@ type TerminalRelayEvent = {
   message?: string
   exitCode?: number
   durationMs?: number
+}
+
+type BrowserPanelBounds = {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+type BrowserPanelTab = {
+  id: string
+  label: string
+  url: string
+  status: 'loading' | 'ready'
+  canGoBack: boolean
+  canGoForward: boolean
+}
+
+type BrowserPanelState = {
+  activeTabId: string | null
+  tabs: BrowserPanelTab[]
+}
+
+type BrowserOpenResult = {
+  provider: string
+  browser_url: string
+  target_id: string
+  tab_id: string
+  url: string
 }

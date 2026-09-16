@@ -1,15 +1,29 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import { join } from 'node:path'
 import { registerBackendHandlers } from './ipc/backend'
+import { createBrowserPanel } from './ipc/browser-panel'
 import { registerEnvVarsHandlers } from './ipc/env-vars'
 import { registerSecureStoreHandlers } from './ipc/secure-store'
 import { registerTerminalRelayHandlers } from './ipc/terminal-relay'
 import { registerWindowHandlers } from './ipc/window'
 
 const isDevelopment = !app.isPackaged
+const remoteDebugPort = Number.parseInt(process.env.SESHAT_ELECTRON_REMOTE_DEBUG_PORT || '9333', 10)
+let mainWindow: BrowserWindow | null = null
+
+if (Number.isFinite(remoteDebugPort) && remoteDebugPort > 0) {
+  app.commandLine.appendSwitch('remote-debugging-port', String(remoteDebugPort))
+  app.commandLine.appendSwitch('remote-debugging-address', '127.0.0.1')
+  process.env.SESHAT_ELECTRON_REMOTE_DEBUG_PORT = String(remoteDebugPort)
+}
+
+const browserPanel = createBrowserPanel({
+  getWindow: () => mainWindow,
+  remoteDebugPort
+})
 
 function createWindow(): void {
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1320,
     height: 860,
     minWidth: 1040,
@@ -41,6 +55,7 @@ function createWindow(): void {
 app.whenReady().then(() => {
   registerSecureStoreHandlers(ipcMain)
   registerBackendHandlers(ipcMain)
+  browserPanel.registerIpc(ipcMain)
   registerEnvVarsHandlers(ipcMain)
   registerTerminalRelayHandlers(ipcMain)
   registerWindowHandlers(ipcMain)
@@ -53,4 +68,8 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
+})
+
+app.on('before-quit', () => {
+  browserPanel.destroy()
 })
