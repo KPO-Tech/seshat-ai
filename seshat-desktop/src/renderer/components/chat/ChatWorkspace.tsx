@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import type { User } from '@renderer/api/types'
+import { useBrowserStore } from '@renderer/stores/browser'
 import { useTerminalStore } from '@renderer/stores/terminal'
 import type { ChatExecutionMode } from './lib/chatTypes'
 import { ChatInput } from './ChatInput'
@@ -13,12 +14,18 @@ export function ChatWorkspace({ user }: { user: User }) {
   const isEmpty = !activeSession || activeSession.messages.length === 0
   const models = useChatModels(activeSession?.modelId)
   const selectedModel = models.selected
+  const ingestBrowserBlocks = useBrowserStore((state) => state.ingestBlocks)
   const attachTerminalSession = useTerminalStore((state) => state.attachSession)
 
   useEffect(() => {
     if (!activeSession?.id) return
     void attachTerminalSession(activeSession.id)
   }, [activeSession?.id, attachTerminalSession])
+
+  useEffect(() => {
+    if (!activeSession?.id) return
+    ingestBrowserBlocks(activeSession.id, activeSession.messages.flatMap((message) => message.content))
+  }, [activeSession?.id, activeSession?.messages, ingestBrowserBlocks])
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">

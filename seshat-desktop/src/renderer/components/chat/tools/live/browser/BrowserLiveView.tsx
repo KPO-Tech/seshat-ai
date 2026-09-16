@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useBrowserStore, type BrowserActionRun } from '@renderer/stores/browser'
 import type { ToolUseBlock } from '../../../lib/chatTypes'
 import { browserActionLabel, browserContextId, browserTargetFromTool } from './browserTools'
 
@@ -24,6 +25,8 @@ export function BrowserLiveView({ sessionId, tool }: { sessionId?: string; tool:
   const [address, setAddress] = useState(browserTargetFromTool(tool) || 'https://www.google.com/')
   const [error, setError] = useState<string | null>(null)
   const target = browserTargetFromTool(tool)
+  const actions = useBrowserStore((store) => sessionId ? store.sessions[sessionId]?.actions ?? [] : [])
+  const visibleActions = actions.length > 0 ? actions : [fallbackAction(tool)]
   const activeTab = state?.tabs.find((tab) => tab.id === state.activeTabId) ?? state?.tabs[0] ?? null
 
   const syncBounds = useCallback(() => {
@@ -77,7 +80,7 @@ export function BrowserLiveView({ sessionId, tool }: { sessionId?: string; tool:
   }, [browserApi, contextId, syncBounds])
 
   useEffect(() => {
-    if (!browserApi || !target) return
+    if (!browserApi || !target || !shouldOpenTarget(tool.name, target)) return
     setAddress(target)
     void browserApi.openUrl(target, sessionId).then((result) => {
       setAddress(result.url)
@@ -142,6 +145,23 @@ export function BrowserLiveView({ sessionId, tool }: { sessionId?: string; tool:
         </div>
       )}
 
+      <div className="no-scrollbar flex gap-1.5 overflow-x-auto border-b border-[var(--border-soft)] px-2.5 py-2">
+        {visibleActions.slice(-10).map((action) => (
+          <div
+            key={action.id}
+            className="flex max-w-[230px] shrink-0 items-center gap-2 rounded-md border border-[var(--border-soft)] bg-[var(--surface-muted)] px-2 py-1.5"
+          >
+            <span className={actionDotClass(action.status)} />
+            <span className="min-w-0">
+              <span className="block truncate text-[11px] font-semibold text-[var(--text-primary)]">{action.label}</span>
+              {(action.target || action.message) && (
+                <span className="block truncate text-[10px] text-[var(--text-muted)]">{action.target || action.message}</span>
+              )}
+            </span>
+          </div>
+        ))}
+      </div>
+
       {error ? (
         <div className="m-3 rounded-md border border-[var(--accent-danger)]/40 bg-[var(--accent-danger)]/10 px-3 py-2 text-[12px] font-semibold text-[var(--accent-danger)]">
           {error}
@@ -154,6 +174,31 @@ export function BrowserLiveView({ sessionId, tool }: { sessionId?: string; tool:
 }
 
 const buttonClass = 'flex size-8 shrink-0 items-center justify-center rounded-md border border-[var(--border-soft)] bg-[var(--surface-muted)] text-[var(--text-secondary)] transition hover:text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-40'
+
+function shouldOpenTarget(toolName: string, target: string) {
+  const name = toolName.toLowerCase()
+  if (!name.includes('open') && !name.includes('navigate')) return false
+  return /^https?:\/\//i.test(target) || /^[^\s]+\.[^\s]+$/.test(target) || /^localhost(:\d+)?/i.test(target)
+}
+
+function fallbackAction(tool: ToolUseBlock): BrowserActionRun {
+  return {
+    id: tool.id,
+    name: tool.name,
+    label: browserActionLabel(tool),
+    status: tool._status === 'completed' || tool._result ? 'completed' : tool._status === 'failed' ? 'failed' : 'running',
+    target: browserTargetFromTool(tool),
+    message: tool._progress?.summary || tool._progress?.message || tool._message || '',
+    startedAt: Date.now()
+  }
+}
+
+function actionDotClass(status: BrowserActionRun['status']) {
+  if (status === 'running') return 'size-1.5 shrink-0 rounded-full bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-primary)]'
+  if (status === 'completed') return 'size-1.5 shrink-0 rounded-full bg-[var(--accent-success)]'
+  if (status === 'failed') return 'size-1.5 shrink-0 rounded-full bg-[var(--accent-danger)]'
+  return 'size-1.5 shrink-0 rounded-full bg-[var(--text-muted)]'
+}
 
 function ArrowLeftIcon() {
   return (
