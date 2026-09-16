@@ -5,7 +5,7 @@ import { CodePanel, getToolStatus, StatusPill, ToolGlyph, toolSnippet } from './
 import { EditorLiveView } from './live/EditorLiveView'
 import { TerminalLiveView } from './live/TerminalLiveView'
 
-export function LiveToolCard({ tool, presentation }: { tool: ToolUseBlock; presentation: ToolPresentation }) {
+export function LiveToolCard({ sessionId, tool, presentation }: { sessionId?: string; tool: ToolUseBlock; presentation: ToolPresentation }) {
   const [open, setOpen] = useState(Boolean(presentation.initiallyOpen))
   const status = getToolStatus(tool)
   const snippet = tool._progress?.summary || tool._progress?.message || toolSnippet(tool)
@@ -38,15 +38,15 @@ export function LiveToolCard({ tool, presentation }: { tool: ToolUseBlock; prese
       </button>
       {open && (
         <div className="grid gap-2 border-t border-[var(--border-soft)] p-3">
-          <LiveBody tool={tool} surface={presentation.surface} />
+          <LiveBody sessionId={sessionId} tool={tool} surface={presentation.surface} />
         </div>
       )}
     </div>
   )
 }
 
-function LiveBody({ tool, surface }: { tool: ToolUseBlock; surface: ToolPresentation['surface'] }) {
-  if (surface === 'terminal') return <TerminalLiveView tool={tool} />
+function LiveBody({ sessionId, tool, surface }: { sessionId?: string; tool: ToolUseBlock; surface: ToolPresentation['surface'] }) {
+  if (surface === 'terminal') return <TerminalLiveView sessionId={sessionId} tool={tool} />
   if (surface === 'editor') return <EditorLiveView tool={tool} />
   return <GenericLiveBody tool={tool} />
 }

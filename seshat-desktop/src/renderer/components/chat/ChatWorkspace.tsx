@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import type { User } from '@renderer/api/types'
 import type { ChatExecutionMode } from './lib/chatTypes'
 import { ChatInput } from './ChatInput'
@@ -11,6 +12,11 @@ export function ChatWorkspace({ user }: { user: User }) {
   const isEmpty = !activeSession || activeSession.messages.length === 0
   const models = useChatModels(activeSession?.modelId)
   const selectedModel = models.selected
+
+  useEffect(() => {
+    if (!activeSession?.id) return
+    void window.nexus?.terminalRelay?.connect(activeSession.id).catch(() => undefined)
+  }, [activeSession?.id])
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">

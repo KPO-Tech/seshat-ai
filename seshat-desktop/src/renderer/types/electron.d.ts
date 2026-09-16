@@ -57,6 +57,12 @@ declare global {
           listener: (event: { name: string; data: Record<string, unknown> }) => void
         ) => () => void
       }
+      terminalRelay?: {
+        connect: (sessionId: string) => Promise<{ ok: boolean; connected: boolean }>
+        disconnect: (sessionId: string) => Promise<void>
+        status: (sessionId: string) => Promise<{ connected: boolean }>
+        onEvent: (sessionId: string, listener: (event: TerminalRelayEvent) => void) => () => void
+      }
       openExternal: (url: string) => Promise<void>
     }
   }
@@ -67,4 +73,17 @@ type AuthUser = {
   email: string
   display_name: string
   status: string
+}
+
+type TerminalRelayEvent = {
+  sessionId: string
+  type: 'connected' | 'disconnected' | 'command_start' | 'data' | 'command_end' | 'error' | string
+  commandId?: string
+  command?: string
+  cwd?: string
+  stream?: 'stdout' | 'stderr'
+  data?: string
+  message?: string
+  exitCode?: number
+  durationMs?: number
 }

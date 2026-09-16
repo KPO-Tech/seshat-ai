@@ -42,7 +42,33 @@ const nexus = {
       return () => ipcRenderer.removeListener('http:stream:event', handler)
     }
   },
+  terminalRelay: {
+    connect: (sessionId: string): Promise<{ ok: boolean; connected: boolean }> => ipcRenderer.invoke('terminal-relay:connect', sessionId),
+    disconnect: (sessionId: string): Promise<void> => ipcRenderer.invoke('terminal-relay:disconnect', sessionId),
+    status: (sessionId: string): Promise<{ connected: boolean }> => ipcRenderer.invoke('terminal-relay:status', sessionId),
+    onEvent: (sessionId: string, listener: (event: TerminalRelayEvent) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, payload: TerminalRelayEvent) => {
+        if (payload.sessionId !== sessionId) return
+        listener(payload)
+      }
+      ipcRenderer.on('terminal-relay:event', handler)
+      return () => ipcRenderer.removeListener('terminal-relay:event', handler)
+    }
+  },
   openExternal: (url: string) => ipcRenderer.invoke('system:open-external', url)
+}
+
+type TerminalRelayEvent = {
+  sessionId: string
+  type: string
+  commandId?: string
+  command?: string
+  cwd?: string
+  stream?: 'stdout' | 'stderr'
+  data?: string
+  message?: string
+  exitCode?: number
+  durationMs?: number
 }
 
 function appVersion(): string {

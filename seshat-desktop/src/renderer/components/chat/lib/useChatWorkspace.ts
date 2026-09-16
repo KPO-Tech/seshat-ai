@@ -108,6 +108,7 @@ export function useChatWorkspace() {
       setActiveSessionId(sessionId)
     }
     if (useChatStore.getState().isSessionStreaming(sessionId)) return
+    await window.nexus?.terminalRelay?.connect(sessionId).catch(() => undefined)
     clearStreaming(sessionId)
 
     const userMessage: ChatMessage = {

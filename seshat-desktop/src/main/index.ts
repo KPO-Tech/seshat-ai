@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { registerBackendHandlers } from './ipc/backend'
 import { registerEnvVarsHandlers } from './ipc/env-vars'
 import { registerSecureStoreHandlers } from './ipc/secure-store'
+import { registerTerminalRelayHandlers } from './ipc/terminal-relay'
 import { registerWindowHandlers } from './ipc/window'
 
 const isDevelopment = !app.isPackaged
@@ -41,6 +42,7 @@ app.whenReady().then(() => {
   registerSecureStoreHandlers(ipcMain)
   registerBackendHandlers(ipcMain)
   registerEnvVarsHandlers(ipcMain)
+  registerTerminalRelayHandlers(ipcMain)
   registerWindowHandlers(ipcMain)
   createWindow()
 
