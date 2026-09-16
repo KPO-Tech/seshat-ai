@@ -8,8 +8,26 @@ export type ToolUseBlock = {
   _status?: 'pending' | 'running' | 'completed' | 'failed' | 'awaiting_approval'
   _result?: ToolResult
   _partialInput?: string
+  _message?: string
+  _approval?: ToolApproval
+  _prompt?: ToolPromptRequest
 }
 export type ToolResultBlock = { type: 'tool_result'; tool_use_id?: string; content?: string; is_error?: boolean }
+
+export type ToolApproval = {
+  toolUseId: string
+  toolName: string
+  toolInput: Record<string, unknown>
+  description?: string
+}
+
+export type ToolPromptRequest = {
+  promptId: string
+  type?: string
+  message?: string
+  options?: Array<{ label: string; value?: string; description?: string }>
+  metadata?: Record<string, unknown>
+}
 
 export type ChatContentBlock = TextBlock | ThinkingBlock | ToolUseBlock | ToolResultBlock
 
@@ -49,8 +67,10 @@ export type ToolResult = {
   tool_use_id?: string
   content: string
   is_error?: boolean
+  isError?: boolean
   duration_ms?: number
   durationMs?: number
+  metadata?: Record<string, unknown>
 }
 
 export type StreamingBlock = TextBlock | ThinkingBlock | ToolUseBlock
