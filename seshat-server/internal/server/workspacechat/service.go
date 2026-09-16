@@ -72,11 +72,13 @@ type Service struct {
 }
 
 type chatSession struct {
-	client     *sdk.Client
-	sdkSession *sdk.Session
-	provider   string
-	model      string
-	lastUsed   time.Time
+	client         *sdk.Client
+	sdkSession     *sdk.Session
+	userID         string
+	organizationID string
+	provider       string
+	model          string
+	lastUsed       time.Time
 }
 
 func New(database *sdb.DB, iamService *iam.Service, automationService *automation.Service, webSearchService *websearchsettings.Service, knowledgeService *knowledge.Service, mcpRegistryService *mcpregistry.Service, doclingURL string) *Service {
@@ -171,6 +173,10 @@ func (s *Service) StreamChat(ctx context.Context, principal *iam.Principal, para
 		return apperr.Forbidden("not a member of this organization")
 	}
 
+	if _, err := s.loadOwnedSession(ctx, principal, params.OrganizationID, params.SessionID); err != nil {
+		return err
+	}
+
 	sess, err := s.getOrCreateSession(ctx, principal, params)
 	if err != nil {
 		return err
@@ -219,6 +225,28 @@ func (s *Service) StreamChat(ctx context.Context, principal *iam.Principal, para
 	return nil
 }
 
+// loadOwnedSession loads sessionID's persisted row and verifies it belongs
+// to principal within organizationID - the single place this check happens,
+// reused by every path that resumes, caches, or writes to an
+// already-existing session so the rule can't be forgotten in one of them.
+// A nil, nil return means the session doesn't exist yet: a legitimate new
+// conversation, not something to reject - persistTurn's create-path below
+// is what actually assigns it an owner, on its first turn.
+func (s *Service) loadOwnedSession(ctx context.Context, principal *iam.Principal, organizationID, sessionID string) (*sdb.WorkspaceChatSession, error) {
+	var session sdb.WorkspaceChatSession
+	err := s.db.Gorm().WithContext(ctx).Where("id = ?", sessionID).First(&session).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if session.UserID != principal.User.ID || session.OrganizationID != organizationID {
+		return nil, apperr.Forbidden("session belongs to a different user or organization")
+	}
+	return &session, nil
+}
+
 // persistTurn saves the user's message and the assistant's recorded events
 // for this turn, creating the session row on its first message. Best-effort
 // like the RAG/web-search credential lookups above - a persistence failure
@@ -241,6 +269,9 @@ func (s *Service) persistTurn(ctx context.Context, principal *iam.Principal, par
 		case err != nil:
 			return err
 		default:
+			if session.UserID != principal.User.ID || session.OrganizationID != params.OrganizationID {
+				return apperr.Forbidden("session belongs to a different user or organization")
+			}
 			if err := tx.Model(&session).Update("updated_at", now).Error; err != nil {
 				return err
 			}
@@ -469,7 +500,8 @@ func (s *Service) getOrCreateSession(ctx context.Context, principal *iam.Princip
 	mcpServers := s.resolveMCPServers(ctx, principal, params.OrganizationID)
 
 	s.mu.Lock()
-	if existing, ok := s.sessions[params.SessionID]; ok && existing.provider == params.Provider && existing.model == params.Model {
+	if existing, ok := s.sessions[params.SessionID]; ok && existing.provider == params.Provider && existing.model == params.Model &&
+		existing.userID == principal.User.ID && existing.organizationID == params.OrganizationID {
 		existing.lastUsed = time.Now()
 		s.mu.Unlock()
 		if err := existing.client.ReloadMCPServers(ctx, mcpServers); err != nil {
@@ -541,6 +573,7 @@ func (s *Service) getOrCreateSession(ctx context.Context, principal *iam.Princip
 	}
 	s.sessions[params.SessionID] = &chatSession{
 		client: client, sdkSession: sdkSession,
+		userID: principal.User.ID, organizationID: params.OrganizationID,
 		provider: params.Provider, model: params.Model, lastUsed: time.Now(),
 	}
 	s.evictStaleLocked()

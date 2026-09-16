@@ -74,7 +74,7 @@ func TestListSessionsReturnsSummariesAcrossMembers(t *testing.T) {
 	// second-level timestamp precision otherwise makes ordering flaky, same
 	// pitfall already hit and fixed for prospecting's own ListSweeps test.
 	time.Sleep(1100 * time.Millisecond)
-	env.chat.persistTurn(context.Background(), env.adminPrincipal, StreamChatParams{SessionID: "sess-admin", Message: "Follow-up"}, "Follow-up answer", nil)
+	env.chat.persistTurn(context.Background(), env.adminPrincipal, StreamChatParams{SessionID: "sess-admin", OrganizationID: env.orgID, Message: "Follow-up"}, "Follow-up answer", nil)
 
 	sessions, total, err := env.chat.ListSessions(context.Background(), env.adminPrincipal, env.orgID, sdb.ListParams{Sort: "updated_at", Order: "desc", Limit: 20})
 	if err != nil {
