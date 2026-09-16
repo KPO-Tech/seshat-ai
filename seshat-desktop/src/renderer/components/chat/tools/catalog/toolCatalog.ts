@@ -1,4 +1,4 @@
-import type { ToolUseBlock } from './chatTypes'
+import type { ToolUseBlock } from '../../lib/chatTypes'
 import { humanizeToolName } from './toolPresentation'
 
 export type ToolCategory = 'read' | 'search' | 'data' | 'memory' | 'mcp' | 'media' | 'automation' | 'other'

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { ToolUseBlock } from '../lib/chatTypes'
-import { isSilentTool, toolLabel } from '../lib/toolCatalog'
-import type { ToolPresentation } from '../lib/toolPresentation'
+import { isSilentTool, toolLabel } from './catalog/toolCatalog'
+import type { ToolPresentation } from './catalog/toolPresentation'
 import { getToolStatus, StatusPill, ToolGlyph, compactToolLabel, toolResultSubtitle, toolSnippet } from './ToolDetails'
 import { ToolBody } from './ToolBody'
 

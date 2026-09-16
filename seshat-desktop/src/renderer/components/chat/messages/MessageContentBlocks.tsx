@@ -1,8 +1,8 @@
 import type { ChatContentBlock, ToolUseBlock } from '../lib/chatTypes'
-import { isGroupableTool } from '../lib/toolCatalog'
-import { getToolPresentation } from '../lib/toolPresentation'
-import { QuietToolGroup } from './QuietToolGroup'
-import { ToolRenderer } from './ToolRenderer'
+import { isGroupableTool } from '../tools/catalog/toolCatalog'
+import { getToolPresentation } from '../tools/catalog/toolPresentation'
+import { QuietToolGroup } from '../tools/QuietToolGroup'
+import { ToolRenderer } from '../tools/ToolRenderer'
 
 export function MessageContentBlocks({ blocks }: { blocks: ChatContentBlock[] }) {
   const items = groupBlocks(blocks)

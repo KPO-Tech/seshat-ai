@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ToolUseBlock } from '../lib/chatTypes'
-import { parseMcpName, toolEntry } from '../lib/toolCatalog'
+import { parseMcpName, toolEntry } from './catalog/toolCatalog'
 import { CodePanel, formatDuration, hostFromUrl, prettyJsonOrRaw } from './ToolDetails'
 
 export function ToolBody({ tool }: { tool: ToolUseBlock }) {

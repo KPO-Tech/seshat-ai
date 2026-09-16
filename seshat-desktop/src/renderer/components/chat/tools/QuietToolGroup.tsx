@@ -1,5 +1,5 @@
 import type { ToolUseBlock } from '../lib/chatTypes'
-import { toolCategory } from '../lib/toolCatalog'
+import { toolCategory } from './catalog/toolCatalog'
 import { ToolRenderer } from './ToolRenderer'
 
 export function QuietToolGroup({ tools }: { tools: ToolUseBlock[] }) {

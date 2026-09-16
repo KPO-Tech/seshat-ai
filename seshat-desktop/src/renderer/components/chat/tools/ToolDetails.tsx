@@ -1,6 +1,6 @@
 import type { ToolUseBlock } from '../lib/chatTypes'
-import { catalogSnippet, toolCategory, toolLabel } from '../lib/toolCatalog'
-import type { LiveToolSurface } from '../lib/toolPresentation'
+import { catalogSnippet, toolCategory, toolLabel } from './catalog/toolCatalog'
+import type { LiveToolSurface } from './catalog/toolPresentation'
 
 export function getToolStatus(tool: ToolUseBlock) {
   return tool._result?.is_error || tool._result?.isError ? 'failed' : tool._status ?? (tool._result ? 'completed' : 'running')

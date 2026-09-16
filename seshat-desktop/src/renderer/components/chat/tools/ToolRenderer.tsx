@@ -1,5 +1,5 @@
 import type { ToolUseBlock } from '../lib/chatTypes'
-import { getToolPresentation } from '../lib/toolPresentation'
+import { getToolPresentation } from './catalog/toolPresentation'
 import { AgentActivityCard } from './AgentActivityCard'
 import { LiveToolCard } from './LiveToolCard'
 import { ToolCard } from './ToolCard'
