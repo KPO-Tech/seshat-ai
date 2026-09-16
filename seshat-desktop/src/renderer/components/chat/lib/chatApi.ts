@@ -1,6 +1,6 @@
 import { api, SESHAT_BASE } from '@renderer/api/client'
 import { useAuthStore } from '@renderer/stores/auth'
-import type { ChatMessage, ChatSession, StreamEvent } from './chatTypes'
+import type { ChatMessage, ChatSession, PlanDocument, StreamEvent } from './chatTypes'
 
 type BackendSession = {
   session_id: string
@@ -41,13 +41,28 @@ export function decideToolPermission(params: {
   approved: boolean
   remember?: boolean
   reason?: string
+  planId?: string
 }) {
   return api.post(`/permissions/${encodeURIComponent(params.toolUseId)}`, {
     session_id: params.sessionId,
     approved: params.approved,
     remember: params.remember,
-    reason: params.reason
+    reason: params.reason,
+    plan_id: params.planId
   })
+}
+
+export async function fetchPlan(id: string) {
+  return api.get<PlanDocument>(`/plans/${encodeURIComponent(id)}`)
+}
+
+export async function fetchSessionPlans(sessionId: string) {
+  const result = await api.get<{ plans: PlanDocument[] }>(`/plans?session_id=${encodeURIComponent(sessionId)}`)
+  return result.plans ?? []
+}
+
+export async function patchPlan(id: string, params: { content?: string; status?: PlanDocument['status'] }) {
+  return api.patch<PlanDocument>(`/plans/${encodeURIComponent(id)}`, params)
 }
 
 export function respondToPrompt(params: {

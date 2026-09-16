@@ -69,7 +69,8 @@ function applyPermissionRequest(blocks: StreamingBlock[], request?: RuntimePermi
     toolUseId,
     toolName,
     toolInput,
-    description: request.description
+    description: request.description,
+    metadata: request.metadata
   }
   const index = blocks.findIndex((block) => block.type === 'tool_use' && block.id === toolUseId)
   const next: ToolUseBlock = {

@@ -1,11 +1,18 @@
 import { useState } from 'react'
 import { decideToolPermission, respondToPrompt } from '../lib/chatApi'
 import type { ToolUseBlock } from '../lib/chatTypes'
+import { AskUserPromptBody } from './askUser/AskUserPromptBody'
+import { AskUserSummary } from './askUser/AskUserSummary'
 import { parseMcpName, toolEntry } from './catalog/toolCatalog'
+import { PlanArtifactCard } from './plan/PlanArtifactCard'
+import { planIdFromTool } from './plan/planUtils'
 import { CodePanel, formatDuration, hostFromUrl, prettyJsonOrRaw } from './ToolDetails'
 
 export function ToolBody({ sessionId, tool }: { sessionId?: string; tool: ToolUseBlock }) {
+  if (tool.name === 'submit_plan') return <PlanArtifactCard sessionId={sessionId} tool={tool} />
+  if (tool._approval && planIdFromTool(tool)) return <PlanArtifactCard sessionId={sessionId} tool={tool} />
   if (tool._approval) return <ApprovalBody sessionId={sessionId} tool={tool} />
+  if (tool.name === 'ask_user_question' && tool._prompt && !tool._result?.content) return <AskUserPromptBody sessionId={sessionId} tool={tool} />
   if (tool._prompt && !tool._result?.content) return <PromptBody sessionId={sessionId} tool={tool} />
 
   const body = toolEntry(tool.name).body ?? 'generic'
@@ -37,7 +44,8 @@ function ApprovalBody({ sessionId, tool }: { sessionId?: string; tool: ToolUseBl
         sessionId,
         approved,
         remember,
-        reason: approved ? '' : reason.trim()
+        reason: approved ? '' : reason.trim(),
+        planId: planIdFromTool(tool) || undefined
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Decision failed.')
@@ -280,14 +288,7 @@ function McpBody({ tool }: { tool: ToolUseBlock }) {
 }
 
 function AskUserBody({ tool }: { tool: ToolUseBlock }) {
-  const question = tool._prompt?.message || (typeof tool.input.question === 'string' ? tool.input.question : '')
-  return (
-    <div className="grid gap-2">
-      {question && <div className="rounded-md bg-[var(--surface-muted)] px-3 py-2 text-[12px] font-semibold text-[var(--text-primary)]">{question}</div>}
-      {tool._result?.content && <CodePanel title="Answer" value={tool._result.content} />}
-      {!tool._result?.content && <CodePanel title="Input" value={tool.input} />}
-    </div>
-  )
+  return <AskUserSummary tool={tool} />
 }
 
 function Favicon({ domain }: { domain: string }) {

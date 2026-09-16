@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import type { ChatContentBlock, ToolUseBlock } from '../lib/chatTypes'
-import { isGroupableTool } from '../tools/catalog/toolCatalog'
+import { isGroupableTool, isHiddenTool } from '../tools/catalog/toolCatalog'
 import { getToolPresentation } from '../tools/catalog/toolPresentation'
 import { QuietToolGroup } from '../tools/QuietToolGroup'
 import { ToolRenderer } from '../tools/ToolRenderer'
 
 export function MessageContentBlocks({ sessionId, blocks, live = false }: { sessionId?: string; blocks: ChatContentBlock[]; live?: boolean }) {
-  const items = groupBlocks(blocks)
+  const visibleBlocks = blocks.filter((block) => block.type !== 'tool_use' || block._approval || block._prompt || !isHiddenTool(block.name))
+  const items = groupBlocks(visibleBlocks)
   return (
     <>
       {items.map((item, index) => {

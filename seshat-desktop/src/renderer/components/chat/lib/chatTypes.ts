@@ -20,6 +20,7 @@ export type ToolApproval = {
   toolName: string
   toolInput: Record<string, unknown>
   description?: string
+  metadata?: Record<string, unknown>
 }
 
 export type ToolPromptRequest = {
@@ -145,6 +146,7 @@ export type RuntimePermissionRequest = {
   tool_input?: Record<string, unknown>
   toolInput?: Record<string, unknown>
   description?: string
+  metadata?: Record<string, unknown>
 }
 
 export type RuntimePromptRequest = {
@@ -153,4 +155,16 @@ export type RuntimePromptRequest = {
   options?: Array<{ label: string; value?: unknown; description?: string }>
   default?: unknown
   metadata?: Record<string, unknown>
+}
+
+export type PlanDocument = {
+  id: string
+  session_id: string
+  slug: string
+  filename: string
+  content: string
+  status: 'pending' | 'validated' | 'rejected' | string
+  version: number
+  created_at: number
+  updated_at: number
 }

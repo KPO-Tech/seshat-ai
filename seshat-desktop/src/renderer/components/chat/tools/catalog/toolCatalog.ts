@@ -8,7 +8,8 @@ export type ToolCatalogEntry = {
   category?: ToolCategory
   silent?: boolean
   groupable?: boolean
-  body?: 'generic' | 'json' | 'prose' | 'web_search' | 'web_fetch' | 'rag' | 'mcp' | 'ask_user'
+  hidden?: boolean
+  body?: 'generic' | 'json' | 'prose' | 'web_search' | 'web_fetch' | 'rag' | 'mcp' | 'ask_user' | 'plan'
   snippet?: (tool: ToolUseBlock) => string
 }
 
@@ -29,6 +30,11 @@ const registry: Record<string, ToolCatalogEntry> = {
   rag_ingest: { label: 'Knowledge Ingest', category: 'data', silent: true, snippet: (tool) => str(tool, 'corpus_id') },
 
   ask_user_question: { label: 'Ask User', groupable: false, body: 'ask_user', snippet: askUserSnippet },
+  enter_plan_mode: { label: 'Plan Mode', hidden: true, silent: true },
+  exit_plan_mode: { label: 'Exit Plan Mode', hidden: true, silent: true },
+  enter_pair_programming_mode: { label: 'Pair Programming', hidden: true, silent: true },
+  exit_pair_programming_mode: { label: 'Exit Pair Programming', hidden: true, silent: true },
+  submit_plan: { label: 'Submit Plan', category: 'data', silent: true, groupable: false, body: 'plan', snippet: submitPlanSnippet },
   tool_search: { label: 'Tool Search', category: 'search', silent: true, snippet: (tool) => str(tool, 'query') },
   skill: { label: 'Skill', category: 'data', silent: true, snippet: (tool) => str(tool, 'skill') },
   config: { label: 'Config', category: 'data', silent: true, snippet: (tool) => str(tool, 'key') },
@@ -82,6 +88,10 @@ export function toolEntry(name: string): ToolCatalogEntry {
 
 export function isSilentTool(name: string) {
   return Boolean(toolEntry(name).silent)
+}
+
+export function isHiddenTool(name: string) {
+  return Boolean(toolEntry(name).hidden)
 }
 
 export function isGroupableTool(name: string) {
@@ -138,6 +148,10 @@ function askUserSnippet(tool: ToolUseBlock): string {
   if (!Array.isArray(questions) || questions.length === 0) return ''
   const first = questions[0]
   return first && typeof first === 'object' && 'question' in first && typeof first.question === 'string' ? first.question : ''
+}
+
+function submitPlanSnippet(tool: ToolUseBlock): string {
+  return str(tool, 'slug').replace(/-/g, ' ') || str(tool, 'filename')
 }
 
 function mcpSnippet(tool: ToolUseBlock): string {

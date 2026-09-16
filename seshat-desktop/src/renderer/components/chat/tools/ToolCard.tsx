@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import type { ToolUseBlock } from '../lib/chatTypes'
 import { isSilentTool, toolLabel } from './catalog/toolCatalog'
 import type { ToolPresentation } from './catalog/toolPresentation'
+import { PlanArtifactCard } from './plan/PlanArtifactCard'
+import { planIdFromTool } from './plan/planUtils'
 import { getToolStatus, StatusPill, ToolGlyph, compactToolLabel, toolResultSubtitle, toolSnippet } from './ToolDetails'
 import { ToolBody } from './ToolBody'
 
@@ -57,6 +59,10 @@ function SilentToolLine({
 }) {
   const status = getToolStatus(tool)
   const failed = status === 'failed'
+  if (tool.name === 'submit_plan' && !failed && planIdFromTool(tool)) {
+    return <div className={grouped ? '' : 'my-1.5'}><PlanArtifactCard sessionId={sessionId} tool={tool} readOnly /></div>
+  }
+
   const subtitle = toolResultSubtitle(tool)
   const snippet = toolSnippet(tool)
   const canOpen = isActiveStatus(status) || failed || Boolean(tool._result?.content) || Boolean(tool._partialInput)
