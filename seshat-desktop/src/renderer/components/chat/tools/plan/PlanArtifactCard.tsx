@@ -33,8 +33,12 @@ export function PlanArtifactCard({ sessionId, tool, readOnly = false }: Props) {
     }
   }, [planId])
 
-  const title = plan ? planTitleFromSlug(plan.slug) : submitPlanName(tool)
-  const status = plan?.status ?? (tool._result ? 'submitted' : 'pending')
+  const embeddedPlan = tool._plan
+  const title = plan ? planTitleFromSlug(plan.slug) : embeddedPlan?.slug ? planTitleFromSlug(embeddedPlan.slug) : submitPlanName(tool)
+  const status = plan?.status ?? embeddedPlan?.status ?? (tool._result ? 'submitted' : 'pending')
+  const content = plan?.content || embeddedPlan?.content || ''
+  const filename = plan?.filename || embeddedPlan?.filename
+  const version = plan?.version ?? embeddedPlan?.version
   const canReview = !readOnly && Boolean(sessionId && planId && tool._approval)
 
   async function decide(approved: boolean) {
@@ -67,7 +71,7 @@ export function PlanArtifactCard({ sessionId, tool, readOnly = false }: Props) {
             <span className={statusClass(status)}>{status}</span>
           </span>
           <span className="mt-0.5 block truncate text-[11px] text-[var(--text-muted)]">
-            {plan ? `${plan.filename} v${plan.version}` : planId ? 'Loading plan' : 'Plan document'}
+            {filename ? `${filename}${version ? ` v${version}` : ''}` : planId ? 'Loading plan' : 'Plan document'}
           </span>
         </span>
         <span className="flex items-center px-3 text-[11px] font-semibold text-[var(--text-muted)]">{open ? 'Hide' : 'Review'}</span>
@@ -76,8 +80,8 @@ export function PlanArtifactCard({ sessionId, tool, readOnly = false }: Props) {
       {open && (
         <div className="grid gap-3 border-t border-[var(--border-soft)] p-3">
           {error && <div className="rounded-md border border-[var(--accent-danger)]/35 bg-[var(--accent-danger)]/8 px-3 py-2 text-[12px] font-semibold text-[var(--accent-danger)]">{error}</div>}
-          {plan?.content ? (
-            <div className="no-scrollbar max-h-[360px] overflow-auto rounded-md bg-[var(--surface-muted)] px-3 py-2 text-[12px] leading-6 text-[var(--text-secondary)] whitespace-pre-wrap">{plan.content}</div>
+          {content ? (
+            <div className="no-scrollbar max-h-[360px] overflow-auto rounded-md bg-[var(--surface-muted)] px-3 py-2 text-[12px] leading-6 text-[var(--text-secondary)] whitespace-pre-wrap">{content}</div>
           ) : (
             <CodePanel title="Plan input" value={tool.input} />
           )}

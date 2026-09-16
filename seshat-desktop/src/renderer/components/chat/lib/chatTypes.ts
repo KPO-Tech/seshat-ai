@@ -12,6 +12,7 @@ export type ToolUseBlock = {
   _message?: string
   _approval?: ToolApproval
   _prompt?: ToolPromptRequest
+  _plan?: RuntimePlanEvent
 }
 export type ToolResultBlock = { type: 'tool_result'; tool_use_id?: string; content?: string; is_error?: boolean }
 
@@ -117,6 +118,8 @@ export type RuntimeEvent = {
   permissionRequest?: RuntimePermissionRequest
   prompt_request?: RuntimePromptRequest
   promptRequest?: RuntimePromptRequest
+  plan_event?: RuntimePlanEvent
+  planEvent?: RuntimePlanEvent
 }
 
 export type RuntimeToolProgress = {
@@ -155,6 +158,16 @@ export type RuntimePromptRequest = {
   options?: Array<{ label: string; value?: unknown; description?: string }>
   default?: unknown
   metadata?: Record<string, unknown>
+}
+
+export type RuntimePlanEvent = {
+  plan_id?: string
+  planId?: string
+  slug?: string
+  filename?: string
+  status?: string
+  version?: number
+  content?: string
 }
 
 export type PlanDocument = {

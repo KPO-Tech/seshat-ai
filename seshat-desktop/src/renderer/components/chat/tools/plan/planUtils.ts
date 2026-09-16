@@ -2,6 +2,8 @@ import type { ToolUseBlock } from '../../lib/chatTypes'
 
 export function planIdFromTool(tool: ToolUseBlock) {
   return firstText(
+    tool._plan?.plan_id,
+    tool._plan?.planId,
     tool.input.plan_id,
     tool.input.planId,
     tool._result?.metadata?.plan_id,
@@ -18,7 +20,7 @@ export function planTitleFromSlug(slug: string) {
 }
 
 export function submitPlanName(tool: ToolUseBlock) {
-  const slug = typeof tool.input.slug === 'string' ? tool.input.slug : ''
+  const slug = typeof tool._plan?.slug === 'string' ? tool._plan.slug : typeof tool.input.slug === 'string' ? tool.input.slug : ''
   return slug ? planTitleFromSlug(slug) : 'Plan'
 }
 

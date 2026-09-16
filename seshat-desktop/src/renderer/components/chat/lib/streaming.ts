@@ -2,6 +2,7 @@ import type {
   ChatMessage,
   QueryDone,
   RuntimePermissionRequest,
+  RuntimePlanEvent,
   RuntimePromptRequest,
   RuntimeToolProgress,
   StreamingBlock,
@@ -44,6 +45,7 @@ export function applyStreamEvent(blocks: StreamingBlock[], event: StreamEvent): 
 
 function applyRuntimeEvent(blocks: StreamingBlock[], data: Record<string, unknown>): StreamingBlock[] {
   const type = String(data.type ?? '')
+  if (type === 'plan.submitted' || type === 'plan.status_changed') return applyPlanEvent(blocks, (data.plan_event ?? data.planEvent) as RuntimePlanEvent | undefined)
   if (type === 'tool.permission_required') return applyPermissionRequest(blocks, (data.permission_request ?? data.permissionRequest) as RuntimePermissionRequest | undefined)
   if (type === 'prompt.request') return applyPromptRequest(blocks, (data.prompt_request ?? data.promptRequest) as RuntimePromptRequest | undefined)
 
@@ -64,13 +66,18 @@ function applyPermissionRequest(blocks: StreamingBlock[], request?: RuntimePermi
   if (!request) return blocks
   const toolUseId = request.tool_use_id ?? request.toolUseId ?? `approval-${Date.now()}`
   const toolName = request.tool_name ?? request.toolName ?? 'tool'
-  const toolInput = request.tool_input ?? request.toolInput ?? {}
+  const latestPlan = latestPlanEvent(blocks)
+  const baseToolInput = request.tool_input ?? request.toolInput ?? {}
+  const metadata = request.metadata ?? {}
+  const shouldAttachLatestPlan = toolName === 'exit_plan_mode' && !textValue(baseToolInput.plan_id) && !textValue(baseToolInput.planId) && Boolean(planEventId(latestPlan))
+  const toolInput = shouldAttachLatestPlan ? { ...baseToolInput, plan_id: planEventId(latestPlan) } : baseToolInput
+  const nextMetadata = shouldAttachLatestPlan ? { ...metadata, plan_id: planEventId(latestPlan) } : metadata
   const approval: ToolApproval = {
     toolUseId,
     toolName,
     toolInput,
     description: request.description,
-    metadata: request.metadata
+    metadata: nextMetadata
   }
   const index = blocks.findIndex((block) => block.type === 'tool_use' && block.id === toolUseId)
   const next: ToolUseBlock = {
@@ -83,6 +90,45 @@ function applyPermissionRequest(blocks: StreamingBlock[], request?: RuntimePermi
     _message: request.description ?? `Awaiting approval for ${toolName}`
   }
   return index >= 0 ? setBlock(blocks, index, { ...blocks[index] as ToolUseBlock, ...next }) : [...blocks, next]
+}
+
+function applyPlanEvent(blocks: StreamingBlock[], event?: RuntimePlanEvent): StreamingBlock[] {
+  const planId = planEventId(event)
+  if (!event || !planId) return blocks
+  const index = latestToolIndexByName(blocks, 'submit_plan')
+  const input = planEventInput(event)
+  const result = {
+    id: index >= 0 && blocks[index].type === 'tool_use' ? blocks[index].id : `plan-${planId}`,
+    tool_use_id: index >= 0 && blocks[index].type === 'tool_use' ? blocks[index].id : `plan-${planId}`,
+    content: event.content ?? '',
+    metadata: {
+      plan_id: planId,
+      slug: event.slug,
+      filename: event.filename,
+      version: event.version,
+      status: event.status
+    }
+  }
+  if (index >= 0) {
+    const current = blocks[index]
+    if (current.type !== 'tool_use') return blocks
+    return setBlock(blocks, index, {
+      ...current,
+      input: { ...current.input, ...input },
+      _plan: event,
+      _status: current._status === 'failed' ? current._status : 'completed',
+      _result: current._result ?? result
+    })
+  }
+  return [...blocks, {
+    type: 'tool_use',
+    id: `plan-${planId}`,
+    name: 'submit_plan',
+    input,
+    _status: 'completed',
+    _plan: event,
+    _result: result
+  }]
 }
 
 function applyPromptRequest(blocks: StreamingBlock[], request?: RuntimePromptRequest): StreamingBlock[] {
@@ -207,11 +253,46 @@ function findToolIndex(blocks: StreamingBlock[], progress: ToolProgress) {
 }
 
 function latestToolIdByName(blocks: StreamingBlock[], name: string) {
+  const index = latestToolIndexByName(blocks, name)
+  const block = index >= 0 ? blocks[index] : null
+  return block?.type === 'tool_use' ? block.id : null
+}
+
+function latestToolIndexByName(blocks: StreamingBlock[], name: string) {
   for (let index = blocks.length - 1; index >= 0; index -= 1) {
     const block = blocks[index]
-    if (block.type === 'tool_use' && block.name === name) return block.id
+    if (block.type === 'tool_use' && block.name === name) return index
+  }
+  return -1
+}
+
+function latestPlanEvent(blocks: StreamingBlock[]) {
+  for (let index = blocks.length - 1; index >= 0; index -= 1) {
+    const block = blocks[index]
+    if (block.type === 'tool_use' && block._plan && planEventId(block._plan)) return block._plan
+    if (block.type === 'tool_use' && block.name === 'submit_plan') {
+      const planId = textValue(block._result?.metadata?.plan_id) || textValue(block.input.plan_id)
+      if (planId) return { plan_id: planId, slug: textValue(block._result?.metadata?.slug) || textValue(block.input.slug) }
+    }
   }
   return null
+}
+
+function planEventInput(event: RuntimePlanEvent): Record<string, unknown> {
+  return {
+    plan_id: planEventId(event),
+    slug: event.slug,
+    filename: event.filename,
+    content: event.content
+  }
+}
+
+function planEventId(event?: RuntimePlanEvent | null) {
+  return textValue(event?.plan_id) || textValue(event?.planId)
+}
+
+function textValue(value: unknown) {
+  return typeof value === 'string' ? value : ''
 }
 
 function mergeToolProgress(tool: ToolUseBlock, progress: ToolProgress): ToolUseBlock {
