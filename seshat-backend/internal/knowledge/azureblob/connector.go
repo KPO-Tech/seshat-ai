@@ -1,5 +1,5 @@
 // Package azureblob implements connector.KnowledgeConnector for
-// Azure Blob Storage by wrapping seshat-core/connectors.AzureBlobConnector -
+// Azure Blob Storage by wrapping pkg/connectors.AzureBlobConnector -
 // the actual Discover/Sync logic lives there now (shared with
 // seshat-server's own connectors package). This file only adapts core's
 // plain (config, secret, cursor) signature to connector.KnowledgeConnector,
@@ -12,14 +12,14 @@ import (
 	"context"
 
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/connector"
-	coreconnectors "github.com/EngineerProjects/seshat-ai/seshat-core/connectors"
+	coreconnectors "github.com/KPO-Tech/seshat/pkg/connectors"
 )
 
 const Kind connector.Kind = "azureblob"
 
 // AccountConfig, ParseAccountConfig, EncodeAccountConfig are aliases, not
 // new declarations - the config shape/parsing now lives in
-// seshat-core/connectors, shared with seshat-server.
+// pkg/connectors, shared with seshat-server.
 type AccountConfig = coreconnectors.AzureBlobAccountConfig
 
 var (

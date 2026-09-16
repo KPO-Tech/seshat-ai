@@ -4,7 +4,7 @@ import (
 	"golang.org/x/oauth2"
 
 	microsoftOAuth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/oauth/microsoft"
-	coreconnectors "github.com/EngineerProjects/seshat-ai/seshat-core/connectors"
+	coreconnectors "github.com/KPO-Tech/seshat/pkg/connectors"
 )
 
 // Scopes requested from Microsoft - read-only Sites/Files access plus

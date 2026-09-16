@@ -1,6 +1,6 @@
 package connectors
 
-import coremsgraph "github.com/EngineerProjects/seshat-ai/seshat-core/msgraph"
+import coremsgraph "github.com/KPO-Tech/seshat/pkg/msgraph"
 
 // teamsKind is agent_action-only, same reasoning as outlook.go/slack.go.
 const teamsKind connectorKind = "teams"

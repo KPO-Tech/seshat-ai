@@ -11,8 +11,8 @@ import (
 	"golang.org/x/oauth2"
 	"google.golang.org/api/option"
 
-	coregmail "github.com/EngineerProjects/seshat-ai/seshat-core/gmail"
 	"github.com/KPO-Tech/seshat/pkg/dataflow"
+	coregmail "github.com/KPO-Tech/seshat/pkg/gmail"
 )
 
 // stubTokenResolver mirrors mcpregistry's stubConnectorTokenResolver — a
@@ -42,7 +42,7 @@ func writeJSON(w http.ResponseWriter, v any) {
 
 // newFakeGmailServer serves just enough of the Gmail API for a bootstrap
 // Sync (empty cursor) to return one message - same endpoints exercised by
-// seshat-core/gmail's own TestSyncBootstrapWhenCursorEmpty.
+// pkg/gmail's own TestSyncBootstrapWhenCursorEmpty.
 func newFakeGmailServer(t *testing.T) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()

@@ -11,7 +11,7 @@ import (
 )
 
 // fakeRateLimitError satisfies syncRateLimited (coreconnectors.RateLimited)
-// structurally - no need to import seshat-core/connectors just to construct
+// structurally - no need to import pkg/connectors just to construct
 // one for a test.
 type fakeRateLimitError struct{ delay time.Duration }
 

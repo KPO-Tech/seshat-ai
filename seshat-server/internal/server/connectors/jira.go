@@ -12,7 +12,7 @@ package connectors
 const jiraKind connectorKind = "jira"
 
 // jiraScopes: granular scopes (same style as ConfluenceScopes in
-// seshat-core/connectors/confluence.go, not the broader classic
+// pkg/connectors/confluence.go, not the broader classic
 // read:jira-work/write:jira-work), least-privilege for this batch's one
 // representative action (create an issue) - no read scope requested since
 // nothing in this batch reads Jira data back. read:me for identity

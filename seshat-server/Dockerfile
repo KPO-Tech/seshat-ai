@@ -3,10 +3,14 @@
 # github.com/KPO-Tech/seshat module directly (go mod download fetches it),
 # so GOWORK=off keeps this build scoped to seshat-server/ + seshat-core/
 # (never pulls in seshat-backend or seshat-ui). seshat-server/go.mod also
-# has local `replace` directives for the seshat-core/* modules it imports
-# (connectors/prospecting/msgraph/gmail — unpublished, monorepo-only, only
-# resolvable via go.work in normal dev) pointing at ../seshat-core/*, so
-# that directory has to be present in the build context too.
+# has a local `replace` directive for seshat-core (unpublished,
+# monorepo-only, only resolvable via go.work in normal dev - it holds
+# prospecting, the one piece of business logic still shared identically
+# between seshat-backend and seshat-server, see seshat-core/AGENTS.md)
+# pointing at ../seshat-core, so that directory has to be present in the
+# build context too. connectors/gmail/msgraph used to live here as well
+# but moved to github.com/KPO-Tech/seshat/pkg (tenant-agnostic mechanism,
+# not product-specific), so they no longer need this local copy step.
 
 FROM golang:1.26-alpine AS builder
 

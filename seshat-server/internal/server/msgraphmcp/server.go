@@ -13,8 +13,8 @@ import (
 
 	"golang.org/x/oauth2"
 
-	coremsgraph "github.com/EngineerProjects/seshat-ai/seshat-core/msgraph"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/mcpbridge"
+	coremsgraph "github.com/KPO-Tech/seshat/pkg/msgraph"
 )
 
 // NewOutlookHandler serves the full Outlook tool set: list/search/get/

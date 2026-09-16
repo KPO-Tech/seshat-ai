@@ -7,7 +7,7 @@ import (
 )
 
 // Azure Blob's actual Discover/Sync/config-parsing logic and its own unit +
-// Azurite-integration tests now live in seshat-core/connectors - this
+// Azurite-integration tests now live in pkg/connectors - this
 // package only tests its thin wrapper.
 func TestConnector_KindAndCapabilities(t *testing.T) {
 	c := NewConnector()

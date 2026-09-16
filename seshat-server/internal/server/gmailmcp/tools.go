@@ -6,7 +6,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	coregmail "github.com/EngineerProjects/seshat-ai/seshat-core/gmail"
+	coregmail "github.com/KPO-Tech/seshat/pkg/gmail"
 )
 
 type listGmailMessagesInput struct{}

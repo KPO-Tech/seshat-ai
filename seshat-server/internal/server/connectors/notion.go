@@ -8,7 +8,7 @@ import (
 
 	"golang.org/x/oauth2"
 
-	coreconnectors "github.com/EngineerProjects/seshat-ai/seshat-core/connectors"
+	coreconnectors "github.com/KPO-Tech/seshat/pkg/connectors"
 )
 
 // notionKind supports both purposes: agent_action (an employee connecting

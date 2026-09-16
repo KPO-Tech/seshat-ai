@@ -4,10 +4,7 @@ go 1.26.6
 
 require (
 	github.com/EngineerProjects/seshat-ai/seshat-core v0.0.0-00010101000000-000000000000
-	github.com/EngineerProjects/seshat-ai/seshat-core/connectors v0.0.0-00010101000000-000000000000
-	github.com/EngineerProjects/seshat-ai/seshat-core/gmail v0.0.0-00010101000000-000000000000
-	github.com/EngineerProjects/seshat-ai/seshat-core/msgraph v0.0.0-00010101000000-000000000000
-	github.com/KPO-Tech/seshat v1.2.48
+	github.com/KPO-Tech/seshat v1.2.49
 	github.com/coreos/go-oidc/v3 v3.20.0
 	github.com/crewjam/saml v0.5.1
 	github.com/glebarez/sqlite v1.11.0
@@ -173,10 +170,4 @@ require (
 	modernc.org/sqlite v1.57.0 // indirect
 )
 
-replace github.com/EngineerProjects/seshat-ai/seshat-core/connectors => ../seshat-core/connectors
-
 replace github.com/EngineerProjects/seshat-ai/seshat-core => ../seshat-core
-
-replace github.com/EngineerProjects/seshat-ai/seshat-core/msgraph => ../seshat-core/msgraph
-
-replace github.com/EngineerProjects/seshat-ai/seshat-core/gmail => ../seshat-core/gmail
