@@ -26,6 +26,7 @@ export function BrowserLiveView({ sessionId, tool }: { sessionId?: string; tool:
   const [state, setState] = useState<BrowserPanelState | null>(null)
   const [address, setAddress] = useState(browserTargetFromTool(tool) || 'https://www.google.com/')
   const [error, setError] = useState<string | null>(null)
+  const [showScreenshot, setShowScreenshot] = useState(false)
   const target = browserTargetFromTool(tool)
   const actions = useBrowserStore((store) => sessionId ? store.sessions[sessionId]?.actions ?? [] : [])
   const visibleActions = actions.length > 0 ? actions : [fallbackAction(tool)]
@@ -183,11 +184,22 @@ export function BrowserLiveView({ sessionId, tool }: { sessionId?: string; tool:
                   <div className="truncate text-[12px] font-semibold text-[var(--text-primary)]">{screenshot.label}</div>
                   {screenshot.url && <div className="truncate text-[10.5px] text-[var(--text-muted)]">{screenshot.url}</div>}
                 </div>
-                {screenshot.bytes ? <span className="shrink-0 text-[10px] text-[var(--text-muted)]">{formatBytes(screenshot.bytes)}</span> : null}
+                <div className="flex shrink-0 items-center gap-2">
+                  {screenshot.bytes ? <span className="text-[10px] text-[var(--text-muted)]">{formatBytes(screenshot.bytes)}</span> : null}
+                  <button
+                    type="button"
+                    onClick={() => setShowScreenshot((value) => !value)}
+                    className="rounded-md border border-[var(--border-soft)] bg-[var(--surface-panel)] px-2 py-1 text-[10.5px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                  >
+                    {showScreenshot ? 'Hide' : 'View'}
+                  </button>
+                </div>
               </div>
-              <div className="max-h-[340px] overflow-auto bg-[#080a0d] p-2">
-                <img className="mx-auto block max-h-[320px] max-w-full rounded object-contain" src={screenshot.src} alt={screenshot.url || 'Browser screenshot'} loading="lazy" />
-              </div>
+              {showScreenshot && (
+                <div className="max-h-[340px] overflow-auto bg-[#080a0d] p-2">
+                  <img className="mx-auto block max-h-[320px] max-w-full rounded object-contain" src={screenshot.src} alt={screenshot.url || 'Browser screenshot'} loading="lazy" />
+                </div>
+              )}
             </div>
           ) : resultSummary ? (
             <div className="rounded-md border border-[var(--border-soft)] bg-[var(--surface-muted)] px-3 py-2 text-[12px] text-[var(--text-secondary)]">
