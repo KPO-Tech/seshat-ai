@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { ToolUseBlock } from '../lib/chatTypes'
 import type { ToolPresentation } from './catalog/toolPresentation'
 import { CodePanel, getToolStatus, StatusPill, ToolGlyph, toolSnippet } from './ToolDetails'
+import { EditorLiveView } from './live/EditorLiveView'
 import { TerminalLiveView } from './live/TerminalLiveView'
 
 export function LiveToolCard({ tool, presentation }: { tool: ToolUseBlock; presentation: ToolPresentation }) {
@@ -37,11 +38,17 @@ export function LiveToolCard({ tool, presentation }: { tool: ToolUseBlock; prese
       </button>
       {open && (
         <div className="grid gap-2 border-t border-[var(--border-soft)] p-3">
-          {presentation.surface === 'terminal' ? <TerminalLiveView tool={tool} /> : <GenericLiveBody tool={tool} />}
+          <LiveBody tool={tool} surface={presentation.surface} />
         </div>
       )}
     </div>
   )
+}
+
+function LiveBody({ tool, surface }: { tool: ToolUseBlock; surface: ToolPresentation['surface'] }) {
+  if (surface === 'terminal') return <TerminalLiveView tool={tool} />
+  if (surface === 'editor') return <EditorLiveView tool={tool} />
+  return <GenericLiveBody tool={tool} />
 }
 
 function GenericLiveBody({ tool }: { tool: ToolUseBlock }) {

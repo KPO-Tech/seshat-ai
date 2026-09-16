@@ -28,7 +28,7 @@ export function getToolPresentation(name: string): ToolPresentation {
     return { intent: 'observable', mode: 'live_workspace', surface: 'terminal', label: 'Terminal', initiallyOpen: false }
   }
 
-  if (matchesAny(normalized, ['apply_patch', 'edit', 'write_file', 'create_file', 'replace_file', 'move_file'])) {
+  if (matchesAny(normalized, ['apply_patch', 'edit', 'write_file', 'file_write', 'create_file', 'replace_file', 'move_file'])) {
     return { intent: 'observable', mode: 'live_workspace', surface: 'editor', label: 'Edit', initiallyOpen: false }
   }
 
