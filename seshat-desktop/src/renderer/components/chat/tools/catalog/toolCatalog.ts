@@ -9,7 +9,7 @@ export type ToolCatalogEntry = {
   silent?: boolean
   groupable?: boolean
   hidden?: boolean
-  body?: 'generic' | 'json' | 'prose' | 'web_search' | 'web_fetch' | 'rag' | 'mcp' | 'ask_user' | 'plan'
+  body?: 'generic' | 'json' | 'prose' | 'web_search' | 'web_fetch' | 'rag' | 'mcp' | 'ask_user' | 'plan' | 'memory' | 'automation'
   snippet?: (tool: ToolUseBlock) => string
 }
 
@@ -44,18 +44,18 @@ const registry: Record<string, ToolCatalogEntry> = {
   mcp_list_resources: { label: 'MCP Resources', category: 'mcp', silent: true },
   mcp_read_resource: { label: 'MCP Read', category: 'mcp', silent: true, snippet: (tool) => str(tool, 'uri') || str(tool, 'resource') },
 
-  memory_create_entities: { label: 'Create Memory Entities', category: 'memory', silent: true },
-  memory_add_observations: { label: 'Add Memory Observations', category: 'memory', silent: true },
-  memory_search_nodes: { label: 'Search Memory', category: 'memory', body: 'json', snippet: (tool) => str(tool, 'query') },
-  memory_open_nodes: { label: 'Open Memory Nodes', category: 'memory', body: 'json' },
+  memory_create_entities: { label: 'Create Memory Entities', category: 'memory', silent: true, body: 'memory' },
+  memory_add_observations: { label: 'Add Memory Observations', category: 'memory', silent: true, body: 'memory' },
+  memory_search_nodes: { label: 'Search Memory', category: 'memory', body: 'memory', snippet: (tool) => str(tool, 'query') },
+  memory_open_nodes: { label: 'Open Memory Nodes', category: 'memory', body: 'memory' },
 
-  schedule_job: { label: 'Schedule Job', category: 'automation', body: 'json', snippet: (tool) => str(tool, 'name') },
-  list_jobs: { label: 'List Jobs', category: 'automation', body: 'json' },
-  update_job: { label: 'Update Job', category: 'automation', body: 'json' },
-  run_job_now: { label: 'Run Job', category: 'automation', body: 'json' },
-  delete_job: { label: 'Delete Job', category: 'automation', silent: true, snippet: idSnippet },
-  pause_job: { label: 'Pause Job', category: 'automation', silent: true, snippet: idSnippet },
-  resume_job: { label: 'Resume Job', category: 'automation', silent: true, snippet: idSnippet },
+  schedule_job: { label: 'Schedule Job', category: 'automation', body: 'automation', snippet: (tool) => str(tool, 'name') },
+  list_jobs: { label: 'List Jobs', category: 'automation', body: 'automation' },
+  update_job: { label: 'Update Job', category: 'automation', body: 'automation' },
+  run_job_now: { label: 'Run Job', category: 'automation', body: 'automation' },
+  delete_job: { label: 'Delete Job', category: 'automation', silent: true, body: 'automation', snippet: idSnippet },
+  pause_job: { label: 'Pause Job', category: 'automation', silent: true, body: 'automation', snippet: idSnippet },
+  resume_job: { label: 'Resume Job', category: 'automation', silent: true, body: 'automation', snippet: idSnippet },
 
   calculator: { label: 'Calculator', category: 'data', body: 'prose', snippet: (tool) => str(tool, 'expression') },
   unit_convert: { label: 'Unit Convert', category: 'data', body: 'prose' },

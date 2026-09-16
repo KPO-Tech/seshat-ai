@@ -3,6 +3,7 @@ import { decideToolPermission, respondToPrompt } from '../lib/chatApi'
 import type { ToolUseBlock } from '../lib/chatTypes'
 import { AskUserPromptBody } from './askUser/AskUserPromptBody'
 import { AskUserSummary } from './askUser/AskUserSummary'
+import { AutomationToolBody, MemoryToolBody } from './bodies/StructuredToolBodies'
 import { parseMcpName, toolEntry } from './catalog/toolCatalog'
 import { PlanArtifactCard } from './plan/PlanArtifactCard'
 import { planIdFromTool } from './plan/planUtils'
@@ -21,6 +22,8 @@ export function ToolBody({ sessionId, tool }: { sessionId?: string; tool: ToolUs
   if (body === 'rag') return <RagBody tool={tool} />
   if (body === 'mcp') return <McpBody tool={tool} />
   if (body === 'ask_user') return <AskUserBody tool={tool} />
+  if (body === 'memory') return <MemoryToolBody tool={tool} />
+  if (body === 'automation') return <AutomationToolBody tool={tool} />
   if (body === 'json') return <JsonBody tool={tool} />
   if (body === 'prose') return <ProseBody tool={tool} />
   return <GenericBody tool={tool} />
