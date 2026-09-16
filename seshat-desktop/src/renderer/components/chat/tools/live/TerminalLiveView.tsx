@@ -1,83 +1,17 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useTerminalStore, type TerminalCommandRun, type TerminalLine } from '@renderer/stores/terminal'
 import type { ToolUseBlock } from '../../lib/chatTypes'
 import { formatDuration, prettyJsonOrRaw } from '../ToolDetails'
 
-type TerminalLine = {
-  id: string
-  stream: 'stdout' | 'stderr' | 'system'
-  text: string
-}
-
 export function TerminalLiveView({ sessionId, tool }: { sessionId?: string; tool: ToolUseBlock }) {
   const terminal = terminalData(tool)
-  const [connected, setConnected] = useState(false)
-  const [live, setLive] = useState<{ commandId?: string; command?: string; cwd?: string; exitCode?: number; duration?: string; lines: TerminalLine[] }>({ lines: [] })
-  const visible = useMemo(() => live.lines.length > 0 ? live : terminalToLiveState(terminal), [live, terminal])
+  const [selectedCommandId, setSelectedCommandId] = useState<string | null>(null)
+  const relaySession = useTerminalStore((state) => sessionId ? state.sessions[sessionId] : null)
+  const commands = relaySession?.commands ?? []
+  const liveCommand = useMemo(() => chooseCommand(commands, terminal.command, selectedCommandId), [commands, terminal.command, selectedCommandId])
+  const visible = useMemo(() => liveCommand ? commandToVisible(liveCommand) : terminalToLiveState(terminal), [liveCommand, terminal])
   const hasOutput = visible.lines.length > 0
-
-  useEffect(() => {
-    if (!sessionId || !window.nexus?.terminalRelay) return
-    let mounted = true
-    void window.nexus.terminalRelay.status(sessionId).then((status) => {
-      if (mounted) setConnected(status.connected)
-    }).catch(() => undefined)
-    const cleanup = window.nexus.terminalRelay.onEvent(sessionId, (event) => {
-      if (event.type === 'connected') {
-        setConnected(true)
-        return
-      }
-      if (event.type === 'disconnected') {
-        setConnected(false)
-        return
-      }
-      if (event.type === 'command_start') {
-        if (terminal.command && event.command && event.command !== terminal.command) return
-        setLive({
-          commandId: event.commandId,
-          command: event.command || terminal.command,
-          cwd: event.cwd || terminal.cwd,
-          lines: [{ id: `${event.commandId}-start`, stream: 'system', text: 'Command started' }]
-        })
-        return
-      }
-      if (event.type === 'data') {
-        setLive((current) => {
-          if (current.commandId && event.commandId && current.commandId !== event.commandId) return current
-          return {
-            ...current,
-            lines: [...current.lines, {
-              id: `${event.commandId}-${current.lines.length}`,
-              stream: event.stream === 'stderr' ? 'stderr' : 'stdout',
-              text: event.data || ''
-            }]
-          }
-        })
-        return
-      }
-      if (event.type === 'command_end') {
-        setLive((current) => {
-          if (current.commandId && event.commandId && current.commandId !== event.commandId) return current
-          return {
-            ...current,
-            exitCode: event.exitCode,
-            duration: formatMs(event.durationMs),
-            lines: [...current.lines, { id: `${event.commandId}-end`, stream: 'system', text: `Finished with exit ${event.exitCode ?? 1}` }]
-          }
-        })
-        return
-      }
-      if (event.type === 'error') {
-        setLive((current) => ({
-          ...current,
-          lines: [...current.lines, { id: `error-${current.lines.length}`, stream: 'stderr', text: event.message || 'Terminal relay error' }]
-        }))
-      }
-    })
-    return () => {
-      mounted = false
-      cleanup()
-    }
-  }, [sessionId, terminal.command, terminal.cwd])
+  const connected = Boolean(relaySession?.connected)
 
   return (
     <div className="overflow-hidden rounded-lg border border-[var(--border-soft)] bg-[#090b0f] text-[12px] text-[#e7edf7]">
@@ -96,6 +30,24 @@ export function TerminalLiveView({ sessionId, tool }: { sessionId?: string; tool
           )}
         </div>
       </div>
+      {commands.length > 1 && (
+        <div className="no-scrollbar flex gap-1.5 overflow-x-auto border-b border-white/10 px-3 py-2">
+          {commands.slice(-8).map((command) => (
+            <button
+              key={command.id}
+              type="button"
+              onClick={() => setSelectedCommandId(command.id)}
+              className={[
+                'flex max-w-[220px] shrink-0 items-center gap-1.5 rounded-md border px-2 py-1 text-left font-mono text-[10.5px]',
+                command.id === liveCommand?.id ? 'border-[var(--accent-primary)]/45 bg-[var(--accent-primary)]/10 text-white' : 'border-white/10 bg-white/[0.03] text-white/55 hover:bg-white/[0.06]'
+              ].join(' ')}
+            >
+              <span className={commandDotClass(command.status)} />
+              <span className="truncate">{command.command}</span>
+            </button>
+          ))}
+        </div>
+      )}
       {hasOutput ? (
         <div className="no-scrollbar max-h-[320px] overflow-auto p-3 font-mono text-[11px] leading-5">
           {visible.lines.map((line) => (
@@ -124,6 +76,35 @@ function terminalToLiveState(terminal: ReturnType<typeof terminalData>) {
   if (terminal.stderr) lines.push({ id: 'stderr', stream: 'stderr', text: terminal.stderr })
   if (!terminal.stdout && !terminal.stderr && terminal.raw) lines.push({ id: 'raw', stream: 'stdout', text: terminal.raw })
   return { ...terminal, lines }
+}
+
+function chooseCommand(commands: TerminalCommandRun[], expectedCommand: string, selectedCommandId: string | null) {
+  if (selectedCommandId) {
+    const selected = commands.find((command) => command.id === selectedCommandId)
+    if (selected) return selected
+  }
+  if (expectedCommand) {
+    for (let index = commands.length - 1; index >= 0; index -= 1) {
+      if (commands[index].command === expectedCommand) return commands[index]
+    }
+  }
+  return commands[commands.length - 1] ?? null
+}
+
+function commandToVisible(command: TerminalCommandRun) {
+  return {
+    command: command.command,
+    cwd: command.cwd,
+    exitCode: command.exitCode,
+    duration: formatMs(command.durationMs),
+    lines: command.lines
+  }
+}
+
+function commandDotClass(status: TerminalCommandRun['status']) {
+  if (status === 'running') return 'size-1.5 shrink-0 rounded-full bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-primary)]'
+  if (status === 'completed') return 'size-1.5 shrink-0 rounded-full bg-[var(--accent-success)]'
+  return 'size-1.5 shrink-0 rounded-full bg-[var(--accent-danger)]'
 }
 
 function terminalData(tool: ToolUseBlock) {

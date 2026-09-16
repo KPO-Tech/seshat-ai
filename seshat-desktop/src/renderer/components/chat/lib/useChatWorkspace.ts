@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useChatStore } from '@renderer/stores/chat'
+import { useTerminalStore } from '@renderer/stores/terminal'
 import { createSession, fetchSession, fetchSessions, interruptSession, patchSessionMetadata, streamQuery } from './chatApi'
 import { applyStreamEvent, mergeDoneIntoMessages } from './streaming'
 import type { ChatExecutionMode, ChatMessage, QueryDone } from './chatTypes'
@@ -108,7 +109,7 @@ export function useChatWorkspace() {
       setActiveSessionId(sessionId)
     }
     if (useChatStore.getState().isSessionStreaming(sessionId)) return
-    await window.nexus?.terminalRelay?.connect(sessionId).catch(() => undefined)
+    await useTerminalStore.getState().attachSession(sessionId)
     clearStreaming(sessionId)
 
     const userMessage: ChatMessage = {
