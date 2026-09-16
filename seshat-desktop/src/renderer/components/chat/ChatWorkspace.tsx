@@ -58,7 +58,7 @@ export function ChatWorkspace({ user }: { user: User }) {
       ) : (
         <>
           <section className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
-            <MessageList messages={activeSession.messages} streaming={streaming} isStreaming={isStreaming} />
+            <MessageList sessionId={activeSession.id} messages={activeSession.messages} streaming={streaming} isStreaming={isStreaming} />
           </section>
           <footer className="shrink-0 border-t border-transparent px-8 pb-5">
             <div className="mx-auto max-w-[820px]">

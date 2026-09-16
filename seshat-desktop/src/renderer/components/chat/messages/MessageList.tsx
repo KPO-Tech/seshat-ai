@@ -3,7 +3,7 @@ import type { ChatMessage, StreamingBlock } from '../lib/chatTypes'
 import { AgentMessage } from './AgentMessage'
 import { UserMessage } from './UserMessage'
 
-export function MessageList({ messages, streaming, isStreaming }: { messages: ChatMessage[]; streaming: StreamingBlock[]; isStreaming: boolean }) {
+export function MessageList({ sessionId, messages, streaming, isStreaming }: { sessionId: string; messages: ChatMessage[]; streaming: StreamingBlock[]; isStreaming: boolean }) {
   const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -17,25 +17,26 @@ export function MessageList({ messages, streaming, isStreaming }: { messages: Ch
         return (
           <MessageBubble
             key={message.id || index}
+            sessionId={sessionId}
             message={message}
             hidePendingAssistant={isStreaming && isLast}
           />
         )
       })}
       {isStreaming && streaming.length > 0 && (
-        <AgentMessage message={{ id: 'streaming', role: 'assistant', content: streaming }} live />
+        <AgentMessage sessionId={sessionId} message={{ id: 'streaming', role: 'assistant', content: streaming }} live />
       )}
       {isStreaming && streaming.length === 0 && (
-        <AgentMessage message={{ id: 'streaming', role: 'assistant', content: [] }} live />
+        <AgentMessage sessionId={sessionId} message={{ id: 'streaming', role: 'assistant', content: [] }} live />
       )}
       <div ref={endRef} />
     </div>
   )
 }
 
-function MessageBubble({ message, hidePendingAssistant }: { message: ChatMessage; hidePendingAssistant?: boolean }) {
+function MessageBubble({ sessionId, message, hidePendingAssistant }: { sessionId: string; message: ChatMessage; hidePendingAssistant?: boolean }) {
   if (message.role === 'system') return null
   if (message.role === 'user') return <UserMessage message={message} />
   if (hidePendingAssistant && message.content.length === 0 && message.status !== 'error') return null
-  return <AgentMessage message={message} />
+  return <AgentMessage sessionId={sessionId} message={message} />
 }

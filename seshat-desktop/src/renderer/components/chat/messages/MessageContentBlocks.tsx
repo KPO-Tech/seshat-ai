@@ -5,16 +5,16 @@ import { getToolPresentation } from '../tools/catalog/toolPresentation'
 import { QuietToolGroup } from '../tools/QuietToolGroup'
 import { ToolRenderer } from '../tools/ToolRenderer'
 
-export function MessageContentBlocks({ blocks, live = false }: { blocks: ChatContentBlock[]; live?: boolean }) {
+export function MessageContentBlocks({ sessionId, blocks, live = false }: { sessionId?: string; blocks: ChatContentBlock[]; live?: boolean }) {
   const items = groupBlocks(blocks)
   return (
     <>
       {items.map((item, index) => {
-        if (item.kind === 'group') return <QuietToolGroup key={`group-${index}`} tools={item.tools} />
+        if (item.kind === 'group') return <QuietToolGroup key={`group-${index}`} sessionId={sessionId} tools={item.tools} />
         const block = item.block
         if (block.type === 'text') return <TextBlock key={index} text={block.text} />
         if (block.type === 'thinking') return <ThinkingBlock key={index} text={block.thinking} active={live && index === items.length - 1} />
-        if (block.type === 'tool_use') return <ToolRenderer key={block.id || index} tool={block} />
+        if (block.type === 'tool_use') return <ToolRenderer key={block.id || index} sessionId={sessionId} tool={block} />
         return null
       })}
     </>

@@ -1,4 +1,16 @@
-import type { ChatMessage, QueryDone, RuntimeToolProgress, StreamingBlock, StreamEvent, ToolProgress, ToolUseBlock } from './chatTypes'
+import type {
+  ChatMessage,
+  QueryDone,
+  RuntimePermissionRequest,
+  RuntimePromptRequest,
+  RuntimeToolProgress,
+  StreamingBlock,
+  StreamEvent,
+  ToolApproval,
+  ToolProgress,
+  ToolPromptRequest,
+  ToolUseBlock
+} from './chatTypes'
 
 export function applyStreamEvent(blocks: StreamingBlock[], event: StreamEvent): StreamingBlock[] {
   if (event.event === 'done' || event.event === 'error') return blocks
@@ -32,6 +44,9 @@ export function applyStreamEvent(blocks: StreamingBlock[], event: StreamEvent): 
 
 function applyRuntimeEvent(blocks: StreamingBlock[], data: Record<string, unknown>): StreamingBlock[] {
   const type = String(data.type ?? '')
+  if (type === 'tool.permission_required') return applyPermissionRequest(blocks, (data.permission_request ?? data.permissionRequest) as RuntimePermissionRequest | undefined)
+  if (type === 'prompt.request') return applyPromptRequest(blocks, (data.prompt_request ?? data.promptRequest) as RuntimePromptRequest | undefined)
+
   const rawProgress = (data.tool_progress ?? data.toolProgress ?? data.tool) as RuntimeToolProgress | undefined
   if (!rawProgress || !type.includes('tool')) return blocks
 
@@ -43,6 +58,57 @@ function applyRuntimeEvent(blocks: StreamingBlock[], data: Record<string, unknow
   if (tool.type !== 'tool_use') return blocks
 
   return setBlock(blocks, index, mergeToolProgress(tool, progress))
+}
+
+function applyPermissionRequest(blocks: StreamingBlock[], request?: RuntimePermissionRequest): StreamingBlock[] {
+  if (!request) return blocks
+  const toolUseId = request.tool_use_id ?? request.toolUseId ?? `approval-${Date.now()}`
+  const toolName = request.tool_name ?? request.toolName ?? 'tool'
+  const toolInput = request.tool_input ?? request.toolInput ?? {}
+  const approval: ToolApproval = {
+    toolUseId,
+    toolName,
+    toolInput,
+    description: request.description
+  }
+  const index = blocks.findIndex((block) => block.type === 'tool_use' && block.id === toolUseId)
+  const next: ToolUseBlock = {
+    type: 'tool_use',
+    id: toolUseId,
+    name: toolName,
+    input: toolInput,
+    _status: 'awaiting_approval',
+    _approval: approval,
+    _message: request.description ?? `Awaiting approval for ${toolName}`
+  }
+  return index >= 0 ? setBlock(blocks, index, { ...blocks[index] as ToolUseBlock, ...next }) : [...blocks, next]
+}
+
+function applyPromptRequest(blocks: StreamingBlock[], request?: RuntimePromptRequest): StreamingBlock[] {
+  if (!request) return blocks
+  const metadata = request.metadata ?? {}
+  const promptId = typeof metadata.prompt_id === 'string' ? metadata.prompt_id : `prompt-${Date.now()}`
+  const toolUseId = typeof metadata.tool_use_id === 'string' ? metadata.tool_use_id : latestToolIdByName(blocks, 'ask_user_question') ?? `ask-user-${Date.now()}`
+  const toolName = typeof metadata.tool_name === 'string' ? metadata.tool_name : 'ask_user_question'
+  const prompt: ToolPromptRequest = {
+    promptId,
+    type: request.type,
+    message: request.message,
+    options: request.options,
+    default: request.default,
+    metadata
+  }
+  const index = blocks.findIndex((block) => block.type === 'tool_use' && block.id === toolUseId)
+  const next: ToolUseBlock = {
+    type: 'tool_use',
+    id: toolUseId,
+    name: toolName,
+    input: { question: request.message ?? '' },
+    _status: 'running',
+    _prompt: prompt,
+    _message: request.message
+  }
+  return index >= 0 ? setBlock(blocks, index, { ...blocks[index] as ToolUseBlock, ...next }) : [...blocks, next]
 }
 
 export function mergeDoneIntoMessages(current: ChatMessage[], done: QueryDone, assistantId: string, streaming: StreamingBlock[]): ChatMessage[] {
@@ -137,6 +203,14 @@ function findToolIndex(blocks: StreamingBlock[], progress: ToolProgress) {
     }
   }
   return -1
+}
+
+function latestToolIdByName(blocks: StreamingBlock[], name: string) {
+  for (let index = blocks.length - 1; index >= 0; index -= 1) {
+    const block = blocks[index]
+    if (block.type === 'tool_use' && block.name === name) return block.id
+  }
+  return null
 }
 
 function mergeToolProgress(tool: ToolUseBlock, progress: ToolProgress): ToolUseBlock {

@@ -26,7 +26,8 @@ export type ToolPromptRequest = {
   promptId: string
   type?: string
   message?: string
-  options?: Array<{ label: string; value?: string; description?: string }>
+  options?: Array<{ label: string; value?: unknown; description?: string }>
+  default?: unknown
   metadata?: Record<string, unknown>
 }
 
@@ -111,6 +112,10 @@ export type RuntimeEvent = {
   type?: string
   tool_progress?: RuntimeToolProgress
   toolProgress?: RuntimeToolProgress
+  permission_request?: RuntimePermissionRequest
+  permissionRequest?: RuntimePermissionRequest
+  prompt_request?: RuntimePromptRequest
+  promptRequest?: RuntimePromptRequest
 }
 
 export type RuntimeToolProgress = {
@@ -129,5 +134,23 @@ export type RuntimeToolProgress = {
   result?: string
   duration_ms?: number
   durationMs?: number
+  metadata?: Record<string, unknown>
+}
+
+export type RuntimePermissionRequest = {
+  tool_use_id?: string
+  toolUseId?: string
+  tool_name?: string
+  toolName?: string
+  tool_input?: Record<string, unknown>
+  toolInput?: Record<string, unknown>
+  description?: string
+}
+
+export type RuntimePromptRequest = {
+  type?: string
+  message?: string
+  options?: Array<{ label: string; value?: unknown; description?: string }>
+  default?: unknown
   metadata?: Record<string, unknown>
 }

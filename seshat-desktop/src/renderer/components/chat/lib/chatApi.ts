@@ -35,6 +35,36 @@ export function interruptSession(id: string) {
   return api.post(`/sessions/${encodeURIComponent(id)}/interrupt`, {})
 }
 
+export function decideToolPermission(params: {
+  toolUseId: string
+  sessionId: string
+  approved: boolean
+  remember?: boolean
+  reason?: string
+}) {
+  return api.post(`/permissions/${encodeURIComponent(params.toolUseId)}`, {
+    session_id: params.sessionId,
+    approved: params.approved,
+    remember: params.remember,
+    reason: params.reason
+  })
+}
+
+export function respondToPrompt(params: {
+  promptId: string
+  sessionId: string
+  value?: unknown
+  cancelled?: boolean
+  metadata?: Record<string, unknown>
+}) {
+  return api.post(`/prompts/${encodeURIComponent(params.promptId)}`, {
+    session_id: params.sessionId,
+    value: params.value,
+    cancelled: params.cancelled,
+    metadata: params.metadata
+  })
+}
+
 export async function streamQuery(params: {
   prompt: string
   sessionId: string

@@ -5,7 +5,7 @@ import type { ToolPresentation } from './catalog/toolPresentation'
 import { getToolStatus, StatusPill, ToolGlyph, compactToolLabel, toolResultSubtitle, toolSnippet } from './ToolDetails'
 import { ToolBody } from './ToolBody'
 
-export function ToolCard({ tool, presentation, grouped = false }: { tool: ToolUseBlock; presentation: ToolPresentation; grouped?: boolean }) {
+export function ToolCard({ sessionId, tool, presentation, grouped = false }: { sessionId?: string; tool: ToolUseBlock; presentation: ToolPresentation; grouped?: boolean }) {
   const [open, setOpen] = useState(Boolean(presentation.initiallyOpen))
   const status = getToolStatus(tool)
   const snippet = toolSnippet(tool)
@@ -14,7 +14,7 @@ export function ToolCard({ tool, presentation, grouped = false }: { tool: ToolUs
   useToolAutoOpen(status, setOpen)
 
   if (silent) {
-    return <SilentToolLine tool={tool} open={open} setOpen={setOpen} grouped={grouped} />
+    return <SilentToolLine sessionId={sessionId} tool={tool} open={open} setOpen={setOpen} grouped={grouped} />
   }
 
   return (
@@ -35,7 +35,7 @@ export function ToolCard({ tool, presentation, grouped = false }: { tool: ToolUs
       </button>
       {open && (
         <div className="grid gap-2 border-t border-[var(--border-soft)] p-3">
-          <ToolBody tool={tool} />
+          <ToolBody sessionId={sessionId} tool={tool} />
         </div>
       )}
     </div>
@@ -43,11 +43,13 @@ export function ToolCard({ tool, presentation, grouped = false }: { tool: ToolUs
 }
 
 function SilentToolLine({
+  sessionId,
   tool,
   open,
   setOpen,
   grouped
 }: {
+  sessionId?: string
   tool: ToolUseBlock
   open: boolean
   setOpen: (updater: (value: boolean) => boolean) => void
@@ -78,7 +80,7 @@ function SilentToolLine({
       </button>
       {open && canOpen && (
         <div className="border-t border-[var(--border-soft)] p-3">
-          <ToolBody tool={tool} />
+          <ToolBody sessionId={sessionId} tool={tool} />
         </div>
       )}
     </div>
