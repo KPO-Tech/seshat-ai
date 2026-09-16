@@ -25,7 +25,7 @@ export function AgentMessage({ message, live = false }: AgentMessageProps) {
         ? 'rounded-xl border border-[var(--accent-danger)]/35 bg-[var(--accent-danger)]/5 px-4 py-3 text-[13px] font-semibold leading-6 text-[var(--accent-danger)]'
         : 'min-w-0 text-[14px] leading-7 text-[var(--text-primary)]'
       }>
-        {hasContent ? <MessageContentBlocks blocks={message.content} /> : <AgentGenerating />}
+        {hasContent ? <MessageContentBlocks blocks={message.content} live={live} /> : <AgentGenerating />}
       </div>
       <MessageUsage usage={message.usage} turnNumber={message.turn_number} stopReason={message.stop_reason} />
     </article>

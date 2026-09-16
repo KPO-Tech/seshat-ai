@@ -1,10 +1,11 @@
+import { useEffect, useState } from 'react'
 import type { ChatContentBlock, ToolUseBlock } from '../lib/chatTypes'
 import { isGroupableTool } from '../tools/catalog/toolCatalog'
 import { getToolPresentation } from '../tools/catalog/toolPresentation'
 import { QuietToolGroup } from '../tools/QuietToolGroup'
 import { ToolRenderer } from '../tools/ToolRenderer'
 
-export function MessageContentBlocks({ blocks }: { blocks: ChatContentBlock[] }) {
+export function MessageContentBlocks({ blocks, live = false }: { blocks: ChatContentBlock[]; live?: boolean }) {
   const items = groupBlocks(blocks)
   return (
     <>
@@ -12,7 +13,7 @@ export function MessageContentBlocks({ blocks }: { blocks: ChatContentBlock[] })
         if (item.kind === 'group') return <QuietToolGroup key={`group-${index}`} tools={item.tools} />
         const block = item.block
         if (block.type === 'text') return <TextBlock key={index} text={block.text} />
-        if (block.type === 'thinking') return <ThinkingBlock key={index} text={block.thinking} />
+        if (block.type === 'thinking') return <ThinkingBlock key={index} text={block.thinking} active={live && index === items.length - 1} />
         if (block.type === 'tool_use') return <ToolRenderer key={block.id || index} tool={block} />
         return null
       })}
@@ -24,13 +25,29 @@ function TextBlock({ text }: { text: string }) {
   return <div className="whitespace-pre-wrap break-words">{text}</div>
 }
 
-function ThinkingBlock({ text }: { text: string }) {
+function ThinkingBlock({ text, active }: { text: string; active: boolean }) {
+  const [open, setOpen] = useState(active)
+
+  useEffect(() => {
+    setOpen(active)
+  }, [active])
+
   if (!text.trim()) return null
   return (
-    <details className="my-2 rounded-lg border border-[var(--border-soft)] bg-[var(--surface-panel)]">
-      <summary className="cursor-pointer px-3 py-2 text-[12px] font-semibold text-[var(--text-muted)]">Thinking</summary>
-      <div className="border-t border-[var(--border-soft)] px-3 py-2 text-[12px] leading-6 text-[var(--text-secondary)]">{text}</div>
-    </details>
+    <div className="my-2 overflow-hidden rounded-lg border border-[var(--border-soft)] bg-[var(--surface-panel)]">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="flex min-h-9 w-full items-center justify-between gap-3 px-3 py-2 text-left hover:bg-[var(--surface-muted)]"
+      >
+        <span className="flex items-center gap-2 text-[12px] font-semibold text-[var(--text-muted)]">
+          {active && <span className="size-2 rounded-full bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-primary)]" />}
+          Thinking
+        </span>
+        <span className="text-[11px] font-semibold text-[var(--text-muted)]">{open ? 'Hide' : 'Details'}</span>
+      </button>
+      {open && <div className="border-t border-[var(--border-soft)] px-3 py-2 text-[12px] leading-6 text-[var(--text-secondary)]">{text}</div>}
+    </div>
   )
 }
 

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ToolUseBlock } from '../lib/chatTypes'
 import { isSilentTool, toolLabel } from './catalog/toolCatalog'
 import type { ToolPresentation } from './catalog/toolPresentation'
@@ -10,6 +10,8 @@ export function ToolCard({ tool, presentation, grouped = false }: { tool: ToolUs
   const status = getToolStatus(tool)
   const snippet = toolSnippet(tool)
   const silent = isSilentTool(tool.name)
+
+  useToolAutoOpen(status, setOpen)
 
   if (silent) {
     return <SilentToolLine tool={tool} open={open} setOpen={setOpen} grouped={grouped} />
@@ -55,7 +57,7 @@ function SilentToolLine({
   const failed = status === 'failed'
   const subtitle = toolResultSubtitle(tool)
   const snippet = toolSnippet(tool)
-  const canOpen = failed || Boolean(tool._result?.content) || Boolean(tool._partialInput)
+  const canOpen = isActiveStatus(status) || failed || Boolean(tool._result?.content) || Boolean(tool._partialInput)
 
   return (
     <div className={['overflow-hidden rounded-md border border-[var(--border-soft)] bg-[var(--surface-panel)]', grouped ? '' : 'my-1.5'].join(' ')}>
@@ -81,4 +83,14 @@ function SilentToolLine({
       )}
     </div>
   )
+}
+
+function useToolAutoOpen(status: string, setOpen: (value: boolean) => void) {
+  useEffect(() => {
+    setOpen(isActiveStatus(status))
+  }, [status, setOpen])
+}
+
+function isActiveStatus(status: string) {
+  return status === 'running' || status === 'pending' || status === 'awaiting_approval'
 }
