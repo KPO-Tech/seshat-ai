@@ -9,7 +9,7 @@ export type ToolCatalogEntry = {
   silent?: boolean
   groupable?: boolean
   hidden?: boolean
-  body?: 'generic' | 'json' | 'prose' | 'web_search' | 'web_fetch' | 'rag' | 'mcp' | 'ask_user' | 'plan' | 'memory' | 'automation'
+  body?: 'generic' | 'json' | 'prose' | 'web_search' | 'web_fetch' | 'rag' | 'mcp' | 'ask_user' | 'plan' | 'memory' | 'automation' | 'image' | 'audio' | 'transcription'
   snippet?: (tool: ToolUseBlock) => string
 }
 
@@ -76,9 +76,9 @@ const registry: Record<string, ToolCatalogEntry> = {
   statistics: { label: 'Statistics', category: 'data', body: 'prose' },
   financial_calc: { label: 'Financial Calc', category: 'data', body: 'prose' },
 
-  generate_image: { label: 'Generate Image', category: 'media', groupable: false, body: 'prose' },
-  text_to_speech: { label: 'Text To Speech', category: 'media', groupable: false, body: 'prose' },
-  speech_to_text: { label: 'Speech To Text', category: 'media', groupable: false, body: 'prose' },
+  generate_image: { label: 'Generate Image', category: 'media', groupable: false, body: 'image' },
+  text_to_speech: { label: 'Text To Speech', category: 'media', groupable: false, body: 'audio' },
+  speech_to_text: { label: 'Speech To Text', category: 'media', groupable: false, body: 'transcription' },
 
   hn_stories: { label: 'HN Stories', category: 'search', body: 'prose' },
   hn_item: { label: 'HN Item', category: 'search', body: 'prose' },

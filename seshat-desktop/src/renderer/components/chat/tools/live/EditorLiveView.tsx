@@ -1,3 +1,6 @@
+import { useState } from 'react'
+import { usePreviewStore } from '@renderer/stores/preview'
+import { createArtifactPreview } from '../../attachments/attachmentApi'
 import type { ToolUseBlock } from '../../lib/chatTypes'
 import { CodePanel, formatDuration, prettyJsonOrRaw } from '../ToolDetails'
 
@@ -60,8 +63,45 @@ export function EditorLiveView({ tool }: { tool: ToolUseBlock }) {
           Preparing file change
         </div>
       )}
+      <HtmlPreviewAction tool={tool} filePath={edit.filePath} />
     </div>
   )
+}
+
+function HtmlPreviewAction({ tool, filePath }: { tool: ToolUseBlock; filePath: string }) {
+  const open = usePreviewStore((state) => state.open)
+  const [opening, setOpening] = useState(false)
+  const [error, setError] = useState('')
+  const content = typeof tool._result?.metadata?.content === 'string' ? tool._result.metadata.content : ''
+  if (!/\.html?$/i.test(filePath) || !content || tool._result?.is_error || tool._result?.isError) return null
+
+  async function preview() {
+    if (opening) return
+    setOpening(true)
+    setError('')
+    try {
+      const url = await createArtifactPreview(content)
+      open({ kind: 'artifact', title: filePath.split(/[/\\]/).pop() || filePath, url })
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Failed to open preview.')
+    } finally {
+      setOpening(false)
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2 border-t border-[var(--border-soft)] px-3 py-2">
+      <button type="button" disabled={opening} onClick={() => void preview()} className="flex h-8 items-center gap-2 rounded-md border border-[var(--border-soft)] bg-[var(--surface-muted)] px-3 text-[11.5px] font-semibold text-[var(--text-primary)] hover:border-[var(--accent-primary)]/50 disabled:opacity-60">
+        <PreviewIcon />
+        {opening ? 'Opening' : 'Preview artifact'}
+      </button>
+      {error && <span className="text-[11px] text-[var(--accent-danger)]">{error}</span>}
+    </div>
+  )
+}
+
+function PreviewIcon() {
+  return <svg width="15" height="15" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2.5" y="3" width="13" height="12" rx="2" /><path d="M6 7.5 4.5 9 6 10.5M12 7.5 13.5 9 12 10.5M10 6.5 8 11.5" /></svg>
 }
 
 function DiffPreview({ rows }: { rows: DiffRow[] }) {

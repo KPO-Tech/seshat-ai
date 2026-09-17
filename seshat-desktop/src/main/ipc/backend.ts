@@ -2,6 +2,7 @@ import type { IpcMain, IpcMainInvokeEvent } from 'electron'
 import { randomUUID } from 'crypto'
 import { deleteSecret, getSecret, setSecret } from './secure-store'
 import { assertTrustedSender } from './trusted-sender'
+import { normalizeFileContentPath, normalizeSessionUploadPath } from './validation'
 
 type AuthUser = {
   id: string
@@ -26,6 +27,13 @@ type StreamStartPayload = {
   path: string
   method?: string
   body?: unknown
+}
+
+type UploadFilePayload = {
+  path: string
+  filename: string
+  contentType?: string
+  data: ArrayBuffer
 }
 
 const BACKEND_ORIGIN = process.env.SESHAT_BACKEND_ORIGIN || 'http://127.0.0.1:8090'
@@ -134,6 +142,51 @@ async function performJSONRequest(path: string, method: string, body: unknown, t
   const payload = await parseResponse(res)
   if (res.status === 401) await clearSession()
   return payload
+}
+
+async function performFileUpload(payload: UploadFilePayload, token?: string) {
+  const path = normalizeSessionUploadPath(payload.path)
+  const filename = payload.filename.trim()
+  if (!filename || filename.length > 512) throw new Error('Invalid filename')
+  if (!(payload.data instanceof ArrayBuffer) || payload.data.byteLength === 0) throw new Error('File is empty')
+
+  const body = new FormData()
+  body.append('file', new Blob([payload.data], { type: payload.contentType || 'application/octet-stream' }), filename)
+  const headers: Record<string, string> = { Accept: 'application/json' }
+  if (token) headers.Authorization = `Bearer ${token}`
+
+  try {
+    const res = await fetch(buildBackendURL(path), { method: 'POST', headers, body })
+    const parsed = await parseResponse(res)
+    if (res.status === 401) await clearSession()
+    return parsed
+  } catch (err) {
+    return { ok: false, status: 0, text: err instanceof Error ? err.message : 'Upload failed' }
+  }
+}
+
+async function performFileDownload(path: string, token?: string) {
+  const headers: Record<string, string> = {}
+  if (token) headers.Authorization = `Bearer ${token}`
+  try {
+    const res = await fetch(buildBackendURL(normalizeFileContentPath(path)), { headers })
+    if (!res.ok) {
+      const parsed = await parseResponse(res)
+      if (res.status === 401) await clearSession()
+      return parsed
+    }
+    const data = Buffer.from(await res.arrayBuffer()).toString('base64')
+    return {
+      ok: true,
+      status: res.status,
+      data: {
+        dataBase64: data,
+        contentType: res.headers.get('content-type') || 'application/octet-stream'
+      }
+    }
+  } catch (err) {
+    return { ok: false, status: 0, text: err instanceof Error ? err.message : 'Download failed' }
+  }
 }
 
 async function startStream(event: IpcMainInvokeEvent, payload: StreamStartPayload, token?: string) {
@@ -297,6 +350,18 @@ export function registerBackendHandlers(ipcMain: IpcMain): void {
     assertTrustedSender(event)
     const session = await loadSession()
     return performJSONRequest(payload.path, payload.method || 'GET', payload.body, session?.token)
+  })
+
+  ipcMain.handle('http:upload-file', async (event, payload: UploadFilePayload) => {
+    assertTrustedSender(event)
+    const session = await loadSession()
+    return performFileUpload(payload, session?.token)
+  })
+
+  ipcMain.handle('http:download-file', async (event, path: string) => {
+    assertTrustedSender(event)
+    const session = await loadSession()
+    return performFileDownload(path, session?.token)
   })
 
   ipcMain.handle('http:stream:start', async (event, payload: StreamStartPayload) => {

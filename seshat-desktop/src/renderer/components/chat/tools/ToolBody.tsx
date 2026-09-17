@@ -7,6 +7,7 @@ import { GenericBody, JsonBody, ProseBody } from './bodies/GenericToolBodies'
 import { McpBody, RagBody } from './bodies/KnowledgeToolBodies'
 import { AutomationToolBody, MemoryToolBody } from './bodies/StructuredToolBodies'
 import { WebFetchBody, WebSearchBody } from './bodies/WebToolBodies'
+import { AudioToolBody, ImageToolBody, TranscriptionToolBody } from './bodies/MediaToolBodies'
 import { toolEntry } from './catalog/toolCatalog'
 import { PlanArtifactCard } from './plan/PlanArtifactCard'
 import { planIdFromTool } from './plan/planUtils'
@@ -27,6 +28,9 @@ export function ToolBody({ sessionId, tool }: { sessionId?: string; tool: ToolUs
   if (body === 'ask_user') return <AskUserBody tool={tool} />
   if (body === 'memory') return <MemoryToolBody tool={tool} />
   if (body === 'automation') return <AutomationToolBody tool={tool} />
+  if (body === 'image') return <ImageToolBody tool={tool} />
+  if (body === 'audio') return <AudioToolBody tool={tool} />
+  if (body === 'transcription') return <TranscriptionToolBody tool={tool} />
   if (body === 'json') return <JsonBody tool={tool} />
   if (body === 'prose') return <ProseBody tool={tool} />
   return <GenericBody tool={tool} />

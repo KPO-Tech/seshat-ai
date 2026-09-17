@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react'
 import { ChatModelSelect } from './ChatModelSelect'
+import { DraftAttachments } from './attachments/DraftAttachments'
 import type { ChatModelChoice } from './lib/chatModels'
 
 const actionChips = [
@@ -17,7 +18,7 @@ type ChatInputProps = {
   selectedModelId?: string
   modelsLoading?: boolean
   onModelChange?: (id: string) => void
-  onSend: (text: string) => void
+  onSend: (text: string, files: File[]) => Promise<void> | void
 }
 
 export function ChatInput({
@@ -30,7 +31,11 @@ export function ChatInput({
   onSend
 }: ChatInputProps) {
   const [draft, setDraft] = useState('')
+  const [files, setFiles] = useState<File[]>([])
+  const [sending, setSending] = useState(false)
+  const [dragging, setDragging] = useState(false)
   const ref = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const element = ref.current
@@ -39,16 +44,52 @@ export function ChatInput({
     element.style.height = `${Math.min(element.scrollHeight, compact ? 140 : 180)}px`
   }, [draft, compact])
 
-  function submit() {
+  async function submit() {
     const text = draft.trim()
-    if (!text || disabled) return
-    setDraft('')
-    onSend(text)
+    if ((!text && files.length === 0) || disabled || sending) return
+    setSending(true)
+    try {
+      await onSend(text, files)
+      setDraft('')
+      setFiles([])
+    } finally {
+      setSending(false)
+    }
+  }
+
+  function addFiles(nextFiles: File[]) {
+    setFiles((current) => {
+      const seen = new Set(current.map((file) => `${file.name}:${file.size}:${file.lastModified}`))
+      return [...current, ...nextFiles.filter((file) => !seen.has(`${file.name}:${file.size}:${file.lastModified}`))].slice(0, 10)
+    })
+  }
+
+  function handleDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault()
+    setDragging(false)
+    addFiles(Array.from(event.dataTransfer.files))
   }
 
   return (
     <div className="w-full">
-      <div className="rounded-[22px] border border-[var(--border-soft)] bg-[var(--surface-panel)] px-4 pb-3 pt-3 shadow-[0_20px_70px_rgba(0,0,0,0.08)]">
+      <div
+        onDragEnter={(event) => { event.preventDefault(); setDragging(true) }}
+        onDragOver={(event) => event.preventDefault()}
+        onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragging(false) }}
+        onDrop={handleDrop}
+        className={`rounded-[22px] border bg-[var(--surface-panel)] px-4 pb-3 pt-3 shadow-[0_20px_70px_rgba(0,0,0,0.08)] transition-colors ${dragging ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/5' : 'border-[var(--border-soft)]'}`}
+      >
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          className="hidden"
+          onChange={(event) => {
+            addFiles(Array.from(event.target.files ?? []))
+            event.target.value = ''
+          }}
+        />
+        <DraftAttachments files={files} onRemove={(index) => setFiles((current) => current.filter((_, fileIndex) => fileIndex !== index))} />
         <textarea
           ref={ref}
           value={draft}
@@ -56,7 +97,7 @@ export function ChatInput({
           onKeyDown={(event) => {
             if (event.key === 'Enter' && !event.shiftKey) {
               event.preventDefault()
-              submit()
+              void submit()
             }
           }}
           placeholder="Assign a task or type / for more"
@@ -66,7 +107,7 @@ export function ChatInput({
 
         <div className="mt-1.5 flex items-center justify-between">
           <div className="flex min-w-0 items-center gap-2">
-            <RoundToolButton label="Attach file"><PlusIcon /></RoundToolButton>
+            <RoundToolButton label="Attach file" onClick={() => fileInputRef.current?.click()}><PlusIcon /></RoundToolButton>
             <RoundToolButton label="Tools"><ToolsIcon /></RoundToolButton>
             <RoundToolButton label="Computer"><DesktopIcon /></RoundToolButton>
             <ChatModelSelect
@@ -83,8 +124,8 @@ export function ChatInput({
             <RoundToolButton label="Dictate"><MicIcon /></RoundToolButton>
             <button
               type="button"
-              disabled={disabled || !draft.trim()}
-              onClick={submit}
+              disabled={disabled || sending || (!draft.trim() && files.length === 0)}
+              onClick={() => void submit()}
               className="flex size-8 items-center justify-center rounded-full bg-[var(--surface-muted)] text-[var(--text-muted)] transition-colors enabled:bg-[var(--text-primary)] enabled:text-[var(--surface-root)]"
               aria-label="Send"
             >
@@ -116,10 +157,11 @@ export function ChatInput({
   )
 }
 
-function RoundToolButton({ label, children }: { label: string; children: ReactNode }) {
+function RoundToolButton({ label, children, onClick }: { label: string; children: ReactNode; onClick?: () => void }) {
   return (
     <button
       type="button"
+      onClick={onClick}
       className="flex size-8 items-center justify-center rounded-full border border-[var(--border-soft)] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]"
       aria-label={label}
       title={label}

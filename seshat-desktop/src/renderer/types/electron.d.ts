@@ -45,6 +45,18 @@ declare global {
           data?: unknown
           text?: string
         }>
+        uploadFile: (payload: { path: string; filename: string; contentType?: string; data: ArrayBuffer }) => Promise<{
+          ok: boolean
+          status: number
+          data?: unknown
+          text?: string
+        }>
+        downloadFile: (path: string) => Promise<{
+          ok: boolean
+          status: number
+          data?: { dataBase64?: string; contentType?: string }
+          text?: string
+        }>
         startStream: (payload: { path: string; method?: string; body?: unknown }) => Promise<{
           streamId?: string
           error?: string
