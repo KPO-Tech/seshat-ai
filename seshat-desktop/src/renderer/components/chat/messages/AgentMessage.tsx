@@ -2,6 +2,7 @@ import type { ChatMessage } from '../lib/chatTypes'
 import { MessageContentBlocks } from './MessageContentBlocks'
 import { MessageUsage } from './MessageUsage'
 import { AttachmentList } from '../attachments/AttachmentList'
+import { CopyButton } from './MessageActions'
 
 type AgentMessageProps = {
   sessionId?: string
@@ -20,6 +21,9 @@ export function AgentMessage({ sessionId, message, live = false }: AgentMessageP
   })
   const hasUsage = Boolean(message.usage || message.turn_number || message.stop_reason)
   const attachments = message.metadata?.attachments ?? []
+  const hasToolUse = message.content.some((block) => block.type === 'tool_use')
+  const copyText = message.content.map((block) => block.type === 'text' ? block.text : '').filter(Boolean).join('\n\n')
+  const canCopy = !live && !hasToolUse && Boolean(copyText)
 
   if (!live && !failed && !hasContent && !hasUsage && attachments.length === 0) return null
 
@@ -33,6 +37,11 @@ export function AgentMessage({ sessionId, message, live = false }: AgentMessageP
         {hasContent ? <MessageContentBlocks sessionId={sessionId} blocks={message.content} live={live} /> : attachments.length === 0 ? <AgentGenerating /> : null}
       </div>
       {stopped && <StoppedIndicator />}
+      {canCopy && (
+        <div className="opacity-0 transition-opacity group-hover:opacity-100">
+          <CopyButton text={copyText} />
+        </div>
+      )}
       <MessageUsage usage={message.usage} turnNumber={message.turn_number} stopReason={message.stop_reason} />
     </article>
   )

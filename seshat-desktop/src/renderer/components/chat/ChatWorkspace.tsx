@@ -93,7 +93,14 @@ export function ChatWorkspace({ user }: { user: User }) {
       ) : (
         <>
           <section ref={scrollContainerRef} className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
-            <MessageList containerRef={scrollContainerRef} sessionId={activeSession.id} messages={activeSession.messages} streaming={streaming} isStreaming={isStreaming} />
+            <MessageList
+              containerRef={scrollContainerRef}
+              sessionId={activeSession.id}
+              messages={activeSession.messages}
+              streaming={streaming}
+              isStreaming={isStreaming}
+              onRetry={(text) => void send(text, sendOptions)}
+            />
           </section>
           <footer className="shrink-0 border-t border-transparent px-8 pb-5">
             <div className="mx-auto max-w-[820px]">
