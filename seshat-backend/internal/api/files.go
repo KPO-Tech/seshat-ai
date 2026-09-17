@@ -1,11 +1,13 @@
 package api
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	backendaudit "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/audit"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
@@ -144,7 +146,7 @@ func (app *App) handleFileDownload(w http.ResponseWriter, r *http.Request, _ any
 		if isNotFound(err) && app.backend.Knowledge != nil {
 			downloaded, kErr := app.backend.Knowledge.DownloadFile(r.Context(), principal, fileID)
 			if kErr == nil {
-				writeFileContent(w, downloaded.ContentType, downloaded.Filename, downloaded.Data)
+				writeFileContent(w, r, downloaded.ContentType, downloaded.Filename, downloaded.Data)
 				return
 			}
 			// The Knowledge fallback was actually attempted (this id isn't a
@@ -160,14 +162,12 @@ func (app *App) handleFileDownload(w http.ResponseWriter, r *http.Request, _ any
 	}
 	defer reader.Close()
 
-	ct := f.ContentType
-	if ct == "" {
-		ct = "application/octet-stream"
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		writeBackendError(w, bkerr.Internal("read file content: "+err.Error(), err))
+		return
 	}
-	w.Header().Set("Content-Type", ct)
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename=%q`, f.Filename))
-	w.WriteHeader(http.StatusOK)
-	_, _ = io.Copy(w, reader)
+	writeFileContent(w, r, f.ContentType, f.Filename, data)
 }
 
 // isNotFound reports whether err is a bkerr.Error carrying
@@ -179,14 +179,21 @@ func isNotFound(err error) bool {
 	return errors.As(err, &bkErr) && bkErr.Kind == bkerr.ErrorKindNotFound
 }
 
-func writeFileContent(w http.ResponseWriter, contentType, filename string, data []byte) {
+// writeFileContent serves already-fully-read file bytes as a Range-aware
+// response via http.ServeContent - the desktop PDF viewer (PDFViewerPanel.tsx)
+// depends on this: it fetches small byte ranges through a custom
+// PDFDataRangeTransport instead of pulling the whole file across IPC as one
+// base64 blob, so pdf.js can start rendering before the full document has
+// been read. The file is still read into memory once per request either way
+// (local disk or a connected-mode download) - only the response to the
+// caller becomes partial/206-capable, not the upstream read itself.
+func writeFileContent(w http.ResponseWriter, r *http.Request, contentType, filename string, data []byte) {
 	if contentType == "" {
 		contentType = "application/octet-stream"
 	}
 	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename=%q`, filename))
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(data)
+	http.ServeContent(w, r, filename, time.Time{}, bytes.NewReader(data))
 }
 
 // handleFileMarkdown serves the docling-converted markdown text for a file
