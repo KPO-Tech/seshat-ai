@@ -164,7 +164,7 @@ func (s *Service) RunPrompt(ctx context.Context, principal *backendauth.Principa
 
 	result, err := s.runtime.RunPrompt(ctx, runtimeInput)
 	if err != nil {
-		return nil, bkerr.Internal(err.Error(), err)
+		return nil, bkerr.WrapOrInternal(err)
 	}
 
 	s.trackSessionBinding(ctx, principal, input.SessionID, result.SessionID, bindAfterRun, input.PermissionMode, input.ExecutionOrigin)
@@ -195,7 +195,7 @@ func (s *Service) StreamPrompt(ctx context.Context, principal *backendauth.Princ
 
 	result, err := streamer.StreamPrompt(ctx, runtimeInput, onChunk, onRuntimeEvent)
 	if err != nil {
-		return nil, bkerr.Internal(err.Error(), err)
+		return nil, bkerr.WrapOrInternal(err)
 	}
 
 	s.trackSessionBinding(ctx, principal, input.SessionID, result.SessionID, bindAfterRun, input.PermissionMode, input.ExecutionOrigin)
@@ -780,6 +780,22 @@ func (s *Service) UpdateSessionMetadata(ctx context.Context, principal *backenda
 		if modelID != nil {
 			mid = strings.TrimSpace(*modelID)
 		}
+		// A provider/model switch after the session already has turns would
+		// silently leave the runtime session bound to whatever it started
+		// with - only the ownership record's advertised provider/model would
+		// change, drifting out of sync with what the LLM actually continues
+		// using (and a genuine switch, if the runtime honored it mid-session,
+		// could hand a different provider a transcript full of tool calls in
+		// its predecessor's format). prepareRuntimeInput already enforces
+		// this same TotalTurns==0 rule for the query-time binding path; this
+		// closes the same gap on the session-metadata update path.
+		canBind, err := s.sessionCanBindProvider(ctx, sessionID)
+		if err != nil {
+			return err
+		}
+		if !canBind {
+			return bkerr.Conflict("cannot change provider/model after the session has started - create a new session instead", nil)
+		}
 		if err := s.ownership.UpdateProviderSelection(ctx, sessionID, pid, mid); err != nil {
 			return bkerr.Internal("update session provider: "+err.Error(), err)
 		}
@@ -1051,6 +1067,7 @@ func (s *Service) prepareRuntimeInput(ctx context.Context, principal *backendaut
 	// asks.
 	if principal != nil {
 		runtimeInput.UserID = principal.User.ID
+		runtimeInput.RAGAllowedOwnerIDs = ragAllowedOwnerIDs(principal)
 	}
 
 	// Build a per-request web search runner that closes over the current principal

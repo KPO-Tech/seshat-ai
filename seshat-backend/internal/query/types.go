@@ -24,7 +24,16 @@ type QueryInput struct {
 	// which then fails its own ownership check on every later read
 	// (Get/Patch compares against the real, non-empty principal.User.ID).
 	// Populated in prepareRuntimeInput from the request's principal.
-	UserID             string
+	UserID string
+	// RAGAllowedOwnerIDs scopes the rag_search/rag_ingest/rag_delete tools
+	// (wired onto the session whenever a RAGService is configured) to
+	// corpora this caller actually owns or shares a workspace with -
+	// mirrors knowledge.Service.checkAccess's own rule (corpus.UserID or
+	// corpus.WorkspaceID membership) so the model's own tool call can't
+	// reach a corpus_id belonging to someone else. Populated in
+	// prepareRuntimeInput from the request's principal; empty means no
+	// scoping is applied (headless/unscoped mode).
+	RAGAllowedOwnerIDs []string
 	PromptFn           types.PromptFn        // per-request permission bridge, optional
 	PermissionMode     types.PermissionMode  // effective tool approval mode for this turn/session
 	ExecutionOrigin    types.ExecutionOrigin // interactive vs automation provenance

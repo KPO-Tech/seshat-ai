@@ -118,6 +118,55 @@ func TestSDKRuntimeClientForInputDoesNotShareAcrossDifferentKeys(t *testing.T) {
 	}
 }
 
+// TestSDKRuntimeTryAcquireSessionTurnSerializesPerSession is the regression
+// test for the cross-request race described in tryAcquireSessionTurn's doc
+// comment: loadOrCreateSession rehydrates the session fresh from the
+// persisted store on every call (even with a cached client), so nothing
+// below this guard would otherwise stop two concurrent
+// RunPrompt/StreamPrompt calls for the same session_id from both proceeding
+// and racing to save back the transcript last.
+func TestSDKRuntimeTryAcquireSessionTurnSerializesPerSession(t *testing.T) {
+	runtime := newTestSDKRuntime(t)
+
+	release1, ok1 := runtime.tryAcquireSessionTurn("session-a")
+	if !ok1 {
+		t.Fatal("expected the first acquire to succeed")
+	}
+	if _, ok2 := runtime.tryAcquireSessionTurn("session-a"); ok2 {
+		t.Fatal("expected a concurrent acquire on the same session_id to be rejected")
+	}
+	release2, ok3 := runtime.tryAcquireSessionTurn("session-b")
+	if !ok3 {
+		t.Fatal("expected an unrelated session_id to acquire freely")
+	}
+	release2()
+	release1()
+
+	release3, ok4 := runtime.tryAcquireSessionTurn("session-a")
+	if !ok4 {
+		t.Fatal("expected session-a to be acquirable again after release")
+	}
+	release3()
+}
+
+// TestSDKRuntimeTryAcquireSessionTurnAllowsEmptySessionID ensures the very
+// first turn of a brand-new session (no session_id yet) is never blocked by
+// this guard - there's nothing to contend with until a session exists.
+func TestSDKRuntimeTryAcquireSessionTurnAllowsEmptySessionID(t *testing.T) {
+	runtime := newTestSDKRuntime(t)
+
+	release1, ok1 := runtime.tryAcquireSessionTurn("")
+	if !ok1 {
+		t.Fatal("expected an empty session_id to always acquire")
+	}
+	release2, ok2 := runtime.tryAcquireSessionTurn("")
+	if !ok2 {
+		t.Fatal("expected a second empty session_id acquire to also succeed")
+	}
+	release1()
+	release2()
+}
+
 func TestInteractiveMaxTokensForModelUsesProviderCatalog(t *testing.T) {
 	got := InteractiveMaxTokensForModel(sdk.ModelIdentifier{
 		Provider: sdk.APIProviderZAi,
