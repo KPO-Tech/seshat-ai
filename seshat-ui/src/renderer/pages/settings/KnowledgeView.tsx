@@ -23,6 +23,7 @@ const DEFAULT_BASE_URLS: Record<string, string> = {
   mistral: 'https://api.mistral.ai/v1',
   gemini: 'https://generativelanguage.googleapis.com/v1beta/openai',
   ollama: 'http://localhost:11434',
+  tei: 'http://localhost:8082/v1',
 }
 
 const SUGGESTED_EMBEDDING_MODELS: Record<string, string[]> = {
@@ -30,12 +31,13 @@ const SUGGESTED_EMBEDDING_MODELS: Record<string, string[]> = {
   mistral: ['mistral-embed'],
   gemini: ['gemini-embedding-001'],
   ollama: [],
+  tei: [],
 }
 
 const RERANKER_PRESETS = [
   { id: 'langsearch', label: 'LangSearch', baseURL: 'https://api.langsearch.com/v1/rerank', model: 'langsearch-reranker-v1' },
   { id: 'cohere', label: 'Cohere compatible', baseURL: 'https://api.cohere.com/v2/rerank', model: 'rerank-v3.5' },
-  { id: 'tei', label: 'TEI / vLLM local', baseURL: 'http://localhost:8080/rerank', model: 'BAAI/bge-reranker-v2-m3' },
+  { id: 'tei', label: 'TEI / vLLM local', baseURL: 'http://localhost:8083/rerank', model: 'BAAI/bge-reranker-v2-m3' },
   { id: 'custom', label: 'Custom endpoint', baseURL: '', model: '' },
 ]
 
@@ -148,9 +150,27 @@ function EmbeddingCard({ config, onSaved }: { config: EmbedderConfig | null; onS
   }, [config])
 
   useEffect(() => {
-    if (sourceInitialized || !config || !linkStatus) return
+    if (sourceInitialized || !linkStatus) return
+    if (!config) {
+      // Nothing saved yet: prefer an already-linked provider if this org
+      // has one, otherwise default to TEI local rather than "Custom
+      // endpoint" - TEI is the free, no-API-key option this whole
+      // embedder flow is built to make easy, and defaulting to a blank
+      // custom form just hides the Detect button behind a dropdown pick
+      // most first-time users won't think to make.
+      if (linkStatus.linked_provider_id && candidates.some((candidate) => candidate.id === linkStatus.linked_provider_id)) {
+        setSource(linkStatus.linked_provider_id)
+      } else {
+        setSource('__tei__')
+        setForm((current) => ({ ...current, provider: 'tei', base_url: DEFAULT_BASE_URLS.tei }))
+      }
+      setSourceInitialized(true)
+      return
+    }
     if (config.provider === 'ollama') {
       setSource('__ollama__')
+    } else if (config.provider === 'tei') {
+      setSource('__tei__')
     } else if (linkStatus.linked_provider_id && candidates.some((candidate) => candidate.id === linkStatus.linked_provider_id)) {
       setSource(linkStatus.linked_provider_id)
     } else {
@@ -176,6 +196,17 @@ function EmbeddingCard({ config, onSaved }: { config: EmbedderConfig | null; onS
     }
     if (value === '__custom__') {
       setForm((current) => ({ ...current, provider: 'openai', base_url: current.base_url || DEFAULT_BASE_URLS.openai, api_key: '' }))
+      return
+    }
+    if (value === '__tei__') {
+      // TEI's /v1/embeddings route is OpenAI-wire-compatible - saved as
+      // provider "tei" purely so this card knows to show the Detect
+      // button and probe /info instead of assuming Ollama's /api/tags;
+      // the runtime embed call itself falls through to the same
+      // OpenAI-shaped request path as "openai"/"mistral"/"gemini"
+      // (embedder.go's embedBatch switches only on "ollama", everything
+      // else defaults to embedOpenAI).
+      setForm((current) => ({ ...current, provider: 'tei', base_url: DEFAULT_BASE_URLS.tei, model: '', api_key: '' }))
       return
     }
     const candidate = candidates.find((item) => item.id === value)
@@ -288,6 +319,7 @@ function EmbeddingCard({ config, onSaved }: { config: EmbedderConfig | null; onS
                 <option key={candidate.id} value={candidate.id}>{candidate.name}</option>
               ))}
               <option value="__ollama__">Ollama local</option>
+              <option value="__tei__">TEI local</option>
               <option value="__custom__">Custom endpoint</option>
             </select>
           </Field>
@@ -316,7 +348,7 @@ function EmbeddingCard({ config, onSaved }: { config: EmbedderConfig | null; onS
           <Field label={detectedModels.length > 0 ? `Embedding model (${detectedModels.length} detected)` : 'Embedding model'}>
             <div className="kv-inline-field">
               <input list="embedding-models" value={form.model} onChange={(event) => update('model', event.target.value)} placeholder="text-embedding-3-small" />
-              {form.provider === 'ollama' && (
+              {(form.provider === 'ollama' || form.provider === 'tei') && (
                 <button type="button" className="kv-icon-btn" onClick={() => void detectModels()} disabled={detecting || !form.base_url}>
                   <Sync size={13} className={detecting ? 'kv-spin' : undefined} />
                 </button>
@@ -336,12 +368,19 @@ function EmbeddingCard({ config, onSaved }: { config: EmbedderConfig | null; onS
   )
 }
 
+// Nothing saved yet defaults to this preset (TEI local) rather than
+// "Custom endpoint" - same reasoning as the embedder card just above:
+// TEI is the free, no-API-key option, and defaulting to a blank custom
+// form hides the Detect button behind a dropdown pick most first-time
+// users won't think to make.
+const DEFAULT_RERANKER_PRESET = RERANKER_PRESETS.find((item) => item.id === 'tei')!
+
 function RerankerCard({ config, onSaved }: { config: RerankerConfig | null; onSaved: (cfg: RerankerConfig) => void }) {
-  const [preset, setPreset] = useState(presetFor(config?.base_url || ''))
+  const [preset, setPreset] = useState(config ? presetFor(config.base_url || '') : DEFAULT_RERANKER_PRESET.id)
   const [form, setForm] = useState({
-    base_url: config?.base_url ?? '',
+    base_url: config?.base_url ?? DEFAULT_RERANKER_PRESET.baseURL,
     api_key: '',
-    model: config?.model ?? '',
+    model: config?.model ?? DEFAULT_RERANKER_PRESET.model,
     enabled: config?.enabled ?? false,
   })
   const [showKey, setShowKey] = useState(false)
@@ -350,6 +389,7 @@ function RerankerCard({ config, onSaved }: { config: RerankerConfig | null; onSa
   const [testState, setTestState] = useState<TestState>('idle')
   const [testError, setTestError] = useState<string | null>(null)
   const [testLatency, setTestLatency] = useState<number | null>(null)
+  const [detecting, setDetecting] = useState(false)
 
   useEffect(() => {
     if (!config) return
@@ -399,6 +439,27 @@ function RerankerCard({ config, onSaved }: { config: RerankerConfig | null; onSa
     }
   }
 
+  async function detectModel() {
+    setDetecting(true)
+    try {
+      const result = await api.post<{ model: string; error: string | null }>('/settings/reranker/detect-model', {
+        base_url: form.base_url,
+      })
+      if (result.error) {
+        setTestState('error')
+        setTestError(result.error)
+      } else if (result.model) {
+        setForm((current) => ({ ...current, model: result.model }))
+        setDirty(true)
+      }
+    } catch (e: unknown) {
+      setTestState('error')
+      setTestError((e as { message?: string })?.message ?? 'Model detection failed')
+    } finally {
+      setDetecting(false)
+    }
+  }
+
   async function test() {
     setTestState('running')
     setTestError(null)
@@ -444,10 +505,17 @@ function RerankerCard({ config, onSaved }: { config: RerankerConfig | null; onSa
             </select>
           </Field>
           <Field label="Endpoint URL">
-            <input value={form.base_url} onChange={(event) => update('base_url', event.target.value)} placeholder="http://localhost:8080/rerank" />
+            <input value={form.base_url} onChange={(event) => update('base_url', event.target.value)} placeholder="http://localhost:8083/rerank" />
           </Field>
           <Field label="Model">
-            <input value={form.model} onChange={(event) => update('model', event.target.value)} placeholder="BAAI/bge-reranker-v2-m3" />
+            <div className="kv-inline-field">
+              <input value={form.model} onChange={(event) => update('model', event.target.value)} placeholder="BAAI/bge-reranker-v2-m3" />
+              {preset === 'tei' && (
+                <button type="button" className="kv-icon-btn" onClick={() => void detectModel()} disabled={detecting || !form.base_url}>
+                  <Sync size={13} className={detecting ? 'kv-spin' : undefined} />
+                </button>
+              )}
+            </div>
           </Field>
         </div>
 
@@ -652,7 +720,7 @@ function CardFooter({ dirty, saving, testState, canTest, onTest, onSave }: { dir
 }
 
 function isProviderCandidate(source: string) {
-  return source !== '__ollama__' && source !== '__custom__'
+  return source !== '__ollama__' && source !== '__tei__' && source !== '__custom__'
 }
 
 function presetFor(baseURL: string) {

@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import { Caution, Delete, Edit, FileText, LoadingOne, More, Search, Upload } from '@icon-park/react'
 import { WindowCloseIcon } from '@/components/ui/WindowControlIcon'
 import type { Corpus, CorpusFile } from '@/api/types'
-import type { CorpusDetail } from '../api/types'
+import type { CorpusDetail, TaggedSearchResult } from '../api/types'
 import { fileExtension } from '../lib/preview'
-import { formatDate } from '../lib/status'
+import { formatDate, isJobActive } from '../lib/status'
 import { KnowledgeDocumentPreview } from './KnowledgeDocumentPreview'
 import { KnowledgeFileIcon } from './KnowledgeFileIcon'
 import { StatusBadge } from './StatusBadge'
@@ -25,6 +25,7 @@ export function CollectionsWorkspace({
   corporaError,
   deletingFileId,
   fileDeleteError,
+  processingFileId,
   onUpload,
   onSelectCorpus,
   onOpenCorpus,
@@ -32,8 +33,13 @@ export function CollectionsWorkspace({
   onRenameCorpus,
   onDeleteCorpus,
   onProcessAll,
+  onProcessFile,
   onRetryDetail,
   onDeleteFile,
+  submittedQuery,
+  rawResults,
+  rawLoading,
+  rawError,
 }: {
   corpora: Corpus[]
   selectedCorpus: Corpus | null
@@ -50,6 +56,7 @@ export function CollectionsWorkspace({
   corporaError: string | null
   deletingFileId: string | null
   fileDeleteError: string | null
+  processingFileId: string | null
   onUpload: () => void
   onSelectCorpus: (id: string) => void
   onOpenCorpus: (id: string) => void
@@ -57,8 +64,13 @@ export function CollectionsWorkspace({
   onRenameCorpus: (corpusId: string, name: string) => Promise<void>
   onDeleteCorpus: (corpusId: string) => Promise<void>
   onProcessAll: (corpusId: string) => void
+  onProcessFile: (corpusId: string, fileId: string) => void
   onRetryDetail: (corpusId: string) => void
   onDeleteFile: (corpusId: string, fileId: string) => Promise<void>
+  submittedQuery: string
+  rawResults: TaggedSearchResult[]
+  rawLoading: boolean
+  rawError: string | null
 }) {
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null)
   const [testQuery, setTestQuery] = useState('')
@@ -73,6 +85,7 @@ export function CollectionsWorkspace({
 
   const openedCorpus = openedCorpusId ? corpora.find((corpus) => corpus.id === openedCorpusId) ?? null : null
   const selectedFile = selectedFileId ? detail.files.find((file) => file.file_id === selectedFileId) ?? null : null
+  const activeJobFileIds = new Set(detail.jobs.filter(isJobActive).map((job) => job.file_id))
   const normalizedFilter = collectionFilter.trim().toLowerCase()
   const visibleCorpora = normalizedFilter
     ? corpora.filter((corpus) => {
@@ -203,6 +216,18 @@ export function CollectionsWorkspace({
                   <StatusBadge status={file.status} />
                   <button
                     type="button"
+                    className="k-detail-file-reprocess"
+                    aria-label={`Reprocess ${file.filename}`}
+                    disabled={processingFileId === file.file_id || activeJobFileIds.has(file.file_id)}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      if (openedCorpus) onProcessFile(openedCorpus.id, file.file_id)
+                    }}
+                  >
+                    <LoadingOne size={12} className={processingFileId === file.file_id ? 'spin' : undefined} />
+                  </button>
+                  <button
+                    type="button"
                     className="k-detail-file-remove"
                     aria-label={`Remove ${file.filename}`}
                     disabled={deletingFileId === file.file_id}
@@ -239,17 +264,20 @@ export function CollectionsWorkspace({
                 {selectedFile ? (
                   <KnowledgeDocumentPreview file={selectedFile} />
                 ) : (
-                  <form
-                    className="k-test-search k-test-search-full"
-                    onSubmit={(e) => {
-                      e.preventDefault()
-                      onTestSearch(testQuery, openedCorpus.id)
-                    }}
-                  >
-                    <Search size={14} />
-                    <input value={testQuery} onChange={(e) => setTestQuery(e.target.value)} placeholder="Try a query..." />
-                    <button type="submit" disabled={!testQuery.trim()}>Test</button>
-                  </form>
+                  <div className="k-test-search-panel">
+                    <form
+                      className="k-test-search k-test-search-full"
+                      onSubmit={(e) => {
+                        e.preventDefault()
+                        onTestSearch(testQuery, openedCorpus.id)
+                      }}
+                    >
+                      <Search size={14} />
+                      <input value={testQuery} onChange={(e) => setTestQuery(e.target.value)} placeholder="Try a query..." />
+                      <button type="submit" disabled={!testQuery.trim()}>Test</button>
+                    </form>
+                    <TestSearchResults submittedQuery={submittedQuery} rawResults={rawResults} rawLoading={rawLoading} rawError={rawError} />
+                  </div>
                 )}
               </div>
             </section>
@@ -442,6 +470,14 @@ export function CollectionsWorkspace({
                 <input value={testQuery} onChange={(e) => setTestQuery(e.target.value)} placeholder="Test this collection..." />
                 <button type="submit" disabled={!testQuery.trim()}>Test</button>
               </form>
+              {submittedQuery && (rawLoading || rawResults.some((r) => r.corpus_id === selectedCorpus.id)) && (
+                <div className="k-test-summary-line">
+                  {rawLoading ? 'Searching...' : `${rawResults.filter((r) => r.corpus_id === selectedCorpus.id).length} chunks matched "${submittedQuery}"`}
+                  {!rawLoading && (
+                    <button type="button" onClick={() => onOpenCorpus(selectedCorpus.id)}>View results</button>
+                  )}
+                </div>
+              )}
               <button type="button" className="k-secondary-action k-wide-action" onClick={() => onOpenCorpus(selectedCorpus.id)}>
                 Open collection
               </button>
@@ -544,6 +580,49 @@ export function CollectionsWorkspace({
           </form>
         </div>
       )}
+    </div>
+  )
+}
+
+// Renders the same "raw retrieval" results the main Search page shows,
+// scoped to the collection's own Test Search panel so a quick relevance
+// check never has to leave Collections (see KnowledgePage's testSearch).
+function TestSearchResults({
+  submittedQuery,
+  rawResults,
+  rawLoading,
+  rawError,
+}: {
+  submittedQuery: string
+  rawResults: TaggedSearchResult[]
+  rawLoading: boolean
+  rawError: string | null
+}) {
+  if (!submittedQuery) return null
+  return (
+    <div className="k-test-results">
+      <div className="k-result-count">
+        {rawLoading ? 'Searching...' : `${rawResults.length} matching chunks for "${submittedQuery}"`}
+      </div>
+      {rawError && <div className="k-inline-error"><Caution size={13} />{rawError}</div>}
+      {!rawLoading && !rawError && rawResults.length === 0 && (
+        <div className="k-inline-empty">No results found for "{submittedQuery}".</div>
+      )}
+      <div className="k-test-result-list">
+        {rawResults.map((r, i) => (
+          <article key={`${r.corpus_id}-${r.key}-${i}`} className="k-test-result">
+            <div className="k-search-source">
+              <FileText size={13} />
+              <span>{r.metadata?.filename ?? r.corpus_name}</span>
+            </div>
+            <p>{r.text}</p>
+            <div className="k-search-meta">
+              <span>[{i + 1}]</span>
+              <span>score {r.score.toFixed(3)}</span>
+            </div>
+          </article>
+        ))}
+      </div>
     </div>
   )
 }

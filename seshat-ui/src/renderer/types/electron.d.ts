@@ -36,6 +36,7 @@ interface Window {
     http?: {
       request: (payload: { path: string; method?: string; body?: unknown }) => Promise<{ ok: boolean; status: number; data?: unknown; text?: string }>
       fileContent: (path: string) => Promise<{ ok: boolean; status: number; dataUrl?: string; error?: string }>
+      fileRange: (path: string, start: number, end: number) => Promise<{ ok: boolean; status: number; data?: ArrayBuffer; totalLength?: number; contentType?: string; error?: string }>
       backendOrigin: () => Promise<string>
       upload: (payload: {
         path: string

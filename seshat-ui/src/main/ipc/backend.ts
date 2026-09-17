@@ -227,6 +227,42 @@ async function performBinaryGetRequest(path: string, token?: string): Promise<{ 
   return { ok: true, status: res.status, dataUrl: `data:${contentType};base64,${buffer.toString('base64')}` }
 }
 
+// Fetches one byte range of a file (e.g. GET /files/{id}/content with a
+// Range header) and returns the raw bytes as an ArrayBuffer, never base64 -
+// the whole point is avoiding both the 33% base64 bloat and having to wait
+// for the complete file, so PDFViewerPanel's PDFDataRangeTransport can feed
+// pdf.js small chunks as it asks for them instead of one big blob up front.
+// totalLength comes from the response's Content-Range (e.g. "bytes 0-65535/
+// 1222282") when the backend served a real 206 Partial Content; if it
+// answered 200 instead (Range unsupported for this path, or ineligible file),
+// this falls back to Content-Length so the caller still gets a usable length,
+// just without the partial-content benefit for that request.
+async function performFileRangeRequest(
+  path: string,
+  start: number,
+  end: number,
+  token?: string,
+): Promise<{ ok: boolean; status: number; data?: ArrayBuffer; totalLength?: number; contentType?: string; error?: string }> {
+  await ensureBackendTrusted()
+  const headers: Record<string, string> = { Range: `bytes=${start}-${end}` }
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+  const res = await fetch(buildBackendURL(path), { method: 'GET', headers })
+  if (!res.ok && res.status !== 206) {
+    if (res.status === 401) {
+      await clearSession()
+    }
+    return { ok: false, status: res.status, error: await res.text().catch(() => res.statusText) }
+  }
+  const contentType = res.headers.get('content-type') || 'application/octet-stream'
+  const contentRange = res.headers.get('content-range')
+  const totalMatch = contentRange ? /\/(\d+)$/.exec(contentRange) : null
+  const totalLength = totalMatch ? Number(totalMatch[1]) : Number(res.headers.get('content-length') || 0)
+  const data = await res.arrayBuffer()
+  return { ok: true, status: res.status, data, totalLength, contentType }
+}
+
 async function startStream(
   event: IpcMainInvokeEvent,
   payload: StreamStartPayload,
@@ -442,6 +478,12 @@ export function registerBackendHandlers(ipcMain: IpcMain): void {
     assertTrustedSender(event)
     const session = await loadSession()
     return performBinaryGetRequest(path, session?.token)
+  })
+
+  ipcMain.handle('http:file-range', async (event, payload: { path: string; start: number; end: number }) => {
+    assertTrustedSender(event)
+    const session = await loadSession()
+    return performFileRangeRequest(payload.path, payload.start, payload.end, session?.token)
   })
 
   // The artifact-preview <iframe> (see ArtifactPreviewPanel.tsx) navigates

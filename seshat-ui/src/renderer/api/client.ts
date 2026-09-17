@@ -173,4 +173,35 @@ export const api = {
       reader.readAsDataURL(blob)
     })
   },
+  // Fetches one byte range of a file via a Range header (e.g. bytes 0-65535
+  // of a corpus file's content), for PDFViewerPanel's PDFDataRangeTransport -
+  // lets pdf.js request small chunks as it needs them instead of pulling the
+  // whole document across IPC as one base64 blob before it can render
+  // anything. totalLength reflects the server's real Content-Range total
+  // when Range was honored (206); if it fell back to a plain 200, this is
+  // just that response's own Content-Length, and the caller only gets the
+  // fetched slice, not a genuine partial-content optimization for that call.
+  getFileRange: async (path: string, start: number, end: number): Promise<{ data: ArrayBuffer; totalLength: number; contentType: string }> => {
+    if (window.nexus?.http) {
+      const res = await window.nexus.http.fileRange(path, start, end)
+      if (!res.ok || !res.data) {
+        throw new ApiError(res.status, res.error || `HTTP ${res.status}`)
+      }
+      return { data: res.data, totalLength: res.totalLength ?? res.data.byteLength, contentType: res.contentType ?? 'application/octet-stream' }
+    }
+
+    const token = useAuthStore.getState().token
+    const res = await fetch(`${NEXUS_BASE}${path}`, {
+      headers: { Range: `bytes=${start}-${end}`, ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    })
+    if (!res.ok && res.status !== 206) {
+      const text = await res.text().catch(() => res.statusText)
+      throw new ApiError(res.status, extractErrorMessage(text, res.status))
+    }
+    const contentRange = res.headers.get('content-range')
+    const totalMatch = contentRange ? /\/(\d+)$/.exec(contentRange) : null
+    const totalLength = totalMatch ? Number(totalMatch[1]) : Number(res.headers.get('content-length') || 0)
+    const data = await res.arrayBuffer()
+    return { data, totalLength, contentType: res.headers.get('content-type') || 'application/octet-stream' }
+  },
 }
