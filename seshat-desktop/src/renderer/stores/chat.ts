@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { ChatMessage, ChatSession, StreamingBlock } from '@renderer/components/chat/lib/chatTypes'
+import { fetchSession } from '@renderer/components/chat/lib/chatApi'
 
 type ChatState = {
   sessions: ChatSession[]
@@ -8,6 +9,13 @@ type ChatState = {
   isStreamingBySession: Record<string, boolean>
   setSessions: (sessions: ChatSession[]) => void
   setActiveSessionId: (id: string | null) => void
+  // Switches to a session not yet loaded into `sessions` (e.g. a sub-agent's
+  // own session, which the parent conversation never fetched on its own) -
+  // fetches it and makes it active. Lives on the store rather than
+  // useChatWorkspace's own openSession (same underlying behavior) so any
+  // component can trigger a session switch without needing that hook's
+  // instance, which only ChatWorkspace itself holds.
+  openSessionById: (id: string) => Promise<void>
   upsertSession: (session: ChatSession) => void
   updateSession: (id: string, patch: Partial<ChatSession>) => void
   addMessage: (sessionId: string, message: ChatMessage) => void
@@ -27,6 +35,16 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   isStreamingBySession: {},
   setSessions: (sessions) => set({ sessions }),
   setActiveSessionId: (activeSessionId) => set({ activeSessionId }),
+  openSessionById: async (id) => {
+    set({ activeSessionId: id })
+    try {
+      const session = await fetchSession(id)
+      get().upsertSession(session)
+    } catch {
+      // Best-effort - the session stays active with whatever (possibly
+      // empty) data was already cached for it, same as a failed refresh.
+    }
+  },
   upsertSession: (session) => set((state) => {
     const exists = state.sessions.some((item) => item.id === session.id)
     const sessions = exists

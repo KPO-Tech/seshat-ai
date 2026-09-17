@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { cancelSubagent } from '../../lib/chatApi'
 import type { ToolUseBlock } from '../../lib/chatTypes'
 import { useAgentStore } from '@renderer/stores/agents'
+import { useChatStore } from '@renderer/stores/chat'
 import type { ToolPresentation } from '../catalog/toolPresentation'
 import { getToolStatus, ToolGlyph, toolSnippet } from '../ToolDetails'
+import { MessageContentBlocks } from '../../messages/MessageContentBlocks'
 import type { AgentLifecycle } from './agentState'
 
 export function AgentActivityCard({
@@ -17,6 +19,7 @@ export function AgentActivityCard({
 }) {
   const ingestTool = useAgentStore((state) => state.ingestTool)
   const markStopped = useAgentStore((state) => state.markStopped)
+  const openSessionById = useChatStore((state) => state.openSessionById)
   const agent = useAgentStore((state) => sessionId ? state.sessions[sessionId]?.agents[tool.id] : undefined)
   const fallbackStatus = getToolStatus(tool)
   const status: AgentLifecycle = agent?.status ?? (fallbackStatus === 'failed' ? 'failed' : fallbackStatus === 'completed' ? 'completed' : 'running')
@@ -24,6 +27,7 @@ export function AgentActivityCard({
   const [open, setOpen] = useState(active || Boolean(presentation.initiallyOpen))
   const [cancelling, setCancelling] = useState(false)
   const [cancelError, setCancelError] = useState('')
+  const [tab, setTab] = useState<'result' | 'activity'>('result')
   const elapsed = useElapsed(agent?.startedAt, agent?.endedAt, active)
   const task = agent?.task || toolSnippet(tool) || ''
   const displayName = agent?.nickname || readable(agent?.role || agent?.agentType || presentation.label)
@@ -89,48 +93,87 @@ export function AgentActivityCard({
             </div>
           )}
 
-          {agent?.thinking && active && (
-            <details className="mb-3 text-[11px] text-[var(--text-muted)]">
-              <summary className="cursor-pointer font-semibold">Thinking</summary>
-              <div className="mt-2 max-h-32 overflow-auto whitespace-pre-wrap leading-5">{agent.thinking}</div>
-            </details>
-          )}
+          <div className="mb-3 flex items-center gap-1 border-b border-[var(--border-soft)]">
+            <TabButton active={tab === 'result'} onClick={() => setTab('result')}>Result</TabButton>
+            <TabButton active={tab === 'activity'} onClick={() => setTab('activity')}>
+              Activity{agent && agent.activityLog.length > 0 ? ` (${agent.activityLog.length})` : ''}
+            </TabButton>
+          </div>
 
-          {agent?.output ? (
-            <div className="max-h-56 overflow-auto whitespace-pre-wrap break-words text-[12px] leading-5 text-[var(--text-secondary)]">{agent.output}</div>
-          ) : (
-            <div className="text-[11px] text-[var(--text-muted)]">{active ? 'Output will appear as the agent works.' : 'No output was captured.'}</div>
-          )}
-
-          {agent?.error && <div className="mt-3 text-[11px] font-semibold text-[var(--accent-danger)]">{agent.error}</div>}
-          {cancelError && <div className="mt-3 text-[11px] font-semibold text-[var(--accent-danger)]">{cancelError}</div>}
-
-          {(agent?.activityLog.length ?? 0) > 0 && (
-            <div className="mt-3 border-t border-[var(--border-soft)] pt-2">
-              {agent?.activityLog.slice(-4).reverse().map((entry, index) => (
-                <div key={`${entry.toolName}-${entry.startedAt}-${index}`} className="flex min-h-6 items-center gap-2 text-[10px] text-[var(--text-muted)]">
-                  <span className={`size-1.5 rounded-full ${entry.stage === 'failed' ? 'bg-[var(--accent-danger)]' : 'bg-[var(--accent-success)]'}`} />
-                  <span className="min-w-0 flex-1 truncate">{readable(entry.toolName)}{entry.message ? `: ${entry.message}` : ''}</span>
+          {tab === 'result' ? (
+            <>
+              {(agent?.blocks.length ?? 0) > 0 ? (
+                <div className="max-h-72 overflow-auto text-[12px] leading-5 text-[var(--text-secondary)]">
+                  <MessageContentBlocks sessionId={agent?.sessionId ?? sessionId} blocks={agent!.blocks} live={active} />
                 </div>
-              ))}
+              ) : agent?.output ? (
+                <div className="max-h-56 overflow-auto whitespace-pre-wrap break-words text-[12px] leading-5 text-[var(--text-secondary)]">{agent.output}</div>
+              ) : (
+                <div className="text-[11px] text-[var(--text-muted)]">{active ? 'Output will appear as the agent works.' : 'No output was captured.'}</div>
+              )}
+              {agent?.error && <div className="mt-3 text-[11px] font-semibold text-[var(--accent-danger)]">{agent.error}</div>}
+            </>
+          ) : (
+            <div className="max-h-56 overflow-auto">
+              {(agent?.activityLog.length ?? 0) === 0 ? (
+                <div className="text-[11px] text-[var(--text-muted)]">No tool activity recorded yet.</div>
+              ) : (
+                agent?.activityLog.slice().reverse().map((entry, index) => (
+                  <div key={`${entry.toolName}-${entry.startedAt}-${index}`} className="flex min-h-7 items-start gap-2 border-b border-[var(--border-soft)]/60 py-1.5 text-[11px] text-[var(--text-muted)] last:border-0">
+                    <span className={`mt-1 size-1.5 shrink-0 rounded-full ${entry.stage === 'failed' ? 'bg-[var(--accent-danger)]' : 'bg-[var(--accent-success)]'}`} />
+                    <span className="min-w-0 flex-1">
+                      <span className="text-[var(--text-secondary)]">{readable(entry.toolName)}</span>
+                      {entry.message ? `: ${entry.message}` : ''}
+                    </span>
+                    {entry.endedAt && <span className="shrink-0 text-[10px]">{formatElapsed(entry.endedAt - entry.startedAt)}</span>}
+                  </div>
+                ))
+              )}
             </div>
           )}
 
-          {active && agent?.agentId && (
-            <div className="mt-3 flex justify-end border-t border-[var(--border-soft)] pt-3">
-              <button
-                type="button"
-                onClick={() => void handleCancel()}
-                disabled={cancelling}
-                className="rounded-md border border-[var(--border-soft)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--text-secondary)] hover:bg-[var(--surface-muted)] disabled:opacity-50"
-              >
-                {cancelling ? 'Stopping' : 'Stop agent'}
-              </button>
+          {cancelError && <div className="mt-3 text-[11px] font-semibold text-[var(--accent-danger)]">{cancelError}</div>}
+
+          {(agent?.sessionId || (active && agent?.agentId)) && (
+            <div className="mt-3 flex justify-end gap-2 border-t border-[var(--border-soft)] pt-3">
+              {agent?.sessionId && (
+                <button
+                  type="button"
+                  onClick={() => void openSessionById(agent.sessionId!)}
+                  className="rounded-md border border-[var(--border-soft)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
+                >
+                  Open session
+                </button>
+              )}
+              {active && agent?.agentId && (
+                <button
+                  type="button"
+                  onClick={() => void handleCancel()}
+                  disabled={cancelling}
+                  className="rounded-md border border-[var(--border-soft)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--text-secondary)] hover:bg-[var(--surface-muted)] disabled:opacity-50"
+                >
+                  {cancelling ? 'Stopping' : 'Stop agent'}
+                </button>
+              )}
             </div>
           )}
         </div>
       )}
     </div>
+  )
+}
+
+function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`-mb-px border-b-2 px-2 pb-1.5 text-[11px] font-semibold transition-colors ${
+        active ? 'border-[var(--accent-primary)] text-[var(--text-primary)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+      }`}
+    >
+      {children}
+    </button>
   )
 }
 

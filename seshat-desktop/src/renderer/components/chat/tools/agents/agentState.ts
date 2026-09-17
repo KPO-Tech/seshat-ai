@@ -1,4 +1,5 @@
-import type { RuntimeAgentEvent, RuntimeEvent, ToolUseBlock } from '../../lib/chatTypes'
+import type { RuntimeAgentEvent, RuntimeEvent, StreamEvent, StreamingBlock, ToolUseBlock } from '../../lib/chatTypes'
+import { applyStreamEvent } from '../../lib/streaming'
 
 export type AgentLifecycle = 'initializing' | 'running' | 'waiting' | 'completed' | 'failed' | 'stopped'
 
@@ -26,9 +27,22 @@ export type SubagentState = {
   outputTokens: number
   activeTool?: AgentToolActivity
   activityLog: AgentToolActivity[]
+  // Structured transcript of the sub-agent's own turn: text/thinking/tool_use
+  // blocks accumulated the same way the main chat accumulates its own stream
+  // (see streaming.ts's applyStreamEvent), instead of the flat output string
+  // this used to be. This is what lets a sub-agent's own tool calls render as
+  // real ToolRenderer cards, and lets a sub-agent that spawns its own
+  // sub-agent render as a nested AgentActivityCard (ToolRenderer already
+  // recurses into AgentActivityCard for agent-launch tools).
+  blocks: StreamingBlock[]
   output: string
-  thinking: string
   error?: string
+  // The sub-agent's own runtime session, when the backend has reported one
+  // (spawn_agent's completion event carries ag.Result.SessionID - see the
+  // SDK's internal/tools/agents/spawn_agent.go) - lets the UI offer
+  // "open this agent's session" instead of only ever showing its output
+  // folded into the parent conversation.
+  sessionId?: string
 }
 
 export type AgentSessionState = {
@@ -60,9 +74,10 @@ export function reduceAgentTool(state: AgentSessionState, tool: ToolUseBlock): A
     outputTokens: existing?.outputTokens ?? 0,
     activeTool: existing?.activeTool,
     activityLog: existing?.activityLog ?? [],
+    blocks: existing?.blocks ?? [],
     output: text(metadata.content) || existing?.output || (synchronousAgent ? tool._result?.content ?? '' : ''),
-    thinking: existing?.thinking ?? '',
-    error: failed ? tool._result?.content || tool._message || 'Agent failed' : existing?.error
+    error: failed ? tool._result?.content || tool._message || 'Agent failed' : existing?.error,
+    sessionId: text(metadata.session_id) || existing?.sessionId
   }
   return { agents: { ...state.agents, [tool.id]: next } }
 }
@@ -144,7 +159,8 @@ function applyToolProgress(agent: SubagentState, progress: NonNullable<RuntimeEv
       endedAt: Date.now(),
       activeTool: undefined,
       output: text(metadata.content) || agent.output,
-      error: failed ? text(metadata.error) || progress.message || 'Agent failed' : agent.error
+      error: failed ? text(metadata.error) || progress.message || 'Agent failed' : agent.error,
+      sessionId: text(metadata.session_id) || agent.sessionId
     }
   }
   if (!nested) return agent
@@ -158,26 +174,23 @@ function applyToolProgress(agent: SubagentState, progress: NonNullable<RuntimeEv
     startedAt: agent.activeTool?.startedAt ?? now,
     endedAt: stage === 'completed' || stage === 'failed' ? now : undefined
   }
+  // Also merge into the structured transcript so the matching tool_use block
+  // (created from this same sub-agent's own content_block_start chunk)
+  // picks up its running/completed/failed status and result - the same
+  // reducer path the top-level chat uses for its own tool progress.
+  const blocks = applyStreamEvent(agent.blocks, {
+    event: 'runtime',
+    data: { type: 'tool.progress', tool_progress: progress }
+  } as StreamEvent)
   if (stage === 'completed' || stage === 'failed') {
-    return { ...agent, activeTool: undefined, activityLog: [...agent.activityLog, activity].slice(-20) }
+    return { ...agent, blocks, activeTool: undefined, activityLog: [...agent.activityLog, activity].slice(-20) }
   }
-  return { ...agent, status: 'running', activeTool: activity }
+  return { ...agent, blocks, status: 'running', activeTool: activity }
 }
 
 function applyChunk(agent: SubagentState, chunk: Record<string, unknown>): SubagentState {
-  const type = text(chunk.type)
-  if (type === 'content_block_start') {
-    const block = objectValue(chunk.content_block)
-    if (block.type === 'text') return { ...agent, output: agent.output + stringValue(block.text) }
-    if (block.type === 'thinking') return { ...agent, thinking: agent.thinking + stringValue(block.thinking) }
-  }
-  if (type === 'content_block_delta') {
-    const delta = objectValue(chunk.delta)
-    const output = stringValue(delta.text)
-    const thinking = stringValue(delta.thinking)
-    return { ...agent, output: agent.output + output, thinking: agent.thinking + thinking }
-  }
-  return agent
+  const blocks = applyStreamEvent(agent.blocks, { event: 'chunk', data: chunk } as StreamEvent)
+  return { ...agent, blocks }
 }
 
 function seedAgent(key: string, toolUseId: string, tool?: ToolUseBlock, event?: RuntimeAgentEvent): SubagentState {
@@ -195,8 +208,8 @@ function seedAgent(key: string, toolUseId: string, tool?: ToolUseBlock, event?: 
     inputTokens: 0,
     outputTokens: 0,
     activityLog: [],
-    output: '',
-    thinking: ''
+    blocks: [],
+    output: ''
   }
 }
 
@@ -250,8 +263,4 @@ function objectValue(value: unknown): Record<string, unknown> {
 
 function text(value: unknown) {
   return typeof value === 'string' ? value.trim() : ''
-}
-
-function stringValue(value: unknown) {
-  return typeof value === 'string' ? value : ''
 }
