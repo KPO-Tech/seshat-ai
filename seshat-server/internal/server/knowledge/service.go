@@ -296,6 +296,11 @@ type SearchCitation struct {
 	Filename     string `json:"filename,omitempty"`
 	Position     int    `json:"position"`
 	ArtifactKey  string `json:"artifact_key,omitempty"`
+	// PageNumbers is the source PDF page(s) this chunk came from (Docling
+	// ingestion only - a chunk can span a page break, hence a slice). Nil
+	// for non-Docling ingestion (plain text/markdown) or when unavailable -
+	// callers fall back to Position, same as before this field existed.
+	PageNumbers []int `json:"page_numbers,omitempty"`
 }
 
 // FileSegmentsResponse exposes the actual indexed chunks for one corpus

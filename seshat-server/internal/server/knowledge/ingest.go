@@ -2,6 +2,7 @@ package knowledge
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -181,10 +182,18 @@ func (s *Service) Search(ctx context.Context, principal *iam.Principal, params S
 	if topK <= 0 {
 		topK = 5
 	}
+	// Over-fetch before the ACL post-filter in enrichSearchResponse drops
+	// any result the principal can't see (principalMatchesExternalAccess) -
+	// without this, a corpus where several top-ranked chunks are
+	// ACL-restricted from the caller can silently return fewer than topK
+	// results (or zero) even when enough visible chunks exist further down
+	// the ranking. Mirrors the SDK's own reranker over-fetch heuristic
+	// (internal/rag/service.go's fetchK).
+	fetchK := aclOverfetchK(topK)
 	resp, err := ragService.Search(ctx, sdkrag.SearchRequest{
 		CorpusID:     corpus.ID,
 		Query:        query,
-		TopK:         topK,
+		TopK:         fetchK,
 		HybridWeight: hybridWeight,
 	})
 	if err != nil {
@@ -248,6 +257,7 @@ func (s *Service) enrichSearchResponse(ctx context.Context, principal *iam.Princ
 				CorpusID:    corpus.ID,
 				Position:    position,
 				ArtifactKey: metadata["artifact_key"],
+				PageNumbers: pageNumbersFromMetadata(metadata),
 			},
 		}
 		if hasFile {
@@ -270,7 +280,50 @@ func (s *Service) enrichSearchResponse(ctx context.Context, principal *iam.Princ
 		}
 		results = append(results, result)
 	}
-	return &SearchResponse{CorpusID: corpus.ID, Query: query, Mode: mode, TopK: topK, Results: results}, nil
+	deduped := dedupeSearchResults(results)
+	if len(deduped) > topK {
+		deduped = deduped[:topK]
+	}
+	return &SearchResponse{CorpusID: corpus.ID, Query: query, Mode: mode, TopK: topK, Results: deduped}, nil
+}
+
+// aclOverfetchK mirrors the SDK's own reranker over-fetch heuristic
+// (internal/rag/service.go's fetchK): retrieve a larger candidate pool than
+// requested so a downstream filter (here, the ACL post-filter in
+// enrichSearchResponse; there, the reranker) has enough material left after
+// filtering/reordering to still fill topK.
+func aclOverfetchK(topK int) int {
+	fetchK := topK * 3
+	if fetchK < 20 {
+		fetchK = 20
+	}
+	return fetchK
+}
+
+// dedupeSearchResults drops exact-duplicate hits (same chunk text verbatim,
+// after trimming) from a single search response, keeping the first
+// occurrence. raw's results already arrive score-sorted (descending - see
+// the SDK's Search/rerank sort), so "first" is always the highest-scoring
+// copy. This is a real, not hypothetical, case: a document re-ingested into
+// a corpus it's already in produces two independent artifact_keys pointing
+// at byte-identical chunk text, and both can legitimately rank in the same
+// top-K for a matching query - without this, a caller sees the same
+// sentence twice instead of two distinct results.
+func dedupeSearchResults(results []SearchResult) []SearchResult {
+	if len(results) < 2 {
+		return results
+	}
+	seen := make(map[string]struct{}, len(results))
+	deduped := make([]SearchResult, 0, len(results))
+	for _, r := range results {
+		key := strings.TrimSpace(r.Text)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		deduped = append(deduped, r)
+	}
+	return deduped
 }
 
 // principalMatchesExternalAccess reports whether principal may see a file
@@ -385,6 +438,25 @@ func intFromMetadata(metadata map[string]string, key string) int {
 		return 0
 	}
 	return value
+}
+
+// pageNumbersFromMetadata decodes the "page_numbers" chunk metadata Docling
+// ingestion writes (a JSON int array, e.g. "[3]" or "[3,4]" for a chunk
+// spanning a page break - see the SDK's docling_chunker.go's putJSON calls).
+// Returns nil for non-Docling chunks (plain text/markdown never set this
+// key) or malformed values, rather than erroring - a missing page number
+// just means the citation falls back to Position, same as before this field
+// existed.
+func pageNumbersFromMetadata(metadata map[string]string) []int {
+	raw := strings.TrimSpace(metadata["page_numbers"])
+	if raw == "" {
+		return nil
+	}
+	var pages []int
+	if err := json.Unmarshal([]byte(raw), &pages); err != nil || len(pages) == 0 {
+		return nil
+	}
+	return pages
 }
 
 // ─── Ingestion worker (called by Runner; see runner.go) ──────────────────
