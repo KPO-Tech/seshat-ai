@@ -44,6 +44,8 @@ export function useChatWorkspace() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [draftExecutionMode, setDraftExecutionMode] = useState<ChatExecutionMode>('execute')
+  const [compactionNotice, setCompactionNotice] = useState<{ preTokens: number; postTokens: number } | null>(null)
+  const compactionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const abortRef = useRef<Record<string, AbortController>>({})
   // Tracks a pending requestAnimationFrame per session, batching live-block
   // publishes to the chat/browser/task/agent stores to once per frame -
@@ -265,7 +267,14 @@ export function useChatWorkspace() {
                 return
               }
               if (event.event === 'runtime') {
-                agentStore.ingestEvent(sessionId, event.data as RuntimeEvent, liveBlocks)
+                const runtimeData = event.data as RuntimeEvent
+                agentStore.ingestEvent(sessionId, runtimeData, liveBlocks)
+                const compaction = runtimeData.compaction_event ?? runtimeData.compactionEvent
+                if (compaction) {
+                  if (compactionTimerRef.current !== null) clearTimeout(compactionTimerRef.current)
+                  setCompactionNotice({ preTokens: compaction.pre_compact_tokens, postTokens: compaction.post_compact_tokens })
+                  compactionTimerRef.current = setTimeout(() => setCompactionNotice(null), 6000)
+                }
               }
               liveBlocks = applyStreamEvent(liveBlocks, event)
               scheduleSync()
@@ -355,7 +364,13 @@ export function useChatWorkspace() {
     await interruptSession(sessionId).catch(() => undefined)
   }, [activeSessionId])
 
-  return { sessions, activeSession, streaming, isStreaming, loading, error, executionMode, openSession, send, stop, setExecutionMode }
+  useEffect(() => {
+    return () => {
+      if (compactionTimerRef.current !== null) clearTimeout(compactionTimerRef.current)
+    }
+  }, [])
+
+  return { sessions, activeSession, streaming, isStreaming, loading, error, executionMode, compactionNotice, openSession, send, stop, setExecutionMode }
 }
 
 async function pollForGeneratedTitle(

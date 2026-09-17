@@ -154,6 +154,16 @@ export type RuntimeEvent = {
   taskEvent?: RuntimeTaskEvent
   agent_event?: RuntimeAgentEvent
   agentEvent?: RuntimeAgentEvent
+  // Carried by context.compacted, emitted alongside turn.completed whenever
+  // that turn triggered auto-compaction (see CompactionRuntimeEvent in the
+  // seshat SDK's runtime_events.go).
+  compaction_event?: RuntimeCompactionEvent
+  compactionEvent?: RuntimeCompactionEvent
+}
+
+export type RuntimeCompactionEvent = {
+  pre_compact_tokens: number
+  post_compact_tokens: number
 }
 
 export type RuntimeToolProgress = {

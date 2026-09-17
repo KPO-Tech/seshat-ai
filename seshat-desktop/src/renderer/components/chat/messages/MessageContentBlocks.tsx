@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ChatContentBlock, ToolUseBlock } from '../lib/chatTypes'
 import { isGroupableTool, isHiddenTool } from '../tools/catalog/toolCatalog'
 import { getToolPresentation } from '../tools/catalog/toolPresentation'
@@ -30,9 +30,22 @@ function TextBlock({ text, sessionId, streaming }: { text: string; sessionId?: s
 
 function ThinkingBlock({ text, active }: { text: string; active: boolean }) {
   const [open, setOpen] = useState(active)
+  // The backend sends no start/end timestamp for a thinking block, so this
+  // times it client-side: the moment it first becomes the actively-streaming
+  // block until the moment it stops (either the turn moves on to the next
+  // block, or streaming ends) - an approximation, but the only duration
+  // signal available without new backend telemetry.
+  const startedAtRef = useRef<number | null>(null)
+  const [durationMs, setDurationMs] = useState<number | null>(null)
 
   useEffect(() => {
     setOpen(active)
+    if (active) {
+      if (startedAtRef.current === null) startedAtRef.current = Date.now()
+      setDurationMs(null)
+    } else if (startedAtRef.current !== null) {
+      setDurationMs(Date.now() - startedAtRef.current)
+    }
   }, [active])
 
   if (!text.trim()) return null
@@ -46,12 +59,17 @@ function ThinkingBlock({ text, active }: { text: string; active: boolean }) {
         <span className="flex items-center gap-2 text-[12px] font-semibold text-[var(--text-muted)]">
           {active && <span className="size-2 rounded-full bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-primary)]" />}
           Thinking
+          {!active && durationMs !== null && <span className="text-[11px] font-normal text-[var(--text-faint)]">{formatThinkingDuration(durationMs)}</span>}
         </span>
         <span className="text-[11px] font-semibold text-[var(--text-muted)]">{open ? 'Hide' : 'Details'}</span>
       </button>
       {open && <div className="border-t border-[var(--border-soft)] px-3 py-2 text-[12px] leading-6 text-[var(--text-secondary)]">{text}</div>}
     </div>
   )
+}
+
+function formatThinkingDuration(ms: number) {
+  return ms < 1000 ? '<1s' : `${(ms / 1000).toFixed(ms < 10_000 ? 1 : 0)}s`
 }
 
 type RenderItem = { kind: 'block'; block: ChatContentBlock } | { kind: 'group'; tools: ToolUseBlock[] }

@@ -14,7 +14,7 @@ import { MessageList } from './messages/MessageList'
 import { FilePreviewOverlay } from './attachments/FilePreviewOverlay'
 
 export function ChatWorkspace({ user }: { user: User }) {
-  const { activeSession, streaming, isStreaming, loading, error, executionMode, send, stop, setExecutionMode } = useChatWorkspace()
+  const { activeSession, streaming, isStreaming, loading, error, executionMode, compactionNotice, send, stop, setExecutionMode } = useChatWorkspace()
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const displayName = user.display_name || user.email
   const isEmpty = !activeSession || activeSession.messages.length === 0
@@ -105,6 +105,11 @@ export function ChatWorkspace({ user }: { user: User }) {
           </section>
           <footer className="shrink-0 border-t border-transparent px-8 pb-5">
             <div className="mx-auto max-w-[820px]">
+              {compactionNotice && (
+                <div className="mb-3 rounded-lg border border-[var(--border-soft)] bg-[var(--surface-panel)] px-4 py-3 text-[13px] font-semibold text-[var(--text-secondary)]">
+                  Compacted conversation - saved {(compactionNotice.preTokens - compactionNotice.postTokens).toLocaleString()} tokens ({compactionNotice.preTokens.toLocaleString()} → {compactionNotice.postTokens.toLocaleString()})
+                </div>
+              )}
               {error && <div className="mb-3 rounded-lg border border-[var(--accent-danger)]/40 bg-[var(--surface-panel)] px-4 py-3 text-[13px] font-semibold text-[var(--accent-danger)]">{error}</div>}
               <ChatInput
                 compact
