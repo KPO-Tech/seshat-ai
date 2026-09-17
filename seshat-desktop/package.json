@@ -18,6 +18,8 @@
     "build": "electron-vite build",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json --noEmit",
     "lint": "oxlint src",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "build:backend:win": "node ../scripts/build-desktop-sidecar.mjs windows amd64",
     "build:backend:linux": "node ../scripts/build-desktop-sidecar.mjs linux amd64",
     "package": "npm run build && electron-builder",
@@ -58,7 +60,8 @@
     "electron-vite": "^5.0.0",
     "oxlint": "^1.56.0",
     "typescript": "^5.8.3",
-    "vite": "^6.4.1"
+    "vite": "^6.4.1",
+    "vitest": "^5.0.1"
   },
   "overrides": {
     "brace-expansion": "^5.0.8"
