@@ -110,6 +110,7 @@ export async function streamQuery(params: {
   sessionId: string
   providerSettingId?: string
   modelId?: string
+  agentSlug?: string
   fileIds?: string[]
   signal?: AbortSignal
   onEvent: (event: StreamEvent) => void
@@ -123,6 +124,7 @@ export async function streamQuery(params: {
         session_id: params.sessionId,
         provider_setting_id: params.providerSettingId,
         model_id: params.modelId,
+        agent_slug: params.agentSlug,
         file_ids: params.fileIds
       }
     })
@@ -175,6 +177,7 @@ export async function streamQuery(params: {
       session_id: params.sessionId,
       provider_setting_id: params.providerSettingId,
       model_id: params.modelId,
+      agent_slug: params.agentSlug,
       file_ids: params.fileIds
     }),
     signal: params.signal

@@ -5,7 +5,9 @@ import { useTerminalStore } from '@renderer/stores/terminal'
 import { useTaskStore } from '@renderer/stores/tasks'
 import { useAgentStore } from '@renderer/stores/agents'
 import type { ChatExecutionMode } from './lib/chatTypes'
+import { AgentProfileSelect } from './AgentProfileSelect'
 import { ChatInput } from './ChatInput'
+import { useAgentProfiles } from './lib/useAgentProfiles'
 import { useChatModels } from './lib/useChatModels'
 import { useChatWorkspace } from './lib/useChatWorkspace'
 import { MessageList } from './messages/MessageList'
@@ -18,6 +20,10 @@ export function ChatWorkspace({ user }: { user: User }) {
   const isEmpty = !activeSession || activeSession.messages.length === 0
   const models = useChatModels(activeSession?.modelId)
   const selectedModel = models.selected
+  const agentProfiles = useAgentProfiles()
+  const sendOptions = selectedModel || agentProfiles.selected
+    ? { providerSettingId: selectedModel?.providerSettingId, modelId: selectedModel?.modelId, agentSlug: agentProfiles.selected?.slug }
+    : undefined
   const ingestBrowserBlocks = useBrowserStore((state) => state.ingestBlocks)
   const ingestTaskBlocks = useTaskStore((state) => state.ingestBlocks)
   const ingestAgentBlocks = useAgentStore((state) => state.ingestBlocks)
@@ -38,11 +44,13 @@ export function ChatWorkspace({ user }: { user: User }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <header className="flex h-14 shrink-0 items-center justify-between px-7">
-        {/* Future workflow selector: Seshat should choose the agent runtime flow, e.g. Plan, Execute, Tools, or custom workflows. */}
-        <button type="button" className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[15px] font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-muted)]">
-          Seshat
-          <ChevronDownIcon />
-        </button>
+        <AgentProfileSelect
+          choices={agentProfiles.choices}
+          value={agentProfiles.selectedSlug}
+          loading={agentProfiles.loading}
+          disabled={loading || isStreaming}
+          onChange={agentProfiles.setSelectedSlug}
+        />
         <div className="flex items-center gap-2">
           <ExecutionModeToggle mode={executionMode} disabled={loading || isStreaming} onChange={(mode) => void setExecutionMode(mode)} />
           {isStreaming && (
@@ -76,7 +84,7 @@ export function ChatWorkspace({ user }: { user: User }) {
                 selectedModelId={models.selectedId}
                 modelsLoading={models.loading}
                 onModelChange={models.setSelectedId}
-                onSend={(text, files) => send(text, selectedModel ? { providerSettingId: selectedModel.providerSettingId, modelId: selectedModel.modelId } : undefined, files)}
+                onSend={(text, files) => send(text, sendOptions, files)}
               />
               {error && <div className="mt-4 rounded-lg border border-[var(--accent-danger)]/40 bg-[var(--surface-panel)] px-4 py-3 text-[13px] font-semibold text-[var(--accent-danger)]">{error}</div>}
             </div>
@@ -97,7 +105,7 @@ export function ChatWorkspace({ user }: { user: User }) {
                 selectedModelId={models.selectedId}
                 modelsLoading={models.loading}
                 onModelChange={models.setSelectedId}
-                onSend={(text, files) => send(text, selectedModel ? { providerSettingId: selectedModel.providerSettingId, modelId: selectedModel.modelId } : undefined, files)}
+                onSend={(text, files) => send(text, sendOptions, files)}
               />
             </div>
           </footer>
@@ -129,13 +137,5 @@ function ExecutionModeToggle({
       <span className={`size-1.5 rounded-full ${mode === 'plan' ? 'bg-[var(--accent-primary)] shadow-[0_0_12px_var(--accent-primary)]' : 'bg-[var(--text-muted)]'}`} />
       {mode === 'plan' ? 'Plan' : 'Execute'}
     </button>
-  )
-}
-
-function ChevronDownIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="m4 5.5 3 3 3-3" />
-    </svg>
   )
 }

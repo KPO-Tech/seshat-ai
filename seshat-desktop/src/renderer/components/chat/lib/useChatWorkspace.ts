@@ -12,6 +12,10 @@ import type { ChatContentBlock, ChatExecutionMode, ChatMessage, MessageAttachmen
 type ChatModelSelection = {
   providerSettingId?: string
   modelId?: string
+  // Selected agent profile slug from the "Seshat" workflow selector - sent
+  // as agent_slug on the query so the backend applies that profile's system
+  // prompt/model/tools for this turn (see seshat-backend's queryRequest).
+  agentSlug?: string
 }
 
 const TITLE_POLL_INTERVAL_MS = 3000
@@ -230,6 +234,7 @@ export function useChatWorkspace() {
             sessionId,
             providerSettingId: model?.providerSettingId,
             modelId: model?.modelId,
+            agentSlug: model?.agentSlug,
             fileIds: attachments.map((attachment) => attachment.id),
             signal: controller.signal,
             onEvent: (event) => {
