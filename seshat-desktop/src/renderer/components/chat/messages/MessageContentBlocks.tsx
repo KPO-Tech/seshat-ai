@@ -4,6 +4,7 @@ import { isGroupableTool, isHiddenTool } from '../tools/catalog/toolCatalog'
 import { getToolPresentation } from '../tools/catalog/toolPresentation'
 import { QuietToolGroup } from '../tools/QuietToolGroup'
 import { ToolRenderer } from '../tools/ToolRenderer'
+import { MarkdownView } from '../../ui/MarkdownView'
 
 export function MessageContentBlocks({ sessionId, blocks, live = false }: { sessionId?: string; blocks: ChatContentBlock[]; live?: boolean }) {
   const visibleBlocks = blocks.filter((block) => block.type !== 'tool_use' || block._approval || block._prompt || !isHiddenTool(block.name))
@@ -13,8 +14,9 @@ export function MessageContentBlocks({ sessionId, blocks, live = false }: { sess
       {items.map((item, index) => {
         if (item.kind === 'group') return <QuietToolGroup key={`group-${index}`} sessionId={sessionId} tools={item.tools} />
         const block = item.block
-        if (block.type === 'text') return <TextBlock key={index} text={block.text} />
-        if (block.type === 'thinking') return <ThinkingBlock key={index} text={block.thinking} active={live && index === items.length - 1} />
+        const isLast = index === items.length - 1
+        if (block.type === 'text') return <TextBlock key={index} text={block.text} sessionId={sessionId} streaming={live && isLast} />
+        if (block.type === 'thinking') return <ThinkingBlock key={index} text={block.thinking} active={live && isLast} />
         if (block.type === 'tool_use') return <ToolRenderer key={block.id || index} sessionId={sessionId} tool={block} />
         return null
       })}
@@ -22,8 +24,8 @@ export function MessageContentBlocks({ sessionId, blocks, live = false }: { sess
   )
 }
 
-function TextBlock({ text }: { text: string }) {
-  return <div className="whitespace-pre-wrap break-words">{text}</div>
+function TextBlock({ text, sessionId, streaming }: { text: string; sessionId?: string; streaming: boolean }) {
+  return <MarkdownView className="break-words" sessionId={sessionId} streaming={streaming}>{text}</MarkdownView>
 }
 
 function ThinkingBlock({ text, active }: { text: string; active: boolean }) {
