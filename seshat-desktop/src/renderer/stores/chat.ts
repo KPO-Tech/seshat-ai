@@ -18,6 +18,7 @@ type ChatState = {
   openSessionById: (id: string) => Promise<void>
   upsertSession: (session: ChatSession) => void
   updateSession: (id: string, patch: Partial<ChatSession>) => void
+  removeSession: (id: string) => void
   addMessage: (sessionId: string, message: ChatMessage) => void
   setMessages: (sessionId: string, messages: ChatMessage[]) => void
   getStreaming: (sessionId: string | null) => StreamingBlock[]
@@ -54,6 +55,10 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   }),
   updateSession: (id, patch) => set((state) => ({
     sessions: state.sessions.map((session) => session.id === id ? { ...session, ...patch } : session)
+  })),
+  removeSession: (id) => set((state) => ({
+    sessions: state.sessions.filter((session) => session.id !== id),
+    activeSessionId: state.activeSessionId === id ? null : state.activeSessionId
   })),
   addMessage: (sessionId, message) => set((state) => ({
     sessions: state.sessions.map((session) => (

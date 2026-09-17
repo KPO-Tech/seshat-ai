@@ -40,10 +40,15 @@ export function cancelSubagent(agentId: string, sessionId: string) {
   return api.post(`/subagents/${encodeURIComponent(agentId)}/cancel`, { session_id: sessionId })
 }
 
-export function patchSessionMetadata(id: string, params: { executionMode?: ChatExecutionMode }) {
+export function patchSessionMetadata(id: string, params: { executionMode?: ChatExecutionMode; title?: string }) {
   return api.patch(`/sessions/${encodeURIComponent(id)}`, {
-    execution_mode: params.executionMode
+    execution_mode: params.executionMode,
+    title: params.title
   })
+}
+
+export function deleteSession(id: string) {
+  return api.delete(`/sessions/${encodeURIComponent(id)}`)
 }
 
 export function decideToolPermission(params: {

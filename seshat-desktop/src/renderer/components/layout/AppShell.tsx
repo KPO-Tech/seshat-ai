@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { User } from '@renderer/api/types'
 import { ConfigModal } from '@renderer/components/config/ConfigModal'
 import { SettingsModal, type SettingsSection } from '@renderer/components/settings/SettingsModal'
 import { applyTheme, getStoredTheme } from '@renderer/lib/theme'
 import { Dashboard } from '@renderer/pages/Dashboard'
 import { useChatStore } from '@renderer/stores/chat'
-import { fetchSession } from '@renderer/components/chat/lib/chatApi'
+import { deleteSession, fetchSession, patchSessionMetadata } from '@renderer/components/chat/lib/chatApi'
 import type { ChatSession } from '@renderer/components/chat/lib/chatTypes'
 import { Titlebar } from './Titlebar'
 
@@ -272,6 +272,12 @@ function RecentTasks({ onSelect }: { onSelect: () => void }) {
   const isStreamingBySession = useChatStore((state) => state.isStreamingBySession)
   const setActiveSessionId = useChatStore((state) => state.setActiveSessionId)
   const upsertSession = useChatStore((state) => state.upsertSession)
+  const updateSession = useChatStore((state) => state.updateSession)
+  const removeSession = useChatStore((state) => state.removeSession)
+  // openMenuId tracks which row's "..." menu is open - only one at a time,
+  // so opening a second row's menu implicitly closes the first.
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [renamingId, setRenamingId] = useState<string | null>(null)
   const recent = [...sessions]
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
     .slice(0, 8)
@@ -287,34 +293,160 @@ function RecentTasks({ onSelect }: { onSelect: () => void }) {
     )
   }
 
+  async function rename(session: ChatSession, title: string) {
+    const trimmed = title.trim()
+    setRenamingId(null)
+    if (!trimmed || trimmed === session.title) return
+    const previousTitle = session.title
+    updateSession(session.id, { title: trimmed })
+    try {
+      await patchSessionMetadata(session.id, { title: trimmed })
+    } catch {
+      updateSession(session.id, { title: previousTitle })
+    }
+  }
+
+  async function remove(session: ChatSession) {
+    setOpenMenuId(null)
+    if (!window.confirm(`Delete "${session.title || 'New task'}"? This can't be undone.`)) return
+    removeSession(session.id)
+    try {
+      await deleteSession(session.id)
+    } catch {
+      upsertSession(session)
+    }
+  }
+
   return (
     <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-2 pt-1">
-      <div className="grid gap-1">
+      <div className="grid gap-0.5">
         {recent.map((session) => (
-          <button
+          <TaskRow
             key={session.id}
-            type="button"
-            onClick={() => {
+            session={session}
+            active={activeSessionId === session.id}
+            running={Boolean(isStreamingBySession[session.id])}
+            menuOpen={openMenuId === session.id}
+            renaming={renamingId === session.id}
+            onOpen={() => {
               setActiveSessionId(session.id)
               onSelect()
               void fetchSession(session.id).then(upsertSession).catch(() => undefined)
             }}
-            className={[
-              'relative min-h-9 rounded-md px-2.5 py-2 text-left transition-colors',
-              activeSessionId === session.id ? 'bg-[var(--surface-panel)]' : 'hover:bg-[var(--surface-muted)]'
-            ].join(' ')}
-          >
-            <div className="flex min-w-0 items-center gap-2">
-              <SessionStatusDot session={session} running={Boolean(isStreamingBySession[session.id])} />
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-[12px] font-semibold text-[var(--text-primary)]">{session.title || 'New task'}</div>
-                <div className="mt-0.5 truncate text-[10px] text-[var(--text-muted)]">
-                  {taskMetaLabel(session, Boolean(isStreamingBySession[session.id]))}
-                </div>
-              </div>
-            </div>
-          </button>
+            onToggleMenu={() => setOpenMenuId((current) => current === session.id ? null : session.id)}
+            onCloseMenu={() => setOpenMenuId(null)}
+            onStartRename={() => { setOpenMenuId(null); setRenamingId(session.id) }}
+            onRename={(title) => void rename(session, title)}
+            onDelete={() => void remove(session)}
+          />
         ))}
+      </div>
+    </div>
+  )
+}
+
+function TaskRow({
+  session,
+  active,
+  running,
+  menuOpen,
+  renaming,
+  onOpen,
+  onToggleMenu,
+  onCloseMenu,
+  onStartRename,
+  onRename,
+  onDelete
+}: {
+  session: ChatSession
+  active: boolean
+  running: boolean
+  menuOpen: boolean
+  renaming: boolean
+  onOpen: () => void
+  onToggleMenu: () => void
+  onCloseMenu: () => void
+  onStartRename: () => void
+  onRename: (title: string) => void
+  onDelete: () => void
+}) {
+  const menuRef = useRef<HTMLDivElement>(null)
+  const [draft, setDraft] = useState(session.title || 'New task')
+
+  useEffect(() => {
+    if (!menuOpen) return
+    function onPointerDown(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) onCloseMenu()
+    }
+    document.addEventListener('mousedown', onPointerDown)
+    return () => document.removeEventListener('mousedown', onPointerDown)
+  }, [menuOpen, onCloseMenu])
+
+  useEffect(() => {
+    if (renaming) setDraft(session.title || 'New task')
+  }, [renaming, session.title])
+
+  if (renaming) {
+    return (
+      <div className="flex min-h-8 items-center gap-2 rounded-md px-2.5 py-1">
+        <SessionStatusDot session={session} running={running} />
+        <input
+          autoFocus
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onBlur={() => onRename(draft)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') onRename(draft)
+            if (event.key === 'Escape') onRename(session.title || 'New task')
+          }}
+          className="min-w-0 flex-1 rounded border border-[var(--border-soft)] bg-[var(--surface-panel)] px-1.5 py-0.5 text-[12px] font-semibold text-[var(--text-primary)] outline-none"
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className={[
+        'group relative flex min-h-8 items-center gap-2 rounded-md px-2.5 py-1 transition-colors',
+        active ? 'bg-[var(--surface-panel)]' : 'hover:bg-[var(--surface-muted)]'
+      ].join(' ')}
+      title={taskMetaLabel(session, running)}
+    >
+      <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+        <SessionStatusDot session={session} running={running} />
+        <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-[var(--text-primary)]">{session.title || 'New task'}</span>
+      </button>
+      <div ref={menuRef} className="relative shrink-0">
+        <button
+          type="button"
+          onClick={onToggleMenu}
+          aria-label="Task options"
+          className={[
+            'flex size-6 items-center justify-center rounded transition-opacity hover:bg-[var(--surface-panel)]',
+            menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+          ].join(' ')}
+        >
+          <DotsIcon />
+        </button>
+        {menuOpen && (
+          <div className="absolute right-0 top-[calc(100%+4px)] z-30 w-[140px] overflow-hidden rounded-lg border border-[var(--border-soft)] bg-[var(--surface-panel)] p-1 shadow-[0_12px_32px_rgba(0,0,0,0.32)]">
+            <button
+              type="button"
+              onClick={onStartRename}
+              className="flex h-8 w-full items-center rounded-md px-2 text-left text-[12px] font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
+            >
+              Rename
+            </button>
+            <button
+              type="button"
+              onClick={onDelete}
+              className="flex h-8 w-full items-center rounded-md px-2 text-left text-[12px] font-semibold text-[var(--accent-danger)] hover:bg-[var(--surface-muted)]"
+            >
+              Delete
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -533,6 +665,16 @@ function PlusIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
       <path d="M8 3.5v9M3.5 8h9" />
+    </svg>
+  )
+}
+
+function DotsIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <circle cx="8" cy="3.5" r="1.3" />
+      <circle cx="8" cy="8" r="1.3" />
+      <circle cx="8" cy="12.5" r="1.3" />
     </svg>
   )
 }
