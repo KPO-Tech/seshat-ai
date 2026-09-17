@@ -423,8 +423,8 @@ function TaskRow({
           onClick={onToggleMenu}
           aria-label="Task options"
           className={[
-            'flex size-6 items-center justify-center rounded text-[var(--text-muted)] hover:bg-[var(--surface-panel)] hover:text-[var(--text-primary)]',
-            menuOpen ? 'bg-[var(--surface-panel)] text-[var(--text-primary)]' : ''
+            'flex size-6 shrink-0 items-center justify-center rounded border border-[var(--border-soft)] text-[var(--text-secondary)] hover:bg-[var(--surface-panel)] hover:text-[var(--text-primary)]',
+            menuOpen ? 'bg-[var(--surface-panel)] text-[var(--text-primary)]' : 'bg-[var(--surface-sidebar)]'
           ].join(' ')}
         >
           <DotsIcon />
