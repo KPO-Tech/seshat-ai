@@ -8,9 +8,10 @@ type AgentMessageProps = {
   sessionId?: string
   message: ChatMessage
   live?: boolean
+  contextWindow?: number
 }
 
-export function AgentMessage({ sessionId, message, live = false }: AgentMessageProps) {
+export function AgentMessage({ sessionId, message, live = false, contextWindow }: AgentMessageProps) {
   const failed = message.status === 'error'
   const stopped = message.status === 'stopped'
   const hasContent = message.content.some((block) => {
@@ -42,7 +43,7 @@ export function AgentMessage({ sessionId, message, live = false }: AgentMessageP
           <CopyButton text={copyText} />
         </div>
       )}
-      <MessageUsage usage={message.usage} turnNumber={message.turn_number} stopReason={message.stop_reason} />
+      <MessageUsage usage={message.usage} turnNumber={message.turn_number} stopReason={message.stop_reason} contextWindow={contextWindow} />
     </article>
   )
 }

@@ -9,13 +9,14 @@ import { UserMessage } from './UserMessage'
 // "reading history."
 const AT_BOTTOM_THRESHOLD_PX = 60
 
-export function MessageList({ containerRef, sessionId, messages, streaming, isStreaming, onRetry }: {
+export function MessageList({ containerRef, sessionId, messages, streaming, isStreaming, onRetry, contextWindow }: {
   containerRef: RefObject<HTMLDivElement | null>
   sessionId: string
   messages: ChatMessage[]
   streaming: StreamingBlock[]
   isStreaming: boolean
   onRetry?: (text: string) => void
+  contextWindow?: number
 }) {
   const endRef = useRef<HTMLDivElement>(null)
   const isAtBottomRef = useRef(true)
@@ -77,6 +78,7 @@ export function MessageList({ containerRef, sessionId, messages, streaming, isSt
             message={message}
             hidePendingAssistant={isStreaming && isLast}
             onRetry={onRetry}
+            contextWindow={contextWindow}
           />
         )
       })}
@@ -91,9 +93,9 @@ export function MessageList({ containerRef, sessionId, messages, streaming, isSt
   )
 }
 
-function MessageBubble({ sessionId, message, hidePendingAssistant, onRetry }: { sessionId: string; message: ChatMessage; hidePendingAssistant?: boolean; onRetry?: (text: string) => void }) {
+function MessageBubble({ sessionId, message, hidePendingAssistant, onRetry, contextWindow }: { sessionId: string; message: ChatMessage; hidePendingAssistant?: boolean; onRetry?: (text: string) => void; contextWindow?: number }) {
   if (message.role === 'system') return null
   if (message.role === 'user') return <UserMessage message={message} onRetry={onRetry} />
   if (hidePendingAssistant && message.content.length === 0 && message.status !== 'error') return null
-  return <AgentMessage sessionId={sessionId} message={message} />
+  return <AgentMessage sessionId={sessionId} message={message} contextWindow={contextWindow} />
 }

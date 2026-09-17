@@ -51,12 +51,17 @@ export type ChatContentBlock = TextBlock | ThinkingBlock | ToolUseBlock | ToolRe
 
 export type ChatExecutionMode = 'execute' | 'plan'
 
+// Mirrors the SDK's internal/types.TokenUsage wire shape (seshat's
+// message.go) - total_tokens doesn't exist on the wire and is always
+// computed client-side as input+output.
 export type TokenUsage = {
   input_tokens?: number
   output_tokens?: number
   total_tokens?: number
-  cached_input_tokens?: number
+  cached_tokens?: number
+  cache_read_input_tokens?: number
   cache_creation_input_tokens?: number
+  reasoning_tokens?: number
 }
 
 export type ChatMessage = {

@@ -100,6 +100,7 @@ export function ChatWorkspace({ user }: { user: User }) {
               streaming={streaming}
               isStreaming={isStreaming}
               onRetry={(text) => void send(text, sendOptions)}
+              contextWindow={selectedModel?.contextWindow}
             />
           </section>
           <footer className="shrink-0 border-t border-transparent px-8 pb-5">

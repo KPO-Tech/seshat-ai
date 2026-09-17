@@ -9,6 +9,7 @@ export type ChatModelChoice = {
   modelId: string
   label: string
   selected: boolean
+  contextWindow?: number
 }
 
 export async function fetchChatModelChoices(): Promise<ChatModelChoice[]> {
@@ -29,11 +30,12 @@ function choicesForProvider(setting: ProviderSetting, models: ProviderModel[]): 
     setting,
     model.model_id,
     model.display_name || model.model_id,
-    model.model_id === selectedModelId
+    model.model_id === selectedModelId,
+    model.context_window
   ))
 }
 
-function choiceFromModel(setting: ProviderSetting, modelId: string, label: string, selected: boolean): ChatModelChoice {
+function choiceFromModel(setting: ProviderSetting, modelId: string, label: string, selected: boolean, contextWindow?: number): ChatModelChoice {
   return {
     id: `${setting.id}:${modelId}`,
     providerSettingId: setting.id,
@@ -41,6 +43,7 @@ function choiceFromModel(setting: ProviderSetting, modelId: string, label: strin
     providerName: setting.name,
     modelId,
     label,
-    selected
+    selected,
+    contextWindow: contextWindow && contextWindow > 0 ? contextWindow : undefined
   }
 }
