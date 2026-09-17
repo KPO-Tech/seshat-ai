@@ -67,8 +67,9 @@ type Service struct {
 	doclingURL  string
 	sdkSessions *sdkSessionBackend
 
-	mu       sync.Mutex
-	sessions map[string]*chatSession
+	mu        sync.Mutex
+	sessions  map[string]*chatSession
+	busyTurns map[string]struct{}
 }
 
 type chatSession struct {
@@ -176,6 +177,12 @@ func (s *Service) StreamChat(ctx context.Context, principal *iam.Principal, para
 	if _, err := s.loadOwnedSession(ctx, principal, params.OrganizationID, params.SessionID); err != nil {
 		return err
 	}
+
+	release, ok := s.tryAcquireSessionTurn(params.SessionID)
+	if !ok {
+		return apperr.Conflict("a turn is already in progress for this session")
+	}
+	defer release()
 
 	sess, err := s.getOrCreateSession(ctx, principal, params)
 	if err != nil {
@@ -490,6 +497,36 @@ func (s *Service) resolveMCPServers(ctx context.Context, principal *iam.Principa
 		return nil
 	}
 	return mcpregistry.ToSDKServerConfigs(resolved)
+}
+
+// tryAcquireSessionTurn ensures at most one StreamChat turn runs at a time
+// for a given session_id. Without this, two concurrent StreamChat calls for
+// the same session_id race on getOrCreateSession's session-cache
+// population/eviction (the loser's client.Close() can tear down the client
+// the winner is actively streaming through) and, on a cache hit, both would
+// call SetResponseChunkFn/SetProgressFn on the very same session object - a
+// plain data race on shared callback fields, independent of anything the
+// sdk.Session/engine itself guards against (that guard only protects one
+// already-loaded Session object; it can't help two callers still racing to
+// decide which client/session to use). Fails fast (no queuing) rather than
+// blocking, since a genuine second concurrent request for one session_id
+// from one browser tab is virtually always a client bug, not legitimate
+// concurrent work to wait out.
+func (s *Service) tryAcquireSessionTurn(sessionID string) (release func(), ok bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.busyTurns == nil {
+		s.busyTurns = make(map[string]struct{})
+	}
+	if _, busy := s.busyTurns[sessionID]; busy {
+		return nil, false
+	}
+	s.busyTurns[sessionID] = struct{}{}
+	return func() {
+		s.mu.Lock()
+		delete(s.busyTurns, sessionID)
+		s.mu.Unlock()
+	}, true
 }
 
 func (s *Service) getOrCreateSession(ctx context.Context, principal *iam.Principal, params StreamChatParams) (*sdk.Session, error) {
