@@ -7,7 +7,14 @@ import { useAgentStore } from '@renderer/stores/agents'
 import { createSession, fetchSession, fetchSessions, interruptSession, patchSessionMetadata, streamQuery, type RetryableError } from './chatApi'
 import { applyStreamEvent, mergeDoneIntoMessages } from './streaming'
 import { uploadSessionFile } from '../attachments/attachmentApi'
-import type { ChatContentBlock, ChatExecutionMode, ChatMessage, MessageAttachment, QueryDone, RuntimeEvent } from './chatTypes'
+import type { ChatContentBlock, ChatExecutionMode, ChatMessage, MessageAttachment, QueryDone, RuntimeEvent, StreamingBlock } from './chatTypes'
+
+// A stable reference for "no streaming blocks" - returning a fresh `[]`
+// literal from inside a zustand selector breaks useSyncExternalStore's
+// reference-equality check (a new array every call looks like "the store
+// changed" even when it didn't), which spins into "Maximum update depth
+// exceeded" and crashes the whole tree with no error boundary to catch it.
+const EMPTY_STREAMING: StreamingBlock[] = []
 
 type ChatModelSelection = {
   providerSettingId?: string
@@ -30,7 +37,7 @@ const WATCHDOG_TIMEOUT_MS = 150_000
 export function useChatWorkspace() {
   const sessions = useChatStore((state) => state.sessions)
   const activeSessionId = useChatStore((state) => state.activeSessionId)
-  const streaming = useChatStore((state) => activeSessionId ? state.streamingBySession[activeSessionId] ?? [] : [])
+  const streaming = useChatStore((state) => (activeSessionId ? state.streamingBySession[activeSessionId] : undefined) ?? EMPTY_STREAMING)
   const isStreaming = useChatStore((state) => activeSessionId ? Boolean(state.isStreamingBySession[activeSessionId]) : false)
   const setSessions = useChatStore((state) => state.setSessions)
   const setActiveSessionId = useChatStore((state) => state.setActiveSessionId)
