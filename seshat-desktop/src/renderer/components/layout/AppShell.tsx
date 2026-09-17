@@ -423,8 +423,8 @@ function TaskRow({
           onClick={onToggleMenu}
           aria-label="Task options"
           className={[
-            'flex size-6 shrink-0 items-center justify-center rounded border border-[var(--border-soft)] text-[var(--text-secondary)] hover:bg-[var(--surface-panel)] hover:text-[var(--text-primary)]',
-            menuOpen ? 'bg-[var(--surface-panel)] text-[var(--text-primary)]' : 'bg-[var(--surface-sidebar)]'
+            'flex size-7 shrink-0 items-center justify-center rounded-md bg-[var(--surface-muted)] text-[var(--text-primary)] hover:opacity-80',
+            menuOpen ? 'ring-1 ring-[var(--accent-primary)]' : ''
           ].join(' ')}
         >
           <DotsIcon />
@@ -671,10 +671,10 @@ function PlusIcon() {
 
 function DotsIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-      <circle cx="8" cy="3.5" r="1.3" />
-      <circle cx="8" cy="8" r="1.3" />
-      <circle cx="8" cy="12.5" r="1.3" />
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <circle cx="8" cy="3.2" r="1.7" />
+      <circle cx="8" cy="8" r="1.7" />
+      <circle cx="8" cy="12.8" r="1.7" />
     </svg>
   )
 }
