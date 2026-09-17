@@ -562,7 +562,12 @@ func (s *Service) ragServiceFor(ctx context.Context, organizationID string) (*sd
 	if ok {
 		embedder = sdkembedder.New(&embedderCfg)
 	}
-	ragService := sdkrag.NewService(s.artifacts, s.vectors, embedder, s.chunker)
+	// s.vectors is wrapped so every namespace (corpus_id) this rag.Service
+	// ever touches is verified to belong to organizationID first - see
+	// orgScopedVectorStore's doc comment for why this matters on the
+	// rag_search/rag_ingest/rag_delete tool-call path.
+	scopedVectors := newOrgScopedVectorStore(s.db, s.vectors, organizationID)
+	ragService := sdkrag.NewService(s.artifacts, scopedVectors, embedder, s.chunker)
 	// RAG_RERANK_URL points at any Cohere/TEI-compatible endpoint
 	// (self-hosted TEI/vLLM serving BAAI/bge-reranker-v2-m3, free and no
 	// API key needed) - falls back to LangSearch's hosted API if only
