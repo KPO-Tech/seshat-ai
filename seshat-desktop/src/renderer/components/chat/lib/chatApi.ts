@@ -91,11 +91,26 @@ export function respondToPrompt(params: {
   })
 }
 
+// An Error tagged with whether the caller's retry loop may safely resubmit
+// the prompt for it. The Electron path's real error (and whether it's a
+// pre-turn network failure vs. something else) lives in the main process,
+// and IPC only carries a message string across - main/ipc/backend.ts's
+// startStream tags retryable explicitly for exactly this reason (see its
+// own `retryable: true/false` returns).
+export type RetryableError = Error & { retryable?: boolean }
+
+function makeRetryableError(message: string, retryable: boolean): RetryableError {
+  const error: RetryableError = new Error(message)
+  error.retryable = retryable
+  return error
+}
+
 export async function streamQuery(params: {
   prompt: string
   sessionId: string
   providerSettingId?: string
   modelId?: string
+  fileIds?: string[]
   signal?: AbortSignal
   onEvent: (event: StreamEvent) => void
 }) {
@@ -107,19 +122,20 @@ export async function streamQuery(params: {
         prompt: params.prompt,
         session_id: params.sessionId,
         provider_setting_id: params.providerSettingId,
-        model_id: params.modelId
+        model_id: params.modelId,
+        file_ids: params.fileIds
       }
     })
 
     if (started.unauthorized) useAuthStore.getState().logout()
-    if (!started.streamId) throw new Error(started.error || 'Streaming failed.')
+    if (!started.streamId) throw makeRetryableError(started.error || 'Streaming failed.', started.retryable === true)
     const streamId = started.streamId
 
     await new Promise<void>((resolve, reject) => {
       let settled = false
       const cleanup = window.nexus?.http?.onStreamEvent(streamId, (event) => {
         if (event.name === 'error') {
-          settle(() => reject(new Error(String(event.data.error ?? event.data.message ?? 'Streaming failed.'))))
+          settle(() => reject(makeRetryableError(String(event.data.error ?? event.data.message ?? 'Streaming failed.'), event.data.retryable === true)))
           return
         }
 
@@ -158,7 +174,8 @@ export async function streamQuery(params: {
       prompt: params.prompt,
       session_id: params.sessionId,
       provider_setting_id: params.providerSettingId,
-      model_id: params.modelId
+      model_id: params.modelId,
+      file_ids: params.fileIds
     }),
     signal: params.signal
   })

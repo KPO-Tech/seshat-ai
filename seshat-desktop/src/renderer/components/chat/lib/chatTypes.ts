@@ -64,11 +64,24 @@ export type ChatMessage = {
   role: 'user' | 'assistant' | 'system'
   content: ChatContentBlock[]
   created_at?: number
-  status?: 'sending' | 'sent' | 'error'
+  status?: 'sending' | 'sent' | 'error' | 'stopped'
   usage?: TokenUsage
   turn_number?: number
   stop_reason?: string
   is_complete?: boolean
+  metadata?: {
+    attachments?: MessageAttachment[]
+    [key: string]: unknown
+  }
+}
+
+export type MessageAttachment = {
+  id: string
+  filename: string
+  content_type?: string
+  size?: number
+  category?: string
+  preview_url?: string
 }
 
 export type ChatSession = {

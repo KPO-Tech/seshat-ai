@@ -1,6 +1,7 @@
 import type { ChatMessage } from '../lib/chatTypes'
 import { MessageContentBlocks } from './MessageContentBlocks'
 import { MessageUsage } from './MessageUsage'
+import { AttachmentList } from '../attachments/AttachmentList'
 
 type AgentMessageProps = {
   sessionId?: string
@@ -10,6 +11,7 @@ type AgentMessageProps = {
 
 export function AgentMessage({ sessionId, message, live = false }: AgentMessageProps) {
   const failed = message.status === 'error'
+  const stopped = message.status === 'stopped'
   const hasContent = message.content.some((block) => {
     if (block.type === 'text') return block.text.trim()
     if (block.type === 'thinking') return block.thinking.trim()
@@ -17,19 +19,31 @@ export function AgentMessage({ sessionId, message, live = false }: AgentMessageP
     return false
   })
   const hasUsage = Boolean(message.usage || message.turn_number || message.stop_reason)
+  const attachments = message.metadata?.attachments ?? []
 
-  if (!live && !failed && !hasContent && !hasUsage) return null
+  if (!live && !failed && !hasContent && !hasUsage && attachments.length === 0) return null
 
   return (
     <article className="group flex w-full flex-col gap-2">
+      {attachments.length > 0 && <AttachmentList attachments={attachments} />}
       <div className={failed
         ? 'rounded-xl border border-[var(--accent-danger)]/35 bg-[var(--accent-danger)]/5 px-4 py-3 text-[13px] font-semibold leading-6 text-[var(--accent-danger)]'
         : 'min-w-0 text-[14px] leading-7 text-[var(--text-primary)]'
       }>
-        {hasContent ? <MessageContentBlocks sessionId={sessionId} blocks={message.content} live={live} /> : <AgentGenerating />}
+        {hasContent ? <MessageContentBlocks sessionId={sessionId} blocks={message.content} live={live} /> : attachments.length === 0 ? <AgentGenerating /> : null}
       </div>
+      {stopped && <StoppedIndicator />}
       <MessageUsage usage={message.usage} turnNumber={message.turn_number} stopReason={message.stop_reason} />
     </article>
+  )
+}
+
+function StoppedIndicator() {
+  return (
+    <div className="flex items-center gap-1.5 text-[12px] font-medium text-[var(--text-muted)]">
+      <span className="size-1.5 rounded-full bg-[var(--text-muted)]" />
+      <span>Stopped</span>
+    </div>
   )
 }
 
