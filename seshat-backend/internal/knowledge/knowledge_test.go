@@ -262,6 +262,46 @@ func TestService_Search_AfterIngest(t *testing.T) {
 	require.Greater(t, len(resp.Results), 0, "should find chunks after ingest")
 }
 
+// TestService_Search_DedupesIdenticalChunkText is the regression test for
+// the deduplication gap: two files with byte-identical text produce two
+// independent chunks that can both legitimately rank in the same top-K for
+// a matching query - without dedup, Search returns the same sentence twice.
+func TestService_Search_DedupesIdenticalChunkText(t *testing.T) {
+	ctx := context.Background()
+	database := openTestDB(t)
+	artifacts := newTestArtifactStore(t)
+	svc := newTestService(t, database, artifacts)
+	principal := testPrincipal("user-7")
+
+	corpus, err := svc.CreateCorpus(ctx, principal, knowledge.CreateCorpusParams{Name: "dedup-kb"})
+	require.NoError(t, err)
+
+	text := "Refunds are processed within 14 business days of the return being received by our warehouse."
+	fileID1 := seedFile(t, ctx, database, artifacts, "user-7", "refund-policy.txt", text)
+	fileID2 := seedFile(t, ctx, database, artifacts, "user-7", "refund-policy-copy.txt", text)
+
+	_, err = svc.AttachFile(ctx, principal, corpus.ID, fileID1)
+	require.NoError(t, err)
+	_, err = svc.AttachFile(ctx, principal, corpus.ID, fileID2)
+	require.NoError(t, err)
+
+	_, err = svc.ProcessNextIngestionJob(ctx)
+	require.NoError(t, err)
+	_, err = svc.ProcessNextIngestionJob(ctx)
+	require.NoError(t, err)
+
+	resp, err := svc.Search(ctx, principal, knowledge.SearchParams{CorpusID: corpus.ID, Query: "refund policy", TopK: 10})
+	require.NoError(t, err)
+
+	seen := make(map[string]int)
+	for _, r := range resp.Results {
+		seen[r.Text]++
+	}
+	for chunkText, count := range seen {
+		require.LessOrEqualf(t, count, 1, "expected each distinct chunk text to appear once, got %q %d times in %+v", chunkText, count, resp.Results)
+	}
+}
+
 func TestService_DetachFile_ClearsVectors(t *testing.T) {
 	ctx := context.Background()
 	database := openTestDB(t)

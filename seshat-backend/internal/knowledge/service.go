@@ -314,7 +314,7 @@ func (s *Service) DetachFile(ctx context.Context, principal *backendauth.Princip
 	}
 	if corpusFile.ChunkCount > 0 && s.rag != nil {
 		artifactKey := fmt.Sprintf("rag/%s/%s", corpusID, fileID)
-		if err := s.rag.DeleteFileChunks(ctx, corpusID, artifactKey, 0, corpusFile.ChunkCount); err != nil {
+		if err := s.rag.DeleteFileChunks(ctx, corpusID, artifactKey, 0); err != nil {
 			return bkerr.Internal("delete corpus file vectors: "+err.Error(), err)
 		}
 	}
@@ -518,7 +518,34 @@ func (s *Service) Search(ctx context.Context, principal *backendauth.Principal, 
 	if err != nil {
 		return nil, bkerr.Internal("search corpus: "+err.Error(), err)
 	}
+	resp.Results = dedupeSearchResults(resp.Results)
 	return &resp, nil
+}
+
+// dedupeSearchResults drops exact-duplicate hits (same chunk text verbatim,
+// after trimming) from a single search response, keeping the first
+// occurrence. Results already arrive score-sorted (descending - see the
+// SDK's Search/rerank sort), so "first" is always the highest-scoring copy.
+// This is a real, not hypothetical, case: a document re-ingested into a
+// corpus it's already in produces two independent chunks with byte-identical
+// text, and both can legitimately rank in the same top-K for a matching
+// query - without this, a caller sees the same sentence twice instead of
+// two distinct results.
+func dedupeSearchResults(results []rag.SearchResult) []rag.SearchResult {
+	if len(results) < 2 {
+		return results
+	}
+	seen := make(map[string]struct{}, len(results))
+	deduped := make([]rag.SearchResult, 0, len(results))
+	for _, r := range results {
+		key := strings.TrimSpace(r.Text)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		deduped = append(deduped, r)
+	}
+	return deduped
 }
 
 func (s *Service) ProcessNextIngestionJob(ctx context.Context) (bool, error) {
@@ -634,7 +661,7 @@ func (s *Service) ingestText(ctx context.Context, corpusID, fileID, filename, te
 	// Chunk keys follow "rag/{corpusID}/{fileID}#chunk-{i}" (set by rag.Service when FileID is given).
 	if oldChunkCount > result.Chunks {
 		artifactKey := fmt.Sprintf("rag/%s/%s", corpusID, fileID)
-		_ = s.rag.DeleteFileChunks(ctx, corpusID, artifactKey, result.Chunks, oldChunkCount)
+		_ = s.rag.DeleteFileChunks(ctx, corpusID, artifactKey, result.Chunks)
 	}
 
 	_ = s.corpora.UpdateFileStatus(ctx, corpusID, fileID, db.CorpusFileStatusIngested, result.Chunks)

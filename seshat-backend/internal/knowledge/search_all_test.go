@@ -82,6 +82,43 @@ func TestSearchAll_MergesSortsAndTrimsAcrossCorpora(t *testing.T) {
 	}
 }
 
+// TestSearchAll_DedupesIdenticalTextAcrossCorpora is the regression test
+// for the cross-corpus dedup gap: the same source document can legitimately
+// be ingested into more than one corpus a principal has access to, and
+// merging their results used to surface the same chunk text twice, once
+// per corpus, instead of once at its highest score.
+func TestSearchAll_DedupesIdenticalTextAcrossCorpora(t *testing.T) {
+	backend := &fakeBackend{
+		corpora: []Corpus{
+			{ID: "c1", Name: "Legal"},
+			{ID: "c2", Name: "Onboarding"},
+		},
+		results: map[string]*rag.SearchResponse{
+			"c1": {CorpusID: "c1", Results: []rag.SearchResult{
+				{Key: "c1-a", Text: "shared policy text", Score: 0.9},
+			}},
+			"c2": {CorpusID: "c2", Results: []rag.SearchResult{
+				{Key: "c2-a", Text: "shared policy text", Score: 0.6},
+				{Key: "c2-b", Text: "onboarding-only text", Score: 0.4},
+			}},
+		},
+	}
+
+	res, err := SearchAll(context.Background(), nil, backend, SearchAllParams{Query: "policy", TopK: 10})
+	if err != nil {
+		t.Fatalf("SearchAll: %v", err)
+	}
+	if len(res.Results) != 2 {
+		t.Fatalf("expected the duplicate to be dropped (2 distinct results), got %d: %+v", len(res.Results), res.Results)
+	}
+	if res.Results[0].Key != "c1-a" {
+		t.Errorf("expected the higher-scoring copy (c1-a) to survive, got %+v", res.Results[0])
+	}
+	if res.Results[1].Key != "c2-b" {
+		t.Errorf("expected the distinct result (c2-b) to survive, got %+v", res.Results[1])
+	}
+}
+
 func TestSearchAll_ScopedToSingleCorpus(t *testing.T) {
 	backend := &fakeBackend{
 		corpora: []Corpus{
