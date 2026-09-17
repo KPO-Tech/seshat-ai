@@ -79,12 +79,17 @@ services:
       # docling-serve's own internal wait budget for a synchronous convert
       # call - defaults to 120s, which a large/scanned/OCR-heavy PDF on a
       # CPU-only worker can easily exceed (seen taking 6+ minutes on a
-      # 10 MB scanned document). seshat-server's own docling client already
-      # budgets 15 minutes for exactly this reason (see doclingIngestTimeout
-      # in internal/server/app/app.go) - matched here so docling-serve
-      # itself doesn't give up and return a 504 first while the client is
-      # still happily waiting.
-      DOCLING_SERVE_MAX_SYNC_WAIT: ${DOCLING_SERVE_MAX_SYNC_WAIT:-900}
+      # 10 MB scanned document, and 13-14 minutes on a 60-page OCR-heavy
+      # scanned book barely over 1 MB - page count and OCR density matter
+      # far more than file size here). seshat-server's own docling client
+      # (doclingIngestTimeout in internal/server/app/app.go) deliberately
+      # budgets several minutes ABOVE this value, not equal to it: when
+      # both were set to the same 900s, a document landing within seconds
+      # of that ceiling turned into a race between the two timeouts, and
+      # docling-serve losing it produces a "Task result not found" 404
+      # that looks like a real failure even though the conversion was
+      # about to finish.
+      DOCLING_SERVE_MAX_SYNC_WAIT: ${DOCLING_SERVE_MAX_SYNC_WAIT:-1800}
       DOCLING_SERVE_LOAD_MODELS_AT_BOOT: ${DOCLING_SERVE_LOAD_MODELS_AT_BOOT:-false}
       DOCLING_SERVE_OPTIONS_CACHE_SIZE: ${DOCLING_SERVE_OPTIONS_CACHE_SIZE:-32}
     ports:
@@ -117,6 +122,87 @@ services:
     mem_limit: 256m
     volumes:
       - docling-redis-data:/data
+
+  # Local embedding model via Hugging Face's Text Embeddings Inference
+  # (TEI) - a free, no-API-key alternative to OpenAI/Mistral/Gemini for
+  # testing, and the natural pairing for tei-rerank below (same runtime,
+  # same image, one model per instance - TEI can't serve both an embedding
+  # and a reranker model from one process). CPU-only.
+  #
+  # NOT BAAI/bge-m3: verified (2026-09-12) that it crash-loops on TEI's
+  # ONNX CPU backend here - it downloads and reaches "Warming up model"
+  # fine, then the process exits cleanly (exit 0, not OOM) a few seconds
+  # later, every restart, forever. Most likely bge-m3's hybrid
+  # dense+sparse+ColBERT output heads aren't fully supported by TEI's ONNX
+  # warmup path. intfloat/multilingual-e5-small is a plain single-output
+  # multilingual encoder (100+ languages) that has been confirmed stable
+  # on the same image/backend - needs ~2 GB resident once warmed up (not
+  # lower just because "small" is in the name - ONNX Runtime's own arena
+  # allocation dominates over model size here), so give it real headroom
+  # rather than trusting the model's file size.
+  #
+  # Point Settings > Knowledge > Embedding at this once it's up: provider
+  # "Custom endpoint", base URL http://localhost:${TEI_EMBED_PORT:-8082}/v1
+  # (TEI exposes an OpenAI-compatible /v1/embeddings route), model
+  # ${TEI_EMBED_MODEL:-intfloat/multilingual-e5-small} - or use the base
+  # URL's own /info endpoint via the embedder card's "Detect" button once
+  # that model id is unknown/forgotten.
+  tei-embed:
+    profiles: ["docs", "full"]
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-${TEI_VERSION:-latest}
+    restart: unless-stopped
+    command: ["--model-id", "${TEI_EMBED_MODEL:-intfloat/multilingual-e5-small}"]
+    mem_limit: ${TEI_EMBED_MEM_LIMIT:-4g}
+    ports:
+      - "${TEI_EMBED_PORT:-8082}:80"
+    volumes:
+      - tei-embed-data:/data
+    # No curl/wget in this image (Debian-slim with only what TEI itself
+    # needs) - bash is present, so /dev/tcp is what's actually available
+    # for a real HTTP check. start_period is long because the *first* boot
+    # downloads the model from the Hub; cached in the tei-embed-data volume
+    # after that, so later restarts are fast and don't need anywhere near
+    # this long.
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/80; printf \"GET /health HTTP/1.1\\r\\nHost: x\\r\\nConnection: close\\r\\n\\r\\n\" >&3; head -n1 <&3 | grep -q 200'"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 600s
+
+  # Local reranker via the same TEI runtime, loaded with a cross-encoder
+  # (sequence-classification) model instead of an embedding one -
+  # BAAI/bge-reranker-v2-m3 is the small (~570M params), well-regarded
+  # default. Point Settings > Knowledge > Reranker at "TEI / vLLM local"
+  # once it's up: endpoint URL
+  # http://localhost:${TEI_RERANK_PORT:-8083}/rerank, model
+  # ${TEI_RERANK_MODEL:-BAAI/bge-reranker-v2-m3}.
+  #
+  # For seshat-server's own (env-var-only, not per-org-settable today -
+  # see internal/server/app/app.go) reranker, set RAG_RERANK_URL below to
+  # http://tei-rerank/rerank to actually use this for real search, not
+  # just Settings' local test/detect probes.
+  tei-rerank:
+    profiles: ["docs", "full"]
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-${TEI_VERSION:-latest}
+    restart: unless-stopped
+    command: ["--model-id", "${TEI_RERANK_MODEL:-BAAI/bge-reranker-v2-m3}"]
+    # bge-reranker-v2-m3 ships no ONNX weights on the Hub, so TEI's CPU
+    # image falls back to loading the full fp32 safetensors (~2.3 GB) - a
+    # 2g limit OOM-kills it (exit 137) partway through that fallback.
+    mem_limit: ${TEI_RERANK_MEM_LIMIT:-4g}
+    ports:
+      - "${TEI_RERANK_PORT:-8083}:80"
+    volumes:
+      - tei-rerank-data:/data
+    # See tei-embed's healthcheck comment above for why this is bash
+    # /dev/tcp instead of curl, and why start_period is this long.
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/80; printf \"GET /health HTTP/1.1\\r\\nHost: x\\r\\nConnection: close\\r\\n\\r\\n\" >&3; head -n1 <&3 | grep -q 200'"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 600s
 
   # OpenSearch is the target vector/search engine for enterprise Knowledge
   # validation. It is profile-gated because it is heavier than the core
@@ -262,6 +348,16 @@ services:
       SESHAT_SERVER_OPENSEARCH_KNN: ${SESHAT_SERVER_OPENSEARCH_KNN:-false}
       SESHAT_SERVER_OPENSEARCH_INSECURE_SKIP_VERIFY: ${SESHAT_SERVER_OPENSEARCH_INSECURE_SKIP_VERIFY:-false}
       SESHAT_SERVER_OPENSEARCH_BULK_SIZE: ${SESHAT_SERVER_OPENSEARCH_BULK_SIZE:-}
+      # Reranker: read directly by github.com/KPO-Tech/seshat/internal/rag/
+      # reranker.NewFromEnv() (RAG_RERANK_* is a plain SDK-level convention,
+      # not a SESHAT_SERVER_-prefixed setting) - there is no per-org DB
+      # setting for this yet, unlike the embedder above. Empty by default,
+      # same reasoning as SESHAT_SERVER_DOCLING_URL - set RAG_RERANK_URL in
+      # .env (e.g. http://tei-rerank/rerank, once the "docs"/"full" profile
+      # is running tei-rerank below) to actually enable it.
+      RAG_RERANK_URL: ${RAG_RERANK_URL:-}
+      RAG_RERANK_API_KEY: ${RAG_RERANK_API_KEY:-}
+      RAG_RERANK_MODEL: ${RAG_RERANK_MODEL:-}
       # Corpus file storage. Empty/unset SESHAT_SERVER_STORAGE_PROVIDER
       # defaults to local disk (today's behavior, unchanged) — set it to
       # "s3" in .env to point at the minio service above instead.
@@ -413,6 +509,8 @@ volumes:
   postgres-data:
   seshat-server-artifacts:
   docling-redis-data:
+  tei-embed-data:
+  tei-rerank-data:
   opensearch-data:
   minio-data:
   searxng-redis-data:

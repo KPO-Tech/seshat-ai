@@ -563,12 +563,20 @@ func (s *Service) ragServiceFor(ctx context.Context, organizationID string) (*sd
 		embedder = sdkembedder.New(&embedderCfg)
 	}
 	ragService := sdkrag.NewService(s.artifacts, s.vectors, embedder, s.chunker)
-	// RAG_RERANK_URL points at any Cohere/TEI-compatible endpoint
-	// (self-hosted TEI/vLLM serving BAAI/bge-reranker-v2-m3, free and no
-	// API key needed) - falls back to LangSearch's hosted API if only
-	// LANGSEARCH_API_KEY is set. A no-op when neither is configured
-	// (SetReranker with an unconfigured reranker behaves exactly as nil).
-	if r := sdkreranker.NewFromEnv(); r.IsConfigured() {
+	// The organization's own RerankerSetting wins when configured and
+	// enabled; otherwise fall back to the platform-wide RAG_RERANK_URL/
+	// LANGSEARCH_API_KEY env vars (self-hosted TEI/vLLM, or LangSearch's
+	// hosted API) - preserves the original deployment-wide-only behavior
+	// for any organization that hasn't set its own. A no-op either way
+	// when nothing is configured (SetReranker with an unconfigured
+	// reranker behaves exactly as nil).
+	rerankerCfg, rerankerOK, err := s.resolveRerankerConfig(ctx, organizationID)
+	if err != nil {
+		return nil, false, err
+	}
+	if rerankerOK {
+		ragService.SetReranker(sdkreranker.New(rerankerCfg))
+	} else if r := sdkreranker.NewFromEnv(); r.IsConfigured() {
 		ragService.SetReranker(r)
 	}
 	return ragService, true, nil

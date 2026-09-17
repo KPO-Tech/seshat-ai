@@ -132,6 +132,7 @@ func (d *DB) Migrate() error {
 		&ConnectorOAuthApp{},
 		&ConnectorOAuthState{},
 		&EmbedderSetting{},
+		&RerankerSetting{},
 		&UserPreference{},
 		&OrganizationPreference{},
 		&SkillRepo{},

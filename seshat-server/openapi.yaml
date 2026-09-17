@@ -4171,6 +4171,92 @@ paths:
               schema: { $ref: "#/components/schemas/DetectedEmbedderModels" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
+  /api/v1/reranker-settings:
+    get:
+      operationId: getRerankerSetting
+      tags: [knowledge]
+      summary: Get an organization's reranker configuration
+      description: >-
+        A singleton per organization. Unlike embedder-settings, 404 here is
+        a fully normal "no second pass configured" state, not a fallback
+        trigger - search works fine without one.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: Reranker setting
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RerankerSetting" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      operationId: setRerankerSetting
+      tags: [knowledge]
+      summary: Create or update an organization's reranker configuration
+      description: >-
+        Requires knowledge.manage or organization.manage. Upsert - creates
+        the organization's reranker setting if none exists yet, otherwise
+        updates it in place. api_key empty means "no key" on first create
+        (the common case for a self-hosted TEI/vLLM instance) and "keep the
+        existing key unchanged" when a setting already exists. enabled lets
+        an org keep a configured endpoint on record while temporarily
+        turning reranking off.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RerankerSettingInput" }
+      responses:
+        "200":
+          description: Reranker setting created or updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RerankerSetting" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    delete:
+      operationId: deleteRerankerSetting
+      tags: [knowledge]
+      summary: Delete an organization's reranker configuration
+      description: >-
+        Requires knowledge.manage or organization.manage. Search reverts to
+        the platform-wide RAG_RERANK_* env var (if any) for this
+        organization's subsequent requests.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "204": { description: Deleted }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/reranker-settings/detect-model:
+    post:
+      operationId: detectRerankerModel
+      tags: [knowledge]
+      summary: Detect the model a self-hosted TEI reranker is serving
+      description: >-
+        Probes base_url's TEI /info endpoint and returns the model_id it
+        reports - TEI always serves exactly one model per instance, so
+        unlike embedder detection there's nothing to classify, just one
+        answer to look up. A non-TEI endpoint (or any other failure) comes
+        back as an error string, never an HTTP error status, so the console
+        can fall back to manual model entry.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DetectRerankerModelInput" }
+      responses:
+        "200":
+          description: Detected model (or an error string if detection failed)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DetectedRerankerModel" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
   /api/v1/organization-preferences:
     get:
       operationId: getOrganizationPreferences
@@ -6824,6 +6910,44 @@ components:
           type: string
           description: Optional (e.g. a local Ollama needs none). Empty on update keeps the existing key unchanged.
       required: [provider, model, base_url]
+
+    RerankerSetting:
+      type: object
+      description: Never includes the API key — same redaction stance as EmbedderSetting/ProviderSetting.
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        base_url: { type: string, example: "http://tei-rerank/rerank" }
+        model: { type: string, example: "BAAI/bge-reranker-v2-m3" }
+        has_api_key: { type: boolean }
+        enabled: { type: boolean }
+
+    RerankerSettingInput:
+      type: object
+      properties:
+        organization_id: { type: string }
+        base_url: { type: string, example: "http://tei-rerank/rerank" }
+        model: { type: string, example: "BAAI/bge-reranker-v2-m3" }
+        api_key:
+          type: string
+          description: Optional (self-hosted TEI/vLLM typically needs none). Empty on update keeps the existing key unchanged.
+        enabled: { type: boolean }
+      required: [base_url, enabled]
+
+    DetectRerankerModelInput:
+      type: object
+      required: [base_url]
+      properties:
+        base_url: { type: string, example: "http://tei-rerank/rerank" }
+
+    DetectedRerankerModel:
+      type: object
+      properties:
+        model: { type: string, example: "BAAI/bge-reranker-v2-m3" }
+        error:
+          type: string
+          nullable: true
+          description: Set instead of model when base_url isn't a reachable TEI /info endpoint.
 
     OrganizationPreferences:
       type: object

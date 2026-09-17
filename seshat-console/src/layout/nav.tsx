@@ -360,6 +360,12 @@ export function getSecondaryNavItems(pathname: string, organizationId: string | 
         matchPrefix: `/orgs/${organizationId}/ai/embedder`,
       },
       {
+        key: 'org-ai-reranker',
+        label: 'Reranker',
+        path: `/orgs/${organizationId}/ai/reranker`,
+        matchPrefix: `/orgs/${organizationId}/ai/reranker`,
+      },
+      {
         key: 'org-ai-web-search',
         label: 'Web Search',
         path: `/orgs/${organizationId}/ai/web-search`,

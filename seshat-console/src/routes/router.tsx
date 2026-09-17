@@ -63,6 +63,7 @@ const ChatSessionsPage = lazyPage(() => import('@/pages/chatSessions/ChatSession
 const CorporaPage = lazyPage(() => import('@/pages/knowledge/CorporaPage').then((module) => ({ default: module.CorporaPage })))
 const CorpusDetailPage = lazyPage(() => import('@/pages/knowledge/CorpusDetailPage').then((module) => ({ default: module.CorpusDetailPage })))
 const EmbedderSettingsPage = lazyPage(() => import('@/pages/knowledge/EmbedderSettingsPage').then((module) => ({ default: module.EmbedderSettingsPage })))
+const RerankerSettingsPage = lazyPage(() => import('@/pages/knowledge/RerankerSettingsPage').then((module) => ({ default: module.RerankerSettingsPage })))
 const ConnectorsPage = lazyPage(() => import('@/pages/connectors/ConnectorsPage').then((module) => ({ default: module.ConnectorsPage })))
 const SweepsPage = lazyPage(() => import('@/pages/prospecting/SweepsPage').then((module) => ({ default: module.SweepsPage })))
 const ProspectingSettingsPage = lazyPage(() =>
@@ -150,6 +151,7 @@ export const router = createBrowserRouter([
                   { path: 'team/policies', element: renderLazyPage(PolicyBindingsPage) },
                   { path: 'ai/provider-settings', element: renderLazyPage(ProviderSettingsPage) },
                   { path: 'ai/embedder', element: renderLazyPage(EmbedderSettingsPage) },
+                  { path: 'ai/reranker', element: renderLazyPage(RerankerSettingsPage) },
                   { path: 'ai/web-search', element: renderLazyPage(WebSearchSettingsPage) },
                   { path: 'mcp-servers', element: renderLazyPage(MCPServersPage) },
                   { path: 'preferences', element: renderLazyPage(OrganizationPreferencesPage) },

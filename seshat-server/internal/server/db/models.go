@@ -974,6 +974,32 @@ type EmbedderSetting struct {
 	UpdatedAt       time.Time
 }
 
+// RerankerSetting is an organization's reranker configuration - a singleton
+// per organization, same reasoning as EmbedderSetting though not for the
+// same reason (there's no cross-corpus data consistency risk in switching
+// rerankers; it's just that a reranker is a single optional second pass,
+// not a list of alternatives to choose from per search). Unlike
+// EmbedderSetting, absence is a normal, fully-supported state (no
+// reranking, not a broken one) - Enabled lets an org keep a configured
+// endpoint on record while temporarily turning reranking off, mirroring
+// the desktop's local RerankerConfig (seshat-backend/internal/db).
+type RerankerSetting struct {
+	ID              string `gorm:"primaryKey;size:32"`
+	OrganizationID  string `gorm:"size:32;not null;uniqueIndex"`
+	CreatedByUserID string `gorm:"size:32;not null"`
+	BaseURL         string `gorm:"size:500;not null"`
+	Model           string `gorm:"size:128"`
+	EncryptedAPIKey string `gorm:"type:text"` // optional — self-hosted TEI/vLLM typically needs none
+	// No `default:true` tag deliberately: GORM's Create/Save treat a
+	// zero-valued field on a column with a `default:` tag as "unset, let
+	// the DB fill it in" - explicitly saving Enabled: false would silently
+	// come back as true. Every write path (SetRerankerSetting) always
+	// supplies this explicitly, so no DB-level default is needed.
+	Enabled   bool `gorm:"not null"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
 // ProspectingSweep is one organization-scoped business-discovery run
 // (Google Places + French company-registry sweep, algorithm/external-API
 // logic lives in the tenant-agnostic sibling module prospecting-core).

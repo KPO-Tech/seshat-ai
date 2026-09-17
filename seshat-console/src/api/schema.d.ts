@@ -2513,6 +2513,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reranker-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get an organization's reranker configuration
+         * @description A singleton per organization. Unlike embedder-settings, 404 here is a fully normal "no second pass configured" state, not a fallback trigger - search works fine without one.
+         */
+        get: operations["getRerankerSetting"];
+        /**
+         * Create or update an organization's reranker configuration
+         * @description Requires knowledge.manage or organization.manage. Upsert - creates the organization's reranker setting if none exists yet, otherwise updates it in place. api_key empty means "no key" on first create (the common case for a self-hosted TEI/vLLM instance) and "keep the existing key unchanged" when a setting already exists. enabled lets an org keep a configured endpoint on record while temporarily turning reranking off.
+         */
+        put: operations["setRerankerSetting"];
+        post?: never;
+        /**
+         * Delete an organization's reranker configuration
+         * @description Requires knowledge.manage or organization.manage. Search reverts to the platform-wide RAG_RERANK_* env var (if any) for this organization's subsequent requests.
+         */
+        delete: operations["deleteRerankerSetting"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reranker-settings/detect-model": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Detect the model a self-hosted TEI reranker is serving
+         * @description Probes base_url's TEI /info endpoint and returns the model_id it reports - TEI always serves exactly one model per instance, so unlike embedder detection there's nothing to classify, just one answer to look up. A non-TEI endpoint (or any other failure) comes back as an error string, never an HTTP error status, so the console can fall back to manual model entry.
+         */
+        post: operations["detectRerankerModel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organization-preferences": {
         parameters: {
             query?: never;
@@ -4467,6 +4515,37 @@ export interface components {
             base_url: string;
             /** @description Optional (e.g. a local Ollama needs none). Empty on update keeps the existing key unchanged. */
             api_key?: string;
+        };
+        /** @description Never includes the API key — same redaction stance as EmbedderSetting/ProviderSetting. */
+        RerankerSetting: {
+            id?: string;
+            organization_id?: string;
+            /** @example http://tei-rerank/rerank */
+            base_url?: string;
+            /** @example BAAI/bge-reranker-v2-m3 */
+            model?: string;
+            has_api_key?: boolean;
+            enabled?: boolean;
+        };
+        RerankerSettingInput: {
+            organization_id?: string;
+            /** @example http://tei-rerank/rerank */
+            base_url: string;
+            /** @example BAAI/bge-reranker-v2-m3 */
+            model?: string;
+            /** @description Optional (self-hosted TEI/vLLM typically needs none). Empty on update keeps the existing key unchanged. */
+            api_key?: string;
+            enabled: boolean;
+        };
+        DetectRerankerModelInput: {
+            /** @example http://tei-rerank/rerank */
+            base_url: string;
+        };
+        DetectedRerankerModel: {
+            /** @example BAAI/bge-reranker-v2-m3 */
+            model?: string;
+            /** @description Set instead of model when base_url isn't a reachable TEI /info endpoint. */
+            error?: string | null;
         };
         /** @description Default values for the subset of UserPreferences fields that make sense at an organization scope — deliberately excludes preferred_name/profession/about, which only make sense per-person. */
         OrganizationPreferences: {
@@ -9447,6 +9526,105 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DetectedEmbedderModels"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    getRerankerSetting: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Reranker setting */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RerankerSetting"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    setRerankerSetting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RerankerSettingInput"];
+            };
+        };
+        responses: {
+            /** @description Reranker setting created or updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RerankerSetting"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    deleteRerankerSetting: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    detectRerankerModel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DetectRerankerModelInput"];
+            };
+        };
+        responses: {
+            /** @description Detected model (or an error string if detection failed) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DetectedRerankerModel"];
                 };
             };
             401: components["responses"]["Unauthorized"];

@@ -124,7 +124,18 @@ func New(cfg serverconfig.Config) (*App, error) {
 		// own doc comment), and a several-hundred-page PDF on a CPU-only
 		// docling-serve can genuinely take longer than two minutes — 120s
 		// would fail it outright rather than let it finish.
-		const doclingIngestTimeout = 15 * time.Minute
+		//
+		// Deliberately several minutes ABOVE docling-serve's own
+		// DOCLING_SERVE_MAX_SYNC_WAIT (docker-compose.yml, default 1800s):
+		// that env var is docling-serve's internal ceiling on how long its
+		// /v1/chunk/hybrid/file handler blocks before giving up and
+		// returning a "Task result not found" 404 - a real, OCR-heavy
+		// scanned document can land within a few seconds of that ceiling,
+		// and when this client's own timeout used to equal it exactly
+		// (15m == 15m), whichever side's clock ran a hair faster decided
+		// the outcome. This must always stay comfortably larger so this
+		// client is never the one that gives up first.
+		const doclingIngestTimeout = 35 * time.Minute
 		knowledgeService = knowledgeService.WithDocling(sdkdocling.NewClient(cfg.DoclingURL, sdkdocling.WithTimeout(doclingIngestTimeout)))
 	}
 	// Lets cloud-targeted job execution enable rag_search/rag_ingest,

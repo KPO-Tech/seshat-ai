@@ -56,12 +56,16 @@ func (a *App) handleRerankerConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tail := strings.TrimRight(r.URL.Path, "/")
-	if strings.HasSuffix(tail, "/test") {
+	if strings.HasSuffix(tail, "/test") || strings.HasSuffix(tail, "/detect-model") {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		a.handleRerankerTest(w, r, store)
+		if strings.HasSuffix(tail, "/test") {
+			a.handleRerankerTest(w, r, store)
+		} else {
+			a.handleRerankerDetectModel(w, r, store)
+		}
 		return
 	}
 
@@ -117,6 +121,33 @@ func (a *App) applyRerankerConfig(ctx context.Context, cfg *db.RerankerConfig, s
 		Model:   strings.TrimSpace(cfg.Model),
 		Timeout: 15 * time.Second,
 	}))
+}
+
+// handleRerankerDetectModel probes a TEI instance's /info endpoint and
+// returns the model_id it reports - the Reranker card's equivalent of the
+// Embedding card's Ollama/TEI "Detect" button, since TEI (unlike a hosted
+// Cohere/LangSearch endpoint) always serves exactly one model and can
+// describe itself rather than requiring the user to know/copy its id by
+// hand. POST /api/v1/settings/reranker/detect-model
+func (a *App) handleRerankerDetectModel(w http.ResponseWriter, r *http.Request, store *db.RerankerConfigStore) {
+	var body struct {
+		BaseURL string `json:"base_url"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+
+	baseURL := strings.TrimSpace(body.BaseURL)
+	if baseURL == "" {
+		if cfg, err := store.Get(r.Context()); err == nil && cfg != nil {
+			baseURL = cfg.BaseURL
+		}
+	}
+
+	modelID, err := detectTEIModel(r.Context(), baseURL)
+	if err != nil {
+		writeJSON(w, http.StatusOK, map[string]any{"error": err.Error(), "model": ""})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"error": nil, "model": modelID})
 }
 
 func (a *App) handleRerankerTest(w http.ResponseWriter, r *http.Request, store *db.RerankerConfigStore) {

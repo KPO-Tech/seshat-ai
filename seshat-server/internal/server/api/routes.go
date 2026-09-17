@@ -293,6 +293,15 @@ func (app *App) routes() http.Handler {
 	mux.Handle("DELETE /api/v1/embedder-settings", app.authMiddleware(http.HandlerFunc(app.handleEmbedderSettings)))
 	mux.Handle("POST /api/v1/embedder-settings/detect-models", app.authMiddleware(http.HandlerFunc(app.handleEmbedderSettingsDetectModels)))
 
+	// Reranker - same singleton-per-organization, organization_id-query-param
+	// shape as embedder-settings above, but absence is a normal "no second
+	// pass" state rather than a broken one (see knowledge.RerankerSetting's
+	// doc comment).
+	mux.Handle("GET /api/v1/reranker-settings", app.authMiddleware(http.HandlerFunc(app.handleRerankerSettings)))
+	mux.Handle("PUT /api/v1/reranker-settings", app.authMiddleware(http.HandlerFunc(app.handleRerankerSettings)))
+	mux.Handle("DELETE /api/v1/reranker-settings", app.authMiddleware(http.HandlerFunc(app.handleRerankerSettings)))
+	mux.Handle("POST /api/v1/reranker-settings/detect-model", app.authMiddleware(http.HandlerFunc(app.handleRerankerSettingsDetectModel)))
+
 	// Prospecting — organization-scoped business-discovery sweeps (Google
 	// Places + French company-registry enrichment, see internal/server/
 	// prospecting's package doc). Team data, not per-user like

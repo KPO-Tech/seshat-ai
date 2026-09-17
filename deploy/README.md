@@ -96,6 +96,21 @@ worker service when you need more throughput. Tune worker behavior with
 `DOCLING_SERVE_LOAD_MODELS_AT_BOOT`, and
 `DOCLING_SERVE_OPTIONS_CACHE_SIZE`.
 
+Also in the `docs`/`full` profile: `tei-embed` and `tei-rerank` run Hugging
+Face's Text Embeddings Inference (TEI) - a free, no-API-key embedding model
+(`TEI_EMBED_MODEL`, default `intfloat/multilingual-e5-small` - not
+`BAAI/bge-m3`, which crash-loops on TEI's ONNX CPU backend here: it warms up
+then exits cleanly every ~12s, forever) and reranker (`TEI_RERANK_MODEL`,
+default `BAAI/bge-reranker-v2-m3`), each its own container since TEI serves
+one model per instance. Point Settings > Knowledge at
+`http://localhost:${TEI_EMBED_PORT}/v1` (OpenAI-compatible) and
+`http://localhost:${TEI_RERANK_PORT}/rerank` respectively once both are
+healthy - this now works per-organization for both the embedder and the
+reranker, each with its own DB-backed setting and "Detect" button. Setting
+`RAG_RERANK_URL=http://tei-rerank/rerank` here still matters as the
+platform-wide fallback reranker used when an organization hasn't configured
+its own.
+
 ## TLS
 
 `make deploy-up-tls` puts Caddy (`reverse-proxy`, `tls`/`full` profile) in

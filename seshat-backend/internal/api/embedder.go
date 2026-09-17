@@ -311,6 +311,23 @@ func (a *App) handleEmbedderDetectModels(w http.ResponseWriter, r *http.Request,
 		provider = string(ragembedder.DetectProviderPublic(baseURL))
 	}
 
+	if strings.ToLower(provider) == "tei" {
+		modelID, err := detectTEIModel(r.Context(), baseURL)
+		if err != nil {
+			writeJSON(w, http.StatusOK, map[string]any{
+				"error":            err.Error(),
+				"embedding_models": []string{},
+				"llm_models":       []string{},
+			})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"embedding_models": []string{modelID},
+			"llm_models":       []string{},
+		})
+		return
+	}
+
 	if strings.ToLower(provider) != "ollama" {
 		// OpenAI-compatible: return static well-known embedding models
 		writeJSON(w, http.StatusOK, map[string]any{
