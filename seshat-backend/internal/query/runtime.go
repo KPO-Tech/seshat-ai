@@ -9,8 +9,14 @@ import (
 	"time"
 
 	"github.com/KPO-Tech/seshat/pkg/providers"
+	"github.com/KPO-Tech/seshat/pkg/rag"
 	"github.com/KPO-Tech/seshat/pkg/sdk"
+	"github.com/KPO-Tech/seshat/pkg/storage"
 	"github.com/KPO-Tech/seshat/pkg/types"
+	"github.com/KPO-Tech/seshat/pkg/vector"
+
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 )
 
 type QueryRuntime interface {
@@ -56,6 +62,14 @@ type SDKRuntime struct {
 
 	clientCacheMu sync.Mutex
 	clientCache   map[clientCacheKey]*cachedRuntimeClient
+
+	ragArtifacts storage.ArtifactStore
+	ragVectors   vector.Store
+	ragEmbedder  rag.Embedder
+	ragCorpora   *db.CorpusStore
+
+	turnMu    sync.Mutex
+	busyTurns map[string]struct{}
 }
 
 // clientCacheKey identifies the (user, provider, model, credential) identity
@@ -130,6 +144,55 @@ func (r *SDKRuntime) SetBrowserRemoteControlResolver(resolve func(ctx context.Co
 	r.mu.Unlock()
 }
 
+// SetRAGComponents attaches the raw components needed to build a
+// per-request, per-caller-scoped RAGService, closing a cross-user
+// data-read gap: baseConfig.RAGService (when set) is a single *rag.Service
+// shared by every user this backend serves, and its rag_search tool takes
+// corpus_id as a plain model-supplied string with no ownership check - see
+// userScopedVectorStore's doc comment for the full rationale. Once set,
+// clientForInput builds a fresh RAGService per request scoped to
+// input.RAGAllowedOwnerIDs instead of reusing the shared, unscoped one. Not
+// calling this (e.g. in tests, or when RAG isn't configured at all) leaves
+// baseConfig.RAGService as-is, matching behavior before this fix.
+func (r *SDKRuntime) SetRAGComponents(artifacts storage.ArtifactStore, vectors vector.Store, embedder rag.Embedder, corpora *db.CorpusStore) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.ragArtifacts = artifacts
+	r.ragVectors = vectors
+	r.ragEmbedder = embedder
+	r.ragCorpora = corpora
+}
+
+// tryAcquireSessionTurn ensures at most one RunPrompt/StreamPrompt call runs
+// at a time for a given session_id. clientForInput may return a cached
+// *sdk.Client, but loadOrCreateSession still rehydrates the *sdk.Session
+// fresh from the persisted store on every call - so two concurrent
+// requests for the same session_id get two independent in-memory Session
+// objects backed by the same persisted transcript, and whichever one saves
+// back last silently clobbers the other turn's messages. Fails fast rather
+// than queuing, mirroring the engine's own "session busy" semantics. An
+// empty sessionID (the very first turn of a brand-new session) is never
+// contended and always succeeds.
+func (r *SDKRuntime) tryAcquireSessionTurn(sessionID string) (release func(), ok bool) {
+	if sessionID == "" {
+		return func() {}, true
+	}
+	r.turnMu.Lock()
+	defer r.turnMu.Unlock()
+	if r.busyTurns == nil {
+		r.busyTurns = make(map[string]struct{})
+	}
+	if _, busy := r.busyTurns[sessionID]; busy {
+		return nil, false
+	}
+	r.busyTurns[sessionID] = struct{}{}
+	return func() {
+		r.turnMu.Lock()
+		delete(r.busyTurns, sessionID)
+		r.turnMu.Unlock()
+	}, true
+}
+
 // applyRemoteExecutor registers a terminalRemoteExecutor for session when
 // Electron's terminal relay has a live connection for it, so this turn's
 // bash-tool calls run in the user's real, visible shell. Sessions with no
@@ -147,6 +210,12 @@ func (r *SDKRuntime) applyRemoteExecutor(session *sdk.Session, sessionID string)
 }
 
 func (r *SDKRuntime) RunPrompt(ctx context.Context, input QueryInput) (*QueryResult, error) {
+	release, ok := r.tryAcquireSessionTurn(input.SessionID)
+	if !ok {
+		return nil, bkerr.Conflict("a turn is already in progress for this session", nil)
+	}
+	defer release()
+
 	client, releaseClient, err := r.clientForInput(ctx, input)
 	if err != nil {
 		return nil, err
@@ -188,6 +257,12 @@ func (r *SDKRuntime) RunPrompt(ctx context.Context, input QueryInput) (*QueryRes
 }
 
 func (r *SDKRuntime) StreamPrompt(ctx context.Context, input QueryInput, onChunk func(sdk.ResponseChunk), onRuntimeEvent func(sdk.RuntimeEvent)) (*QueryResult, error) {
+	release, ok := r.tryAcquireSessionTurn(input.SessionID)
+	if !ok {
+		return nil, bkerr.Conflict("a turn is already in progress for this session", nil)
+	}
+	defer release()
+
 	// perf: turnStart anchors every timing below to "the moment seshat-backend
 	// started building the SDK client for this turn" - the dominant suspect
 	// for perceived slowness is clientMs, since sdk.NewClient rebuilds the
@@ -519,6 +594,13 @@ func (r *SDKRuntime) clientForInput(ctx context.Context, input QueryInput) (*sdk
 		cfg = r.buildClientConfig(ctx, *input.RuntimeProvider)
 	}
 	cfg.UserID = input.UserID
+
+	r.mu.RLock()
+	ragArtifacts, ragVectors, ragEmbedder, ragCorpora := r.ragArtifacts, r.ragVectors, r.ragEmbedder, r.ragCorpora
+	r.mu.RUnlock()
+	if ragVectors != nil && ragCorpora != nil && len(input.RAGAllowedOwnerIDs) > 0 {
+		cfg.RAGService = rag.NewService(ragArtifacts, newUserScopedVectorStore(ragVectors, ragCorpora, input.RAGAllowedOwnerIDs), ragEmbedder, nil)
+	}
 
 	key := clientCacheKey{
 		userID:   input.UserID,

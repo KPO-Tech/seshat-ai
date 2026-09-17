@@ -721,6 +721,8 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	}
 
 	var ragService *rag.Service
+	var ragVectorStore vector.Store
+	var ragEmbedder rag.Embedder
 	embedderCfg := &ragembedder.Config{
 		BaseURL:  config.EmbedderBaseURL,
 		APIKey:   config.EmbedderAPIKey,
@@ -787,6 +789,8 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 			embedder = ragembedder.New(embedderCfg)
 		}
 		ragService = rag.NewService(artifactStore, vs, embedder, nil)
+		ragVectorStore = vs
+		ragEmbedder = embedder
 		backendName := string(vectorCfg.StoreKind)
 		if backendName == "" {
 			backendName = "sqlite"
@@ -849,6 +853,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		MaxTokens:         backendquery.InteractiveMaxTokensForModel(defaultModel),
 		AutoCompact:       true,
 		PersistSessions:   true,
+		EnableMonitoring:  true,
 		SessionSQLitePath: appconfig.EffectiveSessionDBPath(config),
 		WorkingDir:        workingDir,
 		// Desktop default: try Docker sandboxing for bash tool execution,
@@ -1018,6 +1023,17 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	// same instance runtime.applyRemoteExecutor reads from per turn.
 	terminalRelay := backendquery.NewTerminalRelay()
 	runtime.SetTerminalRelay(terminalRelay)
+
+	// Scopes the rag_search/rag_ingest/rag_delete tools to the requesting
+	// user's own (or shared-workspace) corpora per request, instead of
+	// every Main Chat turn sharing the one process-wide ragService - see
+	// SDKRuntime.SetRAGComponents and userScopedVectorStore for why this
+	// matters (rag_search's corpus_id argument is model-supplied and was
+	// otherwise unchecked). No-op when RAG isn't configured at all
+	// (ragVectorStore/ragEmbedder stay nil).
+	if ragVectorStore != nil {
+		runtime.SetRAGComponents(artifactStore, ragVectorStore, ragEmbedder, corpusStore)
+	}
 
 	// Mirrors resolveDocling below: Settings > Capabilities can point the
 	// agent's own speech_to_text tool at a locally running whisper.cpp

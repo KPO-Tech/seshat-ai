@@ -1,6 +1,6 @@
 package connectors
 
-import coremsgraph "github.com/EngineerProjects/seshat-ai/seshat-core/msgraph"
+import coremsgraph "github.com/KPO-Tech/seshat/pkg/msgraph"
 
 // outlookKind is agent_action-only, same reasoning as slack.go: Outlook has
 // no Discover/Sync in this package, it never implements knowledgeConnector.

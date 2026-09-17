@@ -7,8 +7,8 @@ import (
 
 	"golang.org/x/oauth2"
 
-	coregmail "github.com/EngineerProjects/seshat-ai/seshat-core/gmail"
 	"github.com/KPO-Tech/seshat/pkg/dataflow"
+	coregmail "github.com/KPO-Tech/seshat/pkg/gmail"
 )
 
 // stringSliceParam reads a []string out of a JSON-decoded parameters map,

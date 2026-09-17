@@ -7,8 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	coremsgraph "github.com/EngineerProjects/seshat-ai/seshat-core/msgraph"
 	"github.com/KPO-Tech/seshat/pkg/dataflow"
+	coremsgraph "github.com/KPO-Tech/seshat/pkg/msgraph"
 )
 
 func TestTeamsSendNodeExecuteRequiresJobContext(t *testing.T) {

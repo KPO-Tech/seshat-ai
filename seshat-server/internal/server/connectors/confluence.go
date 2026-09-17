@@ -20,7 +20,7 @@ import (
 
 	"golang.org/x/oauth2"
 
-	coreconnectors "github.com/EngineerProjects/seshat-ai/seshat-core/connectors"
+	coreconnectors "github.com/KPO-Tech/seshat/pkg/connectors"
 )
 
 const confluenceKind connectorKind = "confluence"

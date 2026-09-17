@@ -5,7 +5,7 @@ import (
 
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/connector"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
-	coremsgraph "github.com/EngineerProjects/seshat-ai/seshat-core/msgraph"
+	coremsgraph "github.com/KPO-Tech/seshat/pkg/msgraph"
 )
 
 func TestConnector_ChannelKindAndCapabilities(t *testing.T) {

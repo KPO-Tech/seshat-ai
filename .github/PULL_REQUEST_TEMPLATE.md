@@ -14,18 +14,18 @@ Fixes #
 
 ## Backend checklist
 
-- [ ] `go build ./seshat-backend/... ./seshat-server/...` passes
-- [ ] `go test -race ./seshat-backend/... ./seshat-server/...` passes
-- [ ] `golangci-lint run ./seshat-backend/... ./seshat-server/...` passes (or pre-existing failures are noted below)
+- [ ] `go build ./seshat-backend/... ./seshat-server/... ./seshat-core/...` passes
+- [ ] `go test -race ./seshat-backend/... ./seshat-server/... ./seshat-core/...` passes
+- [ ] `golangci-lint run ./seshat-backend/... ./seshat-server/... ./seshat-core/...` passes (or pre-existing failures are noted below)
 - [ ] `gofmt -w .` run
 - [ ] New behavior is covered by tests
 - [ ] No secrets, credentials, or binaries committed
 
 ## Frontend checklist (skip if no UI changes)
 
-- [ ] `npm ci` passes in `seshat-ui/`
+- [ ] `npm ci` passes in the affected app (`seshat-ui/`, `seshat-desktop/`, or `seshat-console/`)
 - [ ] `npm run typecheck` passes
-- [ ] Tested in Electron dev mode (`make ui-dev`)
+- [ ] Tested in dev mode (`make ui-dev` for `seshat-ui`; each app's own `npm run dev` otherwise)
 
 ## Documentation
 

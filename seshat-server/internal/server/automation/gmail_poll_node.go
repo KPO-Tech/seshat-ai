@@ -10,9 +10,9 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
-	coregmail "github.com/EngineerProjects/seshat-ai/seshat-core/gmail"
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 	"github.com/KPO-Tech/seshat/pkg/dataflow"
+	coregmail "github.com/KPO-Tech/seshat/pkg/gmail"
 )
 
 // ConnectorTokenResolver resolves a fresh, usable OAuth access token for

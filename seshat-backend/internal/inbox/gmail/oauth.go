@@ -4,7 +4,7 @@ import (
 	"golang.org/x/oauth2"
 
 	googleOAuth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/oauth/google"
-	coregmail "github.com/EngineerProjects/seshat-ai/seshat-core/gmail"
+	coregmail "github.com/KPO-Tech/seshat/pkg/gmail"
 )
 
 // Scopes requested from Google - re-exported from core/gmail so there's

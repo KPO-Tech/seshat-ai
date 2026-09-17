@@ -125,7 +125,7 @@ cmd/api
 **This section was stale until 2026-08-10** — it previously described
 `seshat-server` as an early bootstrap with only `api/`/`app/`/`config/` and a
 "target role" still to be built. The code has moved well past that; see
-`docs/helps/audit-2026-08-10.md` (local/cloud boundary section) for the audit that
+`docs/archive/audit-2026-08-10.md` (local/cloud boundary section) for the audit that
 caught the drift, and `ROADMAP.md` ("Direction: seshat-server becomes the
 multi-tenant backbone") for the up-to-date migration status, which is the
 document to check first when this section next goes stale.
@@ -167,7 +167,7 @@ Current role — already built, not aspirational:
 - Self-service registration by email domain
 
 Known-thin areas (built and wired, but with minimal test coverage — see the
-LOC/test-file breakdown in `docs/helps/audit-2026-08-10.md`): `websearchsettings`,
+LOC/test-file breakdown in `docs/archive/audit-2026-08-10.md`): `websearchsettings`,
 `mcpregistry`, `agentregistry`, `preferences`, `skillregistry`,
 `longtermmemory`, `quotas` (each has real handlers but only one test file);
 `workspacechat` has no dedicated test file at all despite reusing

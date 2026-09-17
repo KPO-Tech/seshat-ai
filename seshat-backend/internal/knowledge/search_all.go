@@ -122,9 +122,35 @@ func SearchAll(ctx context.Context, principal *backendauth.Principal, backend Ba
 	}
 
 	sort.Slice(merged, func(i, j int) bool { return merged[i].Score > merged[j].Score })
+	merged = dedupeTaggedSearchResults(merged)
 	if len(merged) > topK {
 		merged = merged[:topK]
 	}
 
 	return &SearchAllResult{Results: merged, CorporaSearched: len(corpora)}, nil
+}
+
+// dedupeTaggedSearchResults drops exact-duplicate hits (same chunk text
+// verbatim, after trimming) from a merged cross-corpus search, keeping the
+// first (highest-scoring, since merged is already sorted) occurrence. Each
+// per-corpus Search call already dedupes within its own corpus, but the
+// same source document can legitimately be ingested into more than one
+// corpus a principal has access to (e.g. a shared policy doc attached to
+// both a "Legal" and an "Onboarding" corpus) - without this, merging their
+// results surfaces the same sentence twice, once per corpus.
+func dedupeTaggedSearchResults(results []TaggedSearchResult) []TaggedSearchResult {
+	if len(results) < 2 {
+		return results
+	}
+	seen := make(map[string]struct{}, len(results))
+	deduped := make([]TaggedSearchResult, 0, len(results))
+	for _, r := range results {
+		key := strings.TrimSpace(r.Text)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		deduped = append(deduped, r)
+	}
+	return deduped
 }

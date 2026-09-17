@@ -6,7 +6,7 @@ import (
 
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/connector"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
-	coregmail "github.com/EngineerProjects/seshat-ai/seshat-core/gmail"
+	coregmail "github.com/KPO-Tech/seshat/pkg/gmail"
 )
 
 func TestConnector_ChannelKindAndCapabilities(t *testing.T) {

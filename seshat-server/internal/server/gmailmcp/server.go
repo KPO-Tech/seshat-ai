@@ -13,8 +13,8 @@ import (
 	"golang.org/x/oauth2"
 	"google.golang.org/api/option"
 
-	coregmail "github.com/EngineerProjects/seshat-ai/seshat-core/gmail"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/mcpbridge"
+	coregmail "github.com/KPO-Tech/seshat/pkg/gmail"
 )
 
 // extraClientOptions is empty (no effect) in production - tests in this

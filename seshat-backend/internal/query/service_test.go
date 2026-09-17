@@ -391,3 +391,83 @@ func TestEnsureInitialSessionTitleUpdatesUntitledSession(t *testing.T) {
 		t.Fatalf("expected persisted title %q, got %q", title, row.Title)
 	}
 }
+
+// ─── UpdateSessionMetadata provider/model switching ───────────────────────────
+
+func newTestOwnershipStore(t *testing.T) *db.SessionOwnershipStore {
+	t.Helper()
+	database, err := db.Open(context.Background(), db.DefaultSQLiteConfig(filepath.Join(t.TempDir(), "test.db")))
+	if err != nil {
+		t.Fatalf("open test db: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	store, err := db.NewSessionOwnershipStore(database)
+	if err != nil {
+		t.Fatalf("new session ownership store: %v", err)
+	}
+	return store
+}
+
+// TestUpdateSessionMetadataRejectsProviderSwitchAfterFirstTurn is the
+// regression test for the unguarded rebind: prepareRuntimeInput already
+// enforces TotalTurns==0 before letting a query bind a session's
+// provider/model, but UpdateSessionMetadata's provider branch called
+// ownership.UpdateProviderSelection directly with no such check - a session
+// with existing turns could have its bound provider/model swapped at any
+// time via this endpoint.
+func TestUpdateSessionMetadataRejectsProviderSwitchAfterFirstTurn(t *testing.T) {
+	ctx := context.Background()
+	ownership := newTestOwnershipStore(t)
+	if _, err := ownership.Create(ctx, db.CreateSessionOwnershipParams{SessionID: "sess-1", UserID: "user-1"}); err != nil {
+		t.Fatalf("create session ownership: %v", err)
+	}
+	sessions := &stubSearchSessionManager{sessions: []*sdk.SessionInfo{
+		{ID: sdk.SessionID("sess-1"), TotalTurns: 2},
+	}}
+	svc := NewService(ServiceConfig{Ownership: ownership, Sessions: sessions})
+
+	newProviderID := "provider-2"
+	err := svc.UpdateSessionMetadata(ctx, nil, "sess-1", nil, nil, nil, &newProviderID, nil, nil, nil, nil)
+	if err == nil {
+		t.Fatal("expected switching provider on a session with existing turns to be rejected")
+	}
+	if bkerr.KindOf(err) != bkerr.ErrorKindConflict {
+		t.Fatalf("expected a conflict error, got kind=%v err=%v", bkerr.KindOf(err), err)
+	}
+
+	after, err := ownership.GetBySessionID(ctx, "sess-1")
+	if err != nil {
+		t.Fatalf("get session ownership: %v", err)
+	}
+	if after.ProviderSettingID != "" {
+		t.Fatalf("expected provider selection to remain unchanged, got %q", after.ProviderSettingID)
+	}
+}
+
+// TestUpdateSessionMetadataAllowsProviderSwitchBeforeFirstTurn is the sanity
+// check that a fresh session (no turns yet) can still bind its provider
+// through this endpoint - this fix must not block the legitimate case.
+func TestUpdateSessionMetadataAllowsProviderSwitchBeforeFirstTurn(t *testing.T) {
+	ctx := context.Background()
+	ownership := newTestOwnershipStore(t)
+	if _, err := ownership.Create(ctx, db.CreateSessionOwnershipParams{SessionID: "sess-1", UserID: "user-1"}); err != nil {
+		t.Fatalf("create session ownership: %v", err)
+	}
+	sessions := &stubSearchSessionManager{sessions: []*sdk.SessionInfo{
+		{ID: sdk.SessionID("sess-1"), TotalTurns: 0},
+	}}
+	svc := NewService(ServiceConfig{Ownership: ownership, Sessions: sessions})
+
+	newProviderID := "provider-2"
+	if err := svc.UpdateSessionMetadata(ctx, nil, "sess-1", nil, nil, nil, &newProviderID, nil, nil, nil, nil); err != nil {
+		t.Fatalf("unexpected error binding provider on a fresh session: %v", err)
+	}
+
+	after, err := ownership.GetBySessionID(ctx, "sess-1")
+	if err != nil {
+		t.Fatalf("get session ownership: %v", err)
+	}
+	if after.ProviderSettingID != newProviderID {
+		t.Fatalf("expected provider selection to update to %q, got %q", newProviderID, after.ProviderSettingID)
+	}
+}

@@ -296,6 +296,11 @@ type SearchCitation struct {
 	Filename     string `json:"filename,omitempty"`
 	Position     int    `json:"position"`
 	ArtifactKey  string `json:"artifact_key,omitempty"`
+	// PageNumbers is the source PDF page(s) this chunk came from (Docling
+	// ingestion only - a chunk can span a page break, hence a slice). Nil
+	// for non-Docling ingestion (plain text/markdown) or when unavailable -
+	// callers fall back to Position, same as before this field existed.
+	PageNumbers []int `json:"page_numbers,omitempty"`
 }
 
 // FileSegmentsResponse exposes the actual indexed chunks for one corpus
@@ -562,7 +567,12 @@ func (s *Service) ragServiceFor(ctx context.Context, organizationID string) (*sd
 	if ok {
 		embedder = sdkembedder.New(&embedderCfg)
 	}
-	ragService := sdkrag.NewService(s.artifacts, s.vectors, embedder, s.chunker)
+	// s.vectors is wrapped so every namespace (corpus_id) this rag.Service
+	// ever touches is verified to belong to organizationID first - see
+	// orgScopedVectorStore's doc comment for why this matters on the
+	// rag_search/rag_ingest/rag_delete tool-call path.
+	scopedVectors := newOrgScopedVectorStore(s.db, s.vectors, organizationID)
+	ragService := sdkrag.NewService(s.artifacts, scopedVectors, embedder, s.chunker)
 	// The organization's own RerankerSetting wins when configured and
 	// enabled; otherwise fall back to the platform-wide RAG_RERANK_URL/
 	// LANGSEARCH_API_KEY env vars (self-hosted TEI/vLLM, or LangSearch's

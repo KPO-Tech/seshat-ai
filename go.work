@@ -2,9 +2,6 @@ go 1.26.6
 
 use (
 	./seshat-backend
-	./seshat-core/connectors
-	./seshat-core/gmail
-	./seshat-core/msgraph
-	./seshat-core/prospecting
+	./seshat-core
 	./seshat-server
 )

@@ -7,8 +7,8 @@ import (
 
 	"golang.org/x/oauth2"
 
-	coremsgraph "github.com/EngineerProjects/seshat-ai/seshat-core/msgraph"
 	"github.com/KPO-Tech/seshat/pkg/dataflow"
+	coremsgraph "github.com/KPO-Tech/seshat/pkg/msgraph"
 )
 
 // OutlookSendNode is the "outlook_send_email" node type: sends an email

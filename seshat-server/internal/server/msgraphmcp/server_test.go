@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	coremsgraph "github.com/EngineerProjects/seshat-ai/seshat-core/msgraph"
+	coremsgraph "github.com/KPO-Tech/seshat/pkg/msgraph"
 )
 
 // parseMCPResponseBody handles both the plain-JSON and the

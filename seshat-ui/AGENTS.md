@@ -1,3 +1,7 @@
+> **Note (2026-09-16).** This codebase is being superseded by `seshat-desktop` (started 2026-09-15, see its own `AGENTS.md`: "Do not copy broad chunks from seshat-ui... treat it as reference material only"). Accurate as of 2026-09-10, kept as the detailed architecture/design-decision record while the rebuild is in progress - not a target for new work.
+
+---
+
 # Agent Instructions — seshat-ui (SeshatOS Desktop Client)
 
 This file provides guidance for AI agents working on `seshat-ui`, the Electron + React desktop client for SeshatOS. Read it before making any changes.

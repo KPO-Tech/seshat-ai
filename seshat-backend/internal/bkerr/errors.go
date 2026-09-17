@@ -90,6 +90,21 @@ func Internal(message string, err error) error {
 	return newError(ErrorKindInternal, message, err)
 }
 
+// WrapOrInternal returns err unchanged if it's already a typed *Error (so a
+// deliberately-classified error - e.g. Conflict for "session busy" -
+// survives a caller that would otherwise blanket-wrap every error from a
+// lower layer into Internal), or Internal(err.Error(), err) otherwise.
+func WrapOrInternal(err error) error {
+	if err == nil {
+		return nil
+	}
+	var target *Error
+	if errors.As(err, &target) {
+		return err
+	}
+	return Internal(err.Error(), err)
+}
+
 func KindOf(err error) ErrorKind {
 	var target *Error
 	if errors.As(err, &target) {

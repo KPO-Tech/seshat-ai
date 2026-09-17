@@ -7,8 +7,8 @@ import (
 
 	"golang.org/x/oauth2"
 
-	coremsgraph "github.com/EngineerProjects/seshat-ai/seshat-core/msgraph"
 	"github.com/KPO-Tech/seshat/pkg/dataflow"
+	coremsgraph "github.com/KPO-Tech/seshat/pkg/msgraph"
 )
 
 // TeamsSendNode is the "teams_send_message" node type: sends a message into

@@ -4,7 +4,7 @@ import (
 	"golang.org/x/oauth2"
 
 	microsoftOAuth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/oauth/microsoft"
-	coremsgraph "github.com/EngineerProjects/seshat-ai/seshat-core/msgraph"
+	coremsgraph "github.com/KPO-Tech/seshat/pkg/msgraph"
 )
 
 // Scopes requested from Microsoft - 1:1/group chats only for v1, see

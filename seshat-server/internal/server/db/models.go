@@ -556,7 +556,7 @@ type ResolvedAgent struct {
 }
 
 // ScheduledJobMailCursor stores a mail-polling node's incremental sync
-// cursor (e.g. Gmail's historyId, see seshat-core/gmail.Client.Sync) per
+// cursor (e.g. Gmail's historyId, see pkg/gmail.Client.Sync) per
 // job, so a periodic (interval-triggered) job polling a mailbox only ever
 // sees messages that arrived since its own last run — one job, one
 // independent view, even if two jobs happen to poll the same mailbox.

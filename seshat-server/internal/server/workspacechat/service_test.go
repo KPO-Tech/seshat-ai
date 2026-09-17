@@ -163,7 +163,10 @@ func TestPersistTurnAndGetSessionRoundTrip(t *testing.T) {
 	}
 
 	// A second turn on the same session appends rather than replacing.
-	env.chat.persistTurn(context.Background(), env.adminPrincipal, StreamChatParams{SessionID: "sess-1", Message: "Thanks"}, "You're welcome.", nil)
+	// OrganizationID must match the session's own, same as a real StreamChat
+	// call always provides (it's required input there) - persistTurn now
+	// enforces that on the update path too, see loadOwnedSession.
+	env.chat.persistTurn(context.Background(), env.adminPrincipal, StreamChatParams{SessionID: "sess-1", OrganizationID: env.orgID, Message: "Thanks"}, "You're welcome.", nil)
 	history, err = env.chat.GetSession(context.Background(), env.adminPrincipal, "sess-1")
 	if err != nil {
 		t.Fatalf("get session after second turn: %v", err)
@@ -177,13 +180,59 @@ func TestGetSessionScopedToOwner(t *testing.T) {
 	env := newTestEnv(t)
 	other := env.addOutsider(t)
 
-	env.chat.persistTurn(context.Background(), env.adminPrincipal, StreamChatParams{SessionID: "sess-1", Message: "hi"}, "hello", nil)
+	env.chat.persistTurn(context.Background(), env.adminPrincipal, StreamChatParams{SessionID: "sess-1", OrganizationID: env.orgID, Message: "hi"}, "hello", nil)
 
 	if _, err := env.chat.GetSession(context.Background(), other, "sess-1"); !errors.Is(err, apperr.NotFound("")) {
 		t.Fatalf("expected not-found for a session owned by a different user, got %v", err)
 	}
 	if _, err := env.chat.GetSession(context.Background(), env.adminPrincipal, "sess-1"); err != nil {
 		t.Fatalf("expected the owner to load their own session: %v", err)
+	}
+}
+
+// TestStreamChatRejectsCrossUserSessionID proves the loadOwnedSession gate
+// in StreamChat: a different user, a member of their own (different)
+// organization, cannot resume someone else's session just by naming its
+// session id - even though they pass CanAccessOrganization for their own
+// org. This is the P0 from the seshat/seshat-ai session-ownership audit -
+// before loadOwnedSession existed, the in-memory chatSession cache and the
+// SDK session backend both keyed purely on session id, so this request
+// would have silently resumed the admin's live conversation.
+func TestStreamChatRejectsCrossUserSessionID(t *testing.T) {
+	env := newTestEnv(t)
+	other := env.addOutsider(t)
+	otherOrgID := other.Memberships[0].OrganizationID
+
+	env.chat.persistTurn(context.Background(), env.adminPrincipal, StreamChatParams{SessionID: "sess-1", OrganizationID: env.orgID, Message: "hi"}, "hello", nil)
+
+	err := env.chat.StreamChat(context.Background(), other, StreamChatParams{
+		SessionID: "sess-1", OrganizationID: otherOrgID, Provider: "openai", Model: "gpt-test", Message: "steal this session",
+	}, noopEmit)
+	if !errors.Is(err, apperr.Forbidden("")) {
+		t.Fatalf("expected forbidden when a different user/org targets someone else's session id, got %v", err)
+	}
+}
+
+// TestPersistTurnRejectsCrossUserSession proves persistTurn's own ownership
+// check (independent of StreamChat's loadOwnedSession gate, in case
+// persistTurn is ever reached some other way): writing into an existing
+// session under a different user/org is silently refused - best-effort,
+// like every other persistTurn failure - rather than appending the
+// outsider's message into the real owner's conversation.
+func TestPersistTurnRejectsCrossUserSession(t *testing.T) {
+	env := newTestEnv(t)
+	other := env.addOutsider(t)
+	otherOrgID := other.Memberships[0].OrganizationID
+
+	env.chat.persistTurn(context.Background(), env.adminPrincipal, StreamChatParams{SessionID: "sess-1", OrganizationID: env.orgID, Message: "hi"}, "hello", nil)
+	env.chat.persistTurn(context.Background(), other, StreamChatParams{SessionID: "sess-1", OrganizationID: otherOrgID, Message: "hijacked"}, "should not append", nil)
+
+	history, err := env.chat.GetSession(context.Background(), env.adminPrincipal, "sess-1")
+	if err != nil {
+		t.Fatalf("get session: %v", err)
+	}
+	if len(history.Messages) != 2 {
+		t.Fatalf("expected the outsider's write to be rejected, session still has 2 messages, got %d", len(history.Messages))
 	}
 }
 
@@ -199,7 +248,7 @@ func TestGetSessionRequiresSessionID(t *testing.T) {
 
 func TestGetSessionExpiresPastRetentionWindow(t *testing.T) {
 	env := newTestEnv(t)
-	env.chat.persistTurn(context.Background(), env.adminPrincipal, StreamChatParams{SessionID: "sess-1", Message: "hi"}, "hello", nil)
+	env.chat.persistTurn(context.Background(), env.adminPrincipal, StreamChatParams{SessionID: "sess-1", OrganizationID: env.orgID, Message: "hi"}, "hello", nil)
 
 	stale := time.Now().UTC().Add(-sessionRetention - time.Hour)
 	if err := env.db.Gorm().Model(&sdb.WorkspaceChatSession{}).Where("id = ?", "sess-1").Update("created_at", stale).Error; err != nil {
@@ -213,8 +262,8 @@ func TestGetSessionExpiresPastRetentionWindow(t *testing.T) {
 
 func TestPurgeExpiredSessionsDeletesOnlyStaleOnes(t *testing.T) {
 	env := newTestEnv(t)
-	env.chat.persistTurn(context.Background(), env.adminPrincipal, StreamChatParams{SessionID: "fresh", Message: "hi"}, "hello", nil)
-	env.chat.persistTurn(context.Background(), env.adminPrincipal, StreamChatParams{SessionID: "stale", Message: "hi"}, "hello", nil)
+	env.chat.persistTurn(context.Background(), env.adminPrincipal, StreamChatParams{SessionID: "fresh", OrganizationID: env.orgID, Message: "hi"}, "hello", nil)
+	env.chat.persistTurn(context.Background(), env.adminPrincipal, StreamChatParams{SessionID: "stale", OrganizationID: env.orgID, Message: "hi"}, "hello", nil)
 
 	stale := time.Now().UTC().Add(-sessionRetention - time.Hour)
 	if err := env.db.Gorm().Model(&sdb.WorkspaceChatSession{}).Where("id = ?", "stale").Update("created_at", stale).Error; err != nil {
@@ -252,7 +301,7 @@ func TestPurgeExpiredSessionsDeletesOnlyStaleOnes(t *testing.T) {
 // retention window by staying in one long-running conversation.
 func TestPurgeExpiredSessionsIgnoresRecentActivity(t *testing.T) {
 	env := newTestEnv(t)
-	env.chat.persistTurn(context.Background(), env.adminPrincipal, StreamChatParams{SessionID: "old-but-active", Message: "first message, long ago"}, "hello", nil)
+	env.chat.persistTurn(context.Background(), env.adminPrincipal, StreamChatParams{SessionID: "old-but-active", OrganizationID: env.orgID, Message: "first message, long ago"}, "hello", nil)
 
 	oldCreation := time.Now().UTC().Add(-sessionRetention - time.Hour)
 	if err := env.db.Gorm().Model(&sdb.WorkspaceChatSession{}).Where("id = ?", "old-but-active").Update("created_at", oldCreation).Error; err != nil {
@@ -261,7 +310,7 @@ func TestPurgeExpiredSessionsIgnoresRecentActivity(t *testing.T) {
 
 	// Simulate continued use right up to now, well inside the retention
 	// window if it were still measured from UpdatedAt like before.
-	env.chat.persistTurn(context.Background(), env.adminPrincipal, StreamChatParams{SessionID: "old-but-active", Message: "still chatting today"}, "still here", nil)
+	env.chat.persistTurn(context.Background(), env.adminPrincipal, StreamChatParams{SessionID: "old-but-active", OrganizationID: env.orgID, Message: "still chatting today"}, "still here", nil)
 	var session sdb.WorkspaceChatSession
 	if err := env.db.Gorm().Where("id = ?", "old-but-active").First(&session).Error; err != nil {
 		t.Fatalf("reload session: %v", err)
@@ -283,7 +332,7 @@ func TestPurgeExpiredSessionsIgnoresRecentActivity(t *testing.T) {
 
 func TestCleanupStartStop(t *testing.T) {
 	env := newTestEnv(t)
-	env.chat.persistTurn(context.Background(), env.adminPrincipal, StreamChatParams{SessionID: "stale", Message: "hi"}, "hello", nil)
+	env.chat.persistTurn(context.Background(), env.adminPrincipal, StreamChatParams{SessionID: "stale", OrganizationID: env.orgID, Message: "hi"}, "hello", nil)
 	stale := time.Now().UTC().Add(-sessionRetention - time.Hour)
 	if err := env.db.Gorm().Model(&sdb.WorkspaceChatSession{}).Where("id = ?", "stale").Update("created_at", stale).Error; err != nil {
 		t.Fatalf("backdate stale session: %v", err)

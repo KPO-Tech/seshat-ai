@@ -224,6 +224,7 @@ func (s *Service) ListFileSegments(ctx context.Context, principal *iam.Principal
 				Filename:     file.Filename,
 				Position:     position,
 				ArtifactKey:  metadata["artifact_key"],
+				PageNumbers:  pageNumbersFromMetadata(metadata),
 			},
 		})
 	}
@@ -264,7 +265,7 @@ func (s *Service) DetachFile(ctx context.Context, principal *iam.Principal, corp
 			return err
 		} else if ok {
 			artifactKey := ragArtifactKey(corpus.ID, file.ID)
-			if err := ragService.DeleteFileChunks(ctx, corpus.ID, artifactKey, 0, file.ChunkCount); err != nil {
+			if err := ragService.DeleteFileChunks(ctx, corpus.ID, artifactKey, 0); err != nil {
 				return ErrInvalidInput("delete file vectors: " + err.Error())
 			}
 		}

@@ -67,16 +67,19 @@ type Service struct {
 	doclingURL  string
 	sdkSessions *sdkSessionBackend
 
-	mu       sync.Mutex
-	sessions map[string]*chatSession
+	mu        sync.Mutex
+	sessions  map[string]*chatSession
+	busyTurns map[string]struct{}
 }
 
 type chatSession struct {
-	client     *sdk.Client
-	sdkSession *sdk.Session
-	provider   string
-	model      string
-	lastUsed   time.Time
+	client         *sdk.Client
+	sdkSession     *sdk.Session
+	userID         string
+	organizationID string
+	provider       string
+	model          string
+	lastUsed       time.Time
 }
 
 func New(database *sdb.DB, iamService *iam.Service, automationService *automation.Service, webSearchService *websearchsettings.Service, knowledgeService *knowledge.Service, mcpRegistryService *mcpregistry.Service, doclingURL string) *Service {
@@ -171,6 +174,16 @@ func (s *Service) StreamChat(ctx context.Context, principal *iam.Principal, para
 		return apperr.Forbidden("not a member of this organization")
 	}
 
+	if _, err := s.loadOwnedSession(ctx, principal, params.OrganizationID, params.SessionID); err != nil {
+		return err
+	}
+
+	release, ok := s.tryAcquireSessionTurn(params.SessionID)
+	if !ok {
+		return apperr.Conflict("a turn is already in progress for this session")
+	}
+	defer release()
+
 	sess, err := s.getOrCreateSession(ctx, principal, params)
 	if err != nil {
 		return err
@@ -219,6 +232,28 @@ func (s *Service) StreamChat(ctx context.Context, principal *iam.Principal, para
 	return nil
 }
 
+// loadOwnedSession loads sessionID's persisted row and verifies it belongs
+// to principal within organizationID - the single place this check happens,
+// reused by every path that resumes, caches, or writes to an
+// already-existing session so the rule can't be forgotten in one of them.
+// A nil, nil return means the session doesn't exist yet: a legitimate new
+// conversation, not something to reject - persistTurn's create-path below
+// is what actually assigns it an owner, on its first turn.
+func (s *Service) loadOwnedSession(ctx context.Context, principal *iam.Principal, organizationID, sessionID string) (*sdb.WorkspaceChatSession, error) {
+	var session sdb.WorkspaceChatSession
+	err := s.db.Gorm().WithContext(ctx).Where("id = ?", sessionID).First(&session).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if session.UserID != principal.User.ID || session.OrganizationID != organizationID {
+		return nil, apperr.Forbidden("session belongs to a different user or organization")
+	}
+	return &session, nil
+}
+
 // persistTurn saves the user's message and the assistant's recorded events
 // for this turn, creating the session row on its first message. Best-effort
 // like the RAG/web-search credential lookups above - a persistence failure
@@ -241,6 +276,9 @@ func (s *Service) persistTurn(ctx context.Context, principal *iam.Principal, par
 		case err != nil:
 			return err
 		default:
+			if session.UserID != principal.User.ID || session.OrganizationID != params.OrganizationID {
+				return apperr.Forbidden("session belongs to a different user or organization")
+			}
 			if err := tx.Model(&session).Update("updated_at", now).Error; err != nil {
 				return err
 			}
@@ -461,6 +499,36 @@ func (s *Service) resolveMCPServers(ctx context.Context, principal *iam.Principa
 	return mcpregistry.ToSDKServerConfigs(resolved)
 }
 
+// tryAcquireSessionTurn ensures at most one StreamChat turn runs at a time
+// for a given session_id. Without this, two concurrent StreamChat calls for
+// the same session_id race on getOrCreateSession's session-cache
+// population/eviction (the loser's client.Close() can tear down the client
+// the winner is actively streaming through) and, on a cache hit, both would
+// call SetResponseChunkFn/SetProgressFn on the very same session object - a
+// plain data race on shared callback fields, independent of anything the
+// sdk.Session/engine itself guards against (that guard only protects one
+// already-loaded Session object; it can't help two callers still racing to
+// decide which client/session to use). Fails fast (no queuing) rather than
+// blocking, since a genuine second concurrent request for one session_id
+// from one browser tab is virtually always a client bug, not legitimate
+// concurrent work to wait out.
+func (s *Service) tryAcquireSessionTurn(sessionID string) (release func(), ok bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.busyTurns == nil {
+		s.busyTurns = make(map[string]struct{})
+	}
+	if _, busy := s.busyTurns[sessionID]; busy {
+		return nil, false
+	}
+	s.busyTurns[sessionID] = struct{}{}
+	return func() {
+		s.mu.Lock()
+		delete(s.busyTurns, sessionID)
+		s.mu.Unlock()
+	}, true
+}
+
 func (s *Service) getOrCreateSession(ctx context.Context, principal *iam.Principal, params StreamChatParams) (*sdk.Session, error) {
 	// Resolved before the cache-hit check, and unconditionally on every
 	// call, so a long-lived cached session's Bearer tokens (see
@@ -469,7 +537,8 @@ func (s *Service) getOrCreateSession(ctx context.Context, principal *iam.Princip
 	mcpServers := s.resolveMCPServers(ctx, principal, params.OrganizationID)
 
 	s.mu.Lock()
-	if existing, ok := s.sessions[params.SessionID]; ok && existing.provider == params.Provider && existing.model == params.Model {
+	if existing, ok := s.sessions[params.SessionID]; ok && existing.provider == params.Provider && existing.model == params.Model &&
+		existing.userID == principal.User.ID && existing.organizationID == params.OrganizationID {
 		existing.lastUsed = time.Now()
 		s.mu.Unlock()
 		if err := existing.client.ReloadMCPServers(ctx, mcpServers); err != nil {
@@ -541,6 +610,7 @@ func (s *Service) getOrCreateSession(ctx context.Context, principal *iam.Princip
 	}
 	s.sessions[params.SessionID] = &chatSession{
 		client: client, sdkSession: sdkSession,
+		userID: principal.User.ID, organizationID: params.OrganizationID,
 		provider: params.Provider, model: params.Model, lastUsed: time.Now(),
 	}
 	s.evictStaleLocked()
