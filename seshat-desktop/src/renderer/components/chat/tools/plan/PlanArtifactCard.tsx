@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { decideToolPermission, fetchPlan } from '../../lib/chatApi'
+import { decideToolPermission, fetchPlan, patchPlan } from '../../lib/chatApi'
 import type { PlanDocument, ToolUseBlock } from '../../lib/chatTypes'
 import { CodePanel } from '../ToolDetails'
 import { planIdFromTool, planTitleFromSlug, submitPlanName } from './planUtils'
@@ -17,6 +17,9 @@ export function PlanArtifactCard({ sessionId, tool, readOnly = false }: Props) {
   const [busy, setBusy] = useState<'approve' | 'reject' | null>(null)
   const [reason, setReason] = useState('')
   const [error, setError] = useState('')
+  const [editing, setEditing] = useState(false)
+  const [draftContent, setDraftContent] = useState('')
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -40,6 +43,31 @@ export function PlanArtifactCard({ sessionId, tool, readOnly = false }: Props) {
   const filename = plan?.filename || embeddedPlan?.filename
   const version = plan?.version ?? embeddedPlan?.version
   const canReview = !readOnly && Boolean(sessionId && planId && tool._approval)
+  // Editing needs the plan's own ID (not just the tool that submitted it) -
+  // once validated or rejected the plan document is settled, so editing
+  // stops there even if the tool_use itself is still visible in history.
+  const canEdit = !readOnly && Boolean(planId) && status !== 'validated' && status !== 'rejected'
+
+  function startEditing() {
+    setDraftContent(content)
+    setEditing(true)
+    setError('')
+  }
+
+  async function saveEdits() {
+    if (!planId) return
+    setSaving(true)
+    setError('')
+    try {
+      const updated = await patchPlan(planId, { content: draftContent })
+      setPlan(updated)
+      setEditing(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save plan.')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   async function decide(approved: boolean) {
     if (!sessionId || !planId || !tool._approval) return
@@ -80,12 +108,31 @@ export function PlanArtifactCard({ sessionId, tool, readOnly = false }: Props) {
       {open && (
         <div className="grid gap-3 border-t border-[var(--border-soft)] p-3">
           {error && <div className="rounded-md border border-[var(--accent-danger)]/35 bg-[var(--accent-danger)]/8 px-3 py-2 text-[12px] font-semibold text-[var(--accent-danger)]">{error}</div>}
-          {content ? (
-            <div className="no-scrollbar max-h-[360px] overflow-auto rounded-md bg-[var(--surface-muted)] px-3 py-2 text-[12px] leading-6 text-[var(--text-secondary)] whitespace-pre-wrap">{content}</div>
+          {editing ? (
+            <div className="grid gap-2">
+              <textarea
+                value={draftContent}
+                onChange={(event) => setDraftContent(event.target.value)}
+                className="no-scrollbar min-h-[220px] resize-y rounded-md border border-[var(--border-soft)] bg-[var(--surface-muted)] px-3 py-2 text-[12px] leading-6 text-[var(--text-primary)] outline-none focus:border-[var(--accent-primary)]"
+              />
+              <div className="flex justify-end gap-2">
+                <button type="button" disabled={saving} onClick={() => setEditing(false)} className="rounded-md border border-[var(--border-soft)] px-3 py-1.5 text-[12px] font-semibold text-[var(--text-secondary)] disabled:opacity-50">Cancel</button>
+                <button type="button" disabled={saving || draftContent === content} onClick={() => void saveEdits()} className="rounded-md border border-[var(--accent-primary)]/40 bg-[var(--accent-primary)]/10 px-3 py-1.5 text-[12px] font-semibold text-[var(--accent-primary)] disabled:opacity-50">{saving ? 'Saving' : 'Save changes'}</button>
+              </div>
+            </div>
+          ) : content ? (
+            <div className="grid gap-1.5">
+              <div className="no-scrollbar max-h-[360px] overflow-auto rounded-md bg-[var(--surface-muted)] px-3 py-2 text-[12px] leading-6 text-[var(--text-secondary)] whitespace-pre-wrap">{content}</div>
+              {canEdit && (
+                <button type="button" onClick={startEditing} className="justify-self-end text-[11px] font-semibold text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+                  Edit plan
+                </button>
+              )}
+            </div>
           ) : (
             <CodePanel title="Plan input" value={tool.input} />
           )}
-          {canReview && (
+          {canReview && !editing && (
             <div className="grid gap-2">
               <textarea
                 value={reason}
