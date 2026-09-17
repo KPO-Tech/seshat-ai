@@ -308,12 +308,15 @@ function RecentTasks({ onSelect }: { onSelect: () => void }) {
 
   async function remove(session: ChatSession) {
     setOpenMenuId(null)
+    if (isStreamingBySession[session.id]) return
     if (!window.confirm(`Delete "${session.title || 'New task'}"? This can't be undone.`)) return
+    const wasActive = activeSessionId === session.id
     removeSession(session.id)
     try {
       await deleteSession(session.id)
     } catch {
       upsertSession(session)
+      if (wasActive) setActiveSessionId(session.id)
     }
   }
 
@@ -388,7 +391,7 @@ function TaskRow({
 
   if (renaming) {
     return (
-      <div className="flex min-h-8 items-center gap-2 rounded-md px-2.5 py-1">
+      <div className="flex min-h-8 min-w-0 items-center gap-2 rounded-md px-2.5 py-1">
         <SessionStatusDot session={session} running={running} />
         <input
           autoFocus
@@ -408,7 +411,7 @@ function TaskRow({
   return (
     <div
       className={[
-        'group relative flex min-h-8 items-center gap-2 rounded-md px-2.5 py-1 transition-colors',
+        'group relative flex min-h-8 min-w-0 items-center gap-2 rounded-md px-2.5 py-1 transition-colors',
         active ? 'bg-[var(--surface-panel)]' : 'hover:bg-[var(--surface-muted)]'
       ].join(' ')}
       title={taskMetaLabel(session, running)}
@@ -441,7 +444,9 @@ function TaskRow({
             <button
               type="button"
               onClick={onDelete}
-              className="flex h-8 w-full items-center rounded-md px-2 text-left text-[12px] font-semibold text-[var(--accent-danger)] hover:bg-[var(--surface-muted)]"
+              disabled={running}
+              title={running ? 'Stop the agent before deleting this task' : 'Delete task'}
+              className="flex h-8 w-full items-center rounded-md px-2 text-left text-[12px] font-semibold text-[var(--accent-danger)] hover:bg-[var(--surface-muted)] disabled:cursor-not-allowed disabled:opacity-40"
             >
               Delete
             </button>

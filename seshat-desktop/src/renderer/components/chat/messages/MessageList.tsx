@@ -15,7 +15,7 @@ export function MessageList({ containerRef, sessionId, messages, streaming, isSt
   messages: ChatMessage[]
   streaming: StreamingBlock[]
   isStreaming: boolean
-  onRetry?: (text: string) => void
+  onRetry?: (message: ChatMessage) => void
   contextWindow?: number
 }) {
   const endRef = useRef<HTMLDivElement>(null)
@@ -93,7 +93,7 @@ export function MessageList({ containerRef, sessionId, messages, streaming, isSt
   )
 }
 
-function MessageBubble({ sessionId, message, hidePendingAssistant, onRetry, contextWindow }: { sessionId: string; message: ChatMessage; hidePendingAssistant?: boolean; onRetry?: (text: string) => void; contextWindow?: number }) {
+function MessageBubble({ sessionId, message, hidePendingAssistant, onRetry, contextWindow }: { sessionId: string; message: ChatMessage; hidePendingAssistant?: boolean; onRetry?: (message: ChatMessage) => void; contextWindow?: number }) {
   if (message.role === 'system') return null
   if (message.role === 'user') return <UserMessage message={message} onRetry={onRetry} />
   if (hidePendingAssistant && message.content.length === 0 && message.status !== 'error') return null

@@ -108,11 +108,16 @@ export function useChatWorkspace() {
     }
   }, [activeSessionId, updateSession])
 
-  const send = useCallback(async (prompt: string, model?: ChatModelSelection, files: File[] = []) => {
+  const send = useCallback(async (
+    prompt: string,
+    model?: ChatModelSelection,
+    files: File[] = [],
+    existingAttachments: MessageAttachment[] = []
+  ) => {
     const text = prompt.trim()
-    if (!text && files.length === 0) return
+    if (!text && files.length === 0 && existingAttachments.length === 0) return
     const requestText = text || 'Review the attached files.'
-    const initialTitle = (text || files[0]?.name || 'New task').slice(0, 64)
+    const initialTitle = (text || files[0]?.name || existingAttachments[0]?.filename || 'New task').slice(0, 64)
     setError(null)
 
     let sessionId = activeSessionId
@@ -144,9 +149,11 @@ export function useChatWorkspace() {
     const agentStore = useAgentStore.getState()
     clearStreaming(sessionId)
 
-    let attachments: MessageAttachment[] = []
+    let attachments = existingAttachments
     try {
-      attachments = await Promise.all(files.map((file) => uploadSessionFile(sessionId, file)))
+      if (files.length > 0) {
+        attachments = await Promise.all(files.map((file) => uploadSessionFile(sessionId, file)))
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to upload attachments.')
       return
@@ -305,7 +312,7 @@ export function useChatWorkspace() {
         if (retryAttempt < MAX_RETRIES && isRetryableNetworkDrop && !receivedServerActivity) {
           retryAttempt += 1
           const delay = RETRY_BASE_MS * (2 ** (retryAttempt - 1)) // 1s, 2s, 4s
-          liveBlocks = [{ type: 'text', text: `> Connection lost. Reconnecting (attempt ${retryAttempt}/${MAX_RETRIES})…` }]
+          liveBlocks = [{ type: 'text', text: `> Connection lost. Reconnecting (attempt ${retryAttempt}/${MAX_RETRIES})...` }]
           flushSync()
           await new Promise<void>((resolve) => setTimeout(resolve, delay))
           if (controller.signal.aborted) break

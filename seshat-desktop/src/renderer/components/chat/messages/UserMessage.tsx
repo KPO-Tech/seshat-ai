@@ -3,7 +3,7 @@ import { MessageContentBlocks } from './MessageContentBlocks'
 import { AttachmentList } from '../attachments/AttachmentList'
 import { CopyButton } from './MessageActions'
 
-export function UserMessage({ message, onRetry }: { message: ChatMessage; onRetry?: (text: string) => void }) {
+export function UserMessage({ message, onRetry }: { message: ChatMessage; onRetry?: (message: ChatMessage) => void }) {
   const attachments = message.metadata?.attachments ?? []
   const hasText = message.content.length > 0
   const failed = message.status === 'error'
@@ -19,10 +19,10 @@ export function UserMessage({ message, onRetry }: { message: ChatMessage; onRetr
         {failed && (
           <button
             type="button"
-            onClick={() => onRetry?.(copyText)}
+            onClick={() => onRetry?.(message)}
             className="text-[12px] font-semibold text-[var(--accent-danger)] hover:underline"
           >
-            Failed to send · Retry
+            Failed to send. Retry
           </button>
         )}
         <div className="mt-1 flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">

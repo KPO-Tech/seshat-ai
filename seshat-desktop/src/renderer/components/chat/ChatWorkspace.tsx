@@ -99,7 +99,13 @@ export function ChatWorkspace({ user }: { user: User }) {
               messages={activeSession.messages}
               streaming={streaming}
               isStreaming={isStreaming}
-              onRetry={(text) => void send(text, sendOptions)}
+              onRetry={(message) => {
+                const text = message.content
+                  .filter((block) => block.type === 'text')
+                  .map((block) => block.text)
+                  .join('\n\n')
+                void send(text, sendOptions, [], message.metadata?.attachments ?? [])
+              }}
               contextWindow={selectedModel?.contextWindow}
             />
           </section>
@@ -107,7 +113,7 @@ export function ChatWorkspace({ user }: { user: User }) {
             <div className="mx-auto max-w-[820px]">
               {compactionNotice && (
                 <div className="mb-3 rounded-lg border border-[var(--border-soft)] bg-[var(--surface-panel)] px-4 py-3 text-[13px] font-semibold text-[var(--text-secondary)]">
-                  Compacted conversation - saved {(compactionNotice.preTokens - compactionNotice.postTokens).toLocaleString()} tokens ({compactionNotice.preTokens.toLocaleString()} → {compactionNotice.postTokens.toLocaleString()})
+                  Compacted conversation. Saved {(compactionNotice.preTokens - compactionNotice.postTokens).toLocaleString()} tokens ({compactionNotice.preTokens.toLocaleString()} to {compactionNotice.postTokens.toLocaleString()})
                 </div>
               )}
               {error && <div className="mb-3 rounded-lg border border-[var(--accent-danger)]/40 bg-[var(--surface-panel)] px-4 py-3 text-[13px] font-semibold text-[var(--accent-danger)]">{error}</div>}

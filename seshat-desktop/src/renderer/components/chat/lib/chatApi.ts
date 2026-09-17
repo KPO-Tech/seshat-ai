@@ -154,7 +154,7 @@ export async function streamQuery(params: {
 
       const cancel = () => {
         void window.nexus?.http?.cancelStream(streamId)
-        settle(resolve)
+        settle(() => reject(new DOMException('The operation was aborted.', 'AbortError')))
       }
 
       params.signal?.addEventListener('abort', cancel, { once: true })
