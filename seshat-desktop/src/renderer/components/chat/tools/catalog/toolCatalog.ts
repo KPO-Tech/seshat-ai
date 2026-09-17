@@ -40,6 +40,20 @@ const registry: Record<string, ToolCatalogEntry> = {
   config: { label: 'Config', category: 'data', silent: true, snippet: (tool) => str(tool, 'key') },
   brief: { label: 'Brief', category: 'data', silent: true },
 
+  task_create: { label: 'Create Task', category: 'automation', groupable: false, snippet: taskSnippet },
+  task_update: { label: 'Update Task', category: 'automation', groupable: false, snippet: taskSnippet },
+  task_list: { label: 'Task List', category: 'automation', groupable: false },
+  task_get: { label: 'Task Details', category: 'automation', groupable: false, snippet: idSnippet },
+  task_stop: { label: 'Stop Task', category: 'automation', groupable: false, snippet: idSnippet },
+  task_output: { label: 'Task Output', category: 'automation', groupable: false, snippet: idSnippet },
+  agent: { label: 'Agent', category: 'automation', groupable: false, snippet: agentSnippet },
+  spawn_agent: { label: 'Sub-agent', category: 'automation', groupable: false, snippet: agentSnippet },
+  wait_agent: { label: 'Wait for Agent', category: 'automation', silent: true, snippet: agentIdSnippet },
+  list_agents: { label: 'List Agents', category: 'automation', silent: true },
+  close_agent: { label: 'Close Agent', category: 'automation', silent: true, snippet: agentIdSnippet },
+  send_agent_message: { label: 'Message Agent', category: 'automation', silent: true, snippet: agentIdSnippet },
+  resume_agent: { label: 'Resume Agent', category: 'automation', groupable: false, snippet: agentIdSnippet },
+
   mcp: { label: 'MCP', category: 'mcp', body: 'mcp', snippet: mcpSnippet },
   mcp_list_resources: { label: 'MCP Resources', category: 'mcp', silent: true },
   mcp_read_resource: { label: 'MCP Read', category: 'mcp', silent: true, snippet: (tool) => str(tool, 'uri') || str(tool, 'resource') },
@@ -137,7 +151,19 @@ function hostOrValue(value: string): string {
 }
 
 function idSnippet(tool: ToolUseBlock): string {
-  return str(tool, 'job_id') || str(tool, 'id') || str(tool, 'task_id')
+  return str(tool, 'job_id') || str(tool, 'id') || str(tool, 'task_id') || str(tool, 'taskId')
+}
+
+function taskSnippet(tool: ToolUseBlock): string {
+  return str(tool, 'subject') || str(tool, 'activeForm') || str(tool, 'status') || idSnippet(tool)
+}
+
+function agentSnippet(tool: ToolUseBlock): string {
+  return str(tool, 'task') || str(tool, 'prompt') || str(tool, 'role')
+}
+
+function agentIdSnippet(tool: ToolUseBlock): string {
+  return str(tool, 'agent_id') || str(tool, 'agentId')
 }
 
 function askUserSnippet(tool: ToolUseBlock): string {

@@ -51,6 +51,7 @@ type SDKRuntime struct {
 	baseConfig      *sdk.ClientConfig
 	terminalRelay   *TerminalRelay
 	resolveLocalSTT func(ctx context.Context) *sdk.SpeechToTextConfig
+	resolveBrowser  func(ctx context.Context) string
 	mu              sync.RWMutex
 
 	clientCacheMu sync.Mutex
@@ -73,6 +74,7 @@ type clientCacheKey struct {
 	model    string
 	apiKey   string
 	baseURL  string
+	browser  string
 }
 
 // cachedRuntimeClient pairs a cached client with when it was last handed out,
@@ -120,6 +122,12 @@ func (r *SDKRuntime) SetTerminalRelay(relay *TerminalRelay) {
 // SetTerminalRelay above.
 func (r *SDKRuntime) SetLocalSTTResolver(resolve func(ctx context.Context) *sdk.SpeechToTextConfig) {
 	r.resolveLocalSTT = resolve
+}
+
+func (r *SDKRuntime) SetBrowserRemoteControlResolver(resolve func(ctx context.Context) string) {
+	r.mu.Lock()
+	r.resolveBrowser = resolve
+	r.mu.Unlock()
 }
 
 // applyRemoteExecutor registers a terminalRemoteExecutor for session when
@@ -512,7 +520,13 @@ func (r *SDKRuntime) clientForInput(ctx context.Context, input QueryInput) (*sdk
 	}
 	cfg.UserID = input.UserID
 
-	key := clientCacheKey{userID: input.UserID, provider: string(cfg.Model.Provider), model: cfg.Model.Model, apiKey: cfg.APIKey}
+	key := clientCacheKey{
+		userID:   input.UserID,
+		provider: string(cfg.Model.Provider),
+		model:    cfg.Model.Model,
+		apiKey:   cfg.APIKey,
+		browser:  strings.TrimSpace(cfg.BrowserRemoteControlURL),
+	}
 	if cfg.ProviderConfig != nil {
 		key.baseURL = cfg.ProviderConfig.BaseURL
 	}
@@ -587,9 +601,13 @@ func (r *SDKRuntime) buildBaseClientConfig(ctx context.Context) *sdk.ClientConfi
 	r.mu.RLock()
 	cfg := cloneClientConfig(r.baseConfig)
 	resolveLocalSTT := r.resolveLocalSTT
+	resolveBrowser := r.resolveBrowser
 	r.mu.RUnlock()
 	if cfg == nil {
 		cfg = sdk.DefaultClientConfig()
+	}
+	if strings.TrimSpace(cfg.BrowserRemoteControlURL) == "" && resolveBrowser != nil {
+		cfg.BrowserRemoteControlURL = strings.TrimSpace(resolveBrowser(ctx))
 	}
 	cfg.SessionStore = r.client.GetSessionStore()
 	cfg.ArtifactStore = r.client.GetArtifactStore()

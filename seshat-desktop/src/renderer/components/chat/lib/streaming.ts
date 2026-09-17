@@ -4,6 +4,7 @@ import type {
   RuntimePermissionRequest,
   RuntimePlanEvent,
   RuntimePromptRequest,
+  RuntimeTaskEvent,
   RuntimeToolProgress,
   StreamingBlock,
   StreamEvent,
@@ -48,6 +49,7 @@ function applyRuntimeEvent(blocks: StreamingBlock[], data: Record<string, unknow
   if (type === 'plan.submitted' || type === 'plan.status_changed') return applyPlanEvent(blocks, (data.plan_event ?? data.planEvent) as RuntimePlanEvent | undefined)
   if (type === 'tool.permission_required') return applyPermissionRequest(blocks, (data.permission_request ?? data.permissionRequest) as RuntimePermissionRequest | undefined)
   if (type === 'prompt.request') return applyPromptRequest(blocks, (data.prompt_request ?? data.promptRequest) as RuntimePromptRequest | undefined)
+  if (type === 'task.changed') return applyTaskEvent(blocks, (data.task_event ?? data.taskEvent) as RuntimeTaskEvent | undefined)
 
   const rawProgress = (data.tool_progress ?? data.toolProgress ?? data.tool) as RuntimeToolProgress | undefined
   if (!rawProgress || !type.includes('tool')) return blocks
@@ -60,6 +62,38 @@ function applyRuntimeEvent(blocks: StreamingBlock[], data: Record<string, unknow
   if (tool.type !== 'tool_use') return blocks
 
   return setBlock(blocks, index, mergeToolProgress(tool, progress))
+}
+
+function applyTaskEvent(blocks: StreamingBlock[], event?: RuntimeTaskEvent): StreamingBlock[] {
+  if (!event) return blocks
+  const taskId = event.task_id ?? event.taskId ?? ''
+  const expectedName = event.action === 'create' ? 'task_create' : 'task_update'
+  let index = -1
+
+  for (let cursor = blocks.length - 1; cursor >= 0; cursor -= 1) {
+    const block = blocks[cursor]
+    if (block.type !== 'tool_use' || !isTaskTool(block.name)) continue
+    const blockTaskId = textValue(block.input.task_id) || textValue(block.input.taskId) || textValue(block._task?.task_id) || textValue(block._task?.taskId)
+    if ((taskId && blockTaskId === taskId) || block.name === expectedName) {
+      index = cursor
+      break
+    }
+  }
+
+  if (index >= 0) {
+    const current = blocks[index]
+    if (current.type !== 'tool_use') return blocks
+    return setBlock(blocks, index, { ...current, _task: event })
+  }
+
+  return [...blocks, {
+    type: 'tool_use',
+    id: `task-event-${taskId || Date.now()}`,
+    name: expectedName,
+    input: { task_id: taskId, subject: event.subject, status: event.status },
+    _status: 'completed',
+    _task: event
+  }]
 }
 
 function applyPermissionRequest(blocks: StreamingBlock[], request?: RuntimePermissionRequest): StreamingBlock[] {
@@ -293,6 +327,10 @@ function planEventId(event?: RuntimePlanEvent | null) {
 
 function textValue(value: unknown) {
   return typeof value === 'string' ? value : ''
+}
+
+function isTaskTool(name: string) {
+  return ['task_create', 'task_update', 'task_list', 'task_get', 'task_stop', 'task_output'].includes(name.toLowerCase())
 }
 
 function mergeToolProgress(tool: ToolUseBlock, progress: ToolProgress): ToolUseBlock {

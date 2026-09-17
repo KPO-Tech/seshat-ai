@@ -13,6 +13,7 @@ export type ToolUseBlock = {
   _approval?: ToolApproval
   _prompt?: ToolPromptRequest
   _plan?: RuntimePlanEvent
+  _task?: RuntimeTaskEvent
 }
 export type ToolResultBlock = { type: 'tool_result'; tool_use_id?: string; content?: string; is_error?: boolean }
 
@@ -115,6 +116,14 @@ export type StreamEvent =
 
 export type RuntimeEvent = {
   type?: string
+  session_id?: string
+  sessionId?: string
+  turn_number?: number
+  turnNumber?: number
+  agent_tool_use_id?: string
+  agentToolUseId?: string
+  usage?: TokenUsage
+  chunk?: Record<string, unknown>
   tool_progress?: RuntimeToolProgress
   toolProgress?: RuntimeToolProgress
   permission_request?: RuntimePermissionRequest
@@ -123,6 +132,10 @@ export type RuntimeEvent = {
   promptRequest?: RuntimePromptRequest
   plan_event?: RuntimePlanEvent
   planEvent?: RuntimePlanEvent
+  task_event?: RuntimeTaskEvent
+  taskEvent?: RuntimeTaskEvent
+  agent_event?: RuntimeAgentEvent
+  agentEvent?: RuntimeAgentEvent
 }
 
 export type RuntimeToolProgress = {
@@ -171,6 +184,32 @@ export type RuntimePlanEvent = {
   status?: string
   version?: number
   content?: string
+}
+
+export type RuntimeTaskEvent = {
+  task_id?: string
+  taskId?: string
+  action?: string
+  status?: string
+  subject?: string
+}
+
+export type RuntimeAgentEvent = {
+  call_id?: string
+  callId?: string
+  agent_id?: string
+  agentId?: string
+  agent_nickname?: string
+  agentNickname?: string
+  agent_role?: string
+  agentRole?: string
+  prompt?: string
+  status?: string
+  message?: string
+  started_at_ms?: number
+  startedAtMs?: number
+  completed_at_ms?: number
+  completedAtMs?: number
 }
 
 export type PlanDocument = {

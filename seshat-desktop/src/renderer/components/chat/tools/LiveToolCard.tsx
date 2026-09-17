@@ -5,6 +5,7 @@ import { CodePanel, getToolStatus, StatusPill, ToolGlyph, toolSnippet } from './
 import { EditorLiveView } from './live/EditorLiveView'
 import { BrowserLiveView } from './live/browser/BrowserLiveView'
 import { TerminalLiveView } from './live/TerminalLiveView'
+import { TaskLiveView } from './live/tasks/TaskLiveView'
 
 export function LiveToolCard({ sessionId, tool, presentation }: { sessionId?: string; tool: ToolUseBlock; presentation: ToolPresentation }) {
   const [open, setOpen] = useState(Boolean(presentation.initiallyOpen))
@@ -50,6 +51,7 @@ function LiveBody({ sessionId, tool, surface }: { sessionId?: string; tool: Tool
   if (surface === 'browser') return <BrowserLiveView sessionId={sessionId} tool={tool} />
   if (surface === 'terminal') return <TerminalLiveView sessionId={sessionId} tool={tool} />
   if (surface === 'editor') return <EditorLiveView tool={tool} />
+  if (surface === 'tasks') return <TaskLiveView sessionId={sessionId} tool={tool} />
   return <GenericLiveBody tool={tool} />
 }
 

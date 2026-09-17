@@ -67,6 +67,7 @@ declare global {
         show: (contextId: string, bounds?: BrowserPanelBounds) => Promise<BrowserPanelState>
         hide: (contextId: string) => Promise<BrowserPanelState>
         openUrl: (url: string, sessionId?: string) => Promise<BrowserOpenResult>
+        adoptPage: (contextId: string, page: BrowserAgentPage) => Promise<BrowserPanelState>
         navigate: (contextId: string, url: string) => Promise<BrowserPanelState>
         back: (contextId: string) => Promise<BrowserPanelState>
         forward: (contextId: string) => Promise<BrowserPanelState>
@@ -75,6 +76,8 @@ declare global {
         getState: (contextId: string) => Promise<BrowserPanelState>
         newTab: (contextId: string, url?: string) => Promise<BrowserPanelState>
         switchTab: (contextId: string, tabId: string) => Promise<BrowserPanelState>
+        closeTab: (contextId: string, tabId: string) => Promise<BrowserPanelState>
+        destroyContext: (contextId: string) => Promise<void>
         onStateChange: (contextId: string, listener: (state: BrowserPanelState) => void) => () => void
       }
       openExternal: (url: string) => Promise<void>
@@ -129,4 +132,11 @@ type BrowserOpenResult = {
   target_id: string
   tab_id: string
   url: string
+}
+
+type BrowserAgentPage = {
+  pageId?: string
+  targetId?: string
+  url?: string
+  title?: string
 }

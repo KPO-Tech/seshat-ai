@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useBrowserStore, type BrowserActionRun } from '@renderer/stores/browser'
 import type { ToolUseBlock } from '../../../lib/chatTypes'
 import { CodePanel, prettyJsonOrRaw } from '../../ToolDetails'
-import { browserResultSummary, parseBrowserScreenshot } from './browserResults'
+import { browserAgentPage, browserResultSummary, parseBrowserScreenshot } from './browserResults'
 import { browserActionLabel, browserContextId, browserTargetFromTool } from './browserTools'
 
 type BrowserPanelTab = {
@@ -27,11 +27,11 @@ export function BrowserLiveView({ sessionId, tool }: { sessionId?: string; tool:
   const [address, setAddress] = useState(browserTargetFromTool(tool) || 'https://www.google.com/')
   const [error, setError] = useState<string | null>(null)
   const [showScreenshot, setShowScreenshot] = useState(false)
-  const target = browserTargetFromTool(tool)
   const actions = useBrowserStore((store) => sessionId ? store.sessions[sessionId]?.actions ?? [] : [])
   const visibleActions = actions.length > 0 ? actions : [fallbackAction(tool)]
   const screenshot = parseBrowserScreenshot(tool)
   const resultSummary = browserResultSummary(tool)
+  const agentPage = browserAgentPage(tool)
   const activeTab = state?.tabs.find((tab) => tab.id === state.activeTabId) ?? state?.tabs[0] ?? null
 
   const syncBounds = useCallback(() => {
@@ -85,12 +85,13 @@ export function BrowserLiveView({ sessionId, tool }: { sessionId?: string; tool:
   }, [browserApi, contextId, syncBounds])
 
   useEffect(() => {
-    if (!browserApi || !target || !shouldOpenTarget(tool.name, target)) return
-    setAddress(target)
-    void browserApi.openUrl(target, sessionId).then((result) => {
-      setAddress(result.url)
-    }).catch(() => undefined)
-  }, [browserApi, sessionId, target])
+    if (!browserApi || !agentPage) return
+    void browserApi.adoptPage(contextId, agentPage).then((next) => {
+      setState(next)
+      const activeUrl = next.tabs.find((tab) => tab.id === next.activeTabId)?.url
+      if (activeUrl && activeUrl !== 'about:blank') setAddress(activeUrl)
+    }).catch((err) => setError(err instanceof Error ? err.message : 'Could not display the agent page.'))
+  }, [agentPage?.pageId, agentPage?.targetId, agentPage?.url, browserApi, contextId])
 
   async function navigate() {
     const value = address.trim()
@@ -135,17 +136,26 @@ export function BrowserLiveView({ sessionId, tool }: { sessionId?: string; tool:
       {state && state.tabs.length > 1 && (
         <div className="no-scrollbar flex gap-1 overflow-x-auto border-b border-[var(--border-soft)] px-2.5 py-1.5">
           {state.tabs.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => void browserApi?.switchTab(contextId, tab.id).then(setState)}
-              className={[
-                'max-w-[180px] shrink-0 truncate rounded-md border px-2 py-1 text-left text-[10.5px] font-semibold',
-                tab.id === state.activeTabId ? 'border-[var(--accent-primary)]/45 bg-[var(--accent-primary)]/10 text-[var(--text-primary)]' : 'border-transparent text-[var(--text-muted)] hover:bg-[var(--surface-muted)]'
-              ].join(' ')}
-            >
-              {tab.status === 'loading' ? 'Loading' : tab.label || 'New tab'}
-            </button>
+            <div key={tab.id} className="flex max-w-[190px] shrink-0 items-center rounded-md border border-transparent hover:bg-[var(--surface-muted)]">
+              <button
+                type="button"
+                onClick={() => void browserApi?.switchTab(contextId, tab.id).then(setState)}
+                className={[
+                  'min-w-0 flex-1 truncate rounded-l-md px-2 py-1 text-left text-[10.5px] font-semibold',
+                  tab.id === state.activeTabId ? 'bg-[var(--accent-primary)]/10 text-[var(--text-primary)]' : 'text-[var(--text-muted)]'
+                ].join(' ')}
+              >
+                {tab.status === 'loading' ? 'Loading' : tab.label || 'New tab'}
+              </button>
+              <button
+                type="button"
+                className="grid size-6 shrink-0 place-items-center rounded-r-md text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                title="Close tab"
+                onClick={() => void browserApi?.closeTab(contextId, tab.id).then(setState)}
+              >
+                <CloseIcon />
+              </button>
+            </div>
           ))}
         </div>
       )}
@@ -219,12 +229,6 @@ export function BrowserLiveView({ sessionId, tool }: { sessionId?: string; tool:
 
 const buttonClass = 'flex size-8 shrink-0 items-center justify-center rounded-md border border-[var(--border-soft)] bg-[var(--surface-muted)] text-[var(--text-secondary)] transition hover:text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-40'
 
-function shouldOpenTarget(toolName: string, target: string) {
-  const name = toolName.toLowerCase()
-  if (!name.includes('open') && !name.includes('navigate')) return false
-  return /^https?:\/\//i.test(target) || /^[^\s]+\.[^\s]+$/.test(target) || /^localhost(:\d+)?/i.test(target)
-}
-
 function fallbackAction(tool: ToolUseBlock): BrowserActionRun {
   return {
     id: tool.id,
@@ -235,6 +239,14 @@ function fallbackAction(tool: ToolUseBlock): BrowserActionRun {
     message: tool._progress?.summary || tool._progress?.message || tool._message || '',
     startedAt: Date.now()
   }
+}
+
+function CloseIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden="true">
+      <path d="m3 3 6 6M9 3 3 9" />
+    </svg>
+  )
 }
 
 function actionDotClass(status: BrowserActionRun['status']) {

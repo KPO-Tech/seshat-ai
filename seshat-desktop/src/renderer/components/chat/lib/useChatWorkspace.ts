@@ -2,9 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useChatStore } from '@renderer/stores/chat'
 import { useBrowserStore } from '@renderer/stores/browser'
 import { useTerminalStore } from '@renderer/stores/terminal'
+import { useTaskStore } from '@renderer/stores/tasks'
+import { useAgentStore } from '@renderer/stores/agents'
 import { createSession, fetchSession, fetchSessions, interruptSession, patchSessionMetadata, streamQuery } from './chatApi'
 import { applyStreamEvent, mergeDoneIntoMessages } from './streaming'
-import type { ChatContentBlock, ChatExecutionMode, ChatMessage, QueryDone } from './chatTypes'
+import type { ChatContentBlock, ChatExecutionMode, ChatMessage, QueryDone, RuntimeEvent } from './chatTypes'
 
 type ChatModelSelection = {
   providerSettingId?: string
@@ -112,6 +114,8 @@ export function useChatWorkspace() {
     if (useChatStore.getState().isSessionStreaming(sessionId)) return
     await useTerminalStore.getState().attachSession(sessionId)
     const browserStore = useBrowserStore.getState()
+    const taskStore = useTaskStore.getState()
+    const agentStore = useAgentStore.getState()
     clearStreaming(sessionId)
 
     const userMessage: ChatMessage = {
@@ -148,6 +152,8 @@ export function useChatWorkspace() {
             const merged = mergeDoneIntoMessages(current, done, assistantId, liveBlocks)
             setMessages(sessionId, merged)
             browserStore.ingestBlocks(sessionId, contentBlocksFromMessages(merged))
+            taskStore.ingestBlocks(sessionId, contentBlocksFromMessages(merged))
+            agentStore.ingestBlocks(sessionId, contentBlocksFromMessages(merged))
             updateSession(sessionId, { status: 'completed', updatedAt: new Date().toISOString() })
             return
           }
@@ -162,9 +168,14 @@ export function useChatWorkspace() {
             }
             return
           }
+          if (event.event === 'runtime') {
+            agentStore.ingestEvent(sessionId, event.data as RuntimeEvent, liveBlocks)
+          }
           liveBlocks = applyStreamEvent(liveBlocks, event)
           setStreaming(sessionId, liveBlocks)
           browserStore.ingestBlocks(sessionId, liveBlocks)
+          taskStore.ingestBlocks(sessionId, liveBlocks)
+          agentStore.ingestBlocks(sessionId, liveBlocks)
         }
       })
       const refreshed = await fetchSession(sessionId).catch(() => null)

@@ -2,6 +2,8 @@ import { useEffect } from 'react'
 import type { User } from '@renderer/api/types'
 import { useBrowserStore } from '@renderer/stores/browser'
 import { useTerminalStore } from '@renderer/stores/terminal'
+import { useTaskStore } from '@renderer/stores/tasks'
+import { useAgentStore } from '@renderer/stores/agents'
 import type { ChatExecutionMode } from './lib/chatTypes'
 import { ChatInput } from './ChatInput'
 import { useChatModels } from './lib/useChatModels'
@@ -15,6 +17,8 @@ export function ChatWorkspace({ user }: { user: User }) {
   const models = useChatModels(activeSession?.modelId)
   const selectedModel = models.selected
   const ingestBrowserBlocks = useBrowserStore((state) => state.ingestBlocks)
+  const ingestTaskBlocks = useTaskStore((state) => state.ingestBlocks)
+  const ingestAgentBlocks = useAgentStore((state) => state.ingestBlocks)
   const attachTerminalSession = useTerminalStore((state) => state.attachSession)
 
   useEffect(() => {
@@ -25,7 +29,9 @@ export function ChatWorkspace({ user }: { user: User }) {
   useEffect(() => {
     if (!activeSession?.id) return
     ingestBrowserBlocks(activeSession.id, activeSession.messages.flatMap((message) => message.content))
-  }, [activeSession?.id, activeSession?.messages, ingestBrowserBlocks])
+    ingestTaskBlocks(activeSession.id, activeSession.messages.flatMap((message) => message.content))
+    ingestAgentBlocks(activeSession.id, activeSession.messages.flatMap((message) => message.content))
+  }, [activeSession?.id, activeSession?.messages, ingestAgentBlocks, ingestBrowserBlocks, ingestTaskBlocks])
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">

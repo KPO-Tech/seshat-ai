@@ -1010,6 +1010,9 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 
 	runtime := backendquery.NewSDKRuntime(queryClient, queryClientConfig)
 	cleanups = append(cleanups, func() error { runtime.CloseCachedClients(); return nil })
+	if strings.TrimSpace(config.BrowserRemoteControlURL) == "" {
+		runtime.SetBrowserRemoteControlResolver(discoverElectronBrowserRemoteControlURL)
+	}
 	// Shared with api.NewApp below (via AppConfig.TerminalRelay) - the WS
 	// handler there registers a session's Electron relay connection into the
 	// same instance runtime.applyRemoteExecutor reads from per turn.

@@ -15,9 +15,12 @@ Observable tools are actions where watching the workspace matters:
 - Browser navigation and automation
 - Terminal commands
 - File edits and patches
+- Live task checklists
 - Future desktop or computer automation
 
 These tools should eventually connect to a session-scoped live surface so the user can watch the agent work without making the chat transcript noisy.
+
+Task tools share a session-scoped checklist. `task.changed` events update it immediately, while structured tool-result metadata restores it when a session is reopened. Todo tasks remain separate from delegated agents and background process activity.
 
 Informational tools are fast or mostly data-oriented:
 
@@ -36,6 +39,8 @@ Delegated tools represent another agent or workflow doing work:
 - Long-running delegated jobs
 
 These render as activity cards that can later expand into a richer trace.
+
+Sub-agent cards track the delegated lifecycle separately from the outer tool call. A completed `spawn_agent` dispatch remains active until the runtime reports `subagent_finished`, failure, or cancellation. Nested turn, response, and tool-progress events update the agent activity in real time.
 
 ## Product Direction
 

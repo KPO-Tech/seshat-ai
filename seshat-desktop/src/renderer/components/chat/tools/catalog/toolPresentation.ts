@@ -1,6 +1,6 @@
 export type ToolIntent = 'observable' | 'informational' | 'delegated'
 export type ToolRenderMode = 'compact' | 'agent_activity' | 'live_workspace'
-export type LiveToolSurface = 'browser' | 'terminal' | 'editor' | 'computer'
+export type LiveToolSurface = 'browser' | 'terminal' | 'editor' | 'computer' | 'tasks'
 
 export type ToolPresentation = {
   intent: ToolIntent
@@ -16,7 +16,11 @@ export type ToolPresentation = {
 export function getToolPresentation(name: string): ToolPresentation {
   const normalized = normalizeToolName(name)
 
-  if (matchesAny(normalized, ['spawn_agent', 'subagent', 'sub_agent', 'delegate_agent', 'task_agent'])) {
+  if (['task_create', 'task_update', 'task_list', 'task_get', 'task_stop', 'task_output'].includes(normalized)) {
+    return { intent: 'observable', mode: 'live_workspace', surface: 'tasks', label: 'Tasks', initiallyOpen: false }
+  }
+
+  if (normalized === 'agent' || matchesAny(normalized, ['spawn_agent', 'subagent', 'sub_agent', 'delegate_agent', 'task_agent'])) {
     return { intent: 'delegated', mode: 'agent_activity', label: 'Sub-agent', initiallyOpen: true }
   }
 

@@ -7,6 +7,26 @@ export type BrowserScreenshotResult = {
   bytes?: number
 }
 
+export type BrowserAgentPage = {
+  pageId: string
+  targetId: string
+  url: string
+  title: string
+}
+
+export function browserAgentPage(tool: ToolUseBlock): BrowserAgentPage | null {
+  const metadata = { ...tool._result?.metadata, ...tool._progress?.metadata }
+  const parsed = parseObject(tool._progress?.result) ?? parseObject(tool._result?.content)
+  const page = object(parsed?.page) ?? parsed
+  const value = {
+    pageId: text(metadata.page_id) || text(metadata.pageId) || text(page?.id),
+    targetId: text(metadata.target_id) || text(metadata.targetId) || text(page?.target_id) || text(page?.targetId),
+    url: text(metadata.url) || text(page?.url),
+    title: text(metadata.title) || text(page?.title)
+  }
+  return value.targetId || value.url ? value : null
+}
+
 export function parseBrowserScreenshot(tool: ToolUseBlock): BrowserScreenshotResult | null {
   if (!tool.name.toLowerCase().includes('screenshot')) return null
   const content = tool._result?.content
@@ -40,6 +60,15 @@ export function browserResultSummary(tool: ToolUseBlock) {
 
 function object(value: unknown) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null
+}
+
+function parseObject(value?: string) {
+  if (!value) return null
+  try {
+    return object(JSON.parse(value))
+  } catch {
+    return null
+  }
 }
 
 function text(value: unknown) {

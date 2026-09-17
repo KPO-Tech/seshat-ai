@@ -36,6 +36,10 @@ export function interruptSession(id: string) {
   return api.post(`/sessions/${encodeURIComponent(id)}/interrupt`, {})
 }
 
+export function cancelSubagent(agentId: string, sessionId: string) {
+  return api.post(`/subagents/${encodeURIComponent(agentId)}/cancel`, { session_id: sessionId })
+}
+
 export function patchSessionMetadata(id: string, params: { executionMode?: ChatExecutionMode }) {
   return api.patch(`/sessions/${encodeURIComponent(id)}`, {
     execution_mode: params.executionMode

@@ -59,6 +59,7 @@ const nexus = {
     show: (contextId: string, bounds?: BrowserPanelBounds): Promise<BrowserPanelState> => ipcRenderer.invoke('browser-panel:show', contextId, bounds),
     hide: (contextId: string): Promise<BrowserPanelState> => ipcRenderer.invoke('browser-panel:hide', contextId),
     openUrl: (url: string, sessionId?: string): Promise<BrowserOpenResult> => ipcRenderer.invoke('browser-panel:open-url', url, sessionId),
+    adoptPage: (contextId: string, page: BrowserAgentPage): Promise<BrowserPanelState> => ipcRenderer.invoke('browser-panel:adopt-page', contextId, page),
     navigate: (contextId: string, url: string): Promise<BrowserPanelState> => ipcRenderer.invoke('browser-panel:navigate', contextId, url),
     back: (contextId: string): Promise<BrowserPanelState> => ipcRenderer.invoke('browser-panel:back', contextId),
     forward: (contextId: string): Promise<BrowserPanelState> => ipcRenderer.invoke('browser-panel:forward', contextId),
@@ -67,6 +68,8 @@ const nexus = {
     getState: (contextId: string): Promise<BrowserPanelState> => ipcRenderer.invoke('browser-panel:state', contextId),
     newTab: (contextId: string, url?: string): Promise<BrowserPanelState> => ipcRenderer.invoke('browser-panel:new-tab', contextId, url),
     switchTab: (contextId: string, tabId: string): Promise<BrowserPanelState> => ipcRenderer.invoke('browser-panel:switch-tab', contextId, tabId),
+    closeTab: (contextId: string, tabId: string): Promise<BrowserPanelState> => ipcRenderer.invoke('browser-panel:close-tab', contextId, tabId),
+    destroyContext: (contextId: string): Promise<void> => ipcRenderer.invoke('browser-panel:destroy-context', contextId),
     onStateChange: (contextId: string, listener: (state: BrowserPanelState) => void) => {
       const handler = (_event: Electron.IpcRendererEvent, payload: { contextId: string; state: BrowserPanelState }) => {
         if (payload.contextId !== contextId) return
@@ -119,6 +122,13 @@ type BrowserOpenResult = {
   target_id: string
   tab_id: string
   url: string
+}
+
+type BrowserAgentPage = {
+  pageId?: string
+  targetId?: string
+  url?: string
+  title?: string
 }
 
 function appVersion(): string {

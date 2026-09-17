@@ -22,7 +22,7 @@ if (!selected) {
   process.exit(2)
 }
 
-const outDir = resolve(repoRoot, 'seshat-ui', 'resources', 'backend')
+const outDir = resolve(repoRoot, 'seshat-desktop', 'resources', 'backend')
 const outPath = resolve(outDir, `seshat-backend${selected.ext}`)
 mkdirSync(outDir, { recursive: true })
 
