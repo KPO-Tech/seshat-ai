@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { streamQuery } from './chatApi'
+import { normalizePermissionMode, streamQuery } from './chatApi'
 
 const originalWindow = globalThis.window
 
@@ -42,5 +42,18 @@ describe('streamQuery', () => {
     await expect(request).rejects.toMatchObject({ name: 'AbortError' })
     expect(cancelStream).toHaveBeenCalledWith('stream-1')
     expect(cleanup).toHaveBeenCalledOnce()
+  })
+})
+
+describe('normalizePermissionMode', () => {
+  it('accepts the two modes exposed by the UI', () => {
+    expect(normalizePermissionMode('auto')).toBe('auto')
+    expect(normalizePermissionMode('bypass')).toBe('bypass')
+  })
+
+  it('treats anything else (including the SDK-only modes and missing values) as unset', () => {
+    expect(normalizePermissionMode('onRequest')).toBeUndefined()
+    expect(normalizePermissionMode('never')).toBeUndefined()
+    expect(normalizePermissionMode(undefined)).toBeUndefined()
   })
 })

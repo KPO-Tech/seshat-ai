@@ -1,6 +1,6 @@
 import { api, SESHAT_BASE } from '@renderer/api/client'
 import { useAuthStore } from '@renderer/stores/auth'
-import type { ChatExecutionMode, ChatMessage, ChatSession, PlanDocument, StreamEvent } from './chatTypes'
+import type { ChatExecutionMode, ChatMessage, ChatPermissionMode, ChatSession, PlanDocument, StreamEvent } from './chatTypes'
 
 type BackendSession = {
   session_id: string
@@ -12,6 +12,7 @@ type BackendSession = {
   provider_setting_id?: string
   model_id?: string
   execution_mode?: string
+  permission_mode?: string
 }
 
 export async function fetchSessions() {
@@ -40,9 +41,10 @@ export function cancelSubagent(agentId: string, sessionId: string) {
   return api.post(`/subagents/${encodeURIComponent(agentId)}/cancel`, { session_id: sessionId })
 }
 
-export function patchSessionMetadata(id: string, params: { executionMode?: ChatExecutionMode; title?: string }) {
+export function patchSessionMetadata(id: string, params: { executionMode?: ChatExecutionMode; permissionMode?: ChatPermissionMode; title?: string }) {
   return api.patch(`/sessions/${encodeURIComponent(id)}`, {
     execution_mode: params.executionMode,
+    permission_mode: params.permissionMode,
     title: params.title
   })
 }
@@ -190,7 +192,19 @@ export async function streamQuery(params: {
 
   if (!response.ok || !response.body) {
     const text = await response.text().catch(() => response.statusText)
-    throw new Error(text || `HTTP ${response.status}`)
+    let message = text || `HTTP ${response.status}`
+    try {
+      message = (JSON.parse(text) as { error?: string }).error ?? message
+    } catch {
+      // not JSON - keep the raw text/status message
+    }
+    throw new Error(message)
+  }
+
+  const SSE_SUPPORTED_VERSION = '1'
+  const sseVersion = response.headers.get('X-SSE-Version')
+  if (sseVersion && sseVersion !== SSE_SUPPORTED_VERSION) {
+    throw new Error(`Unsupported SSE protocol version: expected ${SSE_SUPPORTED_VERSION}, got ${sseVersion}`)
   }
 
   const reader = response.body.getReader()
@@ -246,11 +260,17 @@ function sessionFromBackend(session: BackendSession): ChatSession {
     status: session.status,
     providerSettingId: session.provider_setting_id,
     modelId: session.model_id,
-    executionMode: normalizeExecutionMode(session.execution_mode)
+    executionMode: normalizeExecutionMode(session.execution_mode),
+    permissionMode: normalizePermissionMode(session.permission_mode)
   }
 }
 
 function normalizeExecutionMode(value?: string): ChatExecutionMode | undefined {
   if (value === 'plan' || value === 'execute') return value
+  return undefined
+}
+
+export function normalizePermissionMode(value?: string): ChatPermissionMode | undefined {
+  if (value === 'auto' || value === 'bypass') return value
   return undefined
 }

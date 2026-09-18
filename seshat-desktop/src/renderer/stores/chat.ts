@@ -48,6 +48,18 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   },
   upsertSession: (session) => set((state) => {
     const exists = state.sessions.some((item) => item.id === session.id)
+    // A turn is actively streaming for this session - a stale fetch (e.g.
+    // from switching away and back before its "done" event lands) must not
+    // overwrite the in-progress messages with the backend's not-yet-updated
+    // history, or the just-sent user message and the assistant placeholder
+    // visibly vanish until the turn finally completes.
+    if (exists && state.isStreamingBySession[session.id]) {
+      return {
+        sessions: state.sessions.map((item) => item.id === session.id
+          ? { ...item, ...session, messages: item.messages, status: item.status }
+          : item)
+      }
+    }
     const sessions = exists
       ? state.sessions.map((item) => item.id === session.id ? { ...item, ...session, status: session.status ?? item.status } : item)
       : [session, ...state.sessions]

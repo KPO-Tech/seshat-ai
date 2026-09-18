@@ -99,7 +99,13 @@ export type ChatSession = {
   providerSettingId?: string
   modelId?: string
   executionMode?: ChatExecutionMode
+  permissionMode?: ChatPermissionMode
 }
+
+// The SDK supports more (onRequest/acceptEdits/never/granular), but seshat-ui's
+// own UI deliberately only exposes these two ("onRequest" is retired there) -
+// matching that simplified set rather than the full backend enum.
+export type ChatPermissionMode = 'auto' | 'bypass'
 
 export type ToolResult = {
   id?: string
@@ -146,6 +152,9 @@ export type RuntimeEvent = {
   toolProgress?: RuntimeToolProgress
   permission_request?: RuntimePermissionRequest
   permissionRequest?: RuntimePermissionRequest
+  // Present on an 'execution_mode.changed' event - the authoritative signal
+  // for when the agent itself enters/exits plan mode mid-turn.
+  execution_mode?: string
   prompt_request?: RuntimePromptRequest
   promptRequest?: RuntimePromptRequest
   plan_event?: RuntimePlanEvent

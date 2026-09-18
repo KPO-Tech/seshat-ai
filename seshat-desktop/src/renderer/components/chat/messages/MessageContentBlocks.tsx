@@ -16,7 +16,7 @@ export function MessageContentBlocks({ sessionId, blocks, live = false }: { sess
         const block = item.block
         const isLast = index === items.length - 1
         if (block.type === 'text') return <TextBlock key={index} text={block.text} sessionId={sessionId} streaming={live && isLast} />
-        if (block.type === 'thinking') return <ThinkingBlock key={index} text={block.thinking} active={live && isLast} />
+        if (block.type === 'thinking') return <ThinkingBlock key={index} text={block.thinking} sessionId={sessionId} active={live && isLast} isFinalBlock={isLast} streaming={live && isLast} />
         if (block.type === 'tool_use') return <ToolRenderer key={block.id || index} sessionId={sessionId} tool={block} />
         return null
       })}
@@ -28,8 +28,15 @@ function TextBlock({ text, sessionId, streaming }: { text: string; sessionId?: s
   return <MarkdownView className="break-words" sessionId={sessionId} streaming={streaming}>{text}</MarkdownView>
 }
 
-function ThinkingBlock({ text, active }: { text: string; active: boolean }) {
-  const [open, setOpen] = useState(active)
+function ThinkingBlock({ text, sessionId, active, isFinalBlock, streaming }: { text: string; sessionId?: string; active: boolean; isFinalBlock: boolean; streaming: boolean }) {
+  // Some models (observed with GLM-4.5 via z-ai after a tool call) write
+  // their entire answer into the reasoning channel and end the turn without
+  // ever emitting a real text block. When that happens, this thinking block
+  // IS the whole response - auto-collapsing it the moment the turn ends
+  // (the normal, correct behavior when real text follows) would hide the
+  // only content the user got, making the reply look empty. So: stay open
+  // by default when this is the last block of a finished turn.
+  const [open, setOpen] = useState(active || isFinalBlock)
   // The backend sends no start/end timestamp for a thinking block, so this
   // times it client-side: the moment it first becomes the actively-streaming
   // block until the moment it stops (either the turn moves on to the next
@@ -39,14 +46,14 @@ function ThinkingBlock({ text, active }: { text: string; active: boolean }) {
   const [durationMs, setDurationMs] = useState<number | null>(null)
 
   useEffect(() => {
-    setOpen(active)
+    setOpen(active || isFinalBlock)
     if (active) {
       if (startedAtRef.current === null) startedAtRef.current = Date.now()
       setDurationMs(null)
     } else if (startedAtRef.current !== null) {
       setDurationMs(Date.now() - startedAtRef.current)
     }
-  }, [active])
+  }, [active, isFinalBlock])
 
   if (!text.trim()) return null
   return (
@@ -63,7 +70,17 @@ function ThinkingBlock({ text, active }: { text: string; active: boolean }) {
         </span>
         <span className="text-[11px] font-semibold text-[var(--text-muted)]">{open ? 'Hide' : 'Details'}</span>
       </button>
-      {open && <div className="border-t border-[var(--border-soft)] px-3 py-2 text-[12px] leading-6 text-[var(--text-secondary)]">{text}</div>}
+      {open && (
+        <div className="border-t border-[var(--border-soft)] px-3 py-2">
+          <MarkdownView
+            className="!text-[12px] !leading-6 !text-[var(--text-secondary)]"
+            sessionId={sessionId}
+            streaming={streaming}
+          >
+            {text}
+          </MarkdownView>
+        </div>
+      )}
     </div>
   )
 }

@@ -11,31 +11,60 @@ import type {
   ToolApproval,
   ToolProgress,
   ToolPromptRequest,
+  ToolResult,
+  ToolResultBlock,
   ToolUseBlock
 } from './chatTypes'
 
-export function applyStreamEvent(blocks: StreamingBlock[], event: StreamEvent): StreamingBlock[] {
+// Lets the caller (useChatWorkspace, which owns the persisted "always allow"
+// store) decide whether a given tool.permission_required should be
+// auto-approved instead of surfacing a prompt - kept out of this module so
+// streaming.ts stays a pure, store-free reducer.
+export type IsApprovalRemembered = (toolName: string, input: Record<string, unknown>) => boolean
+
+export function applyStreamEvent(blocks: StreamingBlock[], event: StreamEvent, isApprovalRemembered?: IsApprovalRemembered): StreamingBlock[] {
   if (event.event === 'done' || event.event === 'error') return blocks
-  if (event.event === 'runtime') return applyRuntimeEvent(blocks, event.data as Record<string, unknown>)
+  if (event.event === 'runtime') return applyRuntimeEvent(blocks, event.data as Record<string, unknown>, isApprovalRemembered)
 
   const data = event.data as Record<string, unknown>
   const type = String(data.type ?? '')
-  const index = typeof data.index === 'number' ? data.index : blocks.length
 
   if (type === 'content_block_start') {
     const raw = data.content_block as Record<string, unknown> | undefined
     if (!raw) return blocks
+    const index = typeof data.index === 'number' ? data.index : blocks.length
     return setBlock(blocks, index, normalizeBlock(raw, index))
   }
 
   if (type === 'content_block_delta') {
-    const delta = data.delta as Record<string, unknown> | undefined
+    const nestedDelta = objectValue(data.delta)
+    const deltaType = String(data.delta_type ?? nestedDelta?.type ?? '')
+    const textDelta = typeof data.delta === 'string'
+      ? data.delta
+      : String(nestedDelta?.text ?? nestedDelta?.thinking ?? '')
+    const explicitIndex = typeof data.index === 'number' ? data.index : undefined
+    const fallbackIndex = blocks.length - 1
+    const fallbackBlock = blocks[fallbackIndex]
+
+    if (!deltaType || deltaType === 'text_delta') {
+      const index = explicitIndex ?? (fallbackBlock?.type === 'text' ? fallbackIndex : blocks.length)
+      const current = blocks[index]
+      const text = current?.type === 'text' ? current.text : ''
+      return setBlock(blocks, index, { type: 'text', text: text + textDelta })
+    }
+
+    if (deltaType === 'thinking_delta') {
+      const index = explicitIndex ?? (fallbackBlock?.type === 'thinking' ? fallbackIndex : blocks.length)
+      const current = blocks[index]
+      const thinking = current?.type === 'thinking' ? current.thinking : ''
+      return setBlock(blocks, index, { type: 'thinking', thinking: thinking + textDelta })
+    }
+
+    const index = explicitIndex ?? fallbackIndex
     const current = blocks[index]
-    if (!current || !delta) return blocks
-    if (current.type === 'text') return setBlock(blocks, index, { ...current, text: current.text + String(delta.text ?? '') })
-    if (current.type === 'thinking') return setBlock(blocks, index, { ...current, thinking: current.thinking + String(delta.thinking ?? '') })
+    if (!current) return blocks
     if (current.type === 'tool_use') {
-      const partial = String(data.partial_json ?? delta.partial_json ?? '')
+      const partial = String(data.partial_json ?? nestedDelta?.partial_json ?? '')
       const nextPartial = `${current._partialInput ?? ''}${partial}`
       return setBlock(blocks, index, { ...current, _partialInput: nextPartial, input: tryParseObject(nextPartial) ?? current.input })
     }
@@ -44,10 +73,10 @@ export function applyStreamEvent(blocks: StreamingBlock[], event: StreamEvent): 
   return blocks
 }
 
-function applyRuntimeEvent(blocks: StreamingBlock[], data: Record<string, unknown>): StreamingBlock[] {
+function applyRuntimeEvent(blocks: StreamingBlock[], data: Record<string, unknown>, isApprovalRemembered?: IsApprovalRemembered): StreamingBlock[] {
   const type = String(data.type ?? '')
   if (type === 'plan.submitted' || type === 'plan.status_changed') return applyPlanEvent(blocks, (data.plan_event ?? data.planEvent) as RuntimePlanEvent | undefined)
-  if (type === 'tool.permission_required') return applyPermissionRequest(blocks, (data.permission_request ?? data.permissionRequest) as RuntimePermissionRequest | undefined)
+  if (type === 'tool.permission_required') return applyPermissionRequest(blocks, (data.permission_request ?? data.permissionRequest) as RuntimePermissionRequest | undefined, isApprovalRemembered)
   if (type === 'prompt.request') return applyPromptRequest(blocks, (data.prompt_request ?? data.promptRequest) as RuntimePromptRequest | undefined)
   if (type === 'task.changed') return applyTaskEvent(blocks, (data.task_event ?? data.taskEvent) as RuntimeTaskEvent | undefined)
 
@@ -96,7 +125,7 @@ function applyTaskEvent(blocks: StreamingBlock[], event?: RuntimeTaskEvent): Str
   }]
 }
 
-function applyPermissionRequest(blocks: StreamingBlock[], request?: RuntimePermissionRequest): StreamingBlock[] {
+function applyPermissionRequest(blocks: StreamingBlock[], request?: RuntimePermissionRequest, isApprovalRemembered?: IsApprovalRemembered): StreamingBlock[] {
   if (!request) return blocks
   const toolUseId = request.tool_use_id ?? request.toolUseId ?? `approval-${Date.now()}`
   const toolName = request.tool_name ?? request.toolName ?? 'tool'
@@ -106,6 +135,17 @@ function applyPermissionRequest(blocks: StreamingBlock[], request?: RuntimePermi
   const shouldAttachLatestPlan = toolName === 'exit_plan_mode' && !textValue(baseToolInput.plan_id) && !textValue(baseToolInput.planId) && Boolean(planEventId(latestPlan))
   const toolInput = shouldAttachLatestPlan ? { ...baseToolInput, plan_id: planEventId(latestPlan) } : baseToolInput
   const nextMetadata = shouldAttachLatestPlan ? { ...metadata, plan_id: planEventId(latestPlan) } : metadata
+  const index = blocks.findIndex((block) => block.type === 'tool_use' && block.id === toolUseId)
+
+  // "Always allow" from a previous prompt - auto-resolve without ever
+  // showing the card again. The actual backend approval call (the server is
+  // paused waiting for a decision) is the caller's job, same as the plan/
+  // task/session-titled special cases in useChatWorkspace's onEvent.
+  if (isApprovalRemembered?.(toolName, toolInput)) {
+    const resolved: ToolUseBlock = { type: 'tool_use', id: toolUseId, name: toolName, input: toolInput, _status: 'running' }
+    return index >= 0 ? setBlock(blocks, index, { ...blocks[index] as ToolUseBlock, ...resolved }) : [...blocks, resolved]
+  }
+
   const approval: ToolApproval = {
     toolUseId,
     toolName,
@@ -113,7 +153,6 @@ function applyPermissionRequest(blocks: StreamingBlock[], request?: RuntimePermi
     description: request.description,
     metadata: nextMetadata
   }
-  const index = blocks.findIndex((block) => block.type === 'tool_use' && block.id === toolUseId)
   const next: ToolUseBlock = {
     type: 'tool_use',
     id: toolUseId,
@@ -194,7 +233,10 @@ function applyPromptRequest(blocks: StreamingBlock[], request?: RuntimePromptReq
 
 export function mergeDoneIntoMessages(current: ChatMessage[], done: QueryDone, assistantId: string, streaming: StreamingBlock[]): ChatMessage[] {
   if (Array.isArray(done.messages) && done.messages.length > 0) {
-    return attachDoneMetadata(normalizeMessages(done.messages), done)
+    const withAttachments = preserveLocalUserAttachments(current, normalizeMessages(done.messages))
+    const folded = foldToolResults(withAttachments)
+    const withResults = attachDoneToolResults(folded, done.tool_results)
+    return attachDoneMetadata(withResults, done)
   }
   const resultById = new Map((done.tool_results ?? []).map((result) => [result.id ?? result.tool_use_id ?? '', result]))
   const content = streaming.map((block) => {
@@ -232,6 +274,102 @@ function attachDoneMetadata(messages: ChatMessage[], done: QueryDone): ChatMessa
     is_complete: message.is_complete ?? done.is_complete,
     status: message.status ?? ('sent' as const)
   } : message)
+}
+
+// The backend's authoritative session history doesn't carry the UI-only
+// metadata.attachments field, so replacing local messages with it wholesale
+// (as the done.messages branch above does) drops any attachment thumbnail
+// the moment the turn completes. Ported from seshat-ui's
+// preserveLocalUserAttachments (hooks/useChat.ts): re-attach by message id
+// first, then by matching ordinal among locally-known attachment-bearing
+// messages, then by exact text match - the backend's own messages never
+// carry this field, so id/position/text are all we have to go on.
+function preserveLocalUserAttachments(previous: ChatMessage[], messages: ChatMessage[]): ChatMessage[] {
+  const localUserMessages = previous.filter((message) => message.role === 'user' && Array.isArray(message.metadata?.attachments) && (message.metadata?.attachments?.length ?? 0) > 0)
+  if (localUserMessages.length === 0) return messages
+
+  const localById = new Map(localUserMessages.filter((message) => message.id).map((message) => [message.id, message]))
+  const used = new Set<number>()
+  let userOrdinal = 0
+
+  return messages.map((message) => {
+    if (message.role !== 'user') return message
+    const currentOrdinal = userOrdinal
+    userOrdinal += 1
+    if (message.metadata?.attachments) return message
+
+    const byId = localById.get(message.id)
+    if (byId?.metadata?.attachments) {
+      return { ...message, metadata: { ...message.metadata, attachments: byId.metadata.attachments } }
+    }
+
+    const byOrdinal = localUserMessages[currentOrdinal]
+    if (byOrdinal?.metadata?.attachments && !used.has(currentOrdinal)) {
+      used.add(currentOrdinal)
+      return { ...message, metadata: { ...message.metadata, attachments: byOrdinal.metadata.attachments } }
+    }
+
+    const text = messageText(message)
+    const matchIndex = localUserMessages.findIndex((local, index) => !used.has(index) && messageText(local) === text)
+    if (matchIndex < 0) return message
+    used.add(matchIndex)
+    return { ...message, metadata: { ...message.metadata, attachments: localUserMessages[matchIndex].metadata?.attachments } }
+  })
+}
+
+function messageText(message: ChatMessage): string {
+  return message.content.filter((block) => block.type === 'text').map((block) => block.text).join('\n').trim()
+}
+
+// The backend's session history represents a tool's result as a trailing
+// role:'user' message whose content is entirely tool_result blocks, not as
+// part of the assistant's own message. Left as-is, that reads as an empty
+// orphan message and the tool_use block it answers keeps showing no
+// result/status. Ported from seshat-ui's normalizeSessionMessages
+// (lib/chat.ts), which folds it back into the tool_use block instead.
+function foldToolResults(messages: ChatMessage[]): ChatMessage[] {
+  const folded: ChatMessage[] = []
+  const toolById = new Map<string, ToolUseBlock>()
+
+  for (const message of messages) {
+    const isPureToolResult = message.role === 'user' && message.content.length > 0 && message.content.every((block) => block.type === 'tool_result')
+    if (isPureToolResult) {
+      for (const block of message.content as ToolResultBlock[]) {
+        const tool = block.tool_use_id ? toolById.get(block.tool_use_id) : undefined
+        if (!tool) continue
+        tool._result = { content: block.content ?? '', is_error: block.is_error }
+        tool._status = block.is_error ? 'failed' : 'completed'
+      }
+      continue
+    }
+
+    const cloned: ChatMessage = { ...message, content: message.content.map((block) => block.type === 'tool_use' ? { ...block } : block) }
+    for (const block of cloned.content) {
+      if (block.type === 'tool_use') toolById.set(block.id, block)
+    }
+    folded.push(cloned)
+  }
+
+  return folded
+}
+
+// The done event's separate tool_results array is the authoritative source
+// for a result that never arrived as its own synthetic message (or should
+// override one that did) - ported from seshat-ui's attachDoneResults.
+function attachDoneToolResults(messages: ChatMessage[], results?: ToolResult[]): ChatMessage[] {
+  if (!results || results.length === 0) return messages
+  for (const result of results) {
+    const toolUseId = result.id ?? result.tool_use_id
+    if (!toolUseId) continue
+    for (const message of messages) {
+      for (const block of message.content) {
+        if (block.type !== 'tool_use' || block.id !== toolUseId) continue
+        block._result = result
+        block._status = (result.is_error ?? result.isError) ? 'failed' : 'completed'
+      }
+    }
+  }
+  return messages
 }
 
 export function normalizeMessages(messages: ChatMessage[]): ChatMessage[] {
@@ -370,4 +508,10 @@ function tryParseObject(value: string): Record<string, unknown> | null {
   } catch {
     return null
   }
+}
+
+function objectValue(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null
 }

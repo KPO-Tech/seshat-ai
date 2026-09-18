@@ -1,5 +1,5 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
-import ReactMarkdown from 'react-markdown'
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
+import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
@@ -277,18 +277,18 @@ type CodeProps = {
 export function MarkdownView({ children, className, streaming = false, sessionId }: Props) {
   const content = normalizeMathDelimiters(streaming ? sealOpenFences(children) : children)
 
-  return (
-    <div className={cx('text-[14px] leading-7 text-[var(--text-primary)]', className)}>
-      <ReactMarkdown
-        // KaTeX and Prism re-parse their whole input on every render; while
-        // streaming, `content` changes on every token, which would mean
-        // re-running both on every single chunk. Both are skipped here and
-        // only applied once the message is complete (final non-streaming
-        // render), trading a plain-text flash for smooth token-by-token
-        // rendering during the stream itself.
-        remarkPlugins={streaming ? [remarkGfm] : [remarkGfm, remarkMath]}
-        rehypePlugins={streaming ? [] : [rehypeKatex]}
-        components={{
+  // react-markdown uses the identity of each entry here as the React element
+  // type for that tag. A fresh object literal (recreated on every keystroke
+  // of a streaming message) means a fresh function identity per entry, so
+  // React treats every paragraph/table/code block as a brand-new component
+  // type on every single token and fully unmounts+remounts it instead of
+  // patching it in place - on a long streaming message with code blocks or
+  // tables, that's a lot of pointless DOM teardown/rebuild, and it's a likely
+  // contributor to streaming looking "chunky" independent of how paced the
+  // incoming text itself is. Memoizing keeps identity stable across renders
+  // (streaming/sessionId barely change), so already-rendered blocks are
+  // updated in place like any other React content.
+  const markdownComponents = useMemo<Components>(() => ({
           code({ inline, className, children, ...props }: CodeProps) {
             const match = /language-(\w+)/.exec(className || '')
             if (!inline && match && !streaming) {
@@ -378,7 +378,20 @@ export function MarkdownView({ children, className, streaming = false, sessionId
               </a>
             )
           }
-        }}
+        }), [streaming, sessionId])
+
+  return (
+    <div className={cx('text-[14px] leading-7 text-[var(--text-primary)]', className)}>
+      <ReactMarkdown
+        // KaTeX and Prism re-parse their whole input on every render; while
+        // streaming, `content` changes on every token, which would mean
+        // re-running both on every single chunk. Both are skipped here and
+        // only applied once the message is complete (final non-streaming
+        // render), trading a plain-text flash for smooth token-by-token
+        // rendering during the stream itself.
+        remarkPlugins={streaming ? [remarkGfm] : [remarkGfm, remarkMath]}
+        rehypePlugins={streaming ? [] : [rehypeKatex]}
+        components={markdownComponents}
       >
         {content}
       </ReactMarkdown>

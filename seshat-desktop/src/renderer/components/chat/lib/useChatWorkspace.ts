@@ -4,10 +4,12 @@ import { useBrowserStore } from '@renderer/stores/browser'
 import { useTerminalStore } from '@renderer/stores/terminal'
 import { useTaskStore } from '@renderer/stores/tasks'
 import { useAgentStore } from '@renderer/stores/agents'
-import { createSession, fetchSession, fetchSessions, interruptSession, patchSessionMetadata, streamQuery, type RetryableError } from './chatApi'
+import { createSession, decideToolPermission, fetchSession, fetchSessions, interruptSession, patchSessionMetadata, streamQuery, type RetryableError } from './chatApi'
 import { applyStreamEvent, mergeDoneIntoMessages } from './streaming'
+import { StreamPresenter } from './streamPresenter'
+import { permissionSignature, useRememberedApprovalsStore } from './rememberedApprovals'
 import { uploadSessionFile } from '../attachments/attachmentApi'
-import type { ChatContentBlock, ChatExecutionMode, ChatMessage, MessageAttachment, QueryDone, RuntimeEvent, StreamingBlock } from './chatTypes'
+import type { ChatContentBlock, ChatExecutionMode, ChatMessage, ChatPermissionMode, MessageAttachment, QueryDone, RuntimeEvent, StreamingBlock } from './chatTypes'
 
 // A stable reference for "no streaming blocks" - returning a fresh `[]`
 // literal from inside a zustand selector breaks useSyncExternalStore's
@@ -51,19 +53,17 @@ export function useChatWorkspace() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [draftExecutionMode, setDraftExecutionMode] = useState<ChatExecutionMode>('execute')
+  const [draftPermissionMode, setDraftPermissionMode] = useState<ChatPermissionMode>('auto')
   const [compactionNotice, setCompactionNotice] = useState<{ preTokens: number; postTokens: number } | null>(null)
   const compactionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const abortRef = useRef<Record<string, AbortController>>({})
-  // Tracks a pending requestAnimationFrame per session, batching live-block
-  // publishes to the chat/browser/task/agent stores to once per frame -
-  // without this, every SSE token triggers 4 store updates + re-renders.
-  const syncRafRef = useRef<Record<string, number>>({})
 
   const activeSession = useMemo(
     () => sessions.find((session) => session.id === activeSessionId) ?? null,
     [activeSessionId, sessions]
   )
   const executionMode = activeSession?.executionMode ?? draftExecutionMode
+  const permissionMode = activeSession?.permissionMode ?? draftPermissionMode
 
   useEffect(() => {
     let cancelled = false
@@ -108,6 +108,22 @@ export function useChatWorkspace() {
     }
   }, [activeSessionId, updateSession])
 
+  const setPermissionMode = useCallback(async (mode: ChatPermissionMode) => {
+    setError(null)
+    setDraftPermissionMode(mode)
+    if (!activeSessionId) return
+
+    const previous = useChatStore.getState().sessions.find((session) => session.id === activeSessionId)?.permissionMode ?? 'auto'
+    updateSession(activeSessionId, { permissionMode: mode, updatedAt: new Date().toISOString() })
+    try {
+      await patchSessionMetadata(activeSessionId, { permissionMode: mode })
+    } catch (err) {
+      updateSession(activeSessionId, { permissionMode: previous, updatedAt: new Date().toISOString() })
+      setDraftPermissionMode(previous)
+      setError(err instanceof Error ? err.message : 'Failed to update permission mode.')
+    }
+  }, [activeSessionId, updateSession])
+
   const send = useCallback(async (
     prompt: string,
     model?: ChatModelSelection,
@@ -124,7 +140,7 @@ export function useChatWorkspace() {
     if (!sessionId) {
       try {
         sessionId = await createSession(model)
-        await patchSessionMetadata(sessionId, { executionMode: draftExecutionMode })
+        await patchSessionMetadata(sessionId, { executionMode: draftExecutionMode, permissionMode: draftPermissionMode })
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to create session.')
         return
@@ -138,25 +154,40 @@ export function useChatWorkspace() {
         status: 'idle',
         providerSettingId: model?.providerSettingId,
         modelId: model?.modelId,
-        executionMode: draftExecutionMode
+        executionMode: draftExecutionMode,
+        permissionMode: draftPermissionMode
       })
       setActiveSessionId(sessionId)
     }
+    // Marking the session as streaming has to happen before the first
+    // `await` below, not after the upload/attach round-trips finish - a
+    // second send() call (e.g. a double-clicked Retry) can otherwise read
+    // isSessionStreaming as still false during that window and fire a
+    // second turn for the same session.
     if (useChatStore.getState().isSessionStreaming(sessionId)) return
+    setIsStreaming(sessionId, true)
     await useTerminalStore.getState().attachSession(sessionId)
     const browserStore = useBrowserStore.getState()
     const taskStore = useTaskStore.getState()
     const agentStore = useAgentStore.getState()
     clearStreaming(sessionId)
 
+    // A single failed upload must not discard the typed text and every
+    // other successfully-uploaded file - only the files that actually
+    // failed are dropped, with a non-fatal notice about which ones.
     let attachments = existingAttachments
-    try {
-      if (files.length > 0) {
-        attachments = await Promise.all(files.map((file) => uploadSessionFile(sessionId, file)))
+    if (files.length > 0) {
+      const results = await Promise.allSettled(files.map((file) => uploadSessionFile(sessionId, file)))
+      const uploaded: MessageAttachment[] = []
+      const failedNames: string[] = []
+      results.forEach((result, index) => {
+        if (result.status === 'fulfilled') uploaded.push(result.value)
+        else failedNames.push(files[index].name)
+      })
+      attachments = [...existingAttachments, ...uploaded]
+      if (failedNames.length > 0) {
+        setError(`Failed to upload ${failedNames.join(', ')}. Sending the rest.`)
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to upload attachments.')
-      return
     }
 
     const userMessage: ChatMessage = {
@@ -164,7 +195,7 @@ export function useChatWorkspace() {
       role: 'user',
       content: text ? [{ type: 'text', text }] : [],
       metadata: attachments.length > 0 ? { attachments } : undefined,
-      status: 'sent'
+      status: 'sending'
     }
     const assistantId = crypto.randomUUID()
     const assistantMessage: ChatMessage = {
@@ -177,7 +208,6 @@ export function useChatWorkspace() {
 
     const controller = new AbortController()
     abortRef.current[sessionId] = controller
-    setIsStreaming(sessionId, true)
 
     // Watchdog: aborts the turn if no server activity (chunk/runtime event)
     // arrives within WATCHDOG_TIMEOUT_MS of the last one - covers the case
@@ -195,42 +225,21 @@ export function useChatWorkspace() {
     }
     resetWatchdog()
 
-    // Cancel any stale RAF from a prior turn on this session (defensive).
-    const staleRaf = syncRafRef.current[sessionId]
-    if (staleRaf !== undefined) {
-      cancelAnimationFrame(staleRaf)
-      delete syncRafRef.current[sessionId]
-    }
-
     let liveBlocks = useChatStore.getState().getStreaming(sessionId)
-    // scheduleSync batches the 4 store publishes (chat/browser/task/agent)
-    // to once per animation frame - without this, every streamed token
-    // triggers 4 store updates + re-renders. flushSync cancels any pending
-    // frame and publishes immediately (used at turn boundaries: done/error/stop).
-    const publishLiveBlocks = () => {
+    let receivedBlocks = liveBlocks
+    const publishLiveBlocks = (blocks: StreamingBlock[]) => {
+      liveBlocks = blocks
       setStreaming(sessionId, liveBlocks)
       browserStore.ingestBlocks(sessionId, liveBlocks)
       taskStore.ingestBlocks(sessionId, liveBlocks)
       agentStore.ingestBlocks(sessionId, liveBlocks)
     }
-    const scheduleSync = () => {
-      if (syncRafRef.current[sessionId] !== undefined) return
-      syncRafRef.current[sessionId] = requestAnimationFrame(() => {
-        delete syncRafRef.current[sessionId]
-        publishLiveBlocks()
-      })
-    }
-    const flushSync = () => {
-      const pending = syncRafRef.current[sessionId]
-      if (pending !== undefined) {
-        cancelAnimationFrame(pending)
-        delete syncRafRef.current[sessionId]
-      }
-      publishLiveBlocks()
-    }
+    const presenter = new StreamPresenter(publishLiveBlocks)
+    let completedResult: QueryDone | null = null
 
     try {
       let retryAttempt = 0
+      let userMessageMarkedSent = false
 
       while (true) {
         let streamError: unknown = null
@@ -256,15 +265,7 @@ export function useChatWorkspace() {
             onEvent: (event) => {
               if (event.event === 'done') {
                 if (watchdogTimer !== null) clearTimeout(watchdogTimer)
-                const done = event.data as QueryDone
-                const current = useChatStore.getState().sessions.find((session) => session.id === sessionId)?.messages ?? []
-                const merged = mergeDoneIntoMessages(current, done, assistantId, liveBlocks)
-                setMessages(sessionId, merged)
-                browserStore.ingestBlocks(sessionId, contentBlocksFromMessages(merged))
-                taskStore.ingestBlocks(sessionId, contentBlocksFromMessages(merged))
-                agentStore.ingestBlocks(sessionId, contentBlocksFromMessages(merged))
-                updateSession(sessionId, { status: 'completed', updatedAt: new Date().toISOString() })
-                flushSync()
+                completedResult = event.data as QueryDone
                 return
               }
               if (event.event === 'error') {
@@ -273,6 +274,13 @@ export function useChatWorkspace() {
               }
               receivedServerActivity = true
               resetWatchdog()
+              if (!userMessageMarkedSent) {
+                // First confirmed sign the backend actually picked up this
+                // turn - clears the "sending" dim state on the user bubble.
+                userMessageMarkedSent = true
+                const current = useChatStore.getState().sessions.find((session) => session.id === sessionId)?.messages ?? []
+                setMessages(sessionId, current.map((message) => message.id === userMessage.id ? { ...message, status: 'sent' as const } : message))
+              }
               if (event.event === 'session_titled') {
                 const data = event.data as { session_id?: string; title?: string }
                 if (data.session_id === sessionId && data.title?.trim()) {
@@ -282,16 +290,43 @@ export function useChatWorkspace() {
               }
               if (event.event === 'runtime') {
                 const runtimeData = event.data as RuntimeEvent
-                agentStore.ingestEvent(sessionId, runtimeData, liveBlocks)
+                agentStore.ingestEvent(sessionId, runtimeData, receivedBlocks)
                 const compaction = runtimeData.compaction_event ?? runtimeData.compactionEvent
                 if (compaction) {
                   if (compactionTimerRef.current !== null) clearTimeout(compactionTimerRef.current)
                   setCompactionNotice({ preTokens: compaction.pre_compact_tokens, postTokens: compaction.post_compact_tokens })
                   compactionTimerRef.current = setTimeout(() => setCompactionNotice(null), 6000)
                 }
+                // Authoritative plan/execute signal, emitted the instant the
+                // agent's enter_plan_mode/exit_plan_mode tool call completes -
+                // without this, the composer's toggle only reflects what the
+                // user themselves last clicked and goes stale the moment the
+                // agent changes mode on its own mid-turn.
+                if (runtimeData.type === 'execution_mode.changed') {
+                  updateSession(sessionId, {
+                    executionMode: runtimeData.execution_mode === 'plan' ? 'plan' : 'execute',
+                    updatedAt: new Date().toISOString()
+                  })
+                }
+                if (runtimeData.type === 'tool.permission_required') {
+                  const request = runtimeData.permission_request ?? runtimeData.permissionRequest
+                  const toolUseId = request?.tool_use_id ?? request?.toolUseId
+                  const toolName = request?.tool_name ?? request?.toolName
+                  const toolInput = request?.tool_input ?? request?.toolInput ?? {}
+                  if (toolUseId && toolName && useRememberedApprovalsStore.getState().isRemembered(permissionSignature(toolName, toolInput))) {
+                    // The server is paused waiting for this decision - "always
+                    // allow" means resolving it silently instead of waiting on
+                    // a card the user already said not to show again.
+                    void decideToolPermission({ toolUseId, sessionId, approved: true, remember: true }).catch(() => {})
+                  }
+                }
               }
-              liveBlocks = applyStreamEvent(liveBlocks, event)
-              scheduleSync()
+              receivedBlocks = applyStreamEvent(
+                receivedBlocks,
+                event,
+                (toolName, input) => useRememberedApprovalsStore.getState().isRemembered(permissionSignature(toolName, input))
+              )
+              presenter.update(receivedBlocks)
             }
           })
         } catch (streamErr) {
@@ -312,14 +347,25 @@ export function useChatWorkspace() {
         if (retryAttempt < MAX_RETRIES && isRetryableNetworkDrop && !receivedServerActivity) {
           retryAttempt += 1
           const delay = RETRY_BASE_MS * (2 ** (retryAttempt - 1)) // 1s, 2s, 4s
-          liveBlocks = [{ type: 'text', text: `> Connection lost. Reconnecting (attempt ${retryAttempt}/${MAX_RETRIES})...` }]
-          flushSync()
+          receivedBlocks = [{ type: 'text', text: `> Connection lost. Reconnecting (attempt ${retryAttempt}/${MAX_RETRIES})...` }]
+          presenter.flush(receivedBlocks)
           await new Promise<void>((resolve) => setTimeout(resolve, delay))
           if (controller.signal.aborted) break
           continue
         }
 
         throw streamError
+      }
+
+      if (completedResult) {
+        await presenter.drain()
+        const current = useChatStore.getState().sessions.find((session) => session.id === sessionId)?.messages ?? []
+        const merged = mergeDoneIntoMessages(current, completedResult, assistantId, receivedBlocks)
+        setMessages(sessionId, merged)
+        browserStore.ingestBlocks(sessionId, contentBlocksFromMessages(merged))
+        taskStore.ingestBlocks(sessionId, contentBlocksFromMessages(merged))
+        agentStore.ingestBlocks(sessionId, contentBlocksFromMessages(merged))
+        updateSession(sessionId, { status: 'completed', updatedAt: new Date().toISOString() })
       }
 
       const refreshed = await fetchSession(sessionId).catch(() => null)
@@ -334,7 +380,7 @@ export function useChatWorkspace() {
       // user's choice, so unlike a real Stop it must surface as a visible
       // failure rather than silently preserving partial content as "done."
       const isUserStop = !watchdogTimedOut && controller.signal.aborted
-      flushSync()
+      presenter.flush(receivedBlocks)
       const current = useChatStore.getState().sessions.find((session) => session.id === sessionId)?.messages ?? []
       if (isUserStop) {
         setMessages(sessionId, current.map((message) => message.id === assistantId ? {
@@ -356,16 +402,12 @@ export function useChatWorkspace() {
       }
     } finally {
       if (watchdogTimer !== null) clearTimeout(watchdogTimer)
-      const pending = syncRafRef.current[sessionId]
-      if (pending !== undefined) {
-        cancelAnimationFrame(pending)
-        delete syncRafRef.current[sessionId]
-      }
+      presenter.cancel()
       setIsStreaming(sessionId, false)
       clearStreaming(sessionId)
       delete abortRef.current[sessionId]
     }
-  }, [activeSessionId, addMessage, clearStreaming, draftExecutionMode, setActiveSessionId, setIsStreaming, setMessages, setStreaming, updateSession, upsertSession])
+  }, [activeSessionId, addMessage, clearStreaming, draftExecutionMode, draftPermissionMode, setActiveSessionId, setIsStreaming, setMessages, setStreaming, updateSession, upsertSession])
 
   const stop = useCallback(async (sessionId = activeSessionId) => {
     if (!sessionId) return
@@ -384,7 +426,7 @@ export function useChatWorkspace() {
     }
   }, [])
 
-  return { sessions, activeSession, streaming, isStreaming, loading, error, executionMode, compactionNotice, openSession, send, stop, setExecutionMode }
+  return { sessions, activeSession, streaming, isStreaming, loading, error, executionMode, permissionMode, compactionNotice, openSession, send, stop, setExecutionMode, setPermissionMode }
 }
 
 async function pollForGeneratedTitle(
