@@ -30,7 +30,12 @@ export function resolveAskUserQuestions(input: Record<string, unknown>, prompt?:
     }]
   }
 
-  const options = (prompt.options ?? [])
+  // A free-text prompt should always render as a plain textarea, even if
+  // the backend somehow also attached an `options` array (a free-text
+  // question shouldn't have options in the first place, but a "text" type
+  // is the more explicit signal and takes precedence over whatever
+  // `options` happens to contain).
+  const options = prompt.type === 'text' ? [] : (prompt.options ?? [])
     .filter((option) => String(option.value ?? option.label) !== '__other__')
     .map((option) => ({
       label: option.label,
@@ -42,7 +47,7 @@ export function resolveAskUserQuestions(input: Record<string, unknown>, prompt?:
     header,
     question: prompt.message,
     options,
-    multiSelect: Boolean(prompt.metadata?.multiSelect)
+    multiSelect: prompt.type === 'text' ? false : Boolean(prompt.metadata?.multiSelect)
   }]
 }
 

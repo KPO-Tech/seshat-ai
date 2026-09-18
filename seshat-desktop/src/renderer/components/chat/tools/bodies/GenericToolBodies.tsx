@@ -17,10 +17,24 @@ export function JsonBody({ tool }: { tool: ToolUseBlock }) {
 }
 
 export function ProseBody({ tool }: { tool: ToolUseBlock }) {
-  if (!tool._result?.content) return <GenericBody tool={tool} />
+  const result = tool._result
+  if (!result?.content) return <GenericBody tool={tool} />
+  if (result.is_error || result.isError) return <CodePanel title="Error" value={result.content} />
+  if (looksStructured(result.content)) return <CodePanel title="Result" value={prettyJsonOrRaw(result.content)} />
   return (
     <div className="rounded-md bg-[var(--surface-muted)] px-3 py-2 text-[12px] leading-6 text-[var(--text-secondary)] whitespace-pre-wrap">
-      {tool._result.content}
+      {result.content}
     </div>
   )
+}
+
+export function looksStructured(content: string) {
+  const trimmed = content.trim()
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return false
+  try {
+    JSON.parse(trimmed)
+    return true
+  } catch {
+    return false
+  }
 }

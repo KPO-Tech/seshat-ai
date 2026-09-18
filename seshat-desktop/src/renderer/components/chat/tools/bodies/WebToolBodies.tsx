@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import type { ToolUseBlock } from '../../lib/chatTypes'
+import { openInAppBrowser, shouldOpenInAppBrowser } from '@renderer/lib/openInAppBrowser'
 import { CodePanel, formatDuration, hostFromUrl } from '../ToolDetails'
 
-export function WebSearchBody({ tool }: { tool: ToolUseBlock }) {
+export function WebSearchBody({ tool, sessionId }: { tool: ToolUseBlock; sessionId?: string }) {
   const hits = parseWebSearchHits(tool._result?.content ?? '')
   const [showAll, setShowAll] = useState(false)
   const visibleHits = showAll ? hits : hits.slice(0, 5)
@@ -21,7 +22,18 @@ export function WebSearchBody({ tool }: { tool: ToolUseBlock }) {
       {visibleHits.length > 0 ? (
         <div className="no-scrollbar max-h-[240px] overflow-y-auto">
           {visibleHits.map((hit, index) => (
-            <a key={`${hit.url}-${index}`} href={hit.url} target="_blank" rel="noreferrer" className="flex items-center gap-2.5 border-b border-[var(--border-soft)] px-3 py-2 last:border-b-0 hover:bg-[var(--surface-panel)]">
+            <a
+              key={`${hit.url}-${index}`}
+              href={hit.url}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-2.5 border-b border-[var(--border-soft)] px-3 py-2 last:border-b-0 hover:bg-[var(--surface-panel)]"
+              onClick={(event) => {
+                if (!shouldOpenInAppBrowser(event, hit.url)) return
+                event.preventDefault()
+                openInAppBrowser(hit.url, sessionId)
+              }}
+            >
               <Favicon domain={hostFromUrl(hit.url)} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[12px] font-semibold text-[var(--text-primary)]">{hit.title || hit.url}</span>
@@ -43,7 +55,7 @@ export function WebSearchBody({ tool }: { tool: ToolUseBlock }) {
   )
 }
 
-export function WebFetchBody({ tool }: { tool: ToolUseBlock }) {
+export function WebFetchBody({ tool, sessionId }: { tool: ToolUseBlock; sessionId?: string }) {
   const url = typeof tool.input.url === 'string' ? tool.input.url : ''
   const parsed = parseFetchResult(tool._result?.content ?? '')
   const source = parsed.fetchedFrom || url
@@ -52,7 +64,21 @@ export function WebFetchBody({ tool }: { tool: ToolUseBlock }) {
   return (
     <div className="overflow-hidden rounded-md border border-[var(--border-soft)] bg-[var(--surface-muted)]">
       <div className="flex items-center justify-between gap-3 border-b border-[var(--border-soft)] px-3 py-2">
-        {source ? <a href={source} target="_blank" rel="noreferrer" className="truncate text-[12px] font-semibold text-[var(--text-primary)] hover:text-[var(--accent-primary)]">{source}</a> : <span className="text-[12px] font-semibold">Web Fetch</span>}
+        {source ? (
+          <a
+            href={source}
+            target="_blank"
+            rel="noreferrer"
+            className="truncate text-[12px] font-semibold text-[var(--text-primary)] hover:text-[var(--accent-primary)]"
+            onClick={(event) => {
+              if (!shouldOpenInAppBrowser(event, source)) return
+              event.preventDefault()
+              openInAppBrowser(source, sessionId)
+            }}
+          >
+            {source}
+          </a>
+        ) : <span className="text-[12px] font-semibold">Web Fetch</span>}
         {stat && <span className="shrink-0 text-[10.5px] text-[var(--text-muted)]">{stat}</span>}
       </div>
       {tool._result?.is_error || tool._result?.isError ? <CodePanel title="Error" value={tool._result.content} /> : <CodePanel title="Extraction" value={parsed.content} />}

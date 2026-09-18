@@ -9,7 +9,7 @@ export type ToolCatalogEntry = {
   silent?: boolean
   groupable?: boolean
   hidden?: boolean
-  body?: 'generic' | 'json' | 'prose' | 'web_search' | 'web_fetch' | 'rag' | 'mcp' | 'ask_user' | 'plan' | 'memory' | 'automation' | 'image' | 'audio' | 'transcription'
+  body?: 'generic' | 'json' | 'prose' | 'web_search' | 'web_fetch' | 'rag' | 'mcp' | 'ask_user' | 'plan' | 'memory' | 'automation' | 'image' | 'audio' | 'transcription' | 'read' | 'grep' | 'glob' | 'list_directory'
   snippet?: (tool: ToolUseBlock) => string
 }
 
@@ -17,9 +17,9 @@ const registry: Record<string, ToolCatalogEntry> = {
   read: fileReadEntry('Read'),
   read_file: fileReadEntry('Read'),
   file_read: fileReadEntry('Read'),
-  list_directory: { label: 'List Directory', category: 'read', silent: true, snippet: (tool) => str(tool, 'path') },
-  glob: { label: 'Glob', category: 'search', silent: true, snippet: (tool) => str(tool, 'pattern') },
-  grep: { label: 'Grep', category: 'search', silent: true, snippet: (tool) => str(tool, 'pattern') },
+  list_directory: { label: 'List Directory', category: 'read', silent: true, body: 'list_directory', snippet: (tool) => str(tool, 'path') },
+  glob: { label: 'Glob', category: 'search', silent: true, body: 'glob', snippet: (tool) => str(tool, 'pattern') },
+  grep: { label: 'Grep', category: 'search', silent: true, body: 'grep', snippet: (tool) => str(tool, 'pattern') },
 
   web_search: { label: 'Web Search', category: 'search', groupable: false, body: 'web_search', snippet: (tool) => str(tool, 'query') },
   web_fetch: { label: 'Web Fetch', category: 'search', groupable: false, body: 'web_fetch', snippet: (tool) => hostOrValue(str(tool, 'url')) },
@@ -125,7 +125,7 @@ export function toolCategory(name: string): ToolCategory {
 }
 
 function fileReadEntry(label: string): ToolCatalogEntry {
-  return { label, category: 'read', silent: true, snippet: (tool) => basename(str(tool, 'file_path') || str(tool, 'path')) }
+  return { label, category: 'read', silent: true, body: 'read', snippet: (tool) => basename(str(tool, 'file_path') || str(tool, 'path')) }
 }
 
 function notebookEntry(label: string): ToolCatalogEntry {

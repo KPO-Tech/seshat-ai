@@ -28,7 +28,10 @@ export function AskUserPromptBody({ sessionId, tool }: { sessionId?: string; too
   const question = questions[viewIndex]
   const isActive = viewIndex === activeIndex
   const isLast = viewIndex === questions.length - 1
-  const canSubmit = !busy && Boolean(sessionId) && isActive && (Boolean(customAnswer.trim()) || selectedValues.length > 0)
+  // Reviewing an already-answered question (!isActive) must never be a
+  // dead end - "Next" just has to step forward locally back to the live
+  // question, so it can't require a freshly drafted answer to be enabled.
+  const canSubmit = !busy && Boolean(sessionId) && (!isActive || Boolean(customAnswer.trim()) || selectedValues.length > 0)
 
   function toggleValue(value: unknown) {
     setCustomAnswer('')
@@ -37,6 +40,16 @@ export function AskUserPromptBody({ sessionId, tool }: { sessionId?: string; too
       return
     }
     setSelectedValues((current) => current.some((item) => Object.is(item, value)) ? current.filter((item) => !Object.is(item, value)) : [...current, value])
+  }
+
+  function goNext() {
+    if (!isActive) {
+      // Already answered - the "Next"/"Submit" action just steps forward
+      // locally through history, it must not re-send anything.
+      setViewIndex((index) => Math.min(questions.length - 1, index + 1))
+      return
+    }
+    void submit()
   }
 
   async function submit(cancelled = false) {
@@ -138,7 +151,7 @@ export function AskUserPromptBody({ sessionId, tool }: { sessionId?: string; too
           <button type="button" className="rounded-md border border-[var(--border-soft)] px-3 py-1.5 text-[12px] font-semibold text-[var(--text-muted)] disabled:opacity-40" disabled={viewIndex === 0 || busy} onClick={() => setViewIndex((index) => Math.max(0, index - 1))}>Previous</button>
           <div className="flex items-center gap-2">
             <button type="button" className="rounded-md border border-[var(--border-soft)] px-3 py-1.5 text-[12px] font-semibold text-[var(--text-muted)] disabled:opacity-40" disabled={busy || !sessionId} onClick={() => void submit(true)}>Cancel</button>
-            <button type="button" className="rounded-md border border-[var(--accent-primary)]/45 bg-[var(--accent-primary)]/12 px-3 py-1.5 text-[12px] font-semibold text-[var(--accent-primary)] disabled:opacity-40" disabled={!canSubmit} onClick={() => void submit()}>{busy ? 'Sending' : isLast ? 'Submit' : 'Next'}</button>
+            <button type="button" className="rounded-md border border-[var(--accent-primary)]/45 bg-[var(--accent-primary)]/12 px-3 py-1.5 text-[12px] font-semibold text-[var(--accent-primary)] disabled:opacity-40" disabled={!canSubmit} onClick={goNext}>{busy ? 'Sending' : isLast ? 'Submit' : 'Next'}</button>
           </div>
         </div>
       </div>

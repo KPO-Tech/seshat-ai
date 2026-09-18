@@ -55,6 +55,11 @@ function normalizeToolName(value: string) {
   return value.toLowerCase().replace(/^mcp__/, '').replace(/__/g, '_')
 }
 
+// Bidirectional: a short bare tool name (e.g. "write") won't contain a
+// longer alias needle ("write_file"), but the needle contains it - matching
+// only one direction silently dropped "write" out of live_workspace/editor
+// entirely (it matched none of apply_patch/edit/write_file/file_write/...),
+// so every file write rendered as a raw JSON card instead of a diff.
 function matchesAny(value: string, needles: string[]) {
-  return needles.some((needle) => value.includes(needle))
+  return needles.some((needle) => value.includes(needle) || needle.includes(value))
 }

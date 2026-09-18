@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { decideToolPermission, respondToPrompt } from '../lib/chatApi'
+import { permissionSignature, useRememberedApprovalsStore } from '../lib/rememberedApprovals'
 import type { ToolUseBlock } from '../lib/chatTypes'
 import { AskUserPromptBody } from './askUser/AskUserPromptBody'
 import { AskUserSummary } from './askUser/AskUserSummary'
 import { GenericBody, JsonBody, ProseBody } from './bodies/GenericToolBodies'
+import { GlobBody, GrepBody, ListDirectoryBody, ReadBody } from './bodies/FileToolBodies'
 import { McpBody, RagBody } from './bodies/KnowledgeToolBodies'
 import { AutomationToolBody, MemoryToolBody } from './bodies/StructuredToolBodies'
 import { WebFetchBody, WebSearchBody } from './bodies/WebToolBodies'
@@ -21,8 +23,8 @@ export function ToolBody({ sessionId, tool }: { sessionId?: string; tool: ToolUs
   if (tool._prompt && !tool._result?.content) return <PromptBody sessionId={sessionId} tool={tool} />
 
   const body = toolEntry(tool.name).body ?? 'generic'
-  if (body === 'web_search') return <WebSearchBody tool={tool} />
-  if (body === 'web_fetch') return <WebFetchBody tool={tool} />
+  if (body === 'web_search') return <WebSearchBody tool={tool} sessionId={sessionId} />
+  if (body === 'web_fetch') return <WebFetchBody tool={tool} sessionId={sessionId} />
   if (body === 'rag') return <RagBody tool={tool} />
   if (body === 'mcp') return <McpBody tool={tool} />
   if (body === 'ask_user') return <AskUserBody tool={tool} />
@@ -33,6 +35,10 @@ export function ToolBody({ sessionId, tool }: { sessionId?: string; tool: ToolUs
   if (body === 'transcription') return <TranscriptionToolBody tool={tool} />
   if (body === 'json') return <JsonBody tool={tool} />
   if (body === 'prose') return <ProseBody tool={tool} />
+  if (body === 'read') return <ReadBody tool={tool} />
+  if (body === 'grep') return <GrepBody tool={tool} />
+  if (body === 'glob') return <GlobBody tool={tool} />
+  if (body === 'list_directory') return <ListDirectoryBody tool={tool} />
   return <GenericBody tool={tool} />
 }
 
@@ -57,6 +63,9 @@ function ApprovalBody({ sessionId, tool }: { sessionId?: string; tool: ToolUseBl
         reason: approved ? '' : reason.trim(),
         planId: planIdFromTool(tool) || undefined
       })
+      if (approved && remember) {
+        useRememberedApprovalsStore.getState().remember(permissionSignature(approvalRequest.toolName, approvalRequest.toolInput))
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Decision failed.')
       setBusy(null)

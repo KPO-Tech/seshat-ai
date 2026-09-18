@@ -24,8 +24,8 @@ type PatchHunk = {
 }
 
 export function EditorLiveView({ tool }: { tool: ToolUseBlock }) {
-  const edit = editorData(tool)
-  const failed = tool._result?.is_error || tool._result?.isError || tool._progress?.stage === 'failed'
+  const failed = Boolean(tool._result?.is_error || tool._result?.isError || tool._progress?.stage === 'failed')
+  const edit = editorData(tool, failed)
 
   return (
     <div className="overflow-hidden rounded-lg border border-[var(--border-soft)] bg-[var(--surface-panel)]">
@@ -56,6 +56,11 @@ export function EditorLiveView({ tool }: { tool: ToolUseBlock }) {
       ) : edit.raw ? (
         <div className="p-3">
           <CodePanel title="Change" value={edit.raw} />
+        </div>
+      ) : failed ? (
+        <div className="flex items-center gap-2 px-3 py-3 text-[12px] font-medium text-[var(--accent-danger)]">
+          <span className="size-2 rounded-full bg-[var(--accent-danger)]" />
+          Edit failed
         </div>
       ) : (
         <div className="flex items-center gap-2 px-3 py-3 text-[12px] font-medium text-[var(--text-muted)]">
@@ -135,15 +140,25 @@ function PatchSummary({ lines }: { lines: string[] }) {
   )
 }
 
-function editorData(tool: ToolUseBlock) {
+export function editorData(tool: ToolUseBlock, failed: boolean) {
   const metadata = { ...tool._result?.metadata, ...tool._progress?.metadata }
   const input = { ...tool.input, ...tool._progress?.input }
   const filePath = firstText(input.file_path, input.path, input.file, metadata.file_path, metadata.path, metadata.filename)
   const action = actionLabel(tool.name)
-  const diff = resolveDiff(input, metadata)
+  // A failed edit has no real structured_patch/git_diff - only resolveDiff's
+  // last-resort fallback (diffing the model's proposed old_string/new_string
+  // input) can still produce something here, and that's a diff of a change
+  // that was never actually applied. Showing it as if it succeeded would be
+  // actively misleading, so bail out and let the error panel below take over.
+  const diff = failed ? null : resolveDiff(input, metadata)
   const resultText = tool._result?.content ?? tool._progress?.result ?? ''
   const patchLines = patchSummaryLines(resultText)
-  const raw = diff || patchLines.length > 0 ? '' : prettyJsonOrRaw(resultText || text(input.patch) || text(input.diff) || text(input.content))
+  // Same reasoning as `diff` above: with no result text, this would
+  // otherwise fall back to the model's merely-proposed patch/diff/content
+  // input and show it as an applied "Change" on a call that actually failed.
+  const raw = failed
+    ? ''
+    : diff || patchLines.length > 0 ? '' : prettyJsonOrRaw(resultText || text(input.patch) || text(input.diff) || text(input.content))
 
   return {
     action,
