@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react'
 import { ChatModelSelect } from './ChatModelSelect'
 import { DraftAttachments } from './attachments/DraftAttachments'
+import { transcribeAudio } from './attachments/attachmentApi'
+import { startWavRecording, type WavRecording } from '@renderer/lib/wavRecorder'
 import type { ChatModelChoice } from './lib/chatModels'
 
 const actionChips = [
@@ -17,8 +19,10 @@ type ChatInputProps = {
   modelChoices?: ChatModelChoice[]
   selectedModelId?: string
   modelsLoading?: boolean
+  streaming?: boolean
   onModelChange?: (id: string) => void
   onSend: (text: string, files: File[]) => Promise<void> | void
+  onStop?: () => void
 }
 
 export function ChatInput({
@@ -27,33 +31,97 @@ export function ChatInput({
   modelChoices = [],
   selectedModelId = '',
   modelsLoading = false,
+  streaming = false,
   onModelChange,
-  onSend
+  onSend,
+  onStop
 }: ChatInputProps) {
   const [draft, setDraft] = useState('')
   const [files, setFiles] = useState<File[]>([])
   const [sending, setSending] = useState(false)
   const [dragging, setDragging] = useState(false)
+  const [recordingState, setRecordingState] = useState<'idle' | 'recording' | 'transcribing'>('idle')
+  const [recordError, setRecordError] = useState<string | null>(null)
   const ref = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const wavRecordingRef = useRef<WavRecording | null>(null)
+  const micStreamRef = useRef<MediaStream | null>(null)
+
+  // Release the mic if the component unmounts mid-recording.
+  useEffect(() => {
+    return () => {
+      micStreamRef.current?.getTracks().forEach((track) => track.stop())
+    }
+  }, [])
 
   useEffect(() => {
     const element = ref.current
     if (!element) return
+    if (!draft) {
+      // Let the CSS min-height (one line) take over instead of measuring -
+      // an empty textarea's scrollHeight can read taller than one line in
+      // some layouts, which made the input look oversized before typing.
+      element.style.height = ''
+      return
+    }
     element.style.height = '0px'
     element.style.height = `${Math.min(element.scrollHeight, compact ? 140 : 180)}px`
   }, [draft, compact])
 
   async function submit() {
     const text = draft.trim()
-    if ((!text && files.length === 0) || disabled || sending) return
+    if ((!text && files.length === 0) || disabled || streaming || sending) return
+    // onSend doesn't resolve until the whole turn finishes (full generation,
+    // tool calls included) - clearing the draft only has to wait for the
+    // submission to be handed off, not for the reply to finish, or the
+    // textarea would keep showing the old prompt for the entire generation.
+    const pendingFiles = files
+    setDraft('')
+    setFiles([])
     setSending(true)
     try {
-      await onSend(text, files)
-      setDraft('')
-      setFiles([])
+      await onSend(text, pendingFiles)
     } finally {
       setSending(false)
+    }
+  }
+
+  async function handleMicClick() {
+    if (recordingState === 'transcribing') return
+
+    if (recordingState === 'recording') {
+      setRecordingState('transcribing')
+      const blob = await wavRecordingRef.current?.stop()
+      wavRecordingRef.current = null
+      micStreamRef.current?.getTracks().forEach((track) => track.stop())
+      micStreamRef.current = null
+
+      if (!blob || blob.size <= 44) {
+        // Nothing but the WAV header was captured.
+        setRecordingState('idle')
+        return
+      }
+      try {
+        const result = await transcribeAudio(blob)
+        if (result.text) {
+          setDraft((current) => current.trim() ? `${current.trim()} ${result.text}` : result.text)
+        }
+      } catch (err) {
+        setRecordError(err instanceof Error ? err.message : 'Transcription failed.')
+      } finally {
+        setRecordingState('idle')
+      }
+      return
+    }
+
+    setRecordError(null)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      micStreamRef.current = stream
+      wavRecordingRef.current = startWavRecording(stream)
+      setRecordingState('recording')
+    } catch {
+      setRecordError('Microphone access was denied.')
     }
   }
 
@@ -102,11 +170,11 @@ export function ChatInput({
           }}
           placeholder="Assign a task or type / for more"
           disabled={disabled}
-          className="min-h-[48px] w-full resize-none border-0 bg-transparent text-[15px] leading-6 text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] disabled:opacity-60"
+          className="no-scrollbar min-h-[48px] w-full resize-none border-0 bg-transparent text-[15px] leading-6 text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] disabled:opacity-60"
         />
 
-        <div className="mt-1.5 flex items-center justify-between">
-          <div className="flex min-w-0 items-center gap-2">
+        <div className="mt-1.5 flex min-w-0 items-center justify-between gap-2">
+          <div className="no-scrollbar flex min-w-0 items-center gap-2 overflow-x-auto">
             <RoundToolButton label="Attach file" onClick={() => fileInputRef.current?.click()}><PlusIcon /></RoundToolButton>
             <RoundToolButton label="Tools"><ToolsIcon /></RoundToolButton>
             <RoundToolButton label="Computer"><DesktopIcon /></RoundToolButton>
@@ -114,26 +182,38 @@ export function ChatInput({
               choices={modelChoices}
               value={selectedModelId}
               loading={modelsLoading}
-              disabled={disabled || !onModelChange}
+              disabled={disabled || streaming || !onModelChange}
               onChange={(id) => onModelChange?.(id)}
             />
           </div>
 
-          <div className="flex items-center gap-2">
-            <RoundToolButton label="Voice note"><VoiceIcon /></RoundToolButton>
-            <RoundToolButton label="Dictate"><MicIcon /></RoundToolButton>
+          <div className="flex shrink-0 items-center gap-2">
+            <RoundToolButton
+              label={recordingState === 'recording' ? 'Stop dictation' : recordingState === 'transcribing' ? 'Transcribing…' : 'Dictate'}
+              onClick={() => void handleMicClick()}
+              active={recordingState === 'recording'}
+              disabled={recordingState === 'transcribing'}
+            >
+              <MicIcon />
+            </RoundToolButton>
             <button
               type="button"
-              disabled={disabled || sending || (!draft.trim() && files.length === 0)}
-              onClick={() => void submit()}
-              className="flex size-8 items-center justify-center rounded-full bg-[var(--surface-muted)] text-[var(--text-muted)] transition-colors enabled:bg-[var(--text-primary)] enabled:text-[var(--surface-root)]"
-              aria-label="Send"
+              disabled={streaming ? !onStop : disabled || sending || (!draft.trim() && files.length === 0)}
+              onClick={streaming ? onStop : () => void submit()}
+              className={`flex size-8 items-center justify-center rounded-full transition-colors ${streaming ? 'bg-[var(--text-primary)] text-[var(--surface-root)] hover:opacity-85' : 'bg-[var(--surface-muted)] text-[var(--text-muted)] enabled:bg-[var(--text-primary)] enabled:text-[var(--surface-root)]'}`}
+              aria-label={streaming ? 'Stop generation' : 'Send'}
             >
-              <ArrowUpIcon />
+              {streaming ? <StopIcon /> : <ArrowUpIcon />}
             </button>
           </div>
         </div>
       </div>
+
+      {recordError && (
+        <div className="mt-2 rounded-lg border border-[var(--accent-danger)]/40 bg-[var(--surface-panel)] px-3 py-2 text-[12px] font-semibold text-[var(--accent-danger)]">
+          {recordError}
+        </div>
+      )}
 
       {!compact && (
         <div className="mx-auto mt-3.5 grid w-[76%] max-w-[680px] min-w-0 grid-cols-[1fr_1fr_1.36fr_0.78fr_0.68fr] gap-2">
@@ -157,12 +237,13 @@ export function ChatInput({
   )
 }
 
-function RoundToolButton({ label, children, onClick }: { label: string; children: ReactNode; onClick?: () => void }) {
+function RoundToolButton({ label, children, onClick, active, disabled }: { label: string; children: ReactNode; onClick?: () => void; active?: boolean; disabled?: boolean }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex size-8 items-center justify-center rounded-full border border-[var(--border-soft)] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]"
+      disabled={disabled}
+      className={`flex size-8 shrink-0 items-center justify-center rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${active ? 'border-[var(--accent-danger)]/45 bg-[var(--accent-danger)]/10 text-[var(--accent-danger)]' : 'border-[var(--border-soft)] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]'}`}
       aria-label={label}
       title={label}
     >
@@ -191,16 +272,16 @@ function DesktopIcon() {
   return <svg width="17" height="17" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4" width="12" height="8" rx="1.5" /><path d="M7 15h4M9 12v3" /></svg>
 }
 
-function VoiceIcon() {
-  return <svg width="17" height="17" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 7v4M9 5v8M13 7v4" /></svg>
-}
-
 function MicIcon() {
   return <svg width="17" height="17" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="6.5" y="3" width="5" height="8" rx="2.5" /><path d="M4 9a5 5 0 0 0 10 0M9 14v2" /></svg>
 }
 
 function ArrowUpIcon() {
   return <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 14V4M5 8l4-4 4 4" /></svg>
+}
+
+function StopIcon() {
+  return <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="6" height="6" rx="1" /></svg>
 }
 
 function SlidesIcon() {

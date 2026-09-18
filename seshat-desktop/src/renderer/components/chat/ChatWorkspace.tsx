@@ -1,12 +1,14 @@
 import { useEffect, useRef } from 'react'
 import type { User } from '@renderer/api/types'
 import { useBrowserStore } from '@renderer/stores/browser'
+import { CHAT_MIN_WIDTH } from '@renderer/stores/rightPanel'
 import { useTerminalStore } from '@renderer/stores/terminal'
 import { useTaskStore } from '@renderer/stores/tasks'
 import { useAgentStore } from '@renderer/stores/agents'
-import type { ChatExecutionMode } from './lib/chatTypes'
 import { AgentProfileSelect } from './AgentProfileSelect'
 import { ChatInput } from './ChatInput'
+import { ChatTopBar } from './ChatTopBar'
+import { RightPanelHost } from './RightPanelHost'
 import { useAgentProfiles } from './lib/useAgentProfiles'
 import { useChatModels } from './lib/useChatModels'
 import { useChatWorkspace } from './lib/useChatWorkspace'
@@ -14,7 +16,7 @@ import { MessageList } from './messages/MessageList'
 import { FilePreviewOverlay } from './attachments/FilePreviewOverlay'
 
 export function ChatWorkspace({ user }: { user: User }) {
-  const { activeSession, streaming, isStreaming, loading, error, executionMode, compactionNotice, send, stop, setExecutionMode } = useChatWorkspace()
+  const { activeSession, streaming, isStreaming, loading, error, executionMode, permissionMode, compactionNotice, send, stop, setExecutionMode, setPermissionMode } = useChatWorkspace()
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const displayName = user.display_name || user.email
   const isEmpty = !activeSession || activeSession.messages.length === 0
@@ -42,7 +44,8 @@ export function ChatWorkspace({ user }: { user: User }) {
   }, [activeSession?.id, activeSession?.messages, ingestAgentBlocks, ingestBrowserBlocks, ingestTaskBlocks])
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+    <div className="flex min-h-0 flex-1 overflow-hidden">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden" style={{ minWidth: CHAT_MIN_WIDTH }}>
       <header className="flex h-14 shrink-0 items-center justify-between px-7">
         <AgentProfileSelect
           choices={agentProfiles.choices}
@@ -51,18 +54,14 @@ export function ChatWorkspace({ user }: { user: User }) {
           disabled={loading || isStreaming}
           onChange={agentProfiles.setSelectedSlug}
         />
-        <div className="flex items-center gap-2">
-          <ExecutionModeToggle mode={executionMode} disabled={loading || isStreaming} onChange={(mode) => void setExecutionMode(mode)} />
-          {isStreaming && (
-            <button
-              type="button"
-              onClick={() => void stop()}
-              className="rounded-md border border-[var(--border-soft)] bg-[var(--surface-panel)] px-3 py-1.5 text-[12px] font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
-            >
-              Stop
-            </button>
-          )}
-        </div>
+        <ChatTopBar
+          executionMode={executionMode}
+          onExecutionModeChange={(mode) => void setExecutionMode(mode)}
+          permissionMode={permissionMode}
+          onPermissionModeChange={(mode) => void setPermissionMode(mode)}
+          disabled={loading || isStreaming}
+          sessionId={activeSession?.id}
+        />
       </header>
 
       {isEmpty ? (
@@ -79,12 +78,13 @@ export function ChatWorkspace({ user }: { user: User }) {
             </div>
             <div className="mx-auto mt-8 w-[78%] max-w-[900px] min-w-0">
               <ChatInput
-                disabled={isStreaming || loading}
                 modelChoices={models.choices}
                 selectedModelId={models.selectedId}
                 modelsLoading={models.loading}
+                streaming={isStreaming}
                 onModelChange={models.setSelectedId}
                 onSend={(text, files) => send(text, sendOptions, files)}
+                onStop={() => void stop()}
               />
               {error && <div className="mt-4 rounded-lg border border-[var(--accent-danger)]/40 bg-[var(--surface-panel)] px-4 py-3 text-[13px] font-semibold text-[var(--accent-danger)]">{error}</div>}
             </div>
@@ -109,7 +109,7 @@ export function ChatWorkspace({ user }: { user: User }) {
               contextWindow={selectedModel?.contextWindow}
             />
           </section>
-          <footer className="shrink-0 border-t border-transparent px-8 pb-5">
+          <footer className="shrink-0 border-t border-transparent px-8 pb-5 pt-4">
             <div className="mx-auto max-w-[820px]">
               {compactionNotice && (
                 <div className="mb-3 rounded-lg border border-[var(--border-soft)] bg-[var(--surface-panel)] px-4 py-3 text-[13px] font-semibold text-[var(--text-secondary)]">
@@ -119,12 +119,13 @@ export function ChatWorkspace({ user }: { user: User }) {
               {error && <div className="mb-3 rounded-lg border border-[var(--accent-danger)]/40 bg-[var(--surface-panel)] px-4 py-3 text-[13px] font-semibold text-[var(--accent-danger)]">{error}</div>}
               <ChatInput
                 compact
-                disabled={isStreaming || loading}
                 modelChoices={models.choices}
                 selectedModelId={models.selectedId}
                 modelsLoading={models.loading}
+                streaming={isStreaming}
                 onModelChange={models.setSelectedId}
                 onSend={(text, files) => send(text, sendOptions, files)}
+                onStop={() => void stop()}
               />
             </div>
           </footer>
@@ -132,29 +133,7 @@ export function ChatWorkspace({ user }: { user: User }) {
       )}
       <FilePreviewOverlay />
     </div>
-  )
-}
-
-function ExecutionModeToggle({
-  mode,
-  disabled,
-  onChange
-}: {
-  mode: ChatExecutionMode
-  disabled?: boolean
-  onChange: (mode: ChatExecutionMode) => void
-}) {
-  const nextMode = mode === 'plan' ? 'execute' : 'plan'
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={() => onChange(nextMode)}
-      className="flex h-8 items-center gap-2 rounded-full border border-[var(--border-soft)] bg-[var(--surface-panel)] px-3 text-[12px] font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)] disabled:cursor-not-allowed disabled:opacity-60"
-      title={mode === 'plan' ? 'Plan mode' : 'Execute mode'}
-    >
-      <span className={`size-1.5 rounded-full ${mode === 'plan' ? 'bg-[var(--accent-primary)] shadow-[0_0_12px_var(--accent-primary)]' : 'bg-[var(--text-muted)]'}`} />
-      {mode === 'plan' ? 'Plan' : 'Execute'}
-    </button>
+    {activeSession && <RightPanelHost sessionId={activeSession.id} />}
+    </div>
   )
 }

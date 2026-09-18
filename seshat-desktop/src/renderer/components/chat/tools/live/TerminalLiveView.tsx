@@ -3,7 +3,7 @@ import { useTerminalStore, type TerminalCommandRun, type TerminalLine } from '@r
 import type { ToolUseBlock } from '../../lib/chatTypes'
 import { formatDuration, prettyJsonOrRaw } from '../ToolDetails'
 
-export function TerminalLiveView({ sessionId, tool }: { sessionId?: string; tool: ToolUseBlock }) {
+export function TerminalLiveView({ sessionId, tool }: { sessionId?: string; tool?: ToolUseBlock }) {
   const terminal = terminalData(tool)
   const [selectedCommandId, setSelectedCommandId] = useState<string | null>(null)
   const relaySession = useTerminalStore((state) => sessionId ? state.sessions[sessionId] : null)
@@ -107,16 +107,16 @@ function commandDotClass(status: TerminalCommandRun['status']) {
   return 'size-1.5 shrink-0 rounded-full bg-[var(--accent-danger)]'
 }
 
-function terminalData(tool: ToolUseBlock) {
-  const parsed = parseTerminalResult(tool._result?.content)
-  const input = { ...tool.input, ...tool._progress?.input }
-  const metadata = { ...tool._result?.metadata, ...tool._progress?.metadata }
+function terminalData(tool?: ToolUseBlock) {
+  const parsed = parseTerminalResult(tool?._result?.content)
+  const input = { ...tool?.input, ...tool?._progress?.input }
+  const metadata = { ...tool?._result?.metadata, ...tool?._progress?.metadata }
   const command = text(input.command) || text(input.cmd) || parsed.command
   const cwd = text(input.cwd) || text(input.working_dir) || text(input.working_directory) || parsed.cwd
   const stdout = text(metadata.stdout) || parsed.stdout
   const stderr = text(metadata.stderr) || parsed.stderr
   const exitCode = number(metadata.exit_code) ?? number(metadata.exitCode) ?? parsed.exitCode
-  const raw = parsed.raw || prettyJsonOrRaw(tool._result?.content ?? tool._progress?.result ?? '')
+  const raw = parsed.raw || prettyJsonOrRaw(tool?._result?.content ?? tool?._progress?.result ?? '')
 
   return {
     command,
@@ -125,7 +125,7 @@ function terminalData(tool: ToolUseBlock) {
     stderr,
     exitCode,
     raw,
-    duration: formatDuration(tool._result) || formatMs(tool._progress?.durationMs)
+    duration: formatDuration(tool?._result) || formatMs(tool?._progress?.durationMs)
   }
 }
 

@@ -4,34 +4,33 @@ import type { ToolUseBlock } from '../../../lib/chatTypes'
 import { CodePanel, prettyJsonOrRaw } from '../../ToolDetails'
 import { browserAgentPage, browserResultSummary, parseBrowserScreenshot } from './browserResults'
 import { browserActionLabel, browserContextId, browserTargetFromTool } from './browserTools'
+import { useBrowserPanelState } from './useBrowserPanelState'
 
-type BrowserPanelTab = {
-  id: string
-  label: string
-  url: string
-  status: 'loading' | 'ready'
-  canGoBack: boolean
-  canGoForward: boolean
-}
+const EMPTY_ACTIONS: BrowserActionRun[] = []
 
-type BrowserPanelState = {
-  activeTabId: string | null
-  tabs: BrowserPanelTab[]
-}
-
-export function BrowserLiveView({ sessionId, tool }: { sessionId?: string; tool: ToolUseBlock }) {
+// `hideTabStrip` lets the standalone panel host (RightPanelHost) render the
+// tab row itself, in its header next to the close button, instead of here
+// below the address bar - see useBrowserPanelState for the shared state
+// that keeps both in sync.
+export function BrowserLiveView({ sessionId, tool, hideTabStrip }: { sessionId?: string; tool?: ToolUseBlock; hideTabStrip?: boolean }) {
   const browserApi = window.nexus?.browser
   const contextId = browserContextId(sessionId)
   const viewportRef = useRef<HTMLDivElement>(null)
-  const [state, setState] = useState<BrowserPanelState | null>(null)
-  const [address, setAddress] = useState(browserTargetFromTool(tool) || 'https://www.google.com/')
+  const [state, setState] = useBrowserPanelState(contextId)
+  const [address, setAddress] = useState((tool && browserTargetFromTool(tool)) || 'https://www.google.com/')
   const [error, setError] = useState<string | null>(null)
   const [showScreenshot, setShowScreenshot] = useState(false)
-  const actions = useBrowserStore((store) => sessionId ? store.sessions[sessionId]?.actions ?? [] : [])
-  const visibleActions = actions.length > 0 ? actions : [fallbackAction(tool)]
-  const screenshot = parseBrowserScreenshot(tool)
-  const resultSummary = browserResultSummary(tool)
-  const agentPage = browserAgentPage(tool)
+  // `?? []` would allocate a new array every render when there's no entry
+  // yet for this session (always true for a manually-opened panel with no
+  // tool call), which useSyncExternalStore sees as a changed snapshot on
+  // every render - an infinite update loop that crashes the whole app.
+  const actions = useBrowserStore((store) => sessionId ? store.sessions[sessionId]?.actions ?? EMPTY_ACTIONS : EMPTY_ACTIONS)
+  // Standalone (manually opened, no active tool call) has nothing to fall
+  // back to - the live session's own action history above is enough.
+  const visibleActions = actions.length > 0 ? actions : tool ? [fallbackAction(tool)] : []
+  const screenshot = tool ? parseBrowserScreenshot(tool) : null
+  const resultSummary = tool ? browserResultSummary(tool) : null
+  const agentPage = tool ? browserAgentPage(tool) : null
   const activeTab = state?.tabs.find((tab) => tab.id === state.activeTabId) ?? state?.tabs[0] ?? null
 
   const syncBounds = useCallback(() => {
@@ -104,8 +103,8 @@ export function BrowserLiveView({ sessionId, tool }: { sessionId?: string; tool:
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-[var(--border-soft)] bg-[var(--surface-panel)]">
-      <div className="flex items-center gap-2 border-b border-[var(--border-soft)] px-2.5 py-2">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-[var(--border-soft)] bg-[var(--surface-panel)]">
+      <div className="flex shrink-0 items-center gap-2 border-b border-[var(--border-soft)] px-2.5 py-2">
         <button type="button" className={buttonClass} disabled={!activeTab?.canGoBack} onClick={() => void browserApi?.back(contextId).then(setState)}>
           <ArrowLeftIcon />
         </button>
@@ -128,13 +127,15 @@ export function BrowserLiveView({ sessionId, tool }: { sessionId?: string; tool:
             className="h-8 w-full rounded-md border border-[var(--border-soft)] bg-[var(--surface-muted)] px-2.5 text-[12px] text-[var(--text-primary)] outline-none focus:border-[var(--accent-primary)]"
           />
         </form>
-        <span className="shrink-0 rounded-md bg-[var(--surface-muted)] px-2 py-1 text-[10px] font-semibold text-[var(--text-muted)]">
-          {browserActionLabel(tool)}
-        </span>
+        {tool && (
+          <span className="shrink-0 rounded-md bg-[var(--surface-muted)] px-2 py-1 text-[10px] font-semibold text-[var(--text-muted)]">
+            {browserActionLabel(tool)}
+          </span>
+        )}
       </div>
 
-      {state && state.tabs.length > 1 && (
-        <div className="no-scrollbar flex gap-1 overflow-x-auto border-b border-[var(--border-soft)] px-2.5 py-1.5">
+      {!hideTabStrip && state && state.tabs.length > 1 && (
+        <div className="no-scrollbar flex shrink-0 items-center gap-1 overflow-x-auto border-b border-[var(--border-soft)] px-2.5 py-1.5">
           {state.tabs.map((tab) => (
             <div key={tab.id} className="flex max-w-[190px] shrink-0 items-center rounded-md border border-transparent hover:bg-[var(--surface-muted)]">
               <button
@@ -160,33 +161,35 @@ export function BrowserLiveView({ sessionId, tool }: { sessionId?: string; tool:
         </div>
       )}
 
-      <div className="no-scrollbar flex gap-1.5 overflow-x-auto border-b border-[var(--border-soft)] px-2.5 py-2">
-        {visibleActions.slice(-10).map((action) => (
-          <div
-            key={action.id}
-            className="flex max-w-[230px] shrink-0 items-center gap-2 rounded-md border border-[var(--border-soft)] bg-[var(--surface-muted)] px-2 py-1.5"
-          >
-            <span className={actionDotClass(action.status)} />
-            <span className="min-w-0">
-              <span className="block truncate text-[11px] font-semibold text-[var(--text-primary)]">{action.label}</span>
-              {(action.target || action.message) && (
-                <span className="block truncate text-[10px] text-[var(--text-muted)]">{action.target || action.message}</span>
-              )}
-            </span>
-          </div>
-        ))}
-      </div>
+      {visibleActions.length > 0 && (
+        <div className="no-scrollbar flex shrink-0 gap-1.5 overflow-x-auto border-b border-[var(--border-soft)] px-2.5 py-2">
+          {visibleActions.slice(-10).map((action) => (
+            <div
+              key={action.id}
+              className="flex max-w-[230px] shrink-0 items-center gap-2 rounded-md border border-[var(--border-soft)] bg-[var(--surface-muted)] px-2 py-1.5"
+            >
+              <span className={actionDotClass(action.status)} />
+              <span className="min-w-0">
+                <span className="block truncate text-[11px] font-semibold text-[var(--text-primary)]">{action.label}</span>
+                {(action.target || action.message) && (
+                  <span className="block truncate text-[10px] text-[var(--text-muted)]">{action.target || action.message}</span>
+                )}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {error ? (
-        <div className="m-3 rounded-md border border-[var(--accent-danger)]/40 bg-[var(--accent-danger)]/10 px-3 py-2 text-[12px] font-semibold text-[var(--accent-danger)]">
+        <div className="m-3 shrink-0 rounded-md border border-[var(--accent-danger)]/40 bg-[var(--accent-danger)]/10 px-3 py-2 text-[12px] font-semibold text-[var(--accent-danger)]">
           {error}
         </div>
       ) : null}
 
-      <div ref={viewportRef} className="h-[360px] min-h-[260px] bg-[#080a0d]" />
+      <div ref={viewportRef} className="min-h-[260px] flex-1 bg-[#080a0d]" />
 
-      {(screenshot || resultSummary || tool._result?.content) && (
-        <div className="border-t border-[var(--border-soft)] p-3">
+      {(screenshot || resultSummary || tool?._result?.content) && (
+        <div className="max-h-[280px] shrink-0 overflow-y-auto border-t border-[var(--border-soft)] p-3">
           {screenshot ? (
             <div className="overflow-hidden rounded-md border border-[var(--border-soft)] bg-[var(--surface-muted)]">
               <div className="flex items-center justify-between gap-3 border-b border-[var(--border-soft)] px-3 py-2">
@@ -216,7 +219,7 @@ export function BrowserLiveView({ sessionId, tool }: { sessionId?: string; tool:
               {resultSummary}
             </div>
           ) : null}
-          {!screenshot && tool._result?.content && (
+          {!screenshot && tool?._result?.content && (
             <div className="mt-3">
               <CodePanel title={tool._result.is_error || tool._result.isError ? 'Error' : 'Result'} value={prettyJsonOrRaw(tool._result.content)} />
             </div>

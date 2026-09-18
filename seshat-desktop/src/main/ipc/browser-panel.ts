@@ -154,8 +154,19 @@ export function createBrowserPanel({ getWindow, remoteDebugPort }: BrowserPanelO
     if (!tab) return
     try {
       win.contentView.addChildView(tab.view)
-      tab.view.setBounds(normalizeBounds(lastBounds))
+      const bounds = normalizeBounds(lastBounds)
+      tab.view.setBounds(bounds)
       tab.view.webContents.focus()
+      // Windows/Chromium sometimes fails to recomposite the whole window
+      // (renders solid black) right after a native child view is attached,
+      // until something forces a repaint. Nudging the bounds on the next
+      // tick reliably kicks the compositor - this is a known Electron/DWM
+      // interaction, not a sizing bug (bounds above are already correct).
+      setImmediate(() => {
+        if (tab.view.webContents.isDestroyed()) return
+        tab.view.setBounds({ ...bounds, height: Math.max(1, bounds.height - 1) })
+        tab.view.setBounds(bounds)
+      })
     } catch {
       return
     }
@@ -177,6 +188,20 @@ export function createBrowserPanel({ getWindow, remoteDebugPort }: BrowserPanelO
       }
       return { action: 'deny' }
     })
+    // The panel is a fixed viewport with no chrome for a page's own
+    // scrollbar to sit next to - hide it per-page so the embedded view
+    // reads as part of our UI rather than a bare browser window. Injected
+    // on both events since dom-ready can fire before a page's own CSS
+    // would otherwise win the cascade on some sites (e.g. Google's SPA
+    // shell re-renders after dom-ready).
+    const hideScrollbars = () => {
+      void contents.insertCSS(`
+        html, body { scrollbar-width: none !important; -ms-overflow-style: none !important; }
+        ::-webkit-scrollbar { width: 0 !important; height: 0 !important; display: none !important; }
+      `).catch(() => undefined)
+    }
+    contents.on('dom-ready', hideScrollbars)
+    contents.on('did-finish-load', hideScrollbars)
     const onChange = () => broadcastState(contextId)
     contents.on('did-start-loading', onChange)
     contents.on('did-stop-loading', onChange)

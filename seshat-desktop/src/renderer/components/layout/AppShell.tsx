@@ -5,6 +5,7 @@ import { SettingsModal, type SettingsSection } from '@renderer/components/settin
 import { applyTheme, getStoredTheme } from '@renderer/lib/theme'
 import { Dashboard } from '@renderer/pages/Dashboard'
 import { useChatStore } from '@renderer/stores/chat'
+import { useSidebarStore } from '@renderer/stores/sidebar'
 import { deleteSession, fetchSession, patchSessionMetadata } from '@renderer/components/chat/lib/chatApi'
 import type { ChatSession } from '@renderer/components/chat/lib/chatTypes'
 import { Titlebar } from './Titlebar'
@@ -27,14 +28,24 @@ const mainItems: Array<{ id: AppView; label: string; icon: IconName; active?: bo
 ]
 
 export function AppShell({ user, onLogout }: Props) {
-  const [activeView, setActiveView] = useState<AppView>('home')
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [activeView, setActiveViewState] = useState<AppView>('home')
+  const sidebarOpen = useSidebarStore((state) => state.open)
+  const sidebarOverlayOpen = useSidebarStore((state) => state.overlayOpen)
+  const toggleSidebar = useSidebarStore((state) => state.toggle)
+  const closeSidebarOverlay = useSidebarStore((state) => state.closeOverlay)
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [settingsSection, setSettingsSection] = useState<SettingsSection | null>(null)
   const [configOpen, setConfigOpen] = useState(false)
   const setActiveSessionId = useChatStore((state) => state.setActiveSessionId)
   const displayName = user.display_name || user.email
   const initials = useMemo(() => initialsFor(displayName), [displayName])
+
+  // Changing page closes the auto-collapsed sidebar's overlay - it's a
+  // glance-and-go flyout, not meant to stay open across navigation.
+  const setActiveView = (view: AppView) => {
+    closeSidebarOverlay()
+    setActiveViewState(view)
+  }
   const openSettings = (section: SettingsSection) => {
     setProfileMenuOpen(false)
     setConfigOpen(false)
@@ -73,7 +84,7 @@ export function AppShell({ user, onLogout }: Props) {
 
       if (event.ctrlKey && !event.shiftKey && event.key.toLowerCase() === 'b') {
         event.preventDefault()
-        setSidebarOpen((open) => !open)
+        toggleSidebar()
         return
       }
 
@@ -111,14 +122,14 @@ export function AppShell({ user, onLogout }: Props) {
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [configOpen, profileMenuOpen, settingsSection])
+  }, [configOpen, profileMenuOpen, settingsSection, toggleSidebar])
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-[var(--surface-root)] text-[var(--text-primary)]">
       <Titlebar
         center="SeshatOS"
-        sidebarOpen={sidebarOpen}
-        onToggleSidebar={() => setSidebarOpen((open) => !open)}
+        sidebarOpen={sidebarOpen || sidebarOverlayOpen}
+        onToggleSidebar={toggleSidebar}
         onHome={() => {
           setActiveView('home')
           setActiveSessionId(null)
@@ -127,7 +138,7 @@ export function AppShell({ user, onLogout }: Props) {
         onForward={() => setActiveView('home')}
       />
 
-      <div className="flex min-h-0 flex-1 overflow-hidden">
+      <div className="relative flex min-h-0 flex-1 overflow-hidden">
         {sidebarOpen && (
           <Sidebar
             activeView={activeView}
@@ -144,6 +155,29 @@ export function AppShell({ user, onLogout }: Props) {
             onOpenSettings={openSettings}
             onOpenConfig={openConfig}
           />
+        )}
+
+        {sidebarOverlayOpen && (
+          <>
+            <div className="absolute inset-0 z-40 bg-black/40" onClick={closeSidebarOverlay} />
+            <div className="absolute left-0 top-0 z-50 h-full shadow-[8px_0_32px_rgba(0,0,0,0.35)]">
+              <Sidebar
+                activeView={activeView}
+                displayName={displayName}
+                initials={initials}
+                onSelect={setActiveView}
+                onNewTask={() => {
+                  setActiveView('home')
+                  setActiveSessionId(null)
+                }}
+                onLogout={onLogout}
+                profileMenuOpen={profileMenuOpen}
+                onToggleProfileMenu={() => setProfileMenuOpen((open) => !open)}
+                onOpenSettings={openSettings}
+                onOpenConfig={openConfig}
+              />
+            </div>
+          </>
         )}
 
         <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[var(--surface-root)]">
@@ -198,7 +232,7 @@ function Sidebar({
   onOpenConfig: () => void
 }) {
   return (
-    <aside className="flex w-[236px] shrink-0 flex-col border-r border-[var(--border-soft)] bg-[var(--surface-sidebar)]">
+    <aside className="flex h-full w-[236px] shrink-0 flex-col border-r border-[var(--border-soft)] bg-[var(--surface-sidebar)]">
       <nav className="grid gap-1 px-2 pt-3">
         {mainItems.map((item) => (
           <NavButton
@@ -271,6 +305,7 @@ function RecentTasks({ onSelect }: { onSelect: () => void }) {
   const activeSessionId = useChatStore((state) => state.activeSessionId)
   const isStreamingBySession = useChatStore((state) => state.isStreamingBySession)
   const setActiveSessionId = useChatStore((state) => state.setActiveSessionId)
+  const closeSidebarOverlay = useSidebarStore((state) => state.closeOverlay)
   const upsertSession = useChatStore((state) => state.upsertSession)
   const updateSession = useChatStore((state) => state.updateSession)
   const removeSession = useChatStore((state) => state.removeSession)
@@ -332,6 +367,7 @@ function RecentTasks({ onSelect }: { onSelect: () => void }) {
             menuOpen={openMenuId === session.id}
             renaming={renamingId === session.id}
             onOpen={() => {
+              closeSidebarOverlay()
               setActiveSessionId(session.id)
               onSelect()
               void fetchSession(session.id).then(upsertSession).catch(() => undefined)
