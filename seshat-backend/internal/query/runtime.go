@@ -335,12 +335,28 @@ func (r *SDKRuntime) StreamPrompt(ctx context.Context, input QueryInput, onChunk
 	// subsequent event in a turn with many tool calls.
 	var onceFirstTrace, onceFirstChunk sync.Once
 	var firstTraceMs, firstChunkMs int64
+	var chunkCount, chunkBytes, largestChunkBytes, largestChunkGapMs int64
+	var previousChunkAt time.Time
 	wrappedOnRuntimeEvent := func(event sdk.RuntimeEvent) {
 		onceFirstTrace.Do(func() { firstTraceMs = time.Since(turnStart).Milliseconds() })
 		onRuntimeEvent(event)
 	}
 	wrappedOnChunk := func(chunk sdk.ResponseChunk) {
-		onceFirstChunk.Do(func() { firstChunkMs = time.Since(turnStart).Milliseconds() })
+		now := time.Now()
+		onceFirstChunk.Do(func() { firstChunkMs = now.Sub(turnStart).Milliseconds() })
+		chunkSize := int64(len(chunk.Delta) + len(chunk.PartialJSON))
+		chunkCount++
+		chunkBytes += chunkSize
+		if chunkSize > largestChunkBytes {
+			largestChunkBytes = chunkSize
+		}
+		if !previousChunkAt.IsZero() {
+			gap := now.Sub(previousChunkAt).Milliseconds()
+			if gap > largestChunkGapMs {
+				largestChunkGapMs = gap
+			}
+		}
+		previousChunkAt = now
 		onChunk(chunk)
 	}
 
@@ -351,8 +367,8 @@ func (r *SDKRuntime) StreamPrompt(ctx context.Context, input QueryInput, onChunk
 
 	response, err := submitQueryMessage(ctx, session, input)
 	totalMs := time.Since(turnStart).Milliseconds()
-	log.Printf("[perf] stream_prompt session=%s client_build_ms=%d session_load_ms=%d time_to_first_trace_ms=%d time_to_first_chunk_ms=%d total_ms=%d",
-		session.GetID(), clientMs, sessionLoadMs, firstTraceMs, firstChunkMs, totalMs)
+	log.Printf("[perf] stream_prompt session=%s client_build_ms=%d session_load_ms=%d time_to_first_trace_ms=%d time_to_first_chunk_ms=%d chunk_count=%d chunk_bytes=%d largest_chunk_bytes=%d largest_chunk_gap_ms=%d total_ms=%d",
+		session.GetID(), clientMs, sessionLoadMs, firstTraceMs, firstChunkMs, chunkCount, chunkBytes, largestChunkBytes, largestChunkGapMs, totalMs)
 	if err != nil {
 		return nil, fmt.Errorf("submit message: %w", err)
 	}
