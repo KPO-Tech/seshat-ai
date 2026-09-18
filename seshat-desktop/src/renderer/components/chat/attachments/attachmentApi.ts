@@ -27,6 +27,14 @@ export async function uploadSessionFile(sessionId: string, file: File): Promise<
   }
 }
 
+export async function transcribeAudio(blob: Blob): Promise<{ text: string }> {
+  const bridge = window.nexus?.http
+  if (!bridge?.uploadAudio) throw new Error('Desktop upload bridge is unavailable.')
+  const response = await bridge.uploadAudio({ path: '/transcribe', data: await blob.arrayBuffer() })
+  if (!response.ok) throw new Error(response.text || `Transcription failed with HTTP ${response.status}`)
+  return response.data as { text: string }
+}
+
 export async function downloadAttachment(attachment: MessageAttachment) {
   if (attachment.preview_url) return attachment.preview_url
   const bridge = window.nexus?.http

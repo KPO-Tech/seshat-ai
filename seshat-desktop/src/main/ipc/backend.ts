@@ -2,7 +2,7 @@ import type { IpcMain, IpcMainInvokeEvent } from 'electron'
 import { randomUUID } from 'crypto'
 import { deleteSecret, getSecret, setSecret } from './secure-store'
 import { assertTrustedSender } from './trusted-sender'
-import { normalizeFileContentPath, normalizeSessionUploadPath } from './validation'
+import { normalizeFileContentPath, normalizeSessionUploadPath, normalizeTranscribeUploadPath } from './validation'
 
 type AuthUser = {
   id: string
@@ -33,6 +33,11 @@ type UploadFilePayload = {
   path: string
   filename: string
   contentType?: string
+  data: ArrayBuffer
+}
+
+type UploadAudioPayload = {
+  path: string
   data: ArrayBuffer
 }
 
@@ -152,6 +157,29 @@ async function performFileUpload(payload: UploadFilePayload, token?: string) {
 
   const body = new FormData()
   body.append('file', new Blob([payload.data], { type: payload.contentType || 'application/octet-stream' }), filename)
+  const headers: Record<string, string> = { Accept: 'application/json' }
+  if (token) headers.Authorization = `Bearer ${token}`
+
+  try {
+    const res = await fetch(buildBackendURL(path), { method: 'POST', headers, body })
+    const parsed = await parseResponse(res)
+    if (res.status === 401) await clearSession()
+    return parsed
+  } catch (err) {
+    return { ok: false, status: 0, text: err instanceof Error ? err.message : 'Upload failed' }
+  }
+}
+
+// Sibling of performFileUpload rather than a shared/parameterized helper -
+// the backend's /transcribe endpoint expects the multipart field named
+// "audio" (not "file"), and this path is validated against its own strict
+// pattern, same as every other IPC-exposed backend path in this file.
+async function performAudioUpload(payload: UploadAudioPayload, token?: string) {
+  const path = normalizeTranscribeUploadPath(payload.path)
+  if (!(payload.data instanceof ArrayBuffer) || payload.data.byteLength === 0) throw new Error('Recording is empty')
+
+  const body = new FormData()
+  body.append('audio', new Blob([payload.data], { type: 'audio/wav' }), 'recording.wav')
   const headers: Record<string, string> = { Accept: 'application/json' }
   if (token) headers.Authorization = `Bearer ${token}`
 
@@ -356,6 +384,12 @@ export function registerBackendHandlers(ipcMain: IpcMain): void {
     assertTrustedSender(event)
     const session = await loadSession()
     return performFileUpload(payload, session?.token)
+  })
+
+  ipcMain.handle('http:upload-audio', async (event, payload: UploadAudioPayload) => {
+    assertTrustedSender(event)
+    const session = await loadSession()
+    return performAudioUpload(payload, session?.token)
   })
 
   ipcMain.handle('http:download-file', async (event, path: string) => {

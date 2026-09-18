@@ -32,6 +32,7 @@ const nexus = {
   http: {
     request: (payload: { path: string; method?: string; body?: unknown }) => ipcRenderer.invoke('http:request', payload),
     uploadFile: (payload: { path: string; filename: string; contentType?: string; data: ArrayBuffer }) => ipcRenderer.invoke('http:upload-file', payload),
+    uploadAudio: (payload: { path: string; data: ArrayBuffer }) => ipcRenderer.invoke('http:upload-audio', payload),
     downloadFile: (path: string) => ipcRenderer.invoke('http:download-file', path),
     startStream: (payload: { path: string; method?: string; body?: unknown }) => ipcRenderer.invoke('http:stream:start', payload),
     cancelStream: (streamId: string) => ipcRenderer.invoke('http:stream:cancel', streamId),

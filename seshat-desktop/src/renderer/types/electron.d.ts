@@ -51,6 +51,12 @@ declare global {
           data?: unknown
           text?: string
         }>
+        uploadAudio: (payload: { path: string; data: ArrayBuffer }) => Promise<{
+          ok: boolean
+          status: number
+          data?: unknown
+          text?: string
+        }>
         downloadFile: (path: string) => Promise<{
           ok: boolean
           status: number
