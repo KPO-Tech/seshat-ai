@@ -57,7 +57,7 @@ jobs:
           CHANGED=$(git diff --name-only "$BASE" "${{ github.sha }}")
           echo "$CHANGED"
           echo "backend=$(echo "$CHANGED" | grep -qE '^(seshat-backend/|seshat-server/|go\.work)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          echo "desktop=$(echo "$CHANGED" | grep -q '^seshat-ui/' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "desktop=$(echo "$CHANGED" | grep -q '^seshat-desktop/' && echo true || echo false)" >> "$GITHUB_OUTPUT"
           echo "console=$(echo "$CHANGED" | grep -q '^seshat-console/' && echo true || echo false)" >> "$GITHUB_OUTPUT"
           echo "openapi=$(echo "$CHANGED" | grep -qE '^(seshat-server/openapi\.yaml|seshat-console/(package(-lock)?\.json|src/api/schema\.d\.ts))$' && echo true || echo false)" >> "$GITHUB_OUTPUT"
           echo "compose=$(echo "$CHANGED" | grep -qE '^(deploy/|scripts/smoke-compose-core\.sh|Makefile|seshat-server/Dockerfile|seshat-console/(Dockerfile|nginx\.conf|package(-lock)?\.json))' && echo true || echo false)" >> "$GITHUB_OUTPUT"
@@ -181,26 +181,26 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-          cache-dependency-path: seshat-ui/package-lock.json
+          cache-dependency-path: seshat-desktop/package-lock.json
 
       - name: Install dependencies
-        working-directory: seshat-ui
+        working-directory: seshat-desktop
         run: npm ci
 
       - name: Typecheck
-        working-directory: seshat-ui
+        working-directory: seshat-desktop
         run: npm run typecheck
 
       - name: Lint
-        working-directory: seshat-ui
+        working-directory: seshat-desktop
         run: npm run lint
 
-      - name: IPC validation tests
-        working-directory: seshat-ui
-        run: npm run test:ipc
+      - name: Tests
+        working-directory: seshat-desktop
+        run: npm test
 
       - name: Build
-        working-directory: seshat-ui
+        working-directory: seshat-desktop
         run: npm run build
 
   console:

@@ -134,7 +134,7 @@ stop: ## Stop backend, server, automation, and UI processes
 	  pkill -x $(DAEMON_BIN) 2>/dev/null || true; \
 	elif command -v powershell.exe >/dev/null 2>&1; then \
 	  powershell.exe -NoProfile -Command \
-	    "Get-CimInstance Win32_Process | Where-Object { \$$_.Name -match '^(api|server|automation-server|go|seshat-api|seshat-server|seshat-automation)(\.exe)?\$$' -or (\$$_.Name -match '^(electron|node)(\.exe)?\$$' -and \$$_.CommandLine -match 'electron-vite|seshat-desktop|seshat-ui') } | ForEach-Object { Stop-Process -Id \$$_.ProcessId -Force -ErrorAction SilentlyContinue }" \
+	    "Get-CimInstance Win32_Process | Where-Object { \$$_.Name -match '^(api|server|automation-server|go|seshat-api|seshat-server|seshat-automation)(\.exe)?\$$' -or (\$$_.Name -match '^(electron|node)(\.exe)?\$$' -and \$$_.CommandLine -match 'electron-vite|seshat-desktop') } | ForEach-Object { Stop-Process -Id \$$_.ProcessId -Force -ErrorAction SilentlyContinue }" \
 	    2>/dev/null || true; \
 	fi
 	@printf "\033[32m[nexus]\033[0m stopped.\n"

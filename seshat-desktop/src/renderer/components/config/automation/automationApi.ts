@@ -1,5 +1,5 @@
 import { api } from '@renderer/api/client'
-import type { AutomationJob, AutomationOverview, AutomationRun, AutomationStatus } from './automationTypes'
+import type { AutomationJob, AutomationJobParams, AutomationOverview, AutomationRun, AutomationStatus } from './automationTypes'
 
 export function fetchAutomationStatus() {
   return api.get<AutomationStatus>('/automation/status')
@@ -33,4 +33,29 @@ export function disconnectAutomationDevice() {
 
 export function triggerAutomationJob(id: string) {
   return api.post(`/automation/jobs/${encodeURIComponent(id)}/run`, {})
+}
+
+export function createAutomationJob(params: AutomationJobParams) {
+  return api.post<AutomationJob>('/automation/jobs', params)
+}
+
+export function updateAutomationJob(id: string, params: AutomationJobParams) {
+  return api.put<AutomationJob>(`/automation/jobs/${encodeURIComponent(id)}`, params)
+}
+
+export function deleteAutomationJob(id: string) {
+  return api.delete(`/automation/jobs/${encodeURIComponent(id)}`)
+}
+
+export function pauseAutomationJob(id: string) {
+  return api.post<AutomationJob>(`/automation/jobs/${encodeURIComponent(id)}/pause`, {})
+}
+
+export function resumeAutomationJob(id: string) {
+  return api.post<AutomationJob>(`/automation/jobs/${encodeURIComponent(id)}/resume`, {})
+}
+
+export async function fetchAutomationJobRuns(id: string) {
+  const result = await api.get<{ runs: AutomationRun[] }>(`/automation/jobs/${encodeURIComponent(id)}/runs`)
+  return result.runs ?? []
 }

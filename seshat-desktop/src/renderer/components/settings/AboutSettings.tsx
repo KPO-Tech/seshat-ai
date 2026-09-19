@@ -12,10 +12,11 @@ type SystemStatus = {
 export function AboutSettings() {
   const [status, setStatus] = useState<SystemStatus | null>(null)
   const [reachable, setReachable] = useState<boolean | null>(null)
-  const version = window.seshatDesktop?.version || '0.1.0'
+  const [version, setVersion] = useState('0.1.0')
 
   useEffect(() => {
     let cancelled = false
+    void window.nexus?.getVersion().then((value) => { if (!cancelled) setVersion(value) }).catch(() => undefined)
     api.get<SystemStatus>('/system/status')
       .then((result) => {
         if (cancelled) return

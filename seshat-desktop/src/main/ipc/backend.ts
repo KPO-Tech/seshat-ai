@@ -1,8 +1,10 @@
+import { randomUUID, randomBytes } from 'crypto'
 import type { IpcMain, IpcMainInvokeEvent } from 'electron'
-import { randomUUID } from 'crypto'
+import { desktopBridgeProof, ensureDesktopBridgeSecret, resolveBackendOrigin } from '../runtime'
 import { deleteSecret, getSecret, setSecret } from './secure-store'
 import { assertTrustedSender } from './trusted-sender'
-import { normalizeFileContentPath, normalizeSessionUploadPath, normalizeTranscribeUploadPath } from './validation'
+import { assertUploadPayloadShape, normalizeAPIPath } from './validation'
+import { isRetryableNetworkError } from './network-errors'
 
 type AuthUser = {
   id: string
@@ -23,82 +25,82 @@ type RequestPayload = {
   body?: unknown
 }
 
+type UploadPayload = {
+  path: string
+  fields?: Array<{ name: string; value: string }>
+  files?: Array<{ name: string; filename: string; mimeType?: string; data: ArrayBuffer }>
+}
+
 type StreamStartPayload = {
   path: string
   method?: string
   body?: unknown
 }
 
-type UploadFilePayload = {
-  path: string
-  filename: string
-  contentType?: string
-  data: ArrayBuffer
+type StreamEventMessage = {
+  streamId: string
+  name: string
+  data: Record<string, unknown>
 }
 
-type UploadAudioPayload = {
-  path: string
-  data: ArrayBuffer
-}
-
-const BACKEND_ORIGIN = process.env.SESHAT_BACKEND_ORIGIN || 'http://127.0.0.1:8090'
-const AUTH_SESSION_KEY = 'seshat-desktop-auth-session'
+const AUTH_SESSION_KEY = 'auth-session'
 const STREAM_EVENT_CHANNEL = 'http:stream:event'
-
-let cachedSession: StoredSession | null = null
 const activeStreams = new Map<string, { controller: AbortController; webContentsId: number }>()
+let cachedSession: StoredSession | null = null
+let backendTrustPromise: Promise<void> | null = null
 
-function buildBackendURL(path: string): string {
-  const normalized = path.startsWith('/') ? path : `/${path}`
-  return `${BACKEND_ORIGIN}/api/v1${normalized}`
+function buildBackendURL(path: string) {
+  const normalized = normalizeAPIPath(path)
+  return `${resolveBackendOrigin()}/api/v1${normalized}`
 }
 
-function sessionView(session: StoredSession | null) {
-  if (!session) return null
-  return {
-    user: session.user,
-    roles: session.roles,
-    isAuthenticated: true
+export async function ensureBackendTrusted() {
+  if (backendTrustPromise) {
+    return backendTrustPromise
   }
-}
+  backendTrustPromise = (async () => {
+    const secret = await ensureDesktopBridgeSecret()
+    const nonce = randomBytes(32).toString('hex')
+    const url = new URL(`${resolveBackendOrigin()}/api/v1/desktop/handshake`)
+    url.searchParams.set('nonce', nonce)
 
-async function parseResponse(res: Response) {
-  const text = await res.text().catch(() => '')
-  const contentType = res.headers.get('content-type') || ''
-  if (!contentType.includes('application/json')) {
-    return { ok: res.ok, status: res.status, text }
-  }
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    })
+    if (!res.ok) {
+      const text = await res.text().catch(() => res.statusText)
+      throw new Error(`Unable to authenticate the local backend (${res.status}): ${text || res.statusText}`)
+    }
+
+    const body = await res.json() as { algorithm?: string; proof?: string }
+    const expected = desktopBridgeProof(secret, nonce)
+    if (body.algorithm !== 'hmac-sha256' || body.proof !== expected) {
+      throw new Error('Backend trust handshake failed. Check that seshat-ai backend uses the same SESHAT_RUNTIME_ROOT as the desktop app.')
+    }
+  })()
 
   try {
-    return {
-      ok: res.ok,
-      status: res.status,
-      data: text ? JSON.parse(text) : undefined,
-      text
-    }
-  } catch {
-    return { ok: res.ok, status: res.status, text }
+    await backendTrustPromise
+  } catch (error) {
+    backendTrustPromise = null
+    throw error
   }
-}
-
-function extractErrorMessage(payload: { status: number; data?: unknown; text?: string }): string {
-  if (payload.data && typeof payload.data === 'object') {
-    const data = payload.data as { error?: string | { message?: string }; message?: string }
-    if (data.error && typeof data.error === 'object') return data.error.message ?? payload.text ?? `HTTP ${payload.status}`
-    if (typeof data.error === 'string' && data.error.trim()) return data.error
-    if (typeof data.message === 'string' && data.message.trim()) return data.message
-  }
-  return payload.text || `HTTP ${payload.status}`
 }
 
 async function loadSession(): Promise<StoredSession | null> {
-  if (cachedSession) return cachedSession
+  if (cachedSession) {
+    return cachedSession
+  }
   const raw = await getSecret(AUTH_SESSION_KEY)
-  if (!raw) return null
-
+  if (!raw) {
+    return null
+  }
   try {
     const parsed = JSON.parse(raw) as StoredSession
-    if (!parsed?.token || !parsed?.user) return null
+    if (!parsed?.token || !parsed?.user) {
+      return null
+    }
     cachedSession = parsed
     return parsed
   } catch {
@@ -106,154 +108,221 @@ async function loadSession(): Promise<StoredSession | null> {
   }
 }
 
-async function saveSession(session: StoredSession): Promise<void> {
+async function saveSession(session: StoredSession) {
   cachedSession = session
   await setSecret(AUTH_SESSION_KEY, JSON.stringify(session))
 }
 
-async function clearSession(): Promise<void> {
+async function clearSession() {
   cachedSession = null
   await deleteSecret(AUTH_SESSION_KEY)
 }
 
+function sessionView(session: StoredSession | null) {
+  if (!session) return null
+  return {
+    user: session.user,
+    roles: session.roles,
+    isAuthenticated: true,
+  }
+}
+
+async function parseResponse(res: Response) {
+  const text = await res.text().catch(() => '')
+  const contentType = res.headers.get('content-type') || ''
+  if (contentType.includes('application/json')) {
+    try {
+      return {
+        ok: res.ok,
+        status: res.status,
+        data: text ? JSON.parse(text) : undefined,
+        text,
+      }
+    } catch {
+      return { ok: res.ok, status: res.status, text }
+    }
+  }
+  return { ok: res.ok, status: res.status, text }
+}
+
+function extractErrorMessage(payload: { status: number; data?: any; text?: string }) {
+  if (payload.data && typeof payload.data === 'object') {
+    if (typeof payload.data.error === 'string' && payload.data.error.trim()) return payload.data.error
+    if (typeof payload.data.message === 'string' && payload.data.message.trim()) return payload.data.message
+  }
+  return payload.text || `HTTP ${payload.status}`
+}
+
 async function performJSONRequest(path: string, method: string, body: unknown, token?: string) {
-  const url = buildBackendURL(path)
+  await ensureBackendTrusted()
   const headers: Record<string, string> = {
-    Accept: 'application/json'
+    Accept: 'application/json',
   }
   let requestBody: string | undefined
   if (body !== undefined) {
     headers['Content-Type'] = 'application/json'
     requestBody = JSON.stringify(body)
   }
-  if (token) headers.Authorization = `Bearer ${token}`
-
-  let res: Response
-  try {
-    res = await fetch(url, {
-      method,
-      headers,
-      body: requestBody
-    })
-  } catch (err) {
-    const detail = err instanceof Error ? err.message : 'request failed'
-    return {
-      ok: false,
-      status: 0,
-      text: `Cannot reach the local Seshat backend at ${BACKEND_ORIGIN}. ${detail}`
-    }
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
   }
-
+  const res = await fetch(buildBackendURL(path), {
+    method,
+    headers,
+    body: requestBody,
+  })
   const payload = await parseResponse(res)
-  if (res.status === 401) await clearSession()
+  if (res.status === 401) {
+    await clearSession()
+  }
   return payload
 }
 
-async function performFileUpload(payload: UploadFilePayload, token?: string) {
-  const path = normalizeSessionUploadPath(payload.path)
-  const filename = payload.filename.trim()
-  if (!filename || filename.length > 512) throw new Error('Invalid filename')
-  if (!(payload.data instanceof ArrayBuffer) || payload.data.byteLength === 0) throw new Error('File is empty')
-
-  const body = new FormData()
-  body.append('file', new Blob([payload.data], { type: payload.contentType || 'application/octet-stream' }), filename)
-  const headers: Record<string, string> = { Accept: 'application/json' }
-  if (token) headers.Authorization = `Bearer ${token}`
-
-  try {
-    const res = await fetch(buildBackendURL(path), { method: 'POST', headers, body })
-    const parsed = await parseResponse(res)
-    if (res.status === 401) await clearSession()
-    return parsed
-  } catch (err) {
-    return { ok: false, status: 0, text: err instanceof Error ? err.message : 'Upload failed' }
+async function performUploadRequest(path: string, payload: UploadPayload, token?: string) {
+  await ensureBackendTrusted()
+  assertUploadPayloadShape(payload)
+  const form = new FormData()
+  for (const field of payload.fields ?? []) {
+    form.append(field.name, field.value)
   }
+  for (const file of payload.files ?? []) {
+    form.append(file.name, new Blob([file.data], { type: file.mimeType || 'application/octet-stream' }), file.filename)
+  }
+  const headers: Record<string, string> = { Accept: 'application/json' }
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+  const res = await fetch(buildBackendURL(path), {
+    method: 'POST',
+    headers,
+    body: form,
+  })
+  const parsed = await parseResponse(res)
+  if (res.status === 401) {
+    await clearSession()
+  }
+  return parsed
 }
 
-// Sibling of performFileUpload rather than a shared/parameterized helper -
-// the backend's /transcribe endpoint expects the multipart field named
-// "audio" (not "file"), and this path is validated against its own strict
-// pattern, same as every other IPC-exposed backend path in this file.
-async function performAudioUpload(payload: UploadAudioPayload, token?: string) {
-  const path = normalizeTranscribeUploadPath(payload.path)
-  if (!(payload.data instanceof ArrayBuffer) || payload.data.byteLength === 0) throw new Error('Recording is empty')
-
-  const body = new FormData()
-  body.append('audio', new Blob([payload.data], { type: 'audio/wav' }), 'recording.wav')
-  const headers: Record<string, string> = { Accept: 'application/json' }
-  if (token) headers.Authorization = `Bearer ${token}`
-
-  try {
-    const res = await fetch(buildBackendURL(path), { method: 'POST', headers, body })
-    const parsed = await parseResponse(res)
-    if (res.status === 401) await clearSession()
-    return parsed
-  } catch (err) {
-    return { ok: false, status: 0, text: err instanceof Error ? err.message : 'Upload failed' }
-  }
-}
-
-async function performFileDownload(path: string, token?: string) {
+// Fetches a binary resource (e.g. GET /files/{id}/content) and returns it as
+// a data: URL. Used to rehydrate attachment previews - the original bytes
+// live in the blob store, addressable by file ID, regardless of whether the
+// client-side blob:/data: URL generated at attach time is still valid (it
+// stops being valid the moment the renderer process that created it exits).
+async function performBinaryGetRequest(path: string, token?: string): Promise<{ ok: boolean; status: number; dataUrl?: string; error?: string }> {
+  await ensureBackendTrusted()
   const headers: Record<string, string> = {}
-  if (token) headers.Authorization = `Bearer ${token}`
-  try {
-    const res = await fetch(buildBackendURL(normalizeFileContentPath(path)), { headers })
-    if (!res.ok) {
-      const parsed = await parseResponse(res)
-      if (res.status === 401) await clearSession()
-      return parsed
-    }
-    const data = Buffer.from(await res.arrayBuffer()).toString('base64')
-    return {
-      ok: true,
-      status: res.status,
-      data: {
-        dataBase64: data,
-        contentType: res.headers.get('content-type') || 'application/octet-stream'
-      }
-    }
-  } catch (err) {
-    return { ok: false, status: 0, text: err instanceof Error ? err.message : 'Download failed' }
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
   }
+  const res = await fetch(buildBackendURL(path), { method: 'GET', headers })
+  if (!res.ok) {
+    if (res.status === 401) {
+      await clearSession()
+    }
+    return { ok: false, status: res.status, error: await res.text().catch(() => res.statusText) }
+  }
+  const contentType = res.headers.get('content-type') || 'application/octet-stream'
+  const buffer = Buffer.from(await res.arrayBuffer())
+  return { ok: true, status: res.status, dataUrl: `data:${contentType};base64,${buffer.toString('base64')}` }
 }
 
-async function startStream(event: IpcMainInvokeEvent, payload: StreamStartPayload, token?: string) {
+// Fetches one byte range of a file (e.g. GET /files/{id}/content with a
+// Range header) and returns the raw bytes as an ArrayBuffer, never base64 -
+// the whole point is avoiding both the 33% base64 bloat and having to wait
+// for the complete file, so PDFViewerPanel's PDFDataRangeTransport can feed
+// pdf.js small chunks as it asks for them instead of one big blob up front.
+// totalLength comes from the response's Content-Range (e.g. "bytes 0-65535/
+// 1222282") when the backend served a real 206 Partial Content; if it
+// answered 200 instead (Range unsupported for this path, or ineligible file),
+// this falls back to Content-Length so the caller still gets a usable length,
+// just without the partial-content benefit for that request.
+async function performFileRangeRequest(
+  path: string,
+  start: number,
+  end: number,
+  token?: string,
+): Promise<{ ok: boolean; status: number; data?: ArrayBuffer; totalLength?: number; contentType?: string; error?: string }> {
+  await ensureBackendTrusted()
+  const headers: Record<string, string> = { Range: `bytes=${start}-${end}` }
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+  const res = await fetch(buildBackendURL(path), { method: 'GET', headers })
+  if (!res.ok && res.status !== 206) {
+    if (res.status === 401) {
+      await clearSession()
+    }
+    return { ok: false, status: res.status, error: await res.text().catch(() => res.statusText) }
+  }
+  const contentType = res.headers.get('content-type') || 'application/octet-stream'
+  const contentRange = res.headers.get('content-range')
+  const totalMatch = contentRange ? /\/(\d+)$/.exec(contentRange) : null
+  const totalLength = totalMatch ? Number(totalMatch[1]) : Number(res.headers.get('content-length') || 0)
+  const data = await res.arrayBuffer()
+  return { ok: true, status: res.status, data, totalLength, contentType }
+}
+
+async function startStream(
+  event: IpcMainInvokeEvent,
+  payload: StreamStartPayload,
+  token?: string,
+): Promise<{ streamId: string } | { error: string; retryable: boolean; unauthorized?: boolean }> {
   const controller = new AbortController()
   const headers: Record<string, string> = {
     Accept: 'text/event-stream',
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
   }
-  if (token) headers.Authorization = `Bearer ${token}`
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
 
+  // The trust handshake and the stream request are both real network calls —
+  // either can fail purely because the backend isn't reachable yet (fresh
+  // launch, backend still starting, temporary drop). That's a connectivity
+  // failure the caller can retry, not an application error, so it's reported
+  // as a value (see isRetryableNetworkError's doc comment) rather than thrown.
   let res: Response
   try {
+    await ensureBackendTrusted()
     res = await fetch(buildBackendURL(payload.path), {
       method: payload.method || 'POST',
       headers,
       body: JSON.stringify(payload.body ?? {}),
-      signal: controller.signal
+      signal: controller.signal,
     })
-  } catch (err) {
-    const detail = err instanceof Error ? err.message : 'stream request failed'
+  } catch (error) {
     return {
-      error: `Cannot reach the local Seshat backend at ${BACKEND_ORIGIN}. ${detail}`,
-      retryable: true
+      error: error instanceof Error ? error.message : 'Failed to reach the backend',
+      retryable: isRetryableNetworkError(error),
     }
   }
-
   if (!res.ok) {
     const parsed = await parseResponse(res)
-    if (res.status === 401) await clearSession()
-    return {
-      error: extractErrorMessage(parsed),
-      retryable: false,
-      unauthorized: res.status === 401
+    if (res.status === 401) {
+      await clearSession()
+      // Reported as a value, not a throw, specifically for 401: the renderer
+      // needs to see this one (to also clear useAuthStore, which clearSession
+      // above doesn't touch — that's main-process/OS-keychain state only) —
+      // an ipcMain.handle throw only carries a message string across, losing
+      // any way to distinguish "unauthorized" from any other stream-start
+      // failure. Same reasoning as retryable network errors above.
+      return { error: extractErrorMessage(parsed), retryable: false, unauthorized: true }
     }
+    throw new Error(extractErrorMessage(parsed))
+  }
+
+  // Verify the SSE protocol version so we detect framing changes early.
+  // The server sets X-SSE-Version on every streaming response (see query.go).
+  const SSE_SUPPORTED_VERSION = '1'
+  const sseVersion = res.headers.get('X-SSE-Version')
+  if (sseVersion && sseVersion !== SSE_SUPPORTED_VERSION) {
+    console.warn(`[backend] SSE protocol version mismatch: expected ${SSE_SUPPORTED_VERSION}, got ${sseVersion}. Streaming may be unreliable.`)
   }
 
   const reader = res.body?.getReader()
   if (!reader) {
-    return { error: 'No response body', retryable: false }
+    throw new Error('No response body')
   }
 
   const streamId = randomUUID()
@@ -262,44 +331,52 @@ async function startStream(event: IpcMainInvokeEvent, payload: StreamStartPayloa
   void (async () => {
     const decoder = new TextDecoder()
     let buffer = ''
-
+    let eventName = ''
     try {
       while (true) {
-        const { value, done } = await reader.read()
+        const { done, value } = await reader.read()
         if (done) break
-
         buffer += decoder.decode(value, { stream: true })
-        const frames = buffer.split(/\n\n/)
-        buffer = frames.pop() ?? ''
+        const lines = buffer.split('\n')
+        buffer = lines.pop() ?? ''
 
-        for (const frame of frames) {
-          const parsed = parseSSEFrame(frame)
-          if (!parsed || event.sender.isDestroyed()) continue
-          event.sender.send(STREAM_EVENT_CHANNEL, {
-            streamId,
-            name: parsed.name,
-            data: parsed.data
-          })
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            eventName = line.slice(7).trim()
+            continue
+          }
+          if (line === '') {
+            eventName = ''
+            continue
+          }
+          if (!line.startsWith('data: ')) continue
+
+          const raw = line.slice(6).trim()
+          let parsed: Record<string, unknown>
+          try {
+            parsed = JSON.parse(raw) as Record<string, unknown>
+          } catch {
+            continue
+          }
+          if (!event.sender.isDestroyed()) {
+            event.sender.send(STREAM_EVENT_CHANNEL, {
+              streamId,
+              name: eventName || 'message',
+              data: parsed,
+            } satisfies StreamEventMessage)
+          }
         }
       }
-
-      if (buffer.trim()) {
-        const parsed = parseSSEFrame(buffer)
-        if (parsed && !event.sender.isDestroyed()) {
-          event.sender.send(STREAM_EVENT_CHANNEL, {
-            streamId,
-            name: parsed.name,
-            data: parsed.data
-          })
-        }
-      }
-    } catch (err) {
+    } catch (error) {
       if (!controller.signal.aborted && !event.sender.isDestroyed()) {
         event.sender.send(STREAM_EVENT_CHANNEL, {
           streamId,
           name: 'error',
-          data: { error: err instanceof Error ? err.message : 'Streaming failed' }
-        })
+          data: {
+            error: error instanceof Error ? error.message : 'Streaming failed',
+            retryable: isRetryableNetworkError(error),
+          },
+        } satisfies StreamEventMessage)
       }
     } finally {
       activeStreams.delete(streamId)
@@ -314,31 +391,26 @@ async function startStream(event: IpcMainInvokeEvent, payload: StreamStartPayloa
   return { streamId }
 }
 
-function parseSSEFrame(frame: string): { name: string; data: Record<string, unknown> } | null {
-  const lines = frame.split(/\r?\n/)
-  let name = 'message'
-  const data: string[] = []
-
-  for (const line of lines) {
-    if (line.startsWith(':')) continue
-    if (line.startsWith('event:')) name = line.slice(6).trim()
-    if (line.startsWith('data:')) data.push(line.slice(5).trimStart())
+// Authenticated backend call issued by the main process itself (not through
+// the renderer IPC bridge) - reuses the same stored session/trust handshake
+// as every renderer-originated call. Used by whisper-manager.ts to report
+// the local whisper-server's status to seshat-backend once it's spawned.
+export async function callBackendAsCurrentUser(path: string, method: string, body?: unknown) {
+  const session = await loadSession()
+  const payload = await performJSONRequest(path, method, body, session?.token)
+  if (!payload.ok) {
+    throw new Error(extractErrorMessage(payload))
   }
-
-  if (data.length === 0) return null
-  try {
-    return { name, data: JSON.parse(data.join('\n')) as Record<string, unknown> }
-  } catch {
-    return { name, data: { message: data.join('\n') } }
-  }
+  return payload.data
 }
 
 export function registerBackendHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('auth:login', async (event, credentials: { email: string; password: string }) => {
     assertTrustedSender(event)
     const payload = await performJSONRequest('/auth/login', 'POST', credentials)
-    if (!payload.ok) throw new Error(extractErrorMessage(payload))
-
+    if (!payload.ok) {
+      throw new Error(extractErrorMessage(payload))
+    }
     const data = payload.data as { token: string; user: AuthUser; roles?: string[] }
     await saveSession({ token: data.token, user: data.user, roles: data.roles ?? [] })
     return sessionView(cachedSession)
@@ -347,8 +419,9 @@ export function registerBackendHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('auth:register', async (event, registration: { name: string; email: string; password: string }) => {
     assertTrustedSender(event)
     const payload = await performJSONRequest('/auth/register', 'POST', registration)
-    if (!payload.ok) throw new Error(extractErrorMessage(payload))
-
+    if (!payload.ok) {
+      throw new Error(extractErrorMessage(payload))
+    }
     const data = payload.data as { token: string; user: AuthUser; roles?: string[] }
     await saveSession({ token: data.token, user: data.user, roles: data.roles ?? [] })
     return sessionView(cachedSession)
@@ -358,7 +431,9 @@ export function registerBackendHandlers(ipcMain: IpcMain): void {
     assertTrustedSender(event)
     const session = await loadSession()
     try {
-      if (session?.token) await performJSONRequest('/auth/logout', 'POST', undefined, session.token)
+      if (session?.token) {
+        await performJSONRequest('/auth/logout', 'POST', undefined, session.token)
+      }
     } finally {
       await clearSession()
     }
@@ -374,28 +449,53 @@ export function registerBackendHandlers(ipcMain: IpcMain): void {
     await clearSession()
   })
 
+  ipcMain.handle('auth:update-user', async (event, user: AuthUser) => {
+    assertTrustedSender(event)
+    const session = await loadSession()
+    if (!session) return null
+    session.user = user
+    await saveSession(session)
+    return sessionView(session)
+  })
+
   ipcMain.handle('http:request', async (event, payload: RequestPayload) => {
     assertTrustedSender(event)
+    if (payload.path === '/auth/login' || payload.path === '/auth/register') {
+      throw new Error('Use the dedicated auth bridge for login and registration')
+    }
     const session = await loadSession()
-    return performJSONRequest(payload.path, payload.method || 'GET', payload.body, session?.token)
+    const parsed = await performJSONRequest(payload.path, payload.method || 'GET', payload.body, session?.token)
+    return parsed
   })
 
-  ipcMain.handle('http:upload-file', async (event, payload: UploadFilePayload) => {
+  ipcMain.handle('http:upload', async (event, payload: UploadPayload) => {
     assertTrustedSender(event)
     const session = await loadSession()
-    return performFileUpload(payload, session?.token)
+    return performUploadRequest(payload.path, payload, session?.token)
   })
 
-  ipcMain.handle('http:upload-audio', async (event, payload: UploadAudioPayload) => {
+  ipcMain.handle('http:file-content', async (event, path: string) => {
     assertTrustedSender(event)
     const session = await loadSession()
-    return performAudioUpload(payload, session?.token)
+    return performBinaryGetRequest(path, session?.token)
   })
 
-  ipcMain.handle('http:download-file', async (event, path: string) => {
+  ipcMain.handle('http:file-range', async (event, payload: { path: string; start: number; end: number }) => {
     assertTrustedSender(event)
     const session = await loadSession()
-    return performFileDownload(path, session?.token)
+    return performFileRangeRequest(payload.path, payload.start, payload.end, session?.token)
+  })
+
+  // The artifact-preview <iframe> (see ArtifactPreviewPanel.tsx) navigates
+  // directly - it can't go through the http:request IPC bridge like every
+  // other backend call, since an <iframe src=...> is a real browser
+  // navigation, not a fetch() this app controls. It still needs to know the
+  // resolved origin (dynamic in a packaged app - the sidecar's actual port
+  // isn't fixed) to build that URL, hence exposing it here instead of
+  // hardcoding a default in the renderer.
+  ipcMain.handle('http:backend-origin', (event) => {
+    assertTrustedSender(event)
+    return resolveBackendOrigin()
   })
 
   ipcMain.handle('http:stream:start', async (event, payload: StreamStartPayload) => {
@@ -407,7 +507,9 @@ export function registerBackendHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('http:stream:cancel', async (event, streamId: string) => {
     assertTrustedSender(event)
     const active = activeStreams.get(streamId)
-    if (!active || active.webContentsId !== event.sender.id) return
+    if (!active || active.webContentsId !== event.sender.id) {
+      return
+    }
     active.controller.abort()
     activeStreams.delete(streamId)
   })

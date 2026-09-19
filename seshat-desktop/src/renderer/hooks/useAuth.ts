@@ -31,7 +31,7 @@ export function useAuth() {
 
   async function restoreSession() {
     try {
-      const session = await window.nexus?.auth.restoreSession()
+      const session = await window.nexus?.auth?.restoreSession()
       if (session) {
         store.setSession(session)
         return

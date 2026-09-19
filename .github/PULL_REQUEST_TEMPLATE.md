@@ -23,9 +23,9 @@ Fixes #
 
 ## Frontend checklist (skip if no UI changes)
 
-- [ ] `npm ci` passes in the affected app (`seshat-ui/`, `seshat-desktop/`, or `seshat-console/`)
+- [ ] `npm ci` passes in the affected app (`seshat-desktop/` or `seshat-console/`)
 - [ ] `npm run typecheck` passes
-- [ ] Tested in dev mode (`make ui-dev` for `seshat-ui`; each app's own `npm run dev` otherwise)
+- [ ] Tested in dev mode (`make dev` for `seshat-desktop`; each app's own `npm run dev` otherwise)
 
 ## Documentation
 

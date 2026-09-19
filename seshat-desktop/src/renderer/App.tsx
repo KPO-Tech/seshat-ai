@@ -1,12 +1,18 @@
 import { useEffect, useState } from 'react'
-import { AppShell } from '@renderer/components/layout/AppShell'
+import { RouterProvider } from 'react-router'
+import { useAuth } from '@renderer/hooks/useAuth'
+import { useInactivityTimeout } from '@renderer/hooks/useInactivityTimeout'
+import { useSessionValidation } from '@renderer/hooks/useSessionValidation'
 import { Login } from '@renderer/pages/Login'
 import { Register } from '@renderer/pages/Register'
-import { useAuth } from '@renderer/hooks/useAuth'
+import { router } from '@renderer/router'
 
 export function App() {
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
-  const { user, isAuthenticated, restoring, restoreSession, logout } = useAuth()
+  const { isAuthenticated, restoring, restoreSession } = useAuth()
+
+  useInactivityTimeout()
+  useSessionValidation()
 
   useEffect(() => {
     void restoreSession()
@@ -29,5 +35,5 @@ export function App() {
       : <Register onLoginClick={() => setAuthMode('login')} />
   }
 
-  return <AppShell user={user!} onLogout={() => void logout()} />
+  return <RouterProvider router={router} />
 }

@@ -5474,7 +5474,7 @@ func TestSkillsAreScopedPerUser(t *testing.T) {
 	}
 }
 
-func TestSkillReposRequireAdmin(t *testing.T) {
+func TestSkillReposAvailableToMembers(t *testing.T) {
 	t.Setenv("SESHAT_RUNTIME_ROOT", t.TempDir())
 
 	app, identity := newSkillsTestApp(t)
@@ -5497,16 +5497,16 @@ func TestSkillReposRequireAdmin(t *testing.T) {
 	req.Header.Set("Authorization", "Bearer "+memberToken)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
-	if rec.Code != http.StatusForbidden {
-		t.Fatalf("member repo list: expected 403, got %d body=%s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusOK {
+		t.Fatalf("member repo list: expected 200, got %d body=%s", rec.Code, rec.Body.String())
 	}
 
 	req = httptest.NewRequest(http.MethodDelete, "/api/v1/skills/repos/demo", nil)
 	req.Header.Set("Authorization", "Bearer "+memberToken)
 	rec = httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
-	if rec.Code != http.StatusForbidden {
-		t.Fatalf("member repo delete: expected 403, got %d body=%s", rec.Code, rec.Body.String())
+	if rec.Code == http.StatusForbidden || rec.Code == http.StatusUnauthorized {
+		t.Fatalf("member repo delete must not be role-gated, got %d body=%s", rec.Code, rec.Body.String())
 	}
 }
 

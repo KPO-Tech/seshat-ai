@@ -9,6 +9,7 @@ import { MCPConfig } from './mcp/MCPConfig'
 import { ModelsConfig } from './models/ModelsConfig'
 import { MultimodalConfig } from './multimodal/MultimodalConfig'
 import { ProvidersConfig } from './providers/ProvidersConfig'
+import { SkillsConfig } from './skills/SkillsConfig'
 import { StorageConfig } from './storage/StorageConfig'
 import { WebSearchConfig } from './web-search/WebSearchConfig'
 
@@ -23,6 +24,7 @@ export type ConfigSection =
   | 'environment'
   | 'storage'
   | 'agents'
+  | 'skills'
   | 'automation'
 
 type Props = {
@@ -42,6 +44,7 @@ const sections: Array<{ id: ConfigSection; label: string; icon: IconName; group:
   { id: 'environment', label: 'Environment', icon: 'terminal', group: 'Workspace Runtime', description: 'Encrypted API keys, env vars, and backend restart flow.' },
   { id: 'storage', label: 'Storage', icon: 'storage', group: 'Workspace Runtime', description: 'Local filesystem, object storage, and cache locations.' },
   { id: 'agents', label: 'Agents', icon: 'agent', group: 'Automation', description: 'Agent profiles, permissions, delegation defaults, and system instructions.' },
+  { id: 'skills', label: 'Skills', icon: 'skills', group: 'Automation', description: 'Skill repositories downloaded to this machine and the groups they provide.' },
   { id: 'automation', label: 'Automation', icon: 'clock', group: 'Automation', description: 'Device registration, scheduled jobs, and background execution.' }
 ]
 
@@ -113,8 +116,9 @@ export function ConfigModal({ user, initialSection = 'providers', onClose }: Pro
               {activeSection === 'environment' && <EnvironmentConfig />}
               {activeSection === 'storage' && <StorageConfig />}
               {activeSection === 'agents' && <AgentsConfig />}
+              {activeSection === 'skills' && <SkillsConfig />}
               {activeSection === 'automation' && <AutomationConfig />}
-              {activeSection !== 'providers' && activeSection !== 'models' && activeSection !== 'web-search' && activeSection !== 'knowledge' && activeSection !== 'multimodal' && activeSection !== 'mcp' && activeSection !== 'connectors' && activeSection !== 'environment' && activeSection !== 'storage' && activeSection !== 'agents' && activeSection !== 'automation' && <ConfigOverview active={active} />}
+              {activeSection !== 'providers' && activeSection !== 'models' && activeSection !== 'web-search' && activeSection !== 'knowledge' && activeSection !== 'multimodal' && activeSection !== 'mcp' && activeSection !== 'connectors' && activeSection !== 'environment' && activeSection !== 'storage' && activeSection !== 'agents' && activeSection !== 'skills' && activeSection !== 'automation' && <ConfigOverview active={active} />}
             </div>
           </div>
         </section>
@@ -162,6 +166,10 @@ function ConfigOverview({ active }: { active: (typeof sections)[number] }) {
 }
 
 const configDetails: Record<ConfigSection, { source: string; scope: string[] }> = {
+  skills: {
+    source: 'seshat-ui/apps/skills-creator',
+    scope: ['Skill repositories', 'Install and remove', 'Skill groups']
+  },
   providers: {
     source: 'seshat-ui/pages/settings/ProvidersView.tsx',
     scope: ['Provider catalog', 'API key or OAuth connection', 'Connection tests', 'Default provider/model readiness']
@@ -229,6 +237,7 @@ type IconName =
   | 'terminal'
   | 'storage'
   | 'agent'
+  | 'skills'
   | 'clock'
   | 'check'
 
@@ -244,6 +253,7 @@ function Icon({ name }: { name: IconName }) {
     terminal: <path d="m3 5 3 3-3 3M8 11h5" />,
     storage: <path d="M3 4c0-1.1 2.2-2 5-2s5 .9 5 2-2.2 2-5 2-5-.9-5-2ZM3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2" />,
     agent: <path d="M5 6h6a2 2 0 0 1 2 2v3H3V8a2 2 0 0 1 2-2ZM6 6V3h4v3M6 11v2M10 11v2" />,
+    skills: <path d="M8 2v3M8 11v3M3 3.5l2 2M11 10.5l2 2M2 8h3M11 8h3M3 12.5l2-2M11 5.5l2-2" />,
     clock: <><circle cx="8" cy="8" r="5.5" /><path d="M8 5v3l2 1.2" /></>,
     check: <path d="m3 8 3 3 7-7" />
   }

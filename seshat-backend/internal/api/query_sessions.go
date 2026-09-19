@@ -2,14 +2,11 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"sort"
 	"strings"
 
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/skills"
 	"github.com/KPO-Tech/seshat/pkg/types"
 )
 
@@ -42,16 +39,6 @@ func (app *App) handleSessions(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			writeBackendError(w, err)
 			return
-		}
-		// Best-effort, never blocks/fails session creation: seeds the
-		// "Project Context Setup" skill (see internal/skills) into this
-		// user's own skill directory the first time they ever start a
-		// session, so it's guaranteed to exist by the time the guided
-		// project-context banner (seshat-ui Home.tsx) could ever trigger it.
-		if principal != nil {
-			if err := skills.EnsureProjectContextSetupSkill(principal.User.ID); err != nil {
-				fmt.Fprintf(os.Stderr, "[API] Avertissement seed skill project-context-setup: %v\n", err)
-			}
 		}
 		writeJSON(w, http.StatusCreated, map[string]any{"session_id": sessionID})
 

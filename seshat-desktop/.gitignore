@@ -23,3 +23,4 @@ Thumbs.db
 
 resources/backend/seshat-backend
 resources/backend/seshat-backend.exe
+.tmp/

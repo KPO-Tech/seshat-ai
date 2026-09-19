@@ -19,7 +19,7 @@ export function EnvVarRow({
     if (!value.trim()) return
     setSaving(true)
     try {
-      await window.nexus?.envVars.set(def.key, value.trim())
+      await window.nexus?.envVars?.set(def.key, value.trim())
       setValue('')
       setEditing(false)
       await onChanged()
@@ -31,7 +31,7 @@ export function EnvVarRow({
   async function remove() {
     setSaving(true)
     try {
-      await window.nexus?.envVars.delete(def.key)
+      await window.nexus?.envVars?.delete(def.key)
       setValue('')
       setEditing(true)
       await onChanged()
